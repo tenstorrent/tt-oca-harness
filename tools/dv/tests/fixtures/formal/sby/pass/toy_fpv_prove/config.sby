@@ -1,0 +1,13 @@
+[options]
+mode prove
+
+[engines]
+abc pdr
+
+[script]
+plugin -i slang
+read_slang -D FORMAL  toy.sv
+prep -top toy
+
+[files]
+toy.sv

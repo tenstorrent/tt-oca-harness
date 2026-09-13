@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite timestamp="2026-09-13T14:30:02" hostname="host" package="dtp" id="0" name="cover" tests="17" errors="0" failures="0" time="101" skipped="11">
+<properties>
+<property name="os" value="Darwin"/>
+<property name="expect" value="PASS"/>
+<property name="status" value="PASS"/>
+</properties>
+<testcase classname="cover" name="build execution" time="0">
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_five_tms_high_reach_tlr in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_five_tms_high_reach_tlr">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_moore_flags_follow_state in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_moore_flags_follow_state">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_negedge_flags_follow_state in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_negedge_flags_follow_state">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_rti_holds_on_tms_low in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_rti_holds_on_tms_low">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_select_exclusive in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_select_exclusive">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_shift_holds_on_tms_low in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_shift_holds_on_tms_low">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_state_one_hot in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_state_one_hot">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_tlr_exits_to_rti in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_tlr_exits_to_rti">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_tlr_holds_on_tms_high in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_tlr_holds_on_tms_high">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_update_dr_only_from_exit in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_update_dr_only_from_exit">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property ASSERT u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_update_ir_only_from_exit in dtp" time="0" type="ASSERT" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.ast_tap_update_ir_only_from_exit">
+<skipped />
+</testcase>
+<testcase classname="cover" name="Property COVER u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_shift_dr in dtp" time="0" type="COVER" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_shift_dr" tracefile="engine_0/trace0.vcd">
+</testcase>
+<testcase classname="cover" name="Property COVER u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_shift_ir in dtp" time="0" type="COVER" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_shift_ir" tracefile="engine_0/trace1.vcd">
+</testcase>
+<testcase classname="cover" name="Property COVER u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_tdo_driven in dtp" time="0" type="COVER" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_tdo_driven" tracefile="engine_0/trace0.vcd">
+</testcase>
+<testcase classname="cover" name="Property COVER u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_tlr_from_five_tms_high in dtp" time="0" type="COVER" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_tlr_from_five_tms_high" tracefile="engine_0/trace4.vcd">
+</testcase>
+<testcase classname="cover" name="Property COVER u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_update_dr_from_exit2 in dtp" time="0" type="COVER" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_update_dr_from_exit2" tracefile="engine_0/trace3.vcd">
+</testcase>
+<testcase classname="cover" name="Property COVER u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_update_ir_from_exit1 in dtp" time="0" type="COVER" location="" id="u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_update_ir_from_exit1" tracefile="engine_0/trace2.vcd">
+</testcase>
+<system-out></system-out>
+<system-err></system-err>
+</testsuite>
+</testsuites>

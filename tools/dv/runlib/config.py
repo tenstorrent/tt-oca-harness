@@ -148,6 +148,20 @@ FORMAL_PLACEHOLDERS = (
 )
 FormalArgvTemplate = list[str | list[str]]
 
+# `[formal.apps.<app>.<tool>.evidence]`: the summary file a backend without a native task
+# summary writes, and the line patterns that grade it. `summary` renders these placeholders and
+# resolves against the app's `cwd` when relative.
+FORMAL_EVIDENCE_KEYS = {
+    "summary",
+    "pass_patterns",
+    "fail_patterns",
+    "inconclusive_patterns",
+    "cover_patterns",
+    "unreached_patterns",
+}
+FORMAL_EVIDENCE_REQUIRED_PATTERNS = ("pass_patterns", "fail_patterns")
+FORMAL_EVIDENCE_PLACEHOLDERS = {"run_dir", "item", "cwd"}
+
 TOP_LEVEL_KEYS = {
     "schema_version",
     "name",
@@ -661,8 +675,35 @@ def render_formal_argv(
     return argv
 
 
-def validate_formal_app_templates(formal: Any, where: str) -> None:
-    """Check every `argv` override under `[formal.apps.<app>.<tool>]`."""
+def validate_formal_evidence_hook(table: Any, where: str) -> dict[str, Any]:
+    """Check an app's `evidence` table and return it."""
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: `evidence` must be a table")
+    validate_allowed_keys(table, FORMAL_EVIDENCE_KEYS, where)
+    summary = table.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        raise ConfigError(f"{where}: `summary` must name the summary file")
+    unknown = sorted(set(PLACEHOLDER_RE.findall(summary)) - FORMAL_EVIDENCE_PLACEHOLDERS)
+    if unknown:
+        allowed = ", ".join("{" + name + "}" for name in sorted(FORMAL_EVIDENCE_PLACEHOLDERS))
+        raise ConfigError(
+            f"{where}.summary: unknown placeholder(s) {', '.join('{' + n + '}' for n in unknown)}"
+            f"; allowed: {allowed}"
+        )
+    for key in sorted(FORMAL_EVIDENCE_KEYS - {"summary"}):
+        patterns = as_str_list(table.get(key), f"{where}.{key}")
+        if key in FORMAL_EVIDENCE_REQUIRED_PATTERNS and not patterns:
+            raise ConfigError(f"{where}: `{key}` must list at least one pattern")
+        for pattern in patterns:
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ConfigError(f"{where}.{key}: invalid regex `{pattern}`: {exc}") from exc
+    return table
+
+
+def validate_formal_apps(formal: Any, where: str) -> None:
+    """Check every `argv` override and `evidence` table under `[formal.apps.<app>.<tool>]`."""
     if not isinstance(formal, dict):
         return
     apps = formal.get("apps", {})
@@ -672,10 +713,13 @@ def validate_formal_app_templates(formal: Any, where: str) -> None:
         if not isinstance(app, dict):
             continue
         for tool, tool_cfg in app.items():
-            if isinstance(tool_cfg, dict) and "argv" in tool_cfg:
-                validate_formal_argv_template(
-                    tool_cfg["argv"], f"{where} [formal.apps.{app_name}.{tool}].argv"
-                )
+            if not isinstance(tool_cfg, dict):
+                continue
+            table_where = f"{where} [formal.apps.{app_name}.{tool}]"
+            if "argv" in tool_cfg:
+                validate_formal_argv_template(tool_cfg["argv"], f"{table_where}.argv")
+            if "evidence" in tool_cfg:
+                validate_formal_evidence_hook(tool_cfg["evidence"], f"{table_where}.evidence")
 
 
 def validate_coverage_tool_table(
@@ -864,7 +908,7 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
             if section_name == "formal":
                 allowed = ALL_PLACEHOLDERS | FORMAL_PLACEHOLDERS
             validate_placeholders_in_value(section, f"{flow.path} [{section_name}]", allowed)
-    validate_formal_app_templates(data.get("formal"), str(flow.path))
+    validate_formal_apps(data.get("formal"), str(flow.path))
     coverage = data.get("coverage", {})
     if isinstance(coverage, dict):
         for tool, table in coverage.items():

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite timestamp="2026-09-13T19:59:21" hostname="host" package="timeout" id="0" name="default" tests="1" errors="0" failures="1" time="0" skipped="1">
+<properties>
+<property name="os" value="Darwin"/>
+<property name="expect" value="PASS"/>
+<property name="status" value="TIMEOUT"/>
+</properties>
+<testcase classname="default" name="build execution" time="0">
+<failure type="TIMEOUT" message="Task returned status TIMEOUT." />
+</testcase>
+<testcase classname="default" name="Property ASSERT in hard at hard.sv:8.38-8.114" time="0" type="ASSERT" location="hard.sv:8.38-8.114" id="ast_no_factors">
+<skipped />
+</testcase>
+<system-out></system-out>
+<system-err></system-err>
+</testsuite>
+</testsuites>

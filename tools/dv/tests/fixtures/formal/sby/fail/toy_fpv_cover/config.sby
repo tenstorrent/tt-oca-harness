@@ -1,0 +1,14 @@
+[options]
+mode cover
+depth 12
+
+[engines]
+smtbmc yices
+
+[script]
+plugin -i slang
+read_slang -D FORMAL -D BAD toy.sv
+prep -top toy
+
+[files]
+toy.sv

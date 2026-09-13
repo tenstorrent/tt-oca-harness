@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite timestamp="2026-09-13T19:57:08" hostname="host" package="unknown" id="0" name="prove" tests="2" errors="0" failures="2" time="0" skipped="1">
+<properties>
+<property name="os" value="Darwin"/>
+<property name="expect" value="PASS"/>
+<property name="status" value="UNKNOWN"/>
+</properties>
+<testcase classname="prove" name="build execution" time="0">
+<failure type="UNKNOWN" message="Task returned status UNKNOWN." />
+</testcase>
+<testcase classname="prove" name="Property ASSERT in toy at noninductive.sv:10.5-10.50" time="0" type="ASSERT" location="noninductive.sv:10.5-10.50" id="ast_cnt_never_fifteen" tracefile="engine_0/trace_induct.vcd">
+<failure type="ASSERT" message="Property ASSERT in toy at noninductive.sv:10.5-10.50 failed. Trace file: engine_0/trace_induct.vcd" />
+</testcase>
+<testcase classname="prove" name="Property COVER in toy at noninductive.sv:11.5-11.38" time="0" type="COVER" location="noninductive.sv:11.5-11.38" id="cov_cnt_two">
+<skipped />
+</testcase>
+<system-out></system-out>
+<system-err></system-err>
+</testsuite>
+</testsuites>

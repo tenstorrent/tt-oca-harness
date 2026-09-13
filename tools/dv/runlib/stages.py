@@ -20,6 +20,7 @@ import sys
 import threading
 import time
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -88,6 +89,7 @@ from .coverage_policy import (
     native_policy_args,
     native_policy_manifest,
 )
+from .formal import grade_formal_stage
 from .junit import ensure_leaf_junit
 from .logparse import parse_stage_result
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
@@ -3028,6 +3030,50 @@ def _repo_or_dut_path(root: Path, flow: Flow, value: str) -> Path:
     return flow.path.parent / path
 
 
+@dataclass(frozen=True)
+class FormalApp:
+    """The app a formal item resolves to: its name, the backend tool that runs it, the
+    `[formal.apps.<app>.<tool>]` table, and the launch directory."""
+
+    name: str
+    tool: str
+    table: dict[str, Any]
+    cwd: Path
+
+
+def resolve_formal_app(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    catalog: TestCatalog,
+    item: str,
+    args: argparse.Namespace,
+    tool: str,
+) -> FormalApp:
+    """Resolve the formal item's app table for `tool`, falling back to the app's `default_tool`
+    when the selected tool has no table."""
+    formal = sim_cfg.get("formal", {})
+    if not isinstance(formal, dict):
+        raise ConfigError(f"{flow.path}: [formal] must be a table")
+    apps = formal.get("apps", {})
+    if not isinstance(apps, dict):
+        raise ConfigError(f"{flow.path}: [formal.apps] must be a table")
+    test = catalog.tests.get(item)
+    app_name = args.app or (test.module if test else item)
+    app = apps.get(app_name)
+    if not isinstance(app, dict):
+        raise ConfigError(f"{flow.path}: formal app `{app_name}` is not defined")
+    tool_cfg = app.get(tool)
+    if not isinstance(tool_cfg, dict):
+        default_tool = str(app.get("default_tool", tool))
+        tool_cfg = app.get(default_tool) if isinstance(app.get(default_tool), dict) else None
+        if tool_cfg is None:
+            raise ConfigError(f"{flow.path}: formal app `{app_name}` has no `{tool}` backend")
+        tool = default_tool
+    cwd = _repo_or_dut_path(root, flow, str(tool_cfg.get("cwd", ".")))
+    return FormalApp(name=app_name, tool=tool, table=tool_cfg, cwd=cwd)
+
+
 def formal_run_stage(
     flow: Flow,
     root: Path,
@@ -3050,31 +3096,14 @@ def formal_run_stage(
     """
     if item is None:
         raise ConfigError("formal_run stage requires a formal task item")
-    formal = sim_cfg.get("formal", {})
-    if not isinstance(formal, dict):
-        raise ConfigError(f"{flow.path}: [formal] must be a table")
-    apps = formal.get("apps", {})
-    if not isinstance(apps, dict):
-        raise ConfigError(f"{flow.path}: [formal.apps] must be a table")
-    test = catalog.tests.get(item)
-    app_name = args.app or (test.module if test else item)
-    app = apps.get(app_name)
-    if not isinstance(app, dict):
-        raise ConfigError(f"{flow.path}: formal app `{app_name}` is not defined")
-    tool_cfg = app.get(tool)
-    if not isinstance(tool_cfg, dict):
-        default_tool = str(app.get("default_tool", tool))
-        tool_cfg = app.get(default_tool) if isinstance(app.get(default_tool), dict) else None
-        if tool_cfg is None:
-            raise ConfigError(f"{flow.path}: formal app `{app_name}` has no `{tool}` backend")
-        tool = default_tool
+    app = resolve_formal_app(flow, root, sim_cfg, catalog, item, args, tool)
+    tool, tool_cfg, cwd = app.tool, app.table, app.cwd
     sim_tool = simulators.get(tool, {})
     if not isinstance(sim_tool, dict):
         sim_tool = {}
     binary = str(sim_tool.get("binary", tool))
-    cwd = _repo_or_dut_path(root, flow, str(tool_cfg.get("cwd", ".")))
     script = str(tool_cfg.get("script", "")).strip()
-    where = f"{flow.path} [formal.apps.{app_name}.{tool}]"
+    where = f"{flow.path} [formal.apps.{app.name}.{tool}]"
     if "argv" in tool_cfg:
         template = validate_formal_argv_template(tool_cfg["argv"], f"{where}.argv")
     elif "argv" in sim_tool:
@@ -3093,13 +3122,13 @@ def formal_run_stage(
     if proof_depth is not None and "proof_depth" not in used:
         raise ConfigError(
             f"--proof-depth is not routed: the `{tool}` launch template for formal app "
-            f"`{app_name}` has no {{proof_depth}} placeholder"
+            f"`{app.name}` has no {{proof_depth}} placeholder"
         )
     formal_args = list(args.formal_arg or [])
     if formal_args and "formal_args" not in used:
         raise ConfigError(
             f"--formal-arg is not routed: the `{tool}` launch template for formal app "
-            f"`{app_name}` has no {{formal_args}} placeholder"
+            f"`{app.name}` has no {{formal_args}} placeholder"
         )
     argv = render_formal_argv(
         template,
@@ -3111,12 +3140,12 @@ def formal_run_stage(
             "item": item,
         },
         lists={
-            "args": as_str_list(tool_cfg.get("args"), f"formal.apps.{app_name}.{tool}.args"),
+            "args": as_str_list(tool_cfg.get("args"), f"formal.apps.{app.name}.{tool}.args"),
             "formal_args": formal_args,
         },
         optional={"proof_depth": proof_depth},
     )
-    console_from_args(args).artifact("formal_app", f"{app_name} ({tool})")
+    console_from_args(args).artifact("formal_app", f"{app.name} ({tool})")
     return run_subprocess(
         argv,
         root,
@@ -3240,6 +3269,7 @@ def run_stage(
     started_at = datetime.now(UTC)
     started = time.monotonic()
     metadata: dict[str, Any] = {}
+    formal_report: dict[str, Any] | None = None
     if item is not None:
         metadata["seed"] = seed
         metadata["attempt"] = attempt
@@ -3619,6 +3649,28 @@ def run_stage(
             ]
         )
         parser = None
+        if stage_name == "formal" and item is not None and not args.dry_run:
+            app = resolve_formal_app(flow, root, sim_cfg, catalog, item, args, tool)
+            formal_decision = grade_formal_stage(
+                root=root,
+                tool=app.tool,
+                simulators=simulators,
+                policies=policies,
+                item=item,
+                app_name=app.name,
+                app_table=app.table,
+                cwd=app.cwd,
+                stage_dir=stage_dir,
+                run_dir=run_dir,
+                log_path=log_path,
+                return_code=rc,
+            )
+            status = formal_decision.status
+            reason = formal_decision.reason
+            buckets = formal_decision.failure_buckets or None
+            parser = formal_decision.parser
+            formal_report = formal_decision.formal
+            console.event("formal", f"{item}: {reason}")
         if stage_name in {"sim", "regress"} and not args.dry_run:
             decision = parse_stage_result(
                 flow=flow,
@@ -3815,6 +3867,7 @@ def run_stage(
         target=target_name
         if stage_name in {"flist", "hdl_compile", "elaborate", "sim", "regress"}
         else None,
+        formal=formal_report,
     )
     # Structured-result guarantee: every executed leaf ends with results/results.xml —
     # the framework's own file when it wrote one, a synthesized single-testcase file

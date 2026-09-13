@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+<testsuite timestamp="2026-09-13T19:56:09" hostname="host" package="pass" id="0" name="bmc" tests="3" errors="0" failures="0" time="0" skipped="2">
+<properties>
+<property name="os" value="Darwin"/>
+<property name="expect" value="PASS"/>
+<property name="status" value="PASS"/>
+</properties>
+<testcase classname="bmc" name="build execution" time="0">
+</testcase>
+<testcase classname="bmc" name="Property ASSERT in toy at toy.sv:10.5-10.45" time="0" type="ASSERT" location="toy.sv:10.5-10.45" id="ast_cnt_below_ten">
+</testcase>
+<testcase classname="bmc" name="Property COVER in toy at toy.sv:15.5-15.38" time="0" type="COVER" location="toy.sv:15.5-15.38" id="cov_cnt_two">
+<skipped />
+</testcase>
+<testcase classname="bmc" name="Property COVER in toy at toy.sv:14.5-14.46" time="0" type="COVER" location="toy.sv:14.5-14.46" id="cov_cnt_wraps">
+<skipped />
+</testcase>
+<system-out></system-out>
+<system-err></system-err>
+</testsuite>
+</testsuites>

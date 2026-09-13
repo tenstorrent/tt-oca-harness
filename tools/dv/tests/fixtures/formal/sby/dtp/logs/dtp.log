@@ -1,0 +1,243 @@
+SBY 14:29:14 [../../build/dtp_bmc] Removing directory '/work/repo/hw/sys/dtp/dv/formal/build/dtp_bmc'.
+SBY 14:29:14 [../../build/dtp_bmc] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp.f' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_bmc/src/dtp.f'.
+SBY 14:29:14 [../../build/dtp_bmc] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../props/dtp_tap_props.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_bmc/src/dtp_tap_props.sv'.
+SBY 14:29:14 [../../build/dtp_bmc] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../props/dtp_tap_bind.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_bmc/src/dtp_tap_bind.sv'.
+SBY 14:29:14 [../../build/dtp_bmc] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/dtp_sby_env.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_bmc/src/dtp_sby_env.sv'.
+SBY 14:29:14 [../../build/dtp_bmc] engine_0: smtbmc yices
+SBY 14:29:14 [../../build/dtp_cover] Removing directory '/work/repo/hw/sys/dtp/dv/formal/build/dtp_cover'.
+SBY 14:29:14 [../../build/dtp_cover] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp.f' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_cover/src/dtp.f'.
+SBY 14:29:14 [../../build/dtp_cover] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../props/dtp_tap_props.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_cover/src/dtp_tap_props.sv'.
+SBY 14:29:14 [../../build/dtp_cover] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../props/dtp_tap_bind.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_cover/src/dtp_tap_bind.sv'.
+SBY 14:29:14 [../../build/dtp_cover] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/dtp_sby_env.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_cover/src/dtp_sby_env.sv'.
+SBY 14:29:14 [../../build/dtp_cover] engine_0: smtbmc yices
+SBY 14:29:14 [../../build/dtp_prove] Removing directory '/work/repo/hw/sys/dtp/dv/formal/build/dtp_prove'.
+SBY 14:29:14 [../../build/dtp_prove] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp.f' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_prove/src/dtp.f'.
+SBY 14:29:14 [../../build/dtp_prove] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../props/dtp_tap_props.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_prove/src/dtp_tap_props.sv'.
+SBY 14:29:14 [../../build/dtp_prove] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../props/dtp_tap_bind.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_prove/src/dtp_tap_bind.sv'.
+SBY 14:29:14 [../../build/dtp_prove] Copy '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/dtp_sby_env.sv' to '/work/repo/hw/sys/dtp/dv/formal/fpv/sby/../../build/dtp_prove/src/dtp_sby_env.sv'.
+SBY 14:29:14 [../../build/dtp_prove] engine_0: abc pdr
+SBY 14:29:14 [../../build/dtp_bmc] base: starting process "cd ../../build/dtp_bmc/src; yosys -ql ../model/design.log ../model/design.ys"
+SBY 14:29:14 [../../build/dtp_cover] base: starting process "cd ../../build/dtp_cover/src; yosys -ql ../model/design.log ../model/design.ys"
+SBY 14:29:14 [../../build/dtp_prove] base: starting process "cd ../../build/dtp_prove/src; yosys -ql ../model/design.log ../model/design.ys"
+SBY 14:29:17 [../../build/dtp_cover] base: finished (returncode=0)
+SBY 14:29:17 [../../build/dtp_cover] prep: starting process "cd ../../build/dtp_cover/model; yosys -ql design_prep.log design_prep.ys"
+SBY 14:29:17 [../../build/dtp_bmc] base: finished (returncode=0)
+SBY 14:29:17 [../../build/dtp_bmc] prep: starting process "cd ../../build/dtp_bmc/model; yosys -ql design_prep.log design_prep.ys"
+SBY 14:29:17 [../../build/dtp_prove] base: finished (returncode=0)
+SBY 14:29:17 [../../build/dtp_prove] prep: starting process "cd ../../build/dtp_prove/model; yosys -ql design_prep.log design_prep.ys"
+SBY 14:29:19 [../../build/dtp_cover] prep: finished (returncode=0)
+SBY 14:29:19 [../../build/dtp_cover] smt2: starting process "cd ../../build/dtp_cover/model; yosys -ql design_smt2.log design_smt2.ys"
+SBY 14:29:19 [../../build/dtp_prove] prep: finished (returncode=0)
+SBY 14:29:19 [../../build/dtp_prove] aig: starting process "cd ../../build/dtp_prove/model; yosys -ql design_aiger.log design_aiger.ys"
+SBY 14:29:19 [../../build/dtp_bmc] prep: finished (returncode=0)
+SBY 14:29:19 [../../build/dtp_bmc] smt2: starting process "cd ../../build/dtp_bmc/model; yosys -ql design_smt2.log design_smt2.ys"
+SBY 14:29:20 [../../build/dtp_cover] smt2: finished (returncode=0)
+SBY 14:29:20 [../../build/dtp_cover] engine_0: starting process "cd ../../build/dtp_cover; yosys-smtbmc -s yices --presat --unroll -c --noprogress -t 30  --append 0 --dump-vcd engine_0/trace%.vcd --dump-yw engine_0/trace%.yw --dump-vlogtb engine_0/trace%_tb.v --dump-smtc engine_0/trace%.smtc model/design_smt2.smt2"
+SBY 14:29:20 [../../build/dtp_bmc] smt2: finished (returncode=0)
+SBY 14:29:20 [../../build/dtp_bmc] engine_0: starting process "cd ../../build/dtp_bmc; yosys-smtbmc -s yices --presat --unroll --noprogress -t 30  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2"
+SBY 14:29:20 [../../build/dtp_cover] engine_0: ##   0:00:00  Solver: yices
+SBY 14:29:20 [../../build/dtp_bmc] engine_0: ##   0:00:00  Solver: yices
+SBY 14:29:21 [../../build/dtp_cover] engine_0: ##   0:00:00  Checking cover reachability in step 0..
+SBY 14:29:21 [../../build/dtp_bmc] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 14:29:21 [../../build/dtp_bmc] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 14:29:21 [../../build/dtp_cover] engine_0: ##   0:00:01  Checking cover reachability in step 1..
+SBY 14:29:21 [../../build/dtp_bmc] engine_0: ##   0:00:01  Checking assumptions in step 1..
+SBY 14:29:21 [../../build/dtp_bmc] engine_0: ##   0:00:01  Checking assertions in step 1..
+SBY 14:29:21 [../../build/dtp_cover] engine_0: ##   0:00:01  Checking cover reachability in step 2..
+SBY 14:29:21 [../../build/dtp_prove] aig: Warning: Treating undriven bit dtp.\scan_rst_ni like $anyseq.
+SBY 14:29:21 [../../build/dtp_prove] aig: Warning: Treating undriven bit dtp.\rst_n_i like $anyseq.
+SBY 14:29:21 [../../build/dtp_prove] aig: Warning: Treating undriven bit dtp.\pwr_on_rst_ni like $anyseq.
+SBY 14:29:21 [../../build/dtp_prove] aig: Warning: Treating undriven bit dtp.\jtag_ptap_client_tap_ctrl_i [0] like $anyseq.
+SBY 14:29:21 [../../build/dtp_prove] aig: Warning: Treating undriven bit dtp.\jtag_ptap_client_tap_ctrl_i [1] like $anyseq.
+SBY 14:29:21 [../../build/dtp_prove] aig: Warning: Treating undriven bit dtp.\jtag_ptap_client_tap_ctrl_i [2] like $anyseq.
+SBY 14:29:21 [../../build/dtp_prove] aig: Warning: Treating a total of 6 undriven bits in dtp like $anyseq.
+SBY 14:29:21 [../../build/dtp_prove] aig: finished (returncode=0)
+SBY 14:29:21 [../../build/dtp_prove] engine_0: starting process "cd ../../build/dtp_prove; yosys-abc -c 'read_aiger model/design_aiger.aig; fold; strash; pdr -v -l; write_cex -a engine_0/trace.aiw'"
+SBY 14:29:21 [../../build/dtp_bmc] engine_0: ##   0:00:01  Checking assumptions in step 2..
+SBY 14:29:21 [../../build/dtp_bmc] engine_0: ##   0:00:01  Checking assertions in step 2..
+SBY 14:29:22 [../../build/dtp_prove] engine_0: ======== ABC command line "read_aiger model/design_aiger.aig; fold; strash; pdr -v -l; write_cex -a engine_0/trace.aiw"
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Warning: The last 3 outputs are interpreted as constraints.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: VarMax = 300. FrameMax = 10000. QueMax = 0. TimeMax = 319. MonoCNF = no. SkipGen = no. SolveAll = no.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 1 in frame 0 (trivial).
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Frame Clauses                                                     Max Queue Flops Time
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 1 : 0 2                                                                 1     4      0.00 sec  T/O =  0  PRV =  1
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 2 : 0 2 2 ~1                                                             2     6      0.00 sec  T/O =  0  PRV =  1
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 3 : 0 2 3 54 ~2                                                          3    37      0.01 sec  T/O =  0  PRV =  1
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 3 : 0 2 3 104 ~2                                                         2    37      0.02 sec  T/O =  0  PRV =  1
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 3 : 0 2 4 143 ~2                                                         3    59      0.02 sec  T/O =  0  PRV =  1
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 4 : 0 2 3 31 16 ~113                                                     2    64      0.03 sec  T/O =  0  PRV =  1
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 5 : 0 2 3 32 31 101 ~117                                                 3   114      0.06 sec  T/O =  0  PRV =  1
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 5 : 0 2 3 32 31 129 ~117                                                 3   150      0.07 sec  T/O =  0  PRV =  1
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 3 in frame 5.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 6 : 0 2 3 10 7 12 42 ~211                                                3   151      0.09 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 7 : 0 2 3 10 6 13 23 45 ~214                                             6   167      0.11 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 8 : 0 2 3 10 6 4 4 16 32 ~223                                            0   167      0.12 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 9 : 0 2 3 10 6 4 4 17 24 52 ~223                                         4   167      0.14 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 10 : 0 2 3 10 6 4 4 6 12 21 42 ~249                                       3   167      0.16 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 11 : 0 2 3 10 6 4 4 6 5 16 24 54 ~256                                     3   172      0.19 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 12 : 0 2 3 10 6 4 4 6 5 11 25 29 48 ~285                                  3   172      0.22 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 13 : 0 2 3 10 6 4 4 6 5 12 14 24 30 80 ~311                               8   172      0.26 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 13 : 0 2 3 10 6 4 4 6 5 12 14 24 32 129 ~311                              3   189      0.27 sec  T/O =  0  PRV =  2
+SBY 14:29:22 [../../build/dtp_cover] engine_0: ##   0:00:01  Checking cover reachability in step 3..
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 9 in frame 13.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 14 : 0 2 3 10 6 4 4 6 5 9 11 11 22 25 58 ~420                             3   189      0.31 sec  T/O =  0  PRV =  3
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 15 : 0 2 3 10 6 4 4 6 5 9 11 11 12 15 23 82 ~458                          3   206      0.35 sec  T/O =  0  PRV =  3
+SBY 14:29:22 [../../build/dtp_bmc] engine_0: ##   0:00:01  Checking assumptions in step 3..
+SBY 14:29:22 [../../build/dtp_bmc] engine_0: ##   0:00:01  Checking assertions in step 3..
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 8 in frame 15.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 10 in frame 15.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 16 : 0 2 3 10 6 4 4 6 5 9 11 13 15 12 19 23 33 ~526                      13   206      0.39 sec  T/O =  0  PRV =  5
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 17 : 0 2 3 10 6 4 4 6 5 9 11 11 9 8 6 14 16 39 ~550                       3   206      0.42 sec  T/O =  0  PRV =  5
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 4 in frame 17.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 5 in frame 17.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 6 in frame 17.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 7 in frame 17.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 18 : 0 2 3 10 6 4 4 6 5 9 11 11 9 8 6 10 5 6 4 ~585                       0   206      0.44 sec  T/O =  0  PRV =  9
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 19 : 0 2 3 10 6 4 4 6 5 9 11 11 9 8 6 11 5 8 5 26 ~585                    9   206      0.46 sec  T/O =  0  PRV =  9
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 0 in frame 19.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Proved output 2 in frame 19.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: 20 : 0 2 3 10 6 4 4 6 5 9 11 11 9 6 4 3 1 0 0 0 2 ~616                    0   206      0.47 sec  T/O =  0  PRV = 11
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Block =  107  Oblig =  1640  Clause =   928  Call = 10188 (sat=58.2%)  Cex =   0  Start =  24
+SBY 14:29:22 [../../build/dtp_prove] engine_0: SAT solving =     0.27 sec ( 57.28 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: unsat     =     0.04 sec (  8.02 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: sat       =     0.23 sec ( 49.26 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Generalize  =     0.21 sec ( 43.44 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Push clause =     0.09 sec ( 17.91 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Ternary sim =     0.01 sec (  1.87 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Containment =     0.00 sec (  0.34 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: CNF compute =     0.03 sec (  5.47 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Refinement  =     0.00 sec (  0.00 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: TOTAL       =     0.48 sec (100.00 %)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Property proved.  Time =     0.48 sec
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Counter-example is not available.
+SBY 14:29:22 [../../build/dtp_prove] engine_0: finished (returncode=0)
+SBY 14:29:22 [../../build/dtp_prove] engine_0: Status returned by engine: PASS
+SBY 14:29:22 [../../build/dtp_prove] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:07 (7)
+SBY 14:29:22 [../../build/dtp_prove] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:26 (26)
+SBY 14:29:22 [../../build/dtp_prove] summary: engine_0 (abc pdr) returned PASS
+SBY 14:29:22 [../../build/dtp_prove] summary: engine_0 did not produce any traces
+SBY 14:29:22 [../../build/dtp_prove] DONE (PASS, rc=0)
+SBY 14:29:22 [../../build/dtp_cover] engine_0: ##   0:00:02  Checking cover reachability in step 4..
+SBY 14:29:22 [../../build/dtp_bmc] engine_0: ##   0:00:02  Checking assumptions in step 4..
+SBY 14:29:22 [../../build/dtp_bmc] engine_0: ##   0:00:02  Checking assertions in step 4..
+SBY 14:29:22 [../../build/dtp_cover] engine_0: ##   0:00:02  Checking cover reachability in step 5..
+SBY 14:29:23 [../../build/dtp_bmc] engine_0: ##   0:00:02  Checking assumptions in step 5..
+SBY 14:29:23 [../../build/dtp_bmc] engine_0: ##   0:00:02  Checking assertions in step 5..
+SBY 14:29:23 [../../build/dtp_cover] engine_0: ##   0:00:02  Checking cover reachability in step 6..
+SBY 14:29:23 [../../build/dtp_bmc] engine_0: ##   0:00:02  Checking assumptions in step 6..
+SBY 14:29:23 [../../build/dtp_bmc] engine_0: ##   0:00:02  Checking assertions in step 6..
+SBY 14:29:23 [../../build/dtp_cover] engine_0: ##   0:00:03  Checking cover reachability in step 7..
+SBY 14:29:23 [../../build/dtp_bmc] engine_0: ##   0:00:03  Checking assumptions in step 7..
+SBY 14:29:23 [../../build/dtp_bmc] engine_0: ##   0:00:03  Checking assertions in step 7..
+SBY 14:29:24 [../../build/dtp_cover] engine_0: ##   0:00:03  Checking cover reachability in step 8..
+SBY 14:29:24 [../../build/dtp_bmc] engine_0: ##   0:00:03  Checking assumptions in step 8..
+SBY 14:29:24 [../../build/dtp_bmc] engine_0: ##   0:00:03  Checking assertions in step 8..
+SBY 14:29:24 [../../build/dtp_cover] engine_0: ##   0:00:04  Checking cover reachability in step 9..
+SBY 14:29:24 [../../build/dtp_bmc] engine_0: ##   0:00:04  Checking assumptions in step 9..
+SBY 14:29:24 [../../build/dtp_bmc] engine_0: ##   0:00:04  Checking assertions in step 9..
+SBY 14:29:24 [../../build/dtp_cover] engine_0: ##   0:00:04  Checking cover reachability in step 10..
+SBY 14:29:24 [../../build/dtp_bmc] engine_0: ##   0:00:04  Checking assumptions in step 10..
+SBY 14:29:24 [../../build/dtp_bmc] engine_0: ##   0:00:04  Checking assertions in step 10..
+SBY 14:29:25 [../../build/dtp_cover] engine_0: ##   0:00:04  Checking cover reachability in step 11..
+SBY 14:29:25 [../../build/dtp_cover] engine_0: ##   0:00:04  Reached cover statement in step 11 at dtp: u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_shift_dr
+SBY 14:29:25 [../../build/dtp_cover] engine_0: ##   0:00:04  Reached cover statement in step 11 at dtp: u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_tdo_driven
+SBY 14:29:25 [../../build/dtp_cover] engine_0: ##   0:00:04  Writing trace to VCD file: engine_0/trace0.vcd
+SBY 14:29:25 [../../build/dtp_bmc] engine_0: ##   0:00:04  Checking assumptions in step 11..
+SBY 14:29:25 [../../build/dtp_bmc] engine_0: ##   0:00:04  Checking assertions in step 11..
+SBY 14:29:25 [../../build/dtp_bmc] engine_0: ##   0:00:05  Checking assumptions in step 12..
+SBY 14:29:25 [../../build/dtp_bmc] engine_0: ##   0:00:05  Checking assertions in step 12..
+SBY 14:29:26 [../../build/dtp_bmc] engine_0: ##   0:00:05  Checking assumptions in step 13..
+SBY 14:29:26 [../../build/dtp_bmc] engine_0: ##   0:00:05  Checking assertions in step 13..
+SBY 14:29:26 [../../build/dtp_bmc] engine_0: ##   0:00:05  Checking assumptions in step 14..
+SBY 14:29:26 [../../build/dtp_bmc] engine_0: ##   0:00:05  Checking assertions in step 14..
+SBY 14:29:26 [../../build/dtp_bmc] engine_0: ##   0:00:06  Checking assumptions in step 15..
+SBY 14:29:26 [../../build/dtp_bmc] engine_0: ##   0:00:06  Checking assertions in step 15..
+SBY 14:29:27 [../../build/dtp_bmc] engine_0: ##   0:00:06  Checking assumptions in step 16..
+SBY 14:29:27 [../../build/dtp_bmc] engine_0: ##   0:00:06  Checking assertions in step 16..
+SBY 14:29:27 [../../build/dtp_bmc] engine_0: ##   0:00:07  Checking assumptions in step 17..
+SBY 14:29:27 [../../build/dtp_bmc] engine_0: ##   0:00:07  Checking assertions in step 17..
+SBY 14:29:28 [../../build/dtp_bmc] engine_0: ##   0:00:07  Checking assumptions in step 18..
+SBY 14:29:28 [../../build/dtp_bmc] engine_0: ##   0:00:07  Checking assertions in step 18..
+SBY 14:29:28 [../../build/dtp_bmc] engine_0: ##   0:00:08  Checking assumptions in step 19..
+SBY 14:29:28 [../../build/dtp_bmc] engine_0: ##   0:00:08  Checking assertions in step 19..
+SBY 14:29:29 [../../build/dtp_bmc] engine_0: ##   0:00:08  Checking assumptions in step 20..
+SBY 14:29:29 [../../build/dtp_bmc] engine_0: ##   0:00:08  Checking assertions in step 20..
+SBY 14:29:29 [../../build/dtp_cover] engine_0: ##   0:00:09  Writing trace to Verilog testbench: engine_0/trace0_tb.v
+SBY 14:29:30 [../../build/dtp_bmc] engine_0: ##   0:00:09  Checking assumptions in step 21..
+SBY 14:29:30 [../../build/dtp_cover] engine_0: ##   0:00:09  Writing trace to constraints file: engine_0/trace0.smtc
+SBY 14:29:30 [../../build/dtp_bmc] engine_0: ##   0:00:09  Checking assertions in step 21..
+SBY 14:29:30 [../../build/dtp_cover] engine_0: ##   0:00:09  Writing trace to Yosys witness file: engine_0/trace0.yw
+SBY 14:29:30 [../../build/dtp_cover] engine_0: ##   0:00:09  Checking cover reachability in step 11..
+SBY 14:29:30 [../../build/dtp_bmc] engine_0: ##   0:00:10  Checking assumptions in step 22..
+SBY 14:29:30 [../../build/dtp_cover] engine_0: ##   0:00:10  Checking cover reachability in step 12..
+SBY 14:29:30 [../../build/dtp_bmc] engine_0: ##   0:00:10  Checking assertions in step 22..
+SBY 14:29:31 [../../build/dtp_cover] engine_0: ##   0:00:10  Checking cover reachability in step 13..
+SBY 14:29:31 [../../build/dtp_cover] engine_0: ##   0:00:10  Reached cover statement in step 13 at dtp: u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_shift_ir
+SBY 14:29:31 [../../build/dtp_cover] engine_0: ##   0:00:10  Writing trace to VCD file: engine_0/trace1.vcd
+SBY 14:29:31 [../../build/dtp_bmc] engine_0: ##   0:00:11  Checking assumptions in step 23..
+SBY 14:29:31 [../../build/dtp_bmc] engine_0: ##   0:00:11  Checking assertions in step 23..
+SBY 14:29:32 [../../build/dtp_bmc] engine_0: ##   0:00:11  Checking assumptions in step 24..
+SBY 14:29:32 [../../build/dtp_bmc] engine_0: ##   0:00:11  Checking assertions in step 24..
+SBY 14:29:33 [../../build/dtp_bmc] engine_0: ##   0:00:12  Checking assumptions in step 25..
+SBY 14:29:33 [../../build/dtp_bmc] engine_0: ##   0:00:12  Checking assertions in step 25..
+SBY 14:29:34 [../../build/dtp_bmc] engine_0: ##   0:00:13  Checking assumptions in step 26..
+SBY 14:29:34 [../../build/dtp_bmc] engine_0: ##   0:00:13  Checking assertions in step 26..
+SBY 14:29:35 [../../build/dtp_bmc] engine_0: ##   0:00:14  Checking assumptions in step 27..
+SBY 14:29:35 [../../build/dtp_bmc] engine_0: ##   0:00:14  Checking assertions in step 27..
+SBY 14:29:36 [../../build/dtp_cover] engine_0: ##   0:00:16  Writing trace to Verilog testbench: engine_0/trace1_tb.v
+SBY 14:29:36 [../../build/dtp_cover] engine_0: ##   0:00:16  Writing trace to constraints file: engine_0/trace1.smtc
+SBY 14:29:36 [../../build/dtp_bmc] engine_0: ##   0:00:16  Checking assumptions in step 28..
+SBY 14:29:36 [../../build/dtp_cover] engine_0: ##   0:00:16  Writing trace to Yosys witness file: engine_0/trace1.yw
+SBY 14:29:36 [../../build/dtp_bmc] engine_0: ##   0:00:16  Checking assertions in step 28..
+SBY 14:29:37 [../../build/dtp_cover] engine_0: ##   0:00:16  Checking cover reachability in step 13..
+SBY 14:29:37 [../../build/dtp_cover] engine_0: ##   0:00:17  Checking cover reachability in step 14..
+SBY 14:29:37 [../../build/dtp_cover] engine_0: ##   0:00:17  Checking cover reachability in step 15..
+SBY 14:29:37 [../../build/dtp_cover] engine_0: ##   0:00:17  Reached cover statement in step 15 at dtp: u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_update_ir_from_exit1
+SBY 14:29:37 [../../build/dtp_cover] engine_0: ##   0:00:17  Writing trace to VCD file: engine_0/trace2.vcd
+SBY 14:29:38 [../../build/dtp_bmc] engine_0: ##   0:00:17  Checking assumptions in step 29..
+SBY 14:29:38 [../../build/dtp_bmc] engine_0: ##   0:00:17  Checking assertions in step 29..
+SBY 14:29:39 [../../build/dtp_bmc] engine_0: ##   0:00:18  Status: passed
+SBY 14:29:39 [../../build/dtp_bmc] engine_0: finished (returncode=0)
+SBY 14:29:39 [../../build/dtp_bmc] engine_0: Status returned by engine: pass
+SBY 14:29:39 [../../build/dtp_bmc] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:25 (25)
+SBY 14:29:39 [../../build/dtp_bmc] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:48 (48)
+SBY 14:29:39 [../../build/dtp_bmc] summary: engine_0 (smtbmc yices) returned pass
+SBY 14:29:39 [../../build/dtp_bmc] summary: engine_0 did not produce any traces
+SBY 14:29:39 [../../build/dtp_bmc] DONE (PASS, rc=0)
+SBY 14:29:43 [../../build/dtp_cover] engine_0: ##   0:00:23  Writing trace to Verilog testbench: engine_0/trace2_tb.v
+SBY 14:29:44 [../../build/dtp_cover] engine_0: ##   0:00:23  Writing trace to constraints file: engine_0/trace2.smtc
+SBY 14:29:44 [../../build/dtp_cover] engine_0: ##   0:00:23  Writing trace to Yosys witness file: engine_0/trace2.yw
+SBY 14:29:44 [../../build/dtp_cover] engine_0: ##   0:00:24  Checking cover reachability in step 15..
+SBY 14:29:45 [../../build/dtp_cover] engine_0: ##   0:00:24  Checking cover reachability in step 16..
+SBY 14:29:45 [../../build/dtp_cover] engine_0: ##   0:00:25  Checking cover reachability in step 17..
+SBY 14:29:45 [../../build/dtp_cover] engine_0: ##   0:00:25  Reached cover statement in step 17 at dtp: u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_update_dr_from_exit2
+SBY 14:29:45 [../../build/dtp_cover] engine_0: ##   0:00:25  Writing trace to VCD file: engine_0/trace3.vcd
+SBY 14:29:52 [../../build/dtp_cover] engine_0: ##   0:00:31  Writing trace to Verilog testbench: engine_0/trace3_tb.v
+SBY 14:29:52 [../../build/dtp_cover] engine_0: ##   0:00:31  Writing trace to constraints file: engine_0/trace3.smtc
+SBY 14:29:52 [../../build/dtp_cover] engine_0: ##   0:00:32  Writing trace to Yosys witness file: engine_0/trace3.yw
+SBY 14:29:52 [../../build/dtp_cover] engine_0: ##   0:00:32  Checking cover reachability in step 17..
+SBY 14:29:53 [../../build/dtp_cover] engine_0: ##   0:00:32  Checking cover reachability in step 18..
+SBY 14:29:53 [../../build/dtp_cover] engine_0: ##   0:00:33  Checking cover reachability in step 19..
+SBY 14:29:53 [../../build/dtp_cover] engine_0: ##   0:00:33  Reached cover statement in step 19 at dtp: u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_tlr_from_five_tms_high
+SBY 14:29:53 [../../build/dtp_cover] engine_0: ##   0:00:33  Writing trace to VCD file: engine_0/trace4.vcd
+SBY 14:30:01 [../../build/dtp_cover] engine_0: ##   0:00:40  Writing trace to Verilog testbench: engine_0/trace4_tb.v
+SBY 14:30:01 [../../build/dtp_cover] engine_0: ##   0:00:40  Writing trace to constraints file: engine_0/trace4.smtc
+SBY 14:30:01 [../../build/dtp_cover] engine_0: ##   0:00:40  Writing trace to Yosys witness file: engine_0/trace4.yw
+SBY 14:30:01 [../../build/dtp_cover] engine_0: ##   0:00:41  Status: passed
+SBY 14:30:02 [../../build/dtp_cover] engine_0: finished (returncode=0)
+SBY 14:30:02 [../../build/dtp_cover] engine_0: Status returned by engine: pass
+SBY 14:30:02 [../../build/dtp_cover] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:47 (47)
+SBY 14:30:02 [../../build/dtp_cover] summary: Elapsed process time [H:MM:SS (secs)]: 0:01:41 (101)
+SBY 14:30:02 [../../build/dtp_cover] summary: engine_0 (smtbmc yices) returned pass
+SBY 14:30:02 [../../build/dtp_cover] summary: cover trace: ../../build/dtp_cover/engine_0/trace0.vcd
+SBY 14:30:02 [../../build/dtp_cover] summary:   reached cover statement dtp.\u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_shift_dr at  step 11
+SBY 14:30:02 [../../build/dtp_cover] summary:   reached cover statement dtp.\u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_tdo_driven at  step 11
+SBY 14:30:02 [../../build/dtp_cover] summary: cover trace: ../../build/dtp_cover/engine_0/trace1.vcd
+SBY 14:30:02 [../../build/dtp_cover] summary:   reached cover statement dtp.\u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_shift_ir at  step 13
+SBY 14:30:02 [../../build/dtp_cover] summary: cover trace: ../../build/dtp_cover/engine_0/trace2.vcd
+SBY 14:30:02 [../../build/dtp_cover] summary:   reached cover statement dtp.\u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_update_ir_from_exit1 at  step 15
+SBY 14:30:02 [../../build/dtp_cover] summary: cover trace: ../../build/dtp_cover/engine_0/trace3.vcd
+SBY 14:30:02 [../../build/dtp_cover] summary:   reached cover statement dtp.\u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_update_dr_from_exit2 at  step 17
+SBY 14:30:02 [../../build/dtp_cover] summary: cover trace: ../../build/dtp_cover/engine_0/trace4.vcd
+SBY 14:30:02 [../../build/dtp_cover] summary:   reached cover statement dtp.\u_jtag_intf_unit.u_jtag_ptap.u_jtag_tap_ctrlr.u_dtp_tap_props.cov_tap_tlr_from_five_tms_high at  step 19
+SBY 14:30:02 [../../build/dtp_cover] DONE (PASS, rc=0)

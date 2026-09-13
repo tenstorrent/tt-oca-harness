@@ -1,0 +1,13 @@
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] Removing directory '/work/run/stages/formal/toy_fpv_bmc'.
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] Copy '/work/app/toy.sv' to '/work/run/stages/formal/toy_fpv_bmc/src/toy.sv'.
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] engine_0: smtbmc yices
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] base: starting process "cd /work/run/stages/formal/toy_fpv_bmc/src; yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] base: ERROR: Bad command
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] base: finished (returncode=1)
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] base: task failed. ERROR.
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] summary: engine_0 (smtbmc yices) did not return a status
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] summary: engine_0 did not produce any traces
+SBY 19:56:10 [/work/run/stages/formal/toy_fpv_bmc] DONE (ERROR, rc=16)
+SBY 19:56:10 The following tasks failed: ['bmc']

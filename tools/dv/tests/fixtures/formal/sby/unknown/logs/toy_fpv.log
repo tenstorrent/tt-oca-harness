@@ -1,0 +1,77 @@
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] Removing directory '/work/run/stages/formal/toy_fpv_bmc'.
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] Copy '/work/app/noninductive.sv' to '/work/run/stages/formal/toy_fpv_bmc/src/noninductive.sv'.
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: smtbmc yices
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] Removing directory '/work/run/stages/formal/toy_fpv_prove'.
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] Copy '/work/app/noninductive.sv' to '/work/run/stages/formal/toy_fpv_prove/src/noninductive.sv'.
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0: smtbmc yices
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] base: starting process "cd /work/run/stages/formal/toy_fpv_bmc/src; yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] base: starting process "cd /work/run/stages/formal/toy_fpv_prove/src; yosys -ql ../model/design.log ../model/design.ys"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] base: finished (returncode=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] base: finished (returncode=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] prep: starting process "cd /work/run/stages/formal/toy_fpv_bmc/model; yosys -ql design_prep.log design_prep.ys"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] prep: starting process "cd /work/run/stages/formal/toy_fpv_prove/model; yosys -ql design_prep.log design_prep.ys"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] prep: finished (returncode=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] smt2: starting process "cd /work/run/stages/formal/toy_fpv_bmc/model; yosys -ql design_smt2.log design_smt2.ys"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] prep: finished (returncode=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] smt2: starting process "cd /work/run/stages/formal/toy_fpv_prove/model; yosys -ql design_smt2.log design_smt2.ys"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] smt2: finished (returncode=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: starting process "cd /work/run/stages/formal/toy_fpv_bmc; yosys-smtbmc -s yices --presat --unroll --noprogress -t 6  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] smt2: finished (returncode=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: starting process "cd /work/run/stages/formal/toy_fpv_prove; yosys-smtbmc -s yices --presat --unroll --noprogress -t 4  --append 0 --dump-vcd engine_0/trace.vcd --dump-yw engine_0/trace.yw --dump-vlogtb engine_0/trace_tb.v --dump-smtc engine_0/trace.smtc model/design_smt2.smt2"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Solver: yices
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: starting process "cd /work/run/stages/formal/toy_fpv_prove; yosys-smtbmc -s yices --presat --unroll -i --noprogress -t 4  --append 0 --dump-vcd engine_0/trace_induct.vcd --dump-yw engine_0/trace_induct.yw --dump-vlogtb engine_0/trace_induct_tb.v --dump-smtc engine_0/trace_induct.smtc model/design_smt2.smt2"
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assumptions in step 0..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assertions in step 0..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assumptions in step 1..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assertions in step 1..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assumptions in step 2..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assertions in step 2..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assumptions in step 3..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assertions in step 3..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assumptions in step 4..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assertions in step 4..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Solver: yices
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assumptions in step 5..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Checking assertions in step 5..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: ##   0:00:00  Status: passed
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 0..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: finished (returncode=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] engine_0: Status returned by engine: pass
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] summary: engine_0 (smtbmc yices) returned pass
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] summary: engine_0 did not produce any traces
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_bmc] DONE (PASS, rc=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 0..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 1..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 1..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 2..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 2..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Checking assumptions in step 3..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Checking assertions in step 3..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: ##   0:00:00  Status: passed
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: finished (returncode=0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.basecase: Status returned by engine for basecase: pass
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Solver: yices
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Trying induction in step 4..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Trying induction in step 3..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Trying induction in step 2..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Trying induction in step 1..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Trying induction in step 0..
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Temporal induction failed!
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Assert failed in toy: ast_cnt_never_fifteen
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Writing trace to VCD file: engine_0/trace_induct.vcd
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Writing trace to Verilog testbench: engine_0/trace_induct_tb.v
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Writing trace to constraints file: engine_0/trace_induct.smtc
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Writing trace to Yosys witness file: engine_0/trace_induct.yw
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: ##   0:00:00  Status: failed
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: finished (returncode=1)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] engine_0.induction: Status returned by engine for induction: FAIL
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] summary: engine_0 (smtbmc yices) returned pass for basecase
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] summary: engine_0 (smtbmc yices) returned FAIL for induction
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] summary: counterexample trace [induction]: /work/run/stages/formal/toy_fpv_prove/engine_0/trace_induct.vcd
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] summary:   failed assertion toy.ast_cnt_never_fifteen at noninductive.sv:10.5-10.50
+SBY 19:57:08 [/work/run/stages/formal/toy_fpv_prove] DONE (UNKNOWN, rc=4)
+SBY 19:57:08 The following tasks failed: ['prove']
