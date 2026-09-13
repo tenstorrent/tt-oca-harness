@@ -61,6 +61,17 @@ class FixtureCase(unittest.TestCase):
             read_json(report / "policy-application.json"),
         )
 
+    def pristine_grade(self) -> dict[str, dict]:
+        """Grade an untouched copy of the run; return its graded JSON files by name."""
+        root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        closure.grade_run(root, closure.stage_fixture(root))
+        return {
+            name: read_json(root / rel)
+            for name, rel in closure.GRADED_FILES.items()
+            if name.endswith(".json")
+        }
+
 
 class PolicyLoading(FixtureCase):
     def test_expired_waiver_loads_as_lapsed(self):
@@ -99,12 +110,11 @@ class LapsedGrade(FixtureCase):
         self.assertEqual((waived[0]["status"], waived[0]["disposition"]), ("open", "waive"))
         self.assertEqual(details["warnings"][-1], LAPSED_LINE)
         self.assertEqual(application["warnings"], [LAPSED_LINE])
+        pristine = self.pristine_grade()
         for name, rel in closure.GRADED_FILES.items():
             if name.endswith(".json"):
                 with self.subTest(file=name):
-                    self.assertEqual(
-                        set(read_json(self.root / rel)), set(read_json(closure.GOLDEN / name))
-                    )
+                    self.assertEqual(set(read_json(self.root / rel)), set(pristine[name]))
 
     def test_extending_the_date_restores_the_waiver(self):
         set_expiry(self.root, FUTURE)
@@ -112,8 +122,8 @@ class LapsedGrade(FixtureCase):
         holes = summary["holes_summary"]
         self.assertEqual((holes["accepted"], holes["open"]), (1, 5))
         self.assertEqual(summary["metrics"]["toggle"], 60.0)
-        golden = read_json(closure.GOLDEN / "coverage-details.json")
-        self.assertEqual(details["warnings"], golden["warnings"])
+        pristine = self.pristine_grade()["coverage-details.json"]
+        self.assertEqual(details["warnings"], pristine["warnings"])
         self.assertEqual(application["warnings"], [])
         waived = [o for o in details["observations"] if o["policy_id"] == WAIVER_ID]
         self.assertEqual(waived[0]["status"], "accepted")
