@@ -457,10 +457,12 @@ knob names are environment variables in cocotb and plusargs in SV-UVM.
 
 === Coverage Strategy
 
-Verilator does not support SV covergroups. The OCAH open-source path should collect
-Python-side functional observations in the PyUVM environment and rely on
-commercial simulators for SV covergroups, assertion coverage, and full code
-coverage. See `DTP_FCOV.adoc`.
+Verilator does not compile SV covergroups. The `cov/sv/` coverage modules,
+instantiated once in the shared `tb_top`, carry labeled `cover property`
+points that Verilator records as user coverage and the same bins as
+covergroups for the commercial simulators; the debug-disable 22-cell
+contract keeps its checker-gated Python ledger. Assertion coverage and full
+code coverage come from the commercial simulators. See `DTP_FCOV.adoc`.
 
 === Canonical RTL Selection
 
