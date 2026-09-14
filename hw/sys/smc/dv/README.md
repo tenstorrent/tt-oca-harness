@@ -153,18 +153,22 @@ hw/sys/smc/dv/
 │                           #   tests: common/ drivers/ include/ link/ startup/
 │                           #   scripts/ tests/ plus fw.mk, toolchain.mk,
 │                           #   postprocess.mk. Needs the RISC-V toolchain; not
-│                           #   required by the `smoke` tag. The Boot ROM is NOT
+│                           #   required by the `smoke` or `hosted` groups. The Boot ROM is NOT
 │                           #   here — it lives outside DV at ../bootrom/prod/
-├── efuse_preload/          # generator for the committed eFuse OTP images:
-│                           #   efuse_schema.toml declares the fields,
-│                           #   configurations/*.toml an image, and
+├── efuse_preload/          # generator for the eFuse OTP image the `dual` run
+│                           #   mode senses: efuse_schema.toml declares the
+│                           #   fields, configurations/*.toml an image, and
 │                           #   generate_efuse_preload.py / randomize_efuse.py
-│                           #   emit the assets/ hex. Build-time tooling, not
-│                           #   part of any test's proof path
-├── assets/                 # the committed images those generators produce plus
-│                           #   the ROM/ECC ones: smc_efuse_default.hex,
-│                           #   smc_rom_default.hex, min_pass.rom.hex,
-│                           #   min_pass.ecc.hex, default_efuse_shadow_reg.preload
+│                           #   emit build/efuse/smc_efuse_generated.hex at
+│                           #   c_compile. Build-time tooling, not part of any
+│                           #   test's proof path
+├── assets/                 # the committed images: the hand-maintained eFuse
+│                           #   image and shadow-register preload the
+│                           #   single-instance run modes load
+│                           #   (smc_efuse_default.hex,
+│                           #   default_efuse_shadow_reg.preload) and the
+│                           #   ROM/ECC ones (smc_rom_default.hex,
+│                           #   min_pass.rom.hex, min_pass.ecc.hex)
 ├── tb/                     # DUT-only top + helper RTL: tb_top.sv (module
 │                           #   smc_uvm_top, one module with a cocotb pin shape
 │                           #   and an SV-UVM harness shape),
@@ -180,6 +184,8 @@ hw/sys/smc/dv/
 │                           #   consumer; run_dv.py does not parse it
 ├── build/                  # generated: per-tool models and build/runs/<run-id>/
 │                           #   logs (gitignored, never committed)
+├── build_dual/             # generated: the SMC_DUAL model the target = "dual"
+│                           #   leaves elaborate (gitignored, never committed)
 ├── .gitignore              # DV-local ignores for simulator temporaries that
 │                           #   land beside the sources (Xcelium tmpdir, waves,
 │                           #   coverage databases); the root .gitignore owns
@@ -202,9 +208,12 @@ hw/sys/smc/dv/
   not fit.
 * `uvm/` — the SV-UVM shape of the same scenarios, selected by
   `--framework uvm`; it shares `tb/tb_top.sv` with the cocotb shape.
-* `efuse_preload/` — the schema and generator that produce the eFuse images in
-  `assets/`; keeping the generator beside its output is what lets a reviewer
-  regenerate an image and diff it against the committed one.
+* `efuse_preload/` — the schema and generator that produce the eFuse image the
+  `dual` run mode senses (`build/efuse/smc_efuse_generated.hex`). It does not
+  produce `assets/smc_efuse_default.hex`, which is hand-maintained; the two
+  targets sense different images, and `smc_sim_cfg.toml` (`[run_modes.dual]`)
+  says why. Keeping the generator beside the schema is what lets a reviewer
+  read which field a configuration sets.
 * `smc_sim.core` — a FuseSoC/CAPI-2 view of the same Bender targets for an
   external consumer; `run_dv.py` does not read it, and it is kept here so the
   two descriptions of the build sit in one directory.
@@ -264,9 +273,13 @@ python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 
 The scheduled nightly and weekly (`.github/workflows/regress.yml`) run the
 `hosted` group on Verilator with three seeds per leaf. `hosted` is `all`
-without the leaves that need a RISC-V toolchain or an `SMC_DUAL` elaboration,
-which the hosted GitHub runners do not have; `testlists/all.toml` defines the
-set.
+without the five leaves that need a RISC-V toolchain, which the hosted GitHub
+runners do not have: the two `fw` leaves and the three dual-target leaves,
+which run a ROM or firmware image on top of the `SMC_DUAL` elaboration;
+`testlists/all.toml` defines the set. The `fw`, `occp_boot`, `dual_smoke`,
+`dual_all` and `occp_dual` groups need the RISC-V toolchain and no tier
+schedules them; `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` records each
+held-out leaf with the reason, its owner and its closing condition.
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
@@ -276,8 +289,8 @@ One seed per leaf (`--reseed 1`) is the quick local form of the same run.
 
 ### Package `all` group
 
-`all` is every test the VPLAN grades. It includes the firmware-boot leaves, so
-the firmware images must exist before the run. With no site RISC-V toolchain,
+`all` is the package regression. It includes the firmware-boot leaves, so the
+firmware images must exist before the run. With no site RISC-V toolchain,
 build them once in the toolchain container (`docker` or `podman` on `PATH`):
 
 ```bash

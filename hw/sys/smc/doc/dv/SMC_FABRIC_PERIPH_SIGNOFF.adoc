@@ -26,7 +26,7 @@ name is not protocol proof. OUT rows live in `SMC_DEFERRED_DISPOSITION.adoc`.
 |I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |no DAT/DCT macros on `smc_wrapper` |NO — child I3C TB
 |DTP CSR on `smc_wrapper` |idle port; no terminator |— |NO
 |PLL/PVT adopter wrap |none; `smc_pll_*` / `smc_pvt_*` are dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |OKAY+0 placeholder wraps |NO
-|GPIO / I2C SAMPLE observe |`smc_gpio_observe_test`, `smc_i2c_cg_sanity_test` |in `smoke` |NO (SAMPLE-only)
+|GPIO / I2C SAMPLE observe |`smc_gpio_observe_test`, `smc_i2c_cg_sanity_test` |in `functional`, not `smoke` |NO (SAMPLE-only)
 |UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |NO — UART/ROM intake
 |Ext-AXI / CPU traffic Force-era |`smc_cpu_traffic_*`, `smc_external_test` |OUT |NO
 |===

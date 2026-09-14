@@ -7,7 +7,8 @@
 This chapter defines the reset, clock and interrupt signoff. Feature credit is
 the SCOPE matrix in `SMC_SCOPE_TRACEABILITY.adoc`, not every name in
 `reset.toml` / `clock.toml` / `irq.toml`. SAMPLE-only observe tests
-stay in `smoke` and are not requirement rows.
+stay in `functional` (only `smc_cold_reset_test` is also in `smoke`) and are
+not requirement rows.
 
 [[smc-rci-credit]]
 === Credited vs observe-only
