@@ -18,7 +18,8 @@ Subsystem-specific sections sit on top of that spine.
 |DUT |`smc` (`hw/top/smc_wrapper.sv`), selected by `--dut smc`
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
-|Commercial simulator use |VCS/Xcelium coverage on the same cocotb tests
+|Commercial simulator use |VCS `--cov` coverage on the same cocotb tests;
+Xcelium runs them without a coverage configuration
 |===
 
 How tests, sequences, and checkers are structured in the SMC OSS cocotb/PyUVM
@@ -29,8 +30,9 @@ SMC and SEP differ, this doc describes *SMC* and notes the SEP contrast.
 [[what-kind-of-environment-this-is]]
 * *cocotb + PyUVM*, not classic SystemVerilog UVM. Env, sequences, scoreboards,
 and models are Python.
-* *Verilator* is the functional backend; VCS/Xcelium run the same cocotb tests
-for coverage. Driven by `tools/dv/run_dv.py`.
+* *Verilator* is the functional backend; VCS runs the same cocotb tests for
+`--cov` coverage, and Xcelium runs them without a coverage configuration.
+Driven by `tools/dv/run_dv.py`.
 * *Single DUT*: `--dut smc` → `smc_sim_cfg.toml`, top
 `smc_uvm_top` (`tb/tb_top.sv`) instantiating `hw/top/smc_wrapper.sv`.
 PLL/PVT/eFuse/pads/CPU mem and the I3C DAT/DCT/RLT memories live inside
@@ -49,8 +51,9 @@ already wires that port to DTP).
 `smu_wrapper` is a different DUT in that file and is not this bench.
 
 Placeholder PLL/PVT OKAY+0 wraps, idle DTP CSR, and I3C decode-only
-(`proxy=True`) are not feature proof. See `SMC_SCOPE_TRACEABILITY.adoc`
-and `SMC_DEFERRED_DISPOSITION.adoc`.
+(`proxy=True`) are not feature proof. See
+`hw/sys/smc/doc/dv/SMC_SCOPE_TRACEABILITY.adoc` and
+`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 
 [[vip-selection-policy]]
 === VIP Selection Policy

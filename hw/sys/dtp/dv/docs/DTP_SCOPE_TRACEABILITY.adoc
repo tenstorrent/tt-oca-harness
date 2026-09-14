@@ -107,10 +107,11 @@ PASSes are SMU integration evidence and are outside this matrix.
 * The 22-cell debug-disable contract is credited only through the two
   matrix tests, whose checker-gated ledger refuses to finish with a missing
   cell; the directed gating scenarios corroborate individual cells.
-* The formal property module on the TAP controller (`formal/props/`)
-  corroborates the F1 state-machine rows; `run_dv.py --dut dtp --mode formal`
-  runs it as the `dtp_tap_fpv` item (<<dtp-formal-plan>>), and it is not
-  regression credit.
+* The formal property modules under `formal/props/` corroborate the rows the
+  plan's target table names, the TAP controller module the F1 state-machine
+  rows; `run_dv.py --dut dtp --mode formal` runs them as the `*_fpv` items of
+  `testlists/formal.toml` (<<dtp-formal-plan>>), and they are not regression
+  credit.
 * Deriving `dbg_disable_t` from lifecycle policy, the SMU-composed IC_RESET
   external slice, and real SMC and SEP debug TAPs behind the STAPs are
   integration-level: OUT. The downstream TAPs the scan scenarios attach are

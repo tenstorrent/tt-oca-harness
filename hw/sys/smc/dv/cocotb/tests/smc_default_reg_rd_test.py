@@ -33,6 +33,13 @@ EXPECTED_VALUE_COMPARES = 6
 class smc_default_reg_rd_test(smc_base_test):
     """Run a compact OSS-safe default-register read sweep."""
 
+    required_evidence = (
+        "CHK-DEFAULT-REG-SWEEP",
+        "CHK-DEFAULT-REG-VALUE",
+        "CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

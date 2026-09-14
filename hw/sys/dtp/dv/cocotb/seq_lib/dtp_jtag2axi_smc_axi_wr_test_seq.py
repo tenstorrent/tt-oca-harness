@@ -83,6 +83,12 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             )
             self.status = item.status
             self.operation_count += 1
+        # SINGLE_OP status polls shift a NOP image. SERIES_CTRL Capture-DR
+        # must still report the last completion, not sticky BUSY_OR_FULL.
+        self.log_step(2, "Capture SERIES_CTRL after SINGLE_OP polls")
+        _, _, _, _, status = await self.read_series_ctrl(size=3)
+        self.assert_equal("single_write.series_ctrl", status, DtpJtag2AxiStatus.SUCCESS)
+        self.status = status
 
     async def run_single_write_data_verify(self) -> None:
         self.log_banner("SMC_AXI_SINGLE_OP Write With Readback")

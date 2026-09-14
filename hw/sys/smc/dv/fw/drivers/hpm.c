@@ -97,14 +97,8 @@ int metal_hpm_init(struct metal_cpu *gcpu) {
         }
         cpu->hpm_count = n;
 
-        /* TODO: mcountinhibit csr is not yet accessible.
-         * As per latest RiscV privileged spec v1.11,
-         * mcountinhibit controls which of the counters increment.
-         * Unused counters can be disabled to reduce power consumption. */
-        /* Keep all counters disabled, enable them later on as needed. */
-        /* __asm__ __volatile__("csrw mcountinhibit, zero"); */
-
-        /* Clear all counters */
+        /* mcountinhibit keeps its reset value (0: every counter increments); this
+         * driver never writes it. */
         for (unsigned int i = 0; i < cpu->hpm_count; i++) {
             metal_hpm_clr_event(gcpu, i, 0xFFFFFFFF);
             metal_hpm_clear_counter(gcpu, i);
@@ -131,9 +125,6 @@ int metal_hpm_disable(struct metal_cpu *gcpu) {
                              "1: \n\t"
                              "csrw mtvec, %1 \n\t"
                              : "+r"(val), "+r"(temp));
-
-        /* TODO: Disable all counters */
-        /* __asm__ __volatile__("csrw mcountinhibit, zero"); */
 
         cpu->hpm_count = 0;
     } else {

@@ -23,7 +23,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib import cli, stages  # noqa: E402
+from runlib import cli, site, stages  # noqa: E402
 from runlib.config import (  # noqa: E402
     load_simulators,
     render_formal_argv,
@@ -33,9 +33,37 @@ from runlib.config import (  # noqa: E402
 from runlib.duts import resolve_dut  # noqa: E402
 from runlib.logparse import validate_parser_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
+from runlib.site import load_site_layer, merged_simulators  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DTP_DV_ROOT = REPO_ROOT / "hw/sys/dtp/dv"
+
+# A licensed formal backend reaches the runner as a complete tool table in the site layer; this
+# one carries the generic launch template a Tcl-driven tool uses.
+LICENSED_SITE = """
+schema_version = 1
+[simulators.fvtool]
+kind = "formal"
+binary = "fvtool"
+frameworks = ["formal"]
+license_env = ["FVTOOL_LICENSE_FILE"]
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+argv = ["{binary}", "{args}", "{script}", "{formal_args}"]
+"""
+
+
+def registry_with_site_backend() -> dict:
+    """The checked-in registry with the site-added licensed backend `fvtool` merged in."""
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "site.toml"
+        path.write_text(LICENSED_SITE)
+        layer = load_site_layer(REPO_ROOT, {site.SITE_ENV: str(path)})
+    assert layer is not None
+    return merged_simulators(load_simulators(REPO_ROOT), layer)
+
+
 RUN_DIR = Path("/runs/unit")
 
 
@@ -88,12 +116,8 @@ def make_args(**overrides) -> Namespace:
 class FormalLaunchBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.simulators = load_simulators(REPO_ROOT)
-        cls.licensed_tool = next(
-            name
-            for name, cfg in sorted(cls.simulators.items())
-            if cfg.get("kind") == "formal" and cfg["license_env"]
-        )
+        cls.simulators = registry_with_site_backend()
+        cls.licensed_tool = "fvtool"
 
     def launch(
         self, tool: str, sim_cfg: dict, args: Namespace, simulators: dict | None = None
@@ -297,7 +321,7 @@ class FormalAppResolutionTest(unittest.TestCase):
 
     def test_default_tool_fallback_when_the_selected_tool_has_no_table(self) -> None:
         raw = {"formal": {"apps": {"fpv": {"default_tool": "sby", "sby": {"script": "d.sby"}}}}}
-        app = self.resolve(raw, tool="jasper")
+        app = self.resolve(raw, tool="fvtool")
         self.assertEqual((app.tool, app.table["script"]), ("sby", "d.sby"))
 
     def test_missing_app_and_missing_backend_are_config_errors(self) -> None:
@@ -306,8 +330,8 @@ class FormalAppResolutionTest(unittest.TestCase):
         self.assertIn("formal app `fpv` is not defined", str(ctx.exception))
         raw = {"formal": {"apps": {"fpv": {"sby": {"script": "a.sby"}}}}}
         with self.assertRaises(ConfigError) as ctx:
-            self.resolve(raw, tool="jasper")
-        self.assertIn("has no `jasper` backend", str(ctx.exception))
+            self.resolve(raw, tool="fvtool")
+        self.assertIn("has no `fvtool` backend", str(ctx.exception))
 
     def test_cwd_resolves_repo_relative_then_dut_relative(self) -> None:
         repo_relative = self.resolve(sim_cfg_for("sby", cwd="hw/sys/dtp/dv/formal/fpv/sby"))

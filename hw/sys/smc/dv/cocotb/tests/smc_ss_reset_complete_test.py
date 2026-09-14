@@ -18,6 +18,15 @@ from smc_base_test import smc_base_test
 class smc_ss_reset_complete_test(smc_base_test):
     """Pin→CSR complete + SW warm SS0; not the FW handshake binary."""
 
+    required_evidence = (
+        "CHK-SS-COMPLETE-DROP",
+        "CHK-SS-COMPLETE-IDLE",
+        "CHK-SS-COMPLETE-RESTORE",
+        "CHK-SS-COMPLETE-SCRATCH-RW",
+        "CHK-SS-WARM-SS0",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
