@@ -330,15 +330,10 @@ int main(void) {
     simputshex32("", received_len);
     simputs(" bytes\n");
 
-    // The transfer is reconciled against the stimulus.
-    //
-    // This test previously contained no comparison of any kind: read_buffer was
-    // never compared to write_data, received_len never to LARGE_DATA_SIZE, and
-    // the entire verdict was `ret != I2C_OK`. It therefore passed a run in which
-    // one byte of sixty-four arrived and 62 entries sat unread in the target's
-    // ACQ FIFO. Both the count and every byte are now checked, and the expected
-    // bytes are recomputed here from the same closed form that produced the
-    // stimulus rather than read back from the DUT.
+    // The transfer is reconciled against the stimulus: both the byte count and
+    // every byte are compared, and the expected bytes are recomputed here from
+    // the same closed form that produced the stimulus rather than read back
+    // from the DUT.
     if (received_len != LARGE_DATA_SIZE) {
         simputs("  ERROR: byte count mismatch -- expected 0x");
         simputshex32("", LARGE_DATA_SIZE);

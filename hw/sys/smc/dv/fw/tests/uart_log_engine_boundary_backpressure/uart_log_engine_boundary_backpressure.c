@@ -88,7 +88,7 @@
 // error: the generated UART register block ties its write-error output to 0, so
 // every write to this block returns OKAY. The address stays only so the scenario
 // is not silently re-armed with another guessed one.
-// TODO(minshaohoTT, #1858): scenario C cannot reach LOG_WRITE_ERR through any
+// TODO(#1858): scenario C cannot reach LOG_WRITE_ERR through any
 // address and runs only as a completion check. Re-arming it as an error-path
 // proof needs a TB fault hook on the log_write B-channel, not a different offset.
 #define UART_ECR_OFF 0x20u

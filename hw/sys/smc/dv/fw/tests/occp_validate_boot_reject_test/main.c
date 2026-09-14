@@ -45,7 +45,7 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
         return;
     }
 
-    // TODO(minshaohoTT, #1859): the last-error byte is not compared in this test.
+    // TODO(#1859): the last-error byte is not compared in this test.
     // check_occp_last_error stays false, so no exp_occp_last_error is set here.
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;

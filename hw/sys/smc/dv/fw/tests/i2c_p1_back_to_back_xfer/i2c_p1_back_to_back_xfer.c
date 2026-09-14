@@ -291,9 +291,7 @@ int main(void) {
         simputs("\n");
     }
 
-    /* Reconciled against the stimulus. This test previously compared nothing at
-     * all -- data_buf and recv_buffer never met, received_len was only a loop
-     * bound -- and passed a run in which zero bytes arrived. */
+    /* The payload count and every byte are reconciled against the stimulus. */
     if (received_len != sizeof(data_buf)) {
         simputs("  [ERROR] payload count mismatch: expected 0x");
         simputshex32("", (uint32_t)sizeof(data_buf));
