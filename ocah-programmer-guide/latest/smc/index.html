@@ -90,7 +90,13 @@
     <a class="nav-link" href="../index.html">Programmer&#8217;s Guide</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../index.html#smc">SMC</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../index.html#smc-per-core-reset">Per-Core Reset</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="2">
     <button class="nav-item-toggle"></button>
@@ -1273,13 +1279,19 @@ At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for 
 </div>
 </div>
 <div class="sect3">
-<h4 id="reset-boot-and-initialization"><a class="anchor" href="#reset-boot-and-initialization"></a><a class="link" href="#reset-boot-and-initialization">1.4.3. Reset, Boot, and Initialization</a></h4>
+<h4 id="smc-per-core-reset"><a class="anchor" href="#smc-per-core-reset"></a><a class="link" href="#smc-per-core-reset">1.4.3. Reset, Boot, and Initialization</a></h4>
 <div class="paragraph">
 <p>Each CPU core supports an independent reset mechanism and a programmable
 reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
 for cores N=0 to 3. The design provides separate reset controls for the
 uncore logic and debug subsystems, enabling flexible platform management
 and debug flows.</p>
+</div>
+<div class="paragraph">
+<p>Individual core reset clears the core&#8217;s private L1 cache and TileLink client
+state without resetting the shared coherence manager. The current SMC Rocket
+integration provides no reset-aware coherence mechanism to drain outstanding
+transactions or preserve dirty cache data.</p>
 </div>
 <div class="paragraph">
 <p>SRAM initialization is handled automatically by hardware on reset,
