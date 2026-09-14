@@ -118,3 +118,5 @@ tools/a11y/report/
 
 # Rendered doc output (sep_book.html / sep_book.pdf)
 doc_render/
+
+.direnv/
