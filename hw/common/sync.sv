@@ -85,10 +85,10 @@ module sync #(
       prim_sync2s #(
         .WIDTH(WIDTH)
       ) prim_sync2s (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .i_set_n(rst_ni),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .set_ni(rst_ni),
+        .q_o(serial_o)
       );
     end
 
@@ -138,10 +138,10 @@ module sync #(
       prim_sync3s #(
         .WIDTH(WIDTH)
       ) prim_sync3s (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .i_set_n(rst_ni),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .set_ni(rst_ni),
+        .q_o(serial_o)
       );
     end
 
@@ -191,10 +191,10 @@ module sync #(
       prim_sync4s #(
         .WIDTH(WIDTH)
       ) prim_sync4s (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .i_set_n(rst_ni),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .set_ni(rst_ni),
+        .q_o(serial_o)
       );
     end
 
