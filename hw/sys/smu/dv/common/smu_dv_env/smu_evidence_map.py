@@ -28,7 +28,7 @@ UNMAPPED_TESTS: dict[str, str] = {
     "smu_ext_axi_global_addr_smoke_test": (
         "present but not enrolled: the OSS s_axi is a LOCAL aperture, so "
         "GLOBAL_BASE + offset DECERRs. Rows are withheld until enrollment; "
-        "disposition in docs/SMU_DEFERRED_DISPOSITION.adoc"
+        "disposition in hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc"
     ),
 }
 
