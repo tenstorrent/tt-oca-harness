@@ -1460,14 +1460,17 @@ keys, or authentication data.
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
 
-The `tests` summary counts executed leaves (`total`, `passing`, `failing`,
-`skipped`) and records whether the run finished: `leaves_planned` is the
-number of (test, seed) leaves the selection planned, `leaves_run` the number
-that executed (a leaf skipped after `--max-failures` did not), and `completed`
-is `true` only when the two are equal and the record is not a checkpoint.
-`pass_rate` is `passing / total` for a completed run and `null` otherwise: an
-interrupted or truncated run has no denominator, so it publishes no figure
-that reads as a grade. The same fields appear in `regression.json`.
+The `tests` summary counts the recorded leaves (`total`, `passing`,
+`failing`, `skipped`) and records whether the run finished: `leaves_planned`
+is the number of (test, seed) leaves the selection planned, `leaves_run` the
+number that executed (a leaf skipped after `--max-failures` did not), and
+`completed` is `true` only when the two are equal and the record is not a
+checkpoint. `pass_rate` is `passing / total` for a completed run and `null`
+otherwise: an interrupted or truncated run has no denominator, so it
+publishes no figure that reads as a grade. `regression.json` carries the same
+fields, with one difference in `total`: `result.json` counts a skipped leaf in
+`total` and in `skipped`, `regression.json` counts only leaves with a final
+status in `total` and reports skipped leaves in `skipped` alone.
 A formal run adds a `formal` object with proof totals
 (<<runner-formal-grading>>).
 When an adopter overlay was applied, its path is recorded under `overlay`
@@ -1500,13 +1503,16 @@ still preserves all completed leaves. Normal completion replaces all
 checkpoint-only fields with the ordinary final aggregate.
 
 Every checkpoint, running or interrupted, carries `tests.completed = false`
-and `tests.pass_rate = null`; the console prints `incomplete run: N of M
-planned leaves ran` instead of a pass count, and the interrupted run gets one
-run-level `results/results.xml` with a single errored testcase naming the
-interruption, so a JUnit consumer does not read the finished leaves as the
-whole run. A run that stops early for any other reason (`--max-failures`, a
-failing leaf in a flat run, a build failure before the leaves) is recorded the
-same way, minus the `interruption` object.
+and `tests.pass_rate = null`. A handled interruption also prints
+`incomplete run: N of M planned leaves ran, no pass rate` on the console
+instead of a pass count and writes one run-level `results/results.xml` with a
+single errored testcase (`type="interruption"`) naming the interruption, so a
+JUnit consumer does not read the finished leaves as the whole run. A run that
+stops early for any other reason (`--max-failures`, a failing leaf in a flat
+run, a build failure before the leaves) records `tests.completed = false` and
+`tests.pass_rate = null` and prints the same console note, but carries no
+`interruption` object and gets no run-level interruption testcase; its JUnit
+evidence is the leaf files it wrote.
 
 === Status and exit codes
 
@@ -1795,7 +1801,8 @@ The following behaviors are not part of the runner contract:
   documented coverage replay.
 * `--max-failures 0` satisfies the stop condition immediately and therefore
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
-  despite running no tests; use a positive threshold.
+  despite running no tests; the record says so (`tests.completed = false`,
+  `leaves_run = 0`, `pass_rate = null`). Use a positive threshold.
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
 * A DV root that carries a formal config and no sim config is not a DUT;
   formal views attach to selectable DUTs.

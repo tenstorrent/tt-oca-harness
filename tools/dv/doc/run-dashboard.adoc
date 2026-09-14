@@ -336,6 +336,7 @@ An abbreviated normalized `dtp.result.json` has this form:
     "total": 10,
     "passing": 10,
     "failing": 0,
+    "completed": true,
     "pass_rate": 100.0
   },
   "coverage": {
@@ -375,7 +376,8 @@ Aggregating `dtp` and `sep` yields this summary shape:
     "failing": 2,
     "skipped": 0,
     "unknown": 0,
-    "pass_rate": 90.0
+    "pass_rate": 90.0,
+    "incomplete_runs": 0
   },
   "coverage": {
     "average_total_percent": null,
