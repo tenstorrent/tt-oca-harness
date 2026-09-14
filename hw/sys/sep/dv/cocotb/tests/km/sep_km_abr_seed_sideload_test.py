@@ -16,7 +16,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_abr_keygen_seq import (
     ABR_CTRL,
@@ -34,6 +33,7 @@ from seq_lib.sep_abr_keygen_seq import (
     ST_READY,
     ST_VALID,
     SepAbr,
+    SepAbrKeygenCfg,
 )
 from seq_lib.sep_km_mailbox_seq import KM_DEST_ABR_MLDSA_SEED, KM_RC_SUCCESS, SepKmMailbox
 
@@ -70,11 +70,9 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         )
 
     async def run_scenario(self) -> None:
-        rng = SepSeededRng(self.random_seed())
-        entropy = [rng.getrandbits(32) for _ in range(ENTROPY_WORDS)]
-        if not any(w != 0 for w in entropy):
-            entropy[0] = 0xA5A5A5A5
-        self.logger.info("km abr seed: seed=%s entropy[0]=0x%08x", self.random_seed(), entropy[0])
+        cfg = SepAbrKeygenCfg(self.random_seed())
+        assert len(cfg.entropy) == ENTROPY_WORDS
+        self.logger.info("CHK-RANDCFG PASS: %s", cfg.summary())
 
         image = self.select_efuse_image(lc_raw=0x1)
         self.write_efuse_image(image)
@@ -92,7 +90,7 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
 
         await self._wait_status(abr, ST_READY, ST_READY, what="direct READY")
         await abr.write_words(ABR_SEED, _ABR_SEED_PAL)
-        await abr.write_words(ABR_ENTROPY, entropy)
+        await abr.write_words(ABR_ENTROPY, cfg.entropy)
         await abr.wr32(ABR_CTRL, CMD_KEYGEN)
         st = await self._wait_status(abr, ST_VALID, ST_VALID, what="direct VALID")
         assert (st & ST_ERROR) == 0, f"direct KEYGEN VALID with ERROR (0x{st:08x})"
@@ -117,7 +115,7 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         )
         self.logger.info("CHK-XFER PASS: dest=0x10 (abr_mldsa_seed) rc=0 handle=0x%02x", handle)
 
-        await abr.write_words(ABR_ENTROPY, entropy)
+        await abr.write_words(ABR_ENTROPY, cfg.entropy)
         await abr.wr32(ABR_MLDSA_KV_RD_SEED_CTRL, ABR_KV_RD_SEED_READ_EN)
         await abr.wr32(ABR_CTRL, CMD_KEYGEN)
         st = await self._wait_status(abr, ST_VALID, ST_VALID, what="km VALID")
