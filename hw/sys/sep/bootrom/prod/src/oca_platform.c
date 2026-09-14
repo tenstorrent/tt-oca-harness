@@ -294,8 +294,10 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 // revocation would be decorative. The map, from CHIPLET_PUBK_REVOKE's own
 // description in sep_efuse_map.rdl:
 //
-//   [7:0]   ROM chiplet-creator classical keys (0,1 are the development keys)
-//   [15:8]  ROM chiplet-creator PQC keys
+//   [5:0]   ROM chiplet-creator classical keys (0,1 are the development keys)
+//   [7:6]   reserved
+//   [13:8]  ROM chiplet-creator PQC keys
+//   [15:14] reserved
 //   [17:16] CHIPLET_PUBK_HASH0 / 1
 //   [19:18] CHIPLET_PUBK_PQC_HASH0 / 1
 //   [21:20] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0
@@ -311,9 +313,18 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 // CHIPLET_PUBK_REVOKE_BASE + 0x100 / + 0x120 arithmetic, which landed on
 // SPI_PHY_DLL_SLAVE and the middle of CHIPLET_PUBK_HASH0. That path was never
 // exercised -- only ROM slot 0 is used by any test -- so the bug sat latent.
-#define OCA_KEY_SLOT_ROM_CLASSICAL_LAST 7u // [7:0]
-#define OCA_KEY_SLOT_ROM_PQC_LAST 15u      // [15:8]
-#define OCA_KEY_SLOT_MAX 25u               // [31:26] reserved
+// The RDL's description text spans the full octets, [7:0] and [15:8]. This ROM
+// narrows each: the top two slots of both ROM octets are reserved, so the
+// classical band is [5:0] and the PQC band is [13:8]. The narrowing lives here
+// because the key model is defined by this file -- the fuse gives 32 bits and
+// the manifest gives a bitmap, and nothing but this code assigns them meaning.
+// A reserved slot is refused as reserved rather than as unprovisioned: the two
+// are different statements, one about the format and one about this part.
+#define OCA_KEY_SLOT_ROM_CLASSICAL_LAST 5u          // [5:0]
+#define OCA_KEY_SLOT_ROM_CLASSICAL_RESERVED_LAST 7u // [7:6]  reserved
+#define OCA_KEY_SLOT_ROM_PQC_LAST 13u               // [13:8]
+#define OCA_KEY_SLOT_ROM_PQC_RESERVED_LAST 15u      // [15:14] reserved
+#define OCA_KEY_SLOT_MAX 25u                        // [31:26] reserved
 
 // Low 32 flags of a 16-byte OCA flag field, for the console echoes below.
 static uint32_t oca_flags_low32(const uint8_t *f) {
@@ -413,13 +424,12 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
 
     uint8_t anchor[32];
     if ((uint32_t)slot <= OCA_KEY_SLOT_ROM_CLASSICAL_LAST) {
-        // ROM classical key. The bitmap defines eight of these; key_digests.c
-        // ships fewer (NUM_PUBLIC_KEY_DIGESTS), so the upper ones are simply
-        // unprovisioned rather than invalid.
+        // ROM classical key. The band and key_digests.c agree by construction
+        // (NUM_PUBLIC_KEY_DIGESTS is PUBK_SEL_NUM_ROM_KEYS), so the guard below
+        // is unreachable with the shipped table. It stays because it is the
+        // fail-closed one: a NULL digest is not a licence to skip the hash
+        // check, which would accept any key naming an empty slot.
         if ((uint32_t)slot >= NUM_PUBLIC_KEY_DIGESTS || public_key_digests[slot].digest == NULL) {
-            // An unprovisioned ROM slot authorizes nothing: a NULL digest is
-            // not a licence to skip the hash check, which would accept any key
-            // naming an empty slot.
             simputs("PUBK_SLOT_UNPROVISIONED\n");
             return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
         }
@@ -427,12 +437,23 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
         for (uint32_t i = 0; i < 32u; ++i) {
             anchor[i] = rom_digest[i];
         }
+    } else if ((uint32_t)slot <= OCA_KEY_SLOT_ROM_CLASSICAL_RESERVED_LAST) {
+        // [7:6]. Reserved, not merely unheld: no part of this generation may
+        // assign them, so the refusal names the format rather than this device.
+        simputs("PUBK_SLOT_RESERVED\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
     } else if ((uint32_t)slot <= OCA_KEY_SLOT_ROM_PQC_LAST) {
         // ROM PQC key. Refused rather than resolved: nothing here verifies a PQC
         // signature, so authorizing one would hand a key to a verifier that
         // cannot check it, and the manifest would fail later with a code that
         // blames the signature rather than the unsupported algorithm.
         simputs("PUBK_SLOT_PQC_UNSUPPORTED\n");
+        return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
+    } else if ((uint32_t)slot <= OCA_KEY_SLOT_ROM_PQC_RESERVED_LAST) {
+        // [15:14]. Reserved for the same reason as [7:6], and refused as
+        // reserved rather than as PQC: the slot is not a PQC key this build
+        // declines to verify, it is not a key at all.
+        simputs("PUBK_SLOT_RESERVED\n");
         return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
     } else {
         uint32_t addr;

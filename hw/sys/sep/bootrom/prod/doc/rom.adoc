@@ -1863,9 +1863,11 @@ endif
 
 Eleven classical root-key slots are resolvable by this ROM generation -- six embedded in
 the ROM image and five held in eFuse -- addressed through the manifest's
-128-bit `public_key_select_classic` bitmap. Only the low 32 bits are assigned; the
-numbering is shared with `CHIPLET_PUBK_REVOKE` (`sep_efuse_map.rdl`), so one bit index names
-one key in both the manifest and the revocation fuse:
+128-bit `public_key_select_classic` bitmap. Only the low 32 bits are assigned. The
+numbering is shared with `CHIPLET_PUBK_REVOKE`, so one bit index names one key in both the
+manifest and the revocation fuse; the fuse contributes 32 undifferentiated bits and the
+manifest a bitmap, so this ROM's resolution code (`oca_platform.c`) is what assigns either
+of them meaning and is the definition the table below records:
 
 [[tbl:key_slots]]
 .Root key slots
@@ -1874,12 +1876,15 @@ one key in both the manifest and the revocation fuse:
 [frame=ends]
 |===
 |*Slot* |*Select bitmap bit* |*Digest storage* |*Notes*
-|ROM key 0–5 |bits 0–7 (0–5 provisioned) |SHA-256 digests embedded in the ROM image
+|ROM key 0–5 |bits 0–5 |SHA-256 digests embedded in the ROM image
 (`key_digests.c`, 6 entries) |Fixed at ROM tapeout. The slot number is the whole identity;
-there is no dev/prod distinction in how the ROM resolves them. Bits 6–7 are defined by the
-bitmap but unprovisioned; an unprovisioned slot shall authorize *nothing* rather than skip
-the digest check. The committed table holds *test placeholder* keys — production digests
-must land before mask finalization (<<sec:impl_matrix>>).
+there is no dev/prod distinction in how the ROM resolves them. The committed table holds
+*test placeholder* keys — production digests must land before mask finalization
+(<<sec:impl_matrix>>).
+|_reserved_ |bits 6–7 |— |Reserved: the top two slots of the ROM classical octet are not
+assignable by this generation. Selecting one is refused as `PUBK_SLOT_RESERVED`, which
+states that the slot is not a key rather than that this part does not hold it.
+|_reserved_ |bits 14–15 |— |Reserved, as bits 6–7, for the ROM PQC octet [13:8].
 |`CHIPLET_PUBK_HASH0` / `HASH1` |bits 16 / 17 |eFuse bank, 32 B each |Field programmable:
 fusing the SHA-256 digest of an RSA-3072 public key enables the slot. An all-zero
 (unprogrammed) bank shall disable the slot rather than act as a digest anything can match.
@@ -1888,7 +1893,7 @@ fusing the SHA-256 digest of an RSA-3072 public key enables the slot. An all-zer
 |`SIP_PUBK_HASH1` |bit 24 |eFuse bank, 32 B |SiP owner's second anchor. As above.
 |===
 
-Bits 8–15 and the odd bits interleaved above (18, 19, 21, 23, 25) name PQC key slots. This
+Bits 8–13 and the odd bits interleaved above (18, 19, 21, 23, 25) name PQC key slots. This
 ROM generation verifies classical signatures only -- PQC support is deferred to a later
 release that adds combined classical + PQC signing -- so a manifest selecting one of those is
 refused as an unsupported variant rather than resolved — handing a key to a verifier that

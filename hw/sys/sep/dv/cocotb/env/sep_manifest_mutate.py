@@ -816,16 +816,27 @@ _OCA_PLATFORM_C = _SEP_ROOT / "bootrom" / "prod" / "src" / "oca_platform.c"
 
 # The slot bitmap's regions, as the ROM's own dispatch divides them. Each names a
 # DIFFERENT refusal, so a test that means one must not land in another:
-#   [0, NUM_ROM_KEYS)                 provisioned ROM classical keys
-#   [NUM_ROM_KEYS, CLASSICAL_LAST]    PUBK_SLOT_UNPROVISIONED
-#   (CLASSICAL_LAST, PQC_LAST]        PUBK_SLOT_PQC_UNSUPPORTED
-#   (PQC_LAST, SLOT_MAX]              fuse-held chiplet keys
-#   (SLOT_MAX, ...)                   PUBK_SLOT_RESERVED
+#   [0, CLASSICAL_LAST]               provisioned ROM classical keys
+#   (CLASSICAL_LAST, CLASSICAL_RSVD]  PUBK_SLOT_RESERVED   -- the ROM octet's top two
+#   (CLASSICAL_RSVD, PQC_LAST]        PUBK_SLOT_PQC_UNSUPPORTED
+#   (PQC_LAST, PQC_RESERVED_LAST]     PUBK_SLOT_RESERVED   -- the PQC octet's top two
+#   (PQC_RESERVED_LAST, SLOT_MAX]     fuse-held chiplet keys
+#   (SLOT_MAX, ...)                   PUBK_SLOT_RESERVED   -- [31:26]
+#
+# PUBK_SLOT_UNPROVISIONED has no reachable slot: the classical band and the
+# digest table are the same size by construction, so the ROM's NULL-digest guard
+# is fail-closed defence rather than a stimulus any manifest can produce.
 KEY_SLOT_ROM_CLASSICAL_LAST = _c_define(_OCA_PLATFORM_C, "OCA_KEY_SLOT_ROM_CLASSICAL_LAST")
+KEY_SLOT_ROM_CLASSICAL_RESERVED_LAST = _c_define(
+    _OCA_PLATFORM_C, "OCA_KEY_SLOT_ROM_CLASSICAL_RESERVED_LAST"
+)
 KEY_SLOT_ROM_PQC_LAST = _c_define(_OCA_PLATFORM_C, "OCA_KEY_SLOT_ROM_PQC_LAST")
+KEY_SLOT_ROM_PQC_RESERVED_LAST = _c_define(_OCA_PLATFORM_C, "OCA_KEY_SLOT_ROM_PQC_RESERVED_LAST")
 KEY_SLOT_MAX = _c_define(_OCA_PLATFORM_C, "OCA_KEY_SLOT_MAX")
 # The boundary values a test asserts on: the smallest slot of each refusal.
-KEY_SLOT_FIRST_UNPROVISIONED = PUBK_SEL_NUM_ROM_KEYS
+# The ROM classical octet's reserved pair is the cheapest reserved stimulus --
+# it needs no out-of-range index, only a slot this generation declines to assign.
+KEY_SLOT_FIRST_ROM_RESERVED = KEY_SLOT_ROM_CLASSICAL_LAST + 1
 KEY_SLOT_FIRST_RESERVED = KEY_SLOT_MAX + 1
 
 

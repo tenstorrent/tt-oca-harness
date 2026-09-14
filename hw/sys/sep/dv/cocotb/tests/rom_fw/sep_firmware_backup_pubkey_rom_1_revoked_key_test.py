@@ -21,7 +21,7 @@ The ROM authorizes before it consults the revocation bitmap -- a passing boot lo
 unauthorized slot never reaches the check under test. ``PUBK_SLOT_UNPROVISIONED``
 is forbidden alongside it, and remains the arm
 ``sep_firmware_backup_unpopulated_rom_key_slot_test`` covers: that test selects
-``KEY_SLOT_FIRST_UNPROVISIONED``, which is past the six slots the table holds.
+``KEY_SLOT_FIRST_ROM_RESERVED``, which is past the six slots the table holds.
 """
 
 from __future__ import annotations
