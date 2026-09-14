@@ -113,8 +113,8 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
     /* Enable the two error interrupts so a latched error would also reach
      * irq_o. INTR_STATUS itself latches whether or not the interrupt is enabled
-     * (INTR_ENABLE masks the output only, #1635), so the INTR_STATUS checks
-     * below are live either way; enabling keeps the line as a second witness. */
+     * (INTR_ENABLE masks the output only), so the INTR_STATUS checks below are
+     * live either way; enabling keeps the line as a second witness. */
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0x11u);
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u); // engine enable
 

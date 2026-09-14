@@ -54,7 +54,7 @@ run_modes = ["smoke"]
 args = ["+smc_uart_cross_3to0"]
 
 # Log-engine INTR_ENABLE masks irq_o only: INTR_STATUS latches while masked
-# and clears only on W1C (#1635).
+# and clears only on W1C.
 [[tests]]
 name = "smc_log_engine_intr_mask_test"
 module = "smc_log_engine_intr_mask_test"

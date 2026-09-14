@@ -36,7 +36,7 @@
 //       therefore the DUT's own statement that the transfer finished, and one
 //       that reads back nonzero is its statement that it did not.  [S1]:118-128
 //
-// INTR_ENABLE SEMANTICS (#1635, fixed):
+// INTR_ENABLE SEMANTICS:
 //   INTR_ENABLE masks irq_o only.  INTR_STATUS latches whether or not the
 //   interrupt is enabled and is cleared only by W1C, as prim_intr_hw does, so
 //   an event that arrives while masked is held, not lost.  The two mask arms
@@ -151,7 +151,7 @@ _Static_assert(UNMAPPED_ADDR + UNMAPPED_SPAN <= SMC_TOP_SMC_RESET_UNIT_BASE_ADDR
 #define GOOD_REGION_SIZE 0x100u /* 256 B region -> slot 0 spans 16 B */
 #define GOOD_XFER_LEN 16u       /* == UART FIFO depth, so loopback cannot overrun */
 
-/* Re-latch/settle window for the ENABLE-gating and source-retired arms.
+/* Settle window for the mask, event and clear-holds arms.
  * Each iteration is a full CPU read across the AXI-Lite fabric to the log
  * engine CSR block, so RELATCH_POLLS samples span far more engine clocks than
  * the single cycle in which `level intr` capture would occur ([S1]).  Bounded
@@ -257,7 +257,7 @@ static void assert_fetch_err_retired(const char *where) {
     for (uint32_t i = 0; i < RELATCH_POLLS; i++) {
         uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
         if (s != 0u) {
-            info_msg_hex32_s(0, "FAIL: fetch-err cause not retired, status=", s);
+            info_msg_hex32_s(0, "FAIL: LOG_FETCH_ERR did not stay clear, status=", s);
             fail_at(where);
         }
     }
@@ -334,7 +334,7 @@ int main(void) {
 
     //--------------------------------------------------------------------------
     // SCENARIO 0b — INTR_ENABLE masks irq_o only; INTR_STATUS captures while
-    // masked (#1635).  Checked with the controlled INTR_TEST cause.
+    // masked.  Checked with the controlled INTR_TEST cause.
     //
     // Both arms use the same cause in the same window, so neither can pass on
     // a dead source: the ENABLE=1 arm proves an INTR_TEST pulse does set the
@@ -362,8 +362,8 @@ int main(void) {
         uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
         if (s != BIT_FETCH_ERR) {
             info_msg_hex32_s(0, "FAIL: ENABLE=0 INTR_TEST pulse was lost, status=", s);
-            fail_at("FAIL: INTR_STATUS must capture while masked (#1635: INTR_ENABLE "
-                    "masks irq_o only)");
+            fail_at("FAIL: INTR_STATUS must capture while masked (INTR_ENABLE masks "
+                    "irq_o only)");
         }
         write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR); /* W1C, ENABLE=0 */
         for (uint32_t i = 0; i < RELATCH_POLLS; i++) {
@@ -444,7 +444,7 @@ int main(void) {
     info_msg_s(0, "scenario B: sustained DECERR fetch on large region");
 
     retire_fetch_err();
-    assert_fetch_err_retired("FAIL: scenario B could not start from a retired fetch-err cause");
+    assert_fetch_err_retired("FAIL: scenario B could not start from a clear LOG_FETCH_ERR");
 
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, UNMAPPED_SPAN);
@@ -463,7 +463,7 @@ int main(void) {
         if (timeout == 0u) {
             fail_at("FAIL: scenario B: large-region DECERR not detected");
         }
-        chk_ok("CHK-LARGE-REGION-DECERR: from a proven-retired cause, the 4 KB "
+        chk_ok("CHK-LARGE-REGION-DECERR: from a proven-clear status, the 4 KB "
                "unmapped region set INTR_STATUS.LOG_FETCH_ERR to 0x1 "
                "(expected 0x1)");
     }
@@ -515,7 +515,7 @@ int main(void) {
     /* Same reasoning as scenario B: recover with a good fetch and prove the
      * clear holds before claiming anything about what happens next. */
     retire_fetch_err();
-    assert_fetch_err_retired("FAIL: scenario C could not start from a retired fetch-err cause");
+    assert_fetch_err_retired("FAIL: scenario C could not start from a clear LOG_FETCH_ERR");
 
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);

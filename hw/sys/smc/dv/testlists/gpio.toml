@@ -62,7 +62,7 @@ tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 # INTERRUPT_ENABLE is an output mask: clearing it de-asserts interrupt_o and
-# the trigger keeps being tracked while masked (#1602).
+# the trigger keeps being tracked while masked.
 [[tests]]
 name = "smc_gpio_irq_mask_deassert_test"
 module = "smc_gpio_irq_mask_deassert_test"

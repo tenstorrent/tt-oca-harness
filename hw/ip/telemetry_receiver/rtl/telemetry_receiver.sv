@@ -288,9 +288,8 @@ module telemetry_receiver
 
   assign buffer_threshold_intr_req =
         message_buffer_fill_level > buffer_threshold || buffer_threshold_intr_test;
-  // MISSING_LAST latches whether or not the interrupt is enabled and clears only
-  // on W1C; BUFFER_THRESHOLD follows the fill level regardless of the enable.
-  // INTR_ENABLE masks the output only (as prim_intr_hw does).
+  // MISSING_LAST latches whether or not the interrupt is enabled
+  // Clears only on W1C; INTR_ENABLE masks the output only
   assign irq_o =
         (reg_out.INTR_STATUS.MISSING_LAST.value && reg_out.INTR_ENABLE.MISSING_LAST.value) ||
         (buffer_threshold_intr_req               && reg_out.INTR_ENABLE.BUFFER_THRESHOLD.value);

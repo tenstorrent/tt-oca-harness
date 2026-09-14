@@ -971,9 +971,8 @@ module i2c_core
   assign tx_threshold_intr_req    = tx_lt_threshold || tx_threshold_intr_test;
   assign acq_stretch_intr_req     = event_acq_stretch || acq_stretch_intr_test;
 
-  // Event-type status bits latch whether or not the interrupt is enabled and
-  // clear only on W1C; status-type bits follow their condition regardless of the
-  // enable. INTR_ENABLE masks the output only (as prim_intr_hw does).
+  // Event-type status bits latch whether or not the interrupt is enabled
+  // Clear only on W1C; INTR_ENABLE masks the output
   assign irq_o =
         (reg_out_i.INTR_STATE.RX_OVERFLOW.value              && reg_out_i.INTR_ENABLE.RX_OVERFLOW.value) ||
         (reg_out_i.INTR_STATE.SCL_INTERFERENCE.value         && reg_out_i.INTR_ENABLE.SCL_INTERFERENCE.value) ||

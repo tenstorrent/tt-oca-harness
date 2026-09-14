@@ -4,7 +4,7 @@
 
 Clearing interrupt_enable must de-assert interrupt_o. gpio.sv applies the
 enable as a combinational mask on interrupt_o and keeps tracking the trigger
-while masked (#1602); this testcase guards that behaviour.
+while masked; this testcase guards that behaviour.
 """
 
 from __future__ import annotations

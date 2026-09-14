@@ -250,9 +250,6 @@ module gpio
     .o_q(pad2core_synced)
   );
 
-  // The trigger is tracked regardless of the enable so that (a) clearing the
-  // enable is not needed to release a held interrupt and (b) the edge detector
-  // never compares against a sample frozen while the interrupt was masked.
   always_ff @(posedge clk_i or negedge rst_primary_ni) begin
     if (!rst_primary_ni) begin
       prev_pad2core <= 1'b0;
@@ -298,8 +295,6 @@ module gpio
     endcase
   end
 
-  // INTERRUPT_ENABLE is a combinational mask on the output, per
-  // doc/architecture.adoc: interrupt_o = interrupt_enable && interrupt_trigger.
   assign interrupt_o = interrupt && reg__interrupt_enable;
 
 endmodule

@@ -4,8 +4,7 @@
 
 INTR_ENABLE masks irq_o only: INTR_STATE latches whether or not the interrupt
 is enabled and clears only on W1C, so a masked event is held, not lost, and
-clearing the enable releases the line (#1635). gpio.sv and log_engine.sv apply
-the same convention; this testcase guards the I2C instance.
+clearing the enable releases the line.
 """
 
 from __future__ import annotations
