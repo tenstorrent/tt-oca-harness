@@ -433,9 +433,16 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         # The SEP_IN monitor flags any DECERR it was not told to expect; these
-        # three are the intended error-slave probes.
+        # four are the intended error-slave probes. The supplementary external
+        # base is one of them: this bench attaches no supplementary device, so
+        # the adopter window's terminator answers it.
         self.env.axi_monitor.expected_decerr_addrs.update(
-            {WDT_REGION_BEYOND, DFX_REGION_BEYOND, FABRIC_CTRL_BEYOND}
+            {
+                WDT_REGION_BEYOND,
+                DFX_REGION_BEYOND,
+                FABRIC_CTRL_BEYOND,
+                EXTERNAL_SUPPLEMENTARY_BASE,
+            }
         )
 
         await self._region_wdt()
