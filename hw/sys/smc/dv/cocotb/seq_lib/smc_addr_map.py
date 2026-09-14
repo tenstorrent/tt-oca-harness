@@ -332,9 +332,10 @@ def reset_unit_u32(symbol: str) -> int:
 # `.val` half (active-low reset values) of identical width, one pair per
 # controlled reset -- and hw/sys/dtp/doc/port_table.adoc `jtag_ic_reset_smc_o`,
 # which sizes each half to the SMC reset-control set (hw/sys/smc/doc/
-# port_table.adoc `jtag_reset_ctrl_i`). Members: the fuse / warm / cool / cold
-# reset levels of hw/sys/smc/doc/clk_rst.adoc plus the per-subsystem warm and
-# cold vectors, whose widths are the RDL fields RESET_UNIT.SS_WARM_RESET_N /
+# port_table.adoc `jtag_reset_ctrl_i`). Members: the warm / cool / cold reset
+# levels of hw/sys/smc/doc/clk_rst.adoc, the fuse reset of hw/sys/smc/doc/
+# port_table.adoc `smc_fuse_reset_n_delayed_o`, plus the per-subsystem warm
+# and cold vectors, whose widths are the RDL fields RESET_UNIT.SS_WARM_RESET_N /
 # SS_COLD_RESET_N (generated `reset_unit.h`). No document fixes the order of
 # the leaves inside a half, so that order is a DV-owned golden.
 # smc_jtag_reset_ctrl_test drives `cool_reset_n` and `ss_warm_reset_n[0]` one
@@ -512,10 +513,13 @@ def check_rdl_windows() -> None:
     """Self-check of the window derivation against the root addrmap.
 
     Every window must lie inside ``SMC_TOP`` and the last one must end where
-    the root's own generated size says the map ends, so a mis-parsed base,
-    stride or instance count fails here. Overlap between blocks is not
-    checkable from the header: register-level macros legitimately interleave
-    (indexed arrays), so overlapping spans are merged, not rejected.
+    the root's own generated size says the map ends. This catches a window
+    parsed past the end of the map and any mis-parse that moves the last
+    window's end; it cannot catch a base, size or instance count that is wrong
+    but still inside the root (``SMC_TOP_BASE_ADDR`` is 0, so only the upper
+    bound bites), and overlap between blocks is not checkable from the header:
+    register-level macros legitimately interleave (indexed arrays), so
+    overlapping spans are merged, not rejected.
     """
     defs = _parse_simple_defines(_SMC_ADDR_H)
     root_lo = defs[_ROOT_BASE_SYMBOL]

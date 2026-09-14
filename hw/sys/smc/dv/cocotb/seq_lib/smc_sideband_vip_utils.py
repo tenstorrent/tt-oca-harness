@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-
 import cocotb
 from cocotb.triggers import ClockCycles
 
@@ -25,13 +23,6 @@ AVS_STATE_IDLE = 1 << 3
 # Consecutive clk_smc_i samples over which the spec's idle-bus condition
 # (avs_mdata_o high) must hold alongside the IDLE code.
 AVS_IDLE_BUS_SAMPLES = 16
-
-
-@lru_cache(maxsize=1)
-def avs_state_debug_width() -> int:
-    """Width of ``tb_avsbus_cur_state_debug`` as elaborated, so the one-hot check
-    covers every bit the bench exposes rather than a transcribed count."""
-    return len(cocotb.top.tb_avsbus_cur_state_debug.value)
 
 
 def _avs_mdata_high() -> bool:
@@ -75,15 +66,14 @@ async def check_sideband_observability() -> None:
     tel_irq = int(dut.tb_telemetry_irq_any.value)
     state = int(dut.tb_avsbus_cur_state_debug.value)
 
-    # (1) The debug bus is a one-hot encoded FSM state: exactly one bit set,
-    # inside the elaborated width. This does not depend on knowing which state
-    # the FSM is in, so an FSM that decoded to no state or to two states at
-    # once fails it whatever the encoding.
-    width = avs_state_debug_width()
+    # (1) The debug bus is a one-hot encoded FSM state: exactly one bit set.
+    # This does not depend on knowing which state the FSM is in, so an FSM
+    # that decoded to no state or to two states at once fails it whatever the
+    # encoding.
     onehot_bits = bin(state).count("1")
-    assert onehot_bits == 1 and state < (1 << width), (
-        f"AVSBus FSM state debug 0x{state:x} has {onehot_bits} bits set in a "
-        f"{width}-bit bus; a one-hot encoded state must have exactly one"
+    assert onehot_bits == 1, (
+        f"AVSBus FSM state debug 0x{state:x} has {onehot_bits} bits set; a "
+        f"one-hot encoded state must have exactly one"
     )
 
     # (2) Quiescence. None of the four callers configures or triggers an AVSBus
@@ -108,14 +98,13 @@ async def check_sideband_observability() -> None:
 
     cocotb.log.info(
         "CHK-SIDEBAND-OBSERVABILITY: avs_irq=%d telemetry_irq=%d "
-        "avs_state=0x%x=AVS_IDLE (one-hot in a %d-bit bus; avs_mdata_o high on "
-        "%d/%d samples) -- IRQ aggregates quiescent and FSM in IDLE; the "
+        "avs_state=0x%x=AVS_IDLE (one-hot; avs_mdata_o high on %d/%d samples) "
+        "-- IRQ aggregates quiescent and FSM in IDLE; the "
         "is_resolvable guards above are 4-state-only and are no-ops on this "
         "Verilator run",
         avs_irq,
         tel_irq,
         state,
-        width,
         mdata_high_samples,
         AVS_IDLE_BUS_SAMPLES,
     )
