@@ -898,7 +898,7 @@ module smc_peripherals #(
     .NUM_STAGES(16)
   ) u_fuse_reset_n_delay (
     .clk_i(clk_smc_i),
-    .reset_n_i(rst_primary_smc_clk_no),
+    .rst_ni(rst_primary_smc_clk_no),
     .en_i(1'b1),
     .d_i(fuse_reset_stalled_n),
     .q_o(fuse_reset_n_delayed_o)

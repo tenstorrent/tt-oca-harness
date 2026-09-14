@@ -192,10 +192,10 @@ module smc_cool_reset_wrap (
     .DEPTH(3)
   ) u_flr_set_cnt_sync (
     .clk_src_i    (clk_smc_i),
-    .reset_src_ni(rst_cold_smc_ni),
+    .reset_src_ni (rst_cold_smc_ni),
     .data_i       (flr_set_cnt),
     .clk_dst_i    (clk_ref_i),
-    .reset_dst_ni(rst_cold_ref_ni),
+    .reset_dst_ni (rst_cold_ref_ni),
     .data_o       (flr_set_cnt_ref_clk)
   );
 
@@ -204,10 +204,10 @@ module smc_cool_reset_wrap (
     .DEPTH(3)
   ) u_flr_reset_set_cnt_sync (
     .clk_src_i    (clk_smc_i),
-    .reset_src_ni(rst_cold_smc_ni),
+    .reset_src_ni (rst_cold_smc_ni),
     .data_i       (flr_reset_set_cnt),
     .clk_dst_i    (clk_ref_i),
-    .reset_dst_ni(rst_cold_ref_ni),
+    .reset_dst_ni (rst_cold_ref_ni),
     .data_o       (flr_reset_set_cnt_ref_clk)
   );
 
@@ -343,7 +343,7 @@ module smc_cool_reset_wrap (
     .ResetValue(32'b0)
   ) u_flr_counter (
     .clk_i              (clk_ref_i),
-    .reset_n_i          (rst_cold_ref_ni),        // top level cold reset
+    .rst_ni             (rst_cold_ref_ni),        // top level cold reset
     .clear_i            (1'b0),
     .set_i              (flr_set),                // Starts counting down once cfg_flr_pf_active is asserted
     .set_cnt_i          (flr_set_cnt_ref_clk),    // Set value for the counter (synchronized from SMCCLK).
@@ -428,7 +428,7 @@ module smc_cool_reset_wrap (
     .ResetValue(32'b0)
   ) u_flr_reset_counter (
     .clk_i             (clk_ref_i),
-    .reset_n_i         (rst_cold_ref_ni),            // top level cold reset
+    .rst_ni            (rst_cold_ref_ni),            // top level cold reset
     .clear_i           (1'b0),
     .set_i             (flr_reset_set),              // Starts counting down once flr_reset_n is asserted
     .set_cnt_i         (flr_reset_set_cnt_ref_clk),  // Set value for the counter (synchronized from SMCCLK).

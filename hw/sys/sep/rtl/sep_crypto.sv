@@ -718,7 +718,7 @@ module sep_crypto #(
     .LC_STATE_WIDTH(sep_pkg::LC_STATE_BIT_WIDTH)
   ) u_sep_lifecycle_ctrl (
     .clk_i                (clk_i),
-    .reset_n_i            (rst_ni),
+    .rst_ni               (rst_ni),
     .test_en_i            (test_en_i),
 
     .security_disable_i   (security_disable_o),

@@ -44,7 +44,7 @@ module prim_pulse_signal #(
     .ResetValue({COUNT_WIDTH{1'b0}})
   ) pulse_pulse_counter (
     .clk_i(clk_i),
-    .reset_n_i(rst_ni),
+    .rst_ni(rst_ni),
     .clear_i(1'b0),
     .set_i(pulse_set),
     .set_cnt_i(pulse_set_cnt),           // Set value for the counter.
