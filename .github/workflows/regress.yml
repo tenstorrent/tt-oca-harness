@@ -118,7 +118,7 @@ jobs:
             runner: ubuntu-latest
             timeout: 90
           - dut: smc
-            # SMC `all` is 156 leaves; five of them need a RISC-V toolchain
+            # SMC `all` is 158 leaves; five of them need a RISC-V toolchain
             # or an SMC_DUAL elaboration. `hosted` is that group minus those
             # five, so the scheduled tier keeps the former smoke leaves.
             items: hosted
@@ -168,7 +168,9 @@ jobs:
           run-dir: build/ci/runs/${{ matrix.dut }}/verilator/nightly/${{ github.run_id }}
 
   verilator-weekly:
-    name: verilator-weekly (${{ matrix.dut }})
+    # A row may carry `label` to run a second group of the same DUT; it reaches
+    # the job name and the artifact name so the two rows never collide.
+    name: verilator-weekly (${{ matrix.dut }}${{ matrix.label && format(' {0}', matrix.label) || '' }})
     needs: [tier]
     if: needs.tier.outputs.tier == 'weekly'
     runs-on: ${{ matrix.runner }}
@@ -225,6 +227,20 @@ jobs:
             coverage: true
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
             timeout: 180
+          - dut: smc
+            # The `rtl_issue` reproducers: every leaf carries `expect_fail`, so
+            # the row is green while the filed defects stand and goes red the
+            # week one is fixed and its test has to move. Its own row because
+            # `hosted` feeds the coverage dashboard and a graded expected
+            # failure must not count there; no coverage for the same reason.
+            # One seed: each leaf is a directed reproducer. The budget is the
+            # model build plus five short leaves.
+            items: rtl_issue
+            label: rtl_issue
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 90
           - dut: cross_trigger_port
             items: all
             reseed: 3
@@ -248,13 +264,15 @@ jobs:
         uses: actions/checkout@v4
 
       # Artifact name dv-run-<dut>-verilator-weekly and the run-dir shape are
-      # the dashboard contract (dashboard.yml, tools/dv/run_dashboard.py).
+      # the dashboard contract (dashboard.yml, tools/dv/run_dashboard.py); a
+      # labelled row's artifact ends in -<label> and falls outside it.
       - name: Run weekly tier
         uses: ./.github/actions/dv-run
         with:
           dut: ${{ matrix.dut }}
           tool: verilator
           tier: weekly
+          label: ${{ matrix.label || '' }}
           items: ${{ matrix.items }}
           reseed: ${{ matrix.reseed }}
           coverage: ${{ matrix.coverage }}

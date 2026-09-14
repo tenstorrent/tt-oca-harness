@@ -320,6 +320,29 @@ def parse_xunit_result(path: Path, root: Path) -> tuple[str, dict[str, str]]:
     return "PASS", evidence_record("results_xml", path, root, "PASS", f"{total} testcase(s) passed")
 
 
+def xunit_failure_messages(path: Path, *, limit: int = 8, width: int = 400) -> list[str]:
+    """The message of every failure/error node in a JUnit file, first line only.
+
+    cocotb writes the assertion text as `error_msg`; JUnit proper uses `message`; a node
+    with neither carries it as text. Returns [] for a missing or malformed file.
+    """
+    if not path.is_file():
+        return []
+    try:
+        root_elem = ET.parse(path).getroot()
+    except ET.ParseError:
+        return []
+    messages: list[str] = []
+    for node in [*root_elem.iter("failure"), *root_elem.iter("error")]:
+        text = node.get("message") or node.get("error_msg") or (node.text or "")
+        first = text.strip().splitlines()[0].strip() if text.strip() else ""
+        if first:
+            messages.append(first[:width])
+        if len(messages) >= limit:
+            break
+    return messages
+
+
 def _match_lines(patterns: list[str], text: str) -> list[str]:
     matches: list[str] = []
     for pattern in patterns:

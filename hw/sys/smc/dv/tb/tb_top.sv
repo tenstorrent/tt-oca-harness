@@ -1054,6 +1054,7 @@ module smc_uvm_top
     `define CPU_MEM_DV u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv
     assign tb_cpu_rom_read_count      = `CPU_MEM_DV.rom_read_count_q;
     assign tb_cpu_scratch_read_count  = `CPU_MEM_DV.scratch_ram_read_count_q;
+    assign tb_cpu_scratch_bank_read_count = `CPU_MEM_DV.scratch_ram_bank_read_count_q;
     assign tb_cpu_scratch_write_count = `CPU_MEM_DV.scratch_ram_write_count_q;
     assign tb_cpu_dcache_write_count  = `CPU_MEM_DV.dcache_data_write_count_q;
     assign tb_cpu_fw_mailbox          = `CPU_MEM_DV.fw_mailbox_q;
