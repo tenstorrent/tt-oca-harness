@@ -55,6 +55,7 @@ module smu_wrapper_uvm_top (
   // tells "debug is gated" from "the signal merely says so".
   output logic [31:0] dtp_smc_dbg_aw_count_o,
   output logic [31:0] dtp_smc_dbg_ar_count_o,
+  output logic [31:0] dtp_smc_dbg_b_count_o,
   input  wire logic clk_ref_i,
   input  wire logic clk_periph_i,
   input  wire logic clk_sep_wdt_i,
@@ -381,6 +382,7 @@ module smu_wrapper_uvm_top (
     if (!rst_cold_ni) begin
       dtp_smc_dbg_aw_count_o <= '0;
       dtp_smc_dbg_ar_count_o <= '0;
+      dtp_smc_dbg_b_count_o  <= '0;
     end else begin
       if (u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid &&
                 u_dut.u_smu.dtp_axi_smc_dbg_resp.aw_ready) begin
@@ -389,6 +391,10 @@ module smu_wrapper_uvm_top (
       if (u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid &&
                 u_dut.u_smu.dtp_axi_smc_dbg_resp.ar_ready) begin
         dtp_smc_dbg_ar_count_o <= dtp_smc_dbg_ar_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid &&
+                u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready) begin
+        dtp_smc_dbg_b_count_o <= dtp_smc_dbg_b_count_o + 32'd1;
       end
     end
   end

@@ -1201,11 +1201,12 @@ check.
 
 *BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
-*Objective*: Race J2A vs SMN on SCRATCH; coherent winner, no tear.
+*Objective*: Race J2A vs SMN on SCRATCH with the overlap established from handshakes; coherent winner, no tear.
 
 *Test Coverage*:
 
 * JTAG2AXI vs SMN concurrent write on the same CSR; no tear.
+* The SMN writer is released only after the J2A write's AW handshake is seen on the DTP -> SMC debug port, and the J2A AW/B handshakes there plus the SMN AW/B handshakes at the SMU boundary are timestamped; the race is accepted only when the SMN AW was accepted before the J2A B returned, so both writes were outstanding in the SMC at once.
 
 *Test Procedure*:
 
@@ -1223,6 +1224,7 @@ check.
 |`CHK-J2ASMN-CLEAR` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2ASMN-WR-J` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2ASMN-WR-S` |Evidence token, emitted only after the compares it names have held
+|`CHK-J2ASMN-OVERLAP` |SMN AW accepted inside the J2A write's AW..B window at the debug port
 |`CHK-RACE-J2A-SMN` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2ASMN-VERSION` |Evidence token, emitted only after the compares it names have held
 |assertion |jtag2axi_vs_smn race incomplete s1=<value> s2=<value>
