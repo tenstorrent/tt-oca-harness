@@ -524,8 +524,8 @@ reads data from this FIFO during a READ transaction.
 .HOST_TIMEOUT_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `Reserved` | - | - a| Reserved
-| 30:0 | `VAL` | RW | 0x0 a| Target/Monitor Mode control: controller clock generation timeout value
+| 31:20 | `Reserved` | - | - a| Reserved
+| 19:0 | `VAL` | RW | 0x0 a| Target/Monitor Mode control: controller clock generation timeout value
 specified in system clock cycles.
 * Target Mode - If the controller stops generating the clock for more time
 than this setting, this target asserts the Controller Timeout Interrupt.
