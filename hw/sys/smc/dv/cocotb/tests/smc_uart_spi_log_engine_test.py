@@ -59,7 +59,7 @@ class smc_uart_spi_log_engine_test(smc_base_test):
                 "CTS = ~cts_ni at BOTH pad levels this test drives on UART0 CTS "
                 "pad 14 (via the top-level tb_gpio_ext_drive_* pins, not a pad "
                 "default) and DCTS set->clear in both directions, all expected "
-                "values taken from the MSR field descriptions plus the declared "
-                "dsr_ni/ri_ni/dcd_ni tie-offs"
+                "values taken from the MSR field descriptions, every compare "
+                "masked to the CTS/DCTS bits this test drives"
             ),
         )
