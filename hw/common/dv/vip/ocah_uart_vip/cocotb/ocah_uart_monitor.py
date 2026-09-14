@@ -394,11 +394,13 @@ class OcahUartLineMonitor:
 
 
 def _fire_callbacks(log: logging.Logger, callbacks: list[Any], *args: Any) -> int:
-    """Invoke each callback; log an exception and return how many were raised."""
+    """Invoke each callback; a checker verdict propagates, any other exception is logged and counted."""
     errors = 0
     for fn in callbacks:
         try:
             fn(*args)
+        except AssertionError:
+            raise
         except Exception as exc:  # noqa: BLE001
             errors += 1
             log.error("exception in callback %s: %s", fn, exc)
