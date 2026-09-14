@@ -16,6 +16,9 @@ from collections.abc import Iterable
 
 import cocotb
 
+# The SMC CPU spec (hw/sys/smc/doc/cpu.adoc, "Local SRAM/Scratchpad: 1 MiB
+# (32 banks)") fixes the scratch geometry; `tb_cpu_scratch_bank_read_count`
+# carries one 32-bit counter per bank, so its width must agree with it.
 SCRATCH_BANK_COUNT = 32
 _BANK_COUNTER_WIDTH = 32
 _BANK_COUNTER_MASK = (1 << _BANK_COUNTER_WIDTH) - 1
@@ -27,20 +30,34 @@ _BANK_COUNTER_MASK = (1 << _BANK_COUNTER_WIDTH) - 1
 HELLO_WORLD_RESIDENT_BANKS = frozenset(range(4))
 
 
+def scratch_bank_count() -> int:
+    """Return the spec's bank count after checking the counter port is sized for it."""
+    width = len(cocotb.top.tb_cpu_scratch_bank_read_count)
+    assert width == SCRATCH_BANK_COUNT * _BANK_COUNTER_WIDTH, (
+        f"tb_cpu_scratch_bank_read_count is {width} bits wide, not {SCRATCH_BANK_COUNT} "
+        f"banks x {_BANK_COUNTER_WIDTH}-bit counters: the bound model's scratch geometry "
+        "disagrees with the spec, so the per-bank slicing would mis-read"
+    )
+    return SCRATCH_BANK_COUNT
+
+
 def snapshot_scratch_bank_reads() -> tuple[int, ...]:
     """Return the per-bank scratch read counters, index = bank number."""
     packed = int(cocotb.top.tb_cpu_scratch_bank_read_count.value)
     return tuple(
         (packed >> (bank * _BANK_COUNTER_WIDTH)) & _BANK_COUNTER_MASK
-        for bank in range(SCRATCH_BANK_COUNT)
+        for bank in range(scratch_bank_count())
     )
 
 
 def scratch_banks_read(before: tuple[int, ...], after: tuple[int, ...]) -> dict[int, int]:
     """Map each bank whose read counter advanced to the number of new reads."""
+    assert len(before) == len(after), (
+        f"bank snapshots differ in size: {len(before)} vs {len(after)}"
+    )
     return {
         bank: after[bank] - before[bank]
-        for bank in range(SCRATCH_BANK_COUNT)
+        for bank in range(len(before))
         if after[bank] != before[bank]
     }
 
