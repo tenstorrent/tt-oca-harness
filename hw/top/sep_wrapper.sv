@@ -33,12 +33,12 @@ module sep_wrapper
 
   output logic wdt_timer_rst_req_o,
 
-  input  logic jtag_tck,
-  input  logic jtag_tms,
-  input  logic jtag_tdi,
+  input  logic jtag_tck_i,
+  input  logic jtag_tms_i,
+  input  logic jtag_tdi_i,
   input  logic jtag_trst_ni,
-  output logic jtag_tdo,
-  output logic jtag_tdoEn,
+  output logic jtag_tdo_o,
+  output logic jtag_tdoEn_o,
 
   input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
 

@@ -845,12 +845,12 @@ module smu #(
 
       .wdt_timer_rst_req_o           (sep_wdt_timer_rst_req),
 
-      .jtag_tck                      (dtp_sep_stap_tap_ctrl.tck),
-      .jtag_tms                      (dtp_sep_stap_tap_ctrl.tms),
-      .jtag_tdi                      (dtp_sep_stap_tdo),
+      .jtag_tck_i                    (dtp_sep_stap_tap_ctrl.tck),
+      .jtag_tms_i                    (dtp_sep_stap_tap_ctrl.tms),
+      .jtag_tdi_i                    (dtp_sep_stap_tdo),
       .jtag_trst_ni                  (dtp_sep_stap_tap_ctrl.trst_n),
-      .jtag_tdo                      (sep_stap_tdo_to_dtp),
-      .jtag_tdoEn                    (/* unused at smu level */),
+      .jtag_tdo_o                    (sep_stap_tdo_to_dtp),
+      .jtag_tdoEn_o                  (/* unused at smu level */),
 
       // JTAG SEP Reset Control Overrides
       .jtag_sep_reset_ctrl_i         (jtag_sep_reset_ctrl),

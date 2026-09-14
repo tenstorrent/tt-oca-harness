@@ -25,12 +25,12 @@ module sep #(
 
   output logic wdt_timer_rst_req_o, // SEP WDT bite reset request (active-high) to SMC reset unit
 
-  input  logic jtag_tck,     // JTAG clk
-  input  logic jtag_tms,     // JTAG TMS
-  input  logic jtag_tdi,     // JTAG tdi
+  input  logic jtag_tck_i,   // JTAG clk
+  input  logic jtag_tms_i,   // JTAG TMS
+  input  logic jtag_tdi_i,   // JTAG tdi
   input  logic jtag_trst_ni, // JTAG Reset
-  output logic jtag_tdo,     // JTAG TDO
-  output logic jtag_tdoEn,   // JTAG Test Data Output enable
+  output logic jtag_tdo_o,   // JTAG TDO
+  output logic jtag_tdoEn_o, // JTAG Test Data Output enable
 
   // JTAG SEP Reset Control
   input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
@@ -592,12 +592,12 @@ NUM_EXT_DEMUX_PORTS
     .rst_ni                         (sep_cpu_reset_n),
     .dbg_rstb_i                     (dbg_rstb_i),
 
-    .jtag_tck                       (jtag_tck),     // JTAG clk
-    .jtag_tms                       (jtag_tms),     // JTAG TMS
-    .jtag_tdi                       (jtag_tdi),     // JTAG tdi
+    .jtag_tck_i                     (jtag_tck_i),   // JTAG clk
+    .jtag_tms_i                     (jtag_tms_i),   // JTAG TMS
+    .jtag_tdi_i                     (jtag_tdi_i),   // JTAG tdi
     .jtag_trst_ni                   (jtag_trst_ni), // JTAG Reset
-    .jtag_tdo                       (jtag_tdo),     // JTAG TDO
-    .jtag_tdoEn                     (jtag_tdoEn),   // JTAG Test Data Output enable
+    .jtag_tdo_o                     (jtag_tdo_o),   // JTAG TDO
+    .jtag_tdoEn_o                   (jtag_tdoEn_o), // JTAG Test Data Output enable
 
     // external MPC halt/run interface
     .mpc_debug_halt_req_i           (mpc_debug_halt_req_i), // Async halt request

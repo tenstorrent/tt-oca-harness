@@ -14,12 +14,12 @@
 |`wdt_rst_ni` |`logic` |Input |1 |Watchdog timer reset from SMC (active low). |SMC reset unit |N/A
 |`wdt_timer_rst_req_o` |`logic` |Output |1 |WDT reset request output. Triggers memory interface reset in `sep_wrapper`. |SEP wrapper |N/A
 
-|`jtag_tck` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
-|`jtag_tms` |`logic` |Input |1 |JTAG test mode select. |JTAG pads (via DTP STAP) |N/A
-|`jtag_tdi` |`logic` |Input |1 |JTAG test data in. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tck_i` |`logic` |Input |1 |JTAG test clock. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tms_i` |`logic` |Input |1 |JTAG test mode select. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdi_i` |`logic` |Input |1 |JTAG test data in. |JTAG pads (via DTP STAP) |N/A
 |`jtag_trst_ni` |`logic` |Input |1 |JTAG test reset (active low). |JTAG pads (via DTP STAP) |N/A
-|`jtag_tdo` |`logic` |Output |1 |JTAG test data out. |JTAG pads (via DTP STAP) |N/A
-|`jtag_tdoEn` |`logic` |Output |1 |JTAG test data out enable. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdo_o` |`logic` |Output |1 |JTAG test data out. |JTAG pads (via DTP STAP) |N/A
+|`jtag_tdoEn_o` |`logic` |Output |1 |JTAG test data out enable. |JTAG pads (via DTP STAP) |N/A
 
 |`axil_sep_otp_jtag_req_i` |`sep_efuse_pkg::efuse_axil_req_t` |Input |- |OTP debug AXI-Lite request from JTAG. |DTP `axil_sep_otp_jtag_req_o` |Tie to '0 if unused
 |`axil_sep_otp_jtag_resp_o` |`sep_efuse_pkg::efuse_axil_resp_t` |Output |- |OTP debug AXI-Lite response to JTAG. |DTP `axil_sep_otp_jtag_resp_i` |N/A

@@ -270,10 +270,10 @@ module smc_peripherals_cdc #(
     .DEPTH(3)
   ) u_avsbus_cur_state_debug_sync (
     .clk_src_i    (clk_periph_i),
-    .reset_src_ni(rst_periph_clk_ni),
+    .rst_src_ni   (rst_periph_clk_ni),
     .data_i       (avsbus_cur_state_debug_i),
     .clk_dst_i    (clk_smc_i),
-    .reset_dst_ni(rst_smc_clk_ni),
+    .rst_dst_ni   (rst_smc_clk_ni),
     .data_o       (avsbus_cur_state_debug_o)
   );
 

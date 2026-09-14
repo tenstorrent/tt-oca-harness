@@ -192,10 +192,10 @@ module smc_cool_reset_wrap (
     .DEPTH(3)
   ) u_flr_set_cnt_sync (
     .clk_src_i    (clk_smc_i),
-    .reset_src_ni (rst_cold_smc_ni),
+    .rst_src_ni   (rst_cold_smc_ni),
     .data_i       (flr_set_cnt),
     .clk_dst_i    (clk_ref_i),
-    .reset_dst_ni (rst_cold_ref_ni),
+    .rst_dst_ni   (rst_cold_ref_ni),
     .data_o       (flr_set_cnt_ref_clk)
   );
 
@@ -204,10 +204,10 @@ module smc_cool_reset_wrap (
     .DEPTH(3)
   ) u_flr_reset_set_cnt_sync (
     .clk_src_i    (clk_smc_i),
-    .reset_src_ni (rst_cold_smc_ni),
+    .rst_src_ni   (rst_cold_smc_ni),
     .data_i       (flr_reset_set_cnt),
     .clk_dst_i    (clk_ref_i),
-    .reset_dst_ni (rst_cold_ref_ni),
+    .rst_dst_ni   (rst_cold_ref_ni),
     .data_o       (flr_reset_set_cnt_ref_clk)
   );
 

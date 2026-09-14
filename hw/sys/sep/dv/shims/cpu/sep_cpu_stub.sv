@@ -39,12 +39,12 @@ module sep_cpu
   input logic rst_ni,
   input logic dbg_rstb_i,  // EL2 debugger reset
 
-  input  logic jtag_tck,     // JTAG clk
-  input  logic jtag_tms,     // JTAG TMS
-  input  logic jtag_tdi,     // JTAG tdi
+  input  logic jtag_tck_i,   // JTAG clk
+  input  logic jtag_tms_i,   // JTAG TMS
+  input  logic jtag_tdi_i,   // JTAG tdi
   input  logic jtag_trst_ni, // JTAG Reset
-  output logic jtag_tdo,     // JTAG TDO
-  output logic jtag_tdoEn,   // JTAG Test Data Output enable
+  output logic jtag_tdo_o,   // JTAG TDO
+  output logic jtag_tdoEn_o, // JTAG Test Data Output enable
 
   // external MPC halt/run interface
   input  logic mpc_debug_halt_req_i, // Async halt request
@@ -209,8 +209,8 @@ module sep_cpu
   // Tie off all OTHER output ports to benign idle values (no VeeR core).
   // -------------------------------------------------------------------------
   // JTAG
-  assign jtag_tdo            = 1'b0;
-  assign jtag_tdoEn          = 1'b0;
+  assign jtag_tdo_o          = 1'b0;
+  assign jtag_tdoEn_o        = 1'b0;
 
   // MPC halt/run + debug status
   assign mpc_debug_halt_ack_o = 1'b0;

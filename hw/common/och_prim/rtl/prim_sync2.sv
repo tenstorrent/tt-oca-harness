@@ -22,13 +22,13 @@ module prim_sync2 #(
     .RANDOM_DELAY_RESET    (0),
     .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
   ) rand_del (
-    .clk_i(clk_i),  // input                   Clock
-    .d_i(d_i),  // input    [WIDTH-1:0]    Input Data
-    .rst_ni           (1'b1           ), // input                   Active Low Reset, if synchronizer is not resettable tie to 1
-    .mux_sel_ovr_i       ({WIDTH*2{1'b0}}), // input    [WIDTH*2-1:0]  Mux Select Override Value, NOT USED FOR NOW
+    .clk_i        (clk_i),            // input                   Clock
+    .d_i          (d_i),              // input    [WIDTH-1:0]    Input Data
+    .rst_ni       (1'b1),             // input                   Active Low Reset, if synchronizer is not resettable tie to 1
+    .mux_sel_ovr_i({WIDTH*2{1'b0}}),  // input    [WIDTH*2-1:0]  Mux Select Override Value, NOT USED FOR NOW
 
-    .mux_sel_o(),      // output   [WIDTH*2-1:0]  Output Mux Select, NOT USED FOR NOW
-    .d_del_o  (d_del)  // output   [WIDTH-1:0]    Delayed Data
+    .mux_sel_o    (),                 // output   [WIDTH*2-1:0]  Output Mux Select, NOT USED FOR NOW
+    .d_del_o      (d_del)             // output   [WIDTH-1:0]    Delayed Data
   );
 `else
   wire [WIDTH-1:0] d_del;

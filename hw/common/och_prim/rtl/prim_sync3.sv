@@ -37,8 +37,8 @@ module prim_sync3 #(
 
   prim_flop_3sync sync3[WIDTH-1:0] (
     .clk_i(clk_i),
-    .d_i (d_del),
-    .q_o (q_o)
+    .d_i  (d_del),
+    .q_o  (q_o)
   );
 
 endmodule

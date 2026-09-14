@@ -90,7 +90,7 @@ module axi_alias_remap #(
     .a_i    ({1'b0, remap_regions_i[aw_remap_idx].offset[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
     .b_i    ({1'b0, axi_in_req_i.aw.addr[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
     .sum_o  (aw_addr_modified),
-    .cout_o ()
+    .c_o    ()
   );
 
   prim_carry_select_adder #(
@@ -100,7 +100,7 @@ module axi_alias_remap #(
     .a_i    ({1'b0, remap_regions_i[ar_remap_idx].offset[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
     .b_i    ({1'b0, axi_in_req_i.ar.addr[AXI_ADDR_WIDTH-1:ALIAS_REMAP_IDX_START]}),
     .sum_o  (ar_addr_modified),
-    .cout_o ()
+    .c_o    ()
   );
 
   assign aw_remapped_addr = {

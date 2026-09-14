@@ -12,7 +12,7 @@ module prim_carry_select_adder #(
   input  logic [DATA_WIDTH-1:0] a_i,
   input  logic [DATA_WIDTH-1:0] b_i,
   output logic [DATA_WIDTH-1:0] sum_o,
-  output logic                  cout_o
+  output logic                  c_o
 );
 
   localparam int unsigned CHUNK_WIDTH = DATA_WIDTH / NUM_CHUNKS;
@@ -39,7 +39,7 @@ module prim_carry_select_adder #(
   end
 
   assign sum_o  = sum_chunk;
-  assign cout_o = carry[NUM_CHUNKS-1];
+  assign c_o = carry[NUM_CHUNKS-1];
 
   // Assertion to make sure NUM_CHUNKS divides DATA_WIDTH without remainder
   generate

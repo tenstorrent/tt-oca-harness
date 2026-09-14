@@ -412,12 +412,12 @@ module sep_uvm_top
         .wdt_timer_rst_req_o          (wdt_timer_rst_req_o),
 
         // JTAG (TB-driven only during +cpu_boot reset-vector TDR setup)
-        .jtag_tck                     (jtag_tck),
-        .jtag_tms                     (jtag_tms),
-        .jtag_tdi                     (jtag_tdi),
+        .jtag_tck_i                   (jtag_tck),
+        .jtag_tms_i                   (jtag_tms),
+        .jtag_tdi_i                   (jtag_tdi),
         .jtag_trst_ni                 (jtag_trst_n),
-        .jtag_tdo                     (),
-        .jtag_tdoEn                   (),
+        .jtag_tdo_o                   (),
+        .jtag_tdoEn_o                 (),
         .jtag_sep_reset_ctrl_i        (jtag_sep_reset_ctrl_drive),
 
 `ifdef SEP_JTAG_AXIL_LIVE

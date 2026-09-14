@@ -144,7 +144,7 @@ module system_timer_octs_core
         .a_i    (timer_count_q),
         .b_i    (64'h1),
         .sum_o  (timer_count_plus_one),
-        .cout_o ()  // unused
+        .c_o    ()  // unused
     );
 
     // Carry-select adder for expected_count + credit_val (SECONDARY mode)
@@ -155,7 +155,7 @@ module system_timer_octs_core
         .a_i    (expected_count_q),
         .b_i    ({56'h0, reg_credit_val_i}),
         .sum_o  (expected_count_plus_credit),
-        .cout_o ()  // unused
+        .c_o    ()  // unused
     );
 
     // Carry-select adder for timer_count + step (SECONDARY mode)
@@ -166,7 +166,7 @@ module system_timer_octs_core
         .a_i    (timer_count_q),
         .b_i    ({56'h0, timer_cnt_step_i}),
         .sum_o  (timer_count_plus_step),
-        .cout_o ()  // unused
+        .c_o    ()  // unused
     );
 
     //////////////////////////////
