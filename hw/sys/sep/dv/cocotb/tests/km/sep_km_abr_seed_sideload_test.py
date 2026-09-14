@@ -119,9 +119,7 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         assert pk_contrast == pk_direct, (
             "CHK-RANDCFG FAIL: inverted masking entropy changed the public key"
         )
-        self.logger.info(
-            "CHK-RANDCFG PASS: inverted masking entropy left the public key unchanged"
-        )
+        self.logger.info("CHK-RANDCFG PASS: inverted masking entropy left the public key unchanged")
 
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         await self._wait_status(abr, ST_READY, ST_READY, what="post-zeroize READY")
