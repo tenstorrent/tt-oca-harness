@@ -10,10 +10,10 @@ This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
 that carry one. The enrolled testcases and the membership of the `all`
-sign-off group are defined in `testlists/all.toml`. The nine enrolled
-leaves held out of `all`, and why, are named in the `all` row under
-Regression Groups; where the reason is a defect or a stimulus the sign-off
-rule excludes, Known Limitations records the hole.
+sign-off group are defined in `testlists/all.toml`. The seven enrolled
+leaves outside `all`, and why, are named in the `all` row under
+Regression Groups; where the reason is a defect, Known Limitations records
+the hole.
 
 Every entry below names a testcase that exists and runs. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is
@@ -216,6 +216,7 @@ verifying the block behind the port.
 |`smc_efuse_otp_clock_test` |Run the eFuse/OTP and clock-control CSR precheck.
 |`smc_efuse_permission_boundary_test` |Read the four eFuse-derived chip-config registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
 |`smc_efuse_read_program_timeout_test` |timeout_enable\|0 aborts; default timeout recovers OTP bit0.
+|`smc_efuse_read_timeout_status_test` |A read that hits `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, after a successful read shows it clear.
 |`smc_efuse_shim_ctrl_test` |EFUSE_INTERFACE + SHIM_CTRL probe.
 |`smc_state_fault_inject_test` |Every unused state encoding in the eFuse interface controller and in the Zeroer fails closed, and the block recovers.
 |===
@@ -346,8 +347,14 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 
 Tests whose job is to fail. Each holds the runnable evidence for one RTL
 defect, so the defect has a measurement rather than a description alone. All
-are enrolled through `rtl_issue` alone -- no `ci` tag, not in `smoke`, held
-out of `all`.
+are enrolled through `rtl_issue` -- no `ci` tag, not in `smoke`, `hosted` or
+`all`. Every `[[tests]]` entry carries `expect_fail` naming the issue and
+`expect_fail_match` pinned to the assertion it raises; the weekly tier runs
+the group on its own `regress.yml` row and grades the recorded failure as
+PASS, so the row goes red (`expected_fail_passed`) the week a defect is
+fixed and the leaf moves to its feature testlist. `smc_deadspace_decode_test`
+(#585) and `smc_remap_cla_test` (#1855) are members too; their cards are under
+FABRIC.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -357,7 +364,6 @@ the wrong reason.
 |===
 |Testcase |Objective
 |`smc_gpio_irq_mask_deassert_test` |Clearing DATA_CTRL.interrupt_enable must de-assert interrupt_o.
-|`smc_efuse_read_timeout_status_test` |A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
 |`smc_log_engine_intr_mask_test` |INTR_ENABLE must mask the log-engine interrupt output, not its set path.
 |`smc_i2c_intr_mask_test` |INTR_ENABLE must mask the I2C interrupt output, not its set path.
 |===
@@ -409,7 +415,7 @@ Drive `smc_5agent_observability_test_seq`. Each checker below is a named compare
 |===
 
 
-*Pass Criteria*: `CHK-5AGENT-CLK`, `CHK-5AGENT-COMPOSITION`, `CHK-5AGENT-GPIO`, `CHK-5AGENT-I2C`, `CHK-5AGENT-IRQ-IDLE`, `CHK-5AGENT-IRQ-POSITIVE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-5AGENT-CLK`, `CHK-5AGENT-COMPOSITION`, `CHK-5AGENT-GPIO`, `CHK-5AGENT-I2C`, `CHK-5AGENT-IRQ-IDLE`, `CHK-5AGENT-IRQ-POSITIVE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`.
 '''''
 
 [[sec-002-smc_6agent_observability_test]]
@@ -450,7 +456,7 @@ Drive `smc_6agent_observability_test_seq`. Each checker below is a named compare
 |===
 
 
-*Pass Criteria*: `CHK-6AGENT-AXIL`, `CHK-6AGENT-CLK`, `CHK-6AGENT-COMPOSITION`, `CHK-6AGENT-GPIO`, `CHK-6AGENT-I2C`, `CHK-6AGENT-IRQ` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-6AGENT-AXIL`, `CHK-6AGENT-CLK`, `CHK-6AGENT-COMPOSITION`, `CHK-6AGENT-GPIO`, `CHK-6AGENT-I2C`, `CHK-6AGENT-IRQ` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`.
 '''''
 
 [[sec-003-smc_canonical_smoke_test]]
@@ -528,7 +534,7 @@ Drive `smc_combined_observability_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-COMBINED-COMPOSITION`, `CHK-COMBINED-I2C`, `CHK-COMBINED-RESET`, `CHK-PROBE-I2C-CG-EN-ALIVE` hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-COMBINED-COMPOSITION`, `CHK-COMBINED-I2C`, `CHK-COMBINED-RESET`, `CHK-PROBE-I2C-CG-EN-ALIVE` hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`.
 '''''
 
 [[sec-005-smc_default_reg_rd_test]]
@@ -566,7 +572,7 @@ Drive `smc_default_reg_rd_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-006-smc_ext_interrupts_pin_test]]
@@ -895,7 +901,7 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 |===
 
 
-*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-READBACK-EMPTY-FIFO-READ`, `CHK-AVS-READBACK-POINTER-ADVANCE` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-READBACK-EMPTY-FIFO-READ`, `CHK-AVS-READBACK-POINTER-ADVANCE` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `depth`.
 '''''
 
 [[sec-016-smc_telemetry_receiver_csr_test]]
@@ -994,7 +1000,7 @@ Drive `smc_zeroer_dma_timeout_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-NONVAC`, `CHK-ZEROER-CTRL-STATUS`, `CHK-ZEROER-REGION-DECODE`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-STATUS-LIFECYCLE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-NONVAC`, `CHK-ZEROER-CTRL-STATUS`, `CHK-ZEROER-REGION-DECODE`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-STATUS-LIFECYCLE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `depth`.
 '''''
 
 [[sec-019-smc_zeroer_sanity_test]]
@@ -1097,7 +1103,7 @@ Drive `smc_axil_burst_idle_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-NONVAC`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-NONVAC`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`.
 '''''
 
 [[sec-022-smc_axil_idle_test]]
@@ -1128,7 +1134,7 @@ Drive `smc_axil_idle_test_seq`. Each checker below is a named compare the DUT ca
 |===
 
 
-*Pass Criteria*: `CHK-AXIL-IDLE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-AXIL-IDLE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`.
 '''''
 
 [[sec-023-smc_cpu_to_sep_axi_test]]
@@ -1158,7 +1164,7 @@ Drive `smc_cpu_to_sep_axi_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-024-smc_deadspace_decode_test]]
@@ -1193,7 +1199,7 @@ Drive `smc_deadspace_decode_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing and is held out of `all`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `per_ip`.
+*Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing (dead offsets in seven register windows wrap onto live registers with an OKAY response) and runs weekly in `rtl_issue` under `expect_fail`, with `expect_fail_match` pinned to the `wrap_to_live` / `read_alias` assertion; the observed failure grades PASS and an observed PASS grades `expected_fail_passed`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `rtl_issue`, `per_ip`.
 '''''
 
 [[sec-025-smc_filter_field_sweep_test]]
@@ -1328,7 +1334,7 @@ Drive `smc_input_output_fabric_wr_rd_test_seq`. Each checker below is a named co
 |===
 
 
-*Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `depth`.
 '''''
 
 [[sec-029-smc_local_fabric_csr_depth_test]]
@@ -1452,7 +1458,7 @@ Drive `smc_output_filter_remap_security_test_seq`. Each checker below is a named
 |===
 
 
-*Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-PHASE-FENCE`, `CHK-OUTBOUND-BLOCK-WRITE`, `CHK-OUTBOUND-PASS-ALL` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_fabric`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-PHASE-FENCE`, `CHK-OUTBOUND-BLOCK-WRITE`, `CHK-OUTBOUND-PASS-ALL` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_fabric`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-033-smc_remap_cla_test]]
@@ -1490,7 +1496,7 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. Named checkers hold when the leaf is run on demand; it is held out of `all` because the CLA deny leg hangs at 0xC016_0038. Known Limitations records the hole. Enrolled in: `per_ip`.
+*Pass Criteria*: not a sign-off PASS. The ALIAS_REMAP translation, the remap-table reset sweep and the CLA allow leg hold; the CLA deny leg fails because the first unmapped in-window offset, `+0x38` (0xC016_0038), completes with OKAY instead of SLVERR/DECERR. The leaf runs weekly in `rtl_issue` under `expect_fail` with `expect_fail_match` pinned to that `resp=0` assertion, so the recorded failure grades PASS and any other failure grades FAIL. Known Limitations records the hole. Enrolled in: `rtl_issue`, `per_ip`.
 '''''
 
 [[sec-034-smc_sys_out_aw_w_split_test]]
@@ -1627,7 +1633,7 @@ Drive `smc_cold_reset_repeated_test_seq`. Each checker below is a named compare 
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `pyuvm`, `reset`, `smoke`.
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `pyuvm`, `reset`.
 
 '''''
 
@@ -1803,7 +1809,7 @@ Drive `smc_flr_sanity_test_seq`. Each checker below is a named compare the DUT c
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-043-smc_gpio_boot_stall_test]]
@@ -1872,7 +1878,7 @@ Drive `smc_irq_during_powergood_glitch_test_seq`. Each checker below is a named 
 |===
 
 
-*Pass Criteria*: `CHK-IRQ-PG-GLITCH-NO-SPURIOUS` hold after their compares. Enrolled in: `all`, `combined`, `irq`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-IRQ-PG-GLITCH-NO-SPURIOUS` hold after their compares. Enrolled in: `all`, `combined`, `irq`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-045-smc_jtag_boot_stall_sanity_test]]
@@ -2055,7 +2061,7 @@ Drive `smc_multi_reset_csr_persistence_test_seq`. Each checker below is a named 
 |===
 
 
-*Pass Criteria*: `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-COOL-RESET-RELEASED`, `CHK-CSR-BASELINE-RO`, `CHK-CSR-POST-COOL-RECOVERY`, `CHK-CSR-PRE-COOL-READBACK` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-COOL-RESET-RELEASED`, `CHK-CSR-BASELINE-RO`, `CHK-CSR-POST-COOL-RECOVERY`, `CHK-CSR-PRE-COOL-READBACK` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `depth`.
 '''''
 
 [[sec-050-smc_ndm_reset_test]]
@@ -2121,7 +2127,7 @@ Drive `smc_powergood_glitch_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `pyuvm`, `reset`, `smoke`.
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `pyuvm`, `reset`.
 
 '''''
 
@@ -2154,7 +2160,7 @@ Drive `smc_reset_recovery_matrix_test_seq`. Each checker below is a named compar
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `reset`, `smoke`, `depth`.
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `reset`, `depth`.
 '''''
 
 [[sec-053-smc_reset_unit_sanity_test]]
@@ -2360,7 +2366,7 @@ Drive `smc_clk_multi_window_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-HYST-WINDOW`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `per_ip`, `clock`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-HYST-WINDOW`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `per_ip`, `clock`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-059-smc_clk_running_test]]
@@ -2397,7 +2403,7 @@ Drive `smc_clk_running_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-ACTIVE-RUNNING`, `CHK-CG-ENABLE-READBACK`, `CHK-DMA-ACTIVITY-UNGATE`, `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-IDLE-GATED-BASELINE`, `CHK-NONVAC` (and 1 more) hold after their compares. Enrolled in: `all`, `clock`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-ACTIVE-RUNNING`, `CHK-CG-ENABLE-READBACK`, `CHK-DMA-ACTIVITY-UNGATE`, `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-IDLE-GATED-BASELINE`, `CHK-NONVAC` (and 1 more) hold after their compares. Enrolled in: `all`, `clock`, `functional`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-060-smc_dma_cg_activity_test]]
@@ -2473,7 +2479,7 @@ Drive `smc_i2c_cg_sanity_test_seq`. Each checker below is a named compare the DU
 |===
 
 
-*Pass Criteria*: `CHK-I2C-CG-SANITY-GATED` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-I2C-CG-SANITY-GATED` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`, `functional`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-062-smc_static_cg_sanity_test]]
@@ -2945,7 +2951,7 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-075-smc_ecc_fault_inject_test]]
@@ -3270,7 +3276,7 @@ Drive `smc_ijtag_basic_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-084-smc_jtag_dmi_smoke_test]]
@@ -3647,7 +3653,7 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-OTP-CSR` hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-OTP-CSR` hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-094-smc_efuse_permission_boundary_test]]
@@ -3805,26 +3811,33 @@ recorded under Known Limitations.
 . Wait for fuse-sense-done.
 . Run a legal program command, confirm completion, and record a read-back that is
   not the illegal-state sentinel.
-. Inject eFuse program state `0b00` with no request outstanding; confirm the state
-  is held, the request stays low, recovery reaches `IDLE` with done and error set,
-  and the read-back is the sentinel.
+. Inject eFuse program state `0b00` with no request outstanding; confirm the
+  request stays low in the corrupted cycle, recovery reaches `IDLE` with done and
+  error set, `EFUSE_PROGRAM_CTRL` reads done with status set and busy clear, and
+  the read-back is the sentinel. Run a legal program and confirm it completes
+  without error and its read-back is no longer the sentinel.
 . Arm the `0b11` injection concurrently with a legal program `GO`, confirm the
-  request is suppressed in the same cycle, then confirm the same recovery.
-. Repeat both encodings on the read path; inject a read error and confirm the
-  status sets and the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
-. Inject each of the four illegal Zeroer encodings, confirm the absorbing `ERROR`
-  state holds, then assert cold reset and confirm the escape to `IDLE`.
+  request is suppressed in the same cycle, then confirm the same recovery and the
+  same legal program afterwards.
+. Repeat both encodings on the read path, each followed by a legal read that
+  completes without error; inject a read error and confirm the status sets and
+  the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
+. For each of the four illegal Zeroer encodings: start from `IDLE` with
+  `CTRL_STATUS` not reporting busy, inject, confirm the absorbing `ERROR` state
+  holds with `CTRL_STATUS` reporting busy, write `CTRL_STATUS` and confirm the
+  start is ignored, then assert cold reset and confirm the escape to `IDLE` with
+  `CTRL_STATUS` clear.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state and only a cold reset escapes it
+|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path, with done and status set in `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL`, and a legal operation completes without error afterwards; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state from `IDLE`, report busy in `CTRL_STATUS`, ignore a `CTRL_STATUS` start write, and only a cold reset escapes it
 |===
 
 
-*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
+*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
 
 '''''
 
@@ -3963,7 +3976,7 @@ Drive `smc_gpio_irq_active_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-IRQ-ACTIVE-LOW`, `CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT`, `CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR`, `CHK-GPIO-IRQ-ACTIVE-LOW-IDLE`, `CHK-GPIO0-DATA-CTRL-READBACK`, `CHK-MAILBOX-IRQEN-RESET` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-GPIO-IRQ-ACTIVE-LOW`, `CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT`, `CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR`, `CHK-GPIO-IRQ-ACTIVE-LOW-IDLE`, `CHK-GPIO0-DATA-CTRL-READBACK`, `CHK-MAILBOX-IRQEN-RESET` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-102-smc_gpio_irq_type_matrix_test]]
@@ -4029,7 +4042,7 @@ Drive `smc_gpio_multi_sample_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-1`, `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-2`, `CHK-GPIO-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-1`, `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-2`, `CHK-GPIO-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-104-smc_gpio_observe_test]]
@@ -4062,7 +4075,7 @@ Drive `smc_gpio_observe_test_seq`. Each checker below is a named compare the DUT
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-PAD-BUS-ALIVE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-PAD-BUS-ALIVE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-105-smc_gpio_output_driveback_test]]
@@ -4383,7 +4396,7 @@ Drive `smc_irq_multi_sample_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-IRQ-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-IRQ-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-114-smc_irq_observe_test]]
@@ -4418,7 +4431,7 @@ Drive `smc_irq_observe_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-IRQ-OBSERVE-IDLE-CHECKED` hold after their compares. Enrolled in: `all`, `irq`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-IRQ-OBSERVE-IDLE-CHECKED` hold after their compares. Enrolled in: `all`, `irq`, `functional`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-115-smc_temp_interrupt_test]]
@@ -4560,7 +4573,7 @@ Drive `smc_i2c_master_target_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-119-smc_i2c_multi_instance_test]]
@@ -4625,7 +4638,7 @@ Drive `smc_i2c_multi_sample_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-I2C-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `i2c`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-I2C-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `i2c`, `functional_depth`, `pyuvm`.
 '''''
 
 [[sec-121-smc_i2c_p0_cfifo_test]]
@@ -5332,7 +5345,7 @@ Drive `smc_mailbox_irq_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `depth`.
 '''''
 
 [[sec-142-smc_mailbox_multi_instance_test]]
@@ -5709,7 +5722,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |===
 
 
-*Pass Criteria*: `CHK-UART-LOG-COUNT`, `CHK-UART-LOG-LOG_ENGINE_CTRL`, `CHK-UART-LOG-LOG_ENGINE_INTR_STATUS`, `CHK-UART-LOG-UART_IIR`, `CHK-UART-LOG-UART_LOG_ENGINE_CTRL`, `CHK-UART-LOG-UART_LSR` (and 6 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-UART-LOG-COUNT`, `CHK-UART-LOG-LOG_ENGINE_CTRL`, `CHK-UART-LOG-LOG_ENGINE_INTR_STATUS`, `CHK-UART-LOG-UART_IIR`, `CHK-UART-LOG-UART_LOG_ENGINE_CTRL`, `CHK-UART-LOG-UART_LSR` (and 6 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `depth`.
 '''''
 
 ==== OCCP
@@ -5753,7 +5766,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-DUAL-I3C-IDLE` |The shared I3C0 wired-AND resolves, and resolves high, with no driver
 |===
 
-*Pass Criteria*: `CHK-DUAL-I3C-INDEXING`, `CHK-DUAL-ELAB`, `CHK-DUAL-RESET`, `CHK-DUAL-FUSE-SENSE`, `CHK-DUAL-BOOT-STALL`, `CHK-DUAL-MEM-INIT` (and 1 more) hold after their compares; a bound expiry or an unresolvable sample raises. Enrolled in: `dual_all`, `dual_smoke`.
+*Pass Criteria*: `CHK-DUAL-I3C-INDEXING`, `CHK-DUAL-ELAB`, `CHK-DUAL-RESET`, `CHK-DUAL-FUSE-SENSE`, `CHK-DUAL-BOOT-STALL`, `CHK-DUAL-MEM-INIT` (and 1 more) hold after their compares; a bound expiry or an unresolvable sample raises. Enrolled in: `dual_all`, `dual_smoke`, `all`.
 
 '''''
 
@@ -5792,7 +5805,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-SCRATCH-BACKDOOR-DECODE` |For every offset, the macro word `smc_scratch_map_pkg` resolves to holds what AXI wrote. Checked only where the AXI readback already matched, so a decode complaint cannot be raised about a write that never took
 |===
 
-*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` must be 1 on both instances within the watch bound before the first probe access; the watcher raises otherwise. Enrolled in: `dual_all`, `dual_smoke`.
+*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` must be 1 on both instances within the watch bound before the first probe access; the watcher raises otherwise. Enrolled in: `dual_all`, `dual_smoke`, `all`.
 
 '''''
 
@@ -5826,7 +5839,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-OCCP-SANITY` |Target and controller scratch 0, sampled together; `TEST_FAIL` from either fails the test
 |===
 
-*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `dual_all`.
+*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `dual_all`, `all`.
 
 '''''
 
@@ -5954,11 +5967,12 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 
 *BFM / Model*: ocah_axi_vip (AXI) against the eFuse bank model
 
-*Objective*: A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
+*Objective*: A read that hits `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, after a successful read shows it clear.
 
 *Test Coverage*:
 
-* The timeout arm of `efuse_read_interface.sv`'s ST_WAIT_RESP, which never assigns `read_err_d` while `efuse_program_interface.sv` sets `program_err_d` on the identical arm.
+* `hw/ip/efuse/regs/efuse_interface_ctrl.rdl` defines `EFUSE_READ_CTRL.READ_STATUS` as the read interface's error report (`read_done` says the read completed, `read_status` says how) and `EFUSE_READ_REQ_TIMEOUT` as a bound on the cycles the interface waits for a SHIM response; `hw/ip/efuse/doc/programming.adoc` has software check `read_status` after every completion. A read that hits the bound is a completed read with an error: `read_done=1` and `read_status=1`.
+* The arming leg makes the check real: `READ_STATUS` holds until the next completion, so a stale 1 would satisfy the timeout leg on its own. A successful read at the RDL-default cycle count comes first and must show `READ_STATUS` 0; `STATUS.EFUSE_REQ_ERROR` is required clear beforehand because a sticky request error also reports through `READ_STATUS`.
 
 *Test Procedure*:
 
@@ -5973,11 +5987,11 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-TMO-RD-STATUS-ARM` |A successful read gives READ_CTRL=0x12000000 with READ_STATUS clear, arming the leg below. Depends on `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE` in smc_efuse_read_program_timeout_test having proven the bit can read 1 at all
-|`CHK-EFUSE-TMO-RD-STATUS-SET` |A timed-out read sets READ_STATUS. **Expected to fail**: READ_CTRL reads 0x12000000 on both the successful and the timed-out read, so the register carries nothing that separates them
+|`CHK-EFUSE-TMO-RD-STATUS-ARM` |A successful read at the RDL-default timeout completes with `READ_DONE` set and `READ_STATUS` clear, with `STATUS.EFUSE_REQ_ERROR` clear, arming the leg below (`smc_efuse_read_timeout_status_test_seq.py`)
+|`CHK-EFUSE-TMO-RD-STATUS-SET` |The read that hits the programmed timeout completes with `READ_DONE` set and `READ_STATUS` set (`smc_efuse_read_timeout_status_test_seq.py`)
 |===
 
-*Pass Criteria*: both legs hold. The second leg fails on RTL that carries the defect. Enrolled in: `rtl_issue`.
+*Pass Criteria*: `CHK-EFUSE-TMO-RD-STATUS-ARM`, `CHK-EFUSE-TMO-RD-STATUS-SET` hold after their compares. Enrolled in: `all`, `depth_efuse`.
 
 '''''
 
@@ -6077,16 +6091,17 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 . Hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, so a residual verdict from an earlier test cannot be counted.
 . Program the reset vector, release all four cores, then release `boot_stall`.
 . Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+. Compare the per-bank scratch read counters (`tb_cpu_scratch_bank_read_count`) snapshotted before step 2 and after step 4: every bank whose counter advanced is one of banks 0-3, and at least one did.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start, and every scratch bank the CPU read between the two counter snapshots is one of banks 0-3
 |===
 
-*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is part of the evidence: it is what the `smc_scratch_map_pkg` decode predicts for a 9 KB image, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
+*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is asserted from the per-bank scratch read counters: the `hello_world` link map ends at offset `0x8730` (code, data, four 4 KB stacks and the 2 KB heap), inside the first 128 KB group, which the `smc_scratch_map_pkg` decode places in banks 0-3, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
 
 '''''
 
@@ -6215,7 +6230,7 @@ For each of the two (target, lock) pairs:
 [cols=",",options="header",]
 |===
 |Group |Purpose
-|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Nine enrolled leaves are outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_state_fault_inject_test` (its condition is a testbench force on the eFuse and Zeroer state flops, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers; it runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the four `rtl_issue` reproducers whose job is to fail (`smc_gpio_irq_mask_deassert_test`, `smc_efuse_read_timeout_status_test`, `smc_log_engine_intr_mask_test`, `smc_i2c_intr_mask_test`)
+|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Seven enrolled leaves are outside it: `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime; each runs in its own group), and the five `rtl_issue` reproducers, whose job is to fail and which the weekly tier runs on their own row (`smc_deadspace_decode_test`, `smc_gpio_irq_mask_deassert_test`, `smc_i2c_intr_mask_test`, `smc_log_engine_intr_mask_test`, `smc_remap_cla_test`). `all` needs the RISC-V toolchain: the two `fw` leaves build a C image and the three dual-target leaves run the production ROM or a DV ROM image on the `SMC_DUAL` elaboration, so none of the five is toolchain-free
 |`avsbus_depth` |avsbus depth coverage
 |`axil` |axil coverage
 |`per_ip` |One-per-IP breadth run used for routine regression
@@ -6241,9 +6256,9 @@ For each of the two (target, lock) pairs:
 |`functional_depth` |core functional gate plus its depth companions
 |`pyuvm` |Scenarios with a PyUVM implementation
 |`reset` |reset coverage
-|`rtl_issue` |Reproducers for RTL defects; they fail on RTL that carries the defect and are held out of `all`
+|`rtl_issue` |Reproducers for RTL defects, each carrying `expect_fail` and `expect_fail_match`; the weekly tier runs the group on its own `regress.yml` row and grades the recorded failure as PASS, so the row goes red (`expected_fail_passed`) when a defect is fixed and the leaf moves to its feature testlist. Not in `all` or `hosted`
 |`smoke` |PR gate (`sim.yml`)
-|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the firmware and `SMC_DUAL` leaves
+|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the five leaves that need the RISC-V toolchain (the two `fw` leaves and the three dual-target leaves, which all declare a firmware or ROM image)
 |`uart` |uart coverage
 |`coverage_closure` |Leaves that close a feature no other testcase reaches
 |`depth` |cross-feature depth testcases
@@ -6254,16 +6269,16 @@ For each of the two (target, lock) pairs:
 [cols=",,",options="header",]
 |===
 |Limitation |Impact |Resolution Path
-|The SEP_IN local-fabric mask keeps only `addr[24:0]`, so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
+|The SEP_IN local-fabric fold keeps only the address bits below `SMC_BASE_CONFIG.REGION_SIZE` (`addr[23:0]` at the 16 MiB reset) under `LOCAL_BASE`, so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
 |Verilator is a 2-state simulator |Resolvability predicates (`is_resolvable`) cannot fail on a Verilator run, so X-propagation claims are not closed there |Retain a VCS or Xcelium run for the scenarios whose evidence depends on 4-state behaviour
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Needs the adopter's PLL/PVT blocks integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
-|`smc_deadspace_decode_test` measures wrap-to-live aliasing |Held out of `all`; the card does not claim sign-off PASS |Resolve the wrap-to-live aliasing decode contract
-|`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 |Held out of `all`; the card does not claim sign-off PASS |Fix the CLA deny-leg hang
-|`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top`, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers |Held out of `all`; the fail-closed recovery it scores runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse` |Enroll it once the checks score the reaction on `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL` and the Zeroer `CTRL_STATUS`
+|`smc_deadspace_decode_test` measures wrap-to-live aliasing: dead offsets in seven register windows wrap onto live registers with an OKAY response |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail`, so the defect has a graded measurement and the row goes red when the decode changes |Resolve the wrap-to-live aliasing decode contract (#585); the leaf then moves to its feature testlist with the `ci` tag
+|`smc_remap_cla_test` CLA deny leg: the unmapped in-window offset `+0x38` (0xC016_0038) completes with OKAY instead of SLVERR/DECERR |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail` |Resolve #1855, which rules whether an unmapped in-window CLA offset may complete OKAY, and decide the aperture's decode contract; the leaf then moves to its feature testlist with the `ci` tag
+|`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |Thirteen test modules written against this bench are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it

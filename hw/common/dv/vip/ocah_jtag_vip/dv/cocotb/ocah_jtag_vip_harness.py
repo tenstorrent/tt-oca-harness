@@ -63,8 +63,10 @@ __all__ = [
     "IDCODE",
     "IDCODE_MASK",
     "IDCODE_WIDTH",
+    "CHECKER_NEGATIVE_KNOB",
     "IR_WIDTH",
     "NEGATIVE_KNOB",
+    "NEVER_RECORDED_ID",
     "STATUS_OPCODE",
     "STATUS_WIDTH",
     "UNUSED_OPCODE",
@@ -91,6 +93,8 @@ STATUS_WIDTH = 8
 UNUSED_OPCODE = 0x0A
 BYPASS_OPCODE = (1 << IR_WIDTH) - 1
 NEGATIVE_KNOB = "OCAH_JTAG_SELFTEST_NEGATIVE"
+CHECKER_NEGATIVE_KNOB = "OCAH_CHECKER_SELFTEST_NEGATIVE"
+NEVER_RECORDED_ID = "CHK-NEVER-RECORDED"
 _SEED_ENV = "RANDOM_SEED"
 _SIGNAL_MAP = {name: f"{PREFIX}_{name}" for name in ("tck", "tms", "tdi", "tdo", "trst", "tdo_oen")}
 
@@ -106,9 +110,19 @@ class JtagHarness:
     checker: OcahJtagChecker
 
     async def stop(self) -> None:
-        """Stop the monitor and the reactive device."""
+        """Stop the monitor and the reactive device.
+
+        The monitor's swallowed-callback count is recorded on the test's
+        checker, so a subscriber exception the monitor logged cannot pass.
+        """
         await self.monitor.stop()
         await self.slave_agent.stop()
+        self.checker.expect_equal(
+            "CHK-JTAG-MON-CALLBACKS",
+            self.monitor.get_statistics()["callback_errors"],
+            0,
+            context="subscriber exceptions the monitor swallowed",
+        )
 
 
 def device_config(name: str = "harness_device") -> OcahJtagSlaveConfig:
@@ -145,8 +159,16 @@ async def build_stack(
     )
     tap.init_signals()
     monitor = OcahJtagMasterMonitor.from_prefix(dut, PREFIX, name="harness_monitor")
+    ids = list(required_ids)
+    if OcahKnobs.is_set(CHECKER_NEGATIVE_KNOB):
+        log.warning(
+            "NEGATIVE VALIDATION: required ID %s is never recorded; "
+            "CHECKER_SUMMARY must report missing=1",
+            NEVER_RECORDED_ID,
+        )
+        ids.append(NEVER_RECORDED_ID)
     checker = OcahJtagChecker(
-        name="ocah_jtag_harness", ir_width=IR_WIDTH, required_ids=required_ids, logger=log
+        name="ocah_jtag_harness", ir_width=IR_WIDTH, required_ids=ids, logger=log
     )
     if item_checks:
         checker.attach_monitor(monitor)

@@ -30,7 +30,11 @@ void send_cmd(int avs_cmd) {
     avs_cmd_reg.f.RAIL_SEL = 0xf; // broadcast
     avs_cmd_reg.f.CMD_CODE = avs_cmd;
     avs_cmd_reg.f.CMD_GRP = 0;
-    avs_cmd_reg.f.R_OR_W = 0; // TODO: R_OR_W direction for the read-type commands
+    // R_OR_W: 0x0 commits the CMD_DATA write, 0x2 is a read (avsbus_controller.rdl);
+    // current, temperature and version have no write form.
+    bool is_read_only = (avs_cmd == AVS_CMD_TYPE_CURRENT_READ) ||
+                        (avs_cmd == AVS_CMD_TYPE_TEMP_READ) || (avs_cmd == AVS_CMD_TYPE_VERSION);
+    avs_cmd_reg.f.R_OR_W = is_read_only ? 0x2 : 0x0;
     simputshex32("Writing AVS command = ", avs_cmd);
     write_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CMD_BASE_ADDR, avs_cmd_reg.w);
 }

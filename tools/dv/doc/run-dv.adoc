@@ -113,6 +113,11 @@ inventory (for example a VPLAN test-case count) honest.
 Tag::
 A label carried by tests, used by `--tag` as an OR filter.
 
+Expected failure::
+A test whose entry carries `expect_fail = "<reason>"`: it reproduces a filed
+defect and FAILS on a DUT that still carries it. The runner grades that FAIL
+as PASS and an observed PASS as FAIL (<<runner-expected-failures>>).
+
 Item::
 Any name accepted by `--items`: a test name or a group name.
 
@@ -364,6 +369,65 @@ python3 tools/dv/run_dv.py --dut dtp --items smoke --tag ci
 With `--items`, tags filter the expanded selection. Without `--items`, tags
 search the complete catalog.
 
+[[runner-expected-failures]]
+=== Expected failures
+
+A reproducer for a filed RTL defect is only evidence while someone runs it, and
+a regression that carries it is red every day it does its job. `expect_fail`
+resolves that without weakening the checker:
+
+[source,toml]
+----
+[[tests]]
+name = "smc_gpio_irq_mask_deassert_test"
+module = "smc_gpio_irq_mask_deassert_test"
+run_modes = ["smoke"]
+expect_fail = "#1602: clearing DATA_CTRL.interrupt_enable while a GPIO interrupt is asserted does not de-assert interrupt_o"
+----
+
+The value is the recorded reason and must be a non-empty string; `true` is
+rejected, because a flag with no reason cannot say when the entry should go.
+Grading applies per leaf on the `sim` and `regress` stages, after the parser
+policy has classified the log:
+
+* an observed `FAIL` is the recorded outcome and grades `PASS`, with `reason`
+  `expected_fail: <reason>`;
+* an observed `PASS` means the defect is gone and grades `FAIL`, in the
+  `expected_fail_passed` failure bucket -- move the test into its owning
+  feature testlist and drop the key;
+* `ERROR`, `TIMEOUT`, and `UNKNOWN` are not the recorded failure and keep
+  their status.
+
+The parser's `FAIL` says only that the leaf failed, not why. The leaf record
+therefore carries `observed_failures`: the message of every failure/error node
+in the leaf's `results/results.xml` (cocotb's `error_msg`, JUnit's `message`,
+or the node text), so a reader can compare what failed with the recorded
+reason. To make that comparison part of the grade, add `expect_fail_match`:
+
+[source,toml]
+----
+expect_fail = "#585: dead offsets wrap onto live registers with an OKAY response"
+expect_fail_match = "wrap_to_live=[1-9]"
+----
+
+With it, an observed `FAIL` grades `PASS` only when some observed failure
+message matches the regex (`re.search`); otherwise the leaf failed for a
+different reason than the one recorded and grades `FAIL` in the
+`expected_fail_mismatch` bucket, naming the first observed message. A leaf
+that recorded no failure message is a mismatch too. The key requires
+`expect_fail` and must compile as a Python regex.
+
+The leaf record carries `expected_fail` (`reason`, `observed_status`,
+`observed_reason`, `observed_failures`, `observed_buckets` -- the parser's
+failure bucket kinds and signatures -- and `match` when set) in its metadata
+and in the regression leaf summary, and the run-level `tests` summary counts
+graded leaves under `expected_failing`.
+The framework's own `results/results.xml` still records the observed
+failure; `result.json` is the graded, authoritative result. Keep such tests
+in a group of their own (for example `rtl_issue`) so they never feed a
+coverage regression as passes, and so the flip is visible as that group
+going red.
+
 === Targets and run modes
 
 Each selected test resolves a build target from its `target` field or the DUT
@@ -429,7 +493,8 @@ targets, modes, and DUT-specific overrides.
 
 |`<dut-dv-root>/testlists/*.toml`
 |Tests, groups, tags, targets, seeds, reseed counts, timeouts, runtime
-arguments, and optional firmware metadata.
+arguments, optional firmware metadata, and `expect_fail` /
+`expect_fail_match` entries.
 
 |`<dut-dv-root>/cov/config/<tool>/coverage_policy.toml`
 |Optional detailed coverage thresholds, exclusions, and hole dispositions;
@@ -1275,7 +1340,10 @@ Non-dry-run coverage-only replay requires an existing `result.json`. The runner
 recovers the original tool, rejects a mismatched `--tool`, preserves
 non-coverage stage history, and replaces the replayed coverage records. A dry
 run can render a placeholder plan without that file, but cannot restore the
-original tool or history.
+original tool or history. A run that did not finish (`tests.completed` is
+`false`, or the record carries an `interruption`) is refused with exit code
+`2`: coverage is graded over a complete regression only, so the leaves that
+happen to have run cannot produce a threshold verdict.
 
 Coverage merge/report accepts at most one known target and one known build
 fingerprint. A multi-target run cannot be merged as one coverage database;
@@ -1331,7 +1399,9 @@ relative `FILE` resolves against the repository root, like `--run-dir`.
 No simulator or report tool runs: the run tree is the only input, so the
 command works on a copied or downloaded run tree and on a host without the
 tool. `--dut` must equal the run's `flow`; `--tool` and `--framework` are
-recovered from `result.json` and must match when given. The only other
+recovered from `result.json` and must match when given. The run must have
+finished: an interrupted or truncated run (`tests.completed` is `false`) is
+refused with exit code `2`. The only other
 options accepted are `--overlay`, `--fail-under`, `--verbose`, and `--quiet`.
 
 The re-grade rewrites values only: `cov/report/coverage-details.json`,
@@ -1770,6 +1840,18 @@ keys, or authentication data.
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
+
+The `tests` summary counts the recorded leaves (`total`, `passing`,
+`failing`, `skipped`) and records whether the run finished: `leaves_planned`
+is the number of (test, seed) leaves the selection planned, `leaves_run` the
+number that executed (a leaf skipped after `--max-failures` did not), and
+`completed` is `true` only when the two are equal and the record is not a
+checkpoint. `pass_rate` is `passing / total` for a completed run and `null`
+otherwise: an interrupted or truncated run has no denominator, so it
+publishes no figure that reads as a grade. `regression.json` carries the same
+fields, with one difference in `total`: `result.json` counts a skipped leaf in
+`total` and in `skipped`, `regression.json` counts only leaves with a final
+status in `total` and reports skipped leaves in `skipped` alone.
 A formal run adds a `formal` object with proof totals
 (<<runner-formal-grading>>).
 When an adopter overlay was applied, its path is recorded under `overlay`
@@ -1800,6 +1882,18 @@ the signal rather than guessing which policy sent it. If termination prevents
 the final handler from running, the most recent atomic `UNKNOWN` checkpoint
 still preserves all completed leaves. Normal completion replaces all
 checkpoint-only fields with the ordinary final aggregate.
+
+Every checkpoint, running or interrupted, carries `tests.completed = false`
+and `tests.pass_rate = null`. A handled interruption also prints
+`incomplete run: N of M planned leaves ran, no pass rate` on the console
+instead of a pass count and writes one run-level `results/results.xml` with a
+single errored testcase (`type="interruption"`) naming the interruption, so a
+JUnit consumer does not read the finished leaves as the whole run. A run that
+stops early for any other reason (`--max-failures`, a failing leaf in a flat
+run, a build failure before the leaves) records `tests.completed = false` and
+`tests.pass_rate = null` and prints the same console note, but carries no
+`interruption` object and gets no run-level interruption testcase; its JUnit
+evidence is the leaf files it wrote.
 
 === Status and exit codes
 
@@ -1834,6 +1928,8 @@ For simulation, return code zero is not sufficient for `PASS`. The selected
 parser policy examines structured XML, hard-failure markers, required and
 failure patterns, framework summaries, and positive pass evidence. Missing or
 ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
+A leaf with `expect_fail` is graded after that classification: its `FAIL`
+becomes `PASS` and its `PASS` becomes `FAIL` (<<runner-expected-failures>>).
 
 For formal mode, the exit code is never the status source: task status lines,
 status files, and JUnit reports, or the app's summary file, are
@@ -1861,7 +1957,7 @@ contexts.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `smoke` and the three
+DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `hosted` and the three
 `cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
 budgets are sized for the standard runner. Nightly is not a merge gate; a red
 nightly run is a triage signal.
@@ -1873,9 +1969,13 @@ with `tier=weekly`
 reference-only Verilator coverage; SEP `cpu_stub` and SMU `sep0_all` add
 `--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
 runner, because their coverage-instrumented model builds exceed the standard
-runner's memory, and DTP reseeds three times on that runner. SMC `smoke` and
+runner's memory, and DTP reseeds three times on that runner. SMC `hosted` and
 the three `cross_trigger` benches' `all` groups run at three seeds with
-coverage. `--sim-jobs` follows the runner core count. The score is published
+coverage. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
+reproducers at one seed without coverage: every leaf carries `expect_fail`
+(<<runner-expected-failures>>), so the row is green while the filed defects
+stand and red the week one is fixed. `--sim-jobs` follows the runner core
+count. The score is published
 but does not determine test pass/fail. SEP, SMU, and DTP instrument
 line/branch/expression/user and SMC line/branch/user, none with toggle, and
 every coverage block compiles the generated model per file
@@ -1902,8 +2002,8 @@ recorded run identity unique for downstream trend history), gates on the
 native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
 `status` `PASS`). Coverage-enabled jobs additionally require a numeric score
 and recorded report/summary paths, but do not enforce a score threshold. The
-action uploads `dv-run-<dut>-<tool>-<tier>` (14-day retention, 30 for the
-weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
+action uploads `dv-run-<dut>-<tool>-<tier>` (`-<label>` appended for a
+labelled row; 14-day retention, 30 for the weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
 are excluded after merge while the merged coverage report and normalized
 summary remain. Explicit run directories never create or update the `latest`
 symlink.
@@ -2089,7 +2189,8 @@ The following behaviors are not part of the runner contract:
   documented coverage replay.
 * `--max-failures 0` satisfies the stop condition immediately and therefore
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
-  despite running no tests; use a positive threshold.
+  despite running no tests; the record says so (`tests.completed = false`,
+  `leaves_run = 0`, `pass_rate = null`). Use a positive threshold.
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
 * A DV root that carries a formal config and no sim config is not a DUT;
   formal views attach to selectable DUTs.
