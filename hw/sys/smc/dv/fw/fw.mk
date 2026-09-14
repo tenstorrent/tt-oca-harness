@@ -19,7 +19,7 @@ FW_INCLUDES := \
   -I$(FW_DIR)/include/metal/smc
 
 # OCCP master BFM library sources.  Compiled into libsmc.a so the rom-mode
-# tests (occp_sanity, occp_master) link them.  Sram tests link against the
+# tests (occp_sanity, occp_unsecure_boot_test, ...) link them.  Sram tests link against the
 # archive too but never call these functions; --gc-sections removes them from
 # sram ELFs at link time.
 FW_C_SRCS += \
@@ -83,7 +83,6 @@ FW_DEFAULT_TEST_MODE := sram
 # These are the master-BFM images the BL0 regression loads via +MASTER_BFM_ROM;
 # the BFM half drives the OCCP protocol against the DUT running the prod ROM.
 FW_TEST_MODE_occp_sanity := rom
-FW_TEST_MODE_occp_master := rom
 FW_TEST_MODE_occp_boot_sequence_status_test := rom
 FW_TEST_MODE_occp_comprehensive_error_verification_test := rom
 FW_TEST_MODE_occp_crc_err_injection_test := rom
@@ -91,7 +90,6 @@ FW_TEST_MODE_occp_interface_latch_test := rom
 FW_TEST_MODE_occp_interface_unlatch_test := rom
 FW_TEST_MODE_occp_invalid_cmd_test := rom
 FW_TEST_MODE_occp_invalid_length_field_test := rom
-FW_TEST_MODE_occp_jump := rom
 FW_TEST_MODE_occp_jump_invalid_region_test := rom
 FW_TEST_MODE_occp_jump_reject := rom
 FW_TEST_MODE_occp_max_size_transfer_test := rom
