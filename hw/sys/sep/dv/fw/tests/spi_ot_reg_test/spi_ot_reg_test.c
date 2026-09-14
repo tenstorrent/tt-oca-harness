@@ -17,10 +17,6 @@
  * 3. Write-readback for all RW registers
  * 4. Verify SW_RST singlepulse auto-clears to 0
  * 5. Verify STATUS.BYTEORDER=1 (LITTLE_ENDIAN parameter)
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_reg_test STACK=cgen,sim
- *
  */
 
 #include <stdint.h>
@@ -68,7 +64,6 @@ int main(void) {
     spi_controller__EVENT_ENABLE_t event_enable;
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
-
 
     /* -------------------------------------------------------------------
      * Step 1: Verify reset defaults

@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-// Licensed under the Apache License, Version 2.0, see LICENSE for details.
 //
 // AXI Clock Gating Snoop Module with Hysteresis
 //
@@ -22,180 +20,180 @@
 
 
 module axi_cg_snoop #(
-    parameter int unsigned OutstandingTx = 1,
-    parameter int unsigned DenyDelay = 1,
-    parameter int unsigned HystWidth = 6
+  parameter int unsigned OutstandingTx = 1,
+  parameter int unsigned DenyDelay = 1,
+  parameter int unsigned HystWidth = 6
 ) (
-    input  logic                    clk_i,
-    input  logic                    rst_ni,
+  input  logic                    clk_i,
+  input  logic                    rst_ni,
 
-    // AXI Write Address Channel Snoop
-    input  logic                    snoop_aw_valid_i,
-    input  logic                    snoop_aw_ready_i,
+  // AXI Write Address Channel Snoop
+  input  logic                    snoop_aw_valid_i,
+  input  logic                    snoop_aw_ready_i,
 
-    // AXI Write Data Channel Snoop
-    input  logic                    snoop_w_valid_i,
+  // AXI Write Data Channel Snoop
+  input  logic                    snoop_w_valid_i,
 
-    // AXI Write Response Channel Snoop
-    input  logic                    snoop_b_valid_i,
-    input  logic                    snoop_b_ready_i,
+  // AXI Write Response Channel Snoop
+  input  logic                    snoop_b_valid_i,
+  input  logic                    snoop_b_ready_i,
 
-    // AXI Read Address Channel Snoop
-    input  logic                    snoop_ar_valid_i,
-    input  logic                    snoop_ar_ready_i,
+  // AXI Read Address Channel Snoop
+  input  logic                    snoop_ar_valid_i,
+  input  logic                    snoop_ar_ready_i,
 
-    // AXI Read Data Channel Snoop
-    input  logic                    snoop_r_valid_i,
-    input  logic                    snoop_r_ready_i,
-    input  logic                    snoop_r_last_i,
+  // AXI Read Data Channel Snoop
+  input  logic                    snoop_r_valid_i,
+  input  logic                    snoop_r_ready_i,
+  input  logic                    snoop_r_last_i,
 
-    // Clock Gating Interface
-    input  logic                    kick_i,
-    input  logic                    test_clk_en_i,
-    input  logic [HystWidth-1:0]    hysteresis_i,
-    output logic                    clk_active_o,
-    output logic                    gated_clk_o,
+  // Clock Gating Interface
+  input  logic                    kick_i,
+  input  logic                    test_clk_en_i,
+  input  logic [HystWidth-1:0]    hysteresis_i,
+  output logic                    clk_active_o,
+  output logic                    gated_clk_o,
 
-    // Activity Indicator Output
-    output logic                    bus_active_o
+  // Activity Indicator Output
+  output logic                    bus_active_o
 );
 
-    `include "prim_assert.sv"
+  `include "prim_assert.sv"
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Parameter Validation
-    ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  // Parameter Validation
+  ////////////////////////////////////////////////////////////////////////////////
 
-    `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OutstandingTx >= 1)
-    `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DenyDelay >= 1)
-    `OCAH_OT_ASSERT_INIT(ValidHystWidth_A, HystWidth >= 1 && HystWidth <= 32)
+  `OCAH_OT_ASSERT_INIT(ValidOutstandingTx_A, OutstandingTx >= 1)
+  `OCAH_OT_ASSERT_INIT(ValidDenyDelay_A, DenyDelay >= 1)
+  `OCAH_OT_ASSERT_INIT(ValidHystWidth_A, HystWidth >= 1 && HystWidth <= 32)
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Internal Signals
-    ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  // Internal Signals
+  ////////////////////////////////////////////////////////////////////////////////
 
-    // Internal activity signal connecting AXI snoop to CG request
-    logic bus_active_internal;
+  // Internal activity signal connecting AXI snoop to CG request
+  logic bus_active_internal;
 
-    // Clock gating enable signal (active high, derived from qreq_n which is active low)
-    logic cg_enable_internal;
+  // Clock gating enable signal (active high, derived from qreq_n which is active low)
+  logic cg_enable_internal;
 
-    // Request to gate from AXI snoop
-    logic qreq_n;
+  // Request to gate from AXI snoop
+  logic qreq_n;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // AXI Bus Snooping Instance
-    ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  // AXI Bus Snooping Instance
+  ////////////////////////////////////////////////////////////////////////////////
 
-    prim_axi_snoop #(
-        .OutstandingTx (OutstandingTx)
-    ) u_axi_snoop (
-        .clk_i               (clk_i),
-        .rst_ni              (rst_ni),
+  prim_axi_snoop #(
+    .OutstandingTx(OutstandingTx)
+  ) u_axi_snoop (
+    .clk_i               (clk_i),
+    .rst_ni              (rst_ni),
 
-        // AXI Write Address Channel Snoop
-        .snoop_aw_valid_i    (snoop_aw_valid_i),
-        .snoop_aw_ready_i    (snoop_aw_ready_i),
+    // AXI Write Address Channel Snoop
+    .snoop_aw_valid_i    (snoop_aw_valid_i),
+    .snoop_aw_ready_i    (snoop_aw_ready_i),
 
-        // AXI Write Data Channel Snoop
-        .snoop_w_valid_i     (snoop_w_valid_i),
+    // AXI Write Data Channel Snoop
+    .snoop_w_valid_i     (snoop_w_valid_i),
 
-        // AXI Write Response Channel Snoop
-        .snoop_b_valid_i     (snoop_b_valid_i),
-        .snoop_b_ready_i     (snoop_b_ready_i),
+    // AXI Write Response Channel Snoop
+    .snoop_b_valid_i     (snoop_b_valid_i),
+    .snoop_b_ready_i     (snoop_b_ready_i),
 
-        // AXI Read Address Channel Snoop
-        .snoop_ar_valid_i    (snoop_ar_valid_i),
-        .snoop_ar_ready_i    (snoop_ar_ready_i),
+    // AXI Read Address Channel Snoop
+    .snoop_ar_valid_i    (snoop_ar_valid_i),
+    .snoop_ar_ready_i    (snoop_ar_ready_i),
 
-        // AXI Read Data Channel Snoop
-        .snoop_r_valid_i     (snoop_r_valid_i),
-        .snoop_r_ready_i     (snoop_r_ready_i),
-        .snoop_r_last_i      (snoop_r_last_i),
+    // AXI Read Data Channel Snoop
+    .snoop_r_valid_i     (snoop_r_valid_i),
+    .snoop_r_ready_i     (snoop_r_ready_i),
+    .snoop_r_last_i      (snoop_r_last_i),
 
-        // Activity Output (connected internally)
-        .bus_active_o        (bus_active_internal),
+    // Activity Output (connected internally)
+    .bus_active_o        (bus_active_internal),
 
-        // Completion / outstanding-count probes: unused here (consumed by
-        // axi_hang_detector). Left explicitly unconnected.
-        .complete_aw_o       (/* UNUSED */),
-        .complete_ar_o       (/* UNUSED */),
-        .req_count_q_o       (/* UNUSED */)
-    );
+    // Completion / outstanding-count probes: unused here (consumed by
+    // axi_hang_detector). Left explicitly unconnected.
+    .complete_aw_o       (/* UNUSED */),
+    .complete_ar_o       (/* UNUSED */),
+    .req_count_q_o       (/* UNUSED */)
+  );
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Clock Gating Request Instance
-    ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  // Clock Gating Request Instance
+  ////////////////////////////////////////////////////////////////////////////////
 
-    prim_cg_req #(
-        .DenyDelay (DenyDelay)
-    ) u_cg_req (
-        .clk_i        (clk_i),
-        .rst_ni       (rst_ni),
+  prim_cg_req #(
+    .DenyDelay(DenyDelay)
+  ) u_cg_req (
+    .clk_i        (clk_i),
+    .rst_ni       (rst_ni),
 
-        // Activity input (from AXI snoop module)
-        .qactive_i    (bus_active_internal),
+    // Activity input (from AXI snoop module)
+    .qactive_i    (bus_active_internal),
 
-        // Power Management Interface
-        .qaccept_ni   (clk_active_o),
-        .qdeny_i      (1'b0), // never deny
-        .qreq_no      (qreq_n)
-    );
+    // Power Management Interface
+    .qaccept_ni   (clk_active_o),
+    .qdeny_i      (1'b0), // never deny
+    .qreq_no      (qreq_n)
+  );
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Clock Gater with Hysteresis Instance
-    ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  // Clock Gater with Hysteresis Instance
+  ////////////////////////////////////////////////////////////////////////////////
 
-    // Convert qreq_n (active low) to enable signal (active high)
-    assign cg_enable_internal = !qreq_n;
+  // Convert qreq_n (active low) to enable signal (active high)
+  assign cg_enable_internal = !qreq_n;
 
-    prim_clk_gater_hysteresis #(
-        .HYST_WIDTH (HystWidth)
-    ) u_clk_gater (
-        .clk_i           (clk_i),
-        .rst_ni          (rst_ni),
+  prim_clk_gater_hysteresis #(
+    .HYST_WIDTH(HystWidth)
+  ) u_clk_gater (
+    .clk_i           (clk_i),
+    .rst_ni          (rst_ni),
 
-        // Activity and control signals
-        .busy_i          (bus_active_internal),
-        .enable_i        (cg_enable_internal),
-        .kick_i          (kick_i),
-        .test_clk_en_i   (test_clk_en_i),
+    // Activity and control signals
+    .busy_i          (bus_active_internal),
+    .enable_i        (cg_enable_internal),
+    .kick_i          (kick_i),
+    .test_clk_en_i   (test_clk_en_i),
 
-        // Hysteresis configuration
-        .hysteresis_i    (hysteresis_i),
+    // Hysteresis configuration
+    .hysteresis_i    (hysteresis_i),
 
-        // Clock outputs
-        .clk_active_o    (clk_active_o),
-        .gated_clk_o     (gated_clk_o)
-    );
+    // Clock outputs
+    .clk_active_o    (clk_active_o),
+    .gated_clk_o     (gated_clk_o)
+  );
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Output Assignments
-    ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  // Output Assignments
+  ////////////////////////////////////////////////////////////////////////////////
 
-    // Expose internal bus activity signal as module output
-    assign bus_active_o = bus_active_internal;
+  // Expose internal bus activity signal as module output
+  assign bus_active_o = bus_active_internal;
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // Assertions
-    ////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  // Assertions
+  ////////////////////////////////////////////////////////////////////////////////
 
-    // Only validate top-level interface signals that aren't already checked by sub-modules
-    // Sub-modules handle their own input validation
+  // Only validate top-level interface signals that aren't already checked by sub-modules
+  // Sub-modules handle their own input validation
 
-    // Validate clock gating interface (new signals not validated by sub-modules)
-    `OCAH_OT_ASSERT_KNOWN(KickKnown_A, kick_i, clk_i, !rst_ni)
-    `OCAH_OT_ASSERT_KNOWN(TestClkEnKnown_A, test_clk_en_i, clk_i, !rst_ni)
-    `OCAH_OT_ASSERT_KNOWN(HysteresisKnown_A, hysteresis_i, clk_i, !rst_ni)
+  // Validate clock gating interface (new signals not validated by sub-modules)
+  `OCAH_OT_ASSERT_KNOWN(KickKnown_A, kick_i, clk_i, !rst_ni)
+  `OCAH_OT_ASSERT_KNOWN(TestClkEnKnown_A, test_clk_en_i, clk_i, !rst_ni)
+  `OCAH_OT_ASSERT_KNOWN(HysteresisKnown_A, hysteresis_i, clk_i, !rst_ni)
 
-    // Validate that hysteresis value is within reasonable bounds
-    `OCAH_OT_ASSERT(HysteresisBounds_A, hysteresis_i <= {HystWidth{1'b1}}, clk_i, !rst_ni)
+  // Validate that hysteresis value is within reasonable bounds
+  `OCAH_OT_ASSERT(HysteresisBounds_A, hysteresis_i <= {HystWidth{1'b1}}, clk_i, !rst_ni)
 
-    // Validate output signals consistency
-    `OCAH_OT_ASSERT_KNOWN(ClkActiveKnown_A, clk_active_o, clk_i, !rst_ni)
-    `OCAH_OT_ASSERT_KNOWN(BusActiveKnown_A, bus_active_o, clk_i, !rst_ni)
+  // Validate output signals consistency
+  `OCAH_OT_ASSERT_KNOWN(ClkActiveKnown_A, clk_active_o, clk_i, !rst_ni)
+  `OCAH_OT_ASSERT_KNOWN(BusActiveKnown_A, bus_active_o, clk_i, !rst_ni)
 
-    // Functional relationship checks
-    `OCAH_OT_ASSERT(ActivityConsistency_A, bus_active_o == bus_active_internal, clk_i, !rst_ni)
+  // Functional relationship checks
+  `OCAH_OT_ASSERT(ActivityConsistency_A, bus_active_o == bus_active_internal, clk_i, !rst_ni)
 
 endmodule

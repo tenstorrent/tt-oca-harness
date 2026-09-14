@@ -5,16 +5,26 @@
 from __future__ import annotations
 
 import pyuvm
-
-from smc_base_test import smc_base_test
 from seq_lib.smc_irq_during_powergood_glitch_test_seq import (
     _OneShot,
     smc_irq_during_powergood_glitch_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_irq_during_powergood_glitch_test(smc_base_test):
+    required_evidence = ("CHK-IRQ-PG-GLITCH-NO-SPURIOUS",)
+    min_evidence = 1
+
+    # The claimed property is "no spurious interrupt on any of the three
+    # observed aggregates" -- a pure negative check that a tied-off or mis-bound
+    # probe satisfies. These controls run before the glitch scenario, prove each
+    # aggregate able to read 1 through its real producer, restore idle, and
+    # credit the liveness ledger the scoreboard consults, so the glitch-window
+    # zero readings become distinguishable from a dead probe
+    # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+    probe_positive_controls = ("sync_irq", "uart_irq_any", "gpio_irq_any")
 
     async def run_scenario(self) -> None:
         seq = smc_irq_during_powergood_glitch_test_seq("irq_during_pg_glitch_seq")
@@ -22,6 +32,7 @@ class smc_irq_during_powergood_glitch_test(smc_base_test):
         async def _mk(sequencer):
             async def dispatch(item):
                 await _OneShot(item, "os").start(sequencer)
+
             return dispatch
 
         seq.dispatch_irq = await _mk(self.env.irq_agent.sequencer)

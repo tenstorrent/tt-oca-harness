@@ -18,7 +18,6 @@ from .config import load_toml
 from .coverage_model import CoverageDetails, CoverageObservation, percentage
 from .models import ConfigError
 
-
 POLICY_SCHEMA_VERSION = 1
 ALLOWED_CATEGORIES = {
     "missing_test",
@@ -97,6 +96,7 @@ class HoleRule:
     issues: list[str]
     expected_matches: int
     selectors: list[dict[str, Any]]
+    expired: bool = False
 
 
 @dataclass
@@ -153,9 +153,7 @@ def _string_list(value: Any, where: str) -> list[str]:
 def _validate_issue_urls(values: list[str], where: str) -> None:
     for value in values:
         if not GITHUB_ISSUE_RE.fullmatch(value):
-            raise ConfigError(
-                f"{where} must contain full GitHub issue URLs, got `{value}`"
-            )
+            raise ConfigError(f"{where} must contain full GitHub issue URLs, got `{value}`")
 
 
 def safe_issue_url(value: str) -> bool:
@@ -208,9 +206,7 @@ def _load_native_files(
     policy_path: Path,
 ) -> list[NativePolicyFile]:
     files: list[NativePolicyFile] = []
-    for index, table in enumerate(
-        _as_table_list(data.get("native_files"), "native_files")
-    ):
+    for index, table in enumerate(_as_table_list(data.get("native_files"), "native_files")):
         where = f"{policy_path} [[native_files]] #{index + 1}"
         raw_path = Path(_required_string(table, "path", where)).expanduser()
         resolved = raw_path if raw_path.is_absolute() else policy_path.parent / raw_path
@@ -264,14 +260,11 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
         for field_name, date_value in (("date", date), ("expires", expires)):
             if date_value and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_value):
                 raise ConfigError(f"{where}.{field_name} must use YYYY-MM-DD")
-        if (
+        expired = bool(
             status == "accepted"
             and expires
             and calendar_date.fromisoformat(expires) < calendar_date.today()
-        ):
-            raise ConfigError(
-                f"{where}: accepted waiver/exclusion expired on {expires}"
-            )
+        )
         issues = _string_list(table.get("issues"), f"{where}.issues")
         _validate_issue_urls(issues, f"{where}.issues")
         if status == "open" and disposition in ACTIONABLE_DISPOSITIONS and not issues:
@@ -291,15 +284,11 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
             raise ConfigError(f"{where}.expected_matches must be a positive integer")
         selectors = _as_table_list(table.get("native"), f"{where}.native")
         if not selectors:
-            raise ConfigError(
-                f"{where}: at least one [[holes.native]] selector is required"
-            )
+            raise ConfigError(f"{where}: at least one [[holes.native]] selector is required")
         for selector in selectors:
             unknown = sorted(set(selector) - SELECTOR_FIELDS)
             if unknown:
-                raise ConfigError(
-                    f"{where}: unsupported selector key(s): {', '.join(unknown)}"
-                )
+                raise ConfigError(f"{where}: unsupported selector key(s): {', '.join(unknown)}")
             if not selector:
                 raise ConfigError(f"{where}: empty native selector is not allowed")
         holes.append(
@@ -318,6 +307,7 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
                 issues=issues,
                 expected_matches=expected,
                 selectors=selectors,
+                expired=expired,
             )
         )
     return holes
@@ -376,6 +366,16 @@ def native_policy_manifest(policy: CoveragePolicy | None) -> list[dict[str, Any]
     ]
 
 
+def expired_holes(policy: CoveragePolicy | None) -> list[HoleRule]:
+    if policy is None:
+        return []
+    return [rule for rule in policy.holes if rule.expired]
+
+
+def lapsed_warning(rule: HoleRule) -> str:
+    return f"{rule.id} expired on {rule.expires}; treated as open"
+
+
 def _selector_matches(
     observation: CoverageObservation,
     selector: dict[str, Any],
@@ -411,21 +411,23 @@ def apply_coverage_policy(
         return details
 
     claimed: dict[str, str] = {}
+    lapsed: list[str] = []
     for rule in policy.holes:
         matches = [
             observation
             for observation in details.observations
-            if any(
-                _selector_matches(observation, selector) for selector in rule.selectors
-            )
+            if any(_selector_matches(observation, selector) for selector in rule.selectors)
         ]
         if len(matches) != rule.expected_matches:
             raise ConfigError(
                 f"{policy.path}: hole `{rule.id}` matched {len(matches)} observation(s), "
                 f"expected {rule.expected_matches}"
             )
+        # An accepted waiver past its `expires` date grades as open; the observation keeps
+        # the rule's identity and disposition.
+        status = "open" if rule.expired else rule.status
         if (
-            rule.status == "accepted"
+            status == "accepted"
             and rule.disposition in {"waive", "exclude_scope"}
             and any(observation.covered for observation in matches)
         ):
@@ -442,18 +444,23 @@ def apply_coverage_policy(
             observation.policy_id = rule.id
             observation.category = rule.category
             observation.disposition = rule.disposition
-            observation.status = rule.status
+            observation.status = status
             observation.confidence = rule.confidence
             observation.rationale = rule.rationale
             observation.owner = rule.owner
             observation.reviewer = rule.reviewer
             observation.issues = list(rule.issues)
+        if rule.expired:
+            lapsed.append(lapsed_warning(rule))
         application["matched"].append(
             {
                 "policy_id": rule.id,
                 "observation_ids": [observation.id for observation in matches],
             }
         )
+    if lapsed:
+        application["warnings"] = [*application["warnings"], *lapsed]
+        details.warnings = [*details.warnings, *lapsed]
 
     details.policy_fingerprint = policy.sha256
     details.scope_fingerprint = hashlib.sha256(
@@ -486,9 +493,7 @@ def evaluate_thresholds(
         ]
         if rule.scope != "*":
             if details.observations_complete and scoped_observations:
-                covered = sum(
-                    1 for observation in scoped_observations if observation.covered
-                )
+                covered = sum(1 for observation in scoped_observations if observation.covered)
                 excluded = sum(
                     1
                     for observation in scoped_observations
@@ -505,16 +510,10 @@ def evaluate_thresholds(
                 percent = None
         else:
             records = [
-                metric
-                for metric in details.metrics
-                if metric.metric_family == rule.metric_family
+                metric for metric in details.metrics if metric.metric_family == rule.metric_family
             ]
             percent_values = [
-                (
-                    metric.raw_percent
-                    if rule.population == "raw"
-                    else metric.effective_percent
-                )
+                (metric.raw_percent if rule.population == "raw" else metric.effective_percent)
                 for metric in records
             ]
             available = [value for value in percent_values if value is not None]

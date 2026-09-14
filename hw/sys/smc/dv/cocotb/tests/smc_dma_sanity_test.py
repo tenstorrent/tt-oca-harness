@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_dma_sanity_test_seq import smc_dma_sanity_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -22,6 +22,13 @@ class smc_dma_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Stimulus floor set below the run-to-run minimum: the directed body
+            # (output-fabric pass-all programming plus the DMA descriptor writes
+            # and trigger) is fixed, and the DMA-DONE completion poll is a
+            # timing-dependent remainder. Literal here, not read from
+            # `seq.accesses`: a floor that shrinks with the sequence cannot
+            # catch a sequence that silently stops short.
+            min_csr_accesses=18,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

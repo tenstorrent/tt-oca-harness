@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_jtag2axi_decode_error_decerr_read_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from env.dtp_types import DtpJtag2AxiStatus
 from seq_lib.dtp_jtag2axi_robustness_test_seq import dtp_jtag2axi_robustness_test_seq
@@ -11,8 +10,8 @@ from seq_lib.dtp_jtag2axi_robustness_test_seq import dtp_jtag2axi_robustness_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_decode_error_decerr_read_test(dtp_base_test):
-    # Directed one-pass scenario: the DECERR decode path is exercised on all
-    # three JTAG2AXI targets with recovery ops; randomized address/data/series
+    # The DECERR decode path is exercised on all three JTAG2AXI targets with
+    # recovery ops; randomized address/data/series
     # coverage of the same bridge lives in the jtag2axi random/mixed sibling
     # scenarios (e.g. dtp_jtag2axi_decode_error_mixed_test).
     #
@@ -36,9 +35,9 @@ class dtp_jtag2axi_decode_error_decerr_read_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_robustness_test_seq,
             "decode_error_decerr_read",
-            specific_env="DTP_JTAG2AXI_DECODE_ERROR_DECERR_READ_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_DECODE_ERROR_DECERR_READ_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="decode_error_decerr_read",
         )
         for seq in sequences:

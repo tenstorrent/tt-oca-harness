@@ -3,6 +3,7 @@
 
 import sys
 
+
 def gen_ecc(data_in):
     # The word which ECC will be calculated
     word_in = data_in
@@ -22,20 +23,22 @@ def gen_ecc(data_in):
     edc_tmp = [0] * 8
     for i, mask in enumerate(masks):
         masked_bits = word_in & mask
-        edc_tmp[i] = bin(masked_bits).count('1') % 2  # XOR operation by counting '1's and taking modulo 2
+        edc_tmp[i] = (
+            bin(masked_bits).count("1") % 2
+        )  # XOR operation by counting '1's and taking modulo 2
 
     # Calculate overall parity
-    edc_tmp[7] = bin(int(''.join(str(bit) for bit in edc_tmp), 2) << 64 | word_in).count('1') % 2
+    edc_tmp[7] = bin(int("".join(str(bit) for bit in edc_tmp), 2) << 64 | word_in).count("1") % 2
 
     # Convert the ecc list of booleans back to an integer
     ecc = edc_tmp[::-1]
-    ecc_int = int(''.join(str(int(bit)) for bit in ecc), 2)
+    ecc_int = int("".join(str(int(bit)) for bit in ecc), 2)
 
     return ecc_int
 
 
 def process_file(input_file_path, output_file_path):
-    with open(input_file_path, 'rb') as input_file, open(output_file_path, 'w') as output_file:
+    with open(input_file_path, "rb") as input_file, open(output_file_path, "w") as output_file:
         while True:
             # Read 32-bit (4 bytes) from the file
             word_bytes = input_file.read(8)
@@ -43,7 +46,7 @@ def process_file(input_file_path, output_file_path):
                 break  # End of file
 
             # Convert bytes to integer
-            word = int.from_bytes(word_bytes, byteorder='little', signed=False)
+            word = int.from_bytes(word_bytes, byteorder="little", signed=False)
 
             # Generate ECC for the 64-bit word
             ecc = gen_ecc(word)
@@ -52,6 +55,7 @@ def process_file(input_file_path, output_file_path):
 
             # Write the original word + 8 bit ECC to the output file. Don't omit leading zeros
             output_file.write(f"{prot_word:016X}\n")
+
 
 # This script converts a binary file into a hex file with SECDED ECC that follows Rocketchips ECC formula
 # Example usage of this can be found in firmware/Makefile on line 72

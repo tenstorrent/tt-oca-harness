@@ -33,101 +33,100 @@ module sep_cpu
   import sep_pkg::*;
   import el2_pkg::*;
 #(
-`include "el2_param.vh"
+  `include "el2_param.vh"
 ) (
-    input logic clk_i,
-    input logic rst_ni,
-    input logic dbg_rstb_i,  // EL2 debugger reset
+  input logic clk_i,
+  input logic rst_ni,
+  input logic dbg_rstb_i,  // EL2 debugger reset
 
-    input  logic jtag_tck,    // JTAG clk
-    input  logic jtag_tms,    // JTAG TMS
-    input  logic jtag_tdi,    // JTAG tdi
-    input  logic jtag_trst_n, // JTAG Reset
-    output logic jtag_tdo,    // JTAG TDO
-    output logic jtag_tdoEn,  // JTAG Test Data Output enable
+  input  logic jtag_tck,    // JTAG clk
+  input  logic jtag_tms,    // JTAG TMS
+  input  logic jtag_tdi,    // JTAG tdi
+  input  logic jtag_trst_n, // JTAG Reset
+  output logic jtag_tdo,    // JTAG TDO
+  output logic jtag_tdoEn,  // JTAG Test Data Output enable
 
-    // external MPC halt/run interface
-    input  logic mpc_debug_halt_req, // Async halt request
-    input  logic mpc_debug_run_req,  // Async run request
-    input  logic mpc_reset_run_req,  // Run/halt after reset
-    output logic mpc_debug_halt_ack, // Halt ack
-    output logic mpc_debug_run_ack,  // Run ack
-    output logic debug_brkpt_status, // debug breakpoint
+  // external MPC halt/run interface
+  input  logic mpc_debug_halt_req, // Async halt request
+  input  logic mpc_debug_run_req,  // Async run request
+  input  logic mpc_reset_run_req,  // Run/halt after reset
+  output logic mpc_debug_halt_ack, // Halt ack
+  output logic mpc_debug_run_ack,  // Run ack
+  output logic debug_brkpt_status, // debug breakpoint
 
-    input  logic i_cpu_halt_req,      // Async halt req to CPU
-    output logic o_cpu_halt_ack,      // core response to halt
-    output logic o_cpu_halt_status,   // 1'b1 indicates core is halted
-    output logic o_debug_mode_status, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-    input  logic i_cpu_run_req,       // Async restart req to CPU
-    output logic o_cpu_run_ack,       // Core response to run req
+  input  logic i_cpu_halt_req,      // Async halt req to CPU
+  output logic o_cpu_halt_ack,      // core response to halt
+  output logic o_cpu_halt_status,   // 1'b1 indicates core is halted
+  output logic o_debug_mode_status, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+  input  logic i_cpu_run_req,       // Async restart req to CPU
+  output logic o_cpu_run_ack,       // Core response to run req
 
-    // Excluding from coverage as usage is determined by the integrator of the VeeR core.
-    // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
-    input logic test_en_i,  // DFT test-enable
+  // Excluding from coverage as usage is determined by the integrator of the VeeR core.
+  // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
+  input logic test_en_i,  // DFT test-enable
 
-    // DMI port for uncore
-    input  logic        dmi_core_enable,
-    input  logic        dmi_uncore_enable,
-    output logic        dmi_uncore_en,
-    output logic        dmi_uncore_wr_en,
-    output logic [ 6:0] dmi_uncore_addr,
-    output logic [31:0] dmi_uncore_wdata,
-    input  logic [31:0] dmi_uncore_rdata,
-    output logic        dmi_active,
+  // DMI port for uncore
+  input  logic        dmi_core_enable,
+  input  logic        dmi_uncore_enable,
+  output logic        dmi_uncore_en,
+  output logic        dmi_uncore_wr_en,
+  output logic [6:0]  dmi_uncore_addr,
+  output logic [31:0] dmi_uncore_wdata,
+  input  logic [31:0] dmi_uncore_rdata,
+  output logic        dmi_active,
 
-    input logic [31:1] rst_vec,  // PC to jump to @ reset (unused: no CPU in the stub)
-    input logic [31:1] nmi_vec,  // PC to jump to @ NMI
-    input logic [31:1] jtag_id,
+  input logic [31:1] rst_vec,  // PC to jump to @ reset (unused: no CPU in the stub)
+  input logic [31:1] nmi_vec,  // PC to jump to @ NMI
+  input logic [31:1] jtag_id,
 
-    // IRQs
-    input logic                       nmi_int,
-    input logic                       timer_int,
-    input logic                       soft_int,
-    input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
+  // IRQs
+  input logic                       nmi_int,
+  input logic                       timer_int,
+  input logic                       soft_int,
+  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
 
-    output sep_cpu_trace_t sep_cpu_trace,
+  output sep_cpu_trace_t sep_cpu_trace,
 
-    output logic iccm_ecc_single_error,
-    output logic iccm_ecc_double_error,
-    output logic dccm_ecc_single_error,
-    output logic dccm_ecc_double_error,
+  output logic iccm_ecc_single_error,
+  output logic iccm_ecc_double_error,
+  output logic dccm_ecc_single_error,
+  output logic dccm_ecc_double_error,
 
-    output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
-    output logic dec_tlu_perfcnt1,
-    output logic dec_tlu_perfcnt2,
-    output logic dec_tlu_perfcnt3,
+  output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
+  output logic dec_tlu_perfcnt1,
+  output logic dec_tlu_perfcnt2,
+  output logic dec_tlu_perfcnt3,
 
-  `ifdef RV_LOCKSTEP_ENABLE
-    input  logic disable_corruption_detection_i,
-    input  logic lockstep_err_injection_en_i,
-    output logic corruption_detected_o,
-  `endif
+  // Unconditional, matching sep_cpu: the port footprint does not depend on
+  // the lockstep build define.
+  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
+  output sep_pkg::sep_lockstep_status_t lockstep_status_o,
 
-    // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
-    output sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
-    input  sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
+  // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
+  output sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
+  input  sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
 
-    // AXI interfaces (IFU split into ROM and SRAM via internal demux)
-    output sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
+  // AXI interfaces (IFU split into ROM and SRAM via internal demux)
+  output sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
 
-    output sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
 
-    output sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
 
-    output sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
 
-    output sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
-    input  sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
+  output sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
+  input  sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
 
-    input  sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
-    output sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
+  input  sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
+  output sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
 
-    input  logic [31:0]                 sep_local_base_addr_i,
-    input  logic [31:0]                 sep_region_size_i   // unused: alias remap lives in the real CPU wrapper
+  input  logic [31:0]                 sep_local_base_addr_i,
+  input  logic [31:0]                 sep_region_size_i   // unused: alias remap lives in the real CPU wrapper
 );
 
   // -------------------------------------------------------------------------
@@ -137,11 +136,10 @@ module sep_cpu
   sep_32_64_3_12_axi_req_t  lsu_axi_req;   // driven below from the tb cocotb master
   sep_32_64_3_12_axi_resp_t lsu_axi_resp;  // tb reads this net; driven by demux below
 
-  // The stub is the SOLE driver of the LSU master (no VeeR core), so drive the
-  // request directly from the tb's assembled cocotb-AXI struct via an upward
-  // reference instead of a tb-side `force`. This keeps lsu_axi_req single-driven
-  // -- `force` is only needed to override a real driver, which the stub does not
-  // have, and it is also a Verilator limitation we avoid here.
+  // The stub is the SOLE driver of the LSU master (no VeeR core), so the
+  // request is driven from the tb's assembled cocotb-AXI struct through an
+  // upward reference and lsu_axi_req stays single-driven; Verilator cannot
+  // force a whole request struct.
   // (Do NOT assign lsu_axi_resp - it is driven by the LSU demux below.)
   assign lsu_axi_req = sep_uvm_top.lsu_req_drive;
 
@@ -247,9 +245,10 @@ module sep_cpu
   assign dec_tlu_perfcnt2    = 1'b0;
   assign dec_tlu_perfcnt3    = 1'b0;
 
-`ifdef RV_LOCKSTEP_ENABLE
-  assign corruption_detected_o = 1'b0;
-`endif
+  assign lockstep_status_o = '0;
+
+  logic unused_lockstep_ctrl;
+  assign unused_lockstep_ctrl = |lockstep_ctrl_i;
 
   // TCM (ICCM/DCCM) request to memory macros - idle (no core)
   assign sep_cpu_tcm_req_o   = '0;

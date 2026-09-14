@@ -87,6 +87,7 @@ class OcahJtagMasterMonitor:
             self.bus = JTAGBus.from_entity(_JtagIntfProxy(jtag_intf, smap))
 
         self._callbacks: list[Callable[[OcahJtagScanItem], None]] = []
+        self.callback_errors = 0
         self._ir_callbacks: list[Callable[[OcahJtagScanItem], None]] = []
         self._dr_callbacks: list[Callable[[OcahJtagScanItem], None]] = []
         self._ir_history: list[OcahJtagScanItem] = []
@@ -158,10 +159,10 @@ class OcahJtagMasterMonitor:
             "resets": self._resets,
             "current_state": self._state.name,
             "current_instruction": self._active_instruction,
+            "callback_errors": self.callback_errors,
         }
 
     async def _run(self) -> None:
-        current_kind: str | None = None
         tdi_value = 0
         tdo_value = 0
         bit_count = 0
@@ -182,17 +183,14 @@ class OcahJtagMasterMonitor:
             if hasattr(self.bus, "trst") and _logic_int(self.bus.trst, 1) == 0:
                 self._state = OcahJtagState.TEST_LOGIC_RESET
                 self._resets += 1
-                current_kind = None
                 tdi_value = tdo_value = bit_count = 0
                 continue
 
             if previous == OcahJtagState.CAPTURE_IR:
-                current_kind = "IR"
                 start_time = _time_ns()
                 start_state = previous
                 tdi_value = tdo_value = bit_count = 0
             elif previous == OcahJtagState.CAPTURE_DR:
-                current_kind = "DR"
                 start_time = _time_ns()
                 start_state = previous
                 tdi_value = tdo_value = bit_count = 0
@@ -223,7 +221,6 @@ class OcahJtagMasterMonitor:
                         source=self.name,
                     )
                 )
-                current_kind = None
             elif previous == OcahJtagState.SHIFT_DR and nxt == OcahJtagState.EXIT1_DR:
                 self._publish(
                     OcahJtagScanItem(
@@ -239,9 +236,10 @@ class OcahJtagMasterMonitor:
                         source=self.name,
                     )
                 )
-                current_kind = None
 
-            if previous == OcahJtagState.UPDATE_IR and pending_ir is not None:
+            if previous == OcahJtagState.UPDATE_IR:
+                # Without a Shift-IR cycle the register latches its
+                # device-specific Capture-IR pattern, unknown here.
                 self._active_instruction = pending_ir
                 pending_ir = None
 
@@ -256,5 +254,10 @@ class OcahJtagMasterMonitor:
         for callback in callbacks:
             try:
                 callback(item)
+            except AssertionError:
+                # A checker verdict is never swallowed; the retained finding
+                # still exists for aggregate mode.
+                raise
             except Exception as exc:  # noqa: BLE001
+                self.callback_errors += 1
                 self.log.error("Exception in JTAG monitor callback %s: %s", callback, exc)

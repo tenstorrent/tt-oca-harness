@@ -20,6 +20,7 @@ from .ocah_jtag_checker import OcahJtagChecker
 from .ocah_jtag_master_driver import OcahJtagMasterDriver
 from .ocah_jtag_master_monitor import OcahJtagMasterMonitor
 from .ocah_jtag_ref_model import TLR_TMS_ONES
+from .ocah_jtag_state import OcahJtagState
 
 __all__ = ["OcahJtagMasterSequence"]
 
@@ -56,9 +57,29 @@ class OcahJtagMasterSequence:
         await self.tap.reset_tap(cycles=max(cycles, TLR_TMS_ONES))
         self.checker.ref_model.reset()
 
+    async def step(self, tms: int, tdi: int = 0) -> int:
+        """Drive one TCK cycle with ``tms``/``tdi`` and return sampled TDO."""
+        return await self.tap.step(tms, tdi)
+
     async def step_tms(self, tms: int) -> int:
         """Drive one raw TMS cycle and return sampled TDO."""
         return await self.tap.step_tms(tms)
+
+    def sync_model(self, state: OcahJtagState | str, *, instruction: int | None = None) -> None:
+        """Re-align the driver's tracked state and the checker's reference model."""
+        self.tap.sync_model(state, instruction=instruction)
+        self.checker.ref_model.sync(state)
+
+    async def assert_trst(self, *, tck_cycles: int = 1) -> None:
+        """Assert TRST with ``tck_cycles`` of TMS high and re-baseline the reference model."""
+        await self.tap.assert_trst(tck_cycles=tck_cycles)
+        self.checker.ref_model.reset()
+
+    async def release_trst(self, *, tck_cycles: int = 0) -> None:
+        """Release TRST, then step ``tck_cycles`` of TMS high through the reference model."""
+        await self.tap.release_trst(tck_cycles=tck_cycles)
+        for _ in range(max(int(tck_cycles), 0)):
+            self.checker.ref_model.step(1)
 
     async def goto_state(self, state) -> None:
         """Navigate to a TAP state using a shortest TMS path."""
@@ -96,9 +117,7 @@ class OcahJtagMasterSequence:
     ) -> int:
         """Read IDCODE and emit CHK-IDCODE-RAW / CHK-IDCODE-MARKER evidence."""
         idcode = await self.tap.read_idcode()
-        self.checker.expect_equal(
-            "CHK-IDCODE-RAW", idcode, expected_idcode, context=context
-        )
+        self.checker.expect_equal("CHK-IDCODE-RAW", idcode, expected_idcode, context=context)
         self.checker.expect_equal(
             "CHK-IDCODE-MARKER",
             idcode & 0x1,
@@ -127,22 +146,18 @@ class OcahJtagMasterSequence:
         )
         return observed
 
-    def check_last_scan_length(self, *, is_ir: bool, expected_width: int, context: str = "") -> None:
+    def check_last_scan_length(
+        self, *, is_ir: bool, expected_width: int, context: str = ""
+    ) -> None:
         """Emit CHK-SCAN-*-LEN for the newest monitor-reconstructed scan."""
         if self.monitor is None:
             raise RuntimeError("scan-length checks require a monitor")
-        items = (
-            self.monitor.get_ir_transactions()
-            if is_ir
-            else self.monitor.get_dr_transactions()
-        )
+        items = self.monitor.get_ir_transactions() if is_ir else self.monitor.get_dr_transactions()
         if not items:
             raise AssertionError(
                 f"no reconstructed {'IR' if is_ir else 'DR'} scan observed ({context})"
             )
-        self.checker.check_scan_length(
-            items[-1], expected_width=expected_width, context=context
-        )
+        self.checker.check_scan_length(items[-1], expected_width=expected_width, context=context)
 
     def finalize(self) -> None:
         """Finalize retained findings and required named evidence."""

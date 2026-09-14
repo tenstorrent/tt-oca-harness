@@ -2,16 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 import logging
-
-import cocotb
-from cocotb.clock import Clock
-from cocotb.triggers import FallingEdge, with_timeout, Timer, ClockCycles, RisingEdge
-from cocotb.handle import Force
-from cocotb.regression import TestFactory
-from cocotbext.axi import AxiBus, AxiMaster, AxiRam, AxiLiteBus, AxiLiteMaster
 import os
 import random
 import sys
+from typing import Callable
+
+import cocotb
+from cocotb.clock import Clock
+from cocotb.regression import TestFactory
+from cocotb.triggers import ClockCycles, with_timeout
+from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
 # get register names
 sys.path.append(os.path.join(os.path.dirname(__file__), "../data/registers/py_headers"))
@@ -28,9 +28,7 @@ MAILBOX_WIDTH = 64
 axil_master = None
 
 
-async def axil_write(
-    dut, addr: int, data: int, mask=2 ** (DATA_WIDTH // 8) - 1
-) -> None:
+async def axil_write(dut, addr: int, data: int, mask=2 ** (DATA_WIDTH // 8) - 1) -> None:
     """Write to AXI-Lite using cocotbext-axi AxiLiteMaster"""
     global axil_master
     await axil_master.write(addr, data.to_bytes(DATA_WIDTH // 8, byteorder="little"))
@@ -100,9 +98,7 @@ async def setup_test(dut, clock_period_ns: int):
     axil_bus = AxiLiteBus.from_prefix(dut, "")
 
     # Create AXI-Lite master
-    axil_master = AxiLiteMaster(
-        axil_bus, dut.clk_i, dut.rst_ni, reset_active_level=False
-    )
+    axil_master = AxiLiteMaster(axil_bus, dut.clk_i, dut.rst_ni, reset_active_level=False)
 
     # Allow AXI master to settle after creation
     await ClockCycles(dut.clk_i, 10)
@@ -148,20 +144,14 @@ async def mailbox_sanity_test(dut):
     irq_en.f.wtirq = 1
     irq_en.f.rtirq = 1
     for i in range(NUM_MAILBOXES):
-        await reg_write(
-            dut, OUTBOUND_MAILBOX_0_WIRQT_REG_ADDR + (0x1000 * i), WIRQT.val
-        )
+        await reg_write(dut, OUTBOUND_MAILBOX_0_WIRQT_REG_ADDR + (0x1000 * i), WIRQT.val)
         await reg_write(dut, INBOUND_MAILBOX_0_WIRQT_REG_ADDR + (0x1000 * i), WIRQT.val)
 
-        await reg_write(
-            dut, OUTBOUND_MAILBOX_0_RIRQT_REG_ADDR + (0x1000 * i), RIRQT.val
-        )
+        await reg_write(dut, OUTBOUND_MAILBOX_0_RIRQT_REG_ADDR + (0x1000 * i), RIRQT.val)
         await reg_write(dut, INBOUND_MAILBOX_0_RIRQT_REG_ADDR + (0x1000 * i), RIRQT.val)
 
         # Enable IRQ for inbound mailboxes
-        await reg_write(
-            dut, INBOUND_MAILBOX_0_IRQEN_REG_ADDR + (0x1000 * i), irq_en.val
-        )
+        await reg_write(dut, INBOUND_MAILBOX_0_IRQEN_REG_ADDR + (0x1000 * i), irq_en.val)
 
     log.info("Mailbox IRQs enabled")
 
@@ -178,9 +168,7 @@ async def mailbox_sanity_test(dut):
     for num in range(NUM_MAILBOXES):
         log.info(f"Testing inbound mailbox {num}")
         await with_timeout(write_in_mailbox(dut, num, test_datas[num * 2]), 1000, "ns")
-        await with_timeout(
-            write_in_mailbox(dut, num, test_datas[num * 2 + 1]), 1000, "ns"
-        )
+        await with_timeout(write_in_mailbox(dut, num, test_datas[num * 2 + 1]), 1000, "ns")
 
         rcvd = await with_timeout(read_in_mailbox(dut, num), 1000, "ns")
         assert rcvd == test_datas[num * 2], (
@@ -190,7 +178,7 @@ async def mailbox_sanity_test(dut):
         assert rcvd == test_datas[num * 2 + 1], (
             f"Test failed for inbound mailbox {num}. Expected {hex(test_datas[num * 2 + 1])}, got {hex(rcvd)}"
         )
-        # TODO: Check o_int_mailbox_interrupt
+        # TODO: check inbound_interrupt_o
         log.info(f"Inbound mailbox {num} test passed")
 
     # Disable inbound mailbox IRQs
@@ -198,27 +186,21 @@ async def mailbox_sanity_test(dut):
     irq_en.f.wtirq = 0
     irq_en.f.rtirq = 0
     for i in range(NUM_MAILBOXES):
-        await reg_write(
-            dut, INBOUND_MAILBOX_0_IRQEN_REG_ADDR + (0x1000 * i), irq_en.val
-        )
+        await reg_write(dut, INBOUND_MAILBOX_0_IRQEN_REG_ADDR + (0x1000 * i), irq_en.val)
 
     # Enable outbound mailbox IRQs
     irq_en = MAILBOX_IRQEN_reg_u()
     irq_en.f.wtirq = 1
     irq_en.f.rtirq = 1
     for i in range(NUM_MAILBOXES):
-        await reg_write(
-            dut, OUTBOUND_MAILBOX_0_IRQEN_REG_ADDR + (0x1000 * i), irq_en.val
-        )
+        await reg_write(dut, OUTBOUND_MAILBOX_0_IRQEN_REG_ADDR + (0x1000 * i), irq_en.val)
 
-    # Test all outbound mailboxes, cant trigger an internal interrupt, so we just check the data written and read
+    # Test all outbound mailboxes, can't trigger an internal interrupt, so we just check the data written and read
     offset = NUM_MAILBOXES * MAILBOX_FIFO_DEPTH  # Offset to start of outbound test data
     for num in range(NUM_MAILBOXES):
         log.info(f"Testing outbound mailbox {num}")
         await with_timeout(write_out_mailbox(dut, num, test_datas[num * 2]), 1000, "ns")
-        await with_timeout(
-            write_out_mailbox(dut, num, test_datas[num * 2 + 1]), 1000, "ns"
-        )
+        await with_timeout(write_out_mailbox(dut, num, test_datas[num * 2 + 1]), 1000, "ns")
 
         rcvd = await with_timeout(read_out_mailbox(dut, num), 1000, "ns")
         assert rcvd == test_datas[num * 2], (
@@ -240,10 +222,8 @@ async def mailbox_sanity_test(dut):
 
 if cocotb.SIM_NAME:
     sanity_tests = [mailbox_sanity_test]
-    stress_tests = [
-        # Add mailbox-specific stress tests here
-    ]
-    tests = []
+    stress_tests: list[Callable] = []
+    tests: list[Callable] = []
 
     if "+stress" in cocotb.argv:
         tests += sanity_tests

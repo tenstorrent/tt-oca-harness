@@ -12,9 +12,8 @@ exercises the two OpenTitan crypto engines over the real CPU->fabric path on bar
     no done-timeout and HMAC ERR_CODE == 0.
   * KMAC (KMAC128/cSHAKE): masked hash of "test" with a zero key using SOFTWARE
     entropy (no EDN, cannot hang) -- checks done, ERR_CODE == 0, and the unmasked
-    digest (share0 ^ share1) is non-zero. The exact KMAC reference is a documented
-    smoke-only delta (no bare-metal Keccak model); the HMAC side carries exact
-    digests.
+    digest (share0 ^ share1) is non-zero. The KMAC side is smoke-only (no
+    bare-metal Keccak model); the HMAC side carries exact digests.
 
 Firmware-self-checking: main() returns the error count and start.S emits the PASS
 (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which the boot
@@ -29,16 +28,16 @@ import os
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "hmac_kmac_smoke_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "hmac_kmac_smoke_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "hmac_kmac_smoke_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # 3 HMAC hashes (+ SW SHA-256) and one KMAC masked hash; the run loop early-exits
 # on fw_done, so this is an upper bound.
 _MAX_RUN_CYCLES = 2_000_000
@@ -62,7 +61,9 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,

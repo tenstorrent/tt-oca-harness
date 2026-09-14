@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_sanity_test — VPLAN 0.1 (`--items dtp_sanity_test`): runs
+// dtp_sanity_test — VPLAN 0.1: runs
 // dtp_sanity_test_seq on the shared ocah_jtag_vip agent's sequencer, then
 // asserts full FSM state/edge closure via the env checker (this scenario's
 // closure obligation — the per-cycle legality check is always on). Also
@@ -9,39 +9,38 @@
 // IDs finalize through env.m_jtag_checker in check_phase.
 
 class dtp_sanity_test extends dtp_base_test;
-    `uvm_component_utils(dtp_sanity_test)
+  `uvm_component_utils(dtp_sanity_test)
 
-    function new(string name = "dtp_sanity_test", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "dtp_sanity_test", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    function void end_of_elaboration_phase(uvm_phase phase);
-        super.end_of_elaboration_phase(phase);
-        m_env.jtag_require_checks = 1'b1;
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-STATE");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-RESET-TLR");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-TLR-TMS5");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-GOTO");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-TAP-TLR-IDCODE");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-IDCODE-RAW");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-IDCODE-STABLE");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-IDCODE-MARKER");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-BYPASS-LATENCY");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-SCAN-IR-LEN");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-SCAN-DR-LEN");
-        m_env.m_jtag_checker.required_ids.push_back("CHK-NONVAC");
-    endfunction
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.require_jtag_ids('{"CHK-TAP-STATE", "CHK-TAP-RESET-TLR", "CHK-TAP-TLR-TMS5", "CHK-TAP-GOTO",
+                         "CHK-TAP-TLR-IDCODE", "CHK-IDCODE-RAW", "CHK-IDCODE-STABLE",
+                         "CHK-IDCODE-MARKER", "CHK-BYPASS-LATENCY", "CHK-SCAN-IR-LEN",
+                         "CHK-SCAN-DR-LEN", "CHK-NONVAC"});
+    cfg.require_feature(DtpFeatureBypass);
+    cfg.require_feature(DtpFeatureIdcode);
+  endfunction
 
-    task run_phase(uvm_phase phase);
-        dtp_sanity_test_seq seq;
-        phase.raise_objection(this, "dtp_sanity_test running");
-        seq = dtp_sanity_test_seq::type_id::create("seq");
-        seq.tb_vif       = m_env.tb_vif;
-        seq.evidence     = m_env.m_jtag_checker;
-        seq.scan_builder = m_env.m_scan_builder;
-        seq.start(m_env.m_jtag_env.m_sequencer);
-        m_env.m_fsm_checker.check_fsm_closure();
-        phase.drop_objection(this, "dtp_sanity_test done");
-    endtask
+  virtual function ocah_sequence create_scenario_seq();
+    return dtp_sanity_test_seq::type_id::create("seq");
+  endfunction
+
+  virtual function string specific_loops_knob();
+    return "DTP_SANITY_TEST_LOOPS";
+  endfunction
+
+  // VPLAN 0.1 closure gate: after the looped passes, every TAP state must
+  // have been visited and every legal edge taken (the deterministic walk
+  // in each pass guarantees it; the checker proves it).
+  task run_phase(uvm_phase phase);
+    phase.raise_objection(this, {get_type_name(), " running"});
+    run_looped_scenario();
+    m_env.m_fsm_checker.check_fsm_closure();
+    phase.drop_objection(this, {get_type_name(), " done"});
+  endtask
 
 endclass : dtp_sanity_test

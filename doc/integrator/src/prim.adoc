@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[prim-cell-replacement]]
+= Prim Cell Replacement and Don't-Touch Constraints
+
+OCAH primitives (`prim_stdbuf`, `prim_and2`, `prim_clkgater`, the
+`prim_flop_*sync*` family, and so on) ship as behavioral models with a
+reference technology mapping. Adopters replace them with cells from their own
+library.
+
+Two rules govern those replacements. Both are the adopter's responsibility --
+OCAH provides the instance names, but the names have no effect until the
+adopter's synthesis and place-and-route flows constrain them.
+
+[[prim-cell-replacement-naming]]
+== Naming Requirement
+
+*Every library cell instantiated inside a replacement primitive must have
+`d0nt_` in its instance name.*
+
+The marker is deliberately misspelled with a zero. `dont_touch` is a reserved
+keyword in several tools and a common substring in ordinary comments and signal
+names; `d0nt_` occurs only where the protection is intended, so a name-based
+match cannot pick up unrelated cells.
+
+Clock-path cells take the extended prefix `d0nt_clk`, which selects the stricter
+rule below. The `d0nt_*` naming convention appears in the eFuse IP
+(`efuse_token_digest_sha256`, `efuse_triple_redundant_comparator`) as the
+primary example. The adopter is expected to carry the same convention into any
+technology-mapped primitive wrapper they deliver. The intended name assignments
+are:
+
+[cols="<25%,<20%,<55%",options="header"]
+|===
+|Instance name |Rule |Primitive
+
+|`d0nt_clkgate`   |Don't touch |`prim_clkgater`
+|`d0nt_clkbuf`    |Don't touch |`prim_clock_buf`
+|`d0nt_clkinv`    |Don't touch |`prim_clock_inv`
+|`d0nt_clkmux`    |Don't touch |`prim_clock_mux2`
+|`d0nt_clknand`   |Don't touch |`prim_clock_nand2`
+|`d0nt_clkxor`    |Don't touch |`prim_xor2`
+|`d0nt_stdbuf`    |Size only   |`prim_stdbuf`
+|`d0nt_stdinv`    |Size only   |`prim_flop_*sync_*` reset inverter
+|`d0nt_an`        |Size only   |`prim_and2`
+|`d0nt_ao222`     |Size only   |`prim_ao222`
+|`d0nt_wrap_sync` |Size only   |`prim_flop_*sync_*` synchronizer flops
+|===
+
+Keep the same names when substituting your own cells. Adopters who rename must
+apply the equivalent constraints to whatever names they use.
+
+[[prim-cell-replacement-constraints]]
+== Constraint Requirement
+
+*In synthesis, apply `set_size_only` to every cell matching `d0nt_`, then
+`set_dont_touch` to every cell matching `d0nt_clk`. Every step after synthesis
+needs `size_only` alone -- on all `d0nt_` cells, clock cells included.*
+
+[source,tcl]
+----
+# Order matters: d0nt_clk* also matches d0nt_*, so the clock rule is applied
+# second and overrides size-only for those cells.
+set_size_only  [get_cells -hierarchical -filter "full_name =~ *d0nt_*"]
+set_dont_touch [get_cells -hierarchical -filter "full_name =~ *d0nt_clk*"]
+----
+
+`size_only` keeps the instance in the netlist -- the tool may not delete, merge,
+absorb, restructure, or buffer through it -- while still allowing it to be
+swapped for another library cell of the same logic function, typically to change
+drive strength or threshold-voltage flavor for timing, area, and EM closure.
+That is the intent for every replacement cell: these primitives exist because
+the structure matters, not because the logic function could not be inferred.
+Synthesis will otherwise remove them -- an inverter pair that cancels,
+redundant AND gates that always agree, a buffer driving a single load are all
+dead weight to an optimizer.
+
+Clock cells need the stronger `dont_touch` because that swap is exactly the
+problem. Under `size_only` the tool treats the logic function as the contract
+and every other property of the cell as free to change. On the clock path the
+function is the least of the reasons the cell was chosen. Clock buffers,
+inverters, muxes, and gaters are picked for electrical characteristics the
+function does not capture -- matched rise and fall times above all, and with
+them duty-cycle preservation, balanced input-to-output delay, and low delay
+variation across PVT. A functionally identical cell pulled from the
+general-purpose library guarantees none of that. The netlist still says
+"inverter", functional simulation still passes, and the duty-cycle distortion
+shows up only in silicon or in a timing run late enough to be expensive.
+
+`dont_touch` removes the tool's discretion: the cell the designer selected is
+the cell that reaches the netlist. Sizing and insertion-delay decisions on the
+clock path belong to clock tree synthesis, which owns them explicitly, rather
+than to a logic-optimization pass making a substitution it believes is free.
+
+[[prim-cell-replacement-post-synthesis]]
+=== After Synthesis
+
+The `dont_touch` on `d0nt_clk*` is a synthesis-only constraint. Once synthesis
+has handed off the netlist, release the clock cells to `size_only` and carry
+that -- and nothing stronger -- through placement, clock tree synthesis,
+routing, and optimization:
+
+[source,tcl]
+----
+# Post-synthesis: uniform size_only, clock cells included.
+set_dont_touch [get_cells -hierarchical -filter "full_name =~ *d0nt_clk*"] false
+set_size_only  [get_cells -hierarchical -filter "full_name =~ *d0nt_*"]
+----
+
+The stricter rule exists to stop logic optimization from choosing the cell.
+Downstream, clock cell sizing is CTS's job: it cannot balance skew or close
+transition violations with the cells it needs to resize frozen, and freezing
+them there buys nothing. Keeping `size_only` in place still prevents deletion,
+merging, and restructuring for the rest of the flow.
+
+Restrict the physical flow to the library's clock-cell list so a resize stays
+inside the same clock cell family. Sizing a `CLKBUF_D4` up to a `CLKBUF_D8`
+keeps the matched rise and fall behavior the cell was chosen for; substituting a
+general-purpose buffer of equivalent drive does not.
+
+Additional requirements:
+
+* *Carry `size_only` through PnR.* The `dont_touch` is synthesis-only, but
+  `size_only` is not. A cell protected in synthesis and left entirely
+  unprotected downstream is not protected.
+* *Verify the match is non-zero.* A typo in the filter, or a flow that renames
+  instances before the constraint is read, silently protects nothing. Check the
+  collection size and error out if it is empty.
+* *Preserve the names.* Uniquification, flattening, and name mapping must not
+  strip the `d0nt_` substring. If your flow renames instances, derive the
+  collections before flattening and carry them forward.
+* *Restore protection after ECOs.* Flows that relax preservation constraints for
+  clock-tree or filler ECOs -- clearing `eco_honor_dont_touch`, for example --
+  must restore `size_only` before any subsequent optimization pass.
+* *Check the final netlist,* not just the post-synthesis one.
+
+Flows other than Design Compiler and Fusion Compiler must apply the equivalent
+`size_only` and `dont_touch` attributes to the same collections.
+
+[[prim-cell-replacement-simulation]]
+== Simulation
+
+These constraints have no functional effect and no simulation impact. RTL
+simulation compiles the technology-independent primitive models (`not(synth)`).
+Library cells are not on that filelist, so a simulator never elaborates them.
+
+Confirming that the protected cells survived is therefore a gate-level netlist
+check. RTL simulation cannot detect their loss.

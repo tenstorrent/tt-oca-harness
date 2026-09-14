@@ -1,6 +1,6 @@
 # Agent Guide for tt-oca-harness
 
-This guide helps AI agents navigate and work with the Tenstorrent Open Chiplet Atlas
+This guide helps AI agents navigate and work with the Open Chiplet Atlas
 Harness (OCAH) repository. It covers environment setup, the container-based firmware
 toolchain, running firmware-driven DV, and how to debug failures without chasing the wrong
 layer. Machine- and site-specific values are left as placeholders; substitute your own.
@@ -33,7 +33,7 @@ partial read costs far more time than a full one.
 | `README.md` | Repository layout, doc builds, register generation, DV firmware targets, vendoring |
 | `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents, issue/PR pointers |
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
-| `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
+| `doc/starting/` | Getting Started/Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
 | `.github/ISSUE_CURATION.md` | Project curator; catalog weekly-issue-activity and discussion-task-miner (`automation.enabled`) and compile |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
@@ -286,13 +286,14 @@ Whatever the testbench, these hold:
 
 | Path | Contents |
 |---|---|
-| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
+| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (`cross_trigger/`, `jtag/`, `uart/` hold sub-blocks) |
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
-| `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `contributing` |
+| `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
+| `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
 | `flows/` | Lint, format and synthesis flow makefiles |
-| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone |
+| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |
 | `nonfree/` | Proprietary companion repository, present only for those with access |
@@ -305,6 +306,9 @@ committed output always corresponds to the RDL sources.
 ```bash
 make regen-regs
 ```
+
+After adding or moving integration collateral, regenerate the grouped symlink indexes with
+`python3 scripts/collect_integration.py`.
 
 The RDL is the register specification: it describes the address map and the registers'
 behaviour, not the RTL that implements them. Naming a module, a package or an address slice in
@@ -331,6 +335,11 @@ Three kinds of comment are not worth their space.
   edit.
 - **Justification.** Arguing that a change is correct addresses a reviewer who is gone once the
   pull request merges.
+
+Present tense does not save a breadcrumb. A comment that lists side effects the new
+control flow no longer has is still a breadcrumb. A plan that asks for that comment
+does not override this section. After adding a comment, re-read it against these bans
+and delete it if it fails.
 
 Where a test can carry the constraint instead, prefer the test: it fails when the constraint is
 broken, and a comment does not.
@@ -452,8 +461,10 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR.
-Ingest assigns the opener when Assignees is empty. The curator rewrites a
-PR title only when it is not already this form.
+Ingest assigns the opener when Assignees is empty. It requests a reviewer
+from GitHub suggestions, then a linked-issue assignee, then recent committers
+on the touched paths, then the reviewer pool in `.github/issue-taxonomy.yml`.
+The curator rewrites a PR title only when it is not already this form.
 
 ### Paired pull requests with the `nonfree` companion
 
@@ -471,9 +482,9 @@ Work the pair in this order:
 2. Expect the open-tree PR's CI to fail while the companion PR is unmerged. A local branch
    proves the pair works on your machine, but no pipeline can see it and there is no pin to
    point at it.
-3. Merge the companion PR.
-4. Re-run the open-tree PR's pipeline, and merge only once it is green — not on the strength
-   of a run that predates step 3.
+3. Merge the companion PR, only when the user asks to merge it.
+4. Re-run the open-tree PR's pipeline, and merge it only when the user asks and it is
+   green — not on the strength of a run that predates step 3.
 
 Two further things follow from the same unpinned clone:
 
@@ -503,9 +514,11 @@ open files to compensate.
 | Check | Local command |
 |---|---|
 | SystemVerilog lint (slang) | `make lint-slang-all` lints every block carrying a `flow.mk`, which `flows/common.mk` discovers under `hw/sys/*`, `hw/ip/*` and vendored IP overlays; add `BLOCK=<block…>` to restrict it. `make lint-slang` from a block's own flow lints that block alone |
-| SystemVerilog lint (verible) | `make lint-sv-verible` |
-| SystemVerilog formatting | `make format-sv`, `make format-sv-check` |
+| SystemVerilog lint (Verilator) | `make lint-verilator-all` lints every discovered block as its own top; add `BLOCK=<block…>` to restrict it |
+| SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
+| SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
 | C formatting | `make format-c`, `make format-c-check` |
+| Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |
 
 Each of these is an auto-generated alias for the `ocah-`-prefixed target of the same name, so
@@ -514,3 +527,39 @@ plus the matching `./scripts/docker-run.sh eda-run make …` command. CI runs on
 them; `CONTRIBUTING.md` maps the jobs and their reviewdog checks to these commands.
 Documentation-only PRs skip lint, Verilator smoke, and the nonfree GitLab child;
 `scripts/ci/diff_class.py` is the classifier.
+
+Verible lint and format cover hand-maintained `hw/**` sources and OCAH-owned vendor overlays.
+They share the same base inventory but use separate exclusions, so a formatter limitation does
+not hide findings from lint. Generated output and `vendor/<org>/<repo>/upstream/**` stay out;
+never patch upstream code for a style-only finding. Fix formatter-safe whitespace and wrapping
+after reviewing the diff, but treat types, range direction, assignment semantics, task
+lifetime, case completeness and hierarchy labels as manual changes requiring owner review.
+Parameter naming remains deferred to issue #1051 and is disabled in this pass.
+
+Fix actionable findings rather than hiding them. Owner-local waivers belong under the source
+owner's `lint/` directory: `*.verible.waiver` and `*.verilator.vlt`. Central Makefiles only
+discover or pass those files, and each block `flow.mk` declares the Verilator waivers relevant
+to its elaborated top. Use the narrowest diagnostic/path/hierarchy/source match and a
+constraint-focused rationale. The CI-pinned Slang v11.0 has no native external-waiver support;
+keep its findings visible rather than substituting whole-file suppression until a release with
+TOML `--waiver-file` support is pinned.
+
+The register generator owns `hw/common/regs/lint/peakrdl.verilator.vlt`, which the shared
+Verilator flow loads for every block. Its exact path and message matches cover only PeakRDL's
+`field_combo` / `field_storage` aggregate `MULTIDRIVEN` reports, including block register
+modules and the copied SPI register module. They must never expand to member names or to
+`WIDTHEXPAND` / `WIDTHTRUNC`. Before changing the exception, run the unwaived integrated-SMU
+zero-overlap audit documented in `CONTRIBUTING.md`; its non-aggregate search must remain empty,
+and the hand-authored findings must remain in the output.
+
+`OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` are only for documented parser,
+preprocessor or formatter failures. Verible can scope by `LINT_PATH`; Slang and Verilator need
+a complete block filelist, though their top can be overridden within that filelist for
+diagnosis. The full scope and vendor policy are authoritative in `flows/lint/verible.mk` and
+`CONTRIBUTING.md`.
+
+Optional staged-file checks are documented in `CONTRIBUTING.md`. Agents may
+run `make hooks-run` or the underlying lint/format checks without installing a
+hook. `make hooks-install` modifies local Git metadata and must never be run
+unless the user explicitly requests installation; setup and checkout flows
+must not activate hooks automatically.

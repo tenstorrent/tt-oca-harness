@@ -16,6 +16,7 @@ This is the **absolute minimum** smoke test. It verifies that the entropy source
 FIFO control logic (counters/pointers) operates independently of data values. Even if the data path contains X's from uninitialized RO feedback loops (simulation only), the FIFO control path functions correctly.
 
 **Key Differences from Standard Smoke Test**:
+
 - Standard test: 1 config write (DECORRELATOR_CTRL), verifies data path
 - This test: ZERO config writes, verifies control path only
 - Standard test: Bypass mode (faster)
@@ -26,12 +27,14 @@ FIFO control logic (counters/pointers) operates independently of data values. Ev
 ## Requirements
 
 **Clocks**:
+
 - `clk_i` (APB clock): 100 MHz (10 ns period)
 - `rosc_sample_clk_i` (Sample clock): Not used (internal RO clocks by default)
 
 **Interface**: APB4 slave interface
 
 **Default Configuration**:
+
 - RING_OSC_ENABLE: 0x00FFFFFF (all 24 ROs enabled)
 - RING_OSC_CTRL: 0xFFF (use internal sample clocks)
 - DECORRELATOR_CTRL: BYPASS=0x000 (normal mode), DIV=63 (div-64)
@@ -42,21 +45,25 @@ FIFO control logic (counters/pointers) operates independently of data values. Ev
 ## Test Procedure
 
 ### Step 1: Wait After Reset
+
 **Operation**: Wait 1000 ns (100 cycles) after reset release
 **Purpose**: Allow system to stabilize with default configuration before first APB access
 
 ### Step 2: Read Component ID
+
 **Operation**: APB Read from address `0x000`
 **Expected**: `0x01000001`
 **Purpose**: Verify APB interface functionality
 
 ### Step 3: Monitor FIFO Status
+
 **Operation**: Periodically read address `0x024` (FIFO_STATUS)
 **Wait**: 1000 ns (100 cycles) between reads
 **Samples**: 5 reads
 **Duration**: ~5 µs total
 
 **Expected Progression**:
+
 ```
 Sample 0: LEVEL=0,  WPTR=0,  RPTR=0
 Sample 1: LEVEL>0,  WPTR>0,  RPTR=0
@@ -66,11 +73,13 @@ Sample 4: LEVEL>prev, WPTR>prev, RPTR=0
 ```
 
 **Pass Criteria**:
+
 - ✓ LEVEL[6:0] increases (control path working)
 - ✓ WPTR[12:8] advances (control path working)
 - ✓ RPTR[20:16] = 0 (control path working)
 
 **Notes**:
+
 - Data rate will be slower than bypass mode (decorrelator in normal mode)
 - Data values not checked - may contain X's from RO feedback loops (simulation only)
 - Control path independent of data values - counters work regardless
@@ -79,73 +88,34 @@ Sample 4: LEVEL>prev, WPTR>prev, RPTR=0
 
 ## Pass Criteria Summary
 
-| Check | Criteria | Status |
-|-------|----------|--------|
-| APB Interface | Read 0x000 = 0x01000001 | ✓ |
-| Configuration Writes | ZERO (pure defaults) | ✓ |
-| FIFO Level | Increases over time | ✓ |
-| Write Pointer | Advances (wraps allowed) | ✓ |
-| Read Pointer | Stays at 0 | ✓ |
-| Control Path | Independent of data values | ✓ |
-| Data Path | Not verified (X's allowed) | N/A |
-
----
-
-## Example Test Log
-
-```
-[PHASE 1] Initialize clocks and reset
-  [OK] Clocks running, reset released
-
-[PHASE 2] Verify APB interface
-  Component ID (via register name) = 0x01000001
-  Component ID (via addr 0x0) = 0x01000001
-  [OK] APB interface verified
-
-[PHASE 3] Monitor FIFO status (verify control path)
-  Note: Data may contain X's from RO feedback loops (simulation only)
-        Control path (LEVEL, WPTR, RPTR) works independently of data values
-  Sample 0: LEVEL=0, WPTR=0, RPTR=0
-  Sample 1: LEVEL=2, WPTR=2, RPTR=0
-  Sample 2: LEVEL=4, WPTR=4, RPTR=0
-  Sample 3: LEVEL=6, WPTR=6, RPTR=0
-  Sample 4: LEVEL=8, WPTR=8, RPTR=0
-  FIFO level changed: 0 -> 8
-  [OK] FIFO receiving data (level=8)
-  [OK] Write pointer advancing
-  [OK] Read pointer stable at 0 (no FIFO reads)
-
-================================================================================
-DEFAULT CONFIGURATION TEST: PASS
-================================================================================
-Summary:
-  - APB interface: Working (verified 0x000 = 0x01000001)
-  - Configuration writes: ZERO (pure defaults)
-  - Decorrelator mode: Normal (with feedback loops)
-  - FIFO control path: WORKING
-    * FIFO level: 0 -> 8
-    * Write pointer: 0 -> 8 (advancing)
-    * Read pointer: 0 (stable)
-  - Data path: Not verified (may contain X's in simulation)
-  - Configuration: ALL DEFAULTS WORK FOR CONTROL PATH
-================================================================================
-```
+| Check | Criteria |
+|-------|----------|
+| APB Interface | Read 0x000 = 0x01000001 |
+| Configuration Writes | ZERO (pure defaults) |
+| FIFO Level | Increases over time |
+| Write Pointer | Advances (wraps allowed) |
+| Read Pointer | Stays at 0 |
+| Control Path | Independent of data values |
+| Data Path | Not verified (X's allowed) |
 
 ---
 
 ## Quick Reference
 
 **Timing Assumptions** (APB clock = 100 MHz, period = 10 ns):
+
 - Reset: 20 ns (2 cycles)
 - RO settle time: 1000 ns (100 cycles)
 - FIFO monitoring: 1000 ns between samples
 - Total test time: ~5 µs
 
 **Critical Addresses**:
+
 - `0x000`: COMPONENT_ID (expect 0x01000001)
 - `0x024`: FIFO_STATUS (LEVEL, WPTR, RPTR)
 
 **Configuration Used**:
+
 - Everything at reset defaults - ZERO writes
 - DECORRELATOR_CTRL: BYPASS=0x000 (normal mode with feedback) - default
 - RING_OSC_CTRL: 0xFFF (internal sample clocks) - default
@@ -182,6 +152,7 @@ Summary:
 | SAMPLE_CLK_DIV | [31:12] | 63 | Divide-by-64 sampling (default) |
 
 **Normal Mode Behavior**:
+
 - Decorrelator feedback loops are active
 - Entropy bits go through LFSR-based decorrelation
 - Slower effective sample rate due to decorrelation processing
@@ -227,8 +198,5 @@ Summary:
 
 ---
 
-**Version**: 2.0
-**Date**: 2026-01-09
 **Test**: `test/test_cl_integration.py::test_cl_integration_default_config`
-**Updated**: Removed RO initialization - truly ZERO configuration writes
 **Related**: See `ENTROPY_SOURCE_SMOKE_TEST.md` for full smoke test with bypass mode

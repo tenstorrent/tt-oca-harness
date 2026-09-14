@@ -83,7 +83,6 @@ int main(void) {
     // Enable interrupts in the CPU
     metal_interrupt_init(cpu_controller);
     metal_interrupt_enable(cpu_controller, METAL_INTERRUPT_ID_BASE);
-    // metal_interrupt_enable(cpu_controller, METAL_INTERRUPT_ID_EXT);
     metal_interrupt_register_handler(cpu_controller, METAL_INTERRUPT_ID_EXT, ndm_interrupt_handler,
                                      (void *)plic_controller);
 

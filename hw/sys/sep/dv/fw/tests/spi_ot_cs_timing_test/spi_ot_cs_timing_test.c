@@ -19,10 +19,6 @@
  * 4. Write mixed values (CSNIDLE=5, CSNLEAD=10, CSNTRAIL=3): readback verify
  * 5. Restore to working values (CSNIDLE=2, CSNLEAD=2, CSNTRAIL=2)
  * 6. Issue a simple TX command to verify SPI still operates correctly
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_cs_timing_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -83,7 +79,6 @@ int main(void) {
     spi_controller__CFG_t cfg;
     spi_controller__CMD_t cmd;
     spi_controller__ERROR_STATUS_t err_status;
-
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

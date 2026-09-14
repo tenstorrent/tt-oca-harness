@@ -20,10 +20,6 @@
  * 5. Verify HANDSHAKE_INTR_ENABLE register write-readback
  * 6. Verify CLEAR_INTR_SRC register is writable
  * 7. Verify INTR_SRC_ADDR_0 register is writable
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_dma_trigger_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -64,7 +60,6 @@ int main(void) {
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
     uint32_t read_val;
-
 
     /* Enable controller with SPI_TX_WATERMARK=4 */
     ctrl.w = 0;

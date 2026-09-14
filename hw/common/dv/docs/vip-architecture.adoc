@@ -109,8 +109,8 @@ Public methods accept and return:
 * documented OCAH exceptions.
 
 Normal APIs must not return backend transactions, private channels, or backend
-response enums. A `.backend` or `.raw` escape may exist for debugging or
-transition code, but it is explicitly unstable and must not be used by new
+response enums. A `.backend` or `.raw` escape may exist for debugging,
+but it is explicitly unstable and must not be used by new
 tests for checking.
 
 [[shared-vip-binding]]
@@ -154,7 +154,7 @@ handshake stability, and protocol coverage.
 |`hw/common/dv/sva/`
 |Reusable signal-level properties whose meaning is protocol-neutral and whose
 binding does not depend on DUT hierarchy. Protocol-specific SVA lives with its
-protocol VIP instead: the first VIP-embedded assertion package is
+protocol VIP instead, for example
 `ocah_axi_vip/sva/ocah_axi_sva.sv` (clean-room AXI4/AXI4-Lite
 rules).
 
@@ -209,7 +209,7 @@ DUT-specific models. The DUT DV maintainers own these files.
 
 |IP/domain-local reusable
 |`hw/ip/<ip>/dv/` or another domain-owned location
-|Custom behavior shared by related integrations but not yet protocol-neutral.
+|Custom behavior shared by related integrations but not protocol-neutral.
 
 |Shared VIP
 |`hw/common/dv/vip/ocah_<protocol>_vip/`
@@ -249,3 +249,23 @@ Backend upgrades may change implementation internals but must preserve:
 
 Breaking changes require an explicit migration plan, adopter updates, and
 requalification of named consumer regressions.
+
+[[shared-vip-deprecation]]
+=== Deprecation
+
+This rule covers public API names: the classes, methods, constructor
+arguments, config fields, and plusargs that a package README documents.
+
+A name that a tagged release has shipped is renamed or removed in two steps:
+
+. Ship the replacement. Keep the old name as an alias that calls the
+  replacement and logs one warning per instance, telling the caller which
+  name to use instead.
+. Remove the alias after every consumer in this repository uses the new name
+  and at least one tagged release has shipped with the alias in place.
+
+Removing an alias is a breaking change under the versioning rule above. Each
+package README lists the aliases the package carries.
+
+A name that no tagged release has shipped and that no consumer in this
+repository uses is removed in one step, without an alias.

@@ -23,7 +23,7 @@ typedef struct {
 } ring_buffer_stress_ctx_t;
 
 #define SMC_RING_BUFFER_SIZE 512
-/* One slot stays empty because head==tail marks empty, so hardware stores 63 entries max. */
+/* head == tail marks empty, so one slot always stays free. */
 #define SMC_RING_BUFFER_CAPACITY (SMC_RING_BUFFER_SIZE - 1)
 #define OCCP_ERROR_ACCESS_VIOLATION_CODE 0x02
 #define OCCP_ERROR_INTERFACE_ERROR_CODE 0x04
@@ -39,7 +39,7 @@ static uint32_t expected_head;
 static uint32_t expected_tail;
 static uint32_t consecutive_failures;
 
-/* Protected/accessible regions reused from earlier OCCP tests */
+/* ROM-owned and OCCP-accessible SRAM windows */
 #define ROM_PROTECTED_SRAM_BASE 0xC0060000ULL
 #define OCCP_ACCESSIBLE_SRAM_BASE 0xC0066000ULL
 
@@ -281,8 +281,7 @@ static bool generate_status_entries(test_context_t *ctx, uint32_t desired_entrie
             if (result != OCCP_SUCCESS) {
                 return false;
             }
-            // Disabled in the reference too: relatching was expected to append a
-            // warning entry, which the model no longer predicts.
+            // The relatch command adds no entry to the expected buffer.
             consecutive_failures = 0;
         }
     }
@@ -321,7 +320,7 @@ static bool test_fill_and_drain(ring_buffer_stress_ctx_t *ctx) {
         return false;
     }
 
-    const uint32_t desired_entries = 32; /* ~64 failing commands */
+    const uint32_t desired_entries = 32; /* two entries per failing command */
 
     consecutive_failures = 0;
     if (!generate_status_entries(ctx->occp_ctx, desired_entries)) {
@@ -416,7 +415,6 @@ int main(void) {
     static test_context_t occp_ctx = {0};
     static ring_buffer_stress_ctx_t stress_ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP Ring Buffer Stress Test ===\n");
@@ -437,7 +435,6 @@ int main(void) {
     reset_expected_buffer();
 
     run_test_suite(&stress_ctx);
-    // finalize_test_results(&stress_ctx);
 
     if (stress_ctx.overall_result) {
         test_pass(0);

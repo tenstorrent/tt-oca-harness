@@ -9,7 +9,7 @@
  * as SEP).  SEP computes the requested operation and writes the result back;
  * SMC verifies the result independently before proceeding.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — KM can initiate
+ * Spec basis: OCAH Specification §Crypto Key Manager — KM can initiate
  * requests upstream for key derivation or crypto primitives.  This test
  * exercises the analogous path where SMC firmware drives the request
  * sequence, reversing the normal TB→FW direction.
@@ -161,5 +161,5 @@ int main(void) {
     return 0;
 }
 
-/* secondary_main intentionally not defined — crt0 default routes only
- * the boot hart to main(), non-boot harts spin in WFI. */
+/* secondary_main is not defined here: the crt0 weak default routes only the
+ * boot hart to main() and parks the other harts in WFI. */

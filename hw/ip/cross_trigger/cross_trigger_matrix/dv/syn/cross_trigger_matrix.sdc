@@ -1,8 +1,7 @@
 # Cross Trigger Matrix Synthesis Timing Constraints
 # SDC (Synopsys Design Constraints) file
 
-# Clock definition
-# Replace with actual clock name and period
+# Clock definition: clk_i at 100 MHz nominal
 create_clock -name clk_i -period 10.0 [get_ports clk_i]
 
 # Clock uncertainty

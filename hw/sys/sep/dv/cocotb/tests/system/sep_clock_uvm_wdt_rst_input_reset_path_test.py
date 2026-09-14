@@ -25,7 +25,7 @@ Checks (each asserts a specific value, so a stuck/X reset net fails):
 
 The A->B->C toggle is non-vacuous: a tied/stuck sep_cpu_reset_n cannot satisfy
 both the ==1 and ==0 checks. Scope is SEP-internal reset-input behavior only; the
-WDT-bite -> SMC -> wdt_rst_ni closure is SMC DV scope (per the reference suite header).
+WDT-bite -> SMC -> wdt_rst_ni closure is SMC DV scope.
 
 Reg-only / no AXI traffic, so this is a no_cpu run with ``+skip_fuse_sense``.
 """
@@ -33,10 +33,8 @@ Reg-only / no AXI traffic, so this is a no_cpu run with ``+skip_fuse_sense``.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
-
 import pyuvm
-
+from cocotb.triggers import ClockCycles
 from sep_base_test import sep_base_test
 
 # Cycles to let the combinational reset path settle after a wdt_rst_ni edge.
@@ -65,24 +63,27 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test(sep_base_test):
 
         # [A] baseline: CPU out of reset, main SEP reset released.
         await self._check_reset(
-            dut.sep_cpu_reset_n_o, "A baseline wdt_rst_ni=1 -> sep_cpu_reset_n", 1)
-        await self._check_reset(
-            dut.dbg_sep_reset_n_o, "A baseline sep_reset_n released", 1)
+            dut.sep_cpu_reset_n_o, "A baseline wdt_rst_ni=1 -> sep_cpu_reset_n", 1
+        )
+        await self._check_reset(dut.dbg_sep_reset_n_o, "A baseline sep_reset_n released", 1)
 
         # [B] assert the WDT reset input -> CPU held in reset.
         dut.wdt_rst_ni_i.value = 0
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset(
-            dut.sep_cpu_reset_n_o, "B wdt_rst_ni=0 -> sep_cpu_reset_n asserted", 0)
+            dut.sep_cpu_reset_n_o, "B wdt_rst_ni=0 -> sep_cpu_reset_n asserted", 0
+        )
         # [B-iso] isolation: the main SEP reset must be unaffected.
         await self._check_reset(
-            dut.dbg_sep_reset_n_o, "B-iso wdt_rst_ni=0 -> sep_reset_n unaffected", 1)
+            dut.dbg_sep_reset_n_o, "B-iso wdt_rst_ni=0 -> sep_reset_n unaffected", 1
+        )
 
         # [C] release -> CPU reset deasserts again.
         dut.wdt_rst_ni_i.value = 1
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset(
-            dut.sep_cpu_reset_n_o, "C wdt_rst_ni=1 -> sep_cpu_reset_n released", 1)
+            dut.sep_cpu_reset_n_o, "C wdt_rst_ni=1 -> sep_cpu_reset_n released", 1
+        )
 
         # [D] liveness anchor for the isolation observable. Up to here
         # dbg_sep_reset_n_o has only ever been read expecting 1, so a stuck-high
@@ -92,11 +93,13 @@ class sep_clock_uvm_wdt_rst_input_reset_path_test(sep_base_test):
         dut.rst_ni.value = 0
         await ClockCycles(dut.clk_i, _SETTLE)
         await self._check_reset(
-            dut.dbg_sep_reset_n_o, "D main reset asserted -> sep_reset_n reads", 0)
+            dut.dbg_sep_reset_n_o, "D main reset asserted -> sep_reset_n reads", 0
+        )
         dut.rst_ni.value = 1
         await ClockCycles(dut.clk_i, _SETTLE)
 
         self.logger.info(
             " PASS: wdt_rst_ni -> sep_cpu_reset_n path verified "
             "(A baseline / B assert / B-iso isolation / C release / D isolation "
-            "observable proven live)")
+            "observable proven live)"
+        )

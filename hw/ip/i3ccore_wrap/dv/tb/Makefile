@@ -20,16 +20,15 @@ ALL_TEST_MODULES = test_i3ccore i3c_immediate_write_sanity i3c_write_read_sanity
     i3c_random_ccc_stress i3c_random_transfer_stress
 
 # Optional cocotb X-resolution policy. cocotb raises on reading an X/Z bit by
-# default (good — it surfaces real X-propagation bugs). Opt in to masking with
-# e.g. `make MODULE=... RESOLVE_X=ZEROS` for tests that legitimately read
-# reserved/unmapped registers. Leave unset to keep the strict (safe) default.
+# default. Opt in to masking with `make MODULE=... RESOLVE_X=ZEROS` for tests
+# that read reserved/unmapped registers.
 ifdef RESOLVE_X
     export COCOTB_RESOLVE_X = $(RESOLVE_X)
 endif
 
-# test_i3ccore deliberately reads un-written DAT/DCT SRAM and reset-X registers
-# across the full address map; real SRAM powers up undefined, so resolve X->0 for
-# this register-survey module by default (still overridable via RESOLVE_X).
+# test_i3ccore reads un-written DAT/DCT SRAM and reset-X registers across the
+# full address map; real SRAM powers up undefined, so X resolves to 0 for this
+# register-survey module unless RESOLVE_X is set.
 ifeq ($(MODULE),test_i3ccore)
     export COCOTB_RESOLVE_X ?= ZEROS
 endif
@@ -77,7 +76,7 @@ ifeq ($(SIM),vcs)
     COMPILE_ARGS += -lca +rad -kdb +nospecify
     COMPILE_ARGS += -debug_access+r+w+cbk -debug_access+thread+class+cbkd+dmpt+dmpf+idents_db
     COMPILE_ARGS += -l vcs.log
-    COMPILE_ARGS += +define+VCS +define+COMMON_CELLS_ASSERTS_OFF +define+I3C_USE_AXI_LITE
+    COMPILE_ARGS += +define+VCS +define+COMMON_CELLS_ASSERTS_OFF
     COMPILE_ARGS += +lint=PCWM +warn=noCWUC +warn=noUII-L -error:IWNF:1 +lint=TFIPC-L
     COMPILE_ARGS += +incdir+$(PWD)
 
@@ -243,10 +242,10 @@ endif
 
 # Generate filelist using bender
 # Uses the main project's Bender.yml with smc target which includes i3c-core files
-# Filters out original i3c.sv and i3c_wrapper.sv from i3c-core (replaced by i3ccore_wrap versions)
+# Drops i3c-core's i3c.sv and i3c_wrapper.sv: i3ccore_wrap supplies its own versions of both.
 filelist:
 	@echo "Generating i3ccore_filelist.f from project root..."
-	@cd $(PROJECT_ROOT) && source bin/setup_env.sh >/dev/null 2>&1 && \
+	@cd $(PROJECT_ROOT) && \
 		bender script flist-plus \
 			-t smc \
 			-t axi_rtl \
@@ -324,7 +323,6 @@ help:
 	@echo "  make MODULE=i3c_error_sanity TESTCASE=i3c_fifo_overflow    # Run one specific test"
 	@echo "  make verdi                                       # View waveforms"
 
-# NOTE: For some reason this isn't working.
 test_module_separate:
 	@if [ -z "$(MODULE)" ]; then \
 		echo "ERROR: MODULE not specified"; \

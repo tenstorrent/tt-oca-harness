@@ -10,13 +10,26 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_zeroer_axiclk_cg_test_seq import smc_zeroer_axiclk_cg_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_zeroer_axiclk_cg_test(smc_base_test):
-    """LIVE Zeroer axi_clk gating (Skill 1.5)."""
+    """LIVE Zeroer axi_clk gating."""
+
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-NONVAC-P2",
+        "CHK-TIMEOUT-PATHS",
+        "CHK-ZAXI-BUSY-ENABLE",
+        "CHK-ZAXI-DISABLE-CG",
+        "CHK-ZAXI-GATE-OFF-IDLE",
+        "CHK-ZAXI-RESET-OVERRIDE",
+        "CHK-ZEROER-AXICLK-COMPLETION",
+        "CHK-ZEROER-AXICLK-NOGLITCH",
+    )
+    min_evidence = 9
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
@@ -24,8 +37,6 @@ class smc_zeroer_axiclk_cg_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_zeroer_axiclk_cg_test_seq("zeroer_axiclk_cg_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # P1 tokens are unchanged (additive extension keeps the closed P1
-        # grade valid); the P2 (SMC_CG_P2_002) tokens are appended.
         required = (
             "CHK-ZAXI-GATE-OFF-IDLE",
             "CHK-ZAXI-BUSY-ENABLE",
@@ -42,6 +53,9 @@ class smc_zeroer_axiclk_cg_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the zeroer-DONE poll is timing-dependent.
+            min_csr_accesses=35,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

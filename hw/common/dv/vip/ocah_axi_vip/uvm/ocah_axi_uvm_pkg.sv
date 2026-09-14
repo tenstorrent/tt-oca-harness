@@ -22,7 +22,7 @@
 //   ocah_axi_master_config.svh    — master cfg: vif, geometry, watchdog
 //   ocah_axi_checker.svh          — AXI checker identity over the shared
 //                                   ocah_checker evidence base
-//                                   (ocah_checker_uvm_pkg, issue #1132)
+//                                   (ocah_checker_uvm_pkg)
 //   ocah_axi_monitor.svh          — passive burst reconstruction (per-ID
 //                                   pairing; side-neutral bus observer)
 //   ocah_axi_ref_model.svh        — shadow memory + expected-item prediction
@@ -42,36 +42,36 @@
 //   ocah_axi_master_env.svh       — master env (frozen surface: m_sequencer,
 //                                   cfg; the commercial-override unit)
 //
-// The clean-room SVA protocol checker (sva/ocah_axi_sva.sv) and
-// the behavioral responders (sv/ocah_axi{l,}_ram_responder.sv) are module
+// The clean-room SVA protocol checker (sva/ocah_axi_sva.sv) and the
+// struct-port bridge (interface/ocah_axi_struct_bridge.sv) are module
 // collateral compiled alongside this package, not part of it.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 package ocah_axi_uvm_pkg;
 
-    import uvm_pkg::*;
-    import ocah_checker_uvm_pkg::*;
-    `include "uvm_macros.svh"
+  import uvm_pkg::*;
+  import ocah_checker_uvm_pkg::*;
+  `include "uvm_macros.svh"
 
-    `include "ocah_axi_types.svh"
-    `include "ocah_axi_item.svh"
-    `include "ocah_axi_config.svh"
-    `include "ocah_axi_slave_config.svh"
-    `include "ocah_axi_master_config.svh"
-    `include "ocah_axi_checker.svh"
-    `include "ocah_axi_monitor.svh"
-    `include "ocah_axi_ref_model.svh"
-    `include "ocah_axi_slave_driver.svh"
-    `include "ocah_axi_master_driver.svh"
-    `include "ocah_axi_master_sequencer.svh"
-    `include "ocah_axi_master_sequence.svh"
-    `include "ocah_axi_cov.svh"
-    `include "ocah_axi_scoreboard.svh"
-    `include "ocah_axi_slave_sequence.svh"
-    `include "ocah_axi_slave_agent.svh"
-    `include "ocah_axi_master_agent.svh"
-    `include "ocah_axi_env.svh"
-    `include "ocah_axi_master_env.svh"
+  `include "ocah_axi_types.svh"
+  `include "ocah_axi_item.svh"
+  `include "ocah_axi_config.svh"
+  `include "ocah_axi_slave_config.svh"
+  `include "ocah_axi_master_config.svh"
+  `include "ocah_axi_checker.svh"
+  `include "ocah_axi_monitor.svh"
+  `include "ocah_axi_ref_model.svh"
+  `include "ocah_axi_slave_driver.svh"
+  `include "ocah_axi_master_driver.svh"
+  `include "ocah_axi_master_sequencer.svh"
+  `include "ocah_axi_master_sequence.svh"
+  `include "ocah_axi_cov.svh"
+  `include "ocah_axi_scoreboard.svh"
+  `include "ocah_axi_slave_sequence.svh"
+  `include "ocah_axi_slave_agent.svh"
+  `include "ocah_axi_master_agent.svh"
+  `include "ocah_axi_env.svh"
+  `include "ocah_axi_master_env.svh"
 
 endpackage : ocah_axi_uvm_pkg

@@ -2,18 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C IBI when Disabled  (Test Plan #34)
+I3C IBI when Disabled
 
 With target IBI generation NOT enabled, confirm the controller does not see a
 spurious IBI (the request should be NACKed / not serviced).
-Compile-only: exact NACK-status assertion confirmed during sim-verify.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from i3c_test_base import make_env, bring_up_and_assign
+from i3c_test_base import bring_up_and_assign, make_env
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_ibi_nack_disabled(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)

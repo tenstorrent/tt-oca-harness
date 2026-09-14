@@ -4,17 +4,12 @@
 /*
  * HMAC P2 Endian Convert Test.
  *
- * The issue name is hmac_p2_edian_covert_test; keep that spelling for tracking.
- *
  * Verifies endian/digest conversion controls with a word-written message so
  * endian_swap is observable:
  *   1) endian_swap changes the message byte order consumed by SHA.
  *   2) digest_swap byte-swaps each 32-bit raw digest word.
  *   3) combined endian+digest swap matches byte-swapped endian-only output.
  *   4) key_swap is deprecated for production key path, but the CFG bit is writable.
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_hmac_p2_edian_covert_test STACK=cgen,sim
  */
 
 #include <stdint.h>

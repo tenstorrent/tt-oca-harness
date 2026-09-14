@@ -9,8 +9,8 @@
  * memory space (0xc0066400 to 0xc0160000).
  *
  * The test:
- * - Maintains scoreboard arrays for lower 256 bytes (0xc0066400-0xc00660ff)
- * - Maintains scoreboard arrays for upper 256 bytes (0xc015ff00-0xc015ffff)
+ * - Maintains scoreboard arrays for the lowest and highest SCOREBOARD_SIZE bytes
+ *   of the accessible range
  * - Performs random reads and writes with data verification
  */
 
@@ -22,15 +22,14 @@
 
 // Scoreboard structure
 typedef struct {
-    uint8_t lower_scoreboard[SCOREBOARD_SIZE]; // Track lower 2047 bytes
-    uint8_t upper_scoreboard[SCOREBOARD_SIZE]; // Track upper 2047 bytes
+    uint8_t lower_scoreboard[SCOREBOARD_SIZE]; // Lowest SCOREBOARD_SIZE bytes of the range
+    uint8_t upper_scoreboard[SCOREBOARD_SIZE]; // Highest SCOREBOARD_SIZE bytes of the range
 } boundary_scoreboard_t;
 
 static boundary_scoreboard_t scoreboard = {0};
 
 static void update_scoreboard(uint64_t addr, uint8_t *data, uint16_t len, uint64_t lower_base,
                               uint64_t upper_base) {
-    /* Mirror OCCP alignment/padding behavior to keep scoreboard consistent with ROM writes */
     /* Apply payload bytes */
     for (int i = 0; i < len; i++) {
         uint64_t byte_addr = addr + (uint64_t)i;
@@ -101,8 +100,6 @@ static void execute_random_boundary_commands(test_context_t *ctx, int num_comman
         uint32_t offset = get_random_int() % SCOREBOARD_SIZE;
         uint64_t target_addr = (base_addr + offset) & 0xfffffffc;
 
-        // account for padding, don't want to go over transfer size
-
         bool is_read = get_random_int() % 2;
 
         if (is_read) {
@@ -166,13 +163,6 @@ static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting OCCP Memory Boundary Access Test with Scoreboarding ===\n");
 
     ctx->overall_result = true;
-
-    int retval;
-    uint32_t status_data = 0;
-
-    // TODO: audit these values OCCP spec
-    int exp_interface_status = 0x1;
-    int exp_boot_status = 0x5;
 
     // Execute random boundary access commands with scoreboarding
     execute_random_boundary_commands(ctx, NUM_RANDOM_COMMANDS);

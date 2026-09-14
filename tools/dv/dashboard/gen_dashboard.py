@@ -31,10 +31,21 @@ def _status_cards(summary: dict) -> str:
     regression = summary.get("regression", {})
     junit = summary.get("junit_xml", {})
     warnings = summary.get("warnings", {})
+    incomplete_runs = int(tests.get("incomplete_runs") or 0)
+    test_rate_detail = f"{tests.get('passing')} / {tests.get('total')} passing"
+    if incomplete_runs:
+        test_rate_detail += f"; {incomplete_runs} incomplete run(s) excluded"
     cards = [
-        _card("Flow Pass Rate", flows.get("pass_rate"), f"{flows.get('passing')} / {flows.get('total')} passing"),
-        _card("Test Pass Rate", tests.get("pass_rate"), f"{tests.get('passing')} / {tests.get('total')} passing"),
-        _card("Fail / Skip / Unknown", f"{tests.get('failing')} / {tests.get('skipped')} / {tests.get('unknown')}"),
+        _card(
+            "Flow Pass Rate",
+            flows.get("pass_rate"),
+            f"{flows.get('passing')} / {flows.get('total')} passing",
+        ),
+        _card("Test Pass Rate", tests.get("pass_rate"), test_rate_detail),
+        _card(
+            "Fail / Skip / Unknown",
+            f"{tests.get('failing')} / {tests.get('skipped')} / {tests.get('unknown')}",
+        ),
         _card("Failed Tests", regression.get("failed_tests")),
         _card("Flaky Tests", regression.get("flaky_tests")),
         _card(
@@ -56,6 +67,9 @@ def _dut_rows(summary: dict) -> str:
         flow = str(row.get("flow") or "")
         flow_cell = link(report_href, flow) if report_href else fmt(flow)
         categories = ", ".join(row.get("categories") or [])
+        pass_rate = (
+            "incomplete run" if row.get("tests_completed") is False else fmt(row.get("pass_rate"))
+        )
         rows.append(
             "<tr>"
             f"<td>{flow_cell}</td>"
@@ -66,11 +80,11 @@ def _dut_rows(summary: dict) -> str:
             f"<td>{fmt(row.get('tests_failing'))}</td>"
             f"<td>{fmt(row.get('tests_skipped'))}</td>"
             f"<td>{fmt(row.get('tests_unknown'))}</td>"
-            f"<td>{fmt(row.get('pass_rate'))}</td>"
+            f"<td>{pass_rate}</td>"
             f"<td>{fmt(row.get('failed_tests'))}</td>"
             f"<td>{fmt(row.get('flaky_tests'))}</td>"
             f"<td>{fmt(row.get('coverage_total_percent'))}</td>"
-            f"<td class=\"{fmt(row.get('coverage_status'))}\">{fmt(row.get('coverage_status'))}</td>"
+            f'<td class="{fmt(row.get("coverage_status"))}">{fmt(row.get("coverage_status"))}</td>'
             f"<td>{fmt(row.get('coverage_threshold'))}</td>"
             f"<td>{fmt(row.get('coverage_threshold_met'))}</td>"
             f"<td>{fmt(row.get('coverage_open_holes'))}</td>"
@@ -113,9 +127,7 @@ def _coverage_category_rows(summary: dict) -> str:
             f"<td>{fmt(', '.join(row.get('duts') or []))}</td>"
             "</tr>"
         )
-    return "\n".join(rows) or (
-        '<tr><td colspan="3">No coverage category data collected.</td></tr>'
-    )
+    return "\n".join(rows) or ('<tr><td colspan="3">No coverage category data collected.</td></tr>')
 
 
 def _coverage_threshold_rows(summary: dict) -> str:
@@ -132,7 +144,7 @@ def _coverage_threshold_rows(summary: dict) -> str:
                 f"<td>{fmt(outcome.get('actual_percent'))}</td>"
                 f"<td>{fmt(outcome.get('minimum_percent'))}</td>"
                 f"<td>{fmt(outcome.get('unclassified_points'))}</td>"
-                f"<td class=\"{'PASS' if outcome.get('met') else 'FAIL'}\">"
+                f'<td class="{"PASS" if outcome.get("met") else "FAIL"}">'
                 f"{fmt(outcome.get('met'))}</td>"
                 "</tr>"
             )
@@ -148,10 +160,12 @@ def _coverage_hole_rows(summary: dict) -> str:
         holes = coverage.get("holes_summary", {})
         details_href = coverage.get("coverage_details") or ""
         for hole in holes.get("samples") or []:
-            issue_cells = ", ".join(
-                link(url, f"#{url.rsplit('/', 1)[-1]}")
-                for url in hole.get("issues") or []
-            ) or "--"
+            issue_cells = (
+                ", ".join(
+                    link(url, f"#{url.rsplit('/', 1)[-1]}") for url in hole.get("issues") or []
+                )
+                or "--"
+            )
             location = hole.get("source") or hole.get("hierarchy") or ""
             if location and hole.get("line"):
                 location = f"{location}:{hole.get('line')}"
@@ -164,8 +178,8 @@ def _coverage_hole_rows(summary: dict) -> str:
                 f"<td>{fmt(hole.get('category'))}</td>"
                 f"<td>{fmt(hole.get('metric_family'))}</td>"
                 f"<td>{fmt(location)}</td>"
-                f"<td class=\"{fmt(hole.get('disposition'))}\">{fmt(hole.get('disposition'))}</td>"
-                f"<td class=\"{fmt(hole.get('status'))}\">{fmt(hole.get('status'))}</td>"
+                f'<td class="{fmt(hole.get("disposition"))}">{fmt(hole.get("disposition"))}</td>'
+                f'<td class="{fmt(hole.get("status"))}">{fmt(hole.get("status"))}</td>'
                 f"<td>{fmt(hole.get('rationale'))}</td>"
                 f"<td>{issue_cells}</td>"
                 "</tr>"
@@ -234,19 +248,23 @@ def render_dashboard(summary: dict, history: dict | None = None) -> str:
         report_href = _default_report_link(result)
         flow_cell = link(report_href, flow) if report_href else fmt(flow)
         coverage_cells = "".join(
-            f"<td>{fmt(coverage_value(result, name))}</td>"
-            for name, _ in COVERAGE_FIELDS
+            f"<td>{fmt(coverage_value(result, name))}</td>" for name, _ in COVERAGE_FIELDS
         )
-        regression = result.get("regression", {}) if isinstance(result.get("regression"), dict) else {}
+        regression = (
+            result.get("regression", {}) if isinstance(result.get("regression"), dict) else {}
+        )
+        pass_rate = (
+            "incomplete run" if tests.get("completed") is False else fmt(tests.get("pass_rate"))
+        )
         rows.append(
             "<tr>"
             f"<td>{flow_cell}</td>"
             f"<td>{fmt(result.get('kind'))}</td>"
             f"<td>{fmt(result.get('tool'))}</td>"
-            f"<td class=\"{fmt(status)}\">{fmt(status)}</td>"
+            f'<td class="{fmt(status)}">{fmt(status)}</td>'
             f"<td>{fmt(tests.get('passing'))}</td>"
             f"<td>{fmt(tests.get('total'))}</td>"
-            f"<td>{fmt(tests.get('pass_rate'))}</td>"
+            f"<td>{pass_rate}</td>"
             f"<td>{fmt(len(regression.get('failed_tests') or []))}</td>"
             f"<td>{fmt(len(regression.get('flaky_tests') or []))}</td>"
             f"{coverage_cells}"
@@ -260,21 +278,21 @@ def render_dashboard(summary: dict, history: dict | None = None) -> str:
     regression = summary.get("regression", {})
     body = f"""
 <h1>OCAH DV/FV Dashboard</h1>
-<p class="meta">Generated at {fmt(summary.get('generated_at'))}</p>
+<p class="meta">Generated at {fmt(summary.get("generated_at"))}</p>
 
 <h2>Summary</h2>
 {_status_cards(summary)}
 <table>
   <tr><th>Passing Flows</th><th>Total Flows</th><th>Flow Pass Rate</th><th>Passing Tests</th><th>Total Tests</th><th>Test Pass Rate</th><th>Failed Tests</th><th>Flaky Tests</th></tr>
   <tr>
-    <td>{fmt(flows.get('passing'))}</td>
-    <td>{fmt(flows.get('total'))}</td>
-    <td>{fmt(flows.get('pass_rate'))}</td>
-    <td>{fmt(tests.get('passing'))}</td>
-    <td>{fmt(tests.get('total'))}</td>
-    <td>{fmt(tests.get('pass_rate'))}</td>
-    <td>{fmt(regression.get('failed_tests'))}</td>
-    <td>{fmt(regression.get('flaky_tests'))}</td>
+    <td>{fmt(flows.get("passing"))}</td>
+    <td>{fmt(flows.get("total"))}</td>
+    <td>{fmt(flows.get("pass_rate"))}</td>
+    <td>{fmt(tests.get("passing"))}</td>
+    <td>{fmt(tests.get("total"))}</td>
+    <td>{fmt(tests.get("pass_rate"))}</td>
+    <td>{fmt(regression.get("failed_tests"))}</td>
+    <td>{fmt(regression.get("flaky_tests"))}</td>
   </tr>
 </table>
 
@@ -358,8 +376,12 @@ def _load_results(paths: list[str]) -> list[dict]:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--results", nargs="+", required=True, help="result JSON paths or glob patterns")
-    parser.add_argument("--html-out", help="optional output index.html; omit for a data-only aggregate")
+    parser.add_argument(
+        "--results", nargs="+", required=True, help="result JSON paths or glob patterns"
+    )
+    parser.add_argument(
+        "--html-out", help="optional output index.html; omit for a data-only aggregate"
+    )
     parser.add_argument("--summary-out", required=True, help="output summary.json")
     parser.add_argument("--history-in", help="optional existing trend history JSON")
     parser.add_argument("--history-out", help="optional output trend history JSON")
@@ -396,4 +418,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

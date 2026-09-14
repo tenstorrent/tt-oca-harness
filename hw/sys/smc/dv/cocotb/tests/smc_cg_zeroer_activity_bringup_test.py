@@ -8,16 +8,25 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cg_zeroer_activity_bringup_test_seq import (
     smc_cg_zeroer_activity_bringup_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_cg_zeroer_activity_bringup_test(smc_base_test):
     """LIVE Zeroer axi_clk + reg_clk activity-driven gate/ungate, single zero
-    operation (Skill 1.5)."""
+    operation."""
+
+    required_evidence = (
+        "CHK-BUSY-UNGATES-AXI-CLK",
+        "CHK-NONVAC",
+        "CHK-REG-ACCESS-UNGATES-REG-CLK",
+        "CHK-REG-CLK-IDLE-GATED",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 5
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
@@ -37,6 +46,10 @@ class smc_cg_zeroer_activity_bringup_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Directed stimulus floor: 15 SEP_IN AXI accesses (CG programming
+            # plus the zeroer descriptor/trigger writes). Literal here, not
+            # read from `seq.accesses`.
+            min_csr_accesses=15,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

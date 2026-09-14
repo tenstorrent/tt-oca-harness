@@ -8,7 +8,7 @@
  * source and emits a sequence of N event tokens to a handshake scratch
  * register, pausing after each token until the testbench acknowledges.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — the KM can send
+ * Spec basis: OCAH Specification §Crypto Key Manager — the KM can send
  * asynchronous status/progress notifications upstream.  This test
  * exercises the analogous FW→TB notification path using scratch registers
  * as the transport, verifying that each event is delivered and acknowledged
@@ -82,5 +82,5 @@ int main(void) {
     return 0;
 }
 
-/* secondary_main intentionally not defined — crt0 default routes only
- * the boot hart to main(), non-boot harts spin in WFI. */
+/* secondary_main is not defined here: the crt0 weak default routes only the
+ * boot hart to main() and parks the other harts in WFI. */

@@ -29,9 +29,7 @@ from .smc_i2c_field_masks import (
     I2C_WRAP_CTRL_TARGET_SMBUS,
 )
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 _TARGET_IDX = 0
 _HOST_IDX = 1
@@ -62,9 +60,7 @@ def _pack_timing4(tsu_sto: int, t_buf: int) -> int:
     return (tsu_sto & 0x1FFF) | ((t_buf & 0x1FFF) << 16)
 
 
-def _pack_target_id(
-    address0: int, mask0: int = 0x7F, address1: int = 0, mask1: int = 0
-) -> int:
+def _pack_target_id(address0: int, mask0: int = 0x7F, address1: int = 0, mask1: int = 0) -> int:
     return (
         (address0 & 0x7F)
         | ((mask0 & 0x7F) << 7)
@@ -80,6 +76,8 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.alert_seen: bool = False
         self.ara_ok: bool = False
+        # Byte the host read back; compared against _ARA_REPLY above.
+        self.ara_reply: int = -1
         self.alert_cleared: bool = False
         self.suspend_ok: bool = False
 
@@ -128,9 +126,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             f"want_set=0x{want_set:x} want_clear=0x{want_clear:x}"
         )
 
-    async def _await_intr(
-        self, label: str, idx: int, *, want_set: bool
-    ) -> int:
+    async def _await_intr(self, label: str, idx: int, *, want_set: bool) -> int:
         ir_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", idx)
         ir = 0
         for i in range(_POLL_ITERS):
@@ -139,13 +135,9 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             if bit == want_set:
                 return ir
             await Timer(_POLL_STEP_US, units="us")
-        raise AssertionError(
-            f"{label} timeout INTR_STATE=0x{ir:08x} want_set={want_set}"
-        )
+        raise AssertionError(f"{label} timeout INTR_STATE=0x{ir:08x} want_set={want_set}")
 
-    async def _await_smbus_ctrl_alert(
-        self, label: str, idx: int, *, want_set: bool
-    ) -> int:
+    async def _await_smbus_ctrl_alert(self, label: str, idx: int, *, want_set: bool) -> int:
         ctrl_a = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR", idx)
         ctrl = 0
         for i in range(_POLL_ITERS):
@@ -154,9 +146,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             if bit == want_set:
                 return ctrl
             await Timer(_POLL_STEP_US, units="us")
-        raise AssertionError(
-            f"{label} timeout SMBUS_CTRL=0x{ctrl:08x} want_alert={want_set}"
-        )
+        raise AssertionError(f"{label} timeout SMBUS_CTRL=0x{ctrl:08x} want_alert={want_set}")
 
     async def _host_ara_read(self) -> int:
         idx = _HOST_IDX
@@ -168,9 +158,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
         await self.csr_write("HOST_FIFO_RST", fifo_a, I2C_FIFO_CTRL_RXRST_FMTRST)
         addr_r = (_ARA_ADDR << 1) | 1
         await self.csr_write("ARA_START", fdata_a, I2C_FDATA_START | addr_r)
-        await self.csr_write(
-            "ARA_READ", fdata_a, I2C_FDATA_READB | I2C_FDATA_STOP | 1
-        )
+        await self.csr_write("ARA_READ", fdata_a, I2C_FDATA_READB | I2C_FDATA_STOP | 1)
 
         rdata = 0
         status = 0
@@ -181,9 +169,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
                 break
             await Timer(10, units="us")
         else:
-            raise AssertionError(
-                f"ARA RX empty timeout STATUS=0x{status:08x}"
-            )
+            raise AssertionError(f"ARA RX empty timeout STATUS=0x{status:08x}")
 
         for i in range(400):
             status = await self.csr_read(f"ARA_IDLE_{i}", status_a)
@@ -191,31 +177,20 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
                 return rdata
             await Timer(10, units="us")
         raise AssertionError(
-            f"ARA HOSTIDLE timeout after RDATA=0x{rdata:02x} "
-            f"STATUS=0x{status:08x}"
+            f"ARA HOSTIDLE timeout after RDATA=0x{rdata:02x} STATUS=0x{status:08x}"
         )
 
     async def body(self) -> None:
         if "smc_i2c_shared_bus" not in cocotb.plusargs:
-            raise AssertionError(
-                "smc_smbus_alert_suspend_test requires +smc_i2c_shared_bus"
-            )
+            raise AssertionError("smc_smbus_alert_suspend_test requires +smc_i2c_shared_bus")
 
         cg = await self.csr_read("I2C_CG", CLOCK_GATE_CONTROL)
         await self.csr_write("I2C_UNGATE", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
 
-        wrap_t = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", _TARGET_IDX
-        )
-        wrap_h = self._addr(
-            "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", _HOST_IDX
-        )
-        await self.csr_write(
-            "I2C0_WRAP_TGT_SMBUS", wrap_t, I2C_WRAP_CTRL_TARGET_SMBUS
-        )
-        await self.csr_write(
-            "I2C1_WRAP_HOST_SMBUS", wrap_h, I2C_WRAP_CTRL_HOST_SMBUS
-        )
+        wrap_t = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", _TARGET_IDX)
+        wrap_h = self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", _HOST_IDX)
+        await self.csr_write("I2C0_WRAP_TGT_SMBUS", wrap_t, I2C_WRAP_CTRL_TARGET_SMBUS)
+        await self.csr_write("I2C1_WRAP_HOST_SMBUS", wrap_h, I2C_WRAP_CTRL_HOST_SMBUS)
 
         await self._program_timing(_TARGET_IDX)
         await self._program_timing(_HOST_IDX)
@@ -286,23 +261,18 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             want_set=I2C_SMBUS_STATUS_SMBALERT,
         )
         await self._await_intr("HOST_ALERT_IRQ", _HOST_IDX, want_set=True)
-        await self._await_smbus_ctrl_alert(
-            "TGT_ALERT_HELD", _TARGET_IDX, want_set=True
-        )
+        await self._await_smbus_ctrl_alert("TGT_ALERT_HELD", _TARGET_IDX, want_set=True)
         self.alert_seen = True
         cocotb.log.info("CHK-SMBUS-ALERT-SUS-ALERT: host STATUS+IRQ after target assert")
 
         rdata = await self._host_ara_read()
         if rdata != _ARA_REPLY:
-            raise AssertionError(
-                f"ARA reply 0x{rdata:02x} != expected 0x{_ARA_REPLY:02x}"
-            )
+            raise AssertionError(f"ARA reply 0x{rdata:02x} != expected 0x{_ARA_REPLY:02x}")
         self.ara_ok = True
+        self.ara_reply = rdata
         cocotb.log.info("CHK-SMBUS-ALERT-SUS-ARA: reply=0x%02x", rdata)
 
-        await self._await_smbus_ctrl_alert(
-            "TGT_ALERT_CLR", _TARGET_IDX, want_set=False
-        )
+        await self._await_smbus_ctrl_alert("TGT_ALERT_CLR", _TARGET_IDX, want_set=False)
         await self.csr_write(
             "I2C1_INTR_CLR_POST",
             self._addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", _HOST_IDX),

@@ -4,16 +4,16 @@
 """
 I3C Long Write Sanity Test
 
-Performs SETDASA + 45-byte private write (11 full dwords + 1 byte = 12 entries).
+Performs SETDASA + a WRITE_LENGTH-byte private write (whole dwords, one FIFO entry each).
 Uses i3c_api.py for all I3C operations.
 """
 
-import cocotb
 import logging
-from cocotb.triggers import RisingEdge, Timer, ClockCycles
-from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
-from i3c_api import I3CHelper, I3CController, I3CTarget
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotbext.axi import AxiLiteBus, AxiLiteMaster
+from i3c_api import I3CController, I3CHelper, I3CTarget
 
 # Address mapping
 CTRL_BASE = 0x0000
@@ -22,7 +22,7 @@ TARGET_STATIC_ADDR = 0x10
 TARGET_DYNAMIC_ADDR = 0x10
 
 # Test parameters
-WRITE_LENGTH = 500  # 11 full dwords + 1 byte (12 entries total)
+WRITE_LENGTH = 500  # whole dwords, one FIFO entry each
 
 
 class TB:
@@ -37,9 +37,7 @@ class TB:
     async def setup_axi_master(self):
         await Timer(100, units="ns")
         bus = AxiLiteBus.from_prefix(self.dut, "axi")
-        self.axi_master = AxiLiteMaster(
-            bus, self.dut.clk, self.dut.rst_n, reset_active_level=False
-        )
+        self.axi_master = AxiLiteMaster(bus, self.dut.clk, self.dut.rst_n, reset_active_level=False)
         self.axi_master.write_if.log.setLevel(logging.ERROR)
         self.axi_master.read_if.log.setLevel(logging.ERROR)
         self.log.info("AXI-Lite master connected")
@@ -51,9 +49,9 @@ class TB:
         self.log.info("Reset released")
 
 
-@cocotb.test(timeout_time=5000, timeout_unit='us')
+@cocotb.test(timeout_time=5000, timeout_unit="us")
 async def test_long_write_sanity(dut):
-    """I3C long write test: SETDASA + 45-byte write."""
+    """I3C long write test: SETDASA + WRITE_LENGTH-byte write."""
     tb = TB(dut)
 
     tb.log.info("=" * 60)
@@ -84,8 +82,10 @@ async def test_long_write_sanity(dut):
     await tgt.configure_thresholds(tx_buf=1, tx_start=0, rx_buf=1, rx_start=0)
 
     # SETDASA
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
@@ -96,13 +96,15 @@ async def test_long_write_sanity(dut):
     assert ok, "Target did not receive dynamic address"
     assert dyn_addr == TARGET_DYNAMIC_ADDR
 
-    # Generate 45 bytes of test data (incrementing pattern)
+    # Incrementing test pattern
     write_data = [(i & 0xFF) for i in range(WRITE_LENGTH)]
-    tb.log.info(f"Private write: {WRITE_LENGTH} bytes (pattern: 0x00-0x{(WRITE_LENGTH-1) & 0xFF:02X})")
+    tb.log.info(
+        f"Private write: {WRITE_LENGTH} bytes (pattern: 0x00-0x{(WRITE_LENGTH - 1) & 0xFF:02X})"
+    )
     tb.log.info(f"  First 8 bytes: {[f'0x{b:02X}' for b in write_data[:8]]}")
     tb.log.info(f"  Last 8 bytes:  {[f'0x{b:02X}' for b in write_data[-8:]]}")
 
-    # Private write (45 bytes) - interleaved, returns rx_data
+    # Private write - interleaved, returns rx_data
     ok, resp, rx_data = await ctrl.private_write(write_data, tgt)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     tb.log.info(f"  Target received {len(rx_data)} bytes")
@@ -112,7 +114,7 @@ async def test_long_write_sanity(dut):
     if rx_data == write_data:
         tb.log.info("  Data verification: PASSED")
     else:
-        tb.log.error(f"  Data verification: FAILED")
+        tb.log.error("  Data verification: FAILED")
         tb.log.error(f"  Expected {len(write_data)} bytes, received {len(rx_data)} bytes")
         # Find first mismatch
         for i, (exp, got) in enumerate(zip(write_data, rx_data)):
@@ -121,7 +123,7 @@ async def test_long_write_sanity(dut):
                 break
         if len(rx_data) != len(write_data):
             tb.log.error(f"  Length mismatch: expected {len(write_data)}, got {len(rx_data)}")
-        assert False, f"Data mismatch"
+        assert False, "Data mismatch"
 
     tb.log.info("=" * 60)
     tb.log.info("SUCCESS: 45-byte write test passed!")

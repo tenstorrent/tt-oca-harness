@@ -44,7 +44,7 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_step(1, "Reset TAP and verify all IC_RESET fields default to 1")
         await self.reset_tap()
 
-        default_value = self._bit_mask(DTP_IC_RESET_LEN)
+        default_value = self.bit_mask(DTP_IC_RESET_LEN)
         observed = await self.read_ic_reset(shift_value=default_value)
         self.log_ic_reset("Default readback", observed)
         self.assert_equal("IC_RESET default", observed, default_value)

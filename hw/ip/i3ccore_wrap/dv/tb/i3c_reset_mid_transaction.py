@@ -2,30 +2,31 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Reset Mid-Transaction  (Test Plan #42)
+I3C Reset Mid-Transaction
 
 Asserts reset during an active transaction stream and confirms the device
 recovers cleanly: after re-init + SETDASA, a fresh transfer succeeds.
 
 Constrained-random: a random number of pre-reset transfers (random length/data)
 run first, then reset is asserted after a *random* cycle delay so it lands at a
-random bus phase (far stronger than always resetting at the same point). After
+random bus phase. After
 re-bring-up, a random post-reset transfer is self-checked. Seed from
 +seed/SEED/default.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from i3c_test_base import make_env, bring_up_and_assign
-from i3c_rand import RandMgr, I3CTransfer, do_transfer, rand_len, rand_bytes
+from i3c_rand import I3CTransfer, RandMgr, do_transfer, rand_bytes, rand_len
+from i3c_test_base import bring_up_and_assign, make_env
 
 MWL = 32
 
 
-@cocotb.test(timeout_time=3000, timeout_unit='us')
+@cocotb.test(timeout_time=3000, timeout_unit="us")
 async def test_reset_mid_transaction(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="reset_mid")             # seed logged; +seed/SEED override
+    r = RandMgr(name="reset_mid")  # seed logged; +seed/SEED override
 
     # Random pre-reset traffic
     for _ in range(r.randint(1, 3)):

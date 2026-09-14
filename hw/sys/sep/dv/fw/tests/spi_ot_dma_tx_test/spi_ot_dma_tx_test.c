@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan-SPI DMA-TX firmware test (OSS rep SPI DMA-TX breadth). The complement of the
-// Phase-1 sep_spi_ot_dma_rx (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA
+// SEP OpenTitan-SPI DMA-TX firmware test. The complement of sep_spi_ot_dma_rx
+// (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA
 // (hardware handshake) -> OT SPI host TX FIFO -> flash. The OT SPI TX watermark
 // drives lsio_trigger, which refills the TX FIFO from SRAM a chunk at a time:
 //
@@ -18,7 +18,13 @@
 // (patched at SPI3_PARAM_MAGIC). One boot deterministically walks the required
 // length/trigger cells, while the seed selects legal flash addresses and data.
 //
-// main returns the error count; start.S emits PASS/FAIL magic. Each checker logs
+// After the sweep, CHK-ERR-OVERFLOW provokes the one TX-FIFO flow-control edge
+// the watermark-paced DMA is designed never to hit: a TXDATA write past
+// STATUS.TXFULL. The host latches ERROR_STATUS.OVERFLOW and holds its core off
+// until software clears it, so the checker also proves the CTRL.SW_RST + W1C
+// recovery with a real flash RDSR afterwards.
+//
+// main returns the error count; crt0.s emits PASS/FAIL magic. Each checker logs
 // a positive PASS line.
 
 #include <stdint.h>
@@ -380,24 +386,28 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         sep_mbx_puts("CHK-SPI-IDLE PASS: OT SPI idle + ERROR_STATUS==0\n");
     }
 
-    // --- Flash device completion: poll RDSR until WIP=0 before readback ---
-    // The flash BFM is instant-ready, so the first defined RDSR already has
-    // WIP=0. This poll is fail-closed on 0xFF/timeout, not a busy-then-idle
-    // waveform. CHK-DMA-TX below is the data proof.
+    // --- Precondition, not a checker: settle the device before the readback ---
+    // The flash BFM is instant-ready, so the first defined RDSR already reads
+    // WIP=0 and a "WIP clear" assertion could not fail; the poll is fail-closed
+    // on 0xFF/timeout. CHK-DMA-TX below is the data proof.
     if (flash_wait_wip_clear()) {
         errors++;
         return errors;
     }
-    sep_mbx_puts("CHK-WIP PASS: RDSR returned a defined status with WIP=0\n");
 
     // --- CHK-DMA-TX: read the flash back -> it equals the DMA-fed data ---
     if (flash_read(addr, rd, nwords)) {
         sep_mbx_puts("FAIL: flash READ timeout\n");
-        return 1;
+        return errors + 1;
     }
     int data_ok = 1, any_nonerased = 0;
     for (uint32_t i = 0; i < nwords; i++) {
-        if (data[i] != 0xFFFFFFFFu) any_nonerased = 1;
+        // Scan what the flash returned, not what was staged. The source is
+        // forced non-erased by the config, so scanning it can never fail; a
+        // readback that is all-0xFF is the real vacuous case -- a flash that was
+        // never programmed reads erased, and CHK-DMA-TX would then compare
+        // erased against erased and pass.
+        if (rd[i] != 0xFFFFFFFFu) any_nonerased = 1;
         if (rd[i] != data[i]) {
             sep_mbx_puts("FAIL: CHK-DMA-TX word ");
             sep_mbx_puthex(i);
@@ -414,15 +424,90 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
         sep_mbx_puts("CHK-DMA-TX PASS: flash content == SRAM source "
                      "(SRAM->DMA->TXFIFO->flash)\n");
     }
-    // --- CHK-NONVAC: the DMA-fed data was real, not the erased/stuck 0xFF ---
+    // --- CHK-NONVAC: the flash returned real content, not erased 0xFF ---
     if (data_ok && any_nonerased) {
         sep_mbx_puts("CHK-NONVAC PASS: programmed data differs from erased 0xFF\n");
     } else if (!any_nonerased) {
-        sep_mbx_puts("FAIL: CHK-NONVAC source was all-0xFF (vacuous)\n");
+        sep_mbx_puts("FAIL: CHK-NONVAC flash readback was all-0xFF; the page "
+                     "reads erased, so the content compare is vacuous\n");
         errors++;
     }
 
     return errors;
+}
+
+// CHK-ERR-OVERFLOW: firmware pushing TXDATA past the TX FIFO capacity.
+// spi_controller.sv: error_overflow = tx_valid & ~tx_ready, i.e. a TXDATA write
+// the FIFO cannot accept. Nothing else in this test can reach that edge -- the
+// DMA is paced by the TX watermark precisely so it never does -- so the flow
+// control the whole DMA-TX path depends on is otherwise never proven to exist.
+//
+// The host keeps its core disabled while any ERROR_STATUS bit is latched
+// (en = en_sw & ~enb_error), so the injection is last and is followed by a
+// CTRL.SW_RST flush + W1C, then a real bus transfer to prove the release.
+#define TXFULL_WRITE_LIM 256
+
+static int chk_err_overflow(void) {
+    int err = 0;
+
+    // No command is outstanding, so nothing drains the FIFO: keep writing until
+    // the HOST reports TXFULL. The bound is a guard, not the contract.
+    uint32_t writes = 0;
+    while (writes < TXFULL_WRITE_LIM && !(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+                                          SPI_CONTROLLER__STATUS__TXFULL_bm)) {
+        spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xE0000000u + writes);
+        writes++;
+    }
+    if (writes >= TXFULL_WRITE_LIM) {
+        sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW STATUS.TXFULL never asserted after ");
+        sep_mbx_puthex(writes);
+        sep_mbx_puts(" TXDATA writes\n");
+        return err + 1;
+    }
+    sep_mbx_puts("CHK-ERR-OVERFLOW TXFULL after writes=");
+    sep_mbx_puthex(writes);
+    sep_mbx_putc('\n');
+
+    // ERROR_STATUS is clean up to here (CHK-SPI-IDLE asserted it per case), so
+    // the one write past full is the only thing that can set a bit.
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xE0FFFFFFu);
+    uint32_t es = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (es != SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bm) {
+        sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW ERROR_STATUS=");
+        sep_mbx_puthex(es);
+        sep_mbx_puts(" exp ");
+        sep_mbx_puthex(SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bm);
+        sep_mbx_putc('\n');
+        err++;
+    }
+
+    // Recovery: SW_RST drains the FIFOs and the command queue, then W1C the latch.
+    uint32_t ctrl = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl | SPI_CONTROLLER__CTRL__SW_RST_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CTRL__SW_RST_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
+    uint32_t residual = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (residual != 0) {
+        sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW ERROR_STATUS did not W1C-clear, residual=");
+        sep_mbx_puthex(residual);
+        sep_mbx_putc('\n');
+        err++;
+    }
+
+    // Positive proof the host was released: a real RDSR round trip to the device.
+    // A host still disabled returns nothing and the helper reports 0xFF.
+    uint8_t sr = flash_read_status();
+    if (sr == 0xFFu) {
+        sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW RDSR returned 0xFF after recovery; the "
+                     "host did not resume\n");
+        err++;
+    }
+    if (err == 0) {
+        sep_mbx_puts("CHK-ERR-OVERFLOW PASS: a TXDATA write past STATUS.TXFULL latched "
+                     "only ERROR_STATUS.OVERFLOW, W1C released it, and the host ran a "
+                     "flash RDSR again\n");
+    }
+    return err;
 }
 
 int main(void) {
@@ -462,6 +547,9 @@ int main(void) {
         volatile uint32_t *data = &g_spi3_params[base + 2u];
         errors += run_case(c, addr, data, nwords);
     }
+
+    // Last: the TX-FIFO flow-control error edge the paced DMA never reaches.
+    errors += chk_err_overflow();
 
     if (errors == 0) {
         sep_mbx_puts("CHK-RAND-REP PASS: walked deterministic DMA length/trigger cells\n");

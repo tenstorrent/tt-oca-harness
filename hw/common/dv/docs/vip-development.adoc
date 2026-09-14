@@ -31,7 +31,8 @@ Default to DUT-local ownership. Promote only after the criteria in
 . Document limitations and backend policy.
 . Integrate one real DUT consumer.
 . Run positive, negative, timeout, and non-vacuity validation.
-. Record the qualifying commit, tool versions, seed, result, and artifact.
+. Record the qualifying commit, tool versions, seed, result, and artifact in
+  the tracker.
 
 [[shared-vip-development-api]]
 === Public API Rules
@@ -44,8 +45,16 @@ Public APIs:
 * expose deterministic defaults;
 * distinguish strict positive helpers from result-inspection helpers;
 * use explicit `timeout_ns`/`allow_timeout` semantics;
+* give every blocking operation of an active initiator a finite default
+  timeout, and state that default and its unit in the package README; a
+  responder waits for its initiator and has no timeout;
 * provide statistics/reset methods when counters are meaningful;
-* use `from_prefix()` for conventional flattened interfaces where practical.
+* use `from_prefix()` for conventional flattened interfaces where practical;
+* bind an interface scope through the VIP's geometry configuration when the
+  interface members are wider than the bus (`OcahAxiConfig.bus()` in the AXI VIP);
+* keep backend objects inside the package: every method or attribute that
+  hands a consumer a backend object is listed, with its purpose and the rule
+  the consumer follows, under "Backend escapes" in `hw/common/dv/README.md`.
 
 [source,python]
 ----
@@ -118,10 +127,13 @@ A monitor:
 * supports callback registration;
 * retains bounded history by default;
 * supports `start()`, `stop()`, `clear_history()`, and query/statistics methods;
-* catches/logs subscriber exceptions without terminating sampling.
+* re-raises a checker verdict (`AssertionError`) from a subscriber callback
+  and counts any other subscriber exception in `callback_errors` without
+  terminating sampling.
 
-Because callback exceptions are caught, every attached checker needs explicit
-finalization by its owner.
+Because subscriber defects are counted rather than raised, every attached
+checker needs explicit finalization by its owner, and the owner records the
+monitor's `callback_errors` against zero at drain.
 
 [[shared-vip-development-checker]]
 === Protocol Checkers
@@ -198,9 +210,9 @@ Every promoted package README includes:
 * method/result/error/timeout reference;
 * deterministic default and randomization policy;
 * example path;
-* known limitations and deferred capabilities;
-* named gating DUT test and qualification status;
-* migration guidance from raw backend usage.
+* known limitations and out-of-scope capabilities;
+* named gating DUT test;
+* the OCAH API to use in place of direct backend calls.
 
 Complex packages should add `MANUAL.md`. Shared architecture and cross-package
 rules belong in this guide rather than being duplicated inconsistently.

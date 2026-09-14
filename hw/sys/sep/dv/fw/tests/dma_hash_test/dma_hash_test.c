@@ -38,7 +38,7 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
 }
 
 // CFG_REGWEN values (multi-bit bool)
-#define MUBI4_TRUE 0x6  // Unlocked
+#define MUBI4_TRUE 0x6 // Unlocked
 
 // ASID / opcode / width used by this SHA-256 copy.
 #define ASID_OT_ADDR 0x7
@@ -100,11 +100,9 @@ int main(void) {
     printf("CFG_REGWEN = 0x%x (expected 0x%x for unlocked)\n", cfg_regwen, MUBI4_TRUE);
 
     if ((cfg_regwen & 0xF) != MUBI4_TRUE) {
-        // Must count as an error, not warn and continue. This is the only check
-        // that the config write-enable is actually open before we program the
-        // DMA; if it merely warned, a CFG_REGWEN stuck locked or reading as an
-        // unmapped 0x0 would print a line nobody reads and the test would still
-        // pass while claiming the lock was verified open.
+        // This is the only check that the config write-enable is open before the
+        // DMA is programmed: a CFG_REGWEN stuck locked, or reading as an unmapped
+        // 0x0, fails the test here.
         printf("ERROR: CFG_REGWEN not unlocked (DMA busy or locked)\n");
         errors++;
     }
@@ -162,7 +160,8 @@ int main(void) {
            READ_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
 
     // Set the transfer width to 4 bytes
-    secure_dma__TRANSFER_WIDTH_t transfer_width = {.f = {.TRANSACTION_WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
+    secure_dma__TRANSFER_WIDTH_t transfer_width = {
+        .f = {.TRANSACTION_WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, transfer_width.w);
 
     // Set the chunk data size (single chunk = total size)

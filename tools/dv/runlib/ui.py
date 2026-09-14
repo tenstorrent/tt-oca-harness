@@ -13,7 +13,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator, TextIO
 
-
 _CI_TRUE = {"1", "true", "yes", "on"}
 _STATUS_COLOR = {
     "PASS": "32",
@@ -65,6 +64,10 @@ class Console:
             yield
         finally:
             self._local.suppressed = previous
+
+    def clear_suppression(self) -> None:
+        """Drop the leaf-UI suppression a stage abandoned mid-flight left on this thread."""
+        self._local.suppressed = False
 
     def _resolve_pretty(self) -> bool:
         if self.mode == "pretty":
@@ -292,6 +295,7 @@ class Console:
         *,
         ordered_items: list[str],
         elapsed_sec: float,
+        planned: int | None = None,
     ) -> None:
         if self.quiet:
             return
@@ -309,10 +313,19 @@ class Console:
             if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
         ]
         skipped_text = f", {skipped} skipped" if skipped else ""
-        header = (
-            f"Regression Summary: {passing}/{total} passed, {failing} failed"
-            f"{skipped_text}, elapsed={elapsed_sec:.1f}s"
-        )
+        executed = total - skipped
+        incomplete = planned is not None and planned > executed
+        if incomplete:
+            header = (
+                f"Regression Summary: incomplete run, {executed} of {planned} planned leaves "
+                f"ran; {passing} passed, {failing} failed{skipped_text}, "
+                f"elapsed={elapsed_sec:.1f}s"
+            )
+        else:
+            header = (
+                f"Regression Summary: {passing}/{total} passed, {failing} failed"
+                f"{skipped_text}, elapsed={elapsed_sec:.1f}s"
+            )
 
         if self.pretty:
             status_width = max(7, max(len(result.status) for _, _, result in rows))
@@ -343,11 +356,12 @@ class Console:
                     if result.reason:
                         self.write(f"    reason: {result.reason}")
         else:
+            incomplete_text = f" incomplete={executed}/{planned}" if incomplete else ""
             self.event(
                 "summary",
                 (
                     f"passing={passing} total={total} failing={failing} "
-                    f"skipped={skipped} elapsed={elapsed_sec:.1f}s"
+                    f"skipped={skipped} elapsed={elapsed_sec:.1f}s{incomplete_text}"
                 ),
             )
             for item, seed, result in rows:
@@ -422,22 +436,27 @@ class Console:
         tests: int,
         run_dir: str,
         result_json: str,
+        incomplete: str | None = None,
+        force: bool = False,
     ) -> None:
-        force = self.quiet
+        force = self.quiet or force
         if self.pretty and not self.quiet:
             self.write("")
             self.write(
                 f"Result  : {self._status(status)}  tests={tests}  elapsed={elapsed_sec:.1f}s",
                 force=force,
             )
+            if incomplete:
+                self.write(f"Note    : {incomplete}", force=force)
             self.write(f"Run dir : {run_dir}", force=force)
             self.write(f"JSON    : {result_json}", force=force)
         else:
+            note = f" note={incomplete!r}" if incomplete else ""
             self.event(
                 "result",
                 (
                     f"status={status} tests={tests} elapsed={elapsed_sec:.1f}s "
-                    f"run_dir={run_dir} json={result_json}"
+                    f"run_dir={run_dir} json={result_json}{note}"
                 ),
                 force=force,
             )

@@ -11,24 +11,22 @@ version = "0.1.0"
 description = "Sandboxed OCAH OSS shared DV Python: protocol VIP and monitors"
 requires-python = ">=3.11,<3.14"
 dependencies = [
-  # cocotb 2.0.x supports Python 3.11-3.13. Python 3.14 is intentionally
-  # excluded until cocotb publishes compatible wheels/sdists.
+  # cocotb 2.0.x supports Python 3.11-3.13 and publishes no Python 3.14
+  # wheels/sdists.
   "cocotb>=2.0.0,<2.1",
   "pyuvm>=4.0.0,<5",
-  # Open-source protocol VIP used by the OSS testbenches (e.g. DTP).
-  # cocotbext-jtag replaces the in-house JTAG VIP (MIT license per package
-  # metadata); cocotbext-axi replaces the in-house AXI/AXI-Lite VIP.
+  # Open-source protocol backends used by the OSS testbenches (e.g. DTP):
+  # cocotbext-jtag behind ocah_jtag_vip and cocotbext-axi behind ocah_axi_vip.
   "cocotbext-axi>=0.1.24,<0.2",
   "cocotbext-jtag>=0.4.0,<0.5",
-  # cocotbext-i2c is intentionally absent: the SMC I2C/SMBus/PMBus protocol
-  # VIP (SmcI2cMasterVip / SmcI2cEepromSlave) is implemented natively in
+  # No cocotbext-i2c: the SMC I2C/SMBus/PMBus protocol VIP (SmcI2cMasterVip /
+  # SmcI2cEepromSlave) is implemented natively in
   # hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py because cocotbext-i2c
   # edge waits miss open-drain transitions under Verilator.
-  # cocotbext-uart is intentionally absent: the UART backend (line driver and
-  # sampler behind OcahUartConsole / OcahUartMonitor) is implemented natively
-  # in hw/common/dv/vip/ocah_uart_vip. The PyPI releases are unusable here
-  # anyway — they predate cocotb 2.0 (SimHandleBase._path) — and their
-  # license metadata is not machine-verifiable.
+  # No cocotbext-uart: the UART backend (line driver and sampler behind
+  # OcahUartConsole / OcahUartMonitor) is implemented natively in
+  # hw/common/dv/vip/ocah_uart_vip; the PyPI releases predate cocotb 2.0
+  # (SimHandleBase._path).
 ]
 
 [tool.setuptools.packages.find]

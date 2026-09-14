@@ -12,7 +12,7 @@ addrmap efuse_shim_ctrl {
         field {
             sw=rw;
             hw=r;
-            desc="Most OTP have a initalization time before sensing can be done";
+            desc="Most OTP have a initialization time before sensing can be done";
         } init_time [31:0] = 0x20;
     };
 

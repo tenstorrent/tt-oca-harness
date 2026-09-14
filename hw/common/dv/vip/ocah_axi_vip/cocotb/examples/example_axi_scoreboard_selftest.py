@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Simulator-free self-test for the AXI reference model and scoreboard.
 
-Runs the positive evidence flow plus the negative suite below (cases A-R in
-the output), proving fail-closed finalization per ``vip-checker-model.adoc``
-§"Prove Failure Is Retained":
+Runs the positive evidence flow plus the negative suite below (each case
+labelled in the output), proving fail-closed finalization per
+``vip-checker-model.adoc`` §"Prove Failure Is Retained":
 
 1. wrong model expectation is rejected;
 2. an unexpected (un-armed) DECERR is rejected;
@@ -41,6 +41,7 @@ from __future__ import annotations
 import logging
 
 from ocah_checker import OcahCheckerError
+
 from ocah_axi_vip import (
     RESP_DECERR,
     RESP_OKAY,
@@ -118,11 +119,15 @@ def positive_flow() -> None:
 
     # Armed expected timeout: only the test can authorize a timed-out access.
     scoreboard.arm_expected_timeout(
-        timeout_ns=500.0, address=ERROR_ADDR + 0x100, direction="read",
+        timeout_ns=500.0,
+        address=ERROR_ADDR + 0x100,
+        direction="read",
         context="case=armed-timeout",
     )
     timed_out_item = OcahAxiItem.read(
-        protocol="axi4-lite", address=ERROR_ADDR + 0x100, timed_out=True,
+        protocol="axi4-lite",
+        address=ERROR_ADDR + 0x100,
+        timed_out=True,
         source="selftest",
     )
     scoreboard.add_observed(timed_out_item)
@@ -296,9 +301,7 @@ def negative_unauthorized_timeout() -> None:
 def negative_midburst_blocked() -> None:
     """A burst whose LATER beat enters a blocked region must fail."""
     model = OcahAxiRefModel(name="neg-model-midburst", beat_bytes=BEAT_BYTES)
-    model.add_region(
-        OcahAxiRegionExpectation(base=0x6004, size=4, blocked=True, label="secure")
-    )
+    model.add_region(OcahAxiRegionExpectation(base=0x6004, size=4, blocked=True, label="secure"))
     scoreboard = OcahAxiScoreboard(name="neg-midburst", model=model, raise_on_error=False)
     burst = OcahAxiItem.read(
         protocol="axi4",
@@ -323,14 +326,17 @@ def negative_subword_blocked() -> None:
     """A blocked region smaller than a bus word must flag the covering beat,
     while a narrow transfer that does not touch the blocked byte passes."""
     model = OcahAxiRefModel(name="neg-model-subword", beat_bytes=BEAT_BYTES)
-    model.add_region(
-        OcahAxiRegionExpectation(base=0x8002, size=1, blocked=True, label="fuse-bit")
-    )
+    model.add_region(OcahAxiRegionExpectation(base=0x8002, size=1, blocked=True, label="fuse-bit"))
     scoreboard = OcahAxiScoreboard(name="neg-subword", model=model, raise_on_error=False)
     # Narrow 1-byte read at 0x8000 (size=0) touches only 0x8000: must PASS.
     narrow = OcahAxiItem.read(
-        protocol="axi4", address=0x8000, size=0, burst=1,
-        data_words=(0,), resp_list=(RESP_OKAY,), source="selftest",
+        protocol="axi4",
+        address=0x8000,
+        size=0,
+        burst=1,
+        data_words=(0,),
+        resp_list=(RESP_OKAY,),
+        source="selftest",
     )
     scoreboard.add_observed(narrow)
     assert not scoreboard.errors, "narrow non-touching transfer was blocked"
@@ -341,8 +347,10 @@ def negative_subword_blocked() -> None:
         scoreboard.finalize()
     except OcahCheckerError as exc:
         assert "CHK-AXI-BLOCKED" in str(exc), exc
-        print("selftest negative-K PASS: sub-word blocked region rejected "
-              "(narrow non-touching transfer passed)")
+        print(
+            "selftest negative-K PASS: sub-word blocked region rejected "
+            "(narrow non-touching transfer passed)"
+        )
     else:
         raise AssertionError("sub-word blocked region did not fail")
 
@@ -470,9 +478,7 @@ def negative_temporal_policy_bypass() -> None:
 
     # (c) expected-EXOKAY read data is checked and corruption fails.
     model = OcahAxiRefModel(name="neg-model-exokay", beat_bytes=BEAT_BYTES)
-    model.add_region(
-        OcahAxiRegionExpectation(base=0x9000, size=0x10, read_resp=1, label="excl")
-    )
+    model.add_region(OcahAxiRegionExpectation(base=0x9000, size=0x10, read_resp=1, label="excl"))
     model.write_bytes(0x9000, (0x11223344).to_bytes(BEAT_BYTES, "little"))
     scoreboard3 = OcahAxiScoreboard(name="neg-exokay", model=model, raise_on_error=False)
     scoreboard3.add_observed(_read_item(0x9000, 0xBAD0_BAD0, resp=1))  # corrupt data

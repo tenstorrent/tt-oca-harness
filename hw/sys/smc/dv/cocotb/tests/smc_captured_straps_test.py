@@ -1,12 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""captured_straps_i to reset_unit STRAPS_LO/HI."""
+"""# deferred: no_dut_port
+`smc_wrapper` declares no `captured_straps_i` port, so `tb_top.sv` exports no
+`tb_captured_straps` tap and the sequence has nothing to drive; it asserts on
+the missing tap rather than passing.
+"""
 
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_captured_straps_test_seq import smc_captured_straps_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -19,6 +23,5 @@ class smc_captured_straps_test(smc_base_test):
         seq = smc_captured_straps_test_seq("captured_straps_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.idle_ok and seq.pat_a_ok and seq.pat_b_ok, (
-            f"straps incomplete idle={seq.idle_ok} "
-            f"a={seq.pat_a_ok} b={seq.pat_b_ok}"
+            f"straps incomplete idle={seq.idle_ok} a={seq.pat_a_ok} b={seq.pat_b_ok}"
         )

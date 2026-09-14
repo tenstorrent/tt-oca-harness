@@ -23,11 +23,6 @@
  *
  * Note: Requires SPI flash model (+spi_device_sel=winbond) for PASS.
  * Without flash model the test fails closed on empty/all-0xFF JEDEC response.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim \
- *     EXTRA_SIM_ARGS=+spi_device_sel=winbond
- *
  */
 
 #include <stdint.h>
@@ -44,9 +39,8 @@
 /* Flash commands */
 #define FLASH_CMD_JEDEC_ID 0x9F
 
-/* Expected JEDEC IDs for enrolled +spi_device_sel=4 (Winbond W25Q512JV).
- * Documented by sibling flash tests (spi_ot_flash_write_read_test) and matches
- * kept-log decode 0x002040ef. */
+/* Expected JEDEC ID for +spi_device_sel=4 (Winbond W25Q512JV): EF 40 20, the
+ * same device the other flash tests enrol. */
 #define JEDEC_MFR_WINBOND 0xEF
 #define JEDEC_TYPE_W25Q512JV 0x40
 #define JEDEC_CAP_W25Q512JV 0x20
@@ -102,7 +96,6 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-
 
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d, CPOL=0, CPHA=0\n\n", SPI_CLKDIV);

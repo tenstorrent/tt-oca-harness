@@ -43,7 +43,6 @@ int main(void) {
     uint32_t aes_ct_expect[4] = {[0 ... 3] = 0xFFFFFFFF};
     uint32_t aes_iv[4] = {[0 ... 3] = 0xDEADBEEF};
 
-    // uint32_t aes_reg_ctrl;
     aes__CTRL_SHADOWED_t aes_ctrl = {.w = 0};
 
     printf("\n----------------------------------------------------------------\n");
@@ -95,8 +94,7 @@ int main(void) {
     print_registers();
     printf("AES CSR read/write test - done\n");
 
-#include "aes_test1.h" ///TODO-wrap in a function call
-    //#include "aes_test2.h"  ///TODO-debug
+#include "aes_test1.h"
 
     printf("INFO: end of aes_sanity test\n");
     printf("\n----------------------------------------------------------------\n");

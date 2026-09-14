@@ -97,8 +97,8 @@ Example - Automatic randomization:
     apb, mon = await init(dut, config=cfg)
     # RO lanes automatically randomized by init() - no explicit call needed
 """
+
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -111,8 +111,9 @@ class ClockConfig:
 
     Per spec: RO sampling clock should be 130-560 MHz (1.8-7.7 ns period)
     """
-    apb_period_ns: int = 10      # 100 MHz APB clock
-    rosc_period_ns: int = 7      # ~142.9 MHz RO sample clock
+
+    apb_period_ns: int = 10  # 100 MHz APB clock
+    rosc_period_ns: int = 7  # ~142.9 MHz RO sample clock
 
     @property
     def apb_freq_mhz(self) -> float:
@@ -151,18 +152,21 @@ class ClockConfig:
 @dataclass
 class ResetConfig:
     """Reset timing configurations"""
-    reset_cycles: int = 4        # Number of cycles to hold reset
+
+    reset_cycles: int = 4  # Number of cycles to hold reset
 
 
 @dataclass
 class APBConfig:
     """APB bus configuration"""
-    addr_width: int = 9          # APB address width (entropy_source_reg uses 9-bit for 0x12C)
-    data_width: int = 32         # APB data width
-    addr_min: int = 0x00         # Min valid address
-    # Per RTL entropy_source_reg.sv, highest implemented offset is 0x12C (GENERATOR_11_HEALTH_STATUS)
-    addr_max: int = 0x12C        # Max valid address (inclusive)
-    addr_step: int = 4           # Address alignment (word-aligned)
+
+    addr_width: int = 9  # APB address width (entropy_source_reg uses 9-bit for 0x12C)
+    data_width: int = 32  # APB data width
+    addr_min: int = 0x00  # Min valid address
+    # Per entropy_source.rdl the highest implemented offset is 0x12C
+    # (GENERATOR_11_SAMPLE_CLK_CONFIG).
+    addr_max: int = 0x12C  # Max valid address (inclusive)
+    addr_step: int = 4  # Address alignment (word-aligned)
     # No page register in entropy_source_reg; use exclusive upper bound helper at addr_max+step
     page_reg_addr: int = 0x130
 
@@ -170,21 +174,22 @@ class APBConfig:
 @dataclass
 class ROConfig:
     """Ring Oscillator model configuration"""
-    num_lanes: int = 12          # Number of RO lanes (updated from 16 to 12)
+
+    num_lanes: int = 12  # Number of RO lanes
     prob_scale: int = 1_000_000  # Probability scaling factor
 
     # Model injection control
     # 0: No injection - use DUT's real ring oscillators
     # 1: Inject model - force RO model outputs into DUT decorrelators (default)
     # 2: Inject 32-bit data directly to health tests (bypass decorr+compressor)
-    inject_model: int = 1        # Enable RO model injection by default
+    inject_model: int = 1  # Enable RO model injection by default
 
     # Health test direct injection mode (when inject_model=2)
     # Generates 32-bit samples directly at health test input
     # Bypasses decorrelator + compressor for controlled testing
     # Supports bias/correlation on 32-bit word generation
     health_test_inject_enable: bool = False  # False = inject at decorrelator (default)
-                                              # True = inject at health test input
+    # True = inject at health test input
 
     # Automatic randomization control
     # True: init() automatically calls ro_model_randomize_all()
@@ -202,7 +207,7 @@ class ROConfig:
     stuck_zero_probability: float = 0.1  # next 10% stuck-at-0
 
     # Sampling
-    sample_timeout: int = 8      # Max retries for valid sample
+    sample_timeout: int = 8  # Max retries for valid sample
 
     @property
     def inject_enabled(self) -> bool:
@@ -225,27 +230,28 @@ class DecorrelatorConfig:
         Mode 3 (LFSR_29): 64 cycles - 29-bit Fibonacci LFSR
         Mode 4 (LFSR_7):  16 cycles - 7-bit Fibonacci LFSR
 
-    NOTE: sample_period is currently a testbench parameter (hardcoded to 64 in
-    tb_entropy_source.sv). To change it, edit the .SAMPLE_PERIOD() parameter in
-    the u_decorrelator instantiation.
+    sample_period is informational: the reference model in tb_entropy_top.sv samples on
+    the DUT clock divider (DECORRELATOR_CTRL.SAMPLE_CLK_DIV), and no testbench module
+    reads decor_cfg.sample_period.
 
     DUT Configuration (applies to RTL):
-    - bypass_dut: Enable bypass mode in DUT (due to RTL bugs, decorrelation broken)
+    - bypass_dut: Enable bypass mode in DUT
     - sample_clk_div: Clock divider value (actual division = sample_clk_div + 1)
                      Example: 63 → divide by 64
     - bypass_mask: Per-lane bypass control (0x000=none, 0xFFF=all)
     """
-    depth: int = 29              # Default decorrelator depth
-    sample_period: int = 64      # Output sample period in cycles
-    mode: int = 0                # 0=DECOR_29, 1=DECOR_7, 2=BYPASS, 3=LFSR_29, 4=LFSR_7
+
+    depth: int = 29  # Default decorrelator depth
+    sample_period: int = 64  # Output sample period in cycles
+    mode: int = 0  # 0=DECOR_29, 1=DECOR_7, 2=BYPASS, 3=LFSR_29, 4=LFSR_7
 
     # DUT-specific configuration (RTL decorrelator)
-    bypass_dut: bool = False     # True: bypass mode, False: decorrelation (default/desired)
-    sample_clk_div: int = 63     # Clock divider value (63 → divide by 64)
-    bypass_mask: int = 0x000     # Per-lane bypass (0x000 = no bypass, 0xFFF = all bypassed)
+    bypass_dut: bool = False  # True: bypass mode, False: decorrelation (default/desired)
+    sample_clk_div: int = 63  # Clock divider value (63 → divide by 64)
+    bypass_mask: int = 0x000  # Per-lane bypass (0x000 = no bypass, 0xFFF = all bypassed)
 
     # Shift direction (applies to reference model)
-    shift_dir: int = 1           # 0: shift right (in[28]→out[7:0]), 1: shift left (in[0]→out[28:21])
+    shift_dir: int = 1  # 0: shift right (in[28]→out[7:0]), 1: shift left (in[0]→out[28:21])
 
     # Decorrelator output checker configuration
     checker_enable: bool = True  # Enable decorrelator output checker (DUT vs ref model)
@@ -254,8 +260,7 @@ class DecorrelatorConfig:
     @property
     def mode_name(self) -> str:
         """Get human-readable mode name"""
-        names = {0: "DECOR_29", 1: "DECOR_7",
-                 2: "BYPASS", 3: "LFSR_29", 4: "LFSR_7"}
+        names = {0: "DECOR_29", 1: "DECOR_7", 2: "BYPASS", 3: "LFSR_29", 4: "LFSR_7"}
         return names.get(self.mode, f"UNKNOWN({self.mode})")
 
     @property
@@ -264,7 +269,7 @@ class DecorrelatorConfig:
         recommendations = {
             0: 64,  # DECOR_29
             1: 16,  # DECOR_7
-            2: 8,   # BYPASS
+            2: 8,  # BYPASS
             3: 64,  # LFSR_29
             4: 16,  # LFSR_7
         }
@@ -306,9 +311,10 @@ class CompressorConfig:
     - Group 2: lanes [2, 6, 10] → output[15:8]
     - Group 3: lanes [3, 7, 11] → output[7:0]
     """
-    enable: bool = True          # Enable compressor
-    bypass: bool = False         # False: BIW mode, True: bypass (debug)
-    lane_mask: int = 0xFFF       # Per-lane enable mask (12 bits)
+
+    enable: bool = True  # Enable compressor
+    bypass: bool = False  # False: BIW mode, True: bypass (debug)
+    lane_mask: int = 0xFFF  # Per-lane enable mask (12 bits)
     checker_enable: bool = True  # Enable output checker (compares DUT vs ref model)
     checker_verbose: bool = False  # Show MATCH messages (False=errors only)
 
@@ -331,7 +337,7 @@ class CompressorConfig:
         Returns:
             Number of lanes enabled in mask (0-12)
         """
-        return bin(self.lane_mask).count('1')
+        return bin(self.lane_mask).count("1")
 
     def get_group_lanes(self, group_num: int) -> tuple[int, int, int]:
         """Get lane indices for a BIW extraction group (strided grouping)
@@ -368,6 +374,7 @@ class CompressorConfig:
 @dataclass
 class TestConfig:
     """Overall test configuration"""
+
     # Sub-configurations
     clock: ClockConfig = None
     reset: ResetConfig = None
@@ -377,20 +384,20 @@ class TestConfig:
     compressor: CompressorConfig = None
 
     # DUT Control Register Settings (CTRL register 0x004)
-    bypass_compressor_dut: bool = False    # CTRL.BYPASS_ENTROPY_COMPRESSOR[8]
-                                          # False: Compressor enabled (1 FIFO word/sample)
-                                          # True: Compressor bypassed (3 FIFO words/sample, raw 12-byte data)
-    downsample_rate: int = 0              # CTRL.DOWNSAMPLE_RATE[25:16]
-                                          # 0: No downsampling (default)
-                                          # N: Drop first N samples, then keep 1 out of (N+1)
+    bypass_compressor_dut: bool = False  # CTRL.BYPASS_ENTROPY_COMPRESSOR[8]
+    # False: Compressor enabled (1 FIFO word/sample)
+    # True: Compressor bypassed (3 FIFO words/sample, raw 12-byte data)
+    downsample_rate: int = 0  # CTRL.DOWNSAMPLE_RATE[25:16]
+    # 0: No downsampling (default)
+    # N: Drop first N samples, then keep 1 out of (N+1)
 
     # Test-specific parameters
-    apb_random_iterations: int = 10        # Number of random APB transactions
-    decorrelator_samples: int = 3          # Number of decorrelator samples to collect
+    apb_random_iterations: int = 10  # Number of random APB transactions
+    decorrelator_samples: int = 3  # Number of decorrelator samples to collect
     fifo_verification_enable: bool = True  # Enable FIFO readout verification
-    fifo_error_monitor_enable: bool = True # Enable background FIFO overflow/underflow monitor
+    fifo_error_monitor_enable: bool = True  # Enable background FIFO overflow/underflow monitor
     clk_divider_check_enable: bool = True  # Enable clock divider synchronization checker
-                                           # Disable for tests that change divider on-the-fly (health tests)
+    # Disable for tests that change divider on-the-fly (health tests)
     # Cycles to wait if decorrelator not present
     fallback_wait_cycles: int = 256
 
@@ -420,58 +427,37 @@ DEFAULT_CONFIG = TestConfig()
 
 # Default: Balanced configuration with good CDC margin (1.43x ratio)
 # APB: 100 MHz, RO: 142.9 MHz
-CLOCK_CONFIG_DEFAULT = ClockConfig(
-    apb_period_ns=10,
-    rosc_period_ns=7
-)
+CLOCK_CONFIG_DEFAULT = ClockConfig(apb_period_ns=10, rosc_period_ns=7)
 
 # Fast RO: Maximum speed RO sampling with standard APB
 # APB: 100 MHz, RO: 500 MHz (2 ns period)
 # Use for: Testing maximum entropy throughput and fast decorrelator operation
-CLOCK_CONFIG_FAST_RO = ClockConfig(
-    apb_period_ns=10,
-    rosc_period_ns=2
-)
+CLOCK_CONFIG_FAST_RO = ClockConfig(apb_period_ns=10, rosc_period_ns=2)
 
 # CDC Stress Test 1: Very fast RO with slow APB (high freq ratio ~10x)
 # APB: 50 MHz, RO: 500 MHz
 # Use for: Stressing CDC FIFOs, testing back-pressure, validating synchronizers
-CLOCK_CONFIG_CDC_STRESS_FAST_RO = ClockConfig(
-    apb_period_ns=20,
-    rosc_period_ns=2
-)
+CLOCK_CONFIG_CDC_STRESS_FAST_RO = ClockConfig(apb_period_ns=20, rosc_period_ns=2)
 
 # CDC Stress Test 2: Fast APB with slow RO (low freq ratio ~0.7x)
 # APB: 200 MHz, RO: 143 MHz
 # Use for: Testing APB reads with slow entropy generation, empty FIFO handling
-CLOCK_CONFIG_CDC_STRESS_SLOW_RO = ClockConfig(
-    apb_period_ns=5,
-    rosc_period_ns=7
-)
+CLOCK_CONFIG_CDC_STRESS_SLOW_RO = ClockConfig(apb_period_ns=5, rosc_period_ns=7)
 
 # Synchronous: Nearly 1:1 ratio for simplified debug
 # APB: 143 MHz, RO: 143 MHz
 # Use for: Initial debug, waveform analysis, understanding data flow
-CLOCK_CONFIG_SYNCHRONOUS = ClockConfig(
-    apb_period_ns=7,
-    rosc_period_ns=7
-)
+CLOCK_CONFIG_SYNCHRONOUS = ClockConfig(apb_period_ns=7, rosc_period_ns=7)
 
 # Inverted: APB faster than RO (ratio ~0.5x)
 # APB: 200 MHz, RO: 400 MHz
 # Use for: Testing entropy consumption faster than production edge cases
-CLOCK_CONFIG_INVERTED = ClockConfig(
-    apb_period_ns=5,
-    rosc_period_ns=2.5
-)
+CLOCK_CONFIG_INVERTED = ClockConfig(apb_period_ns=5, rosc_period_ns=2.5)
 
 # Slow: Both clocks at lower frequencies for detailed waveform analysis
 # APB: 50 MHz, RO: 143 MHz
 # Use for: Debugging, manual waveform inspection
-CLOCK_CONFIG_SLOW = ClockConfig(
-    apb_period_ns=20,
-    rosc_period_ns=7
-)
+CLOCK_CONFIG_SLOW = ClockConfig(apb_period_ns=20, rosc_period_ns=7)
 
 
 def get_config() -> TestConfig:
@@ -512,10 +498,8 @@ def print_clock_info(config: ClockConfig) -> None:
     print("=" * 60)
     print("Clock Configuration Summary")
     print("=" * 60)
-    print(
-        f"APB Clock:        {config.apb_period_ns} ns ({config.apb_freq_mhz:.1f} MHz)")
-    print(
-        f"RO Sample Clock:  {config.rosc_period_ns} ns ({config.rosc_freq_mhz:.1f} MHz)")
+    print(f"APB Clock:        {config.apb_period_ns} ns ({config.apb_freq_mhz:.1f} MHz)")
+    print(f"RO Sample Clock:  {config.rosc_period_ns} ns ({config.rosc_freq_mhz:.1f} MHz)")
     print(f"Frequency Ratio:  {config.freq_ratio:.2f}x (rosc/apb)")
     print("-" * 60)
 
@@ -523,7 +507,7 @@ def print_clock_info(config: ClockConfig) -> None:
     if is_valid:
         print("Status: VALID ✓")
     else:
-        print(f"Status: INVALID ✗")
+        print("Status: INVALID ✗")
         print(f"Error: {error_msg}")
     print("=" * 60)
 
@@ -544,8 +528,12 @@ def print_config_summary(config: TestConfig) -> None:
 
     # Clock Configuration
     print("Clock Configuration:")
-    print(f"  APB Clock:        {config.clock.apb_period_ns} ns ({config.clock.apb_freq_mhz:.1f} MHz)")
-    print(f"  RO Sample Clock:  {config.clock.rosc_period_ns} ns ({config.clock.rosc_freq_mhz:.1f} MHz)")
+    print(
+        f"  APB Clock:        {config.clock.apb_period_ns} ns ({config.clock.apb_freq_mhz:.1f} MHz)"
+    )
+    print(
+        f"  RO Sample Clock:  {config.clock.rosc_period_ns} ns ({config.clock.rosc_freq_mhz:.1f} MHz)"
+    )
     print(f"  Frequency Ratio:  {config.clock.freq_ratio:.2f}x (rosc/apb)")
 
     is_valid, error_msg = config.clock.validate()
@@ -557,9 +545,9 @@ def print_config_summary(config: TestConfig) -> None:
     print("RO Model Configuration:")
     print(f"  Number of Lanes:     {config.ro.num_lanes}")
     print(f"  Model Injection:     {'ENABLED' if config.ro.inject_enabled else 'DISABLED'}")
-    print(f"                       (0=use real ROs, 1=use model)")
+    print("                       (0=use real ROs, 1=use model)")
     print(f"  Auto-Randomize:      {'ENABLED' if config.ro.auto_randomize else 'DISABLED'}")
-    print(f"                       (True=init() randomizes, False=manual)")
+    print("                       (True=init() randomizes, False=manual)")
     print(f"  Bias Range:          [{config.ro.bias_min:.2f}, {config.ro.bias_max:.2f}]")
     print(f"  Correlation Range:   [{config.ro.corr_min:.2f}, {config.ro.corr_max:.2f}]")
     print(f"  Stuck-at-1 Prob:     {config.ro.stuck_probability:.1%}")
@@ -573,12 +561,14 @@ def print_config_summary(config: TestConfig) -> None:
     print(f"  Sample Period:        {config.decorrelator.sample_period} cycles")
     print(f"  Recommended Period:   {config.decorrelator.recommended_sample_period} cycles")
     if config.decorrelator.sample_period != config.decorrelator.recommended_sample_period:
-        print(f"  NOTE: Using non-recommended sample period!")
+        print("  NOTE: Using non-recommended sample period!")
     print()
     print(f"  DUT Mode:             {config.decorrelator.dut_mode_name}")
     print(f"  DUT Bypass:           {config.decorrelator.bypass_dut}")
     print(f"  DUT Bypass Mask:      0x{config.decorrelator.bypass_mask:03X}")
-    print(f"  DUT Clock Divider:    {config.decorrelator.sample_clk_div} (div-{config.decorrelator.actual_division})")
+    print(
+        f"  DUT Clock Divider:    {config.decorrelator.sample_clk_div} (div-{config.decorrelator.actual_division})"
+    )
     print()
     print(f"  Checker Enabled:      {config.decorrelator.checker_enable}")
     print(f"  Checker Verbose:      {config.decorrelator.checker_verbose}")
@@ -598,9 +588,11 @@ def print_config_summary(config: TestConfig) -> None:
     # DUT Control Settings
     print("DUT Control Settings (CTRL Register):")
     print(f"  Bypass Compressor:    {config.bypass_compressor_dut}")
-    print(f"                        (0=compressor enabled, 1=bypass to FIFO)")
+    print("                        (0=compressor enabled, 1=bypass to FIFO)")
     print(f"  Downsample Rate:      {config.downsample_rate}")
-    print(f"                        (0=no downsample, N=drop N then 1-in-{config.downsample_rate+1})")
+    print(
+        f"                        (0=no downsample, N=drop N then 1-in-{config.downsample_rate + 1})"
+    )
     print()
 
     # Test Parameters

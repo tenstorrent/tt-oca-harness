@@ -16,7 +16,7 @@ from cocotbext.axi.axil_ram import AxiLiteRamRead, AxiLiteRamWrite
 from cocotbext.axi.constants import AxiProt, AxiResp
 from cocotbext.axi.memory import Memory
 
-from .ocah_axi_slave_driver import OcahFaultMixin
+from .ocah_axi_slave_driver import OcahAxiResetGate, OcahFaultMixin
 
 __all__ = ["OcahAxiLiteSlaveDriver"]
 
@@ -33,7 +33,9 @@ class _FaultAxiLiteRamWrite(AxiLiteRamWrite):
             prot = AxiProt(int(getattr(aw, "awprot", AxiProt.NONSECURE)))
             w = await self.w_channel.recv()
             data = int(w.wdata).to_bytes(self.byte_lanes, "little")
-            strb = int(getattr(w, "wstrb", self.strb_mask)) if self.wstrb_present else self.strb_mask
+            strb = (
+                int(getattr(w, "wstrb", self.strb_mask)) if self.wstrb_present else self.strb_mask
+            )
             b = self.b_channel._transaction_obj()
             b.bresp = self.fault_owner.write_errors.pop(addr, AxiResp.OKAY)
 
@@ -70,7 +72,11 @@ class _FaultAxiLiteRamRead(AxiLiteRamRead):
             prot = AxiProt(int(getattr(ar, "arprot", AxiProt.NONSECURE)))
             r = self.r_channel._transaction_obj()
             r.rresp = self.fault_owner.read_errors.pop(addr, AxiResp.OKAY)
-            data = bytes(self.byte_lanes) if r.rresp != AxiResp.OKAY else await self._read(addr, self.byte_lanes)
+            data = (
+                bytes(self.byte_lanes)
+                if r.rresp != AxiResp.OKAY
+                else await self._read(addr, self.byte_lanes)
+            )
             r.rdata = int.from_bytes(data, "little")
             await self.r_channel.send(r)
             self.log.info(
@@ -84,7 +90,18 @@ class _FaultAxiLiteRamRead(AxiLiteRamRead):
 class OcahAxiLiteSlaveDriver(Memory, OcahFaultMixin):
     """cocotbext AXI4-Lite RAM responder engine with OCAH fault-control APIs."""
 
-    def __init__(self, bus, clock, reset=None, reset_active_level=True, size=2**64, mem=None, *, name="OcahAxiLiteSlaveDriver", **kwargs):
+    def __init__(
+        self,
+        bus,
+        clock,
+        reset=None,
+        reset_active_level=True,
+        size=2**64,
+        mem=None,
+        *,
+        name="OcahAxiLiteSlaveDriver",
+        **kwargs,
+    ):
         self.write_if = None
         self.read_if = None
         self._init_fault_state(name)
@@ -107,6 +124,36 @@ class OcahAxiLiteSlaveDriver(Memory, OcahFaultMixin):
             mem=self.mem,
             fault_owner=self,
         )
+        self.init_signals()
+        self.reset_gate = OcahAxiResetGate(
+            (
+                self.write_if.aw_channel,
+                self.write_if.w_channel,
+                self.write_if.b_channel,
+                self.read_if.ar_channel,
+                self.read_if.r_channel,
+            ),
+            clock,
+            reset,
+            reset_active_level=reset_active_level,
+            log=self.log,
+        )
+
+    def init_signals(self) -> None:
+        """Drive the B/R payload signals to a deterministic 0 idle.
+
+        Called at construction (and idempotent), so the response channels
+        idle clean from the moment the responder exists — the backend
+        otherwise initializes source payloads to X (``StreamSource._init_x``),
+        which X-propagates into the DUT on 4-state simulators until the first
+        response. Handshake signals stay owned by the backend, which already
+        drives valid low at construction.
+        """
+        for channel in (self.write_if.b_channel, self.read_if.r_channel):
+            handshake = {id(channel.valid), id(channel.ready)}
+            for handle in channel.bus._signals.values():
+                if id(handle) not in handshake:
+                    handle.setimmediatevalue(0)
 
     @classmethod
     def from_prefix(cls, dut, prefix: str, clock, reset=None, **kwargs):

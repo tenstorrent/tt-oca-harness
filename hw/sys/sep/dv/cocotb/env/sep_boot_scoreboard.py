@@ -11,7 +11,7 @@ ran:
   * the firmware console produced the expected banner; and
   * the firmware signaled PASS (not FAIL, and not "never finished").
 
-o_cpu_run_ack is recorded for diagnosis (the known watch-item) but is not a hard
+o_cpu_run_ack is recorded for diagnosis but is not a hard
 pass gate: with mpc_reset_run_req the core boots without the run handshake.
 """
 
@@ -85,19 +85,16 @@ class SepBootScoreboard(uvm_component):
                 f"core likely never booted out of ICCM)"
             )
         if not self.fw_done:
-            errors.append(
-                "firmware never signaled completion (no PASS/FAIL magic at 0x80000000)"
-            )
+            errors.append("firmware never signaled completion (no PASS/FAIL magic at 0x80000000)")
         elif not self.fw_pass:
             errors.append("firmware signaled FAIL (0xDEADBEEF)")
         if self.expected_line and self.expected_line not in console:
             errors.append(f"firmware console missing {self.expected_line!r}")
 
         assert not errors, "SEP boot scoreboard: " + "; ".join(errors)
-        # Name only the checks that actually ran. expected_line is empty for tests
-        # that have no banner (the ROM boot test clears it), and claiming "console
-        # banner seen" there told an auditor a comparison had happened when none
-        # had -- on a run whose console was in fact empty.
+        # Name only the checks that ran. expected_line is empty for tests that have
+        # no banner (the ROM boot test clears it), and claiming "console banner seen"
+        # there would report a comparison that never happened.
         done = ["core booted"]
         if self.expected_line:
             done.append("console banner seen")

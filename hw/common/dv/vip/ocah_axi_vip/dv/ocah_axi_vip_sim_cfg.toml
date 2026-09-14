@@ -6,10 +6,12 @@ schema_version = 1
 # Launch entry: selected by `--dut ocah_axi_vip` (registered in
 # hw/common/dv/configs/duts.toml — non-conventional root under the shared VIP).
 #
-# DUT is the passive wire harness tb/tb_top.sv: no RTL, just the AXI4 nets the
-# shared master and fault-slave VIPs attach to from cocotb. The selftests prove
-# the VIP's own contracts on real signals (response-ID observation, fault
-# injection), independent of any block DUT.
+# DUT is the wire harness tb/tb_top.sv: no RTL, just the AXI4 nets the shared
+# master and fault-slave VIPs attach to from cocotb, plus one struct-port bundle
+# bridged onto an ocah_axi_if the way a block tb_top bridges its boundary. The
+# selftests prove the VIP's own contracts on real signals (response-ID
+# observation, fault injection, the agent behind a struct port), independent of
+# any block DUT.
 name = "ocah_axi_vip"
 profile = "native"
 default_framework = "cocotb"
@@ -31,11 +33,21 @@ top_file = "hw/common/dv/vip/ocah_axi_vip/dv/tb/tb_top.sv"
 filelist = "hw/common/dv/vip/ocah_axi_vip/dv/build/ocah_axi_vip_dut_compile.f"
 bender_filelist = "hw/common/dv/vip/ocah_axi_vip/dv/build/ocah_axi_vip_bender.f"
 work_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build"
-# The harness compiles no DUT RTL. The target name matches nothing in the
-# Bender graph on purpose, so the generated filelist carries only the base
-# package closure.
+# The harness compiles no DUT RTL: the target name matches nothing in the
+# Bender graph, so the generated filelist carries only the base package
+# closure.
 common_bender_targets = []
 bender_targets = ["ocah_axi_vip_harness"]
+incdirs = ["hw/common/assert"]
+# The shared interface, the struct bridge, and the protocol SVA compile into
+# the cocotb shape (the default-geometry interface instances, the struct-port
+# bundle, and the checker instances in tb_top); the SV-UVM overlay takes them
+# from the VIP manifest.
+sources = [
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+]
 
 [frameworks.cocotb]
 python_root = "hw/common/dv/vip/ocah_axi_vip/dv/cocotb"
@@ -55,6 +67,24 @@ args = []
 description = "AXI VIP wire harness (no DUT RTL)"
 build_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build/cocotb"
 
+[targets.default.tools.verilator]
+# --assert evaluates the two-state protocol SVA bound in dv/tb/tb_top.sv; a
+# failed rule prints %Error and fails the run.
+flags = ["--assert"]
+
+[coverage.verilator]
+# Line and SVL user coverage on the SV collateral (interface, struct bridge,
+# protocol SVA); toggle stays off. --output-groups 0 compiles the generated
+# model one file per translation unit. The scope file drops the harness body
+# and the pulp packages at compile time.
+build_args = [
+  "--coverage-line",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/common/dv/vip/ocah_axi_vip/dv/cov/config/verilator/ocah_axi_vip_cov_scope.vlt",
+]
+
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Same scenarios as the cocotb selftests, driven full-stack through the VIP's own
 # SV-UVM master against the fault slave. ONE tb_top module for both frameworks: +define+UVM
@@ -73,7 +103,7 @@ tools = ["vcs"]
 # table's own incdirs/sources (dedup-merge) — never hand-copy VIP paths here. The generated
 # filelist emits the expanded `sources` AFTER the bender filelist, then `top_file` last:
 #   ocah_axi_vip manifest (interface -> collateral -> UVM pkg)
-#   -> ocah_axi_vip_seq_lib_pkg -> ocah_axi_vip_env_pkg -> tb_top.sv
+#   -> ocah_axi_vip_env_pkg -> ocah_axi_vip_seq_lib_pkg -> tb_top.sv
 source_lists = [
   "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
 ]
@@ -87,8 +117,8 @@ incdirs = [
   "hw/common/dv/vip/ocah_axi_vip/dv/uvm/tests",
 ]
 sources = [
-  "hw/common/dv/vip/ocah_axi_vip/dv/uvm/seq_lib/ocah_axi_vip_seq_lib_pkg.sv",
   "hw/common/dv/vip/ocah_axi_vip/dv/uvm/env/ocah_axi_vip_env_pkg.sv",
+  "hw/common/dv/vip/ocah_axi_vip/dv/uvm/seq_lib/ocah_axi_vip_seq_lib_pkg.sv",
 ]
 
 [frameworks.uvm.sim]

@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
 # DTP Verilator coverage policy: hole dispositions for the functional
-# coverage points collected by the cov/sv modules. Reference-only — no
-# [[thresholds]] are set here; score targets and waiver approval stay with
-# the coverage-policy work tracked on the DTP coverage issues.
+# coverage points collected by the cov/sv modules. Reference-only: no
+# [[thresholds]] are set here.
 
 schema_version = 1
 dut = "dtp"
@@ -272,7 +271,7 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls; the settle point vs. poll cadence needs measurement."
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
@@ -289,7 +288,7 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls; the settle point vs. poll cadence needs measurement."
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
@@ -306,7 +305,7 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls; the settle point vs. poll cadence needs measurement."
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"

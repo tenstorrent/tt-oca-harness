@@ -8,12 +8,12 @@ This section describes the SMC's CPU subsystem, which is based on the
 Rocket RV64GC RISC-V processor core (see:
 https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html[Rocket
 Chip]). The cluster is generated using the Chipyard Rocket-chip
-generator and supports 1 to 4 processor cores, each with private L1
+generator and supports 4 processor cores, each with private L1
 cache and access to a shared local SRAM.
 
 Key features include:
 
-* Up to 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)
+* 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)
 * Core-local L1 instruction and data caches, each configurable in size
 and associativity
 * Shared local SRAM/Scratchpad and Boot ROM
@@ -29,7 +29,7 @@ its cache hierarchy
 [cols=",",options="header",]
 |========================================================
 |Attribute |Description
-|Cores |1–4, Rocket RV64GC
+|Cores |4, Rocket RV64GC
 |ISA |RV64GC (I, M, A, F, D, C extensions)
 |Microarchitecture |In-order, 5-stage pipeline
 |Privilege Levels |M/S/U
@@ -78,9 +78,9 @@ transactions or preserve dirty cache data.
 
 SRAM initialization is handled automatically by hardware on reset,
 ensuring memory consistency and error-free operation at startup; this
-feature can be disabled using disable_sram_auto_init_i to support
+feature can be disabled using smc_disable_sram_auto_init_i to support
 specialized or custom boot procedures. The completion of SRAM
-initialization is reported through the init_mem_done_o status signal,
+initialization is reported through the smc_init_mem_done_o status signal,
 allowing software to reliably detect when memory is ready for use.
 
 ==== Memory Repair
@@ -97,7 +97,7 @@ ensuring SRAM arrays are functional before the CPU cluster begins execution.
 
 **Control Mechanisms:**
 
-* `fuse_sense_done_o`: eFuse controller output indicating sensing completion.
+* `smc_fuse_sense_done_o`: eFuse controller output indicating sensing completion.
   External DFT logic monitors this signal to trigger repair operations.
 
 * `skip_mem_repair_o`: Reset unit output that bypasses repair when asserted,
@@ -117,7 +117,7 @@ completion before proceeding with boot operations.
 **Boot Sequence Integration:**
 
 Memory repair integrates into the boot sequence as follows: after power-on reset
-deasserts and eFuse sensing begins, `fuse_sense_done_o` assertion triggers
+deasserts and eFuse sensing begins, `smc_fuse_sense_done_o` assertion triggers
 repair operations. Repair data is read from eFuse shadow registers and applied
 to SRAM, with completion reported through DFT Control Status registers. MBIST
 operations begin after repair completes (or is bypassed), and the CPU cluster
@@ -154,8 +154,9 @@ outstanding transactions:
 
 * the *L2 frontend* slave port, which blocks new transactions rather than
   terminating them, and
-* the *MMIO* master port, which terminates outstanding transactions with an
-  error response to keep reset-time X values from propagating into the fabric.
+* the *MMIO* master port, which terminates new transactions presented while
+  isolated with SLVERR responses to keep reset-time X values from propagating
+  into the fabric.
 
 The non-AXI status crossings (`wb_pc_valid`, `wb_reg_pc`, and the per-core
 `wdt_reset`) are clamped to constants over the same window so they cannot leak

@@ -5,13 +5,17 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_cold_reset_repeated_test_seq import smc_cold_reset_repeated_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_cold_reset_repeated_test(smc_base_test):
     """Run the SMC OSS repeated cold-reset re-assert scenario."""
+
+    # The SMC_VPLAN card declares no CHK-* token for this leaf, so the gate is
+    # the floor on the tokens the run does emit.
+    min_evidence = 1
 
     async def run_scenario(self) -> None:
         seq = smc_cold_reset_repeated_test_seq("cold_reset_repeated_seq")

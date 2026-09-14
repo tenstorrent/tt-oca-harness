@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_efuse_km_axil.c
- * @brief SEP-TB KM CPU -> real eFuse controller routing/remap test (eFuse Suite 10.1).
+ * @brief SEP-TB KM CPU -> real eFuse controller routing/remap test.
  *
  * Runs as the KM ROM image inside the SEP UVM testbench (loaded via
  * +KM_ROM_HEX_FILE). Unlike the KM block-level test_efuse_axil.c (which hits a
@@ -22,7 +22,7 @@
  *   - MAP  read : CHIPLET_UID word0      (preloaded shadow field, benign read)
  *   - CTRL read : INTERFACE_CTRL_STATUS  (controller CSR, benign read)
  *   - MMR  write+read : RMA_SIP_TOKEN_I_0 (plain RW token-input CSR, benign)
- * (LOCKS / PROGRAM_CTRL / READ_CTRL are deliberately avoided — they have
+ * (LOCKS / PROGRAM_CTRL / READ_CTRL are avoided — they have
  *  functional side effects in the real controller.)
  *
  * Results are reported to the SEP host over the KM<->SEP hardware mailbox as a
@@ -61,10 +61,9 @@
 #define KM_EFUSE_END 0xEF11E0D0u
 
 /* ---- Benign routing targets (KM-local addresses) ---- */
-#define MAP_RD_ADDR KEY_MANAGER_OTP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR /* 0x0001_10C8 */
-#define CTRL_RD_ADDR \
-    KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR       /* 0x0001_1400 */
-#define MMR_RW_ADDR KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0) /* 0x0001_1500 */
+#define MAP_RD_ADDR KEY_MANAGER_OTP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
+#define CTRL_RD_ADDR KEY_MANAGER_OTP_EFUSE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR
+#define MMR_RW_ADDR KEY_MANAGER_OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)
 
 /* Distinctive sentinel for the MMR write-path check (unlikely to collide with
  * any preloaded token value). */
@@ -126,11 +125,11 @@ int main(void) {
     }
 
     /* --- Routing reads: each access remaps to its own 0x1093_0xxx region --- */
-    map_rd = reg_read32(MAP_RD_ADDR);   /* -> 0x1093_00C8 (MAP/shadow)  */
-    ctrl_rd = reg_read32(CTRL_RD_ADDR); /* -> 0x1093_0400 (CTRL CSR)    */
+    map_rd = reg_read32(MAP_RD_ADDR);
+    ctrl_rd = reg_read32(CTRL_RD_ADDR);
 
     /* --- Write path: benign RW token-input CSR in the MMR region --- */
-    reg_write32(MMR_RW_ADDR, MMR_SENTINEL); /* -> 0x1093_0500 (MMR)       */
+    reg_write32(MMR_RW_ADDR, MMR_SENTINEL);
     mmr_rd = reg_read32(MMR_RW_ADDR);
 
     /* FW-side self-check, reported in the status word:

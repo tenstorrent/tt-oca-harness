@@ -2,18 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Register Reset-Value Sweep  (Test Plan #24)
+I3C Register Reset-Value Sweep
 
 Reads the reset/configured values of real config & status registers and
 confirms they are readable with defined (non-X) values after reset.
 
-Deliberately avoids:
+Excludes:
   - FIFO/data ports (COMMAND/RESPONSE/TX_DATA/RX_DATA/IBI) — reading these
     pops the queue / returns X when empty; they are not reset-valued registers.
   - DAT/DCT memory (0x400+) — external SRAM, X until written.
 """
+
 import cocotb
-from i3c_test_base import make_env, CTRL_BASE
+from i3c_test_base import CTRL_BASE, make_env
 
 # (offset, name) for registers with a defined reset/config value (no FIFO ports)
 CONFIG_REGS = [
@@ -32,7 +33,7 @@ CONFIG_REGS = [
 ]
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_reg_reset_value_full(dut):
     """Sweep defined config/status registers; confirm readable, non-X."""
     tb, helper, ctrl, tgt = await make_env(dut)

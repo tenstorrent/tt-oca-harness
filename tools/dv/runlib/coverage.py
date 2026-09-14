@@ -16,7 +16,6 @@ from .compat import UTC
 from .models import ConfigError
 from .paths import repo_rel
 
-
 CANONICAL_METRICS = (
     "line",
     "cond",
@@ -200,9 +199,7 @@ def _coverage_input_from_fragment(
         )
 
     metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
-    coverage_meta = (
-        metadata.get("coverage") if isinstance(metadata.get("coverage"), dict) else {}
-    )
+    coverage_meta = metadata.get("coverage") if isinstance(metadata.get("coverage"), dict) else {}
     if bool(metadata.get("debug_only") or coverage_meta.get("debug_only")):
         return None, {
             "result_json": repo_rel(root, result_path),
@@ -217,17 +214,13 @@ def _coverage_input_from_fragment(
             "reason": "coverage artifact missing or empty",
         }
 
-    target_build = (
-        data.get("target_build") if isinstance(data.get("target_build"), dict) else {}
-    )
+    target_build = data.get("target_build") if isinstance(data.get("target_build"), dict) else {}
     if not target_build and isinstance(metadata.get("target_build"), dict):
         target_build = metadata["target_build"]
     attempt_value = data.get("attempt", metadata.get("attempt"))
     try:
         attempt = (
-            int(attempt_value)
-            if attempt_value is not None
-            else _attempt_from_path(result_path)
+            int(attempt_value) if attempt_value is not None else _attempt_from_path(result_path)
         )
     except (TypeError, ValueError):
         attempt = _attempt_from_path(result_path)
@@ -244,9 +237,7 @@ def _coverage_input_from_fragment(
         status=str(data.get("status", "UNKNOWN")),
         target=str(data.get("target") or target_build.get("target") or "") or None,
         build_fingerprint=(
-            str(target_build.get("fingerprint"))
-            if target_build.get("fingerprint")
-            else None
+            str(target_build.get("fingerprint")) if target_build.get("fingerprint") else None
         ),
         result_json=repo_rel(root, result_path),
         source="result_json",
@@ -255,9 +246,7 @@ def _coverage_input_from_fragment(
 
 def _validate_compatibility(inputs: list[CoverageInput]) -> None:
     targets = {entry.target for entry in inputs if entry.target}
-    fingerprints = {
-        entry.build_fingerprint for entry in inputs if entry.build_fingerprint
-    }
+    fingerprints = {entry.build_fingerprint for entry in inputs if entry.build_fingerprint}
     if len(targets) > 1:
         raise CoverageCompatibilityError(
             "coverage inputs span incompatible targets: " + ", ".join(sorted(targets))
@@ -271,11 +260,7 @@ def _validate_compatibility(inputs: list[CoverageInput]) -> None:
         raise CoverageCompatibilityError(
             "coverage input target provenance is incomplete; refusing a mixed-provenance merge"
         )
-    if (
-        inputs
-        and any(entry.build_fingerprint is None for entry in inputs)
-        and fingerprints
-    ):
+    if inputs and any(entry.build_fingerprint is None for entry in inputs) and fingerprints:
         raise CoverageCompatibilityError(
             "coverage build fingerprints are incomplete; refusing a mixed-provenance merge"
         )
@@ -289,7 +274,7 @@ def discover_coverage_inputs(
     tool: str,
     fallback_glob: str,
 ) -> CoverageDiscovery:
-    """Select final non-debug leaf artifacts, with a legacy glob fallback."""
+    """Select final non-debug leaf artifacts, falling back to a glob when no leaf records exist."""
 
     candidates: list[CoverageInput] = []
     rejected: list[dict[str, Any]] = []
@@ -344,7 +329,7 @@ def discover_coverage_inputs(
         selected = list(by_leaf.values())
         selection_source = "result_json"
     else:
-        # Compatibility for run directories produced before leaf artifacts were recorded.
+        # Run directories without leaf result.json records: fall back to the glob.
         seen: set[Path] = set()
         for path in sorted(run_dir.glob(fallback_glob)):
             try:
@@ -487,10 +472,7 @@ def _parse_text_table(text: str) -> tuple[dict[str, float], float | None]:
         ]
         if len(recognized) < 2:
             continue
-        values = [
-            float(match.group("value"))
-            for match in _PERCENT_RE.finditer(lines[index + 1])
-        ]
+        values = [float(match.group("value")) for match in _PERCENT_RE.finditer(lines[index + 1])]
         if len(values) < len(headers):
             continue
         for name, value in zip(headers, values, strict=False):
@@ -524,10 +506,7 @@ def parse_urg_summary_table(text: str) -> dict[str, float]:
         cells = rows[1].split()
         if not headers or len(cells) != len(headers):
             continue
-        if not any(
-            _metric_name(name) is not None or name in _OVERALL_ALIASES
-            for name in headers
-        ):
+        if not any(_metric_name(name) is not None or name in _OVERALL_ALIASES for name in headers):
             continue
         values: dict[str, float] = {}
         for name, cell in zip(headers, cells, strict=True):
@@ -630,26 +609,29 @@ def parse_coverage_report(
             f"{parser} report did not contain a usable overall percentage and metric breakdown "
             f"(report={report_dir}, merged={merged})"
         )
-    invalid = {
-        name: value for name, value in metrics.items() if value < 0.0 or value > 100.0
-    }
+    invalid = {name: value for name, value in metrics.items() if value < 0.0 or value > 100.0}
     if overall < 0.0 or overall > 100.0 or invalid:
         raise CoverageReportError("coverage report contains percentages outside 0..100")
     return {
-        name: round(value, 4)
-        for name, value in metrics.items()
-        if name in CANONICAL_METRICS
+        name: round(value, 4) for name, value in metrics.items() if name in CANONICAL_METRICS
     }, round(overall, 4)
 
 
-def write_json(path: Path, payload: dict[str, Any]) -> None:
+def json_text(payload: dict[str, Any]) -> str:
+    """The exact bytes `write_json` puts on disk for `payload`."""
+
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+
+def write_json_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    temporary.write_text(text, encoding="utf-8")
     temporary.replace(path)
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    write_json_text(path, json_text(payload))
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -678,7 +660,6 @@ def new_manifest(
     merged: Path,
     root: Path,
     exclude_files: list[str],
-    waiver_files: list[str],
 ) -> dict[str, Any]:
     first = discovery.inputs[0] if discovery.inputs else None
     return {
@@ -693,7 +674,8 @@ def new_manifest(
         "build_fingerprint": first.build_fingerprint if first else None,
         **discovery_payload(discovery),
         "exclusions": exclude_files,
-        "waivers": waiver_files,
+        # The coverage.json key set is fixed; no config key feeds "waivers".
+        "waivers": [],
         "artifacts": {
             "merged": repo_rel(root, merged),
             "report": None,

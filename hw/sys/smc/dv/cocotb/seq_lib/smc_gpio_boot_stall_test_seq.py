@@ -9,8 +9,8 @@ from cocotb.triggers import RisingEdge
 
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_pad_table import BOOT_STALL_PAD as _BOOT_STALL_PAD
 
-_BOOT_STALL_PAD = 57
 # Live mux -> prim_sync3 (3) -> sticky flop (1). Window is fail-closed: a
 # faulty re-assert would have reached tb_boot_stall_combined_o by then.
 _LOCKOUT_CYCLES = 16
@@ -41,8 +41,7 @@ class smc_gpio_boot_stall_test_seq(SmcCsrSeq):
                     return
             await RisingEdge(clk)
         raise AssertionError(
-            f"{label}: tb_boot_stall_combined_o!={expect} "
-            f"last={dut.tb_boot_stall_combined_o.value}"
+            f"{label}: tb_boot_stall_combined_o!={expect} last={dut.tb_boot_stall_combined_o.value}"
         )
 
     async def _stay_low(self, dut, label: str) -> None:
@@ -60,9 +59,7 @@ class smc_gpio_boot_stall_test_seq(SmcCsrSeq):
             if not dut.tb_boot_stall_combined_o.value.is_resolvable:
                 raise AssertionError(f"{label}: combined unresolvable at {cycle}")
             if int(dut.tb_boot_stall_combined_o.value) != 0:
-                raise AssertionError(
-                    f"{label}: combined rose at cycle {cycle} while pad57=1"
-                )
+                raise AssertionError(f"{label}: combined rose at cycle {cycle} while pad57=1")
 
     async def body(self) -> None:
         dut = cocotb.top

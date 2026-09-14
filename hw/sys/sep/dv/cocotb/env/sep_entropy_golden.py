@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: (c) 2024-2026 Tenstorrent Inc. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
 #
 # sep_entropy_golden.py
 #
-# End-to-end SEP entropy-datapath golden FACADE. Chains the five already-
-# validated, self-tested stage models into one stream-oriented model that a
+# End-to-end SEP entropy-datapath golden FACADE. Chains the five self-tested
+# stage models into one stream-oriented model that a
 # cocotb scoreboard can compare against DUT probes:
 #
 #   noise (12b/cyc)  ->  decorrelator (96b/decor-valid)
@@ -26,7 +26,7 @@
 # feed_noise() / feed_decor_sample() from DUT-observed strobes, so the DUT and
 # golden consume the same externally-driven raw-noise sequence.
 #
-# Inter-stage framing (honored exactly, per the reference scoreboard analysis):
+# Inter-stage framing (matches the reference scoreboard):
 #   - sample_clk_div=7 (/8): each lane emits a byte every 8 cycles; the 12 lane
 #     bytes pack into a 96b decor word (lane0 -> [7:0]) on a decor-valid event.
 #   - one BIW 32b word per decor-valid event (out[0] -> word[31:24]).
@@ -43,13 +43,13 @@
 
 from collections import deque
 
-from sep_noise_golden import SepNoiseGolden
-from sep_decor_golden import SepDecorGolden, MAX_LANES
 from sep_compress_golden import SepBiwCompress, SepSha256Conditioner
-from sep_ctr_drbg_golden import SepCtrDrbgGolden, SEED_LEN, BLOCK_LEN
+from sep_ctr_drbg_golden import BLOCK_LEN, SEED_LEN, SepCtrDrbgGolden
+from sep_decor_golden import MAX_LANES, SepDecorGolden
+from sep_noise_golden import SepNoiseGolden
 
-SEED_WORDS = SEED_LEN // 32     # 12 compressor words make one 384b seed
-KM_BEATS_PER_BLOCK = BLOCK_LEN // 32   # 4 x 32b beats per 128b genbits block
+SEED_WORDS = SEED_LEN // 32  # 12 compressor words make one 384b seed
+KM_BEATS_PER_BLOCK = BLOCK_LEN // 32  # 4 x 32b beats per 128b genbits block
 
 
 class SepEntropyGolden:
@@ -68,13 +68,22 @@ class SepEntropyGolden:
     The decor/compress/seed stages are pure stream models: step_cycle() fills
     them ahead of the DUT. Genbits are different -- they are DEMAND-driven, so
     the scoreboard pulls them one at a time with genbits_block() and closes each
-    Generate command with genbits_gen_last() off the RTL's gen_last.
+    Generate command with genbits_gen_last() on the observed gen_last strobe.
     """
 
-    def __init__(self, *, sample_clk_div=7, byte_mask=0xFF, bypass=False,
-                 sha_whitening=True, glen=32, ingress_skip=12,
-                 noise_model_mode="unbiased", noise_seed_base=0x1234_5678,
-                 km_word_order="lsw"):
+    def __init__(
+        self,
+        *,
+        sample_clk_div=7,
+        byte_mask=0xFF,
+        bypass=False,
+        sha_whitening=True,
+        glen=32,
+        ingress_skip=12,
+        noise_model_mode="unbiased",
+        noise_seed_base=0x1234_5678,
+        km_word_order="lsw",
+    ):
         self.sample_clk_div = sample_clk_div
         self.byte_mask = byte_mask & 0xFF
         self.bypass = bool(bypass)
@@ -91,17 +100,18 @@ class SepEntropyGolden:
 
         # --- stage models -------------------------------------------------
         self._decor = SepDecorGolden()
-        self._decor.init_all(sample_clk_div=sample_clk_div,
-                             bypass=self.bypass, byte_mask=self.byte_mask)
+        self._decor.init_all(
+            sample_clk_div=sample_clk_div, bypass=self.bypass, byte_mask=self.byte_mask
+        )
         self._sha = SepSha256Conditioner(16) if self.sha_whitening else None
         self._drbg = SepCtrDrbgGolden()
 
         # --- accumulators -------------------------------------------------
-        self._ingress_seen = 0           # compressor words observed (for skip)
-        self._seed_words = []            # accumulating 12 words for current seed
-        self._seed_done = False          # first seed instantiated?
-        self._generate_active = False    # a Generate command is in flight
-        self._reseed_pending = None      # seed held until the in-flight gen_last
+        self._ingress_seen = 0  # compressor words observed (for skip)
+        self._seed_words = []  # accumulating 12 words for current seed
+        self._seed_done = False  # first seed instantiated?
+        self._generate_active = False  # a Generate command is in flight
+        self._reseed_pending = None  # seed held until the in-flight gen_last
 
         # --- expected-item queues ----------------------------------------
         self.expected_decor_bytes = deque()
@@ -117,22 +127,17 @@ class SepEntropyGolden:
         self.n_seeds = 0
         self.n_genbits = 0
         self.n_km_words = 0
-        self.n_generates = 0             # Generate commands finalized (gen_last)
+        self.n_generates = 0  # Generate commands finalized (gen_last)
 
     def seed_decor_sr(self, sr_packed, clk_divider=None):
-        """Seed all 12 decorrelator shift registers from a live RTL ff_stage
-        snapshot (12x29 bits, lane i at [29*i +: 29]).
+        """Seed the independent golden SR from a live ff_stage snapshot.
 
-        The decorrelator ff_stage resets only on the hardware rst_ni, and its
-        reset edge is unobservable from the sampled decor output (which lags it
-        by a full divider period). Because the SR has MSB->LSB feedback, its
-        state NEVER flushes -- a wrong reset phase leaves a difference that just
-        rotates through the 29 taps forever (matching the sample only when it
-        rotates out of bits[28:21]). So the scoreboard snapshots the real
-        ff_stage and seeds it here, putting the golden feedback SR in exact
-        lockstep from a known cycle. ``clk_divider`` phase-aligns the downsampler
-        so the golden's next sampled byte lands on the RTL's next decor sample
-        (keeps the sampled CHK2..CHK5 chain in value-sync)."""
+        The architecture names a 29-stage feedback SR that is not
+        software-visible, so the reset phase has no frontdoor. A wrong
+        phase never flushes -- it rotates. The snapshot is chain-of-custody
+        for the starting state, not a transcribed golden. The transform
+        itself comes from entropy_source architecture.adoc.
+        """
         for lane in range(MAX_LANES):
             self._decor.set_sr(lane, (sr_packed >> (29 * lane)) & 0x1FFFFFFF)
             if clk_divider is not None:
@@ -145,7 +150,7 @@ class SepEntropyGolden:
         cycle, sidestepping the model's own divider phase (CHK1)."""
         w = 0
         for lane in range(MAX_LANES):
-            w |= (((self._decor.get_sr(lane) >> 21) & 0xFF) << (8 * lane))
+            w |= ((self._decor.get_sr(lane) >> 21) & 0xFF) << (8 * lane)
         return w
 
     # ----------------------------------------------------------------- drive
@@ -193,7 +198,7 @@ class SepEntropyGolden:
         # words the scoreboard sees are the post-SHA digest words (8 per block).
         if self.sha_whitening:
             if self._sha.push_word(biw_word):
-                for w in self._sha.get_digest_words():   # word[0] first
+                for w in self._sha.get_digest_words():  # word[0] first
                     self._consume_compress_word(w)
         else:
             self._consume_compress_word(biw_word)
@@ -217,7 +222,7 @@ class SepEntropyGolden:
 
         seed = 0
         for i, w in enumerate(self._seed_words):
-            seed |= (w & 0xFFFFFFFF) << (32 * i)   # word0 -> [31:0]
+            seed |= (w & 0xFFFFFFFF) << (32 * i)  # word0 -> [31:0]
         self._seed_words = []
         self.expected_seed.append(seed)
         self.n_seeds += 1
@@ -232,7 +237,7 @@ class SepEntropyGolden:
         demand: with all three DRBG EDN endpoints live (KM, crypto adapter,
         entropy pool) a single seed routinely serves more than one Generate
         command. Blocks are therefore produced lazily by genbits_block(), and
-        the command boundary is taken from the RTL's own gen_last via
+        the command boundary is taken from the observed gen_last strobe via
         genbits_gen_last(). See SepCtrDrbgGolden.generate_one().
         """
         if not self._seed_done:
@@ -299,8 +304,14 @@ if __name__ == "__main__":
     GLEN = 32
     INGRESS = 12
 
-    g = SepEntropyGolden(sample_clk_div=7, byte_mask=0xFF, bypass=False,
-                         sha_whitening=True, glen=GLEN, ingress_skip=INGRESS)
+    g = SepEntropyGolden(
+        sample_clk_div=7,
+        byte_mask=0xFF,
+        bypass=False,
+        sha_whitening=True,
+        glen=GLEN,
+        ingress_skip=INGRESS,
+    )
 
     # ----- Run enough cycles to produce >= 2 seeds (so reseed path exercises) -----
     # words/seed accounting (whitening): need (ingress_skip + N*12) post-SHA
@@ -313,8 +324,7 @@ if __name__ == "__main__":
     max_cycles = 200_000
     while g.n_seeds < TARGET_SEEDS and g.cycle < max_cycles:
         g.step_cycle()
-    assert g.n_seeds >= TARGET_SEEDS, (
-        f"only {g.n_seeds} seeds after {g.cycle} cycles")
+    assert g.n_seeds >= TARGET_SEEDS, f"only {g.n_seeds} seeds after {g.cycle} cycles"
 
     # ----- (a) decor-valid cadence is /8 -----
     # First valid at cycle 8 (init clk_divider=7 -> 7 decrements then sample),
@@ -337,21 +347,21 @@ if __name__ == "__main__":
     assert g.n_compress_words >= INGRESS + SEED_WORDS, "too few compressor words"
 
     # ----- (c) genbits are demand-driven; (d) 4 KM beats/block -----
-    # Seeds alone produce no blocks now: the scoreboard pulls them. Pull one
+    # Seeds alone produce no blocks: the scoreboard pulls them. Pull one
     # full Generate's worth and close the command, as the RTL gen_last would.
-    assert g.n_genbits == 0, (
-        f"seeds must not self-generate: {g.n_genbits} blocks appeared unpulled")
+    assert g.n_genbits == 0, f"seeds must not self-generate: {g.n_genbits} blocks appeared unpulled"
     for _ in range(GLEN):
         assert g.genbits_block() is not None, "genbits_block() returned None after a seed"
     g.genbits_gen_last()
     assert g.n_genbits == GLEN, f"pulled {g.n_genbits} blocks, expected {GLEN}"
     assert g.n_generates == 1, f"{g.n_generates} Generates finalized, expected 1"
     assert g.n_km_words == g.n_genbits * KM_BEATS_PER_BLOCK, (
-        f"km words {g.n_km_words} != genbits*4 {g.n_genbits * 4}")
+        f"km words {g.n_km_words} != genbits*4 {g.n_genbits * 4}"
+    )
 
     # (c2) The per-block path must reproduce the monolithic generate() bit for
     # bit -- same block values, same trailing Update, same resulting state.
-    # This is the property the whole demand-driven refactor rests on.
+    # This is the property the demand-driven model rests on.
     ref = SepCtrDrbgGolden()
     ref.instantiate(g.expected_seed[0])
     lazy = SepCtrDrbgGolden()
@@ -361,24 +371,29 @@ if __name__ == "__main__":
     lazy.generate_done()
     assert lazy_blocks == ref_blocks, "generate_one() stream != generate() stream"
     assert (lazy.key, lazy.v, lazy.reseed_counter) == (ref.key, ref.v, ref.reseed_counter), (
-        "generate_done() left a different CTR_DRBG state than generate()")
+        "generate_done() left a different CTR_DRBG state than generate()"
+    )
 
     # KM beats really reconstruct the genbits block (LSW-first).
     blk0 = g.expected_genbits[0]
     km0 = [g.expected_km_words[i] for i in range(4)]
     recon = 0
-    for i, w in enumerate(km0):       # beat0 -> [31:0]
+    for i, w in enumerate(km0):  # beat0 -> [31:0]
         recon |= (w & 0xFFFFFFFF) << (32 * i)
     assert recon == blk0, f"KM beats don't reconstruct genbits block: {recon:032x} != {blk0:032x}"
 
     # ----- reference hexes (fixed seed = SepNoiseGolden default config) -----
     seed0 = g.expected_seed[0]
     print("ENTROPY GOLDEN FACADE SELFTEST PASS")
-    print(f"  per-stage counts @ {g.cycle} cycles: "
-          f"decor_valid={g.n_decor_valid} compress_words={g.n_compress_words} "
-          f"seeds={g.n_seeds} genbits={g.n_genbits} km_words={g.n_km_words}")
+    print(
+        f"  per-stage counts @ {g.cycle} cycles: "
+        f"decor_valid={g.n_decor_valid} compress_words={g.n_compress_words} "
+        f"seeds={g.n_seeds} genbits={g.n_genbits} km_words={g.n_km_words}"
+    )
     print(f"  first seed (384b)    = {seed0:096x}")
     print(f"  first genbits (128b) = {blk0:032x}")
-    print("  first 4 KM words     = "
-          + " ".join(f"{w:08x}" for w in km0)
-          + f"  (order={g.km_word_order})")
+    print(
+        "  first 4 KM words     = "
+        + " ".join(f"{w:08x}" for w in km0)
+        + f"  (order={g.km_word_order})"
+    )

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 // Testbench wrapper for entropy_source using APB interface
 module tb_entropy_top;
@@ -13,7 +13,7 @@ module tb_entropy_top;
   apb_intf #(
     .ADDR_WIDTH(12),
     .DATA_WIDTH(32)
-  ) apb();
+  ) apb ();
 
   // Other DUT IO
   logic rosc_sample_clk;
@@ -24,7 +24,7 @@ module tb_entropy_top;
 
   // Optional RO jitter model configuration and outputs (exposed to cocotb)
   // 12-channel RO model to match DUT
-  ro_cfg_if #(.N(N_RO)) ro_cfg();
+  ro_cfg_if #(.N(N_RO)) ro_cfg ();
   logic [N_RO-1:0] ro_bits;
   logic [N_RO-1:0] ro_vlds;
   // RO model injection control (exposed to cocotb)
@@ -33,7 +33,7 @@ module tb_entropy_top;
   // NOTE: Power-on default below; actual runtime default from test_config.py (ROConfig.inject_model = 1)
   logic ro_inject_enable = 1'b1;  // Power-on fallback (avoids X propagation)
   // Decorrelator configuration (exposed to cocotb)
-  decor_cfg_if decor_cfg();
+  decor_cfg_if decor_cfg ();
   // Decorrelator outputs (for reference model)
   logic [N_RO-1:0][7:0] entropy_bytes;
   logic                 entropy_bytes_vld;
@@ -52,15 +52,17 @@ module tb_entropy_top;
   logic disable_clk_divider_check = 1'b0;
   genvar gi;
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_flat_bytes
-      assign entropy_bytes_flat[gi*8 +: 8] = entropy_bytes[gi];
+    for (gi = 0; gi < N_RO; gi++) begin : gen_flat_bytes
+      assign entropy_bytes_flat[gi*8+:8] = entropy_bytes[gi];
     end
   endgenerate
 
   // RO jitter model array - 12 channels to match DUT
   // Enable is connected directly to DUT's ring_osc_enable signal,
   // so the model automatically follows DUT register state
-  RO_Jitter_Array #(.N(N_RO)) u_ro_model (
+  RO_Jitter_Array #(
+    .N(N_RO)
+  ) u_ro_model (
     .clk_i   (apb.pclk),
     .rstn_i  (apb.presetn),  // Use system reset to properly initialize counters
     .enable_i(dut.reg_out.RING_OSC_ENABLE.ENABLE.value),  // Auto-sync with DUT enable state
@@ -72,9 +74,12 @@ module tb_entropy_top;
   // Decorrelator Reference Model (Golden Data Generator)
   // NOTE: This is a simulation-only model for generating golden entropy data.
   //       It is NOT the actual RTL design.
-  // Synchronized with RTL clock dividers (uses lane 0, verified all lanes match)
+  // Synchronized with RTL clock dividers (lane 0; gen_clk_divider_check warns on divergence)
   // Sampling timing determined entirely by probing RTL divider, no fixed period parameter
-  Serial_Decorrelator_RefModel #(.N(N_RO), .DEPTH(29)) u_decorrelator_refmodel (
+  Serial_Decorrelator_RefModel #(
+    .N(N_RO),
+    .DEPTH(29)
+  ) u_decorrelator_refmodel (
     .clk_i (apb.pclk),
     .rstn_i(apb.presetn),
     .bit_i (ro_bits),
@@ -82,7 +87,7 @@ module tb_entropy_top;
     .mode_i(decor_cfg.mode),  // Configurable from Python via decor_cfg interface
     .shift_dir_i(decor_cfg.shift_dir),  // Shift direction from config interface
     .bypass_mask_i(decor_cfg.bypass_mask),  // Per-lane bypass control for mixed modes
-    .rtl_clk_divider_i(rtl_clk_dividers[0]),  // Use lane 0 (all lanes verified to match)
+    .rtl_clk_divider_i(rtl_clk_dividers[0]),  // Lane 0; gen_clk_divider_check warns on divergence
     .sample_vld_o(entropy_bytes_vld),
     .bytes_o(entropy_bytes)
   );
@@ -98,7 +103,7 @@ module tb_entropy_top;
   logic [N_RO*8-1:0]    entropy_bytes_masked_flat;  // Flattened view for Python/waveforms
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_apply_byte_mask
+    for (gi = 0; gi < N_RO; gi++) begin : gen_apply_byte_mask
       assign entropy_bytes_masked[gi] = entropy_bytes[gi] & dut.reg_out.DECORRELATOR_MASK.ENTROPY_BYTE_MASK.value;
       assign entropy_bytes_masked_flat[gi*8 +: 8] = entropy_bytes_masked[gi];
     end
@@ -111,7 +116,7 @@ module tb_entropy_top;
   // Provides golden data for verifying DUT's entropy_stream output
 
   // Compressor configuration interface (exposed to cocotb)
-  compressor_cfg_if compressor_cfg();
+  compressor_cfg_if compressor_cfg ();
 
   // Compressor outputs
   logic [31:0] compressed_word;
@@ -185,11 +190,11 @@ module tb_entropy_top;
   // RTL Clock Divider Probes (for synchronization and debug)
   // ============================================================================
   // Note: debug_clk_divider[12] is declared and assigned in debug_signals.svh above
-  // We create rtl_clk_dividers as an alias for use in decorrelator reference model
-  // (line 71) and verification checks below.
+  // rtl_clk_dividers aliases it for the decorrelator reference model and the
+  // verification checks below.
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_clk_divider_alias
+    for (gi = 0; gi < N_RO; gi++) begin : gen_clk_divider_alias
       assign rtl_clk_dividers[gi] = debug_clk_divider[gi];
     end
   endgenerate
@@ -202,7 +207,7 @@ module tb_entropy_top;
   // This shows the ACTUAL detune applied (FSM state when autotune enabled)
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_detune_alias
+    for (gi = 0; gi < N_RO; gi++) begin : gen_detune_alias
       assign rtl_detune[gi] = debug_detune[gi];
       // Also flatten into packed vector for cocotb access (cocotb can't access unpacked arrays)
       assign rtl_detune_flat[gi] = debug_detune[gi];
@@ -213,14 +218,14 @@ module tb_entropy_top;
   // (only check when not in reset and ROs are enabled, and checker not disabled)
   // NOTE: Checker disabled for tests that change divider on-the-fly (health tests)
   generate
-    for (gi = 1; gi < N_RO; gi++) begin : g_clk_divider_check
+    for (gi = 1; gi < N_RO; gi++) begin : gen_clk_divider_check
       always @(posedge apb.pclk) begin
         if (!disable_clk_divider_check && apb.presetn &&
             dut.reg_out.RING_OSC_ENABLE.ENABLE.value[gi] &&
             dut.reg_out.RING_OSC_ENABLE.ENABLE.value[0]) begin
           if (rtl_clk_dividers[gi] != rtl_clk_dividers[0]) begin
-            $warning("[TB] Clock divider mismatch: lane[%0d]=0x%02X, lane[0]=0x%02X",
-                     gi, rtl_clk_dividers[gi], rtl_clk_dividers[0]);
+            $warning("[TB] Clock divider mismatch: lane[%0d]=0x%02X, lane[0]=0x%02X", gi,
+                     rtl_clk_dividers[gi], rtl_clk_dividers[0]);
           end
         end
       end
@@ -239,8 +244,8 @@ module tb_entropy_top;
   logic [N_RO-1:0][7:0] dut_entropy_bytes;
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_dut_entropy_probe
-      assign dut_entropy_bytes[gi] = dut.egen.g_ecmplx[gi].gen_inst.dcor.entropy_byte_sample_o;
+    for (gi = 0; gi < N_RO; gi++) begin : gen_dut_entropy_probe
+      assign dut_entropy_bytes[gi] = dut.egen.gen_ecmplx[gi].gen_inst.dcor.entropy_byte_sample_o;
     end
   endgenerate
 
@@ -276,7 +281,7 @@ module tb_entropy_top;
   // RO Model Injection into DUT
   // ============================================================================
   // Force RO model outputs into DUT decorrelator inputs at:
-  // dut.egen.g_ecmplx[0-11].gen_inst.dcor.noise_i
+  // dut.egen.gen_ecmplx[0-11].gen_inst.dcor.noise_i
   // This allows testing with behavioral RO model instead of real ring oscillators
   //
   // Control: Set ro_inject_enable from cocotb to enable/disable injection
@@ -284,15 +289,15 @@ module tb_entropy_top;
   //   ro_inject_enable = 0: Use DUT's real ring oscillators
 
   generate
-    for (gi = 0; gi < N_RO; gi++) begin : g_ro_inject
-      always @(*) begin
+    for (gi = 0; gi < N_RO; gi++) begin : gen_ro_inject
+      always_comb begin
         if (ro_inject_enable) begin
           // Force the noise_i input of each decorrelator with RO model output
-          // Path: tb_entropy_top.dut.egen.g_ecmplx[i].gen_inst.dcor.noise_i
-          force dut.egen.g_ecmplx[gi].gen_inst.dcor.noise_i = ro_bits[gi];
+          // Path: tb_entropy_top.dut.egen.gen_ecmplx[i].gen_inst.dcor.noise_i
+          force dut.egen.gen_ecmplx[gi].gen_inst.dcor.noise_i = ro_bits[gi];
         end else begin
           // Release force to use DUT's real ring oscillators
-          release dut.egen.g_ecmplx[gi].gen_inst.dcor.noise_i;
+          release dut.egen.gen_ecmplx[gi].gen_inst.dcor.noise_i;
         end
       end
     end
@@ -313,10 +318,10 @@ module tb_entropy_top;
   // This allows Suite 3 tests to inject controlled entropy patterns
   // without decorrelator/compressor variability
 
-  always @(*) begin
+  always_comb begin
     if (ro_cfg.word32_enable) begin
       // Force health test input with 32-bit word from RO model
-      force dut.htst.entropy_i       = ro_cfg.word32_data;
+      force dut.htst.entropy_i = ro_cfg.word32_data;
       force dut.htst.entropy_valid_i = ro_cfg.word32_valid;
     end else begin
       // Release force to allow normal operation
@@ -338,26 +343,26 @@ module tb_entropy_top;
   end
 
 `ifdef FSDB_DUMP
-// FSDB waveform dump (enabled via +define+FSDB_DUMP)
-// FSDB file location can be overridden with FSDB_FILE plusarg
-initial begin
-  string fsdb_file;
-  if (!$value$plusargs("FSDB_FILE=%s", fsdb_file)) begin
-    fsdb_file = "sim/tb_entropy_top.fsdb";
+  // FSDB waveform dump (enabled via +define+FSDB_DUMP)
+  // FSDB file location can be overridden with FSDB_FILE plusarg
+  initial begin
+    string fsdb_file;
+    if (!$value$plusargs("FSDB_FILE=%s", fsdb_file)) begin
+      fsdb_file = "sim/tb_entropy_top.fsdb";
+    end
+    $fsdbDumpfile(fsdb_file);
+    $fsdbDumpvars(0, tb_entropy_top);
   end
-  $fsdbDumpfile(fsdb_file);
-  $fsdbDumpvars(0, tb_entropy_top);
-end
 `elsif VCD_DUMP
-// Optional VCD dump fallback
-initial begin
-  string vcd_file;
-  if (!$value$plusargs("VCD_FILE=%s", vcd_file)) begin
-    vcd_file = "sim/tb_entropy_top.vcd";
+  // Optional VCD dump fallback
+  initial begin
+    string vcd_file;
+    if (!$value$plusargs("VCD_FILE=%s", vcd_file)) begin
+      vcd_file = "sim/tb_entropy_top.vcd";
+    end
+    $dumpfile(vcd_file);
+    $dumpvars(0, tb_entropy_top);
   end
-  $dumpfile(vcd_file);
-  $dumpvars(0, tb_entropy_top);
-end
 `endif
 
 

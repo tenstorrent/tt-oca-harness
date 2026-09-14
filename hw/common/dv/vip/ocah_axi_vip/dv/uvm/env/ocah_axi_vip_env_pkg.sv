@@ -3,18 +3,19 @@
 //
 // Shared-AXI-VIP selftest environment package (`<DUT>_env_pkg` convention).
 // The environment wires the VIP's own master env, fault-slave agent, and
-// passive observation env onto the one harness ocah_axi_if — the SV-UVM
-// twin of the cocotb full-stack bundle in dv/cocotb/ocah_axi_vip_harness.py.
+// passive observation env onto the harness ocah_axi_if, and a second master
+// env, slave agent, and passive env around the struct-port bridge — the SV-UVM
+// twin of the cocotb bundles in dv/cocotb/ocah_axi_vip_harness.py.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 package ocah_axi_vip_env_pkg;
 
-    import uvm_pkg::*;
-    `include "uvm_macros.svh"
+  import uvm_pkg::*;
+  `include "uvm_macros.svh"
 
-    import ocah_axi_uvm_pkg::*;
+  import ocah_axi_uvm_pkg::*;
 
-    `include "ocah_axi_vip_env.svh"
+  `include "ocah_axi_vip_env.svh"
 
 endpackage : ocah_axi_vip_env_pkg

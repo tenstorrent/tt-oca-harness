@@ -15,8 +15,7 @@ from dashboard.schema import read_json, write_json
 
 def _kv_rows(data: dict, keys: list[tuple[str, str]]) -> str:
     return "\n".join(
-        f"<tr><th>{fmt(label)}</th><td>{fmt(data.get(key))}</td></tr>"
-        for key, label in keys
+        f"<tr><th>{fmt(label)}</th><td>{fmt(data.get(key))}</td></tr>" for key, label in keys
     )
 
 
@@ -36,7 +35,7 @@ def _test_detail_rows(result: dict) -> str:
             f"<td>{fmt(test.get('target'))}</td>"
             f"<td>{fmt(test.get('seed'))}</td>"
             f"<td>{fmt(test.get('attempt'))}</td>"
-            f"<td class=\"{fmt(test.get('status'))}\">{fmt(test.get('status'))}</td>"
+            f'<td class="{fmt(test.get("status"))}">{fmt(test.get("status"))}</td>'
             f"<td>{fmt(test.get('duration_sec'))}</td>"
             f"<td>{fmt(test.get('reason'))}</td>"
             f"<td>{junit_cell}</td>"
@@ -70,7 +69,7 @@ def _regression_failure_rows(regression: dict, key: str) -> str:
             "<tr>"
             f"<td>{fmt(entry.get('item'))}</td>"
             f"<td>{fmt(entry.get('seed'))}</td>"
-            f"<td class=\"{fmt(entry.get('status') or entry.get('final_status'))}\">{fmt(entry.get('status') or entry.get('final_status'))}</td>"
+            f'<td class="{fmt(entry.get("status") or entry.get("final_status"))}">{fmt(entry.get("status") or entry.get("final_status"))}</td>'
             f"<td>{fmt(entry.get('reason') or entry.get('flaky_reason'))}</td>"
             f"<td>{link(log, 'log') if log else '--'}</td>"
             "</tr>"
@@ -79,7 +78,10 @@ def _regression_failure_rows(regression: dict, key: str) -> str:
 
 
 def _list_rows(values: list[str], label: str) -> str:
-    return "\n".join(f"<tr><td>{fmt(value)}</td></tr>" for value in values) or f'<tr><td>No {fmt(label)} recorded.</td></tr>'
+    return (
+        "\n".join(f"<tr><td>{fmt(value)}</td></tr>" for value in values)
+        or f"<tr><td>No {fmt(label)} recorded.</td></tr>"
+    )
 
 
 def _coverage_threshold_rows(coverage: dict) -> str:
@@ -93,7 +95,7 @@ def _coverage_threshold_rows(coverage: dict) -> str:
             f"<td>{fmt(outcome.get('actual_percent'))}</td>"
             f"<td>{fmt(outcome.get('minimum_percent'))}</td>"
             f"<td>{fmt(outcome.get('unclassified_points'))}</td>"
-            f"<td class=\"{'PASS' if outcome.get('met') else 'FAIL'}\">"
+            f'<td class="{"PASS" if outcome.get("met") else "FAIL"}">'
             f"{fmt(outcome.get('met'))}</td>"
             "</tr>"
         )
@@ -107,10 +109,10 @@ def _coverage_hole_rows(coverage: dict) -> str:
     details_href = coverage.get("coverage_details") or ""
     rows = []
     for hole in holes.get("samples") or []:
-        issue_cells = ", ".join(
-            link(url, f"#{url.rsplit('/', 1)[-1]}")
-            for url in hole.get("issues") or []
-        ) or "--"
+        issue_cells = (
+            ", ".join(link(url, f"#{url.rsplit('/', 1)[-1]}") for url in hole.get("issues") or [])
+            or "--"
+        )
         location = hole.get("source") or hole.get("hierarchy") or ""
         if location and hole.get("line"):
             location = f"{location}:{hole.get('line')}"
@@ -122,8 +124,8 @@ def _coverage_hole_rows(coverage: dict) -> str:
             f"<td>{fmt(hole.get('category'))}</td>"
             f"<td>{fmt(hole.get('metric_family'))}</td>"
             f"<td>{fmt(location)}</td>"
-            f"<td class=\"{fmt(hole.get('disposition'))}\">{fmt(hole.get('disposition'))}</td>"
-            f"<td class=\"{fmt(hole.get('status'))}\">{fmt(hole.get('status'))}</td>"
+            f'<td class="{fmt(hole.get("disposition"))}">{fmt(hole.get("disposition"))}</td>'
+            f'<td class="{fmt(hole.get("status"))}">{fmt(hole.get("status"))}</td>'
             f"<td>{fmt(hole.get('owner'))}</td>"
             f"<td>{fmt(hole.get('reviewer'))}</td>"
             f"<td>{fmt(hole.get('rationale'))}</td>"
@@ -147,57 +149,65 @@ def render_report(result: dict) -> str:
     regression = result.get("regression", {}) if isinstance(result.get("regression"), dict) else {}
     warnings = result.get("warnings", [])
 
-    artifact_rows = "\n".join(
-        f"<tr><td>{fmt(name)}</td><td>{link(path, path)}</td></tr>"
-        for name, path in sorted(artifacts.items())
-    ) or '<tr><td colspan="2">No artifacts recorded.</td></tr>'
+    artifact_rows = (
+        "\n".join(
+            f"<tr><td>{fmt(name)}</td><td>{link(path, path)}</td></tr>"
+            for name, path in sorted(artifacts.items())
+        )
+        or '<tr><td colspan="2">No artifacts recorded.</td></tr>'
+    )
 
-    failure_rows = "\n".join(
-        f"<tr><td>{fmt(item.get('signature'))}</td><td>{fmt(item.get('count'))}</td></tr>"
-        for item in failures
-    ) or '<tr><td colspan="2">No failure buckets recorded.</td></tr>'
-    run_metadata_rows = _kv_rows(
-        run_metadata,
-        [
-            ("run_dir", "Run Directory"),
-            ("result_json", "Result JSON"),
-            ("run_json", "Run JSON"),
-            ("label", "Label"),
-            ("executor", "Executor"),
-            ("tool_version", "Tool Version"),
-            ("generated_at", "Generated At"),
-            ("dry_run", "Dry Run"),
-        ],
-    ) or '<tr><td colspan="2">No run metadata collected.</td></tr>'
+    failure_rows = (
+        "\n".join(
+            f"<tr><td>{fmt(item.get('signature'))}</td><td>{fmt(item.get('count'))}</td></tr>"
+            for item in failures
+        )
+        or '<tr><td colspan="2">No failure buckets recorded.</td></tr>'
+    )
+    run_metadata_rows = (
+        _kv_rows(
+            run_metadata,
+            [
+                ("run_dir", "Run Directory"),
+                ("result_json", "Result JSON"),
+                ("run_json", "Run JSON"),
+                ("label", "Label"),
+                ("executor", "Executor"),
+                ("tool_version", "Tool Version"),
+                ("generated_at", "Generated At"),
+                ("dry_run", "Dry Run"),
+            ],
+        )
+        or '<tr><td colspan="2">No run metadata collected.</td></tr>'
+    )
     coverage_header = "".join(f"<th>{fmt(label)}</th>" for _, label in COVERAGE_FIELDS)
     coverage_values = "".join(
-        f"<td>{fmt(coverage_value(result, name))}</td>"
-        for name, _ in COVERAGE_FIELDS
+        f"<td>{fmt(coverage_value(result, name))}</td>" for name, _ in COVERAGE_FIELDS
     )
 
     body = f"""
-<h1>{fmt(result.get('flow'))} Report</h1>
-<p class="meta">Generated at {fmt(result.get('generated_at'))}</p>
+<h1>{fmt(result.get("flow"))} Report</h1>
+<p class="meta">Generated at {fmt(result.get("generated_at"))}</p>
 
 <h2>Summary</h2>
 <table>
   <tr><th>Status</th><td class="{fmt(status)}">{fmt(status)}</td></tr>
-  <tr><th>Kind</th><td>{fmt(result.get('kind'))}</td></tr>
-  <tr><th>Framework</th><td>{fmt(result.get('framework'))}</td></tr>
-  <tr><th>Tool</th><td>{fmt(result.get('tool'))}</td></tr>
-  <tr><th>Git Revision</th><td>{fmt(git.get('short_sha'))}</td></tr>
-  <tr><th>Branch</th><td>{fmt(git.get('branch'))}</td></tr>
-  <tr><th>Duration (s)</th><td>{fmt(timing.get('duration_sec'))}</td></tr>
+  <tr><th>Kind</th><td>{fmt(result.get("kind"))}</td></tr>
+  <tr><th>Framework</th><td>{fmt(result.get("framework"))}</td></tr>
+  <tr><th>Tool</th><td>{fmt(result.get("tool"))}</td></tr>
+  <tr><th>Git Revision</th><td>{fmt(git.get("short_sha"))}</td></tr>
+  <tr><th>Branch</th><td>{fmt(git.get("branch"))}</td></tr>
+  <tr><th>Duration (s)</th><td>{fmt(timing.get("duration_sec"))}</td></tr>
 </table>
 
 <h2>Tests</h2>
 <table>
   <tr><th>Passing</th><th>Total</th><th>Pass Rate</th><th>Coverage</th></tr>
   <tr>
-    <td>{fmt(tests.get('passing'))}</td>
-    <td>{fmt(tests.get('total'))}</td>
-    <td>{fmt(tests.get('pass_rate'))}</td>
-    <td>{fmt(coverage.get('total_percent'))}</td>
+    <td>{fmt(tests.get("passing"))}</td>
+    <td>{fmt(tests.get("total"))}</td>
+    <td>{"incomplete run" if tests.get("completed") is False else fmt(tests.get("pass_rate"))}</td>
+    <td>{fmt(coverage.get("total_percent"))}</td>
   </tr>
 </table>
 
@@ -211,14 +221,14 @@ def render_report(result: dict) -> str:
 <table>
   <tr><th>Status</th><th>Threshold</th><th>Threshold Met</th><th>Details Available</th><th>Comparison Key</th><th>Open Holes</th><th>Accepted Holes</th><th>Unclassified Holes</th></tr>
   <tr>
-    <td class="{fmt(coverage.get('status'))}">{fmt(coverage.get('status'))}</td>
-    <td>{fmt(coverage.get('threshold'))}</td>
-    <td>{fmt(coverage.get('threshold_met'))}</td>
-    <td>{fmt(coverage.get('details_available'))}</td>
-    <td>{fmt(coverage.get('comparison_key'))}</td>
-    <td>{fmt((coverage.get('holes_summary') or {}).get('open'))}</td>
-    <td>{fmt((coverage.get('holes_summary') or {}).get('accepted'))}</td>
-    <td>{fmt((coverage.get('holes_summary') or {}).get('unclassified'))}</td>
+    <td class="{fmt(coverage.get("status"))}">{fmt(coverage.get("status"))}</td>
+    <td>{fmt(coverage.get("threshold"))}</td>
+    <td>{fmt(coverage.get("threshold_met"))}</td>
+    <td>{fmt(coverage.get("details_available"))}</td>
+    <td>{fmt(coverage.get("comparison_key"))}</td>
+    <td>{fmt((coverage.get("holes_summary") or {}).get("open"))}</td>
+    <td>{fmt((coverage.get("holes_summary") or {}).get("accepted"))}</td>
+    <td>{fmt((coverage.get("holes_summary") or {}).get("unclassified"))}</td>
   </tr>
 </table>
 
@@ -317,4 +327,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

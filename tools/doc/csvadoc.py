@@ -12,8 +12,8 @@ allows customization of table attributes and title.
 
 import argparse
 import csv
-import sys
 import os
+import sys
 from typing import List, Optional
 
 
@@ -44,7 +44,7 @@ def read_csv_file(csv_path: str) -> tuple[List[str], List[List[str]]]:
         and rows is a list of lists containing cell values
     """
     try:
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, "r", encoding="utf-8") as f:
             reader = csv.reader(f)
             headers = next(reader)
             rows = list(reader)
@@ -62,7 +62,7 @@ def generate_asciidoc_table(
     rows: List[List[str]],
     title: Optional[str] = None,
     table_attrs: Optional[str] = None,
-    cols_spec: Optional[str] = None
+    cols_spec: Optional[str] = None,
 ) -> str:
     """
     Generate AsciiDoc table from headers and rows.
@@ -137,48 +137,40 @@ Examples:
 
   # Auto-generate title from filename
   csvadoc.py gpio_requirements.csv -o gpio_table.adoc --auto-title
-        """
+        """,
     )
 
-    parser.add_argument(
-        "input_csv",
-        help="Input CSV file path"
-    )
+    parser.add_argument("input_csv", help="Input CSV file path")
+
+    parser.add_argument("-o", "--output", help="Output AsciiDoc file path (default: stdout)")
 
     parser.add_argument(
-        "-o", "--output",
-        help="Output AsciiDoc file path (default: stdout)"
-    )
-
-    parser.add_argument(
-        "-t", "--title",
-        help="Table title (without leading dot). If not specified, no title is added."
+        "-t",
+        "--title",
+        help="Table title (without leading dot). If not specified, no title is added.",
     )
 
     parser.add_argument(
         "--auto-title",
         action="store_true",
-        help="Auto-generate title from CSV filename (removes extension and converts to title case)"
+        help="Auto-generate title from CSV filename (removes extension and converts to title case)",
     )
 
-    parser.add_argument(
-        "--table-attrs",
-        help='Table attributes (e.g., "[.small,stretch]")'
-    )
+    parser.add_argument("--table-attrs", help='Table attributes (e.g., "[.small,stretch]")')
 
     parser.add_argument(
         "--cols-spec",
-        help='Column specification (e.g., \'[%autowidth,options="header",frame=all,grid=all]\')'
+        help="Column specification (e.g., '[%autowidth,options=\"header\",frame=all,grid=all]')",
     )
 
     parser.add_argument(
         "--columns",
-        help='Comma-separated list of column header names to include (e.g., "Requirement ID,Category,Requirement Description")'
+        help='Comma-separated list of column header names to include (e.g., "Requirement ID,Category,Requirement Description")',
     )
 
     parser.add_argument(
         "--id-prefix",
-        help='Keep only rows whose first column value starts with this prefix (filters separator/empty rows)'
+        help="Keep only rows whose first column value starts with this prefix (filters separator/empty rows)",
     )
 
     args = parser.parse_args()
@@ -196,7 +188,10 @@ Examples:
         indices = []
         for col_name in selected:
             if col_name not in headers:
-                print(f"Error: column '{col_name}' not found in CSV headers: {headers}", file=sys.stderr)
+                print(
+                    f"Error: column '{col_name}' not found in CSV headers: {headers}",
+                    file=sys.stderr,
+                )
                 sys.exit(1)
             indices.append(headers.index(col_name))
         headers = [headers[i] for i in indices]
@@ -212,17 +207,13 @@ Examples:
 
     # Generate AsciiDoc table
     asciidoc = generate_asciidoc_table(
-        headers,
-        rows,
-        title=title,
-        table_attrs=args.table_attrs,
-        cols_spec=args.cols_spec
+        headers, rows, title=title, table_attrs=args.table_attrs, cols_spec=args.cols_spec
     )
 
     # Write output
     if args.output:
         try:
-            with open(args.output, 'w', encoding='utf-8') as f:
+            with open(args.output, "w", encoding="utf-8") as f:
                 f.write(asciidoc)
             print(f"Successfully converted '{args.input_csv}' to '{args.output}'")
         except Exception as e:

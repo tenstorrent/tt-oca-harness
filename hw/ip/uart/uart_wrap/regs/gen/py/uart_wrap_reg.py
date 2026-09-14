@@ -717,7 +717,8 @@ LOG_ENGINE_LOG_REGION_ADDR_REG_DEFAULT = 0x0000000000000000
 class LOG_ENGINE_LOG_REGION_ADDR_reg_t(Structure):
     _fields_ = [
         ('log_region_addr_lo', c_uint64, 32),
-        ('log_region_addr_hi', c_uint64, 32),
+        ('log_region_addr_hi', c_uint64, 24),
+        ('reserved', c_uint64, 8),
     ]
 
 LOG_ENGINE_LOG_REGION_ADDR_REG_DEFAULT = 0x0000000000000000

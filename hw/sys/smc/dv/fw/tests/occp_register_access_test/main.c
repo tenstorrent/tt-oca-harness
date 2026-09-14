@@ -121,19 +121,6 @@ static void run_test_suite(test_context_t *ctx) {
         }
     }
 
-    // Test COLD WDT scratch 0..7
-    // Note: WDT scratch registers may not be accessible via OCCP in current implementation
-    // Commenting out for now - uncomment if WDT scratch access is needed
-    /*
-    for (int i = 0; i < 8; i++) {
-      uint64_t addr = SMC_WRAP_SCRATCH_COLD_WDT_REG_MAP_BASE_ADDR + (uint64_t)(i * 4);
-      uint32_t data = (uint32_t)get_random_int();
-      if (!write_readback_reg32(ctx, addr, data)) {
-        ctx->overall_result = false;
-      }
-    }
-    */
-
     // Test CPU CTRL SCRATCH 3..7 with 64-bit OCCP writes/reads
     for (int i = 3; i < 8; i++) {
         uint64_t addr = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR + (uint64_t)(i * 8);

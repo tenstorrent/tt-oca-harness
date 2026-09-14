@@ -16,8 +16,7 @@ TOPLEVEL = tb_axil_mailbox
 # COCOTB_TEST_MODULES is the basename of the Python test file(s)
 MODULE = test_axil_mailbox
 
-# Enable VCD dumping (DISABLED - causes Verilator segfault with current design)
-# EXTRA_ARGS += --trace --trace-structs
+# No --trace: Verilator segfaults when tracing this design.
 EXTRA_ARGS += -Wno-REDEFMACRO -Wno-WIDTHEXPAND -Wno-MULTIDRIVEN -Wno-fatal
 EXTRA_ARGS += -f $(PWD)/axil_mailbox.f
 

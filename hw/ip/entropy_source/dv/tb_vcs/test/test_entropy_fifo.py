@@ -28,29 +28,33 @@ Note: Decorrelator and Compressor checkers DISABLED for FIFO tests
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.triggers import ClockCycles
 
 from test.test_base import (
-    init,
-    reg_wr,
-    reg_rd,
-    read_fifo_status,
     check_fifo_errors,
     clear_fifo_errors,
+    # Golden reference verification (for Test 2.4.1)
+    collect_entropy_samples,
+    # Optimization helpers
+    enable_entropy_pipeline,
+    init,
+    irq_checker_verify_async,
     log_phase_header,
+    poll_for_irq_assertion,
+    read_fifo_status,
     # IRQ verification helpers
     read_intr_status,
     read_irq_output,
-    irq_checker_verify_async,
-    # Optimization helpers
-    enable_entropy_pipeline,
-    poll_for_irq_assertion,
-    # Golden reference verification (for Test 2.4.1)
-    collect_entropy_samples,
+    reg_rd,
+    reg_wr,
     verify_fifo_readout,
 )
-from test.test_config import DEFAULT_CONFIG, TestConfig, DecorrelatorConfig, CompressorConfig, ROConfig
-
+from test.test_config import (
+    CompressorConfig,
+    DecorrelatorConfig,
+    ROConfig,
+    TestConfig,
+)
 
 # ============================================================================
 # FIFO Test Configuration
@@ -78,7 +82,7 @@ FIFO_TEST_CONFIG = TestConfig(
     ),
 )
 
-# Configuration for tests that intentionally trigger FIFO overflow/underflow
+# Configuration for tests that expect FIFO overflow/underflow
 # Used by: test_2_3_1_overflow_detection, test_2_3_2_underflow_detection, and other tests
 # Key difference from FIFO_TEST_CONFIG: fifo_error_monitor_enable=False
 FIFO_ERROR_TEST_CONFIG = TestConfig(
@@ -100,6 +104,7 @@ FIFO_ERROR_TEST_CONFIG = TestConfig(
 # Category 2.1: Basic Functionality Tests
 # ============================================================================
 
+
 @cocotb.test()
 async def test_2_1_1_reset_behavior(dut):
     """Test 2.1.1: Verify FIFO initializes correctly after reset"""
@@ -110,7 +115,7 @@ async def test_2_1_1_reset_behavior(dut):
     apb, mon = await init(dut, config=FIFO_TEST_CONFIG)
 
     # Enable FIFO
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Wait a few cycles after reset
     await ClockCycles(dut.apb.pclk, 5)
@@ -140,7 +145,7 @@ async def test_2_1_2_single_push_operation(dut):
     log_phase_header(dut, "TEST 2.1.2: Single Push Operation")
 
     apb, mon = await init(dut, config=FIFO_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Read initial status
     level_before, wptr_before, rptr_before = await read_fifo_status(apb)
@@ -162,15 +167,17 @@ async def test_2_1_2_single_push_operation(dut):
     dut._log.info(f"After generation: level={level_after}, wptr={wptr_after}, rptr={rptr_after}")
 
     # Verify level increased
-    assert level_after > level_before, f"Level should increase after entropy generation"
+    assert level_after > level_before, "Level should increase after entropy generation"
 
     # Verify write pointer advanced
-    assert wptr_after > wptr_before, f"Write pointer should advance"
+    assert wptr_after > wptr_before, "Write pointer should advance"
 
     # Verify read pointer unchanged (no pops)
-    assert rptr_after == rptr_before, f"Read pointer should not change without pops"
+    assert rptr_after == rptr_before, "Read pointer should not change without pops"
 
-    dut._log.info(f"[PASS] Test 2.1.2: Push operation verified (level increased by {level_after - level_before})")
+    dut._log.info(
+        f"[PASS] Test 2.1.2: Push operation verified (level increased by {level_after - level_before})"
+    )
 
 
 @cocotb.test()
@@ -180,7 +187,7 @@ async def test_2_1_3_single_pop_operation(dut):
     log_phase_header(dut, "TEST 2.1.3: Single Pop Operation")
 
     apb, mon = await init(dut, config=FIFO_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Generate some entropy first
     await enable_entropy_pipeline(apb)
@@ -195,7 +202,7 @@ async def test_2_1_3_single_pop_operation(dut):
     assert level_before > 0, "Need at least one entry to test pop"
 
     # Pop one entry by reading FIFO_RDATA
-    data = await reg_rd(apb, 'FIFO_RDATA')
+    data = await reg_rd(apb, "FIFO_RDATA")
     dut._log.info(f"Popped data: 0x{data:08X}")
 
     # Check level after pop
@@ -203,11 +210,15 @@ async def test_2_1_3_single_pop_operation(dut):
     dut._log.info(f"After pop: level={level_after}, wptr={wptr_after}, rptr={rptr_after}")
 
     # Verify level decreased by 1
-    assert level_after == level_before - 1, f"Level should decrease by 1, was {level_before}, now {level_after}"
+    assert level_after == level_before - 1, (
+        f"Level should decrease by 1, was {level_before}, now {level_after}"
+    )
 
     # Verify read pointer advanced by 1
     expected_rptr = (rptr_before + 1) % 64
-    assert rptr_after == expected_rptr, f"Read pointer should advance, expected {expected_rptr}, got {rptr_after}"
+    assert rptr_after == expected_rptr, (
+        f"Read pointer should advance, expected {expected_rptr}, got {rptr_after}"
+    )
 
     # Verify write pointer unchanged
     assert wptr_after == wptr_before, "Write pointer should not change during pop"
@@ -225,21 +236,23 @@ async def test_2_1_4_fill_and_drain_sequence(dut):
     dut._log.info("=" * 70)
     dut._log.info("FIFO_ERROR_TEST_CONFIG verification:")
     dut._log.info(f"  inject_model = {FIFO_ERROR_TEST_CONFIG.ro.inject_model}")
-    dut._log.info(f"  Expected: 1 (use behavioral RO model with randomization)")
+    dut._log.info("  Expected: 1 (use behavioral RO model with randomization)")
     dut._log.info(f"  auto_randomize = {FIFO_ERROR_TEST_CONFIG.ro.auto_randomize}")
-    dut._log.info(f"  fifo_error_monitor_enable = {FIFO_ERROR_TEST_CONFIG.fifo_error_monitor_enable}")
-    dut._log.info(f"  Expected: False (overflow expected in this test)")
+    dut._log.info(
+        f"  fifo_error_monitor_enable = {FIFO_ERROR_TEST_CONFIG.fifo_error_monitor_enable}"
+    )
+    dut._log.info("  Expected: False (overflow expected in this test)")
     dut._log.info("=" * 70)
 
     # Note: This test fills FIFO beyond capacity - disable error monitor
     apb, mon = await init(dut, config=FIFO_ERROR_TEST_CONFIG)
 
     # Verify ro_inject_enable after init
-    if hasattr(dut, 'ro_inject_enable'):
+    if hasattr(dut, "ro_inject_enable"):
         inject_status = int(dut.ro_inject_enable.value)
         dut._log.info("=" * 70)
         dut._log.info(f"After init: ro_inject_enable = {inject_status}")
-        dut._log.info(f"Expected: 1 (behavioral model enabled)")
+        dut._log.info("Expected: 1 (behavioral model enabled)")
         if inject_status != 1:
             dut._log.warning("WARNING: RO model injection not enabled!")
             dut._log.warning("Test may use real ROs instead of behavioral model")
@@ -250,7 +263,7 @@ async def test_2_1_4_fill_and_drain_sequence(dut):
         dut._log.warning("Cannot verify RO model injection status")
         dut._log.warning("=" * 70)
 
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Generate enough entropy to fill FIFO
     await enable_entropy_pipeline(apb, decorr_div=8)  # div-8 for faster generation
@@ -272,10 +285,10 @@ async def test_2_1_4_fill_and_drain_sequence(dut):
     dut._log.info("=" * 70)
     # Disable RING_OSC_ENABLE to stop entropy generation
     # This stops the behavioral RO model from generating new samples
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
 
     # Verify RO disable took effect
-    ro_enable_readback = await reg_rd(apb, 'RING_OSC_ENABLE')
+    ro_enable_readback = await reg_rd(apb, "RING_OSC_ENABLE")
     dut._log.info(f"Ring oscillators disabled (readback: 0x{ro_enable_readback:08X})")
 
     if ro_enable_readback != 0:
@@ -300,33 +313,35 @@ async def test_2_1_4_fill_and_drain_sequence(dut):
         if level == 0:
             break
 
-        data = await reg_rd(apb, 'FIFO_RDATA')
+        data = await reg_rd(apb, "FIFO_RDATA")
         fifo_data.append(data)
 
         # Check if level is increasing (indicates refilling problem)
         if level > prev_level:
-            dut._log.error(f"  [WARNING] Level increased from {prev_level} to {level} - FIFO refilling!")
+            dut._log.error(
+                f"  [WARNING] Level increased from {prev_level} to {level} - FIFO refilling!"
+            )
 
         # Show first 5 and periodic status
         if drained < 5:
             dut._log.info(f"  [{drained}] Pop: 0x{data:08X}, level={level}")
         elif drained == 5:
-            dut._log.info(f"  ... (draining, will show periodic updates)")
+            dut._log.info("  ... (draining, will show periodic updates)")
         elif drained % 10 == 0:
             dut._log.info(f"  Drained {drained} entries, level={level}")
 
         prev_level = level
         drained += 1
 
-        if drained > 200:  # Increased safety limit
+        if drained > 200:  # Safety limit above FIFO (64) plus in-flight pipeline entries
             dut._log.error(f"Safety limit reached at {drained} entries, level still={level}")
             dut._log.error("This suggests FIFO is refilling during drain!")
             break
 
     # Show last 2 entries
     if len(fifo_data) >= 2:
-        dut._log.info(f"  [{len(fifo_data)-2}] Pop: 0x{fifo_data[-2]:08X}")
-        dut._log.info(f"  [{len(fifo_data)-1}] Pop: 0x{fifo_data[-1]:08X}")
+        dut._log.info(f"  [{len(fifo_data) - 2}] Pop: 0x{fifo_data[-2]:08X}")
+        dut._log.info(f"  [{len(fifo_data) - 1}] Pop: 0x{fifo_data[-1]:08X}")
 
     # Check final status
     level_final, wptr_final, rptr_final = await read_fifo_status(apb)
@@ -339,12 +354,14 @@ async def test_2_1_4_fill_and_drain_sequence(dut):
     dut._log.info(f"  Level after RO stop + flush: {level_after_stop}")
     dut._log.info(f"  Entries drained: {len(fifo_data)}")
     dut._log.info(f"  Final level: {level_final}")
-    dut._log.info(f"  Expected: FIFO (64) + pipeline (~29) ~= 93 entries max")
+    dut._log.info("  Expected: FIFO (64) + pipeline (~29) ~= 93 entries max")
     dut._log.info("=" * 70)
 
     # Verify FIFO is empty
     if level_final != 0:
-        dut._log.error(f"FIFO NOT EMPTY: {level_final} entries remain after draining {len(fifo_data)}")
+        dut._log.error(
+            f"FIFO NOT EMPTY: {level_final} entries remain after draining {len(fifo_data)}"
+        )
         # Check if we hit safety limit
         if len(fifo_data) >= 200:
             dut._log.error("Hit safety limit - FIFO appears to be refilling!")
@@ -361,7 +378,7 @@ async def test_2_1_5_simultaneous_push_and_pop(dut):
     log_phase_header(dut, "TEST 2.1.5: Simultaneous Push and Pop")
 
     apb, mon = await init(dut, config=FIFO_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Generate entropy to half-fill FIFO
     await enable_entropy_pipeline(apb)  # div-64 (default)
@@ -380,7 +397,7 @@ async def test_2_1_5_simultaneous_push_and_pop(dut):
         level_before, _, _ = await read_fifo_status(apb)
 
         # Pop one entry
-        data = await reg_rd(apb, 'FIFO_RDATA')
+        data = await reg_rd(apb, "FIFO_RDATA")
 
         # Wait a bit for new entropy (push happening in background)
         await ClockCycles(dut.apb.pclk, 100)
@@ -390,7 +407,7 @@ async def test_2_1_5_simultaneous_push_and_pop(dut):
         if i < 3 or i >= 18:
             dut._log.info(f"  [{i}] Pop: 0x{data:08X}, level: {level_before} -> {level_after}")
         elif i == 3:
-            dut._log.info(f"  ... (showing first 3 and last 2)")
+            dut._log.info("  ... (showing first 3 and last 2)")
 
     level_end, _, _ = await read_fifo_status(apb)
     dut._log.info(f"Final level: {level_end}")
@@ -407,6 +424,7 @@ async def test_2_1_5_simultaneous_push_and_pop(dut):
 # Category 2.2: Pointer Management Tests
 # ============================================================================
 
+
 @cocotb.test()
 async def test_2_2_1_pointer_wraparound(dut):
     """Test 2.2.1: Verify pointer wrap from 63 to 0"""
@@ -415,7 +433,7 @@ async def test_2_2_1_pointer_wraparound(dut):
 
     # Note: This test fills FIFO beyond capacity - disable error monitor
     apb, mon = await init(dut, config=FIFO_ERROR_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Generate enough entropy to cause pointer wraparound
     await enable_entropy_pipeline(apb, decorr_div=8)  # div-8 for fast generation
@@ -433,20 +451,20 @@ async def test_2_2_1_pointer_wraparound(dut):
         # Pop some entries to prevent filling up
         if level > 50:
             for _ in range(10):
-                await reg_rd(apb, 'FIFO_RDATA')
+                await reg_rd(apb, "FIFO_RDATA")
 
     # Final check
     level, wptr, rptr = await read_fifo_status(apb)
     dut._log.info(f"Final: level={level}, wptr={wptr}, rptr={rptr}")
 
-    # If we've run long enough, at least one pointer should have wrapped
-    # This is a soft check since we can't guarantee exact wraparound timing
-    dut._log.info(f"[PASS] Test 2.2.1: Pointer wraparound test completed")
+    # Wraparound timing is not deterministic; this test only logs the final pointers.
+    dut._log.info("[PASS] Test 2.2.1: Pointer wraparound test completed")
 
 
 # ============================================================================
 # Category 2.3: Boundary Condition Tests
 # ============================================================================
+
 
 @cocotb.test()
 async def test_2_3_1_overflow_detection(dut):
@@ -454,18 +472,20 @@ async def test_2_3_1_overflow_detection(dut):
 
     log_phase_header(dut, "TEST 2.3.1: Overflow Detection with IRQ Verification")
 
-    apb, mon = await init(dut, config=FIFO_ERROR_TEST_CONFIG)  # Disable monitor - test expects overflow
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    apb, mon = await init(
+        dut, config=FIFO_ERROR_TEST_CONFIG
+    )  # Disable monitor - test expects overflow
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # NOTE: Due to PeakRDL behavior, INTR_STATUS only latches when INTR_ENABLE is set
     # So we must enable interrupt FIRST (before triggering overflow)
 
     # Phase 1: Enable interrupt and start FIFO fill
     dut._log.info("\n--- Phase 1: Enable interrupt and start FIFO fill ---")
-    await reg_wr(apb, 'INTR_ENABLE', 0x00000100)  # Enable FIFO_OVERFLOW interrupt [8]
+    await reg_wr(apb, "INTR_ENABLE", 0x00000100)  # Enable FIFO_OVERFLOW interrupt [8]
 
     # Verify INTR_ENABLE CSR
-    intr_enable = await reg_rd(apb, 'INTR_ENABLE')
+    intr_enable = await reg_rd(apb, "INTR_ENABLE")
     assert (intr_enable >> 8) & 0x1 == 1, "INTR_ENABLE.FIFO_OVERFLOW should be 1"
     dut._log.info(f"INTR_ENABLE readback: 0x{intr_enable:08X} (FIFO_OVERFLOW [8] enabled)")
 
@@ -489,7 +509,7 @@ async def test_2_3_1_overflow_detection(dut):
     # Phase 3: ISR - Read INTR_STATUS to identify interrupt source
     dut._log.info("\n--- Phase 3: ISR - Read INTR_STATUS (identify interrupt source) ---")
     intr_status = await read_intr_status(apb)
-    intr_status_reg = await reg_rd(apb, 'INTR_STATUS')
+    intr_status_reg = await reg_rd(apb, "INTR_STATUS")
 
     dut._log.info(f"INTR_STATUS: 0x{intr_status_reg:08X}")
     dut._log.info(f"  HEALTH_TEST_FAILED [0]: {intr_status['health_test_failed']}")
@@ -497,7 +517,7 @@ async def test_2_3_1_overflow_detection(dut):
     dut._log.info(f"  FIFO_OVERFLOW [8]: {intr_status['fifo_overflow']}")
     dut._log.info(f"  FIFO_UNDERFLOW [12]: {intr_status['fifo_underflow']}")
 
-    assert intr_status['fifo_overflow'] == 1, "INTR_STATUS.FIFO_OVERFLOW should be set"
+    assert intr_status["fifo_overflow"] == 1, "INTR_STATUS.FIFO_OVERFLOW should be set"
     dut._log.info("[PASS] Interrupt source identified: FIFO_OVERFLOW")
 
     # Phase 4: Verify level interrupt stays asserted (sticky behavior)
@@ -507,15 +527,15 @@ async def test_2_3_1_overflow_detection(dut):
     await ClockCycles(dut.apb.pclk, 500)
 
     intr_status = await read_intr_status(apb)
-    intr_status_reg = await reg_rd(apb, 'INTR_STATUS')
+    intr_status_reg = await reg_rd(apb, "INTR_STATUS")
     irq = await read_irq_output(dut)
 
-    dut._log.info(f"After 500 cycles:")
+    dut._log.info("After 500 cycles:")
     dut._log.info(f"  INTR_STATUS: 0x{intr_status_reg:08X}")
     dut._log.info(f"  FIFO_OVERFLOW [8]: {intr_status['fifo_overflow']}")
     dut._log.info(f"  irq_o: {irq}")
 
-    assert intr_status['fifo_overflow'] == 1, "INTR_STATUS.FIFO_OVERFLOW should stay set (sticky)"
+    assert intr_status["fifo_overflow"] == 1, "INTR_STATUS.FIFO_OVERFLOW should stay set (sticky)"
     assert irq == 1, "irq_o should stay HIGH (level interrupt)"
     dut._log.info("[PASS] Level interrupt stays asserted (sticky behavior verified)")
 
@@ -525,23 +545,25 @@ async def test_2_3_1_overflow_detection(dut):
     # CRITICAL: Stop the overflow condition FIRST by disabling ROs
     # Otherwise overflow pulses keep re-setting the interrupt!
     dut._log.info("Disabling ROs to stop overflow condition...")
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
     await ClockCycles(dut.apb.pclk, 100)  # Wait for pipeline to flush
 
     dut._log.info("Writing 0x00000100 to INTR_STATUS (write-1-clear FIFO_OVERFLOW [8])")
-    await reg_wr(apb, 'INTR_STATUS', 0x00000100)
+    await reg_wr(apb, "INTR_STATUS", 0x00000100)
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status_after_clear = await read_intr_status(apb)
-    intr_status_reg_clear = await reg_rd(apb, 'INTR_STATUS')
+    intr_status_reg_clear = await reg_rd(apb, "INTR_STATUS")
     irq_after_clear = await read_irq_output(dut)
 
-    dut._log.info(f"After W1C:")
+    dut._log.info("After W1C:")
     dut._log.info(f"  INTR_STATUS: 0x{intr_status_reg_clear:08X}")
     dut._log.info(f"  FIFO_OVERFLOW [8]: {intr_status_after_clear['fifo_overflow']}")
     dut._log.info(f"  irq_o: {irq_after_clear}")
 
-    assert intr_status_after_clear['fifo_overflow'] == 0, "INTR_STATUS.FIFO_OVERFLOW should be cleared"
+    assert intr_status_after_clear["fifo_overflow"] == 0, (
+        "INTR_STATUS.FIFO_OVERFLOW should be cleared"
+    )
     assert irq_after_clear == 0, "irq_o should be LOW after clearing interrupt"
     dut._log.info("[PASS] Write-one-clear successfully cleared FIFO_OVERFLOW")
 
@@ -557,8 +579,10 @@ async def test_2_3_2_underflow_detection(dut):
 
     log_phase_header(dut, "TEST 2.3.2: Underflow Detection with IRQ Verification")
 
-    apb, mon = await init(dut, config=FIFO_ERROR_TEST_CONFIG)  # Disable monitor - test expects underflow
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    apb, mon = await init(
+        dut, config=FIFO_ERROR_TEST_CONFIG
+    )  # Disable monitor - test expects underflow
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # FIFO should be empty after reset
     level, _, _ = await read_fifo_status(apb)
@@ -573,17 +597,17 @@ async def test_2_3_2_underflow_detection(dut):
 
     # Phase 1: Enable interrupt
     dut._log.info("\n--- Phase 1: Enable interrupt ---")
-    await reg_wr(apb, 'INTR_ENABLE', 0x00001000)  # Enable FIFO_UNDERFLOW interrupt [12]
+    await reg_wr(apb, "INTR_ENABLE", 0x00001000)  # Enable FIFO_UNDERFLOW interrupt [12]
 
     # Verify INTR_ENABLE CSR
-    intr_enable = await reg_rd(apb, 'INTR_ENABLE')
+    intr_enable = await reg_rd(apb, "INTR_ENABLE")
     assert (intr_enable >> 12) & 0x1 == 1, "INTR_ENABLE.FIFO_UNDERFLOW should be 1"
     dut._log.info(f"INTR_ENABLE readback: 0x{intr_enable:08X} (FIFO_UNDERFLOW [12] enabled)")
 
     # Phase 2: Trigger underflow by popping empty FIFO
     dut._log.info("\n--- Phase 2: Trigger underflow by popping empty FIFO ---")
     dut._log.info("Attempting pop from empty FIFO...")
-    data = await reg_rd(apb, 'FIFO_RDATA')
+    data = await reg_rd(apb, "FIFO_RDATA")
     dut._log.info(f"Read data: 0x{data:08X}")
 
     # Phase 3: Poll for irq_o assertion with timeout (realistic ISR behavior)
@@ -591,7 +615,7 @@ async def test_2_3_2_underflow_detection(dut):
     irq_detected = await poll_for_irq_assertion(dut, timeout_cycles=1000, poll_interval=10)
 
     if not irq_detected:
-        raise TimeoutError(f"irq_o not asserted within 1000 cycles")
+        raise TimeoutError("irq_o not asserted within 1000 cycles")
 
     dut._log.info("[PASS] irq_o assertion detected (interrupt fired)")
 
@@ -601,7 +625,7 @@ async def test_2_3_2_underflow_detection(dut):
     # Phase 4: ISR - Read INTR_STATUS to identify interrupt source
     dut._log.info("\n--- Phase 4: ISR - Read INTR_STATUS (identify interrupt source) ---")
     intr_status = await read_intr_status(apb)
-    intr_status_reg = await reg_rd(apb, 'INTR_STATUS')
+    intr_status_reg = await reg_rd(apb, "INTR_STATUS")
 
     dut._log.info(f"INTR_STATUS: 0x{intr_status_reg:08X}")
     dut._log.info(f"  HEALTH_TEST_FAILED [0]: {intr_status['health_test_failed']}")
@@ -609,7 +633,7 @@ async def test_2_3_2_underflow_detection(dut):
     dut._log.info(f"  FIFO_OVERFLOW [8]: {intr_status['fifo_overflow']}")
     dut._log.info(f"  FIFO_UNDERFLOW [12]: {intr_status['fifo_underflow']}")
 
-    assert intr_status['fifo_underflow'] == 1, "INTR_STATUS.FIFO_UNDERFLOW should be set"
+    assert intr_status["fifo_underflow"] == 1, "INTR_STATUS.FIFO_UNDERFLOW should be set"
     dut._log.info("[PASS] Interrupt source identified: FIFO_UNDERFLOW")
 
     # Phase 5: Verify level interrupt stays asserted (sticky behavior)
@@ -619,34 +643,36 @@ async def test_2_3_2_underflow_detection(dut):
     await ClockCycles(dut.apb.pclk, 100)
 
     intr_status = await read_intr_status(apb)
-    intr_status_reg = await reg_rd(apb, 'INTR_STATUS')
+    intr_status_reg = await reg_rd(apb, "INTR_STATUS")
     irq = await read_irq_output(dut)
 
-    dut._log.info(f"After 100 cycles:")
+    dut._log.info("After 100 cycles:")
     dut._log.info(f"  INTR_STATUS: 0x{intr_status_reg:08X}")
     dut._log.info(f"  FIFO_UNDERFLOW [12]: {intr_status['fifo_underflow']}")
     dut._log.info(f"  irq_o: {irq}")
 
-    assert intr_status['fifo_underflow'] == 1, "INTR_STATUS.FIFO_UNDERFLOW should stay set (sticky)"
+    assert intr_status["fifo_underflow"] == 1, "INTR_STATUS.FIFO_UNDERFLOW should stay set (sticky)"
     assert irq == 1, "irq_o should stay HIGH (level interrupt)"
     dut._log.info("[PASS] Level interrupt stays asserted (sticky behavior verified)")
 
     # Phase 6: ISR - Clear interrupt with write-one-clear
     dut._log.info("\n--- Phase 6: ISR - Clear interrupt (W1C) ---")
     dut._log.info("Writing 0x00001000 to INTR_STATUS (write-1-clear FIFO_UNDERFLOW [12])")
-    await reg_wr(apb, 'INTR_STATUS', 0x00001000)
+    await reg_wr(apb, "INTR_STATUS", 0x00001000)
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status_after_clear = await read_intr_status(apb)
-    intr_status_reg_clear = await reg_rd(apb, 'INTR_STATUS')
+    intr_status_reg_clear = await reg_rd(apb, "INTR_STATUS")
     irq_after_clear = await read_irq_output(dut)
 
-    dut._log.info(f"After W1C:")
+    dut._log.info("After W1C:")
     dut._log.info(f"  INTR_STATUS: 0x{intr_status_reg_clear:08X}")
     dut._log.info(f"  FIFO_UNDERFLOW [12]: {intr_status_after_clear['fifo_underflow']}")
     dut._log.info(f"  irq_o: {irq_after_clear}")
 
-    assert intr_status_after_clear['fifo_underflow'] == 0, "INTR_STATUS.FIFO_UNDERFLOW should be cleared"
+    assert intr_status_after_clear["fifo_underflow"] == 0, (
+        "INTR_STATUS.FIFO_UNDERFLOW should be cleared"
+    )
     assert irq_after_clear == 0, "irq_o should be LOW after clearing interrupt"
     dut._log.info("[PASS] Write-one-clear successfully cleared FIFO_UNDERFLOW")
 
@@ -659,6 +685,7 @@ async def test_2_3_2_underflow_detection(dut):
 # ============================================================================
 # Category 2.4: Data Integrity Tests
 # ============================================================================
+
 
 @cocotb.test()
 async def test_2_4_1_data_pattern_tests(dut):
@@ -679,38 +706,48 @@ async def test_2_4_1_data_pattern_tests(dut):
     from test.test_config import get_custom_config
 
     test_configs = [
-        ("Standard decorrelation (div-64)",
-         get_custom_config(
-             decorrelator=DecorrelatorConfig(mode=0, bypass_dut=False, sample_clk_div=63,
-                                            bypass_mask=0x000, sample_period=64),
-             decorrelator_samples=20,
-             fifo_verification_enable=True
-         )),
-        ("Fast sampling (div-8)",
-         get_custom_config(
-             decorrelator=DecorrelatorConfig(mode=0, bypass_dut=False, sample_clk_div=7,
-                                            bypass_mask=0x000, sample_period=8),
-             decorrelator_samples=20,
-             fifo_verification_enable=True
-         )),
-        ("Bypass mode (div-8)",
-         get_custom_config(
-             decorrelator=DecorrelatorConfig(mode=2, bypass_dut=True, sample_clk_div=7,
-                                            bypass_mask=0xFFF, sample_period=8),
-             decorrelator_samples=20,
-             fifo_verification_enable=True
-         )),
+        (
+            "Standard decorrelation (div-64)",
+            get_custom_config(
+                decorrelator=DecorrelatorConfig(
+                    mode=0, bypass_dut=False, sample_clk_div=63, bypass_mask=0x000, sample_period=64
+                ),
+                decorrelator_samples=20,
+                fifo_verification_enable=True,
+            ),
+        ),
+        (
+            "Fast sampling (div-8)",
+            get_custom_config(
+                decorrelator=DecorrelatorConfig(
+                    mode=0, bypass_dut=False, sample_clk_div=7, bypass_mask=0x000, sample_period=8
+                ),
+                decorrelator_samples=20,
+                fifo_verification_enable=True,
+            ),
+        ),
+        (
+            "Bypass mode (div-8)",
+            get_custom_config(
+                decorrelator=DecorrelatorConfig(
+                    mode=2, bypass_dut=True, sample_clk_div=7, bypass_mask=0xFFF, sample_period=8
+                ),
+                decorrelator_samples=20,
+                fifo_verification_enable=True,
+            ),
+        ),
     ]
 
     total_samples_verified = 0
 
     for config_name, cfg in test_configs:
-        dut._log.info(f"\n{'='*70}")
+        dut._log.info(f"\n{'=' * 70}")
         dut._log.info(f"Testing: {config_name}")
-        dut._log.info(f"{'='*70}")
+        dut._log.info(f"{'=' * 70}")
 
         # Phase 1: Configure testbench with this configuration
         from test.test_base import configure_testbench, program_dut_registers
+
         apb, mon, cfg = await configure_testbench(dut, config=cfg)
 
         # Phase 2: Program DUT registers
@@ -718,14 +755,16 @@ async def test_2_4_1_data_pattern_tests(dut):
 
         # Phase 3: Collect samples with golden reference
         dut._log.info(f"Collecting {cfg.decorrelator_samples} samples with golden reference...")
-        ref_samples, golden_queue = await collect_entropy_samples(dut, cfg, cfg.decorrelator_samples)
+        ref_samples, golden_queue = await collect_entropy_samples(
+            dut, cfg, cfg.decorrelator_samples
+        )
 
         # Phase 4: Verify FIFO readout against golden reference
-        dut._log.info(f"Verifying FIFO data integrity...")
+        dut._log.info("Verifying FIFO data integrity...")
         await verify_fifo_readout(dut, apb, golden_queue, cfg.decorrelator_samples)
 
         # Phase 5: Additional pattern analysis (stuck bit detection)
-        dut._log.info(f"\nPattern Analysis:")
+        dut._log.info("\nPattern Analysis:")
         all_zeros = sum(1 for d in golden_queue if d == 0x00000000)
         all_ones = sum(1 for d in golden_queue if d == 0xFFFFFFFF)
 
@@ -736,27 +775,30 @@ async def test_2_4_1_data_pattern_tests(dut):
         assert all_zeros < len(golden_queue) // 2, f"{config_name}: Too many all-zero values"
         assert all_ones < len(golden_queue) // 2, f"{config_name}: Too many all-one values"
 
-        dut._log.info(f"[PASS] [{config_name}] {cfg.decorrelator_samples} samples verified successfully")
+        dut._log.info(
+            f"[PASS] [{config_name}] {cfg.decorrelator_samples} samples verified successfully"
+        )
         total_samples_verified += cfg.decorrelator_samples
 
         # Disable entropy generation before next configuration
-        await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+        await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
         await ClockCycles(dut.apb.pclk, 100)
 
     # Summary
-    dut._log.info(f"\n{'='*70}")
-    dut._log.info(f"TEST 2.4.1 SUMMARY")
-    dut._log.info(f"{'='*70}")
+    dut._log.info(f"\n{'=' * 70}")
+    dut._log.info("TEST 2.4.1 SUMMARY")
+    dut._log.info(f"{'=' * 70}")
     dut._log.info(f"Configurations tested: {len(test_configs)}")
     dut._log.info(f"Total samples verified: {total_samples_verified}")
-    dut._log.info(f"Data integrity: [PASS] ALL SAMPLES MATCHED GOLDEN REFERENCE")
-    dut._log.info(f"Pattern checks: [PASS] NO STUCK PATTERNS DETECTED")
-    dut._log.info(f"\n[PASS] Test 2.4.1: Data patterns verified with golden reference")
+    dut._log.info("Data integrity: [PASS] ALL SAMPLES MATCHED GOLDEN REFERENCE")
+    dut._log.info("Pattern checks: [PASS] NO STUCK PATTERNS DETECTED")
+    dut._log.info("\n[PASS] Test 2.4.1: Data patterns verified with golden reference")
 
 
 # ============================================================================
 # Category 2.5: Register Interface Tests
 # ============================================================================
+
 
 @cocotb.test()
 async def test_2_5_1_fifo_enable_disable(dut):
@@ -767,7 +809,7 @@ async def test_2_5_1_fifo_enable_disable(dut):
     apb, mon = await init(dut, config=FIFO_TEST_CONFIG)
 
     # Enable FIFO
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
     dut._log.info("FIFO enabled")
 
     # Generate some entropy
@@ -778,7 +820,7 @@ async def test_2_5_1_fifo_enable_disable(dut):
     dut._log.info(f"Level before disable: {level_before}")
 
     # Disable FIFO
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000000)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000000)
     dut._log.info("FIFO disabled")
 
     # Wait and check level stays frozen
@@ -787,7 +829,7 @@ async def test_2_5_1_fifo_enable_disable(dut):
     dut._log.info(f"Level while disabled: {level_frozen}")
 
     # Re-enable FIFO
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
     dut._log.info("FIFO re-enabled")
 
     await ClockCycles(dut.apb.pclk, 1000)
@@ -807,14 +849,14 @@ async def test_2_5_2_fifo_rdata_autopop(dut):
     log_phase_header(dut, "TEST 2.5.2: FIFO_RDATA Auto-Pop")
 
     apb, mon = await init(dut, config=FIFO_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Generate entropy
     await enable_entropy_pipeline(apb)
     await ClockCycles(dut.apb.pclk, 2000)
 
     # Stop generation to freeze level
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
     await ClockCycles(dut.apb.pclk, 100)
 
     level_start, _, _ = await read_fifo_status(apb)
@@ -828,18 +870,20 @@ async def test_2_5_2_fifo_rdata_autopop(dut):
         level_before, _, rptr_before = await read_fifo_status(apb)
 
         # Read FIFO_RDATA (should auto-pop)
-        data = await reg_rd(apb, 'FIFO_RDATA')
+        data = await reg_rd(apb, "FIFO_RDATA")
 
         level_after, _, rptr_after = await read_fifo_status(apb)
 
-        dut._log.info(f"  [{i}] Read 0x{data:08X}: level {level_before} -> {level_after}, rptr {rptr_before} -> {rptr_after}")
+        dut._log.info(
+            f"  [{i}] Read 0x{data:08X}: level {level_before} -> {level_after}, rptr {rptr_before} -> {rptr_after}"
+        )
 
         # Verify level decreased by 1
-        assert level_after == level_before - 1, f"Level should decrease by 1 on each read"
+        assert level_after == level_before - 1, "Level should decrease by 1 on each read"
 
         # Verify rptr advanced by 1
         expected_rptr = (rptr_before + 1) % 64
-        assert rptr_after == expected_rptr, f"Read pointer should advance by 1"
+        assert rptr_after == expected_rptr, "Read pointer should advance by 1"
 
     level_end, _, _ = await read_fifo_status(apb)
     expected_level = level_start - num_reads
@@ -854,6 +898,7 @@ async def test_2_5_2_fifo_rdata_autopop(dut):
 # Category 2.6: FIFO Interrupt Verification
 # ============================================================================
 
+
 @cocotb.test()
 async def test_2_6_1_fifo_intr_test_and_error(dut):
     """Test 2.6.1: Verify INTR_TEST software injection for all FIFO interrupts"""
@@ -866,11 +911,11 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     dut._log.info("\n--- Phase 1: Test INTR_TEST.FIFO_OVERFLOW injection ---")
 
     # Enable FIFO_OVERFLOW interrupt
-    await reg_wr(apb, 'INTR_ENABLE', 0x00000100)  # Bit [8]
+    await reg_wr(apb, "INTR_ENABLE", 0x00000100)  # Bit [8]
     dut._log.info("Enabled FIFO_OVERFLOW interrupt (INTR_ENABLE[8]=1)")
 
     # Inject FIFO_OVERFLOW via INTR_TEST
-    await reg_wr(apb, 'INTR_TEST', 0x00000100)  # Bit [8]
+    await reg_wr(apb, "INTR_TEST", 0x00000100)  # Bit [8]
     await ClockCycles(dut.apb.pclk, 2)
     dut._log.info("Injected FIFO_OVERFLOW via INTR_TEST[8]=1")
 
@@ -881,7 +926,7 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     dut._log.info(f"INTR_STATUS.FIFO_OVERFLOW: {intr_status['fifo_overflow']}")
     dut._log.info(f"irq_o: {irq}")
 
-    assert intr_status['fifo_overflow'] == 1, "INTR_STATUS.FIFO_OVERFLOW should be set"
+    assert intr_status["fifo_overflow"] == 1, "INTR_STATUS.FIFO_OVERFLOW should be set"
     assert irq == 1, "irq_o should be HIGH after INTR_TEST injection"
     dut._log.info("[PASS] FIFO_OVERFLOW interrupt injected successfully")
 
@@ -889,12 +934,12 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     await irq_checker_verify_async(dut, apb, expected_irq=True)
 
     # Clear interrupt
-    await reg_wr(apb, 'INTR_STATUS', 0x00000100)  # Write-1-clear
+    await reg_wr(apb, "INTR_STATUS", 0x00000100)  # Write-1-clear
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status = await read_intr_status(apb)
     irq = await read_irq_output(dut)
-    assert intr_status['fifo_overflow'] == 0, "INTR_STATUS.FIFO_OVERFLOW should be cleared"
+    assert intr_status["fifo_overflow"] == 0, "INTR_STATUS.FIFO_OVERFLOW should be cleared"
     assert irq == 0, "irq_o should be LOW after clearing"
     dut._log.info("[PASS] FIFO_OVERFLOW interrupt cleared successfully")
 
@@ -905,11 +950,11 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     dut._log.info("\n--- Phase 2: Test INTR_TEST.FIFO_UNDERFLOW injection ---")
 
     # Enable FIFO_UNDERFLOW interrupt
-    await reg_wr(apb, 'INTR_ENABLE', 0x00001000)  # Bit [12]
+    await reg_wr(apb, "INTR_ENABLE", 0x00001000)  # Bit [12]
     dut._log.info("Enabled FIFO_UNDERFLOW interrupt (INTR_ENABLE[12]=1)")
 
     # Inject FIFO_UNDERFLOW via INTR_TEST
-    await reg_wr(apb, 'INTR_TEST', 0x00001000)  # Bit [12]
+    await reg_wr(apb, "INTR_TEST", 0x00001000)  # Bit [12]
     await ClockCycles(dut.apb.pclk, 2)
     dut._log.info("Injected FIFO_UNDERFLOW via INTR_TEST[12]=1")
 
@@ -920,7 +965,7 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     dut._log.info(f"INTR_STATUS.FIFO_UNDERFLOW: {intr_status['fifo_underflow']}")
     dut._log.info(f"irq_o: {irq}")
 
-    assert intr_status['fifo_underflow'] == 1, "INTR_STATUS.FIFO_UNDERFLOW should be set"
+    assert intr_status["fifo_underflow"] == 1, "INTR_STATUS.FIFO_UNDERFLOW should be set"
     assert irq == 1, "irq_o should be HIGH after INTR_TEST injection"
     dut._log.info("[PASS] FIFO_UNDERFLOW interrupt injected successfully")
 
@@ -928,12 +973,12 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     await irq_checker_verify_async(dut, apb, expected_irq=True)
 
     # Clear interrupt
-    await reg_wr(apb, 'INTR_STATUS', 0x00001000)  # Write-1-clear
+    await reg_wr(apb, "INTR_STATUS", 0x00001000)  # Write-1-clear
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status = await read_intr_status(apb)
     irq = await read_irq_output(dut)
-    assert intr_status['fifo_underflow'] == 0, "INTR_STATUS.FIFO_UNDERFLOW should be cleared"
+    assert intr_status["fifo_underflow"] == 0, "INTR_STATUS.FIFO_UNDERFLOW should be cleared"
     assert irq == 0, "irq_o should be LOW after clearing"
     dut._log.info("[PASS] FIFO_UNDERFLOW interrupt cleared successfully")
 
@@ -944,11 +989,11 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     dut._log.info("\n--- Phase 3: Test INTR_TEST.FIFO_ERROR injection ---")
 
     # Enable FIFO_ERROR interrupt
-    await reg_wr(apb, 'INTR_ENABLE', 0x00000010)  # Bit [4]
+    await reg_wr(apb, "INTR_ENABLE", 0x00000010)  # Bit [4]
     dut._log.info("Enabled FIFO_ERROR interrupt (INTR_ENABLE[4]=1)")
 
     # Inject FIFO_ERROR via INTR_TEST
-    await reg_wr(apb, 'INTR_TEST', 0x00000010)  # Bit [4]
+    await reg_wr(apb, "INTR_TEST", 0x00000010)  # Bit [4]
     await ClockCycles(dut.apb.pclk, 2)
     dut._log.info("Injected FIFO_ERROR via INTR_TEST[4]=1")
 
@@ -959,7 +1004,7 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     dut._log.info(f"INTR_STATUS.FIFO_ERROR: {intr_status['fifo_error']}")
     dut._log.info(f"irq_o: {irq}")
 
-    assert intr_status['fifo_error'] == 1, "INTR_STATUS.FIFO_ERROR should be set"
+    assert intr_status["fifo_error"] == 1, "INTR_STATUS.FIFO_ERROR should be set"
     assert irq == 1, "irq_o should be HIGH after INTR_TEST injection"
     dut._log.info("[PASS] FIFO_ERROR interrupt injected successfully")
 
@@ -967,12 +1012,12 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     await irq_checker_verify_async(dut, apb, expected_irq=True)
 
     # Clear interrupt
-    await reg_wr(apb, 'INTR_STATUS', 0x00000010)  # Write-1-clear
+    await reg_wr(apb, "INTR_STATUS", 0x00000010)  # Write-1-clear
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status = await read_intr_status(apb)
     irq = await read_irq_output(dut)
-    assert intr_status['fifo_error'] == 0, "INTR_STATUS.FIFO_ERROR should be cleared"
+    assert intr_status["fifo_error"] == 0, "INTR_STATUS.FIFO_ERROR should be cleared"
     assert irq == 0, "irq_o should be LOW after clearing"
     dut._log.info("[PASS] FIFO_ERROR interrupt cleared successfully")
 
@@ -983,16 +1028,16 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     dut._log.info("\n--- Phase 4: Test multiple simultaneous FIFO interrupts ---")
 
     # Enable both FIFO_OVERFLOW and FIFO_UNDERFLOW interrupts
-    await reg_wr(apb, 'INTR_ENABLE', 0x00001100)  # Bits [12] and [8]
+    await reg_wr(apb, "INTR_ENABLE", 0x00001100)  # Bits [12] and [8]
     dut._log.info("Enabled FIFO_OVERFLOW and FIFO_UNDERFLOW interrupts")
 
     # Inject both simultaneously via INTR_TEST
-    await reg_wr(apb, 'INTR_TEST', 0x00001100)  # Bits [12] and [8]
+    await reg_wr(apb, "INTR_TEST", 0x00001100)  # Bits [12] and [8]
     await ClockCycles(dut.apb.pclk, 2)
     dut._log.info("Injected both FIFO_OVERFLOW and FIFO_UNDERFLOW via INTR_TEST")
 
     # Verify both INTR_STATUS bits set
-    intr_status_reg = await reg_rd(apb, 'INTR_STATUS')
+    intr_status_reg = await reg_rd(apb, "INTR_STATUS")
     intr_status = await read_intr_status(apb)
     irq = await read_irq_output(dut)
 
@@ -1001,42 +1046,42 @@ async def test_2_6_1_fifo_intr_test_and_error(dut):
     dut._log.info(f"  FIFO_UNDERFLOW [12]: {intr_status['fifo_underflow']}")
     dut._log.info(f"irq_o: {irq}")
 
-    assert intr_status['fifo_overflow'] == 1, "INTR_STATUS.FIFO_OVERFLOW should be set"
-    assert intr_status['fifo_underflow'] == 1, "INTR_STATUS.FIFO_UNDERFLOW should be set"
+    assert intr_status["fifo_overflow"] == 1, "INTR_STATUS.FIFO_OVERFLOW should be set"
+    assert intr_status["fifo_underflow"] == 1, "INTR_STATUS.FIFO_UNDERFLOW should be set"
     assert irq == 1, "irq_o should be HIGH with multiple interrupts"
     dut._log.info("[PASS] Multiple simultaneous interrupts verified")
 
     # Clear FIFO_OVERFLOW only, verify irq_o stays HIGH
     dut._log.info("Clearing FIFO_OVERFLOW only...")
-    await reg_wr(apb, 'INTR_STATUS', 0x00000100)  # Clear bit [8] only
+    await reg_wr(apb, "INTR_STATUS", 0x00000100)  # Clear bit [8] only
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status = await read_intr_status(apb)
     irq = await read_irq_output(dut)
 
-    dut._log.info(f"After clearing FIFO_OVERFLOW:")
+    dut._log.info("After clearing FIFO_OVERFLOW:")
     dut._log.info(f"  FIFO_OVERFLOW [8]: {intr_status['fifo_overflow']}")
     dut._log.info(f"  FIFO_UNDERFLOW [12]: {intr_status['fifo_underflow']}")
     dut._log.info(f"  irq_o: {irq}")
 
-    assert intr_status['fifo_overflow'] == 0, "FIFO_OVERFLOW should be cleared"
-    assert intr_status['fifo_underflow'] == 1, "FIFO_UNDERFLOW should still be set"
+    assert intr_status["fifo_overflow"] == 0, "FIFO_OVERFLOW should be cleared"
+    assert intr_status["fifo_underflow"] == 1, "FIFO_UNDERFLOW should still be set"
     assert irq == 1, "irq_o should stay HIGH (OR of all enabled interrupts)"
     dut._log.info("[PASS] Selective clear verified - irq_o stays HIGH")
 
     # Clear FIFO_UNDERFLOW, verify irq_o goes LOW
     dut._log.info("Clearing FIFO_UNDERFLOW...")
-    await reg_wr(apb, 'INTR_STATUS', 0x00001000)  # Clear bit [12]
+    await reg_wr(apb, "INTR_STATUS", 0x00001000)  # Clear bit [12]
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status = await read_intr_status(apb)
     irq = await read_irq_output(dut)
 
-    dut._log.info(f"After clearing FIFO_UNDERFLOW:")
+    dut._log.info("After clearing FIFO_UNDERFLOW:")
     dut._log.info(f"  FIFO_UNDERFLOW [12]: {intr_status['fifo_underflow']}")
     dut._log.info(f"  irq_o: {irq}")
 
-    assert intr_status['fifo_underflow'] == 0, "FIFO_UNDERFLOW should be cleared"
+    assert intr_status["fifo_underflow"] == 0, "FIFO_UNDERFLOW should be cleared"
     assert irq == 0, "irq_o should be LOW after clearing all interrupts"
     dut._log.info("[PASS] All interrupts cleared - irq_o LOW")
 
@@ -1060,7 +1105,7 @@ SECURITY_TEST_CONFIG = TestConfig(
     compressor=CompressorConfig(
         checker_enable=False,
     ),
-    fifo_error_monitor_enable=False,  # We're intentionally injecting errors
+    fifo_error_monitor_enable=False,  # DISABLE monitor - tests inject FIFO errors
 )
 
 
@@ -1068,13 +1113,14 @@ SECURITY_TEST_CONFIG = TestConfig(
 # Helper Functions for Security Tests
 # ============================================================================
 
+
 def calc_word_parity(data):
     """Calculate 4-bit odd parity for 32-bit data word (matches RTL algorithm)"""
     parity = [0, 0, 0, 0]
-    parity[0] = bin(data & 0xFF).count('1') % 2          # Byte 0 [7:0]
-    parity[1] = bin((data >> 8) & 0xFF).count('1') % 2   # Byte 1 [15:8]
-    parity[2] = bin((data >> 16) & 0xFF).count('1') % 2  # Byte 2 [23:16]
-    parity[3] = bin((data >> 24) & 0xFF).count('1') % 2  # Byte 3 [31:24]
+    parity[0] = bin(data & 0xFF).count("1") % 2  # Byte 0 [7:0]
+    parity[1] = bin((data >> 8) & 0xFF).count("1") % 2  # Byte 1 [15:8]
+    parity[2] = bin((data >> 16) & 0xFF).count("1") % 2  # Byte 2 [23:16]
+    parity[3] = bin((data >> 24) & 0xFF).count("1") % 2  # Byte 3 [31:24]
     return parity
 
 
@@ -1091,6 +1137,7 @@ async def backdoor_write_pointer(dut, signal, value):
 # Category 2.7: FIFO Security Feature Tests
 # ============================================================================
 
+
 @cocotb.test()
 async def test_2_7_1_parity_generation(dut):
     """Test 2.7.1: Verify parity bits are correctly calculated and stored
@@ -1106,7 +1153,7 @@ async def test_2_7_1_parity_generation(dut):
     log_phase_header(dut, "TEST 2.7.1: Parity Generation Verification")
 
     apb, mon = await init(dut, config=SECURITY_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Phase 1: Generate entropy to fill FIFO completely (64 entries)
     dut._log.info("\n--- Phase 1: Fill FIFO with entropy (target: 64 entries) ---")
@@ -1138,7 +1185,9 @@ async def test_2_7_1_parity_generation(dut):
                 mem_entry = dut.dut.entropy_fifo.mem[addr].value
             except AttributeError as e:
                 dut._log.error(f"Cannot access mem[{addr}]: {e}")
-                dut._log.error("Test 2.7.1 requires backdoor READ access to dut.dut.entropy_fifo.mem[]")
+                dut._log.error(
+                    "Test 2.7.1 requires backdoor READ access to dut.dut.entropy_fifo.mem[]"
+                )
                 assert False, f"Test 2.7.1 FAILED: Backdoor read access not available: {e}"
 
             # Extract data and DUT-stored parity
@@ -1147,7 +1196,12 @@ async def test_2_7_1_parity_generation(dut):
 
             # Calculate expected parity in testbench
             expected_parity = calc_word_parity(fifo_data)
-            expected_parity_val = (expected_parity[3] << 3) | (expected_parity[2] << 2) | (expected_parity[1] << 1) | expected_parity[0]
+            expected_parity_val = (
+                (expected_parity[3] << 3)
+                | (expected_parity[2] << 2)
+                | (expected_parity[1] << 1)
+                | expected_parity[0]
+            )
 
             # Track parity distribution
             parity_histogram[expected_parity_val] = parity_histogram.get(expected_parity_val, 0) + 1
@@ -1156,7 +1210,7 @@ async def test_2_7_1_parity_generation(dut):
             match = "MATCH" if dut_parity == expected_parity_val else "MISMATCH"
 
             # Show first 3 and last 2 entries in detail
-            show_detail = (addr < 3 or addr >= 62)
+            show_detail = addr < 3 or addr >= 62
 
             if show_detail:
                 dut._log.info(f"\nFIFO addr [{addr}]:")
@@ -1165,7 +1219,7 @@ async def test_2_7_1_parity_generation(dut):
                 dut._log.info(f"  DUT Parity:        0x{dut_parity:X}")
                 dut._log.info(f"  Result:            [{match}]")
             elif addr == 3:
-                dut._log.info(f"\n  ... (checking entries 3-61, will show summary)")
+                dut._log.info("\n  ... (checking entries 3-61, will show summary)")
 
             # Track mismatches
             if dut_parity != expected_parity_val:
@@ -1177,7 +1231,9 @@ async def test_2_7_1_parity_generation(dut):
                     dut._log.error(f"  DUT Parity:      0x{dut_parity:X}")
 
             # Assert on each entry
-            assert dut_parity == expected_parity_val, f"Parity mismatch at addr {addr}: data=0x{fifo_data:08X}, expected parity=0x{expected_parity_val:X}, DUT parity=0x{dut_parity:X}"
+            assert dut_parity == expected_parity_val, (
+                f"Parity mismatch at addr {addr}: data=0x{fifo_data:08X}, expected parity=0x{expected_parity_val:X}, DUT parity=0x{dut_parity:X}"
+            )
 
     except AssertionError:
         raise
@@ -1190,16 +1246,18 @@ async def test_2_7_1_parity_generation(dut):
     dut._log.info(f"FIFO entries verified: {num_samples}/64")
     dut._log.info(f"Parity mismatches: {parity_mismatches}")
 
-    dut._log.info(f"\nParity value distribution:")
+    dut._log.info("\nParity value distribution:")
     for parity_val in sorted(parity_histogram.keys()):
         count = parity_histogram[parity_val]
-        dut._log.info(f"  Parity 0x{parity_val:X}: {count} entries ({100.0*count/num_samples:.1f}%)")
+        dut._log.info(
+            f"  Parity 0x{parity_val:X}: {count} entries ({100.0 * count / num_samples:.1f}%)"
+        )
 
     unique_parities = len(parity_histogram)
     dut._log.info(f"\nUnique parity values seen: {unique_parities}/16 possible")
 
     assert parity_mismatches == 0, f"Found {parity_mismatches} parity mismatches"
-    dut._log.info(f"\n[PASS] All 64 FIFO entries verified - parity generation correct")
+    dut._log.info("\n[PASS] All 64 FIFO entries verified - parity generation correct")
     dut._log.info("\n[PASS] Test 2.7.1: Parity generation verified per TEST_PLAN.txt requirements")
 
 
@@ -1210,11 +1268,11 @@ async def test_2_7_2_parity_error_detection(dut):
     log_phase_header(dut, "TEST 2.7.2: Parity Error Detection")
 
     apb, mon = await init(dut, config=SECURITY_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
 
     # Phase 1: Enable FIFO_ERROR interrupt
     dut._log.info("\n--- Phase 1: Enable FIFO_ERROR interrupt ---")
-    await reg_wr(apb, 'INTR_ENABLE', 0x00000010)  # FIFO_ERROR [4]
+    await reg_wr(apb, "INTR_ENABLE", 0x00000010)  # FIFO_ERROR [4]
     dut._log.info("FIFO_ERROR interrupt enabled (INTR_ENABLE[4]=1)")
 
     # Phase 2: Generate entropy data to fill FIFO
@@ -1231,8 +1289,9 @@ async def test_2_7_2_parity_error_detection(dut):
     # Phase 3: Select corruption target (not at rptr - make it more realistic)
     dut._log.info("\n--- Phase 3: Select and corrupt entry in middle of FIFO ---")
 
-    # Corrupt entry at position rptr+3 (will need to pop 3 good entries first)
+    # Corrupt an entry 2-5 positions past rptr; the clean entries before it are popped first
     import random
+
     offset = random.randint(2, min(5, level_before - 1))  # Random offset between 2-5
     target_idx = (rptr_before + offset) % 64
 
@@ -1272,11 +1331,11 @@ async def test_2_7_2_parity_error_detection(dut):
 
     # Phase 4: Disable ROs to stop entropy generation
     dut._log.info("\n--- Phase 4: Disable ROs to stop new pushes ---")
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
     await ClockCycles(dut.apb.pclk, 10)
 
     # Phase 5: Pop entries until interrupt fires (corrupted entry detected)
-    dut._log.info(f"\n--- Phase 5: Pop entries until FIFO_ERROR interrupt fires ---")
+    dut._log.info("\n--- Phase 5: Pop entries until FIFO_ERROR interrupt fires ---")
 
     entries_popped = 0
     interrupt_fired = False
@@ -1284,28 +1343,28 @@ async def test_2_7_2_parity_error_detection(dut):
 
     # Pop up to offset+1 entries (expecting interrupt on the corrupted one)
     for i in range(offset + 1):
-        data = await reg_rd(apb, 'FIFO_RDATA')
+        data = await reg_rd(apb, "FIFO_RDATA")
         entries_popped += 1
 
         # Check if interrupt fired after this pop
         await ClockCycles(dut.apb.pclk, 2)  # Give time for parity check
         intr_status = await read_intr_status(apb)
 
-        if intr_status['fifo_error'] == 1:
-            dut._log.info(f"  Pop {i+1}: 0x{data:08X} --> FIFO_ERROR interrupt FIRED")
+        if intr_status["fifo_error"] == 1:
+            dut._log.info(f"  Pop {i + 1}: 0x{data:08X} --> FIFO_ERROR interrupt FIRED")
             interrupt_fired = True
             corrupted_data_read = data
             break
         else:
-            dut._log.info(f"  Pop {i+1}/{offset}: 0x{data:08X} (clean entry, no interrupt)")
+            dut._log.info(f"  Pop {i + 1}/{offset}: 0x{data:08X} (clean entry, no interrupt)")
 
-    assert interrupt_fired, f"FIFO_ERROR should have fired after {offset+1} pops"
+    assert interrupt_fired, f"FIFO_ERROR should have fired after {offset + 1} pops"
     dut._log.info(f"[PASS] Interrupt fired after popping {entries_popped} entries (as expected)")
 
     # Phase 6: Verify interrupt details
     dut._log.info("\n--- Phase 6: Verify FIFO_ERROR interrupt details ---")
 
-    intr_status_reg = await reg_rd(apb, 'INTR_STATUS')
+    intr_status_reg = await reg_rd(apb, "INTR_STATUS")
     intr_status = await read_intr_status(apb)
     irq = await read_irq_output(dut)
 
@@ -1313,7 +1372,7 @@ async def test_2_7_2_parity_error_detection(dut):
     dut._log.info(f"FIFO_ERROR [4]: {intr_status['fifo_error']}")
     dut._log.info(f"irq_o: {irq}")
 
-    assert intr_status['fifo_error'] == 1, "FIFO_ERROR interrupt should be set"
+    assert intr_status["fifo_error"] == 1, "FIFO_ERROR interrupt should be set"
     assert irq == 1, "irq_o should be HIGH"
     dut._log.info("[PASS] FIFO_ERROR interrupt fired correctly after reading corrupted entry")
 
@@ -1324,7 +1383,9 @@ async def test_2_7_2_parity_error_detection(dut):
     dut._log.info("\n--- Phase 8: Verify FIFO still operates with parity error ---")
     level_after, _, _ = await read_fifo_status(apb)
     dut._log.info(f"FIFO level: {level_before} -> {level_after} (popped {entries_popped} entries)")
-    assert level_after == level_before - entries_popped, "FIFO should still allow operations with parity error"
+    assert level_after == level_before - entries_popped, (
+        "FIFO should still allow operations with parity error"
+    )
     dut._log.info("[PASS] FIFO operations not blocked by parity error")
 
     # Phase 9: Pop another entry to release hardware error condition
@@ -1334,7 +1395,7 @@ async def test_2_7_2_parity_error_detection(dut):
     # Check if FIFO has more entries to pop
     level_before_clear, _, _ = await read_fifo_status(apb)
     if level_before_clear > 0:
-        next_data = await reg_rd(apb, 'FIFO_RDATA')
+        next_data = await reg_rd(apb, "FIFO_RDATA")
         dut._log.info(f"Popped next entry: 0x{next_data:08X}")
         await ClockCycles(dut.apb.pclk, 2)
     else:
@@ -1342,17 +1403,17 @@ async def test_2_7_2_parity_error_detection(dut):
 
     # Phase 10: Clear interrupt
     dut._log.info("\n--- Phase 10: Clear interrupt via W1C ---")
-    await reg_wr(apb, 'INTR_STATUS', 0x00000010)
+    await reg_wr(apb, "INTR_STATUS", 0x00000010)
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status_after = await read_intr_status(apb)
     irq_after = await read_irq_output(dut)
 
-    dut._log.info(f"After W1C:")
+    dut._log.info("After W1C:")
     dut._log.info(f"  FIFO_ERROR [4]: {intr_status_after['fifo_error']}")
     dut._log.info(f"  irq_o: {irq_after}")
 
-    assert intr_status_after['fifo_error'] == 0, "FIFO_ERROR should be cleared"
+    assert intr_status_after["fifo_error"] == 0, "FIFO_ERROR should be cleared"
     assert irq_after == 0, "irq_o should be LOW after clear"
     dut._log.info("[PASS] W1C cleared interrupt after releasing error condition")
 
@@ -1369,8 +1430,8 @@ async def test_2_7_3_pointer_fault_detection(dut):
     log_phase_header(dut, "TEST 2.7.3: Pointer Fault Detection")
 
     apb, mon = await init(dut, config=SECURITY_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
-    await reg_wr(apb, 'INTR_ENABLE', 0x00000010)  # Enable FIFO_ERROR interrupt
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
+    await reg_wr(apb, "INTR_ENABLE", 0x00000010)  # Enable FIFO_ERROR interrupt
 
     # Phase 1: Generate entropy and corrupt pointer
     dut._log.info("\n--- Phase 1: Generate entropy and corrupt pointer ---")
@@ -1378,7 +1439,9 @@ async def test_2_7_3_pointer_fault_detection(dut):
     await ClockCycles(dut.apb.pclk, 1000)
 
     level_before, wptr_before, rptr_before = await read_fifo_status(apb)
-    dut._log.info(f"FIFO before corruption: level={level_before}, wptr={wptr_before}, rptr={rptr_before}")
+    dut._log.info(
+        f"FIFO before corruption: level={level_before}, wptr={wptr_before}, rptr={rptr_before}"
+    )
 
     try:
         wptr_q = int(dut.dut.entropy_fifo.wptr_q.value)
@@ -1404,7 +1467,7 @@ async def test_2_7_3_pointer_fault_detection(dut):
 
     intr_status = await read_intr_status(apb)
     irq = await read_irq_output(dut)
-    assert intr_status['fifo_error'] == 1, "FIFO_ERROR interrupt should be set"
+    assert intr_status["fifo_error"] == 1, "FIFO_ERROR interrupt should be set"
     assert irq == 1, "irq_o should be HIGH"
     dut._log.info(f"Interrupt fired: FIFO_ERROR={intr_status['fifo_error']}, irq_o={irq}")
 
@@ -1415,8 +1478,12 @@ async def test_2_7_3_pointer_fault_detection(dut):
     await ClockCycles(dut.apb.pclk, 2000)
     level_after, wptr_after, _ = await read_fifo_status(apb)
 
-    dut._log.info(f"After 2000 cycles: level {level_before}->{level_after}, wptr {wptr_before}->{wptr_after}")
-    assert level_after <= level_before, f"Level should not increase (was {level_before}, now {level_after})"
+    dut._log.info(
+        f"After 2000 cycles: level {level_before}->{level_after}, wptr {wptr_before}->{wptr_after}"
+    )
+    assert level_after <= level_before, (
+        f"Level should not increase (was {level_before}, now {level_after})"
+    )
     dut._log.info("[PASS] FIFO operations BLOCKED by pointer error")
 
     # Phase 3: Restore pointer and clear interrupt
@@ -1432,12 +1499,12 @@ async def test_2_7_3_pointer_fault_detection(dut):
     await ClockCycles(dut.apb.pclk, 2)
 
     # Clear interrupt via W1C
-    await reg_wr(apb, 'INTR_STATUS', 0x00000010)
+    await reg_wr(apb, "INTR_STATUS", 0x00000010)
     await ClockCycles(dut.apb.pclk, 2)
 
     intr_status_after = await read_intr_status(apb)
     irq_after = await read_irq_output(dut)
-    assert intr_status_after['fifo_error'] == 0, "FIFO_ERROR should be cleared"
+    assert intr_status_after["fifo_error"] == 0, "FIFO_ERROR should be cleared"
     assert irq_after == 0, "irq_o should be LOW"
     dut._log.info("[PASS] Interrupt cleared after pointer restoration")
 
@@ -1451,7 +1518,7 @@ async def test_2_7_3_pointer_fault_detection(dut):
     if level_after >= 64:
         dut._log.info(f"FIFO full (level={level_after}), popping entries to make room...")
         for _ in range(10):
-            await reg_rd(apb, 'FIFO_RDATA')
+            await reg_rd(apb, "FIFO_RDATA")
         await ClockCycles(dut.apb.pclk, 10)
         level_after, wptr_after, _ = await read_fifo_status(apb)
         dut._log.info(f"After pops: level={level_after}")
@@ -1459,7 +1526,9 @@ async def test_2_7_3_pointer_fault_detection(dut):
     await ClockCycles(dut.apb.pclk, 2000)
     level_resumed, wptr_resumed, _ = await read_fifo_status(apb)
 
-    dut._log.info(f"After recovery: level {level_after}->{level_resumed}, wptr {wptr_after}->{wptr_resumed}")
+    dut._log.info(
+        f"After recovery: level {level_after}->{level_resumed}, wptr {wptr_after}->{wptr_resumed}"
+    )
 
     # Verify operations resumed (level increased OR wptr advanced)
     if level_resumed > level_after:
@@ -1468,7 +1537,7 @@ async def test_2_7_3_pointer_fault_detection(dut):
         dut._log.info("[PASS] FIFO operations resumed - wptr advanced")
     else:
         # If still no change, check if ROs are actually running
-        ro_enable = await reg_rd(apb, 'RING_OSC_ENABLE')
+        ro_enable = await reg_rd(apb, "RING_OSC_ENABLE")
         dut._log.warning(f"No FIFO activity detected. RO_ENABLE=0x{ro_enable:03X}")
         if ro_enable == 0:
             dut._log.error("ROs are disabled - cannot verify resume")
@@ -1484,13 +1553,13 @@ async def test_2_7_4_combined_security_alert(dut):
     log_phase_header(dut, "TEST 2.7.4: Combined Security Alert")
 
     apb, mon = await init(dut, config=SECURITY_TEST_CONFIG)
-    await reg_wr(apb, 'FIFO_CTRL', 0x00000001)
-    await reg_wr(apb, 'INTR_ENABLE', 0x00000010)  # Enable FIFO_ERROR
+    await reg_wr(apb, "FIFO_CTRL", 0x00000001)
+    await reg_wr(apb, "INTR_ENABLE", 0x00000010)  # Enable FIFO_ERROR
 
     # Phase 1: Parity Error Only
-    dut._log.info("\n" + "="*70)
+    dut._log.info("\n" + "=" * 70)
     dut._log.info("PHASE 1: Parity Error Only")
-    dut._log.info("="*70)
+    dut._log.info("=" * 70)
 
     # Generate some entropy
     await enable_entropy_pipeline(apb, decorr_div=8)
@@ -1512,22 +1581,22 @@ async def test_2_7_4_combined_security_alert(dut):
         await ClockCycles(dut.apb.pclk, 1)
 
         # Disable ROs to stop new pushes
-        await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+        await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
         await ClockCycles(dut.apb.pclk, 10)
 
         # Pop corrupted entry
-        await reg_rd(apb, 'FIFO_RDATA')
+        await reg_rd(apb, "FIFO_RDATA")
         await ClockCycles(dut.apb.pclk, 5)
 
         # Verify interrupt
         intr_status = await read_intr_status(apb)
         irq = await read_irq_output(dut)
 
-        dut._log.info(f"With parity error:")
+        dut._log.info("With parity error:")
         dut._log.info(f"  FIFO_ERROR interrupt: {intr_status['fifo_error']}")
         dut._log.info(f"  irq_o: {irq}")
 
-        assert intr_status['fifo_error'] == 1, "Parity error should trigger FIFO_ERROR"
+        assert intr_status["fifo_error"] == 1, "Parity error should trigger FIFO_ERROR"
         assert irq == 1, "irq_o should be HIGH"
 
         # Verify IRQ checker - interrupt asserted (Phase 1)
@@ -1541,17 +1610,17 @@ async def test_2_7_4_combined_security_alert(dut):
         # Release error condition by popping another entry
         dut._log.info("Releasing parity error condition by popping next entry...")
         if level_p1_after > 0:
-            await reg_rd(apb, 'FIFO_RDATA')
+            await reg_rd(apb, "FIFO_RDATA")
             await ClockCycles(dut.apb.pclk, 2)
 
         # Clear interrupt
-        await reg_wr(apb, 'INTR_STATUS', 0x00000010)
+        await reg_wr(apb, "INTR_STATUS", 0x00000010)
         await ClockCycles(dut.apb.pclk, 2)
 
         # Verify interrupt cleared
         intr_status_clear = await read_intr_status(apb)
         irq_clear = await read_irq_output(dut)
-        assert intr_status_clear['fifo_error'] == 0, "FIFO_ERROR should be cleared"
+        assert intr_status_clear["fifo_error"] == 0, "FIFO_ERROR should be cleared"
         assert irq_clear == 0, "irq_o should be LOW"
         dut._log.info("[PASS] Interrupt cleared successfully after parity error")
 
@@ -1563,12 +1632,12 @@ async def test_2_7_4_combined_security_alert(dut):
         dut._log.warning("Skipping Phase 1")
 
     # Phase 2: Pointer Error Only
-    dut._log.info("\n" + "="*70)
+    dut._log.info("\n" + "=" * 70)
     dut._log.info("PHASE 2: Pointer Error Only")
-    dut._log.info("="*70)
+    dut._log.info("=" * 70)
 
     # Re-enable ROs for pointer error testing
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000FFF)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000FFF)
     await ClockCycles(dut.apb.pclk, 100)
 
     level_p2, wptr_p2, _ = await read_fifo_status(apb)
@@ -1590,11 +1659,11 @@ async def test_2_7_4_combined_security_alert(dut):
         intr_status = await read_intr_status(apb)
         irq = await read_irq_output(dut)
 
-        dut._log.info(f"With pointer error:")
+        dut._log.info("With pointer error:")
         dut._log.info(f"  FIFO_ERROR interrupt: {intr_status['fifo_error']}")
         dut._log.info(f"  irq_o: {irq}")
 
-        assert intr_status['fifo_error'] == 1, "Pointer error should trigger FIFO_ERROR"
+        assert intr_status["fifo_error"] == 1, "Pointer error should trigger FIFO_ERROR"
         assert irq == 1, "irq_o should be HIGH"
 
         # Verify IRQ checker - interrupt asserted (Phase 2)
@@ -1610,7 +1679,7 @@ async def test_2_7_4_combined_security_alert(dut):
         if level_p2_after <= level_p2 and wptr_p2_after == wptr_p2:
             dut._log.info("[PASS] Pointer error: Interrupt fires + FIFO operations BLOCKED")
         else:
-            dut._log.warning(f"FIFO not fully blocked: level increased or wptr advanced")
+            dut._log.warning("FIFO not fully blocked: level increased or wptr advanced")
 
         # Restore pointer to release error condition
         dut._log.info("Restoring pointer to release error condition...")
@@ -1622,13 +1691,13 @@ async def test_2_7_4_combined_security_alert(dut):
         await ClockCycles(dut.apb.pclk, 2)
 
         # Clear interrupt
-        await reg_wr(apb, 'INTR_STATUS', 0x00000010)
+        await reg_wr(apb, "INTR_STATUS", 0x00000010)
         await ClockCycles(dut.apb.pclk, 2)
 
         # Verify interrupt cleared
         intr_status_clear = await read_intr_status(apb)
         irq_clear = await read_irq_output(dut)
-        assert intr_status_clear['fifo_error'] == 0, "FIFO_ERROR should be cleared"
+        assert intr_status_clear["fifo_error"] == 0, "FIFO_ERROR should be cleared"
         assert irq_clear == 0, "irq_o should be LOW"
         dut._log.info("[PASS] Interrupt cleared successfully after pointer error")
 
@@ -1640,9 +1709,9 @@ async def test_2_7_4_combined_security_alert(dut):
         dut._log.warning("Skipping Phase 2")
 
     # Phase 3: Both Errors Simultaneously
-    dut._log.info("\n" + "="*70)
+    dut._log.info("\n" + "=" * 70)
     dut._log.info("PHASE 3: Both Errors Simultaneously")
-    dut._log.info("="*70)
+    dut._log.info("=" * 70)
 
     try:
         # Wait for more data
@@ -1674,10 +1743,10 @@ async def test_2_7_4_combined_security_alert(dut):
         # Verify interrupt fires
         intr_status = await read_intr_status(apb)
         irq = await read_irq_output(dut)
-        dut._log.info(f"With both errors:")
+        dut._log.info("With both errors:")
         dut._log.info(f"  FIFO_ERROR interrupt: {intr_status['fifo_error']}")
         dut._log.info(f"  irq_o: {irq}")
-        assert intr_status['fifo_error'] == 1, "FIFO_ERROR should be set with both errors"
+        assert intr_status["fifo_error"] == 1, "FIFO_ERROR should be set with both errors"
         assert irq == 1, "irq_o should be HIGH"
 
         # Verify IRQ checker - interrupt asserted (Phase 3)
@@ -1699,9 +1768,9 @@ async def test_2_7_4_combined_security_alert(dut):
         dut._log.warning("Skipping Phase 3")
 
     # Phase 4: Clear and Recover
-    dut._log.info("\n" + "="*70)
+    dut._log.info("\n" + "=" * 70)
     dut._log.info("PHASE 4: Clear and Recover")
-    dut._log.info("="*70)
+    dut._log.info("=" * 70)
 
     try:
         # Restore pointer
@@ -1717,24 +1786,24 @@ async def test_2_7_4_combined_security_alert(dut):
         dut._log.info("Clearing parity error by popping corrupted entry...")
         level_before_clear, _, _ = await read_fifo_status(apb)
         if level_before_clear > 0:
-            await reg_rd(apb, 'FIFO_RDATA')  # Pop corrupted entry
+            await reg_rd(apb, "FIFO_RDATA")  # Pop corrupted entry
             await ClockCycles(dut.apb.pclk, 2)
             if level_before_clear > 1:
-                await reg_rd(apb, 'FIFO_RDATA')  # Pop next to release error
+                await reg_rd(apb, "FIFO_RDATA")  # Pop next to release error
                 await ClockCycles(dut.apb.pclk, 2)
 
         # Clear interrupt
         dut._log.info("Clearing interrupt via W1C...")
-        await reg_wr(apb, 'INTR_STATUS', 0x00000010)
+        await reg_wr(apb, "INTR_STATUS", 0x00000010)
         await ClockCycles(dut.apb.pclk, 2)
 
         # Verify interrupt cleared
         intr_status_final = await read_intr_status(apb)
         irq_final = await read_irq_output(dut)
-        dut._log.info(f"After restoration and W1C:")
+        dut._log.info("After restoration and W1C:")
         dut._log.info(f"  FIFO_ERROR [4]: {intr_status_final['fifo_error']}")
         dut._log.info(f"  irq_o: {irq_final}")
-        assert intr_status_final['fifo_error'] == 0, "FIFO_ERROR should be cleared"
+        assert intr_status_final["fifo_error"] == 0, "FIFO_ERROR should be cleared"
         assert irq_final == 0, "irq_o should be LOW"
 
         # Verify IRQ checker - interrupt cleared (Phase 4)
@@ -1745,7 +1814,7 @@ async def test_2_7_4_combined_security_alert(dut):
         await ClockCycles(dut.apb.pclk, 2000)
         level_resumed, wptr_resumed, _ = await read_fifo_status(apb)
 
-        dut._log.info(f"After recovery:")
+        dut._log.info("After recovery:")
         dut._log.info(f"  Level: {level_before_resume} -> {level_resumed}")
         dut._log.info(f"  Wptr:  {wptr_before_resume} -> {wptr_resumed}")
 
@@ -1761,9 +1830,9 @@ async def test_2_7_4_combined_security_alert(dut):
         dut._log.warning("Skipping Phase 4")
 
     # Summary
-    dut._log.info("\n" + "="*70)
+    dut._log.info("\n" + "=" * 70)
     dut._log.info("TEST 2.7.4 SUMMARY")
-    dut._log.info("="*70)
+    dut._log.info("=" * 70)
     dut._log.info("Phase 1: Parity error only - Non-blocking, interrupt cleared")
     dut._log.info("Phase 2: Pointer error only - Blocking, interrupt cleared after restore")
     dut._log.info("Phase 3: Both errors - Blocking dominates (pointer error)")

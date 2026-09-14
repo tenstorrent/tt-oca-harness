@@ -14,186 +14,188 @@
  */
 
 module entropy_sha256_whitener (
-    input       logic       clk_i,
-    input       logic       rst_ni,
+  input       logic       clk_i,
+  input       logic       rst_ni,
 
-    input       logic       entropy_valid_i,
-    input       logic [31:0] entropy_data_i,
-    output      logic       entropy_ready_o,
+  input       logic       entropy_valid_i,
+  input       logic [31:0] entropy_data_i,
+  output      logic       entropy_ready_o,
 
-    output      logic       whitened_valid_o,
-    output      logic [31:0] whitened_data_o,
-    input       logic       whitened_ready_i,
+  output      logic       whitened_valid_o,
+  output      logic [31:0] whitened_data_o,
+  input       logic       whitened_ready_i,
 
-    input       logic       enable_i,
+  input       logic       enable_i,
 
-    output      logic       busy_o,
-    output      logic [3:0] input_count_o,
-    output      logic [2:0] output_count_o
+  output      logic       busy_o,
+  output      logic [3:0] input_count_o,
+  output      logic [3:0] output_count_o
 );
 
-    /////////////////////
-    // Local parameters
-    /////////////////////
-    localparam int unsigned SHA256_BLOCK_WORDS = 16;  // SHA-256 input: 512 bits = 16 × 32-bit words
-    localparam int unsigned SHA256_DIGEST_WORDS = 8;  // SHA-256 output: 256 bits = 8 × 32-bit words
+  /////////////////////
+  // Local parameters
+  /////////////////////
+  localparam int unsigned SHA256_BLOCK_WORDS = 16;  // SHA-256 input: 512 bits = 16 × 32-bit words
+  localparam int unsigned SHA256_DIGEST_WORDS = 8;  // SHA-256 output: 256 bits = 8 × 32-bit words
 
-    /////////////
-    // Signals
-    /////////////
+  /////////////
+  // Signals
+  /////////////
 
-    logic bypass_mode;
-    assign bypass_mode = !enable_i;
+  logic bypass_mode;
+  assign bypass_mode = !enable_i;
 
-    logic [3:0] input_word_count_q, input_word_count_d;
-    logic [3:0] output_word_count_q, output_word_count_d;
-    logic       hashing_q, hashing_d;
-    logic       input_phase_q, input_phase_d;
-    logic       sha_hash_done_q;
+  logic [3:0] input_word_count_q, input_word_count_d;
+  logic [3:0] output_words_remaining_q, output_words_remaining_d;
+  logic hashing_q, hashing_d;
+  logic input_phase_q, input_phase_d;
+  logic       sha_hash_done_q;
 
-    logic [31:0] output_buffer_q [8];
-    logic [31:0] output_buffer_d [8];
+  logic [31:0] output_buffer_q [8];
+  logic [31:0] output_buffer_d [8];
 
-    logic                            sha_fifo_valid;
-    prim_sha2_pkg::sha_fifo32_t      sha_fifo_data;
-    logic                            sha_fifo_ready;
-    logic                            sha_hash_start;
-    logic                            sha_hash_process;
-    logic                            sha_hash_done;
-    prim_sha2_pkg::sha_word64_t [7:0] sha_digest;
+  logic                            sha_fifo_valid;
+  prim_sha2_pkg::sha_fifo32_t      sha_fifo_data;
+  logic                            sha_fifo_ready;
+  logic                            sha_hash_start;
+  logic                            sha_hash_process;
+  logic                            sha_hash_done;
+  prim_sha2_pkg::sha_word64_t [7:0] sha_digest;
 
-    /////////////////
-    // Sub-instances
-    /////////////////
-    prim_sha2_32 #(
-        .MultimodeEn (1'b0)   // SHA-256 only
-    ) u_sha2 (
-        .clk_i              (clk_i),
-        .rst_ni             (rst_ni),
-        .wipe_secret_i      (1'b0),
-        .wipe_v_i           (32'h0),
-        .fifo_rvalid_i      (sha_fifo_valid),
-        .fifo_rdata_i       (sha_fifo_data),
-        .fifo_rready_o      (sha_fifo_ready),
-        .sha_en_i           (1'b1),
-        .hash_start_i       (sha_hash_start),
-        .hash_stop_i        (1'b0),
-        .hash_continue_i    (1'b0),
-        .digest_mode_i      (prim_sha2_pkg::SHA2_256),
-        .hash_process_i     (sha_hash_process),
-        .hash_done_o        (sha_hash_done),
-        .message_length_i   (64'd512),  // Always 512-bit blocks
-        .digest_i           ('0),
-        .digest_we_i        ('0),
-        .digest_o           (sha_digest),
-        .digest_on_blk_o    (),
-        .hash_running_o     (),
-        .idle_o             ()
-    );
+  /////////////////
+  // Sub-instances
+  /////////////////
+  prim_sha2_32 #(
+    .MultimodeEn(1'b0)  // SHA-256 only
+  ) u_sha2 (
+    .clk_i              (clk_i),
+    .rst_ni             (rst_ni),
+    .wipe_secret_i      (1'b0),
+    .wipe_v_i           (32'h0),
+    .fifo_rvalid_i      (sha_fifo_valid),
+    .fifo_rdata_i       (sha_fifo_data),
+    .fifo_rready_o      (sha_fifo_ready),
+    .sha_en_i           (1'b1),
+    .hash_start_i       (sha_hash_start),
+    .hash_stop_i        (1'b0),
+    .hash_continue_i    (1'b0),
+    .digest_mode_i      (prim_sha2_pkg::SHA2_256),
+    .hash_process_i     (sha_hash_process),
+    .hash_done_o        (sha_hash_done),
+    .message_length_i   (64'd512),  // Always 512-bit blocks
+    .digest_i           ('0),
+    .digest_we_i        ('0),
+    .digest_o           (sha_digest),
+    .digest_on_blk_o    (),
+    .hash_running_o     (),
+    .idle_o             ()
+  );
 
-    /////////////////
-    // Combinational
-    /////////////////
-    always_comb begin
-        // Defaults
-        input_word_count_d = input_word_count_q;
-        output_word_count_d = output_word_count_q;
-        hashing_d = hashing_q;
-        input_phase_d = input_phase_q;
-        output_buffer_d = output_buffer_q;
+  /////////////////
+  // Combinational
+  /////////////////
+  always_comb begin
+    // Defaults
+    input_word_count_d = input_word_count_q;
+    output_words_remaining_d = output_words_remaining_q;
+    hashing_d = hashing_q;
+    input_phase_d = input_phase_q;
+    output_buffer_d = output_buffer_q;
 
-        sha_fifo_valid = 1'b0;
-        sha_fifo_data.data = 32'h0;
-        sha_fifo_data.mask = 4'hF;  // All bytes valid
-        sha_hash_start = 1'b0;
-        sha_hash_process = 1'b0;
+    sha_fifo_valid = 1'b0;
+    sha_fifo_data.data = 32'h0;
+    sha_fifo_data.mask = 4'hF;  // All bytes valid
+    sha_hash_start = 1'b0;
+    sha_hash_process = 1'b0;
 
-        entropy_ready_o = 1'b0;
-        whitened_valid_o = 1'b0;
-        whitened_data_o = 32'h0;
+    entropy_ready_o = 1'b0;
+    whitened_valid_o = 1'b0;
+    whitened_data_o = 32'h0;
 
-        if (bypass_mode) begin
-            // Bypass: direct passthrough
-            entropy_ready_o = whitened_ready_i;
-            whitened_valid_o = entropy_valid_i;
-            whitened_data_o = entropy_data_i;
-            input_phase_d = 1'b0;
-        end else if (output_word_count_q < 4'(SHA256_DIGEST_WORDS)) begin
-            // Output phase: stream digest words
-            whitened_valid_o = 1'b1;
-            // [2:0]: 3-bit index matches the 8-entry buffer, branch is guarded by output_word_count_q < SHA256_DIGEST_WORDS (8).
-            whitened_data_o = output_buffer_q[output_word_count_q[2:0]];
-            input_phase_d = 1'b0;
+    if (bypass_mode) begin
+      // Bypass: direct passthrough
+      entropy_ready_o = whitened_ready_i;
+      whitened_valid_o = entropy_valid_i;
+      whitened_data_o = entropy_data_i;
+      input_phase_d = 1'b0;
+      output_words_remaining_d = 4'd0;
+    end else if (output_words_remaining_q != 4'd0) begin
+      // Output phase: stream digest words
+      whitened_valid_o = 1'b1;
+      whitened_data_o = output_buffer_q[
+          3'(4'(SHA256_DIGEST_WORDS) - output_words_remaining_q)
+      ];
+      input_phase_d = 1'b0;
 
-            if (whitened_ready_i) begin
-                output_word_count_d = output_word_count_q + 4'd1;
-            end
-        end else if (!hashing_q) begin
-            // Input phase: stream to SHA-256 (not hashing, output complete)
-            // Pulse hash_start when entering input phase to initialize SHA-2 FIFO state machine
-            // prim_sha2_pad requires hash_start to transition from StIdle to StFifoReceive
-            // before fifo_rready_o goes high
-            if (!input_phase_q) begin
-                sha_hash_start = 1'b1;
-                input_phase_d = 1'b1;
-            end
+      if (whitened_ready_i) begin
+        output_words_remaining_d = output_words_remaining_q - 4'd1;
+      end
+    end else if (!hashing_q) begin
+      // Input phase: stream to SHA-256 (not hashing, output complete)
+      // Pulse hash_start when entering input phase to initialize SHA-2 FIFO state machine
+      // prim_sha2_pad requires hash_start to transition from StIdle to StFifoReceive
+      // before fifo_rready_o goes high
+      if (!input_phase_q) begin
+        sha_hash_start = 1'b1;
+        input_phase_d = 1'b1;
+      end
 
-            sha_fifo_valid = entropy_valid_i;
-            sha_fifo_data.data = entropy_data_i;
-            entropy_ready_o = sha_fifo_ready;
+      sha_fifo_valid = entropy_valid_i;
+      sha_fifo_data.data = entropy_data_i;
+      entropy_ready_o = sha_fifo_ready;
 
-            if (entropy_valid_i && sha_fifo_ready) begin
-                input_word_count_d = input_word_count_q + 4'd1;
+      if (entropy_valid_i && sha_fifo_ready) begin
+        input_word_count_d = input_word_count_q + 4'd1;
 
-                // Trigger hash processing on 16th word
-                if (input_word_count_q == 4'(SHA256_BLOCK_WORDS - 1)) begin
-                    sha_hash_process = 1'b1;
-                    hashing_d = 1'b1;
-                    input_phase_d = 1'b0;
-                    input_word_count_d = 4'd0;
-                end
-            end
-        end else begin
-            // Hashing phase: wait for completion.
-            input_phase_d = 1'b0;
-            if (sha_hash_done_q) begin
-                hashing_d = 1'b0;
-                output_word_count_d = 4'd0;
-
-                // Load digest into output buffer (extract lower 32 bits)
-                for (int i = 0; i < SHA256_DIGEST_WORDS; i++) begin
-                    output_buffer_d[i] = sha_digest[i][31:0];
-                end
-            end
+        // Trigger hash processing on 16th word
+        if (input_word_count_q == 4'(SHA256_BLOCK_WORDS - 1)) begin
+          sha_hash_process = 1'b1;
+          hashing_d = 1'b1;
+          input_phase_d = 1'b0;
+          input_word_count_d = 4'd0;
         end
-    end
+      end
+    end else begin
+      // Hashing phase: wait for completion.
+      input_phase_d = 1'b0;
+      if (sha_hash_done_q) begin
+        hashing_d = 1'b0;
+        output_words_remaining_d = 4'(SHA256_DIGEST_WORDS);
 
-    ///////////////
-    // Sequential
-    ///////////////
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            input_word_count_q <= 4'h0;
-            output_word_count_q <= 4'(SHA256_DIGEST_WORDS);  // Start in "done outputting" state (8)
-            hashing_q <= 1'b0;
-            input_phase_q <= 1'b0;
-            output_buffer_q <= '{default: '0};
-            sha_hash_done_q <= 1'b0;
-        end else begin
-            input_word_count_q <= input_word_count_d;
-            output_word_count_q <= output_word_count_d;
-            hashing_q <= hashing_d;
-            input_phase_q <= input_phase_d;
-            output_buffer_q <= output_buffer_d;
-            sha_hash_done_q <= sha_hash_done;
+        // Load digest into output buffer (extract lower 32 bits)
+        for (int i = 0; i < SHA256_DIGEST_WORDS; i++) begin
+          output_buffer_d[i] = sha_digest[i][31:0];
         end
+      end
     end
+  end
 
-    ///////////
-    // Output
-    ///////////
-    assign busy_o = hashing_q;
-    assign input_count_o = input_word_count_q;
-    assign output_count_o = output_word_count_q;
+  ///////////////
+  // Sequential
+  ///////////////
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      input_word_count_q <= 4'h0;
+      output_words_remaining_q <= 4'd0;
+      hashing_q <= 1'b0;
+      input_phase_q <= 1'b0;
+      output_buffer_q <= '{default: '0};
+      sha_hash_done_q <= 1'b0;
+    end else begin
+      input_word_count_q <= input_word_count_d;
+      output_words_remaining_q <= output_words_remaining_d;
+      hashing_q <= hashing_d;
+      input_phase_q <= input_phase_d;
+      output_buffer_q <= output_buffer_d;
+      sha_hash_done_q <= sha_hash_done;
+    end
+  end
+
+  ///////////
+  // Output
+  ///////////
+  assign busy_o = enable_i && (hashing_q || output_words_remaining_q != 4'd0);
+  assign input_count_o = input_word_count_q;
+  assign output_count_o = enable_i ? output_words_remaining_q : 4'd0;
 
 endmodule

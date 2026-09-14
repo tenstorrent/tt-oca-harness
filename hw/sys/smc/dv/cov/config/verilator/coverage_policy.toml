@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC Verilator coverage policy.
+#
+# Reference-only: it carries no [[thresholds]] and no [[holes]]. It exists so the
+# SMC coverage scope has a version-controlled, auditable carrier, and so the
+# threshold is set by the owner on measured numbers rather than inherited from
+# a default nobody signed.
+#
+# Two mechanisms, do not confuse them:
+#
+#   smc_cov_scope.vlt   `coverage_off` -> the point never enters the database.
+#                       Structural OUT: code this DUT does not own.
+#   [[holes]] here      the point exists and is not hit, carried with a
+#                       rationale, an owner and a review date.
+#
+# Scope: smc_cov_scope.vlt drops the chipyard-generated CPU cluster, TB code and
+# most vendored RTL at compile time, following the SEP precedent
+# (hw/sys/sep/dv/cov/config/vcs/README.md). Third-party RTL and the generated
+# CPU cluster dominate the unscoped denominator. The gap: `coverage_off -file
+# "*vendor/*"` does not reach vendor/pulp-platform/** or
+# vendor/tenstorrent/tt-hw-debug/**, so those stay in the denominator; no file
+# pattern reaches them (see cov/config/vcs/README.md).
+#
+# `hw/ip/**` stays in scope: it is Tenstorrent IP that SMC integrates, and
+# integration coverage of those blocks is part of what SMC-level DV is for.
+#
+# The scoped number is "the SMC DUT minus the CPU cluster, the I3C core, the
+# lowRISC prims and TB code" -- not "SMC coverage". Quote it that way.
+#
+# A [[thresholds]] entry carries a headline rule with population = "effective"
+# plus a `raw` rule, so post-waiver growth cannot hide behind waivers, and
+# max_unclassified_points = 0, which makes a run fail closed on a new,
+# unclassified hole. Every [[holes]] entry names selector, category,
+# disposition, rationale, owner, reviewer and review date.
+
+schema_version = 1
+dut = "smc"
+scope_epoch = "smc-fcov-v1"

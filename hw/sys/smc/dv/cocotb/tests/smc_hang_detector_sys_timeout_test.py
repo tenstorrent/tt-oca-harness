@@ -5,15 +5,25 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_hang_detector_sys_timeout_test_seq import (
     smc_hang_detector_sys_timeout_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_hang_detector_sys_timeout_test(smc_base_test):
     """SYS_IN outstanding stall → timeout irq; unique vs SEP timeout."""
+
+    required_evidence = (
+        "CHK-HANG-SYS-TIMEOUT-AR",
+        "CHK-HANG-SYS-TIMEOUT-ARM",
+        "CHK-HANG-SYS-TIMEOUT-BASIC",
+        "CHK-HANG-SYS-TIMEOUT-DISABLED",
+        "CHK-HANG-SYS-TIMEOUT-DROP",
+        "CHK-HANG-SYS-TIMEOUT-FIRE",
+    )
+    min_evidence = 6
 
     auto_protocol_vip = False
 

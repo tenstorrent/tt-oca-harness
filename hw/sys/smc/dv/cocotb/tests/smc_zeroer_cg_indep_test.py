@@ -8,13 +8,19 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_zeroer_cg_indep_test_seq import smc_zeroer_cg_indep_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_zeroer_cg_indep_test(smc_base_test):
-    """LIVE Zeroer axi/reg CG independence (Skill 1.5)."""
+    """LIVE Zeroer axi/reg CG independence."""
+
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-ZINDEP-DECOUPLE",
+    )
+    min_evidence = 2
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
@@ -31,6 +37,9 @@ class smc_zeroer_cg_indep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the zeroer-DONE poll is timing-dependent.
+            min_csr_accesses=10,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

@@ -6,7 +6,7 @@
 
 The bridge lives under ``build/dv/python`` and maps stable import names
 to DUT-local DV roots, for example ``smc`` -> ``hw/sys/smc/dv``. The
-generated tree is intentionally kept out of source control.
+generated tree is gitignored.
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-
 
 NAMESPACE_ROOT = Path("build/dv/python")
 DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}
@@ -138,7 +137,9 @@ def validate_existing_bridge(repo_root: Path, targets: dict[str, NamespaceTarget
 
         actual = _expected_link_target(link_path, target.path)
         if actual != target.path.resolve():
-            errors.append(f"stale namespace symlink: {link_path} -> {actual}, expected {target.path}")
+            errors.append(
+                f"stale namespace symlink: {link_path} -> {actual}, expected {target.path}"
+            )
 
     for entry in namespace_root.iterdir():
         if entry.name in expected_names:
@@ -155,7 +156,7 @@ def sync_bridge(repo_root: Path, targets: dict[str, NamespaceTarget]) -> None:
     """Create, refresh, and clean the generated namespace bridge."""
 
     if os.name == "nt":
-        raise NamespaceError("Windows symlink support is out of scope for the v0.1 namespace bridge")
+        raise NamespaceError("Windows symlink support is out of scope for the namespace bridge")
 
     namespace_root = repo_root / NAMESPACE_ROOT
     namespace_root.mkdir(parents=True, exist_ok=True)

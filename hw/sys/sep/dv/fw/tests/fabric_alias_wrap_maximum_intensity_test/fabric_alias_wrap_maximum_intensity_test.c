@@ -75,7 +75,6 @@ static int test_exhaustive_alias_wrap_combinations(void) {
             // Test wrap behavior with all combinations
             uint32_t test_addr = combo_src + 0x80000;
 
-            // Basic wrap testing
             test_axi_transaction(test_addr, 4, AXI_READ);
             test_axi_transaction(test_addr + 0x1000, 4, AXI_WRITE);
 
@@ -215,7 +214,7 @@ static int test_pathological_wrap_scenarios(void) {
                 uint32_t overlap_dest =
                     ALIAS_WRAP_DEST_SPACE + pathological_test * 0x4000000 + alias_idx * 0x400000;
 
-                // Deliberately create pathological overlap
+                // Pathological overlap: decreasing sizes at overlapping offsets
                 uint32_t pathological_size = 0x400000 - member * 0x80000; // Decreasing sizes
                 uint32_t pathological_offset = member * 0x100000;         // Overlapping offsets
 
@@ -292,7 +291,7 @@ static int test_pathological_wrap_scenarios(void) {
             uint32_t chaos_dest = ALIAS_WRAP_DEST_SPACE + pathological_test * 0x4000000 +
                                   0x3000000 + priority_chaos * 0x100000;
 
-            // Deliberately chaotic priority assignment
+            // Chaotic priority assignment
             int chaotic_priority = (priority_chaos * 7 + pathological_test * 3) % 16;
             int chaotic_master = (priority_chaos * 11) % 16;
             int chaotic_wrap_mode = priority_chaos % 8;
@@ -353,7 +352,6 @@ static int test_wrap_state_machine_exhaustive(void) {
 
                 uint32_t state_test_addr = state_src + 0x100000;
 
-                // Test current state
                 test_axi_transaction(state_test_addr, 8, AXI_READ);
                 test_axi_transaction(state_test_addr + 0x1000, 8, AXI_WRITE);
 
@@ -599,7 +597,6 @@ int main(void) {
     printf("Alias Wrap Maximum Intensity Test\n");
     printf("Strategy: Maximum-intensity alias-wrap test; full module activation\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_alias_wrap_maximum_intensity_test");
         return TEST_FAIL;

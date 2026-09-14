@@ -6,9 +6,9 @@
 
 ====== Address Space Organization
 
-Each mailbox instance occupies a dedicated 2KB (0x800) address space.
-The total address space is 0x20008 bytes supporting up to 64 mailbox
-instances (32 pairs):
+Each mailbox aperture occupies a dedicated 2KB (0x800) address space.
+The total address space is 0x20000 bytes supporting up to 64 mailbox
+apertures (32 pairs):
 
 [source,sourceCode,text]
 ----
@@ -21,35 +21,44 @@ Base + 0x02800 - 0x02FFF: Inbound Mailbox 2
 ...
 Base + 0x1F000 - 0x1F7FF: Outbound Mailbox 31
 Base + 0x1F800 - 0x1FFFF: Inbound Mailbox 31
-Base + 0x20000 - 0x20007: MAILBOX_RSVD (Reserved space)
 ----
 
 *Address Space Characteristics:*::
-  * *Per-Mailbox Size*: 2KB (0x800)
-  * *Total Address Space*: 0x20008 bytes
-  * *Address Width*: 18 bits
-  * *Maximum Mailboxes*: 32 pairs (64 instances)
+  * *Per-Aperture Size*: `MAILBOX_SIZE`, 2KB (0x800)
+  * *Total Address Space*: 0x20000 bytes for 32 pairs
+  * *Decoded Address Span*: 17 bits for 32 pairs; the slave port itself is
+    `ADDR_WIDTH` bits wide (32 in the SMC and SEP integrations)
+  * *Maximum Mailboxes*: 32 pairs (64 apertures)
+
+The two apertures of a pair are the two ends of the same pair of FIFOs:
+`WRITE_DATA` in the outbound aperture pushes the FIFO that `READ_DATA` in the
+paired inbound aperture pops, and vice versa. Both ends are reachable from the
+same AXI4-Lite slave port.
 
 ====== Per-Mailbox Register Map
 
-Within each 4KB mailbox address space, registers are organized as
-follows:
+Within each 2KB mailbox aperture, registers are organized as follows.
+Offsets are spaced by `DATA_WIDTH`/8, so they are 8 bytes apart in the
+64-bit configurations used today:
 
 .Register Address Map
 [width="100%",cols="15%,20%,10%,15%,40%",options="header",]
 |==============================================================
 |Offset |Register Name |Width |Access |Description
-|0x00 |WRITE_DATA |64-bit |WO |Write data to mailbox FIFO
-|0x08 |READ_DATA |64-bit |RO |Read data from mailbox FIFO
-|0x10 |STATUS |64-bit |RO |FIFO status (empty, full, threshold)
-|0x18 |ERROR_FLAGS |64-bit |RO |Error flags (write/read errors)
+|0x00 |WRITE_DATA |64-bit |W |Write data to mailbox FIFO
+|0x08 |READ_DATA |64-bit |R |Read data from mailbox FIFO
+|0x10 |STATUS |64-bit |R |FIFO status (empty, full, threshold)
+|0x18 |ERROR_FLAGS |64-bit |R |Error flags (write/read errors), clear on read
 |0x20 |WIRQT |64-bit |RW |Write interrupt threshold
 |0x28 |RIRQT |64-bit |RW |Read interrupt threshold
 |0x30 |IRQS |64-bit |RW |Interrupt status (write-1-to-clear)
 |0x38 |IRQEN |64-bit |RW |Interrupt enable control
-|0x40 |IRQP |64-bit |RO |Interrupt pending status
-|0x48 |CTRL |64-bit |WO |Control register (FIFO flush)
+|0x40 |IRQP |64-bit |R |Interrupt pending status
+|0x48 |CTRL |64-bit |W |Control register (FIFO flush); the flush bits are
+not registered, so reads return 0 with OKAY
 |==============================================================
+
+Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.
 
 ====== Address Examples
 

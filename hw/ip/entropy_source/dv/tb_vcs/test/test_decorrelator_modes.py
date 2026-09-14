@@ -36,18 +36,18 @@ Category 1.4: Byte Mask Configuration (1 test)
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 
 from test.test_base import (
+    collect_entropy_samples,
     configure_testbench,
     program_dut_registers,
-    collect_entropy_samples,
-    verify_fifo_readout,
-    verify_checkers,
-    reg_wr,
     reg_rd,
+    reg_wr,
+    verify_checkers,
+    verify_fifo_readout,
 )
-from test.test_config import get_custom_config, DecorrelatorConfig
+from test.test_config import DecorrelatorConfig, get_custom_config
 
 
 @cocotb.test()
@@ -56,11 +56,14 @@ async def test_1_1_1_full_decorrelation_mode(dut):
 
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            mode=0, bypass_dut=False, sample_clk_div=63, bypass_mask=0x000,
-            sample_period=64  # Reference model must match DUT: div64 = period 64
+            mode=0,
+            bypass_dut=False,
+            sample_clk_div=63,
+            bypass_mask=0x000,
+            sample_period=64,  # Reference model must match DUT: div64 = period 64
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     # Phase 1: Configure testbench
@@ -87,11 +90,14 @@ async def test_1_1_2_full_bypass_mode(dut):
 
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            mode=2, bypass_dut=True, sample_clk_div=7, bypass_mask=0xFFF,
-            sample_period=8  # Reference model must match DUT: div8 = period 8
+            mode=2,
+            bypass_dut=True,
+            sample_clk_div=7,
+            bypass_mask=0xFFF,
+            sample_period=8,  # Reference model must match DUT: div8 = period 8
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     # Phase 1: Configure testbench
@@ -118,11 +124,14 @@ async def test_1_1_3_decorrelation_fast_sampling(dut):
 
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            mode=0, bypass_dut=False, sample_clk_div=7, bypass_mask=0x000,
-            sample_period=8  # Reference model must match DUT: div8 = period 8
+            mode=0,
+            bypass_dut=False,
+            sample_clk_div=7,
+            bypass_mask=0x000,
+            sample_period=8,  # Reference model must match DUT: div8 = period 8
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     # Phase 1: Configure testbench
@@ -149,11 +158,14 @@ async def test_1_1_4_decorrelation_slow_sampling(dut):
 
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            mode=0, bypass_dut=False, sample_clk_div=255, bypass_mask=0x000,
-            sample_period=256  # Reference model must match DUT: div256 = period 256
+            mode=0,
+            bypass_dut=False,
+            sample_clk_div=255,
+            bypass_mask=0x000,
+            sample_period=256,  # Reference model must match DUT: div256 = period 256
         ),
         decorrelator_samples=30,  # Fewer samples due to slow rate
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     # Phase 1: Configure testbench
@@ -180,8 +192,8 @@ async def test_1_1_4_decorrelation_slow_sampling(dut):
 # Tests verify mixed mode capability where different lanes can have different
 # decorrelator configurations using the BYPASS_MASK register.
 #
-# The reference model has been enhanced to support per-lane bypass control,
-# so decorrelator checker is ENABLED for all mixed mode tests. Verification:
+# The reference model supports per-lane bypass control, so the decorrelator checker is
+# ENABLED for all mixed mode tests. Verification:
 #   - Decorrelator checker (per-lane verification against reference model)
 #   - Compressor checker (end-to-end verification)
 #   - FIFO verification (data integrity)
@@ -193,15 +205,15 @@ async def test_1_2_1_single_lane_bypass_lane0(dut):
 
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            mode=0,                # Reference: DECOR_29 for non-bypassed lanes
-            bypass_dut=True,       # DUT: Mixed mode
-            sample_clk_div=63,     # div64 for decorrelation
-            bypass_mask=0x001,     # Only lane 0 bypassed
+            mode=0,  # Reference: DECOR_29 for non-bypassed lanes
+            bypass_dut=True,  # DUT: Mixed mode
+            sample_clk_div=63,  # div64 for decorrelation
+            bypass_mask=0x001,  # Only lane 0 bypassed
             sample_period=64,
-            checker_enable=True    # Enable decorrelator checker (ref model supports mixed mode)
+            checker_enable=True,  # Enable decorrelator checker (ref model supports mixed mode)
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     # Phase 1: Configure testbench
@@ -231,12 +243,12 @@ async def test_1_2_2_single_lane_bypass_lane11(dut):
             mode=0,
             bypass_dut=True,
             sample_clk_div=63,
-            bypass_mask=0x800,     # Only lane 11 bypassed
+            bypass_mask=0x800,  # Only lane 11 bypassed
             sample_period=64,
-            checker_enable=True    # Enable decorrelator checker (ref model supports mixed mode)
+            checker_enable=True,  # Enable decorrelator checker (ref model supports mixed mode)
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     apb, mon, cfg = await configure_testbench(dut, config=cfg)
@@ -257,12 +269,12 @@ async def test_1_2_3_even_lanes_bypass(dut):
             mode=0,
             bypass_dut=True,
             sample_clk_div=63,
-            bypass_mask=0x555,     # Even lanes bypassed (binary: 0101 0101 0101)
+            bypass_mask=0x555,  # Even lanes bypassed (binary: 0101 0101 0101)
             sample_period=64,
-            checker_enable=True    # Enable decorrelator checker (ref model supports mixed mode)
+            checker_enable=True,  # Enable decorrelator checker (ref model supports mixed mode)
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     apb, mon, cfg = await configure_testbench(dut, config=cfg)
@@ -283,12 +295,12 @@ async def test_1_2_4_odd_lanes_bypass(dut):
             mode=0,
             bypass_dut=True,
             sample_clk_div=63,
-            bypass_mask=0xAAA,     # Odd lanes bypassed (binary: 1010 1010 1010)
+            bypass_mask=0xAAA,  # Odd lanes bypassed (binary: 1010 1010 1010)
             sample_period=64,
-            checker_enable=True    # Enable decorrelator checker (ref model supports mixed mode)
+            checker_enable=True,  # Enable decorrelator checker (ref model supports mixed mode)
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     apb, mon, cfg = await configure_testbench(dut, config=cfg)
@@ -309,12 +321,12 @@ async def test_1_2_5_half_and_half_split(dut):
             mode=0,
             bypass_dut=True,
             sample_clk_div=63,
-            bypass_mask=0x03F,     # Lanes 0-5 bypassed (binary: 0000 0011 1111)
+            bypass_mask=0x03F,  # Lanes 0-5 bypassed (binary: 0000 0011 1111)
             sample_period=64,
-            checker_enable=True    # Enable decorrelator checker (ref model supports mixed mode)
+            checker_enable=True,  # Enable decorrelator checker (ref model supports mixed mode)
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     apb, mon, cfg = await configure_testbench(dut, config=cfg)
@@ -335,12 +347,12 @@ async def test_1_2_6_single_lane_decorrelate(dut):
             mode=0,
             bypass_dut=True,
             sample_clk_div=63,
-            bypass_mask=0xFDF,     # All bypass except lane 5 (binary: 1111 1101 1111)
+            bypass_mask=0xFDF,  # All bypass except lane 5 (binary: 1111 1101 1111)
             sample_period=64,
-            checker_enable=True    # Enable decorrelator checker (ref model supports mixed mode)
+            checker_enable=True,  # Enable decorrelator checker (ref model supports mixed mode)
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     apb, mon, cfg = await configure_testbench(dut, config=cfg)
@@ -360,13 +372,13 @@ async def test_1_2_7_mixed_mode_fast_sampling(dut):
         decorrelator=DecorrelatorConfig(
             mode=0,
             bypass_dut=True,
-            sample_clk_div=7,      # div8 (fast sampling)
-            bypass_mask=0x0F0,     # Lanes 4-7 bypassed (binary: 0000 1111 0000)
+            sample_clk_div=7,  # div8 (fast sampling)
+            bypass_mask=0x0F0,  # Lanes 4-7 bypassed (binary: 0000 1111 0000)
             sample_period=8,
-            checker_enable=True    # Enable decorrelator checker (ref model supports mixed mode)
+            checker_enable=True,  # Enable decorrelator checker (ref model supports mixed mode)
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     apb, mon, cfg = await configure_testbench(dut, config=cfg)
@@ -386,14 +398,14 @@ async def test_1_2_8_dynamic_bypass_mask_changes(dut):
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
             mode=0,
-            bypass_dut=False,      # Initially no bypass
+            bypass_dut=False,  # Initially no bypass
             sample_clk_div=63,
-            bypass_mask=0x000,     # Start: all decorrelate
+            bypass_mask=0x000,  # Start: all decorrelate
             sample_period=64,
-            checker_enable=True    # Enable decorrelator checker (ref model supports mixed mode)
+            checker_enable=True,  # Enable decorrelator checker (ref model supports mixed mode)
         ),
         decorrelator_samples=20,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     apb, mon, cfg = await configure_testbench(dut, config=cfg)
@@ -407,7 +419,7 @@ async def test_1_2_8_dynamic_bypass_mask_changes(dut):
     dut._log.info("\n[Stage 2] Changing to half bypass (bypass_mask=0x03F)")
     await RisingEdge(dut.apb.pclk)
     decorr_ctrl_val = (63 << 12) | 0x03F  # sample_clk_div=63, bypass_mask=0x03F
-    await reg_wr(apb, 'DECORRELATOR_CTRL', decorr_ctrl_val)
+    await reg_wr(apb, "DECORRELATOR_CTRL", decorr_ctrl_val)
 
     # Update reference model configuration
     dut.decor_cfg.bypass_mask.value = 0x03F
@@ -419,7 +431,7 @@ async def test_1_2_8_dynamic_bypass_mask_changes(dut):
     dut._log.info("\n[Stage 3] Changing to all bypass (bypass_mask=0xFFF)")
     await RisingEdge(dut.apb.pclk)
     decorr_ctrl_val = (63 << 12) | 0xFFF  # sample_clk_div=63, bypass_mask=0xFFF
-    await reg_wr(apb, 'DECORRELATOR_CTRL', decorr_ctrl_val)
+    await reg_wr(apb, "DECORRELATOR_CTRL", decorr_ctrl_val)
 
     # Update reference model configuration
     dut.decor_cfg.bypass_mask.value = 0xFFF
@@ -441,7 +453,7 @@ async def test_1_2_8_dynamic_bypass_mask_changes(dut):
 # ============================================================================
 # Category 1.3: Compressor Bypass Mode Tests
 # ============================================================================
-# Tests verify the new BYPASS_ENTROPY_COMPRESSOR feature (CTRL[8]) where
+# Tests verify the BYPASS_ENTROPY_COMPRESSOR feature (CTRL[8]) where
 # the compressor is bypassed and raw decorrelator output goes directly to FIFO.
 #
 # NOTE: Normal compressor mode (BYPASS=0) is already tested in Suite 1.1 and 1.2.
@@ -453,7 +465,7 @@ async def test_1_2_8_dynamic_bypass_mask_changes(dut):
 #     - Word 1: decorrelator bytes[7:4]   (lanes 4-7)
 #     - Word 2: decorrelator bytes[11:8]  (lanes 8-11)
 #   - FIFO usage: 3 words/sample (vs 1 word/sample in normal mode)
-#   - Max safe samples: ~10 (FIFO depth ~32 / 3)
+#   - Max safe samples: 21 (FIFO depth 64 / 3 words)
 #
 # Verification Strategy:
 #   - Compressor checker MUST be disabled (no compressor output to check)
@@ -465,22 +477,24 @@ async def test_1_2_8_dynamic_bypass_mask_changes(dut):
 async def test_1_3_1_bypass_compressor_mode(dut):
     """Test 1.3.1: Bypass compressor mode - BYPASS_ENTROPY_COMPRESSOR=1 (3:1 FIFO ratio)"""
 
-    from test.test_base import reg_rd, reg_wr, read_fifo_status
-    from cocotb.triggers import ClockCycles
+    from test.test_base import read_fifo_status, reg_rd, reg_wr
     from test.test_config import CompressorConfig
 
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            mode=0, bypass_dut=False, sample_clk_div=63, bypass_mask=0x000,
+            mode=0,
+            bypass_dut=False,
+            sample_clk_div=63,
+            bypass_mask=0x000,
             sample_period=64,
-            checker_enable=True  # Decorrelator checker still works
+            checker_enable=True,  # Decorrelator checker still works
         ),
         compressor=CompressorConfig(
             checker_enable=False  # MUST disable compressor checker
         ),
-        bypass_compressor_dut=True,    # Compressor BYPASSED
-        decorrelator_samples=20,        # 20 samples x 3 words = 60 FIFO entries (FIFO depth=64)
-        fifo_verification_enable=False  # Manual FIFO verification
+        bypass_compressor_dut=True,  # Compressor BYPASSED
+        decorrelator_samples=20,  # 20 samples x 3 words = 60 FIFO entries (FIFO depth=64)
+        fifo_verification_enable=False,  # Manual FIFO verification
     )
 
     # Phase 1: Configure testbench
@@ -490,7 +504,7 @@ async def test_1_3_1_bypass_compressor_mode(dut):
     await program_dut_registers(dut, apb, cfg)
 
     # Verify CTRL register
-    ctrl_val = await reg_rd(apb, 'CTRL')
+    ctrl_val = await reg_rd(apb, "CTRL")
     bypass_bit = (ctrl_val >> 8) & 0x1
     dut._log.info(f"\n[Verify] CTRL.BYPASS_ENTROPY_COMPRESSOR[8] = {bypass_bit}")
     assert bypass_bit == 1, f"Expected BYPASS=1, got {bypass_bit}"
@@ -505,7 +519,7 @@ async def test_1_3_1_bypass_compressor_mode(dut):
 
     # Disable ROs to stop entropy generation (proper way to freeze FIFO push)
     dut._log.info("\n[Freeze] Disabling RING_OSC_ENABLE to stop entropy generation...")
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
 
     # Wait for pipeline to drain
     await ClockCycles(dut.apb.pclk, 10)
@@ -523,30 +537,44 @@ async def test_1_3_1_bypass_compressor_mode(dut):
 
     for sample_idx in range(num_verify):
         # Read 3 FIFO words for this sample
-        word0 = await reg_rd(apb, 'FIFO_RDATA')  # Lanes [3:0]
-        word1 = await reg_rd(apb, 'FIFO_RDATA')  # Lanes [7:4]
-        word2 = await reg_rd(apb, 'FIFO_RDATA')  # Lanes [11:8]
+        word0 = await reg_rd(apb, "FIFO_RDATA")  # Lanes [3:0]
+        word1 = await reg_rd(apb, "FIFO_RDATA")  # Lanes [7:4]
+        word2 = await reg_rd(apb, "FIFO_RDATA")  # Lanes [11:8]
 
         # Build expected words from decorrelator reference output
         ref_bytes = ref_samples[sample_idx]  # 12 bytes from decorrelator model
-        expected_word0 = (ref_bytes[3] << 24) | (ref_bytes[2] << 16) | (ref_bytes[1] << 8) | ref_bytes[0]
-        expected_word1 = (ref_bytes[7] << 24) | (ref_bytes[6] << 16) | (ref_bytes[5] << 8) | ref_bytes[4]
-        expected_word2 = (ref_bytes[11] << 24) | (ref_bytes[10] << 16) | (ref_bytes[9] << 8) | ref_bytes[8]
+        expected_word0 = (
+            (ref_bytes[3] << 24) | (ref_bytes[2] << 16) | (ref_bytes[1] << 8) | ref_bytes[0]
+        )
+        expected_word1 = (
+            (ref_bytes[7] << 24) | (ref_bytes[6] << 16) | (ref_bytes[5] << 8) | ref_bytes[4]
+        )
+        expected_word2 = (
+            (ref_bytes[11] << 24) | (ref_bytes[10] << 16) | (ref_bytes[9] << 8) | ref_bytes[8]
+        )
 
         # Verify each word
-        match0 = (word0 == expected_word0)
-        match1 = (word1 == expected_word1)
-        match2 = (word2 == expected_word2)
+        match0 = word0 == expected_word0
+        match1 = word1 == expected_word1
+        match2 = word2 == expected_word2
 
         # Show first 3, last 2, and all mismatches
-        show_sample = (sample_idx < 3) or (sample_idx >= num_verify - 2) or not (match0 and match1 and match2)
+        show_sample = (
+            (sample_idx < 3) or (sample_idx >= num_verify - 2) or not (match0 and match1 and match2)
+        )
         if show_sample:
             dut._log.info(f"\n  Sample {sample_idx}:")
-            dut._log.info(f"    Word 0 (lanes [3:0]):   DUT=0x{word0:08X}  Expected=0x{expected_word0:08X}  {'MATCH' if match0 else 'MISMATCH'}")
-            dut._log.info(f"    Word 1 (lanes [7:4]):   DUT=0x{word1:08X}  Expected=0x{expected_word1:08X}  {'MATCH' if match1 else 'MISMATCH'}")
-            dut._log.info(f"    Word 2 (lanes [11:8]):  DUT=0x{word2:08X}  Expected=0x{expected_word2:08X}  {'MATCH' if match2 else 'MISMATCH'}")
+            dut._log.info(
+                f"    Word 0 (lanes [3:0]):   DUT=0x{word0:08X}  Expected=0x{expected_word0:08X}  {'MATCH' if match0 else 'MISMATCH'}"
+            )
+            dut._log.info(
+                f"    Word 1 (lanes [7:4]):   DUT=0x{word1:08X}  Expected=0x{expected_word1:08X}  {'MATCH' if match1 else 'MISMATCH'}"
+            )
+            dut._log.info(
+                f"    Word 2 (lanes [11:8]):  DUT=0x{word2:08X}  Expected=0x{expected_word2:08X}  {'MATCH' if match2 else 'MISMATCH'}"
+            )
         elif sample_idx == 3:
-            dut._log.info(f"\n  ... (showing first 3 and last 2 only)")
+            dut._log.info("\n  ... (showing first 3 and last 2 only)")
 
         if not (match0 and match1 and match2):
             mismatch_count += 1
@@ -560,13 +588,16 @@ async def test_1_3_1_bypass_compressor_mode(dut):
     # Report results
     if mismatch_count == 0:
         dut._log.info(f"\n[PASS] All {num_verify} verified samples matched decorrelator reference!")
-        dut._log.info(f"  Total FIFO entries: {len(ref_samples)} samples x 3 words = {len(ref_samples)*3} entries")
+        dut._log.info(
+            f"  Total FIFO entries: {len(ref_samples)} samples x 3 words = {len(ref_samples) * 3} entries"
+        )
     else:
         dut._log.error(f"\n[FAIL] {mismatch_count}/{num_verify} samples with mismatches!")
         raise AssertionError(f"FIFO bypass verification failed: {mismatch_count} sample mismatches")
 
     # Verify decorrelator checker (compressor checker already disabled)
     from test.test_base import decor_checker_verify
+
     decor_checker_verify(dut)
 
     dut._log.info("[PASS] Test 1.3.1 complete - Bypass mode with normal rate (div64)")
@@ -576,22 +607,24 @@ async def test_1_3_1_bypass_compressor_mode(dut):
 async def test_1_3_2_bypass_slow_sampling(dut):
     """Test 1.3.2: Bypass mode with slow sampling (div256) - Realistic high-quality entropy generation"""
 
-    from test.test_base import reg_rd, reg_wr, read_fifo_status, decor_checker_verify
-    from cocotb.triggers import ClockCycles
+    from test.test_base import decor_checker_verify, read_fifo_status, reg_rd, reg_wr
     from test.test_config import CompressorConfig
 
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            mode=0, bypass_dut=False, sample_clk_div=255, bypass_mask=0x000,
+            mode=0,
+            bypass_dut=False,
+            sample_clk_div=255,
+            bypass_mask=0x000,
             sample_period=256,  # Slow sampling: div256
-            checker_enable=True  # Decorrelator checker still works
+            checker_enable=True,  # Decorrelator checker still works
         ),
         compressor=CompressorConfig(
             checker_enable=False  # MUST disable in bypass mode
         ),
-        bypass_compressor_dut=True,    # Bypass mode
-        decorrelator_samples=20,        # 20 samples x 3 words = 60 FIFO entries
-        fifo_verification_enable=False
+        bypass_compressor_dut=True,  # Bypass mode
+        decorrelator_samples=20,  # 20 samples x 3 words = 60 FIFO entries
+        fifo_verification_enable=False,
     )
 
     # Phase 1: Configure testbench
@@ -601,7 +634,7 @@ async def test_1_3_2_bypass_slow_sampling(dut):
     await program_dut_registers(dut, apb, cfg)
 
     # Verify configuration
-    ctrl_val = await reg_rd(apb, 'CTRL')
+    ctrl_val = await reg_rd(apb, "CTRL")
     bypass_bit = (ctrl_val >> 8) & 0x1
     dut._log.info(f"\n[Verify] CTRL.BYPASS_ENTROPY_COMPRESSOR[8] = {bypass_bit}")
     assert bypass_bit == 1, f"Expected BYPASS=1, got {bypass_bit}"
@@ -619,7 +652,7 @@ async def test_1_3_2_bypass_slow_sampling(dut):
 
     # Disable ROs to stop entropy generation (proper way to freeze FIFO push)
     dut._log.info("\n[Freeze] Disabling RING_OSC_ENABLE to stop entropy generation...")
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
 
     # Wait for pipeline to drain
     await ClockCycles(dut.apb.pclk, 10)
@@ -627,7 +660,7 @@ async def test_1_3_2_bypass_slow_sampling(dut):
     # Check FIFO level
     level, _, _ = await read_fifo_status(apb)
     dut._log.info(f"\n[FIFO] Level: {level} entries (expected ~60)")
-    dut._log.info(f"  Slow sampling (div256) with bypass mode (3 words/sample)")
+    dut._log.info("  Slow sampling (div256) with bypass mode (3 words/sample)")
     assert 56 <= level <= 64, f"Expected ~60 entries, got {level}"
 
     # Phase 4: Verify 3-word packing against decorrelator reference model
@@ -638,30 +671,44 @@ async def test_1_3_2_bypass_slow_sampling(dut):
 
     for sample_idx in range(num_verify):
         # Read 3 FIFO words for this sample
-        word0 = await reg_rd(apb, 'FIFO_RDATA')
-        word1 = await reg_rd(apb, 'FIFO_RDATA')
-        word2 = await reg_rd(apb, 'FIFO_RDATA')
+        word0 = await reg_rd(apb, "FIFO_RDATA")
+        word1 = await reg_rd(apb, "FIFO_RDATA")
+        word2 = await reg_rd(apb, "FIFO_RDATA")
 
         # Build expected words from decorrelator reference output
         ref_bytes = ref_samples[sample_idx]
-        expected_word0 = (ref_bytes[3] << 24) | (ref_bytes[2] << 16) | (ref_bytes[1] << 8) | ref_bytes[0]
-        expected_word1 = (ref_bytes[7] << 24) | (ref_bytes[6] << 16) | (ref_bytes[5] << 8) | ref_bytes[4]
-        expected_word2 = (ref_bytes[11] << 24) | (ref_bytes[10] << 16) | (ref_bytes[9] << 8) | ref_bytes[8]
+        expected_word0 = (
+            (ref_bytes[3] << 24) | (ref_bytes[2] << 16) | (ref_bytes[1] << 8) | ref_bytes[0]
+        )
+        expected_word1 = (
+            (ref_bytes[7] << 24) | (ref_bytes[6] << 16) | (ref_bytes[5] << 8) | ref_bytes[4]
+        )
+        expected_word2 = (
+            (ref_bytes[11] << 24) | (ref_bytes[10] << 16) | (ref_bytes[9] << 8) | ref_bytes[8]
+        )
 
         # Verify each word
-        match0 = (word0 == expected_word0)
-        match1 = (word1 == expected_word1)
-        match2 = (word2 == expected_word2)
+        match0 = word0 == expected_word0
+        match1 = word1 == expected_word1
+        match2 = word2 == expected_word2
 
         # Show first 3, last 2, and all mismatches
-        show_sample = (sample_idx < 3) or (sample_idx >= num_verify - 2) or not (match0 and match1 and match2)
+        show_sample = (
+            (sample_idx < 3) or (sample_idx >= num_verify - 2) or not (match0 and match1 and match2)
+        )
         if show_sample:
             dut._log.info(f"\n  Sample {sample_idx}:")
-            dut._log.info(f"    Word 0 (lanes [3:0]):   DUT=0x{word0:08X}  Expected=0x{expected_word0:08X}  {'MATCH' if match0 else 'MISMATCH'}")
-            dut._log.info(f"    Word 1 (lanes [7:4]):   DUT=0x{word1:08X}  Expected=0x{expected_word1:08X}  {'MATCH' if match1 else 'MISMATCH'}")
-            dut._log.info(f"    Word 2 (lanes [11:8]):  DUT=0x{word2:08X}  Expected=0x{expected_word2:08X}  {'MATCH' if match2 else 'MISMATCH'}")
+            dut._log.info(
+                f"    Word 0 (lanes [3:0]):   DUT=0x{word0:08X}  Expected=0x{expected_word0:08X}  {'MATCH' if match0 else 'MISMATCH'}"
+            )
+            dut._log.info(
+                f"    Word 1 (lanes [7:4]):   DUT=0x{word1:08X}  Expected=0x{expected_word1:08X}  {'MATCH' if match1 else 'MISMATCH'}"
+            )
+            dut._log.info(
+                f"    Word 2 (lanes [11:8]):  DUT=0x{word2:08X}  Expected=0x{expected_word2:08X}  {'MATCH' if match2 else 'MISMATCH'}"
+            )
         elif sample_idx == 3:
-            dut._log.info(f"\n  ... (showing first 3 and last 2 only)")
+            dut._log.info("\n  ... (showing first 3 and last 2 only)")
 
         if not (match0 and match1 and match2):
             mismatch_count += 1
@@ -675,7 +722,9 @@ async def test_1_3_2_bypass_slow_sampling(dut):
     # Report results
     if mismatch_count == 0:
         dut._log.info(f"\n[PASS] All {num_verify} verified samples matched decorrelator reference!")
-        dut._log.info(f"  Total FIFO entries: {len(ref_samples)} samples x 3 words = {len(ref_samples)*3} entries")
+        dut._log.info(
+            f"  Total FIFO entries: {len(ref_samples)} samples x 3 words = {len(ref_samples) * 3} entries"
+        )
     else:
         dut._log.error(f"\n[FAIL] {mismatch_count}/{num_verify} samples with mismatches!")
         raise AssertionError(f"FIFO bypass verification failed: {mismatch_count} sample mismatches")
@@ -690,22 +739,24 @@ async def test_1_3_2_bypass_slow_sampling(dut):
 async def test_1_3_3_bypass_fast_sampling(dut):
     """Test 1.3.3: Bypass mode with fast sampling (div8) - Stress test for FSM throughput"""
 
-    from test.test_base import reg_rd, reg_wr, read_fifo_status
-    from cocotb.triggers import ClockCycles
+    from test.test_base import read_fifo_status, reg_rd, reg_wr
     from test.test_config import CompressorConfig
 
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            mode=0, bypass_dut=False, sample_clk_div=7, bypass_mask=0x000,
+            mode=0,
+            bypass_dut=False,
+            sample_clk_div=7,
+            bypass_mask=0x000,
             sample_period=8,  # Fast sampling: div8
-            checker_enable=True  # Decorrelator checker still works
+            checker_enable=True,  # Decorrelator checker still works
         ),
         compressor=CompressorConfig(
             checker_enable=False  # MUST disable in bypass mode
         ),
-        bypass_compressor_dut=True,    # Bypass mode
-        decorrelator_samples=20,        # 20 samples x 3 words = 60 entries
-        fifo_verification_enable=False
+        bypass_compressor_dut=True,  # Bypass mode
+        decorrelator_samples=20,  # 20 samples x 3 words = 60 entries
+        fifo_verification_enable=False,
     )
 
     # Phase 1: Configure testbench
@@ -715,7 +766,7 @@ async def test_1_3_3_bypass_fast_sampling(dut):
     await program_dut_registers(dut, apb, cfg)
 
     # Verify configuration
-    ctrl_val = await reg_rd(apb, 'CTRL')
+    ctrl_val = await reg_rd(apb, "CTRL")
     bypass_bit = (ctrl_val >> 8) & 0x1
     dut._log.info(f"\n[Verify] CTRL.BYPASS_ENTROPY_COMPRESSOR[8] = {bypass_bit}")
     assert bypass_bit == 1, f"Expected BYPASS=1, got {bypass_bit}"
@@ -733,7 +784,7 @@ async def test_1_3_3_bypass_fast_sampling(dut):
 
     # Disable ROs to stop entropy generation (proper way to freeze FIFO push)
     dut._log.info("\n[Freeze] Disabling RING_OSC_ENABLE to stop entropy generation...")
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
 
     # Wait for pipeline to drain
     await ClockCycles(dut.apb.pclk, 10)
@@ -741,7 +792,7 @@ async def test_1_3_3_bypass_fast_sampling(dut):
     # Check FIFO level
     level, _, _ = await read_fifo_status(apb)
     dut._log.info(f"\n[FIFO] Level: {level} entries (expected ~60)")
-    dut._log.info(f"  Fast sampling (div8) with bypass mode (3 words/sample)")
+    dut._log.info("  Fast sampling (div8) with bypass mode (3 words/sample)")
     assert 56 <= level <= 64, f"Expected ~60 entries, got {level}"
 
     # Phase 4: Verify 3-word packing against decorrelator reference model
@@ -752,30 +803,44 @@ async def test_1_3_3_bypass_fast_sampling(dut):
 
     for sample_idx in range(num_verify):
         # Read 3 FIFO words for this sample
-        word0 = await reg_rd(apb, 'FIFO_RDATA')
-        word1 = await reg_rd(apb, 'FIFO_RDATA')
-        word2 = await reg_rd(apb, 'FIFO_RDATA')
+        word0 = await reg_rd(apb, "FIFO_RDATA")
+        word1 = await reg_rd(apb, "FIFO_RDATA")
+        word2 = await reg_rd(apb, "FIFO_RDATA")
 
         # Build expected words from decorrelator reference output
         ref_bytes = ref_samples[sample_idx]
-        expected_word0 = (ref_bytes[3] << 24) | (ref_bytes[2] << 16) | (ref_bytes[1] << 8) | ref_bytes[0]
-        expected_word1 = (ref_bytes[7] << 24) | (ref_bytes[6] << 16) | (ref_bytes[5] << 8) | ref_bytes[4]
-        expected_word2 = (ref_bytes[11] << 24) | (ref_bytes[10] << 16) | (ref_bytes[9] << 8) | ref_bytes[8]
+        expected_word0 = (
+            (ref_bytes[3] << 24) | (ref_bytes[2] << 16) | (ref_bytes[1] << 8) | ref_bytes[0]
+        )
+        expected_word1 = (
+            (ref_bytes[7] << 24) | (ref_bytes[6] << 16) | (ref_bytes[5] << 8) | ref_bytes[4]
+        )
+        expected_word2 = (
+            (ref_bytes[11] << 24) | (ref_bytes[10] << 16) | (ref_bytes[9] << 8) | ref_bytes[8]
+        )
 
         # Verify each word
-        match0 = (word0 == expected_word0)
-        match1 = (word1 == expected_word1)
-        match2 = (word2 == expected_word2)
+        match0 = word0 == expected_word0
+        match1 = word1 == expected_word1
+        match2 = word2 == expected_word2
 
         # Show first 3, last 2, and all mismatches
-        show_sample = (sample_idx < 3) or (sample_idx >= num_verify - 2) or not (match0 and match1 and match2)
+        show_sample = (
+            (sample_idx < 3) or (sample_idx >= num_verify - 2) or not (match0 and match1 and match2)
+        )
         if show_sample:
             dut._log.info(f"\n  Sample {sample_idx}:")
-            dut._log.info(f"    Word 0 (lanes [3:0]):   DUT=0x{word0:08X}  Expected=0x{expected_word0:08X}  {'MATCH' if match0 else 'MISMATCH'}")
-            dut._log.info(f"    Word 1 (lanes [7:4]):   DUT=0x{word1:08X}  Expected=0x{expected_word1:08X}  {'MATCH' if match1 else 'MISMATCH'}")
-            dut._log.info(f"    Word 2 (lanes [11:8]):  DUT=0x{word2:08X}  Expected=0x{expected_word2:08X}  {'MATCH' if match2 else 'MISMATCH'}")
+            dut._log.info(
+                f"    Word 0 (lanes [3:0]):   DUT=0x{word0:08X}  Expected=0x{expected_word0:08X}  {'MATCH' if match0 else 'MISMATCH'}"
+            )
+            dut._log.info(
+                f"    Word 1 (lanes [7:4]):   DUT=0x{word1:08X}  Expected=0x{expected_word1:08X}  {'MATCH' if match1 else 'MISMATCH'}"
+            )
+            dut._log.info(
+                f"    Word 2 (lanes [11:8]):  DUT=0x{word2:08X}  Expected=0x{expected_word2:08X}  {'MATCH' if match2 else 'MISMATCH'}"
+            )
         elif sample_idx == 3:
-            dut._log.info(f"\n  ... (showing first 3 and last 2 only)")
+            dut._log.info("\n  ... (showing first 3 and last 2 only)")
 
         if not (match0 and match1 and match2):
             mismatch_count += 1
@@ -789,13 +854,16 @@ async def test_1_3_3_bypass_fast_sampling(dut):
     # Report results
     if mismatch_count == 0:
         dut._log.info(f"\n[PASS] All {num_verify} verified samples matched decorrelator reference!")
-        dut._log.info(f"  Total FIFO entries: {len(ref_samples)} samples x 3 words = {len(ref_samples)*3} entries")
+        dut._log.info(
+            f"  Total FIFO entries: {len(ref_samples)} samples x 3 words = {len(ref_samples) * 3} entries"
+        )
     else:
         dut._log.error(f"\n[FAIL] {mismatch_count}/{num_verify} samples with mismatches!")
         raise AssertionError(f"FIFO bypass verification failed: {mismatch_count} sample mismatches")
 
     # Verify decorrelator checker
     from test.test_base import decor_checker_verify
+
     decor_checker_verify(dut)
 
     dut._log.info("[PASS] Test 1.3.3 complete - Bypass mode with fast rate (div8)")
@@ -804,6 +872,7 @@ async def test_1_3_3_bypass_fast_sampling(dut):
 # ============================================================================
 # Category 1.4: Byte Mask Configuration
 # ============================================================================
+
 
 @cocotb.test()
 async def test_1_4_1_decorrelator_byte_mask(dut):
@@ -822,9 +891,9 @@ async def test_1_4_1_decorrelator_byte_mask(dut):
         - Bits [6,4,2,0] forced to 0
     """
 
-    dut._log.info("\n" + "="*70)
+    dut._log.info("\n" + "=" * 70)
     dut._log.info("TEST 1.4.1: DECORRELATOR_MASK Byte Masking (0xAA - Even Bits)")
-    dut._log.info("="*70)
+    dut._log.info("=" * 70)
 
     # Configuration with normal decorrelation mode
     cfg = get_custom_config(
@@ -833,10 +902,10 @@ async def test_1_4_1_decorrelator_byte_mask(dut):
             bypass_dut=False,
             sample_clk_div=63,  # div-64
             bypass_mask=0x000,  # No per-lane bypass
-            sample_period=64
+            sample_period=64,
         ),
         decorrelator_samples=50,
-        fifo_verification_enable=True
+        fifo_verification_enable=True,
     )
 
     # Phase 1: Configure testbench
@@ -848,18 +917,20 @@ async def test_1_4_1_decorrelator_byte_mask(dut):
     # Phase 3: Program DECORRELATOR_MASK = 0xAA (even bits only)
     dut._log.info("\n--- Phase 3: Configure byte mask ---")
     byte_mask = 0xAA  # 0b10101010 - even bits only
-    await reg_wr(apb, 'DECORRELATOR_MASK', byte_mask)
+    await reg_wr(apb, "DECORRELATOR_MASK", byte_mask)
 
     # Readback to verify register was programmed correctly
-    readback = await reg_rd(apb, 'DECORRELATOR_MASK')
+    readback = await reg_rd(apb, "DECORRELATOR_MASK")
     dut._log.info(f"  DECORRELATOR_MASK written: 0x{byte_mask:02X}")
     dut._log.info(f"  DECORRELATOR_MASK readback: 0x{readback:08X}")
     if (readback & 0xFF) != byte_mask:
-        raise AssertionError(f"DECORRELATOR_MASK readback mismatch! Expected 0x{byte_mask:02X}, got 0x{readback & 0xFF:02X}")
+        raise AssertionError(
+            f"DECORRELATOR_MASK readback mismatch! Expected 0x{byte_mask:02X}, got 0x{readback & 0xFF:02X}"
+        )
 
     dut._log.info(f"  Binary: 0b{byte_mask:08b}")
-    dut._log.info(f"  Enabled bits: [7,5,3,1]")
-    dut._log.info(f"  Masked bits:  [6,4,2,0]")
+    dut._log.info("  Enabled bits: [7,5,3,1]")
+    dut._log.info("  Masked bits:  [6,4,2,0]")
 
     # Phase 4: Collect samples (event-driven, exactly 50 samples)
     dut._log.info("\n--- Phase 4: Collect entropy samples (event-driven) ---")
@@ -872,7 +943,7 @@ async def test_1_4_1_decorrelator_byte_mask(dut):
     # Phase 6: Analyze bit distribution in decorrelator samples
     dut._log.info("\n--- Phase 6: Analyze bit distribution ---")
     dut._log.info(f"  Analyzing {len(ref_samples)} decorrelator samples...")
-    dut._log.info(f"  NOTE: Analyzing raw decorrelator bytes (not compressed FIFO output)")
+    dut._log.info("  NOTE: Analyzing raw decorrelator bytes (not compressed FIFO output)")
 
     # Count bit occurrences across all decorrelator bytes
     bit_ones_count = [0] * 8  # Count '1's for each bit position
@@ -889,7 +960,7 @@ async def test_1_4_1_decorrelator_byte_mask(dut):
     # Show bit statistics
     dut._log.info(f"\n  Bit Statistics (out of {total_bytes} bytes):")
     dut._log.info(f"  {'Bit':<5} {'Mask':<6} {'Ones':<8} {'Percentage':<12} {'Expected'}")
-    dut._log.info(f"  {'-'*5} {'-'*6} {'-'*8} {'-'*12} {'-'*15}")
+    dut._log.info(f"  {'-' * 5} {'-' * 6} {'-' * 8} {'-' * 12} {'-' * 15}")
 
     masked_bits_ok = True
     enabled_bits_ok = True
@@ -902,18 +973,24 @@ async def test_1_4_1_decorrelator_byte_mask(dut):
         mask_str = "MASKED" if is_masked else "ENABLED"
         expected = "~0% (forced 0)" if is_masked else "~50% (random)"
 
-        dut._log.info(f"  {bit_pos:<5} {mask_str:<6} {ones:<8} {percentage:>5.1f}%{' '*6} {expected}")
+        dut._log.info(
+            f"  {bit_pos:<5} {mask_str:<6} {ones:<8} {percentage:>5.1f}%{' ' * 6} {expected}"
+        )
 
         # Verify expectations
         if is_masked:
             # Masked bits should be very close to 0%
             if percentage > 5.0:  # Allow 5% tolerance
-                dut._log.error(f"      [FAIL] Bit {bit_pos} should be masked but shows {percentage:.1f}%")
+                dut._log.error(
+                    f"      [FAIL] Bit {bit_pos} should be masked but shows {percentage:.1f}%"
+                )
                 masked_bits_ok = False
         else:
             # Enabled bits should be around 50% (random)
             if percentage < 30.0 or percentage > 70.0:
-                dut._log.warning(f"      [WARN] Bit {bit_pos} shows {percentage:.1f}% (expected ~50%)")
+                dut._log.warning(
+                    f"      [WARN] Bit {bit_pos} shows {percentage:.1f}% (expected ~50%)"
+                )
                 enabled_bits_ok = False
 
     # Phase 7: Verify checkers
@@ -921,7 +998,7 @@ async def test_1_4_1_decorrelator_byte_mask(dut):
     await verify_checkers(dut)
 
     # Final verdict
-    dut._log.info("\n" + "="*70)
+    dut._log.info("\n" + "=" * 70)
     if masked_bits_ok and enabled_bits_ok:
         dut._log.info("[PASS] Test 1.4.1 complete - Byte mask verified")
         dut._log.info("  Masked bits [6,4,2,0]: Correctly forced to 0")
@@ -932,4 +1009,4 @@ async def test_1_4_1_decorrelator_byte_mask(dut):
         if not enabled_bits_ok:
             dut._log.warning("Enabled bits show non-random distribution (may be OK)")
             dut._log.info("[PASS] Test 1.4.1 complete with warnings")
-    dut._log.info("="*70)
+    dut._log.info("=" * 70)

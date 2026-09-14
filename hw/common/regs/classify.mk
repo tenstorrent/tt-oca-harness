@@ -7,7 +7,7 @@
 
 # C header omits bitfield structs (peakrdl can't represent >64-bit registers);
 # address/mask defines only.
-OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
+OCAH_REG_NO_BITFIELDS ?= key_manager oca_i3c_wrap smc smc_efuse_map sep_efuse_map
 
 # The Python header has its own list because the reason above is a peakrdl
 # c-header limitation, not a general one: rdlpyhdr.py drops just the registers it
@@ -31,8 +31,6 @@ OCAH_REG_PLACEHOLDER_BLOCKS ?= oca_i3c_wrap
 # Register RTL authored outside regblock: excluded from SV only, still docs + C header.
 # The vendored OpenTitan blocks (aes/hmac/kmac/otbn/csrng/edn/secure_dma/
 # spi_controller/aon_timer) get their reg RTL from upstream reggen, not peakrdl.
-# efuse_bank is simulation-only and its committed RTL carries a hand edit the
-# generator cannot express; the file itself documents it.
 # pll_wrap/pvt_wrap are free-tree DV register models (hw/sys/smc/dv/models/regs)
 # whose real RTL is the vendor PLL/PVT IP, not regblock: only their addrmap_pkg is
 # committed. The nonfree overlay also lists them (EXTRA below), but they must be in
@@ -44,7 +42,6 @@ OCAH_REG_NO_RTL_BLOCKS ?= \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic aon_timer dfd smc_cla dma_ctrl \
-  efuse_bank \
   pll_wrap pvt_wrap
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
@@ -72,9 +69,9 @@ OCAH_REG_RAL_SUB_BLOCKS ?= \
   sep_efuse_map spi_controller \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
 OCAH_REG_RAL_LEAF_BLOCKS ?= \
-  hw/common/axi/axi_alias_remap/regs/alias_remap \
-  hw/common/axi/axi_filter/regs/filter_ctrl \
-  hw/common/axi/output_remap \
+  hw/ip/axi_alias_remap/regs/alias_remap \
+  hw/ip/axi_filter/regs/filter_ctrl \
+  hw/ip/output_remap \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap \
   hw/ip/efuse/regs/efuse_interface_ctrl \
   hw/ip/efuse/regs/efuse_mmr \
@@ -141,6 +138,8 @@ OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(O
 # wrapper/top RDLs that include sibling blocks by bare filename. The relocated
 # OpenTitan overlay blocks hmac/kmac/otbn (like edn) pull the shared
 # opentitan_udps.rdl fragment by bare include, so they need the catalog too.
+# smc_cla is a leaf but composes the six generated dfd_<blk> RDLs, which live in
+# the tt-hw-debug overlay include dir the catalog already globs.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   edn \
   hmac \
@@ -151,6 +150,7 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   otbn \
   sep_external \
   smc \
+  smc_cla \
   telemetry_receiver_wrap \
   uart_log_engine_wrap \
   uart_wrap

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
@@ -109,7 +109,8 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # Standalone KMAC-family mode x strength breadth (RAND-REP). no_cpu direct-AXI walk
-# over SHA3-256/512, SHAKE-128/256, cSHAKE-128/256, KMAC-128/256; SepKmacCfg
+# over SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256
+# across all five key lengths; SepKmacCfg
 # is SSOT for CFG+KEY_LEN+PREFIX+key+msg and the Keccak golden. KMAC masking reseeds
 # from EDN, so entropy bring-up is required (+esrc_noise_force); +skip_fuse_sense.
 # Strict CHK1..CHK4 + CHK5_kmac routing golden (OTBN/AES/HMAC parked).
@@ -157,7 +158,7 @@ args = ["+skip_fuse_sense"]
 # (ECB-256 reseed-per-block pulls). Strict CHK1..CHK4 bit-exact golden proves the
 # shared DRBG is correct. CHK5 scores AES golden (AES beats == AXIS1 order) and
 # KM membership (each KM word is a genbits-golden word). Dual-crypto-sink
-# bit-exact routing is a Phase 2 claim, not this test.
+# bit-exact routing is sep_crypto_edn_multisink_arbitration_test's claim, not this test's.
 # no_cpu; REAL fuse-sense (KM rom_main reads OTP); +esrc_noise_force for the ring
 # oscillators under Verilator. c_compile builds rom_main.rom.parhex
 # (firmware mode km_rom_main; wipe defines off).

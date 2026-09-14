@@ -4,8 +4,8 @@
 /*
  * sep_smu_modules - SMU-level SEP module matrix smoke test.
  *
- * This test intentionally exercises module touch-points listed in SEP testplan
- * by performing proven, low-risk register/functional checks:
+ * Exercises the module touch-points listed in the SEP testplan with
+ * register/functional checks:
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
@@ -21,6 +21,7 @@
 #include "sep.h"
 #include "sep_outbound_filter.h"
 #include "sep_aes_init.h"
+#include "sep_entropy.h"
 #include "aes_test_util.h"
 
 #define printf(...) ((void)0)
@@ -309,9 +310,16 @@ static int stage_kmac(void) {
 static int stage_efuse(void) {
     if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
         return -1;
+        /*
+         * EFUSE_TIMING_CTRL_7 exists only in register maps that generate the wide
+         * shim block; this map's shim block exposes only EFUSE_BANK_INIT_TIME, so
+         * the check is compiled only where the register exists.
+         */
+#ifdef OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
     if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
         return -1;
+#endif
     g_sink ^= READ_REG(OCH_SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);
     return 0;
 }
@@ -343,6 +351,16 @@ __attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_wdt_loop(voi
 __attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_aes_loop(void) {
     while (1) {
         __asm__ volatile("wfi");
+    }
+}
+
+/* Separate from the AES fail loop: an entropy bring-up that never completed is a
+ * prerequisite failure, not an AES defect, and the testbench classifies the run
+ * by which loop the CPU parks in. */
+__attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_entropy_loop(void) {
+    while (1) {
+        __asm__ volatile("wfi");
+        __asm__ volatile("nop");
     }
 }
 
@@ -379,6 +397,17 @@ int main(void) {
 
     if ((stage_mask & (1u << 0)) && stage_dma_regs() != 0) smu_sep_modules_fail_dma_loop();
     if ((stage_mask & (1u << 1)) && stage_wdt_regs() != 0) smu_sep_modules_fail_wdt_loop();
+
+    /* OpenTitan AES reseeds its masking PRNG from crypto-EDN, so the AES stage
+     * hangs in wait_for_idle unless the entropy stack is up. Bring it up here
+     * rather than leaving it to the environment: this image runs under both
+     * hw/sys/sep/dv (where a cocotb sequence may have done it already) and the
+     * SMU wrapper (where nothing does), and sep_entropy_bringup() skips itself
+     * when the boot gate is already open. */
+    if ((stage_mask & (1u << 2)) && sep_entropy_bringup() != SEP_ENTROPY_OK) {
+        smu_sep_modules_fail_entropy_loop();
+    }
+
     if ((stage_mask & (1u << 2)) && stage_aes_smoke() != 0) smu_sep_modules_fail_aes_loop();
     if ((stage_mask & (1u << 3)) && stage_hmac() != 0) smu_sep_modules_fail_hmac_loop();
     if ((stage_mask & (1u << 4)) && stage_kmac() != 0) smu_sep_modules_fail_kmac_loop();

@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//------------------------------------------------
-// AXI4 Lite to TL-UL Converter
 //
-// Converts AXI4 Lite slave interface to TL-UL host interface.
-//
-// Copyright 2026 Tenstorrent Inc.
-//------------------------------------------------
-
+// AXI4-Lite slave to TL-UL host protocol converter.
 
 module axi_lite_to_tlul
 	import tlul_pkg::*;
@@ -37,8 +30,11 @@ module axi_lite_to_tlul
 		output tl_h2d_t   tl_o,
 		input  tl_d2h_t   tl_i,
 
-		// Error output (sticky)
-		output logic      err_o
+		// Error output (sticky). Held until err_clr_i; a new error in the same cycle
+		// as the clear still latches, so a fault racing the clear is never lost.
+		// Tie err_clr_i low to keep the pre-clear behaviour of holding until reset.
+		output logic      err_o,
+		input  logic      err_clr_i
 	);
 
 	// --------------------------------------------------
@@ -114,7 +110,8 @@ module axi_lite_to_tlul
 		req_strb_d   = req_strb_q;
 		resp_data_d  = resp_data_q;
 		req_error_d  = req_error_q;
-		sticky_err_d = sticky_err_q;
+		// Clear applies first; the set condition below overrides it in the same cycle.
+		sticky_err_d = sticky_err_q & ~err_clr_i;
 
 		// Default AXI Outputs (Zero out the structs first)
 		axi_lite_rsp_o = '0;

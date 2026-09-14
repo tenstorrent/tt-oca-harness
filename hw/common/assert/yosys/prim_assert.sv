@@ -39,12 +39,12 @@
 
 `ifdef YOSYS
 `ifdef SYNTHESIS
-  `undef YOSYS
-  `include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
-  `define YOSYS
+`undef YOSYS
+`include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
+`define YOSYS
 `else
-  `include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
+`include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
 `endif
 `else
-  `include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
+`include "../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv"
 `endif

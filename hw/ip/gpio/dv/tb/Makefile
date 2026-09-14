@@ -18,7 +18,7 @@ MODULE = test_gpio
 EXTRA_ARGS += --trace --trace-structs
 EXTRA_ARGS += --Wno-REDEFMACRO --Wno-WIDTHEXPAND --Wno-MULTIDRIVEN --Wno-IMPLICIT --Wno-WIDTHTRUNC --Wno-SYMRSVDWORD # TODO: Suppress certain warnings only
 
-# Extract include directories from filelist (keep automatic)
+# Extract include directories from the filelist
 FLIST_INCDIRS := $(shell if [ -f gpio.f ]; then grep '^+incdir+' gpio.f | sed 's/^+incdir+/-I/g'; fi)
 EXTRA_ARGS += $(FLIST_INCDIRS)
 
@@ -74,6 +74,7 @@ include $(shell cocotb-config --makefiles)/Makefile.sim
 gpio.f:
 	bender script flist-plus -t common_cells_rtl -t apb_rtl -t axi_rtl -t peripheral -t gpio > gpio.f
 
+.PHONY: filelist lint wave
 clean:: # cocotb's own `clean` uses double colon
 	rm -rf __pycache__ *.f
 

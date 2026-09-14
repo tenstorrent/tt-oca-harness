@@ -16,10 +16,6 @@
  * 4.5. Real TXEMPTY event → INTR_STATUS.spi_event functional path
  * 4.6. EVENT_ENABLE.ready / .idle functional path
  * 5. Masking test: INTR_ENABLE=0 blocks INTR_TEST injection (ERROR and SPI_EVENT)
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_interrupt_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -51,7 +47,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__CTRL_t ctrl;
     uint32_t dummy_rx;
-
 
     /* Enable controller (required for event signals to be valid) */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

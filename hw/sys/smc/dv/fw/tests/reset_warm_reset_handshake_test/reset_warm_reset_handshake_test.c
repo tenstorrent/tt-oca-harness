@@ -29,6 +29,13 @@ static inline uint32_t get_ss_complete_bit(uint32_t ss_idx) {
     return (read_reg(SMC_TOP_SMC_RESET_UNIT_SS_RESET_COMPLETE_BASE_ADDR) >> ss_idx) & 0x1u;
 }
 
+/* Bound for each half of the handshake.
+ *
+ * `ss_reset_complete_i` is a TB pin, not something the SMC wrapper drives, so
+ * an absent peer responder must be reported rather than waited on.
+ */
+#define SS_COMPLETE_BOUND 200000u
+
 static void warm_reset_handshake(int hartid, uint32_t ss_idx) {
     info_msg_hex32_s(hartid, "Warm reset handshake start ss_idx=", ss_idx);
 
@@ -40,15 +47,33 @@ static void warm_reset_handshake(int hartid, uint32_t ss_idx) {
     set_stage(ss_idx, 0x01);
 
     // Wait for subsystem to indicate reset in-progress by deasserting complete (1->0)
-    while (get_ss_complete_bit(ss_idx) == 1u) {
+    uint32_t i;
+
+    for (i = 0; i < SS_COMPLETE_BOUND; i++) {
+        if (get_ss_complete_bit(ss_idx) == 0u) {
+            break;
+        }
         __asm__ volatile("nop");
+    }
+    if (i == SS_COMPLETE_BOUND) {
+        raise_error_s(hartid, "SS_RESET_COMPLETE never fell after warm reset asserted");
+        info_msg_hex32_s(hartid, "  ss_idx=", ss_idx);
+        return;
     }
 
     set_stage(ss_idx, 0x02);
 
     // Wait for subsystem to indicate reset complete by reasserting complete (0->1)
-    while (get_ss_complete_bit(ss_idx) == 0u) {
+    for (i = 0; i < SS_COMPLETE_BOUND; i++) {
+        if (get_ss_complete_bit(ss_idx) == 1u) {
+            break;
+        }
         __asm__ volatile("nop");
+    }
+    if (i == SS_COMPLETE_BOUND) {
+        raise_error_s(hartid, "SS_RESET_COMPLETE never rose again after the reset window");
+        info_msg_hex32_s(hartid, "  ss_idx=", ss_idx);
+        return;
     }
 
     set_stage(ss_idx, 0x03);
@@ -75,7 +100,7 @@ int main(void) {
     // Ensure warm reset is deasserted for all subsystems before starting.
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, 0xFFFFFFFFu);
 
-    // Repeat for multiple subsystems (per requirement).
+    // Run the handshake on two subsystems.
     warm_reset_handshake(hartid, 0);
     warm_reset_handshake(hartid, 1);
 

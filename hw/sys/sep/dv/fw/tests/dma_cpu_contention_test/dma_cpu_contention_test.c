@@ -10,7 +10,7 @@
 // Everything is internal to bare `sep` -- the firmware itself produces the
 // contention, no testbench injection.
 //
-// The DMA copy is intentionally much larger than the CPU loop (2 KiB vs 256 B,
+// The DMA copy is much larger than the CPU loop (2 KiB vs 256 B,
 // 8:1) so the DMA is provably still busy when the CPU loop finishes -- that
 // mid-flight STATUS read is the non-vacuity proof that the two streams really
 // overlapped. Sizes stay small enough for the Verilator timeout; the 8:1
@@ -21,7 +21,7 @@
 //   * overlap (non-vacuity): mid-flight STATUS shows BUSY==1 && DONE==0;
 //   * the DMA reaches DONE with ERROR==0 and ERROR_CODE==0;
 //   * STATUS RW1C clear: W1C the DONE/CHUNK_DONE bits and read back 0 (AGENTS.md
-//     §7 -- the contract holds for polled status, not just ISR paths; reference suite does
+//     the contract holds for polled status, not just ISR paths; reference suite does
 //     not clear, so this is a strengthening);
 //   * DMA data integrity: every copied dst word == the source pattern;
 //   * CPU data integrity: every CPU-written word == the CPU pattern (proves the
@@ -40,9 +40,9 @@
 #include "sep_mailbox.h"
 #include "sep_dma.h"
 
-#define DMA_SRC_ADDR 0x10000000u // SRAM: DMA copy source
-#define DMA_DST_ADDR 0x10004000u // SRAM: DMA copy destination
-#define CONT_ADDR 0x10008000u    // SRAM: CPU contention region (disjoint)
+#define DMA_SRC_ADDR OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
+#define DMA_DST_ADDR (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x4000u)
+#define CONT_ADDR (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x8000u)
 
 #define DMA_BYTES 0x800u // 2 KiB DMA copy (>> CPU loop)
 #define DMA_WORDS (DMA_BYTES / 4)
@@ -118,7 +118,7 @@ int main(void) {
         sep_mbx_putc('\n');
         errors++;
     } else {
-        // STATUS RW1C clear contract (polled path still must prove it, §7).
+        // STATUS RW1C clear contract (the polled path must prove it too).
         uint32_t rw1c = SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm;
         sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, rw1c);
         __asm__ volatile("fence" ::: "memory");

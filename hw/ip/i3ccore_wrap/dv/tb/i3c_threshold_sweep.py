@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C FIFO Threshold Sweep  (Test Plan #29)
+I3C FIFO Threshold Sweep
 
 Sweeps TX/RX FIFO threshold register values and runs a 32-byte transfer at each
 setting to confirm threshold interrupts drive the data path.
@@ -13,19 +13,23 @@ mapping reg value t -> (1 << (t+1)) entries:
 
 We sweep t = 0..2 only. The 32-byte transfer is exactly 8 entries, so t=0/1/2
 thresholds (2/4/8 entries) are reachable and the RX-data threshold interrupt
-fires and drives the drain as intended. t=3 needs >=16 entries (>=64 B) before
-the threshold can ever fire, so a 32-byte transfer never triggers it; sizing the
-transfer up to 64 B to reach t=3 separately surfaces a controller err_status=6
-(Ovl) that is tracked independently and is out of scope for this data-path sweep.
-Confirmed via waveform (gen_i3c_inst[0] flow_active): the controller transmits the
-correct data bytes in all cases — the t=3 issue is not a data-corruption bug.
+fires and drives the drain. t=3 needs >=16 entries (>=64 B) before
+the threshold can ever fire, so a 32-byte transfer never triggers it; a 64 B
+transfer at t=3 returns controller err_status=6 (Ovl) with correct data on the
+bus, and is outside this data-path sweep.
 """
+
 import cocotb
-from i3c_test_base import (make_env, init_controller, init_target,
-                           DEFAULT_STATIC_ADDR, DEFAULT_DYNAMIC_ADDR)
+from i3c_test_base import (
+    DEFAULT_DYNAMIC_ADDR,
+    DEFAULT_STATIC_ADDR,
+    init_controller,
+    init_target,
+    make_env,
+)
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_threshold_sweep(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
 

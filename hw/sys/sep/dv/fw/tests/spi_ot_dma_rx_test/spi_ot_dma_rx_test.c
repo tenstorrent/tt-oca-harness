@@ -14,7 +14,7 @@
 // (`hw/sys/sep/rtl/sep.sv`: `lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger`).
 // Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
-// PARITY-PLUS over reference suite: the reference test only checks "DMA done + no SPI error"
+// Beyond the reference suite: the reference test only checks "DMA done + no SPI error"
 // because it clocks idle MISO (no flash model) and leaves the received data
 // unchecked. Here the OSS flash BFM is preloaded with a known constant (0xA5),
 // the firmware issues a real flash READ (0x03), and then VALUE-CHECKS that every
@@ -22,7 +22,7 @@
 // SPI->DMA->SRAM data path, not just completion. It also proves the DMA STATUS
 // RW1C clear contract (write-1-clear -> reads back 0).
 //
-// main() returns the error count; start.S turns 0 -> PASS magic, non-zero ->
+// main() returns the error count; crt0.s turns 0 -> PASS magic, non-zero ->
 // FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard gates on.
 
 #include <stdint.h>
@@ -166,14 +166,28 @@ int main(void) {
     }
 
     // --- SPI controller must be clean ----------------------------------------
-    if (spi_wait_idle(SPI_POLL_TIMEOUT) != 0) {
+    int spi_idle = (spi_wait_idle(SPI_POLL_TIMEOUT) == 0);
+    if (!spi_idle) {
         sep_mbx_puts("FAIL: SPI host stuck active\n");
         errors++;
     }
-    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR) != 0) {
+    uint32_t spi_err_status = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (spi_err_status != 0) {
         sep_mbx_puts("FAIL: SPI error status set\n");
         errors++;
     }
+
+    // CHK-NOERR evidence: the four values the legs above already read, so the
+    // checker is auditable from the log rather than only from a silent pass.
+    sep_mbx_puts("CHK-NOERR: dma_status=");
+    sep_mbx_puthex(status_after_clear);
+    sep_mbx_puts(" dma_err_code=");
+    sep_mbx_puthex(sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
+    sep_mbx_puts(" spi_idle=");
+    sep_mbx_putc(spi_idle ? '1' : '0');
+    sep_mbx_puts(" spi_err_status=");
+    sep_mbx_puthex(spi_err_status);
+    sep_mbx_putc('\n');
 
     // --- Value-check the received data ---------------------------------------
     // The OSS OcahSpiFlash BFM preloads RX_PATTERN across the read window, so

@@ -1,15 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR via axi_sim_mem werr/rerr (SEP pulp API)."""
+"""SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR through the slave agent's one-shot fault."""
 
 from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_output_fabric_vip_utils import (
     OUTPUT_FABRIC_ADDR,
     OUTPUT_FABRIC_DATA,
@@ -22,29 +19,19 @@ from seq_lib.smc_output_fabric_vip_utils import (
     output_fabric_model,
     output_fabric_pass_all_cfg_seq,
 )
-
-
-async def _program_sys_out_err(dut, addr: int, resp: int) -> None:
-    """Write TB-owned axi_sim_mem.werr/rerr (not a DUT Force)."""
-    assert hasattr(dut, "tb_output_err_we"), "tb_output_err_we missing"
-    dut.tb_output_err_addr.value = addr
-    dut.tb_output_err_resp.value = resp
-    dut.tb_output_err_we.value = 1
-    await RisingEdge(dut.clk_smc_i)
-    dut.tb_output_err_we.value = 0
-    await RisingEdge(dut.clk_smc_i)
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_output_fabric_slverr_inject_test(smc_base_test):
-    """OKAY WR/RD, axi_sim_mem rerr SLVERR read, OKAY readback; SYS_OUT monitor."""
+    """OKAY WR/RD, one-shot SLVERR read from the responder, OKAY readback; SYS_OUT monitor."""
 
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         dut = cocotb.top
         assert hasattr(dut, "tb_output_axi_bresp"), (
-            "tb_output_axi_bresp missing; rebuild after U6-2 SYS_OUT lift"
+            "tb_output_axi_bresp missing from the smc_uvm_top port surface"
         )
         output_fabric_model(self)
 
@@ -82,9 +69,12 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
         assert snap_a["b_okay"] >= snap0["b_okay"] + 1, snap_a
         assert snap_a["r_okay"] >= snap0["r_okay"] + 1, snap_a
 
-        # Phase B: pulp axi_sim_mem rerr inject (TB model API). Read returns
-        # stored DATA with SLVERR; ClearErrOnAccess clears after the beat.
-        await _program_sys_out_err(dut, OUTPUT_FABRIC_ADDR, RESP_SLVERR)
+        # Phase B: one-shot read fault programmed on the SYS_OUT responder. The
+        # beat carries SLVERR and no data; the fault retires with the beat and
+        # the stored word is untouched.
+        sys_out_mem = self.cfg.sys_out_mem
+        assert sys_out_mem is not None, "SYS_OUT responder not bound"
+        sys_out_mem.inject_error(OUTPUT_FABRIC_ADDR, RESP_SLVERR, read=True, write=False)
         rd_err = await jtag_axi_read(
             self,
             OUTPUT_FABRIC_ADDR,
@@ -94,16 +84,13 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
         assert rd_err.resp_code == RESP_SLVERR, (
             f"injected read resp={rd_err.resp_code}, expected SLVERR"
         )
-        assert rd_err.rdata == OUTPUT_FABRIC_DATA, (
-            f"SLVERR rdata=0x{rd_err.rdata:x}, expected stored 0x{OUTPUT_FABRIC_DATA:x}"
+        assert sys_out_mem.read_int(OUTPUT_FABRIC_ADDR, 8) == OUTPUT_FABRIC_DATA, (
+            "SLVERR beat altered the stored word"
         )
         snap_b = mon.snapshot()
         assert snap_b["r_slverr"] >= snap_a["r_slverr"] + 1, snap_b
 
-        # Explicitly clear TB error maps (do not rely solely on ClearErrOnAccess).
-        await _program_sys_out_err(dut, OUTPUT_FABRIC_ADDR, RESP_OKAY)
-
-        # Phase C: error cleared; golden still holds original DATA.
+        # Phase C: the fault has retired; the readback matches the golden DATA.
         rd_again = await jtag_axi_read(
             self,
             OUTPUT_FABRIC_ADDR,
@@ -137,10 +124,20 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
-            csr_accesses=cfg_seq.accesses + 4,
+            csr_accesses=cfg_seq.accesses,
+            # Directed stimulus floor: 3 inbound + 3 outbound pass-all filter
+            # CSR writes (output_fabric_pass_all_cfg_seq). Literal here, not
+            # read from `cfg_seq.accesses`.
+            min_csr_accesses=6,
+            # The four JTAG-AXI accesses are reported in their own field rather
+            # than folded into csr_accesses, which would label fabric traffic as
+            # CSR traffic.
+            fabric_accesses=4,
+            min_fabric_accesses=4,
+            fabric_access_label="jtag_axi_accesses",
             proxy=False,
             details=(
-                "SYS_OUT axi_sim_mem rerr SLVERR + SmcMemoryModel + U6-2 "
+                "SYS_OUT responder one-shot SLVERR + SmcMemoryModel + U6-2 "
                 f"output AXI monitor tallies {snap_c}"
             ),
         )

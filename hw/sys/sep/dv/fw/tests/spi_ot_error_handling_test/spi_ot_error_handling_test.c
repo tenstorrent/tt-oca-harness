@@ -15,10 +15,6 @@
  * 4. Test ERROR_STATUS W1C clear
  * 5. Test ERROR_ENABLE interrupt masking (status still records the error)
  * 6. Re-enable all errors
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_error_handling_test STACK=sim
- *
  */
 
 #define TX_FIFO_DEPTH 73 /* effective capacity: 72 FIFO slots + 1 byte_select stage */
@@ -93,7 +89,6 @@ int main(void) {
     uint32_t dummy;
     uint32_t i;
     int timeout;
-
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
@@ -285,10 +280,10 @@ int main(void) {
     }
 
     /*
-     * OT Prog Guide: error IRQ = |(ERROR_STATUS & ERROR_ENABLE). This SEP
-     * integration still raises INTR_STATUS.ERROR when UNDERFLOW is disabled
-     * (observed). Keep ERROR_STATUS recording as the FAIL-ON check above;
-     * treat IRQ masking as informational until RTL/ENV matches OT.
+     * OT Programmer's Guide: error IRQ = |(ERROR_STATUS & ERROR_ENABLE). This
+     * SEP integration raises INTR_STATUS.ERROR even when UNDERFLOW is disabled,
+     * so ERROR_STATUS recording is the FAIL-ON check above and the IRQ-masking
+     * result is logged as informational.
      */
     intr_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATUS_BASE_ADDR);
     printf("  INTR_STATUS with ERROR_ENABLE.UNDERFLOW=0: 0x%08x, ERROR=%u\n", intr_status.w,

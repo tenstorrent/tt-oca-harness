@@ -21,7 +21,7 @@ hard_fail_patterns = [
   "\\bImportError\\b",
   # Match $fatal only when it appears alongside a runtime fatal marker; the
   # bare token also appears in RTL source echoed by Xcelium under -showcfg /
-  # *W,STRINT warning context and was causing false-positive ERRORs.
+  # *W,STRINT warning context, where it is not a failure.
   "\\*F[,:].*\\$fatal\\b",
   "%Error[:\\-]",
   "make(?:\\[\\d+\\])?: \\*\\*\\*",
@@ -47,7 +47,7 @@ required_patterns = ["UVM Report Summary"]
 hard_fail_patterns = [
   # Match $fatal only when it appears alongside a runtime fatal marker; the
   # bare token also appears in RTL source echoed by Xcelium under -showcfg /
-  # *W,STRINT warning context and was causing false-positive ERRORs.
+  # *W,STRINT warning context, where it is not a failure.
   "\\*F[,:].*\\$fatal\\b",
   "Error-\\[",
   "%Error[:\\-]",
@@ -66,9 +66,31 @@ required_patterns = []
 hard_fail_patterns = [
   # Match $fatal only when it appears alongside a runtime fatal marker; the
   # bare token also appears in RTL source echoed by Xcelium under -showcfg /
-  # *W,STRINT warning context and was causing false-positive ERRORs.
+  # *W,STRINT warning context, where it is not a failure.
   "\\*F[,:].*\\$fatal\\b",
   "%Error[:\\-]",
   "Error-\\[",
   "make(?:\\[\\d+\\])?: \\*\\*\\*",
+]
+
+# Formal grader for SymbiYosys. The stage log carries one `DONE (<status>, rc=<n>)` line per
+# task; the bracketed work directory holds the task's `status` file, `config.sby`, and JUnit
+# report, from which the runner counts proven, failed, inconclusive, covered, and unreached
+# properties. sby's own exit code only encodes the match against the task's `expect` option.
+[policy.sby-summary]
+grader = "formal"
+strip_ansi = true
+task_status_patterns = [
+  "^SBY [0-9:]+ \\[(?P<workdir>[^\\]]+)\\] DONE \\((?P<status>[A-Z]+), rc=(?P<rc>\\d+)\\)\\s*$",
+]
+task_results = "sby-junit"
+evidence_patterns = [
+  "summary:\\s+(?:failed assertion|violated assumption|reached cover statement) .*$",
+  "summary:\\s+(?:counterexample trace|cover trace)\\b.*$",
+  "summary: unreached cover statements:$",
+  "summary: engine_\\d+ .*(?:returned|did not return a status).*$",
+]
+hard_fail_patterns = [
+  "^ERROR: .*$",
+  "Traceback \\(most recent call last\\):",
 ]

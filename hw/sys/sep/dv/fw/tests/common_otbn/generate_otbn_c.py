@@ -5,13 +5,12 @@
 """
 Generic OTBN C File Generator
 
-This script replaces the custom Python build scripts used in individual tests
-with a generic, reusable tool that generates C files containing OTBN memory
-arrays and expected CRC values.
+Generates C files containing OTBN memory arrays and expected CRC values for
+every OTBN firmware test.
 
-Uses existing OpenTitan CRC infrastructure from:
-- opentitan/util/otbn_build.py:get_app_checksum()
-- opentitan/vendor/lowRISC/opentitan/upstream/hw/ip/otbn/dv/otbnsim/stepped.py:on_step_crc()
+The CRC follows the OpenTitan LOAD_CHECKSUM algorithm (upstream OpenTitan
+util/otbn_build.py get_app_checksum() and
+hw/ip/otbn/dv/otbnsim/stepped.py on_step_crc()).
 
 Outputs a single C file with:
 - IMEM array (uint32_t otbn_<app>_imem[])
@@ -22,14 +21,14 @@ Outputs a single C file with:
 
 import argparse
 import binascii
-import struct
-import tempfile
 import os
+import struct
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import List, Tuple
-from elftools.elf.elffile import ELFFile, SymbolTableSection  # type: ignore
 
+from elftools.elf.elffile import ELFFile, SymbolTableSection  # type: ignore
 from shared.toolchain import find_tool  # type: ignore
 
 
@@ -41,7 +40,7 @@ def call_rv32_objcopy(args):
     binutils that can read these ELFs, and the toolchain container ships the
     riscv64 build.
     """
-    cmd = [find_tool('objcopy')] + args
+    cmd = [find_tool("objcopy")] + args
     subprocess.run(cmd, check=True)
 
 
@@ -58,16 +57,16 @@ def get_otbn_syms(elf_path: str) -> List[Tuple[str, int]]:
         # First, run objcopy to discard local symbols and the .scratchpad
         # section. We also use --extract-symbol since we don't care about
         # anything but the symbol data anyway.
-        syms_path = os.path.join(tmpdir, 'syms.elf')
-        call_rv32_objcopy([
-            '-O', 'elf32-littleriscv', '--remove-section=.scratchpad',
-            '--extract-symbol'
-        ] + [elf_path, syms_path])
+        syms_path = os.path.join(tmpdir, "syms.elf")
+        call_rv32_objcopy(
+            ["-O", "elf32-littleriscv", "--remove-section=.scratchpad", "--extract-symbol"]
+            + [elf_path, syms_path]
+        )
 
         # Load the file and use elftools to grab any symbol table
-        with open(syms_path, 'rb') as syms_fd:
+        with open(syms_path, "rb") as syms_fd:
             syms_file = ELFFile(syms_fd)
-            symtab = syms_file.get_section_by_name('.symtab')
+            symtab = syms_file.get_section_by_name(".symtab")
             if symtab is None or not isinstance(symtab, SymbolTableSection):
                 # No symbol table found or we did find a section called
                 # .symtab, but it isn't actually a symbol table (huh?!). Give
@@ -76,9 +75,9 @@ def get_otbn_syms(elf_path: str) -> List[Tuple[str, int]]:
 
             ret = []
             for sym in symtab.iter_symbols():
-                if sym['st_info']['bind'] != 'STB_GLOBAL':
+                if sym["st_info"]["bind"] != "STB_GLOBAL":
                     continue
-                addr = sym['st_value']
+                addr = sym["st_value"]
                 assert isinstance(addr, int)
                 ret.append((sym.name, addr))
             return ret
@@ -99,34 +98,34 @@ def calculate_otbn_crc(imem_data, dmem_data, imem_base_addr=0, dmem_base_addr=0)
 
     # Process IMEM writes (imem_flag = 1)
     for i in range(0, len(imem_data), 4):
-        word_bytes = imem_data[i:i+4]
+        word_bytes = imem_data[i : i + 4]
         if len(word_bytes) < 4:
-            word_bytes += b'\x00' * (4 - len(word_bytes))
+            word_bytes += b"\x00" * (4 - len(word_bytes))
 
-        word_value = struct.unpack('<I', word_bytes)[0]  # Little-endian
+        word_value = struct.unpack("<I", word_bytes)[0]  # Little-endian
         word_addr = (imem_base_addr + i) // 4
 
         # Build 48-bit CRC item: {imem=1, addr[14:0], data[31:0]}
         crc_item = (1 << 47) | ((word_addr & 0x7FFF) << 32) | word_value
-        item_bytes = crc_item.to_bytes(6, 'little')
+        item_bytes = crc_item.to_bytes(6, "little")
         checksum = binascii.crc32(item_bytes, checksum)
 
     # Process DMEM writes (imem_flag = 0)
     # Special case: if dmem_data is empty, include one zero word to match
     # the C array generation which outputs {0x00000000} for empty DMEM
-    dmem_to_process = dmem_data if len(dmem_data) > 0 else b'\x00\x00\x00\x00'
+    dmem_to_process = dmem_data if len(dmem_data) > 0 else b"\x00\x00\x00\x00"
 
     for i in range(0, len(dmem_to_process), 4):
-        word_bytes = dmem_to_process[i:i+4]
+        word_bytes = dmem_to_process[i : i + 4]
         if len(word_bytes) < 4:
-            word_bytes += b'\x00' * (4 - len(word_bytes))
+            word_bytes += b"\x00" * (4 - len(word_bytes))
 
-        word_value = struct.unpack('<I', word_bytes)[0]  # Little-endian
+        word_value = struct.unpack("<I", word_bytes)[0]  # Little-endian
         word_addr = (dmem_base_addr + i) // 4
 
         # Build 48-bit CRC item: {imem=0, addr[14:0], data[31:0]}
         crc_item = (0 << 47) | ((word_addr & 0x7FFF) << 32) | word_value
-        item_bytes = crc_item.to_bytes(6, 'little')
+        item_bytes = crc_item.to_bytes(6, "little")
         checksum = binascii.crc32(item_bytes, checksum)
 
     return checksum & 0xFFFFFFFF
@@ -140,12 +139,12 @@ def binary_to_c_array(bin_data, array_name):
     # Pad to 4-byte alignment
     data = bin_data
     while len(data) % 4 != 0:
-        data += b'\x00'
+        data += b"\x00"
 
     # Convert to 32-bit words (little-endian)
     words = []
     for i in range(0, len(data), 4):
-        word = struct.unpack('<I', data[i:i+4])[0]
+        word = struct.unpack("<I", data[i : i + 4])[0]
         words.append(f"0x{word:08x}")
 
     # Format as C array
@@ -200,8 +199,12 @@ def generate_c_file(app_name, imem_data, dmem_data, output_c, output_h, elf_path
 
         # Add OpenTitan-compatible macros
         symbol_declarations += f"\n/* OpenTitan-compatible macros for {app_name} */\n"
-        symbol_declarations += f"#define OTBN_DECLARE_SYMBOL_ADDR(app, sym) /* Already declared above */\n"
-        symbol_declarations += f"#define OTBN_ADDR_T_INIT(app, sym) ((uint32_t)_otbn_remote_app_##app##_##sym)\n"
+        symbol_declarations += (
+            "#define OTBN_DECLARE_SYMBOL_ADDR(app, sym) /* Already declared above */\n"
+        )
+        symbol_declarations += (
+            "#define OTBN_ADDR_T_INIT(app, sym) ((uint32_t)_otbn_remote_app_##app##_##sym)\n"
+        )
 
     # Generate header file (declarations only)
     header_content = f"""#ifndef OTBN_{app_name.upper()}_H
@@ -224,20 +227,16 @@ extern const size_t {dmem_array_name}_words;
 #endif // OTBN_{app_name.upper()}_H
 """
 
-    # Symbol definitions are now in the header as #defines, no need for C definitions
-
     # Generate source file (definitions)
     source_content = f"""/*
  * OTBN {app_name} Application Binary
  *
  * Generated by common_otbn infrastructure using:
- * - vendor/opentitan/upstream/vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/otbn_as.py for assembly
+ * - vendor/lowRISC/opentitan/upstream/hw/ip/otbn/util/otbn_as.py for assembly
  * - Static linker script (otbn_app.ld)
  * - OpenTitan CRC algorithm for validation
  * - Standard RISC-V objcopy for binary extraction
  * - Symbol address extraction from ELF
- *
- * This replaces custom Python build scripts with reusable Makefile flow.
  */
 
 #include "{app_name}_otbn.h"
@@ -249,10 +248,10 @@ extern const size_t {dmem_array_name}_words;
 {binary_to_c_array(dmem_data, dmem_array_name)}"""
 
     # Write files
-    with open(output_h, 'w') as f:
+    with open(output_h, "w") as f:
         f.write(header_content)
 
-    with open(output_c, 'w') as f:
+    with open(output_c, "w") as f:
         f.write(source_content)
 
     # Print summary
@@ -267,22 +266,24 @@ extern const size_t {dmem_array_name}_words;
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate C files for OTBN applications')
-    parser.add_argument('--app-name', required=True, help='OTBN application name')
-    parser.add_argument('--imem-bin', required=True, help='IMEM binary file')
-    parser.add_argument('--dmem-bin', required=True, help='DMEM binary file')
-    parser.add_argument('--output-c', required=True, help='Output C file')
-    parser.add_argument('--output-h', required=True, help='Output header file')
-    parser.add_argument('--elf-file', help='ELF file for symbol extraction (optional)')
+    parser = argparse.ArgumentParser(description="Generate C files for OTBN applications")
+    parser.add_argument("--app-name", required=True, help="OTBN application name")
+    parser.add_argument("--imem-bin", required=True, help="IMEM binary file")
+    parser.add_argument("--dmem-bin", required=True, help="DMEM binary file")
+    parser.add_argument("--output-c", required=True, help="Output C file")
+    parser.add_argument("--output-h", required=True, help="Output header file")
+    parser.add_argument("--elf-file", help="ELF file for symbol extraction (optional)")
 
     args = parser.parse_args()
 
     # Read binary data
-    imem_data = Path(args.imem_bin).read_bytes() if Path(args.imem_bin).exists() else b''
-    dmem_data = Path(args.dmem_bin).read_bytes() if Path(args.dmem_bin).exists() else b''
+    imem_data = Path(args.imem_bin).read_bytes() if Path(args.imem_bin).exists() else b""
+    dmem_data = Path(args.dmem_bin).read_bytes() if Path(args.dmem_bin).exists() else b""
 
     # Generate C files
-    generate_c_file(args.app_name, imem_data, dmem_data, args.output_c, args.output_h, args.elf_file)
+    generate_c_file(
+        args.app_name, imem_data, dmem_data, args.output_c, args.output_h, args.elf_file
+    )
 
 
 if __name__ == "__main__":

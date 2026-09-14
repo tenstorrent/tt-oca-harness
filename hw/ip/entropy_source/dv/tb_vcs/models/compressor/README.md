@@ -24,9 +24,11 @@ This is the same polynomial used in AES MixColumns operations.
 ### Functions
 
 #### `gf256_mult(a, b)`
+
 Multiplies two GF(2^8) elements using the shift-and-XOR algorithm.
 
 **Example:**
+
 ```systemverilog
 logic [7:0] result;
 result = gf256_mult(8'h02, 8'h03);  // Returns 8'h06
@@ -34,9 +36,11 @@ result = gf256_mult(8'h53, 8'hCA);  // Returns 8'h01 (AES test vector)
 ```
 
 #### `gf256_muladd(a, b, c)`
+
 Computes `(a * b) + c` in GF(2^8). This is the core BIW extractor operation.
 
 **Example:**
+
 ```systemverilog
 logic [7:0] result;
 result = gf256_muladd(8'h02, 8'h03, 8'h01);  // Returns 8'h07
@@ -132,35 +136,42 @@ print(f"Group 2: ({group_a:02X} * {group_b:02X}) + {group_c:02X} = {group_y:02X}
 ### Operating Modes
 
 #### Normal Mode (bypass=0)
+
 ```
 12 input bytes → 4 BIW extractors → 32-bit word
 Each group: y[i] = (a[i] * b[i]) + c[i] in GF(2^8)
 ```
 
 #### Bypass Mode (bypass=1)
+
 ```
 12 input bytes → Simple concatenation → 32-bit word
 Output = {bytes[0], bytes[1], bytes[2], bytes[3]}
 ```
+
 **Use case**: Debug, verify data flow without GF(2^8) complexity
 
 #### Lane Masking
+
 ```
 lane_mask = 0xFFF → All 12 lanes active
 lane_mask = 0x001 → Only lane 0 active (others forced to 0x00)
 lane_mask = 0xAAA → Even lanes only: 0,2,4,6,8,10
 ```
+
 **Use case**: Test single lane, debug specific RO issues
 
 ### Debug Features
 
 **Group Selection** (group_sel):
+
 - `2'b00`: Debug group 0 → lanes [0, 4, 8]
 - `2'b01`: Debug group 1 → lanes [1, 5, 9]
 - `2'b10`: Debug group 2 → lanes [2, 6, 10]
 - `2'b11`: Debug group 3 → lanes [3, 7, 11]
 
 **Debug Outputs**: Expose intermediate values for verification
+
 - `group_a_debug`: First input to multiply (lane i)
 - `group_b_debug`: Second input to multiply (lane i+4)
 - `group_c_debug`: Add input (lane i+8)
@@ -168,6 +179,7 @@ lane_mask = 0xAAA → Even lanes only: 0,2,4,6,8,10
 - `group_product_debug`: a*b before adding c
 
 **Example**: Verify GF(2^8) arithmetic
+
 ```python
 # Select group 0
 dut.compressor_cfg.group_sel.value = 0
@@ -211,6 +223,7 @@ The GF(2^8) functions include built-in assertions that verify correctness agains
 ```
 
 The assertions will automatically run at simulation start and verify:
+
 - Basic multiplication operations
 - Polynomial reduction
 - AES test vectors
@@ -232,11 +245,11 @@ The assertions will automatically run at simulation start and verify:
 
 ### Properties Verified
 
-- ✅ Commutativity: a * b = b * a
-- ✅ Identity: a * 1 = a
-- ✅ Zero: a * 0 = 0
-- ✅ Distributive: a * (b + c) = (a * b) + (a * c)
-- ✅ Associative (addition): (a + b) + c = a + (b + c)
+- Commutativity: `a * b = b * a`
+- Identity: `a * 1 = a`
+- Zero: `a * 0 = 0`
+- Distributive: `a * (b + c) = (a * b) + (a * c)`
+- Associative (addition): `(a + b) + c = a + (b + c)`
 
 ## Implementation Notes
 
@@ -252,18 +265,11 @@ For each bit i in b (0 to 7):
     4. If overflow: a_shifted = a_shifted XOR POLY
 ```
 
-### Why Unrolled?
-
-- ✅ **Faster synthesis**: No loops to unroll
-- ✅ **Predictable timing**: Combinational logic only
-- ✅ **Better optimization**: Tools can optimize each stage
-- ✅ **Easier verification**: Each stage is explicit
-
 ## References
 
 1. **FIPS 197** - Advanced Encryption Standard (AES)
    - Section 4.2: Multiplication in GF(2^8)
-   - https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf
+   - <https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf>
 
 2. **Finite Field Arithmetic**
    - Introduction to Galois Fields for Cryptography
@@ -369,17 +375,7 @@ Enable compile-time checking:
 ```
 
 **Checks include:**
+
 - Zero output rate monitoring (warns if >1%)
 - Pattern repeat monitoring (warns if >5%)
 - Output activity checking
-
-## Implementation Status
-
-1. ✅ **Phase 1 Complete**: GF(2^8) functions implemented with AES test vectors
-2. ✅ **Phase 2 Complete**: Configuration interface with debug features
-3. ✅ **Phase 3 Complete**: Main reference model with BIW extraction
-4. ⬜ **Phase 4**: Integrate into testbench (`tb_entropy_top.sv`)
-5. ⬜ **Phase 5**: Python helper functions
-6. ⬜ **Phase 6**: Unit and integration tests
-
-See `../test/ENTROPY_COMPRESSOR_MODEL.md` for complete implementation plan.

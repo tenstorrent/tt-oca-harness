@@ -5,49 +5,49 @@
 // Randomized Delay Synchronizer
 //
 //--------------------------------------------------
- module prim_sync_randomized_delay #(
-    parameter int unsigned WIDTH = 1,
+module prim_sync_randomized_delay #(
+  parameter int unsigned WIDTH = 1,
 
 `ifdef RANDOM_DELAY_TYP_OVR
-    parameter int unsigned RANDOM_DELAY_TYPE = `RANDOM_DELAY_TYP_OVR,
+  parameter int unsigned RANDOM_DELAY_TYPE = `RANDOM_DELAY_TYP_OVR,
 `else
-    parameter int unsigned RANDOM_DELAY_TYPE = 1,
+  parameter int unsigned RANDOM_DELAY_TYPE = 1,
 `endif
-    // RANDOM_DELAY_TYPE =
-    // 0 => no delay
-    // 1 => 0 or up to 1 i_clk cycles of delay (DEFAULT)
-    // 2 => 0, 0.5, 1, 1.5 i_clk cycles of delay
-    // 3 => 0, 1, 2, 3 i_clk cycles of delay
-    // 4 => 0 or up to 0.5 i_clk cycles of delay
-    // otherwise => no delay
+  // RANDOM_DELAY_TYPE =
+  // 0 => no delay
+  // 1 => 0 or up to 1 i_clk cycles of delay (DEFAULT)
+  // 2 => 0, 0.5, 1, 1.5 i_clk cycles of delay
+  // 3 => 0, 1, 2, 3 i_clk cycles of delay
+  // 4 => 0 or up to 0.5 i_clk cycles of delay
+  // otherwise => no delay
 
-    parameter bit RANDOM_DELAY_RESET = 1'b1,  // 0 ~ 1
-    // RANDOM_DELAY_RESET =
-    // 0 => dont reset the delay flops
-    // otherwsie => reset the delay flops
+  parameter bit RANDOM_DELAY_RESET = 1'b1,  // 0 ~ 1
+  // RANDOM_DELAY_RESET =
+  // 0 => dont reset the delay flops
+  // otherwise => reset the delay flops
 
-    parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0,  // 0 ~ 1
-    // RANDOM_DELAY_GRAY_CODE =
-    // 0 => each bit has its own random mux sel
-    // otherwise => all bits have the same random mux sel
+  parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0,  // 0 ~ 1
+  // RANDOM_DELAY_GRAY_CODE =
+  // 0 => each bit has its own random mux sel
+  // otherwise => all bits have the same random mux sel
 
-    parameter bit RANDOM_DELAY_MUX_OVR = 1'b0,  // 0 ~ 3
-    // RANDOM_DELAY_MUX_OVR =
-    // 0 => Use internal random mux_sel
-    // otherwise => Use RANDOM_DELAY_MUX_OVR value for all muxs
-    //
-    parameter bit RESET_POLARITY = 1'b0  // 0 ~ 1
-    // RESET_POLARITY =
-    // 0 => 'reset' to zero when i_reset_n is low
-    // 1 => 'set'   to one  when i_reset_n is low
+  parameter bit RANDOM_DELAY_MUX_OVR = 1'b0,  // 0 ~ 3
+  // RANDOM_DELAY_MUX_OVR =
+  // 0 => Use internal random mux_sel
+  // otherwise => Use RANDOM_DELAY_MUX_OVR value for all muxs
+  //
+  parameter bit RESET_POLARITY = 1'b0  // 0 ~ 1
+  // RESET_POLARITY =
+  // 0 => 'reset' to zero when i_reset_n is low
+  // 1 => 'set'   to one  when i_reset_n is low
 ) (
-    input logic i_clk,
-    input logic [WIDTH-1:0] i_d,
-    input logic i_reset_n,  // Active Low Reset, if synchronizer is not resetable tie to 1
-    input logic [WIDTH*2-1:0] i_mux_sel_ovr,  // Mux Select Override Value, NOT USED FOR NOW
+  input logic i_clk,
+  input logic [WIDTH-1:0] i_d,
+  input logic i_reset_n,  // Active Low Reset, if synchronizer is not resettable tie to 1
+  input logic [WIDTH*2-1:0] i_mux_sel_ovr,  // Mux Select Override Value, NOT USED FOR NOW
 
-    output logic [WIDTH*2-1:0] o_mux_sel,  // Output Mux Select, NOT USED FOR NOW
-    output logic [  WIDTH-1:0] o_d_del     // Delayed Data
+  output logic [WIDTH*2-1:0] o_mux_sel,  // Output Mux Select, NOT USED FOR NOW
+  output logic [WIDTH-1:0]   o_d_del     // Delayed Data
 );
 
 `ifdef SYNTHESIS  // if we are synthesizing ignore random delay logic
@@ -59,10 +59,10 @@
   assign o_mux_sel = {WIDTH{2'd0}};
 `else  // Otherrwise use random delay logic
   reg [WIDTH-1:0] d_q1, d_q2, d_q3;
-  reg     [  WIDTH-1:0] d_mux;
+  reg     [WIDTH-1:0]   d_mux;
   logic   [WIDTH*2-1:0] mux_sel;
-  reg     [        1:0] mux_sel_gray;
-  reg     [        1:0] mux_sel_gray_init;
+  reg     [1:0]         mux_sel_gray;
+  reg     [1:0]         mux_sel_gray_init;
 
   integer               myseed;
   integer               myseed2;
@@ -85,13 +85,13 @@
 
   end
 
-  // Randomly choose a mux_sel value everytime input transitions
+  // Randomly choose a mux_sel value every time input transitions
   initial begin
     mux_sel = {WIDTH{2'd0}};
   end
 
   if (RANDOM_DELAY_MUX_OVR != 0) begin : gen_random_mux_sel_ovr
-    for (i = 0; i < WIDTH; i = i + 1) begin
+    for (i = 0; i < WIDTH; i = i + 1) begin : gen_mux_sel_ovr
       assign mux_sel[2*i+:2] = RANDOM_DELAY_MUX_OVR;
     end
   end else if (RANDOM_DELAY_GRAY_CODE == 1) begin : gen_random_mux_sel_gray
@@ -102,7 +102,7 @@
       end
     end
   end else begin : gen_random_mux_sel
-    for (i = 0; i < WIDTH; i = i + 1) begin
+    for (i = 0; i < WIDTH; i = i + 1) begin : gen_mux_sel_random
       always @(i_d[i]) begin
         mux_sel[2*i+:2] = $urandom;
       end
@@ -121,7 +121,7 @@
         else d_q1 <= i_d;
       end
       // Data Mux
-      for (i = 0; i < WIDTH; i = i + 1) begin
+      for (i = 0; i < WIDTH; i = i + 1) begin : gen_data_mux
         assign d_mux[i] = mux_sel[2*i] ? d_q1[i] : i_d[i];
       end
     end else if (RANDOM_DELAY_TYPE == 2) begin : gen_type_2_delay
@@ -141,7 +141,7 @@
         else d_q3 <= d_q2;
       end
       // Data Mux
-      for (i = 0; i < WIDTH; i = i + 1) begin
+      for (i = 0; i < WIDTH; i = i + 1) begin : gen_data_mux
         always_comb begin
           unique case (mux_sel[2*i+:2])
             2'b00: d_mux[i] = i_d[i];
@@ -168,7 +168,7 @@
         else d_q3 <= d_q2;
       end
       // Data Mux
-      for (i = 0; i < WIDTH; i = i + 1) begin
+      for (i = 0; i < WIDTH; i = i + 1) begin : gen_data_mux
         always_comb begin
           unique case (mux_sel[2*i+:2])
             2'b00: d_mux[i] = i_d[i];
@@ -185,7 +185,7 @@
         else d_q1 <= i_d;
       end
       // Data Mux
-      for (i = 0; i < WIDTH; i = i + 1) begin
+      for (i = 0; i < WIDTH; i = i + 1) begin : gen_data_mux
         always_comb begin
           d_mux[i] = mux_sel[2*i] ? d_q1[i] : i_d[i];
         end

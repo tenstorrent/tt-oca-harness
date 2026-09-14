@@ -71,7 +71,9 @@ to the BYPASS instruction.
 |pwr_on_rst_ni |Input |1 |Power-on reset (active low), AND-combined with TRST
 |clk_i |Input |1 |System clock for AXI bridge modules
 |rst_n_i |Input |1 |System reset for AXI bridge modules (active low)
-|feat_ctrl_i |Input |64 |Lifecycle feature control vector, enable-polarity (1 = feature enabled); security gating for debug interfaces
+|smc_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SMC fabric JTAG2AXI bridge (1 = bridge disabled)
+|smc_otp_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SMC OTP JTAG2AXIL bridge (1 = bridge disabled)
+|sep_otp_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SEP OTP JTAG2AXIL bridge (1 = bridge disabled)
 |===
 
 ===== Dependencies

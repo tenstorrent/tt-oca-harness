@@ -60,7 +60,9 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
 
     async def _expect_error_write(self, addr: int, data: int, resp: int, context: str) -> None:
         expected = self.configure_target_error(self.target, addr, resp, read=False, write=True)
-        before = self.read_target_mem_int(self.target, addr, self.target_cfg(self.target).default_size)
+        before = self.read_target_mem_int(
+            self.target, addr, self.target_cfg(self.target).default_size
+        )
         status, _ = await self.write_target_single_expect_status(
             self.target,
             addr,
@@ -69,11 +71,13 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             context=context,
         )
         self.status = DtpJtag2AxiStatus(status)
-        # OTP AXI-Lite fault RAM suppresses failed writes. The SMC fabric legacy
+        # OTP AXI-Lite fault RAM suppresses failed writes. The SMC fabric
         # responder reports the error after accepting data, so recovery is the
         # portable side-effect check for that target.
         if self.target != "smc_axi":
-            after = self.read_target_mem_int(self.target, addr, self.target_cfg(self.target).default_size)
+            after = self.read_target_mem_int(
+                self.target, addr, self.target_cfg(self.target).default_size
+            )
             self.assert_equal(f"{context}.no_write_side_effect", after, before)
         await self.verify_target_recovery(
             self.target,
@@ -111,7 +115,9 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         for idx, resp in enumerate(ERROR_RESPONSES, start=1):
             addr = self._addr(ERROR_BASE, idx)
             data = rng.getrandbits(self.target_cfg(self.target).data_width)
-            self.log_iteration(idx, len(ERROR_RESPONSES), "write error addr=0x%08x resp=%d", addr, resp)
+            self.log_iteration(
+                idx, len(ERROR_RESPONSES), "write error addr=0x%08x resp=%d", addr, resp
+            )
             await self._expect_error_write(addr, data, resp, f"single_write_error#{idx}")
         self._emit_error_nonvacuity("error_single_write")
         self.status = DtpJtag2AxiStatus.SUCCESS
@@ -123,7 +129,9 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         for idx, resp in enumerate(ERROR_RESPONSES, start=1):
             addr = self._addr(ERROR_BASE + 0x100, idx)
             data = rng.getrandbits(self.target_cfg(self.target).data_width)
-            self.log_iteration(idx, len(ERROR_RESPONSES), "read error addr=0x%08x resp=%d", addr, resp)
+            self.log_iteration(
+                idx, len(ERROR_RESPONSES), "read error addr=0x%08x resp=%d", addr, resp
+            )
             await self._expect_error_read(addr, data, resp, f"single_read_error#{idx}")
         self._emit_error_nonvacuity("error_single_read")
         self.status = DtpJtag2AxiStatus.SUCCESS
@@ -152,7 +160,13 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         for idx in range(3):
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
             before = await self.target_activity_counts(self.target)
-            self.log_iteration(idx + 1, 3, "series write addr=0x%08x resp=%s", expected_addr, resp if idx == fault_idx else "OKAY")
+            self.log_iteration(
+                idx + 1,
+                3,
+                "series write addr=0x%08x resp=%s",
+                expected_addr,
+                resp if idx == fault_idx else "OKAY",
+            )
             if with_status:
                 _, status_bit = await self.series_data_with_status(
                     data,
@@ -165,7 +179,9 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             elif increment:
                 await self.series_data_incr(data, size=size, target=self.target, back_to_rti=True)
             else:
-                await self.series_data_no_incr(data, size=size, target=self.target, back_to_rti=True)
+                await self.series_data_no_incr(
+                    data, size=size, target=self.target, back_to_rti=True
+                )
             await self.wait_for_target_activity(
                 self.target,
                 before=before,
@@ -232,7 +248,13 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             addr = base + idx * stride
             await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.READ, addr, size=size, target=self.target)
             before = await self.target_activity_counts(self.target)
-            self.log_iteration(idx + 1, 3, "series read addr=0x%08x resp=%s", addr, resp if idx == fault_idx else "OKAY")
+            self.log_iteration(
+                idx + 1,
+                3,
+                "series read addr=0x%08x resp=%s",
+                addr,
+                resp if idx == fault_idx else "OKAY",
+            )
             if with_status:
                 await self.series_data_with_status(
                     0,
@@ -293,8 +315,13 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         # gate is repeatable, not a one-shot POR effect.
         for idx in (1, 2):
             bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
-            self.log_step(idx, "Gate %s with %s (pass %d) and attempt error-path write",
-                          self.target, cfg.dbg_disable_bit, idx)
+            self.log_step(
+                idx,
+                "Gate %s with %s (pass %d) and attempt error-path write",
+                self.target,
+                cfg.dbg_disable_bit,
+                idx,
+            )
             await self.disable_debug_bits(cfg.dbg_disable_bit)
             # arm=False: the gated op must never reach the bus, so no model
             # expectation or scoreboard credit may be armed for it (an armed
@@ -315,7 +342,9 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
                 target=cfg,
             )
             await self.write_tdr(cfg.single_op_reg, raw)
-            await self.expect_no_target_activity(self.target, 8, context=f"error_gate.{bit_name}.no_axi")
+            await self.expect_no_target_activity(
+                self.target, 8, context=f"error_gate.{bit_name}.no_axi"
+            )
             if self.axi_scoreboard is not None:
                 gate_after = await self.target_activity_counts(self.target)
                 self.axi_scoreboard.expect_no_activity(
@@ -330,7 +359,9 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             await self.enable_all_debug()
             await self.wait_sys_cycles(8)
             self.scoreboard_end_blocked(self.target, context=f"error_gate.{bit_name}")
-            expected = self.configure_target_error(self.target, addr, AXI_DECERR, read=False, write=True)
+            expected = self.configure_target_error(
+                self.target, addr, AXI_DECERR, read=False, write=True
+            )
             status, _ = await self.write_target_single_expect_status(
                 self.target,
                 addr,
@@ -354,12 +385,24 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         scenarios = {
             "error_single_write": self.run_error_single_write,
             "error_single_read": self.run_error_single_read,
-            "error_series_no_incr_write": lambda: self.run_error_series_write(increment=False, with_status=False),
-            "error_series_no_incr_read": lambda: self.run_error_series_read(increment=False, with_status=False),
-            "error_series_incr_write": lambda: self.run_error_series_write(increment=True, with_status=False),
-            "error_series_incr_read": lambda: self.run_error_series_read(increment=True, with_status=False),
-            "error_series_incr_write_with_status": lambda: self.run_error_series_write(increment=True, with_status=True),
-            "error_series_incr_read_with_status": lambda: self.run_error_series_read(increment=True, with_status=True),
+            "error_series_no_incr_write": lambda: self.run_error_series_write(
+                increment=False, with_status=False
+            ),
+            "error_series_no_incr_read": lambda: self.run_error_series_read(
+                increment=False, with_status=False
+            ),
+            "error_series_incr_write": lambda: self.run_error_series_write(
+                increment=True, with_status=False
+            ),
+            "error_series_incr_read": lambda: self.run_error_series_read(
+                increment=True, with_status=False
+            ),
+            "error_series_incr_write_with_status": lambda: self.run_error_series_write(
+                increment=True, with_status=True
+            ),
+            "error_series_incr_read_with_status": lambda: self.run_error_series_read(
+                increment=True, with_status=True
+            ),
             "error_security_gating": self.run_error_security_gating,
         }
         if self.scenario not in scenarios:

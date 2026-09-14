@@ -5,13 +5,22 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_jtag_reset_ctrl_test_seq import smc_jtag_reset_ctrl_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_jtag_reset_ctrl_test(smc_base_test):
     """Struct pin mux; not boot-stall JTAG, FLR, or rst_cool_ni proxy."""
+
+    required_evidence = (
+        "CHK-JTAG-RST-BASIC",
+        "CHK-JTAG-RST-COOL",
+        "CHK-JTAG-RST-IDLE",
+        "CHK-JTAG-RST-SS0",
+        "CHK-JTAG-RST-WARM-SCRATCH",
+    )
+    min_evidence = 5
 
     auto_protocol_vip = False
 
