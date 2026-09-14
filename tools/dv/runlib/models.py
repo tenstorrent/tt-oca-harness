@@ -57,8 +57,8 @@ Flow = Dut
 class TestEntry:
     name: str
     # The entry point for the selected framework. Resolved from `bindings` at catalog load;
-    # empty when the scenario has no binding for the selected framework (selection then fails
-    # loudly, or skips under --skip-unimplemented).
+    # empty when the scenario has no binding for the selected framework. `excluded` tells a
+    # declared-out-of-scope framework apart from a missing entry.
     module: str
     target: str | None = None
     seed: int | None = None
@@ -78,6 +78,10 @@ class TestEntry:
     # Per-framework entry points from a `module = { cocotb = "...", uvm = "..." }` binding map.
     # A bare-string `module` is normalized to a single binding for the DUT's default framework.
     bindings: dict[str, str] = field(default_factory=dict)
+    # Frameworks the binding map declares out of scope with `<fw> = false`. Group and tag
+    # selection skips the scenario under such a framework without --skip-unimplemented; naming
+    # it explicitly with --items is an error.
+    excluded: frozenset[str] = frozenset()
     # Per-framework runtime overrides from `[tests.overrides.<fw>]` (seed/timeout_sec/args).
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
     # The testlist file that declared this entry, so cross-reference errors (for example an

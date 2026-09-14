@@ -11,19 +11,22 @@
 # Missing data is a warning, never an error: a doc build must not fail because
 # a nightly did not publish.
 #
-# Env: OCAH_ROOT                 repository root (default: this script's repo)
-#      OCAH_DASHBOARD_DATA_DIR   where the published summary is cached
-#      OCAH_DASHBOARD_DATA_REF   git ref carrying the data branch
-#      OCAH_DASHBOARD_DATA_PATH  path to summary.json within that ref
+# Env: OCAH_ROOT                    repository root (default: this script's repo)
+#      OCAH_DASHBOARD_DATA_DIR      where the published summary is cached
+#      OCAH_DASHBOARD_DATA_REF      git ref carrying the data branch
+#      OCAH_DASHBOARD_DATA_PATH     path to summary.json within that ref
+#      OCAH_DASHBOARD_HISTORY_PATH  path to history.json within that ref
 set -euo pipefail
 
 root="${OCAH_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)}"
 data_dir="${OCAH_DASHBOARD_DATA_DIR:-$root/doc/_build/dashboard-data}"
 ref="${OCAH_DASHBOARD_DATA_REF:-origin/dv-dashboard-data}"
 path="${OCAH_DASHBOARD_DATA_PATH:-latest/summary.json}"
+history_path="${OCAH_DASHBOARD_HISTORY_PATH:-data/history.json}"
 site="${1:-}"
 
 summary="$data_dir/summary.json"
+history="$data_dir/history.json"
 
 if [ ! -f "$summary" ]; then
   mkdir -p "$data_dir"
@@ -39,6 +42,11 @@ if [ ! -f "$summary" ]; then
   fi
 fi
 
+if [ ! -f "$history" ]; then
+  git -C "$root" show "$ref:$history_path" >"$history.tmp" 2>/dev/null &&
+    mv "$history.tmp" "$history" || rm -f "$history.tmp"
+fi
+
 [ -n "$site" ] || exit 0
 
 if [ ! -f "$summary" ]; then
@@ -50,6 +58,9 @@ fi
 
 data="$site/ocah-docs/latest/data"
 mkdir -p "$data"
-python3 "$root/tools/doc/trim_dashboard_data.py" "$summary" "$data/summary.json" \
-  --tests-out "$data/tests.json"
+trim="$root/tools/doc/trim_dashboard_data.py"
+python3 "$trim" summary "$summary" "$data/summary.json" --tests-out "$data/tests.json"
+if [ -f "$history" ]; then
+  python3 "$trim" history "$history" "$data/history.json"
+fi
 echo "Staged dashboard data into $data/"

@@ -38,7 +38,6 @@ def production_rdl_sources() -> list[Path]:
             "hw/ip/*/*/regs/**/*.rdl",
             "hw/ip/*/dv/models/regs/*.rdl",
             "hw/ip/*/*/dv/models/regs/*.rdl",
-            "hw/common/axi/*/regs/**/*.rdl",
             "hw/common/regs/*.rdl",
             "vendor/*/*/overlay/**/*.rdl",
             "vendor/tenstorrent/aou/upstream/csr/*.rdl",
@@ -175,7 +174,6 @@ def ipxact_links(units: dict[str, set[Path]]) -> dict[Path, Path]:
         "hw/sys/*/regs/gen/ipxact/*.xml",
         "hw/ip/*/regs/gen/ipxact/*.xml",
         "hw/ip/*/*/regs/gen/ipxact/*.xml",
-        "hw/common/axi/*/regs/gen/ipxact/*.xml",
         "vendor/*/*/overlay/**/regs/gen/ipxact/*.xml",
     )
     for system, closure in units.items():
