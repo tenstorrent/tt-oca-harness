@@ -75,6 +75,47 @@ timeout_sec = 1800
 tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
+# Timeout-reset recovery tests are intentionally direct-group only: each boots
+# or resets the full cluster and creates real pending AXI traffic.
+
+[[tests]]
+name = "smc_cpu_l2_read_wedge_test"
+module = "smc_cpu_l2_read_wedge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cpu", "isolate_flush", "pyuvm"]
+
+[[tests]]
+name = "smc_cpu_l2_write_wedge_test"
+module = "smc_cpu_l2_write_wedge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["cpu", "isolate_flush", "pyuvm"]
+
+[[tests]]
+name = "smc_cpu_mmio_read_wedge_test"
+module = "smc_cpu_mmio_read_wedge_test"
+seed = 1
+timeout_sec = 3600
+tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
+firmware = "mmio_wedge"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=mmio_wedge.ecc.hex",
+]
+
+[[tests]]
+name = "smc_cpu_mmio_write_wedge_test"
+module = "smc_cpu_mmio_write_wedge_test"
+seed = 1
+timeout_sec = 3600
+tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
+firmware = "mmio_wedge"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=mmio_wedge.ecc.hex",
+]
+
 [[groups]]
 name = "cpu_depth"
 tests = [
@@ -83,3 +124,13 @@ tests = [
     "smc_mutex_semaphore_test",
     "smc_spm_mem_boundary_test",
 ]
+
+[[groups]]
+name = "cpu_isolate_flush"
+tests = [
+    "smc_cpu_l2_read_wedge_test",
+    "smc_cpu_l2_write_wedge_test",
+    "smc_cpu_mmio_read_wedge_test",
+    "smc_cpu_mmio_write_wedge_test",
+]
+expected_count = 4

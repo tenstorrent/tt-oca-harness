@@ -248,6 +248,9 @@
 `SMC_TB_OUT(logic [11:0], s_axi_buser)
 `SMC_TB_OUT(logic, s_axi_bvalid)
 `SMC_TB_IN(logic, s_axi_bready)
+// TB-owned SEP_IN B-channel hold. It keeps an accepted write response
+// outstanding while later AW/W traffic remains available.
+`SMC_TB_IN(logic, tb_sep_axi_b_hold)
 
 `SMC_TB_IN(logic [5:0], s_axi_arid)
 `SMC_TB_IN(logic [55:0], s_axi_araddr)
@@ -441,6 +444,27 @@
 `SMC_TB_OUT(logic [57:0], tb_cpu_mepc2)
 `SMC_TB_OUT(logic [57:0], tb_cpu_mepc3)
 `SMC_TB_OUT(logic, tb_cpu_cluster_isolate)
+// CPU timeout-reset / AXI-isolate recovery observability. These are passive
+// lifts only; tests create stalls with the existing public hold controls.
+`SMC_TB_OUT(logic, tb_cpu_isolate_req)
+`SMC_TB_OUT(logic, tb_cpu_drained)
+`SMC_TB_OUT(logic, tb_cpu_reset_timeout)
+`SMC_TB_OUT(logic, tb_cpu_reset_applied)
+`SMC_TB_OUT(logic, tb_cpu_uncore_reset_n)
+`SMC_TB_OUT(logic, tb_cpu_l2_isolated)
+`SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_aw)
+`SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_w)
+`SMC_TB_OUT(logic [3:0], tb_cpu_l2_pending_ar)
+`SMC_TB_OUT(logic [1:0], tb_cpu_l2_state_aw)
+`SMC_TB_OUT(logic [1:0], tb_cpu_l2_state_ar)
+`SMC_TB_OUT(logic, tb_cpu_l2_flush_active)
+`SMC_TB_OUT(logic, tb_cpu_mmio_isolated)
+`SMC_TB_OUT(logic [3:0], tb_cpu_mmio_pending_aw)
+`SMC_TB_OUT(logic [3:0], tb_cpu_mmio_pending_w)
+`SMC_TB_OUT(logic [3:0], tb_cpu_mmio_pending_ar)
+`SMC_TB_OUT(logic [1:0], tb_cpu_mmio_state_aw)
+`SMC_TB_OUT(logic [1:0], tb_cpu_mmio_state_ar)
+`SMC_TB_OUT(logic, tb_cpu_mmio_flush_active)
 // U7-3: Rocket DM active + ack after dmcontrol.dmactive write.
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive)
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive_ack)

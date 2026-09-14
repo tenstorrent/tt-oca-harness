@@ -34,7 +34,10 @@ module smc_cpu_ctrl_wrap #(
 
   // Reset-drain handshake to/from the CPU cluster (always-on rst_cold domain)
   output logic                                    isolate_req_o,
-  input  logic                                    drained_i
+  input  logic                                    drained_i,
+
+  // Timeout-forced reset: flush request to the cluster AXI isolates
+  output logic                                    isolate_flush_o
 );
 
   localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS =
@@ -402,6 +405,10 @@ module smc_cpu_ctrl_wrap #(
   assign withhold      = pending & ~force_apply;
   assign reset_applied = sw_reset_req & ~withhold;         // live status
   assign reset_timeout = timeout_fired_q;                  // live status
+
+  // Flush the cluster AXI isolates when the timeout forces the reset; the
+  // isolates latch it and self-clear at de-isolation.
+  assign isolate_flush_o = force_apply;
 
   assign hwif_in.RESET_TIMEOUT.reset_applied.next = reset_applied;
   assign hwif_in.RESET_TIMEOUT.reset_timeout.next = reset_timeout;

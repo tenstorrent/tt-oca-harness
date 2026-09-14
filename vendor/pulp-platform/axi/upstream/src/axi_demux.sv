@@ -297,7 +297,7 @@ module axi_demux_intf #(
     .clk_i,   // Clock
     .rst_ni,  // Asynchronous reset active low
     .test_i,  // Testmode enable
-    .sel_hash_i, // Hash selection (if enabled)  
+    .sel_hash_i, // Hash selection (if enabled)
     // slave port
     .slv_req_i       ( slv_req         ),
     .slv_aw_select_i ( slv_aw_select_i ),

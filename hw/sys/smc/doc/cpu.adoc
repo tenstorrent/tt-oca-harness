@@ -134,59 +134,59 @@ repair unless explicitly bypassed via strap configuration.
 
 ==== Cluster Boundary Isolation
 
-The cluster is reset independently of the surrounding SMC fabric.
-If the cluster were reset while a transaction on one of its AXI ports
-was still in flight, the fabric on the other side would be left
- waiting on a response that never returns, hanging the bus, and could
-sample boundary signals while they glitch through reset. To avoid this, each
-AXI port is wrapped in an `axi_isolate` block that drains the outstanding
-transactions and holds the boundary at safe values before the reset is allowed
-to take effect.
+The CPU cluster can reset without resetting the SMC fabric. Resetting it with
+an AXI transaction in progress can leave one side waiting forever. To prevent
+this, each cluster AXI port stops new traffic and finishes accepted traffic
+before a software-requested reset is applied.
 
 Two instances wrap the AXI ports listed above, each sized for up to four
 outstanding transactions:
 
-* the *L2 frontend* slave port, which blocks new transactions rather than
-  terminating them, and
-* the *MMIO* master port, which terminates new transactions presented while
-  isolated with SLVERR responses to keep reset-time X values from propagating
-  into the fabric.
+* The L2 frontend blocks new transactions while isolated.
+* The MMIO port returns `SLVERR` for new transactions while isolated.
 
 The non-AXI status crossings (`wb_pc_valid`, `wb_reg_pc`, and the per-core
-`wdt_reset`) are clamped to constants over the same window so they cannot leak
-glitches either. The boundary also self-isolates on cold boot, releasing only
-once SRAM initialization completes and the cores and uncore are out of reset.
+`wdt_reset`) are held at zero over the same window. The boundary is also
+isolated during cold boot. It opens after SRAM initialization completes and
+the cores and uncore leave reset.
 
-===== Drain Handshake
+===== Software Reset Sequence
 
-Isolation is coordinated with the control logic
-(`smc_cpu_ctrl_wrap`) through two signals:
+Any software-requested core or uncore reset starts this sequence:
 
-* `isolate_req_i` — asserted by the control logic whenever a software reset of
-  the cluster is pending. The control logic withholds the reset itself until
-  the cluster reports that it is safe to apply.
-* `drained_o` — asserted once both `axi_isolate` instances have drained and
-  isolated their ports, telling the control logic the withheld reset may now be
-  released.
+. The control logic requests isolation and holds off the reset.
+. Both AXI ports stop new traffic and finish accepted transactions.
+. When both ports report that they are isolated, the reset is applied.
+. After the reset request is removed and the cluster is ready, the boundary
+  reopens.
 
-===== Reset-Domain Crossing
+`CPU_CTRL.RESET_TIMEOUT` bounds step 2. A `timeout_value` of zero disables the
+timer. When the timer expires, `timeout_mode=0` reports the timeout and keeps
+the reset on hold. `timeout_mode=1` applies the reset and starts a recovery
+flush.
 
-The flops driving the isolate-control logic are held by the cluster's
-uncore/core reset, while the flops inside `axi_isolate` are held by the Primary
-Reset (see <<clock-and-reset-management,Clock and Reset Management>>). The
-uncore/core reset is driven from two sources:
+The recovery flush clears transaction records at the cluster boundary. It
+also discards late responses and late write data that reach the boundary
+before it reopens. This lets a reset complete when the CPU cluster is
+unresponsive but the surrounding fabric is still working.
 
-* a Warm Reset from a watchdog timeout, which is *asynchronous* to the isolate
-  logic, and
-* a CPU CSR write (the reset-control register in `smc_cpu_ctrl_wrap`), which is
-  *synchronous*.
+[WARNING]
+====
+The recovery flush cannot withdraw an AXI request that the receiving side has
+seen but not accepted. Such a request can still prevent isolation if that side
+never becomes ready.
 
-Because the two sets of flops sit in different reset domains, the asynchronous
-warm-reset path is a reset-domain crossing into `axi_isolate`. This is
-acceptable: only the watchdog asserts the warm reset asynchronously, and a
-watchdog timeout is followed by a cold reset, so the
-brief crossing window has no functional consequence. The CSR path is
-synchronous and crosses no domains.
+The flush also cannot repair a fabric endpoint that never returns a response,
+or remove a response already buffered beyond the cluster boundary. The cluster
+reset can complete, but traffic using the affected fabric route or AXI ID may
+remain blocked. Reset that endpoint, or apply a primary/cold reset that covers
+the fabric path.
+====
+
+The isolation blocks use the primary reset, so a software-requested cluster
+reset does not clear their state. A watchdog warm reset can assert the cluster
+reset asynchronously and does not use `RESET_TIMEOUT`; that path is expected
+to be followed by a primary/cold reset.
 
 ==== Interrupt and Control Integration
 
