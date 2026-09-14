@@ -164,6 +164,9 @@ python_paths = [
   "hw/sys/smu/dv/common",
   # Reuse DTP JTAG helpers (types / tap device / IDCODE decode) without copying.
   "hw/sys/dtp/dv/cocotb",
+  # The same DV-owned tables as top-level modules (`import dtp_types`), the
+  # spelling the shared seq_lib uses so it resolves under `--dut smu` too.
+  "hw/sys/dtp/dv/cocotb/env",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"

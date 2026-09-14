@@ -173,6 +173,10 @@ python_paths = [
   # a package of that name, and `seq_lib` can only ever be one package -- see
   # smu_block_sim_cfg.toml, which puts the same directory on its path.
   "hw/sys/smu/dv/common",
+  # The DTP bench's DV-owned JTAG tables (dtp_types: instruction opcodes, IR
+  # width) as top-level modules. The DTP `env` package itself cannot go on
+  # the path: `env` is the wrapper flow's own PyUVM package.
+  "hw/sys/dtp/dv/cocotb/env",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
