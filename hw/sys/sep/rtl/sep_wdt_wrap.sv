@@ -38,11 +38,11 @@ module sep_wdt_wrap (
   logic [NumAlerts-1:0]                      wdt_alert_integ_fail;
 
   prim_sync_reset u_rst_wdt_sync (
-    .clk_i      (clk_wdt_i),
-    .rst_ni     (rst_ni),
-    .test_mode_i(test_en_i),
-    .scan_rst_ni(scan_rst_ni),
-    .sync_rst_no(rst_wdt_n)
+    .clk_i       (clk_wdt_i),
+    .rst_ni      (rst_ni),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (rst_wdt_n)
   );
 
   sep_pkg::sep_32_32_6_12_axi_req_t  sep_wdt_tlul_axi_req;

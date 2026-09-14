@@ -141,10 +141,10 @@ module sep_cpu (
   prim_sync2r #(
     .WIDTH(1)
   ) u_mpc_reset_run_req_sync (
-    .clk_i     (clk_i),
-    .d_i       (mpc_reset_run_req_i),
-    .rst_ni    (dbg_rstb_i),
-    .q_o       (mpc_reset_run_req_sync)
+    .clk_i  (clk_i),
+    .d_i    (mpc_reset_run_req_i),
+    .rst_ni (dbg_rstb_i),
+    .q_o    (mpc_reset_run_req_sync)
   );
 
   el2_veer_wrapper #(

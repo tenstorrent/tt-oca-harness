@@ -269,12 +269,12 @@ module smc_peripherals_cdc #(
     .WIDTH(17),
     .DEPTH(3)
   ) u_avsbus_cur_state_debug_sync (
-    .clk_src_i    (clk_periph_i),
-    .rst_src_ni   (rst_periph_clk_ni),
-    .data_i       (avsbus_cur_state_debug_i),
-    .clk_dst_i    (clk_smc_i),
-    .rst_dst_ni   (rst_smc_clk_ni),
-    .data_o       (avsbus_cur_state_debug_o)
+    .clk_src_i  (clk_periph_i),
+    .rst_src_ni (rst_periph_clk_ni),
+    .data_i     (avsbus_cur_state_debug_i),
+    .clk_dst_i  (clk_smc_i),
+    .rst_dst_ni (rst_smc_clk_ni),
+    .data_o     (avsbus_cur_state_debug_o)
   );
 
 

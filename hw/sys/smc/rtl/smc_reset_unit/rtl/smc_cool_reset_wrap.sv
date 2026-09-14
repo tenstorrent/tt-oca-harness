@@ -191,24 +191,24 @@ module smc_cool_reset_wrap (
     .WIDTH(32),
     .DEPTH(3)
   ) u_flr_set_cnt_sync (
-    .clk_src_i    (clk_smc_i),
-    .rst_src_ni   (rst_cold_smc_ni),
-    .data_i       (flr_set_cnt),
-    .clk_dst_i    (clk_ref_i),
-    .rst_dst_ni   (rst_cold_ref_ni),
-    .data_o       (flr_set_cnt_ref_clk)
+    .clk_src_i  (clk_smc_i),
+    .rst_src_ni (rst_cold_smc_ni),
+    .data_i     (flr_set_cnt),
+    .clk_dst_i  (clk_ref_i),
+    .rst_dst_ni (rst_cold_ref_ni),
+    .data_o     (flr_set_cnt_ref_clk)
   );
 
   prim_sync_data_autohs #(
     .WIDTH(32),
     .DEPTH(3)
   ) u_flr_reset_set_cnt_sync (
-    .clk_src_i    (clk_smc_i),
-    .rst_src_ni   (rst_cold_smc_ni),
-    .data_i       (flr_reset_set_cnt),
-    .clk_dst_i    (clk_ref_i),
-    .rst_dst_ni   (rst_cold_ref_ni),
-    .data_o       (flr_reset_set_cnt_ref_clk)
+    .clk_src_i  (clk_smc_i),
+    .rst_src_ni (rst_cold_smc_ni),
+    .data_i     (flr_reset_set_cnt),
+    .clk_dst_i  (clk_ref_i),
+    .rst_dst_ni (rst_cold_ref_ni),
+    .data_o     (flr_reset_set_cnt_ref_clk)
   );
 
   ///////////////////////
