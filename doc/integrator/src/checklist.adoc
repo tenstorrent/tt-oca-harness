@@ -49,7 +49,7 @@ xref:smu.adoc#sep-integration[SEP Integration]
 |Lint, CDC/RDC, constraint, and integration-test reports archived
 |xref:prim.adoc#prim-cell-replacement[Prim Cell Replacement],
 xref:cdc.adoc#cdc-timing-constraints[CDC Timing Constraints],
-xref:ocah-docs:ROOT:oca.adoc#oca-standard-compliance[OCA Standard Compliance]
+xref:ocah-home::motivation.adoc[Why Open Chiplet Atlas Harness]
 
 |[ ]
 |For each adopter-owned IP, select its trust and attachment class and complete the User IP integration checklist
@@ -93,7 +93,7 @@ ifdef::backend-pdf[]
 |Apply technology-mapping and CDC constraints; run integration-level verification
 |Lint, CDC/RDC, constraint, and integration-test reports archived
 |<<prim-cell-replacement,Prim Cell Replacement>>, <<cdc-timing-constraints,CDC Timing Constraints>>,
-OCA Standard Compliance (see the OCAH Technical Reference Manual)
+OCA Standard Compliance (see Home: Why Open Chiplet Atlas Harness)
 
 |[ ]
 |For each adopter-owned IP, select its trust and attachment class and complete the User IP integration checklist

@@ -12,7 +12,7 @@ vendors plug together at the software, system, protocol, transport, and
 physical layers, but real adoption depends on turning those rules into
 reusable implementation collateral.
 
-The architecture specification and compliance program live at
+The architecture specification lives at
 https://www.openchipletatlas.org/[openchipletatlas.org].
 
 *OCAH is that implementation vehicle: an open-source chiplet framework
@@ -40,8 +40,8 @@ in OCA land in the chiplet framework rather than in the application
 subsystem itself. OCAH integrates the non-application-specific
 functions that repeatedly appear across chiplets, such as the Security
 Processor (SEP), System Management Controller (SMC), System
-Management Network (SMN), and debug/test access. An AXI-over-UCIe
-bridge is on the current roadmap. 
+Management Network (SMN), debug/test access, and bridges such as
+AXI-over-UCIe. 
 
 By reusing this framework across chiplets, designers gain OCA-aligned 
 boot, security, management, and communication behavior by construction, 
