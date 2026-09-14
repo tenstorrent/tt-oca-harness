@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC VCS coverage policy: scope only -- which hierarchy the code-coverage report
+# grades -- with no [[thresholds]] and no [[holes]].
+#
+# NOTHING HERE HAS BEEN MEASURED. No SMC run on VCS exists, so there is no
+# score to set a threshold from and no unhit point to carry as a hole; a
+# threshold without a measured number would fail runs without saying anything
+# true. The graded SMC policy today is the Verilator one,
+# ../verilator/coverage_policy.toml, which carries the `user`-family floor and
+# one [[holes]] entry per unhit functional-coverage point.
+#
+# Scope is NOT owned here. `-cm_hier` + `-cm_common_hier` at compile time
+# ([coverage.vcs].compile_args in smc_sim_cfg.toml) decide what enters the
+# database and therefore what the number means; the entry below is the
+# report-time half, which only keeps the pages aligned with that scope.
+# `--run-dir <dir> --stage cov_report` re-renders the pages from the same
+# merged database, but it cannot widen or narrow the score. `--run-dir <dir>
+# --waive` re-grades the rendered report against this file's [[holes]] and
+# [[thresholds]] without running urg; it exits 2 when this [[native_files]]
+# entry's digest differs from the one the report recorded.
+#
+# What the VCS number would be, and how it differs from the Verilator one, is
+# in cov/config/vcs/README.md. The two scope files exclude overlapping but
+# different sets and are kept in step by hand.
+
+schema_version = 1
+dut = "smc"
+scope_epoch = "smc-code-cov-v1"
+
+# Report-page pruning only. `urg -hier` drops rows from the report but scores
+# the whole database regardless, so this entry keeps the pages aligned with the
+# instrumented scope and records the file's hash in the manifest; it does not
+# produce the number. The number's scope comes from `-cm_hier` at compile time.
+[[native_files]]
+tool = "vcs"
+role = "scope"
+path = "smc_cov_scope.hier"
+apply_phase = "report"
+# `-cm_common_hier` is the report-time half of the compile-time pairing: it makes
+# `-hier` prune assertion pages as well as code pages, so the report matches the
+# instrumented scope instead of showing assertion rows for excluded hierarchy.
+args = ["-hier", "{path}", "-cm_common_hier"]
