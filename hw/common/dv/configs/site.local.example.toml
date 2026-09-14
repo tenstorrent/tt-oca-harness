@@ -44,6 +44,8 @@ default_waves = ""
 argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
 
 # A companion checkout's formal config for one DUT, reached without editing duts.toml.
-# Paths resolve against the repository root, or are absolute; the file must exist.
+# Paths resolve against the repository root, or are absolute. While the file is absent,
+# `--list` and `--validate-configs` show the view as unavailable and only `--mode formal`
+# on that DUT is an error.
 # [duts.dtp]
 # formal_cfg = "nonfree/hw/sys/dtp/dv/dtp_formal_cfg.toml"

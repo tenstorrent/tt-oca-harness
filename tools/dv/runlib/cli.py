@@ -63,7 +63,14 @@ from .coverage_policy import (
     load_coverage_policy,
     native_policy_manifest,
 )
-from .duts import list_dut_names, load_duts, resolve_dut
+from .duts import (
+    FormalView,
+    discover_formal_views,
+    list_dut_names,
+    load_duts,
+    load_formal_views,
+    resolve_dut,
+)
 from .junit import materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog
@@ -809,12 +816,23 @@ def load_registries(root: Path) -> Registries:
     )
 
 
-def validate_all(root: Path) -> tuple[dict[str, Flow], Registries]:
+def validate_all(root: Path) -> tuple[dict[str, Flow], Registries, dict[str, FormalView]]:
+    """Load and validate every selectable DUT and every available formal view.
+
+    A formal view whose site-named file is absent stays unavailable and is not an error here;
+    selecting it with --mode formal is.
+    """
     registries = load_registries(root)
     duts = load_duts(root)
     for flow in duts.values():
         validate_flow(flow, root, registries.simulators, registries.policies, registries.executors)
-    return duts, registries
+    formal_views = load_formal_views(root, registries.site)
+    for view in formal_views.values():
+        if view.flow is not None:
+            validate_flow(
+                view.flow, root, registries.simulators, registries.policies, registries.executors
+            )
+    return duts, registries, formal_views
 
 
 def adopter_overlay_path(args: Any) -> Path | None:
@@ -868,8 +886,41 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
         print("\nResult: could not load the DUT set")
         return 2
 
+    try:
+        formal_views = discover_formal_views(root, registries.site)
+    except ConfigError as exc:
+        print(f"  formal views     FAIL: {exc}")
+        print("\nResult: could not discover the formal views")
+        return 2
+
     failures = 0
+    unavailable = 0
     rows = 0
+
+    def check(label: str, name: str, mode: str, fw: str | None, base: Flow | None) -> None:
+        nonlocal failures
+        site = registries.site
+        try:
+            suffix = ""
+            if overlay is not None:
+                try:
+                    view = resolve_dut(
+                        root, name, mode=mode, framework=fw, adopter_overlay=overlay, site=site
+                    )
+                    suffix = " [+overlay]"
+                except OverlayFrameworkMismatch:
+                    view = base or resolve_dut(root, name, mode=mode, framework=fw, site=site)
+                    suffix = " [overlay skipped: frameworks guard]"
+            else:
+                view = base or resolve_dut(root, name, mode=mode, framework=fw, site=site)
+            warnings = validate_flow(view, root, simulators, policies, executors)
+            print(f"  {label:<16} OK{suffix}")
+            for line in warnings:
+                print(f"  {'':<16} warning: {line}")
+        except ConfigError as exc:
+            failures += 1
+            print(f"  {label:<16} FAIL: {exc}")
+
     for name in sorted(duts):
         flow = duts[name]
         # Validate every framework view a DUT implements, not only its default: the default row
@@ -878,28 +929,26 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
         views += [(f"{name} ({fw})", fw) for fw in flow.frameworks if fw != flow.framework]
         for label, fw in views:
             rows += 1
-            try:
-                suffix = ""
-                if overlay is not None:
-                    try:
-                        view = resolve_dut(root, name, framework=fw, adopter_overlay=overlay)
-                        suffix = " [+overlay]"
-                    except OverlayFrameworkMismatch:
-                        view = flow if fw is None else resolve_dut(root, name, framework=fw)
-                        suffix = " [overlay skipped: frameworks guard]"
-                else:
-                    view = flow if fw is None else resolve_dut(root, name, framework=fw)
-                warnings = validate_flow(view, root, simulators, policies, executors)
-                print(f"  {label:<16} OK{suffix}")
-                for line in warnings:
-                    print(f"  {'':<16} warning: {line}")
-            except ConfigError as exc:
-                failures += 1
-                print(f"  {label:<16} FAIL: {exc}")
+            check(label, name, "sim", fw, flow if fw is None else None)
+    for name in sorted(formal_views):
+        formal = formal_views[name]
+        label = f"{name} (formal)"
+        rows += 1
+        if formal.available:
+            check(label, name, "formal", None, None)
+        elif formal.source == "site":
+            # The companion checkout the site layer points into may be absent on this machine.
+            unavailable += 1
+            print(f"  {label:<16} UNAVAILABLE: {formal.reason}")
+        else:
+            failures += 1
+            print(f"  {label:<16} FAIL: {formal.reason}")
 
     total = len(duts)
+    tail = f", {unavailable} unavailable" if unavailable else ""
     print(
-        f"\nResult: {total} DUT(s), {rows} framework view(s): {rows - failures} OK, {failures} FAILED"
+        f"\nResult: {total} DUT(s), {rows} view(s): "
+        f"{rows - failures - unavailable} OK, {failures} FAILED{tail}"
     )
     return 0 if failures == 0 else 2
 
@@ -1197,15 +1246,12 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     here?" — it confirms configs load, then probes tool binaries and license-env presence.
     """
     try:
-        registries = load_registries(root)
+        _duts, registries, _formal_views = validate_all(root)
         simulators, executors, policies = (
             registries.simulators,
             registries.executors,
             registries.policies,
         )
-        duts = load_duts(root)
-        for candidate_flow in duts.values():
-            validate_flow(candidate_flow, root, simulators, policies, executors)
     except ConfigError as exc:
         print(f"configs : FAIL: {exc}")
         print("\nResult: fix config errors first (run --validate-configs for the full list)")
@@ -1304,7 +1350,12 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
-def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
+def list_flows(
+    flows: dict[str, Flow],
+    simulators: dict[str, Any],
+    formal_views: dict[str, FormalView] | None = None,
+) -> None:
+    """The DUT table: one row per simulation framework view, then the DUT's `fv` row."""
     BOLD = "\033[1m"
     NORMAL = "\033[0m"
     SELECT_BEGIN = BOLD
@@ -1339,41 +1390,68 @@ def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
         for framework in simulators[sim]["frameworks"]:
             freeframeworks[framework] = free or freeframeworks.get(framework, False)
             frameworkTools[framework] = frameworkTools.get(framework, []) + [sim]
-    for flow in sorted(flows.values(), key=lambda item: item.name):
-        spill = False
-        frameworks = {
-            framework: format_selected_licensed(
-                framework,
-                (flow.framework and framework == flow.framework)
-                or (not flow.framework and framework == flow.default_framework),
-                freeframeworks[framework],
-            )
-            for framework in sorted(
-                flow.frameworks,
-                key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
-            )
-        } or {"": "-"}
-        for framework, label in frameworks.items():
-            toolArr = list(set(flow.tools) & set(frameworkTools[framework]))
-            defaultTool = (
-                flow.default_tool
-                if flow.default_tool in toolArr
-                else toolArr[0]
-                if len(toolArr)
-                else ""
-            )
-            toolsArr = [
-                format_selected_licensed(tool, tool == defaultTool, freesims[tool])
-                for tool in sorted(
-                    toolArr, key=lambda x: (0, 0) if x == flow.default_tool else (1, str.lower(x))
-                )
-            ] or ["-"]
-            tools = "/".join(toolsArr)
 
-            print(
-                f"{(flow.name if not spill else ''):<{widths[0]}} {flow.kind if not spill else ' ' + chr(8627):<{widths[1]}} {align(label, widths[2])} {align(tools, widths[3])} {flow.description if not spill else ''}"
+    def tools_column(flow: Flow, framework: str) -> str:
+        toolArr = list(set(flow.tools) & set(frameworkTools.get(framework, [])))
+        defaultTool = (
+            flow.default_tool
+            if flow.default_tool in toolArr
+            else toolArr[0]
+            if len(toolArr)
+            else ""
+        )
+        toolsArr = [
+            format_selected_licensed(tool, tool == defaultTool, freesims[tool])
+            for tool in sorted(
+                toolArr, key=lambda x: (0, 0) if x == flow.default_tool else (1, str.lower(x))
             )
-            spill = True
+        ] or ["-"]
+        return "/".join(toolsArr)
+
+    def row(name: str, kind: str, label: str, tools: str, description: str) -> None:
+        print(
+            f"{name:<{widths[0]}} {kind:<{widths[1]}} {align(label, widths[2])} {align(tools, widths[3])} {description}"
+        )
+
+    formal_views = formal_views or {}
+    for name in sorted(set(flows) | set(formal_views)):
+        flow = flows.get(name)
+        if flow is not None:
+            spill = False
+            frameworks = {
+                framework: format_selected_licensed(
+                    framework,
+                    (flow.framework and framework == flow.framework)
+                    or (not flow.framework and framework == flow.default_framework),
+                    freeframeworks[framework],
+                )
+                for framework in sorted(
+                    flow.frameworks,
+                    key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
+                )
+            } or {"": "-"}
+            for framework, label in frameworks.items():
+                row(
+                    flow.name if not spill else "",
+                    flow.kind if not spill else " " + chr(8627),
+                    label,
+                    tools_column(flow, framework),
+                    flow.description if not spill else "",
+                )
+                spill = True
+        view = formal_views.get(name)
+        if view is None:
+            continue
+        if view.flow is None:
+            row(name, "fv", "formal", "-", f"unavailable: {view.reason}")
+            continue
+        row(
+            name,
+            view.flow.kind,
+            format_selected_licensed("formal", True, freeframeworks.get("formal", False)),
+            tools_column(view.flow, "formal"),
+            view.flow.description,
+        )
 
 
 def _implemented_counts(flow: Flow, catalog: TestCatalog) -> dict[str, int]:
@@ -1425,6 +1503,8 @@ def _flow_view_dict(flow: Flow) -> dict[str, Any]:
     return {
         "name": flow.name,
         "kind": flow.kind,
+        "mode": "formal" if flow.kind == "fv" else "sim",
+        "available": True,
         "framework": flow.framework,
         "default": flow.framework == flow.default_framework,
         "frameworks": list(flow.frameworks),
@@ -1439,11 +1519,16 @@ def _flow_view_dict(flow: Flow) -> dict[str, Any]:
     }
 
 
-def list_flows_json(root: Path, flows: dict[str, Flow]) -> None:
-    """Machine-readable enumeration: one entry per (DUT, framework) view.
+def list_flows_json(
+    root: Path,
+    flows: dict[str, Flow],
+    formal_views: dict[str, FormalView] | None = None,
+) -> None:
+    """Machine-readable enumeration: one entry per (DUT, framework) view plus one per formal view.
 
     CI matrices consume this instead of hardcoding DUT names — e.g. a licensed UVM job selects
-    `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need.
+    `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need;
+    a formal job selects `.duts[] | select(.mode == "formal" and .available)`.
     """
     views: list[dict[str, Any]] = []
     for name in sorted(flows):
@@ -1452,6 +1537,21 @@ def list_flows_json(root: Path, flows: dict[str, Flow]) -> None:
         for fw in flow.frameworks:
             if fw != flow.framework:
                 views.append(_flow_view_dict(resolve_dut(root, name, framework=fw)))
+    for name, view in sorted((formal_views or {}).items()):
+        if view.flow is not None:
+            views.append(_flow_view_dict(view.flow))
+        else:
+            views.append(
+                {
+                    "name": name,
+                    "kind": "fv",
+                    "mode": "formal",
+                    "available": False,
+                    "framework": "formal",
+                    "path": repo_rel(root, view.path),
+                    "reason": view.reason,
+                }
+            )
     print(json.dumps({"schema_version": 1, "duts": views}, indent=2))
 
 
@@ -3339,7 +3439,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.doctor:
             return cmd_doctor(root, args)
 
-        duts, registries = validate_all(root)
+        duts, registries, formal_views = validate_all(root)
         simulators, executors, policies = (
             registries.simulators,
             registries.executors,
@@ -3362,9 +3462,9 @@ def main(argv: list[str] | None = None) -> int:
                 else:
                     list_flow_detail(flow, root)
             elif args.json:
-                list_flows_json(root, duts)
+                list_flows_json(root, duts, formal_views)
             else:
-                list_flows(duts, simulators)
+                list_flows(duts, simulators, formal_views)
             return 0
 
         if not args.dut:
