@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
-# Nightly Tier A: commercial UART depth BFMs.
+# BFM rebuilds of the commercial UART depth tests.
 [[tests]]
 name = "smc_uart_fifo_basic_trigger_reset_test"
 module = "smc_uart_fifo_basic_trigger_reset_test"

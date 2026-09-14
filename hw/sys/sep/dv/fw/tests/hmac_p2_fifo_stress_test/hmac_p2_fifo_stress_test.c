@@ -8,9 +8,6 @@
  * Phase B streams a 2048-byte deterministic pseudo-random message through
  * MSG_FIFO in pseudo-random chunk sizes, verifies exact message length,
  * STATUS.fifo_empty after drain, and the final SHA-256 digest.
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_hmac_p2_fifo_stress_test STACK=cgen,sim
  */
 
 #include <stdint.h>

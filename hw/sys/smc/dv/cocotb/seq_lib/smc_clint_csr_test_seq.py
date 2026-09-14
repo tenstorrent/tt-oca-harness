@@ -4,20 +4,13 @@
 
 REACHABILITY IS THE FIRST THING THIS TEST PROVES.
 
-Two claims in the tree disagree about whether SEP_IN can reach the cluster-local
-window at ``0xC800_0000``:
-
-* ``hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py:165-166`` states outright
-  that "cluster-local CLINT MSIP (0xC800_0000) ... SEP-IN AXI cannot reach".
-* ``smc_cluster_beu_test`` nevertheless gets OKAY responses from
-  ``0xC801_xxxx``, in the SAME xbar window -- but those reads
-  are answered by ``SMC_BASE_CONFIG`` at ``0xC001_xxxx`` after a bit-27 fold,
-  i.e. OKAY does NOT mean the intended block replied.
-
-That matters here more than usual: ``0xC800_0000`` XOR bit 27 is
-``0xC000_0000``, which is the CORE0 WDT window, and MSIP's reset and WDT CTRL's
-reset are both 0 -- so an MSIP readback alone could not tell a real CLINT from a
-folded WDT.
+The local fabric replaces the upper address bits of every SEP_IN request
+(``local_fabric_masked_addr`` in ``smc_addr_map``), so a read of a cluster-local
+address can be answered by an ``SMC_BASE_CONFIG`` register after the fold, and
+an OKAY response does not show that the intended block replied.
+``0xC800_0000`` folds onto ``0xC000_0000``, the CORE0 WDT window, and MSIP's
+reset and WDT CTRL's reset are both 0 -- so an MSIP readback alone could not
+tell a real CLINT from a folded WDT.
 
 ``MTIME`` can. It is a free-running counter, so two reads separated by DUT time
 must STRICTLY INCREASE. No static register, folded or otherwise, produces that.
@@ -64,7 +57,7 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
             "CLINT-FOLD-DIAGNOSTIC: 0xC8000020 -> 0x%08x, CORE0 WDT CMP "
             "0xC0000020 -> 0x%08x (WDT CMP generated reset is 0x1000). Equal "
             "non-zero values would mean the CLINT window answers from the WDT "
-            "window after a bit-27 fold, the shape #1237 records for the BEU.",
+            "window after a bit-27 fold, the shape the BEU window shows.",
             fold_probe,
             wdt_cmp,
         )
@@ -92,14 +85,6 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
             plic_probe2,
         )
 
-        # LOCALISATION PROBE. CLINT (0xC800_0000, bit 27) and PLIC
-        # (0xC400_0000, bit 26) both land on 0xC000_0000, so the mechanism is
-        # not a single-bit fold -- both bits are being lost. If the SEP_IN path
-        # decodes only offset[25:0] within the 0xC000_0000 region, then an
-        # address whose offset fits inside 26 bits must NOT alias: 0xC200_0020
-        # has offset 0x0200_0020, which survives a [25:0] mask, so it should
-        # NOT return the WDT CMP reset. If it DOES, the surviving field is
-        # narrower than 26 bits.
         # WHERE THE ADDRESS IS LOST. CLINT (bit 27), BEU (bit 27) and PLIC
         # (bit 26) all land on 0xC000_0000, so this is not a single-bit fold.
         # Each probe sets ONE bit above the WDT CMP offset 0x20 and reads:
@@ -139,8 +124,8 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
             f"cycles: 0x{self.mtime_first:016x} -> 0x{self.mtime_second:016x}. "
             f"Either the counter is stopped, or this read is not reaching the "
             f"CLINT at all -- 0xC800_0000 folds onto the CORE0 WDT window if "
-            f"bit 27 is dropped (see #1237 for the same fold on the BEU "
-            f"window), and a folded static register cannot increment."
+            f"bit 27 is dropped (the BEU window shows the same fold), and a "
+            f"folded static register cannot increment."
         )
 
         # --- MSIP: per-hart 1-bit software-interrupt storage --------------

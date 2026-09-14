@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Canonical aidv evidence map for OSS SMU tests.
+"""Canonical evidence map for OSS SMU tests.
 
 Each test lists (CHK_ID, TOKEN, EXPECT) triples. Scoreboard logs
-``EVIDENCE: <TOKEN>``; GitHub leaf contracts must require the same TOKEN.
+``EVIDENCE: <TOKEN>``.
 ``CHK-NONVAC`` is emitted by SmuScoreboard.check_phase when checks > 0.
 
 What a TOKEN carries: a passing ``expect_*`` compare logged it, bound either
@@ -16,9 +16,9 @@ Keys name the pyuvm type name of the test body. Testcases that build an
 ``UNMAPPED_TESTS``; ``prove_mapped_features`` raises otherwise. The
 ``--dut smu_wrapper`` bodies build no ``SmuScoreboard`` and never reach it.
 
-Deferred names appear below for catalog continuity; they are **OUT** under
-the no-Force policy and must not be reported as green. Bodies:
-``cocotb/tests_deferred/``.
+Names without an enrolled test body are catalogued in
+``docs/SMU_DEFERRED_DISPOSITION.adoc``; their rows stay here and nothing logs
+their tokens.
 """
 
 from __future__ import annotations
@@ -486,7 +486,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     # --- P4 ---
     "smc_efuse_secure_tm_force_test": [
-        ("CHK-STM-FORCE", "SECURE_TM_FORCE", "blocked 0→1 when Force lands"),
+        ("CHK-STM-FORCE", "SECURE_TM_FORCE", "0→1 needs a stimulus path onto secure_tm_i"),
     ],
     "smc_wdt_ip0_isolate_clamp_test": [
         ("CHK-WDT-CLAMP", "WDT_FIRST_CLAMP0", "isolate clamp mux contrast"),

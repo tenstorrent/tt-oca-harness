@@ -131,21 +131,16 @@ class smc_i2c_p0_stretch_test_seq(SmcCsrSeq):
     async def _wait_hostidle(self) -> None:
         """Bounded wait for the host controller to settle after the read.
 
-        The previous form required observing the host *leave* idle and only then
-        return to it. By the time this runs that transient is already consumed:
-        ``_wait_rx_byte`` returns only after it has polled STATUS and then read
-        RDATA, and the host completes its STOP during those two CSR accesses.
-        Whether the busy window was still visible depended on where the 5 us RX
-        poll grid happened to land relative to a transaction whose duration
-        scales with ``cfg.periph_clk_period_ns`` -- randomised over 8/10/12 ns by
-        ``SmcEnvCfg.randomize_timing`` -- so the leg passed only on the 8 ns
-        draw and failed deterministically on 10 ns and 12 ns.
-
-        Dropping it removes no proof. That the host really executed the read on
-        the bus is established by ``body``: ``_wait_rx_byte`` returns the byte the
-        target supplied and it is compared against ``_READ0``. What remains to
-        establish is the settled state, an exact expectation over
-        the bits this scenario determines instead of a single ``HOSTIDLE`` bit:
+        The host's busy window is not reliably observable here: ``_wait_rx_byte``
+        returns only after it has polled STATUS and then read RDATA, and the host
+        completes its STOP during those two CSR accesses, so whether the window
+        is still visible depends on where the 5 us RX poll grid lands relative to
+        a transaction whose duration scales with ``cfg.periph_clk_period_ns``
+        (randomised by ``SmcEnvCfg.randomize_timing``). That the host executed
+        the read on the bus is established by ``body``, which compares the byte
+        ``_wait_rx_byte`` returns against ``_READ0``. This wait establishes the
+        settled state as an exact expectation over the bits this scenario
+        determines:
 
           HOSTIDLE  = 1  the host FSM finished the transfer
           FMTEMPTY  = 1  the format FIFO drained -- no queued command remains

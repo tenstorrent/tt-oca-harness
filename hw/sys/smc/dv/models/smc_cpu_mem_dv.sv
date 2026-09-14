@@ -55,8 +55,9 @@ module smc_cpu_mem_dv
   localparam logic [31:0] FW_MAGIC = 32'hACAF_ACA1;
 
   localparam int unsigned SCRATCH_WORDS = 1 << SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH;
-  // Bank/entry decode: smc_scratch_map_pkg, which cites the cluster RTL it was
-  // read out of. Imported rather than restated so the loader and the tb_top
+  // Bank/entry decode: smc_scratch_map_pkg, whose header names the RDL and
+  // architecture-document sources of the geometry and the DV-owned interleave
+  // assumptions. Imported rather than restated so the loader and the tb_top
   // peeks cannot drift apart.
   localparam int unsigned BANK_STRIPE_BYTES = smc_scratch_map_pkg::SCRATCH_BANK_STRIPE_BYTES;
   localparam int unsigned BYTES_PER_ENTRY = smc_scratch_map_pkg::SCRATCH_BYTES_PER_ENTRY;
@@ -64,16 +65,13 @@ module smc_cpu_mem_dv
   localparam int unsigned GROUP_BYTES = smc_scratch_map_pkg::SCRATCH_GROUP_BYTES;
   // Staging depth for the +smc_scratch_ram_hex backdoor, in 64-bit words.
   //
-  // 4096 words is 32 KB, and firmware images in this tree already exceed it --
-  // the largest occp_* rom image is over 5000 words. Anything past the end of
-  // this array is dropped by $readmemh, and a truncated image boots into
-  // whatever the tail of it happened to be, so the cap has to sit above the
-  // largest image rather than near it. 32768 words is 256 KB, a quarter of the
-  // 1 MB scratch (NUM_SRAM_BANKS * SCRATCH_WORDS * BYTES_PER_ENTRY), and the
-  // array is per-bank so raising it further costs NUM_SRAM_BANKS times as much
-  // simulator memory.
-  //
-  // Over-length is reported below rather than left silent.
+  // Anything past the end of this array is dropped by $readmemh, and a
+  // truncated image boots into whatever the tail of it happened to be, so the
+  // cap has to sit well above the largest firmware image in this tree rather
+  // than near it. 32768 words is 256 KB, a quarter of the 1 MB scratch
+  // (NUM_SRAM_BANKS * SCRATCH_WORDS * BYTES_PER_ENTRY), and the array is
+  // per-bank so raising it further costs NUM_SRAM_BANKS times as much
+  // simulator memory. Over-length is reported below rather than left silent.
   localparam int unsigned MAX_LINEAR_WORDS = 32768;
 
   logic        magic_hit_scratch;
@@ -84,6 +82,10 @@ module smc_cpu_mem_dv
   logic [31:0] rom_read_count_q;
   logic [31:0] scratch_ram_read_count_q;
   logic [31:0] scratch_ram_write_count_q;
+  // Per-bank read counters: which of the 32 scratch banks the CPU actually
+  // fetched from, so a caller can check an image's bank residency rather than
+  // only that some scratch read happened.
+  logic [NUM_SRAM_BANKS-1:0][31:0] scratch_ram_bank_read_count_q;
   logic        scratch0_inject_fire_q;
 
   // Counts scratch bank0 reads taken while an inject pin is asserted. No data
@@ -123,6 +125,7 @@ module smc_cpu_mem_dv
       rom_read_count_q <= '0;
       scratch_ram_read_count_q <= '0;
       scratch_ram_write_count_q <= '0;
+      scratch_ram_bank_read_count_q <= '0;
       dcache_data_write_count_q <= '0;
       fw_mailbox_q <= '0;
       fw_mailbox_valid_q <= 1'b0;
@@ -135,6 +138,7 @@ module smc_cpu_mem_dv
           scratch_ram_write_count_q <= scratch_ram_write_count_q + 32'd1;
         end else if (scratch_ram_req_i[bank].en) begin
           scratch_ram_read_count_q <= scratch_ram_read_count_q + 32'd1;
+          scratch_ram_bank_read_count_q[bank] <= scratch_ram_bank_read_count_q[bank] + 32'd1;
         end
       end
       for (int unsigned bank = 0; bank < NUM_DCACHE_DATA_BANKS; bank++) begin

@@ -61,6 +61,15 @@ await tap.reset_tap()
 await tap.step_tms(0)  # enter RUN_TEST_IDLE
 ```
 
+`assert_trst(tck_cycles=1)` asserts the bound TRST net and holds TMS high for
+`tck_cycles`, re-baselining the tracked state to `TEST_LOGIC_RESET`.
+`release_trst(tck_cycles=0)` releases the net.
+After a reset applied outside the TAP pins (a power-on reset, a reset pin
+that is not bound as TRST), declare the resulting state with
+`sync_model(OcahJtagState.TEST_LOGIC_RESET)` so `goto_state()` plans from the
+true controller state. `step(tms, tdi)` drives one TCK cycle with both bits
+for bit-serial shifting under the tracked state.
+
 Use `goto_state()` for deterministic shortest-path navigation:
 
 ```python
@@ -177,7 +186,8 @@ seq.finalize()
 `OcahJtagMasterSequence` is the VIP's test-facing stimulus surface: tests drive the
 TAP through it (or a DUT sequence layer built on it), never through the raw
 driver. Besides the checked operations above it exposes the pass-through scan
-API (`step_tms`, `goto_state`, `shift_ir`, `shift_dr`); missing operations
+API (`step`, `step_tms`, `goto_state`, `shift_ir`, `shift_dr`, `assert_trst`,
+`release_trst`, `sync_model`); missing operations
 get added here first, never inlined in tests. The checker argument is
 optional — one is constructed when omitted.
 
@@ -271,7 +281,10 @@ its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
 the DUT's own sources — never hand-copy these paths into a DUT sim config, and
 never add them to Bender filelists. The one entry a cocotb/Verilator build
 lists directly in its `[build].sources` is `sva/ocah_jtag_sva.sv`, whose
-two-state rules run there. Its contents:
+two-state rules run there. The package's own `dv/` harness binds it in both
+shapes: the cocotb shape mirrors the reactive device's TAP state onto the
+one-hot input so the state rules run; the SV-UVM shape ties that input off
+and runs the pin rules. Its contents:
 
 - `interface/ocah_jtag_if.sv` — shared pin-level IEEE 1149.1 interface
   (JTAG pins only; reused by any DUT).
@@ -338,3 +351,10 @@ For broader coverage, run the full `basic_jtag` group:
 ```bash
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator
 ```
+
+`DTP_JTAG_TAP_CHECKER_NEGATIVE` is the must-fail hook of both flows: as an
+environment variable it desynchronizes the cocotb TAP reference model so
+`CHK-TAP-STATE` fails; as a plusarg (`--plusarg=+DTP_JTAG_TAP_CHECKER_NEGATIVE`)
+it arms a wrong expected IDCODE in the SV-UVM `dtp_jtag_tlr_reset_test` and
+`dtp_sanity_test` so `CHK-TAP-TLR-IDCODE` fails. `cocotb/examples/example_slave_selftest.py`
+judges the reactive slave device by the master-side model with no simulator.

@@ -3,7 +3,7 @@
 //
 // SMU OSS TB top — Phase-1 SEP=0, shared by the native cocotb / PyUVM flow
 // and the SystemVerilog UVM flow. ONE module, two shapes:
-//   * default (cocotb, `--dut smu`): the pin-level ANSI port list cocotb
+//   * default (cocotb, `--dut smu_block`): the pin-level ANSI port list cocotb
 //     drives and samples;
 //   * `UVM` (SV-UVM, `--dut smu_block --framework uvm`): the port list is replaced
 //     by internal TB signals and the harness block at the end of the module
@@ -563,8 +563,8 @@ module smu_uvm_top
   // Functional coverage (cov/sv/): shared by both tb shapes. The modules
   // carry cover-property points, which land in the `user` metric family
   // under --coverage-user, plus commercial-only covergroups internally.
-  // Every port below is a smu_tb_signal_list.svh signal, so no
-  // hierarchical reference and no public-scope change is needed.
+  // Every port below is a smu_tb_signal_list.svh signal; the modules read
+  // no DUT hierarchy.
   // ------------------------------------------------------------------
   smu_boot_fcov u_smu_boot_fcov (
     .clk_ref_i                   (clk_ref_i),

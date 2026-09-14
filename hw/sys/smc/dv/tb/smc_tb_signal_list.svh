@@ -163,8 +163,7 @@
 // only, so the log engine is not observable through it.
 `SMC_TB_OUT(logic [3:0], tb_uart_irq_combined)
 // The three I2C instances' PLIC lines (smc_peripherals.sv:1161,
-// peripheral_interrupts[25:23]). tb_i2c_cg_en is the clock gate, not the IRQ;
-// nothing exposed the interrupt itself.
+// peripheral_interrupts[25:23]). tb_i2c_cg_en is the clock gate, not the IRQ.
 `SMC_TB_OUT(logic [2:0], tb_i2c_irq)
 `SMC_TB_OUT(logic, tb_mailbox_irq_any)
 `SMC_TB_OUT(logic, tb_avsbus_irq)
@@ -275,8 +274,7 @@
 // Hang detector snoops the gated handshake (not irq_test). Idle 0.
 `SMC_TB_IN(logic, tb_sep_axi_r_hold)
 
-// Flat SYS-input AXI manager. SYS_IN reaches the filtered local-fabric path;
-// it is kept as a public active bus for SYS_IN/local-fabric VIP promotion.
+// Flat SYS-input AXI manager: SYS_IN reaches the filtered local-fabric path.
 `SMC_TB_IN(logic [5:0], sys_axi_awid)
 `SMC_TB_IN(logic [55:0], sys_axi_awaddr)
 `SMC_TB_IN(logic [7:0], sys_axi_awlen)
@@ -417,6 +415,7 @@
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
+`SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NUM_SRAM_BANKS*32-1:0], tb_cpu_scratch_bank_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_write_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_fw_mailbox)
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)
@@ -474,6 +473,11 @@
 // CPU cluster double-error detect (live + sticky).
 `SMC_TB_OUT(logic, tb_cluster_ded)
 `SMC_TB_OUT(logic, tb_cluster_ded_seen)
+// Cluster WDT first / second timeout pins (live + sticky).
+`SMC_TB_OUT(logic, tb_wdt_first_timeout)
+`SMC_TB_OUT(logic, tb_wdt_first_timeout_seen)
+`SMC_TB_OUT(logic, tb_wdt_second_timeout)
+`SMC_TB_OUT(logic, tb_wdt_second_timeout_seen)
 `SMC_TB_OUT(logic [31:0], tb_cpu_ecc_inject_fire_count)
 `SMC_TB_OUT(logic, tb_cpu_scratch0_inject_fire)
 
@@ -536,8 +540,8 @@
 `SMC_TB_IN(logic, ej_axi_rready)
 
 // ------------------------------------------------------------------
-// Elaboration aliases (additive; optional observe ports for bring-up)
-// SmcWrapperElaborationSeq). Bare SmcEnv tests never touch these.
+// Elaboration aliases: optional observe ports for the bring-up smoke
+// (SmcWrapperElaborationSeq). Bare SmcEnv tests never touch these.
 // ------------------------------------------------------------------
 `SMC_TB_OUT(logic, dut_present_o)
 `SMC_TB_OUT(logic, powergood_o)

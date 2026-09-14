@@ -23,8 +23,8 @@ A single base parameterised only by the slot number would make one of the two
 groups assert the other's outcome, and it would pass its own assertions either
 way. The reference agrees with the split: ``PRIMARY_PUBKEY_ROM_0_REVOKED_KEY``
 ends at ``ERROR: REVOKED_KEY``
-while every ``N >= 1`` member ends in ``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``
-(for N=1). This is confirmed here from the RTL tree's own packer config
+while every ``N >= 1`` member ends in ``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``.
+This is confirmed here from the RTL tree's own packer config
 and from :func:`select_primary_rom_slot`'s measurement.
 
 WHICH BRANCH A MEMBER TAKES IS MEASURED FROM THE IMAGE, NOT WRITTEN DOWN.
@@ -51,9 +51,9 @@ prints the SAME ``PUBK_REVOKE=<bitmap>``, revoked or not. Only
 ``KEY_REVOKED idx=``  is per-slot. So on the failover members the fuse
 echo appears TWICE -- once for the refused primary and once for the permitted
 backup -- and it is the second occurrence, after the backup read, that proves the
-booting slot ran the revocation check and was allowed through. Expecting a
-``PUBK_REVOKE=0x00000000`` from the backup is wrong and was caught by a probe run:
-the slot-1 backup echoed ``PUBK_REVOKE=0x00000002``, the same word the primary saw.
+booting slot ran the revocation check and was allowed through. The backup echoes
+the same word the primary saw (slot 1: ``PUBK_REVOKE=0x00000002`` on both
+attempts), never ``PUBK_REVOKE=0x00000000``.
 
 WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, PER SLOT. ``validate_signature``
 consults the fuse bitmap (``manifest_crypto.c``) BEFORE the compiled-in digest
@@ -67,10 +67,10 @@ populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
     ``SIG_VALID`` are the load-bearing forbids there.
 
 **THE REFERENCE ORDERS THOSE TWO CHECKS THE OTHER WAY ROUND, AND SLOTS 1-5 DEPEND
-ON THE DIFFERENCE.** Grendel's ROM takes the index bound,
-then the digest-populated check (, returning
-``SEP_MSG_INVALID_KEY_CONTENTS`` and annotated "COVERAGE: exclude, correct by
-construction"), and only THEN revocation. That order is invisible there
+ON THE DIFFERENCE.** The reference's ROM takes the index bound,
+then the digest-populated check (returning ``SEP_MSG_INVALID_KEY_CONTENTS``,
+annotated "COVERAGE: exclude, correct by construction"), and only THEN
+revocation. That order is invisible there
 because all six of its digest slots are populated. This ROM inverts it. Had this
 ROM used the reference's order, slots 1-5 would return ``ROM_KEY_EMPTY`` /
 ``MANIFEST_ERR_SIG_FAILED`` instead of ``KEY_REVOKED``. Consequently slot 0
@@ -95,8 +95,9 @@ this family's weight.
 
 THE FUSE BIT IS THE SLOT NUMBER, and the authority for that is the register map,
 not the ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key
-bitmap (``regs/blocks/sep_efuse_map/sep_efuse_map.rdl:721-729``) and the ROM
-indexes it with the manifest's key index directly (``manifest_crypto.c``).
+bitmap (reg ``CHIPLET_PUBK_REVOKE`` in
+``regs/blocks/sep_efuse_map/sep_efuse_map.rdl``) and the ROM indexes it with the
+manifest's key index directly (``manifest_crypto.c``).
 The fused-key slots do NOT continue that sequence -- they sit at bits 16 and above
 -- so nothing here may be derived by counting past slot 5.
 
@@ -111,18 +112,17 @@ neither can be ported literally:
     unshared error code ``MANIFEST_ERR_KEY_REVOKED`` (0x00030015,
     ``manifest.h``) on ``MANIFEST_ERR=`` / ``CRYPTO_FAIL=``, and for the
     terminal member also ``cold_scratch[1] == 0x0f010015``.
-  * ``SEP_MSG_USING_ROM_KEY`` (, 0x7f), which the reference emits on the
-    ROM-key arm (``tt_sep .../manifest.c:184``) and asserts as
-    ``STATUS: USING_ROM_KEY``. This ROM reports the generic
+  * ``SEP_MSG_USING_ROM_KEY`` (0x7f), which the reference emits on the ROM-key
+    arm of its ``manifest.c`` and asserts as ``STATUS: USING_ROM_KEY``. This ROM
+    reports the generic
     ``SEP_MSG_VALIDATE_CHECK`` there instead (``manifest_crypto.c``).
     Substituted by ``PUBK_SEL=0x0000000N``, which is strictly more informative
     because it carries the index.
 
 There is no ``report_status`` call for either code anywhere under
-``bootrom/prod/src``. The wider version of this gap is
-``batch_runs_0904_rtl/FINDINGS.md`` R04.
+``bootrom/prod/src``.
 
-ONE DELIBERATE STRENGTHENING OVER THE REFERENCE, so it is not mistaken for drift.
+ONE STRENGTHENING OVER THE REFERENCE.
 The reference runs this family at ``LC_STATE`` raw 0x0,
 where secure boot is enforced only because the manifest asks. Every member here
 runs a committed PROD preload, and both bases assert ``lc_raw() == 0x1`` and
@@ -372,13 +372,11 @@ class sep_primary_pubkey_rom_revoked_failover_base(
         "RSA_VERIFY_FAIL",
     )
     # The backup's own selector, so "the backup booted" is tied to slot 0 rather
-    # than to an unread selection. There is deliberately NO separate backup fuse
-    # echo: ``check_pubkey_revoked`` prints the whole 32-bit fuse WORD
-    # unconditionally (``manifest_crypto.c``) and only then tests this
-    # slot's bit, so BOTH slot attempts print the same
-    # ``PUBK_REVOKE=<bitmap>`` and the per-slot discriminator is
-    # ``KEY_REVOKED idx=``. Measured, not assumed: the slot-1 probe run
-    # showed the backup echoing ``PUBK_REVOKE=0x00000002``.
+    # than to an unread selection. There is NO separate backup fuse echo:
+    # ``check_pubkey_revoked`` prints the whole 32-bit fuse WORD unconditionally
+    # (``manifest_crypto.c``) and only then tests this slot's bit, so BOTH slot
+    # attempts print the same ``PUBK_REVOKE=<bitmap>`` (slot 1: 0x00000002 twice)
+    # and the per-slot discriminator is ``KEY_REVOKED idx=``.
     _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -464,7 +462,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
             f"Console: {console}"
         )
         self.logger.info(
-            "CHK-REVOKE-FAILOVER: primary %s -> %s -> %s (slot %d refused once) -> "
+            "CHK-REVOKE-FAILOVER PASS: primary %s -> %s -> %s (slot %d refused once) -> "
             "backup %s -> %s again at line %d, permitted -> boot",
             self._PUBK_SEL_ECHO,
             self._REVOKE_ECHO,

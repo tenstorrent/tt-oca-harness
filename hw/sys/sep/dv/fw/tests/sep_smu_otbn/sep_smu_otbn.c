@@ -4,9 +4,7 @@
 /*
  * sep_smu_otbn - SMU-level SEP OTBN CSR programming smoke test.
  *
- * This first SMU-level OTBN testcase only exercises benign CSR writes. Full
- * OTBN IMEM/DMEM load and EXECUTE flow can be layered on once the basic SMU
- * integration path is stable.
+ * Exercises benign OTBN CSR writes only; no IMEM/DMEM load or EXECUTE.
  */
 
 #include <stdint.h>

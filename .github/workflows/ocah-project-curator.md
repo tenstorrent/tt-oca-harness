@@ -35,9 +35,110 @@ tools:
     toolsets: [default, projects, actions]
     github-token: ${{ secrets.GH_AW_READ_PROJECT_TOKEN }}
 
+post-steps:
+  - name: Unwrap backtick-wrapped GitHub mentions
+    if: always()
+    env:
+      GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
+    run: python3 "${GITHUB_WORKSPACE}/.github/scripts/unwrap_github_mentions.py"
+
 safe-outputs:
   staged: false
   report-failed-jobs: false
+  mentions:
+    allowed-collaborators: true
+    allow-context: true
+    # add_comment re-sanitizes against this list plus the parent author.
+    allowed:
+      - achayunTT
+      - ahsiaoTT
+      - akaviTT
+      - akeshavarajTT
+      - alexyapTT
+      - alpeshoza-tt
+      - aottavianoTT
+      - aulmerTT
+      - berwinTT
+      - bkeith-TT
+      - bmeltonTT
+      - bonnie-banks123
+      - bparsonsTT
+      - brucehsu-TT
+      - ctr-shanthiprasad
+      - ctr-smondal-TT
+      - dangthai-vnchip
+      - DanielG-lowRISC
+      - dkimTT
+      - dsheets-tt
+      - duyhuynh-vnchip
+      - efedotovaTT
+      - erentschler-TT
+      - ftorresmanobanda-TT
+      - gabrielgobTT
+      - gchangTT
+      - gchott
+      - gczajkowskiTT
+      - gsinghtt
+      - hcallahan-lowrisc
+      - hkanayaTT
+      - hliaott
+      - ikonumaTT
+      - inmcm
+      - jayalp
+      - jbakerTT
+      - joonkim-tt
+      - kaugustineTT
+      - kevinngTT
+      - kgreigTT
+      - luismarques
+      - lwengTT
+      - machshev
+      - marnovandermaas
+      - mattjohnson-TT
+      - minaliuTT
+      - minoruodaTT
+      - minshaohoTT
+      - mkimuraTT
+      - mkj121
+      - msollanych-tt
+      - mtomicTT
+      - MWoytovichTT
+      - mwvd
+      - nbetikTT
+      - nboettcher-tenstorrent
+      - nfarheenTT
+      - ngocnguyen-vnchip
+      - nranceTT
+      - nsextonTT
+      - nshivaprasad-tt
+      - nwistoffTT
+      - nxuTT
+      - pdroyTT
+      - pkulkarniTT
+      - quangle-vnchip
+      - rextsaiTT
+      - rmalhotraTT
+      - royfranz
+      - rswarbrick
+      - sangameshshettyTT
+      - schenTT
+      - sebphem-tt
+      - skuppuswamyTT
+      - stephencoTT
+      - svisalli-tt
+      - taek-tt
+      - tikedaTT
+      - TT-kqin
+      - ttssokorac
+      - tye-b
+      - uvaughanTT
+      - vinhtrieu-vnchip
+      - vpangTT
+      - vphanTT
+      - yenhenglaiTT
+      - yiyiwuTT
+      - zchenTT
+      - ziuziakowska
   update-project:
     project: https://github.com/orgs/tenstorrent/projects/291
     target-repo: tenstorrent/tt-oca-harness
@@ -176,9 +277,8 @@ Comment only for an assign that stuck, a merge nudge, a due reminder, a review
 reminder, a draft reminder, a changes-requested nudge, a stale-assignee nudge,
 an unreviewed-PR reminder, or a reviewer request that stuck.
 
-Always write @-mentions as plain text — never wrap them in backticks, code spans, or
-any other formatting. Backtick-wrapped mentions (`@login`) are rendered as code and do
-not trigger GitHub notifications.
+Always write @-mentions as @LOGIN with no markdown around the login. A code span
+around a login is not a GitHub mention and does not notify.
 
 ## Shared title and body style
 

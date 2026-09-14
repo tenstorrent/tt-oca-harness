@@ -18,7 +18,7 @@
 // the remapped fabric path, whereas 0xD000_xxxx routes through the IFU/LSU remap.
 //
 // Scope delta vs the reference suite: SEP_REGION_SIZE (0x10A3_00D0) sizes the inbound/SMU window
-// only, NOT this CPU alias window, so it is intentionally not programmed here; the
+// only, NOT this CPU alias window, so it is not programmed here; the
 // CPU window size is the fixed 768 MiB alias span in memory_map.adoc.
 //
 // This must be a CPU-firmware (real IFU/LSU) test: the OSS no_cpu AXI splice is
@@ -27,7 +27,7 @@
 // Scope delta vs the reference suite: the reference suite scenario also pokes ALIAS_ENTRY0_*
 // (0x10A1_00xx); those program a SEPARATE alias-table remapper (for other masters), NOT the CPU
 // u_ifu/u_lsu_local_alias_remap instances this test targets, so they
-// are intentionally out of scope here.
+// are out of scope here.
 //
 // Checks (firmware-self-checking; start.S emits PASS/FAIL magic from main's rc):
 //   CHK-CSR    SEP_LOCAL_BASE probe/restore (REGION_SIZE is not programmed).

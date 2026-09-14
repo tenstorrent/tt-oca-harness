@@ -48,17 +48,13 @@ class smc_powergood_glitch_test_seq(SmcResetSeqBase):
     MIN_WAIT_CHECKS = 2  # glitch-effect + recovery handshakes
     MIN_RAW_CHECKS = MID_GLITCH_HOLD_REF_CYCLES  # the whole checked hold window
 
-    # `_send` (with its `expect_*` keyword guard) and `_hold_raw` come from
-    # SmcResetSeqBase so the guard is defined once for the whole reset family
-    # ([REUSE-AND-LAYERING]).
-
     # powergood_stable_o is the stretcher's asynchronously-asserted output, so
     # the glitch must be visible within a few clk_ref_i edges; the bound is a
     # generous ceiling, never the checked quantity.
     GLITCH_EFFECT_BOUND_REF_CYCLES = 64
     # Recovery re-qualifies power-good and then walks the cold-reset extender
-    # before primary is released (observed ~300 clk_ref_i edges). The bound only
-    # has to be a safe ceiling -- expiry fails the test with the last state.
+    # before primary is released, which takes a few hundred clk_ref_i edges. The
+    # bound only has to be a safe ceiling -- expiry fails the test with the last state.
     RECOVER_BOUND_REF_CYCLES = 2000
 
     def __init__(self, name: str = "smc_powergood_glitch_test_seq") -> None:

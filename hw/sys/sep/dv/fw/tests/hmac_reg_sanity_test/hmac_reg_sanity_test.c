@@ -5,10 +5,6 @@
  * HMAC Register Sanity Test
  *
  * Verifies register default readback and basic RW access for HMAC.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_hmac_reg_sanity_test STACK=sim
- *
  */
 
 #include <stdint.h>

@@ -398,7 +398,6 @@ int main(void) {
     printf("Local Alias Remap Toggle Test\n");
     printf("Strategy: Local-alias remap toggle stress; full CSR field coverage\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_local_alias_remap_toggle_p3_test");
         return TEST_FAIL;

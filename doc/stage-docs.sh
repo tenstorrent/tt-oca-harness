@@ -157,13 +157,12 @@ esac
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register
 #     partials are staged for every IP (even register-only IPs with no doc/ dir,
 #     e.g. zeroer referenced by SMC). AXI network/monitor elements live under
-#     hw/common/axi/<name> but are register-only from the doc perspective, so they
-#     are staged into the same ip module namespace (e.g. axi_alias_remap,
+#     hw/ip/<name> and are staged into the ip module namespace (e.g. axi_alias_remap,
 #     axi_filter, output_remap referenced by SMC fabric). Family-grouped IPs live
 #     one level deeper (hw/ip/<family>/<ip>, e.g. jtag/uart/cross_trigger); the
 #     hw/ip/*/*/ glob picks them up by basename (=<ip>), and the flat-IP subdirs it
 #     also enumerates (rtl/regs/dv/doc) have no doc/ or regs/gen so they stage nothing. ---
-for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/ "$ROOT"/hw/common/axi/*/; do
+for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/; do
   ip="$(basename "$ipdir")"
   [ -d "$ipdir/doc" ] && stage_adoc_tree "$ipdir/doc" "$MOD/ip/pages/$ip/doc"
   stage_gen_adoc "$ipdir/regs/gen/adoc" "$MOD/ip/partials/$ip/regs/gen/adoc"

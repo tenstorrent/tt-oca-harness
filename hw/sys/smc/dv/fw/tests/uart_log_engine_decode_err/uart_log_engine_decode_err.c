@@ -17,8 +17,8 @@
 // `decoded_err = '0` and returns OKAY+0 for undecoded offsets. Those are NOT
 // tested here.
 //
-// Uses test_fail(0) directly (noreturn) instead of relying on
-// raise_error + end_test (which proved unreliable under -flto+static-inline).
+// Failures call test_fail(0) (noreturn); raise_error + end_test is not reliable
+// under -flto with static inline helpers.
 
 #include <stdint.h>
 

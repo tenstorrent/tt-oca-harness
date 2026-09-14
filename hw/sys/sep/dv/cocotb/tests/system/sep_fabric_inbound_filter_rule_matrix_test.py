@@ -48,7 +48,7 @@ allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
 whole page, and traffic_filter.sv then compares only addr[AddrWidth-1:12].
 CHK-PAGE-WIDEN proves the 4 KB page grant ON THE BUS
-(hw/common/axi/axi_filter/doc/index.adoc: START down, END up):
+(hw/ip/axi_filter/doc/index.adoc: START down, END up):
 an external access to an address inside the granted page but OUTSIDE the
 programmed START..END is OKAY for read and write, with the exact staged
 value. The HW-adjusted START/END readback is the setup step that shows
@@ -564,10 +564,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
         )
-        # No image.lc_raw() == LC_PROD assert here: select_efuse_image was called with
-        # lc_raw=LC_PROD and randomize() pins the field to exactly that, so the check
-        # compares a value to itself. The DUT-side evidence that PROD actually took
-        # effect is the FEAT_CTRL read below, value-checked against feat_ctrl_expected.
+        # select_efuse_image pins lc_raw to LC_PROD, so the DUT-side evidence that
+        # PROD took effect is the FEAT_CTRL read below, value-checked against
+        # feat_ctrl_expected.
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         # security_disable read from the DUT rather than passed as a literal. This

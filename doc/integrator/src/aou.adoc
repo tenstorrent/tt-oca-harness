@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[aou-integration]]
+= AXI-over-UCIe Bridge (AoU) Integration
+
+:sectnums!:
+ifdef::backend-pdf[]
+:aou-ig-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/integration_guide/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/integration_guide/integrator.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::aou:partial$integrator.adoc[]
+endif::backend-html5[]
+:sectnums:

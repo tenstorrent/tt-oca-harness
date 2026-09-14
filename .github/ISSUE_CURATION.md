@@ -22,6 +22,7 @@ human who is not the author wins.
 ## Files
 
 - `issue-taxonomy.yml` — allow-lists, `automation.enabled`, and `curation.reviewer_pool`
+- `scripts/unwrap_github_mentions.py` — strips code spans around @mentions in curator comments
 - `workflows/<name>.md` — source (edit this)
 - `workflows/<name>.lock.yml` — generated; do not edit
 - `aw/actions-lock.json` — compiler action pins
@@ -49,7 +50,12 @@ due date (≤3 days, fed by milestone due date for v0.5.0 issues),
 approved-PR merge nudge (≥3 days), review pending (>1 business day),
 unreviewed PR (≥3 days, pings the assignee), draft open (>5 business days),
 changes-requested idle (>3 business days), and stale-assigned issue (≥21 days).
-All reminders are gated by a hidden marker and minimum re-nudge spacing. The
+All reminders are gated by a hidden marker and minimum re-nudge spacing.
+Comment bodies pass through `.github/scripts/unwrap_github_mentions.py` so a
+login wrapped in a code span becomes a real @mention before posting. gh-aw
+`add_comment` then keeps mentions in `safe-outputs.mentions.allowed` (human
+repository collaborators) plus the parent issue or PR author. Refresh that
+list when someone new should be pingable. The
 Actions run conclusion is the `noop` safe-output; the agent emits one every run.
 
 ```bash

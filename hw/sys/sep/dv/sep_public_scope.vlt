@@ -9,8 +9,8 @@
 // pragmas already present in the AXI fabric cells (rr_arb_tree, lzc, axi_demux) are
 // silently disabled on public signals, so Verilator cannot break the false
 // combinational ready/valid SCCs in axi_demux / axi_burst_splitter / id_fifo. The
-// result is a model-wide input-combinational (ICO) settle blow-up (~3.2M-entry Input
-// region, 951 SCCs, 2574 ICO triggers) that wedges the Verilator runtime.
+// result is a model-wide input-combinational (ICO) settle blow-up that wedges
+// the Verilator runtime.
 //
 // The SEP cocotb env only drives the tb top sep_uvm_top (root handle + its top-level
 // ports: clocks/reset/boot controls + the flat s_axi_* bus). The CPU-LSU splice is
@@ -19,10 +19,8 @@
 // needs public exposure of sep_uvm_top ONLY -- not the DUT fabric internals.
 //
 // Scoping public_flat_rw to sep_uvm_top (instead of the whole design) lets the fabric
-// split_var pragmas activate again: SCCs 951 -> 61, ICO Input region 3.2M -> ~160K
-// (20x), ICO triggers 2574 -> ~27, and sep_axi_smoke_test runs to completion
-// (PASS, ~130s) instead of wedging at the 1800s timeout. No DUT/fabric RTL change is
-// required.
+// split_var pragmas activate again, and the model runs instead of wedging. No
+// DUT/fabric RTL change is required.
 //
 // This file must be paired with dropping the runner's global --public-flat-rw (see
 // the repo-controlled cocotb runner wrapper in the SEP DV flow).

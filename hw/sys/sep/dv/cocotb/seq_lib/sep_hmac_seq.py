@@ -75,8 +75,8 @@ def build_cfg(
     """Build the HMAC CFG word for a SHA-2 variant / mode / key-length.
 
     ``sha_bits`` in {256,384,512}; ``key_bits`` in {128,256,384,512,1024} for keyed
-    HMAC (pass None for plain SHA). Reproduces the hand-picked HMAC_CFG_* constants
-    above (verified: keyed-256 -> 0x423, plain-256 -> 0x22).
+    HMAC (pass None for plain SHA). Reproduces the HMAC_CFG_* constants above
+    (keyed-256 -> 0x423, plain-256 -> 0x22).
     """
     cfg = int(bool(hmac_en)) | (1 << 1)  # sha_en always 1
     cfg |= (endian_swap & 1) << 2
@@ -95,8 +95,8 @@ class SepHmacCfg:
     programming (CFG + key) and the golden expectation (env/sep_hmac_golden).
 
     The SW-key byte convention (``key_word_rev``/``key_be``/``msg_be``/
-    ``digest_swap``) is pinned once at directed bring-up (OT DV key_swap=0 =>
-    KEY_0 first, big-endian per word; distinct from the keymgr sideload path).
+    ``digest_swap``) follows OT DV key_swap=0: KEY_0 first, big-endian per word
+    (distinct from the keymgr sideload path).
     """
 
     sha_bits: int  # 256/384/512
@@ -166,7 +166,7 @@ class SepHmac(SepAxiRegDriver):
         """Run one keyed HMAC over msg_words; return the 8 DIGEST words (word0=MSB).
 
         start -> push message words to MSG_FIFO -> process -> wait done -> read
-        DIGEST -> W1C the done event and assert it cleared (RW1C contract, §7).
+        DIGEST -> W1C the done event and assert it cleared (RW1C contract).
         """
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
@@ -198,7 +198,7 @@ class SepHmac(SepAxiRegDriver):
         """Run one SHA-256 over msg_words; return the 8 DIGEST words (word0=MSB).
 
         start -> push message words -> process -> wait done -> read DIGEST -> W1C
-        the done event and assert it cleared (RW1C, §7). DIGEST then HOLDS."""
+        the done event and assert it cleared (RW1C). DIGEST then HOLDS."""
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
             await self._wait_fifo_space()
@@ -228,7 +228,7 @@ class SepHmac(SepAxiRegDriver):
 
         Returns the DIGEST words for the SHA-2 variant (8/12/16). start -> push
         message -> process -> wait done -> read DIGEST -> W1C the done event and
-        assert it cleared (RW1C, §7)."""
+        assert it cleared (RW1C)."""
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
             await self._wait_fifo_space()

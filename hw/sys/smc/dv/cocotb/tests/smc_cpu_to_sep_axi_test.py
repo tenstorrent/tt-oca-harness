@@ -24,6 +24,9 @@ CPU_TO_SEP_MIN_CSR_ACCESSES = 9
 class smc_cpu_to_sep_axi_test(smc_base_test):
     """Run the CPU-control to SEP-facing CSR reachability precheck."""
 
+    required_evidence = ("CHK-CPU-BFM-OBSERVABILITY",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -40,8 +43,8 @@ class smc_cpu_to_sep_axi_test(smc_base_test):
             # that tolerate a no-response (`csr_read_bounded` /
             # `csr_short_timeout`, seq_lib/smc_csr_seq_utils.py); this sequence
             # calls neither, so `seq.timeouts` is structurally 0 and reporting it
-            # as "measured" advertised a timeout statistic that was never taken
-            # ([NO-DUMMY-DEAD-CODE]). Every access here IS
+            # as "measured" would advertise a timeout statistic that is never
+            # taken ([NO-DUMMY-DEAD-CODE]). Every access here IS
             # bounded -- `csr_read`/`csr_write` leave `allow_timeout` False, and
             # the driver applies `cfg.axi_timeout_ns` and raises on expiry, so
             # [TIMEOUT-MUST-FAIL] is satisfied by the driver, not by this field.

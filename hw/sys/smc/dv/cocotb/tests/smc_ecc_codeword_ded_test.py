@@ -16,6 +16,9 @@ from smc_base_test import smc_base_test
 class smc_ecc_codeword_ded_test(smc_base_test):
     """Two flipped codeword bits: the CPU raises cluster_ded_o."""
 
+    required_evidence = ("CHK-ECC-CODEWORD-DED",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

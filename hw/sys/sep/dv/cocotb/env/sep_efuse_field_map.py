@@ -20,8 +20,9 @@ from dataclasses import dataclass
 # field this sweep still writes, so those bits stay 0 until the lock walk.
 # LC_STATE used bits are the lifecycle nibble; the LC W1S leaves own them.
 _DIS_FUNCTION_GROUP = (0xFFFF_0000, 1)
-_LOCK_ASSIGNED = 0x0000_FFFF
-_LOCK_UNASSIGNED = 0xFFFF_0000
+# LOCKS_SPARE: slots 32-40 in [17:0], slots 41-47 unassigned in [31:18].
+_LOCK_ASSIGNED = 0x0003_FFFF
+_LOCK_UNASSIGNED = 0xFFFC_0000
 _SWEEP_EXCLUDE = frozenset({"LC_STATE", "LOCK"})
 
 
@@ -64,7 +65,7 @@ _FIELD_ROWS = (
     ("SYS_UID", "SYS_UID", 16, 256, 256, False),
     ("STATUS_RPT", "STATUS_RPT", 17, 32, 2, False),
     ("ROM_CTL", "ROM_CTL", 18, 32, 32, False),
-    ("SPI_CONFIG", "SEP_SPI_CTRL_FIELD_EN", 19, 288, 288, False),
+    ("SYSCLK_FREQ_MHZ", "SYSCLK_FREQ_MHZ", 19, 32, 11, False),
     ("CHIPLET_PUBK_HASH0", "CHIPLET_PUBK_HASH0", 20, 256, 256, False),
     ("CHIPLET_PUBK_HASH1", "CHIPLET_PUBK_HASH1", 21, 256, 256, False),
     ("REQUIRED_SIGNERS", "REQUIRED_SIGNERS", 22, 32, 2, False),
@@ -86,6 +87,7 @@ _FIELD_ROWS = (
     ("spare5", "SPARE5", 38, 256, 256, False),
     ("spare6", "SPARE6", 39, 256, 256, False),
     ("spare7", "SPARE7", 40, 256, 256, False),
+    ("spare8", "SPARE8", 41, 256, 256, False),
 )
 
 NUM_FUSE_BITS = 8192
@@ -171,11 +173,13 @@ def spec_walked_rows() -> frozenset[str]:
 
 def _selftest() -> None:
     fields = spec_fields()
-    assert len(fields) == 41, f"DV-owned map has {len(fields)} rows, want 41"
+    assert len(fields) == 42, f"DV-owned map has {len(fields)} rows, want 42"
     by_reg = {f.reg_name: f for f in fields}
     assert by_reg["REQUIRED_SIGNERS"].set_only is False
     assert "REQUIRED_SIGNERS" not in SECURE_TM_BLOCKED
     assert by_reg["REQUIRED_ALGS"].set_only is True
+    assert by_reg["SYSCLK_FREQ_MHZ"].used_bits == 11
+    assert "SEP_SPI_CTRL_FIELD_EN" not in by_reg
     assert spec_num_fuse_bits() == 8192
     assert spec_secret_regs() == SECRET_REGS
     walk = spec_set_only_walk()
@@ -193,8 +197,10 @@ def _selftest() -> None:
     assert lock[0][2] == 0 and lock[1][2] == 1
     assert lock[2][3] == _LOCK_UNASSIGNED and lock[2][4] == _LOCK_ASSIGNED
     writable = spec_writable_shadow_walk()
-    assert len(writable) == 33
+    assert len(writable) == 34
     assert dict(writable)["REQUIRED_SIGNERS"] == 0x3
+    assert dict(writable)["SYSCLK_FREQ_MHZ"] == 0x7FF
+    assert dict(writable)["SPARE8"] == 0xFFFF_FFFF
     assert spec_walked_rows() == {f.spec_name for f in fields} - {"LC_STATE"}
 
 

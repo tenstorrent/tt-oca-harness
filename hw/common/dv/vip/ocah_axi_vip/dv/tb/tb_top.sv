@@ -27,6 +27,14 @@
 //             the shared slave agent answers there; the response struct is
 //             unpacked back onto the nets.
 //
+// ocah_axi_sva watches the VIP-driven bundles: mt_axi in both shapes, s_axi
+// and l_axi in the cocotb shape. t_axi and, in the SV-UVM shape, u_axi_if
+// carry the armed response-ID corruption of the mismatch selftests, where
+// the ID-ordering rules must fire, so no checker is bound to them.
+//
+// In the SV-UVM shape one ocah_axi_cov_if (cov/ocah_axi_cov.sv) is the
+// covergroup sampler of both passive envs, published as axi_cov_vif.
+//
 // The request nets are driven from cocotb (--public-flat-rw) or, in the
 // SV-UVM shape, bridged from the ocah_axi_if instances below; the lint
 // waivers cover the undriven cocotb-owned nets.
@@ -299,6 +307,53 @@ module ocah_axi_vip_tb_top;
     .axi_if     (u_mt_axi_if)
   );
 
+  // ------------------------------------------------------------------
+  // Protocol rules on the struct-port bundle (both shapes)
+  // ------------------------------------------------------------------
+  ocah_axi_sva #(
+    .IS_LITE    (1'b0),
+    .ADDR_WIDTH (32),
+    .DATA_WIDTH (32),
+    .ID_WIDTH   (8)
+  ) u_mt_axi_sva (
+    .aclk    (clk),
+    .aresetn (rst_n),
+    .en_i    (1'b1),
+    .awid    (mt_axi_awid),
+    .awaddr  (mt_axi_awaddr),
+    .awlen   (mt_axi_awlen),
+    .awsize  (mt_axi_awsize),
+    .awburst (mt_axi_awburst),
+    .awlock  (mt_axi_awlock),
+    .awprot  (mt_axi_awprot),
+    .awvalid (mt_axi_awvalid),
+    .awready (mt_axi_awready),
+    .wdata   (mt_axi_wdata),
+    .wstrb   (mt_axi_wstrb),
+    .wlast   (mt_axi_wlast),
+    .wvalid  (mt_axi_wvalid),
+    .wready  (mt_axi_wready),
+    .bid     (mt_axi_bid),
+    .bresp   (mt_axi_bresp),
+    .bvalid  (mt_axi_bvalid),
+    .bready  (mt_axi_bready),
+    .arid    (mt_axi_arid),
+    .araddr  (mt_axi_araddr),
+    .arlen   (mt_axi_arlen),
+    .arsize  (mt_axi_arsize),
+    .arburst (mt_axi_arburst),
+    .arlock  (mt_axi_arlock),
+    .arprot  (mt_axi_arprot),
+    .arvalid (mt_axi_arvalid),
+    .arready (mt_axi_arready),
+    .rid     (mt_axi_rid),
+    .rdata   (mt_axi_rdata),
+    .rresp   (mt_axi_rresp),
+    .rlast   (mt_axi_rlast),
+    .rvalid  (mt_axi_rvalid),
+    .rready  (mt_axi_rready)
+  );
+
 `ifndef UVM
   // ------------------------------------------------------------------
   // wide: default-geometry ocah_axi_if instances (cocotb shape)
@@ -310,6 +365,97 @@ module ocah_axi_vip_tb_top;
   ocah_axi_if u_wide_axil_if (
     .aclk(clk),
     .aresetn(rst_n)
+  );
+
+  // ------------------------------------------------------------------
+  // Protocol rules on the VIP-driven cocotb bundles (s_axi, l_axi)
+  // ------------------------------------------------------------------
+  ocah_axi_sva #(
+    .IS_LITE    (1'b0),
+    .ADDR_WIDTH (32),
+    .DATA_WIDTH (32),
+    .ID_WIDTH   (8)
+  ) u_s_axi_sva (
+    .aclk    (clk),
+    .aresetn (rst_n),
+    .en_i    (1'b1),
+    .awid    (s_axi_awid),
+    .awaddr  (s_axi_awaddr),
+    .awlen   (s_axi_awlen),
+    .awsize  (s_axi_awsize),
+    .awburst (s_axi_awburst),
+    .awlock  (s_axi_awlock),
+    .awprot  (s_axi_awprot),
+    .awvalid (s_axi_awvalid),
+    .awready (s_axi_awready),
+    .wdata   (s_axi_wdata),
+    .wstrb   (s_axi_wstrb),
+    .wlast   (s_axi_wlast),
+    .wvalid  (s_axi_wvalid),
+    .wready  (s_axi_wready),
+    .bid     (s_axi_bid),
+    .bresp   (s_axi_bresp),
+    .bvalid  (s_axi_bvalid),
+    .bready  (s_axi_bready),
+    .arid    (s_axi_arid),
+    .araddr  (s_axi_araddr),
+    .arlen   (s_axi_arlen),
+    .arsize  (s_axi_arsize),
+    .arburst (s_axi_arburst),
+    .arlock  (s_axi_arlock),
+    .arprot  (s_axi_arprot),
+    .arvalid (s_axi_arvalid),
+    .arready (s_axi_arready),
+    .rid     (s_axi_rid),
+    .rdata   (s_axi_rdata),
+    .rresp   (s_axi_rresp),
+    .rlast   (s_axi_rlast),
+    .rvalid  (s_axi_rvalid),
+    .rready  (s_axi_rready)
+  );
+
+  ocah_axi_sva #(
+    .IS_LITE    (1'b1),
+    .ADDR_WIDTH (32),
+    .DATA_WIDTH (32),
+    .ID_WIDTH   (1)
+  ) u_l_axi_sva (
+    .aclk    (clk),
+    .aresetn (rst_n),
+    .en_i    (1'b1),
+    .awid    ('0),
+    .awaddr  (l_axi_awaddr),
+    .awlen   ('0),
+    .awsize  (3'd2),
+    .awburst (2'b01),
+    .awlock  (1'b0),
+    .awprot  (l_axi_awprot),
+    .awvalid (l_axi_awvalid),
+    .awready (l_axi_awready),
+    .wdata   (l_axi_wdata),
+    .wstrb   (l_axi_wstrb),
+    .wlast   (1'b1),
+    .wvalid  (l_axi_wvalid),
+    .wready  (l_axi_wready),
+    .bid     ('0),
+    .bresp   (l_axi_bresp),
+    .bvalid  (l_axi_bvalid),
+    .bready  (l_axi_bready),
+    .arid    ('0),
+    .araddr  (l_axi_araddr),
+    .arlen   ('0),
+    .arsize  (3'd2),
+    .arburst (2'b01),
+    .arlock  (1'b0),
+    .arprot  (l_axi_arprot),
+    .arvalid (l_axi_arvalid),
+    .arready (l_axi_arready),
+    .rid     ('0),
+    .rdata   (l_axi_rdata),
+    .rresp   (l_axi_rresp),
+    .rlast   (1'b1),
+    .rvalid  (l_axi_rvalid),
+    .rready  (l_axi_rready)
   );
 `endif
 
@@ -400,6 +546,13 @@ module ocah_axi_vip_tb_top;
   assign u_mt_master_if.ruser   = 16'(mt_axi_ruser);
   assign u_mt_master_if.rvalid  = mt_axi_rvalid;
 
+  // Covergroup sampler shared by the passive envs of both buses: the
+  // ocah_axi_cov subscribers each env builds under cfg.en_cov sample every
+  // completed transaction into this one instance.
+  ocah_axi_cov_if u_axi_cov_if (
+    .clk_i (clk),
+    .rst_ni(rst_n)
+  );
 
   `include "ocah_axi_vip_tests.sv"
 
@@ -407,6 +560,7 @@ module ocah_axi_vip_tb_top;
     uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "axi_vif", u_axi_if);
     uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "mt_master_vif", u_mt_master_if);
     uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "mt_axi_vif", u_mt_axi_if);
+    uvm_config_db#(virtual ocah_axi_cov_if)::set(null, "*", "axi_cov_vif", u_axi_cov_if);
     run_test();
   end
 `endif

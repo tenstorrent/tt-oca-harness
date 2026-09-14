@@ -6,8 +6,7 @@
  * Included by both firmwares (SEP consumer + SMC producer). Python goldens
  * derive CSR facts independently from PeakRDL; they do not parse this header.
  *
- * Force-free SEP-driven bootstrap (pivoted 2026-07-20 off the ext_in launch, which
- * segfaults VCS on a CPU_CTRL write -- see B-EXTIN-CPUCTRL-WRITE): the real SEP CPU boots
+ * Force-free SEP-driven bootstrap: the real SEP CPU boots
  * from its own fuse/reset, opens its outbound egress window, polls SMC SRAM for the exact
  * preload cookie, then re-vectors + releases the four SMC cores over the SEP->SMC alias
  * (sep_smc_bringup.h). The TB issues no reset/CSR/vector force. Then the two firmwares run

@@ -11,7 +11,7 @@
  *   action[4] i_cpu_run_req       -> PMU run/resume                            [DIAGNOSTIC]
  * action[3] is a PMU/FW halt request: it is characterized idle-vs-busy
  * (CHK-PMU-HALT-DIAG) and is NOT required to freeze a busy core. action[2]
- * (mpc_reset_run_req, inverted) and action[5] (unmapped) mapping-only in this first cut.
+ * (mpc_reset_run_req, inverted) and action[5] (unmapped) are checked for mapping only.
  *
  * Included by BOTH firmwares + parsed by the cocotb checker. Plain integer/hex #defines only.
  * Channels: SMC CPU_CTRL scratch (base 0xC0039080, 8-byte stride); s0=SMC status, s1=CLA arm

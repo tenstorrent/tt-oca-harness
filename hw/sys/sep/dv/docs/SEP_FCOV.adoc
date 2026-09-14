@@ -35,7 +35,7 @@ SCORE.
 |===
 |Metric |Contract |Collection path
 |Phase 1 functional coverage |Every Phase 1 bin below |URG Group report on `sep_uvm_top.u_sep_fcov`, from a `--cov --tool vcs` run
-|Phase 2 functional coverage |Named future-work set at the end of this plan |Not collected
+|Phase 2 functional coverage |Named Phase 2 set at the end of this plan |Not collected
 |Line / expression coverage |Collected; not a functional-coverage contract |`--coverage-line`, `--coverage-expr`
 |Condition / FSM / toggle / assertion |Commercial signoff |VCS / Xcelium
 |===
@@ -140,15 +140,6 @@ and quotes the launcher `result status=` line. Verilator does not compile
 these groups, so a Verilator class regress is not Phase 1 fill evidence.
 Local paths under `build/runs/` are not durable.
 
-Recorded on this revision:
-
-* VCS coverage-model compile: run `20260910_085131__vcs__all`, fingerprint
-  `c3c1e6c72d81`, `target_build.status=PASS`. That run's simulate stage is
-  not evidence: the children died on `ModuleNotFoundError: cocotb_tools`
-  before any leaf started.
-* Verilator `cpu_stub` / `cpu` class regress on this tip: not bound in a
-  retained run directory.
-
 === Collection
 
 `sep_fcov` is a passive TB-side sampler. It drives nothing.
@@ -156,11 +147,10 @@ Recorded on this revision:
 Its CSR side reads the post-remap CPU-LSU AXI bus, wired from the same node
 `tb_top` already mirrors to its flat `s_axi_*` ports and force-splices on the
 no-CPU builds -- not a new probe, and not a Python path into the fabric
-(`sep_public_scope.vlt` keeps public marks off it). The attach is deliberate:
-the flat `s_axi_*` request ports carry TB stimulus only, so under `+cpu_boot`
-the EL2 owns the bus and a port-side sampler would score nothing on any
-firmware test. Everything else is the real `m_axi_*` DUT port or an
-already-signed-off `tb_top` probe port.
+(`sep_public_scope.vlt` keeps public marks off it). The flat `s_axi_*` request
+ports carry TB stimulus only, so under `+cpu_boot` the EL2 owns the bus and a
+port-side sampler would score nothing on any firmware test. Everything else is the real `m_axi_*` DUT port or a
+`tb_top` probe port.
 
 Register data bins are gated on exactly ONE outstanding AXI transaction in
 that direction, so the address that labels a bin is unambiguously the address
@@ -305,7 +295,7 @@ A `keyed_mac` hit fills `cp_kmac` as configuration only.
 |`cp_done` |ONE bin: the same post-`EXECUTE` window saw `STATUS` back at IDLE and then `ERR_BITS` == 0
 |===
 
-Done is deliberately one bin. Two independent strobes would let a stale
+`cp_done` is one bin. Two independent strobes would let a stale
 `ERR_BITS` zero score alongside a program that never ran. Secure wipe and
 `LOCKED` are Phase 2.
 
@@ -416,7 +406,7 @@ could not fire at all. Opcode and range errors are Phase 2.
 |===
 
 The JEDEC ID value, the SRAM pattern, and the SPI error status stay on the SPI
-tests. `cp_frame` and `cp_sck` are on the pads on purpose: CSR traffic alone
+tests. `cp_frame` and `cp_sck` are on the pads: CSR traffic alone
 cannot prove a frame left the host.
 
 ==== `sep_inbound_filter_allow_cg`
@@ -431,8 +421,8 @@ cannot prove a frame left the host.
 |===
 
 The window is decoded from the `FILTER_CONFIG` / `START_ADDR` / `END_ADDR`
-writes on the CSR bus, and the compare is page-granular because
-The compare is against the PROGRAMMED range, not its 4 KB page:
+writes on the CSR bus. The compare is against the PROGRAMMED range, not its
+4 KB page:
 `traffic_filter.sv` compares `addr[.:12]` only in its allow_burst arm, and
 `addr[.:DataBusWidthLog2]` otherwise, so a page compare is a superset of the
 real grant. Comparing the range can only miss a page-widened grant, never
@@ -472,7 +462,7 @@ the sense bin, so it cannot fill this one.
 Both qualifiers are load-bearing. `+skip_fuse_sense` makes
 `efuse_shadow_regs.sv` force `fuse_sense_done` to 1 one cycle after reset with
 no sense FSM and no macro read, so an ungated bin scores the simulation
-bypass -- measured: it read 100% with a count of 46737 on an AES-only test.
+bypass on every test that skips sense.
 The edge matters because the held level would score one hit per clock for the
 rest of the run.
 
@@ -625,11 +615,10 @@ lifecycle state, plus the SEC_DIS all-ones override, so most of the 21 products
 are illegal and would be permanent holes. Naming the legal set means restating
 `sep_lcc_golden.feat_ctrl_expected`, which belongs to the checker.
 
-`SECURE_TM` is a standalone coverpoint and NOT crossed with the profile: in this
-layout it does not qualify feature control (`env/sep_lcc_golden.py`). The
-reference UVM coverage crosses it, which reflects an older `FEAT_CTRL` layout
-with a DFT group at `[47:32]`; the current layout is `DBG_1[23:0]`,
-`DBG_2[47:24]`, `Function[63:48]` with no test group.
+`SECURE_TM` is a standalone coverpoint and NOT crossed with the profile: it does
+not qualify feature control (`env/sep_lcc_golden.py`). The `FEAT_CTRL` layout is
+`DBG_1[23:0]`, `DBG_2[47:24]`, `Function[63:48]`, with no test group to cross
+against.
 
 The state comes from the sensed shadow probe rather than a frontdoor
 `LC_STATE` read, because the W1S leaves verify their starting state through
@@ -667,8 +656,8 @@ cells for a walk that exercises the PROD rows only
 |===
 
 The two domains are separate coverpoints because they are separate sources with
-separate owners; folding them into one pair let a KM-mailbox edge stand in for
-the SEP mailbox, which is what an earlier revision of this sampler did.
+separate owners; one shared pair would let a KM-mailbox edge stand in for the
+SEP mailbox.
 
 The EL2 PIC claim stays on the CPU test. The 42-source exclusivity map is
 Phase 2.
@@ -685,7 +674,7 @@ Phase 2.
 |`cp_nmi` |A retired exception flagged as an interrupt AFTER such a bark was observed
 |===
 
-`cp_nmi` is ordered on purpose: an unrelated interrupt must not score it. The
+`cp_nmi` is ordered: an unrelated interrupt must not score it. The
 bark itself is observed only where a test or firmware reads `INTR_STATE`; a
 run whose WDT never barks leaves both cells empty, and that is the honest
 report, not a gap to close by loosening the bin. Bite, wakeup cause, and
@@ -710,7 +699,7 @@ with the falling edge can never fire, because no read completes in that cycle.
 
 `cp_warm_rst` carries two guards for the same reason. `sep_cpu_reset_n`
 (`sep_reset_n & wdt_rst_ni`) also falls during cold bring-up, so a bare edge
-term scores in any test -- measured on an AES-only run -- and, worse, arms the
+term scores in any test and, worse, arms the
 two retention bins off an edge the scenario never produced. Requiring a
 settled release and a staged scratch value makes the bin the scenario's warm
 reset.
@@ -734,7 +723,7 @@ reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
 `sep_remap_alias_cg`, `sep_remap_output_offset_cg`, `sep_filter_entry_cfg_cg`,
 `sep_filter_match_cg`, `sep_filter_range_granule_cg`,
 `sep_filter_default_policy_cg`, `sep_aperture_reserved_access_cg` also owns the refused-access response codes
-(DECERR / SLVERR on a reserved or unmapped address, walked today by
+(DECERR / SLVERR on a reserved or unmapped address, walked by
 `sep_axi_map_refuse_test` and `sep_fabric_deadspace_decode_test`). They are an
 error path, so they stay out of `sep_axi_decode_cg`, whose `cp_resp` records
 only that a legal access completed OKAY.
@@ -786,7 +775,7 @@ only that a legal access completed OKAY.
 |===
 |Item |Reason
 |SV covergroups under Verilator |Unsupported. Phase 1 groups are VCS-only (`ifndef VERILATOR`)
-|Verilator cover-property FCOV |Parked. This revision does not add `OCAH_FCOV_COVER` points
+|Verilator cover-property FCOV |Not used. Phase 1 is covergroups only; no `OCAH_FCOV_COVER` points are defined
 |Toggle coverage under Verilator |Database size; commercial flow only
 |`ocah_axi_cov_if` |Commercial-flow asset; not on the Verilator filelist
 |Python probes of DUT internals |No route; public scope stays on `sep_uvm_top`

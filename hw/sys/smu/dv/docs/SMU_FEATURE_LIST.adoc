@@ -1,56 +1,42 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[smu-feature-list-candidate]]
-== SMU v0.5.0 feature list (candidate)
+[[smu-feature-list]]
+== SMU SEP=0 feature list
 
-This chapter freezes the *candidate* SEP=0 feature subset for designer
-confirmation (#487). It is not an approval. Do not treat a merged copy of
-this file as designer sign-off.
+This chapter defines the SEP=0 feature subset of `SMU_SPEC.md` Features
+1–7 and maps every enrolled test to one feature and one `TEST_EVIDENCE`
+token.
 
 The executable contract is `testlists/wrapper.toml`. Feature credit is
-the enrolled `sep0_all` set (53). Deferred raise stubs and SEP=1 work are
-OUT.
+the enrolled `sep0_all` group. Names in `SMU_DEFERRED_DISPOSITION.adoc`
+and SEP=1 work are OUT.
 
 [cols=",",options="header",]
 |===
 |Field |Value
-|Status |CANDIDATE — awaiting SMU designer confirmation in-repo
-|Spec source |Features 1–7 in this chapter
-|Enrolled nightly |`sep0_all` = 53 (`--dut smu`)
-|PR smoke |`smoke_sep0` = 4 (`smu_wrapper_elaboration_no_sep_test`, `smu_dtp_jtag_smoke_test`, `smu_no_sep_configuration_test`, `smu_ext_boot_seq_gate_test`)
+|Spec source |`hw/sys/smu/doc/SMU_SPEC.md` Features 1–7
+|Feature-credit group |`sep0_all` (`--dut smu`)
+|PR smoke |`smoke_sep0` (`smu_wrapper_elaboration_no_sep_test`, `smu_dtp_jtag_smoke_test`, `smu_no_sep_configuration_test`, `smu_ext_boot_seq_gate_test`)
 |Evidence map |`common/smu_dv_env/smu_evidence_map.py` `TEST_EVIDENCE`
-|Deferred catalog |`docs/SMU_DEFERRED_DISPOSITION.adoc` (disposition in #488)
+|OUT catalog |`docs/SMU_DEFERRED_DISPOSITION.adoc`
 |===
-
-[[smu-feature-confirmation]]
-=== Designer confirmation (unsigned)
-
-[cols="2,3,2,3",options="header",]
-|===
-|Role |Name |Date |Result
-|SMU designer | | |pending
-|===
-
-A later edit that fills the row, or an in-repo review comment that quotes
-this chapter and says the subset is accepted, is what #487 needs. This
-table being empty is intentional.
 
 [[smu-feature-subset]]
-=== v0.5.0 subset
+=== SEP=0 subset
 
 Features 1–7, scoped to `--dut smu` on its `SEP=0` compile profile.
 
 [cols="1,2,2,3,3",options="header",]
 |===
-|ID |SPEC feature |v0.5.0 |What is in |What stays OUT
+|ID |SPEC feature |Scope |What is in |What stays OUT
 |F1 |SMC boot and firmware execution |IN (SEP=0 observe) |Bring-up, reset release, mailbox CSR, WDT, GPIO strap, OCTS free-run, no-SEP composition |SMC CPU firmware boot, ROM regression
-|F2 |Real SEP RTL under the SMU |OUT |— |SEP=1 instantiate / fetch / retire (#493)
-|F3 |DTP debug and test access |IN |PTAP IDCODE/BYPASS, JTAG2AXI, OTP MAP, STAP, BSR select, boot-stall, IC_RESET |Force-era security gate, real LCC, iJTAG model depth
+|F2 |Real SEP RTL under the SMU |OUT |— |SEP=1 instantiate / fetch / retire
+|F3 |DTP debug and test access |IN |PTAP IDCODE/BYPASS, JTAG2AXI, OTP MAP, STAP, BSR select, boot-stall, IC_RESET |Closed JTAG2AXI security gate (SEP=0 ties `sep_feat_ctrl` to `'1`), real LCC, iJTAG model depth
 |F4 |AXI crossbar fabric |IN (SEP=0 shape) |Direct SMC↔external ID converters, filters, ATOP reject, alias remap, fabric BAR |`smu_axi_xbar` itself (`SEP=1` only); `smu_axi_xbar_structure_test` proves the xbar is *absent*
-|F5 |SMC↔SEP interoperability |OUT |— |Mailbox challenge-response with a live SEP (#493)
-|F6 |Cross-trigger and clock-stop |IN (pin-level) |Clock-stop coordination, product-pin CTM remap, illegal-phase corners |Four-phase / CLA loop / Force inject
-|F7 |Lifecycle and security |IN (observe-only) |SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`) |`feat_ctrl` matrices, lifecycle policy (#493 / deferred)
+|F5 |SMC↔SEP interoperability |OUT |— |Mailbox challenge-response with a live SEP
+|F6 |Cross-trigger and clock-stop |IN (pin-level) |Clock-stop coordination, product-pin CTM remap, illegal-phase corners |Four-phase CTM handshake / CLA loop (no product pin or frontdoor for CLA feedback or the CTM handshake)
+|F7 |Lifecycle and security |IN (observe-only) |SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`) |`feat_ctrl` matrices, lifecycle policy (need a real SEP under SMU)
 |===
 
 [[smu-enrolled-mapping]]
@@ -59,9 +45,6 @@ Features 1–7, scoped to `--dut smu` on its `SEP=0` compile profile.
 Every `sep0_all` name maps to one feature ID and to `TEST_EVIDENCE`.
 Tokens are the scoreboard `evidence=` / `expect_*` names the test already
 emits; the map must not invent a checkbox the body cannot prove.
-
-`smu_ext_boot_seq_gate_test` (F1, SMU_006) and `smu_smc_mailbox_int_test`
-(F1) are enrolled in `sep0_all`.
 
 [cols="3,1,2,3",options="header",]
 |===
@@ -74,7 +57,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_smc_mailbox_int_test` |F1 |sep0_all, migrated_smc |`CHK-SMC-MBX-IRQ-EXT-S2`
 |`smu_smc_wdt_sanity_test` |F1 |migrated_smc, sep0_all |`WDT_UNLOCK_OK`
 |`smu_smc_wdt_timeout_irq_test` |F1 |migrated_smc, sep0_all |`WDT_WDOGIP0`
-|`smu_smc_gpio_strap_sanity_test` |F1 |not in live groups (#1478) |`SMC_STRAP_OK`
+|`smu_smc_gpio_strap_sanity_test` |F1 |none |`SMC_STRAP_OK`
 |`smu_system_timer_octs_test` |F1 |migrated_smc, sep0_all |`CHK-OCTS-COUNT-MONOTONIC`
 |`smu_smc_security_demote_pm_test` |F7 |migrated_smc, sep0_all |`DEMOTE_TIEOFF_OBS`
 |`smu_i3c_mem_port_connectivity_test` |F4 |migrated_smc, sep0_all |`CHK-SUB-AXIL-LOCAL-S1`
@@ -121,36 +104,18 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_ic_reset_dual_domain_illegal_test` |F3 |migrated_dtp, sep0_all |`IC_RESET_DUAL_PACK`
 |`smu_boot_stall_vs_ic_reset_priority_test` |F3 |migrated_dtp, sep0_all |`STALL_VS_IC_RESET`
 |`smu_xtrig_ctm_illegal_phase_test` |F6 |migrated_dtp, sep0_all |`XT_ILLEGAL_PHASE`
+|`smu_ic_reset_ss_domain_matrix_test` |F3 |migrated_smc, sep0_all |`IC_RESET_SS_COLD_OVRD`
+|`smu_dtp_bsr_extest_loopback_test` |F3 |migrated_smc, sep0_all |`BSR_EXTEST_TDO_MATCH`
 |===
-
-`smu_ic_reset_ss_domain_matrix_test` and
-`smu_dtp_bsr_extest_loopback_test` are in `sep0_all`.
 
 [[smu-out-and-wrapper]]
 === OUT, wrapper, and missing commercial names
 
-* Every name in `docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset. #488 is the
-  per-row disposition; do not imply those features are done because a
-  `TEST_EVIDENCE` row still exists for catalog continuity.
+* Every name in `docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset;
+  a `TEST_EVIDENCE` row for such a name is a catalog entry, not evidence.
 * `--dut smu` is the wrapper bench and carries `sep0_all` itself; PASSes are
   labelled `DUT_TAG=WRAPPER`. The bare block bench is `--dut smu_block`
   (`SMU_VPLAN.adoc`).
-* The commercial names `main_wrapper` and `main_wrapper_por` are not in
-  this tree. The wrapper successors are
-  `smu_wrapper_elaboration_no_sep_test` (elaboration / reset) and
-  `smu_wrapper_elaboration_sep_rtl_test` (SEP=1 elab, wrapper `smoke`).
-  See #261. Do not invent a bare-`smu` test under those names.
-
-[[smu-focused-gaps]]
-=== Focused gaps (not absorbed here)
-
-[cols="2,3,3",options="header",]
-|===
-|Gap |Owner |Tracker
-|Designer confirmation of this subset |SMU designer |#487 (this file)
-|Traceability approval after the subset is signed |SMU design owner + DV lead |#479 (`SMU_SCOPE_TRACEABILITY.adoc`)
-|`smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are in `sep0_all` |SMU DV |enrolled
-|SEP=1 / F2 / F5 |SEP=1 track |#493
-|123 deferred names |SMU DV |#488
-|Commercial `main_wrapper*` names |SMU DV |#261
-|===
+* Wrapper elaboration / reset is `smu_wrapper_elaboration_no_sep_test`;
+  SEP=1 elaboration is `smu_wrapper_elaboration_sep_rtl_test` (wrapper
+  `smoke`).
