@@ -53,16 +53,16 @@ scope (`coverage_off` / VCS hier). Vendored RTL and the
 chipyard-generated CPU cluster are SMC-level OUT; they are not this
 package's to close.
 |Waiver hole |the point exists and is not hit |`coverage_policy.toml`
-`[[holes]]`, written from a measured run
+`\[[holes]]`, written from a measured run
 |===
 
-Do not write `[[holes]]` or `[[thresholds]]` before a database exists.
+Do not write `\[[holes]]` or `\[[thresholds]]` before a database exists.
 `expected_matches` is a hard count.
 
 [[smc-cov-waiver]]
 === Waiver fields
 
-Every `[[holes]]` row must carry:
+Every `\[[holes]]` row must carry:
 
 * `tool`, `metric_family`, hierarchy or file selector
 * `category` (`out_of_scope` / `excluded` / `waived` / `open`)
