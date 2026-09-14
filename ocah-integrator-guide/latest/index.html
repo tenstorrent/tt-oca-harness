@@ -3613,7 +3613,7 @@ asynchronous to <code>clk_i</code> and typically runs between 100 and 400 MHz.</
 <p>For adopters providing an external TRNG, the <code>ext_trng_axil</code> AXI-Lite interface
 connects to the external TRNG&#8217;s control registers, while the <code>ext_trng_axis</code>
 AXI-Stream interfaces carry entropy data. The <code>ext_trng_irq_i</code> input is routed
-to the PIC; <code>ext_trng_alarm_i</code> is reserved for RAS.</p>
+to the PIC.</p>
 </div>
 <div class="paragraph">
 <p>SEP decodes the 4 kB TRNG aperture (<code>0x1091_7000</code> - <code>0x1091_7FFF</code>) as a single
@@ -4281,15 +4281,6 @@ SPI host, and mailbox. The following table defines all SEP top-level ports.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG interrupt (routed to PIC).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG shim</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_trng_alarm_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG alarm (reserved for RAS).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG shim</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
