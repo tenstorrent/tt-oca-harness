@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_efuse_map_read_test(smc_base_test):
     """P1 coverage-gap depth: SMC_EFUSE_MAP direct read."""
 
+    required_evidence = ("CHK-EFUSE-MAP-READ",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

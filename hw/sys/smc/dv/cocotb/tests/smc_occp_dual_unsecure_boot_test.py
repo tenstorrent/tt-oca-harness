@@ -694,10 +694,9 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # The SRAM peek gates this test, and what makes that sound is the decode
     # behind it.
     #
-    # The peek resolves the offset with smc_scratch_map_pkg, whose bank and
-    # entry maps are read out of the cluster's own decode --
-    # OCAH4CORECluster_TLXbar_mbus_i1_o33_...sv for the bank,
-    # OCAH4CORECluster_TLRAM.sv for the entry -- and held against AXI by
+    # The peek resolves the offset with smc_scratch_map_pkg, whose geometry
+    # comes from spm_memory.rdl and cpu.adoc and whose interleave is a DV-owned
+    # table declared in its header -- held against AXI by
     # smc_dual_axi_sram_probe_test, which requires the backdoor to resolve to
     # the macro word AXI just wrote across six offsets: both stripe bits, the
     # entry low bits, the +0x100 wrap of the four-bank cycle, and the next

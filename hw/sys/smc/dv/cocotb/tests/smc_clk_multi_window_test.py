@@ -28,6 +28,14 @@ CLK_MULTI_WINDOW_MIN_CSR_ACCESSES = 130
 class smc_clk_multi_window_test(smc_base_test):
     """LIVE hysteresis-window scaling."""
 
+    required_evidence = (
+        "CHK-DMA-PAYLOAD-GOLDEN",
+        "CHK-HYST-WINDOW",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

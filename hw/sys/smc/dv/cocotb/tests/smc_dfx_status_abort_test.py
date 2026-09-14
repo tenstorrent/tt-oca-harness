@@ -16,6 +16,14 @@ from smc_base_test import smc_base_test
 class smc_dfx_status_abort_test(smc_base_test):
     """mem_repair_abort / mbist_abort → STATUS_SMU sticky bits."""
 
+    required_evidence = (
+        "CHK-DFX-ABORT-BASIC",
+        "CHK-DFX-ABORT-IDLE",
+        "CHK-DFX-ABORT-MBIST",
+        "CHK-DFX-ABORT-REPAIR",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
