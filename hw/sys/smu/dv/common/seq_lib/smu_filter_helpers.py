@@ -24,7 +24,6 @@ from seq_lib.smu_addr_map import (
 from seq_lib.smu_axi_helpers import axi_read32_resp_bounded, resp_name
 from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_SUCCESS,
-    SMC_AXI_ERR_SLV_POISON,
     jtag2axi_single_read,
     jtag2axi_single_write,
     require_jtag_tdo_resolved,
@@ -48,7 +47,6 @@ SMC_VERSION_LO_ADDR = SMC_CHIP_CONFIG_VERSION_LO
 VERSION_LO_EXPECT = SMC_CHIP_CONFIG_VERSION_LO_RESET
 SCRATCH_COLD_ADDR = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
 WDT_CTRL_ADDR = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR")
-SMC_FILTER_POISON_LO = SMC_AXI_ERR_SLV_POISON
 
 FILTER_READY_POLLS = 64
 FILTER_READY_STEP = 4

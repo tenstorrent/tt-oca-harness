@@ -131,7 +131,7 @@ are listed under `SMU_WRAPPER` below (see
 |`smu_smc_wdt_timeout_irq_test` |smc |CORE0 WDT sticky WDOGIP0
 |`smu_sys_in_filter_program_jtag_test` |fabric |inbound0 program then SMN OKAY
 |`smu_sys_in_filter_reprogram_shrink_test` |fabric |wide, shrink, clear
-|`smu_sys_in_filter_window_edge_test` |fabric |page interior OKAY; adjacent page each side DECERR+poison
+|`smu_sys_in_filter_window_edge_test` |fabric |page interior OKAY; adjacent page each side DECERR
 |`smu_system_timer_octs_test` |smc |SMU Tier C OCTS primary free-run
 |`smu_xtrig_ctm_illegal_phase_test` |dtp |pin-only illegal CTM corners
 |`smu_xtrig_ctm_remap_test` |dtp |product-pin CTM remap
@@ -321,7 +321,7 @@ check.
 *Test Coverage*:
 
 * OSS SMU Tier A: inbound allow_ns admit/block via JTAG2AXI + s_axi.
-* Honest SEP=0 scope (no sep_in_master, no Force): S1 allow_ns=0 — secure prot OKAY, nonsecure DECERR on VERSION_LO window S2 dual-slot — inst0 secure + inst1 NS overlap admits both prot[1] S3 clear — BlockByDefault DECERR + poison for both Commercial FAB_SMC_026 outbound/S4/S5 matrix remains deferred (needs peer master).
+* Honest SEP=0 scope (no sep_in_master, no Force): S1 allow_ns=0 — secure prot OKAY, nonsecure DECERR on VERSION_LO window S2 dual-slot — inst0 secure + inst1 NS overlap admits both prot[1] S3 clear — BlockByDefault DECERR for both Commercial FAB_SMC_026 outbound/S4/S5 matrix remains deferred (needs peer master).
 
 *Test Procedure*:
 
@@ -697,7 +697,7 @@ check.
 
 *Test Coverage*:
 
-* SYS_IN inbound0: page interior OKAY, and the adjacent page each side DECERR with filter poison.
+* SYS_IN inbound0: page interior OKAY, and the adjacent page each side DECERR.
 * With `ALLOW_BURST` set, `traffic_filter.sv` compares `tx_addr[AddrWidth-1:12]`, so one filter page is the finest bound this configuration resolves.
 * The below-page probe re-reads an address that answered OKAY earlier in the same run, so its DECERR cannot be a dead bus or an unmapped hole.
 

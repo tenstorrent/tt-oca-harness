@@ -226,8 +226,6 @@ SMC_OTP_AXSIZE_4B = 2
 # hw/ip/efuse/doc/architecture.adoc, "Access Permissions and Security": the
 # eFuse controller's error slave answers with data 0xbadcab1e.
 SMC_OTP_ERR_DECODE_DATA = 0xBADC_AB1E
-# axi_err_slv / prim_axi_lite_err_slv default RESP_DATA[31:0].
-SMC_AXI_ERR_SLV_POISON = 0xBADC_AB1E
 # Relative OTP probe (routes to the SHIM when the MAP base is absolute).
 SMC_OTP_DEFAULT_PROBE_ADDR = 0x80
 
