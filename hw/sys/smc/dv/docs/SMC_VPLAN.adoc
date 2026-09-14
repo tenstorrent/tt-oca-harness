@@ -1092,7 +1092,7 @@ Drive `smc_axi_error_response_depth_test_seq`. Each checker below is a named com
 * Sequence for smc_axil_burst_idle_test.
 * The eight idle SAMPLEs are a negative claim, so they run *after* a positive control: :func:`smc_axil_idle_test_seq.prove_axil_probe_alive` drives a real frontdoor SEP_IN AXI request that makes `tb_axil_any_master_active` (via its `tb_axil_efuse_bank_active` term) observe 1, and the test declares `probe_positive_controls = ("axil_external_active",)` for the third backable probe.
 * Without those legs a stuck-at-0 / undriven / mis-tied probe passes all eight asserts identically (`[NEGATIVE-NEEDS-POSITIVE-CONTROL]`).
-* `dtp_csr_active` is never exact-compared here: no positive control for it can exist in this TB (`tb_top.sv:1151` ties `axil_dtp_csr_resp = '0'`), so the shared :func:`smc_axil_idle_test_seq.assert_axil_idle` iterates `AXIL_CHECKABLE_FIELDS` and returns that field as OBSERVED-ONLY text.
+* `dtp_csr_active` is never exact-compared here: no positive control for it can exist in this TB (`tb_top.sv:1110` ties `axil_dtp_csr_resp = '0'`), so the shared :func:`smc_axil_idle_test_seq.assert_axil_idle` iterates `AXIL_CHECKABLE_FIELDS` and returns that field as OBSERVED-ONLY text.
 
 *Test Procedure*:
 
@@ -3580,7 +3580,7 @@ Drive `smc_efuse_map_read_test_seq`. Each checker below is a named compare the D
 
 *Test Coverage*:
 
-* Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv:683`, loaded by the sense FSM at `efuse_shadow_regs.sv:536-556`).
+* Real fuse sense completes without `+skip_fuse_sense`, and the SMC_EFUSE_MAP window serves the sensed word over SEP_IN AXI (`efuse_shadow_regs.sv:674-679`, loaded by the sense FSM at `efuse_shadow_regs.sv:512-540`).
 * The eFuse interface controller issues a PROGRAM command, latches the readback comparison result and reports it in `PROGRAM_STATUS` (`efuse_interface_shim.sv:433` -> `efuse_program_interface.sv:160`), with both polarities observed: set on the injected failure, clear on the clean program.
 * `EFUSE_STATUS.efuse_sense_done` mirrors the sense handshake.
 * The bank model's storage is unchanged by a fail-injected program and sticky-ORs one bit on a successful one. This shows the controller's command reached the bank; it says nothing about fuse physics.
@@ -3720,7 +3720,7 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 * timeout_enable|0 fires in ST_WAIT_RESP on this shim.
 * **The claim is split, and only one half is a DUT-path claim.** *DUT path (reportable).* `EFUSE_PROGRAM_REQ_TIMEOUT` / `EFUSE_READ_REQ_TIMEOUT` with `timeout_enable=1, cycles=0` must abort the outstanding request and raise `EFUSE_PROGRAM_CTRL.PROGRAM_STATUS` / leave `EFUSE_READ_INTERFACE_READ_DATA` empty; re-programming the RDL-default cycle count must let the same operation complete.
 * That FSM is real `efuse_interface_controller` RTL and every address, field mask and reset used here is imported by generated symbol from `efuse_interface_ctrl.h`.
-* *Model-backed (NOT silicon-path coverage).* `tb_efuse_programmed_word0` is a TB tap on `u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg` (`tb/tb_top.sv:1230-1233`).
+* *Model-backed (NOT silicon-path coverage).* `tb_efuse_programmed_word0` is a TB tap on `u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg` (`tb/tb_top.sv:1262-1265`).
 * SPEC declares that block a stand-in: "The eFuse bank model (`efuse_bank_model.sv`) is a reference, simulation-only stand-in for the real foundry OTP macro ...
 * In a production integration it is replaced by the actual foundry macro driven by the SHIM" (`hw/ip/efuse/doc/architecture.adoc:163-170`), and its set-once semantics are `onwrite = woset` in the DV RDL `hw/ip/efuse/dv/models/regs/efuse_bank.rdl:14`.
 * The `OTP=...` observations below therefore show that the controller's command did or did not reach the bank model -- they are **not** proof that a fuse burns in silicon ([BEHAVIORAL-STUB-DECLARED], §2 real-path/no-HW-equivalent).
@@ -6191,7 +6191,7 @@ For each of the two (target, lock) pairs:
 
 * The cluster PLIC's enable, priority, threshold and claim-complete path, which **no cocotb sequence in this package can reach**. The 0xC400_0000 aperture answers SEP_IN AXI reads but takes no writes from it -- Known Limitations records that measurement. The CPU is the only master that can program it.
 * The loop `smc_ext_interrupts_pin_test` states in its own docstring that it leaves open: that testcase follows `ext_interrupts_i[0]` through `prim_sync3` and "does not claim PLIC". `smc_hang_detector_plic_route_test` checks a route with testbench probes and reads no PLIC register either. This closes it end to end: pin -> synchroniser -> gateway -> enable and priority against threshold -> MEIP -> trap -> claim -> the ID the CPU reads back -> complete.
-* PLIC source 1, which is `cpu_interrupts[0]` and therefore `ext_interrupts_i[0]`: source IDs are the line index plus one because ID 0 is reserved, and `smc_base.sv:251` puts `ext_interrupts` at the bottom of the vector. It is source 1 and not another because `tb_top.sv:1181` ties `ext_interrupts_i[255:1]` to zero and exposes only bit 0 -- any other external source is a line nothing can raise, so the handler would never run and the testcase would time out instead of measuring anything.
+* PLIC source 1, which is `cpu_interrupts[0]` and therefore `ext_interrupts_i[0]`: source IDs are the line index plus one because ID 0 is reserved, and `smc_base.sv:251` puts `ext_interrupts` at the bottom of the vector. It is source 1 and not another because `tb_top.sv:1187-1188` drives only `ext_interrupts_i[1:0]` -- bit 0 from `tb_ext_interrupt_0_i`, bit 1 from `tb_temp_interrupt_i` -- and ties `[255:2]` to zero, and this testcase raises bit 0 alone: any other external source is a line nothing raises here, so the handler would never run and the testcase would time out instead of measuring anything.
 * No forced internal state: the stimulus is a DUT input pin and everything between it and the verdict is the DUT ([NO-FORCED-INTERNAL-STATE]).
 
 *Test Procedure*:
