@@ -54,9 +54,9 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     def log_tmp_status(self, label: str, value: int) -> dict[str, int]:
         decoded = self.decode_tmp_status(value)
         self.log.info(
-            "%s TMP_STATUS raw=0b%02b persistence=%d bypass_escape=%d",
+            "%s TMP_STATUS raw=0b%s persistence=%d bypass_escape=%d",
             label,
-            decoded["raw"],
+            format(decoded["raw"], "02b"),
             decoded["persistence"],
             decoded["bypass_escape"],
         )
@@ -139,9 +139,9 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     def log_ic_reset(self, label: str, value: int) -> dict[str, object]:
         decoded = self.decode_ic_reset(value)
         self.log.info(
-            "%s IC_RESET raw=0b%07b reset_hold=%d",
+            "%s IC_RESET raw=0b%s reset_hold=%d",
             label,
-            decoded["raw"],
+            format(decoded["raw"], "07b"),
             decoded["reset_hold"],
         )
         ports = decoded["ports"]
