@@ -79,6 +79,10 @@ not in `all`. Where a blocker tag applies it lives in the file's docstring
 `all` group, and `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` is the
 disposition of record. SMU's matching catalog is
 `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
+The firmware images under `fw/tests/` have their own record,
+`hw/sys/smc/doc/dv/SMC_FW_DISPOSITION.adoc` (enrolled, external-consumer,
+deferred and superseded image names); `fw/README.md` states the rule for
+adding one.
 
 | Test | Reason |
 |------|--------|
