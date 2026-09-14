@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-programmer-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../../index.html">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../index.html">Programmer&#8217;s Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../../index.html#smc">SMC</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../../index.html#sep">SEP</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../index.html#cpu-bring-up">CPU Bring-Up</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="../../index.html#ocah-trng-bring-up">OCAH TRNG Bring-Up</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Programmer&#x27;s Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../../../ocah-home/latest/index.html">Open Chiplet Atlas Harness (OCAH)</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../../ocah-starting/latest/index.html">Open Chiplet Atlas Harness (OCAH) Getting Started and Contributing Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../../ocah-integrator-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-integrator-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="../../index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect1">
+<h2 id="smc-deferred-disposition"><a class="anchor" href="#smc-deferred-disposition"></a><a class="link" href="#smc-deferred-disposition">1. SMC deferred and OUT disposition</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>This table is the disposition of record for every test name that is
+catalogued but not enrolled. Nothing here is enrolled PASS. The blocker for
+each surviving body lives in its own docstring; <code>hw/sys/smc/dv/README.md</code>
+tabulates the ones under <code>hw/sys/smc/dv/cocotb/tests/</code>.</p>
+</div>
+<div class="paragraph">
+<p>Buckets:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>adopter-pending OUT</code> — waits on adopter IP, a product pin, firmware/ROM, or a TB terminator.</p>
+</li>
+<li>
+<p><code>child-TB-owned</code> — protocol completeness belongs to a block-level TB (I3C, DTP).</p>
+</li>
+<li>
+<p><code>waived</code> — fake BFM, TB-glue, or a commercial alias already covered by a live name.</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="smc-idle-boundaries"><a class="anchor" href="#smc-idle-boundaries"></a><a class="link" href="#smc-idle-boundaries">1.1. Idle smc_wrapper boundaries (OUT)</a></h3>
+<div class="paragraph">
+<p>These ports have no TB terminator on <code>--dut smc</code> / <code>smc_wrapper</code>
+(<code>hw/sys/smc/dv/models/README.md</code>). They are OUT rather than terminated by a
+placeholder responder. Block-level I3C and DTP signoff stay on those TBs;
+do not count a wrapper terminator as that proof.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Boundary</th>
+<th class="tableblock halign-left valign-top">Disposition</th>
+<th class="tableblock halign-left valign-top">Reintroduction trigger</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C DAT/DCT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Real DAT/DCT macros on <code>smc_wrapper</code> / <code>smu_wrapper</code>. Protocol CCC/IBI remains I3C block DV. Do not credit <code>smc_i3c_to_fabric_test</code> as this proof.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP CSR AXI-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A real DTP CSR slave on <code>smc_wrapper</code>, or accept SMU-level DTP tests as the only wrapper-adjacent surface. SMU already wires DTP internally.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="named-deferred-tests"><a class="anchor" href="#named-deferred-tests"></a><a class="link" href="#named-deferred-tests">1.2. Named deferred tests</a></h3>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 20%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">Bucket</th>
+<th class="tableblock halign-left valign-top">Reintroduction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_dfd_dbs_fault_inject_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TB-glue / not DUT RTL. Must not be reported as feature PASS.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i3c_ccc_ibi_full_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">child-TB-owned</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C CCC/IBI protocol is block-level I3C DV. Wrapper DAT/DCT macros are absent; see the idle-boundary table.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_macro_axil_routing_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP CSR port is idle on smc_wrapper (no TB terminator). SMU already wires DTP; do not double-count DTP TB signoff.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pll_pvt_clock_config_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pll_dvfs_depth_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_sideband_avsbus_octs_bfm_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs a real pad-level AVSBus/OCTS VIP; no Python stand-in is accepted.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pll_cgm_awm_config_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pvt_analog_sensor_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pll_awm_freq_sweep_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pvt_droop_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i2c_p0_nack_test_tc1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i2c_p0_nack_test_tc2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i2c_rw_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i2c_read_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i2c_write_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_uart_engine_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_output_fabric_wr_rd_error_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_output_fabric_wr_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_output_fabric_rd_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_output_fabric_filter_no_remap_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i2c_target_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_gpio_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_gpio_boot_stall_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i3c_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i3c_read_write_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_register_test_cold</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_register_test_warm</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cla_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cpu_ecc_lint_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cpu_ecc_pint_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_mailbox_register_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_reg_boundary_test_GROUP_0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_ctrl_reg_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_shadow_lock_matrix_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_otp_permission_neg_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_otp_shadow_sync_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_boundary_access_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_jtag_axil_path_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_csr_robustness_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">waived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pll_init_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pll_fuse_init_code_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pll_dvfs_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_combined_pvt_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_pll_disabled_gpio_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cool_reset_from_primary_chiplet_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs a distinct cool-reset source (primary chiplet / BMC). Live FLR / rst_cool_ni already cover the shipped pin.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cool_reset_from_bmc_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs a distinct cool-reset source (primary chiplet / BMC). Live FLR / rst_cool_ni already cover the shipped pin.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cool_reset_x_cool_reset_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs a distinct cool-reset source (primary chiplet / BMC). Live FLR / rst_cool_ni already cover the shipped pin.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cpu_traffic_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs an external AXI traffic path that is not Force. Reintroduce with a real SYS_OUT / ext-AXI stimulus.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cpu_traffic_ext_axi_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs an external AXI traffic path that is not Force. Reintroduce with a real SYS_OUT / ext-AXI stimulus.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_xtrigger_gpio_override_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_pre_sense_access_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No-Force policy: do not enroll a Force-era body. Reintroduce only with a product-pin stimulus.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_security_disable_downstream_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No-Force policy: do not enroll a Force-era body. Reintroduce only with a product-pin stimulus.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_efuse_big_bank_boundary_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs an out-of-band plusarg path. Catalog only until a real DUT observable exists.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_dummy_rom_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_dummy_rom_rewrite_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_rom_efuse_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_rom_efuse_bits_0_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_rom_efuse_bits_1_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_plic_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_chiplet_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cpu_multicore_sanity_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Commercial body is CPU firmware. Reintroduce with the firmware-loader / ROM intake, not as a BFM fake-pass.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_external_test</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">adopter-pending OUT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Needs an external AXI traffic path that is not Force. Reintroduce with a real SYS_OUT / ext-AXI stimulus.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../../_/js/a11y-patches.js"></script>
+<script id="site-script" src="../../../../_/js/site.js" data-ui-root-path="../../../../_"></script>
+<script async src="../../../../_/js/vendor/highlight.js"></script>
+<script src="../../../../_/js/vendor/lunr.js"></script>
+<script src="../../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../../.." data-snippet-length="100" data-stylesheet="../../../../_/css/search.css"></script>
+<script async src="../../../../search-index.js"></script>
+  </body>
+</html>
