@@ -6,9 +6,7 @@ schema_version = 1
 #   python3 tools/dv/run_dv.py --dut i3ccore_wrap --items all --tool verilator --stage sim
 #
 # test_i3ccore surveys the whole address map, including unwritten DAT/DCT SRAM that
-# powers up undefined, so the xresolve group needs COCOTB_RESOLVE_X=ZEROS. That is
-# necessary but not sufficient on Verilator, where it still times out in the
-# base-register sweep.
+# powers up undefined, so the xresolve group needs COCOTB_RESOLVE_X=ZEROS.
 
 includes = ["block.toml"]
 
@@ -24,6 +22,21 @@ tests = [
 [[groups]]
 name = "xresolve"
 tests = ["test_i3ccore"]
+
+# Independent-bus-partner topology: the RTL target peer is off the bus and a cocotb
+# VIP target answers instead. Kept out of `all`, which is the peer topology.
+[[groups]]
+name = "vip"
+tests = [
+    "i3c_vip_write_read_sanity",
+    "i3c_vip_long_write_sanity",
+    "i3c_vip_long_read_sanity",
+    "i3c_vip_back_to_back",
+    "i3c_vip_pp_timing_transfer",
+    "i3c_vip_od_pp_mode_switch",
+    "i3c_vip_threshold_sweep",
+    "i3c_vip_short_read",
+]
 
 [[groups]]
 name = "all"

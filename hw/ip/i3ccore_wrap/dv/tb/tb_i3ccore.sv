@@ -11,6 +11,10 @@
  *   peers on a shared open-drain bus. This is a same-RTL loopback peer, NOT
  *   an independent third-party I3C target model. Interop / multi-vendor
  *   claims are out of scope for tests that only exercise this harness.
+ *
+ *   +i3c_vip_target replaces the instance-1 peer with a cocotb VIP target
+ *   driving vip_scl_o / vip_sda_o, which makes the responder independent of
+ *   the RTL under test.
  *************************************************************************/
 
 // DAT/DCT depths and the rest of the core's build-time configuration come from the
@@ -116,15 +120,34 @@ module tb_i3ccore;
     // Instance 0 = Controller, Instance 1 = Target
     //--------------------------------------------------------------------------
 
+    // Independent bus partner: a cocotb VIP target drives these open-drain lines in
+    // place of instance 1. Released high, so a run without a VIP attached leaves the
+    // shared bus unchanged.
+    logic vip_scl_o;
+    logic vip_sda_o;
+    initial begin
+        vip_scl_o = 1'b1;
+        vip_sda_o = 1'b1;
+    end
+
+    // +i3c_vip_target takes the RTL target peer off the bus so the VIP is the only
+    // responder. Sampled at time 0 to keep the bus expressions continuous.
+    logic rtl_tgt_on_bus;
+    initial rtl_tgt_on_bus = !$test$plusargs("i3c_vip_target");
+
     // SCL: open-drain with pull-up (like SDA) — pulled low only when a device's pad
     // is enabled and driving 0 (scl_o tied 0, OE carries drive). scl_oe must not
     // feed scl_i directly, or a device would see its own drive as the bus level.
-    wire scl_shared = ((scl_oe[0] && !scl_o[0]) || (scl_oe[1] && !scl_o[1])) ? 1'b0 : 1'b1;
+    wire scl_shared = ((scl_oe[0] && !scl_o[0]) ||
+                       (rtl_tgt_on_bus && scl_oe[1] && !scl_o[1]) ||
+                       !vip_scl_o) ? 1'b0 : 1'b1;
     assign scl_i[0] = scl_shared;
     assign scl_i[1] = scl_shared;
 
     // SDA: Open-drain, both can drive (target needs to ACK/send data)
-    wire sda_raw = ((sda_oe[0] && !sda_o[0]) || (sda_oe[1] && !sda_o[1])) ? 1'b0 : 1'b1;
+    wire sda_raw = ((sda_oe[0] && !sda_o[0]) ||
+                    (rtl_tgt_on_bus && sda_oe[1] && !sda_o[1]) ||
+                    !vip_sda_o) ? 1'b0 : 1'b1;
 
     // Bus-level bit-flip injection for error tests: cocotb drives sda_corrupt, so it
     // must keep no continuous driver. A zero value leaves the shared SDA unchanged.

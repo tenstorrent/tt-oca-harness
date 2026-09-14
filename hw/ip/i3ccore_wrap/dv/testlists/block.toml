@@ -236,3 +236,77 @@ seed = 1
 timeout_sec = 1800
 tags = ["fifo"]
 run_modes = ["block"]
+
+# +i3c_vip_target takes the RTL target peer off the shared bus, so this entry must
+# not be selected without it.
+[[tests]]
+name = "i3c_vip_write_read_sanity"
+module = "i3c_vip_write_read_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["vip", "sanity"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_long_write_sanity"
+module = "i3c_vip_long_write_sanity"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "sanity"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_long_read_sanity"
+module = "i3c_vip_long_read_sanity"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "sanity"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_back_to_back"
+module = "i3c_vip_back_to_back"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "xfer"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_pp_timing_transfer"
+module = "i3c_vip_pp_timing_transfer"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "timing"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_od_pp_mode_switch"
+module = "i3c_vip_od_pp_mode_switch"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "timing"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_threshold_sweep"
+module = "i3c_vip_threshold_sweep"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "fifo"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_short_read"
+module = "i3c_vip_short_read"
+seed = 1
+timeout_sec = 1800
+tags = ["vip", "error"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
