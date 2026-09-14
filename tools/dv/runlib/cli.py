@@ -3393,6 +3393,9 @@ def run_flow(
         )
         return exit_code_for_status(status)
     except RunInterrupted as exc:
+        # The signal unwound run_stage past its console.suppress exit, so this thread is
+        # still muted; everything below is for the operator.
+        console.clear_suppression()
         request_stage_cancellation()
         signal_name = signal.Signals(exc.signum).name
         interruption = {

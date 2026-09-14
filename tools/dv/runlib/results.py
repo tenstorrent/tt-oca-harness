@@ -168,7 +168,7 @@ def run_completion(
     planned_leaves: int | None,
     progress: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Whether every planned leaf reached a final status.
+    """Whether every planned leaf executed.
 
     A checkpoint or an interrupted run carries `progress`, and its counts describe what
     had finished when the snapshot was taken, so it is never complete. Without a plan
@@ -183,6 +183,11 @@ def run_completion(
         "leaves_planned": planned,
         "leaves_run": leaves_run,
     }
+
+
+def executed_leaf_count(stages: list[StageResult]) -> int:
+    """Leaves that ran: a leaf skipped after `--max-failures` never started."""
+    return sum(1 for stage in stages if stage.stage in ITEM_STAGES and stage.status != "SKIP")
 
 
 def run_is_complete(payload: dict[str, Any]) -> bool:
@@ -722,7 +727,8 @@ def regression_payload(
     versions = versions if versions is not None else tool_versions(root)
     leaves = _leaf_attempts(jobs)
     final_jobs = [final for final, _ in leaves]
-    completion = run_completion(len(final_jobs), planned_leaves, progress)
+    executed = sum(1 for job in final_jobs if job.get("status") != "SKIP")
+    completion = run_completion(executed, planned_leaves, progress)
     failed_jobs = [job for job in final_jobs if job.get("status") in NON_PASS_STATUSES]
     flaky_leaves = [
         (final, attempts)
@@ -862,8 +868,7 @@ def result_payload(
 ) -> dict[str, Any]:
     status = status_override or aggregate_status(stages)
     versions = versions if versions is not None else tool_versions(root)
-    leaves_run = sum(1 for stage in stages if stage.stage in ITEM_STAGES)
-    completion = run_completion(leaves_run, planned_leaves, progress)
+    completion = run_completion(executed_leaf_count(stages), planned_leaves, progress)
     payload = {
         "schema_version": 1,
         "flow": flow.name,

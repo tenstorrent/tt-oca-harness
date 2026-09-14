@@ -239,6 +239,73 @@ class InterruptedResult(FixtureCase):
         self.assertFalse(payload["tests"]["completed"])
         self.assertFalse(run_is_complete(payload))
 
+    def test_leaves_skipped_after_max_failures_did_not_run(self):
+        skipped = leaf("t_gamma", "SKIP")
+        skipped.reason = "skipped after --max-failures threshold"
+        payload = self.result(
+            [leaf("t_alpha", "FAIL"), leaf("t_beta", "FAIL"), skipped], planned_leaves=3
+        )
+        tests = payload["tests"]
+        self.assertFalse(tests["completed"])
+        self.assertIsNone(tests["pass_rate"])
+        self.assertEqual(
+            (tests["leaves_run"], tests["leaves_planned"], tests["skipped"]), (2, 3, 1)
+        )
+        self.assertFalse(run_is_complete(payload))
+
+    def test_regression_summary_skipped_after_max_failures_did_not_run(self):
+        payload = self.regression(
+            [job("t_alpha", "FAIL"), job("t_beta", "FAIL"), job("t_gamma", "SKIP")],
+            [leaf("t_alpha", "FAIL"), leaf("t_beta", "FAIL"), leaf("t_gamma", "SKIP")],
+            planned_leaves=3,
+        )
+        tests = payload["tests"]
+        self.assertFalse(tests["completed"])
+        self.assertIsNone(tests["pass_rate"])
+        self.assertEqual((tests["leaves_run"], tests["leaves_planned"]), (2, 3))
+
+    def test_console_summary_counts_skipped_leaves_as_not_run(self):
+        stream = io.StringIO()
+        console = Console("plain", stream=stream)
+        console._fd = None
+        console.regression_summary(
+            {
+                "t_alpha": [(1, leaf("t_alpha", "FAIL"))],
+                "t_beta": [(1, leaf("t_beta", "SKIP"))],
+            },
+            ordered_items=["t_alpha", "t_beta"],
+            elapsed_sec=2.0,
+            planned=2,
+        )
+        self.assertIn("skipped=1 elapsed=2.0s incomplete=1/2", stream.getvalue())
+
+    def test_pretty_console_summary_counts_skipped_leaves_as_not_run(self):
+        stream = io.StringIO()
+        console = Console("pretty", stream=stream)
+        console._fd = None
+        console.regression_summary(
+            {
+                "t_alpha": [(1, leaf("t_alpha", "FAIL"))],
+                "t_beta": [(1, leaf("t_beta", "SKIP"))],
+            },
+            ordered_items=["t_alpha", "t_beta"],
+            elapsed_sec=2.0,
+            planned=2,
+        )
+        self.assertIn("incomplete run, 1 of 2 planned leaves ran", stream.getvalue())
+
+    def test_interrupt_clears_the_leaf_ui_suppression(self):
+        stream = io.StringIO()
+        console = Console("plain", stream=stream)
+        console._fd = None
+        suppression = console.suppress(True)
+        suppression.__enter__()
+        console.event("result", "muted")
+        console.clear_suppression()
+        console.event("result", "audible")
+        self.assertNotIn("muted", stream.getvalue())
+        self.assertIn("audible", stream.getvalue())
+
     def test_regrade_refuses_an_incomplete_run(self):
         payload = self.result(
             [leaf("t_alpha")],

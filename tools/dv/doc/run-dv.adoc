@@ -1463,11 +1463,11 @@ tool versions, and per-stage details. It is the authoritative run result.
 The `tests` summary counts executed leaves (`total`, `passing`, `failing`,
 `skipped`) and records whether the run finished: `leaves_planned` is the
 number of (test, seed) leaves the selection planned, `leaves_run` the number
-that reached a final status, and `completed` is `true` only when the two are
-equal and the record is not a checkpoint. `pass_rate` is `passing / total`
-for a completed run and `null` otherwise: an interrupted or truncated run has
-no denominator, so it publishes no figure that reads as a grade. The same
-fields appear in `regression.json`.
+that executed (a leaf skipped after `--max-failures` did not), and `completed`
+is `true` only when the two are equal and the record is not a checkpoint.
+`pass_rate` is `passing / total` for a completed run and `null` otherwise: an
+interrupted or truncated run has no denominator, so it publishes no figure
+that reads as a grade. The same fields appear in `regression.json`.
 A formal run adds a `formal` object with proof totals
 (<<runner-formal-grading>>).
 When an adopter overlay was applied, its path is recorded under `overlay`

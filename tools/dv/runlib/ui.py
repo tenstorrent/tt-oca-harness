@@ -65,6 +65,10 @@ class Console:
         finally:
             self._local.suppressed = previous
 
+    def clear_suppression(self) -> None:
+        """Drop the leaf-UI suppression a stage abandoned mid-flight left on this thread."""
+        self._local.suppressed = False
+
     def _resolve_pretty(self) -> bool:
         if self.mode == "pretty":
             return True
@@ -309,10 +313,13 @@ class Console:
             if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
         ]
         skipped_text = f", {skipped} skipped" if skipped else ""
-        if planned is not None and planned > total:
+        executed = total - skipped
+        incomplete = planned is not None and planned > executed
+        if incomplete:
             header = (
-                f"Regression Summary: incomplete run, {total} of {planned} planned leaves ran; "
-                f"{passing} passed, {failing} failed{skipped_text}, elapsed={elapsed_sec:.1f}s"
+                f"Regression Summary: incomplete run, {executed} of {planned} planned leaves "
+                f"ran; {passing} passed, {failing} failed{skipped_text}, "
+                f"elapsed={elapsed_sec:.1f}s"
             )
         else:
             header = (
@@ -349,11 +356,12 @@ class Console:
                     if result.reason:
                         self.write(f"    reason: {result.reason}")
         else:
+            incomplete_text = f" incomplete={executed}/{planned}" if incomplete else ""
             self.event(
                 "summary",
                 (
                     f"passing={passing} total={total} failing={failing} "
-                    f"skipped={skipped} elapsed={elapsed_sec:.1f}s"
+                    f"skipped={skipped} elapsed={elapsed_sec:.1f}s{incomplete_text}"
                 ),
             )
             for item, seed, result in rows:
