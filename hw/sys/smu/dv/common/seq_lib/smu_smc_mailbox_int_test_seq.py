@@ -8,9 +8,12 @@ Owns:
   SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary
     (bare tb_top SEP=0; required_cells width=32).
 
-The observable `tb_top.ext_mailbox_interrupts` is declared
-`[smc_pkg::NUM_MAILBOXES-1:0]` in `tb/smu_tb_signal_list.svh`, so the sampled
-width is the DUT parameter and not a TB literal. Bit-index mapping is proven by
+The observable `ext_mailbox_interrupts` is declared
+`[smc_pkg::NUM_MAILBOXES-1:0]` on both testbench tops (`tb/smu_tb_signal_list.svh`
+for tb_top, `tb/tb_wrapper_top.sv` for the wrapper), so the sampled width is the
+DUT port's and not a TB literal; the 32 it is compared against is the SMC
+specification's mailbox count (`hw/sys/smc/doc/port_table.adoc`,
+`smc_ext_mailbox_interrupts_o`). Bit-index mapping is proven by
 raising the outbound write-threshold IRQ of mailbox 0 and of mailbox
 NUM_MAILBOXES-1 over the SMC fabric JTAG2AXI frontdoor and requiring exactly
 that bit of the boundary vector to move.
