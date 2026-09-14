@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+[[revision-history]]
 = Revision History
-:doctype: book
-:sectanchors:
-:sectlinks:
-:sectnums:
-:source-highlighter: highlight.js
+
+== Document history
 
 This document tracks major revisions and updates to the OCAH Integrator Guide.
 

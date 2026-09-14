@@ -5,6 +5,7 @@
 ** xref:checklist.adoc[SoC Integration Checklist]
 ** xref:smu.adoc[SMU Top-Level Integration]
 ** xref:smn.adoc[SMN Integration]
+** xref:aou.adoc[AXI-over-UCIe Bridge (AoU) Integration]
 ** xref:defines.adoc[Project Defines]
 ** xref:prim.adoc[Prim Cell Replacement and Don't-Touch Constraints]
 ** xref:cdc.adoc[CDC Timing Constraints]
