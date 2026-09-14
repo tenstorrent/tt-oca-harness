@@ -4,7 +4,7 @@
 
 A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS. The bit is proven
 clear on an arming read first, so the set observed after the timeout is a
-transition and not a stale value (#1603).
+transition and not a stale value.
 """
 
 from __future__ import annotations

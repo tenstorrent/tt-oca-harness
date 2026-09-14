@@ -239,7 +239,8 @@ predicted by `smc_scratch_csr_ref_model` and paired by the always-on
 python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only --skip-unimplemented
 
 # Package regression: the `all` group. Not every test the package defines --
-# `testlists/all.toml` names the held-out testcases and why.
+# `testlists/all.toml` names the leaves outside it and why;
+# `docs/SMC_DEFERRED_DISPOSITION.adoc` records the leaves no scheduled tier runs.
 python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name

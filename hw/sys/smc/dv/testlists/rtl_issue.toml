@@ -22,9 +22,10 @@ schema_version = 1
 #   * `expect_fail_match` too -- pinned to the assertion text of the recorded
 #                              failure; the graded PASS is then that failure
 #                              and not any failure.
-#   * no `ci` tag           -- `ci` is the hosted-runner set (`hosted`), whose
-#                              passes feed the coverage dashboard; a graded
-#                              expected failure must not count there.
+#   * no `ci` tag           -- `ci` tags the leaves a hosted runner can run;
+#                              the group those runners schedule is `hosted`,
+#                              whose passes feed the coverage dashboard, and a
+#                              graded expected failure must not count there.
 #   * not in `smoke`/`hosted`/`all` -- same reason; the group has its own
 #                              weekly row so its flip is visible on its own.
 #   * one test per defect   -- so the run either reproduces that defect or does
@@ -96,10 +97,10 @@ expect_fail_match = "aliased live registers \\(wrap_to_live=[1-9][0-9]* read_ali
 
 [[tests]]
 # The ALIAS_REMAP translation and the MMODE/ALIAS reset sweep pass; the CLA
-# deny leg does not. #1510 closed the #1488 hang (an in-window offset no MMR
-# decoder claims left pready low) and those offsets now complete -- with OKAY.
-# The first hole the generated CLA map yields, +0x38, answers resp=0 where the
-# leg expects SLVERR/DECERR. #1855 rules whether that completion is a defect.
+# deny leg does not: the first hole the generated CLA map yields, +0x38, is an
+# in-window offset no MMR decoder claims, and it completes with resp=0 (OKAY)
+# where the leg expects SLVERR/DECERR. #1855 rules whether that completion is
+# a defect.
 name = "smc_remap_cla_test"
 module = "smc_remap_cla_test"
 seed = 1

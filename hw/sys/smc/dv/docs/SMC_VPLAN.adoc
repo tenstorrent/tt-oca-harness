@@ -3732,7 +3732,7 @@ testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
 |===
 
 
-*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `all`, `hosted`, `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
+*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
 
 '''''
 
@@ -5868,7 +5868,7 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 |`CHK-EFUSE-TMO-RD-STATUS-SET` |The read that hits the programmed timeout completes with `READ_DONE` set and `READ_STATUS` set (`smc_efuse_read_timeout_status_test_seq.py`)
 |===
 
-*Pass Criteria*: `CHK-EFUSE-TMO-RD-STATUS-ARM`, `CHK-EFUSE-TMO-RD-STATUS-SET` hold after their compares. Enrolled in: `all`, `hosted`, `depth_efuse`.
+*Pass Criteria*: `CHK-EFUSE-TMO-RD-STATUS-ARM`, `CHK-EFUSE-TMO-RD-STATUS-SET` hold after their compares. Enrolled in: `all`, `depth_efuse`.
 
 '''''
 
