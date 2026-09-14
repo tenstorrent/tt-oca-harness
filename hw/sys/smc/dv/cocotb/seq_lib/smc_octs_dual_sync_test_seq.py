@@ -149,9 +149,9 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
 
         count_pri = await self._read_count()
         # Anchored to values this run measured, not to the PRESET this sequence
-        # programmed: COUNT enters the phase already above PRESET (0x1096 in the
-        # retained run), so an absolute comparison against it holds with or
-        # without the TIMER_START write.
+        # programmed: COUNT enters this phase above PRESET, so an absolute
+        # comparison against PRESET would hold with or without the TIMER_START
+        # write.
         assert count_reloaded < count_before_start, (
             f"OCTS TIMER_START did not reload COUNT: 0x{count_before_start:x} -> "
             f"0x{count_reloaded:x} (a free-running counter only increases)"

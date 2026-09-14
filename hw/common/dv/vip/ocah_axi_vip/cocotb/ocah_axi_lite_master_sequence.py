@@ -23,6 +23,7 @@ from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
 from .ocah_axi_types import (
     axi_resp_ok,
     bytes_to_int,
+    default_timeout_ns,
     normalize_resp_list,
     worst_resp,
 )
@@ -42,13 +43,10 @@ def _sim_timeout_error():
     return SimTimeoutError
 
 
-async def _wait_event(event, timeout_ns: int | None):
-    if timeout_ns is None:
-        await event.wait()
-    else:
-        from cocotb.triggers import with_timeout
+async def _wait_event(event, timeout_ns: int):
+    from cocotb.triggers import with_timeout
 
-        await with_timeout(event.wait(), timeout_ns, "ns")
+    await with_timeout(event.wait(), timeout_ns, "ns")
     return event.data
 
 
@@ -65,7 +63,7 @@ class OcahAxiLiteMasterSequence:
     ) -> None:
         self.driver = driver
         self.timeout_cycles = timeout_cycles
-        self.timeout_ns = timeout_ns
+        self.timeout_ns = default_timeout_ns() if timeout_ns is None else int(timeout_ns)
         self.raise_on_error = raise_on_error
         self._read_count = 0
         self._write_count = 0
@@ -329,6 +327,7 @@ class OcahAxiLiteMasterSequence:
             "write_transactions": self._write_count,
             "read_transactions": self._read_count,
             "timeout_cycles": self.timeout_cycles,
+            "timeout_ns": self.timeout_ns,
         }
 
     def reset_statistics(self) -> None:

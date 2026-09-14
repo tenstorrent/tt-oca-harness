@@ -35,9 +35,19 @@ tools:
     toolsets: [default, projects, actions]
     github-token: ${{ secrets.GH_AW_READ_PROJECT_TOKEN }}
 
+post-steps:
+  - name: Unwrap backtick-wrapped GitHub mentions
+    if: always()
+    env:
+      GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
+    run: python3 "${GITHUB_WORKSPACE}/.github/scripts/unwrap_github_mentions.py"
+
 safe-outputs:
   staged: false
   report-failed-jobs: false
+  mentions:
+    allowed-collaborators: true
+    allow-context: true
   update-project:
     project: https://github.com/orgs/tenstorrent/projects/291
     target-repo: tenstorrent/tt-oca-harness
@@ -176,9 +186,8 @@ Comment only for an assign that stuck, a merge nudge, a due reminder, a review
 reminder, a draft reminder, a changes-requested nudge, a stale-assignee nudge,
 an unreviewed-PR reminder, or a reviewer request that stuck.
 
-Always write @-mentions as plain text — never wrap them in backticks, code spans, or
-any other formatting. Backtick-wrapped mentions (`@login`) are rendered as code and do
-not trigger GitHub notifications.
+Always write @-mentions as @LOGIN with no markdown around the login. A code span
+around a login is not a GitHub mention and does not notify.
 
 ## Shared title and body style
 

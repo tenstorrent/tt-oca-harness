@@ -47,6 +47,22 @@ root = "hw/sys/dtp/dv"
 [duts.ocah_axi_vip]
 root = "hw/common/dv/vip/ocah_axi_vip/dv"
 
+# Shared JTAG VIP wire-harness selftests: the shared master and the shared
+# reactive TAP device exercise each other on passive tb nets (no DUT RTL).
+[duts.ocah_jtag_vip]
+root = "hw/common/dv/vip/ocah_jtag_vip/dv"
+
+# Shared SPI VIP wire-harness selftests: the shared controller engine and the
+# shared flash device exercise each other on passive tb nets (no DUT RTL).
+[duts.ocah_spi_vip]
+root = "hw/common/dv/vip/ocah_spi_vip/dv"
+
+# Shared UART VIP wire-harness selftests: the console host and a device-side
+# line driver and sampler exercise each other on two passive tb nets (no DUT
+# RTL).
+[duts.ocah_uart_vip]
+root = "hw/common/dv/vip/ocah_uart_vip/dv"
+
 # Cross-trigger IP-level benches: the family nests one level below the
 # hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is
 # registered here.

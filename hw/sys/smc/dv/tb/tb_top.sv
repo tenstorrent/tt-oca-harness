@@ -22,8 +22,8 @@
 //
 // PLL/PVT/adopter-extension/GPIO-ctrl AXI-Lite macros, eFuse, I3C DAT/DCT/RLT
 // table memories and CPU ROM/scratch/L1$ macros live inside
-// smc_ip_integration. DTP CSR remains a smc_wrapper boundary port (resp idle —
-// no TB placeholder; smc_wrapper-only DTP CSR gap — SMU wires DTP internally).
+// smc_ip_integration. DTP CSR is a smc_wrapper boundary port whose response is
+// tied idle (no TB placeholder): SMU wires DTP internally, this DUT does not.
 // smc_cpu_mem_dv.sv binds into the integration for the CPU-memory DV hooks.
 //
 // Additive elaboration-alias outputs (dut_present_o / powergood_o / ...) sit
@@ -83,6 +83,13 @@ module smc_uvm_top
     output logic bfm_fuse_sense_done_o /*verilator public_flat_rw*/,
     output logic dut_init_mem_done_o /*verilator public_flat_rw*/,
     output logic bfm_init_mem_done_o /*verilator public_flat_rw*/,
+    // Fault outputs, latched sticky per instance until cold reset.
+    output logic dut_cluster_ded_seen_o /*verilator public_flat_rw*/,
+    output logic bfm_cluster_ded_seen_o /*verilator public_flat_rw*/,
+    output logic dut_wdt_first_timeout_seen_o /*verilator public_flat_rw*/,
+    output logic bfm_wdt_first_timeout_seen_o /*verilator public_flat_rw*/,
+    output logic dut_wdt_second_timeout_seen_o /*verilator public_flat_rw*/,
+    output logic bfm_wdt_second_timeout_seen_o /*verilator public_flat_rw*/,
 
     // Shared I3C0 bus. *_ext_low lets a cocotb VIP join the same
     // wired-AND as a third driver; unused by the dual-firmware flow.
@@ -463,7 +470,7 @@ module smc_uvm_top
     smc_axil_32_32_req_t  axil_dtp_csr_req;
     smc_axil_32_32_resp_t axil_dtp_csr_resp;
 
-    // Direct smc_wrapper boundary ports (top-level outputs -- no XMR needed).
+    // Direct smc_wrapper boundary ports (top-level outputs).
     logic sync_irq;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0]    gpio_interrupt;
     logic [smc_config_pkg::NUM_UART-1:0]   uart_interrupt;
@@ -1050,10 +1057,11 @@ module smc_uvm_top
     assign tb_cluster_ded      = cpu_cluster_ded;
     assign tb_cluster_ded_seen = cpu_cluster_ded_seen_q;
 
-    // Bound-instance observability -> the cocotb pins (names unchanged).
+    // Bound-instance observability -> the cocotb pins.
     `define CPU_MEM_DV u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv
     assign tb_cpu_rom_read_count      = `CPU_MEM_DV.rom_read_count_q;
     assign tb_cpu_scratch_read_count  = `CPU_MEM_DV.scratch_ram_read_count_q;
+    assign tb_cpu_scratch_bank_read_count = `CPU_MEM_DV.scratch_ram_bank_read_count_q;
     assign tb_cpu_scratch_write_count = `CPU_MEM_DV.scratch_ram_write_count_q;
     assign tb_cpu_dcache_write_count  = `CPU_MEM_DV.dcache_data_write_count_q;
     assign tb_cpu_fw_mailbox          = `CPU_MEM_DV.fw_mailbox_q;
@@ -1073,6 +1081,27 @@ module smc_uvm_top
     end
     assign tb_cpu_ecc_inject_fire_count = ecc_inject_fire_count_q;
     assign tb_cpu_scratch0_inject_fire = cpu_scratch0_inject_fire;
+
+    // Watchdog timeout pins at the smc_wrapper boundary. The second timeout
+    // warm-resets the cluster, which clears the WDT and drops both live pins
+    // again, so each one is also latched sticky until cold reset.
+    logic cpu_wdt_first_timeout;
+    logic cpu_wdt_second_timeout;
+    logic cpu_wdt_first_timeout_seen_q;
+    logic cpu_wdt_second_timeout_seen_q;
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
+            cpu_wdt_first_timeout_seen_q  <= 1'b0;
+            cpu_wdt_second_timeout_seen_q <= 1'b0;
+        end else begin
+            if (cpu_wdt_first_timeout)  cpu_wdt_first_timeout_seen_q  <= 1'b1;
+            if (cpu_wdt_second_timeout) cpu_wdt_second_timeout_seen_q <= 1'b1;
+        end
+    end
+    assign tb_wdt_first_timeout       = cpu_wdt_first_timeout;
+    assign tb_wdt_first_timeout_seen  = cpu_wdt_first_timeout_seen_q;
+    assign tb_wdt_second_timeout      = cpu_wdt_second_timeout;
+    assign tb_wdt_second_timeout_seen = cpu_wdt_second_timeout_seen_q;
 
     // ------------------------------------------------------------------
     // DTP CSR boundary (smc_wrapper only): NO TB err_slv (policy: no
@@ -1151,8 +1180,8 @@ module smc_uvm_top
         .telemetry_afvalid_o        (tb_telemetry_afvalid),
         .telemetry_afready_i        (tb_telemetry_afready),
         .smc_cluster_ded_o          (cpu_cluster_ded),
-        .smc_wdt_first_timeout_o    (),
-        .smc_wdt_second_timeout_o   (),
+        .smc_wdt_first_timeout_o    (cpu_wdt_first_timeout),
+        .smc_wdt_second_timeout_o   (cpu_wdt_second_timeout),
         .smc_global_base_o          (),
         .smc_region_size_o          (),
         .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-2){1'b0}},
@@ -1163,6 +1192,9 @@ module smc_uvm_top
         .smc_fuse_reset_n_delayed_o (tb_fuse_reset_n),
         .skip_mem_repair_o          (tb_skip_mem_repair_o),
         .ext_boot_seq_done_i        (~tb_hold_ext_boot),
+        // Tied low: the eFuse sense bypass (sense FSM never routed to the bank,
+        // shadow regs exposed unsensed, warm domain held in reset) is unreachable
+        // here; hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (),
@@ -1215,8 +1247,8 @@ module smc_uvm_top
         .efuse_debug_bus_o          ()
     );
 
-    // Sense-done + sensed shadow probe (XMR into controller shadow regs, one
-    // level deeper than bare tb_top: u_dut.u_smc.u_smc_peripherals...).
+    // Sense-done pin and the sensed eFuse shadow (XMR into the controller
+    // shadow regs under u_dut.u_smc.u_smc_peripherals).
     assign tb_fuse_sense_done = smc_fuse_sense_done_o;
     // Warm domain leave-reset (post sync). Hierarchical observe for CSR waits.
     assign tb_rst_warm_smc_clk_n = u_dut.u_smc.rst_warm_smc_clk_n;
@@ -1259,11 +1291,11 @@ module smc_uvm_top
     assign tb_zeroer_busy = u_dut.u_smc.u_smc_base.zeroer_busy;
     assign tb_zeroer_bus_active = u_dut.u_smc.u_smc_base.zeroer_bus_active;
 
-    // State-corruption hooks use the established clock-reissued force/release
-    // convention above because no legal transaction can create an unused FSM
-    // encoding or make the bank model return an error. Requests and output
-    // checks stay on the real DUT paths; forcing is limited to the state flops
-    // and read-error inputs, and every force is released by its enable.
+    // State-corruption hooks force the state flops from the TB because no legal
+    // transaction can create an unused FSM encoding or make the bank model
+    // return an error. Requests and output checks stay on the real DUT paths;
+    // forcing is limited to the state flops and read-error inputs, and every
+    // force is released by its enable.
 `define SMC_ZEROER u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
     assign tb_zeroer_state = `SMC_ZEROER.cur_state;
     assign tb_zeroer_intp = `SMC_ZEROER.zeroer_intp_o;
@@ -1356,7 +1388,7 @@ module smc_uvm_top
     assign tb_core2pad_o           = u_dut.u_smc.core2pad_o;
     assign tb_core2pad_en_o        = u_dut.u_smc.core2pad_en_o;
 
-    // Per-interface idle observability -- drives Batch B per-module sanity
+    // Per-interface idle observability -- drives the per-module sanity
     // tests. Sample all four external-macro masters from real smc ports so
     // the active pulse is visible even when a wrapper/TB wire does not track
     // the same cycle as the cocotb latch.
@@ -1454,8 +1486,8 @@ module smc_uvm_top
     // signal, so no hierarchical reference and no smc_public_scope.vlt
     // change is needed.
     //
-    // Single-instance body only: the SMC_DUAL port surface is deliberately
-    // narrower and does not carry these observables.
+    // Single-instance body only: the SMC_DUAL port surface is narrower and
+    // does not carry these observables.
     // ------------------------------------------------------------------
     smc_reset_fcov #(
         .CpuClusterCount ($bits(tb_ndmreset_request))
@@ -1667,8 +1699,6 @@ module smc_uvm_top
     // wait_for_target_up_gpio() (fw/common/occp/occp_interfaces.c), and the
     // target's production ROM drives it from set_gpio_status(OCCP_ERROR_NONE)
     // (bootrom/prod/lib/src/occp.c) on the success path of OCCP init.
-    // It uses the pad number directly rather than the SMC_STATUS_GPIO macro,
-    // which is why that macro looks unused.
     //
     // The undriven value is 0, matching the reference environment's pulldown
     // on this pad. It must NOT default high: a target that never asserts
@@ -1796,8 +1826,7 @@ module smc_uvm_top
     //      -> I3C_RECOVERY_CONTROLLER_ID 0 / I3C_CONTROLLER_ID 1 /
     //      I3C_BACKUP_CONTROLLER_ID 3)
     // Wiring only channel 0 would make the test pass or hang depending on the
-    // firmware's RNG. Forcing the choice would be weakening the test, so all
-    // three selectable channels are wired instead.
+    // firmware's RNG, so all three selectable channels are wired.
     //
     // Channel-to-pad mapping is smc_padring.sv's, not smc_rom_defs.h's:
     //   I3C[0] -> 27/28, I3C[1] -> 63/64, I3C[2] -> 29/30, I3C[3] -> 31/32.
@@ -1992,10 +2021,8 @@ module smc_uvm_top
     // The two SMC instances.
     //
     // Every constant tie-off lives once, in smc_dual_inst at the bottom of
-    // this file, instead of being repeated per instance or hidden in a
-    // multi-line macro (whose positional argument binding is both hard to read
-    // and hard to debug when it goes wrong). Only the signals that genuinely
-    // differ between the controller and the target are ports of that helper.
+    // this file. Only the signals that differ between the controller and the
+    // target are ports of that helper.
     // ------------------------------------------------------------------
     smc_dual_inst u_dut (
         .clk_smc_i            (clk_smc_i),
@@ -2014,6 +2041,9 @@ module smc_uvm_top
         .rst_primary_smc_clk_no (dut_rst_primary_smc_clk_no),
         .smc_fuse_sense_done_o (dut_fuse_sense_done_o),
         .smc_init_mem_done_o   (dut_init_mem_done_o),
+        .smc_cluster_ded_seen_o        (dut_cluster_ded_seen_o),
+        .smc_wdt_first_timeout_seen_o  (dut_wdt_first_timeout_seen_o),
+        .smc_wdt_second_timeout_seen_o (dut_wdt_second_timeout_seen_o),
         .rom_read_count_o     (dut_rom_read_count),
         .scratch_write_count_o(dut_scratch_write_count),
         .scratch_read_count_o (dut_scratch_read_count)
@@ -2036,6 +2066,9 @@ module smc_uvm_top
         .rst_primary_smc_clk_no (bfm_rst_primary_smc_clk_no),
         .smc_fuse_sense_done_o (bfm_fuse_sense_done_o),
         .smc_init_mem_done_o   (bfm_init_mem_done_o),
+        .smc_cluster_ded_seen_o        (bfm_cluster_ded_seen_o),
+        .smc_wdt_first_timeout_seen_o  (bfm_wdt_first_timeout_seen_o),
+        .smc_wdt_second_timeout_seen_o (bfm_wdt_second_timeout_seen_o),
         .rom_read_count_o     (bfm_rom_read_count)
     );
 
@@ -2131,8 +2164,7 @@ module smc_uvm_top
     assign dual_present_o = 1'b1;
 
     // Scratch SRAM bank/entry decode. smc_scratch_map_pkg holds the one copy
-    // of it and cites the cluster RTL it was read out of; see that file before
-    // changing anything here.
+    // of it and names its sources; see that file before changing anything here.
     localparam int unsigned SCRATCH_NUM_BANKS = chipyard_4core_mem_pkg::NUM_SRAM_BANKS;
 
     // ------------------------------------------------------------------
@@ -2216,7 +2248,7 @@ module smc_uvm_top
     // distinguish them. +bfm_rom_hex re-loads u_bfm's array afterwards so the
     // controller runs the OCCP master image while the target keeps the
     // production ROM. Sequenced at #0.3, after both the rom_ext load (#0.1) and
-    // smc_cpu_mem_integration's backdoor (#0.2), so this override always wins.
+    // smc_cpu_mem_dv's backdoor (#0.2), so this override always wins.
     // ------------------------------------------------------------------
     initial begin : bfm_rom_override
         string bfm_rom_path;
@@ -2447,6 +2479,23 @@ module smc_uvm_top
         .rready  (s_axi_rready)
     );
 
+    // Clean-room JTAG protocol SVA on the CPU TAP pins. The SMC exports no
+    // one-hot TAP state, so the state rules are off; the TAP reset pin is
+    // active-high, and the TAP drives TDO whenever it is selected, so the
+    // reset is inverted and the output enable is tied high.
+    ocah_jtag_sva #(
+        .EN_STATE_RULES(1'b0)
+    ) u_cpu_jtag_sva (
+        .tck         (tb_cpu_jtag_tck),
+        .tms         (tb_cpu_jtag_tms),
+        .tdi         (tb_cpu_jtag_tdi),
+        .trst_n      (~tb_cpu_jtag_reset),
+        .tdo         (tb_cpu_jtag_tdo),
+        .tdo_oen     (1'b1),
+        .en_i        (u_tb_if.jtag_sva_en),
+        .tap_state_i ('0)
+    );
+
     // ------------------------------------------------------------------
     // Quiescent tie-offs: every other cocotb-driven stimulus pin at the idle
     // value the cocotb smc_base_test bring-up sets. A scenario that needs
@@ -2626,8 +2675,7 @@ endmodule : smc_uvm_top
 //-----------------------------------------------------------------------------
 // One SMC instance with every constant tie-off applied.
 //
-// Exists so the dual configuration instantiates it twice instead of repeating
-// ~130 tie-off connections per instance. Each tie-off value matches the
+// The dual configuration instantiates it twice. Each tie-off value matches the
 // single-instance half of smc_uvm_top above, so a behavioural difference
 // between the two configurations cannot come from a stray default. Only the
 // ports below differ per instance.
@@ -2655,6 +2703,9 @@ module smc_dual_inst
     output logic        rst_primary_smc_clk_no,
     output logic        smc_fuse_sense_done_o,
     output logic        smc_init_mem_done_o,
+    output logic        smc_cluster_ded_seen_o,
+    output logic        smc_wdt_first_timeout_seen_o,
+    output logic        smc_wdt_second_timeout_seen_o,
     output logic [31:0] rom_read_count_o,
     output logic [31:0] scratch_write_count_o,
     output logic [31:0] scratch_read_count_o
@@ -2685,6 +2736,29 @@ module smc_dual_inst
     logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_idle;
     assign lc_state_idle = {{smc_pkg::LC_STATE_WIDTH{1'b1}},
                             {smc_pkg::LC_STATE_WIDTH{1'b0}}};
+
+    // Fault outputs of this instance, latched sticky until cold reset. Read by
+    // the dual leaves as dut_/bfm_*_seen_o on smc_uvm_top.
+    logic cluster_ded;
+    logic wdt_first_timeout;
+    logic wdt_second_timeout;
+    logic cluster_ded_seen_q;
+    logic wdt_first_timeout_seen_q;
+    logic wdt_second_timeout_seen_q;
+    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
+        if (!rst_cold_ni) begin
+            cluster_ded_seen_q        <= 1'b0;
+            wdt_first_timeout_seen_q  <= 1'b0;
+            wdt_second_timeout_seen_q <= 1'b0;
+        end else begin
+            if (cluster_ded)        cluster_ded_seen_q        <= 1'b1;
+            if (wdt_first_timeout)  wdt_first_timeout_seen_q  <= 1'b1;
+            if (wdt_second_timeout) wdt_second_timeout_seen_q <= 1'b1;
+        end
+    end
+    assign smc_cluster_ded_seen_o        = cluster_ded_seen_q;
+    assign smc_wdt_first_timeout_seen_o  = wdt_first_timeout_seen_q;
+    assign smc_wdt_second_timeout_seen_o = wdt_second_timeout_seen_q;
 
     // The I3C DAT/DCT/RLT table memories live inside smc_ip_integration, so
     // each of u_dut and u_bfm carries its own set. The OCCP flow depends on
@@ -2745,18 +2819,20 @@ module smc_dual_inst
         .telemetry_atvalid_i        ('0),
         .telemetry_afvalid_o        (),
         .telemetry_afready_i        ('1),
-        .smc_cluster_ded_o          (),
-        .smc_wdt_first_timeout_o    (),
-        .smc_wdt_second_timeout_o   (),
+        .smc_cluster_ded_o          (cluster_ded),
+        .smc_wdt_first_timeout_o    (wdt_first_timeout),
+        .smc_wdt_second_timeout_o   (wdt_second_timeout),
         .smc_global_base_o          (),
         .smc_region_size_o          (),
         .smc_ext_interrupts_i       ('0),
         .sep_mailbox_interrupts_i   ('0),
         .sep_wdt_reset_n_i          (1'b1),
-        .smc_fuse_sense_done_o      (fuse_sense_done_o),
+        .smc_fuse_sense_done_o      (smc_fuse_sense_done_o),
         .smc_fuse_reset_n_delayed_o (),
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
+        // Tied low: the eFuse sense bypass is unreachable here;
+        // hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_idle),
         .lc_sigint_err_o            (),
@@ -2769,7 +2845,7 @@ module smc_dual_inst
         .ss_config_o                (),
         .sync_irq_o                 (),
         .smc_disable_sram_auto_init_i (1'b1),
-        .smc_init_mem_done_o        (init_mem_done_o),
+        .smc_init_mem_done_o        (smc_init_mem_done_o),
         .chiplet_is_primary_i       (chiplet_is_primary_i),
         .timer_count_o              (),
         .boot_stall_jtag_ovrd_i     (1'b0),

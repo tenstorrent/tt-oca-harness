@@ -39,25 +39,30 @@ transaction BFMs or portable checker work.
 |Promoted
 |`cocotbext-axi`
 |AXI4/AXI4-Lite masters, responders/RAMs, results, items, monitors, and checker.
-DTP, SEP, and SMC are consumers.
+DTP, SEP, SMC, and SMU are consumers.
 
 |`ocah_jtag_vip`
 |Promoted for IEEE 1149.1
 |`cocotbext-jtag` plus OCAH raw TAP helpers
 |Active TAP, device/register maps, items, monitor, checker, state/path helpers,
 shared SV interface, and UVM agent. iJTAG and DUT TDR maps remain local.
+DTP, SMC, and SMU are consumers.
 
 |`ocah_spi_vip`
 |Promoted for single SPI
 |OCAH-native cocotb model
-|NOR flash responder and passive monitor. Quad/octal personalities use
-single-bit data timing; DDR and vendor timing are out of scope.
+|NOR flash responder, Mode-0 controller engine, passive monitor, and flash
+checker with a wire-rebuilt reference model. Quad/octal personalities use
+single-bit data timing; DDR, vendor timing, and vendor commands are out of
+scope and earn no checker credit. SEP and SMC are consumers.
 
 |`ocah_uart_vip`
-|Experimental
+|Promoted for asynchronous serial console links
 |OCAH-native cocotb model
-|Console wrapper, native 8-N-1 line driver/sampler, and passive monitor. No
-external UART library.
+|Console host, line driver with fault injection, classifying frame sampler,
+passive two-line tap, and frame checker. 5..9 data bits, none/even/odd
+parity, 1, 1.5, or 2 stop bits; flow control is out of scope. No external
+UART library. SMC is the consumer.
 
 |`ocah_checker`
 |Shared infrastructure
@@ -119,7 +124,9 @@ sequence items and scoreboards.
 
 No shared APB package ships. No DUT exposes an APB surface to a testbench;
 a shared APB VIP is introduced only when a DUT regression gates real APB
-traffic.
+traffic. The APB master under `hw/ip/entropy_source/dv/tb_vcs/apb_vip/`
+belongs to that IP's standalone VCS bench, outside the native runner, and is not
+a shared package.
 
 [[shared-vip-jtag]]
 === JTAG
@@ -148,12 +155,23 @@ DUT-local.
 Package: `hw/common/dv/vip/ocah_spi_vip/`
 
 `OcahSpiFlash` is a deterministic NOR-flash responder with JEDEC ID, READ, FAST
-READ, status, WREN/WDIS, page program, and sector erase support.
+READ, status, WREN/WDIS, page program, and sector erase support; a program or
+erase issued with the write-enable latch clear is refused and recorded as such.
 `OcahSpiMonitor` passively records command/address/data activity.
-`OcahSepSpiFlash` is the SEP-specific subclass mapped to the SEP xSPI pad bundle.
+`OcahSpiMasterBfm` and `OcahSpiMasterSequence` drive the link from the
+controller side for benches without an SPI host IP.
+`OcahSpiFlashChecker` replays the device records through
+`OcahSpiFlashRefModel`, a flash array and latch rebuilt from the wire, and
+records `CHK-SPI-*` evidence for identifier, status, write-enable ordering,
+readback, host readback, opcode order, memory golden, source-image compare,
+and non-vacuity; an out-of-scope opcode is counted and never credited.
+`OcahSepSpiFlash` is the subclass mapped to the SEP xSPI pad bundle; the SMC SPI
+pad test binds the same class to its lifted pads.
 
-The personality is single-SPI Mode 0. True QSPI/OSPI lane turnaround, DDR,
-vendor-accurate BUSY timing, and vendor-specific commands are out of scope.
+The `--dut ocah_spi_vip` wire-harness selftests prove the four components
+against each other, each with an in-band must-fail probe. The personality is
+single-SPI Mode 0. True QSPI/OSPI lane turnaround, DDR, vendor-accurate BUSY
+timing, and vendor-specific commands are out of scope.
 
 [[shared-vip-i2c]]
 === I2C
@@ -177,10 +195,27 @@ a gating DUT smoke test.
 
 Package: `hw/common/dv/vip/ocah_uart_vip/`
 
-`OcahUartConsole` provides source/sink console traffic and `OcahUartMonitor`
-provides passive byte observation. The backend is native to the package (no
-external UART library); `OcahUartImportError` is exported but never raised by
-it.
+`OcahUartConsole` provides console traffic with deterministic per-operation
+timeouts: a read on a silent line ends exactly `timeout_us` microseconds of
+simulation time after it started, and frames a timed-out read had taken stay
+readable. `OcahUartMasterDriver` and `OcahUartLineMonitor` are the engines
+behind it: the driver frames 5..9 data bits with none, even, or odd parity and
+1, 1.5, or 2 stop bits, and injects a bad stop bit, an inverted parity bit, a
+break, or a sub-half-bit glitch at a deterministic place in the byte stream;
+the sampler resynchronizes on every start edge and classifies every frame
+(`OcahUartFrame`: framing error, parity error, break) with the time of its
+start edge and first rising edge, so the wire's bit period is measurable.
+`OcahUartMonitor` taps both lines passively. `OcahUartChecker` judges driven
+frames against sampled frames and records `CHK-UART-*` evidence for data,
+cleanliness, wire bit period, idle level, non-vacuity, fault classification,
+error counters, exact timeouts, and statistics. The backend is native to the
+package (no external UART library); `OcahUartImportError` is exported but
+never raised by it.
+
+The `--dut ocah_uart_vip` wire-harness selftests prove the components against
+each other, each with an in-band must-fail probe; `smc_uart_loopback_test` is
+the gating SMC consumer. Flow control (RTS/CTS, XON/XOFF), sticky parity, and
+SV collateral are out of scope.
 
 [[shared-vip-entropy]]
 === Entropy Stream
@@ -188,6 +223,14 @@ it.
 No shared entropy package ships. SEP-local models drive `esrc_noise_ext_i` and
 check the ESRC-to-DRBG-to-EDN chain; a shared entropy VIP is introduced only
 when a second subsystem needs one and gates it with a real regression.
+
+[[shared-vip-octs]]
+=== OCTS Sync
+
+No shared OCTS package ships. The SMC-local
+`hw/sys/smc/dv/cocotb/seq_lib/smc_octs_sync_bfm.py` drives and observes the
+PRIMARY/SECONDARY sync-load and credit pads; a shared package is introduced only
+when a second subsystem drives OCTS pads.
 
 [[shared-vip-checker]]
 === Common Checker Evidence

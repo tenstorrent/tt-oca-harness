@@ -22,8 +22,7 @@ CRYPTO chain rejects, so it requires a ``CRYPTO_FAIL=`` line and forbids
 which ``try_manifest_slot`` validates AFTER the crypto chain has PASSED
 (``manifest_load.c:665-680`` then ``:683``), so a correct run here must show
 ``CRYPTO_VALIDATE_OK`` -- twice, once per slot -- and then fail. Overriding
-:meth:`_check` rather than adding hooks to the shared base keeps six passing
-testcases untouched.
+:meth:`_check` leaves the shared base's checks unchanged for its other subclasses.
 
 THE CRYPTO CHAIN IS LEFT ON, AND THAT IS THE POINT. Because the payload is
 mutated, ``payload_hash`` (inside the TBS) changes, so the slot must be re-hashed
@@ -55,7 +54,7 @@ _SBOOT_OFF = "SBOOT_OFF"
 # rom_handoff.c -- anything from here on means BL1 was copied or entered. The
 # procedures' "BL0 does NOT attempt to copy BL1 into IRAM" / "does NOT jump to the
 # invalid entry address" is exactly the absence of these.
-# "LOAD=" and "LEN=" are deliberately NOT used: manifest_load.c:798 prints
+# "LOAD=" and "LEN=" are not in this list: manifest_load.c:798 prints
 # "PAYLOAD=", which contains "LOAD=" as a substring, so a marker check would
 # false-positive on an ordinary payload report.
 _BL1_PROGRESS = (
@@ -268,7 +267,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"converge on a mailbox FAIL. cold_scratch[1]: {status_hex}"
         )
         assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
-        log.info("CHK-TERMINAL: mailbox FAIL (fw_pass=0)")
+        log.info("CHK-TERMINAL PASS: mailbox FAIL (fw_pass=0)")
 
         # CHK-NO-HANDOFF: the procedures' central claim -- BL0 rejected the image
         # BEFORE attempting to copy or enter BL1.

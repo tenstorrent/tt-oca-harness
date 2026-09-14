@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS PyUVM iJTAG-adjacent pin-level smoke (Batch C)."""
+"""SMC OSS PyUVM iJTAG-adjacent pin-level smoke."""
 
 from __future__ import annotations
 
@@ -17,6 +17,13 @@ from smc_base_test import smc_base_test
 @pyuvm.test()
 class smc_ijtag_basic_test(smc_base_test):
     """Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario."""
+
+    required_evidence = (
+        "CHK-CPU-JTAG-DTMCS",
+        "CHK-CPU-JTAG-IDCODE",
+        "CHK-CPU-JTAG-SCAN-ACTIVITY",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 

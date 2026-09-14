@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared scenario body for the DRBG lane-adapter concurrent-channel leaves.
 
-No `@pyuvm.test()` here on purpose: the runner discovers tests by scanning the
+No `@pyuvm.test()` here: the runner discovers tests by scanning the
 module it was given, so a registered class in a shared module would run under
 every leaf name. Each leaf module subclasses this and registers itself.
 

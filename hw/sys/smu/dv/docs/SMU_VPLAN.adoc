@@ -13,10 +13,7 @@
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
-|Live test bodies |83 Python modules under `cocotb_wrapper/tests/`; 88 `[[tests]]` entries in `wrapper.toml`, 81 of them in `all`
-|Enrolled leaf entries |81 in `all`, 53 in `sep0_all`
-|Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
-|Per-testcase plan entries |84 -- every `[[tests]]` name in `wrapper.toml`, each describing the `cocotb_wrapper/tests/` body that name enrols. No entry describes an unenrolled DUT configuration.
+|Executable contract |the enrolled groups in `testlists/wrapper.toml`
 |===
 
 This plan describes what the SMU open-source suite verifies and against which
@@ -72,13 +69,12 @@ no enrolled test may reach into the DUT with Force or deposit.
 
 === Enrolled Test Summary
 
-The enrolled `sep0_all` set (53) plus the other names this plan still cards,
-with the source family each came from. Fifty-three of them are in `sep0_all`,
-including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`.
-`smu_dtp_jtag2axi_abort_mid_op_test` is only in `migrated_dtp_pending`.
-The remaining `all` members are the SEP=1 / wrapper-native leaves. This summary
-table does not repeat them row-by-row; each one is carded in full under
-<<smu-test-procedures,Test Procedures>> (entries 57-84).
+The SEP=0 names this plan cards, with the leaf family of each. Every row
+is in `sep0_all` except `smu_dtp_jtag2axi_abort_mid_op_test` (only in
+`migrated_dtp_pending`) and the two `smoke` names `smu_smc_smoke_test`
+and `smu_sep_smoke_test`. The SEP=1 / wrapper-native members of `all`
+are listed under `SMU_WRAPPER` below (see
+<<smu-known-limitations,Known Limitations>>).
 
 [cols="2,1,3",options="header",]
 |===
@@ -124,7 +120,7 @@ table does not repeat them row-by-row; each one is carded in full under
 |`smu_jtag_reset_override_test` |dtp |IC_RESET TDR override of EXT/SMC slices
 |`smu_no_sep_configuration_test` |smc |SMU P0 SEP=0 composition (SMU_005)
 |`smu_otp_vs_fabric_map_race_test` |dtp |OTP vs fabric MAP last-writer
-|`smu_sep_smoke_test` |smc |wrapper SEP RTL boot: ROM fetch, ICCM, 256 retires / 16 PCs, DCCM write
+|`smu_sep_smoke_test` |sep |wrapper SEP RTL boot: ROM fetch, ICCM, 256 retires / 16 PCs, DCCM write
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=0, no Force)
 |`smu_smc_mailbox_int_test` |smc |smc_ext_mailbox_interrupts width plus mailbox 0 / 31 bit mapping (SMU_ALL_004)
 |`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A (SEP=0)
@@ -172,7 +168,7 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: FAB_SMC_018 S3 J2A+SPM; S1/S2/S4/S5 deferred; no Force.
+*Objective*: FAB_SMC_018 S3 J2A+SPM; S1/S2/S4/S5 not covered; no Force.
 
 *Test Coverage*:
 
@@ -246,7 +242,7 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: SMU_ALL_008: PWRGOOD leave-TLR only (FAB/DECODE removed).
+*Objective*: SMU_ALL_008: PWRGOOD leave-TLR only; FAB-IN / DECODE are out of scope.
 
 *Test Coverage*:
 
@@ -398,7 +394,7 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: Outbound filter S1 DECODE; S2/S3 deferred (needs ext_out); no Force.
+*Objective*: Outbound filter S1 DECODE; S2/S3 need an ext_out peer; no Force.
 
 *Test Coverage*:
 
@@ -469,7 +465,7 @@ check.
 
 *BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
-*Objective*: Inbound allow_ns=0 eight-way AxPROT; S1–S8 deferred.
+*Objective*: Inbound allow_ns=0 eight-way AxPROT (S9); S1–S8 need sep_in_master.
 
 *Test Coverage*:
 
@@ -917,11 +913,11 @@ check.
 
 *BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
 
-*Objective*: SMU_006 rev2: ext_boot_seq_done_i gates smc_fuse_reset_n_delayed_o release.
+*Objective*: SMU_006: ext_boot_seq_done_i gates smc_fuse_reset_n_delayed_o release.
 
 *Test Coverage*:
 
-* Sequence for smu_ext_boot_seq_gate_test (SMU_006 rev 2).
+* Sequence for smu_ext_boot_seq_gate_test (SMU_006).
 * Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i (port_table: gates reset release).
 * rst_primary_smc_clk_no is NOT gated by this pin (negative control CHK-PRIMARY-NOT-GATED).
 
@@ -2019,11 +2015,11 @@ check.
 
 *BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
 
-*Objective*: SMU_005 rev3: SEP=0 lc_state 0xf0 ONLY (direct SMC path deferred).
+*Objective*: SMU_005: SEP=0 lc_state 0xf0 only; the direct SMN->SMC path is not covered.
 
 *Test Coverage*:
 
-* Sequence for smu_no_sep_configuration_test (SMU_005 rev 3).
+* Sequence for smu_no_sep_configuration_test (SMU_005).
 * Proves SEP=0 lc_state_o==8'hf0 only.
 * Direct SMN→SMC path deferred: SYS_IN BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC hit under SEP=0.
 
@@ -2059,7 +2055,6 @@ check.
 
 *Test Coverage*:
 
-* This is the only body of this name in the tree. The SEP=0 bare `--dut smu_block` scenario that an earlier revision of this entry described (DV-CARD SMU_ALL_007, `CHK-SMC-RST-PRIMARY-EXPORT-*` / `CHK-DTP-XTRIG-CTM-*`) has no test body any more: `cocotb/tests/` no longer carries a `smu_sep_smoke_test.py`, and `common/seq_lib/smu_sep_smoke_test_seq.py` is imported by nothing. Those tokens are therefore not claimed here.
 * Profile pre-conditions are fail-capable: during cold reset `sep_reset_n_o` must read 0 and `sep_fuse_sense_done_o` must read 0 (the real-SEP profile asserts SEP reset and starts with fuse-done inactive); a `no_sep` build fails both.
 * Boot readiness is the conjunction the scoreboard's `boot_ready()` requires: SEP reset observed both asserted and released; fuse-done observed low then high *unless* `sep_fuse_sense_skipped_o` is 1, in which case the sense is replaced by the shadow-register preload and the fuse terms are logged as informational rather than counted; SMC arm firmware signalled `TEST_PASS`; boot-ROM fetch seen; ICCM execution seen; at least 256 retired instructions over at least 16 distinct PCs; and at least one DCCM write.
 * The fuse-sense carve-out reads the DUT node that *selects* the substitute (`sim_skip_fuse_sense` inside the SEP eFuse shadow registers), not a plusarg scan, so a build without `SIMULATION` keeps the fuse terms required.
@@ -2216,7 +2211,6 @@ check.
 
 *Test Coverage*:
 
-* This is the only body of this name in the tree. The SEP=0 bare `--dut smu_block` scenario that an earlier revision of this entry described (DV-CARD SMU_ALL_003, `CHK-SMC-FAB-DUAL-NET-S2/S3`) has no test body any more: `cocotb/tests/` no longer carries a `smu_smc_smoke_test.py`, and `common/seq_lib/smu_smc_smoke_test_seq.py` is imported by nothing. Those tokens are therefore not claimed here.
 * Profile pre-conditions are fail-capable: during cold reset `sep_reset_n_o` must read 1 and after release `sep_fuse_sense_done_o` must read 0 (the `no_sep` profile ties SEP reset high and fuse-done low); a `sep_rtl` build fails the first.
 * Firmware boot is one reset-to-completion transaction; reset timing is randomised by `smu_base_test`, and every piece of evidence is a DUT counter or an architectural pass/fail signal, not a TB-side inference.
 * Both firmware outcomes are wired: `smc_test_fail_o` asserting fails the run at that cycle; `smc_test_pass_o` ends it.
@@ -3412,40 +3406,35 @@ Two things are worth reading before the entries:
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_chain`, `all_with_sep_exec`.
 
 '''''
-=== Counts
+=== Regression Groups
 
 [cols=",",options="header",]
 |===
-|Population |Count
-|Live test bodies (`cocotb_wrapper/tests/*.py`) |83
-|Enrolled in `all` |81
-|Enrolled in `sep0_all` (nightly) |53
-|Non-enrolled bodies (`cocotb/tests_deferred/`) |28
-|Per-testcase entries in <<smu-test-procedures,Test Procedures>> |84
-|===
-
-=== Regression Groups
-
-[cols=",,",options="header",]
-|===
-|Group |Tests |Notes
-|`all` |81 |Unique enrolled bodies in `testlists/wrapper.toml`
-|`smoke` |4 |PR gate (`sim.yml` uses `smoke_sep0`)
-|`smoke_sep0` |4 |Hosted-runner PR tier
-|`build_smoke` |2 |Elaboration only
-|`sep0_all` |53 |Nightly / weekly enrollment. No scored run on this unified group is checked in; the retained artifact is the pre-unification 51 PASS / 1 FAIL on 52 (`SMU_RELEASE_MATRIX.adoc`)
-|`migrated_fabric` |14 |Fabric leaves brought onto the wrapper
-|`migrated_smc` |12 |SMC-facing leaves brought onto the wrapper
-|`migrated_dtp` |27 |DTP-facing leaves brought onto the wrapper
-|`sep_smc_sram_blocked` |6 |SRAM-private cookie poll, including the four dual-firmware leaves
-|`sep_smc_dual` |4 |The four dual-firmware leaves alone. Not in `all`
+|Group |Notes
+|`all` |Unique enrolled bodies in `testlists/wrapper.toml`
+|`smoke` |PR gate (`sim.yml` uses `smoke_sep0`)
+|`smoke_sep0` |Hosted-runner PR tier
+|`build_smoke` |Elaboration only
+|`sep0_all` |Feature-credit regression set
+|`migrated_fabric` |Fabric leaves brought onto the wrapper
+|`migrated_smc` |SMC-facing leaves brought onto the wrapper
+|`migrated_dtp` |DTP-facing leaves brought onto the wrapper
+|`sep_real_fw` |Wrapper leaves that boot real SEP firmware images
+|`sep_smc_sram_blocked` |SRAM-private cookie poll, including the dual-firmware leaves
+|`sep_smc_dual` |The dual-firmware leaves alone; not in `all`
+|`sep_probe` |Wrapper probe leaves that keep SEP instruction retirement live
+|`sep_chain` |Lifecycle-gated JTAG-to-SMC chain leaves
+|`sep_lifecycle` |Wrapper leaves that change SEP lifecycle state
+|`sep_entropy` |SEP entropy-routing leaves
+|`sep_rtl_only` |Wrapper leaves that require the real SEP RTL profile
+|`all_with_sep_exec` |`all` members that compile under the real-SEP profile
 |===
 
 [[smu-coverage-model]]
 === Coverage Model
 
-`cov/README.md` is the authority and carries the measured site counts; this
-section says only what the plan may and may not claim from it.
+`cov/README.md` is the authority; this section says only what the plan may and
+may not claim from it.
 
 [cols="2,3",options="header",]
 |===
@@ -3454,9 +3443,9 @@ section says only what the plan may and may not claim from it.
 |`cov/sv/smu_xbar_fcov.sv` |`xbar_route_cg` filter and `reg_access_cg` outcome: window programming and reprogramming, inbound AXI handshake, all four response encodings, forwarded vs not-forwarded routing
 |===
 
-Those two modules carry 46 cover-property points, are instantiated in the shared
-`tb/tb_top.sv`, and land in the `user` metric family, so `cov_merge`, `cov_report`
-and the coverage policy can consume them.
+Those modules are instantiated in the shared `tb/tb_top.sv` and land in the
+`user` metric family, so `cov_merge`, `cov_report` and the coverage policy can
+consume them.
 
 Three limits decide what this plan is allowed to say:
 
@@ -3468,16 +3457,14 @@ Three limits decide what this plan is allowed to say:
   test class name to bins it is *claimed* to hit; running the test marks the bins
   and no signal is observed. It is scenario intent, and no entry in this plan
   sources a coverage claim from it.
-. *No SMU coverage database exists yet.* The weekly job records
-  `coverage: enabled=false, status=SKIP`, and a local `--cov` run aborts as
-  Verilator writes the database. Every number in `cov/README.md` is a build-time
-  site count. Hit percentages, policy holes and any threshold need the first run
-  that carries this configuration.
+. *No scored SMU coverage database is claimed here.* Hit percentages, policy holes
+  and any threshold need a run that carries this configuration.
 
 Scope and metric choice -- toggle plus user, and why line/branch/expression measure
 nothing at this integration level -- are argued in `cov/README.md` and not repeated
 here.
 
+[[smu-known-limitations]]
 === Known Limitations
 
 * *`smoke` is not a subset of `sep0_all`.* `smoke` is the two elaboration
@@ -3485,26 +3472,23 @@ here.
   `smu_ext_boot_seq_gate_test` is in `sep0_all` and `smoke_sep0`, not in
   `smoke`.
 
-* *`all` includes SEP=1 leaves.* Twenty-eight of the 81 names in `all` compile
-  under the real-SEP profile (`all_with_sep_exec` is that subset). The
-  SEP=0 credit set is `sep0_all`. Dual-firmware SRAM-bring-up leaves stay in
-  `sep_smc_sram_blocked` and are not in `all`.
+* *`all` includes SEP=1 leaves.* The names in `all` that compile under the
+  real-SEP profile are the `all_with_sep_exec` group. The SEP=0 credit set
+  is `sep0_all`. Dual-firmware SRAM-bring-up leaves are in
+  `sep_smc_sram_blocked` and not in `all`.
 * *The wrapper is the surface.* `--dut smu` is the wrapper bench and carries
   `sep0_all` itself; its PASSes are labelled `DUT_TAG=WRAPPER` and are the
   density evidence. The bare block bench is `--dut smu_block`, whose PASSes
   carry `DUT_TAG=BARE` and are not feature credit.
-* *The deferred catalog still has 123 names.* Nine of them are also enrolled
-  in wrapper `all` on the SEP=1 track (`smu_sep_smoke_test` plus eight
-  `sep_real_fw` images) and are not in `sep0_all`. The rest are not in any
-  wrapper regression. Per-entry bucket, owner, and reintroduction trigger
-  are in `SMU_DEFERRED_DISPOSITION.adoc`. None of those names is a v0.5.0
-  restore.
-* *Cross-trigger and iJTAG have no OCAH-local model yet*, so the coverage those
-  interfaces get is whatever the DTP-under-SMU tests reach through JTAG.
-* *No functional coverage closure target is set.* The 46 `cov/sv` cover-property
-  points exist and are tool-consumable (see <<smu-coverage-model,Coverage Model>>),
-  but there is no agreed bin list to close against and no coverage database has
-  been produced yet. A coverage configuration *is* checked in --
+* *The OUT catalog is `SMU_DEFERRED_DISPOSITION.adoc`.* Some of its names
+  are also enrolled in wrapper `all` on the SEP=1 track
+  (`smu_sep_smoke_test` and `sep_real_fw` images) and are not in
+  `sep0_all`; the rest are in no wrapper regression. The per-entry bucket
+  and the condition each name needs are in that document.
+* *Cross-trigger and iJTAG have no OCAH-local model*, so the coverage those
+  interfaces get is what the DTP-under-SMU tests reach through JTAG.
+* *No functional coverage closure target is set.* `smu_fcov.py` records
+  scenario intent, and the checked-in configuration is
   `cov/config/verilator/smu_cov_scope.vlt` plus
-  `smu_block_coverage_policy.toml` -- but it is named for `--dut smu_block`; the
-  wrapper `--dut smu` has no policy file of its own.
+  `smu_block_coverage_policy.toml`; the wrapper `--dut smu` has no policy
+  file of its own.

@@ -7,7 +7,7 @@ Reads the sensed shadow-register array directly via the top-level
 the golden ``SepEfuseImage``. This is the default, fast (no-AXI) data-comparison
 path -- it catches sense-load bugs. The AXI front-door checker
 (``sep_efuse_shadow_check_seq``) additionally exercises the real read datapath
-and is kept for a single test.
+and runs in the eFuse frontdoor tests.
 """
 
 from __future__ import annotations

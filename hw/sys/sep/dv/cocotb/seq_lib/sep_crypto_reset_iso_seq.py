@@ -5,7 +5,7 @@
 Drives the SEP reset_ctrl SW_RESET_N register over the CPU-LSU master (no_cpu) to
 pulse one crypto engine's per-IP reset while a sibling holds a live, golden-checked
 crypto RESULT in its datapath output registers. The crypto operations themselves
-(SHA-256 on HMAC, ECB-256 on AES) run on the proven SepHmac / SepAes drivers; this
+(SHA-256 on HMAC, ECB-256 on AES) run on the SepHmac / SepAes drivers; this
 module only owns the reset-control register so the held-result observation is a
 real crypto-datapath state, not a poked status bit.
 

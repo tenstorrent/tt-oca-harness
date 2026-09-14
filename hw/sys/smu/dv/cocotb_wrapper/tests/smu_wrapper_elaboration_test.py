@@ -12,7 +12,7 @@ from smu_base_test import smu_base_test
 
 
 def _log_evidence(logger, token: str) -> None:
-    """Emit aidv-grepable evidence aliases (matches SmuScoreboard format)."""
+    """Emit the evidence aliases in the SmuScoreboard log format."""
     logger.info("EVIDENCE: %s", token)
     logger.info("EVIDENCE:%s", token)
     if not token.startswith("CHK-"):
@@ -30,7 +30,7 @@ class smu_wrapper_elaboration_test(smu_base_test):
         await SmuWrapperElaborationSeq(self).run()
 
         expected_sep = int(cocotb.plusargs.get("expected_sep", "0"), 0)
-        # no_sep leaf evidence token; the merge gate greps for it.
+        # no_sep leaf evidence token.
         # SEP=1 card evidence is emitted inside the sequence (CHK-SMU-*).
         if expected_sep == 0:
             # CHK-NONVAC is emitted by the sequence after its ordered fence.

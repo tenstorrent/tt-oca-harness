@@ -2,17 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cluster WDT magic-key unlock protocol, per core. No Force, no firmware.
 
-WHY THIS TEST IS SHAPED AROUND THE KEY, NOT AROUND A READBACK.
-
 ``hw/sys/smc/regs/blocks/wdt/wdt.rdl:105-111`` specifies that the magic key
 ``0x51F15E`` must be written to ``KEY`` before a write to ANY other register in
 the block, that the block re-locks after that one write, and that reading
 ``KEY`` returns 1 while unlocked and 0 once locked again.
 
-That makes the naive shape -- write ``CMP``, read ``CMP`` back -- actively
-misleading: with the block locked (its reset state) the write is DROPPED and the
-read returns the RESET value, so the test passes while proving nothing. This
-sequence therefore runs the two halves as a same-run pair that differ in exactly
+With the block locked (its reset state) a write is DROPPED and the read returns
+the RESET value, so a lone write/readback of ``CMP`` passes without exercising
+the key. The two halves therefore run as a same-run pair that differ in exactly
 one variable, the key:
 
 * **negative leg** -- write ``CMP`` with the block LOCKED; ``CMP`` must still
@@ -27,8 +24,7 @@ The re-lock is checked too: after the single unlocked write, ``KEY`` must read 0
 again without anything else being written.
 
 ``wdt.rdl`` is map-only (no generated register block), so the expectations here
-come from the RDL text and the generated reset values, which is stated rather
-than implied.
+come from the RDL text and the generated reset values.
 """
 
 from __future__ import annotations
@@ -45,9 +41,7 @@ WDT_MAGIC_KEY = 0x51F15E
 # negative leg tell "write rejected" apart from "register reads zero anyway".
 WDT_CMP_RESET = 0x1000
 # `CMP` is a SINGLE 16-bit field, `wdogcmp0[15:0]` (wdt.rdl), not a 32-bit
-# register. Measured, not assumed: a 0x5A5AA5A5 probe read back as 0xA5A5, i.e.
-# the DUT truncated to the declared field width -- which is itself a small
-# confirmation that the field is 16 bits wide. The probe is therefore kept
+# register; a wider probe reads back truncated to the field. The probe stays
 # inside the field: alternating bits, and distinct from the 0x1000 reset, so
 # neither a stuck register nor a dropped write can produce it.
 WDT_CMP_MASK = 0xFFFF
@@ -80,9 +74,7 @@ class smc_wdt_key_csr_test_seq(SmcCsrSeq):
             await self.csr_read(f"WDT{core}_CMP_RESET", cmp_, expected=WDT_CMP_RESET)
 
             # NEGATIVE LEG -- write with the block locked. The write must be
-            # dropped, so CMP must still read its reset. This is the leg that
-            # makes the positive leg meaningful: without it, a DUT that ignored
-            # the key protocol entirely would look identical.
+            # dropped, so CMP must still read its reset.
             await self.csr_write(f"WDT{core}_CMP_WR_LOCKED", cmp_, WDT_CMP_PROBE)
             await self.csr_read(f"WDT{core}_CMP_STILL_RESET", cmp_, expected=WDT_CMP_RESET)
 

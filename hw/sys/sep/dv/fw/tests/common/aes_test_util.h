@@ -4,9 +4,7 @@
 /*
  * AES Test Utility Functions
  *
- * Shared helpers for SEP AES firmware tests. Eliminates duplication across
- * sep_aes_basic_smoke_test, sep_aes_all_modes_test, sep_aes_back_to_back_test,
- * and sep_aes_192_256_keylen_test.
+ * Shared helpers for the SEP AES firmware tests.
  *
  * Include after och_sep_common.h and sep.h.
  */

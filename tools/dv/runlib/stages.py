@@ -20,6 +20,7 @@ import sys
 import threading
 import time
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -53,11 +54,14 @@ from .config import (
     coverage_cfg,
     default_target_name,
     flow_stages,
+    formal_template_placeholders,
+    render_formal_argv,
     selected_compile_target,
     selected_run_mode,
     selected_run_target,
     sim_global_args,
     target_flags,
+    validate_formal_argv_template,
 )
 from .coverage import (
     CANONICAL_METRICS,
@@ -85,10 +89,12 @@ from .coverage_policy import (
     native_policy_args,
     native_policy_manifest,
 )
+from .formal import grade_formal_stage
 from .junit import ensure_leaf_junit
-from .logparse import parse_stage_result
+from .logparse import parse_stage_result, xunit_failure_messages
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
 from .paths import repo_path, repo_rel
+from .site import ToolLaunch, launch_argv, launch_env, tool_launch
 from .ui import Console
 from .waves import (
     build_wave_metadata,
@@ -248,6 +254,70 @@ def _mark_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> None:
 
 def _is_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> bool:
     return target_name in _prebuilt_targets(args)
+
+
+def grade_expected_fail(
+    status: str,
+    reason: str,
+    buckets: list[dict[str, Any]] | None,
+    expect_fail: str,
+    *,
+    observed_failures: list[str] | None = None,
+    expect_fail_match: str | None = None,
+) -> tuple[str, str, list[dict[str, Any]] | None, dict[str, Any]]:
+    """Grade a leaf whose testlist entry carries `expect_fail`.
+
+    An observed FAIL is the recorded outcome and grades PASS -- unless the entry also carries
+    `expect_fail_match` and no observed failure message matches it, in which case the leaf
+    failed for a reason other than the recorded one and grades FAIL in the
+    `expected_fail_mismatch` bucket. An observed PASS means the defect the entry records is
+    no longer there, and grades FAIL so the entry cannot outlive its reason. ERROR, TIMEOUT
+    and UNKNOWN are not the recorded failure -- the leaf proved nothing either way -- and
+    keep their status. The returned record goes into the leaf metadata under `expected_fail`
+    with the observed status, reason, failure messages and the parser's failure buckets.
+    """
+    failures = list(observed_failures or [])
+    record: dict[str, Any] = {
+        "reason": expect_fail,
+        "observed_status": status,
+        "observed_reason": reason,
+        "observed_failures": failures,
+        "observed_buckets": [
+            {"kind": bucket.get("kind"), "signature": bucket.get("signature")}
+            for bucket in buckets or []
+        ],
+    }
+    if expect_fail_match is not None:
+        record["match"] = expect_fail_match
+    if status == "FAIL":
+        if expect_fail_match is not None and not any(
+            re.search(expect_fail_match, message) for message in failures
+        ):
+            first = failures[0] if failures else "no failure message recorded"
+            graded_reason = (
+                f"expected to fail ({expect_fail}) but failed for another reason: {first}"
+            )
+            bucket = {
+                "kind": "expected_fail_mismatch",
+                "signature": graded_reason[:120],
+                "count": 1,
+                "examples": [],
+            }
+            return "FAIL", graded_reason, [bucket], record
+        return "PASS", f"expected_fail: {expect_fail}", None, record
+    if status == "PASS":
+        graded_reason = (
+            f"expected to fail ({expect_fail}) but passed: the defect is gone, move the test "
+            "into its owning feature testlist and drop expect_fail"
+        )
+        bucket = {
+            "kind": "expected_fail_passed",
+            "signature": graded_reason[:120],
+            "count": 1,
+            "examples": [],
+        }
+        return "FAIL", graded_reason, [bucket], record
+    return status, reason, buckets, record
 
 
 def _target_build_metadata(
@@ -707,7 +777,16 @@ def run_subprocess(
     env: dict[str, str] | None = None,
     verbose: bool = False,
     timeout_sec: int | None = None,
+    launch: ToolLaunch | None = None,
 ) -> int:
+    """Run ``argv`` with its output in ``log_path`` and a replay script beside it.
+
+    ``launch`` is the site-resolved launch of the tool behind ``argv``: its launcher prefixes
+    the command and its environment exports join ``env`` before the snapshot is written.
+    """
+    if launch is not None:
+        argv = launch_argv(launch, argv)
+        env = launch_env(launch, env)
     workdir = cwd or root
     if dry_run or verbose:
         print("CMD  : " + " ".join(shlex.quote(part) for part in argv), flush=True)
@@ -802,6 +881,86 @@ def run_subprocess(
         finally:
             with _ACTIVE_SUBPROCESS_LOCK:
                 _ACTIVE_SUBPROCESSES.discard(proc)
+
+
+def stage_tool_launch(args: argparse.Namespace, tool: str) -> ToolLaunch:
+    """The site-resolved launch of ``tool`` from the registry run_stage attaches to ``args``."""
+    simulators = getattr(args, "_simulators", None)
+    return tool_launch(simulators if isinstance(simulators, dict) else {}, tool)
+
+
+# The executable cocotb's Python runner probes on PATH per tool, and the runner class.
+COCOTB_DEFAULT_BINARY = {"verilator": "verilator", "xcelium": "xrun", "vcs": "vcs"}
+COCOTB_RUNNER_CLASS = {"verilator": "Verilator", "xcelium": "Xcelium", "vcs": "Vcs"}
+
+
+def reject_cocotb_launcher(launch: ToolLaunch) -> None:
+    """cocotb's Python runner starts the simulator itself, so a launcher cannot wrap it."""
+    if launch.launcher:
+        raise ConfigError(
+            f"site `launcher` for `{launch.tool}` does not apply on the cocotb path: cocotb's "
+            "Python runner starts the simulator from the runner's own process. Run run_dv.py "
+            "inside the launcher's environment, or drop the launcher and keep `binary`, "
+            "`extra_env`, and `setup_hook`"
+        )
+
+
+def _rename_commands(commands: Any, default: str, binary: str) -> list[Any]:
+    renamed: list[Any] = []
+    for cmd in commands:
+        if isinstance(cmd, (list, tuple)) and cmd and cmd[0] == default:
+            renamed.append([binary, *cmd[1:]])
+        else:
+            renamed.append(cmd)
+    return renamed
+
+
+@contextmanager
+def cocotb_tool_binary(tool: str, binary: str):
+    """Point cocotb's runner at the site ``binary`` when it differs from the name it probes.
+
+    Verilator's runner records the probed executable and runs it through perl; the Xcelium
+    and VCS runners spell the executable into each command. The PATH probe is replaced so a
+    renamed binary passes it, and the commands are renamed as they are built.
+    """
+    default = COCOTB_DEFAULT_BINARY.get(tool)
+    if default is None or binary == default:
+        yield
+        return
+    module = importlib.import_module("cocotb_tools.runner")
+    cls = getattr(module, COCOTB_RUNNER_CLASS[tool], None)
+    if cls is None:
+        raise ConfigError(
+            f"site binary `{binary}` for `{tool}` but no cocotb {tool} runner was found"
+        )
+
+    def probe(self: Any) -> None:
+        found = shutil.which(binary)
+        if found is None:
+            raise SystemExit(f"ERROR: {binary} executable not found!")
+        self.executable = found
+
+    def make_wrapper(orig: Any) -> Any:
+        def wrapper(self: Any) -> Any:
+            return _rename_commands(orig(self), default, binary)
+
+        return wrapper
+
+    saved: dict[str, Any] = {}
+    if tool == "verilator":
+        saved["_simulator_in_path_build_only"] = cls._simulator_in_path_build_only
+        cls._simulator_in_path_build_only = probe
+    else:
+        saved["_simulator_in_path"] = cls._simulator_in_path
+        cls._simulator_in_path = probe
+        for name in ("_build_command", "_test_command"):
+            saved[name] = getattr(cls, name)
+            setattr(cls, name, make_wrapper(saved[name]))
+    try:
+        yield
+    finally:
+        for name, original in saved.items():
+            setattr(cls, name, original)
 
 
 def get_cocotb_runner():
@@ -1068,7 +1227,8 @@ def verilator_compile(
     compile_target = selected_compile_target(sim_cfg)
     work_dir = required_path(build, "work_dir", "build", str(flow.path))
     mdir = repo_path(root, str(tool_cfg.get("mdir", work_dir)))
-    argv = ["verilator", "--cc"]
+    launch = stage_tool_launch(args, tool)
+    argv = [launch.binary, "--cc"]
     argv.extend(
         as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
         or ["--timing", "-sv", "--language", "1800-2023"]
@@ -1099,6 +1259,7 @@ def verilator_compile(
         env=env,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -1460,11 +1621,15 @@ def _cocotb_build_info(
         raise ConfigError(f"{flow.path}: [build].top_module is required")
 
     build_dir = required_path(run_target, "build_dir", "targets", str(flow.path))
-    base_build = repo_path(root, build_dir) / tool
+    # The coverage build is a sibling of the plain one, not a child of it.
+    # Verilator's verilated.mk puts `..` on the make VPATH, so a coverage build
+    # nested under the plain build dir resolves the cocotb main's `verilator.o`
+    # to the plain build's copy, which was compiled without -DVM_COVERAGE. That
+    # main never calls VerilatedCov::write, so the simulation finishes normally
+    # and writes no coverage.dat.
+    base_build = repo_path(root, build_dir) / (f"{tool}-coverage" if args.cov else tool)
     if tool == "vcs":
         base_build /= _safe_build_component(target_name)
-    if args.cov:
-        base_build /= "coverage"
     build_args = _cocotb_build_args(
         tool, flow, root, build, run_target, compile_target, options, filelist, args
     )
@@ -1559,6 +1724,8 @@ def cocotb_build(
         raise ConfigError(f"cocotb build supports tool verilator|xcelium|vcs, got `{tool}`")
 
     console = console_from_args(args)
+    launch = stage_tool_launch(args, tool)
+    reject_cocotb_launcher(launch)
     info = _cocotb_build_info(flow, root, sim_cfg, args, tool)
     build = info["build"]
     target_name = info["target_name"]
@@ -1577,6 +1744,7 @@ def cocotb_build(
     if _build_jobs and _build_jobs > 1:
         env["MAKEFLAGS"] = f"-j{_build_jobs}"
         console.artifact("cocotb_make_jobs", str(_build_jobs))
+    env = launch_env(launch, env)
     # Verilator-only: scope cocotb's global --public-flat-rw to the tb top (see
     # cocotb_public_scope). Empty/absent config -> cocotb's default behaviour is kept.
     public_scope_vlt = ""
@@ -1609,6 +1777,7 @@ def cocotb_build(
                     scoped_environ(env),
                     cocotb_make_jobs(_build_jobs),
                     cocotb_public_scope(public_scope_vlt),
+                    cocotb_tool_binary(tool, launch.binary),
                 ):
                     runner.build(
                         sources=[],
@@ -1772,6 +1941,8 @@ def cocotb_sim(
             )
             test_args += ["-ucli", "-i", str(ucli_path)]
 
+    launch = stage_tool_launch(args, tool)
+    reject_cocotb_launcher(launch)
     python_paths = cocotb_python_paths(root, cocotb_data)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
@@ -1787,6 +1958,7 @@ def cocotb_sim(
     )
     if tool == "vcs" and wave_format:
         env = _vcs_wave_env(env, wave_format, bool(args.dry_run))
+    env = launch_env(launch, env)
     public_scope_vlt = ""
     if tool == "verilator":
         _scope_rel = str(build_verilator_cfg(build).get("public_scope") or "").strip()
@@ -1846,6 +2018,9 @@ def cocotb_sim(
         "rebuild": bool(rebuild),
         "python_paths": [str(path) for path in python_paths if str(path)],
         "public_scope_vlt": public_scope_vlt,
+        "binary": launch.binary,
+        "default_binary": COCOTB_DEFAULT_BINARY.get(tool, tool),
+        "runner_class": COCOTB_RUNNER_CLASS.get(tool, ""),
     }
     runner_body = f"""#!/usr/bin/env python3
 import os
@@ -1959,9 +2134,55 @@ def scoped_verilator_wave_format(tool, wave_format):
             cls._build_command = original_build
             cls._test_command = original_test
 
+@contextmanager
+def scoped_tool_binary(tool, runner_class, default, binary):
+    if not runner_class or binary == default:
+        yield
+        return
+    import importlib
+    import shutil
+    module = importlib.import_module("cocotb_tools.runner")
+    cls = getattr(module, runner_class)
+
+    def probe(self):
+        found = shutil.which(binary)
+        if found is None:
+            raise SystemExit(f"ERROR: {{binary}} executable not found!")
+        self.executable = found
+
+    def rename(commands):
+        renamed = []
+        for cmd in commands:
+            if isinstance(cmd, (list, tuple)) and cmd and cmd[0] == default:
+                renamed.append([binary, *cmd[1:]])
+            else:
+                renamed.append(cmd)
+        return renamed
+
+    def make_wrapper(orig):
+        def wrapper(self):
+            return rename(orig(self))
+        return wrapper
+
+    saved = {{}}
+    if tool == "verilator":
+        saved["_simulator_in_path_build_only"] = cls._simulator_in_path_build_only
+        cls._simulator_in_path_build_only = probe
+    else:
+        saved["_simulator_in_path"] = cls._simulator_in_path
+        cls._simulator_in_path = probe
+        for name in ("_build_command", "_test_command"):
+            saved[name] = getattr(cls, name)
+            setattr(cls, name, make_wrapper(saved[name]))
+    try:
+        yield
+    finally:
+        for name, original in saved.items():
+            setattr(cls, name, original)
+
 print(f"# cocotb {{payload['tool']}} runner", flush=True)
 runner = get_runner(payload["tool"])
-with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]):
+with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]), scoped_tool_binary(payload["tool"], payload["runner_class"], payload["default_binary"], payload["binary"]):
     if payload["do_build"]:
         print(f"# cocotb {{payload['tool']}} build model", flush=True)
         runner.build(
@@ -2213,6 +2434,7 @@ def vcs_analyze(
     """Three-step `compile` stage: analyze sources into the work library with vlogan."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     vcs_cfg = info["vcs_cfg"]
+    launch = stage_tool_launch(args, "vcs")
     analyze_argv = [
         "vlogan",
         *_vcs_preamble(vcs_cfg, flow.framework),
@@ -2250,6 +2472,7 @@ def vcs_analyze(
         cwd=info["build_dir"],
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -2269,15 +2492,16 @@ def vcs_build(
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     build_dir = info["build_dir"]
     vcs_cfg = info["vcs_cfg"]
+    launch = stage_tool_launch(args, "vcs")
     if include_filelist:
-        argv = ["vcs", *info["elab_args"]]
+        argv = [launch.binary, *info["elab_args"]]
         argv += ["-f", str(info["filelist"])]
     else:
         # UUM consumes the work library produced by vlogan. Source-language,
         # timescale, defines, and target flags are parse-only options and VCS
         # rejects them when no source file is present.
         argv = [
-            "vcs",
+            launch.binary,
             *_vcs_uum_elab_args(
                 vcs_cfg,
                 flow.framework,
@@ -2308,6 +2532,7 @@ def vcs_build(
         cwd=build_dir,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -2400,6 +2625,7 @@ def vcs_sim(
         env=env,
         verbose=args.verbose,
         timeout_sec=timeout_sec,
+        launch=stage_tool_launch(args, "vcs"),
     )
 
 
@@ -2523,6 +2749,7 @@ def xcelium_analyze(
         cwd=info["build_dir"],
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=stage_tool_launch(args, "xcelium"),
     )
 
 
@@ -2541,9 +2768,10 @@ def xcelium_build(
     (`xrun -elaborate -f <filelist>`); `False` is the three-step `xmelab` after analysis."""
     info = _xcelium_resolve_build(flow, root, sim_cfg, args)
     build_dir = info["build_dir"]
+    launch = stage_tool_launch(args, "xcelium")
     if include_filelist:
         argv = [
-            "xrun",
+            launch.binary,
             "-elaborate",
             "-sv",
             *info["elab_args"],
@@ -2578,6 +2806,7 @@ def xcelium_build(
         cwd=build_dir,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -2645,6 +2874,7 @@ def xcelium_sim(
         cwd=item_dir,
         verbose=args.verbose,
         timeout_sec=timeout_sec,
+        launch=stage_tool_launch(args, "xcelium"),
     )
 
 
@@ -2813,6 +3043,7 @@ def coverage_stage(
     template = as_str_list(tool_cov.get(key), f"coverage.{tool}.{key}")
     if not template:
         raise ConfigError(f"coverage.{tool}.{key} must not be empty")
+    launch = stage_tool_launch(args, tool)
 
     if args.dry_run:
         dry_inputs = [str(run_dir / "<coverage-input>")] if phase == "merge" else []
@@ -2835,6 +3066,7 @@ def coverage_stage(
             cwd=cov_dir,
             verbose=args.verbose,
             timeout_sec=args.timeout,
+            launch=launch,
         )
 
     cov_dir.mkdir(parents=True, exist_ok=True)
@@ -2909,6 +3141,7 @@ def coverage_stage(
             cwd=cov_dir,
             verbose=args.verbose,
             timeout_sec=args.timeout,
+            launch=launch,
         )
         manifest["status"] = "ERROR" if rc else "PASS"
         manifest["merge_return_code"] = rc
@@ -2947,6 +3180,7 @@ def coverage_stage(
         cwd=cov_dir,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
     if rc != 0:
         manifest["status"] = "ERROR"
@@ -3021,21 +3255,28 @@ def _repo_or_dut_path(root: Path, flow: Flow, value: str) -> Path:
     return flow.path.parent / path
 
 
-def formal_run_stage(
+@dataclass(frozen=True)
+class FormalApp:
+    """The app a formal item resolves to: its name, the backend tool that runs it, the
+    `[formal.apps.<app>.<tool>]` table, and the launch directory."""
+
+    name: str
+    tool: str
+    table: dict[str, Any]
+    cwd: Path
+
+
+def resolve_formal_app(
     flow: Flow,
     root: Path,
     sim_cfg: dict[str, Any],
     catalog: TestCatalog,
-    item: str | None,
+    item: str,
     args: argparse.Namespace,
     tool: str,
-    simulators: dict[str, Any],
-    log_path: Path,
-    script_path: Path,
-    env_path: Path,
-) -> int:
-    if item is None:
-        raise ConfigError("formal_run stage requires a formal task item")
+) -> FormalApp:
+    """Resolve the formal item's app table for `tool`, falling back to the app's `default_tool`
+    when the selected tool has no table."""
     formal = sim_cfg.get("formal", {})
     if not isinstance(formal, dict):
         raise ConfigError(f"{flow.path}: [formal] must be a table")
@@ -3054,18 +3295,83 @@ def formal_run_stage(
         if tool_cfg is None:
             raise ConfigError(f"{flow.path}: formal app `{app_name}` has no `{tool}` backend")
         tool = default_tool
-    sim_tool = simulators.get(tool, {})
-    binary = str(sim_tool.get("binary", tool)) if isinstance(sim_tool, dict) else tool
     cwd = _repo_or_dut_path(root, flow, str(tool_cfg.get("cwd", ".")))
+    return FormalApp(name=app_name, tool=tool, table=tool_cfg, cwd=cwd)
+
+
+def formal_run_stage(
+    flow: Flow,
+    root: Path,
+    sim_cfg: dict[str, Any],
+    catalog: TestCatalog,
+    item: str | None,
+    args: argparse.Namespace,
+    tool: str,
+    simulators: dict[str, Any],
+    ctx: dict[str, str],
+    log_path: Path,
+    script_path: Path,
+    env_path: Path,
+) -> int:
+    """Launch one formal app through the tool's `argv` template.
+
+    The template comes from the app table's `argv` when set, else from the tool's registry entry.
+    `--proof-depth` and `--formal-arg` reach the command line only through their placeholders,
+    so a template without the placeholder rejects the option instead of dropping it.
+    """
+    if item is None:
+        raise ConfigError("formal_run stage requires a formal task item")
+    app = resolve_formal_app(flow, root, sim_cfg, catalog, item, args, tool)
+    tool, tool_cfg, cwd = app.tool, app.table, app.cwd
+    sim_tool = simulators.get(tool, {})
+    if not isinstance(sim_tool, dict):
+        sim_tool = {}
+    launch = tool_launch(simulators, tool)
+    binary = launch.binary
     script = str(tool_cfg.get("script", "")).strip()
-    argv = [binary]
-    argv += as_str_list(tool_cfg.get("args"), f"formal.apps.{app_name}.{tool}.args")
-    if args.proof_depth is not None:
-        argv += ["--proof-depth", str(args.proof_depth)]
-    if script:
-        argv.append(script)
-    argv += args.formal_arg or []
-    console_from_args(args).artifact("formal_app", f"{app_name} ({tool})")
+    where = f"{flow.path} [formal.apps.{app.name}.{tool}]"
+    if "argv" in tool_cfg:
+        template = validate_formal_argv_template(tool_cfg["argv"], f"{where}.argv")
+    elif "argv" in sim_tool:
+        template = validate_formal_argv_template(sim_tool["argv"], f"simulators.toml [{tool}].argv")
+    else:
+        raise ConfigError(
+            f"{where}: no launch template; simulators.toml [{tool}] carries no `argv` "
+            "and the app table sets none"
+        )
+    used = formal_template_placeholders(template)
+    if "script" in used and not script:
+        raise ConfigError(
+            f"{where}: the launch template uses {{script}} but the app table sets no `script`"
+        )
+    proof_depth = None if args.proof_depth is None else str(args.proof_depth)
+    if proof_depth is not None and "proof_depth" not in used:
+        raise ConfigError(
+            f"--proof-depth is not routed: the `{tool}` launch template for formal app "
+            f"`{app.name}` has no {{proof_depth}} placeholder"
+        )
+    formal_args = list(args.formal_arg or [])
+    if formal_args and "formal_args" not in used:
+        raise ConfigError(
+            f"--formal-arg is not routed: the `{tool}` launch template for formal app "
+            f"`{app.name}` has no {{formal_args}} placeholder"
+        )
+    argv = render_formal_argv(
+        template,
+        scalars={
+            "binary": binary,
+            "script": script,
+            "cwd": str(cwd),
+            "run_dir": ctx.get("run_dir", ""),
+            "item": item,
+        },
+        lists={
+            "args": as_str_list(tool_cfg.get("args"), f"formal.apps.{app.name}.{tool}.args"),
+            "formal_args": formal_args,
+        },
+        optional={"proof_depth": proof_depth},
+    )
+    console_from_args(args).artifact("formal_app", f"{app.name} ({tool})")
     return run_subprocess(
         argv,
         root,
@@ -3077,6 +3383,7 @@ def formal_run_stage(
         cwd=cwd,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -3189,6 +3496,7 @@ def run_stage(
     started_at = datetime.now(UTC)
     started = time.monotonic()
     metadata: dict[str, Any] = {}
+    formal_report: dict[str, Any] | None = None
     if item is not None:
         metadata["seed"] = seed
         metadata["attempt"] = attempt
@@ -3260,6 +3568,7 @@ def run_stage(
                 args,
                 tool,
                 simulators,
+                ctx,
                 log_path,
                 script_path,
                 env_path,
@@ -3567,6 +3876,28 @@ def run_stage(
             ]
         )
         parser = None
+        if stage_name == "formal" and item is not None and not args.dry_run:
+            app = resolve_formal_app(flow, root, sim_cfg, catalog, item, args, tool)
+            formal_decision = grade_formal_stage(
+                root=root,
+                tool=app.tool,
+                simulators=simulators,
+                policies=policies,
+                item=item,
+                app_name=app.name,
+                app_table=app.table,
+                cwd=app.cwd,
+                stage_dir=stage_dir,
+                run_dir=run_dir,
+                log_path=log_path,
+                return_code=rc,
+            )
+            status = formal_decision.status
+            reason = formal_decision.reason
+            buckets = formal_decision.failure_buckets or None
+            parser = formal_decision.parser
+            formal_report = formal_decision.formal
+            console.event("formal", f"{item}: {reason}")
         if stage_name in {"sim", "regress"} and not args.dry_run:
             decision = parse_stage_result(
                 flow=flow,
@@ -3623,6 +3954,30 @@ def run_stage(
         ]
         parser = None
         console.event("error", reason)
+
+    expect_fail = (
+        catalog.tests[item].expect_fail
+        if stage_name in {"sim", "regress"}
+        and item is not None
+        and item in catalog.tests
+        and not args.dry_run
+        else None
+    )
+    if expect_fail:
+        status, reason, buckets, metadata["expected_fail"] = grade_expected_fail(
+            status,
+            reason,
+            buckets,
+            expect_fail,
+            observed_failures=xunit_failure_messages(stage_dir / "results" / "results.xml"),
+            expect_fail_match=catalog.tests[item].expect_fail_match,
+        )
+        for bucket in buckets or []:
+            examples = bucket.setdefault("examples", [])
+            rel_log = repo_rel(root, log_path)
+            if rel_log and rel_log not in examples:
+                examples.append(rel_log)
+        console.event("xfail", f"{item}: {reason}")
 
     ended_at = datetime.now(UTC)
     duration_sec = time.monotonic() - started
@@ -3763,6 +4118,7 @@ def run_stage(
         target=target_name
         if stage_name in {"flist", "hdl_compile", "elaborate", "sim", "regress"}
         else None,
+        formal=formal_report,
     )
     # Structured-result guarantee: every executed leaf ends with results/results.xml —
     # the framework's own file when it wrote one, a synthesized single-testcase file

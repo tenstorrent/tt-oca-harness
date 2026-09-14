@@ -128,8 +128,8 @@ class smc_zeroer_cg_indep_test_seq(SmcCsrSeq):
         """S1 window after programming settles: busy=1, bus_active=0, reg gated.
 
         Observation starts only once register-idle is established (no AXI4-Lite
-        and reg_clk already gated off). Strength unchanged: every subsequent
-        busy cycle must keep axi_clk enabled and reg_clk gated.
+        and reg_clk already gated off); every subsequent busy cycle must keep
+        axi_clk enabled and reg_clk gated.
         """
         dut = self._dut()
         state = {
@@ -314,8 +314,8 @@ class smc_zeroer_cg_indep_test_seq(SmcCsrSeq):
                 OUTPUT_FABRIC_MODEL_REGION, OUTPUT_FABRIC_ADDR, OUTPUT_FABRIC_MODEL_SIZE
             )
         await self._program_output_fabric_pass_all()
-        # Seed destination so zeroer has work; write in chunks via AXI VIP.
-        # Large region: write first 8 bytes then rely on zeroer SIZE for busy window.
+        # Seed the first 8 bytes of the destination; the Zeroer SIZE provides
+        # the busy window.
         await self._write_bytes(OUTPUT_FABRIC_ADDR, ZEROER_POISON[:8])
 
         # disable_cg=0 (zeroer_cg_en=1), out of reset.
@@ -399,10 +399,9 @@ class smc_zeroer_cg_indep_test_seq(SmcCsrSeq):
             f"reg_hits={reg2} axi_hits_all={axi2_all})",
         )
 
-        # Order PLUS strictly increasing simulation timestamps. The bare order
-        # check is satisfied by construction in a straight-line body and cannot
-        # fail on any RTL; `assert_fence_progress` adds the DUT-time claim and
-        # returns the timestamps so they can be carried in the token below.
+        # `assert_fence_progress` requires strictly increasing simulation
+        # timestamps across the listed phases (order alone holds by
+        # construction) and returns them for the token below.
         fence_times = cg.assert_fence_progress(
             self.fence,
             [

@@ -7,7 +7,7 @@
  *
  * I2C_0 Target asserts SMBALERT#; I2C_1 Controller detects, ARA-clears, then
  * asserts SMBSUS# which the Target observes on SMBUS_STATUS.
- * No external VIP / SV model. Do not override secondary_main (crt0 weak).
+ * Both I2C instances are looped back inside the DUT; secondary_main is the crt0 weak default.
  */
 
 #include <stdint.h>

@@ -92,8 +92,8 @@ WRITE_READBACK = [
 ]
 
 
-# Directed, non-polling access count of `body()`: the callers' protocol-VIP
-# stimulus floors (19) are minima, so this stays >= that.
+# Directed, non-polling access count of `body()`; the callers' protocol-VIP
+# stimulus floors are minima below this.
 EXPECTED_ACCESSES = 24
 
 

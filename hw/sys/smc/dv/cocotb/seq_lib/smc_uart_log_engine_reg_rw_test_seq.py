@@ -55,20 +55,16 @@ LOG_INTR_ENABLE_MASK = _field_mask(
 # `sw = w` with `singlepulse`, so a written 1 does not stick and no
 # write/read-back expectation is derivable for it.
 LOG_WRITE_ADDR_MASK = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bm")
-# `LOG_CTRL` is NOT added to the write sweep, for two independent
-# reasons: its generated macro is doubly indexed
+# `LOG_CTRL` is outside the write sweep: its generated macro is doubly indexed
 # (`..._LOG_CTRL_BASE_ADDR(wrap_idx, LOG_CTRL_idx)`, smc_addr.h:756) so
-# `smc_indexed_addr` cannot resolve it, and this file already records that
-# LOG_CTRL is read-only-swept because writing it trips an arbiter assumption on
-# an unfinished log write.
+# `smc_indexed_addr` cannot resolve it, and a write trips an arbiter assumption
+# on an unfinished log write.
 
-# NOTE ON WHAT THE READ SWEEP PROVES. Every row below passes `expected=None`,
-# and `csr_read` with `expected=None` books NO scoreboard value check
-# (smc_csr_seq_utils.py) -- only `resp_ok` is asserted. These ten rows are
-# therefore DECODE-ONLY evidence: they show the windows answer OKAY, not that
-# they answer correctly. They must not be counted as register coverage; the
-# coverage claim of this testcase rests on the masked write/read-back sweep in
-# `UART_LOG_WRITES` below, whose compares the scoreboard does book.
+# Every row below passes `expected=None`, and `csr_read` with `expected=None`
+# books NO scoreboard value check (smc_csr_seq_utils.py) -- only `resp_ok` is
+# asserted. These rows are DECODE-ONLY evidence (the windows answer OKAY); the
+# register-coverage claim of this testcase rests on the masked write/read-back
+# sweep in `UART_LOG_WRITES` below, whose compares the scoreboard does book.
 UART_LOG_READS = [
     (
         "UART_LOG_ENGINE_CTRL",
@@ -211,7 +207,7 @@ UART_LOG_EXPECTED_COMPARES = 14
 
 
 class smc_uart_log_engine_reg_rw_test_seq(SmcCsrSeq):
-    """Port the low-risk legacy UART/log-engine register RW coverage."""
+    """UART/log-engine register RW sweep: decode reads, then save/write/readback/restore."""
 
     def __init__(self, name: str = "smc_uart_log_engine_reg_rw_test_seq") -> None:
         super().__init__(name)

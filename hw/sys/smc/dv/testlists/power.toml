@@ -59,6 +59,14 @@ timeout_sec = 1800
 tags = ["ci", "wdt", "pyuvm"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_wdt_timeout_pin_test"
+module = "smc_wdt_timeout_pin_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "avsbus_depth"
 tests = [

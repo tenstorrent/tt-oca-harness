@@ -50,6 +50,19 @@ SIMULATOR_PARSER_EXTENSION_KEYS = {
 
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
+# A `grader = "formal"` policy grades a formal stage from per-task status lines instead of
+# simulation pass/fail evidence; `runlib.formal` applies it.
+FORMAL_POLICY_KEYS = {
+    "grader",
+    "strip_ansi",
+    "task_status_patterns",
+    "task_results",
+    "evidence_patterns",
+    "hard_fail_patterns",
+}
+FORMAL_POLICY_LIST_KEYS = ("task_status_patterns", "evidence_patterns", "hard_fail_patterns")
+FORMAL_TASK_RESULT_FORMATS = {"sby-junit", "none"}
+
 
 def load_parser_registry(root: Path) -> dict[str, Any]:
     path = configs_root(root) / "parsers.toml"
@@ -76,11 +89,79 @@ def _compile_regex(pattern: str, source: str) -> None:
         raise ConfigError(f"{source}: invalid regex `{pattern}`: {exc}") from exc
 
 
+def is_formal_policy(policy: Any) -> bool:
+    return isinstance(policy, dict) and policy.get("grader") == "formal"
+
+
+def validate_formal_policy(name: str, policy: dict[str, Any]) -> None:
+    """Check a `grader = "formal"` policy: its keys, its patterns, and the `status` group."""
+    where = f"parsers.toml policy `{name}`"
+    if policy.get("grader") != "formal":
+        raise ConfigError(f'{where}: `grader` must be "formal"')
+    unknown = sorted(set(policy) - FORMAL_POLICY_KEYS)
+    if unknown:
+        raise ConfigError(f"{where}: unsupported key(s) for a formal grader: {', '.join(unknown)}")
+    if not isinstance(policy.get("strip_ansi", True), bool):
+        raise ConfigError(f"{where}: strip_ansi must be bool")
+    if str(policy.get("task_results", "none")) not in FORMAL_TASK_RESULT_FORMATS:
+        raise ConfigError(
+            f"{where}: task_results must be one of {', '.join(sorted(FORMAL_TASK_RESULT_FORMATS))}"
+        )
+    for key in FORMAL_POLICY_LIST_KEYS:
+        for pattern in as_str_list(policy.get(key), f"policy.{name}.{key}"):
+            _compile_regex(pattern, where)
+    task_patterns = as_str_list(policy.get("task_status_patterns"), f"policy.{name}")
+    if not task_patterns:
+        raise ConfigError(f"{where}: task_status_patterns must list at least one pattern")
+    for pattern in task_patterns:
+        if "status" not in re.compile(pattern).groupindex:
+            raise ConfigError(
+                f"{where}: task_status_patterns entry `{pattern}` needs a (?P<status>...) group"
+            )
+
+
+def validate_formal_grading_sources(
+    flow: Flow, simulators: dict[str, Any], policies: dict[str, Any]
+) -> None:
+    """Every formal app backend needs a grading source: an `evidence` table on the app, or a
+    formal `parser_policy` on the tool's registry entry."""
+    graded_tools: set[str] = set()
+    for tool in flow.tools:
+        tool_cfg = simulators.get(tool, {})
+        name = tool_cfg.get("parser_policy") if isinstance(tool_cfg, dict) else None
+        if name is None:
+            continue
+        if not is_formal_policy(policies.get(str(name))):
+            raise ConfigError(
+                f"simulators.toml: [{tool}].parser_policy `{name}` is not a "
+                f'`grader = "formal"` policy in parsers.toml'
+            )
+        graded_tools.add(tool)
+    formal = flow.raw.get("formal", {})
+    apps = formal.get("apps", {}) if isinstance(formal, dict) else {}
+    if not isinstance(apps, dict):
+        return
+    for app_name, app in apps.items():
+        if not isinstance(app, dict):
+            continue
+        for tool, table in app.items():
+            if not isinstance(table, dict) or "evidence" in table or tool in graded_tools:
+                continue
+            raise ConfigError(
+                f"{flow.path} [formal.apps.{app_name}.{tool}]: no grading source; the `{tool}` "
+                "registry entry names no formal `parser_policy` and the app sets no `evidence` "
+                "table"
+            )
+
+
 def validate_parser_registry(root: Path) -> dict[str, Any]:
     policies = load_parser_registry(root)
     for name, policy in policies.items():
         if not isinstance(policy, dict):
             raise ConfigError(f"parsers.toml: [policy.{name}] must be a table")
+        if "grader" in policy:
+            validate_formal_policy(name, policy)
+            continue
         if not isinstance(policy.get("require_positive_evidence", True), bool):
             raise ConfigError(
                 f"parsers.toml: policy `{name}` require_positive_evidence must be bool"
@@ -99,6 +180,7 @@ def validate_parser_extensions(
     flow: Flow, simulators: dict[str, Any], policies: dict[str, Any]
 ) -> None:
     if flow.framework == "formal":
+        validate_formal_grading_sources(flow, simulators, policies)
         return
     policy_name = parser_policy_name(flow)
     if policy_name not in policies:
@@ -164,6 +246,10 @@ def resolved_parser_policy(
     base = policies.get(policy_name)
     if not isinstance(base, dict):
         raise ConfigError(f"{flow.path}: parser policy `{policy_name}` missing from parsers.toml")
+    if "grader" in base:
+        raise ConfigError(
+            f"{flow.path}: parser policy `{policy_name}` is a formal grader, not a simulation policy"
+        )
 
     effective: dict[str, Any] = {
         "require_positive_evidence": bool(base.get("require_positive_evidence", True)),
@@ -234,6 +320,29 @@ def parse_xunit_result(path: Path, root: Path) -> tuple[str, dict[str, str]]:
     return "PASS", evidence_record("results_xml", path, root, "PASS", f"{total} testcase(s) passed")
 
 
+def xunit_failure_messages(path: Path, *, limit: int = 8, width: int = 400) -> list[str]:
+    """The message of every failure/error node in a JUnit file, first line only.
+
+    cocotb writes the assertion text as `error_msg`; JUnit proper uses `message`; a node
+    with neither carries it as text. Returns [] for a missing or malformed file.
+    """
+    if not path.is_file():
+        return []
+    try:
+        root_elem = ET.parse(path).getroot()
+    except ET.ParseError:
+        return []
+    messages: list[str] = []
+    for node in [*root_elem.iter("failure"), *root_elem.iter("error")]:
+        text = node.get("message") or node.get("error_msg") or (node.text or "")
+        first = text.strip().splitlines()[0].strip() if text.strip() else ""
+        if first:
+            messages.append(first[:width])
+        if len(messages) >= limit:
+            break
+    return messages
+
+
 def _match_lines(patterns: list[str], text: str) -> list[str]:
     matches: list[str] = []
     for pattern in patterns:
@@ -277,7 +386,7 @@ def _summary_evidence(
     return evidence_record("log_summary", log_path, root, "PASS", message or pattern)
 
 
-def _fingerprint(policy: dict[str, Any]) -> str:
+def policy_fingerprint(policy: dict[str, Any]) -> str:
     payload = json.dumps(policy, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return "sha256:" + hashlib.sha256(payload).hexdigest()
 
@@ -294,7 +403,7 @@ def _decision(
 ) -> ParserDecision:
     parser = {
         "policy": policy_name,
-        "policy_fingerprint": _fingerprint(policy),
+        "policy_fingerprint": policy_fingerprint(policy),
         "positive_evidence_required": bool(policy["require_positive_evidence"]),
         "status_source": source,
         "extensions": extensions,

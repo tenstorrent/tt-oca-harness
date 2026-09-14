@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-#include <stdio.h> // This should be the picolibc stdio.h in newlib/libc/tinystdio/stdio.h
+#include <stdio.h> // picolibc tinystdio: FILE, FDEV_SETUP_STREAM
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -13,7 +13,7 @@ static int sep_getc(FILE *file) __attribute__((noreturn));
 static FILE __stdio = FDEV_SETUP_STREAM(sep_putc, sep_getc, NULL, _FDEV_SETUP_WRITE);
 FILE *const stdout = &__stdio;
 __strong_reference(stdout, stderr);
-__strong_reference(stdout, stdin); // Shouldn't work but here for completeness
+__strong_reference(stdout, stdin); // any stdin read reaches sep_getc, which exits
 
 static int sep_putc(char c, FILE *file) {
 

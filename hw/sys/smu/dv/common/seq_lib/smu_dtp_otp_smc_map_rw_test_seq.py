@@ -10,7 +10,7 @@ S3: Write PATTERN_A to MAP BIRA, readback OKAY + data match.
 S4: Write PATTERN_C (distinct) and readback — proves the write path is live.
 
 Address from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR`` (0xC0007048).
-Do not use relative +0x80 (OTP shim) or the stale 0xC000_B000 window.
+The relative +0x80 probe routes to the OTP shim, not to MAP BIRA.
 
 Not claimed: Force-closed OTP gate / PATTERN_B no-stick (needs LCC or Force);
 SEP OTP; series NO_INCR.

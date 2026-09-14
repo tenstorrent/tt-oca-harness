@@ -7,9 +7,9 @@ WHY THIS EXISTS SEPARATELY FROM sep_firmware_mbist_fail_test.
 That test injects 0xFFFFFFFD -- every bit except mem_repair_success -- so it
 fails the gate's FIRST arm, memory repair, and returns without the MBIST check
 ever running. It proves the repair arm rejects; it says nothing about MBIST.
-Until this test existed, the MBIST arm added for `sep-boot-flow.puml:58-67` was
-code that no testcase reached: a gate shown to ACCEPT a healthy part and never
-shown to REJECT an unhealthy one.
+Without this test the MBIST arm (`sep-boot-flow.puml:58-67`) is code no testcase
+reaches: a gate shown to ACCEPT a healthy part and never shown to REJECT an
+unhealthy one.
 
 THE INJECTION IS THE WHOLE POINT. 0x00000012 is:
 

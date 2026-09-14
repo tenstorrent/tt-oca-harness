@@ -49,7 +49,7 @@ class SmuScoreboard(uvm_component):
         self._token_binding: dict[str, str] = {}
 
     def bind_testcase(self, testcase_name: str) -> None:
-        """Bind aidv evidence map for this leaf (called from smu_base_test)."""
+        """Bind the evidence map for this leaf (called from smu_base_test)."""
         self.testcase_name = testcase_name
 
     def _resolve_token(self, name: str, evidence: Optional[str]) -> tuple[str, str]:
@@ -81,9 +81,9 @@ class SmuScoreboard(uvm_component):
         # An explicit evidence= on any carrying check outranks a name match.
         if binding == BIND_EXPLICIT or token not in self._token_binding:
             self._token_binding[token] = binding
-        # Canonical aidv form (FEATURE_LIST / aidv_audit example)
+        # Canonical form: the FEATURE_LIST token spelling
         self.logger.info("EVIDENCE: %s", token)
-        # Alias without space for contracts grepping EVIDENCE:<TOKEN>
+        # Alias without a space: log consumers also grep EVIDENCE:<TOKEN>
         self.logger.info("EVIDENCE:%s", token)
         # Also emit CHK-<TOKEN> alias when TOKEN is not already a CHK-* id
         if token != "CHK-NONVAC" and not token.startswith("CHK-"):
@@ -209,7 +209,7 @@ class SmuScoreboard(uvm_component):
             raise AssertionError(
                 f"SmuScoreboard: {self.errors} check(s) failed out of {self.checks}"
             )
-        # Non-vacuity evidence token required by leaf contracts
+        # Non-vacuity evidence token
         self._log_evidence("CHK-NONVAC", BIND_SCOREBOARD)
         self.logger.info("SmuScoreboard: %d check(s) passed with zero errors", self.checks)
         if self._evidence_tokens:

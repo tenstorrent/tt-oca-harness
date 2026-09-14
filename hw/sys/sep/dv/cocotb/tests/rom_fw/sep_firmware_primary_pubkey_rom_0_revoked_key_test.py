@@ -17,7 +17,7 @@ refuses the primary AND the backup, the retry loop exhausts, and the run ends in
 The reference expects exactly this split -- ``PRIMARY_PUBKEY_ROM_0_REVOKED_KEY``
 ends at ``ERROR: REVOKED_KEY``
 with no ``COPY_AND_EXEC_IMAGE``, while ``PRIMARY_PUBKEY_ROM_1_REVOKED_KEY`` ends in
-``COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` (, in a list running).
+``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``.
 
 IT IS ALSO THE STRICTEST MEMBER, not the awkward one. Slot 0 is the only populated
 digest (``key_digests.c``) and the slot the image is signed against, so the

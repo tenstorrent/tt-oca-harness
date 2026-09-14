@@ -79,8 +79,8 @@ def require_jtag2axi_via_lcc(dut, logger=None) -> None:
     raise AssertionError(
         "JTAG2AXI still gated: need real LCC feat_ctrl with soc_debug & "
         f"ap_debug (observed feat_ctrl={word!r}). SEP=0 ties sep_feat_ctrl='0'; "
-        "Force helpers are disabled — use SEP=1 + eFuse TEST_DEV/DEMOTE "
-        "(SMU VPLAN #3538) or defer the test."
+        "run under SEP=1 with an eFuse image that leaves debug open (TEST_DEV) "
+        "or demotes into it."
     )
 
 

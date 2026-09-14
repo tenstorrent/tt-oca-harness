@@ -5,7 +5,7 @@
 DV-CARD:          SMU_ALL_005   ANCHOR: smu_dtp_jtag_smoke_test
 
 Card OWNS DTP-JTAG-PTAP.S1/S2/S3 ONLY (IDCODE/BYPASS/TRST).
-JTAG2AXI / OTP / STAP are out of scope (re-homed to SMU_ALL_008).
+JTAG2AXI / OTP / STAP are owned by SMU_ALL_008.
 """
 
 from __future__ import annotations

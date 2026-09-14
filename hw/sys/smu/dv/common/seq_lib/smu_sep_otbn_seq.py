@@ -15,13 +15,11 @@ OTBN register aperture through the SEP fabric.
 WHAT IT DOES NOT PROVE. The firmware's own pass/fail branch is vacuous: it keys
 off `g_otbn_status`, a file-scope `volatile int` that nothing ever assigns, so
 it is zero and the fail branch is unreachable. The fail-loop symbol is watched
-here anyway -- it costs nothing and stops being dead the day the firmware sets
-that variable -- but a PASS from this test carries no OTBN functional content.
+so that a firmware which assigns the variable is classified without a sequence
+change; a PASS from this test carries no OTBN functional content.
 There is no IMEM/DMEM load and no EXECUTE; the firmware header says as much.
 
 This image needs no entropy: it does not touch AES masking or the Key Manager.
-The earlier note pairing it with sep_smu_aes as "blocked on entropy bring-up"
-was wrong about this half.
 """
 
 from __future__ import annotations

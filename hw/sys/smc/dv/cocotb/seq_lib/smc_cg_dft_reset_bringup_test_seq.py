@@ -38,7 +38,7 @@ CG_HYST_MASK = _addr.CG_HYST_MASK
 
 class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
     """LIVE/CONNECTIVITY DFT test_en_i bypass (DMA+Zeroer) and Zeroer reset-override
-    free-running (SMCCGP0_003, Skill 1.5)."""
+    free-running (SMCCGP0_003)."""
 
     def __init__(self, name: str = "smc_cg_dft_reset_bringup_test_seq") -> None:
         super().__init__(name)
@@ -62,12 +62,9 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         # gating enables at whatever they were, and every "clock still runs"
         # compare below then passes for the wrong reason.
         #
-        # No `expected=` on this read. The scoreboard compares the whole 64-bit
-        # word, and the claim here is only that the three fields this function
-        # programs took the write; asserting the other 61 bits would also
-        # assert that nothing else in CLOCK_GATE_CONTROL is hardware-updated,
-        # which this testcase does not establish. The masked compare below is
-        # the claim, and it is fail-capable on its own.
+        # The scoreboard compares a whole 64-bit `expected=` word; the claim here
+        # is only that the three fields this function programs took the write,
+        # so the compare is masked to those fields below.
         back = await self.csr_read("CLOCK_GATE_CONTROL_VERIFY", CLOCK_GATE_CONTROL, length=8)
         programmed = DMA_CG_EN | ZEROER_CG_EN | CG_HYST_MASK
         assert (int(back) & programmed) == (nxt & programmed), (
@@ -167,9 +164,9 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         )
         dut.tb_test_en_i.value = 1
         # Bounded poll for the first SMC rise that samples the DMA clock
-        # enabled again, then count from there. Replaces a bare
-        # ClockCycles(HYST + 4) settle, which would absorb a bypass that never
-        # takes effect and passes on sim-timing luck ([NO-BLIND-DELAY-SYNC]).
+        # enabled again, then count from there. A fixed ClockCycles settle
+        # would absorb a bypass that never takes effect and pass on sim-timing
+        # luck ([NO-BLIND-DELAY-SYNC]).
         bypass_seen_at = await cg.wait_enabled(
             dut,
             "tb_dma_gated_clk",

@@ -46,7 +46,7 @@ RETIRE_TIMEOUT_CYCLES = 200
 # what makes a partially-committed cell different from a same-cycle one.
 # The separation between the leading write channel and the trailing one. The
 # gapped control drives the same value, so the control and the cells cannot
-# drift apart and leave the gap unexcluded again.
+# drift apart and leave the gap unexcluded.
 GAP_CYCLES = 4
 
 PORT_ORDERS: tuple[tuple[str, int, int, int], ...] = (
