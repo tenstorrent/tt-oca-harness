@@ -46,8 +46,9 @@
 //   or only the IRQ output is settled as an RTL defect: #1635 records that the
 //   RTL gates the SET path where prim_intr_hw masks the OUTPUT, and asks for
 //   the output-mask form.
-// TODO(#1635): once the log engine masks the output instead, the
-//   two ENABLE-gating arms below must expect capture while masked.
+//   The two ENABLE-gating arms below expect no capture while masked, which is the
+//   SET-path gating the RTL has today.  #1635 tracks moving the log engine to the
+//   output-mask form; those arms must then expect capture while masked.
 //
 //==========================================================================
 // OBSERVED DUT BEHAVIOUR THIS TEST MUST WORK AROUND (not an expectation)
