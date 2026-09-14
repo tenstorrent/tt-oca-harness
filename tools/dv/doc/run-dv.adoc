@@ -390,9 +390,29 @@ policy has classified the log:
 * `ERROR`, `TIMEOUT`, and `UNKNOWN` are not the recorded failure and keep
   their status.
 
+The parser's `FAIL` says only that the leaf failed, not why. The leaf record
+therefore carries `observed_failures`: the message of every failure/error node
+in the leaf's `results/results.xml` (cocotb's `error_msg`, JUnit's `message`,
+or the node text), so a reader can compare what failed with the recorded
+reason. To make that comparison part of the grade, add `expect_fail_match`:
+
+[source,toml]
+----
+expect_fail = "#585: dead offsets wrap onto live registers with an OKAY response"
+expect_fail_match = "wrap_to_live=[1-9]"
+----
+
+With it, an observed `FAIL` grades `PASS` only when some observed failure
+message matches the regex (`re.search`); otherwise the leaf failed for a
+different reason than the one recorded and grades `FAIL` in the
+`expected_fail_mismatch` bucket, naming the first observed message. A leaf
+that recorded no failure message is a mismatch too. The key requires
+`expect_fail` and must compile as a Python regex.
+
 The leaf record carries `expected_fail` (`reason`, `observed_status`,
-`observed_reason`) in its metadata and in the regression leaf summary, and
-the run-level `tests` summary counts graded leaves under `expected_failing`.
+`observed_reason`, `observed_failures`, and `match` when set) in its metadata
+and in the regression leaf summary, and the run-level `tests` summary counts
+graded leaves under `expected_failing`.
 The framework's own `results/results.xml` still records the observed
 failure; `result.json` is the graded, authoritative result. Keep such tests
 in a group of their own (for example `rtl_issue`) so they never feed a
@@ -464,7 +484,8 @@ targets, modes, and DUT-specific overrides.
 
 |`<dut-dv-root>/testlists/*.toml`
 |Tests, groups, tags, targets, seeds, reseed counts, timeouts, runtime
-arguments, optional firmware metadata, and `expect_fail` reasons.
+arguments, optional firmware metadata, and `expect_fail` /
+`expect_fail_match` entries.
 
 |`<dut-dv-root>/cov/config/<tool>/coverage_policy.toml`
 |Optional detailed coverage thresholds, exclusions, and hole dispositions;

@@ -316,6 +316,7 @@ TEST_KEYS = {
     "run_modes",
     "firmware",
     "expect_fail",
+    "expect_fail_match",
     "args",
     "overrides",
 }
@@ -1941,6 +1942,18 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
             f"{where}{name}.expect_fail must be a non-empty string recording why the leaf "
             "fails on the current DUT (the defect it reproduces)"
         )
+    expect_fail_match = entry.get("expect_fail_match")
+    if expect_fail_match is not None:
+        if not isinstance(expect_fail_match, str) or not expect_fail_match.strip():
+            raise ConfigError(f"{where}{name}.expect_fail_match must be a non-empty regex string")
+        if expect_fail is None:
+            raise ConfigError(f"{where}{name}.expect_fail_match requires expect_fail")
+        try:
+            re.compile(expect_fail_match)
+        except re.error as exc:
+            raise ConfigError(
+                f"{where}{name}.expect_fail_match is not a valid regex: {exc}"
+            ) from exc
 
     # `module` is either a bare string (bound to the DUT's default framework) or a per-framework
     # binding map `{ cocotb = "...", uvm = "..." }`. Resolution against the selected framework
@@ -1993,6 +2006,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
         expect_fail=expect_fail,
+        expect_fail_match=expect_fail_match,
         source=source,
     )
 
