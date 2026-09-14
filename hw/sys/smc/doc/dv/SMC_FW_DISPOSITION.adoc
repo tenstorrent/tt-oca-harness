@@ -88,7 +88,164 @@ point at it. SMU's record of the tests that stage SMC images is
 |i2c_target_pmbus_test
 |external-consumer
 |Consumed by a companion regression outside this repository (firmware PMBus register model whose paired cocotb half drives the external I2C master VIP; the firmware-state checks need that half, and the CSR-side `smc_smbus_pmbus_test` is enrolled in `testlists/i2c.toml`); not counted toward this tree's coverage. Closes when that regression runs on this bench, with a leaf here, or drops the image.
+|atb_p1_func_test
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_telemetry_receiver_csr_test` (`testlists/power.toml`); CSR-only content reachable over SEP_IN. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|atb_sanity_test
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_telemetry_receiver_csr_test` (`testlists/power.toml`); a subset of `atb_p1_func_test`. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|cla_sanity
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_remap_cla_test` (`testlists/fabric.toml`) for the CLA CSRs; the image is a self-declared placeholder and the alias `smc_cla_sanity_test` is waived. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|coremark
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. No DUT property. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|ecc_lint
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_ecc_fault_inject_test` (samples `cluster_ded_o`) and `smc_cpu_ecc_lint_pint_depth_test`; the alias `smc_cpu_ecc_lint_test` is waived. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|ecc_pint
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_ecc_fault_inject_test` and `smc_cpu_ecc_lint_pint_depth_test`; the alias `smc_cpu_ecc_pint_test` is waived. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|gpio_sanity
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_gpio_intf_full_sweep_test` and `smc_gpio_ctrl_full_sweep_test`; the alias `smc_gpio_sanity_test` is waived. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|i2c_p0_cfifo
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_i2c_p0_cfifo_test` (`testlists/i2c.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|i2c_p0_conti
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_i2c_p0_conti_test` (`testlists/i2c.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|i2c_p0_fifo
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_i2c_p0_fifo_test` (`testlists/i2c.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|i2c_p0_rdwr
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_i2c_p0_rdwr_test` (`testlists/i2c.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|i2c_p0_timeout
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_i2c_p0_timeout_test` (`testlists/i2c.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|i2c_read_sanity
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_i2c_master_target_test` (`testlists/i2c.toml`, `depth.toml`); the alias `smc_i2c_read_sanity_test` is waived. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|i2c_target_smbus_test
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_i2c_target_smbus_test` (`testlists/i2c.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|i2c_write_sanity
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_i2c_master_target_test` and `smc_i2c_p0_rdwr_test`; the alias `smc_i2c_write_sanity_test` is waived. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|mem_boundary_test
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_spm_mem_boundary_test` (`testlists/cpu.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|mergesort
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. No DUT property. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|mutex_semaphore_sanity
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_mutex_semaphore_test` (`testlists/cpu.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|ndm_reset_test
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_ndm_reset_test` (`testlists/reset.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|occp_jump
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (rom-mode master-BFM image staged through `+MASTER_BFM_ROM`); not counted toward this tree's coverage. This tree's coverage of the objective: `occp_unsecure_boot_test` (enrolled), which performs the transfer and the JUMP. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|occp_master
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (rom-mode master-BFM image staged through `+MASTER_BFM_ROM`); not counted toward this tree's coverage. This tree's coverage of the objective: The single-purpose `occp_*` images (`occp_sanity`, `occp_register_access_test`, `occp_mem_boundary_access_test`, `occp_zero_length_test`, `occp_max_size_transfer_test`, `occp_min_size_transfer_test`, `occp_ring_buffer_*`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|quicksort
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. No DUT property. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|reference_counter_sanity
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_reference_counter_test` (`testlists/cpu.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|reset_ctrl_sanity
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_reset_unit_sanity_test` and `smc_reset_recovery_matrix_test` (`testlists/reset.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|reset_warm_reset_handshake_test
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_ss_reset_complete_test` (`testlists/reset.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|sep_bidirectional
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_cpu_ctrl_scratch_window_test`: the scratch-register protocol demo exercises firmware logic, and CPU_CTRL scratch R/W is its only DUT path. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|sep_error_recovery
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|sep_fw_request
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|sep_interaction
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|sep_multi_cmd
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|sep_notification
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|sep_seq_validation
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|sep_service_req
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|smbus_alert_suspend_test
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_smbus_alert_suspend_test` (`testlists/i2c.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|smu_bidirect
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: SMU's own `smu_sep_bidirect_arm` image, which `smu_sep_bidirect_test` stages. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|static_cg_sanity
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_static_cg_sanity_test` (`testlists/clock.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|uart_baud_word_parity_format
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_baud_word_parity_format_test` (`testlists/uart.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|uart_error_conditions
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_error_conditions_test` (`testlists/uart.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|uart_extremes_misc_test
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_extremes_misc_test` (`testlists/uart.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|uart_fifo_basic_trigger_reset
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_fifo_basic_trigger_reset_test` (`testlists/uart.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|uart_irq_sources_priority
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_irq_sources_priority_test` (`testlists/uart.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|uart_log_engine_ctrl_en
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_spi_log_engine_test` and `smc_default_reg_rd_test`; CSR-only, reachable over SEP_IN. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|uart_log_engine_decode_err
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_deadspace_decode_test`; CSR-only decode guard. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|uart_sanity
+|external-consumer
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_sanity_test` (`testlists/uart.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|version_id
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_register_sanity_test` and `smc_default_reg_rd_test` (`testlists/register.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|zeroer_sanity
+|external-consumer
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_zeroer_sanity_test` (`testlists/depth.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
 |===
+
+==== Shared sources with an external consumer
+
+The build of the companion regression outside this repository resolves its
+firmware includes against this tree's `fw/tests/` and `fw/include/`, so a
+shared header has a consumer when that firmware includes it or when an
+external-consumer image above includes it.
+
+[cols="3,5",options="header"]
+|===
+|Source |Consumer
+|`tests/cla_sanity_sequence.h`, `tests/uart_sanity_sequence.h`, `tests/reset_ctrl_sequence.h`
+|Included by firmware of the companion regression outside this repository; `reset_ctrl_sequence.h` also by `reset_ctrl_sanity`. Closes with the last includer.
+|`include/tt_smc_ecc.h`
+|Included by `ecc_lint` and `ecc_pint`.
+|`tests/coremark.h`, `tests/core_portme.h`, `tests/core_portme.c` and `FW_TEST_EXTRA_SRCS_coremark` in `fw.mk`
+|The `coremark` image.
+|===
+
 
 === Deferred images
 
@@ -328,122 +485,36 @@ the first image that consumes it, not ahead of it.
 [cols="3,5",options="header"]
 |===
 |Image |Superseded by
-|atb_p1_func_test
-|`smc_telemetry_receiver_csr_test` (`testlists/power.toml`); CSR-only content reachable over SEP_IN.
-|atb_sanity_test
-|`smc_telemetry_receiver_csr_test` (`testlists/power.toml`); a subset of `atb_p1_func_test`.
-|cla_sanity
-|`smc_remap_cla_test` (`testlists/fabric.toml`) for the CLA CSRs; the image is a self-declared placeholder and the alias `smc_cla_sanity_test` is waived. `tests/cla_sanity_sequence.h` belongs to this image alone.
-|coremark
-|Nothing: an EEMBC benchmark with no DUT property and no consumer in any tree. `tests/core_portme.c`, `core_portme.h`, `coremark.h` and `FW_TEST_EXTRA_SRCS_coremark` belong to this image alone.
 |dma_sanity
 |`smc_dma_sanity_test` (`testlists/depth.toml`), same objective. `drivers/smc_dma.c` and `include/smc_dma.h` belong to this image alone.
 |dual_octs_test
 |`octs_p1_credit_test` (deferred); eight-line diff duplicate.
-|ecc_lint
-|`smc_ecc_fault_inject_test` (samples `cluster_ded_o`) and `smc_cpu_ecc_lint_pint_depth_test`; the alias `smc_cpu_ecc_lint_test` is waived. `include/tt_smc_ecc.h` belongs to `ecc_lint` and `ecc_pint` alone.
-|ecc_pint
-|`smc_ecc_fault_inject_test` and `smc_cpu_ecc_lint_pint_depth_test`; the alias `smc_cpu_ecc_pint_test` is waived.
 |efuse_reg_sanity
 |`smc_efuse_map_read_test` and `smc_efuse_shim_ctrl_test` (`testlists/efuse.toml`); the alias `smc_efuse_test` is waived.
 |gpio_p0_int_test
 |`smc_gpio_p0_int_test` (`testlists/gpio.toml`), same objective.
 |gpio_p0_mux_test
 |`smc_gpio_p0_mux_test` (`testlists/gpio.toml`), same objective.
-|gpio_sanity
-|`smc_gpio_intf_full_sweep_test` and `smc_gpio_ctrl_full_sweep_test`; the alias `smc_gpio_sanity_test` is waived. `tests/gpio_sanity_sequence.h` belongs to this image alone.
 |i2c_internal_smbus
 |`smbus_alert_suspend_test` (same scenario, itself superseded by `smc_smbus_alert_suspend_test`, `testlists/i2c.toml`).
 |i2c_nack_test
 |`smc_i2c_p0_nack_test` (`testlists/i2c.toml`); older variant of `i2c_p0_nack_test`.
-|i2c_p0_cfifo
-|`smc_i2c_p0_cfifo_test` (`testlists/i2c.toml`), same objective.
-|i2c_p0_conti
-|`smc_i2c_p0_conti_test` (`testlists/i2c.toml`), same objective.
-|i2c_p0_fifo
-|`smc_i2c_p0_fifo_test` (`testlists/i2c.toml`), same objective.
 |i2c_p0_multictrl
 |`smc_i2c_p0_multictrl_test` (`testlists/i2c.toml`), same objective.
 |i2c_p0_nack_test
 |`smc_i2c_p0_nack_test` (`testlists/i2c.toml`), same objective.
-|i2c_p0_rdwr
-|`smc_i2c_p0_rdwr_test` (`testlists/i2c.toml`), same objective.
 |i2c_p0_stretch_test
 |`smc_i2c_p0_stretch_test` (`testlists/i2c.toml`), same objective.
-|i2c_p0_timeout
-|`smc_i2c_p0_timeout_test` (`testlists/i2c.toml`), same objective.
-|i2c_read_sanity
-|`smc_i2c_master_target_test` (`testlists/i2c.toml`, `depth.toml`); the alias `smc_i2c_read_sanity_test` is waived.
 |i2c_rw_test
 |`smc_i2c_master_target_test`; the alias `smc_i2c_rw_test` is waived.
-|i2c_target_smbus_test
-|`smc_i2c_target_smbus_test` (`testlists/i2c.toml`), same objective.
 |i2c_target_test
 |`smc_i2c_master_target_test` (`testlists/i2c.toml`, `depth.toml`).
-|i2c_write_sanity
-|`smc_i2c_master_target_test` and `smc_i2c_p0_rdwr_test`; the alias `smc_i2c_write_sanity_test` is waived.
-|mem_boundary_test
-|`smc_spm_mem_boundary_test` (`testlists/cpu.toml`), same objective.
-|mergesort
-|Nothing: a CPU benchmark with no DUT property and no consumer.
-|mutex_semaphore_sanity
-|`smc_mutex_semaphore_test` (`testlists/cpu.toml`), same objective.
-|ndm_reset_test
-|`smc_ndm_reset_test` (`testlists/reset.toml`), same objective.
-|occp_jump
-|`occp_unsecure_boot_test` (enrolled), which performs the transfer and the JUMP.
-|occp_master
-|The single-purpose `occp_*` images (`occp_sanity`, `occp_register_access_test`, `occp_mem_boundary_access_test`, `occp_zero_length_test`, `occp_max_size_transfer_test`, `occp_min_size_transfer_test`, `occp_ring_buffer_*`); its nine `test_*.c` files belong to this image alone.
 |octs_p1_test
 |`octs_p12_test` (deferred); byte-identical.
 |octs_p2_test
 |`octs_p2_sync_recovery_test` (deferred); sixteen-line diff duplicate.
-|quicksort
-|Nothing: a CPU benchmark with no DUT property and no consumer.
-|reference_counter_sanity
-|`smc_reference_counter_test` (`testlists/cpu.toml`), same objective.
-|reset_ctrl_sanity
-|`smc_reset_unit_sanity_test` and `smc_reset_recovery_matrix_test` (`testlists/reset.toml`). `tests/reset_ctrl_sequence.h` belongs to this image alone.
-|reset_warm_reset_handshake_test
-|`smc_ss_reset_complete_test` (`testlists/reset.toml`), same objective.
-|sep_bidirectional
-|`smc_cpu_ctrl_scratch_window_test`: the scratch-register protocol demo exercises firmware logic, and CPU_CTRL scratch R/W is its only DUT path.
-|sep_error_recovery
-|`smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`.
-|sep_fw_request
-|`smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`.
-|sep_interaction
-|`smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`.
-|sep_multi_cmd
-|`smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`.
-|sep_notification
-|`smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`.
-|sep_seq_validation
-|`smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`.
-|sep_service_req
-|`smc_cpu_ctrl_scratch_window_test`; scratch-protocol demo, as `sep_bidirectional`.
 |sep_rtl_boot
 |`smu_sep_boot` (external-consumer row above), the SMC image SMU's `smu_sep_wdt_reset_to_smc_test` loads; `smu_sep_smc_notify_test` boots the SMC from SMU's own `smu_sep_arm` ROM and references no SMC DV image. This image passes immediately and no SMU test references it.
-|smbus_alert_suspend_test
-|`smc_smbus_alert_suspend_test` (`testlists/i2c.toml`), same objective.
-|smu_bidirect
-|SMU's own `smu_sep_bidirect_arm` image, which `smu_sep_bidirect_test` stages.
-|static_cg_sanity
-|`smc_static_cg_sanity_test` (`testlists/clock.toml`), same objective.
-|uart_baud_word_parity_format
-|`smc_uart_baud_word_parity_format_test` (`testlists/uart.toml`), same objective.
-|uart_error_conditions
-|`smc_uart_error_conditions_test` (`testlists/uart.toml`), same objective.
-|uart_extremes_misc_test
-|`smc_uart_extremes_misc_test` (`testlists/uart.toml`), same objective.
-|uart_fifo_basic_trigger_reset
-|`smc_uart_fifo_basic_trigger_reset_test` (`testlists/uart.toml`), same objective.
-|uart_irq_sources_priority
-|`smc_uart_irq_sources_priority_test` (`testlists/uart.toml`), same objective.
-|uart_log_engine_ctrl_en
-|`smc_uart_spi_log_engine_test` and `smc_default_reg_rd_test`; CSR-only, reachable over SEP_IN.
-|uart_log_engine_decode_err
-|`smc_deadspace_decode_test`; CSR-only decode guard.
 |uart_log_engine_intr
 |`smc_log_engine_intr_mask_test` (`testlists/rtl_issue.toml`); CSR-only.
 |uart_log_engine_reg_rw
@@ -452,10 +523,4 @@ the first image that consumes it, not ahead of it.
 |`smc_default_reg_rd_test` (`testlists/register.toml`); CSR-only reset defaults.
 |uart_loopback_basic
 |`smc_uart_loopback_test` (`testlists/uart.toml`).
-|uart_sanity
-|`smc_uart_sanity_test` (`testlists/uart.toml`), same objective. `tests/uart_sanity_sequence.h` belongs to this image alone.
-|version_id
-|`smc_register_sanity_test` and `smc_default_reg_rd_test` (`testlists/register.toml`).
-|zeroer_sanity
-|`smc_zeroer_sanity_test` (`testlists/depth.toml`), same objective.
 |===

@@ -73,4 +73,7 @@ directory; `fw.mk` needs a line only for `FW_TEST_MODE_<name> := rom`.
 
 An image with no consumer is not added, and an image whose consumer goes away
 is superseded: its directory leaves the tree and its row in the disposition
-record names what proves the property now.
+record names what proves the property now. An image whose only consumer is a
+regression outside this repository stays as an `external-consumer` row that
+names that consumer; the same holds for a shared header under `tests/` or
+`include/` that such a regression's firmware includes.

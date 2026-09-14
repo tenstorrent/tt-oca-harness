@@ -27,7 +27,7 @@ timeout_sec = 1800
 tags = ["ci", "cpu_depth", "pyuvm"]
 run_modes = ["smoke"]
 
-# CPU_CTRL MUTEX[0] take/release.
+# BFM rebuild of FW mutex_semaphore_sanity — CPU_CTRL MUTEX[0] take/release.
 
 [[tests]]
 name = "smc_mutex_semaphore_test"
@@ -37,7 +37,7 @@ timeout_sec = 1800
 tags = ["ci", "cpu_depth", "pyuvm"]
 run_modes = ["smoke"]
 
-# SPM window edges via SEP_IN AXI.
+# BFM rebuild of FW mem_boundary_test (SPM window edges via SEP_IN AXI).
 
 [[tests]]
 name = "smc_spm_mem_boundary_test"

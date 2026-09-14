@@ -19,7 +19,7 @@ FW_INCLUDES := \
   -I$(FW_DIR)/include/metal/smc
 
 # OCCP master BFM library sources.  Compiled into libsmc.a so the rom-mode
-# tests (occp_sanity, occp_unsecure_boot_test, ...) link them.  Sram tests link against the
+# tests (occp_sanity, occp_master) link them.  Sram tests link against the
 # archive too but never call these functions; --gc-sections removes them from
 # sram ELFs at link time.
 FW_C_SRCS += \
@@ -55,7 +55,9 @@ FW_INCLUDES += \
 # hw/common/dv/fw + this sys's generated headers).
 FW_REG_SYS := smc
 
-# Test discovery is unified in compile.mk; declare only the SMC deltas.
+# Test discovery is unified in compile.mk; declare only the SMC deltas. coremark
+# pulls in the shared core_portme.c harness alongside its own source.
+FW_TEST_EXTRA_SRCS_coremark := $(FW_DIR)/tests/core_portme.c
 # The SMU-SEP tests are two-sided: an SMC image and a SEP image agreeing on a
 # scratch/mailbox protocol. The protocol headers live with the SEP firmware and
 # are shared, not copied, so the two sides cannot drift apart.
@@ -81,6 +83,7 @@ FW_DEFAULT_TEST_MODE := sram
 # These are the master-BFM images the BL0 regression loads via +MASTER_BFM_ROM;
 # the BFM half drives the OCCP protocol against the DUT running the prod ROM.
 FW_TEST_MODE_occp_sanity := rom
+FW_TEST_MODE_occp_master := rom
 FW_TEST_MODE_occp_boot_sequence_status_test := rom
 FW_TEST_MODE_occp_comprehensive_error_verification_test := rom
 FW_TEST_MODE_occp_crc_err_injection_test := rom
@@ -88,6 +91,7 @@ FW_TEST_MODE_occp_interface_latch_test := rom
 FW_TEST_MODE_occp_interface_unlatch_test := rom
 FW_TEST_MODE_occp_invalid_cmd_test := rom
 FW_TEST_MODE_occp_invalid_length_field_test := rom
+FW_TEST_MODE_occp_jump := rom
 FW_TEST_MODE_occp_jump_invalid_region_test := rom
 FW_TEST_MODE_occp_jump_reject := rom
 FW_TEST_MODE_occp_max_size_transfer_test := rom
