@@ -160,14 +160,12 @@ int main(void) {
                                "kmac", KMAC_INTR_ENABLE_ADDR, 0x7u);
     errors += check_reset_wire("kmac", SEP_SW_RESET_N_KMAC_BIT, KMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u,
                                "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
-    errors +=
-        check_reset_wire("esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, 0x1u, 0x0u,
-                         "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
-    errors +=
-        check_reset_wire("csrng", SEP_SW_RESET_N_TRNG_BIT, CSRNG_INTR_ENABLE_ADDR, 0x1u, 0x0u,
-                         "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, 0x1u, 0x0u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("csrng", SEP_SW_RESET_N_TRNG_BIT, CSRNG_INTR_ENABLE_ADDR, 0x1u, 0x0u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
     errors += check_reset_wire("edn", SEP_SW_RESET_N_TRNG_BIT, EDN_INTR_ENABLE_ADDR, 0x1u, 0x0u,
-                              "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
 
     if (sep_reset_rd(SEP_RESET_CTRL_SW_RESET_N) != SEP_SW_RESET_N_DEFAULT) {
         sep_mbx_puts("FAIL: SW_RESET_N not restored to default\n");
