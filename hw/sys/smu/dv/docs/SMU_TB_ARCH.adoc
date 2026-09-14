@@ -261,10 +261,10 @@ and reports them per test. Results land under
 
 [source,bash]
 ----
-# SV-UVM view (VCS): build, the bound scenario, the UVM-implemented smoke subset
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only --skip-unimplemented
+# SV-UVM view (VCS): build, the bound scenario, the smoke group
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only
 python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke
 ----
 
 The wrapper DUT additionally builds firmware images through
@@ -286,9 +286,10 @@ declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm_block/` build tree), and `--dut smu_block --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 bind both realizations in their testlist `module` map
-(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
-entry error when selected under the UVM view, and `--skip-unimplemented` runs
-a group's UVM-implemented subset. The conventions this realization follows
+(`module = { cocotb = "<name>", uvm = "<name>" }`); a scenario declared
+`uvm = false` is skipped from group selections under the UVM view, one with
+no `uvm` entry errors there, and `--skip-unimplemented` skips those from a
+group selection as well. The conventions this realization follows
 are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
 DTP and SMC benches are the reference implementations.
 
