@@ -315,6 +315,7 @@ TEST_KEYS = {
     "tags",
     "run_modes",
     "firmware",
+    "expect_fail",
     "args",
     "overrides",
 }
@@ -1934,6 +1935,12 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         where = f"{source}: " if source else ""
         raise ConfigError(f"{where}{name}.target must be a non-empty string")
     where = f"{source}: " if source else ""
+    expect_fail = entry.get("expect_fail")
+    if expect_fail is not None and (not isinstance(expect_fail, str) or not expect_fail.strip()):
+        raise ConfigError(
+            f"{where}{name}.expect_fail must be a non-empty string recording why the leaf "
+            "fails on the current DUT (the defect it reproduces)"
+        )
 
     # `module` is either a bare string (bound to the DUT's default framework) or a per-framework
     # binding map `{ cocotb = "...", uvm = "..." }`. Resolution against the selected framework
@@ -1985,6 +1992,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         run_modes=as_str_list(entry.get("run_modes"), f"{name}.run_modes"),
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
+        expect_fail=expect_fail,
         source=source,
     )
 

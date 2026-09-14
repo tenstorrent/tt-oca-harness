@@ -163,17 +163,27 @@ def _has_formal(flow: Flow, stages: list[StageResult]) -> bool:
     return flow.framework == "formal" or any(stage.formal is not None for stage in stages)
 
 
+def _is_expected_failure(metadata: dict[str, Any] | None, status: Any) -> bool:
+    """A leaf graded PASS because it FAILED for its recorded `expect_fail` reason."""
+    record = (metadata or {}).get("expected_fail")
+    return isinstance(record, dict) and record.get("observed_status") == "FAIL" and status == "PASS"
+
+
 def _tests_summary(stages: list[StageResult]) -> dict[str, Any]:
     runs = [stage for stage in stages if stage.stage in ITEM_STAGES]
     total = len(runs)
     passing = sum(1 for stage in runs if stage.status == "PASS")
     failing = sum(1 for stage in runs if stage.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"})
     skipped = sum(1 for stage in runs if stage.status == "SKIP")
+    expected_failing = sum(
+        1 for stage in runs if _is_expected_failure(stage.metadata, stage.status)
+    )
     return {
         "total": total,
         "passing": passing,
         "failing": failing,
         "skipped": skipped,
+        "expected_failing": expected_failing,
         "pass_rate": round(passing / total, 4) if total else None,
     }
 
@@ -486,6 +496,7 @@ def _failed_test_record(
         "failure_buckets": _buckets_for_failed_job(final),
         "parser": final.get("parser"),
         "result_json": final.get("result_json"),
+        "expected_fail": (final.get("metadata") or {}).get("expected_fail"),
         "rerun": _rerun_command(flow, tool, final, args),
     }
     wave_debug = final.get("wave_debug")
@@ -582,12 +593,16 @@ def _tests_summary_from_jobs(
         if final.get("status") == "PASS"
         and any(job.get("status") in NON_PASS_STATUSES for job in attempts[:-1])
     )
+    expected_failing = sum(
+        1 for job in final_jobs if _is_expected_failure(job.get("metadata"), job.get("status"))
+    )
     return {
         "total": total,
         "passing": passing,
         "failing": failing,
         "skipped": skipped,
         "flaky": flaky,
+        "expected_failing": expected_failing,
         "pass_rate": round(passing / total, 4) if total else None,
     }
 

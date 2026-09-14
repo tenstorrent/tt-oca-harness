@@ -113,6 +113,11 @@ inventory (for example a VPLAN test-case count) honest.
 Tag::
 A label carried by tests, used by `--tag` as an OR filter.
 
+Expected failure::
+A test whose entry carries `expect_fail = "<reason>"`: it reproduces a filed
+defect and FAILS on a DUT that still carries it. The runner grades that FAIL
+as PASS and an observed PASS as FAIL (<<runner-expected-failures>>).
+
 Item::
 Any name accepted by `--items`: a test name or a group name.
 
@@ -356,6 +361,44 @@ python3 tools/dv/run_dv.py --dut dtp --items smoke --tag ci
 With `--items`, tags filter the expanded selection. Without `--items`, tags
 search the complete catalog.
 
+[[runner-expected-failures]]
+=== Expected failures
+
+A reproducer for a filed RTL defect is only evidence while someone runs it, and
+a regression that carries it is red every day it does its job. `expect_fail`
+resolves that without weakening the checker:
+
+[source,toml]
+----
+[[tests]]
+name = "smc_gpio_irq_mask_deassert_test"
+module = "smc_gpio_irq_mask_deassert_test"
+run_modes = ["smoke"]
+expect_fail = "#1602: clearing INTERRUPT_ENABLE does not de-assert interrupt_o"
+----
+
+The value is the recorded reason and must be a non-empty string; `true` is
+rejected, because a flag with no reason cannot say when the entry should go.
+Grading applies per leaf on the `sim` and `regress` stages, after the parser
+policy has classified the log:
+
+* an observed `FAIL` is the recorded outcome and grades `PASS`, with `reason`
+  `expected_fail: <reason>`;
+* an observed `PASS` means the defect is gone and grades `FAIL`, in the
+  `expected_fail_passed` failure bucket -- move the test into its owning
+  feature testlist and drop the key;
+* `ERROR`, `TIMEOUT`, and `UNKNOWN` are not the recorded failure and keep
+  their status.
+
+The leaf record carries `expected_fail` (`reason`, `observed_status`,
+`observed_reason`) in its metadata and in the regression leaf summary, and
+the run-level `tests` summary counts graded leaves under `expected_failing`.
+The framework's own `results/results.xml` still records the observed
+failure; `result.json` is the graded, authoritative result. Keep such tests
+in a group of their own (for example `rtl_issue`) so they never feed a
+coverage regression as passes, and so the flip is visible as that group
+going red.
+
 === Targets and run modes
 
 Each selected test resolves a build target from its `target` field or the DUT
@@ -421,7 +464,7 @@ targets, modes, and DUT-specific overrides.
 
 |`<dut-dv-root>/testlists/*.toml`
 |Tests, groups, tags, targets, seeds, reseed counts, timeouts, runtime
-arguments, and optional firmware metadata.
+arguments, optional firmware metadata, and `expect_fail` reasons.
 
 |`<dut-dv-root>/cov/config/<tool>/coverage_policy.toml`
 |Optional detailed coverage thresholds, exclusions, and hole dispositions;
@@ -1519,6 +1562,8 @@ For simulation, return code zero is not sufficient for `PASS`. The selected
 parser policy examines structured XML, hard-failure markers, required and
 failure patterns, framework summaries, and positive pass evidence. Missing or
 ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
+A leaf with `expect_fail` is graded after that classification: its `FAIL`
+becomes `PASS` and its `PASS` becomes `FAIL` (<<runner-expected-failures>>).
 
 For formal mode, the exit code is never the status source: task status lines,
 status files, and JUnit reports, or the app's summary file, are
