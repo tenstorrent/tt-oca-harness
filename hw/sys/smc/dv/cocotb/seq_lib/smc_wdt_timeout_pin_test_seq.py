@@ -175,6 +175,12 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
             WDT_CTRL_ARM,
         )
 
+        # The warm reset that follows the second timeout is observed as a
+        # transition: released while the stage-2 count runs, asserted after it.
+        assert int(dut.tb_rst_warm_smc_clk_n.value) == 1, (
+            "rst_warm already asserted on the cycle the first timeout latched, "
+            f"with the stage-2 count of 0x{stage2:x} cycles still to run"
+        )
         gap = await self._wait_level(
             dut.tb_wdt_second_timeout_seen,
             1,
