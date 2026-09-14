@@ -336,9 +336,12 @@ def reset_unit_u32(symbol: str) -> int:
 # reset levels of hw/sys/smc/doc/clk_rst.adoc plus the per-subsystem warm and
 # cold vectors, whose widths are the RDL fields RESET_UNIT.SS_WARM_RESET_N /
 # SS_COLD_RESET_N (generated `reset_unit.h`). No document fixes the order of
-# the leaves inside a half, so that order is a DV-owned golden:
-# smc_jtag_reset_ctrl_test drives one leaf at a time and requires the matching
-# reset pin -- and only that pin -- to move, which fails on a wrong position.
+# the leaves inside a half, so that order is a DV-owned golden.
+# smc_jtag_reset_ctrl_test drives `cool_reset_n` and `ss_warm_reset_n[0]` one
+# at a time and requires the matching reset pin -- and only that pin -- to
+# move, which fails on a wrong position of either leaf, a swapped half or a
+# wrong slice width. The positions of the other leaves are not exercised by
+# any test.
 JTAG_RESET_CTRL_HALVES: tuple[str, ...] = ("ovrd", "val")  # MSB half first
 JTAG_RESET_CTRL_LEAVES: tuple[tuple[str, int], ...] = (  # MSB leaf first
     ("ss_warm_reset_n", reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_bw")),
@@ -505,20 +508,24 @@ def smc_addr_is_deadspace(addr: int) -> bool:
     return not any(base <= addr < end for base, end in smc_rdl_windows())
 
 
-def check_rdl_window_tiling() -> None:
-    """Self-check: windows and deadspace tile the map extent with no overlap."""
+def check_rdl_windows() -> None:
+    """Self-check of the window derivation against the root addrmap.
+
+    Every window must lie inside ``SMC_TOP`` and the last one must end where
+    the root's own generated size says the map ends, so a mis-parsed base,
+    stride or instance count fails here. Overlap between blocks is not
+    checkable from the header: register-level macros legitimately interleave
+    (indexed arrays), so overlapping spans are merged, not rejected.
+    """
+    defs = _parse_simple_defines(_SMC_ADDR_H)
+    root_lo = defs[_ROOT_BASE_SYMBOL]
+    root_hi = root_lo + defs[_ROOT_BASE_SYMBOL[: -len("_BASE_ADDR")] + "_SIZE"]
     windows = smc_rdl_windows()
-    gaps = smc_deadspace_ranges()
-    for (b0, e0), (b1, e1) in zip(windows, windows[1:]):
-        assert b0 < e0 <= b1 < e1, (
-            f"RDL windows misordered or overlapping: {b0:#x}-{e0:#x} / {b1:#x}-{e1:#x}"
+    for base, end in windows:
+        assert root_lo <= base < end <= root_hi, (
+            f"RDL window {base:#x}-{end:#x} lies outside the root addrmap {root_lo:#x}-{root_hi:#x}"
         )
-    covered = sum(end - base for base, end in windows) + sum(end - base for base, end in gaps)
-    lo, hi = smc_map_extent()
-    assert covered == hi - lo, (
-        f"windows + deadspace cover {covered:#x} of the {hi - lo:#x} map bytes"
+    assert windows[-1][1] == root_hi, (
+        f"last RDL window ends at {windows[-1][1]:#x} but the root addrmap size ends the map at "
+        f"{root_hi:#x}"
     )
-    for base, end in gaps:
-        assert smc_addr_is_deadspace(base) and smc_addr_is_deadspace(end - 1), (
-            f"deadspace gap {base:#x}-{end:#x} intersects an RDL window"
-        )

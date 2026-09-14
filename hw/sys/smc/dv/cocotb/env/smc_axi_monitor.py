@@ -14,7 +14,7 @@ import cocotb
 from cocotb.triggers import RisingEdge
 from pyuvm import ConfigDB, uvm_component
 from seq_lib.smc_addr_map import (
-    check_rdl_window_tiling,
+    check_rdl_windows,
     smc_addr_is_deadspace,
     smc_deadspace_ranges,
     smc_map_extent,
@@ -69,14 +69,14 @@ class SmcAxiMonitor(uvm_component):
         # A test that deliberately provokes DECERR inside a declared window
         # (an unimplemented `external` region, an integration error slave)
         # registers those addresses in `expected_decerr_addrs`.
-        check_rdl_window_tiling()
+        check_rdl_windows()
         self.rdl_windows = smc_rdl_windows()
         self.deadspace_ranges = smc_deadspace_ranges()
         self.expected_decerr_addrs: set[int] = set()
         self.allow_decerr = False
         lo, hi = smc_map_extent()
         self.logger.info(
-            "SMC AXI monitor: %d RDL windows and %d deadspace gaps tile 0x%08x-0x%08x; "
+            "SMC AXI monitor: %d RDL windows and %d deadspace gaps in 0x%08x-0x%08x; "
             "DECERR is expected only in deadspace, outside the map, or at registered addresses",
             len(self.rdl_windows),
             len(self.deadspace_ranges),

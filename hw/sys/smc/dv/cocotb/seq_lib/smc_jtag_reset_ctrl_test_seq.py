@@ -152,9 +152,9 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
             warm_csr,
             warm_hold,
         )
-        # Positive control for the DV-owned bit layout: each leaf moved its own
-        # reset pin (and the SS0 leaf left rst_cool_no released), which a wrong
-        # position or a swapped ovrd/val half cannot do.
+        # Positive control for the two driven leaves of the DV-owned bit layout:
+        # each moved its own reset pin (and the SS0 leaf left rst_cool_no
+        # released), which a wrong position or a swapped ovrd/val half cannot do.
         cocotb.log.info(
             "JTAG reset_ctrl layout: cool_reset_n ovrd/val bits %d/%d moved rst_cool_no; "
             "ss_warm_reset_n[0] ovrd/val bits %d/%d moved ss0_warm_reset_n with rst_cool_no "
