@@ -787,7 +787,7 @@ module efuse_interface_controller #(
     .efuse_data_t(efuse_data_t)
   ) u_efuse_guard (
     .clk_i                     (clk_i),
-    .reset_n_i                 (rst_ni),
+    .rst_ni                    (rst_ni),
     .secure_tm_i               (secure_tm_i),
 
     .efuse_field_map_i         (efuse_field_map_i),
