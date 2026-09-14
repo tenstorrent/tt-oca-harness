@@ -185,11 +185,16 @@ class smu_boundary_port_composition_seq:
         # SMU-FUSE-SENSE.S4 / SMU-EFUSE-SHIM-SMC.S3
         self._width(smu, "skip_mem_repair_o", 1, "CHK-SMU-FUSE-SENSE-S4")
         skip = self._driven(smu, "skip_mem_repair_o")
+        # port_table.adoc types smc_shadow_regs_o as smc_efuse_pkg::efuse_map_t
+        # and states no width, so what is checked is the connection the wrapper
+        # can get wrong: the boundary net is as wide as the `smu` port and
+        # carries the same value.
         shadow = hier(smu, "smc_shadow_regs_o")
         shadow_bits = bit_width(shadow, "smc_shadow_regs_o")
-        sb.expect_true(
-            "smc_shadow_regs_o present with a non-zero width",
-            shadow_bits > 0,
+        sb.expect_eq(
+            "smc_shadow_regs boundary net is as wide as the smu smc_shadow_regs_o port",
+            bit_width(dut.smc_shadow_regs, "smc_shadow_regs"),
+            shadow_bits,
             evidence="CHK-SMU-EFUSE-SHIM-SMC-S3",
         )
         sb.expect_true(

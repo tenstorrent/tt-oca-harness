@@ -2,9 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_smc_fuse_sense_sequence_test - SMC fuse-sense completion ordering.
 
-Closes SMU-FUSE-SENSE.S1 and SMU-FUSE-SENSE.S3 against SMU_SPEC.md "Security
-Considerations" and the smc_fuse_sense_done_o / smc_fuse_reset_n_delayed_o rows of
-port_table.adoc, on the `--dut smu` production wrapper built with
+Measured against the `smc_fuse_sense_done_o` ("SMC fuse sense completion
+output") and `smc_fuse_reset_n_delayed_o` ("Delayed fuse reset output") rows of
+`hw/sys/smu/doc/port_table.adoc`, the only SMU specification in this tree; it
+names the two ports but not their relative order, so the ordering leg below is
+a check on the elaborated design with no document behind it. On the `--dut smu`
+production wrapper built with
 compile_smu_chiplet_no_sep and run under the no_sep_fuse_sense run mode, which
 leaves +skip_fuse_sense unset so the SMC eFuse bank model answers the sense:
 smc_fuse_sense_done_o rises once, after the SMC primary reset released and after
@@ -30,6 +33,7 @@ class smu_smc_fuse_sense_sequence_test(smu_base_test):
     """SMC fuse sense completes and the delayed fuse reset follows it."""
 
     use_shared_env = True
+    enforce_evidence_map = True
 
     async def bring_up(self) -> None:
         """Arm the fuse-sense observers, then run the shared bring-up.

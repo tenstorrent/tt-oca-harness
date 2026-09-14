@@ -2,10 +2,25 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Helpers shared by the SMU composition and bring-up sequences.
 
-Spec-derived constants live here so every composition leaf compares against
-the same expected values: the SMU_SPEC.md Specifications and Configuration
-Parameters tables, and the AMBA AXI4 channel field widths the crossbar struct
-types are built from.
+The expected values every composition leaf compares against live here, with
+the source of each one named. Two kinds of source appear below and they do not
+carry the same weight:
+
+* ``hw/sys/smu/doc/port_table.adoc`` -- the SMU Port Declaration. It states each
+  port's presence, direction, type, width expression and semantics, and it is
+  the only SMU specification in this tree a reader can open.
+* ``hw/sys/smu/rtl/smu_pkg.sv``, ``hw/sys/smu/rtl/smu_axi_xbar_pkg.sv`` and the
+  vendored ``axi_pkg`` -- the *implementation*. The numeric values the
+  port_table width expressions elaborate to, the crossbar geometry and the AXI
+  channel field widths come from there. A value taken from the implementation
+  makes a compare against it a drift check on the elaborated design, not proof
+  of a requirement, and the comment on each such constant says so.
+
+This tree holds no SMU design specification for the crossbar topology, the AXI
+channel geometry, the clock/reset domain table or the build configuration; the
+SMU documentation directory contains ``port_table.adoc`` and nothing else. Where
+a constant has no port_table row, that absence is stated rather than filled in
+with another document.
 """
 
 from __future__ import annotations
@@ -14,7 +29,12 @@ from typing import Any
 
 from cocotb.triggers import Timer
 
-# SMU_SPEC.md "Specifications" / port_table.adoc.
+# Ports port_table.adoc declares, at the widths it declares them. It gives
+# those widths as parameter expressions (`[2*LC_STATE_WIDTH-1:0]`,
+# `[XTRIG_NUM_CTP-1:0]`, `[Cfg.NUM_INT_TO_SMC-1:0]`, `[31:0]`); the numbers
+# below are what those expressions elaborate to in hw/sys/smu/rtl/smu_pkg.sv
+# and the dtp_pkg it imports, so a compare against one is a drift check on the
+# elaborated parameter.
 LC_STATE_O_WIDTH = 8
 LCC_DEMOTE_WIDTH = 2
 NUM_INT_TO_SMC = 256
@@ -26,14 +46,22 @@ SS_CONFIG_WIDTH = 32
 SMN_IN_ID_WIDTH = 8
 SMN_OUT_ID_WIDTH = 10
 SUBSYS_IN_ID_WIDTH = 6
+# port_table.adoc names the SMN boundary struct *types*
+# (`smu_axi_xbar_pkg::axi_56_64_req_t`, `axi_out_req_t`) but not their field
+# widths. These are the localparams those types are built from in
+# hw/sys/smu/rtl/smu_axi_xbar_pkg.sv -- implementation, with no open
+# specification to check them against.
 XBAR_ADDR_WIDTH = 56
 XBAR_DATA_WIDTH = 64
 XBAR_USER_WIDTH = 12
 SEP_SEC_DISABLE_TOKEN_WIDTH = 256
 SEP_OTP_PL_DEPTH = 3
 
-# AMBA AXI4 channel field widths, plus the 6-bit atomic-operation field the
-# crossbar's AW channel carries (SMU_SPEC.md: `ATOPs = 1'b0`).
+# AMBA AXI4 channel field widths as the vendored pulp-platform
+# `AXI_TYPEDEF_*_CHAN_T` macros lay them out, including the 6-bit
+# `axi_pkg::atop_t` the AW channel carries. Sources:
+# vendor/pulp-platform/axi/upstream/include/axi/typedef.svh and
+# vendor/pulp-platform/axi/upstream/src/axi_pkg.sv.
 _AXI_LEN = 8
 _AXI_SIZE = 3
 _AXI_BURST = 2
@@ -74,9 +102,13 @@ def axi_resp_bits(id_width: int) -> int:
     return 1 + 1 + 1 + 1 + b + 1 + r
 
 
-# smu_pkg::smu_cfg_t in declaration order, MSB first. The widths are the
-# field types the SMU_SPEC.md Configuration Parameters table names; the
-# values compared against them come from that table.
+# smu_pkg::smu_cfg_t in declaration order, MSB first, with each field's width
+# taken from its declared type in hw/sys/smu/rtl/smu_pkg.sv. This table and the
+# defaults below mirror the package, so decoding an elaborated `Cfg` with it and
+# comparing the fields detects unintended drift in the elaborated build
+# parameters and nothing more: there is no SMU specification of this struct to
+# check it against, and a compare of a `Cfg` field against this table cannot
+# distinguish a correct design from an incorrect one.
 CFG_LAYOUT: tuple[tuple[str, int], ...] = (
     ("NUM_INT_TO_SMC", 32),
     ("JTAG_BSR_ENABLE", 1),
@@ -106,9 +138,10 @@ CFG_LAYOUT: tuple[tuple[str, int], ...] = (
 )
 CFG_TOTAL_BITS = sum(width for _, width in CFG_LAYOUT)
 
-# SMU_SPEC.md "Subsystem configuration" default column. XTRIG_INT_CT_MODE is
-# config-dependent there and is supplied by the testlist as +xtrig_int_ct_mode.
-CFG_SPEC_DEFAULTS: dict[str, int] = {
+# smu_pkg::DefaultCfg, field for field. XTRIG_INT_CT_MODE is omitted: the
+# wrapper testbench elaborates it from +xtrig_int_ct_mode rather than taking the
+# package default, so the leaf supplies that one expectation itself.
+CFG_ELABORATION_DEFAULTS: dict[str, int] = {
     "NUM_INT_TO_SMC": NUM_INT_TO_SMC,
     "JTAG_BSR_ENABLE": 1,
     "JTAG_EXTEST_TRAIN_ENABLE": 1,

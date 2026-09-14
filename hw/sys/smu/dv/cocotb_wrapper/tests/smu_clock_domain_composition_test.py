@@ -2,8 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_clock_domain_composition_test - secondary clock and reset domains (SEP=1).
 
-Closes SMU-CLK-DOMAINS.S2, SMU-CLK-DOMAINS.S3 and SMU-CLK-DOMAINS.S4 against
-SMU_SPEC.md "Clock and Reset", on the `--dut smu` production wrapper built with
+`hw/sys/smu/doc/port_table.adoc` declares the clock and reset ports this leaf
+reads (`clk_telemetry_i`, `rst_telemetry_ni`, `clk_sep_wdt_i`, the
+`rst_primary_*` outputs) and names each one's domain; it does not tabulate
+which logic each domain clocks, and this tree carries no SMU clock/reset
+specification that does. What is checked below is therefore per-domain identity
+and rate at the consumers inside the elaborated design. On the `--dut smu`
+production wrapper built with
 compile_smu_chiplet_sep_rtl: the telemetry, SEP-watchdog and peripheral clocks
 are read at their consumers for identity with the wrapper pins and for a toggle
 rate that matches their own period rather than clk_smu_i, their resets are read
@@ -27,6 +32,7 @@ class smu_clock_domain_composition_test(smu_base_test):
     """Per-domain clock and reset identity, rate and independence from clk_smu_i."""
 
     use_shared_env = True
+    enforce_evidence_map = True
     require_distinct_ref_smu = True
 
     async def run_scenario(self) -> None:

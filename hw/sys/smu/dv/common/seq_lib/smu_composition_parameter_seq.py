@@ -5,9 +5,16 @@
 Passive parameter and connection inspection of the elaborated wrapper: the
 SEP security-disable token as it reaches the SEP eFuse controller, the forced
 SEP OTP pipeline depths on the DTP, the SEP-to-SMC security_disable wire, and
-the elaborated `Cfg` struct decoded field by field against the spec table.
-The same expected table is applied to the SEP=1 (DefaultCfg) and SEP=0
-(NoSepCfg) builds, which is what shows the two presets field-identical.
+the elaborated `Cfg` struct decoded field by field.
+
+The per-field `Cfg` compares use `CFG_ELABORATION_DEFAULTS`, which mirrors
+`smu_pkg::DefaultCfg`; they detect unintended drift in the elaborated build
+parameters and prove no requirement, so they carry no evidence token. The same
+table is applied to the SEP=1 (DefaultCfg) and SEP=0 (NoSepCfg) builds, which
+is what shows the two presets field-identical -- again as drift, not as
+conformance. The token-carrying checks are the plumbing ones: a parameter or
+net observed at the instance that consumes it, and a decoded `Cfg` field
+observed to be the width or depth the design actually elaborated from it.
 """
 
 from __future__ import annotations
@@ -16,7 +23,7 @@ import cocotb
 from cocotb.triggers import ClockCycles
 
 from seq_lib.smu_compose_helpers import (
-    CFG_SPEC_DEFAULTS,
+    CFG_ELABORATION_DEFAULTS,
     CFG_TOTAL_BITS,
     DTP_NUM_INT_CT,
     NUM_INT_TO_SMC,
@@ -84,13 +91,13 @@ class smu_composition_parameter_seq:
                 evidence="CHK-SMU-OTPAXI-SEP-S3",
             )
 
-        # SMU-NOSEP.S4: decode the elaborated Cfg against the spec table.
+        # Drift checks on the elaborated build parameters: CFG_LAYOUT and
+        # CFG_ELABORATION_DEFAULTS mirror smu_pkg, so these carry no token.
         cfg_handle = hier(smu, "Cfg")
         sb.expect_eq(
-            "smu.Cfg packed width matches smu_cfg_t",
+            "smu.Cfg packed width matches the smu_cfg_t layout",
             bit_width(cfg_handle, "smu.Cfg"),
             CFG_TOTAL_BITS,
-            evidence="CHK-SMU-NOSEP-S4",
         )
         cfg_raw = sample(cfg_handle, "smu.Cfg")
         sb.expect_eq(
@@ -100,25 +107,19 @@ class smu_composition_parameter_seq:
             evidence="CHK-SMU-NOSEP-S4",
         )
         fields = decode_cfg(cfg_raw)
-        expected = dict(CFG_SPEC_DEFAULTS)
+        expected = dict(CFG_ELABORATION_DEFAULTS)
         expected["XTRIG_INT_CT_MODE"] = xtrig_mode
         for name, want in expected.items():
-            sb.expect_eq(
-                f"Cfg.{name} (SEP={expected_sep})",
-                fields[name],
-                want,
-                evidence="CHK-SMU-NOSEP-S4",
-            )
-        # The decoded fields must be the ones the design elaborated from.
+            sb.expect_eq(f"Cfg.{name} drift (SEP={expected_sep})", fields[name], want)
+        # Token-carrying: each decoded field is the width or depth the design
+        # elaborated from it, which a mis-plumbed parameter fails.
         sb.expect_eq(
             "smc_ext_interrupts_i width follows Cfg.NUM_INT_TO_SMC",
             bit_width(hier(smu, "smc_ext_interrupts_i"), "smc_ext_interrupts_i"),
             fields["NUM_INT_TO_SMC"],
             evidence="CHK-SMU-NOSEP-S4",
         )
-        sb.expect_eq(
-            "Cfg.NUM_INT_TO_SMC is the spec value", fields["NUM_INT_TO_SMC"], NUM_INT_TO_SMC
-        )
+        sb.expect_eq("Cfg.NUM_INT_TO_SMC drift", fields["NUM_INT_TO_SMC"], NUM_INT_TO_SMC)
         sb.expect_eq(
             "u_dtp.XTRIG_INT_CT_MODE follows Cfg.XTRIG_INT_CT_MODE",
             sample(hier(smu, "u_dtp.XTRIG_INT_CT_MODE"), "u_dtp.XTRIG_INT_CT_MODE"),

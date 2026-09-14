@@ -2,8 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_sep_fuse_sense_done_test - SEP fuse-sense completion at the boundary.
 
-Closes SMU-FUSE-SENSE.S2 against SMU_SPEC.md "Security Considerations" and the
-sep_fuse_sense_done_o row of port_table.adoc, on the `--dut smu` production
+Measured against the `sep_fuse_sense_done_o` row of
+`hw/sys/smu/doc/port_table.adoc` ("SEP fuse sense done output"), which is the
+only SMU specification in this tree; the ordering the checks require comes from
+the DUT itself and no document in this tree states it. On the `--dut smu` production
 wrapper built with compile_smu_chiplet_sep_rtl and run under the
 sep_rtl_fuse_sense run mode, which leaves +skip_fuse_sense and the SEP shadow
 preload unset so the SEP eFuse bank model answers the sense:
@@ -29,6 +31,7 @@ class smu_sep_fuse_sense_done_test(smu_base_test):
     """SEP fuse sense completes and reports on sep_fuse_sense_done_o."""
 
     use_shared_env = True
+    enforce_evidence_map = True
 
     async def bring_up(self) -> None:
         """Arm the fuse-sense observers, then run the shared bring-up.

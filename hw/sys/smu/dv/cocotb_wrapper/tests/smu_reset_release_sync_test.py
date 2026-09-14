@@ -2,8 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_reset_release_sync_test - reset deassertion synchronization.
 
-Closes SMU-RST-COLD.S2 and SMU-RST-PRIMARY.S2 against SMU_SPEC.md "Clock and
-Reset" and the rst_cold_ni / rst_primary_ref_clk_no rows of port_table.adoc,
+Measured against `hw/sys/smu/doc/port_table.adoc`, the only SMU specification
+in this tree: the `rst_cold_ni` row states "Asynchronous assertion, synchronous
+deassertion", and the `rst_cold_stable_ref_clk_no` / `rst_primary_ref_clk_no` /
+`rst_primary_smc_clk_no` rows name the domain each output is synchronized to.
+Those two statements are what the checks below require,
 on the `--dut smu` production wrapper built with compile_smu_chiplet_no_sep:
 rst_cold_ni is released at a random phase that lies on no clock edge, and the
 deassertion of rst_cold_stable_ref_clk_no and rst_primary_ref_clk_no is
@@ -27,6 +30,7 @@ class smu_reset_release_sync_test(smu_base_test):
     """Cold and primary reset deassertions are clock-edge aligned."""
 
     use_shared_env = True
+    enforce_evidence_map = True
 
     async def run_scenario(self) -> None:
         await smu_reset_release_sync_seq(self).run()

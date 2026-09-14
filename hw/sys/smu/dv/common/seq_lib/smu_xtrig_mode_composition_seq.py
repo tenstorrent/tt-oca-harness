@@ -3,10 +3,19 @@
 """Sequence for smu_xtrig_mode_composition_test (SMU_104).
 
 The per-internal-CT mode vector the SMU presents to the DTP is
-{Cfg.XTRIG_INT_CT_MODE, 2'b00}: read on the DTP instance parameter, tied back
-to the elaborated Cfg field and to the +xtrig_int_ct_mode contract, and then
-exercised lane by lane on the external CTM pins, where a lane whose mode bit is
-set acknowledges a destination request and a pulse-sync lane never does.
+{Cfg.XTRIG_INT_CT_MODE, 2'b00}, declared as DTP_XTRIG_INT_CT_MODE in
+hw/sys/smu/rtl/smu.sv. Reading that parameter back and comparing it against the
+elaborated Cfg field, or against the +xtrig_int_ct_mode the same build was
+elaborated with, is a drift check on the elaboration: both sides come from the
+build, so no RTL defect can separate them. Those compares therefore carry no
+evidence token.
+
+The evidence is the live leg. Each external CTM lane is requested in turn and
+the ack pins are sampled: port_table.adoc states the ack ports are "Unused in
+pulse-sync mode (mode bit = 0)", so a lane whose mode bit is set must
+acknowledge and hold, a pulse-sync lane must never assert, and the number of
+lanes at which an ack was *observed* must come to the mode vector's population
+count. A DTP that ignored the mode vector fails all three.
 """
 
 from __future__ import annotations
@@ -68,7 +77,7 @@ class smu_xtrig_mode_composition_seq:
         )
         cfg_fields = decode_cfg(sample(hier(smu, "Cfg"), "smu.Cfg"))
         sb.expect_eq(
-            "elaborated Cfg.XTRIG_INT_CT_MODE matches the +xtrig_int_ct_mode contract",
+            "elaborated Cfg.XTRIG_INT_CT_MODE drift against +xtrig_int_ct_mode",
             cfg_fields["XTRIG_INT_CT_MODE"],
             mode_contract,
         )
@@ -76,7 +85,6 @@ class smu_xtrig_mode_composition_seq:
             "mode bits [9:2] presented to DTP are Cfg.XTRIG_INT_CT_MODE unmodified",
             dtp_mode >> 2,
             cfg_fields["XTRIG_INT_CT_MODE"],
-            evidence="CHK-SMU-XTRIG-MODE-S2",
         )
         self.log.info("DTP mode vector 0x%03x = {0x%02x, 2'b00}", dtp_mode, mode_contract)
 
@@ -90,7 +98,10 @@ class smu_xtrig_mode_composition_seq:
             sample(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack"),
             0,
         )
-        acked_lanes = 0
+        # Counted from what was sampled on xtrig_ctm_dst_ack, not from the mode
+        # vector the bench elaborated the DUT with: the aggregate below then
+        # fails on a DTP that acknowledged the wrong set of lanes.
+        observed_ack_lanes = 0
         for lane in range(XTRIG_NUM_INT_CT):
             want_ack = (1 << lane) if (mode_contract >> lane) & 1 else 0
             dut.xtrig_ctm_dst_req.value = 1 << lane
@@ -107,8 +118,8 @@ class smu_xtrig_mode_composition_seq:
                 want_ack,
                 evidence=token,
             )
-            if want_ack:
-                acked_lanes += 1
+            if any(v for v in trace):
+                observed_ack_lanes += 1
             dut.xtrig_ctm_dst_req.value = 0
             cleared = None
             for _ in range(ACK_CLEAR_BOUND):
@@ -118,12 +129,20 @@ class smu_xtrig_mode_composition_seq:
                     break
             sb.expect_eq(f"lane {lane} dst_ack returns to idle", cleared, 0)
         sb.expect_eq(
-            "handshake-mode lanes exercised",
-            acked_lanes,
+            "lanes observed acknowledging equals the mode vector population count",
+            observed_ack_lanes,
             bin(mode_contract).count("1"),
             evidence="CHK-SMU-XTRIG-MODE-S2",
         )
+        # Bench-side: the elaborated mode vector has to contain both kinds of
+        # lane or the two legs above have nothing to separate.
         sb.expect_true(
-            "the contract exercises both a handshake lane and a pulse-sync lane",
-            0 < acked_lanes < XTRIG_NUM_INT_CT,
+            "the elaborated mode vector has a handshake lane and a pulse-sync lane",
+            0 < bin(mode_contract).count("1") < XTRIG_NUM_INT_CT,
+        )
+        self.log.info(
+            "CTM lanes: %d observed acknowledging of %d requested, mode vector 0x%02x",
+            observed_ack_lanes,
+            XTRIG_NUM_INT_CT,
+            mode_contract,
         )

@@ -2,13 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_xtrig_mode_composition_test - per-internal-CT mode vector into DTP.
 
-Closes SMU-XTRIG-MODE.S1 and SMU-XTRIG-MODE.S2 against SMU_SPEC.md
-"Configuration Parameters", on the `--dut smu` production wrapper built with
-compile_smu_chiplet_no_sep: the DTP's XTRIG_INT_CT_MODE parameter is read as
-{Cfg.XTRIG_INT_CT_MODE, 2'b00} with the upper byte equal to the elaborated Cfg
-field and to the +xtrig_int_ct_mode contract, and each external CTM lane is
-then requested in turn so that only the lanes whose mode bit is set
-acknowledge.
+`Cfg.XTRIG_INT_CT_MODE` and the `{Cfg.XTRIG_INT_CT_MODE, 2'b00}` concatenation
+into the DTP exist only in `hw/sys/smu/rtl/smu_pkg.sv` and `hw/sys/smu/rtl/smu.sv`;
+this tree carries no SMU specification of either. The parameter reads below are
+therefore drift checks and carry no evidence token. What the tokens rest on is
+the live leg: `hw/sys/smu/doc/port_table.adoc` states that the CTM ack ports are
+"Unused in pulse-sync mode (mode bit = 0)", and each external CTM lane is
+requested in turn so that a lane whose mode bit is set acknowledges and a
+pulse-sync lane does not.
+
+On the `--dut smu` production wrapper built with compile_smu_chiplet_no_sep.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_xtrig_mode_composition_test --tool verilator
@@ -26,6 +29,7 @@ class smu_xtrig_mode_composition_test(smu_base_test):
     """Mode vector concatenation {Cfg.XTRIG_INT_CT_MODE, 2'b00} at the DTP."""
 
     use_shared_env = True
+    enforce_evidence_map = True
 
     async def run_scenario(self) -> None:
         await smu_xtrig_mode_composition_seq(self).run()

@@ -28,6 +28,7 @@ class smu_cold_reset_async_assert_test(smu_base_test):
     """rst_cold_ni asserts the reset outputs with all clocks stopped."""
 
     use_shared_env = True
+    enforce_evidence_map = True
 
     def start_clocks(self) -> None:
         dut = cocotb.top

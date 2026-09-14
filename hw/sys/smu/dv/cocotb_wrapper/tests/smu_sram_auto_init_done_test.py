@@ -26,6 +26,7 @@ class smu_sram_auto_init_done_test(smu_base_test):
     """smc_init_mem_done_o after the default SRAM auto-initialization."""
 
     use_shared_env = True
+    enforce_evidence_map = True
 
     async def run_scenario(self) -> None:
         await smu_sram_auto_init_done_seq(self).run()
