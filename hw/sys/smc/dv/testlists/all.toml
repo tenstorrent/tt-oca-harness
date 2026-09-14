@@ -95,7 +95,7 @@ name = "all"
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
-expected_count = 164
+expected_count = 168
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -162,6 +162,10 @@ tests = [
     "smc_fw_i2c_tx_stretch_timeout_recovery_test",
     "smc_fw_octs_p0_primary_test",
     "smc_fw_plic_claim_test",
+    "smc_fw_uart_log_engine_boundary_backpressure_test",
+    "smc_fw_uart_log_engine_disable_during_xfer_test",
+    "smc_fw_uart_log_engine_fetch_err_test",
+    "smc_fw_uart_log_engine_single_entry_test",
     "smc_gpio_boot_stall_test",
     "smc_gpio_ctrl_full_sweep_test",
     "smc_gpio_filter_access_sep_test",

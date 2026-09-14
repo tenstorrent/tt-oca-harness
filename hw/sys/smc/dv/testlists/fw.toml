@@ -198,6 +198,63 @@ args = [
     "+smc_i2c_shared_bus",
 ]
 
+[[tests]]
+# Log-engine images: the engine's data path is CPU-side (SRAM fetch, UART write,
+# MCR.LOOP return through the UART's own receiver), which no cocotb body drives.
+# The bench reads the SRAM source and the engine's programming back after the
+# verdict; single_entry also exposes the received-data interrupt on the UART
+# IRQ line, and fetch_err's unmapped address is probed from SEP_IN for DECERR.
+name = "smc_fw_uart_log_engine_single_entry_test"
+module = "smc_fw_uart_log_engine_single_entry_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "uart", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "uart_log_engine_single_entry"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=uart_log_engine_single_entry.ecc.hex",
+]
+
+[[tests]]
+name = "smc_fw_uart_log_engine_boundary_backpressure_test"
+module = "smc_fw_uart_log_engine_boundary_backpressure_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "uart", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "uart_log_engine_boundary_backpressure"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=uart_log_engine_boundary_backpressure.ecc.hex",
+]
+
+[[tests]]
+name = "smc_fw_uart_log_engine_disable_during_xfer_test"
+module = "smc_fw_uart_log_engine_disable_during_xfer_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "uart", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "uart_log_engine_disable_during_xfer"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=uart_log_engine_disable_during_xfer.ecc.hex",
+]
+
+[[tests]]
+name = "smc_fw_uart_log_engine_fetch_err_test"
+module = "smc_fw_uart_log_engine_fetch_err_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "uart", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "uart_log_engine_fetch_err"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=uart_log_engine_fetch_err.ecc.hex",
+]
+
 [[groups]]
 name = "fw"
 tests = [
@@ -211,5 +268,9 @@ tests = [
     "smc_fw_i2c_tx_stretch_timeout_recovery_test",
     "smc_fw_octs_p0_primary_test",
     "smc_fw_plic_claim_test",
+    "smc_fw_uart_log_engine_boundary_backpressure_test",
+    "smc_fw_uart_log_engine_disable_during_xfer_test",
+    "smc_fw_uart_log_engine_fetch_err_test",
+    "smc_fw_uart_log_engine_single_entry_test",
 ]
-expected_count = 10
+expected_count = 14
