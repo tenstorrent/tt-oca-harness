@@ -265,6 +265,7 @@ module smc_ip_integration (
     //////////////////////////////
     // Captured GPIO straps     //
     //////////////////////////////
+    // These rom_straps are intentionally undriven in RTL. They are to be driven/configured in DV/FW (cocotb)
 
     logic [smc_pkg::NUM_BONDED_GPIO-1:0] rom_straps;
     assign rom_straps = '0;
