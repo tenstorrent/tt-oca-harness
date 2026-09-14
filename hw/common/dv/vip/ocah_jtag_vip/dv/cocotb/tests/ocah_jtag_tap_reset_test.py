@@ -5,8 +5,11 @@
 The reactive device's TAP controller state is the observable: a TMS-high
 reset lands it in Test-Logic-Reset, every step of a random TMS walk matches
 the reference model, five or more TMS-high cycles reach Test-Logic-Reset from
-any start state, asserting TRST lands the device in Test-Logic-Reset and a DR
-scan after release returns IDCODE with no instruction loaded. A reset that
+any start state, an instruction scan paused in Pause-IR loads whole whether it
+resumes shifting or updates from Exit2-IR, an instruction scan with no
+Shift-IR cycle loads the capture pattern, asserting TRST lands the device in
+Test-Logic-Reset and a DR scan after release returns IDCODE with no
+instruction loaded. A reset that
 did not reach Test-Logic-Reset handed to a fail-fast checker must be rejected.
 
 ``OCAH_JTAG_SELFTEST_NEGATIVE`` desynchronizes the reference model before the
@@ -22,12 +25,16 @@ import random
 import cocotb
 from ocah_jtag_vip import OcahJtagState
 from ocah_jtag_vip_harness import (
+    CTRL_OPCODE,
     IDCODE,
     IDCODE_MASK,
     IDCODE_WIDTH,
+    IR_WIDTH,
     JtagHarness,
     build_stack,
+    capture_only_scan,
     negative_armed,
+    paused_scan,
     rejects,
     scenario_rng,
 )
@@ -41,8 +48,14 @@ REQUIRED_IDS = (
     "CHK-SLAVE-STATE",
     "CHK-JTAG-TRST-TLR",
     "CHK-JTAG-TRST-IDCODE",
+    "CHK-JTAG-IR-PAUSE",
+    "CHK-JTAG-IR-CAPTURE-ONLY",
     "CHK-JTAG-NEG-STATE",
 )
+PAUSE_CYCLES = 3
+# The device's Capture-IR pattern: IEEE 1149.1 fixes the two least significant
+# bits at 01.
+IR_CAPTURE = 0x01
 
 
 async def _random_walk(harness: JtagHarness, rng: random.Random, steps: int) -> None:
@@ -95,6 +108,36 @@ async def ocah_jtag_tap_reset_test(dut) -> None:
         checker.sync_state(OcahJtagState.SHIFT_DR)
     await _random_walk(harness, rng, steps)
     await _tms_high_resets(harness, rng)
+
+    # Instruction scans paused in Pause-IR load whole: the device holds its
+    # instruction shift register across the pause, whether the scan resumes
+    # shifting or updates straight from Exit2-IR. A scan with no Shift-IR
+    # cycle loads the capture pattern instead.
+    await seq.step(0)  # Test-Logic-Reset -> Run-Test/Idle
+    await seq.step(0)  # one idle cycle in Run-Test/Idle
+    for split, label in ((2, "resumed"), (IR_WIDTH, "completed")):
+        await paused_scan(
+            harness,
+            is_ir=True,
+            value=CTRL_OPCODE,
+            width=IR_WIDTH,
+            split=split,
+            pause_cycles=PAUSE_CYCLES,
+            context=f"{label} paused IR scan",
+        )
+        checker.expect_equal(
+            "CHK-JTAG-IR-PAUSE",
+            slave.active_instruction(),
+            CTRL_OPCODE,
+            context=f"instruction after a {label} IR scan paused {PAUSE_CYCLES} cycles",
+        )
+    await capture_only_scan(harness, is_ir=True)
+    checker.expect_equal(
+        "CHK-JTAG-IR-CAPTURE-ONLY",
+        slave.active_instruction(),
+        IR_CAPTURE,
+        context="instruction after an IR scan with no Shift-IR cycle",
+    )
 
     await seq.goto_state(OcahJtagState.SHIFT_DR)
     checker.sync_state(OcahJtagState.SHIFT_DR)

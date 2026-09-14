@@ -68,6 +68,22 @@ module efuse_shadow_reg_access_control #(
   `OCAH_OT_ASSERT_INIT(EfuseAddrWidthCheck_A, EFUSE_ADDR_WIDTH >= 4)
   `OCAH_OT_ASSERT_INIT(EfuseFieldsCheck_A, EFUSE_FIELDS >= 1)
 
+  // Bounds every mapped field idx for the locks_i[index*2] / [index*2+1] lookups.
+  // The code this guards also skips idx '1, so this does too.
+  function automatic logic field_map_idx_in_range();
+    logic in_range;
+    in_range = 1'b1;
+    for (int unsigned i = 0; i < EFUSE_FIELDS; i++) begin
+      if ((efuse_field_map_i[i].idx != '1) &&
+          (int'(efuse_field_map_i[i].idx) >= int'(EFUSE_FIELDS) - 1)) begin
+        in_range = 1'b0;
+      end
+    end
+    return in_range;
+  endfunction
+
+  `OCAH_OT_ASSERT_INIT(EfuseFieldMapIdxInRange_A, field_map_idx_in_range())
+
   ////////////////////////////////////////////////////////////////////////////
   // Signal Declarations
   ////////////////////////////////////////////////////////////////////////////
