@@ -12,21 +12,22 @@ Constrained-random lengths and data each round (shared framework, seed from
 +seed/SEED/default). Every transfer begins OD then switches to PP, so the mux is
 exercised across a variety of payload sizes.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.i3c_rand import RandMgr, rand_bytes, rand_len
 from env.i3c_test_base import make_env
-from env.i3c_rand import RandMgr, rand_len, rand_bytes
 from env.i3c_vip_flow import bring_up_and_assign, private_write
 
 N_ROUNDS = 4
 MWL = 32
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_vip_od_pp_mode_switch(dut):
     tb, helper, ctrl, _tgt = await make_env(dut)
     vip = await bring_up_and_assign(dut, ctrl)
-    r = RandMgr(name="vip_od_pp")             # seed logged; +seed/SEED override
+    r = RandMgr(name="vip_od_pp")  # seed logged; +seed/SEED override
 
     for _ in range(N_ROUNDS):
         n = rand_len(r, MWL)

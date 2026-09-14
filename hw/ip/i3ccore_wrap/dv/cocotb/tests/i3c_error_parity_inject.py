@@ -36,36 +36,37 @@ Attribution note: te2_err_o = te2_err_ccc | te2_err_priv_wr
 so the counter also advances on CCC data-parity errors. No CCC traffic is issued
 inside the injection window, so a +1 is attributable to the private write.
 """
+
 import os
 import sys
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
-from env.i3c_test_base import make_env, bring_up_and_assign
 from env.i3c_api import (
+    TTI_ERR_CTRL_TE2_DET_EN_BIT,
     PioIntrStatus,
     TtiQueueStatus,
     TtiTargetErrCtrl,
-    TTI_ERR_CTRL_TE2_DET_EN_BIT,
     build_immediate_write_cmd,
 )
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 # Authoritative register map (generated) — no hand-copied offsets.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../regs/gen/py'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
 from I3CCSR_reg import (  # noqa: E402
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR,
-    I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR,
     I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
-    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
     I3C_EC_TTI_RX_DATA_PORT_REG_ADDR,
+    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
+    I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR,
+    I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR,
+    PIOCONTROL_COMMAND_PORT_REG_ADDR,
+    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
 )
 
 WRITE_DATA = [0xDE, 0xAD, 0xBE, 0xEF]
-INJECT_BYTE = 2          # flip inside byte 2 -> bytes 0..1 should survive
-INJECT_BIT = 0           # which of the 8 data bits of that byte
+INJECT_BYTE = 2  # flip inside byte 2 -> bytes 0..1 should survive
+INJECT_BIT = 0  # which of the 8 data bits of that byte
 
 
 async def _enable_te2_detection(helper, tgt, log):
@@ -77,8 +78,10 @@ async def _enable_te2_detection(helper, tgt, log):
 
     back = TtiTargetErrCtrl()
     back.val = await helper.read(tgt.base + I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR)
-    log.info(f"TARGET_ERR_CTRL = 0x{back.val:08X} "
-             f"(te2_err_det_en bit {TTI_ERR_CTRL_TE2_DET_EN_BIT} = {back.f.te2_err_det_en})")
+    log.info(
+        f"TARGET_ERR_CTRL = 0x{back.val:08X} "
+        f"(te2_err_det_en bit {TTI_ERR_CTRL_TE2_DET_EN_BIT} = {back.f.te2_err_det_en})"
+    )
     return back.f.te2_err_det_en
 
 
@@ -95,7 +98,11 @@ async def _drain_target_rx(helper, tgt, log):
     """
     ok, _ = await helper.poll_field_clear(
         tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
-        TtiQueueStatus, 'rx_desc_queue_empty', max_polls=2000, interval=10)
+        TtiQueueStatus,
+        "rx_desc_queue_empty",
+        max_polls=2000,
+        interval=10,
+    )
     if not ok:
         log.info("  no target RX descriptor was posted")
         return None, []
@@ -126,12 +133,16 @@ async def _wait_response(helper, ctrl, log, max_polls=20000):
     """Wait for resp_ready_stat and return (ok, resp, err_status)."""
     ok, _ = await helper.poll_field(
         ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-        PioIntrStatus, 'resp_ready_stat', max_polls=max_polls, interval=10)
+        PioIntrStatus,
+        "resp_ready_stat",
+        max_polls=max_polls,
+        interval=10,
+    )
     if not ok:
         log.info("  no controller response descriptor within the poll budget")
         return False, 0, None
     resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
-    err = (resp >> 28) & 0xF          # ERR_STATUS [31:28], HCI v1.2 Table 146
+    err = (resp >> 28) & 0xF  # ERR_STATUS [31:28], HCI v1.2 Table 146
     log.info(f"  controller response = 0x{resp:08X} (err_status=0x{err:X})")
     return True, resp, err
 
@@ -181,11 +192,12 @@ async def _inject_bit_flip(dut, byte_index, bit_index, log):
     while bus_scl() == 1:
         await RisingEdge(dut.clk)
     dut.sda_corrupt.value = 0
-    log.info(f"  injected bit flip at SCL edge {target_edge} "
-             f"(data byte {byte_index}, bit {bit_index})")
+    log.info(
+        f"  injected bit flip at SCL edge {target_edge} (data byte {byte_index}, bit {bit_index})"
+    )
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_error_status_baseline(dut):
     """Clean transfer: response ERR_STATUS must read exactly 0x0 SUCCESS."""
     tb, helper, ctrl, tgt = await make_env(dut)
@@ -202,8 +214,7 @@ async def test_error_status_baseline(dut):
 
     # No error was injected, so no error interrupt may be latched either.
     await ClockCycles(dut.clk, 50)
-    status = await helper.read_into(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+    status = await helper.read_into(ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
     tb.log.info(f"PIO_INTR_STATUS = 0x{status.val:08X}")
     assert not status.f.transfer_err_stat, (
         f"transfer_err_stat latched on a clean transfer: 0x{status.val:08X}"
@@ -212,7 +223,7 @@ async def test_error_status_baseline(dut):
     tb.log.info("Error-status baseline verified (err_status=0x0, no transfer error)")
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_error_parity_inject(dut):
     """Flip one bus bit in a data byte; the target's TE2 parity check must fire."""
     tb, helper, ctrl, tgt = await make_env(dut)
@@ -241,9 +252,7 @@ async def test_error_parity_inject(dut):
     assert n_clean == len(WRITE_DATA), (
         f"clean leg: target received {n_clean} bytes, expected {len(WRITE_DATA)}"
     )
-    assert data_clean == WRITE_DATA, (
-        f"clean leg: payload mismatch {data_clean} != {WRITE_DATA}"
-    )
+    assert data_clean == WRITE_DATA, f"clean leg: payload mismatch {data_clean} != {WRITE_DATA}"
 
     clean_cnt = await _te2_count(helper, tgt)
     tb.log.info(f"  TE2 count after clean transfer = {clean_cnt}")
@@ -289,6 +298,8 @@ async def test_error_parity_inject(dut):
     )
 
     tb.log.info("=" * 60)
-    tb.log.info(f"TE2 parity injection verified: count {clean_cnt} -> {bad_cnt}, "
-                f"target RX suppressed from byte {INJECT_BYTE} onwards "
-                f"(received {received})")
+    tb.log.info(
+        f"TE2 parity injection verified: count {clean_cnt} -> {bad_cnt}, "
+        f"target RX suppressed from byte {INJECT_BYTE} onwards "
+        f"(received {received})"
+    )

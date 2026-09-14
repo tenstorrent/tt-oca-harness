@@ -9,19 +9,20 @@ Verifies data transfers using the configured Push-Pull timing bank.
 
 Constrained-random length + data (shared framework, seed from +seed/SEED/default).
 """
+
 import cocotb
-from env.i3c_test_base import make_env, bring_up_and_assign
-from env.i3c_rand import RandMgr, rand_len, rand_bytes
+from env.i3c_rand import RandMgr, rand_bytes, rand_len
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 MWL = 64
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_pp_timing_transfer(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     # bring_up_and_assign already programs both OD and PP timing banks
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="pp_timing")             # seed logged; +seed/SEED override
+    r = RandMgr(name="pp_timing")  # seed logged; +seed/SEED override
 
     write_data = rand_bytes(r, rand_len(r, MWL))
     ok, resp, rx = await ctrl.private_write(write_data, tgt, dat_idx=0)

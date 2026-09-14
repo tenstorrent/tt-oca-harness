@@ -16,12 +16,18 @@ thresholds (2/4/8 entries) are reachable and the RX-data threshold interrupt
 fires and drives the drain as intended. t=3 needs >=16 entries (>=64 B) before
 the threshold can fire, so a 32-byte transfer cannot exercise it.
 """
+
 import cocotb
-from env.i3c_test_base import (make_env, init_controller, init_target,
-                           DEFAULT_STATIC_ADDR, DEFAULT_DYNAMIC_ADDR)
+from env.i3c_test_base import (
+    DEFAULT_DYNAMIC_ADDR,
+    DEFAULT_STATIC_ADDR,
+    init_controller,
+    init_target,
+    make_env,
+)
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_threshold_sweep(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
 

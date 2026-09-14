@@ -19,10 +19,11 @@ random subset (at least one bit, only legal bits) is generated so the defining-
 byte datapath sees the full legal event-mask space. DISEC mirrors whatever
 ENEC enabled so the pair is symmetric.
 """
+
 import cocotb
-from env.i3c_api import CCC_ENEC_BCAST, CCC_DISEC_BCAST
-from env.i3c_test_base import make_env, bring_up_and_assign
+from env.i3c_api import CCC_DISEC_BCAST, CCC_ENEC_BCAST
 from env.i3c_rand import RandMgr
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 # Legal event-enable bits in the ENEC/DISEC defining byte (MIPI I3C):
 #   bit0 = ENINT (IBI), bit1 = ENCR (controller-role req), bit3 = ENHJ (hot-join)
@@ -37,28 +38,26 @@ def rand_event_mask(r):
         for bit in EVENT_BITS:
             if r.randint(0, 1):
                 mask |= bit
-        if mask:               # at least one event bit set
+        if mask:  # at least one event bit set
             return mask
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_broadcast_ccc(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="broadcast_ccc")         # seed logged; +seed/SEED override
+    r = RandMgr(name="broadcast_ccc")  # seed logged; +seed/SEED override
 
     event_mask = rand_event_mask(r)
 
     # Broadcast ENEC: enable a random set of events on all Targets
     ok, resp = await ctrl.broadcast_set_ccc(CCC_ENEC_BCAST, [event_mask])
-    tb.log.info(f"Broadcast ENEC(0x00, mask=0x{event_mask:02X}) "
-                f"ok={ok} resp=0x{resp:08X}")
+    tb.log.info(f"Broadcast ENEC(0x00, mask=0x{event_mask:02X}) ok={ok} resp=0x{resp:08X}")
     assert ok, f"Broadcast ENEC failed resp=0x{resp:08X}"
 
     # Broadcast DISEC: disable the same set of events (symmetric pair)
     ok, resp = await ctrl.broadcast_set_ccc(CCC_DISEC_BCAST, [event_mask])
-    tb.log.info(f"Broadcast DISEC(0x01, mask=0x{event_mask:02X}) "
-                f"ok={ok} resp=0x{resp:08X}")
+    tb.log.info(f"Broadcast DISEC(0x01, mask=0x{event_mask:02X}) ok={ok} resp=0x{resp:08X}")
     assert ok, f"Broadcast DISEC failed resp=0x{resp:08X}"
 
     # Broadcast RSTDAA: clear Dynamic Address on all Targets (must be last)

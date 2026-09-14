@@ -30,7 +30,7 @@ if not hasattr(cocotb.utils, "_get_simulator_precision"):
 if not hasattr(cocotb.handle, "ModifiableObject"):
     cocotb.handle.ModifiableObject = cocotb.handle.ValueObjectBase
 
-from cocotbext_i3c.common import I3C_RSVD_BYTE, I3cState        # noqa: E402
-from cocotbext_i3c.i3c_target import I3cHeader, I3CTarget       # noqa: E402
+from cocotbext_i3c.common import I3C_RSVD_BYTE, I3cState  # noqa: E402
+from cocotbext_i3c.i3c_target import I3cHeader, I3CTarget  # noqa: E402
 
 __all__ = ["I3CTarget", "I3cHeader", "I3cState", "I3C_RSVD_BYTE"]

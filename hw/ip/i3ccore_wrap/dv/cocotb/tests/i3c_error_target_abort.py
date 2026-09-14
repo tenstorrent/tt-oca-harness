@@ -34,29 +34,29 @@ The read command length and target TX byte count are driven independently. A bou
 response poll checks completion, and the response status and received length
 distinguish a short read from an address NACK.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.i3c_test_base import make_env, bring_up_and_assign
-from env.i3c_rand import RandMgr, rand_bytes
-
 from env.i3c_api import PioIntrStatus, TtiQueueStatus
+from env.i3c_rand import RandMgr, rand_bytes
+from env.i3c_test_base import bring_up_and_assign, make_env
 from I3CCSR_reg import (
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
     I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
+    I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
     I3C_EC_TTI_TX_DATA_PORT_REG_ADDR,
     I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
-    I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
+    PIOCONTROL_COMMAND_PORT_REG_ADDR,
+    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
+    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
 )
 
 BYTES_PER_ENTRY = 4
-TTI_TX_DATA_THLD_STAT = (1 << 8)
-TTI_TX_DESC_COMPLETE = (1 << 26)
+TTI_TX_DATA_THLD_STAT = 1 << 8
+TTI_TX_DESC_COMPLETE = 1 << 26
 
 # Command descriptor DWORD 0 field positions (i3c_pkg.sv regular_trans_dat_desc_t).
-SRE_BIT = 24        # iff 0 permits short reads
+SRE_BIT = 24  # iff 0 permits short reads
 RNW_BIT = 29
 WROC_BIT = 30
 TOC_BIT = 31
@@ -82,29 +82,34 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
     # reach the threshold and therefore not trigger the RX_THLD_STAT interrupt",
     # "especially pertinent for very short Read transfers".
     sup_entries = r.randint(rx_entries_per_int, rx_entries_per_int + 3)
-    req_entries = sup_entries + r.randint(1, 4)         # strictly more requested
+    req_entries = sup_entries + r.randint(1, 4)  # strictly more requested
     requested_len = req_entries * BYTES_PER_ENTRY
     supplied_len = sup_entries * BYTES_PER_ENTRY
     tgt_data = rand_bytes(r, supplied_len)
     dat_idx = 0
 
-    tb.log.info(f"Short read (sre={sre}): controller requests {requested_len}B, "
-                f"target supplies {supplied_len}B")
+    tb.log.info(
+        f"Short read (sre={sre}): controller requests {requested_len}B, "
+        f"target supplies {supplied_len}B"
+    )
 
     # Arm the target before issuing the read because an empty TX queue causes an
     # address NACK. Poll QUEUE_STATUS because TX_DESC_THLD_STAT is not a reliable
     # readiness indication.
     ok, _qs = await helper.poll_field_clear(
         tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
-        TtiQueueStatus, 'tx_desc_queue_full', max_polls=1000, interval=10)
+        TtiQueueStatus,
+        "tx_desc_queue_full",
+        max_polls=1000,
+        interval=10,
+    )
     assert ok, (
         "target TX descriptor queue never freed (tx_desc_queue_full never cleared "
         f"in 1000 polls, supplied_len={supplied_len})"
     )
 
     # Tell the target to supply only `supplied_len` bytes (fewer than requested).
-    await helper.write(tgt.base + I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
-                       supplied_len << 16)
+    await helper.write(tgt.base + I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, supplied_len << 16)
 
     bytes_written = 0
     bytes_read = 0
@@ -113,19 +118,23 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
     # Pre-fill the whole short payload before the command so arming wins the race
     # deterministically; anything left over streams in the loop below.
     while bytes_written < supplied_len:
-        qs = await helper.read_into(
-            tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
+        qs = await helper.read_into(tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
         if qs.f.tx_data_queue_full:
             break
-        word = helper.pack_bytes(
-            tgt_data[bytes_written:bytes_written + BYTES_PER_ENTRY])
+        word = helper.pack_bytes(tgt_data[bytes_written : bytes_written + BYTES_PER_ENTRY])
         await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
         bytes_written += min(BYTES_PER_ENTRY, supplied_len - bytes_written)
     tb.log.info(f"  armed target: {bytes_written}/{supplied_len}B pre-filled")
 
     # Issue the read command for the *requested* length.
-    cmd_lo = ((0x0 << 0) | (dat_idx << 16) | (sre << SRE_BIT) |
-              (1 << RNW_BIT) | (1 << WROC_BIT) | (1 << TOC_BIT))
+    cmd_lo = (
+        (0x0 << 0)
+        | (dat_idx << 16)
+        | (sre << SRE_BIT)
+        | (1 << RNW_BIT)
+        | (1 << WROC_BIT)
+        | (1 << TOC_BIT)
+    )
     cmd_hi = requested_len << 16
     await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
     await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
@@ -141,16 +150,17 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
         tgt_status = await helper.read(tgt.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
 
         if bytes_written < supplied_len and (tgt_status & TTI_TX_DATA_THLD_STAT):
-            chunk = min(BYTES_PER_ENTRY * rx_entries_per_int,
-                        supplied_len - bytes_written)
+            chunk = min(BYTES_PER_ENTRY * rx_entries_per_int, supplied_len - bytes_written)
             for i in range(0, chunk, BYTES_PER_ENTRY):
                 word = helper.pack_bytes(
-                    tgt_data[bytes_written + i:bytes_written + i + BYTES_PER_ENTRY])
+                    tgt_data[bytes_written + i : bytes_written + i + BYTES_PER_ENTRY]
+                )
                 await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
             bytes_written += chunk
 
         ctrl_status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+        )
         if ctrl_status.f.rx_thld_stat:
             for _e in range(rx_entries_per_int):
                 word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
@@ -163,29 +173,31 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
         await ClockCycles(dut.clk, 10)
 
     obs = {
-        'sre': sre,
-        'requested_len': requested_len,
-        'supplied_len': supplied_len,
-        'tgt_data': tgt_data,
-        'got_resp': got_resp,
-        'polls': polls,
-        'bytes_written': bytes_written,
-        'bytes_read': bytes_read,
-        'rx_data': rx_data,
-        'tgt_status': tgt_status,
-        'ctrl_status': ctrl_status,
-        'resp': None,
-        'err_status': None,
-        'resp_len': None,
+        "sre": sre,
+        "requested_len": requested_len,
+        "supplied_len": supplied_len,
+        "tgt_data": tgt_data,
+        "got_resp": got_resp,
+        "polls": polls,
+        "bytes_written": bytes_written,
+        "bytes_read": bytes_read,
+        "rx_data": rx_data,
+        "tgt_status": tgt_status,
+        "ctrl_status": ctrl_status,
+        "resp": None,
+        "err_status": None,
+        "resp_len": None,
     }
 
     if got_resp:
         resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
-        obs['resp'] = resp
-        obs['err_status'] = (resp >> 28) & 0xF      # ERR_STATUS [31:28], Table 146
-        obs['resp_len'] = resp & 0xFFFF
-        tb.log.info(f"  response=0x{resp:08X} err_status=0x{obs['err_status']:X} "
-                    f"data_length={obs['resp_len']} rx_drained={bytes_read}B")
+        obs["resp"] = resp
+        obs["err_status"] = (resp >> 28) & 0xF  # ERR_STATUS [31:28], Table 146
+        obs["resp_len"] = resp & 0xFFFF
+        tb.log.info(
+            f"  response=0x{resp:08X} err_status=0x{obs['err_status']:X} "
+            f"data_length={obs['resp_len']} rx_drained={bytes_read}B"
+        )
 
     return obs
 
@@ -193,7 +205,7 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
 def _no_response_diag(o):
     """Last-state diagnostics: distinguishes 'data moved, response missing' from
     'nothing ever moved on the bus'."""
-    c = o['ctrl_status']
+    c = o["ctrl_status"]
     if c is None:
         return "the service loop never executed"
     return (
@@ -209,7 +221,7 @@ def _no_response_diag(o):
     )
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_short_read_permitted(dut):
     """sre=0: a short read is permitted -> SUCCESS with the RECEIVED DATA_LENGTH."""
     tb, helper, ctrl, tgt = await make_env(dut)
@@ -220,49 +232,48 @@ async def test_short_read_permitted(dut):
 
     # The controller must not hang: a response descriptor is mandatory for a
     # read-type transfer with wroc=1 (HCI PIO Mode), and sre=0 does not exempt it.
-    assert o['got_resp'], (
+    assert o["got_resp"], (
         f"no response descriptor for a permitted short read "
-        f"(requested={o['requested_len']}, supplied={o['supplied_len']}), "
-        + _no_response_diag(o)
+        f"(requested={o['requested_len']}, supplied={o['supplied_len']}), " + _no_response_diag(o)
     )
 
     # Getting *a* response is not the scenario: an address NACK satisfies got_resp
     # exactly as well as a real short read, so check the outcome exactly.
-    assert o['err_status'] == 0x0, (
+    assert o["err_status"] == 0x0, (
         f"expected ERR_STATUS 0x0 SUCCESS for a permitted short read (sre=0), got "
         f"0x{o['err_status']:X}; 0x5 NACK would mean the target was not armed before "
         f"the command and no data moved. resp=0x{o['resp']:08X}"
     )
     # Table 146: for a read, DATA_LENGTH is the RECEIVED length -- this is how
     # software learns the read came up short.
-    assert o['resp_len'] == o['supplied_len'], (
+    assert o["resp_len"] == o["supplied_len"], (
         f"response DATA_LENGTH {o['resp_len']} != {o['supplied_len']} bytes the target "
         f"supplied (requested {o['requested_len']})"
     )
 
     # Final drain: the threshold-driven drain can only move whole rx_entries_per_int
     # batches, so a sub-threshold tail is still queued. HCI 6.8.1: use DATA_LENGTH.
-    bytes_read, rx_data = o['bytes_read'], o['rx_data']
-    while bytes_read < o['resp_len']:
+    bytes_read, rx_data = o["bytes_read"], o["rx_data"]
+    while bytes_read < o["resp_len"]:
         word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
-        take = min(BYTES_PER_ENTRY, o['resp_len'] - bytes_read)
+        take = min(BYTES_PER_ENTRY, o["resp_len"] - bytes_read)
         rx_data.extend(helper.unpack_bytes(word, take))
         bytes_read += take
 
     # Zero observed bytes is a fail, never a pass.
-    assert bytes_read == o['supplied_len'], (
+    assert bytes_read == o["supplied_len"], (
         f"controller delivered {bytes_read}B, expected {o['supplied_len']}B"
     )
-    assert rx_data[:o['supplied_len']] == list(o['tgt_data']), (
+    assert rx_data[: o["supplied_len"]] == list(o["tgt_data"]), (
         f"short-read payload mismatch: got "
-        f"{[f'0x{b:02X}' for b in rx_data[:o['supplied_len']]]} != "
+        f"{[f'0x{b:02X}' for b in rx_data[: o['supplied_len']]]} != "
         f"sent {[f'0x{b:02X}' for b in o['tgt_data']]}"
     )
 
     tb.log.info(f"Permitted short read verified (seed=0x{r.seed:08X})")
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_short_read_error(dut):
     """sre=1: a short read is NOT permitted -> ERR_STATUS 0x7 I3C_SHORT_READ_ERR."""
     tb, helper, ctrl, tgt = await make_env(dut)
@@ -271,15 +282,14 @@ async def test_short_read_error(dut):
 
     o = await _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre=1)
 
-    assert o['got_resp'], (
+    assert o["got_resp"], (
         f"no response descriptor for a short read with sre=1 "
-        f"(requested={o['requested_len']}, supplied={o['supplied_len']}), "
-        + _no_response_diag(o)
+        f"(requested={o['requested_len']}, supplied={o['supplied_len']}), " + _no_response_diag(o)
     )
     # Table 146: 0x7 I3C_SHORT_READ_ERR is defined as the target returning fewer bytes
     # than requested "of a Transfer Command that did not permit a 'short' read" --
     # which is exactly sre=1.
-    assert o['err_status'] == 0x7, (
+    assert o["err_status"] == 0x7, (
         f"expected ERR_STATUS 0x7 I3C_SHORT_READ_ERR for sre=1, got "
         f"0x{o['err_status']:X} (resp=0x{o['resp']:08X}, "
         f"data_length={o['resp_len']}, rx_drained={o['bytes_read']}B)"

@@ -29,26 +29,29 @@ transfer), or when the transfer phase encountered an error" -- this command sets
 wroc=1 and is a read, so either clause alone requires one. The only exemption from
 the 1:1 command/response mapping is successful *Write*-type transfers.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.i3c_test_base import (
-    make_env, init_controller, DEFAULT_STATIC_ADDR, DEFAULT_DYNAMIC_ADDR,
-)
-from env.i3c_rand import RandMgr, rand_bytes
-from env.i3c_vip_target import VipI3cTarget
-
 from env.i3c_api import PioIntrStatus
+from env.i3c_rand import RandMgr, rand_bytes
+from env.i3c_test_base import (
+    DEFAULT_DYNAMIC_ADDR,
+    DEFAULT_STATIC_ADDR,
+    init_controller,
+    make_env,
+)
+from env.i3c_vip_target import VipI3cTarget
 from I3CCSR_reg import (
     PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
     PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
     PIOCONTROL_RX_DATA_PORT_REG_ADDR,
 )
 
 BYTES_PER_ENTRY = 4
 
 # Command descriptor DWORD 0 field positions (i3c_pkg.sv regular_trans_dat_desc_t).
-SRE_BIT = 24        # iff 0 permits short reads
+SRE_BIT = 24  # iff 0 permits short reads
 RNW_BIT = 29
 WROC_BIT = 30
 TOC_BIT = 31
@@ -56,9 +59,9 @@ TOC_BIT = 31
 POLL_BUDGET = 20000
 
 
-async def _bring_up_vip(dut, tb, ctrl,
-                        static_addr=DEFAULT_STATIC_ADDR,
-                        dynamic_addr=DEFAULT_DYNAMIC_ADDR):
+async def _bring_up_vip(
+    dut, tb, ctrl, static_addr=DEFAULT_STATIC_ADDR, dynamic_addr=DEFAULT_DYNAMIC_ADDR
+):
     """Attach the VIP target, then assign it a dynamic address over the bus."""
     vip = VipI3cTarget(
         sda_i=dut.sda_shared,
@@ -96,12 +99,11 @@ def _pick_lengths(ctrl, r):
     # rx_thld_stat only fires at 1 << (1+1) = 4 entries = 16 bytes.
     rx_entries_per_int = 1 << (ctrl.rx_thld + 1)
     sup_entries = r.randint(rx_entries_per_int, rx_entries_per_int + 3)
-    req_entries = sup_entries + r.randint(1, 4)         # strictly more requested
+    req_entries = sup_entries + r.randint(1, 4)  # strictly more requested
     return req_entries * BYTES_PER_ENTRY, sup_entries * BYTES_PER_ENTRY
 
 
-async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre,
-                            requested_len, supplied_len):
+async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre, requested_len, supplied_len):
     """Create a genuine short read with the given SRE, and observe the outcome.
 
     Asserts only on harness preconditions. The DUT's response is returned, never
@@ -111,16 +113,24 @@ async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre,
     tgt_data = rand_bytes(r, supplied_len)
     dat_idx = 0
 
-    tb.log.info(f"Short read (sre={sre}): controller requests {requested_len}B, "
-                f"VIP target supplies {supplied_len}B")
+    tb.log.info(
+        f"Short read (sre={sre}): controller requests {requested_len}B, "
+        f"VIP target supplies {supplied_len}B"
+    )
 
     # Queue the whole short payload up front. The VIP terminates the data phase
     # after the last queued byte, so no mid-transfer top-up is needed and there is
     # no arming race for the address phase to lose.
     vip.load_read_data(tgt_data)
 
-    cmd_lo = ((0x0 << 0) | (dat_idx << 16) | (sre << SRE_BIT) |
-              (1 << RNW_BIT) | (1 << WROC_BIT) | (1 << TOC_BIT))
+    cmd_lo = (
+        (0x0 << 0)
+        | (dat_idx << 16)
+        | (sre << SRE_BIT)
+        | (1 << RNW_BIT)
+        | (1 << WROC_BIT)
+        | (1 << TOC_BIT)
+    )
     cmd_hi = requested_len << 16
     await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
     await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
@@ -135,7 +145,8 @@ async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre,
     for _ in range(POLL_BUDGET):
         polls += 1
         ctrl_status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+        )
         if ctrl_status.f.rx_thld_stat:
             for _e in range(rx_entries_per_int):
                 word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
@@ -148,28 +159,30 @@ async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre,
         await ClockCycles(dut.clk, 10)
 
     obs = {
-        'sre': sre,
-        'requested_len': requested_len,
-        'supplied_len': supplied_len,
-        'tgt_data': tgt_data,
-        'got_resp': got_resp,
-        'polls': polls,
-        'bytes_read': bytes_read,
-        'rx_data': rx_data,
-        'ctrl_status': ctrl_status,
-        'vip_state': vip.state,
-        'resp': None,
-        'err_status': None,
-        'resp_len': None,
+        "sre": sre,
+        "requested_len": requested_len,
+        "supplied_len": supplied_len,
+        "tgt_data": tgt_data,
+        "got_resp": got_resp,
+        "polls": polls,
+        "bytes_read": bytes_read,
+        "rx_data": rx_data,
+        "ctrl_status": ctrl_status,
+        "vip_state": vip.state,
+        "resp": None,
+        "err_status": None,
+        "resp_len": None,
     }
 
     if got_resp:
         resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
-        obs['resp'] = resp
-        obs['err_status'] = (resp >> 28) & 0xF      # ERR_STATUS [31:28], Table 146
-        obs['resp_len'] = resp & 0xFFFF
-        tb.log.info(f"  response=0x{resp:08X} err_status=0x{obs['err_status']:X} "
-                    f"data_length={obs['resp_len']} rx_drained={bytes_read}B")
+        obs["resp"] = resp
+        obs["err_status"] = (resp >> 28) & 0xF  # ERR_STATUS [31:28], Table 146
+        obs["resp_len"] = resp & 0xFFFF
+        tb.log.info(
+            f"  response=0x{resp:08X} err_status=0x{obs['err_status']:X} "
+            f"data_length={obs['resp_len']} rx_drained={bytes_read}B"
+        )
 
     return obs
 
@@ -177,7 +190,7 @@ async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre,
 def _no_response_diag(o):
     """Last-state diagnostics: distinguishes 'data moved, response missing' from
     'nothing ever moved on the bus'."""
-    c = o['ctrl_status']
+    c = o["ctrl_status"]
     if c is None:
         return "the service loop never executed"
     return (
@@ -191,7 +204,7 @@ def _no_response_diag(o):
     )
 
 
-@cocotb.test(timeout_time=8000, timeout_unit='us')
+@cocotb.test(timeout_time=8000, timeout_unit="us")
 async def test_short_read_reporting_vip(dut):
     """Both SRE values against one VIP target, sre=1 checked first.
 
@@ -209,14 +222,14 @@ async def test_short_read_reporting_vip(dut):
     # identical across the two runs and SRE is the only variable.
     requested_len, supplied_len = _pick_lengths(ctrl, r)
 
-    err = await _drive_short_read(dut, tb, helper, ctrl, vip, r, 1,
-                                  requested_len, supplied_len)
-    permitted = await _drive_short_read(dut, tb, helper, ctrl, vip, r, 0,
-                                        requested_len, supplied_len)
+    err = await _drive_short_read(dut, tb, helper, ctrl, vip, r, 1, requested_len, supplied_len)
+    permitted = await _drive_short_read(
+        dut, tb, helper, ctrl, vip, r, 0, requested_len, supplied_len
+    )
 
     # sre=1 first: it is the reference path. If short-read detection reports here and
     # sre=0 does not, the gap is in reporting, not in the model driving the bus.
-    assert err['got_resp'], (
+    assert err["got_resp"], (
         f"no response descriptor for a short read with sre=1 "
         f"(requested={err['requested_len']}, supplied={err['supplied_len']}), "
         + _no_response_diag(err)
@@ -224,7 +237,7 @@ async def test_short_read_reporting_vip(dut):
     # Table 146: 0x7 I3C_SHORT_READ_ERR is defined as the target returning fewer bytes
     # than requested "of a Transfer Command that did not permit a 'short' read" --
     # which is exactly sre=1.
-    assert err['err_status'] == 0x7, (
+    assert err["err_status"] == 0x7, (
         f"expected ERR_STATUS 0x7 I3C_SHORT_READ_ERR for sre=1, got "
         f"0x{err['err_status']:X} (resp=0x{err['resp']:08X}, "
         f"data_length={err['resp_len']}, rx_drained={err['bytes_read']}B)"
@@ -233,23 +246,22 @@ async def test_short_read_reporting_vip(dut):
 
     # The controller must not hang: a response descriptor is mandatory for a
     # read-type transfer with wroc=1 (HCI PIO Mode), and sre=0 does not exempt it.
-    assert permitted['got_resp'], (
+    assert permitted["got_resp"], (
         f"no response descriptor for a permitted short read "
         f"(requested={permitted['requested_len']}, "
-        f"supplied={permitted['supplied_len']}), "
-        + _no_response_diag(permitted)
+        f"supplied={permitted['supplied_len']}), " + _no_response_diag(permitted)
     )
 
     # Getting *a* response is not the scenario: an address NACK satisfies got_resp
     # exactly as well as a real short read, so check the outcome exactly.
-    assert permitted['err_status'] == 0x0, (
+    assert permitted["err_status"] == 0x0, (
         f"expected ERR_STATUS 0x0 SUCCESS for a permitted short read (sre=0), got "
         f"0x{permitted['err_status']:X}; 0x5 NACK would mean the VIP target did not "
         f"ACK its dynamic address. resp=0x{permitted['resp']:08X}"
     )
     # Table 146: for a read, DATA_LENGTH is the RECEIVED length -- this is how
     # software learns the read came up short.
-    assert permitted['resp_len'] == permitted['supplied_len'], (
+    assert permitted["resp_len"] == permitted["supplied_len"], (
         f"response DATA_LENGTH {permitted['resp_len']} != "
         f"{permitted['supplied_len']} bytes the VIP target supplied "
         f"(requested {permitted['requested_len']})"
@@ -257,22 +269,21 @@ async def test_short_read_reporting_vip(dut):
 
     # Final drain: the threshold-driven drain can only move whole rx_entries_per_int
     # batches, so a sub-threshold tail is still queued. HCI 6.8.1: use DATA_LENGTH.
-    bytes_read, rx_data = permitted['bytes_read'], permitted['rx_data']
-    while bytes_read < permitted['resp_len']:
+    bytes_read, rx_data = permitted["bytes_read"], permitted["rx_data"]
+    while bytes_read < permitted["resp_len"]:
         word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
-        take = min(BYTES_PER_ENTRY, permitted['resp_len'] - bytes_read)
+        take = min(BYTES_PER_ENTRY, permitted["resp_len"] - bytes_read)
         rx_data.extend(helper.unpack_bytes(word, take))
         bytes_read += take
 
     # Zero observed bytes is a fail, never a pass.
-    assert bytes_read == permitted['supplied_len'], (
+    assert bytes_read == permitted["supplied_len"], (
         f"controller delivered {bytes_read}B, expected {permitted['supplied_len']}B"
     )
-    assert rx_data[:permitted['supplied_len']] == list(permitted['tgt_data']), (
+    assert rx_data[: permitted["supplied_len"]] == list(permitted["tgt_data"]), (
         f"short-read payload mismatch: got "
-        f"{[f'0x{b:02X}' for b in rx_data[:permitted['supplied_len']]]} != "
+        f"{[f'0x{b:02X}' for b in rx_data[: permitted['supplied_len']]]} != "
         f"sent {[f'0x{b:02X}' for b in permitted['tgt_data']]}"
     )
 
-    tb.log.info(f"Both SRE paths verified against the VIP target "
-                f"(seed=0x{r.seed:08X})")
+    tb.log.info(f"Both SRE paths verified against the VIP target (seed=0x{r.seed:08X})")

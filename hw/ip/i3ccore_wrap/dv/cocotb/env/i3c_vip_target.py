@@ -17,7 +17,7 @@ genuine short read with no register-level arming.
 
 from cocotb.triggers import Timer
 
-from .cocotbext_i3c_compat import I3C_RSVD_BYTE, I3cHeader, I3CTarget, I3cState
+from .cocotbext_i3c_compat import I3C_RSVD_BYTE, I3cHeader, I3cState, I3CTarget
 
 CCC_SETDASA = 0x87
 CCC_SETNEWDA = 0x88
@@ -74,8 +74,7 @@ class VipI3cTarget(I3CTarget):
         next_state = None
         while not next_state:
             self.state = I3cState.DATA_WR
-            data, next_state = await self.recv_byte(
-                is_data=True, ack=False, check_for_stop=True)
+            data, next_state = await self.recv_byte(is_data=True, ack=False, check_for_stop=True)
             if next_state != I3cState.STOP:
                 payload.append(data & 0xFF)
         self.state = next_state
@@ -83,8 +82,9 @@ class VipI3cTarget(I3CTarget):
         if payload:
             self.dynamic_addr = payload[0] >> 1
             self.address = self.dynamic_addr
-            self.log.info("TARGET:::CCC 0x%02X assigned dynamic address 0x%02X",
-                          ccc, self.dynamic_addr)
+            self.log.info(
+                "TARGET:::CCC 0x%02X assigned dynamic address 0x%02X", ccc, self.dynamic_addr
+            )
         else:
             self.log.warning("TARGET:::CCC 0x%02X carried no data byte", ccc)
 

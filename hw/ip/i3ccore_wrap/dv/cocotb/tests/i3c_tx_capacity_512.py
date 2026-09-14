@@ -10,15 +10,17 @@ case, the 260-byte boundary, and larger word-aligned and unaligned responses.
 Every response must complete with its full byte-exact payload.
 """
 
-import cocotb
 import logging
-from cocotb.triggers import RisingEdge, Timer, ClockCycles
-from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 from env.i3c_api import (
-    I3CHelper, I3CController, I3CTarget,
     I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
     PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+    I3CController,
+    I3CHelper,
+    I3CTarget,
 )
 
 CTRL_BASE = 0x0000
@@ -29,15 +31,15 @@ TARGET_DYNAMIC_ADDR = 0x10
 # TTI TX data queue capacity: TTI_TX_FIFO_DEPTH(=64 DWORD) + 1 word in the
 # Nto8 converter = 65 words = 260 bytes (see module docstring).
 QUEUE_WORDS = 64
-STARTABLE_BYTES = (QUEUE_WORDS + 1) * 4          # 260
+STARTABLE_BYTES = (QUEUE_WORDS + 1) * 4  # 260
 
 LEGS = [
-    ("A_fits_256B", 256),              # < capacity   -> control, PASS
+    ("A_fits_256B", 256),  # < capacity   -> control, PASS
     ("B_edge_260B", STARTABLE_BYTES),  # == capacity  -> edge, PASS
-    ("C_over_512B", 512),              # > capacity   -> exposes the gate
-    ("D_over_515B", 515),              # > capacity AND non-word-aligned tail:
-                                       # streaming + byte_counter + Nto8 partial-word
-                                       # flush (descriptor_tx tx_queue_flush_o) combo
+    ("C_over_512B", 512),  # > capacity   -> exposes the gate
+    ("D_over_515B", 515),  # > capacity AND non-word-aligned tail:
+    # streaming + byte_counter + Nto8 partial-word
+    # flush (descriptor_tx tx_queue_flush_o) combo
 ]
 
 
@@ -53,9 +55,7 @@ class TB:
     async def setup_axi_master(self):
         await Timer(100, units="ns")
         bus = AxiLiteBus.from_prefix(self.dut, "axi")
-        self.axi_master = AxiLiteMaster(
-            bus, self.dut.clk, self.dut.rst_n, reset_active_level=False
-        )
+        self.axi_master = AxiLiteMaster(bus, self.dut.clk, self.dut.rst_n, reset_active_level=False)
         self.axi_master.write_if.log.setLevel(logging.ERROR)
         self.axi_master.read_if.log.setLevel(logging.ERROR)
         self.log.info("AXI-Lite master connected")
@@ -82,7 +82,7 @@ async def clear_leg_state(h, ctrl, tgt, log, tag):
     log.info(f"[{tag}] cleared sticky status: tgt=0x{tgt_st:08X} ctrl=0x{ctrl_st:08X}")
 
 
-@cocotb.test(timeout_time=10000, timeout_unit='us')
+@cocotb.test(timeout_time=10000, timeout_unit="us")
 async def test_tx_capacity_512(dut):
     """Target-TX response size sweep across the tx_start capacity gate."""
     tb = TB(dut)
@@ -109,8 +109,10 @@ async def test_tx_capacity_512(dut):
     await tgt.initialize(TARGET_STATIC_ADDR)
     await tgt.configure_thresholds(tx_buf=1, tx_start=0, rx_buf=1, rx_start=0)
 
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
@@ -128,8 +130,10 @@ async def test_tx_capacity_512(dut):
     for leg_idx, (name, n) in enumerate(LEGS, start=1):
         tb.log.info("-" * 60)
         await clear_leg_state(helper, ctrl, tgt, tb.log, name)
-        tb.log.info(f"[{name}] private read of {n} bytes "
-                    f"({n // 4} words vs startable {QUEUE_WORDS + 1} words)")
+        tb.log.info(
+            f"[{name}] private read of {n} bytes "
+            f"({n // 4} words vs startable {QUEUE_WORDS + 1} words)"
+        )
         # Distinct per-leg pattern so stale bytes from a previous leg are
         # visible as such (leg index in the top 2 bits).
         tx_data = [((leg_idx << 6) | (i & 0x3F)) & 0xFF for i in range(n)]
@@ -138,16 +142,19 @@ async def test_tx_capacity_512(dut):
 
         got = len(rx_data)
         match = (rx_data[:n] == tx_data) if got >= n else False
-        first_bad = next((i for i in range(min(got, n))
-                          if rx_data[i] != tx_data[i]), None)
-        tb.log.info(f"[{name}] ok={ok} resp=0x{resp:08X} received={got}/{n} "
-                    f"match={match} first_mismatch_idx={first_bad}")
+        first_bad = next((i for i in range(min(got, n)) if rx_data[i] != tx_data[i]), None)
+        tb.log.info(
+            f"[{name}] ok={ok} resp=0x{resp:08X} received={got}/{n} "
+            f"match={match} first_mismatch_idx={first_bad}"
+        )
         if not match and got:
             lo = 0 if first_bad is None else max(first_bad - 2, 0)
-            tb.log.info(f"[{name}]   expected[{lo}:{lo + 8}]="
-                        f"{[hex(b) for b in tx_data[lo:lo + 8]]}")
-            tb.log.info(f"[{name}]   received[{lo}:{lo + 8}]="
-                        f"{[hex(b) for b in rx_data[lo:lo + 8]]}")
+            tb.log.info(
+                f"[{name}]   expected[{lo}:{lo + 8}]={[hex(b) for b in tx_data[lo : lo + 8]]}"
+            )
+            tb.log.info(
+                f"[{name}]   received[{lo}:{lo + 8}]={[hex(b) for b in rx_data[lo : lo + 8]]}"
+            )
         results[name] = (ok, got, match)
 
     tb.log.info("=" * 60)

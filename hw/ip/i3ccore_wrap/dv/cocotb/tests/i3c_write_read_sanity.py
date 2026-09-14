@@ -8,12 +8,12 @@ Performs SETDASA + 4-byte private write + 4-byte private read.
 Uses i3c_api.py for all I3C operations.
 """
 
-import cocotb
 import logging
-from cocotb.triggers import RisingEdge, Timer, ClockCycles
-from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
-from env.i3c_api import I3CHelper, I3CController, I3CTarget
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotbext.axi import AxiLiteBus, AxiLiteMaster
+from env.i3c_api import I3CController, I3CHelper, I3CTarget
 
 # Address mapping
 CTRL_BASE = 0x0000
@@ -34,9 +34,7 @@ class TB:
     async def setup_axi_master(self):
         await Timer(100, units="ns")
         bus = AxiLiteBus.from_prefix(self.dut, "axi")
-        self.axi_master = AxiLiteMaster(
-            bus, self.dut.clk, self.dut.rst_n, reset_active_level=False
-        )
+        self.axi_master = AxiLiteMaster(bus, self.dut.clk, self.dut.rst_n, reset_active_level=False)
         self.axi_master.write_if.log.setLevel(logging.ERROR)
         self.axi_master.read_if.log.setLevel(logging.ERROR)
         self.log.info("AXI-Lite master connected")
@@ -48,7 +46,7 @@ class TB:
         self.log.info("Reset released")
 
 
-@cocotb.test(timeout_time=1000, timeout_unit='us')
+@cocotb.test(timeout_time=1000, timeout_unit="us")
 async def test_write_read_sanity(dut):
     """I3C sanity test: SETDASA + 4-byte write + 4-byte read."""
     tb = TB(dut)
@@ -81,8 +79,10 @@ async def test_write_read_sanity(dut):
     await tgt.configure_thresholds(tx_buf=1, tx_start=0, rx_buf=1, rx_start=0)
 
     # SETDASA
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"

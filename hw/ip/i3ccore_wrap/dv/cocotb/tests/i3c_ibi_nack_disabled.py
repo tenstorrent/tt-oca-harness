@@ -18,23 +18,24 @@ The test uses two cases so the negative result is checked against a positive con
 TTI_CONTROL.ibi_en resets asserted, so the test explicitly clears and verifies
 the bit before the negative case.
 """
+
 import os
 import sys
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.i3c_test_base import make_env, bring_up_and_assign
 from env.i3c_api import PioIntrStatus
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 # Authoritative register map (generated) — no hand-copied offsets.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../regs/gen/py'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
 from I3CCSR_reg import PIOCONTROL_PIO_INTR_STATUS_REG_ADDR  # noqa: E402
 
-OBSERVE_CYCLES = 2000       # window the disabled target gets to (not) transmit
+OBSERVE_CYCLES = 2000  # window the disabled target gets to (not) transmit
 MDB = 0xA5
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_ibi_nack_disabled(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
@@ -62,12 +63,10 @@ async def test_ibi_nack_disabled(dut):
         "queuing the IBI descriptor failed, so the disabled-IBI property was never "
         "actually requested"
     )
-    tb.log.info(
-        f"queued IBI mdb=0x{MDB:02X} with TTI_CONTROL.ibi_en verified 0 by read-back")
+    tb.log.info(f"queued IBI mdb=0x{MDB:02X} with TTI_CONTROL.ibi_en verified 0 by read-back")
 
     await ClockCycles(dut.clk, OBSERVE_CYCLES)
-    status = await helper.read_into(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+    status = await helper.read_into(ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
     tb.log.info(f"PIO_INTR_STATUS (IBI disabled) = 0x{status.val:08X}")
     assert not status.f.ibi_status_thld_stat, (
         f"spurious IBI latched with target IBI generation disabled: "

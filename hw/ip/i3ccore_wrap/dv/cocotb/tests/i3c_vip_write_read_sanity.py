@@ -17,20 +17,23 @@ The controller sequences are written out here rather than taken from
 target's TTI registers to move the far side of the transfer, which a Python target
 does not have.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.i3c_api import PioIntrStatus
 from env.i3c_test_base import (
-    make_env, init_controller, DEFAULT_STATIC_ADDR, DEFAULT_DYNAMIC_ADDR,
+    DEFAULT_DYNAMIC_ADDR,
+    DEFAULT_STATIC_ADDR,
+    init_controller,
+    make_env,
 )
 from env.i3c_vip_target import VipI3cTarget
-
-from env.i3c_api import PioIntrStatus
 from I3CCSR_reg import (
     PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
     PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
+    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
     PIOCONTROL_RX_DATA_PORT_REG_ADDR,
+    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
 )
 
 BYTES_PER_ENTRY = 4
@@ -47,8 +50,7 @@ READ_DATA = bytes([0x11, 0x22, 0x33, 0x44])
 
 
 async def _issue_transfer(helper, ctrl, *, length, is_read, dat_idx=0):
-    cmd_lo = ((dat_idx << 16) | (int(is_read) << RNW_BIT) |
-              (1 << WROC_BIT) | (1 << TOC_BIT))
+    cmd_lo = (dat_idx << 16) | (int(is_read) << RNW_BIT) | (1 << WROC_BIT) | (1 << TOC_BIT)
     await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
     await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, length << 16)
 
@@ -57,7 +59,8 @@ async def _await_response(dut, helper, ctrl, what):
     """Poll for the response descriptor and return it decoded."""
     for _ in range(POLL_BUDGET):
         status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+        )
         if status.f.resp_ready_stat:
             resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
             return resp, (resp >> 28) & 0xF, resp & 0xFFFF
@@ -72,7 +75,7 @@ async def _await_response(dut, helper, ctrl, what):
     )
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_vip_write_read_sanity(dut):
     """SETDASA, private write, private read, all against the VIP target."""
     tb, helper, ctrl, _tgt = await make_env(dut)
@@ -99,13 +102,12 @@ async def test_vip_write_read_sanity(dut):
     # rather than waiting for tx_thld_stat.
     tb.log.info(f"Private write: {WRITE_DATA.hex()}")
     for off in range(0, len(WRITE_DATA), BYTES_PER_ENTRY):
-        word = helper.pack_bytes(WRITE_DATA[off:off + BYTES_PER_ENTRY])
+        word = helper.pack_bytes(WRITE_DATA[off : off + BYTES_PER_ENTRY])
         await helper.write(ctrl.base + PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
     await _issue_transfer(helper, ctrl, length=len(WRITE_DATA), is_read=False)
 
     resp, err_status, resp_len = await _await_response(dut, helper, ctrl, "private write")
-    tb.log.info(f"  response=0x{resp:08X} err_status=0x{err_status:X} "
-                f"data_length={resp_len}")
+    tb.log.info(f"  response=0x{resp:08X} err_status=0x{err_status:X} data_length={resp_len}")
     assert err_status == 0x0, (
         f"private write to the VIP target reported ERR_STATUS 0x{err_status:X}; "
         f"0x5 NACK would mean the VIP did not ACK its dynamic address. "
@@ -128,8 +130,7 @@ async def test_vip_write_read_sanity(dut):
     await _issue_transfer(helper, ctrl, length=len(READ_DATA), is_read=True)
 
     resp, err_status, resp_len = await _await_response(dut, helper, ctrl, "private read")
-    tb.log.info(f"  response=0x{resp:08X} err_status=0x{err_status:X} "
-                f"data_length={resp_len}")
+    tb.log.info(f"  response=0x{resp:08X} err_status=0x{err_status:X} data_length={resp_len}")
     assert err_status == 0x0, (
         f"private read from the VIP target reported ERR_STATUS 0x{err_status:X} "
         f"(resp=0x{resp:08X}, data_length={resp_len})"
@@ -149,10 +150,8 @@ async def test_vip_write_read_sanity(dut):
         rx_data.extend(helper.unpack_bytes(word, take))
 
     assert bytes(rx_data) == READ_DATA, (
-        f"private read payload mismatch: got {bytes(rx_data).hex()}, "
-        f"expected {READ_DATA.hex()}"
+        f"private read payload mismatch: got {bytes(rx_data).hex()}, expected {READ_DATA.hex()}"
     )
     tb.log.info(f"  controller received {bytes(rx_data).hex()}")
 
-    tb.log.info("VIP target verified as a bus partner: SETDASA, private write, "
-                "private read")
+    tb.log.info("VIP target verified as a bus partner: SETDASA, private write, private read")

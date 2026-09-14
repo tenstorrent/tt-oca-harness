@@ -20,53 +20,79 @@ make_env() only brings up the AXI master and waits for reset release; it runs
 no controller/target configuration, so every value read here is a true
 post-reset value.
 """
+
 import os
 import sys
 
 import cocotb
-
-from env.i3c_test_base import make_env, CTRL_BASE
+from env.i3c_test_base import CTRL_BASE, make_env
 
 # Authoritative register map (generated). Same path convention as i3c_error_sanity.py.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../regs/gen/py'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
 import I3CCSR_reg as csr  # noqa: E402
 
 # The generated map spells reset values with a parameterisation-encoding prefix.
 # Naming them once keeps the rows below readable without losing the symbol trail.
-_BASE = ("BASEREGS_PIO_OFFSET_80_EXT_OFFSET_100_DAT_TABLE_SIZE_7F_DAT_OFFSET_400"
-         "_DCT_TABLE_SIZE_7F_DCT_OFFSET_800_MIPI_COMMANDS_35_")
-_PIO = ("PIOREGS_CMD_FIFO_SIZE_40_RESP_FIFO_SIZE_40_IBI_FIFO_SIZE_40_TX_FIFO_SIZE_5"
-        "_RX_FIFO_SIZE_5_EXT_IBI_SIZE_0_")
-_STBY = ("STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5"
-         "_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_RX_FIFO_SIZE_5"
-         "_TX_FIFO_SIZE_5_IBI_FIFO_SIZE_5_")
-_TTI = ("TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_5_TX_DESC_FIFO_SIZE_5"
-        "_RX_FIFO_SIZE_5_TX_FIFO_SIZE_5_IBI_FIFO_SIZE_5_")
+_BASE = (
+    "BASEREGS_PIO_OFFSET_80_EXT_OFFSET_100_DAT_TABLE_SIZE_7F_DAT_OFFSET_400"
+    "_DCT_TABLE_SIZE_7F_DCT_OFFSET_800_MIPI_COMMANDS_35_"
+)
+_PIO = (
+    "PIOREGS_CMD_FIFO_SIZE_40_RESP_FIFO_SIZE_40_IBI_FIFO_SIZE_40_TX_FIFO_SIZE_5"
+    "_RX_FIFO_SIZE_5_EXT_IBI_SIZE_0_"
+)
+_STBY = (
+    "STANDBYCONTROLLERMODEREGISTERS_PID_HI_RESET_7FFF_PID_LO_RESET_5A00A5"
+    "_VIRTUAL_PID_HI_RESET_7FFF_VIRTUAL_PID_LO_RESET_5A10A5_RX_FIFO_SIZE_5"
+    "_TX_FIFO_SIZE_5_IBI_FIFO_SIZE_5_"
+)
+_TTI = (
+    "TARGETTRANSACTIONINTERFACEREGISTERS_RX_DESC_FIFO_SIZE_5_TX_DESC_FIFO_SIZE_5"
+    "_RX_FIFO_SIZE_5_TX_FIFO_SIZE_5_IBI_FIFO_SIZE_5_"
+)
 
 # (log name, address symbol, reset-value symbol)
 _REGS = [
-    ("HCI_VERSION",            "I3CBASE_HCI_VERSION_REG_ADDR",  _BASE + "HCI_VERSION_REG_DEFAULT"),
-    ("HC_CONTROL",             "I3CBASE_HC_CONTROL_REG_ADDR",   _BASE + "HC_CONTROL_REG_DEFAULT"),
-    ("HC_CAPABILITIES",        "I3CBASE_HC_CAPABILITIES_REG_ADDR",
-     _BASE + "HC_CAPABILITIES_REG_DEFAULT"),
-    ("QUEUE_THLD_CTRL",        "PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR",
-     _PIO + "QUEUE_THLD_CTRL_REG_DEFAULT"),
-    ("DATA_BUFFER_THLD_CTRL",  "PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR",
-     _PIO + "DATA_BUFFER_THLD_CTRL_REG_DEFAULT"),
-    ("PIO_INTR_STATUS_ENABLE", "PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR",
-     _PIO + "PIO_INTR_STATUS_ENABLE_REG_DEFAULT"),
-    ("PIO_INTR_SIGNAL_ENABLE", "PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR",
-     _PIO + "PIO_INTR_SIGNAL_ENABLE_REG_DEFAULT"),
-    ("PIO_CONTROL",            "PIOCONTROL_PIO_CONTROL_REG_ADDR",
-     _PIO + "PIO_CONTROL_REG_DEFAULT"),
-    ("STBY_CR_CONTROL",        "I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR",
-     _STBY + "STBY_CR_CONTROL_REG_DEFAULT"),
-    ("STBY_CR_DEVICE_ADDR",    "I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR",
-     _STBY + "STBY_CR_DEVICE_ADDR_REG_DEFAULT"),
-    ("TTI_CONTROL",            "I3C_EC_TTI_CONTROL_REG_ADDR",
-     _TTI + "CONTROL_REG_DEFAULT"),
-    ("TTI_INTERRUPT_ENABLE",   "I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR",
-     _TTI + "INTERRUPT_ENABLE_REG_DEFAULT"),
+    ("HCI_VERSION", "I3CBASE_HCI_VERSION_REG_ADDR", _BASE + "HCI_VERSION_REG_DEFAULT"),
+    ("HC_CONTROL", "I3CBASE_HC_CONTROL_REG_ADDR", _BASE + "HC_CONTROL_REG_DEFAULT"),
+    ("HC_CAPABILITIES", "I3CBASE_HC_CAPABILITIES_REG_ADDR", _BASE + "HC_CAPABILITIES_REG_DEFAULT"),
+    (
+        "QUEUE_THLD_CTRL",
+        "PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR",
+        _PIO + "QUEUE_THLD_CTRL_REG_DEFAULT",
+    ),
+    (
+        "DATA_BUFFER_THLD_CTRL",
+        "PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR",
+        _PIO + "DATA_BUFFER_THLD_CTRL_REG_DEFAULT",
+    ),
+    (
+        "PIO_INTR_STATUS_ENABLE",
+        "PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR",
+        _PIO + "PIO_INTR_STATUS_ENABLE_REG_DEFAULT",
+    ),
+    (
+        "PIO_INTR_SIGNAL_ENABLE",
+        "PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR",
+        _PIO + "PIO_INTR_SIGNAL_ENABLE_REG_DEFAULT",
+    ),
+    ("PIO_CONTROL", "PIOCONTROL_PIO_CONTROL_REG_ADDR", _PIO + "PIO_CONTROL_REG_DEFAULT"),
+    (
+        "STBY_CR_CONTROL",
+        "I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR",
+        _STBY + "STBY_CR_CONTROL_REG_DEFAULT",
+    ),
+    (
+        "STBY_CR_DEVICE_ADDR",
+        "I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR",
+        _STBY + "STBY_CR_DEVICE_ADDR_REG_DEFAULT",
+    ),
+    ("TTI_CONTROL", "I3C_EC_TTI_CONTROL_REG_ADDR", _TTI + "CONTROL_REG_DEFAULT"),
+    (
+        "TTI_INTERRUPT_ENABLE",
+        "I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR",
+        _TTI + "INTERRUPT_ENABLE_REG_DEFAULT",
+    ),
 ]
 
 
@@ -87,7 +113,7 @@ def _resolve(rows):
 CONFIG_REGS = _resolve(_REGS)
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_reg_reset_value_full(dut):
     """Sweep config/status registers; each must read its generated reset value."""
     tb, helper, ctrl, tgt = await make_env(dut)

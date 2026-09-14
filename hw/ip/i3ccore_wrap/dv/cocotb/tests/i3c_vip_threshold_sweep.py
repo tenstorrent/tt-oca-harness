@@ -17,12 +17,13 @@ Only the controller is re-initialized per leg. The VIP target stays attached,
 since one model owns the bus for the whole simulation, and it keeps the dynamic
 address SETDASA gave it.
 """
+
 import cocotb
 from env.i3c_test_base import make_env
 from env.i3c_vip_flow import attach_vip, bring_up_and_assign, private_write
 
 
-@cocotb.test(timeout_time=8000, timeout_unit='us')
+@cocotb.test(timeout_time=8000, timeout_unit="us")
 async def test_vip_threshold_sweep(dut):
     tb, helper, ctrl, _tgt = await make_env(dut)
     vip = attach_vip(dut)

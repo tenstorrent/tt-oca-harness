@@ -16,18 +16,19 @@ directed (defining-byte semantics are fixed).
 Note: the i3c_api GET helpers return tuples — getbcr/getmwl -> (ok, value),
 getmrl -> (ok, mrl, ibi_payload), set*/rstact -> (ok, resp).
 """
+
 import cocotb
-from env.i3c_test_base import make_env, bring_up_and_assign
-from env.i3c_rand import RandMgr, rand_mwl, rand_mrl, weighted
+from env.i3c_rand import RandMgr, rand_mrl, rand_mwl, weighted
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 N_ROUNDS = 4
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_full_ccc_matrix(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="full_ccc")              # seed logged; +seed/SEED override
+    r = RandMgr(name="full_ccc")  # seed logged; +seed/SEED override
 
     # GETBCR (read-only)
     ok, bcr = await ctrl.getbcr(dat_idx=0)
@@ -60,7 +61,9 @@ async def test_full_ccc_matrix(dut):
     # RSTACT action 0x02 is implementation-dependent; record its response without
     # requiring an ACK.
     ok2, resp2 = await ctrl.rstact(0x02, dat_idx=0)
-    tb.log.info(f"RSTACT(0x02) ok={ok2} resp=0x{resp2:08X} "
-                f"(observe-only; target NACK is a known limitation)")
+    tb.log.info(
+        f"RSTACT(0x02) ok={ok2} resp=0x{resp2:08X} "
+        f"(observe-only; target NACK is a known limitation)"
+    )
 
     tb.log.info(f"Full CCC matrix complete (seed=0x{r.seed:08X})")

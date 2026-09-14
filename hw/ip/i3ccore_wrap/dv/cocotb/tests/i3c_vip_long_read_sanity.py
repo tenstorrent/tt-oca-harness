@@ -9,6 +9,7 @@ private read, which is far past the controller RX FIFO depth, so it also covers
 threshold-driven drain against a bus partner that is not the RTL under test.
 Requires `+i3c_vip_target`.
 """
+
 import cocotb
 from env.i3c_test_base import make_env
 from env.i3c_vip_flow import bring_up_and_assign, private_read
@@ -16,7 +17,7 @@ from env.i3c_vip_flow import bring_up_and_assign, private_read
 READ_LENGTH = 500
 
 
-@cocotb.test(timeout_time=8000, timeout_unit='us')
+@cocotb.test(timeout_time=8000, timeout_unit="us")
 async def test_vip_long_read_sanity(dut):
     tb, helper, ctrl, _tgt = await make_env(dut)
     vip = await bring_up_and_assign(dut, ctrl)
@@ -26,9 +27,7 @@ async def test_vip_long_read_sanity(dut):
 
     ok, resp, rx = await private_read(dut, helper, ctrl, vip, tx_data)
     assert ok, f"long read failed resp=0x{resp:08X}"
-    assert len(rx) == READ_LENGTH, (
-        f"controller received {len(rx)} bytes, expected {READ_LENGTH}"
-    )
+    assert len(rx) == READ_LENGTH, f"controller received {len(rx)} bytes, expected {READ_LENGTH}"
     assert rx == tx_data, (
         "long read payload mismatch, first at byte "
         f"{next(i for i, (e, g) in enumerate(zip(tx_data, rx)) if e != g)}"

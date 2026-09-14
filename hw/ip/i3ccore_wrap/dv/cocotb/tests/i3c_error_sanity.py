@@ -14,33 +14,32 @@ Tests error handling when controller addresses a non-existent target:
 Uses i3c_api.py for all I3C operations.
 """
 
-import cocotb
 import logging
-import sys
 import os
-from cocotb.triggers import RisingEdge, Timer, ClockCycles
-from cocotbext.axi import AxiLiteBus, AxiLiteMaster
+import sys
 
-from env.i3c_api import I3CHelper, I3CController, I3CTarget, PioIntrStatus, TtiQueueStatus
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotb.utils import get_sim_time
+from cocotbext.axi import AxiLiteBus, AxiLiteMaster
+from env.i3c_api import I3CController, I3CHelper, I3CTarget, PioIntrStatus, TtiQueueStatus
 
 # Import register addresses
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../regs/gen/py'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
+# Constrained-random framework (shared, IP-agnostic core via i3c domain layer)
+from env.i3c_rand import RandMgr, rand_bytes, rand_i3c_addr, rand_ibi_mdb
 from I3CCSR_reg import (
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
-    PIOCONTROL_QUEUE_SIZE_REG_ADDR,
     # TTI registers for fifo overflow test
     I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
+    I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
     I3C_EC_TTI_TX_DATA_PORT_REG_ADDR,
     I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
-    I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
+    PIOCONTROL_COMMAND_PORT_REG_ADDR,
+    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+    PIOCONTROL_QUEUE_SIZE_REG_ADDR,
+    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
+    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
 )
-
-# Constrained-random framework (shared, IP-agnostic core via i3c domain layer)
-from env.i3c_rand import RandMgr, rand_i3c_addr, rand_bytes, rand_ibi_mdb
 
 # Address mapping
 CTRL_BASE = 0x0000
@@ -61,9 +60,7 @@ class TB:
     async def setup_axi_master(self):
         await Timer(100, units="ns")
         bus = AxiLiteBus.from_prefix(self.dut, "axi")
-        self.axi_master = AxiLiteMaster(
-            bus, self.dut.clk, self.dut.rst_n, reset_active_level=False
-        )
+        self.axi_master = AxiLiteMaster(bus, self.dut.clk, self.dut.rst_n, reset_active_level=False)
         self.axi_master.write_if.log.setLevel(logging.ERROR)
         self.axi_master.read_if.log.setLevel(logging.ERROR)
         self.log.info("AXI-Lite master connected")
@@ -117,9 +114,9 @@ async def wait_for_9th_scl_and_check_nack(dut, log):
 
     # Count 9 BUS SCL rising edges (8 address/RnW bits + the ACK slot); sample SDA on the 9th.
     while True:
-        while bus_scl() == 1:            # wait for SCL low
+        while bus_scl() == 1:  # wait for SCL low
             await RisingEdge(dut.clk)
-        while bus_scl() == 0:            # then the rising edge
+        while bus_scl() == 0:  # then the rising edge
             await RisingEdge(dut.clk)
 
         scl_edge_count += 1
@@ -167,17 +164,17 @@ def build_immediate_write_cmd(data_bytes, dat_idx=0, tid=0):
 
     # Build cmd_lo
     cmd_lo = (
-        (attr << 0) |           # [2:0] attr = 1 (ImmediateDataTransfer)
-        (tid << 3) |            # [6:3] tid
-        (0 << 7) |              # [14:7] cmd (unused for private)
-        (0 << 15) |             # [15] cp = 0 (no command)
-        (dat_idx << 16) |       # [20:16] dev_idx
-        (0 << 21) |             # [22:21] reserved
-        (dtt << 23) |           # [25:23] dtt (number of valid bytes)
-        (0 << 26) |             # [28:26] mode = SDR0
-        (0 << 29) |             # [29] rnw = 0 (write)
-        (1 << 30) |             # [30] wroc = 1 (response on completion)
-        (1 << 31)               # [31] toc = 1 (terminate on completion)
+        (attr << 0)  # [2:0] attr = 1 (ImmediateDataTransfer)
+        | (tid << 3)  # [6:3] tid
+        | (0 << 7)  # [14:7] cmd (unused for private)
+        | (0 << 15)  # [15] cp = 0 (no command)
+        | (dat_idx << 16)  # [20:16] dev_idx
+        | (0 << 21)  # [22:21] reserved
+        | (dtt << 23)  # [25:23] dtt (number of valid bytes)
+        | (0 << 26)  # [28:26] mode = SDR0
+        | (0 << 29)  # [29] rnw = 0 (write)
+        | (1 << 30)  # [30] wroc = 1 (response on completion)
+        | (1 << 31)  # [31] toc = 1 (terminate on completion)
     )
 
     # Build cmd_hi - pack data bytes (little-endian)
@@ -188,7 +185,7 @@ def build_immediate_write_cmd(data_bytes, dat_idx=0, tid=0):
     return cmd_lo, cmd_hi
 
 
-@cocotb.test(timeout_time=5000, timeout_unit='us')
+@cocotb.test(timeout_time=5000, timeout_unit="us")
 async def i3c_error_wrong_addr(dut):
     """I3C error test: SETDASA + immediate write to wrong address should fail."""
     tb = TB(dut)
@@ -201,7 +198,7 @@ async def i3c_error_wrong_addr(dut):
     await tb.setup_axi_master()
     await tb.wait_for_reset()
 
-    r = RandMgr(name="error_wrong_addr")      # seed logged; +seed/SEED override
+    r = RandMgr(name="error_wrong_addr")  # seed logged; +seed/SEED override
 
     # Create API objects
     helper = I3CHelper(tb.axi_master, dut, tb.log)
@@ -224,8 +221,10 @@ async def i3c_error_wrong_addr(dut):
     await tgt.configure_thresholds(tx_buf=1, tx_start=0, rx_buf=1, rx_start=0)
 
     # SETDASA - assign dynamic address to real target at DAT index 0
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
@@ -249,12 +248,14 @@ async def i3c_error_wrong_addr(dut):
 
     ok, _reg = await helper.poll_field(
         ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-        PioIntrStatus, 'resp_ready_stat',
-        max_polls=50000, interval=10
+        PioIntrStatus,
+        "resp_ready_stat",
+        max_polls=50000,
+        interval=10,
     )
     assert ok, "positive control: timeout waiting for the response descriptor"
     good_resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
-    good_err = (good_resp >> 28) & 0xF          # ERR_STATUS, HCI v1.2 Table 146
+    good_err = (good_resp >> 28) & 0xF  # ERR_STATUS, HCI v1.2 Table 146
     tb.log.info(f"  Positive control response: 0x{good_resp:08X} err_status={good_err}")
     assert good_err == 0, (
         f"positive control failed: immediate write to the assigned address returned "
@@ -281,8 +282,10 @@ async def i3c_error_wrong_addr(dut):
     tb.log.info("-" * 60)
 
     write_data = rand_bytes(r, 4)
-    tb.log.info(f"Issuing immediate write to DAT index 1 (wrong addr 0x{wrong_addr:02X}): "
-                f"data={[f'0x{b:02X}' for b in write_data]}")
+    tb.log.info(
+        f"Issuing immediate write to DAT index 1 (wrong addr 0x{wrong_addr:02X}): "
+        f"data={[f'0x{b:02X}' for b in write_data]}"
+    )
 
     cmd_lo, cmd_hi = build_immediate_write_cmd(write_data, dat_idx=1, tid=1)
     tb.log.debug(f"  cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X}")
@@ -294,8 +297,10 @@ async def i3c_error_wrong_addr(dut):
     tb.log.info("Waiting for response (expecting error)...")
     ok, reg = await helper.poll_field(
         ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-        PioIntrStatus, 'resp_ready_stat',
-        max_polls=50000, interval=10
+        PioIntrStatus,
+        "resp_ready_stat",
+        max_polls=50000,
+        interval=10,
     )
     assert ok, "Timeout waiting for response descriptor"
 
@@ -323,7 +328,7 @@ async def i3c_error_wrong_addr(dut):
     await ClockCycles(dut.clk, 100)
 
 
-@cocotb.test(timeout_time=10000, timeout_unit='us')
+@cocotb.test(timeout_time=10000, timeout_unit="us")
 async def i3c_fifo_overflow(dut):
     """RX FIFO overflow: read past the FIFO capacity without draining it.
 
@@ -342,7 +347,7 @@ async def i3c_fifo_overflow(dut):
     await tb.setup_axi_master()
     await tb.wait_for_reset()
 
-    r = RandMgr(name="fifo_overflow")         # seed logged; +seed/SEED override
+    r = RandMgr(name="fifo_overflow")  # seed logged; +seed/SEED override
 
     # Create API objects
     helper = I3CHelper(tb.axi_master, dut, tb.log)
@@ -365,8 +370,10 @@ async def i3c_fifo_overflow(dut):
     await tgt.configure_thresholds(tx_buf=1, tx_start=0, rx_buf=1, rx_start=0)
 
     # SETDASA - assign dynamic address
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
@@ -389,7 +396,7 @@ async def i3c_fifo_overflow(dut):
     rx_fifo_bytes = rx_fifo_entries * bytes_per_entry
     # Read well past the RX FIFO so it overflows while the drain stays off. Kept a
     # multiple of 4 for clean FIFO-entry accounting.
-    data_len = rx_fifo_bytes + r.randint(16, 96) * 4   # RX FIFO + 64..384 bytes
+    data_len = rx_fifo_bytes + r.randint(16, 96) * 4  # RX FIFO + 64..384 bytes
 
     # Generate random test data for target to transmit
     tx_data = rand_bytes(r, data_len)
@@ -403,12 +410,13 @@ async def i3c_fifo_overflow(dut):
     tx_bytes_per_interrupt = tx_entries_per_interrupt * bytes_per_entry
 
     # TTI interrupt bit definitions
-    TTI_TX_DATA_THLD_STAT = (1 << 8)
-    TTI_TX_DESC_THLD_STAT = (1 << 10)
-    TTI_TX_DESC_COMPLETE = (1 << 26)
+    TTI_TX_DATA_THLD_STAT = 1 << 8
+    TTI_TX_DESC_COMPLETE = 1 << 26
 
     tb.log.info(f"  Data length: {data_len} bytes")
-    tb.log.info(f"  Target TX threshold: {tx_bytes_per_interrupt} bytes ({tx_entries_per_interrupt} entries)")
+    tb.log.info(
+        f"  Target TX threshold: {tx_bytes_per_interrupt} bytes ({tx_entries_per_interrupt} entries)"
+    )
 
     # Arm the target before issuing the read because it NACKs a private-read
     # address while its TX queue is empty. The overflow is caused by leaving the
@@ -420,7 +428,11 @@ async def i3c_fifo_overflow(dut):
     # not a reliable readiness indication.
     ok, _qs = await helper.poll_field_clear(
         tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
-        TtiQueueStatus, 'tx_desc_queue_full', max_polls=1000, interval=10)
+        TtiQueueStatus,
+        "tx_desc_queue_full",
+        max_polls=1000,
+        interval=10,
+    )
     assert ok, (
         "timeout waiting for target TX descriptor queue space "
         f"(tx_desc_queue_full never cleared in 1000 polls, data_len={data_len})"
@@ -435,11 +447,10 @@ async def i3c_fifo_overflow(dut):
     # complete payload is queued. The target only ACKs when enough data is queued
     # to start the transfer.
     while bytes_written < data_len:
-        qs = await helper.read_into(
-            tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
+        qs = await helper.read_into(tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
         if qs.f.tx_data_queue_full:
             break
-        word = helper.pack_bytes(tx_data[bytes_written:bytes_written + bytes_per_entry])
+        word = helper.pack_bytes(tx_data[bytes_written : bytes_written + bytes_per_entry])
         await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
         bytes_written += min(bytes_per_entry, data_len - bytes_written)
     tb.log.debug(f"  Pre-filled {bytes_written}/{data_len} bytes to target TX (to FULL/threshold)")
@@ -460,7 +471,8 @@ async def i3c_fifo_overflow(dut):
 
         # Check if controller response is ready (overflow error will trigger this)
         ctrl_status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+        )
         if ctrl_status.f.resp_ready_stat:
             tb.log.debug(f"  Controller response ready, bytes_written={bytes_written}")
             break
@@ -476,7 +488,9 @@ async def i3c_fifo_overflow(dut):
             remaining_tx = data_len - bytes_written
             chunk = min(tx_bytes_per_interrupt, remaining_tx)
             for i in range(0, chunk, bytes_per_entry):
-                word = helper.pack_bytes(tx_data[bytes_written + i:bytes_written + i + bytes_per_entry])
+                word = helper.pack_bytes(
+                    tx_data[bytes_written + i : bytes_written + i + bytes_per_entry]
+                )
                 await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
             bytes_written += chunk
             tb.log.debug(f"  Wrote {chunk} bytes to target TX, total={bytes_written}/{data_len}")
@@ -490,8 +504,10 @@ async def i3c_fifo_overflow(dut):
     tb.log.info("Waiting for controller response (expecting overflow error)...")
     ok, reg = await helper.poll_field(
         ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-        PioIntrStatus, 'resp_ready_stat',
-        max_polls=50000, interval=10
+        PioIntrStatus,
+        "resp_ready_stat",
+        max_polls=50000,
+        interval=10,
     )
     assert ok, "Timeout waiting for response descriptor"
 
@@ -508,7 +524,9 @@ async def i3c_fifo_overflow(dut):
 
     # Verify error status is Ovl (0x6 = receive overflow or transfer underflow)
     OVL_ERROR = 0x6
-    assert err_status == OVL_ERROR, f"Expected Ovl error (0x{OVL_ERROR:X}), got err_status=0x{err_status:X}"
+    assert err_status == OVL_ERROR, (
+        f"Expected Ovl error (0x{OVL_ERROR:X}), got err_status=0x{err_status:X}"
+    )
 
     tb.log.info(f"  OVERFLOW ERR_STATUS DETECTED: err_status=0x{err_status:X} (Ovl) as expected")
 
@@ -520,7 +538,7 @@ async def i3c_fifo_overflow(dut):
     await ClockCycles(dut.clk, 100)
 
 
-@cocotb.test(timeout_time=10000, timeout_unit='us')
+@cocotb.test(timeout_time=10000, timeout_unit="us")
 async def i3c_tx_fifo_underflow(dut):
     """TX FIFO underflow: declare a write longer than the bytes actually supplied.
 
@@ -540,7 +558,7 @@ async def i3c_tx_fifo_underflow(dut):
     await tb.setup_axi_master()
     await tb.wait_for_reset()
 
-    r = RandMgr(name="tx_fifo_underflow")     # seed logged; +seed/SEED override
+    r = RandMgr(name="tx_fifo_underflow")  # seed logged; +seed/SEED override
 
     # Create API objects
     helper = I3CHelper(tb.axi_master, dut, tb.log)
@@ -563,8 +581,10 @@ async def i3c_tx_fifo_underflow(dut):
     await tgt.configure_thresholds(tx_buf=1, tx_start=0, rx_buf=1, rx_start=0)
 
     # SETDASA - assign dynamic address
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
@@ -579,8 +599,8 @@ async def i3c_tx_fifo_underflow(dut):
     # Constraint: bytes_to_fill < data_len (both dword-aligned) so the TX FIFO
     # underflows for every seed; fill stays a small handful of entries.
     bytes_per_entry = 4
-    data_len = r.randint(25, 75) * 4          # 100 .. 300 bytes declared
-    bytes_to_fill = r.randint(2, 8) * 4       # 8 .. 32 bytes actually supplied
+    data_len = r.randint(25, 75) * 4  # 100 .. 300 bytes declared
+    bytes_to_fill = r.randint(2, 8) * 4  # 8 .. 32 bytes actually supplied
     dat_idx = 0
 
     # Generate random test data
@@ -591,7 +611,9 @@ async def i3c_tx_fifo_underflow(dut):
     tb.log.info("-" * 60)
 
     tb.log.info(f"  Declared write length: {data_len} bytes")
-    tb.log.info(f"  Actual bytes to fill: {bytes_to_fill} bytes ({bytes_to_fill // bytes_per_entry} entries)")
+    tb.log.info(
+        f"  Actual bytes to fill: {bytes_to_fill} bytes ({bytes_to_fill // bytes_per_entry} entries)"
+    )
 
     # Issue regular write command (attr=0)
     # cmd_lo: attr=0, dat_idx, wroc=1, toc=1
@@ -605,15 +627,17 @@ async def i3c_tx_fifo_underflow(dut):
     tb.log.info("Waiting for TX threshold interrupt...")
     ok, reg = await helper.poll_field(
         ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-        PioIntrStatus, 'tx_thld_stat',
-        max_polls=5000, interval=10
+        PioIntrStatus,
+        "tx_thld_stat",
+        max_polls=5000,
+        interval=10,
     )
     assert ok, "Timeout waiting for TX threshold interrupt"
 
     # Supply fewer bytes than the command declared, so the FIFO runs dry.
     tb.log.info(f"Filling only {bytes_to_fill} bytes to TX FIFO (deliberately insufficient)...")
     for i in range(0, bytes_to_fill, bytes_per_entry):
-        word = helper.pack_bytes(tx_data[i:i + bytes_per_entry])
+        word = helper.pack_bytes(tx_data[i : i + bytes_per_entry])
         await helper.write(ctrl.base + PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
         tb.log.debug(f"  TX entry {i // bytes_per_entry}: 0x{word:08X}")
 
@@ -622,8 +646,10 @@ async def i3c_tx_fifo_underflow(dut):
     # Wait for controller response descriptor (should get Ovl error)
     ok, reg = await helper.poll_field(
         ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-        PioIntrStatus, 'resp_ready_stat',
-        max_polls=100000, interval=10
+        PioIntrStatus,
+        "resp_ready_stat",
+        max_polls=100000,
+        interval=10,
     )
     assert ok, "Timeout waiting for response descriptor"
 
@@ -640,7 +666,9 @@ async def i3c_tx_fifo_underflow(dut):
 
     # Verify error status is Ovl (0x6 = receive overflow or transfer underflow)
     OVL_ERROR = 0x6
-    assert err_status == OVL_ERROR, f"Expected Ovl error (0x{OVL_ERROR:X}), got err_status=0x{err_status:X}"
+    assert err_status == OVL_ERROR, (
+        f"Expected Ovl error (0x{OVL_ERROR:X}), got err_status=0x{err_status:X}"
+    )
 
     tb.log.info(f"  UNDERFLOW ERR_STATUS DETECTED: err_status=0x{err_status:X} (Ovl) as expected")
 
@@ -652,7 +680,7 @@ async def i3c_tx_fifo_underflow(dut):
     await ClockCycles(dut.clk, 100)
 
 
-@cocotb.test(timeout_time=10000, timeout_unit='us')
+@cocotb.test(timeout_time=10000, timeout_unit="us")
 async def i3c_ibi_fifo_overflow(dut):
     """A full IBI Queue must stop the controller ACKing incoming IBIs.
 
@@ -691,7 +719,7 @@ async def i3c_ibi_fifo_overflow(dut):
     tb.log.info("Configuring target thresholds...")
     await tgt.configure_thresholds(tx_buf=1, tx_start=0, rx_buf=1, rx_start=0)
 
-    r = RandMgr(name="ibi_fifo_overflow")     # seed logged; +seed/SEED override
+    r = RandMgr(name="ibi_fifo_overflow")  # seed logged; +seed/SEED override
 
     # Enable IBI on both sides
     tb.log.info("Enabling IBI mode on target...")
@@ -700,8 +728,10 @@ async def i3c_ibi_fifo_overflow(dut):
     await ctrl.enable_ibi_interrupts(ibi_threshold=1)
 
     # SETDASA - assign dynamic address
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
@@ -740,8 +770,10 @@ async def i3c_ibi_fifo_overflow(dut):
     #   - IBI data = MDB (1 byte) + payload
     # To fill completely: payload = ((ibi_fifo_size - 1) * 4) - 1
     ibi_payload_size = ((ibi_fifo_size - 1) * 4) - 1
-    tb.log.info(f"  Calculated IBI payload size: {ibi_payload_size} bytes "
-                f"(status=1 entry, data={ibi_fifo_size - 1} entries, MDB=1 byte)")
+    tb.log.info(
+        f"  Calculated IBI payload size: {ibi_payload_size} bytes "
+        f"(status=1 entry, data={ibi_fifo_size - 1} entries, MDB=1 byte)"
+    )
 
     # SETMRL - Set IBI payload size
     tb.log.info(f"Sending SETMRL (mrl=0x100, ibi_payload_size={ibi_payload_size})...")
@@ -779,7 +811,7 @@ async def i3c_ibi_fifo_overflow(dut):
     tb.log.info("-" * 60)
 
     mdb_2 = rand_ibi_mdb(r)
-    ibi_payload_2 = rand_bytes(r, 4)          # small payload for second IBI
+    ibi_payload_2 = rand_bytes(r, 4)  # small payload for second IBI
     tb.log.info(f"Target writing IBI #2: mdb=0x{mdb_2:02X}, payload_size={len(ibi_payload_2)}")
 
     # Arm the NACK monitor before queuing IBI #2 so it observes that IBI's
@@ -797,8 +829,10 @@ async def i3c_ibi_fifo_overflow(dut):
     # Wait for IBI #2 to settle before ending. With zero retries and a full queue
     # it cannot succeed, but its terminal status is unspecified and is not asserted.
     ok, last_ibi_status = await tgt.wait_ibi_done()
-    tb.log.info(f"  Target IBI #2 settled: done={ok}, status={last_ibi_status} "
-                f"(cannot succeed while the IBI Queue stays full)")
+    tb.log.info(
+        f"  Target IBI #2 settled: done={ok}, status={last_ibi_status} "
+        f"(cannot succeed while the IBI Queue stays full)"
+    )
 
     tb.log.info("=" * 60)
     tb.log.info("SUCCESS: IBI FIFO Overflow Test Complete")

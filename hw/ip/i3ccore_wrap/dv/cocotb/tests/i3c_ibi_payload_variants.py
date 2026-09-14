@@ -13,16 +13,17 @@ payload size. The directed boundary sizes (0, 1, full) are still covered first,
 then random ones are added. The received MDB is self-checked against what was
 sent.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.i3c_test_base import make_env, bring_up_and_assign
-from env.i3c_rand import RandMgr, rand_ibi_mdb, rand_bytes
+from env.i3c_rand import RandMgr, rand_bytes, rand_ibi_mdb
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 IBI_PAYLOAD_SIZE = 0x10
 N_RANDOM = 4
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_ibi_payload_variants(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
@@ -35,7 +36,7 @@ async def test_ibi_payload_variants(dut):
         "DAT ibi_payload bit not set (GETBCR likely failed); the controller would "
         "abort every inbound IBI"
     )
-    r = RandMgr(name="ibi_payload")           # seed logged; +seed/SEED override
+    r = RandMgr(name="ibi_payload")  # seed logged; +seed/SEED override
 
     await ctrl.enable_ibi_interrupts(ibi_threshold=1)
     await tgt.enable_ibi_mode()
@@ -44,11 +45,10 @@ async def test_ibi_payload_variants(dut):
     assert ok, f"SETMRL(ibi_payload_size=0x{IBI_PAYLOAD_SIZE:02X}) failed resp=0x{resp:08X}"
 
     # directed boundary lengths first, then random ones
-    lengths = [0, 1, IBI_PAYLOAD_SIZE] + [r.randint(0, IBI_PAYLOAD_SIZE)
-                                          for _ in range(N_RANDOM)]
+    lengths = [0, 1, IBI_PAYLOAD_SIZE] + [r.randint(0, IBI_PAYLOAD_SIZE) for _ in range(N_RANDOM)]
 
     for n in lengths:
-        mdb = rand_ibi_mdb(r)                  # random MDB (tracked for self-check)
+        mdb = rand_ibi_mdb(r)  # random MDB (tracked for self-check)
         payload = rand_bytes(r, n)
         tb.log.info(f"IBI mdb=0x{mdb:02X} payload size {n}")
         assert await tgt.write_ibi(mdb, payload), (

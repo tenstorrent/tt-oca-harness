@@ -39,7 +39,7 @@ from pathlib import Path
 
 try:
     import cocotb
-except ImportError:        # allow standalone import (self-test / unit use)
+except ImportError:  # allow standalone import (self-test / unit use)
     cocotb = None
 
 
@@ -130,8 +130,10 @@ class RandMgr:
     def __init__(self, seed=None, name="rand"):
         self.seed = resolve_seed() if seed is None else seed
         self.rng = random.Random(self.seed)
-        _log(f"[{name}] random seed = 0x{self.seed:08X} "
-             f"(override with +seed=<n> plusarg or SEED=<n> env)")
+        _log(
+            f"[{name}] random seed = 0x{self.seed:08X} "
+            f"(override with +seed=<n> plusarg or SEED=<n> env)"
+        )
 
     def __getattr__(self, attr):
         # Delegate randint/choice/choices/random/shuffle/sample/... to the RNG.
@@ -158,7 +160,7 @@ def in_range(rng, lo, hi, *, exclude=(), corners=(), corner_w=0.30):
         cand = [c for c in corners if lo <= c <= hi and c not in excl]
         if cand:
             return rng.choice(cand)
-    for _ in range(1000):                # rejection sampling (ranges are small)
+    for _ in range(1000):  # rejection sampling (ranges are small)
         v = rng.randint(lo, hi)
         if v not in excl:
             return v

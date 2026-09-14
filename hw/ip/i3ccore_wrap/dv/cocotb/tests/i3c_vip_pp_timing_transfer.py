@@ -12,20 +12,21 @@ Requires `+i3c_vip_target`.
 
 Constrained-random length and data (shared framework, seed from +seed/SEED/default).
 """
+
 import cocotb
+from env.i3c_rand import RandMgr, rand_bytes, rand_len
 from env.i3c_test_base import make_env
-from env.i3c_rand import RandMgr, rand_len, rand_bytes
 from env.i3c_vip_flow import bring_up_and_assign, private_read, private_write
 
 MWL = 64
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_vip_pp_timing_transfer(dut):
     tb, helper, ctrl, _tgt = await make_env(dut)
     # bring_up_and_assign programs both the OD and PP timing banks
     vip = await bring_up_and_assign(dut, ctrl)
-    r = RandMgr(name="vip_pp_timing")         # seed logged; +seed/SEED override
+    r = RandMgr(name="vip_pp_timing")  # seed logged; +seed/SEED override
 
     write_data = rand_bytes(r, rand_len(r, MWL))
     ok, resp, rx = await private_write(dut, helper, ctrl, vip, write_data)
@@ -37,5 +38,4 @@ async def test_vip_pp_timing_transfer(dut):
     assert ok, f"PP-timed read failed resp=0x{resp:08X}"
     assert crx == read_data, "PP-timed read data mismatch"
 
-    tb.log.info(f"Push-Pull timing transfer against the VIP target "
-                f"(seed=0x{r.seed:08X})")
+    tb.log.info(f"Push-Pull timing transfer against the VIP target (seed=0x{r.seed:08X})")

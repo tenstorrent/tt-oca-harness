@@ -9,6 +9,7 @@ private write, which is far past the controller TX FIFO depth, so it also covers
 threshold-driven refill against a bus partner that is not the RTL under test.
 Requires `+i3c_vip_target`.
 """
+
 import cocotb
 from env.i3c_test_base import make_env
 from env.i3c_vip_flow import bring_up_and_assign, private_write
@@ -16,7 +17,7 @@ from env.i3c_vip_flow import bring_up_and_assign, private_write
 WRITE_LENGTH = 500
 
 
-@cocotb.test(timeout_time=8000, timeout_unit='us')
+@cocotb.test(timeout_time=8000, timeout_unit="us")
 async def test_vip_long_write_sanity(dut):
     tb, helper, ctrl, _tgt = await make_env(dut)
     vip = await bring_up_and_assign(dut, ctrl)
@@ -26,9 +27,7 @@ async def test_vip_long_write_sanity(dut):
 
     ok, resp, rx = await private_write(dut, helper, ctrl, vip, write_data)
     assert ok, f"long write failed resp=0x{resp:08X}"
-    assert len(rx) == WRITE_LENGTH, (
-        f"VIP target captured {len(rx)} bytes, expected {WRITE_LENGTH}"
-    )
+    assert len(rx) == WRITE_LENGTH, f"VIP target captured {len(rx)} bytes, expected {WRITE_LENGTH}"
     assert rx == write_data, (
         "long write payload mismatch, first at byte "
         f"{next(i for i, (e, g) in enumerate(zip(write_data, rx)) if e != g)}"

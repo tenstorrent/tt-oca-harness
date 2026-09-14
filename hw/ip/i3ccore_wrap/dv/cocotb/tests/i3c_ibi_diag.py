@@ -7,12 +7,12 @@ IBI receive diagnostic.
 Exercises an IBI containing an MDB and a 24-byte payload, which fits within the
 configured eight-DWORD IBI buffer.
 """
+
 import cocotb
-from cocotb.triggers import ClockCycles
-from env.i3c_test_base import make_env, bring_up_and_assign
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 
-@cocotb.test(timeout_time=400, timeout_unit='us')
+@cocotb.test(timeout_time=400, timeout_unit="us")
 async def test_ibi_diag(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)

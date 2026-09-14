@@ -19,9 +19,10 @@ outputs.
 RSTACT defining byte 0x01 arms peripheral reset; 0x02 arms whole-target
 (escalated) reset.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.i3c_test_base import make_env, bring_up_and_assign
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 RECOVERY_OUTPUTS = (
     "recovery_payload_available",
@@ -30,8 +31,8 @@ RECOVERY_OUTPUTS = (
     "escalated_reset",
 )
 
-RSTACT_PERIPHERAL_RESET = 0x01   # Arms peripheral reset
-RSTACT_WHOLE_TARGET = 0x02       # Arms whole-target reset
+RSTACT_PERIPHERAL_RESET = 0x01  # Arms peripheral reset
+RSTACT_WHOLE_TARGET = 0x02  # Arms whole-target reset
 
 
 def _read_wire(dut, name):
@@ -41,7 +42,7 @@ def _read_wire(dut, name):
     return int(val)
 
 
-@cocotb.test(timeout_time=2000, timeout_unit='us')
+@cocotb.test(timeout_time=2000, timeout_unit="us")
 async def test_rstact_arm_no_spurious_reset(dut):
     """RSTACT arms an action; with no Target Reset Pattern nothing may fire."""
     tb, helper, ctrl, tgt = await make_env(dut)
@@ -57,10 +58,7 @@ async def test_rstact_arm_no_spurious_reset(dut):
     # truthy tuple for every outcome including failure.
     ok, resp = await ctrl.rstact(RSTACT_PERIPHERAL_RESET, dat_idx=0)
     tb.log.info(f"RSTACT arm peripheral-reset ok={ok} resp=0x{resp:08X}")
-    assert ok, (
-        f"RSTACT (defining byte 0x{RSTACT_PERIPHERAL_RESET:02X}) failed "
-        f"resp=0x{resp:08X}"
-    )
+    assert ok, f"RSTACT (defining byte 0x{RSTACT_PERIPHERAL_RESET:02X}) failed resp=0x{resp:08X}"
 
     # Arming is not triggering: no Target Reset Pattern was driven, so both reset
     # outputs must still be low.

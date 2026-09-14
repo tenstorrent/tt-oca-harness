@@ -26,16 +26,34 @@ Example
 
 # Re-export the generic core so tests can `from env.i3c_rand import RandMgr, ...`.
 from .constrained_random import (
-    RandMgr, resolve_seed, in_range, weighted, banded, rand_bytes,
+    RandMgr,
+    banded,
+    in_range,
+    rand_bytes,
+    resolve_seed,
+    weighted,
 )
 
 __all__ = [
     # re-exported generic
-    "RandMgr", "resolve_seed", "in_range", "weighted", "banded", "rand_bytes",
+    "RandMgr",
+    "resolve_seed",
+    "in_range",
+    "weighted",
+    "banded",
+    "rand_bytes",
     # i3c domain
-    "I3C_RESERVED_ADDR", "rand_i3c_addr", "rand_len", "rand_threshold",
-    "len_for_threshold", "rand_mwl", "rand_mrl", "rand_ibi_mdb",
-    "rand_ibi_payload", "I3CTransfer", "do_transfer",
+    "I3C_RESERVED_ADDR",
+    "rand_i3c_addr",
+    "rand_len",
+    "rand_threshold",
+    "len_for_threshold",
+    "rand_mwl",
+    "rand_mrl",
+    "rand_ibi_mdb",
+    "rand_ibi_payload",
+    "I3CTransfer",
+    "do_transfer",
 ]
 
 
@@ -44,9 +62,21 @@ __all__ = [
 # ---------------------------------------------------------------------------
 # Reserved I3C addresses that must never be used as a target dynamic/static
 # address (broadcast 0x7E, single-bit-error neighbours, low reserved group).
-I3C_RESERVED_ADDR = frozenset({
-    0x00, 0x01, 0x02, 0x3E, 0x5E, 0x6E, 0x76, 0x7A, 0x7C, 0x7E, 0x7F,
-})
+I3C_RESERVED_ADDR = frozenset(
+    {
+        0x00,
+        0x01,
+        0x02,
+        0x3E,
+        0x5E,
+        0x6E,
+        0x76,
+        0x7A,
+        0x7C,
+        0x7E,
+        0x7F,
+    }
+)
 
 
 def rand_i3c_addr(rng, exclude=()):
@@ -108,8 +138,7 @@ class I3CTransfer:
 
     __slots__ = ("dir", "length", "data", "dat_idx")
 
-    def randomize(self, rng, *, mwl=256, dat_idx=0, w_weight=6, r_weight=4,
-                  min_len=1):
+    def randomize(self, rng, *, mwl=256, dat_idx=0, w_weight=6, r_weight=4, min_len=1):
         self.dir = weighted(rng, [("write", w_weight), ("read", r_weight)])
         self.length = rand_len(rng, mwl, lo=min_len)
         self.data = rand_bytes(rng, self.length)
@@ -117,8 +146,7 @@ class I3CTransfer:
         return self
 
     def __repr__(self):
-        return (f"I3CTransfer(dir={self.dir} len={self.length} "
-                f"dat_idx={self.dat_idx})")
+        return f"I3CTransfer(dir={self.dir} len={self.length} dat_idx={self.dat_idx})"
 
 
 async def do_transfer(ctrl, tgt, t):

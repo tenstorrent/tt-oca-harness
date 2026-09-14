@@ -13,19 +13,20 @@ random bus phase (far stronger than always resetting at the same point). After
 re-bring-up, a random post-reset transfer is self-checked. Seed from
 +seed/SEED/default.
 """
+
 import cocotb
 from cocotb.triggers import ClockCycles
-from env.i3c_test_base import make_env, bring_up_and_assign
-from env.i3c_rand import RandMgr, I3CTransfer, do_transfer, rand_len, rand_bytes
+from env.i3c_rand import I3CTransfer, RandMgr, do_transfer, rand_bytes, rand_len
+from env.i3c_test_base import bring_up_and_assign, make_env
 
 MWL = 32
 
 
-@cocotb.test(timeout_time=3000, timeout_unit='us')
+@cocotb.test(timeout_time=3000, timeout_unit="us")
 async def test_reset_mid_transaction(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    r = RandMgr(name="reset_mid")             # seed logged; +seed/SEED override
+    r = RandMgr(name="reset_mid")  # seed logged; +seed/SEED override
 
     # Random pre-reset traffic
     for _ in range(r.randint(1, 3)):
@@ -37,9 +38,7 @@ async def test_reset_mid_transaction(dut):
     pre_reset_data = rand_bytes(r, rand_len(r, MWL))
     ok, resp, rx = await ctrl.private_write(pre_reset_data, tgt, dat_idx=0)
     assert ok, f"pre-reset write failed resp=0x{resp:08X}"
-    assert rx == pre_reset_data, (
-        f"pre-reset payload mismatch: got {rx} != sent {pre_reset_data}"
-    )
+    assert rx == pre_reset_data, f"pre-reset payload mismatch: got {rx} != sent {pre_reset_data}"
     delay = r.randint(1, 200)
     tb.log.info(f"asserting reset mid-transaction after {delay} cycles...")
     await ClockCycles(dut.clk, delay)
