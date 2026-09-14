@@ -172,63 +172,120 @@ def _build_jobs_arg(args: argparse.Namespace) -> int:
     return int(getattr(args, "build_jobs", None) or args.sim_jobs)
 
 
-def _bender_filelist_sources(root: Path, build: dict[str, Any]) -> list[Path]:
-    """The source files named inside the generated ``[build].bender_filelist``.
+_HEADER_SUFFIXES = (".svh", ".vh", ".h")
 
-    The bender filelist holds one path per line, plus ``//`` comments and the
-    ``+incdir+`` / ``+define+`` options `generate_filelist` passes through. Only the plain
-    paths are source files, so option and comment lines are skipped. Order is preserved and
-    duplicates are dropped. An empty list is returned when the DUT declares no bender
-    filelist or the file is not generated yet.
+
+def _filelist_inputs(
+    root: Path, filelist: Path, sources: list[Path], incdirs: list[Path], seen: set[Path]
+) -> None:
+    """Collect the source paths and include directories one filelist declares.
+
+    A filelist holds one entry per line: plain paths are sources, ``+incdir+`` carries one or
+    more search directories joined by ``+``, ``-f``/``-F`` nests another filelist (the combined
+    filelist reaches the bender one this way), and everything else is an option or a comment.
+    Nested filelists are followed once each, so a cycle terminates.
     """
-    rel = str(build.get("bender_filelist") or "").strip()
-    if not rel:
-        return []
-    filelist = repo_path(root, rel)
-    if not filelist.is_file():
-        return []
-    seen: set[Path] = set()
-    sources: list[Path] = []
+    if filelist in seen or not filelist.is_file():
+        return
+    seen.add(filelist)
     for line in filelist.read_text(encoding="utf-8", errors="replace").splitlines():
         entry = line.strip()
-        if not entry or entry.startswith(("//", "#", "+", "-")):
+        if not entry or entry.startswith(("//", "#")):
             continue
-        path = repo_path(root, entry)
+        if entry.startswith("+incdir+"):
+            for part in entry[len("+incdir+") :].split("+"):
+                if part.strip():
+                    incdirs.append(repo_path(root, part.strip()))
+            continue
+        if entry.startswith(("-f", "-F")):
+            nested = entry[2:].strip()
+            if nested:
+                _filelist_inputs(root, repo_path(root, nested), sources, incdirs, seen)
+            continue
+        if entry.startswith(("+", "-")):
+            continue
+        sources.append(repo_path(root, entry))
+
+
+def _compile_inputs(root: Path, build: dict[str, Any]) -> tuple[list[Path], list[Path]]:
+    """Every source path and include directory the compile will read, in declaration order.
+
+    Both declared filelists are walked because a DUT may declare either or both, and the
+    generated combined filelist already expands `[build].sources` and nests the bender one.
+    `[build].incdirs` is added because the cocotb runner passes it to the simulator directly
+    rather than through a filelist. Duplicates are dropped.
+    """
+    sources: list[Path] = []
+    incdirs: list[Path] = []
+    seen: set[Path] = set()
+    for key in ("filelist", "bender_filelist"):
+        rel = str(build.get(key) or "").strip()
+        if rel:
+            _filelist_inputs(root, repo_path(root, rel), sources, incdirs, seen)
+    for entry in as_str_list(build.get("incdirs"), "build.incdirs"):
+        incdirs.append(repo_path(root, entry))
+    return _unique(sources), _unique(incdirs)
+
+
+def _unique(paths: list[Path]) -> list[Path]:
+    seen: set[Path] = set()
+    ordered: list[Path] = []
+    for path in paths:
         if path not in seen:
             seen.add(path)
-            sources.append(path)
-    return sources
+            ordered.append(path)
+    return ordered
 
 
-def _bender_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
-    """One digest over the CONTENT of every file the bender filelist names.
+def _compile_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
+    """One digest over the CONTENT of the source set the compile reads.
 
-    ``build_fingerprint`` hashes the combined filelist TEXT, which names the bender filelist
-    as a single ``-f`` line. That text is blind both to a path added or removed inside the
-    bender filelist and to a content-only edit of a file it names, so the digest here is what
-    makes vendored or DUT RTL move the build identity. Each entry contributes its
-    repo-relative path (so the digest does not move when the same tree is built
-    from a different checkout) and the SHA-256 of its bytes; a path that does
-    not resolve contributes ``<missing>`` so a deleted file still moves the
-    digest instead of failing the build.
+    ``build_fingerprint`` hashes the filelist TEXT, which is blind to a content-only edit of
+    anything the filelist names -- the DUT RTL behind a nested ``-f``, the testbench top, the
+    Verilator stubs, the VIP interfaces. Hashing that content is what makes an edited source
+    move the build identity, so an artifact compiled from different sources can no longer
+    satisfy a digest match.
 
-    Cost is one read of every named source.
+    Each named source contributes its repo-relative path (so the digest does not move when the
+    same tree is built from a different checkout) and the SHA-256 of its bytes; a path that
+    does not resolve contributes ``<missing>``, so a deleted file moves the digest instead of
+    failing the build. An ``include`` is not a named path, so headers are covered separately by
+    suffix under every declared include directory: which headers a compile actually opens is
+    known only to the compiler, so this over-covers (an unincluded header in a searched
+    directory still moves the digest) and never under-covers, and can therefore only cause an
+    unnecessary rebuild, never a missed one.
+
+    Content is hashed rather than size and mtime because a checkout, a rebase or a `git stash`
+    moves mtimes without changing what gets compiled, and a same-size edit changes what gets
+    compiled without moving size. Cost is one read of every named source and every header under
+    the declared include directories.
     """
-    sources = _bender_filelist_sources(root, build)
-    if not sources:
+    sources, incdirs = _compile_inputs(root, build)
+    headers: list[Path] = []
+    for directory in incdirs:
+        if directory.is_dir():
+            headers += sorted(
+                path
+                for path in directory.rglob("*")
+                if path.suffix in _HEADER_SUFFIXES and path.is_file()
+            )
+    if not sources and not headers:
         return []
-    digest = hashlib.sha256()
-    for path in sources:
-        digest.update((repo_rel(root, path) or str(path)).encode("utf-8"))
-        digest.update(b"\0")
-        try:
-            with path.open("rb") as handle:
-                for chunk in iter(lambda: handle.read(1 << 20), b""):
-                    digest.update(chunk)
-        except OSError:
-            digest.update(b"<missing>")
-        digest.update(b"\0")
-    return [f"bender_sources={len(sources)}:{digest.hexdigest()[:16]}"]
+    parts: list[str] = []
+    for label, paths in (("sources", sources), ("headers", _unique(headers))):
+        digest = hashlib.sha256()
+        for path in paths:
+            digest.update((repo_rel(root, path) or str(path)).encode("utf-8"))
+            digest.update(b"\0")
+            try:
+                with path.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1 << 20), b""):
+                        digest.update(chunk)
+            except OSError:
+                digest.update(b"<missing>")
+            digest.update(b"\0")
+        parts.append(f"compile_{label}={len(paths)}:{digest.hexdigest()[:16]}")
+    return parts
 
 
 def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
@@ -1684,7 +1741,7 @@ def _cocotb_build_info(
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, run_target),
             *public_scope_extra,
-            *_bender_sources_fingerprint(root, build),
+            *_compile_sources_fingerprint(root, build),
             f"waves={wave_format}",
             f"cov={bool(args.cov)}",
         ],
@@ -2388,7 +2445,7 @@ def _vcs_resolve_build(
         extra=[
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, compile_target),
-            *_bender_sources_fingerprint(root, build),
+            *_compile_sources_fingerprint(root, build),
             f"waves={wave_format}",
             f"cov={bool(args.cov)}",
             *coverage_compile_args,
@@ -2695,7 +2752,7 @@ def _xcelium_resolve_build(
         extra=[
             *cache_key_extra(options),
             *_target_fingerprint_extra(target_name, compile_target),
-            *_bender_sources_fingerprint(root, build),
+            *_compile_sources_fingerprint(root, build),
             f"waves={wave_format}",
         ],
     )
