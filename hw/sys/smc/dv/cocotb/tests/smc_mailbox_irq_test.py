@@ -31,6 +31,16 @@ MAILBOX_IRQ_MIN_CSR_ACCESSES = 19
 class smc_mailbox_irq_test(smc_base_test):
     """Run mailbox status and IRQ-control CSR checks."""
 
+    required_evidence = (
+        "CHK-MAILBOX-IRQ-ASSERT",
+        "CHK-MAILBOX-IRQ-CLEAR",
+        "CHK-MAILBOX-IRQ-IDLE",
+        "CHK-MAILBOX-IRQ-SOURCE",
+        "CHK-MAILBOX-IRQT-CLAMP",
+        "CHK-MAILBOX-IRQT-IN-RANGE",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -15,6 +15,21 @@ from smc_base_test import smc_base_test
 class smc_hang_detector_plic_route_test(smc_base_test):
     """peripheral_interrupts[30] carries the hang OR into cpu_interrupts."""
 
+    required_evidence = (
+        "CHK-HANG-PLIC-DATA-CLR",
+        "CHK-HANG-PLIC-DATA-FIRE",
+        "CHK-HANG-PLIC-GATED",
+        "CHK-HANG-PLIC-IDLE",
+        "CHK-HANG-PLIC-ROUTE",
+        "CHK-HANG-PLIC-SEP-CLR",
+        "CHK-HANG-PLIC-SEP-FIRE",
+        "CHK-HANG-PLIC-SHARED-CLR",
+        "CHK-HANG-PLIC-SHARED-HOLD",
+        "CHK-HANG-PLIC-SYS-CLR",
+        "CHK-HANG-PLIC-SYS-FIRE",
+    )
+    min_evidence = 11
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

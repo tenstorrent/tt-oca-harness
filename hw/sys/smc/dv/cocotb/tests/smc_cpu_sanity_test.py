@@ -18,6 +18,13 @@ from smc_base_test import smc_base_test
 class smc_cpu_sanity_test(smc_base_test):
     """Run CPU-control CSR map coverage and optional firmware boot contract."""
 
+    required_evidence = (
+        "CHK-CPU-BFM-OBSERVABILITY",
+        "CHK-CPU-CTRL-MAP-DEPTH",
+        "CHK-CPU-CTRL-MAP-LIVE",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

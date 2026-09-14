@@ -32,6 +32,18 @@ ECC_DFD_DBS_MIN_CSR_ACCESSES = 7
 class smc_ecc_dfd_dbs_sanity_test(smc_base_test):
     """Run the diagnostic representative CSR precheck."""
 
+    required_evidence = (
+        "CHK-DIAG-AXIL-ACTIVE",
+        "CHK-DIAG-AXIL-IDLE",
+        "CHK-DIAG-CSR-COUNT",
+        "CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX",
+        "CHK-DIAG-CSR-DFX_DEBUG_CTRL",
+        "CHK-DIAG-CSR-NDMRESET_PROCESS",
+        "CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION",
+        "CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO",
+    )
+    min_evidence = 8
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

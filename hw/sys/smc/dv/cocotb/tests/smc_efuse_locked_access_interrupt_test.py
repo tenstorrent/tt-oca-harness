@@ -16,6 +16,15 @@ from smc_base_test import smc_base_test
 class smc_efuse_locked_access_interrupt_test(smc_base_test):
     """CHIPLET_ID unlocked write silent; locked write/read pulse bit 28."""
 
+    required_evidence = (
+        "CHK-EFUSE-LOCK-IRQ-RD",
+        "CHK-EFUSE-LOCK-IRQ-UNLOCK",
+        "CHK-EFUSE-LOCK-IRQ-WR",
+        "CHK-EFUSE-LOCK-PRE",
+        "CHK-EFUSE-LOCK-SCOREBOARD",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

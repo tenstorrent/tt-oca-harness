@@ -15,6 +15,16 @@ from smc_base_test import smc_base_test
 class smc_gpio_irq_active_test(smc_base_test):
     """Run GPIO CSR plus IRQ-control decode precheck."""
 
+    required_evidence = (
+        "CHK-GPIO-IRQ-ACTIVE-LOW",
+        "CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT",
+        "CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR",
+        "CHK-GPIO-IRQ-ACTIVE-LOW-IDLE",
+        "CHK-GPIO0-DATA-CTRL-READBACK",
+        "CHK-MAILBOX-IRQEN-RESET",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
