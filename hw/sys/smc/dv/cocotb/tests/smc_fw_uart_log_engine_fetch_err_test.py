@@ -6,7 +6,7 @@ Firmware test: `fw/tests/uart_log_engine_fetch_err` is loaded into scratch by
 the firmware loader. It derives an unmapped SMC-local address from the
 generated map (the first 4 KB boundary past the WDT cluster, checked at
 compile time to lie before the reset unit), and on wrap 0 runs: the INTR_TEST
-self-test for both bits, INTR_ENABLE gating of status capture, a fetch from
+self-test for both bits, INTR_STATUS capture while INTR_ENABLE masks irq_o, a fetch from
 the unmapped region that must latch LOG_FETCH_ERR, proof that the stuck cause
 re-latches after a W1C and is retired only by a successful fetch, a sustained
 DECERR over a 4 KB region whose LOG_CTRL must not hwclr, the same fault with

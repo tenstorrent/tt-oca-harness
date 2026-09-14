@@ -538,6 +538,7 @@ module log_engine_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.LOG_FETCH_ERR.value = field_storage.INTR_STATUS.LOG_FETCH_ERR.value;
     // Field: log_engine.INTR_STATUS.LOG_WRITE_ERR
     always_comb begin
         automatic logic [0:0] next_c;
@@ -563,6 +564,7 @@ module log_engine_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.LOG_WRITE_ERR.value = field_storage.INTR_STATUS.LOG_WRITE_ERR.value;
     assign hwif_out.INTR_STATUS.intr =
         |field_storage.INTR_STATUS.LOG_FETCH_ERR.value
         || |field_storage.INTR_STATUS.LOG_WRITE_ERR.value;

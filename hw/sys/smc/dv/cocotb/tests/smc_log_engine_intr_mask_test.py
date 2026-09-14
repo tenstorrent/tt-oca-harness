@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Log-engine INTR_ENABLE output-mask reproducer.
 
-Fails against the RTL as shipped: the interrupt enable gates the set path
-instead of masking the output. log_engine.rdl:159-161 carries the intended
-`hwenable` binding commented out; gpio.sv and the I2C core share the same shape.
-Enrolled in the `rtl_issue` group.
+INTR_ENABLE masks irq_o only: INTR_STATUS latches whether or not the interrupt
+is enabled and clears only on W1C, so a masked event is held, not lost, and
+clearing the enable releases the line (#1635). gpio.sv and the I2C core apply
+the same convention; this testcase guards the log-engine instance.
 """
 
 from __future__ import annotations

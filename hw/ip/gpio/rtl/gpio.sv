@@ -250,11 +250,14 @@ module gpio
     .o_q(pad2core_synced)
   );
 
+  // The trigger is tracked regardless of the enable so that (a) clearing the
+  // enable is not needed to release a held interrupt and (b) the edge detector
+  // never compares against a sample frozen while the interrupt was masked.
   always_ff @(posedge clk_i or negedge rst_primary_ni) begin
     if (!rst_primary_ni) begin
       prev_pad2core <= 1'b0;
       interrupt <= 1'b0;
-    end else if (reg__interrupt_enable) begin
+    end else begin
       prev_pad2core <= pad2core_synced;
       interrupt <= nxt_interrupt;
     end
@@ -268,37 +271,35 @@ module gpio
   } interrupt_type_t;
 
   always_comb begin
-    if (reg__interrupt_enable) begin
-      unique case (reg__interrupt_type)
-        ACTIVE_HIGH: begin
-          nxt_interrupt = pad2core_synced;
-        end
-        ACTIVE_LOW: begin
-          nxt_interrupt = !pad2core_synced;
-        end
-        RISING_EDGE: begin
-          if (!prev_pad2core && pad2core_synced) begin
-            nxt_interrupt = 1'b1;
-          end else begin
-            nxt_interrupt = 1'b0;
-          end
-        end
-        FALLING_EDGE: begin
-          if (prev_pad2core && !pad2core_synced) begin
-            nxt_interrupt = 1'b1;
-          end else begin
-            nxt_interrupt = 1'b0;
-          end
-        end
-        default: begin
+    unique case (reg__interrupt_type)
+      ACTIVE_HIGH: begin
+        nxt_interrupt = pad2core_synced;
+      end
+      ACTIVE_LOW: begin
+        nxt_interrupt = !pad2core_synced;
+      end
+      RISING_EDGE: begin
+        if (!prev_pad2core && pad2core_synced) begin
+          nxt_interrupt = 1'b1;
+        end else begin
           nxt_interrupt = 1'b0;
         end
-      endcase
-    end else begin
-      nxt_interrupt = 1'b0;
-    end
+      end
+      FALLING_EDGE: begin
+        if (prev_pad2core && !pad2core_synced) begin
+          nxt_interrupt = 1'b1;
+        end else begin
+          nxt_interrupt = 1'b0;
+        end
+      end
+      default: begin
+        nxt_interrupt = 1'b0;
+      end
+    endcase
   end
 
-  assign interrupt_o = interrupt;
+  // INTERRUPT_ENABLE is a combinational mask on the output, per
+  // doc/architecture.adoc: interrupt_o = interrupt_enable && interrupt_trigger.
+  assign interrupt_o = interrupt && reg__interrupt_enable;
 
 endmodule

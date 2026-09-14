@@ -136,13 +136,12 @@ static int init_controller(void) {
 
     i2c_config_timeout(CONTROLLER_IDX, READ_STRETCH_TIMEOUT_CYCLES, true, true);
 
-    /* Open the reporting gate for the property under test.
+    /* Enable the STRETCH_TIMEOUT interrupt for the property under test.
      *
-     * INTR_STATE.STRETCH_TIMEOUT is ANDed with INTR_ENABLE.STRETCH_TIMEOUT in
-     * the RTL (i2c_core.sv:1015,1040), and .enable_interrupts above is false, so
-     * without this the status bit can never set no matter what the bus does --
-     * the test was reading a register that was structurally pinned to 0 and
-     * treating the absence of a report as a passing observation. */
+     * INTR_STATE.STRETCH_TIMEOUT latches whether or not the interrupt is
+     * enabled (INTR_ENABLE masks irq_o only), so the status read below does
+     * not depend on this. Enabling it as well keeps the interrupt line as a
+     * second, independent observation of the same event. */
     i2c_enable_interrupts(CONTROLLER_IDX, I2C__INTR_ENABLE__STRETCH_TIMEOUT_bm);
     return I2C_OK;
 }

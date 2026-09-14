@@ -76,7 +76,7 @@ addrmap log_engine #(
         desc = "Interrupt Status Register";
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
@@ -85,7 +85,7 @@ addrmap log_engine #(
 
         field {
             sw = rw;
-            hw = w;
+            hw = rw;
             level intr;
             woclr;
             desc = "Log Write Error Interrupt. Asserted when the bus for writing log data returns
@@ -97,13 +97,13 @@ addrmap log_engine #(
         desc = "Interrupt Enable Register";
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Log Fetch Error Interrupt Enable.";
         } LOG_FETCH_ERR[0:0] = 0x0;
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r;
             desc = "Log Write Error Interrupt Enable.";
         } LOG_WRITE_ERR[4:4] = 0x0;
     };
@@ -150,15 +150,6 @@ addrmap log_engine #(
     INTR_ENABLE        INTR_ENABLE                         @0x18;
     INTR_TEST          INTR_TEST                           @0x1C;
     LOG_CTRL           LOG_CTRL       [NUM_LOG_ENTRIES]    @0x40;
-
-
-    /////////////////////////
-    // Property Assignment //
-    /////////////////////////
-
-    // TODO: Uncomment after PeakRDL bug fix
-    // TODO // INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR;
-    // TODO // INTR_STATUS.LOG_WRITE_ERR->hwenable = INTR_ENABLE.LOG_WRITE_ERR;
 
 };
 

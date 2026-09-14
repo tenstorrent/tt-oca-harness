@@ -129,13 +129,13 @@ addrmap telemetry_receiver #(
 
         field {
             sw = rw;
-            hw = r; // TODO: Change to na after PeakRDL bug fix
+            hw = r; // Read by the RTL, which masks the interrupt output with this bit.
             desc = "Last Packet Missing Interrupt Enable.";
         } MISSING_LAST[0:0] = 0x0;
 
         field {
             sw = rw;
-            hw = r;
+            hw = r; // Read by the RTL, which masks the interrupt output with this bit.
             desc = "Telemetry Message Buffer Threshold Interrupt Enable.";
         } BUFFER_THRESHOLD[4:4] = 0x0;
     };
@@ -177,8 +177,12 @@ addrmap telemetry_receiver #(
     // Property Assignment //
     /////////////////////////
 
-    // TODO: Uncomment after PeakRDL bug fix
-    // TODO // INTR_STATUS.MISSING_LAST->hwenable = INTR_ENABLE.MISSING_LAST;
+    // INTR_ENABLE masks the interrupt output only; it is applied in the RTL
+    // (irq_o = |(INTR_STATUS & INTR_ENABLE)). MISSING_LAST latches whether or
+    // not the interrupt is enabled and is cleared only by W1C; BUFFER_THRESHOLD
+    // follows the buffer fill level regardless of the enable. See
+    // hw/ip/uart/log_engine/regs/log_engine.rdl for why the mask is not bound
+    // here with the SystemRDL `enable` property.
 
 };
 

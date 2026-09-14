@@ -3,18 +3,20 @@
 
 // smc_uart_log_engine_intr_test
 //
-// Verify Log Engine interrupt machinery. Per RTL (log_engine.sv:457-462):
-//   reg_in.INTR_STATUS.<bit>.next =
-//       (real_err || INTR_TEST.<bit>) && INTR_ENABLE.<bit>
+// Verify Log Engine interrupt machinery. Per RTL (log_engine.sv, "Interrupt
+// Registers"):
+//   reg_in.INTR_STATUS.<bit>.next = real_err || INTR_TEST.<bit>
+//   irq_o = |(INTR_STATUS & INTR_ENABLE)
 //
-// That AND-gating means INTR_STATUS only latches when INTR_ENABLE = 1, even
-// from an INTR_TEST pulse. This test covers the four cells of the truth
-// table (real_err is held 0 here — no AXI error injected):
+// INTR_ENABLE masks the interrupt output only; INTR_STATUS latches whether or
+// not the interrupt is enabled and is cleared only by W1C, so an event that
+// arrives while masked is not lost. This test covers the four cells of the
+// truth table (real_err is held 0 here — no AXI error injected):
 //
 //   ENABLE  INTR_TEST   →  INTR_STATUS
 //   ─────────────────────────────────────
 //     0       0         →     0
-//     0       1 (pulse) →     0   (gated by ENABLE)
+//     0       1 (pulse) →     1   (latches even while masked)
 //     1       0         →     0
 //     1       1 (pulse) →     1   (latches, W1C to clear)
 //
@@ -54,17 +56,21 @@ static void expect_status(uint32_t expect, uint32_t mask, const char *what) {
 static void run_one_bit(uint32_t bit) {
     info_msg_hex32_s(0, "intr_test bit=", bit);
 
-    // Clear any stale status (W1C with ENABLE=1 first so latched-but-disabled
-    // state cleanly resets)
-    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, bit);
+    // Clear any stale status (W1C does not depend on ENABLE)
+    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, bit);
+    expect_status(0u, bit, "precondition: status must be 0 after W1C");
 
     //----------------------------------------------------------------------
-    // Cell (ENABLE=0, INTR_TEST=pulse) — status stays 0 (gated)
+    // Cell (ENABLE=0, INTR_TEST=pulse) — status latches even while masked
     //----------------------------------------------------------------------
-    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
     write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, bit); // singlepulse
-    expect_status(0u, bit, "ENABLE=0 + INTR_TEST pulse: status must stay 0 (gated)");
+    expect_status(bit, bit, "ENABLE=0 + INTR_TEST pulse: status must latch (not gated)");
+
+    // The masked event is still pending: enabling later must not be needed to
+    // see it, and W1C must clear it with ENABLE still 0.
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, bit);
+    expect_status(0u, bit, "ENABLE=0 + W1C: status must clear");
 
     // Confirm INTR_TEST.bit reads back 0 (singlepulse)
     {
@@ -124,13 +130,14 @@ int main(void) {
     expect_status(0u, BIT_FETCH_ERR | BIT_WRITE_ERR, "after both cleared: status not 0");
 
     //--------------------------------------------------------------------------
-    // Mixed enables: ENABLE=FETCH only, pulse both → only FETCH latches
+    // Mixed enables: ENABLE=FETCH only, pulse both → both latch (ENABLE masks
+    // the interrupt line, not the status)
     //--------------------------------------------------------------------------
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR);
     write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-    expect_status(BIT_FETCH_ERR, BIT_FETCH_ERR | BIT_WRITE_ERR,
-                  "ENABLE=FETCH only: only FETCH_ERR should latch");
-    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR);
+    expect_status(BIT_FETCH_ERR | BIT_WRITE_ERR, BIT_FETCH_ERR | BIT_WRITE_ERR,
+                  "ENABLE=FETCH only: both bits must still latch");
+    write_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
 
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);
 

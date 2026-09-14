@@ -1377,6 +1377,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.HEALTH_TEST_FAILED.value = field_storage.INTR_STATUS.HEALTH_TEST_FAILED.value;
     // Field: entropy_source.INTR_STATUS.FIFO_ERROR
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1402,6 +1403,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.FIFO_ERROR.value = field_storage.INTR_STATUS.FIFO_ERROR.value;
     // Field: entropy_source.INTR_STATUS.FIFO_OVERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1427,6 +1429,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.FIFO_OVERFLOW.value = field_storage.INTR_STATUS.FIFO_OVERFLOW.value;
     // Field: entropy_source.INTR_STATUS.FIFO_UNDERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1452,6 +1455,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.FIFO_UNDERFLOW.value = field_storage.INTR_STATUS.FIFO_UNDERFLOW.value;
     // Field: entropy_source.INTR_STATUS.PERSISTENT_FAILURE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1477,6 +1481,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.PERSISTENT_FAILURE.value = field_storage.INTR_STATUS.PERSISTENT_FAILURE.value;
     // Field: entropy_source.INTR_STATUS.AUTOTUNE_FAIL
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1502,6 +1507,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.AUTOTUNE_FAIL.value = field_storage.INTR_STATUS.AUTOTUNE_FAIL.value;
     // Field: entropy_source.INTR_STATUS.BIW_OBS_OVERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1527,6 +1533,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.BIW_OBS_OVERFLOW.value = field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value;
     // Field: entropy_source.INTR_STATUS.NOISE_OBS_OVERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1552,6 +1559,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.NOISE_OBS_OVERFLOW.value = field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value;
     assign hwif_out.INTR_STATUS.intr =
         |field_storage.INTR_STATUS.HEALTH_TEST_FAILED.value
         || |field_storage.INTR_STATUS.FIFO_ERROR.value

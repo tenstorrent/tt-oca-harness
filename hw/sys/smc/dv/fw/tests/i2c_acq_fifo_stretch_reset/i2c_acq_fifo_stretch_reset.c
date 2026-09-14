@@ -135,9 +135,9 @@ static int tb_sync(uint32_t marker) {
  * of depth or margin. What is left is the DUT's own statement that it is out
  * of room; the level is reported, not used as a gate.
  *
- * INTR_STATE.ACQ_STRETCH is not used here: INTR_STATE bits are
- * ANDed with INTR_ENABLE (i2c_core.sv:986,992) and this test runs with target
- * interrupts disabled, so that bit reads 0 whatever the FIFO is doing.
+ * INTR_STATE.ACQ_STRETCH is not used here: it is a status-type bit that
+ * follows the stretch condition (INTR_ENABLE masks only irq_o), so it would
+ * add nothing over STATUS.ACQFULL, which is the DUT's own out-of-room flag.
  */
 static int wait_for_acq_stretch(uint32_t idx, uint32_t *acqlvl_out) {
     uint32_t acqlvl = 0;

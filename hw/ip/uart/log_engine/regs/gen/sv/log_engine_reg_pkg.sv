@@ -84,6 +84,16 @@ package log_engine_reg_pkg;
     } log_engine__LOG_WRITE_ADDR__out_t;
 
     typedef struct {
+        logic value;
+    } log_engine__INTR_STATUS__LOG_FETCH_ERR__out_t;
+
+    typedef struct {
+        logic value;
+    } log_engine__INTR_STATUS__LOG_WRITE_ERR__out_t;
+
+    typedef struct {
+        log_engine__INTR_STATUS__LOG_FETCH_ERR__out_t LOG_FETCH_ERR;
+        log_engine__INTR_STATUS__LOG_WRITE_ERR__out_t LOG_WRITE_ERR;
         logic intr;
     } log_engine__INTR_STATUS__out_t;
 

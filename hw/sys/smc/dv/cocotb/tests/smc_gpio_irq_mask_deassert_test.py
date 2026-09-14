@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO interrupt_enable as an output mask.
 
-Clearing interrupt_enable must de-assert interrupt_o. The RTL uses
-interrupt_enable as the clock enable of the interrupt flop rather than as an
-output mask, so interrupt_o holds after the enable is cleared and this testcase
-fails against it; it is enrolled in the `rtl_issue` group.
+Clearing interrupt_enable must de-assert interrupt_o. gpio.sv applies the
+enable as a combinational mask on interrupt_o and keeps tracking the trigger
+while masked (#1602); this testcase guards that behaviour.
 """
 
 from __future__ import annotations
