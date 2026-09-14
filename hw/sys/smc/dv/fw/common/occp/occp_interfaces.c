@@ -15,6 +15,8 @@ static const uint32_t GPIO_INTF_DATA_CTRL_OFFSET = 0x0u;
 static void program_cgm0_functional(void) {
 }
 
+/* Secure lifecycle states are PROD (0x1) and PROD_END (0x8), the ROM's
+ * SMC_LC_STATE_IS_SECURE set; TEST_DEV and the RMA encodings are non-secure. */
 bool is_secure_mode(void) {
     uint32_t lc_state = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR) & 0xF;
     return (lc_state == 1) || (lc_state == 8);
@@ -154,11 +156,6 @@ bool initialize_i3c_controller(I3C_Driver **drv) {
 
     // Pick the I3C controller at random.
     uint32_t controller_id;
-
-    // Read LC_STATE register to check security mode
-    // TODO: LC_STATE decode covers only values 1 and 8
-    uint32_t lc_state = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR) & 0xF;
-    bool is_secure_mode = (lc_state == 1) || (lc_state == 8);
 
     // Check strap values for BOOT_RECOVERY and PRIMARY_CHIPLET
     bool boot_recovery = smc_strap_is_set(SMC_STRAP_BOOT_RECOVERY);

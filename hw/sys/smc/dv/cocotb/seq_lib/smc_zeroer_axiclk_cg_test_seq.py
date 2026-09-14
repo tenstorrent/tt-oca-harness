@@ -262,7 +262,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         trigger a solo op1-shaped operation from idle and measure the exact
         clk_smc_i cycle span busy stays asserted, so the 3 required race
         timings can be scheduled against the DUT's own observed timing
-        (CHK-NO-TAUTOLOGY: never a hand literal)."""
+        (never a hand literal)."""
         await self._wait_zeroer_idle()
         timeline: list[int] = []
         task = cocotb.start_soon(self._p2_trigger_op(P2_DEST_CALIB, P2_OP_SIZE))

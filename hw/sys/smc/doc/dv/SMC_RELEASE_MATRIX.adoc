@@ -22,7 +22,8 @@ to a smaller tier.
 |Weekly |`--dut smc --tool verilator --items hosted` |3 |Coverage / dashboard; same group
 |===
 
-Group sizes are the `expected_count` guards in `testlists/all.toml`.
+Group sizes are the `expected_count` guards in
+`hw/sys/smc/dv/testlists/all.toml`.
 
 [[smc-release-credit]]
 === Credit versus the CI group

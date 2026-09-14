@@ -6,14 +6,14 @@
 
 This chapter defines the canonical bring-up and CSR signoff. Feature credit is
 the SCOPE matrix in `SMC_SCOPE_TRACEABILITY.adoc`. Live membership is
-`testlists/all.toml`. Launch is `--dut smc` (the TB instantiates
+`hw/sys/smc/dv/testlists/all.toml`. Launch is `--dut smc` (the TB instantiates
 `smc_wrapper`); there is no `--dut smc_wrapper`.
 
 [[smc-canonical-groups]]
 === Live groups
 
-The table lists the groups `testlists/` defines; their sizes are the
-`expected_count` guards in `testlists/all.toml`.
+The table lists the groups `hw/sys/smc/dv/testlists/` defines; their sizes are
+the `expected_count` guards in `hw/sys/smc/dv/testlists/all.toml`.
 
 [cols="2,3",options="header",]
 |===
