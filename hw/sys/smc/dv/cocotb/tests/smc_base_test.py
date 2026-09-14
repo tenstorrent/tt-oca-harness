@@ -132,12 +132,26 @@ _PROTOCOL_VIP_TESTS = {
 #
 # So every run records, from the cocotb side, into its kept log, at
 # start-of-simulation:
-#   * the commit the model was built from, and whether anything that feeds
-#     the model or the bench was uncommitted at run time (`dirty=`): the
-#     compile sources and include directories, every Bender manifest and
-#     lockfile (they choose the sources), the shared DV configuration and the
-#     runner (they choose the defines and flags), the SMC DV package and the
-#     in-repo PYTHONPATH entries;
+#   * the commit of the checkout the compile sources come from
+#     (`checkout_rev=`), and whether anything that feeds the model or the
+#     bench was uncommitted at run time (`dirty=`): the compile sources and
+#     include directories, every Bender manifest and lockfile (they choose
+#     the sources), the shared DV configuration and the runner (they choose
+#     the defines and flags), the SMC DV package entries the flow reads --
+#     the paths smc_sim_cfg.toml names (tb/, models/, cov/, assets/,
+#     efuse_preload/, the .vlt scope files), the testlists, the cocotb bench,
+#     the firmware image sources under fw/, smc_sim.core and the configuration
+#     itself -- and the in-repo PYTHONPATH entries. docs/ and the signoff
+#     records under hw/sys/smc/doc are read by people, not by the flow, and
+#     are outside the scope;
+#   * whether the model is newer than every in-repo compile source and
+#     include-directory file (`model_newer_than_sources=`). A prebuilt binary
+#     carries nothing that names the tree it came from, so the checkout's
+#     commit describes the model only if no source has changed since the
+#     model was built; a source newer than the model fails the run. `git
+#     checkout` sets the mtime of every file it writes to now, so a model
+#     built before a checkout of an identical tree fails the same way, and
+#     rebuilding answers both cases;
 #   * the smc_sim_cfg.toml target the exported build directory belongs to, and
 #     the sha256 of the model artifact, of the resolved elaboration-dependency
 #     list, and of the compile filelist the simulator was invoked with;
@@ -145,13 +159,35 @@ _PROTOCOL_VIP_TESTS = {
 # If any of it cannot be determined the test FAILS -- a placeholder would be
 # worse than nothing, because it would make an un-attributable run look
 # attributed. A dirty tree fails too, unless SMC_DV_ALLOW_DIRTY=1 is exported
-# or the test sets `require_clean_tree = False`; the line then carries
-# `dirty_allowed=true`, so such a log can never pass as evidence unnoticed.
+# or the test sets `require_clean_tree = False`, and a stale model fails
+# unless SMC_DV_ALLOW_STALE_MODEL=1 is exported; the line then carries
+# `dirty_allowed=true` / `model_stale_allowed=true`, so such a log can never
+# pass as evidence unnoticed.
 _SIM_CFG_REL = Path("hw") / "sys" / "smc" / "dv" / "smc_sim_cfg.toml"
 _DV_REL = Path("hw") / "sys" / "smc" / "dv"
 _BENCH_REL = _DV_REL / "cocotb"
 _BUILD_DIR_ENV = "OCAH_SIM_BUILD_DIR"
 _ALLOW_DIRTY_ENV = "SMC_DV_ALLOW_DIRTY"
+_ALLOW_STALE_ENV = "SMC_DV_ALLOW_STALE_MODEL"
+
+# DV package entries in the dirty scope that no filelist or configuration
+# string names: the configuration itself, the core file, the bench, and the
+# sources the firmware images are built from (fw/build is ignored output and
+# never appears in `git status`). Everything else under hw/sys/smc/dv enters
+# the scope through the filelist closure, the paths smc_sim_cfg.toml names,
+# the [testlist] path and the [frameworks.cocotb] roots -- see `_config_scope`.
+_DV_SCOPE_FILES_REL = (_SIM_CFG_REL, _DV_REL / "smc_sim.core")
+_DV_SCOPE_DIRS_REL = (_BENCH_REL, _DV_REL / "fw")
+# Documentation and signoff records: read by people, not by the flow. A
+# configuration string pointing into one of these does not enter the scope.
+_DV_SCOPE_EXCLUDED_REL = (
+    _DV_REL / "docs",
+    _DV_REL / "README.md",
+    Path("hw") / "sys" / "smc" / "doc",
+)
+# A DV-package path inside a configuration string -- a plusarg with a
+# `{repo_root}/` prefix, an argv fragment, a bare path value.
+_DV_PATH_IN_CONFIG = re.compile(r"hw/sys/smc/dv/[A-Za-z0-9_./-]+")
 
 # tool -> (model artifact, resolved-compile-input list, simulator build record),
 # all relative to OCAH_SIM_BUILD_DIR. The model artifact is the thing the
@@ -166,6 +202,12 @@ _MODEL_ARTIFACTS: dict[str, tuple[str, str | None, str | None]] = {
     "vcs": ("simv", None, None),
     "xcelium": ("xrun_snapshot", "xrun_build.log", "xrun_build.history"),
 }
+
+# Files of a directory-shaped model (an Xcelium snapshot library) whose
+# contents enter the fingerprint: the compiled units and the elaborated
+# snapshot live in the library's .pak files and shared objects. Every other
+# file enters by path, size and mtime.
+_SNAPSHOT_CONTENT_SUFFIXES = frozenset({".pak", ".so", ".lnx86"})
 
 # A simulator reports the name of its executable, which is not always the tool
 # key above: Xcelium runs as `xmsim`. Map the reported names onto keys instead of
@@ -233,12 +275,12 @@ def _sim_tool() -> str:
 
 
 def _digest(path: Path) -> tuple[str, int]:
-    """(sha256, size) of a file, or a metadata fingerprint of a directory.
+    """(sha256, size) of a file, or a fingerprint of a directory-shaped model.
 
-    A directory-shaped model (xcelium snapshot) is fingerprinted from the sorted
-    (relative path, size) list of its files -- content-hashing a whole snapshot
-    tree every test is not worth the runtime, and the fingerprint still changes
-    whenever the snapshot is rebuilt.
+    An Xcelium snapshot is a library directory: the files named by
+    :data:`_SNAPSHOT_CONTENT_SUFFIXES` are hashed by content, the rest by
+    relative path, size and mtime, so two builds of the same sizes fingerprint
+    differently.
     """
     digest = hashlib.sha256()
     if path.is_dir():
@@ -247,10 +289,17 @@ def _digest(path: Path) -> tuple[str, int]:
         if not entries:
             _fail(f"{path} is an empty directory: there is no model artifact to fingerprint")
         for entry in entries:
-            size = entry.stat().st_size
-            total += size
+            stat = entry.stat()
+            total += stat.st_size
             digest.update(str(entry.relative_to(path)).encode())
-            digest.update(str(size).encode())
+            digest.update(b"\0")
+            if entry.suffix in _SNAPSHOT_CONTENT_SUFFIXES:
+                with entry.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1 << 20), b""):
+                        digest.update(chunk)
+            else:
+                digest.update(f"{stat.st_size}:{stat.st_mtime_ns}".encode())
+            digest.update(b"\0")
         return digest.hexdigest(), total
     size = 0
     with path.open("rb") as handle:
@@ -260,10 +309,21 @@ def _digest(path: Path) -> tuple[str, int]:
     return digest.hexdigest(), size
 
 
+def _utc(timestamp: float) -> str:
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _mtime_utc(path: Path) -> str:
-    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    return _utc(path.stat().st_mtime)
+
+
+def _model_mtime(model: Path) -> float:
+    """When the model was last written: the newest file inside a snapshot directory."""
+    if model.is_dir():
+        times = [p.stat().st_mtime for p in model.rglob("*") if p.is_file()]
+        if times:
+            return max(times)
+    return model.stat().st_mtime
 
 
 def _require(path: Path, what: str) -> Path:
@@ -501,14 +561,24 @@ def _dirty_paths(
     """``<XY>:<path>`` for every uncommitted change git reports inside the scope.
 
     The scope is the set of repo-relative ``files``, everything under ``dirs``,
-    and every path whose basename is in ``names`` wherever it sits. One
-    whole-tree status is filtered here rather than handed to git
-    as pathspecs, so a filelist of any length fits. Untracked files count (an
-    unversioned bench file feeds the run as much as an edited one); ignored
-    ones do not, which is what keeps the build outputs the runner writes under
-    ``build/`` out of the verdict.
+    and every path whose basename is in ``names`` wherever it sits. It reaches
+    git as pathspecs, so the status -- and the untracked-file walk in
+    particular -- covers only the scope, and ``--no-optional-locks`` keeps the
+    parallel leaves of a regression from each rewriting the index. Untracked
+    files count (an unversioned bench file feeds the run as much as an edited
+    one); ignored ones do not, which is what keeps the build outputs the runner
+    writes under ``build/`` and ``fw/build/`` out of the verdict.
     """
-    out = _git(["status", "--porcelain=v1", "-z", "--untracked-files=all"], toplevel)
+    pathspecs = [
+        *(f":(literal){path}" for path in sorted(files)),
+        *(f":(literal){path}" for path in sorted(dirs)),
+        *(f":(glob)**/{name}" for name in sorted(names)),
+    ]
+    out = _git(
+        ["--no-optional-locks", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--"]
+        + pathspecs,
+        toplevel,
+    )
     prefixes = tuple(d.rstrip("/") + "/" for d in dirs)
     entries = out.split("\0")
     dirty: list[str] = []
@@ -525,6 +595,126 @@ def _dirty_paths(
         if path in files or path.startswith(prefixes) or path.rsplit("/", 1)[-1] in names:
             dirty.append(f"{status.strip() or '?'}:{path}")
     return sorted(dirty)
+
+
+def _config_strings(node: object, key: str = "") -> list[tuple[str, str]]:
+    """``(key, value)`` for every string in a TOML tree; array items carry the array's key."""
+    if isinstance(node, str):
+        return [(key, node)]
+    out: list[tuple[str, str]] = []
+    if isinstance(node, dict):
+        for child_key, child in node.items():
+            out.extend(_config_strings(child, str(child_key)))
+    elif isinstance(node, list):
+        for child in node:
+            out.extend(_config_strings(child, key))
+    return out
+
+
+def _config_scope(root: Path, cfg: dict) -> tuple[set[str], set[str]]:
+    """(files, dirs), repo-relative: the DV package entries the flow reads.
+
+    Every ``hw/sys/smc/dv/...`` path inside a configuration string (the .vlt
+    scope files, the assets a run mode loads, the eFuse generator a c_build
+    stage runs), the ``[testlist]`` directory, the ``[frameworks.cocotb]`` roots,
+    and :data:`_DV_SCOPE_FILES_REL` / :data:`_DV_SCOPE_DIRS_REL`. The other
+    ``[frameworks.*]`` overlays describe benches this process is not running.
+    A path under a ``work_dir`` / ``build_dir`` / clean path is build output and
+    a path under :data:`_DV_SCOPE_EXCLUDED_REL` is documentation; neither
+    enters the scope.
+    """
+    cocotb_cfg = (cfg.get("frameworks") or {}).get("cocotb") or {}
+    strings = _config_strings({key: value for key, value in cfg.items() if key != "frameworks"})
+    strings.extend(_config_strings(cocotb_cfg, "cocotb"))
+    clean = ((cfg.get("native") or {}).get("stages") or {}).get("clean") or {}
+    dropped = {str(value).rstrip("/") for key, value in strings if key in ("work_dir", "build_dir")}
+    dropped.update(str(path).rstrip("/") for path in clean.get("paths") or [])
+    dropped.add(str(_DV_REL / "fw" / "build"))
+    dropped.update(str(path) for path in _DV_SCOPE_EXCLUDED_REL)
+
+    candidates: set[str] = set()
+    for _key, value in strings:
+        candidates.update(match.rstrip("/.") for match in _DV_PATH_IN_CONFIG.findall(value))
+    testlist = (cfg.get("testlist") or {}).get("path")
+    if testlist:
+        candidates.add(str((_DV_REL / str(testlist)).parent))
+    candidates.update(
+        str(cocotb_cfg[key]) for key in ("python_root", "test_dir") if cocotb_cfg.get(key)
+    )
+    candidates.update(str(path) for path in (*_DV_SCOPE_FILES_REL, *_DV_SCOPE_DIRS_REL))
+
+    files: set[str] = set()
+    dirs: set[str] = set()
+    for rel in candidates:
+        if any(rel == prefix or rel.startswith(prefix + "/") for prefix in dropped):
+            continue
+        path = root / rel
+        if path.is_dir():
+            dirs.add(rel)
+        elif path.is_file():
+            files.add(rel)
+    return files, dirs
+
+
+def _dirty_scope(
+    root: Path, cfg: dict, sources: set[Path], incdirs: set[Path]
+) -> tuple[set[str], set[str], int]:
+    """(files, dirs, compile inputs outside the checkout): what feeds the model or the bench.
+
+    The compile sources and include directories, the DV package entries of
+    :func:`_config_scope`, the configuration and runner code that chose the
+    defines and flags (:data:`_FLOW_SCOPE_DIRS` / :data:`_FLOW_SCOPE_FILES`),
+    and every in-repo PYTHONPATH entry the cocotb process imports from. The
+    Bender manifests join by basename in :func:`_dirty_paths`.
+    """
+    files, dirs = _config_scope(root, cfg)
+    files.update(str(path) for path in _FLOW_SCOPE_FILES)
+    dirs.update(str(path) for path in _FLOW_SCOPE_DIRS)
+    outside_repo = 0
+    for path in sources:
+        rel = _repo_relative(root, path)
+        if rel is None:
+            outside_repo += 1
+        else:
+            files.add(str(rel))
+    for path in incdirs:
+        rel = _repo_relative(root, path)
+        if rel is None:
+            outside_repo += 1
+        else:
+            dirs.add(str(rel))
+    for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+        rel = _repo_relative(root, Path(entry)) if entry else None
+        if rel is not None:
+            dirs.add(str(rel))
+    return files, dirs, outside_repo
+
+
+def _sources_newer_than(
+    root: Path, model_mtime: float, sources: set[Path], incdirs: set[Path]
+) -> list[tuple[float, Path]]:
+    """``(mtime, path)`` of every in-repo compile input written after the model, newest first.
+
+    The inputs are the compile sources and the files directly inside the
+    include directories (``+incdir+`` is not recursive). The generated
+    filelist and the bench are not among them: the flist stage rewrites the
+    filelist on every run, and the bench is interpreted at run time and
+    digested as ``bench_sha256`` -- neither is in the model.
+    """
+    inputs = {path for path in sources if _repo_relative(root, path) is not None}
+    for directory in incdirs:
+        if _repo_relative(root, directory) is not None and directory.is_dir():
+            inputs.update(path for path in directory.iterdir() if path.is_file())
+    newer: list[tuple[float, Path]] = []
+    for path in inputs:
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if mtime > model_mtime:
+            newer.append((mtime, path))
+    newer.sort(key=lambda item: item[0], reverse=True)
+    return newer
 
 
 def _reject_sources_from_other_checkouts(root: Path, model_top: Path, sources: set[Path]) -> None:
@@ -581,9 +771,11 @@ def log_build_model_identity(
 
     Returns the emitted line. Raises with a diagnostic if the identity cannot be
     determined, if ``expect_target`` names a target other than the one the
-    exported build directory belongs to, or if sources feeding the model or the
+    exported build directory belongs to, if sources feeding the model or the
     bench are uncommitted and neither ``require_clean_tree=False`` nor
-    ``SMC_DV_ALLOW_DIRTY=1`` allows that; there is no placeholder branch.
+    ``SMC_DV_ALLOW_DIRTY=1`` allows that, or if a compile input is newer than
+    the model and ``SMC_DV_ALLOW_STALE_MODEL=1`` does not allow that; there is
+    no placeholder branch.
     """
     if _MODEL_IDENTITY_DONE:
         return _MODEL_IDENTITY_DONE[0]
@@ -621,10 +813,11 @@ def log_build_model_identity(
         flist_lines += len(flist.read_text(encoding="utf-8", errors="replace").splitlines())
     sources, incdirs = _filelist_closure(flists)
 
-    # The commit is the model's: the checkout its compile sources come from
-    # (the generated filelist itself may sit in a build tree on scratch). The
-    # bench must come from the same checkout, or the one line would name two
-    # trees.
+    # The commit is the checkout's: the tree the compile sources come from
+    # (the generated filelist itself may sit in a build tree on scratch).
+    # Whether the model was built from that tree is settled by the mtime
+    # comparison below. The bench must come from the same checkout, or the
+    # one line would name two trees.
     in_repo = sorted(p for p in sources if _repo_relative(root, p) is not None)
     if not in_repo:
         _fail(
@@ -640,38 +833,19 @@ def log_build_model_identity(
             f"model checkout {model_top}, bench checkout {bench_top} and repo root "
             f"{root} differ: one identity cannot name three trees"
         )
-    rev = _git(["rev-parse", "HEAD"], model_top).strip()
+    checkout_rev = _git(["rev-parse", "HEAD"], model_top).strip()
     _reject_sources_from_other_checkouts(root, model_top, sources)
 
-    # Dirty scope: everything that feeds the model or the bench -- the compile
-    # sources and include directories, the manifests, configuration and runner
-    # code that chose them (see _MANIFEST_NAMES / _FLOW_SCOPE_*), the whole SMC
-    # DV package, and every in-repo PYTHONPATH entry the cocotb process imports
-    # from.
-    scope_files: set[str] = {str(f) for f in _FLOW_SCOPE_FILES}
-    scope_dirs: set[str] = {str(_DV_REL), *(str(d) for d in _FLOW_SCOPE_DIRS)}
-    outside_repo = 0
-    for path in sources:
-        rel = _repo_relative(model_top, path)
-        if rel is None:
-            outside_repo += 1
-        else:
-            scope_files.add(str(rel))
-    for path in incdirs:
-        rel = _repo_relative(model_top, path)
-        if rel is None:
-            outside_repo += 1
-        else:
-            scope_dirs.add(str(rel))
-    for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
-        rel = _repo_relative(model_top, Path(entry)) if entry else None
-        if rel is not None:
-            scope_dirs.add(str(rel))
+    scope_files, scope_dirs, outside_repo = _dirty_scope(root, cfg, sources, incdirs)
     dirty = _dirty_paths(model_top, scope_files, scope_dirs, _MANIFEST_NAMES)
     dirty_allowed = os.environ.get(_ALLOW_DIRTY_ENV) == "1" or not require_clean_tree
     shown = ",".join(dirty[:_DIRTY_PATHS_SHOWN])
     if len(dirty) > _DIRTY_PATHS_SHOWN:
         shown += f",(+{len(dirty) - _DIRTY_PATHS_SHOWN} more)"
+
+    model_mtime = _model_mtime(model)
+    newer = _sources_newer_than(root, model_mtime, sources, incdirs)
+    stale_allowed = os.environ.get(_ALLOW_STALE_ENV) == "1"
 
     bench_sha, bench_files = _bench_digest(root)
 
@@ -686,15 +860,17 @@ def log_build_model_identity(
         "CHK-BUILD-MODEL-IDENTITY: this run simulated "
         f"tool={tool} sim={getattr(cocotb, 'SIM_NAME', '?')} "
         f"version={getattr(cocotb, 'SIM_VERSION', '?')} "
-        f"rev={rev} dirty={'true' if dirty else 'false'} "
+        f"checkout_rev={checkout_rev} dirty={'true' if dirty else 'false'} "
         f"dirty_allowed={'true' if dirty_allowed else 'false'} "
         f"dirty_paths={shown or '-'} "
         f"target={target_name} model={_display(root, model)} model_sha256={model_sha} "
-        f"model_bytes={model_size} model_mtime={_mtime_utc(model)} "
+        f"model_bytes={model_size} model_mtime={_utc(model_mtime)} "
+        f"model_newer_than_sources={'false' if newer else 'true'} "
+        f"model_stale_allowed={'true' if stale_allowed else 'false'} "
         f"{deps_part} "
         f"flist={','.join(_display(root, f) for f in flists)} "
         f"flist_source={flist_source} flist_sha256={flist_digest.hexdigest()} "
-        f"flist_lines={flist_lines} flist_mtime={_mtime_utc(flists[0])} "
+        f"flist_lines={flist_lines} flist_mtime={_utc(max(f.stat().st_mtime for f in flists))} "
         f"flist_sources={len(sources)} flist_sources_outside_repo={outside_repo} "
         f"bench={_BENCH_REL} bench_py_files={bench_files} bench_sha256={bench_sha} "
         f"seed={os.environ.get('RANDOM_SEED', 'unset')}"
@@ -703,17 +879,38 @@ def log_build_model_identity(
     if dirty:
         if not dirty_allowed:
             _fail(
-                f"the working tree at {rev[:12]} has {len(dirty)} uncommitted change(s) "
-                f"on paths that feed this model or bench ({shown}). A log whose "
-                f"sources cannot be named is no evidence. Commit or stash them; "
-                f"to run anyway export {_ALLOW_DIRTY_ENV}=1, which stamps "
-                f"dirty_allowed=true into the log."
+                f"the working tree at {checkout_rev[:12]} has {len(dirty)} uncommitted "
+                f"change(s) on inputs of this model or bench ({shown}): compile sources "
+                f"and include directories, Bender manifests, the DV configuration and "
+                f"runner, and the SMC DV package entries the flow reads. A log whose "
+                f"sources cannot be named is no evidence. Commit or stash them; to run "
+                f"anyway export {_ALLOW_DIRTY_ENV}=1, which stamps dirty_allowed=true "
+                f"into the log."
             )
         cocotb.log.warning(
             "[BUILD-MODEL-IDENTITY] dirty tree allowed: %d uncommitted change(s) on "
-            "the model or bench sources (%s); this log cannot serve as evidence",
+            "the model or bench inputs (%s); this log cannot serve as evidence",
             len(dirty),
             shown,
+        )
+    if newer:
+        newest_mtime, newest = newer[0]
+        if not stale_allowed:
+            _fail(
+                f"model {_display(root, model)} (built {_utc(model_mtime)}) is older than "
+                f"{len(newer)} compile source(s), newest {_display(root, newest)} "
+                f"{_utc(newest_mtime)}: rebuild (run_dv.py --rebuild / drop --stage sim). "
+                f"A `git checkout` after the build rewrites source mtimes and counts the "
+                f"same way. To run anyway export {_ALLOW_STALE_ENV}=1, which stamps "
+                f"model_stale_allowed=true into the log."
+            )
+        cocotb.log.warning(
+            "[BUILD-MODEL-IDENTITY] stale model allowed: %d compile source(s) newer than "
+            "%s (newest %s %s); this log cannot serve as evidence",
+            len(newer),
+            _display(root, model),
+            _display(root, newest),
+            _utc(newest_mtime),
         )
     _MODEL_IDENTITY_DONE.append(line)
     return line
@@ -882,11 +1079,13 @@ class smc_base_test(uvm_test):
     required_evidence: tuple[str, ...] = ()
     min_evidence = 0
 
-    # Provenance gate. The identity line names the commit the model was built
-    # from; with uncommitted changes on the sources that feed the model or the
-    # bench that commit does not describe what ran, so the run fails. A test
-    # may set this False; the operator may export SMC_DV_ALLOW_DIRTY=1. Either
-    # way the line then carries ``dirty_allowed=true``.
+    # Provenance gate. The identity line names the commit of the checkout the
+    # run's sources come from; with uncommitted changes on the inputs of the
+    # model or the bench that commit does not describe what ran, so the run
+    # fails. A test may set this False; the operator may export
+    # SMC_DV_ALLOW_DIRTY=1. Either way the line then carries
+    # ``dirty_allowed=true``. The model-staleness gate has no per-test switch;
+    # SMC_DV_ALLOW_STALE_MODEL=1 is the only opt-out.
     require_clean_tree = True
 
     @staticmethod
