@@ -127,10 +127,13 @@ A monitor:
 * supports callback registration;
 * retains bounded history by default;
 * supports `start()`, `stop()`, `clear_history()`, and query/statistics methods;
-* catches/logs subscriber exceptions without terminating sampling.
+* re-raises a checker verdict (`AssertionError`) from a subscriber callback
+  and counts any other subscriber exception in `callback_errors` without
+  terminating sampling.
 
-Because callback exceptions are caught, every attached checker needs explicit
-finalization by its owner.
+Because subscriber defects are counted rather than raised, every attached
+checker needs explicit finalization by its owner, and the owner records the
+monitor's `callback_errors` against zero at drain.
 
 [[shared-vip-development-checker]]
 === Protocol Checkers

@@ -415,6 +415,7 @@
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
+`SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NUM_SRAM_BANKS*32-1:0], tb_cpu_scratch_bank_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_write_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_fw_mailbox)
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)

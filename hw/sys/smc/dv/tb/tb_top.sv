@@ -1061,6 +1061,7 @@ module smc_uvm_top
     `define CPU_MEM_DV u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv
     assign tb_cpu_rom_read_count      = `CPU_MEM_DV.rom_read_count_q;
     assign tb_cpu_scratch_read_count  = `CPU_MEM_DV.scratch_ram_read_count_q;
+    assign tb_cpu_scratch_bank_read_count = `CPU_MEM_DV.scratch_ram_bank_read_count_q;
     assign tb_cpu_scratch_write_count = `CPU_MEM_DV.scratch_ram_write_count_q;
     assign tb_cpu_dcache_write_count  = `CPU_MEM_DV.dcache_data_write_count_q;
     assign tb_cpu_fw_mailbox          = `CPU_MEM_DV.fw_mailbox_q;
@@ -1193,7 +1194,7 @@ module smc_uvm_top
         .ext_boot_seq_done_i        (~tb_hold_ext_boot),
         // Tied low: the eFuse sense bypass (sense FSM never routed to the bank,
         // shadow regs exposed unsensed, warm domain held in reset) is unreachable
-        // here; docs/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
+        // here; hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (),
@@ -2827,12 +2828,12 @@ module smc_dual_inst
         .smc_ext_interrupts_i       ('0),
         .sep_mailbox_interrupts_i   ('0),
         .sep_wdt_reset_n_i          (1'b1),
-        .smc_fuse_sense_done_o      (fuse_sense_done_o),
+        .smc_fuse_sense_done_o      (smc_fuse_sense_done_o),
         .smc_fuse_reset_n_delayed_o (),
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
         // Tied low: the eFuse sense bypass is unreachable here;
-        // docs/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
+        // hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_idle),
         .lc_sigint_err_o            (),
@@ -2845,7 +2846,7 @@ module smc_dual_inst
         .ss_config_o                (),
         .sync_irq_o                 (),
         .smc_disable_sram_auto_init_i (1'b1),
-        .smc_init_mem_done_o        (init_mem_done_o),
+        .smc_init_mem_done_o        (smc_init_mem_done_o),
         .chiplet_is_primary_i       (chiplet_is_primary_i),
         .timer_count_o              (),
         .boot_stall_jtag_ovrd_i     (1'b0),

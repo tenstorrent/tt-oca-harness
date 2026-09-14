@@ -409,6 +409,9 @@ defines = [
 
 [targets.dual.tools.verilator]
 flags = [
+  # An undeclared net in the dual harness silently becomes a constant-0 wire
+  # under -Wno-fatal; a port that nothing drives must stop the build instead.
+  "-Werror-IMPLICIT",
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",

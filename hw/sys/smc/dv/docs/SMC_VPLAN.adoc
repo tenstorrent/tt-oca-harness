@@ -473,11 +473,16 @@ Drive `smc_canonical_smoke_test_seq`. Each checker below is a named compare the 
 |===
 |Checker |Description
 |`CHK-CANONICAL-SMOKE` |Named compare in `smc_canonical_smoke_test_seq.py`; the run fails if it mismatches
-|`CHK-RESET-WAIT` |Named compare in `smc_canonical_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-RESET-WAIT-COLD_PRIMARY_ASSERTED` |Named compare in `smc_canonical_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-RESET-WAIT-COLD_RELEASED` |Named compare in `smc_canonical_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-RESET-WAIT-COOL_PRIMARY_ASSERTED` |Named compare in `smc_canonical_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-RESET-WAIT-COOL_RELEASED` |Named compare in `smc_canonical_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-RESET-WAIT-PG_ASSERTED` |Named compare in `smc_canonical_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-RESET-WAIT-PG_RELEASED` |Named compare in `smc_canonical_smoke_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-CANONICAL-SMOKE`, `CHK-RESET-WAIT` hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-CANONICAL-SMOKE`, `CHK-RESET-WAIT-COLD_PRIMARY_ASSERTED`, `CHK-RESET-WAIT-COLD_RELEASED`, `CHK-RESET-WAIT-COOL_PRIMARY_ASSERTED`, `CHK-RESET-WAIT-COOL_RELEASED`, `CHK-RESET-WAIT-PG_ASSERTED` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-004-smc_combined_observability_test]]
@@ -646,13 +651,13 @@ Drive `smc_register_sanity_test_seq`. Each checker below is a named compare the 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-CSR-IDLE-VALUE` |Idle read of each scratch register is zero after warm-reset release
-|`CHK-CSR-RANDOM-READBACK` |Each seeded random pattern reads back on the same register
-|`CHK-CSR-READBACK` |Directed write pattern reads back on the same register
-|`CHK-CSR-RESTORE` |Restore write of zero reads back
-|`CHK-CSR-RESP` |Every SEP_IN CSR access completes with an OKAY response
-|`CHK-FUSE-SENSE-DONE` |Warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |Non-vacuity count of real SEP_IN CSR accesses in `smc_register_sanity_test_seq.svh`
+|`CHK-CSR-IDLE-VALUE` |SV-UVM shape only (`--framework uvm`): idle read of each scratch register is zero after warm-reset release
+|`CHK-CSR-RANDOM-READBACK` |SV-UVM shape only (`--framework uvm`): each seeded random pattern reads back on the same register
+|`CHK-CSR-READBACK` |SV-UVM shape only (`--framework uvm`): directed write pattern reads back on the same register
+|`CHK-CSR-RESTORE` |SV-UVM shape only (`--framework uvm`): restore write of zero reads back
+|`CHK-CSR-RESP` |SV-UVM shape only (`--framework uvm`): every SEP_IN CSR access completes with an OKAY response
+|`CHK-FUSE-SENSE-DONE` |SV-UVM shape only (`--framework uvm`): warm-reset domain release after fuse sense completes
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): non-vacuity count of real SEP_IN CSR accesses in `smc_register_sanity_test_seq.svh`
 |===
 
 
@@ -2067,16 +2072,16 @@ Drive `smc_ndm_reset_test_seq`. Each checker below is a named compare the DUT ca
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-NDM-CLR` |Named compare in `smc_ndm_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-NDM-CLR-<bit>` |Named compare in `smc_ndm_reset_test_seq.py`, one per request line `<bit>` below `NDMRESET_CLUSTER_COUNT`; the run fails if it mismatches
 |`CHK-NDM-COUNT` |Named compare in `smc_ndm_reset_test_seq.py`; the run fails if it mismatches
-|`CHK-NDM-DROP` |Named compare in `smc_ndm_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-NDM-DROP-<bit>` |Named compare in `smc_ndm_reset_test_seq.py`, one per request line `<bit>` below `NDMRESET_CLUSTER_COUNT`; the run fails if it mismatches
 |`CHK-NDM-IDLE` |Named compare in `smc_ndm_reset_test_seq.py`; the run fails if it mismatches
-|`CHK-NDM-PROC` |Named compare in `smc_ndm_reset_test_seq.py`; the run fails if it mismatches
-|`CHK-NDM-REQ` |Named compare in `smc_ndm_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-NDM-PROC-<bit>` |Named compare in `smc_ndm_reset_test_seq.py`, one per request line `<bit>` below `NDMRESET_CLUSTER_COUNT`; the run fails if it mismatches
+|`CHK-NDM-REQ-<bit>` |Named compare in `smc_ndm_reset_test_seq.py`, one per request line `<bit>` below `NDMRESET_CLUSTER_COUNT`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-NDM-CLR`, `CHK-NDM-COUNT`, `CHK-NDM-DROP`, `CHK-NDM-IDLE`, `CHK-NDM-PROC`, `CHK-NDM-REQ` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
+*Pass Criteria*: `CHK-NDM-CLR-<bit>`, `CHK-NDM-COUNT`, `CHK-NDM-DROP-<bit>`, `CHK-NDM-IDLE`, `CHK-NDM-PROC-<bit>`, `CHK-NDM-REQ-<bit>` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
 '''''
 
 [[sec-051-smc_powergood_glitch_test]]
@@ -2234,12 +2239,14 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 |Checker |Description
 |`CHK-UART-FIFO-RST-RX` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-FIFO-RST-TX` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-FIFO-TRIG` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-FIFO-TRIG-1B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-FIFO-TRIG-32B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-FIFO-TRIG-4B` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-FIFO-TRIG-ABOVE-DEPTH` |Named compare in `smc_uart_fifo_basic_trigger_reset_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-UART-FIFO-RST-RX`, `CHK-UART-FIFO-RST-TX`, `CHK-UART-FIFO-TRIG`, `CHK-UART-FIFO-TRIG-ABOVE-DEPTH` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
+*Pass Criteria*: `CHK-UART-FIFO-RST-RX`, `CHK-UART-FIFO-RST-TX`, `CHK-UART-FIFO-TRIG-1B`, `CHK-UART-FIFO-TRIG-32B`, `CHK-UART-FIFO-TRIG-4B`, `CHK-UART-FIFO-TRIG-ABOVE-DEPTH` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
 ==== CLOCK
@@ -2412,14 +2419,13 @@ Drive `smc_dma_cg_activity_test_seq`. Each checker below is a named compare the 
 |`CHK-DMA-HYST-SWEEP` |Named compare in `smc_dma_cg_activity_test_seq.py`; the run fails if it mismatches
 |`CHK-DMA-WAKEUP-BACKEND` |Named compare in `smc_dma_cg_activity_test_seq.py`; the run fails if it mismatches
 |`CHK-DMA-WAKEUP-FRONTEND` |f
-|`CHK-NO-TAUTOLOGY` |Named compare in `smc_dma_cg_activity_test_seq.py`; the run fails if it mismatches
 |`CHK-NONVAC` |Non-vacuity count in `smc_dma_cg_activity_test_seq.py`
 |`CHK-NONVAC-P2` |Named compare in `smc_dma_cg_activity_test_seq.py`; the run fails if it mismatches
 |`CHK-TIMEOUT-PATHS` |Named compare in `smc_dma_cg_activity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DMA-GATE-OFF`, `CHK-DMA-GATING-DISABLED`, `CHK-DMA-HYST-RACE`, `CHK-DMA-HYST-SWEEP`, `CHK-DMA-WAKEUP-BACKEND`, `CHK-DMA-WAKEUP-FRONTEND` (and 4 more) hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
+*Pass Criteria*: `CHK-DMA-GATE-OFF`, `CHK-DMA-GATING-DISABLED`, `CHK-DMA-HYST-RACE`, `CHK-DMA-HYST-SWEEP`, `CHK-DMA-WAKEUP-BACKEND`, `CHK-DMA-WAKEUP-FRONTEND` (and 3 more) hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
 '''''
 
 [[sec-061-smc_i2c_cg_sanity_test]]
@@ -2518,7 +2524,6 @@ Drive `smc_zeroer_axiclk_cg_test_seq`. Each checker below is a named compare the
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-NO-TAUTOLOGY` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |`CHK-NONVAC` |Non-vacuity count in `smc_zeroer_axiclk_cg_test_seq.py`
 |`CHK-NONVAC-P2` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
 |`CHK-TIMEOUT-PATHS` |Named compare in `smc_zeroer_axiclk_cg_test_seq.py`; the run fails if it mismatches
@@ -2531,7 +2536,7 @@ Drive `smc_zeroer_axiclk_cg_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-NO-TAUTOLOGY`, `CHK-NONVAC`, `CHK-NONVAC-P2`, `CHK-TIMEOUT-PATHS`, `CHK-ZAXI-BUSY-ENABLE`, `CHK-ZAXI-DISABLE-CG` (and 4 more) hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
+*Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-P2`, `CHK-TIMEOUT-PATHS`, `CHK-ZAXI-BUSY-ENABLE`, `CHK-ZAXI-DISABLE-CG`, `CHK-ZAXI-GATE-OFF-IDLE` (and 3 more) hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
 '''''
 
 [[sec-064-smc_zeroer_cg_indep_test]]
@@ -2732,14 +2737,16 @@ Drive `smc_cpu_ecc_lint_pint_depth_test_seq`. Each checker below is a named comp
 |Checker |Description
 |`CHK-DIAG-AXIL-ACTIVE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
 |`CHK-DIAG-AXIL-IDLE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
-|`CHK-DIAG-CSR` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-COUNT` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-070-smc_cpu_firmware_boot_test]]
@@ -2833,11 +2840,10 @@ Drive `smc_ecc_codeword_ded_test_seq`. Each checker below is a named compare the
 |===
 |Checker |Description
 |`CHK-ECC-CODEWORD-DED` |Named compare in `smc_ecc_codeword_corrupt_test_seq.py`; the run fails if it mismatches
-|`CHK-ECC-CODEWORD-SEC` |Named compare in `smc_ecc_codeword_corrupt_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-ECC-CODEWORD-DED`, `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `coverage_closure`.
+*Pass Criteria*: `CHK-ECC-CODEWORD-DED` hold after their compares. Enrolled in: `all`, `coverage_closure`.
 '''''
 
 [[sec-073-smc_ecc_codeword_sec_test]]
@@ -2863,12 +2869,11 @@ Drive `smc_ecc_codeword_sec_test_seq`. Each checker below is a named compare the
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ECC-CODEWORD-DED` |Named compare in `smc_ecc_codeword_corrupt_test_seq.py`; the run fails if it mismatches
 |`CHK-ECC-CODEWORD-SEC` |Named compare in `smc_ecc_codeword_corrupt_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-ECC-CODEWORD-DED`, `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `coverage_closure`.
+*Pass Criteria*: `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `coverage_closure`.
 '''''
 
 [[sec-074-smc_ecc_dfd_dbs_sanity_test]]
@@ -2898,14 +2903,16 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 |Checker |Description
 |`CHK-DIAG-AXIL-ACTIVE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
 |`CHK-DIAG-AXIL-IDLE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
-|`CHK-DIAG-CSR` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-COUNT` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-075-smc_ecc_fault_inject_test]]
@@ -3071,12 +3078,14 @@ Drive `smc_spm_mem_boundary_test_seq`. Each checker below is a named compare the
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SPM-MEM` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
 |`CHK-SPM-MEM-BASIC` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
+|`CHK-SPM-MEM-SPM_HI` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
+|`CHK-SPM-MEM-SPM_LO` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
+|`CHK-SPM-MEM-SPM_LO_NEXT` |Named compare in `smc_spm_mem_boundary_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-SPM-MEM`, `CHK-SPM-MEM-BASIC` hold after their compares. Enrolled in: `all`, `per_ip`, `cpu_depth`.
+*Pass Criteria*: `CHK-SPM-MEM-BASIC`, `CHK-SPM-MEM-SPM_HI`, `CHK-SPM-MEM-SPM_LO`, `CHK-SPM-MEM-SPM_LO_NEXT` hold after their compares. Enrolled in: `all`, `per_ip`, `cpu_depth`.
 '''''
 
 ==== JTAG
@@ -3106,14 +3115,16 @@ Drive `smc_dbs_idle_test_seq`. Each checker below is a named compare the DUT can
 |Checker |Description
 |`CHK-DIAG-AXIL-ACTIVE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
 |`CHK-DIAG-AXIL-IDLE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
-|`CHK-DIAG-CSR` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-COUNT` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
 '''''
 
 [[sec-081-smc_dfd_sanity_test]]
@@ -3141,14 +3152,16 @@ Drive `smc_dfd_sanity_test_seq`. Each checker below is a named compare the DUT c
 |Checker |Description
 |`CHK-DIAG-AXIL-ACTIVE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
 |`CHK-DIAG-AXIL-IDLE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
-|`CHK-DIAG-CSR` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-COUNT` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-082-smc_dfx_status_abort_test]]
@@ -3350,11 +3363,16 @@ Drive `smc_efuse_jtag_lc_access_matrix_test_seq`. Each checker below is a named 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-JTAG-LC` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py`; the run fails if it mismatches
+|`CHK-EFUSE-JTAG-LC-PROD` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py`; the run fails if it mismatches
+|`CHK-EFUSE-JTAG-LC-PROD_END` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py`; the run fails if it mismatches
+|`CHK-EFUSE-JTAG-LC-RMA_CHIPLET` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py`; the run fails if it mismatches
+|`CHK-EFUSE-JTAG-LC-RMA_SOP` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py`; the run fails if it mismatches
+|`CHK-EFUSE-JTAG-LC-SIGINT` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py`; the run fails if it mismatches
+|`CHK-EFUSE-JTAG-LC-TEST_DEV` |Named compare in `smc_efuse_jtag_lc_access_matrix_test.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-JTAG-LC` hold after their compares. Enrolled in: `all`, `per_ip`.
+*Pass Criteria*: `CHK-EFUSE-JTAG-LC-PROD`, `CHK-EFUSE-JTAG-LC-PROD_END`, `CHK-EFUSE-JTAG-LC-RMA_CHIPLET`, `CHK-EFUSE-JTAG-LC-RMA_SOP`, `CHK-EFUSE-JTAG-LC-SIGINT`, `CHK-EFUSE-JTAG-LC-TEST_DEV` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-088-smc_efuse_jtag_lc_negative_test]]
@@ -3710,22 +3728,29 @@ testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
 . Wait for fuse-sense-done.
 . Run a legal program command, confirm completion, and record a read-back that is
   not the illegal-state sentinel.
-. Inject eFuse program state `0b00` with no request outstanding; confirm the state
-  is held, the request stays low, recovery reaches `IDLE` with done and error set,
-  and the read-back is the sentinel.
+. Inject eFuse program state `0b00` with no request outstanding; confirm the
+  request stays low in the corrupted cycle, recovery reaches `IDLE` with done and
+  error set, `EFUSE_PROGRAM_CTRL` reads done with status set and busy clear, and
+  the read-back is the sentinel. Run a legal program and confirm it completes
+  without error and its read-back is no longer the sentinel.
 . Arm the `0b11` injection concurrently with a legal program `GO`, confirm the
-  request is suppressed in the same cycle, then confirm the same recovery.
-. Repeat both encodings on the read path; inject a read error and confirm the
-  status sets and the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
-. Inject each of the four illegal Zeroer encodings, confirm the absorbing `ERROR`
-  state holds, then assert cold reset and confirm the escape to `IDLE`.
+  request is suppressed in the same cycle, then confirm the same recovery and the
+  same legal program afterwards.
+. Repeat both encodings on the read path, each followed by a legal read that
+  completes without error; inject a read error and confirm the status sets and
+  the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
+. For each of the four illegal Zeroer encodings: start from `IDLE` with
+  `CTRL_STATUS` not reporting busy, inject, confirm the absorbing `ERROR` state
+  holds with `CTRL_STATUS` reporting busy, write `CTRL_STATUS` and confirm the
+  start is ignored, then assert cold reset and confirm the escape to `IDLE` with
+  `CTRL_STATUS` clear.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state and only a cold reset escapes it
+|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path, with done and status set in `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL`, and a legal operation completes without error afterwards; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state from `IDLE`, report busy in `CTRL_STATUS`, ignore a `CTRL_STATUS` start write, and only a cold reset escapes it
 |===
 
 
@@ -3928,12 +3953,13 @@ Drive `smc_gpio_multi_sample_test_seq`. Each checker below is a named compare th
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-MULTI-SAMPLE-MATCHES-REF` |Named compare in `smc_gpio_multi_sample_test_seq.py`; the run fails if it mismatches
+|`CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-1` |Named compare in `smc_gpio_multi_sample_test_seq.py`; the run fails if it mismatches
+|`CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-2` |Named compare in `smc_gpio_multi_sample_test_seq.py`; the run fails if it mismatches
 |`CHK-GPIO-MULTI-SAMPLE-STABLE` |Named compare in `smc_gpio_multi_sample_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF`, `CHK-GPIO-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-1`, `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF-2`, `CHK-GPIO-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-104-smc_gpio_observe_test]]
@@ -3960,20 +3986,13 @@ Drive `smc_gpio_observe_test_seq`. Each checker below is a named compare the DUT
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-GPIO-AGGREGATE-STABLE` |Named compare in `smc_gpio_observe_test_seq.py`; the run fails if it mismatches
 |`CHK-GPIO-PAD-BUS-STABLE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-AXIL-EFUSE-BANK-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-AXIL-EXTERNAL-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
 |`CHK-PROBE-CONTROLS` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-GPIO-IRQ-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
 |`CHK-PROBE-GPIO-PAD-BUS-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-I2C-CG-EN-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-SYNC-IRQ-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-UART-IRQ-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-AGGREGATE-STABLE`, `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-AXIL-EFUSE-BANK-ALIVE`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-IRQ-ALIVE` (and 4 more) hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-PAD-BUS-ALIVE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-105-smc_gpio_output_driveback_test]]
@@ -4140,16 +4159,21 @@ Drive `smc_hang_detector_plic_route_test_seq`. Each checker below is a named com
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-HANG-PLIC` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
+|`CHK-HANG-PLIC-DATA-CLR` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
+|`CHK-HANG-PLIC-DATA-FIRE` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-PLIC-GATED` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-PLIC-IDLE` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-PLIC-ROUTE` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
+|`CHK-HANG-PLIC-SEP-CLR` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
+|`CHK-HANG-PLIC-SEP-FIRE` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-PLIC-SHARED-CLR` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-PLIC-SHARED-HOLD` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
+|`CHK-HANG-PLIC-SYS-CLR` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
+|`CHK-HANG-PLIC-SYS-FIRE` |Named compare in `smc_hang_detector_plic_route_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-HANG-PLIC`, `CHK-HANG-PLIC-GATED`, `CHK-HANG-PLIC-IDLE`, `CHK-HANG-PLIC-ROUTE`, `CHK-HANG-PLIC-SHARED-CLR`, `CHK-HANG-PLIC-SHARED-HOLD` hold after their compares. Enrolled in: `all`, `irq`.
+*Pass Criteria*: `CHK-HANG-PLIC-DATA-CLR`, `CHK-HANG-PLIC-DATA-FIRE`, `CHK-HANG-PLIC-GATED`, `CHK-HANG-PLIC-IDLE`, `CHK-HANG-PLIC-ROUTE`, `CHK-HANG-PLIC-SEP-CLR` (and 5 more) hold after their compares. Enrolled in: `all`, `irq`.
 
 '''''
 
@@ -4655,11 +4679,13 @@ Drive `smc_i2c_p0_multictrl_test_seq`. Each checker below is a named compare the
 |===
 |Checker |Description
 |`CHK-I2C-P0-MULTICTRL` |Named compare in `smc_i2c_p0_multictrl_test_seq.py`; the run fails if it mismatches
-|`CHK-I2C-P0-MULTICTRL-P` |Named compare in `smc_i2c_p0_multictrl_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C-P0-MULTICTRL-P0` |Named compare in `smc_i2c_p0_multictrl_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C-P0-MULTICTRL-P1` |Named compare in `smc_i2c_p0_multictrl_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C-P0-MULTICTRL-P2` |Named compare in `smc_i2c_p0_multictrl_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-MULTICTRL`, `CHK-I2C-P0-MULTICTRL-P` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
+*Pass Criteria*: `CHK-I2C-P0-MULTICTRL`, `CHK-I2C-P0-MULTICTRL-P0`, `CHK-I2C-P0-MULTICTRL-P1`, `CHK-I2C-P0-MULTICTRL-P2` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-125-smc_i2c_p0_nack_test]]
@@ -4718,11 +4744,12 @@ Drive `smc_i2c_p0_rdwr_test_seq`. Each checker below is a named compare the DUT 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-I2C-P0-RDWR` |Named compare in `smc_i2c_p0_rdwr_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C-P0-RDWR-READ` |Named compare in `smc_i2c_p0_rdwr_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C-P0-RDWR-WRITE` |Named compare in `smc_i2c_p0_rdwr_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-RDWR` hold after their compares. Enrolled in: `all`, `i2c`.
+*Pass Criteria*: `CHK-I2C-P0-RDWR-READ`, `CHK-I2C-P0-RDWR-WRITE` hold after their compares. Enrolled in: `all`, `i2c`.
 
 '''''
 
@@ -5432,13 +5459,21 @@ Drive `smc_uart_irq_sources_priority_test_seq`. Each checker below is a named co
 |`CHK-UART-IRQ-CLR-MSR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-CLR-RDR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-CLR-THRE` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-IRQ-GATE` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-GATE-FIFO` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-GATE-LSR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-GATE-MODEM` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-GATE-RDR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-GATE-THRE` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-IRQ-MAP-TIMEOUT` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-IRQ-PRI` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-PRI-FIFO_vs_LSR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-PRI-LSR_vs_RDR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-PRI-RDR_vs_THRE` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-PRI-THRE_vs_MODEM` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-IRQ-PRI-TO_vs_RDR` |Named compare in `smc_uart_irq_sources_priority_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-UART-IRQ-CLR-MSR`, `CHK-UART-IRQ-CLR-RDR`, `CHK-UART-IRQ-CLR-THRE`, `CHK-UART-IRQ-GATE`, `CHK-UART-IRQ-MAP-TIMEOUT`, `CHK-UART-IRQ-PRI` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
+*Pass Criteria*: `CHK-UART-IRQ-CLR-MSR`, `CHK-UART-IRQ-CLR-RDR`, `CHK-UART-IRQ-CLR-THRE`, `CHK-UART-IRQ-GATE-FIFO`, `CHK-UART-IRQ-GATE-LSR`, `CHK-UART-IRQ-GATE-MODEM` (and 8 more) hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
 [[sec-148-smc_uart_log_engine_error_boundary_test]]
@@ -5589,16 +5624,22 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-UART-LOG` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-LOG-COUNT` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-CTS-PAD` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-LOG-LOG_ENGINE_CTRL` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-LOG-LOG_ENGINE_INTR_STATUS` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-LOG-UART_IIR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-LOG-UART_LOG_ENGINE_CTRL` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-LOG-UART_LSR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-MSR-CTS-PAD0` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-MSR-CTS-PAD1` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-MSR-DELTA-CLEAR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-DELTA-CLEAR-PAD` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-MSR-DELTA-CLEAR-PAD0` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-MSR-DELTA-CLEAR-PAD1` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-MSR-FIRST` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-UART-LOG`, `CHK-UART-LOG-COUNT`, `CHK-UART-MSR-CTS-PAD`, `CHK-UART-MSR-DELTA-CLEAR`, `CHK-UART-MSR-DELTA-CLEAR-PAD`, `CHK-UART-MSR-FIRST` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-UART-LOG-COUNT`, `CHK-UART-LOG-LOG_ENGINE_CTRL`, `CHK-UART-LOG-LOG_ENGINE_INTR_STATUS`, `CHK-UART-LOG-UART_IIR`, `CHK-UART-LOG-UART_LOG_ENGINE_CTRL`, `CHK-UART-LOG-UART_LSR` (and 6 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 ==== OCCP
@@ -5665,6 +5706,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 [arabic]
 . Bring both instances up with `boot_stall` released, so the CPU cluster front port answers.
+. Require `init_mem_done_o` to reach 1 on both instances within the watch bound.
 . Read each probe address before its write; the banks are not auto-initialised, so the pre-write value is reported and not asserted on.
 . Write each of the six patterns over `bfm_axi` and read the address back.
 . Require every readback to equal exactly the pattern written.
@@ -5675,11 +5717,12 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-AXI-INIT-MEM-DONE` |`init_mem_done_o` is 1 on both instances within the watch bound after `boot_stall` release; a flag still 0 at the bound raises
 |`CHK-AXI-SCRATCH-REACHABLE` |Every pattern read back exactly as written, including the ones crossing a bank stripe and a group boundary, so neither a stuck default subordinate nor a single-bank decode can satisfy it
 |`CHK-SCRATCH-BACKDOOR-DECODE` |For every offset, the macro word `smc_scratch_map_pkg` resolves to holds what AXI wrote. Checked only where the AXI readback already matched, so a decode complaint cannot be raised about a write that never took
 |===
 
-*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` is reported and gates nothing. Enrolled in: `dual_all`, `dual_smoke`.
+*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` must be 1 on both instances within the watch bound before the first probe access; the watcher raises otherwise. Enrolled in: `dual_all`, `dual_smoke`.
 
 '''''
 
@@ -5964,16 +6007,17 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 . Hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, so a residual verdict from an earlier test cannot be counted.
 . Program the reset vector, release all four cores, then release `boot_stall`.
 . Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+. Compare the per-bank scratch read counters (`tb_cpu_scratch_bank_read_count`) snapshotted before step 2 and after step 4: every bank whose counter advanced is one of banks 0-3, and at least one did.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start, and every scratch bank the CPU read between the two counter snapshots is one of banks 0-3
 |===
 
-*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is part of the evidence: it is what the `smc_scratch_map_pkg` decode predicts for a 9 KB image, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
+*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is asserted from the per-bank scratch read counters: the `hello_world` link map ends at offset `0x8730` (code, data, four 4 KB stacks and the 2 KB heap), inside the first 128 KB group, which the `smc_scratch_map_pkg` decode places in banks 0-3, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
 
 '''''
 
@@ -6220,7 +6264,7 @@ SMC; that connection stays a negative item.
 [cols=",,",options="header",]
 |===
 |Limitation |Impact |Resolution Path
-|The SEP_IN local-fabric mask keeps only `addr[24:0]`, so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
+|The SEP_IN local-fabric fold keeps only the address bits below `SMC_BASE_CONFIG.REGION_SIZE` (`addr[23:0]` at the 16 MiB reset) under `LOCAL_BASE`, so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
 |Verilator is a 2-state simulator |Resolvability predicates (`is_resolvable`) cannot fail on a Verilator run, so X-propagation claims are not closed there |Retain a VCS or Xcelium run for the scenarios whose evidence depends on 4-state behaviour
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Needs the adopter's PLL/PVT blocks integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
