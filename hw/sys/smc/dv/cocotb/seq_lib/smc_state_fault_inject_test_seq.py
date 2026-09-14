@@ -8,10 +8,21 @@ signals the force does not touch -- the fuse request line during the corrupted
 cycle, the fail-closed outputs and CSR status after the force is released, and
 a legal operation succeeding afterwards.
 
-The Zeroer's "a start write is ignored in ERROR" leg carries a live control: the
-same CTRL_STATUS write, issued from IDLE with DEST_ADDR/SIZE programmed, is shown
-to start the block and drive one write beat onto the output fabric, so the deny
-that follows differs from the control in the FSM state alone.
+Every Zeroer "a start write is ignored in ERROR" leg carries its own live control
+immediately before its injection, and nothing resets the block between the two.
+The control re-programs the pass-all output filters, which the cold reset ending
+the previous encoding cleared -- rst_primary_smc_clk_ni is the filter CSRs' reset
+(smc_internal_regs.sv: filter_ctrl_reg.arst_n), and a read-back after that reset
+returns the reset word, not pass-all -- and then requires the identical
+CTRL_STATUS write, issued from IDLE with DEST_ADDR/SIZE programmed, to start the
+block and land exactly one write beat on the SYS_OUT responder.
+
+That measurement, rather than an assumption about the filters, is what lets the
+deny's "the responder write count did not move" mean the Zeroer refused the
+start: the same write moved the same counter over the same filter configuration
+cycles earlier, and the filters are not touched again until after the deny. The
+port-level awvalid/wvalid asserts carry the deny at the Zeroer boundary; the
+responder count carries it end to end.
 """
 
 from __future__ import annotations
@@ -268,16 +279,23 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         dut.rst_cold_ni.value = 1
         await self.wait_fuse_sense_done()
 
-    async def _program_output_fabric_pass_all(self) -> None:
-        await self.csr_write("INBOUND0_START_PASS_ALL", INBOUND0_START, 0x0, length=8)
-        await self.csr_write("INBOUND0_END_PASS_ALL", INBOUND0_END, FILTER_END_MAX, length=8)
+    async def _program_output_fabric_pass_all(self, label: str) -> None:
+        """Program filter entry 0 in both directions to pass all traffic.
+
+        The filter CSRs are reset by rst_primary_smc_clk_ni
+        (``smc_internal_regs.sv``: ``filter_ctrl_reg.arst_n``), which the cold
+        reset between injections asserts and which a read-back after that reset
+        confirms, so this runs once per control rather than once per test.
+        """
+        await self.csr_write(f"{label}_INBOUND0_START", INBOUND0_START, 0x0, length=8)
+        await self.csr_write(f"{label}_INBOUND0_END", INBOUND0_END, FILTER_END_MAX, length=8)
         await self.csr_write(
-            "INBOUND0_FILTER_CONFIG_PASS_ALL", INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+            f"{label}_INBOUND0_FILTER_CONFIG", INBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
         )
-        await self.csr_write("OUTBOUND0_START_PASS_ALL", OUTBOUND0_START, 0x0, length=8)
-        await self.csr_write("OUTBOUND0_END_PASS_ALL", OUTBOUND0_END, FILTER_END_MAX, length=8)
+        await self.csr_write(f"{label}_OUTBOUND0_START", OUTBOUND0_START, 0x0, length=8)
+        await self.csr_write(f"{label}_OUTBOUND0_END", OUTBOUND0_END, FILTER_END_MAX, length=8)
         await self.csr_write(
-            "OUTBOUND0_FILTER_CONFIG_PASS_ALL", OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
+            f"{label}_OUTBOUND0_FILTER_CONFIG", OUTBOUND0_FILTER_CONFIG, PASS_ALL_CONFIG, length=8
         )
 
     async def _zeroer_program_region(self, label: str) -> None:
@@ -293,13 +311,22 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         status = await self.csr_read(f"{label}_IDLE_STATUS", ZEROER_CTRL_STATUS, length=8)
         assert not (status & ZEROER_STATUS_BUSY), f"{label}: CSR busy while IDLE (0x{status:016x})"
 
-    async def _zeroer_start_control(self) -> None:
-        """Positive control for the ERROR-state deny: the same start write, from IDLE, runs."""
+    async def _zeroer_start_control(self, label: str) -> None:
+        """Positive control for one ERROR-state deny: the same start write, from IDLE, runs.
+
+        Runs immediately before the injection it controls, and re-programs the
+        pass-all output filters first, because the cold reset that ends the
+        previous encoding is also the filter CSRs' reset. Requiring the write
+        beat to land on the SYS_OUT responder here measures the path open under
+        the same filter configuration the deny runs under, so the deny's
+        unchanged responder write count is the Zeroer refusing the start rather
+        than the path being shut.
+        """
         dut = cocotb.top
         output_fabric_model(self)
-        await self._program_output_fabric_pass_all()
-        await self._zeroer_idle_quiescent("ZEROER_CONTROL")
-        await self._zeroer_program_region("ZEROER_CONTROL")
+        await self._program_output_fabric_pass_all(label)
+        await self._zeroer_idle_quiescent(label)
+        await self._zeroer_program_region(label)
         start_writes, start_reads = output_responder_counts()
 
         # A one-beat zeroing can raise and drop busy inside the CSR write's
@@ -312,30 +339,30 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
                 await RisingEdge(dut.clk_smc_i)
                 await ReadOnly()
                 busy = dut.tb_zeroer_busy.value
-                assert busy.is_resolvable, "Zeroer control: tb_zeroer_busy sampled X/Z"
+                assert busy.is_resolvable, f"{label}: tb_zeroer_busy sampled X/Z"
                 if int(busy):
                     state = dut.tb_zeroer_state.value
-                    assert state.is_resolvable, "Zeroer control: tb_zeroer_state sampled X/Z"
+                    assert state.is_resolvable, f"{label}: tb_zeroer_state sampled X/Z"
                     seen["busy_cycles"] += 1
                     seen["states"].add(int(state))
                 elif seen["busy_cycles"]:
                     return
             raise AssertionError(
-                "Zeroer control: busy interval did not complete within "
+                f"{label}: busy interval did not complete within "
                 f"{_BOUND} cycles (busy_cycles={seen['busy_cycles']})"
             )
 
         monitor = cocotb.start_soon(observe_busy_interval())
-        await self.csr_write("ZEROER_CONTROL_START", ZEROER_CTRL_STATUS, ZEROER_START, length=8)
+        await self.csr_write(f"{label}_START", ZEROER_CTRL_STATUS, ZEROER_START, length=8)
         await monitor
-        assert seen["busy_cycles"], "Zeroer control: the start write never raised busy"
+        assert seen["busy_cycles"], f"{label}: the start write never raised busy"
         # Busy asserts before the state register moves, so IDLE appears in the
         # first busy sample; what the control needs is that the FSM was also
         # seen somewhere else, i.e. the write actually advanced it.
         assert seen["states"] - {ZEROER_IDLE}, (
-            f"Zeroer control: busy for {seen['busy_cycles']} cycle(s) without leaving IDLE"
+            f"{label}: busy for {seen['busy_cycles']} cycle(s) without leaving IDLE"
         )
-        assert ZEROER_ERROR not in seen["states"], "Zeroer control: start entered ERROR"
+        assert ZEROER_ERROR not in seen["states"], f"{label}: start entered ERROR"
         await check_output_responder_delta(
             start_writes=start_writes,
             start_reads=start_reads,
@@ -346,28 +373,35 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             exact_writes=True,
             timeout_cycles=ZEROER_CONTROL_WAIT_CYCLES,
         )
-        await self._wait_signal(dut.tb_zeroer_state, ZEROER_IDLE, "Zeroer control back to IDLE")
-        assert int(dut.tb_zeroer_busy.value) == 0, "Zeroer control: busy after returning to IDLE"
-        status = await self.csr_read("ZEROER_CONTROL_DONE_STATUS", ZEROER_CTRL_STATUS, length=8)
+        await self._wait_signal(dut.tb_zeroer_state, ZEROER_IDLE, f"{label} back to IDLE")
+        assert int(dut.tb_zeroer_busy.value) == 0, f"{label}: busy after returning to IDLE"
+        status = await self.csr_read(f"{label}_DONE_STATUS", ZEROER_CTRL_STATUS, length=8)
         assert not (status & ZEROER_STATUS_BUSY), (
-            f"Zeroer CSR still busy after the control zeroing (0x{status:016x})"
+            f"{label}: CSR still busy after the control zeroing (0x{status:016x})"
         )
         cocotb.log.info(
-            "CHK-ZEROER-START-CONTROL PASS: from IDLE, with DEST_ADDR/SIZE programmed, the "
+            f"CHK-ZEROER-START-CONTROL PASS [{label}]: with the pass-all inbound/outbound "
+            "filters programmed and the Zeroer in IDLE with DEST_ADDR/SIZE set, the "
             f"CTRL_STATUS start write 0x{ZEROER_START:x} raised busy for "
             f"{seen['busy_cycles']} cycle(s) in states {sorted(seen['states'])}, produced "
             f"exactly one output-fabric write beat (0 at 0x{OUTPUT_FABRIC_ADDR:x}) and "
-            "returned to IDLE with CSR busy clear"
+            "returned to IDLE with CSR busy clear, so the SYS_OUT write path is open "
+            "immediately before the deny that follows"
         )
 
     async def _zeroer_faults(self) -> None:
         dut = cocotb.top
-        await self._zeroer_start_control()
         for encoding in ZEROER_ILLEGAL_STATES:
+            # Each encoding gets its own control immediately before its
+            # injection, so the deny below differs from the control in the FSM
+            # state alone: the filters the control programs are still in place,
+            # and the cold reset that clears them runs only after the deny. The
+            # control moves the responder write count with the very write the
+            # deny then requires not to move it.
+            await self._zeroer_start_control(f"ZEROER_{encoding:03b}_CONTROL")
             # Each encoding starts from a quiescent IDLE Zeroer, so entering the
-            # absorbing error state is this injection's doing. DEST_ADDR/SIZE are
-            # programmed as for the control, so the deny below differs from the
-            # control in the FSM state alone.
+            # absorbing error state is this injection's doing, and DEST_ADDR/SIZE
+            # are re-armed after the control consumed them.
             await self._zeroer_idle_quiescent(f"ZEROER_{encoding:03b}")
             await self._zeroer_program_region(f"ZEROER_{encoding:03b}")
 
@@ -402,9 +436,10 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             )
             assert int(dut.tb_zeroer_state.value) == ZEROER_ERROR, f"{encoding:03b}: left ERROR"
 
-            # Writing CTRL_STATUS is the software start that the control above
-            # ran from IDLE. In ERROR it must be ignored: the state, busy and the
-            # AXI valids stay where they are and no output-fabric beat follows.
+            # Writing CTRL_STATUS is the software start that this encoding's
+            # control just ran from IDLE. In ERROR it must be ignored: the state,
+            # busy and the AXI valids stay where they are, and the responder
+            # write count stays put on a path the control showed to be open.
             writes_before, _reads_before = output_responder_counts()
             await self.csr_write(
                 f"ZEROER_{encoding:03b}_ERROR_START", ZEROER_CTRL_STATUS, ZEROER_START, length=8
@@ -442,6 +477,6 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             "done/status set in the CSR and the sentinel read-back, then completed a legal "
             "operation; read error sources set status; Zeroer 011/101/110/111 each entered the "
             "absorbing error state from IDLE, reported busy over the CSR, ignored the CTRL_STATUS "
-            "start write that had zeroed a programmed region from IDLE, and a cold reset "
-            "returned it to IDLE"
+            "start write that its own control had just used to zero a programmed region from "
+            "IDLE over an open SYS_OUT path, and a cold reset returned it to IDLE"
         )
