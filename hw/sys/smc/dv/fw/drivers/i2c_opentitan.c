@@ -1514,7 +1514,7 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
     uint32_t base = i2c_get_base(idx);
     uint32_t written = 0;
 
-    // Debug marker: Enter function (only for i2c_internal_smbus test context)
+    // Debug marker: Enter function
     // Use scratch[1] = 0x00000080 to indicate function entry
     // Note: This is a common function, so we use a high marker value to avoid conflicts
     i2c_trace_scratch(1, 0x00000080); // Enter i2c_target_transmit
