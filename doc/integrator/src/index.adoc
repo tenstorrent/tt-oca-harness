@@ -106,7 +106,7 @@ organization under `integration/ipxact/<subsystem>/`.
 These directories are generated symlink indexes; run
 `python3 scripts/collect_integration.py` after adding or moving collateral.
 Their canonical targets remain under `hw/sys/<sys>/regs/`,
-`hw/ip/<ip>/regs/`, `hw/common/axi/`, and `vendor/...` -- the `regs/` element
+`hw/ip/<ip>/regs/`, and `vendor/...` -- the `regs/` element
 of every component's directory layout, described in
 ifdef::backend-html5[]
 xref:ocah-starting:ROOT:guidelines.adoc#component-directory-organization[the
