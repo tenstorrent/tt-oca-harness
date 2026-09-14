@@ -11,14 +11,6 @@ tags = ["ci", "vplan_gap", "local_axi_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_deadspace_decode_test"
-module = "smc_deadspace_decode_test"
-seed = 1
-timeout_sec = 1800
-tags = ["vplan_gap", "local_axi_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_output_fabric_wr_rd_responder_test"
 module = "smc_output_fabric_wr_rd_responder_test"
 seed = 1

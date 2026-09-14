@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """eFuse READ_STATUS on a timed-out read.
 
-A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS. The read
-interface's timeout arm never assigns the error flag, so the RTL reports
-`read_done=1, read_status=0` after a timeout and this testcase fails against
-it; it is enrolled in the `rtl_issue` group.
+A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS. The bit is proven
+clear on an arming read first, so the set observed after the timeout is a
+transition and not a stale value (#1603).
 """
 
 from __future__ import annotations
