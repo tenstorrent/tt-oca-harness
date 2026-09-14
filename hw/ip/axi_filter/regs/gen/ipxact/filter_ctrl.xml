@@ -128,7 +128,9 @@ to that granule.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>locked</ipxact:name>
-            <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+            <ipxact:description>Lock filter configurations. Write-once: after it is set, a
+write to this entry completes SLVERR and does not change
+the stored configuration.</ipxact:description>
             <ipxact:bitOffset>63</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

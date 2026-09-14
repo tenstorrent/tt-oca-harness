@@ -5,7 +5,9 @@
 .Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | INTR_STATUS | R a| Interrupt Status Register
+| 0x0 | INTR_STATUS | R a| Interrupt Status Register. Each bit is
+(source \| INTR_TEST) & INTR_ENABLE. INTR_ENABLE gates the
+status bit itself, not only the interrupt output.
 | 0x4 | INTR_ENABLE | RW a| Interrupt Enable Register
 | 0x8 | INTR_TEST | RW a| Interrupt Test Register
 | 0x10 | CTRL | RW a| Control Register
@@ -47,10 +49,12 @@ EVENT_ENABLE register occurs.
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
 | 4 | `SPI_EVENT` | RW | 0x0 a| SPI Event Interrupt Test. Writing `1` to this bit forces the SPI Event
-Interrupt and writing `0` releases it.
+Interrupt and writing `0` releases it. The force appears in INTR_STATUS
+only while INTR_ENABLE.SPI_EVENT is set.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `ERROR` | RW | 0x0 a| Error Interrupt Test. Writing `1` to this bit forces the Error Interrupt and
-writing `0` releases it.
+writing `0` releases it. The force appears in INTR_STATUS only while
+INTR_ENABLE.ERROR is set.
 |===
 
 [cols="1,3,1,1,6", options="header"]

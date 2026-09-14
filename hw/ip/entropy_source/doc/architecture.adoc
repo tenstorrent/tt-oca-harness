@@ -45,7 +45,7 @@ The oscillator output is sampled by a metastable D flip-flop (`prim_dffrxq`) clo
 
 Each sampled noise bit enters a serial decorrelator (`entropy_decorrelator`), which shifts bits through a 29-stage shift register with XOR feedback. A downsample counter derived from the `sample_clk_div` CSR field determines how frequently the top 8 bits of the shift register are latched and emitted as an entropy byte. A per-byte mask allows individual bit lanes to be disabled. The decorrelator can be bypassed through a CSR control bit, in which case raw noise bits pass directly to the output.
 
-The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four `gf_muladd` instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.
+The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four `gf_muladd` instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). Lane byte `b[i]` (i = 0..11) is grouped as `out[i] = (b[i] * b[i+4]) + b[i+8]` for i = 0..3. The four `out` bytes pack into one 32-bit word with `out[0]` as the most-significant byte (`{out[0], out[1], out[2], out[3]}`). This mixing step improves the statistical independence of the output without introducing significant latency.
 
 ===== Health Testing
 

@@ -24,6 +24,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_spec_tables import agg_from_pic
 from sep_reg_meta import sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -67,8 +68,7 @@ KM_IRQ_EN_INBOUND_OVERFLOW = 2
 KM_IRQ_EN_OUTBOUND_UNDERFLOW = 3
 KM_IRQ_EN_FLUSHED_BY_KM = 4
 
-# sep.sv assembles km_mbox_irq onto sep_internal_interrupts[14].
-KM_MBOX_IRQ_AGG = 14
+KM_MBOX_IRQ_AGG = agg_from_pic("KM mailbox IRQ")
 
 RESP_OKAY = 0
 RESP_SLVERR = 2

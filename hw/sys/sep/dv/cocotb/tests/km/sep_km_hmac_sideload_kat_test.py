@@ -17,8 +17,8 @@ suite). This port is a FRONTDOOR known-key variant:
 the reference suite generates a random key, reconstructs it by a read-only backdoor of the
 wrapper shares, then SEARCHES 8 byte/word representations for the one that
 reproduces the engine digest; here the key is known a priori and the digest is
-checked directly against the golden under the RTL-pinned convention
-(key_word_rev=1, key_be=1, msg_be=0),
+checked directly against the golden under the hmac_wrapper_key.rdl word
+order (key_word_rev=1, key_be=1, msg_be=0),
 so a truncated/word-swapped/wrong-key sideload changes the digest and fails.
 
 VPLAN-parity checkers:
@@ -35,8 +35,9 @@ VPLAN-parity checkers:
             HMAC is not an EDN consumer, so no crypto EDN sink is scored.
 
 Scope deltas vs the reference suite:
-  * known-key golden value-compare under the RTL-pinned convention (proves the
-    exact key flowed). The HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is
+  * known-key golden value-compare under the hmac_wrapper_key.rdl word order
+    (proves the exact key flowed). The HMAC-wrapper-internal SHARE0 *mask*
+    non-degeneracy is
     out of frontdoor scope (covered frontdoor by the OTBN KAT's CHK-F, as for the
     AES sideload KAT).
   * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's

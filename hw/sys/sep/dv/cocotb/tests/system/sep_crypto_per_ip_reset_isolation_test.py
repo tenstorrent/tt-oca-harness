@@ -450,7 +450,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         self.logger.info(
             "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
-            "(HMAC<->AES, KMAC, OTBN, TRNG neighbours; SW_RESET_N=0x%08x; "
-            "entropy-backed: CHK5_aes/kmac beats reported)",
+            "(HMAC<->AES, KMAC, OTBN; TRNG neighbours HMAC DIGEST and AES DATA_OUT; "
+            "SW_RESET_N=0x%08x; entropy-backed: CHK5_aes/kmac beats reported)",
             sw_final,
         )

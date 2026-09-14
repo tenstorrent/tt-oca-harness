@@ -13,7 +13,9 @@ addrmap spi_controller {
     //////////////////////////
 
     reg INTR_STATUS {
-        desc = "Interrupt Status Register";
+        desc = "Interrupt Status Register. Each bit is
+                (source | INTR_TEST) & INTR_ENABLE. INTR_ENABLE gates the
+                status bit itself, not only the interrupt output.";
 
         field {
             sw = r;
@@ -52,14 +54,16 @@ addrmap spi_controller {
             sw = rw;
             hw = r;
             desc = "Error Interrupt Test. Writing `1` to this bit forces the Error Interrupt and
-                    writing `0` releases it.";
+                    writing `0` releases it. The force appears in INTR_STATUS only while
+                    INTR_ENABLE.ERROR is set.";
         } ERROR[0:0] = 0x0;
 
         field {
             sw = rw;
             hw = r;
             desc = "SPI Event Interrupt Test. Writing `1` to this bit forces the SPI Event
-                    Interrupt and writing `0` releases it.";
+                    Interrupt and writing `0` releases it. The force appears in INTR_STATUS
+                    only while INTR_ENABLE.SPI_EVENT is set.";
         } SPI_EVENT[4:4] = 0x0;
     };
 
