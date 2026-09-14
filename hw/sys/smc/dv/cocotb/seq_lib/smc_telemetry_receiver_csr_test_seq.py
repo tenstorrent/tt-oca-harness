@@ -21,10 +21,11 @@ below) and each entry names its source:
   not received a Last Packet flag") and ``doc/architecture.adoc`` ("parsed for
   headers (probe ID)", "detects last-packet boundaries").
 * the bit positions of the probe-ID header, of the last-packet flag and of the
-  first block in each packet -- no document in the tree fixes them. They are
-  DV-owned framing assumptions (``_ATB_PROBE_ID_LSB``, ``_ATB_LAST_PACKET_BIT``,
-  ``_ATB_FIRST_BLOCK_LSB``, ``_ATB_NEXT_BLOCK_LSB``) and are not cited to the
-  design.
+  first block in each packet -- no document in the tree fixes them, so their
+  values are not derived from any document: they are the layout this bench
+  drives and the receiver under test accepts (``_ATB_PROBE_ID_LSB``,
+  ``_ATB_LAST_PACKET_BIT``, ``_ATB_FIRST_BLOCK_LSB``, ``_ATB_NEXT_BLOCK_LSB``),
+  recorded as DV-owned assumptions until a document states the packet layout.
 
 What this testcase scores is the CSR-visible consequence of a message framed
 per that table (STATUS.EMPTY clearing, PROBE_ID reading back the value that was

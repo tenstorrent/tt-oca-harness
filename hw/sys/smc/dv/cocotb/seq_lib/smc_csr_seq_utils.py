@@ -127,9 +127,12 @@ class SmcCsrSeq(smc_base_test_seq):
 
         The zero is a DV-owned expectation, not a document-cited value: an
         error response carries no payload, so a terminator that hands back a
-        neighbouring register's contents or a stale bus word fails here. Where
-        a document does fix the zero (memmap.adoc for AVS_READBACK on an empty
-        FIFO) the caller cites it."""
+        neighbouring register's contents or a stale bus word fails here. Three
+        sequences call it: ``smc_gpio_ctrl_full_sweep_test_seq`` (the external
+        GPIO_CTRL windows) and ``smc_pvt_analog_sensor_test_seq`` (the POC/PBIAS
+        windows) rely on this DV-owned zero alone;
+        ``smc_sideband_protocol_smoke_test_seq`` reads AVS_READBACK on an empty
+        FIFO, where memmap.adoc does fix the zero, and cites it at the call."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ

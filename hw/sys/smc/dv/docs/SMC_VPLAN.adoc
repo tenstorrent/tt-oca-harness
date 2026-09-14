@@ -2733,12 +2733,12 @@ Drive `smc_cpu_ecc_lint_pint_depth_test_seq`. Each checker below is a named comp
 |`CHK-DIAG-AXIL-IDLE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-COUNT` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-070-smc_cpu_firmware_boot_test]]
@@ -2899,12 +2899,12 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 |`CHK-DIAG-AXIL-IDLE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-COUNT` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-075-smc_ecc_fault_inject_test]]
@@ -3107,12 +3107,12 @@ Drive `smc_dbs_idle_test_seq`. Each checker below is a named compare the DUT can
 |`CHK-DIAG-AXIL-IDLE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-COUNT` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
 '''''
 
 [[sec-081-smc_dfd_sanity_test]]
@@ -3142,12 +3142,12 @@ Drive `smc_dfd_sanity_test_seq`. Each checker below is a named compare the DUT c
 |`CHK-DIAG-AXIL-IDLE` |Named compare in `smc_diagnostic_vip_utils.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-COUNT` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-082-smc_dfx_status_abort_test]]

@@ -26,25 +26,32 @@ _MISC_WRAP_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / 
 
 # NDMRESET_CLUSTER_COUNT: no document states its value. ``ndm_reset.rdl``
 # describes it as "Number of NDM Clusters supported" for "the debug module in
-# each Ascalon cluster" and bounds it ("Supports up to 32 CPU Clusters");
-# ``hw/sys/smc/doc/memmap.adoc`` counts one RISC-V Debug Module instance and
-# ``fabric.adoc`` one CPU cluster, while ``cpu.adoc`` counts four cores -- none
-# of them names the quantity this register reports. So the count is not
-# value-compared here: the checks are the RDL bounds and the ``sw = r`` access
-# contract, and the observed count is carried in the evidence token.
-NDMRESET_CLUSTER_COUNT_MAX = 32
-
+# each Ascalon cluster"; ``hw/sys/smc/doc/memmap.adoc`` counts one RISC-V Debug
+# Module instance and ``fabric.adoc`` one CPU cluster, while ``cpu.adoc`` counts
+# four cores -- none of them names the quantity this register reports. So the
+# count is not value-compared here: the checks are the RDL bounds and the
+# ``sw = r`` access contract, and the observed count is carried in the evidence
+# token.
+#
 # Field framing from the generated header of the ``ndm_reset`` block:
 # ``ndmreset_cluster_count[7:0]`` is the only field of the register, so the
-# bits above it are reserved and must read 0.
+# bits above it are reserved and must read 0. The field itself states no
+# ceiling below its 8-bit width; the ceiling comes from the register it
+# qualifies. The RDL says the count "Can be read to mask the ndmreset_request
+# register", and ``ndmreset_request[31:0]`` is one bit per cluster ("Supports
+# up to 32 CPU Clusters"), so a count above that register's width could not
+# mask it. The ceiling is therefore the request field's generated width.
 _CLUSTER_COUNT_MASK = _field_mask(
     _MISC_WRAP_H, "NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_bm"
 )
 _CLUSTER_COUNT_WIDTH = _field_mask(
     _MISC_WRAP_H, "NDM_RESET__NDMRESET_CLUSTER_COUNT__NDMRESET_CLUSTER_COUNT_bw"
 )
+NDMRESET_CLUSTER_COUNT_MAX = _field_mask(
+    _MISC_WRAP_H, "NDM_RESET__NDMRESET_REQUEST__NDMRESET_REQUEST_bw"
+)
 assert NDMRESET_CLUSTER_COUNT_MAX <= _CLUSTER_COUNT_MASK, (
-    f"the RDL ceiling of {NDMRESET_CLUSTER_COUNT_MAX} clusters does not fit the "
+    f"the {NDMRESET_CLUSTER_COUNT_MAX}-bit ndmreset_request field does not fit the "
     f"{_CLUSTER_COUNT_WIDTH}-bit ndmreset_cluster_count field declared in {_MISC_WRAP_H}"
 )
 
@@ -129,26 +136,29 @@ class smc_ecc_dfd_dbs_sanity_test_seq(SmcCsrSeq):
         # --- NDMRESET_CLUSTER_COUNT: RDL bounds, then RDL access contract ------
         # Leg 1: the count has no documented value (see NDMRESET_CLUSTER_COUNT_MAX),
         # so the read is bounded by what the RDL does declare: a nonzero count,
-        # at most 32, inside the generated field with the reserved bits at 0.
+        # at most the width of the request register it masks, inside the
+        # generated field with the reserved bits at 0.
         count = await self.csr_read("NDMRESET_CLUSTER_COUNT", NDMRESET_CLUSTER_COUNT_ADDR)
         assert (count & ~_CLUSTER_COUNT_MASK) == 0, (
             f"NDMRESET_CLUSTER_COUNT reads 0x{count:08x}: bits above the "
             f"{_CLUSTER_COUNT_WIDTH}-bit ndmreset_cluster_count field are reserved and must be 0"
         )
         assert 0 < count <= NDMRESET_CLUSTER_COUNT_MAX, (
-            f"NDMRESET_CLUSTER_COUNT reads {count}: ndm_reset.rdl bounds the count to "
-            f"1..{NDMRESET_CLUSTER_COUNT_MAX} ('Supports up to 32 CPU Clusters')"
+            f"NDMRESET_CLUSTER_COUNT reads {count}: ndm_reset.rdl has it mask the "
+            f"{NDMRESET_CLUSTER_COUNT_MAX}-bit ndmreset_request register, so the count "
+            f"must be 1..{NDMRESET_CLUSTER_COUNT_MAX}"
         )
         cocotb.log.info(
-            "CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION: NDMRESET_CLUSTER_COUNT "
+            "CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS: NDMRESET_CLUSTER_COUNT "
             "@ 0x%08x reads 0x%08x -- a nonzero count within the %d-bit RDL "
-            "field and the 32-cluster ceiling ndm_reset.rdl declares, reserved "
-            "bits 0. SCOPE: no document states the count itself (memmap.adoc "
-            "counts one Debug Module, fabric.adoc one CPU cluster, cpu.adoc "
-            "four cores), so its value is reported, not asserted",
+            "field and at most the %d request bits it masks, reserved bits 0. "
+            "SCOPE: bounds check only; no document states the count itself "
+            "(memmap.adoc counts one Debug Module, fabric.adoc one CPU cluster, "
+            "cpu.adoc four cores), so its value is reported, not compared",
             NDMRESET_CLUSTER_COUNT_ADDR,
             count,
             _CLUSTER_COUNT_WIDTH,
+            NDMRESET_CLUSTER_COUNT_MAX,
         )
 
         # Leg 2: RDL register contract. ndm_reset.rdl declares the field
