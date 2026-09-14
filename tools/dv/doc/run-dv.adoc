@@ -1591,7 +1591,7 @@ contexts.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `smoke` and the three
+DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `hosted` and the three
 `cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
 budgets are sized for the standard runner. Nightly is not a merge gate; a red
 nightly run is a triage signal.
@@ -1603,9 +1603,13 @@ with `tier=weekly`
 reference-only Verilator coverage; SEP `cpu_stub` and SMU `sep0_all` add
 `--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
 runner, because their coverage-instrumented model builds exceed the standard
-runner's memory, and DTP reseeds three times on that runner. SMC `smoke` and
+runner's memory, and DTP reseeds three times on that runner. SMC `hosted` and
 the three `cross_trigger` benches' `all` groups run at three seeds with
-coverage. `--sim-jobs` follows the runner core count. The score is published
+coverage. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
+reproducers at one seed without coverage: every leaf carries `expect_fail`
+(<<runner-expected-failures>>), so the row is green while the filed defects
+stand and red the week one is fixed. `--sim-jobs` follows the runner core
+count. The score is published
 but does not determine test pass/fail. SEP, SMU, and DTP instrument
 line/branch/expression/user and SMC line/branch/user, none with toggle, and
 every coverage block compiles the generated model per file
@@ -1632,8 +1636,8 @@ recorded run identity unique for downstream trend history), gates on the
 native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
 `status` `PASS`). Coverage-enabled jobs additionally require a numeric score
 and recorded report/summary paths, but do not enforce a score threshold. The
-action uploads `dv-run-<dut>-<tool>-<tier>` (14-day retention, 30 for the
-weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
+action uploads `dv-run-<dut>-<tool>-<tier>` (`-<label>` appended for a
+labelled row; 14-day retention, 30 for the weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
 are excluded after merge while the merged coverage report and normalized
 summary remain. Explicit run directories never create or update the `latest`
 symlink.
