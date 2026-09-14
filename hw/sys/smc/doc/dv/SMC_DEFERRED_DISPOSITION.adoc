@@ -5,9 +5,9 @@
 == SMC deferred and OUT disposition
 
 This table is the disposition of record for every test name that is
-catalogued but not enrolled. Nothing here is enrolled PASS. The blocker for
-each surviving body lives in its own docstring; `hw/sys/smc/dv/README.md`
-tabulates the ones under `hw/sys/smc/dv/cocotb/tests/`.
+catalogued but not enrolled. Nothing here is enrolled PASS. A name that
+still has a body under `hw/sys/smc/dv/cocotb/tests/` restates its blocker on
+a leading `# deferred: <tag>` docstring line where a tag applies.
 
 Buckets:
 
@@ -37,13 +37,22 @@ do not count a wrapper terminator as that proof.
 |Name |Bucket |Reintroduction
 |smc_dfd_dbs_fault_inject_test
 |waived
-|TB-glue / not DUT RTL. Must not be reported as feature PASS.
+|TB-glue / not DUT RTL: the TB latches a hardcoded capture token, and the real DFD is `smc_dfd_wrap`. Must not be reported as feature PASS.
 |smc_i3c_ccc_ibi_full_test
 |child-TB-owned
 |I3C CCC/IBI protocol is block-level I3C DV. Wrapper DAT/DCT macros are absent; see the idle-boundary table.
 |smc_macro_axil_routing_test
 |adopter-pending OUT
-|DTP CSR port is idle on smc_wrapper (no TB terminator). SMU already wires DTP; do not double-count DTP TB signoff.
+|DTP CSR port is idle on smc_wrapper (no TB terminator) and the PLL/PVT windows answer from OKAY+0 placeholder wraps. SMU already wires DTP; do not double-count DTP TB signoff.
+|smc_captured_straps_test
+|adopter-pending OUT
+|`smc_wrapper` declares no `captured_straps_i`, so there is no tap to drive. Reintroduce when the product pin reaches the wrapper.
+|smc_clint_csr_test
+|adopter-pending OUT
+|The `0xC8xx_xxxx` cluster-local window folds onto `0xC0xx_xxxx` on SEP_IN, so its reads never reach the CLINT and the MTIME-monotonic leg cannot pass. Reintroduce from the CPU side, with a firmware image that reads the CLINT.
+|smc_cluster_plic_csr_test
+|adopter-pending OUT
+|The `0xC400_0000` PLIC aperture accepts SEP_IN writes with OKAY and stores nothing, and its `+2 MB` context pages return non-OKAY. Its register-level properties need a write path from SEP_IN or a firmware image that reads back what it programmed; `smc_fw_plic_claim_test` covers the PLIC's function.
 |smc_pll_pvt_clock_config_test
 |adopter-pending OUT
 |pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.

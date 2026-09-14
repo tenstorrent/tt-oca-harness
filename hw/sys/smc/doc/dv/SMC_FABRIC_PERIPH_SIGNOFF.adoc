@@ -6,8 +6,7 @@
 
 This chapter defines the fabric and peripheral honesty signoff. Feature credit
 is the SCOPE matrix in `SMC_SCOPE_TRACEABILITY.adoc`. A green fabric or I3C
-name is not protocol proof. OUT rows live in `SMC_DEFERRED_DISPOSITION.adoc`
-and the README "Present but not enrolled" table.
+name is not protocol proof. OUT rows live in `SMC_DEFERRED_DISPOSITION.adoc`.
 
 [[smc-fabric-credit]]
 === Credited vs OUT
@@ -33,6 +32,7 @@ and the README "Present but not enrolled" table.
 |===
 
 I3C block-depth stays on the I3C intake. The wrapper leaf is decode
-only and is not a substitute for CCC/IBI. Placeholder tags in the
-README match the deferred disposition: `needs_i3c_dat_dct`,
-`needs_dtp_csr_sub`, `rtl_placeholder`, `fake_bfm`, `tb_glue`.
+only and is not a substitute for CCC/IBI. The `# deferred:` tags in the
+module docstrings name the same blockers as the deferred disposition:
+`needs_i3c_dat_dct`, `needs_dtp_csr_sub`, `rtl_placeholder`, `fake_bfm`,
+`tb_glue`.

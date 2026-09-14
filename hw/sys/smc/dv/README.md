@@ -20,9 +20,9 @@ SYS_OUT, pin-level protocol VIPs, and the firmware images under `fw/`.
 the SV-UVM shape and `--cov` coverage. Xcelium builds the model but has no
 coverage configuration in this tree.
 
-See `docs/index.adoc` for the chapter set: `docs/SMC_TB_ARCH.adoc` for test
-development, environment setup and run recipes, `docs/SMC_VPLAN.adoc` for the
-verification plan, and `docs/SMC_FCOV.adoc` for the coverage pipeline. The
+See `docs/index.adoc` for the chapter set: `docs/SMC_TB_ARCH.adoc` for the
+testbench architecture and test development, `docs/SMC_VPLAN.adoc` for what
+each test proves, and `docs/SMC_FCOV.adoc` for coverage intent. The
 sign-off records that read against those chapters are under
 `hw/sys/smc/doc/dv/`: `SMC_SCOPE_TRACEABILITY.adoc` (requirement-to-test
 matrix), `SMC_CANONICAL_BRINGUP_SIGNOFF.adoc` (canonical bring-up / CSR
@@ -33,13 +33,11 @@ signoff), `SMC_RELEASE_MATRIX.adoc` (release regression matrix),
 `SMC_DEFERRED_DISPOSITION.adoc` (disposition of the tests that are present but
 not enrolled).
 
-**Green / signoff policy:** only claim **real DUT RTL paths**.
-I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
-demos (e.g. hardcoded DFD capture token) are not enrolled and are not
-reportable as feature PASS. `smc_i3c_to_fabric_test` is
-**decode only** (fabric → real OCA core `HCI_VERSION`) and is **not**
-in `smoke` or `functional`. Run it via `i3c_depth`
-or by name.
+**Green / signoff policy:** only claim **real DUT RTL paths**. A test that
+reaches a placeholder, a TB-glue stand-in, or a decode-only window is not
+reportable as feature PASS; `docs/SMC_VPLAN.adoc` states what each enrolled
+test proves, and `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` states why
+the rest is not enrolled.
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
 call sites need a one-line rationale comment at the call (what hangs without
@@ -52,7 +50,7 @@ it, and why that is still a real DUT path). The helpers that set it live in
 |---|---|---|
 | Verilator 5.050 | the functional acceptance backend | 5.050 specifically: 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
 | g++ 13.2.1 | C++20 for cocotb `-fcoroutines` | an older g++ fails with `unrecognized command line option '-fcoroutines'` |
-| Python ≥ 3.11 | launcher | `tools/dv/run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
+| Python ≥ 3.11 | launcher | `tools/dv/run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi); there is nothing to source. Set `OCAH_DV_SKIP_UV=1` only inside a pre-provisioned environment that already supplies the `dv` group |
 | Bender | filelist (`--stage flist`) | must be on `PATH` |
 | RISC-V GCC with picolibc, or a container engine | firmware images for `all` (`fw/`) | `docker` or `podman` for `scripts/docker-run.sh`, which builds the images in the `ocah-toolchain` container; not needed for `smoke` or `hosted` |
 | VCS | `--framework uvm`, and `--cov` coverage | Verilator has no SV-UVM support; see `frameworks` in `hw/common/dv/configs/simulators.toml` |
@@ -73,32 +71,11 @@ not environment variables — see the `--framework uvm` section.
 
 ## Present but not enrolled
 
-These modules exist under `cocotb/tests/` and are in no testlist, so they are
-not in `all`. Where a blocker tag applies it lives in the file's docstring
-(`# deferred: <reason>`); `testlists/all.toml` carries the same list beside the
-`all` group, and `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` is the
-disposition of record. SMU's matching catalog is
-`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
-
-| Test | Reason |
-|------|--------|
-| `smc_i3c_ccc_ibi_full_test` | `needs_i3c_dat_dct` — no TB DAT/DCT RAM |
-| `smc_macro_axil_routing_test` | `needs_dtp_csr_sub` / `rtl_placeholder` — DTP CSR idle; pll/pvt OKAY wraps |
-| `smc_pll_pvt_clock_config_test` | `rtl_placeholder` |
-| `smc_pll_dvfs_depth_test` | `rtl_placeholder` |
-| `smc_pll_cgm_awm_config_test` | `rtl_placeholder` |
-| `smc_pll_awm_freq_sweep_test` | `rtl_placeholder` |
-| `smc_pvt_analog_sensor_test` | `rtl_placeholder` |
-| `smc_pvt_droop_test` | `rtl_placeholder` |
-| `smc_sideband_avsbus_octs_bfm_test` | `fake_bfm` — no pad BFM |
-| `smc_dfd_dbs_fault_inject_test` | `tb_glue` — hardcoded capture token, not `smc_dfd_wrap` |
-| `smc_captured_straps_test` | `no_dut_port` — `smc_wrapper` declares no `captured_straps_i`, so there is no tap to drive |
-| `smc_clint_csr_test` | the `0xC8xx_xxxx` cluster-local window folds onto `0xC0xx_xxxx` on SEP_IN, so the reads never reach the CLINT |
-| `smc_cluster_plic_csr_test` | the `0xC400_0000` PLIC aperture accepts SEP_IN writes with OKAY and stores nothing, and its `+2 MB` context pages return non-OKAY |
-
-One enrolled carve-out keeps its reason next to the stimulus:
-`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (hysteresis encodings
-0..8 are never programmed by that testcase).
+Test modules under `cocotb/tests/` that are in no testlist are not in `all`.
+`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` is the disposition of record
+for every one of them, and a module restates its blocker on a leading
+`# deferred: <tag>` docstring line where a tag applies. SMU's matching catalog
+is `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 ## Single DUT
 
@@ -132,9 +109,8 @@ so the bare DUT name selects the wrapper-based TB.
 
 ## Layout
 
-Every directory and top-level file under `dv/` is listed here. This table is
-the authoritative layout; `docs/SMC_TB_ARCH.adoc` sketches a subset and defers
-to this one.
+Every directory and top-level file under `dv/` is listed here. This tree is
+the authoritative layout.
 
 ```
 hw/sys/smc/dv/
@@ -150,10 +126,11 @@ hw/sys/smc/dv/
 │                           #   and cov/sv/. --cov is graded on VCS; see
 │                           #   docs/SMC_FCOV.adoc
 ├── docs/                   # index.adoc plus the three role chapters it
-│                           #   includes: SMC_TB_ARCH.adoc (test development,
-│                           #   environment, run recipes), SMC_VPLAN.adoc and
-│                           #   SMC_FCOV.adoc. The scope/disposition/signoff
-│                           #   records are under hw/sys/smc/doc/dv/
+│                           #   includes: SMC_TB_ARCH.adoc (testbench
+│                           #   architecture, test development),
+│                           #   SMC_VPLAN.adoc and SMC_FCOV.adoc. The
+│                           #   scope/disposition/signoff records are under
+│                           #   hw/sys/smc/doc/dv/
 ├── models/                 # SMC-local sim models: axil_okay_slv.sv,
 │                           #   smc_cpu_mem_dv.sv (observability counters + the
 │                           #   time-0 ROM/scratch image backdoors),
@@ -252,6 +229,17 @@ resolves the filelist, elaborates the Verilator model, builds any firmware the
 selected leaves need, then simulates. On a fresh checkout, do not pass
 `--stage sim` alone — it reuses whatever model is on disk and there is none.
 
+Group and test names go to `--items`. `--tag` matches the `tags` field of a
+testlist entry, which is a different and mostly narrower set, so a group name
+passed to `--tag` can select nothing.
+
+After the one-time model build, Python-only edits to sequences, scoreboards
+or testlists reuse the model with `--stage sim`; the C++ compile is the
+expensive step. Pass `--rebuild` after changing `tb/`, `verilator_stubs/`,
+RTL, or the Bender filelist inputs; `MAKEFLAGS=-jN` shortens it. Two builds
+share the Bender filelist step and race when run concurrently, so run them
+serially.
+
 ### CI `smoke` group
 
 The pull-request and push gate (`.github/workflows/sim.yml`, tier `smoke`)
@@ -262,16 +250,13 @@ firmware toolchain is needed:
 python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 ```
 
-That group is `smc_canonical_smoke_test`, `smc_cold_reset_test` and
-`smc_register_sanity_test`, all three members of `all`.
-
 ### Nightly `hosted` group
 
 The scheduled nightly and weekly (`.github/workflows/regress.yml`) run the
-`hosted` group on Verilator with three seeds per leaf. `hosted` is `all` minus
-the five leaves that need a RISC-V toolchain or an `SMC_DUAL` elaboration,
-which the hosted GitHub runners do not have; `testlists/all.toml` names the
-five and guards the set with `expected_count`.
+`hosted` group on Verilator with three seeds per leaf. `hosted` is `all`
+without the leaves that need a RISC-V toolchain or an `SMC_DUAL` elaboration,
+which the hosted GitHub runners do not have; `testlists/all.toml` defines the
+set.
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3

@@ -48,45 +48,26 @@ name = "all"
 #                                     path, `run_modes = ["prod_rom"]`. Runs as
 #                                     `occp_boot`, and carries the `ci` tag.
 #
-# The test modules under cocotb/tests/ that are in no testlist each carry the
-# reason in their own docstring, on a leading `# deferred: <tag>` line where
-# one applies:
+# Three enrolled tests are also held out of this group. They keep their own
+# [[tests]] entries and run on demand or through their feature groups.
 #
-#   smc_pll_awm_freq_sweep_test        smc_pvt_analog_sensor_test
-#   smc_pll_cgm_awm_config_test        smc_pvt_droop_test
-#   smc_pll_dvfs_depth_test            smc_i3c_ccc_ibi_full_test
-#   smc_pll_pvt_clock_config_test      smc_macro_axil_routing_test
-#
-#     -- rtl_placeholder / needs_dtp_csr_sub: placeholder PLL/PVT RTL, the I3C
-#        DAT/DCT backing RAM this bench does not instantiate, and the idle DTP
-#        CSR port. All four appear in SMC_VPLAN.adoc under Known Limitations.
-#
-#   smc_captured_straps_test      no_dut_port: smc_wrapper declares no
-#                                 captured_straps_i, so there is no tap to drive
-#   smc_clint_csr_test            the 0xC8xx_xxxx cluster-local window folds onto
-#                                 0xC0xx_xxxx on SEP_IN, so the reads never reach
-#                                 the CLINT and the MTIME-monotonic leg cannot pass
-#   smc_dfd_dbs_fault_inject_test tb_glue: the TB latches a hardcoded
-#                                 0xDB5C_AFE1; real DFD is smc_dfd_wrap
-#   smc_sideband_avsbus_octs_bfm_test
-#                                 fake_bfm: raises on entry rather than standing
-#                                 in for a pad VIP that does not exist
-#   smc_cluster_plic_csr_test     no_sep_in_write_path: the PLIC aperture at
-#                                 0xC400_0000 accepts writes with OKAY and
-#                                 stores nothing, and its +2 MB context pages
-#                                 return non-OKAY. See the docstring and
-#                                 SMC_VPLAN Known Limitations
-#
-# Two enrolled tests are also held out of this group: each fails on an RTL
-# defect rather than a test defect. They keep their own [[tests]] entries and
-# run on demand.
-#
-#   smc_remap_cla_test          -- its CLA reset sweep passes, but the deny leg
-#                                  never completes: the SEP_IN read at
+#   smc_remap_cla_test          -- fails on an RTL defect rather than a test
+#                                  defect: its CLA reset sweep passes, but the
+#                                  deny leg never completes; the SEP_IN read at
 #                                  0xC016_0038 times out (CLA aperture hang).
-#   smc_deadspace_decode_test   -- the DUT aliases deadspace onto live
+#   smc_deadspace_decode_test   -- fails on an RTL defect rather than a test
+#                                  defect: the DUT aliases deadspace onto live
 #                                  registers (wrap_to_live=7 read_alias=6).
 #                                  Also listed in depth.toml.
+#   smc_state_fault_inject_test -- reaches the illegal eFuse and Zeroer state
+#                                  encodings by forcing the state flops through
+#                                  tb_top's *_state_inject hooks. The sign-off
+#                                  sweep is frontdoor-only, so it runs in
+#                                  per_ip, coverage_closure, depth and
+#                                  depth_efuse instead.
+#
+# The test modules under cocotb/tests/ that are in no testlist are dispositioned
+# in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc.
 #
 # The `rtl_issue` group is also out, and being red is its whole purpose -- it is
 # the runnable evidence for filed RTL defects. rtl_issue.toml is included above
