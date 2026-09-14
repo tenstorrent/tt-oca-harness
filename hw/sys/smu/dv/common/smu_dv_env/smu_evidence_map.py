@@ -354,7 +354,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMC-MBX-IRQ-EXT-S2",
             "CHK-SMC-MBX-IRQ-EXT-S2",
-            "ext_mailbox_interrupts is NUM_MAILBOXES=32 wide; mailbox 0 / 31 IRQs move bits 0 / 31",
+            "DUT port smc_ext_mailbox_interrupts_o is NUM_MAILBOXES=32 wide; "
+            "mailbox 0 / 31 IRQs move bits 0 / 31",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
