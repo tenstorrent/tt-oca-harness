@@ -95,8 +95,8 @@ records ``lk1`` 0 -> 1.
 PORT FIDELITY
 ============================================================================
 
-Reference entry ``+UNAUTH_FLAG_0 +SECURE_BOOT_DIS +LC_STATE_PROD``. ``sep_demotion_uid_checker.py``
-``_generate_combined_manifest`` turns those into
+Reference entry ``+UNAUTH_FLAG_0 +SECURE_BOOT_DIS +LC_STATE_PROD``. The packer
+turns those into
 ``boot_arguments.BL2_demotion = 1``, ``usage_constraints.selectors.BL1_demotion = 0``,
 ``usage_constraints.BL1_demotion = 0`` (no ``+AUTH_FLAG_0``) and
 ``boot_arguments.secure_boot = 0``, and its ``_build_expected_patterns`` expects
@@ -131,7 +131,7 @@ class sep_firmware_demotion_decision_unauth_flag_0_prod_test(sep_demotion_prod_b
     """PROD, selector clear, BL1 flag clear, BL2 flag set: unlocked, DEMOTE_1 unwritten."""
 
     # +UNAUTH_FLAG_0 +SECURE_BOOT_DIS +LC_STATE_PROD, and no +SET_SELECTOR_BIT_17 and
-    # no +AUTH_FLAG_0 (bootcode_regression.yaml). The absent +AUTH_FLAG_0 is the whole
+    # no +AUTH_FLAG_0. The absent +AUTH_FLAG_0 is the whole
     # difference from the committed O4 member and is what makes this the minimal O4.
     _SEL = 0
     _AUTH = 0

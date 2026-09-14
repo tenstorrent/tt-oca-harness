@@ -88,8 +88,8 @@ clear, so that bit is 0 and the word is 0x2.
 PORT FIDELITY
 ============================================================================
 
-``sep_demotion_uid_checker.py`` ``_build_expected_patterns`` expects
-``STATUS: DEMOTION_NOT_SELECTED`` + ``STATUS: DEMOTION_LOCKED`` for this row.
+The expected pattern for this row is ``STATUS: DEMOTION_NOT_SELECTED`` +
+``STATUS: DEMOTION_LOCKED``.
 
 MARKER SUBSTITUTION: this ROM defines no demotion status code
 (``grep -n DEMOT bootrom/prod/include/status_values.h`` is empty), so the console
@@ -150,7 +150,7 @@ class sep_firmware_demotion_decision_no_flag_prod_test(
     """PROD, secure boot on, no demotion input: DEMOTE_1 locked, not demoted."""
 
     # +LC_STATE_PROD only -- no +SECURE_BOOT_DIS, no +SET_SELECTOR_BIT_17, no
-    # +AUTH_FLAG_0 and no +UNAUTH_FLAG_* (bootcode_regression.yaml).
+    # +AUTH_FLAG_0 and no +UNAUTH_FLAG_*.
     _SEL = 0
     _AUTH = 0
     _BL2 = 0

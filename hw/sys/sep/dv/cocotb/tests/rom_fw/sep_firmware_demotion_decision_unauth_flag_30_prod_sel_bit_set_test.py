@@ -127,7 +127,7 @@ class sep_firmware_demotion_decision_unauth_flag_30_prod_sel_bit_set_test(
     """PROD, secure boot on, selector set, BL1 flag clear: DEMOTE_1 locked, not demoted."""
 
     # +UNAUTH_FLAG_30 +LC_STATE_PROD +SET_SELECTOR_BIT_17, and NO +SECURE_BOOT_DIS
-    # and no +AUTH_FLAG_0 / +UNAUTH_FLAG_0 (bootcode_regression.yaml).
+    # and no +AUTH_FLAG_0 / +UNAUTH_FLAG_0.
     _SEL = 1
     _AUTH = 0
     _BL2 = 0

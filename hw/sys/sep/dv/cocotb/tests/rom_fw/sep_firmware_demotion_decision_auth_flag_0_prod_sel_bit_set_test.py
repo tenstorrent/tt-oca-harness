@@ -132,8 +132,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(
 
     # --- stimulus ----------------------------------------------------------
     def mutate_manifest(self, buf: bytearray) -> None:
-        # +SET_SELECTOR_BIT_17 -> usage_constraints.selectors.BL1_demotion
-        # (sep_demotion_uid_checker.py).
+        # +SET_SELECTOR_BIT_17 -> usage_constraints.selectors.BL1_demotion.
         mm.set_selector_bit(buf, "primary", mm.SELECTOR_BIT_BL1_DEMOTION, True)
         # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion.
         mm.set_usage_flags_bit(buf, "primary",

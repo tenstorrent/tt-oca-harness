@@ -40,7 +40,7 @@ register channel in exactly the ``lock`` bit.
 **Collapse note.** ``unauth_flag_30_prod_sel_bit_set`` (tracker row 119, not in
 this batch) drives the same three demotion inputs, so on the demotion path it is
 covered-by-O3a. It is not the same stimulus overall: it adds ``+UNAUTH_FLAG_30``
-(``skip_SHA256``) and, per ``bootcode_regression.yaml``, carries no
+(``skip_SHA256``) and carries no
 ``+SECURE_BOOT_DIS``, so a port of that row would run a signed primary under
 enforced secure boot. Neither difference is a demotion input. The
 remaining uncovered outcome of the seven is **O3b**
@@ -63,8 +63,7 @@ class sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test(
         sep_demotion_prod_base):
     """PROD, selector set, BL1 flag clear: DEMOTE_1 not demoted but locked."""
 
-    # +LC_STATE_PROD +SET_SELECTOR_BIT_17, no +AUTH_FLAG_0 and no +UNAUTH_FLAG_0
-    # (bootcode_regression.yaml).
+    # +LC_STATE_PROD +SET_SELECTOR_BIT_17, no +AUTH_FLAG_0 and no +UNAUTH_FLAG_0.
     _SEL = 1
     _AUTH = 0
     _BL2 = 0

@@ -36,10 +36,11 @@ VARIANT (b) IS BACKUP-ELIGIBLE, AND THE TWO ARMS DIVERGE HERE. A plaintext that
 is not a TOC is a warning on the primary and the backup is then tried; only an
 engine failure is terminal on the spot. Two independent sources say so:
 
-  * ``sep-boot-flow.puml`` splits them. An invalid TOC identifier on the primary
-    is ``<<Warning>> : WARNING: TOC_ID_INVALID`` followed by the backup-retry
-    connector, and only the backup's failure is ``<<Error>>``. Terminal status is
-    reserved for ``DECRYPTION_KEY_FAILED`` and ``DECRYPTION_FAILED``.
+  * The authoritative boot flow splits them. An invalid TOC identifier on the
+    primary is ``<<Warning>> : WARNING: TOC_ID_INVALID`` followed by the
+    backup-retry connector, and only the backup's failure is ``<<Error>>``.
+    Terminal status is reserved for ``DECRYPTION_KEY_FAILED`` and
+    ``DECRYPTION_FAILED``.
   * The same split appears in one loop: a ``validate_payload`` failure (the
     source of ``TOC_ID_INVALID``) takes ``continue``, while a ``decrypt_payload``
     failure takes ``goto err_fail``, for the reason that "All
@@ -246,7 +247,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
             f"expected the backup slot ({_BACKUP_SRC}) to be read AFTER the "
             f"primary's rejection ({err_marker} at line {i_err}), got backup at "
             f"line {i_backup}. An invalid TOC identifier is a Warning followed by "
-            f"the backup-retry connector (sep-boot-flow.puml:538), and upstream "
+            f"the backup-retry connector, and upstream "
             f"boot.c does `continue` for the same failure. A missing retry "
             f"would mean the ROM stopped short of the backup it is required to try. "
             f"Console: {console}"

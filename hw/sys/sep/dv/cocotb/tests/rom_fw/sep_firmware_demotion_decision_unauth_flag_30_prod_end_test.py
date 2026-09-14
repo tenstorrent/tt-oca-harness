@@ -99,8 +99,7 @@ class sep_firmware_demotion_decision_unauth_flag_30_prod_end_test(
 
     # The stimulus is
     # +UNAUTH_FLAG_30 sets boot_arguments.skip_SHA256 = 1 and leaves BL2_demotion,
-    # the BL1 flag and the selector clear (sep_demotion_uid_checker.py,
-    # _generate_combined_manifest), so all three demotion inputs are 0.
+    # the BL1 flag and the selector clear, so all three demotion inputs are 0.
     _SEL = 0
     _AUTH = 0
     _BL2 = 0

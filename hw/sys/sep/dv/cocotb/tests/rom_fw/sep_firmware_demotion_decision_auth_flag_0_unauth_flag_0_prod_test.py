@@ -73,8 +73,7 @@ class sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test(
         sep_demotion_prod_base):
     """PROD, selector clear, BL2 flag set: deferral unlocked, DEMOTE_1 unwritten."""
 
-    # +LC_STATE_PROD +AUTH_FLAG_0 +UNAUTH_FLAG_0, no +SET_SELECTOR_BIT_17
-    # (bootcode_regression.yaml).
+    # +LC_STATE_PROD +AUTH_FLAG_0 +UNAUTH_FLAG_0, no +SET_SELECTOR_BIT_17.
     _SEL = 0
     _AUTH = 1
     _BL2 = 1

@@ -494,8 +494,8 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         # --- scope of this pass, stated where a reader of the log will see it ---
         self.logger.warning(
             "CHK-SCOPE: TP080 asks for EXT SRAM *and* SMC SRAM to be cleared in this "
-            "window. Only the EXT SRAM half is asserted above. sep-boot-flow.puml:152 "
-            "conditions the SMC SRAM clear on 'if SMC SRAM used', which puml:384-392 "
+            "window. Only the EXT SRAM half is asserted above. The boot flow "
+            "conditions the SMC SRAM clear on 'if SMC SRAM used', and "
             "decides from the manifest USE_EXT bit. The stimulus side of that exists: "
             "the packer emits the bit (pack_images.py:91) and every image booted here "
             "is built with it CLEAR (bootrom/prod/configs/*_test.yaml use_ext_sram: 0), "

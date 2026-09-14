@@ -43,12 +43,10 @@ reported ``covered-by-O1`` with this file cited, exactly as
 ``batch_runs_0904_vp/FINDINGS.md`` F07 requires and as the R4 guidance in
 ``sep_demotion_decision_base.py`` sets out.
 
-There is no architected demotion status code on this ROM, and the selector bit is
-planted for this scenario
-(``sep_demotion_uid_checker.py``, from ``+SET_SELECTOR_BIT_17`` at
-), so the stimulus is a faithful port even though the ordering
-argument above is this platform's addition. There is no architected demotion
-status code on this ROM, so the console tokens plus the register channel are the
+The selector bit is planted for this scenario from ``+SET_SELECTOR_BIT_17``, so
+the stimulus is a faithful port even though the ordering argument above is this
+platform's addition. There is no architected demotion status code on this ROM,
+so the console tokens plus the register channel are the
 substitution; the DEMOTE_1/DEMOTE_2 lock requirements are an ADDITION derived from
 ``rom_main.c``. Both are disclosed in the row's
 ``flow_deviation``.
@@ -70,7 +68,7 @@ class sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test(
     """PROD_END with selector bit 17 set: the selector is never consulted."""
 
     # +LC_STATE_END_PROD +SET_SELECTOR_BIT_17, no +AUTH_FLAG_0 and no
-    # +UNAUTH_FLAG_0 (bootcode_regression.yaml).
+    # +UNAUTH_FLAG_0.
     _SEL = 1
     _AUTH = 0
     _BL2 = 0

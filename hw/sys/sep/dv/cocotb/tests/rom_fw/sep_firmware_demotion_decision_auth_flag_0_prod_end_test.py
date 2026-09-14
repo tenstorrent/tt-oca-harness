@@ -119,9 +119,8 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(
 
     # --- stimulus ----------------------------------------------------------
     def mutate_manifest(self, buf: bytearray) -> None:
-        # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion, i.e. flags bit 0
-        # (sep_demotion_uid_checker.py sets it on the PRIMARY only, and the
-        # reference's own decision table makes it the BL1 demotion request).
+        # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion, i.e. flags bit 0, set
+        # on the PRIMARY only: it is the BL1 demotion request.
         mm.set_usage_flags_bit(buf, "primary",
                                mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
         # Narrowing life_cycle_states is the last in-TBS write, and it re-seals both

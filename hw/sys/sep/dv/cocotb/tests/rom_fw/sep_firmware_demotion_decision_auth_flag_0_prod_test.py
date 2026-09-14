@@ -38,8 +38,8 @@ row count.** ``no_flag_prod`` (tracker row 111, not in this batch) drives
 covered-by-O5. On the DEMOTION inputs the two differ only in
 ``usage_constraints.flags`` bit 0 -- which this member asserts from the packed
 image before the run, because the ROM never echoes it on this path. They are not
-identical stimuli overall: ``bootcode_regression.yaml`` carries no
-``+SECURE_BOOT_DIS``, so a port of that row would run a SIGNED primary with
+identical stimuli overall: that row carries no
+``+SECURE_BOOT_DIS``, so a port of it would run a SIGNED primary with
 secure boot enforced, and this one runs an unsigned primary with the chicken bit
 burned. What THIS row adds over it on the demotion path is the falsification
 above; what it does not add is a second ROM path.
@@ -67,8 +67,7 @@ from rom_fw.sep_demotion_prod_base import sep_demotion_prod_base
 class sep_firmware_demotion_decision_auth_flag_0_prod_test(sep_demotion_prod_base):
     """PROD, selector bit clear, BL1 flag set: request ignored, DEMOTE_1 (0, 1)."""
 
-    # +LC_STATE_PROD +AUTH_FLAG_0, no +SET_SELECTOR_BIT_17 and no +UNAUTH_FLAG_0
-    # (bootcode_regression.yaml).
+    # +LC_STATE_PROD +AUTH_FLAG_0, no +SET_SELECTOR_BIT_17 and no +UNAUTH_FLAG_0.
     _SEL = 0
     _AUTH = 1
     _BL2 = 0

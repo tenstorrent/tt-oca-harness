@@ -125,11 +125,10 @@ class sep_firmware_demotion_decision_unauth_flag_0_prod_sel_bit_set_test(
         _MEAS_LOCKED_BL2_ABSENT,
     )
 
-    # +UNAUTH_FLAG_0 +LC_STATE_PROD +SET_SELECTOR_BIT_17 +SECURE_BOOT_DIS
-    # (bootcode_regression.yaml). +UNAUTH_FLAG_0 sets boot_arguments.BL2_demotion,
+    # +UNAUTH_FLAG_0 +LC_STATE_PROD +SET_SELECTOR_BIT_17 +SECURE_BOOT_DIS.
+    # +UNAUTH_FLAG_0 sets boot_arguments.BL2_demotion,
     # +SET_SELECTOR_BIT_17 sets usage_constraints.selectors.BL1_demotion, and
-    # +AUTH_FLAG_0 is absent so usage_constraints.BL1_demotion stays 0
-    # (sep_demotion_uid_checker.py, _generate_combined_manifest).
+    # +AUTH_FLAG_0 is absent so usage_constraints.BL1_demotion stays 0.
     _SEL = 1
     _AUTH = 0
     _BL2 = 1
