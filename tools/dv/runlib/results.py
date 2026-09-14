@@ -926,9 +926,12 @@ def result_payload(
     site = _site_layer_label(args)
     if site:
         payload["site"] = site
-    skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
-    if skipped:
-        payload["selection"] = {"skipped_unimplemented": skipped}
+    selection = {
+        key: list(getattr(args, f"_{key}", []) or []) if args is not None else []
+        for key in ("skipped_unimplemented", "skipped_excluded")
+    }
+    if any(selection.values()):
+        payload["selection"] = selection
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:

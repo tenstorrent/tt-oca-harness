@@ -47,7 +47,8 @@ static int run_debug_bus(void) {
 
     /* Card S3: SMC must clear scratch2/3 first. Wait for PH_CLEARED so a
      * late SMC start cannot wipe SEP_WAIT. */
-    if (sep_smc_scratch_wait(DEBUG_BUS_PHASE_ALIAS, DEBUG_BUS_PH_CLEARED, DEBUG_BUS_HANDSHAKE_POLL_LIMIT) != 0) {
+    if (sep_smc_scratch_wait(DEBUG_BUS_PHASE_ALIAS, DEBUG_BUS_PH_CLEARED,
+                             DEBUG_BUS_HANDSHAKE_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), DEBUG_BUS_S0_FAIL);
         return -15;
     }

@@ -61,5 +61,5 @@ image::smc_top.png[SMC Top-Level Block Diagram,scaledwidth=90.0%]
 
 The rest of this documentation describes architectural requirements and
 microarchitectural implementation of SMC's components in OCAH. A
-consolidated description of OCAH use cases is available in the top-level
-<<use-cases>> section.
+consolidated description of OCAH use cases is available in
+xref:ocah-home::use-cases.adoc[Use Cases].

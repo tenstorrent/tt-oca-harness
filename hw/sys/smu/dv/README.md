@@ -249,23 +249,26 @@ flow: `smu_block_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay
 VCS. A testlist scenario carries both implementations in its `module` binding
 map (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is the
-`uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
-errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
+`uvm` entry (`+UVM_TESTNAME`). A scenario declared `uvm = false` in its map is
+skipped from group selections under the UVM view; selecting one with no `uvm`
+entry errors, and `--skip-unimplemented` skips those from a group selection as
+well.
 The bound scenario is `smu_dtp_jtag_smoke_test`; its architecture is in
 `docs/SMU_TB_ARCH.adoc` ("SystemVerilog UVM Realization") and the framework
 conventions in `hw/common/dv/docs/uvm-framework.adoc`.
 
+
 ```bash
-# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
-# without it the runner selects the cocotb-only scenarios and stops before compiling.
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only --skip-unimplemented
+# SV-UVM build only (VCS); the default selection is the smoke group
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut smu_block --items smu_dtp_jtag_smoke_test --tool verilator
 python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
 
-# Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
+# Smoke group; `all` needs the flag while any of its scenarios lacks a uvm entry
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items all --skip-unimplemented
 
 # Negative validation: a wrong expected IDCODE in both the reference model and
 # the scenario evidence must FAIL the run
@@ -276,7 +279,7 @@ python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_
 # every looped test runs at least 16 seeded passes by default
 python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test \
   --plusarg +SMU_DTP_JTAG_SMOKE_TEST_LOOPS=4
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented \
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke \
   --plusarg +SMU_TEST_LOOPS=1
 ```
 
