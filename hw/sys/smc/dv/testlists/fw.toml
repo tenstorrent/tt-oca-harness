@@ -20,7 +20,7 @@ schema_version = 1
 #
 # No `ci` tag and not in `smoke` or `hosted`: the hosted runners have no
 # RISC-V toolchain. The per-PR gate is `smoke`; nightly and weekly schedule
-# `hosted` (`all` minus this pair and the three SMC_DUAL leaves).
+# `hosted` (`all` minus the leaves in this file and the three SMC_DUAL leaves).
 #
 # In the `all` group. The pass magic 0xACAFACA1 lands in CPU_CTRL SCRATCH_0 and
 # the image occupies scratch banks 0-3 only -- what the decode in
@@ -70,10 +70,44 @@ args = [
     "+smc_scratch_ram_hex=plic_sanity.ecc.hex",
 ]
 
+[[tests]]
+# All four harts: hello_world proves hart 0's store only, and a hart that stalls
+# after the crt0 barrier would not stop it. Here hart 0 waits for three atomic
+# check-ins before PASS, and the bench reads harts 2 and 3's own markers back.
+name = "smc_fw_hello_world_multicore_test"
+module = "smc_fw_hello_world_multicore_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "hello_world_multicore"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=hello_world_multicore.ecc.hex",
+]
+
+[[tests]]
+# OCTS preset sweep from the hart that owns the timer in the product. The image
+# parks with the timer running, so the bench reads COUNT advancing and counts
+# PRIMARY credit pulses on pad 56 after the verdict.
+name = "smc_fw_octs_p0_primary_test"
+module = "smc_fw_octs_p0_primary_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "octs", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "octs_p0_primary_test"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=octs_p0_primary_test.ecc.hex",
+]
+
 [[groups]]
 name = "fw"
 tests = [
+    "smc_fw_hello_world_multicore_test",
     "smc_fw_hello_world_test",
+    "smc_fw_octs_p0_primary_test",
     "smc_fw_plic_claim_test",
 ]
-expected_count = 2
+expected_count = 4
