@@ -117,7 +117,7 @@ name = "all"
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
-expected_count = 156
+expected_count = 160
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -143,6 +143,10 @@ tests = [
     "smc_cpu_ctrl_scratch_window_test",
     "smc_cpu_ecc_lint_pint_depth_test",
     "smc_cpu_firmware_boot_test",
+    "smc_cpu_l2_read_wedge_test",
+    "smc_cpu_l2_write_wedge_test",
+    "smc_cpu_mmio_read_wedge_test",
+    "smc_cpu_mmio_write_wedge_test",
     "smc_cpu_reset_source_test",
     "smc_cpu_sanity_test",
     "smc_cpu_to_sep_axi_test",
@@ -279,11 +283,11 @@ tests = [
 
 [[groups]]
 name = "hosted"
-# `all` minus the five leaves that need a RISC-V toolchain or an SMC_DUAL
+# `all` minus the seven leaves that need a RISC-V toolchain or an SMC_DUAL
 # elaboration. Nightly and weekly schedule this group; the per-PR gate stays
 # on the 3-leaf `smoke`. Guarded by expected_count so a leaf cannot join
 # `all` and silently miss the hosted set.
-expected_count = 151
+expected_count = 153
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -309,6 +313,8 @@ tests = [
     "smc_cpu_ctrl_scratch_window_test",
     "smc_cpu_ecc_lint_pint_depth_test",
     "smc_cpu_firmware_boot_test",
+    "smc_cpu_l2_read_wedge_test",
+    "smc_cpu_l2_write_wedge_test",
     "smc_cpu_reset_source_test",
     "smc_cpu_sanity_test",
     "smc_cpu_to_sep_axi_test",
@@ -450,7 +456,7 @@ name = "smoke"
 # and about a second each.
 #
 # The 34 leaves that left this group stay in `all` and in `hosted`. Nightly
-# and weekly schedule `hosted` (`all` minus the five firmware / SMC_DUAL
+# and weekly schedule `hosted` (`all` minus the seven firmware / SMC_DUAL
 # leaves) so cutting the gate does not take them off the scheduled tiers.
 tests = [
     "smc_canonical_smoke_test",

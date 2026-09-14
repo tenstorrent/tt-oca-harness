@@ -277,6 +277,9 @@
 // r_ready and hides r_valid from the VIP so the beat stays outstanding.
 // Hang detector snoops the gated handshake (not irq_test). Idle 0.
 `SMC_TB_IN(logic, tb_sep_axi_r_hold)
+// Consume stale R beats without presenting them to the AXI VIP.
+`SMC_TB_IN(logic, tb_sep_axi_r_drop)
+`SMC_TB_OUT(logic, tb_sep_axi_r_raw_valid)
 
 // Flat SYS-input AXI manager. SYS_IN reaches the filtered local-fabric path;
 // it is kept as a public active bus for SYS_IN/local-fabric VIP promotion.
@@ -331,6 +334,8 @@
 // TB-owned SYS_IN R-channel hold. Same product handshake as
 // tb_sep_axi_r_hold, on the SYS hang-detector snoop. Idle 0.
 `SMC_TB_IN(logic, tb_sys_axi_r_hold)
+`SMC_TB_IN(logic, tb_sys_axi_r_drop)
+`SMC_TB_OUT(logic, tb_sys_axi_r_raw_valid)
 
 // Flat JTAG AXI manager used by output-fabric final VIP tests.
 `SMC_TB_IN(logic [1:0], jtag_axi_awid)

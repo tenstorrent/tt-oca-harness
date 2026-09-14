@@ -21,6 +21,7 @@ class smc_cpu_l2_read_wedge_test(smc_base_test):
         assert seq.contracts == {
             "forced_reset",
             "drained_while_blocked",
-            "blocked_master_isolated",
+            "stale_read_responses_discarded",
+            "l2_read_recovered",
             "cluster_reopened",
         }, f"incomplete L2 read recovery contracts: {sorted(seq.contracts)}"

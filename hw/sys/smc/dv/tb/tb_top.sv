@@ -784,8 +784,11 @@ module smc_uvm_top
     assign s_axi_rresp              = sep_axi_in_resp.r.resp;
     assign s_axi_rlast              = sep_axi_in_resp.r.last;
     assign s_axi_ruser              = sep_axi_in_resp.r.user;
-    assign s_axi_rvalid             = sep_axi_in_resp.r_valid & ~tb_sep_axi_r_hold;
-    assign sep_axi_in_req.r_ready   = s_axi_rready & ~tb_sep_axi_r_hold;
+    assign tb_sep_axi_r_raw_valid   = sep_axi_in_resp.r_valid;
+    assign s_axi_rvalid = sep_axi_in_resp.r_valid &
+                          ~(tb_sep_axi_r_hold | tb_sep_axi_r_drop);
+    assign sep_axi_in_req.r_ready = tb_sep_axi_r_drop |
+                                    (s_axi_rready & ~tb_sep_axi_r_hold);
 
     assign sys_axi_in_req.aw.id     = sys_axi_awid;
     assign sys_axi_in_req.aw.addr   = sys_axi_awaddr;
@@ -834,8 +837,11 @@ module smc_uvm_top
     assign sys_axi_rresp            = sys_axi_in_resp.r.resp;
     assign sys_axi_rlast            = sys_axi_in_resp.r.last;
     assign sys_axi_ruser            = sys_axi_in_resp.r.user;
-    assign sys_axi_rvalid           = sys_axi_in_resp.r_valid & ~tb_sys_axi_r_hold;
-    assign sys_axi_in_req.r_ready   = sys_axi_rready & ~tb_sys_axi_r_hold;
+    assign tb_sys_axi_r_raw_valid   = sys_axi_in_resp.r_valid;
+    assign sys_axi_rvalid = sys_axi_in_resp.r_valid &
+                            ~(tb_sys_axi_r_hold | tb_sys_axi_r_drop);
+    assign sys_axi_in_req.r_ready = tb_sys_axi_r_drop |
+                                    (sys_axi_rready & ~tb_sys_axi_r_hold);
 
     assign jtag_axi_in_req.aw.id     = jtag_axi_awid;
     assign jtag_axi_in_req.aw.addr   = jtag_axi_awaddr;
@@ -2379,6 +2385,8 @@ module smc_uvm_top
     // channels transparent.
     assign tb_sep_axi_b_hold = 1'b0;
     assign tb_sep_axi_r_hold = 1'b0;
+    assign tb_sep_axi_r_drop = 1'b0;
+    assign tb_sys_axi_r_drop = 1'b0;
 
     // Passive mirror of the SEP_IN bus for the shared-VIP monitor (the
     // smc_scoreboard predictors consume its item stream) and the protocol
