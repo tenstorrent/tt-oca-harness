@@ -21,12 +21,12 @@ run_modes = ["dtp"]
 # (uvm/tests/ carries smu_dtp_jtag_smoke_test.svh and its base); this binding
 # map is what `--dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test`
 # resolves through. The cocotb side of the same scenario also runs on
-# `--dut smu`, where it is enrolled in migrated_dtp; that copy is the one the
+# `--dut smu`, where it is enrolled in dtp_under_smu; that copy is the one the
 # regression scores.
 [[tests]]
 name = "smu_dtp_jtag_smoke_test"
 module = { cocotb = "smu_dtp_jtag_smoke_test", uvm = "smu_dtp_jtag_smoke_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "smoke", "phase1"]
+tags = ["dtp", "smoke"]
 run_modes = ["dtp", "smoke"]

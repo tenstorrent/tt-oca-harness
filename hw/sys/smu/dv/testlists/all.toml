@@ -19,7 +19,7 @@ schema_version = 1
 # implementation as well as a cocotb one, and the SV-UVM harness is the `UVM`
 # shape of tb/tb_top.sv -- this DUT. Its entry carries the
 # `module = { cocotb, uvm }` binding map that `--dut smu_block --framework uvm`
-# resolves through. Its cocotb side is enrolled in migrated_dtp on the wrapper,
+# resolves through. Its cocotb side is enrolled in dtp_under_smu on the wrapper,
 # and that is the copy the regression scores.
 
 # testlists/wrapper.toml, the `--dut smu` regression, is not an include of this

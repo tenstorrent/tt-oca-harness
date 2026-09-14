@@ -58,7 +58,7 @@ These modules exist under `cocotb/tests/` and are in no testlist, so they are
 not in `all`. Where a blocker tag applies it lives in the file's docstring
 (`# deferred: <reason>`); `testlists/all.toml` carries the same list beside the
 `all` group, and `docs/SMC_DEFERRED_DISPOSITION.adoc` is the disposition of
-record. SMU's matching catalog is `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
+record. SMU's matching catalog is `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
 
 | Test | Reason |
 |------|--------|

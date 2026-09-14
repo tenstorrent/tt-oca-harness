@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_boot_stall_jtag_cold_reset_matrix_test - P2-I3a boot-stall sticky matrix.
+"""smu_boot_stall_jtag_cold_reset_matrix_test - boot-stall sticky matrix.
 
-Deepens P1 smu_dft_dtp_boot_stall_test with an explicit TRST-clear contrast:
+Deepens smu_dft_dtp_boot_stall_test with an explicit TRST-clear contrast:
 
   1. Stall asserted across cold reset (TRST held high) stays sticky; fuse gated
   2. TRST pulse (reset_tap) clears DEBUG_CONTROL / boot-stall exports

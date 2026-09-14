@@ -85,7 +85,7 @@ The two `legacy`-tagged entries, `dtp_jtag2axi_smc_axi_wr_test` and
 no SV-UVM realization, and are not in `all`.
 
 `--dut smu` enrols its own DTP-facing scenarios
-(`hw/sys/smu/dv/testlists/dtp.toml` and the `migrated_dtp` group). Those
+(`hw/sys/smu/dv/testlists/dtp.toml` and the `dtp_under_smu` group). Those
 PASSes are SMU integration evidence and are outside this matrix.
 
 [[dtp-credit-rules]]
