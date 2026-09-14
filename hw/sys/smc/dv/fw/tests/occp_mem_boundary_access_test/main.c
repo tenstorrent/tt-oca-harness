@@ -164,13 +164,6 @@ static void run_test_suite(test_context_t *ctx) {
 
     ctx->overall_result = true;
 
-    int retval;
-    uint32_t status_data = 0;
-
-    // TODO: audit these values OCCP spec
-    int exp_interface_status = 0x1;
-    int exp_boot_status = 0x5;
-
     // Execute random boundary access commands with scoreboarding
     execute_random_boundary_commands(ctx, NUM_RANDOM_COMMANDS);
 }
