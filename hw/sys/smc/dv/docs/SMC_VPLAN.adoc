@@ -24,7 +24,10 @@ is verified rather than what was once intended.
 
 * *Frontdoor only.* Stimulus is driven through product ports -- SEP_IN AXI,
   AXI-Lite, JTAG, and the pad-level protocol VIPs. Force and backdoor writes
-  are not used to create the condition a testcase claims to verify.
+  are not used to create the condition a testcase claims to verify, and the
+  `all` sign-off sweep admits no testcase that does; the one enrolled
+  testcase that does is named, with its groups, in the `all` row under
+  Regression Groups.
 * *Checked, not observed.* A read that is printed but not compared is not
   evidence. Expectations come from the generated RDL reset values, the
   preloaded assets, or the specification -- never from a value the DUT
@@ -3353,7 +3356,8 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 * the Chiplet ID exception, :301-305 -- "Even in PROD or RMA_SOP states, JTAG read access to the chiplet ID and package ID registers is permitted";
 * the blocked response, :297-299 -- "the error slave returns an error response with data value `0xbadcab1e`".
 
-The outcome the checkers compare against, per raw `lc_state_i` encoding.
+The matrix below is the outcome the checkers compare against, per raw
+`lc_state_i` encoding.
 `smc_efuse_wrapper` gates JTAG-to-eFuse access on `lc_state_i`; a blocked
 transaction returns DECERR with data `0xBADCAB1E`. `smc_efuse_jtag_lc_negative_test`
 covers the CSR-observable subset (`CHIP_CONFIG_LC_STATE` plus the always-allowed
@@ -3364,7 +3368,7 @@ CHIPLET_ID / PACKAGE_ID reads).
 |SMC LC state (raw) |JTAG eFuse write |JTAG eFuse read (non-ID) |JTAG read CHIPLET_ID / PACKAGE_ID
 |TEST_DEV `0x0` |allow |allow |allow
 |PROD `0x1` |BLOCK (DECERR/`0xBADCAB1E`) |BLOCK |allow
-|RMA_SIP `0x2`,`0x3` |BLOCK |BLOCK |allow
+|RMA_SOP `0x2`,`0x3` (`LC_RMA_SIP_*` in `efuse_pkg.sv`) |BLOCK |BLOCK |allow
 |RMA_CHIPLET `0x6`,`0x7` |allow |allow |allow
 |PROD_END `0x8` |allow |allow |allow
 |differential-decode integrity error |BLOCK |BLOCK |BLOCK (no ID exception)
@@ -3648,9 +3652,9 @@ Drive `smc_efuse_permission_boundary_test_seq`. Each checker below is a named co
 * timeout_enable|0 fires in ST_WAIT_RESP on this shim.
 * **The claim is split, and only one half is a DUT-path claim.** *DUT path (reportable).* `EFUSE_PROGRAM_REQ_TIMEOUT` / `EFUSE_READ_REQ_TIMEOUT` with `timeout_enable=1, cycles=0` must abort the outstanding request and raise `EFUSE_PROGRAM_CTRL.PROGRAM_STATUS` / leave `EFUSE_READ_INTERFACE_READ_DATA` empty; re-programming the RDL-default cycle count must let the same operation complete.
 * That FSM is real `efuse_interface_controller` RTL and every address, field mask and reset used here is imported by generated symbol from `efuse_interface_ctrl.h`.
-* *Model-backed (NOT silicon-path coverage).* `tb_efuse_programmed_word0` is a TB tap on `u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg` (`tb/tb_top.sv:1324-1327`).
+* *Model-backed (NOT silicon-path coverage).* `tb_efuse_programmed_word0` is a TB tap on `u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg` (`tb/tb_top.sv:1230-1233`).
 * SPEC declares that block a stand-in: "The eFuse bank model (`efuse_bank_model.sv`) is a reference, simulation-only stand-in for the real foundry OTP macro ...
-* In a production integration it is replaced by the actual foundry macro driven by the SHIM" (`hw/ip/efuse/doc/architecture.adoc:163-170`), and its set-once semantics are `onwrite = woset` in the DV RDL `hw/ip/efuse/regs/efuse_bank.rdl:14`.
+* In a production integration it is replaced by the actual foundry macro driven by the SHIM" (`hw/ip/efuse/doc/architecture.adoc:163-170`), and its set-once semantics are `onwrite = woset` in the DV RDL `hw/ip/efuse/dv/models/regs/efuse_bank.rdl:14`.
 * The `OTP=...` observations below therefore show that the controller's command did or did not reach the bank model -- they are **not** proof that a fuse burns in silicon ([BEHAVIORAL-STUB-DECLARED], §2 real-path/no-HW-equivalent).
 
 *Test Procedure*:
