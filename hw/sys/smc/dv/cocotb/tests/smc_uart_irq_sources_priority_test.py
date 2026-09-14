@@ -35,6 +35,24 @@ EXPECTED_PRIORITY_PAIRS = 5
 class smc_uart_irq_sources_priority_test(smc_base_test):
     """UART0 IER gating, natural clears, and multi-source IIR priority."""
 
+    required_evidence = (
+        "CHK-UART-IRQ-CLR-MSR",
+        "CHK-UART-IRQ-CLR-RDR",
+        "CHK-UART-IRQ-CLR-THRE",
+        "CHK-UART-IRQ-GATE-FIFO",
+        "CHK-UART-IRQ-GATE-LSR",
+        "CHK-UART-IRQ-GATE-MODEM",
+        "CHK-UART-IRQ-GATE-RDR",
+        "CHK-UART-IRQ-GATE-THRE",
+        "CHK-UART-IRQ-MAP-TIMEOUT",
+        "CHK-UART-IRQ-PRI-FIFO_vs_LSR",
+        "CHK-UART-IRQ-PRI-LSR_vs_RDR",
+        "CHK-UART-IRQ-PRI-RDR_vs_THRE",
+        "CHK-UART-IRQ-PRI-THRE_vs_MODEM",
+        "CHK-UART-IRQ-PRI-TO_vs_RDR",
+    )
+    min_evidence = 14
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -9,8 +9,8 @@ listed here.
 |------|------|
 | `pll_wrap.sv` / `pvt_wrap.sv` / `regs/` | Adopter PLL / PVT placeholder register wraps and their PeakRDL sources plus generated views; pulled by Bender `smc_wrapper` into `smc_ip_integration` (`u_pll_wrap`, `u_pvt_wrap`) on every tool. Handshake responders, not macro RTL |
 | `axil_okay_slv.sv` | AXI-Lite OKAY terminator behind `pll_wrap` / `pvt_wrap`: completes every access with `RESP_OKAY` and all-zero read data (pulp `axi_err_slv` asserts at time zero on every simulator but Verilator) |
-| `smc_cpu_mem_dv.sv` | DV collateral bound into `smc_ip_integration` for the CPU memory macros: observability counters, the firmware mailbox, the ECC inject hook and the time-0 ROM / scratch image backdoors. Listed in `smc_sim_cfg.toml` `[build].sources` and `[frameworks.uvm.build].sources` |
-| `smc_scratch_map_pkg.sv` | The scratch bank / entry decode that `smc_cpu_mem_dv.sv` and `tb/tb_top.sv` share for the image backdoors |
+| `smc_scratch_map_pkg.sv` | Byte offset → (bank, entry) decode of the 1 MiB / 32-bank CPU scratchpad, shared by the `+smc_scratch_ram_hex` loader and the `tb_top` peeks. Geometry from `spm_memory.rdl` and `cpu.adoc`; the interleave is a DV-owned table declared in its header |
+| `smc_cpu_mem_dv.sv` | DV collateral bound into `smc_ip_integration`: ROM / scratch / dcache observability counters, the firmware mailbox magic detector, the bank0 ECC hook counter, and the `+smc_rom_hex` / `+smc_scratch_ram_hex` time-zero image backdoors. Listed in `smc_sim_cfg.toml` `[build].sources` and `[frameworks.uvm.build].sources` |
 
 `axil_okay_slv` is a stand-in that can answer a checker: which retired tests
 would sit behind it, the one live consumer, and what that consumer does and

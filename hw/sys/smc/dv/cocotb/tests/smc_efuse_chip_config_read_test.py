@@ -15,6 +15,12 @@ from smc_base_test import smc_base_test
 class smc_efuse_chip_config_read_test(smc_base_test):
     """Run eFuse-derived chip-config read checks."""
 
+    required_evidence = (
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-IDLE",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

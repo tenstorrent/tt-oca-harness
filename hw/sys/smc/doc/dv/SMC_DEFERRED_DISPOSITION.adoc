@@ -42,6 +42,28 @@ do not count a wrapper terminator as that proof.
 |DTP CSR AXI-Lite |adopter-pending OUT |A real DTP CSR slave on `smc_wrapper`, or accept SMU-level DTP tests as the only wrapper-adjacent surface. SMU already wires DTP internally.
 |===
 
+[[smc-bench-tie-offs]]
+=== Bench tie-offs
+
+A tie-off is a constant on an `smc_wrapper` input port in `tb_top.sv` (the
+single-instance `u_dut` and the `smc_dual_inst` wrapper instance). Every
+`--dut smc` / `smc_wrapper` and SMC_DUAL leaf runs under it, on every tool.
+Each row states the behaviour the constant keeps out of reach, the enrolled
+claims that would change if the pin were driven, and the control that closes
+the row.
+
+[cols="2,1,5,3,4,1,1",options="header"]
+|===
+|Tie-off |Value |Behaviour made unreachable |Tests whose claims would change |Control / closes when |Owner |Review date
+|`sep_security_disable_i` (`tb_top.sv`, both `smc_wrapper` instances)
+|`1'b0`
+|The eFuse sense bypass (`hw/ip/efuse/doc/architecture.adoc`, "Security Disable Bypass Mechanism"). On the product the pin is the SEP `security_disable_o` token-match result (`sep.sv`, wired through `smu.sv`); inside SMC it reaches only `smc_efuse_wrapper` -> `efuse_interface_controller.security_disable_i`. SMC builds the controller with `HAS_LC_STATE=0` (`smc_efuse_wrapper.sv`), so the bypass takes the non-LC branch: the controller drives `shadow_regs_o` from the shadow registers whenever fuse sensing has finished or the pin is high, and drives all zeros otherwise (`efuse_interface_controller.sv:449`); its command mux routes the shadow-register sense FSM to the bank only while sensing is not done and the pin is low (`efuse_interface_controller.sv:759`). With the pin at 1 the FSM's reads are never routed, so `fuse_sense_done` never rises, the shadow registers keep their all-zero reset value and are exposed unsensed, and `fuse_reset_n` -- and with it `rst_warm` (`smc_reset_ctrl.sv:135`) -- never release: the warm domain never leaves reset. With the pin at 0 every run senses the bank, which is what the product does on a chip whose SEC_DIS token did not match.
+|None of the enrolled claims: no leaf claims the bypass, and every eFuse leaf proves the sensed path, which is the path a 0 selects. Were the pin driven to 1 for a run, every sequence that calls `wait_fuse_sense_done` (40 sequence files under `cocotb/seq_lib/`; `smc_base_test_seq.py` defines the method and each leaf that needs the warm domain calls it itself) would time out on `tb_fuse_sense_done`, and every warm-domain CSR access would hang with no ready.
+|Positive control: a leaf that drives the pin to 1 and requires `fuse_sense_done` to stay 0 while the shadow-register window still answers. It must stay in the cold domain: the eFuse controller sits under `rst_primary`, ahead of `rst_warm`, so its shadow reads through the eFuse CSR window -- over the OTP JTAG AXI-Lite port or the fabric path -- are the only thing that answers under bypass; nothing in the warm domain does. It needs a driven pin (a bench input in `smc_tb_signal_list.svh`, idle 0) in place of the constant. Closes when that leaf is enrolled, or when SEP-integrated signoff (SMU with SEP=1) is accepted as the only place the token-match path is exercised and that acceptance is recorded here.
+|SMC DV owner
+|2026-12-15
+|===
+
 === Retired test modules
 
 Each row names the blocker whose clearing restores the module, and its sequence, from git history.

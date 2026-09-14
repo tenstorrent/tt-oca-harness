@@ -19,6 +19,9 @@ class smc_cluster_beu_test(smc_base_test):
     docstring for the RTL site and for what is proven instead.
     """
 
+    required_evidence = ("CHK-BEU-WINDOW-ALIASED",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

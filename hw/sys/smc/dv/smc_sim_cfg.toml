@@ -89,7 +89,6 @@ exclude_files = [
   "hw/oss-example/wrapper/sep/sep_ip_integration.sv",
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv",
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
-  "deps/i3c-core",
 ]
 stubs = [
   # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender

@@ -16,6 +16,12 @@ from smc_base_test import smc_base_test
 class smc_zeroer_cg_indep_test(smc_base_test):
     """LIVE Zeroer axi/reg CG independence."""
 
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-ZINDEP-DECOUPLE",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

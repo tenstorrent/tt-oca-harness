@@ -26,6 +26,16 @@ from smc_base_test import smc_base_test
 class smc_efuse_read_program_timeout_test(smc_base_test):
     """timeout_enable|0 aborts; default timeout recovers OTP bit0."""
 
+    required_evidence = (
+        "CHK-EFUSE-TMO-BASIC",
+        "CHK-EFUSE-TMO-PROG",
+        "CHK-EFUSE-TMO-PROG-REC",
+        "CHK-EFUSE-TMO-PROG-SET",
+        "CHK-EFUSE-TMO-RD",
+        "CHK-EFUSE-TMO-RD-REC",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
