@@ -344,11 +344,25 @@ The gate proves a check ran. It does not prove the check was right. The
 scoreboard's `check_phase` is the second gate: it fails a run whose sequence
 produced no compared item at all.
 
-The gate lives in `smc_base_test`, so it grades every leaf built on that
-class. The three `target = "dual"` leaves in `all`
+The gate grades every leaf in `all`, on either harness. `smc_base_test` grades
+the leaves built on that class. The three `target = "dual"` leaves in `all`
 (`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`,
-`smc_occp_sanity_test`) are plain cocotb tests on the `SMC_DUAL` harness: they
-print no `EVIDENCE_SUMMARY`, and their checks are the asserts in the test body.
+`smc_occp_sanity_test`) are plain cocotb tests on the `SMC_DUAL` harness, and
+they reach the same gate through the `dual_test` decorator: it builds
+`SmcDualHarness` from the leaf's module-level `REQUIRED_EVIDENCE` and runs
+`finalize_evidence()` once the leaf has returned, which prints the
+`EVIDENCE_SUMMARY` line above and fails a run whose `own` count is zero or
+whose required IDs never appeared.
+`tools/dv/tests/test_smc_required_evidence.py` holds each of the three to its
+SMC_VPLAN card and to registration through the decorator, so a dual leaf can
+neither build the harness nor call the gate itself.
+
+The dual path has fewer escapes than the `smc_base_test` one: no
+`min_evidence` floor and no `NO_OWN_EVIDENCE` exemption, so a dual leaf that
+emits no `CHK-*` line of its own always fails. The one `target = "dual"` leaf
+outside `all` is `smc_occp_dual_unsecure_boot_test`, held out on runtime and
+run as `dual_all` / `occp_dual`; it still builds the harness directly, so it
+prints no `EVIDENCE_SUMMARY`.
 
 ### SystemVerilog UVM framework (`--framework uvm`)
 
