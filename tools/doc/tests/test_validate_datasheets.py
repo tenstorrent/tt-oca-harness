@@ -245,6 +245,23 @@ class RepositoryContractTests(unittest.TestCase):
         )[0]
         self.assertNotIn("[.datasheet-small]", resources)
 
+    def test_smu_summary_covers_current_smc_and_sep_resources(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        source = (root / "doc/datasheets/src/smu.adoc").read_text(encoding="utf-8")
+        smu_rtl = (root / "hw/sys/smu/rtl/smu.sv").read_text(encoding="utf-8")
+        smu_package = (root / "hw/sys/smu/rtl/smu_pkg.sv").read_text(encoding="utf-8")
+        sep_package = (root / "hw/sys/sep/rtl/sep_pkg.sv").read_text(encoding="utf-8")
+
+        self.assertIn("NUM_INT_TO_SMC: 32'd256", smu_package)
+        self.assertRegex(sep_package, r"NUM_MAILBOXES\s*=\s*8;")
+        self.assertIn("sep_pkg::NUM_EXTERNAL_IRQS-1:0", smu_rtl)
+        self.assertIn("sep_pkg::NUM_MAILBOXES-1:0", smu_rtl)
+
+        self.assertNotIn("4-core SMC", source)
+        self.assertIn("!External interrupts !256 to SMC; 212 to SEP when present", source)
+        self.assertIn("!Mailbox instances !32 SMC; 8 SEP when present", source)
+        self.assertIn("issues/1503[issue #1503]", source)
+
 
 if __name__ == "__main__":
     unittest.main()
