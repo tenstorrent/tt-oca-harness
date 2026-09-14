@@ -496,6 +496,46 @@ jobs:
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: aou_diags.rdjson.json, format: rdjson, name: lint-sv-slang/aou }
 
+  # The DV runner's unit tests, including the SMC evidence checker that holds
+  # each leaf's required_evidence tuple to the SMC_VPLAN card declaring it.
+  # Scoped by its own path filter rather than by run_hardware_ci: a plan card
+  # is an .adoc, so a card-only edit classifies documentation-only while still
+  # being able to break the checker.
+  dv-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # diff_class.py derives the PR diff itself; a shallow checkout has no
+          # merge base to diff against. Same reason regen-regs fetches in full.
+          fetch-depth: 0
+      - name: Classify the diff
+        id: scope
+        shell: bash
+        run: |
+          case "${{ github.event_name }}" in
+            pull_request|push)
+              if python3 scripts/ci/diff_class.py --is-dv-check-required; then
+                echo "run=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "run=false" >> "$GITHUB_OUTPUT"
+              fi
+              ;;
+            *)
+              echo "run=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+      - name: Install uv
+        if: steps.scope.outputs.run == 'true'
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - name: Run the DV unit tests
+        if: steps.scope.outputs.run == 'true'
+        run: uv run --locked --group dv python -m unittest discover tools/dv/tests
+
   # Deletes and regenerates every register block's collateral from the RDLs,
   # then fails if the working tree changes. The shared checker forces every
   # recipe, removes obsolete tracked outputs, validates Python/JSON artifacts,
