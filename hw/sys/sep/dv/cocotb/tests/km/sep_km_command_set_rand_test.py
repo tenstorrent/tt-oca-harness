@@ -21,8 +21,9 @@ Checkers:
               CMD_SRAM_VER returns RC_FAILURE: this image is ROM-only
   CHK-GEN     CMD_KEY_GENERATE returns rc=0 and a non-null handle, and its
               RETURN_ARG echoes the requested size and destination mask
-  CHK-SAMPLER CMD_KEY_GENERATE retired against a live EDN->KM sampler: the
-              generate is firmware-owned DRBG consume, not a KMCSR poke
+  CHK-SAMPLER CMD_KEY_GENERATE raises the observed EDN->KM beat count on
+              the DRBG scoreboard CHK5_km stream. KMCSR sampler counters
+              are not SEP-reachable.
   CHK-UNIQ    a second CMD_KEY_GENERATE returns a DIFFERENT handle: handles are
               allocated, never recycled under the caller
   CHK-XFER    CMD_KEY_TRANSFER of a known loaded key to AES returns rc=0 and
@@ -293,6 +294,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         # req_size is the word count minus one, per the command's argument
         # encoding; RETURN_ARG packs handle[7:0], req_size[14:8], dest[23:16].
         req_size = cfg.gen_words - 1
+        km_beats0 = self.drbg_sb.results["CHK5_km"].dut_items
         gen_seq = await self.km.send_command(KM_CMD_KEY_GENERATE, [req_size, KM_DEST_AES])
         rc, arg = await self.km.recv_resp_cmd(KM_CMD_KEY_GENERATE, gen_seq)
         assert rc == KM_RC_SUCCESS, f"CHK-GEN FAIL: CMD_KEY_GENERATE rc={rc}"
@@ -317,12 +319,16 @@ class sep_km_command_set_rand_test(sep_base_test):
             echo_size,
             echo_dest,
         )
-        # rom_main pulls the DRBG sampler on CMD_KEY_GENERATE. The KMCSR
-        # count_good / STATUS words sit on the KM-internal bus and answer
-        # DECERR from SEP, so the mailbox success is the SEP-visible proof.
+        km_beats1 = self.drbg_sb.results["CHK5_km"].dut_items
+        assert km_beats1 > km_beats0, (
+            f"CHK-SAMPLER FAIL: CHK5_km beats stayed at {km_beats0} through "
+            "CMD_KEY_GENERATE -- no EDN->KM handshake"
+        )
         self.logger.info(
-            "CHK-SAMPLER PASS: CMD_KEY_GENERATE retired; rom_main consumed the "
-            "EDN->KM sampler (score_km=observe)"
+            "CHK-SAMPLER PASS: CHK5_km observed %d EDN->KM beat(s) during "
+            "CMD_KEY_GENERATE (was %d)",
+            km_beats1 - km_beats0,
+            km_beats0,
         )
 
         # --- CHK-UNIQ: handles are allocated, not recycled --------------------

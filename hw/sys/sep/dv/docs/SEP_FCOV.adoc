@@ -69,7 +69,7 @@ fault paths, illegal encodings. Named below. Not collected.
 |OTBN |`sep_otbn_execute_cg`
 |Adams Bridge |`sep_abr_keygen_cg`
 |ESRC / DRBG / EDN |`sep_esrc_edn_flow_cg`
-|Key Manager |`sep_km_generate_cg`, `sep_km_command_sideload_cg`
+|Key Manager |`sep_km_generate_cg`, `sep_km_command_sideload_cg`, `sep_km_host_cmd_cg`, `sep_km_wipe_cg`, `sep_km_sw_reset_cg`
 |Secure DMA |`sep_dma_copy_hash_cg`
 |SPI host |`sep_spi_flash_cg`
 |Inbound filter |`sep_inbound_filter_allow_cg`
@@ -128,7 +128,7 @@ human. Other members may fill a group in passing.
 
 Per-test detail is in link:SEP_VPLAN.adoc[SEP_VPLAN].
 
-Twenty-six Phase 1 covergroups, compiled and sampled for VCS only
+Twenty-nine Phase 1 covergroups, compiled and sampled for VCS only
 (`ifndef VERILATOR`). Several IPs carry more than one group, because their
 Phase 1 contract has independent halves that different tests reach: the Key
 Manager splits generate from consume; lifecycle splits the sensed state, the

@@ -5516,7 +5516,7 @@ slot, so over this surface an erase always frees.
 |CHK-GEN
 |`CMD_KEY_GENERATE` returns success and a non-null handle, and its return argument echoes the requested size and destination mask.
 |CHK-SAMPLER
-|`CMD_KEY_GENERATE` retired against a live EDN->KM sampler. The KMCSR sampler counters are not SEP-reachable.
+|`CMD_KEY_GENERATE` raises the observed EDN->KM beat count on the DRBG scoreboard `CHK5_km` stream. The KMCSR sampler counters are not SEP-reachable.
 |CHK-UNIQ
 |A second generate returns a different handle.
 |CHK-XFER
@@ -5553,10 +5553,9 @@ slot, so over this surface an erase always frees.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_070028` seed 1 (OTBN dest). Named `CHK-* PASS`
-including CHK-HW-VER, CHK-ROM-VER, CHK-SRAM-VER, CHK-SAMPLER, CHK-ABR-DEST
-dest=0x10, CHK-OTP, CHK-RECOV, CHK-XFER-DEST dest=0x08. VCS
-`20260914_071841` seed 1 PASS.
+*Evidence*: Verilator `20260914_113145` seed 1. Named `CHK-* PASS`
+including CHK-HW-VER, CHK-ROM-VER, CHK-SRAM-VER, CHK-SAMPLER, CHK-ABR-DEST,
+CHK-OTP, CHK-RECOV, CHK-XFER-DEST. VCS `20260914_071841` seed 1 PASS.
 
 *Anti-vacuity*: every frame is built with a correct header CRC-8, a correct
 declared length and a correct payload CRC-32C, so a refusal is a verdict on the
