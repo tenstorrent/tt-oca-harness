@@ -26,6 +26,7 @@ vip/ocah_<proto>_vip/
   cocotb/          # all cocotb (Python) VIP code, incl. examples/
   uvm/             # SV-UVM agent collateral (where present)
   cov/             # framework-neutral SV coverage models (where present)
+  dv/              # wire-harness selftests, sim config, coverage policy (where present)
 ```
 
 `vip/ocah_lib/` is the shared framework library every bench class extends
@@ -173,6 +174,25 @@ and records that bound. Runner stage timeout is always `TIMEOUT`/124 and cannot
 be converted into checker PASS. Positive `CHK-*` text is auditable log evidence;
 passing `results.xml` and native schema-1 `result.json` remain authoritative for
 the runner.
+
+## Coverage Closure
+
+Coverage is measured where a simulator can measure it and recorded as checker
+evidence where it cannot; neither turns a failed transaction into PASS.
+
+| Realization | Metric | Record |
+|-------------|--------|--------|
+| SystemVerilog collateral (`interface/`, `sva/`, `cov/`) | Verilator line and branch coverage of the package's wire-harness selftests (`--dut ocah_<protocol>_vip --items all --cov`); SVA cover properties and `cov/` covergroups on a four-state simulator through the SV-UVM harness shape (`--framework uvm --tool vcs --cov`) | The package's `dv/cov/config/<tool>/coverage_policy.toml`: one threshold per metric family and one `[[holes]]` entry per uncovered point |
+| Python components (drivers, monitors, checkers, reference models) | No simulator metric | The `CHK-*` identifier matrix of the harness selftests and of the simulator-free selftests, with one must-fail path per rule |
+
+A policy file grades hit points over the points that remain after accepted
+waivers at 98 % or more per metric family, fails closed on an uncovered point
+that no entry classifies, and carries a raw threshold so the waived set cannot
+grow unnoticed. Every waiver names its category, rationale, owner, reviewer,
+and expiry; an expired waiver grades as open again, and a waiver that matches a
+covered point fails the run. A hole with reachable stimulus is covered by a
+selftest, never waived. Capabilities without a promoted shared package, and
+behavior a package lists as out of scope, earn no coverage or checker credit.
 
 ## Reference Model and Scoreboard Contract
 

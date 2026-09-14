@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//------------------------------------------------
-// AXI4 Lite to TL-UL Converter
 //
-// Converts AXI4 Lite slave interface to TL-UL host interface.
-//
-// Copyright 2026 Tenstorrent Inc.
-//------------------------------------------------
-
+// AXI4-Lite slave to TL-UL host protocol converter.
 
 module axi_lite_to_tlul
 	import tlul_pkg::*;

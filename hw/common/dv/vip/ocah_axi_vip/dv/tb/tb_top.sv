@@ -32,6 +32,9 @@
 // carry the armed response-ID corruption of the mismatch selftests, where
 // the ID-ordering rules must fire, so no checker is bound to them.
 //
+// In the SV-UVM shape one ocah_axi_cov_if (cov/ocah_axi_cov.sv) is the
+// covergroup sampler of both passive envs, published as axi_cov_vif.
+//
 // The request nets are driven from cocotb (--public-flat-rw) or, in the
 // SV-UVM shape, bridged from the ocah_axi_if instances below; the lint
 // waivers cover the undriven cocotb-owned nets.
@@ -543,6 +546,13 @@ module ocah_axi_vip_tb_top;
   assign u_mt_master_if.ruser   = 16'(mt_axi_ruser);
   assign u_mt_master_if.rvalid  = mt_axi_rvalid;
 
+  // Covergroup sampler shared by the passive envs of both buses: the
+  // ocah_axi_cov subscribers each env builds under cfg.en_cov sample every
+  // completed transaction into this one instance.
+  ocah_axi_cov_if u_axi_cov_if (
+    .clk_i (clk),
+    .rst_ni(rst_n)
+  );
 
   `include "ocah_axi_vip_tests.sv"
 
@@ -550,6 +560,7 @@ module ocah_axi_vip_tb_top;
     uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "axi_vif", u_axi_if);
     uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "mt_master_vif", u_mt_master_if);
     uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "mt_axi_vif", u_mt_axi_if);
+    uvm_config_db#(virtual ocah_axi_cov_if)::set(null, "*", "axi_cov_vif", u_axi_cov_if);
     run_test();
   end
 `endif
