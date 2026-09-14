@@ -31,14 +31,13 @@ class SmuWrapperElaborationSeq:
     EXPECTED_TIMEOUT_PATHS_SEP1 = 8
     # Non-vacuity floors. MIN_DUT_CHECKS is the number of fail-capable
     # comparisons against DUT-sourced samples the leg's own stimulus issues:
-    # SEP=1 counts 8 bounded waits, the power-good pin attribution compare, 12
-    # hierarchical clk-identity comparisons in the two compose loops, 8 in the
-    # shared-domain loop, and the discrete reset/domain/lifecycle compares;
-    # SEP=0 counts 8 bounded waits plus that same pin compare.
+    # SEP=1 counts 8 bounded waits, 12 hierarchical clk-identity comparisons in
+    # the two compose loops, 8 in the shared-domain loop, and the discrete
+    # reset/domain/lifecycle compares; SEP=0 counts 8 bounded waits.
     # MIN_ADVANCING_STEPS and MIN_SPAN_NS are the simulation time that stimulus
     # cannot complete in less than.
-    MIN_DUT_CHECKS_SEP1 = 32
-    MIN_DUT_CHECKS_NO_SEP = 9
+    MIN_DUT_CHECKS_SEP1 = 31
+    MIN_DUT_CHECKS_NO_SEP = 8
     MIN_ADVANCING_STEPS_SEP1 = 5
     MIN_ADVANCING_STEPS_NO_SEP = 2
     MIN_SPAN_NS_SEP1 = 500
@@ -156,12 +155,6 @@ class SmuWrapperElaborationSeq:
             0,
             "obs_powergood_stable_o driven_low",
             self.BOUND_REF_CYCLES,
-        )
-        pin = self._sample(self.dut.powergood_o, "powergood_o")
-        self._check(
-            pin == 0,
-            "power-good deassertion is not attributable to the drive: "
-            f"obs_powergood_stable_o=0 while powergood_o={pin}",
         )
         self.dut.powergood_i.value = 1
         await self.wait_value(

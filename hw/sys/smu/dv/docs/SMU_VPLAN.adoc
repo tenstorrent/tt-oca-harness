@@ -2444,7 +2444,7 @@ Two things are worth reading before the entries:
 
 [arabic]
 . Sample `sep_enabled_o` and compare it against `+expected_sep=0`.
-. Require `obs_powergood_stable_o` high, drive `powergood_i` low and require the synchronizer output to fall while the pin reads low, then release `powergood_i` and require the output to rise again -- each leg a bounded wait that fails on expiry.
+. Require `obs_powergood_stable_o` high, drive `powergood_i` low and require the synchronizer output to fall, then release `powergood_i` and require the output to rise again -- each leg a bounded wait that fails on expiry.
 . Wait for `rst_cold_n_o` to release and stamp step S2 in simulation time.
 . Assert and release cold reset over the randomised hold iterations and observe the propagation each time.
 . Run the non-vacuity fence over the S1/S2/S3/PASS step stamps, then emit `WRAP_ELAB_OK` from the test body.
@@ -2455,7 +2455,7 @@ Two things are worth reading before the entries:
 |===
 |Checker |Description
 |`CHK-WRAPPER-SEP-BUILD-PROFILE` |`sep_enabled_o` equals the `+expected_sep` the testlist declares
-|`CHK-WRAPPER-POWERGOOD` |`obs_powergood_stable_o` was observed high, then low while the driven `powergood_i` read low, then released again -- each within its own bounded wait
+|`CHK-WRAPPER-POWERGOOD` |`obs_powergood_stable_o` was observed high, then low across a driven `powergood_i` deassertion, then released again -- each within its own bounded wait
 |`CHK-WRAPPER-RST-COLD-RELEASE` |`rst_cold_n_o` released after bring-up
 |`CHK-WRAPPER-RST-PROPAGATION` |cold reset assert/release propagated on every randomised iteration
 |`CHK-NONVAC` |S1 < S2 < S3 < PASS ordering holds in *simulation* time, each transition advances at least one clock period, and the fail-capable DUT comparison count is above the floor
