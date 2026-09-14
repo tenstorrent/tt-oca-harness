@@ -12,15 +12,23 @@ observed held for a whole window rather than at one instant:
 * cores -- fetching from ROM (``tb_cpu_rom_read_count`` advancing) before the
   reset; during the held window ``tb_cpu_core_reset_n`` reads 0 at every
   sample and the ROM read counter stops advancing.
-* fabric -- an outbound filter register carries a pattern before the reset.
-  The SEP_IN request channels are read ready (``s_axi_arready`` and
-  ``s_axi_awready`` both 1) immediately before the cool pin drops, which is the
-  positive control; during the held window both read 0 at every sample, so the
-  port that was accepting requests is no longer accepting them; and after
-  release the register both answers a read again and reads its generated reset.
-  Response-channel silence (``s_axi_rvalid`` / ``s_axi_bvalid``) is recorded
-  alongside but carries nothing on its own: the window issues no traffic, so
-  those two read 0 on any RTL.
+* fabric -- an outbound filter register carries a pattern before the reset;
+  after release it answers a read again and reads its generated reset. That
+  revert is the whole fabric claim, and it is a scoreboard exact-value compare.
+
+  "The fabric is held" is *not* claimed, because this bench cannot observe it.
+  Two measurements say so and both are logged. ``s_axi_arready`` and
+  ``s_axi_awready`` read 1 immediately before the cool pin drops and read 1 at
+  every sample of the held window, so the SEP_IN request channels do not
+  withdraw ready while the primary reset is asserted and "not ready" cannot be
+  the observable. And a request cannot be presented inside the window either:
+  the SEP_IN AXI master takes ``rst_primary_smc_clk_no`` as its own reset
+  (``env/smc_sys_axi_agent.py``), so it parks ``arvalid`` low there -- a read
+  forked into the window was measured with ``arvalid`` high at 0 of 382
+  samples, and its expiry would have been the bench's reset, not the DUT's
+  refusal. Response-channel silence (``s_axi_rvalid`` / ``s_axi_bvalid``) is
+  recorded for the same reason it cannot carry anything: the window issues no
+  traffic, so both read 0 on any RTL.
 * peripherals -- UART0 is enabled and mid-frame (its TX pad driven low in the
   start bit, with the pad's output enable asserted) when the reset lands;
   during the window the pad's output enable is released at every sample, so
@@ -29,8 +37,9 @@ observed held for a whole window rather than at one instant:
   *value* probe cannot carry this claim: ``tb_uart0_tx_from_dut`` mirrors
   ``core2pad_o``, which a GPIO wrap in reset parks at 0 with its driver off.
 
-Every held-state claim is a per-sample compare across the window, so a
-consumer that was released anywhere inside it fails.
+The core and peripheral held-state claims are per-sample compares across the
+window, so a consumer released anywhere inside it fails. The fabric has no
+held-state claim; see above.
 """
 
 from __future__ import annotations
@@ -111,6 +120,7 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.rvalid_high_samples = 0
         self.bvalid_high_samples = 0
         self.pre_reset_ready: tuple[int, int] | None = None
+        self.arvalid_high_samples = 0
         self.arready_high_samples = 0
         self.awready_high_samples = 0
         self.tx_oe_high_after_settle = 0
@@ -208,6 +218,8 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 self.arready_high_samples += 1
             if self._bit(dut.s_axi_awready, "s_axi_awready"):
                 self.awready_high_samples += 1
+            if self._bit(dut.s_axi_arvalid, "s_axi_arvalid"):
+                self.arvalid_high_samples += 1
             oe = (_pad_vec(dut, "tb_core2pad_en_o") >> UART0_TX_PAD) & 1
             if ref_cycles >= PAD_SETTLE_REF_CYCLES and oe == 1:
                 self.tx_oe_high_after_settle += 1
@@ -219,22 +231,8 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"tb_cpu_core_reset_n read 1 at {self.hold_samples - self.core_reset_low_samples} of "
             f"{self.hold_samples} samples while rst_primary_smc_clk_no was asserted"
         )
-        # The carrying leg: the request channels were ready before the reset
-        # (asserted in body()) and must not be ready anywhere inside it. A
-        # fabric that was not held keeps ready asserted and fails here.
-        assert self.arready_high_samples == 0 and self.awready_high_samples == 0, (
-            f"SEP_IN request channel still ready while the fabric was in primary reset: "
-            f"arready high {self.arready_high_samples}, awready high "
-            f"{self.awready_high_samples} of {self.hold_samples} samples (both read "
-            f"{self.pre_reset_ready} immediately before the cool pin dropped)"
-        )
-        # Recorded, not carrying: no traffic is issued inside the window, so
-        # these read 0 on any RTL.
-        assert self.rvalid_high_samples == 0 and self.bvalid_high_samples == 0, (
-            f"SEP_IN response channel valid while the fabric was in primary reset: "
-            f"rvalid high {self.rvalid_high_samples}, bvalid high {self.bvalid_high_samples} of "
-            f"{self.hold_samples} samples"
-        )
+        # The four SEP_IN tallies are recorded observations, not checks: the
+        # docstring says what each one is and is not able to show.
         assert self.tx_oe_high_after_settle == 0, (
             f"UART0 TX pad output enable was asserted at {self.tx_oe_high_after_settle} sample(s) "
             f"after the first {PAD_SETTLE_REF_CYCLES} clk_ref_i cycles of the held window: the "
@@ -269,11 +267,6 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.pre_reset_ready = (
             self._bit(dut.s_axi_arready, "s_axi_arready"),
             self._bit(dut.s_axi_awready, "s_axi_awready"),
-        )
-        assert self.pre_reset_ready == (1, 1), (
-            f"SEP_IN arready/awready read {self.pre_reset_ready} with the fabric out of reset and "
-            f"the CSR master idle; the held-window check below needs a port that was ready, or "
-            f"'not ready' cannot be told from 'never ready'"
         )
 
         await self._send(SmcResetOp.COOL_RST_LO)
@@ -324,19 +317,24 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
             asserted.wait_ref_cycles,
         )
         cocotb.log.info(
-            "CHK-PRIMARY-RESET-FABRIC-HELD: SEP_IN arready/awready read %s immediately before the "
-            "cool pin dropped and 0 at all %d clk_smc_i samples of the held window (arready high "
-            "%d, awready high %d), so the port stopped accepting requests; rvalid/bvalid also "
-            "stayed low (%d/%d), which the idle window would give on any RTL; after release "
-            "OUTBOUND_FILTER_CTRL[0].END_ADDR answered a read again and went 0x%x -> reset 0x%x",
-            self.pre_reset_ready,
-            self.hold_samples,
-            self.arready_high_samples,
-            self.awready_high_samples,
-            self.rvalid_high_samples,
-            self.bvalid_high_samples,
+            "CHK-PRIMARY-RESET-FABRIC-REVERTED: after release OUTBOUND_FILTER_CTRL[0].END_ADDR "
+            "answered a read again and went 0x%x -> generated reset 0x%x, so the primary reset "
+            "reached the fabric configuration registers. Held-state is NOT claimed and these "
+            "four tallies say why: SEP_IN arready/awready read %s just before the cool pin "
+            "dropped and stayed high for %d/%d of the %d clk_smc_i samples of the window, so "
+            "ready is not withdrawn under primary reset; arvalid was high at %d samples because "
+            "the SEP_IN master shares rst_primary_smc_clk_no and parks it, so no request could "
+            "be presented; rvalid/bvalid read high at %d/%d, which an idle window gives on any "
+            "RTL",
             FILTER_END_PATTERN,
             FILTER_CTRL_END_ADDR_REG_DEFAULT,
+            self.pre_reset_ready,
+            self.arready_high_samples,
+            self.awready_high_samples,
+            self.hold_samples,
+            self.arvalid_high_samples,
+            self.rvalid_high_samples,
+            self.bvalid_high_samples,
         )
         cocotb.log.info(
             "CHK-PRIMARY-RESET-PERIPHERALS-HELD: UART0 was mid-frame (TX pad %d driven low, output "

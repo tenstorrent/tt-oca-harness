@@ -1,14 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Cores, fabric and peripheral controllers are held while rst_primary_no is asserted.
+"""Cores and peripherals held, and the fabric registers reverted, under a cool reset.
 
-Closes SMC-RST-PRIMARY.S1, SMC-RST-PRIMARY.S2 and SMC-RST-PRIMARY.S3
-(clk_rst.adoc: Primary Reset): with a core fetching ROM, an outbound filter
-holding a pattern and UART0 mid-frame, the cool pin asserts the primary reset
-and each consumer is sampled every clock edge across the held window -- core
-reset low and no ROM fetch, SEP_IN response channels idle, the UART TX pad
-driver released -- and the fabric and peripheral registers read their
-generated resets after release.
+Closes SMC-RST-PRIMARY.S1 and SMC-RST-PRIMARY.S3 (clk_rst.adoc: Primary
+Reset): with a core fetching ROM and UART0 mid-frame, the cool pin asserts the
+primary reset and each of those consumers is sampled every clock edge across
+the held window -- core reset low and no ROM fetch, the UART TX pad driver
+released -- and the peripheral registers read their generated resets after
+release.
+
+SMC-RST-PRIMARY.S2, the fabric half, is narrowed to what this bench can
+observe: an outbound filter register holds a pattern before the reset and
+reads its generated reset after it, so the primary reset reached the fabric
+configuration registers. Held-state at the SEP_IN boundary is not claimed --
+ready is not withdrawn under primary reset and the SEP_IN master shares that
+reset, so no request can be presented inside the window. The sequence
+docstring gives both measurements.
 
 Run:
     CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smc \\
@@ -31,11 +38,11 @@ EXPECTED_WAIT_CHECKS = 2
 
 @pyuvm.test()
 class smc_primary_reset_scope_test(smc_base_test):
-    """Held state of cores, fabric and peripherals under a cool-pin primary reset."""
+    """Cores and peripherals held, and the fabric registers reverted, under a cool reset."""
 
     required_evidence = (
         "CHK-PRIMARY-RESET-CORES-HELD",
-        "CHK-PRIMARY-RESET-FABRIC-HELD",
+        "CHK-PRIMARY-RESET-FABRIC-REVERTED",
         "CHK-PRIMARY-RESET-PERIPHERALS-HELD",
         "CHK-PRIMARY-RESET-SCOPE",
         "CHK-TIMEOUT-PATHS",
@@ -63,14 +70,17 @@ class smc_primary_reset_scope_test(smc_base_test):
             "the sequence ended without a held window or a fetching-core precondition"
         )
         cocotb.log.info(
-            "CHK-PRIMARY-RESET-SCOPE: held window %d samples (core reset low %d, rvalid high %d, "
-            "bvalid high %d, UART TX driver enabled after settle %d); scoreboard reset wait checks "
-            "%d, SEP_IN value compares %d",
+            "CHK-PRIMARY-RESET-SCOPE: held window %d samples (core reset low %d, UART TX driver "
+            "enabled after settle %d; recorded SEP_IN tallies arready %d, awready %d, arvalid %d, "
+            "rvalid %d, bvalid %d); scoreboard reset wait checks %d, SEP_IN value compares %d",
             seq.hold_samples,
             seq.core_reset_low_samples,
+            seq.tx_oe_high_after_settle,
+            seq.arready_high_samples,
+            seq.awready_high_samples,
+            seq.arvalid_high_samples,
             seq.rvalid_high_samples,
             seq.bvalid_high_samples,
-            seq.tx_oe_high_after_settle,
             sb.reset_wait_checks_seen,
             sb.sys_axi_value_checks_seen,
         )

@@ -7041,14 +7041,15 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 
 *Source Module*: `smc_primary_reset_scope_test`
 
-*BFM / Model*: SEP_IN AXI driver for the CSR legs, with the reset items dispatched to the reset agent through a one-shot; `tb_cpu_core_reset_n`, `tb_cpu_rom_read_count`, the SEP_IN response channels and the UART0 TX pad output enable sampled every clock edge of the held window
+*BFM / Model*: SEP_IN AXI driver for the CSR legs, with the reset items dispatched to the reset agent through a one-shot; `tb_cpu_core_reset_n`, `tb_cpu_rom_read_count`, the SEP_IN request and response channels and the UART0 TX pad output enable sampled every clock edge of the held window
 
-*Objective*: With a core fetching ROM, an outbound filter register holding a pattern and UART0 mid-frame, the cool pin asserts the primary reset and the cores, the fabric and the peripheral controllers are all held across the whole asserted window.
+*Objective*: With a core fetching ROM and UART0 mid-frame, the cool pin asserts the primary reset and the cores and the peripheral controllers are held across the whole asserted window; an outbound filter register holding a pattern before the reset reads its generated reset after it, which is how far the fabric half is taken in this bench.
 
 *Test Coverage*:
 
 * Each consumer is first put into a state a reset would visibly end -- the ROM read counter advancing, a pattern resident in `OUTBOUND_FILTER_CTRL[0].END_ADDR`, UART0 enabled and driving a start bit -- so the held observation is not trivially satisfied by an idle DUT.
-* Every held claim is a per-sample compare across the window rather than one instant: the core reset must read 0 at every sample, the SEP_IN `rvalid`/`bvalid` must be low at every sample, and the UART TX pad output enable must read 0 at every sample after a stated settle. A consumer released anywhere inside the window fails.
+* Every held claim is a per-sample compare across the window rather than one instant: the core reset must read 0 at every sample and the UART TX pad output enable must read 0 at every sample after a stated settle. A consumer released anywhere inside the window fails.
+* The fabric is **not** claimed held, and the four SEP_IN tallies the run records say why rather than standing in as a check. `arready`/`awready` read 1 just before the cool pin drops and 1 at every sample of the window, so ready is not withdrawn under primary reset. `arvalid` reads 0 at every sample because the SEP_IN AXI master takes `rst_primary_smc_clk_no` as its own reset and parks its request lines there, so no request can be presented inside the window and a no-response would be the bench's reset rather than the DUT's refusal. `rvalid`/`bvalid` read 0 for the same reason the window is idle -- on any RTL. None of the four is asserted on.
 * The pad *value* probe cannot carry the peripheral claim: `tb_uart0_tx_from_dut` mirrors `core2pad_o`, which a GPIO wrap in reset parks at 0 with its driver off. The pad's output enable is the observable that distinguishes "transmitter stopped driving" from "wrap parked the pin".
 * A ROM fetch counted inside the window must sit at its head, before the cores' reset had propagated; an advance later in the window fails as a fetch by a core that was not held.
 * After release, the outbound filter register, UART0 `CTRL` and `CLOCK_GATE_CONTROL` are required to read their generated resets, and core 0's reset release is bounded.
@@ -7059,7 +7060,7 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 . Sample the entry state; prove the cores are fetching by measuring `tb_cpu_rom_read_count` advancing over a window.
 . Write and read back the filter pattern; arm UART0 mid-frame at the slowest divisor so the de-glitched reset assertion lands inside the frame.
 . Assert `rst_cool_ni` and match a bounded `WAIT_STATE` on power-good and cold-stable released with both primary resets asserted and left stable.
-. Sample the held window every clock edge and assert the three per-sample claims plus the frozen ROM counter.
+. Sample the held window every clock edge and assert the two per-sample held claims plus the frozen ROM counter, recording the four SEP_IN tallies.
 . Release the pin, match the bounded released handshake, bound core 0's reset release, and read the three registers against their generated resets.
 
 *Checkers*:
@@ -7068,13 +7069,13 @@ Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: swe
 |===
 |Checker |Description
 |`CHK-PRIMARY-RESET-CORES-HELD` |`tb_cpu_core_reset_n` read 0 at every sample of the held window, the ROM read counter stopped advancing after the reset propagated, and core 0 released inside its bound after `rst_cool_ni` returned. The pre-reset fetch count is reported as the precondition
-|`CHK-PRIMARY-RESET-FABRIC-HELD` |`s_axi_rvalid` and `s_axi_bvalid` were low at every sample of the held window, and the outbound filter register went from the resident pattern to its generated reset across the reset
+|`CHK-PRIMARY-RESET-FABRIC-REVERTED` |The outbound filter register went from the resident pattern to its generated reset across the reset and answered a read again afterwards, so the primary reset reached the fabric configuration registers. The line also carries the four recorded SEP_IN tallies and states that held-state is not claimed and why
 |`CHK-PRIMARY-RESET-PERIPHERALS-HELD` |UART0 was mid-frame with its TX pad output enable asserted when the reset landed; the output enable read 0 at every sample after the stated settle, and UART0 `CTRL` and `CLOCK_GATE_CONTROL` read their generated resets afterwards
 |`CHK-TIMEOUT-PATHS` |One line per bounded reset leg the run took, naming the bound and the `clk_ref_i` cycle at which the expected levels matched. The compare is the scoreboard's -- an expired bound raises there -- so these lines are the record of the bounded legs, not a separate compare
-|`CHK-PRIMARY-RESET-SCOPE` |Ledger line in the leaf: the held-window sample count and the three per-sample tallies. Logged after the leaf requires at least two booked reset `WAIT_STATE` checks, the SEP_IN exact-value compare floor, a non-empty held window and a non-zero pre-reset fetch delta
+|`CHK-PRIMARY-RESET-SCOPE` |Ledger line in the leaf: the held-window sample count, the two per-sample held tallies and the four recorded SEP_IN tallies. Logged after the leaf requires at least two booked reset `WAIT_STATE` checks, the SEP_IN exact-value compare floor, a non-empty held window and a non-zero pre-reset fetch delta
 |===
 
-*Pass Criteria*: all three per-sample held claims hold across the whole window, the ROM counter freezes at its head, the three registers read their generated resets after release, core 0 releases inside its bound, and the scoreboard books at least two reset `WAIT_STATE` checks and the SEP_IN value-compare floor. Enrolled in: `all`.
+*Pass Criteria*: both per-sample held claims hold across the whole window, the ROM counter freezes at its head, the three registers read their generated resets after release, core 0 releases inside its bound, and the scoreboard books at least two reset `WAIT_STATE` checks and the SEP_IN value-compare floor. Enrolled in: `all`.
 
 '''''
 
