@@ -218,9 +218,10 @@ class SmcDualHarness:
     def __init__(self, *, test_name: str = "", required_evidence: tuple[str, ...] = ()) -> None:
         self.dut = cocotb.top
         self.log = cocotb.log
-        # Same gate as smc_base_test._finalize_evidence: the CHK-* lines this
-        # run emits are read off the log records, and finalize_evidence()
-        # grades them against the IDs the test owes.
+        # The CHK-* lines this run emits are read off the log records the way
+        # smc_base_test._finalize_evidence reads them; finalize_evidence()
+        # grades them against the IDs the test owes, with no min_evidence
+        # floor and no NO_OWN_EVIDENCE exemption.
         self.test_name = test_name
         self.required_evidence = tuple(required_evidence)
         self._evidence = _EvidenceRecorder()
