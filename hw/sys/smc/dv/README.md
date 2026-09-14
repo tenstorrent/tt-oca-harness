@@ -102,16 +102,24 @@ so the bare DUT name selects the wrapper-based TB.
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
 | in TB | SYS_OUT=`ocah_axi_vip` slave agent behind `ocah_axi_struct_bridge`; DTP CSR **idle** on `smc_wrapper` (no TB terminator; DTP CSR is a smc_wrapper-only boundary) |
 
-## Verilator stubs policy
+## Bench stand-ins
 
-`tb/verilator_stubs/` may contain **tooling shims only** (`prim_sync2` /
-`prim_sync3` for OSS prim port remap + X-init). Product-module overrides
-(`smc_reset_*`, `smc_dfx_*`, …) are forbidden.
+Two pieces of DV-owned RTL answer in place of something else on this bench:
 
-| Concern | Handling |
-|---------|----------|
-| PeakRDL nested hwif structs break Verilator C++ codegen | `disable_public_flat_rw` + `smc_public_scope.vlt`; the real RTL compiles |
-| `och_prim` `prim_sync2/3` start with X on the first flop stage and the X persists, because the wrapper port exposes no `rst_ni` | DV `prim_sync*` tooling stubs are the same two-stage flop with explicit `initial` values, so the synchronizer resolves without an external reset; product RTL is untouched. The ports are identical (`i_clk` / `i_d` / `o_q`) — port remapping is **not** the reason, and `.i_CK` appears only in the `prim_sync*r` resettable variants, which these stubs do not replace |
+| Stand-in | Where | Reaches |
+|----------|-------|---------|
+| `tb/verilator_stubs/prim_sync2.sv`, `prim_sync3.sv` | `smc_sim_cfg.toml` `[build].stubs`, emitted ahead of the Bender filelist | Verilator only; the runner drops a stub whose basename the Bender graph supplies, so VCS elaborates the product `och_prim` cells |
+| `models/axil_okay_slv.sv` behind `models/pll_wrap.sv` / `pvt_wrap.sv` | Bender `smc_wrapper` target, inside `smc_ip_integration` | every tool |
+
+Nothing under `tb/verilator_stubs/` may replace an SMC module (`smc_*`).
+PeakRDL nested hwif structs are kept compilable by `disable_public_flat_rw`
+plus `smc_public_scope.vlt`, never by a module stub.
+
+Which product cell each stand-in replaces, which enrolled leaves read a signal
+behind one, what each verdict reads, and the control that keeps each claim
+honest are the *Bench stand-ins* section of
+`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`. This README owns layout
+and run recipes; that record owns the dispositions and is not restated here.
 
 ## Layout
 

@@ -32,6 +32,19 @@ paths receive no credit.
 Depth groups `reset` / `clock` / `irq` remain debug breadth. They are
 not an extra feature-credit set.
 
+On Verilator the `och_prim` `prim_sync2` / `prim_sync3` cells are replaced by
+the behavioural stand-ins in `tb/verilator_stubs/`. Every leaf of
+`reset.toml`, `clock.toml` and `irq.toml` has a row in the *Bench stand-ins*
+section of `SMC_DEFERRED_DISPOSITION.adoc` stating which crossing sits on its
+proof path, what its verdict reads, and the result of the VCS control run on
+the product cells. Two findings of that run belong to this signoff: the VCS
+flow grades every leaf FAIL on a time-0 PeakRDL external-ack assertion class
+that the cocotb verdicts do not depend on, and `smc_cg_dft_reset_bringup_test`
+fires the product assertion `CheckMutualExclusionClk1` in
+`avsbus_controller.u_refclk_apbclk_mux` (`prim_ag_clk_mux.sv`) at 4688 ns,
+which no Verilator run can observe because assertions are compiled out there.
+Both are open items of this signoff until dispositioned in that record.
+
 The cool-reset OUT names (`smc_cool_reset_from_primary_chiplet_test`,
 `smc_cool_reset_from_bmc_test`, `smc_cool_reset_x_cool_reset_test`) have rows
 in `SMC_DEFERRED_DISPOSITION.adoc`.
