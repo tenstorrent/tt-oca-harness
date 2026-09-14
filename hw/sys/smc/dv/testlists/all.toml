@@ -60,7 +60,7 @@ name = "all"
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
-expected_count = 158
+expected_count = 159
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -214,6 +214,7 @@ tests = [
     "smc_uart_sanity_test",
     "smc_uart_spi_log_engine_test",
     "smc_wdt_key_csr_test",
+    "smc_wdt_timeout_pin_test",
     "smc_xvisor_remap_test",
     "smc_zeroer_axiclk_cg_test",
     "smc_zeroer_cg_indep_test",
@@ -229,7 +230,7 @@ name = "hosted"
 # image. Nightly and weekly schedule this group; the per-PR gate stays
 # on the 3-leaf `smoke`. Guarded by expected_count so a leaf cannot join
 # `all` and silently miss the hosted set.
-expected_count = 153
+expected_count = 154
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -378,6 +379,7 @@ tests = [
     "smc_uart_sanity_test",
     "smc_uart_spi_log_engine_test",
     "smc_wdt_key_csr_test",
+    "smc_wdt_timeout_pin_test",
     "smc_xvisor_remap_test",
     "smc_zeroer_axiclk_cg_test",
     "smc_zeroer_cg_indep_test",
@@ -538,7 +540,7 @@ tests = [
     "smc_clk_multi_window_test",
     "smc_dma_cg_activity_test",
     "smc_static_cg_sanity_test",
-    # --- efuse (9) ---
+    # --- efuse (10) ---
     "smc_efuse_boundary_signals_test",
     "smc_efuse_jtag_lc_access_matrix_test",
     # PROD/RMA JTAG-OTP access control: non-identity read and write return
@@ -629,12 +631,17 @@ tests = [
     "smc_telemetry_receiver_csr_test",
     # --- timer (1) ---
     "smc_octs_dual_sync_test",
-    # --- wdt (1) ---
+    # --- wdt (2) ---
     # Proves the cluster WDT magic-key unlock (wdt.rdl:105-111) with the LOCKED
     # write as its own negative control, on all four cores: without that pair a
     # plain write/readback on CMP silently reads back the reset value and looks
     # like a pass.
     "smc_wdt_key_csr_test",
+    # Arms core 0 and reads smc_wdt_first_timeout_o / smc_wdt_second_timeout_o
+    # at the wrapper boundary, then the warm reset they cause; the only leaf
+    # that expects either timeout pin to rise (smc_dual_axi_sram_probe_test
+    # requires the dual instances' timeout latches to stay clear).
+    "smc_wdt_timeout_pin_test",
     # --- uart_log (8) ---
     "smc_uart_baud_word_parity_format_test",
     "smc_uart_error_conditions_test",

@@ -24,6 +24,15 @@ from smc_base_test import log_build_model_identity, smc_base_test
 class smc_cpu_firmware_boot_test(smc_base_test):
     """SMC_002: ROM boot to PASS magic with exact CHK evidence."""
 
+    required_evidence = (
+        "CHK-CLK-SMC-LIVE",
+        "CHK-EFUSE-SENSE-DONE",
+        "CHK-NONVAC",
+        "CHK-RESET-VECTOR-FETCH",
+        "CHK-ROM-IS-TARGET",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def _fuse_sense_watcher(self, seq: smc_cpu_firmware_boot_test_seq) -> None:

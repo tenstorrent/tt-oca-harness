@@ -13,6 +13,15 @@ from smc_base_test import smc_base_test
 class smc_temp_interrupt_test(smc_base_test):
     """Digital temp IRQ pin; analog PVT macros not claimed."""
 
+    required_evidence = (
+        "CHK-TEMP-IRQ-BASIC",
+        "CHK-TEMP-IRQ-FALL",
+        "CHK-TEMP-IRQ-IDLE",
+        "CHK-TEMP-IRQ-RISE",
+        "CHK-TEMP-IRQ-WARM",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

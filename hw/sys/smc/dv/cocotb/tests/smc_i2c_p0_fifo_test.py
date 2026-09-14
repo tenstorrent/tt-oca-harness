@@ -14,6 +14,13 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_fifo_test(smc_base_test):
     """ACQ / TX FIFO threshold interrupt proof."""
 
+    required_evidence = (
+        "CHK-I2C-P0-FIFO",
+        "CHK-I2C-P0-FIFO-ACQ",
+        "CHK-I2C-P0-FIFO-TX",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

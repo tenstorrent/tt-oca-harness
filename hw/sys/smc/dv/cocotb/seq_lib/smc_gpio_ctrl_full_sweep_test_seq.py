@@ -2,8 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO_CTRL window routing sweep (TC_SMC_P1CG_07).
 
-Sweeps every bootrom ``EXTERNAL_MANDATORY_GPIO_CTRL_N`` CONTROL address.
-``smc_ip_integration`` terminates that window with DECERR + 0.
+Sweeps every bootrom ``EXTERNAL_MANDATORY_GPIO_CTRL_N`` CONTROL address. The
+OSS tree carries no GPIO pad block behind that window (``memmap.adoc`` lists it
+as technology-specific), so every address must answer with an AXI error
+response and the all-zero word ``csr_read_decerr_zero`` expects.
 """
 
 from __future__ import annotations

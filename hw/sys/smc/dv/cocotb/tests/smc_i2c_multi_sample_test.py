@@ -19,6 +19,9 @@ from smc_base_test import smc_base_test
 class smc_i2c_multi_sample_test(smc_base_test):
     """Run the SMC OSS I2C multi-sample observability scenario."""
 
+    required_evidence = ("CHK-I2C-MULTI-SAMPLE-STABLE",)
+    min_evidence = 1
+
     # The absolute leg (`tb_i2c_cg_en == 0`) and the sequence's relative
     # stability legs are all satisfied by a dead net -- a dead net is perfectly
     # stable, which is exactly the property the docstring claims to catch. This
