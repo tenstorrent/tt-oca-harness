@@ -83,8 +83,21 @@ include::../../../hw/sys/sep/doc/security_disable.adoc[leveloffset=+3]
 include::../../../hw/sys/sep/doc/lifecycle_controller.adoc[leveloffset=+3]
 include::../../../hw/sys/sep/doc/test_mode.adoc[leveloffset=+2]
 
-// SMC: existing index starts with == (no = Title); offset 0 keeps == as chapter.
-include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
+// SMC landing page at chapter level, followed by its topic pages. The topic
+// offsets preserve the HTML navigation hierarchy in the single-book PDF.
+include::../../../hw/sys/smc/doc/index.adoc[leveloffset=+1]
+include::../../../hw/sys/smc/doc/overview.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/clk_rst.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/periphs.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/cpu.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/interrupts.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/rom.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/fabric.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/dma.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/dfd.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/zeroer.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/scan_protection.adoc[leveloffset=+2]
+include::../../../hw/sys/smc/doc/memmap.adoc[leveloffset=+2]
 
 = OCAH Platform Components
 // SMN/AoU: placeholder Setext headings render as == chapters at offset 0.

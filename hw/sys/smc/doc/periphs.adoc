@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Peripherals
+:description: Communication, telemetry, timer, fuse, and GPIO peripherals in the SMC.
+
 [[peripherals]]
-[[peripherals]]
-=== Peripherals
 
 This section documents the main peripherals integrated within the System
 Management Controller (SMC). These peripherals provide essential I/O and
@@ -112,18 +113,6 @@ subsystem (chiplet) resets, and the cool reset sequence. |AXI4-Lite |1
 endif::backend-pdf[]
 |=======================================================================
 
-ifdef::backend-html5[]
-xref:ip:axi_lite_mailbox_unit/doc/index.adoc[Mailbox]
-xref:ip:system_timer_octs/doc/index.adoc[System Timer OCTS]
-xref:ip:efuse/doc/index.adoc[EFuse]
-xref:ip:uart_16550/doc/index.adoc[UART 16550]
-xref:ip:log_engine/doc/index.adoc[Log Engine]
-xref:ip:i2c/doc/index.adoc[I2C]
-xref:ip:avsbus_controller/doc/index.adoc[AVSBus Controller]
-xref:ip:gpio/doc/index.adoc[GPIO]
-xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
-endif::backend-html5[]
-
 ifdef::backend-pdf[]
 include::../../../ip/axi_lite_mailbox_unit/doc/index.adoc[]
 
@@ -144,7 +133,7 @@ include::../../../ip/gpio/doc/index.adoc[]
 include::../../../ip/telemetry_receiver/doc/index.adoc[]
 endif::backend-pdf[]
 
-==== Peripheral Parameter Settings
+== Peripheral Parameter Settings
 
 The SMC sets peripheral parameters at instantiation from `smc_config_pkg`,
 `smc_pkg`, and the padring package; these are the authoritative sources.
