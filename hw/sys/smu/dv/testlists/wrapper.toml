@@ -859,7 +859,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "no_sep", "migration_pilot"]
+tags = ["fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -875,7 +875,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -889,7 +889,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "migrated", "no_sep"]
+tags = ["fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -903,7 +903,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "migrated", "no_sep"]
+tags = ["fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -917,7 +917,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "migrated", "no_sep"]
+tags = ["fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -931,7 +931,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -945,7 +945,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -959,7 +959,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -973,7 +973,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -987,7 +987,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "fabric", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1001,7 +1001,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1015,7 +1015,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1029,7 +1029,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1043,7 +1043,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1052,7 +1052,7 @@ args = [
 
 # The fabric leaves as one group; every one is also in `sep0_all` and `all`.
 [[groups]]
-name = "migrated_fabric"
+name = "fabric"
 tests = [
   "smu_axi_id_width_conversion_test",
   "smu_axi_alias_remap_manager_scope_test",
@@ -1078,7 +1078,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["bsr", "dtp", "migrated", "no_sep", "phase4"]
+tags = ["bsr", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1092,7 +1092,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_gate", "migrated", "no_sep", "smc"]
+tags = ["boot_gate", "no_sep", "smc"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1106,7 +1106,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "smc", "tier_c"]
+tags = ["depth", "fabric", "no_sep", "smc", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1120,7 +1120,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "ic_reset", "migrated", "no_sep", "phase4"]
+tags = ["dtp", "ic_reset", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1134,7 +1134,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["migrated", "no_sep", "smc", "smoke"]
+tags = ["no_sep", "smc", "smoke"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1148,7 +1148,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["mailbox", "migrated", "no_sep", "smc", "smu_all_004"]
+tags = ["mailbox", "no_sep", "smc", "smu_all_004"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1162,7 +1162,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "mailbox", "migrated", "no_sep", "smc", "tier_c"]
+tags = ["depth", "mailbox", "no_sep", "smc", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1176,7 +1176,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["migrated", "no_sep", "reset", "smc"]
+tags = ["no_sep", "reset", "smc"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1190,7 +1190,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["migrated", "no_sep", "security", "smc"]
+tags = ["no_sep", "security", "smc"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1204,7 +1204,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "migrated", "no_sep", "smc", "tier_c", "wdt"]
+tags = ["depth", "no_sep", "smc", "tier_c", "wdt"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1218,7 +1218,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "migrated", "no_sep", "smc", "tier_c", "wdt"]
+tags = ["depth", "no_sep", "smc", "tier_c", "wdt"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1232,7 +1232,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "migrated", "no_sep", "octs", "smc", "tier_c"]
+tags = ["depth", "no_sep", "octs", "smc", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1240,7 +1240,7 @@ args = [
 ]
 
 [[groups]]
-name = "migrated_smc"
+name = "smc_under_smu"
 tests = [
   "smu_dtp_bsr_extest_loopback_test",
   "smu_ext_boot_seq_gate_test",
@@ -1264,7 +1264,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+tags = ["boot_stall", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1278,7 +1278,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+tags = ["boot_stall", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1292,7 +1292,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["clock_stop", "dtp", "migrated", "no_sep"]
+tags = ["clock_stop", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1306,7 +1306,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+tags = ["boot_stall", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1320,7 +1320,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+tags = ["boot_stall", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1334,7 +1334,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["bsr", "depth", "dtp", "migrated", "no_sep", "tier_c"]
+tags = ["bsr", "depth", "dtp", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1348,7 +1348,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "migrated", "no_sep", "stap", "tier_c"]
+tags = ["depth", "dtp", "no_sep", "stap", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1362,7 +1362,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1376,7 +1376,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1390,7 +1390,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1404,7 +1404,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1418,7 +1418,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1432,7 +1432,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1446,7 +1446,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "smoke"]
+tags = ["dtp", "no_sep", "smoke"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1460,7 +1460,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1474,7 +1474,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1488,7 +1488,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1502,7 +1502,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "jtag", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1516,7 +1516,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "migrated", "no_sep", "stap", "tier_c"]
+tags = ["depth", "dtp", "no_sep", "stap", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1530,7 +1530,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "ic_reset", "migrated", "no_sep"]
+tags = ["dtp", "ic_reset", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1544,7 +1544,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "reset"]
+tags = ["dtp", "no_sep", "reset"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1558,7 +1558,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1572,7 +1572,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1586,7 +1586,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "reset"]
+tags = ["dtp", "no_sep", "reset"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1600,7 +1600,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1614,7 +1614,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1628,7 +1628,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "xtrig"]
+tags = ["dtp", "no_sep", "xtrig"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1642,7 +1642,7 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "xtrig"]
+tags = ["dtp", "no_sep", "xtrig"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
@@ -1651,7 +1651,7 @@ args = [
 
 # The DTP leaves as one group.
 [[groups]]
-name = "migrated_dtp"
+name = "dtp_under_smu"
 tests = [
   "smu_boot_stall_jtag_cold_reset_matrix_test",
   "smu_boot_stall_vs_ic_reset_priority_test",
@@ -1702,7 +1702,7 @@ tests = [
 # both DUTs. Reaching this scenario needs a way to hold the OTP response off
 # (a stallable eFuse model hook), which is a testbench feature.
 [[groups]]
-name = "migrated_dtp_pending"
+name = "needs_otp_stall"
 tests = [
   "smu_dtp_jtag2axi_abort_mid_op_test",  # the real OTP model answers before the BUSY poll can capture it
 ]
@@ -1790,7 +1790,7 @@ tests = [
 # is the whole SMU regression.
 #
 # Omitted, with reasons in their own groups: the two sep_smc_sram_blocked
-# leaves, which cannot pass by construction, and migrated_dtp_pending's
+# leaves, which cannot pass by construction, and needs_otp_stall's
 # smu_dtp_jtag2axi_abort_mid_op_test, which needs an OTP interface that hangs
 # (testlists/all.toml). Anything else added to this file belongs here too, so
 # that `--items all` keeps meaning "all of it".

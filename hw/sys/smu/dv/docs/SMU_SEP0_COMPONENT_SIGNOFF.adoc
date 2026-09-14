@@ -21,7 +21,7 @@ The JTAG2AXI, OTP and filter depth tests are enrolled in `sep0_all`:
   `smu_dtp_jtag2axi_wstrb_partial_sticky_test`,
   `smu_dtp_jtag2axi_back_to_back_error_ok_test`,
   `smu_jtag2axi_vs_smn_same_csr_race_test`
-  (`smu_dtp_jtag2axi_abort_mid_op_test` is in `migrated_dtp_pending` and in
+  (`smu_dtp_jtag2axi_abort_mid_op_test` is in `needs_otp_stall` and in
   `--dut smu_block` `all`, not in `sep0_all`)
 * OTP: `smu_dtp_otp_smc_map_rw_test`,
   `smu_dtp_otp_smc_series_error_test`,

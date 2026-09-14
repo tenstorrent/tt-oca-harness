@@ -71,7 +71,7 @@ no enrolled test may reach into the DUT with Force or deposit.
 
 The SEP=0 names this plan cards, with the leaf family of each. Every row
 is in `sep0_all` except `smu_dtp_jtag2axi_abort_mid_op_test` (only in
-`migrated_dtp_pending`) and the two `smoke` names `smu_smc_smoke_test`
+`needs_otp_stall`) and the two `smoke` names `smu_smc_smoke_test`
 and `smu_sep_smoke_test`. The SEP=1 / wrapper-native members of `all`
 are listed under `SMU_WRAPPER` below (see
 <<smu-known-limitations,Known Limitations>>).
@@ -195,7 +195,7 @@ check.
 |`CHK-ALIAS-REMAP-SCOPE-S3` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -231,7 +231,7 @@ check.
 |`CHK-AXI-NON-ATOP` |Evidence token `AXI_NON_ATOP_OK`: non-ATOP SMN path completes
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -267,7 +267,7 @@ check.
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -305,7 +305,7 @@ check.
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -343,7 +343,7 @@ check.
 |assertion |allow_ns incomplete s1s=<value> s1n=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -383,7 +383,7 @@ check.
 |assertion |in-matrix incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -418,7 +418,7 @@ check.
 |assertion |out-matrix incomplete s1=<value> s2d=<value> s3d=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -454,7 +454,7 @@ check.
 |`CHK-AXI-ID-WIDTH` |Evidence token `AXI_ID_WIDTH_OK`: ID width conversion completes
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -492,7 +492,7 @@ check.
 |assertion |S9 AxPROT matrix incomplete
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -531,7 +531,7 @@ check.
 |assertion |xbar structure incomplete pos=<value> absent=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -567,7 +567,7 @@ check.
 |assertion |local_fabric incomplete s1=<value> observed=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -605,7 +605,7 @@ check.
 |assertion |otp_vs_fabric race incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -642,7 +642,7 @@ check.
 |assertion |filter_program incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -682,7 +682,7 @@ check.
 |assertion |filter_shrink incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -723,7 +723,7 @@ check.
 |assertion |filter_window_edge incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
@@ -758,7 +758,7 @@ check.
 |`CHK-XT-CTM-REMAP` |Evidence token `XT_CTM_REMAP`: product-pin CTM remap
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -797,7 +797,7 @@ check.
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert sticky
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -831,7 +831,7 @@ check.
 |`CHK-STALL-VS-IC` |Evidence token `STALL_VS_IC_RESET`: IC_RESET does not clear stall
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -867,7 +867,7 @@ check.
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert does not re-gate
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -902,7 +902,7 @@ check.
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert does not re-gate
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -939,7 +939,7 @@ check.
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smoke_sep0`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smoke_sep0`, `smc_under_smu`.
 
 '''''
 
@@ -973,7 +973,7 @@ check.
 |`CHK-IC-DUAL` |Evidence token `IC_RESET_DUAL_PACK`: dual packed ovrd; no bleed
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1008,7 +1008,7 @@ check.
 |`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: one domain ovrd exclusive
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1042,7 +1042,7 @@ check.
 |`CHK-IC-SS` |Evidence token `IC_RESET_SS_COLD_OVRD`: SS cold/warm ovrd exclusive
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1078,7 +1078,7 @@ check.
 |`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: single domain override exclusive
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1111,7 +1111,7 @@ check.
 |`CHK-RST-COLD-STABLE` |Evidence token `RST_COLD_STABLE_1`: cold stable released
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smc_under_smu`.
 
 '''''
 
@@ -1154,7 +1154,7 @@ check.
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1190,7 +1190,7 @@ check.
 |assertion |i3c_mem incomplete s1=<value> observed=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smc_under_smu`.
 
 '''''
 
@@ -1228,7 +1228,7 @@ check.
 |assertion |jtag2axi_vs_smn race incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1272,7 +1272,7 @@ check.
 |assertion |tb_timer_count pin observe missing or not advancing
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smc_under_smu`.
 
 '''''
 
@@ -1305,7 +1305,7 @@ check.
 |`CHK-XT-ILLEGAL` |Evidence token `XT_ILLEGAL_PHASE`: DTP[9:2] follows abort/double-req pin patterns
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1344,7 +1344,7 @@ check.
 |`CHK-BSR-EXTEST` |Evidence token `BSR_EXTEST_TDO_MATCH`: TB BSR scan loopback TDO (declared stub; pad BSR out of scope)
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1388,7 +1388,7 @@ check.
 |assertion |bsr_ijtag incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1428,7 +1428,7 @@ check.
 |assertion |io_stap incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1466,7 +1466,7 @@ check.
 |assertion |jtag2axi_abort incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `migrated_dtp_pending`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `needs_otp_stall`.
 
 '''''
 
@@ -1504,7 +1504,7 @@ check.
 |assertion |jtag2axi_b2b incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1542,7 +1542,7 @@ check.
 |assertion |jtag2axi_smc_error incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1581,7 +1581,7 @@ check.
 |assertion |jtag2axi_rw_matrix incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1618,7 +1618,7 @@ check.
 |assertion |jtag2axi_wstrb_partial incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1660,7 +1660,7 @@ check.
 |assertion |jtag_smc_cpu_register incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1697,7 +1697,7 @@ check.
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`, `smoke_sep0`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`, `smoke_sep0`.
 
 '''''
 
@@ -1733,7 +1733,7 @@ check.
 |assertion |otp_smc_complete incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1777,7 +1777,7 @@ check.
 |assertion |otp_smc_map incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1822,7 +1822,7 @@ check.
 |assertion |otp_smc_series_error incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1866,7 +1866,7 @@ check.
 |assertion |ptap_otp_instr_scan incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1915,7 +1915,7 @@ check.
 |assertion |smc_stap incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -1959,7 +1959,7 @@ check.
 |assertion |jtag_chain_enhanced incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -2002,7 +2002,7 @@ check.
 |assertion |jtag2axi_smoke incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
 
 '''''
 
@@ -2040,7 +2040,7 @@ check.
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smoke_sep0`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smoke_sep0`, `smc_under_smu`.
 
 '''''
 
@@ -2125,7 +2125,7 @@ check.
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `sep0_all`.
 
 '''''
 
@@ -2163,7 +2163,7 @@ check.
 |assertion |mailbox_sanity incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smc_under_smu`.
 
 '''''
 
@@ -2196,7 +2196,7 @@ check.
 |`CHK-DEMOTE-TIEOFF` |Evidence token `DEMOTE_TIEOFF_OBS`: SEP=0 demote hardwire observe
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smc_under_smu`.
 
 '''''
 
@@ -2276,7 +2276,7 @@ check.
 |assertion |wdt_sanity incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smc_under_smu`.
 
 '''''
 
@@ -2313,7 +2313,7 @@ check.
 |assertion |wdt_timeout incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smc_under_smu`.
 
 '''''
 
@@ -3416,9 +3416,9 @@ Two things are worth reading before the entries:
 |`smoke_sep0` |Hosted-runner PR tier
 |`build_smoke` |Elaboration only
 |`sep0_all` |Feature-credit regression set
-|`migrated_fabric` |Fabric leaves brought onto the wrapper
-|`migrated_smc` |SMC-facing leaves brought onto the wrapper
-|`migrated_dtp` |DTP-facing leaves brought onto the wrapper
+|`fabric` |Fabric leaves brought onto the wrapper
+|`smc_under_smu` |SMC-facing leaves brought onto the wrapper
+|`dtp_under_smu` |DTP-facing leaves brought onto the wrapper
 |`sep_real_fw` |Wrapper leaves that boot real SEP firmware images
 |`sep_smc_sram_blocked` |SRAM-private cookie poll, including the dual-firmware leaves
 |`sep_smc_dual` |The dual-firmware leaves alone; not in `all`

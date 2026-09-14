@@ -95,8 +95,8 @@ python3 tools/dv/run_dv.py --dut smu_block --items all
 ```
 
 Groups (`testlists/wrapper.toml`): `build_smoke`, `smoke`, `smoke_sep0`,
-`sep0_all`, `all`, `migrated_fabric`, `migrated_smc`, `migrated_dtp`,
-`migrated_dtp_pending`, `sep_real_fw`, `sep_lifecycle`, `sep_chain`,
+`sep0_all`, `all`, `fabric`, `smc_under_smu`, `dtp_under_smu`,
+`needs_otp_stall`, `sep_real_fw`, `sep_lifecycle`, `sep_chain`,
 `sep_entropy`, `sep_probe`, `sep_rtl_only`, `sep_smc_sram_blocked`,
 `all_with_sep_exec`.
 ### SystemVerilog UVM framework (`--framework uvm`)
@@ -372,10 +372,10 @@ SEP=1 firmware set. Names outside both are classified in
 
 Leaves enrolled outside the wrapper's `all` carry their reason on their own
 group: the `sep_smc_sram_blocked` images, and
-`smu_dtp_jtag2axi_abort_mid_op_test` (`migrated_dtp_pending`), which runs on
+`smu_dtp_jtag2axi_abort_mid_op_test` (`needs_otp_stall`), which runs on
 the bare DUT because it needs an unterminated OTP interface.
 `smu_dtp_jtag_smoke_test` also runs there for its SV-UVM binding; its cocotb
-side is enrolled here in `migrated_dtp`.
+side is enrolled here in `dtp_under_smu`.
 
 Two bodies under `cocotb/tests/` are enrolled nowhere
 and have no wrapper twin: `smu_ext_axi_global_addr_smoke_test` (the OSS `s_axi`
