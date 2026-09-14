@@ -14,6 +14,13 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_nack_test(smc_base_test):
     """Commercial P0 NACK: allow-path + address NACK + data NACK."""
 
+    required_evidence = (
+        "CHK-I2C-P0-NACK-ALLOW",
+        "CHK-I2C-P0-NACK-TC1",
+        "CHK-I2C-P0-NACK-TC2",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

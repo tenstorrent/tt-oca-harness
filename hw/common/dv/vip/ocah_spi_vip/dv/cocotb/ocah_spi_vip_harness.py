@@ -87,9 +87,19 @@ class SpiHarness:
     checker: OcahSpiFlashChecker
 
     async def stop(self) -> None:
-        """Stop the monitor and the device; their histories survive."""
+        """Stop the monitor and the device; their histories survive.
+
+        The monitor's swallowed-callback count is recorded on the test's
+        checker, so a subscriber exception the monitor logged cannot pass.
+        """
         await self.monitor.stop()
         await self.flash.stop()
+        self.checker.expect_equal(
+            "CHK-SPI-MON-CALLBACKS",
+            self.monitor.get_statistics()["callback_errors"],
+            0,
+            context="subscriber exceptions the monitor swallowed",
+        )
 
 
 async def build_stack(

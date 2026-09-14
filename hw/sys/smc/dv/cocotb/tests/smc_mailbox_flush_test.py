@@ -19,6 +19,12 @@ from smc_base_test import smc_base_test
 class smc_mailbox_flush_test(smc_base_test):
     """CTRL.wflush empties the write FIFO a push had just filled."""
 
+    required_evidence = (
+        "CHK-MBOX-FLUSH",
+        "CHK-MBOX-FLUSH-ARM",
+    )
+    min_evidence = 2
+
     async def run_scenario(self) -> None:
         seq = smc_mailbox_flush_test_seq("mailbox_flush_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)

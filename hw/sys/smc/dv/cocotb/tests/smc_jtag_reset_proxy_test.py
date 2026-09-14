@@ -16,6 +16,13 @@ from smc_base_test import smc_base_test
 class smc_jtag_reset_proxy_test(smc_base_test):
     """Run JTAG-adjacent CSR health checks plus CPU JTAG pin checks."""
 
+    required_evidence = (
+        "CHK-CPU-JTAG-DTMCS",
+        "CHK-CPU-JTAG-IDCODE",
+        "CHK-CPU-JTAG-SCAN-ACTIVITY",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

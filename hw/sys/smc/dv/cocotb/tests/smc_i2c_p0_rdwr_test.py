@@ -14,6 +14,12 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_rdwr_test(smc_base_test):
     """Commercial P0 intent: internal dual-controller write/read proof."""
 
+    required_evidence = (
+        "CHK-I2C-P0-RDWR-READ",
+        "CHK-I2C-P0-RDWR-WRITE",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
