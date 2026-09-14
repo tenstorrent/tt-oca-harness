@@ -184,7 +184,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-J2A-B2B", "J2A_B2B_OK", "DECERR then immediate SUCCESS"),
     ],
     "smu_dtp_jtag2axi_smc_error_path_test": [
-        ("CHK-J2A-DECERR", "J2A_DECERR_POISON", "unmapped DECERR + poison"),
+        ("CHK-J2A-DECERR", "J2A_DECERR_POISON", "unmapped access returns DECERR"),
         ("CHK-J2A-RECOVERY", "J2A_RECOVERY_OK", "VERSION_LO SUCCESS after error"),
     ],
     "smu_dtp_jtag2axi_smc_rw_matrix_test": [
