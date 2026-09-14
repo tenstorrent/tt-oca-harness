@@ -98,7 +98,7 @@ int metal_hpm_init(struct metal_cpu *gcpu) {
         cpu->hpm_count = n;
 
         /* mcountinhibit keeps its reset value (0: every counter increments); this
-         * driver only programs event selectors and clears counts. */
+         * driver never writes it. */
         for (unsigned int i = 0; i < cpu->hpm_count; i++) {
             metal_hpm_clr_event(gcpu, i, 0xFFFFFFFF);
             metal_hpm_clear_counter(gcpu, i);

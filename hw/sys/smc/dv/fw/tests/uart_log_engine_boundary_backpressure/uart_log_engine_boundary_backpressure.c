@@ -17,6 +17,10 @@
 //     rdata_fifo still holds fetched data. A 0x400-byte region gives each slot
 //     64 bytes, so a 64-byte request exceeds the 32-byte TX FIFO.
 //
+//   Scenario C — log_write completion with both interrupt enables set.
+//     Completion-only: no address the log_write master can reach answers
+//     with an error, so LOG_WRITE_ERR is not checked (see UART_ECR_OFF).
+//
 //   Scenarios D and E — both FSMs terminate at the same effective length.
 //     D clamps a request to an aligned slot capacity. E rounds a
 //     non-word-aligned slot down to complete 8-byte fetch beats. Both verify
