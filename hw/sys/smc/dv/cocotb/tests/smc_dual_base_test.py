@@ -384,6 +384,28 @@ class SmcDualHarness:
         await ClockCycles(dut.clk_smc_i, 256)
         self.log.info("%s: released boot_stall with reset_vector=%#010x", instance, reset_vector)
 
+    def assert_no_fault_latched(self, label: str) -> None:
+        """Require both instances' sticky fault latches to still read 0.
+
+        ``dut_/bfm_{cluster_ded,wdt_first_timeout,wdt_second_timeout}_seen_o``
+        latch the wrapper's fault outputs until cold reset, so a DED or a
+        watchdog timeout at any point of the run is visible here even after
+        the warm reset a second timeout causes has cleared the live pins.
+        """
+        dut = self.dut
+        latched = [
+            f"{inst}_{name}_seen_o"
+            for inst in ("dut", "bfm")
+            for name in ("cluster_ded", "wdt_first_timeout", "wdt_second_timeout")
+            if int(getattr(dut, f"{inst}_{name}_seen_o").value) != 0
+        ]
+        assert not latched, f"{label}: fault outputs latched during the run: {latched}"
+        self.log.info(
+            "%s: no cluster DED or WDT timeout latched on either instance "
+            "(dut/bfm cluster_ded, wdt_first_timeout, wdt_second_timeout all 0)",
+            label,
+        )
+
     def set_gpio_override(self, instance: str, pad: int, value: int | None) -> None:
         """Drive (or release) one pad on one instance.
 

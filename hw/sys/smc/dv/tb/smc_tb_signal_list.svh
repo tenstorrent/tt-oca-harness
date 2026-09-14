@@ -473,6 +473,11 @@
 // CPU cluster double-error detect (live + sticky).
 `SMC_TB_OUT(logic, tb_cluster_ded)
 `SMC_TB_OUT(logic, tb_cluster_ded_seen)
+// Cluster WDT first / second timeout pins (live + sticky).
+`SMC_TB_OUT(logic, tb_wdt_first_timeout)
+`SMC_TB_OUT(logic, tb_wdt_first_timeout_seen)
+`SMC_TB_OUT(logic, tb_wdt_second_timeout)
+`SMC_TB_OUT(logic, tb_wdt_second_timeout_seen)
 `SMC_TB_OUT(logic [31:0], tb_cpu_ecc_inject_fire_count)
 `SMC_TB_OUT(logic, tb_cpu_scratch0_inject_fire)
 
