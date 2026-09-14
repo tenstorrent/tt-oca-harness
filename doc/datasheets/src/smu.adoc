@@ -137,8 +137,10 @@ CAPABILITIES
 *No-SEP behavior*
 
 * Direct external-to-SMC and SMC-to-external AXI paths retain the public widths
-* DTP and its primary JTAG interface remain present; DTP debug and test paths
-  are not lifecycle-disabled
+* DTP and its primary JTAG interface remain present with the debug-disable vector
+  tied to all-enabled: STAPs, DFT/DFD scan access, and the SMC JTAG-to-AXI
+  bridge are open, and no SMU input accepts lifecycle controls from another
+  chiplet
 * SEP memory, entropy, I/O, mailbox, lifecycle-error, and status ports are tied
   to defined inactive values; the SEP aperture reports zero size
 * SEP OTP debug accesses receive DECERR and the SEP secondary TAP has no target
@@ -174,9 +176,10 @@ INTEGRATION DEPENDENCIES
 * Assign non-overlapping chiplet envelopes and program non-overlapping SMC/SEP
   memory apertures. Change memory apertures only after outstanding transactions
   have completed.
-* If SEP is not configured, the default tie-offs do not provide security
-  authorization; define a no-SEP debug and security policy. Omitting SEP does
-  not automatically place the chiplet under another SEP's protection.
+* If SEP is not configured, feature-control bits are not forwarded over the
+  die-to-die interface and access is open by default. Protect the chiplet by
+  routing all debug and test access through, and gating it with, a primary
+  chiplet's SEP-controlled DTP path; define this no-SEP security policy.
 * Replace zero-valued JTAG identity and SEP security-token fields; supply
   reviewed firmware, provisioning, recovery, and update policy.
 * Provide the non-vendor-neutral IPs and production integration: PLL/FLL clock
