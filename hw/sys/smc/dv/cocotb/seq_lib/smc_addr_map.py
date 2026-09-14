@@ -156,25 +156,41 @@ def _field_mask(path: Path, symbol: str) -> int:
 # --- Absolute addresses used by SMC clock-gating / DMA activity tests ---
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
-# --- smc_local_fabric address fold -----------------------------------------
-# Every request entering the local fabric has its upper 7 address bits replaced
-# by LOCAL_BASE[31:25]:
-#   hw/sys/smc/rtl/smc_fabric/smc_local_fabric/rtl/smc_local_fabric.sv:66-78
-#   sep_in_req_masked.ar.addr = {local_base_addr_i[31:25],
-#                                sep_in_axi_req_i.ar.addr[24:0]};
-# so only addr[24:0] of a SEP_IN address survives to the decoder. `LOCAL_BASE`
-# is `SMC_BASE_CONFIG.LOCAL_BASE` (smc_base.sv:381 -> smc_fabric.sv:141); its
-# reset is taken from the generated RDL header, not hand-copied, so a map change
-# moves the model with the hardware ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
-LOCAL_FABRIC_KEEP_MASK = 0x01FF_FFFF  # addr[24:0] survive the fold
-LOCAL_FABRIC_REPLACE_MASK = 0xFE00_0000  # addr[31:25] are overwritten
+# --- Local-alias aperture fold ---------------------------------------------
+# Every request entering the SMC local fabric is folded into the local-alias
+# aperture, which is `LOCAL_BASE`-aligned and `REGION_SIZE` bytes long: the
+# fabric keeps the low address bits under `REGION_SIZE - 1` and prefixes
+# `LOCAL_BASE` above them. Authority: the `SMC_BASE_CONFIG.REGION_SIZE` field
+# description in the RDL (the mask is `(size - 1)`, so the size must be a
+# non-zero power of two and both bases aligned to it) and
+# hw/sys/smc/doc/fabric.adoc "Local and Remote Resource Access". Both operands
+# are the generated RDL resets, so the model moves with the register map
+# ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 LOCAL_BASE_RESET = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
+_REGION_SIZE_FIELD_RESET = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
 
 
-def local_fabric_masked_addr(addr: int, local_base: int | None = None) -> int:
+def local_fabric_keep_mask(region_size: int = _REGION_SIZE_FIELD_RESET) -> int:
+    """Address bits that survive the local-alias fold for ``region_size``."""
+    assert region_size > 0 and region_size & (region_size - 1) == 0, (
+        f"REGION_SIZE 0x{region_size:x} is not a non-zero power of two; the RDL forbids "
+        "it because the fabric mask is (size - 1)"
+    )
+    return region_size - 1
+
+
+LOCAL_FABRIC_KEEP_MASK = local_fabric_keep_mask()
+LOCAL_FABRIC_REPLACE_MASK = 0xFFFF_FFFF & ~LOCAL_FABRIC_KEEP_MASK
+
+
+def local_fabric_masked_addr(
+    addr: int, local_base: int | None = None, region_size: int | None = None
+) -> int:
     """Address a SEP_IN/system/local request arrives at after the fold above."""
     base = LOCAL_BASE_RESET if local_base is None else local_base
-    return (base & LOCAL_FABRIC_REPLACE_MASK) | (addr & LOCAL_FABRIC_KEEP_MASK)
+    keep = local_fabric_keep_mask(_REGION_SIZE_FIELD_RESET if region_size is None else region_size)
+    assert base & keep == 0, f"LOCAL_BASE 0x{base:x} is not aligned to REGION_SIZE 0x{keep + 1:x}"
+    return (base & 0xFFFF_FFFF) | (addr & keep)
 
 
 def reg_reset_word(header: Path, block: str, reg: str) -> int:
