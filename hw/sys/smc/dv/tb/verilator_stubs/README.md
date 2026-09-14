@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Verilator stubs (SMC)
 
-Behavioural stand-ins for two `och_prim` synchroniser cells, used by the
-Verilator flow only.
+Behavioural stand-ins for two `och_prim` synchroniser cells. The runner
+compiles them on Verilator and Xcelium and drops them on VCS.
 
 | File | Replaces | Difference from the product cell |
 |------|----------|----------------------------------|
@@ -17,11 +17,16 @@ behaviour these files add is a defined `0` on the far side of the crossing
 before the pipe has filled; the product cell shows X there on a four-state
 simulator.
 
-Enrolment: `smc_sim_cfg.toml` `[build].stubs`, emitted ahead of the Bender
-filelist so `-Wno-MODDUP` first-definition-wins picks them under Verilator.
-On VCS the runner drops any stub whose basename the Bender graph supplies, so
-the product cells elaborate there. `smu_sim_cfg.toml` enrols the same two
-files for the SMU bench.
+Enrolment: `smc_sim_cfg.toml` `[build].stubs`. The runner
+(`tools/dv/runlib/stages.py`) filters that list only when `tool == "vcs"`:
+there it drops any stub whose basename the Bender graph supplies, so the
+product cells elaborate on VCS. On Verilator and Xcelium it keeps both files
+and emits them ahead of the Bender filelist, so the stub and the product cell
+are in the same compile; Verilator's `-Wno-MODDUP` first-definition-wins picks
+the stub, and no Xcelium build of this bench is recorded. The SMU benches
+enrol the same two files: `hw/sys/smu/dv/smu_sim_cfg.toml` (`--dut smu`) and
+`hw/sys/smu/dv/smu_block_sim_cfg.toml` (`--dut smu_block`), each in its
+`[build].stubs`.
 
 Nothing under this directory may replace an SMC module (`smc_*`). PeakRDL
 nested hwif structs are kept compilable by `disable_public_flat_rw` plus

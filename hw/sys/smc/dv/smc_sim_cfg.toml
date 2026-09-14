@@ -92,10 +92,11 @@ exclude_files = [
   "deps/i3c-core",
 ]
 stubs = [
-  # Verilator-only stand-ins for the och_prim synchroniser cells, emitted ahead
-  # of the Bender filelist so -Wno-MODDUP first-definition-wins picks them. On
-  # VCS the runner drops any stub whose basename the Bender graph supplies, so
-  # the product prim_sync2 / prim_sync3 elaborate there. The leaves that read a
+  # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks them on Verilator. On
+  # VCS only, the runner drops any stub whose basename the Bender graph
+  # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
+  # receives both files like Verilator does. The leaves that read a
   # signal behind one, and the VCS control that keeps those claims honest, are
   # in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc (Bench stand-ins).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
