@@ -65,7 +65,7 @@ class smc_cpu_firmware_boot_test(smc_base_test):
         self.raise_objection()
         # First line of every kept log's run phase: what RTL this run simulated
         # ([BUILD-MODEL-IDENTITY]). The base `smc_base_test.run_phase` emits it
-        # (tests/smc_base_test.py:656-660); this override must too, or the
+        # by calling `log_build_model_identity`; this override must too, or the
         # SMC_002 ROM-boot evidence cannot be bound to an elaborated model.
         log_build_model_identity()
         seq = smc_cpu_firmware_boot_test_seq("cpu_fw_boot_seq")

@@ -13,7 +13,7 @@ import logging
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import cocotb
@@ -322,7 +322,8 @@ class _EvidenceRecorder:
     # and none is a clean exit that checks nothing. Naming them is what lets the
     # gate below be unconditional for every other leaf.
     #
-    # Owner: SMC DV. Opened 2026-09-13 from the zero-token set at 73f89fb31.
+    # owner: SMC DV. opened: 2026-09-13, from the leaves that emitted no token
+    # of their own at introduction. review_date: NO_OWN_EVIDENCE_REVIEW_DATE.
     # Closes when empty. Keys must stay inside NO_OWN_EVIDENCE_CEILING (the
     # set at introduction); a new name fails the run. To remove an entry, make
     # the check that already runs log a ``CHK-<ID>:`` line where it happens --
@@ -355,6 +356,10 @@ class _EvidenceRecorder:
         # stamp (csr_accesses=0, auto_evidence=True) and is not evidence.
         "smc_octs_dual_sync_test": "sequence asserts, unlabelled",
     }
+
+    # Past this date, ``_finalize_evidence`` warns on every run while the set is
+    # non-empty. Move it only after re-reading each entry that remains.
+    NO_OWN_EVIDENCE_REVIEW_DATE = "2026-10-15"
 
     # Set at introduction. ``NO_OWN_EVIDENCE`` may lose keys, never gain them.
     NO_OWN_EVIDENCE_CEILING = frozenset(
@@ -890,6 +895,14 @@ class smc_base_test(uvm_test):
                 "NO_OWN_EVIDENCE grew: "
                 + ", ".join(sorted(extra))
                 + " -- this list may only shrink"
+            )
+        review_date = date.fromisoformat(_EvidenceRecorder.NO_OWN_EVIDENCE_REVIEW_DATE)
+        if _EvidenceRecorder.NO_OWN_EVIDENCE and datetime.now(tz=timezone.utc).date() > review_date:
+            self.logger.warning(
+                "NO_OWN_EVIDENCE review date %s has passed with %d leaves still exempt; "
+                "re-read each entry, then close it or move the date",
+                review_date,
+                len(_EvidenceRecorder.NO_OWN_EVIDENCE),
             )
 
         self.logger.info(
