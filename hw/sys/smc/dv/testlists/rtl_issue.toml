@@ -8,7 +8,10 @@ schema_version = 1
 #
 # Every entry carries `expect_fail = "<reason>"`, which the runner grades: the
 # observed FAIL is PASS, and an observed PASS is FAIL with the reason "the
-# defect is gone" (tools/dv/doc/run-dv.adoc, Expected failures). So the group
+# defect is gone" (tools/dv/doc/run-dv.adoc, Expected failures). Each also
+# carries `expect_fail_match`, the regex the observed failure message must
+# match, so a leaf that fails for some other reason (a hang, a TB regression, a
+# second defect) is FAIL, not a graded pass on the recorded defect. So the group
 # runs green on the weekly tier (.github/workflows/regress.yml, the `rtl_issue`
 # row) while the defects stand, and goes red the week one of them is fixed.
 #
@@ -16,6 +19,9 @@ schema_version = 1
 #   * `expect_fail` on every entry -- the recorded reason is what the graded
 #                              PASS means; an entry without one is red for no
 #                              stated cause and the loader refuses a bare flag.
+#   * `expect_fail_match` too -- pinned to the assertion text of the recorded
+#                              failure; the graded PASS is then that failure
+#                              and not any failure.
 #   * no `ci` tag           -- `ci` is the hosted-runner set (`hosted`), whose
 #                              passes feed the coverage dashboard; a graded
 #                              expected failure must not count there.
@@ -41,6 +47,7 @@ timeout_sec = 1800
 tags = ["rtl_issue", "gpio", "pyuvm"]
 run_modes = ["smoke"]
 expect_fail = "#1602: clearing DATA_CTRL.interrupt_enable while a GPIO interrupt is asserted does not de-assert interrupt_o"
+expect_fail_match = "CHK-GPIO-IRQ-MASK-DEASSERT: .* stayed 1 after DATA_CTRL"
 
 [[tests]]
 # INTERRUPT_ENABLE gates the interrupt set path instead of masking the
@@ -56,6 +63,7 @@ timeout_sec = 1800
 tags = ["rtl_issue", "uart", "pyuvm"]
 run_modes = ["smoke"]
 expect_fail = "#1635: INTERRUPT_ENABLE gates the log-engine interrupt set path instead of masking irq_o"
+expect_fail_match = "CHK-LOG-ENGINE-INTR-MASK-DEASSERT: .* stayed 1 after INTR_ENABLE"
 
 [[tests]]
 # The same enable-on-set-path pattern, third IP: i2c_core.sv:1000 ANDs the event
@@ -68,6 +76,7 @@ timeout_sec = 1800
 tags = ["rtl_issue", "i2c", "pyuvm"]
 run_modes = ["smoke"]
 expect_fail = "#1635: INTR_ENABLE gates the i2c_core interrupt set path instead of masking irq_o (the I2C instance of the pattern)"
+expect_fail_match = "CHK-I2C-INTR-MASK-DEASSERT: .* stayed 1 after INTR_ENABLE"
 
 [[tests]]
 # Dead offsets inside seven register windows wrap onto live registers and the
@@ -83,6 +92,7 @@ timeout_sec = 1800
 tags = ["rtl_issue", "vplan_gap", "local_axi_depth", "pyuvm"]
 run_modes = ["smoke"]
 expect_fail = "#585: dead offsets in seven register windows wrap onto live registers with an OKAY response"
+expect_fail_match = "aliased live registers \\(wrap_to_live=[1-9][0-9]* read_alias="
 
 [[tests]]
 # The ALIAS_REMAP translation and the MMODE/ALIAS reset sweep pass; the CLA
@@ -97,6 +107,7 @@ timeout_sec = 1800
 tags = ["rtl_issue", "pyuvm"]
 run_modes = ["smoke"]
 expect_fail = "CLA aperture: the unmapped in-window offset +0x38 completes with OKAY instead of SLVERR/DECERR (the #1488 hang is fixed by #1510; the OKAY completion is not filed)"
+expect_fail_match = "read @ 0x0*c0160038 marked expect_error but returned resp=0"
 
 [[groups]]
 name = "rtl_issue"
