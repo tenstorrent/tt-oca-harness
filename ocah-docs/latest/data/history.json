@@ -1,0 +1,401 @@
+{
+  "points": [
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-08T07:13:50+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-08T19:32:37+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-09T19:00:34+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-10T18:52:19+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-12T19:13:05+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-13T19:46:01+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-14T19:46:02+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-16T19:32:30+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-17T19:36:20+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-08-18T19:36:02+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 1,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-19T19:34:57+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 99.78
+    },
+    {
+      "failed_tests": 1,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-20T19:36:00+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 99.78
+    },
+    {
+      "failed_tests": 2,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-21T19:35:54+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 97.18
+    },
+    {
+      "failed_tests": 1,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-22T19:32:18+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 98.59
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-23T19:44:56+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-24T19:36:19+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-25T20:35:04+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 1,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-26T20:03:05+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 98.41
+    },
+    {
+      "failed_tests": 1,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-27T23:36:02+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 98.41
+    },
+    {
+      "failed_tests": 1,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-28T23:58:20+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 98.53
+    },
+    {
+      "failed_tests": 2,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-29T19:31:12+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 96.61
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-30T20:28:16+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 1,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-08-31T20:11:58+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 98.31
+    },
+    {
+      "failed_tests": 2,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-01T19:31:57+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 95.65
+    },
+    {
+      "failed_tests": 5,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-02T19:45:22+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 91.38
+    },
+    {
+      "failed_tests": 3,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-03T20:35:36+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 96.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 100.0,
+      "generated_at": "2026-09-05T22:36:30+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 82.7608,
+            "expression": 82.9774,
+            "line": 71.2451,
+            "user": 95.7447
+          },
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 0,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-12T19:51:40+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "SKIP",
+          "effective_metrics": {},
+          "flow": "dtp"
+        }
+      ],
+      "test_pass_rate": null
+    }
+  ]
+}
