@@ -468,8 +468,7 @@ CLA_UNMAPPED_PROBES = _cla_unmapped_probes()
 _ALIAS_REMAP_H = (
     Path(__file__).resolve().parents[6]
     / "hw"
-    / "common"
-    / "axi"
+    / "ip"
     / "axi_alias_remap"
     / "regs"
     / "gen"
