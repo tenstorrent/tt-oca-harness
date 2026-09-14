@@ -447,4 +447,66 @@ tests = [
     "sep_firmware_backup_manifest_major_version_valid_minor_0_length_incorrect_test",
     "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_large_test",
     "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_correct_test",
+    # The third refusing length arm: 1185 is inside the range the minor != 0 arm
+    # accepts but is misaligned, so the 4-byte alignment rule is what refuses it.
+    "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test",
+    # The same version-and-length rule on the PRIMARY slot. Five refusals fail over
+    # to the untouched backup; the two accepted rows boot from the primary itself
+    # and never read the backup.
+    "sep_firmware_primary_manifest_major_version_invalid_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_0_length_incorrect_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_correct_test",
+    "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test",
+    # payload_hashed_length = 0, outside 0 < value <= payload_length. The only
+    # BAD_LENGTH arm in validate_manifest_header that prints its own token, so
+    # these two rows are separable on the console from every other length row.
+    "sep_firmware_primary_payload_invalid_payload_hash_length_test",
+    "sep_firmware_backup_payload_invalid_payload_hash_length_test",
+    # The two SILENT arms of validate_manifest_payload, as a 2x2x2 lattice:
+    # {TOC major version, image count} x {primary, backup} x {plaintext,
+    # encrypted}. Neither arm prints a token, so each row is graded on its error
+    # code, the position of the rejection in its slot's attempt, and the bytes the
+    # device served at the field address -- and each forbids the sibling arm's
+    # code. The encrypted rows load encrypted_boot.bin and plant the defect in the
+    # decrypted payload, because the ROM parses the TOC only after decryption.
+    "sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test",
+    "sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test",
+    "sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test",
+    "sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test",
+    "sep_firmware_primary_encrypted_invalid_payload_image_count_test",
+    "sep_firmware_backup_encrypted_invalid_payload_image_count_test",
+    "sep_firmware_primary_non_encrypted_invalid_payload_image_count_test",
+    "sep_firmware_backup_non_encrypted_invalid_payload_image_count_test",
+    # The two ANNOUNCED per-image arms of the same function, as a second 2x2x2
+    # lattice: {image ordering, image length alignment} x {primary, backup} x
+    # {plaintext, encrypted}. These arms print IMAGE_ORDER_BAD idx= and
+    # IMAGE_LEN_ALIGN idx=, so each row is graded on its own token AND index, its
+    # error code, and the served bytes -- and forbids the sibling's token and code.
+    # The alignment rows need the token: the SILENT bounds arm above them returns
+    # the same MANIFEST_ERR_IMAGE_OOB.
+    "sep_firmware_primary_encrypted_payload_images_out_of_order_test",
+    "sep_firmware_backup_encrypted_payload_images_out_of_order_test",
+    "sep_firmware_primary_non_encrypted_payload_images_out_of_order_test",
+    "sep_firmware_backup_non_encrypted_payload_images_out_of_order_test",
+    "sep_firmware_primary_encrypted_invalid_payload_image_size_test",
+    "sep_firmware_backup_encrypted_invalid_payload_image_size_test",
+    "sep_firmware_primary_non_encrypted_invalid_payload_image_size_test",
+    "sep_firmware_backup_non_encrypted_invalid_payload_image_size_test",
+    # The TOC/manifest length agreement and the entry-0 placement bound, as a third
+    # 2x2x2 lattice: {image exceeds bound, TOC payload size mismatch} x {primary,
+    # backup} x {plaintext, encrypted}. The two arms fire in DIFFERENT stages -- the
+    # agreement check sits above the per-image loop -- so neither stimulus can reach
+    # the other's arm. The bound rows share IMAGE_ORDER_BAD and its error code with
+    # the ordering rows above, and are separated by the entry index the token prints
+    # (0 here, 1 there) and by the served bytes at their own slot's field address.
+    "sep_firmware_primary_encrypted_payload_image_exceeds_bound_test",
+    "sep_firmware_backup_encrypted_payload_image_exceeds_bound_test",
+    "sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test",
+    "sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test",
+    "sep_firmware_primary_encrypted_toc_payload_size_mismatch_test",
+    "sep_firmware_backup_encrypted_toc_payload_size_mismatch_test",
+    "sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test",
+    "sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test",
 ]

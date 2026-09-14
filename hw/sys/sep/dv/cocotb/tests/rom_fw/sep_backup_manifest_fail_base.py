@@ -88,6 +88,10 @@ class sep_backup_manifest_fail_base(sep_base_test):
     # --- subclass contract -------------------------------------------------
     # Console marker the backup's defect must produce.
     backup_defect_marker: str = ""
+    # Whether this family's defect has a console token at all. Every member here
+    # does, so the default keeps the guard; a subfamily whose ROM arm returns
+    # silently clears it and grades on the error code and ordering instead.
+    requires_defect_marker: bool = True
     # ROM error code the run must terminate on.
     expected_error: int = 0
     # Committed OTP preload this scenario needs.
@@ -133,7 +137,9 @@ class sep_backup_manifest_fail_base(sep_base_test):
         dut = cocotb.top
         from ocah_spi_vip import OcahSpiFlash
 
-        assert self.backup_defect_marker, "subclass must set backup_defect_marker"
+        assert self.backup_defect_marker or not self.requires_defect_marker, (
+            "subclass must set backup_defect_marker"
+        )
         assert self.expected_error, "subclass must set expected_error"
         assert self.efuse_preload and os.path.isfile(self.efuse_preload), (
             f"eFuse preload missing: {self.efuse_preload}"

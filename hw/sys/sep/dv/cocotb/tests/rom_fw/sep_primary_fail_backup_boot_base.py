@@ -131,6 +131,12 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
     extra_forbidden: tuple[str, ...] = ()
     # Extra markers that must appear, on top of the shared list.
     extra_required: tuple[str, ...] = ()
+    # Whether the backup's TOC can be read offline. An ENCRYPTED backup's payload
+    # is ciphertext until the ROM decrypts it, so verify_sealed's TOC arm has
+    # nothing to parse and the member clears this; the manifest-side checks,
+    # payload_hash over the ciphertext and the RSA verification all still run, so
+    # the backup is still proved bootable before the simulation.
+    backup_sealed_check_toc: bool = True
 
     def corrupt_primary(self, buf: bytearray) -> None:
         raise NotImplementedError
@@ -197,16 +203,18 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
         # boot. verify_sealed reproduces the ROM's own structural and
         # cryptographic checks over the backup, so that claim is established
         # before the simulation rather than inferred from its outcome.
-        pm.verify_sealed(buf, "backup")
+        pm.verify_sealed(buf, "backup", check_toc=self.backup_sealed_check_toc)
         mm.verify_public_key(buf, "backup")
         self.logger.info("CHK-STIMULUS-PRIMARY: %s", mm.describe(buf, "primary"))
         self.logger.info("CHK-STIMULUS-BACKUP:  %s", mm.describe(buf, "backup"))
         self.logger.info(
-            "CHK-STIMULUS-BACKUP-SEALED: backup passes payload_hash, every TOC "
-            "image digest, manifest_hash over the TBS, and RSA verification of "
-            "its shipped signature against the dev0 modulus; and the modulus it "
-            "carries hashes to the ROM's compiled-in slot-0 digest -- it is a "
-            "genuinely bootable slot"
+            "CHK-STIMULUS-BACKUP-SEALED: backup passes payload_hash, %s "
+            "manifest_hash over the TBS, and RSA verification of its shipped "
+            "signature against the dev0 modulus; and the modulus it carries hashes "
+            "to the ROM's compiled-in slot-0 digest -- it is a genuinely bootable "
+            "slot",
+            "every TOC image digest," if self.backup_sealed_check_toc
+            else "(TOC arm skipped: the payload is ciphertext offline,)",
         )
         return buf
 

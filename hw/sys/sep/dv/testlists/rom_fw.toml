@@ -14,8 +14,7 @@ schema_version = 1
 # OWNERSHIP: these exercise ROM firmware, not the ROM macro. They are not
 # contracted in hw/sys/sep/dv/docs/SEP_VPLAN.adoc. ROM *hardware*
 # coverage stays in the SEP plans (`sep_boot_rom_lsu_read_test`, the
-# `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
-# names are graded.
+# `sep_rom_uvm_*` backlog).
 #
 # They run in the `rom_fw` group only -- not `cpu`, and not `all`: a CPU-class run
 # is one RTL target (`default`) and these need `rom_boot`, and `all` is the set
@@ -66,14 +65,14 @@ args = [
 
 [[tests]]
 # ROM boot over the REAL OpenTitan SPI host with the SECURE_DMA drain -- the SPI
-# half of the coverage the SMC-SRAM test above leaves open. Same production Boot
+# half of the coverage sep_rom_non_secure_boot_test leaves open. Same production Boot
 # ROM and same bl1_pass_test payload, but here the manifest + payload are fetched
 # over the spi_host from the OcahSpiFlash cocotb BFM rather than staged in SMC
 # SRAM.
 #
 # "dma" names the RX-FIFO drain, which boot_flash.h picks at build time: this
 # builds BOOT_OT_SPI_USE_PIO=0 (SECURE_DMA handshake). The CPU-PIO drain (=1,
-# build_pio/) is a genuinely different datapath with its own entry below,
+# build_pio/) is a genuinely different datapath with its own entry,
 # sep_rom_ot_pio_boot_test, so passing this one proves nothing about that one.
 #
 # +sep_boot_from_spi seeds STRAPS_LO[25] (primary_chiplet) in the SMC responder so
@@ -127,8 +126,8 @@ args = [
 
 [[tests]]
 # Signed sibling of sep_rom_ot_dma_boot_test specifically -- it shares that test's
-# ROM and SECURE_DMA drain, NOT the PIO entry that happens to sit above
-# it here. Same ROM, same OpenTitan SPI transport, but
+# ROM and SECURE_DMA drain, NOT the PIO entry sep_rom_ot_pio_boot_test.
+# Same ROM, same OpenTitan SPI transport, but
 # the flash carries the RSA-3072 PKCS#1 v1.5 signed image (make secure_boot_spi,
 # dev0 key from the tt-boot-manifest submodule, digest pinned in key_digests.c
 # slot 0). That single swap turns on the whole crypto path -- version rollback,
@@ -180,7 +179,7 @@ args = [
 # 0x0 injection would pass against a ROM that gated on the wrong bit, so this
 # shape is required, not arbitrary -- see the test docstring.
 #
-# No +skip_fuse_sense, for the same reason as the boot tests above: the core is
+# No +skip_fuse_sense, for the same reason as the ROM boot entries: the core is
 # not released until sense completes, so bypassing it would change the sequencing
 # the ROM actually sees.
 #
@@ -208,8 +207,9 @@ args = [
 # NOTE ON THE NAME: the name now matches the register. The ROM reads COLD scratch
 # 7 (vector.S), which is what the boot flow specifies.
 #
-# Reuses the boot_rom profile for the same reason as the entry above: the warm branch is the
-# first decision in _start, upstream of everything transport-related.
+# Reuses the boot_rom profile for the same reason as sep_firmware_mbist_fail_test:
+# the warm branch is the first decision in _start, upstream of everything
+# transport-related.
 #
 # Two plusargs carry the whole stimulus and both are required:
 #   +sep_cold_scratch7  seeds the handler address the ROM must dispatch to. The tb
@@ -301,8 +301,9 @@ args = [
 
 [[tests]]
 # Lifecycle overrides a manifest asking for non-secure boot.
-# Same OTP image and same shortcut as the entry above; the difference is entirely
-# in the test, which clears the manifest's secure_boot flag before load.
+# Same OTP image and same shortcut as
+# sep_firmware_enforced_secure_boot_flow_test; the difference is entirely in the
+# test, which clears the manifest's secure_boot flag before load.
 name = "sep_firmware_cntl_secure_boot_flow_test"
 module = "rom_fw.sep_firmware_cntl_secure_boot_flow_test"
 target = "rom_boot"
@@ -433,8 +434,9 @@ args = [
 
 [[tests]]
 # The EXT SRAM is cleared between the primary rejection and the backup
-# fetch. Subclasses the entry above and inherits its stimulus and every one of its
-# failover checks unchanged; what it adds is an SRAM scoreboard.
+# fetch. Subclasses sep_spi_primary_fail_backup_test and inherits its stimulus
+# and every one of its failover checks unchanged; what it adds is an SRAM
+# scoreboard.
 #
 # Same axes and the same two plusargs as its parent, because the scenario is the
 # parent's scenario. No new plusarg, no new firmware profile, no testbench change:
@@ -444,8 +446,8 @@ args = [
 # TWO THINGS A READER SHOULD KNOW BEFORE TREATING A GREEN RUN AS FULL COVERAGE.
 #
 # 1. It covers the EXT SRAM half only, and the reason the other half is
-#    missing is NOT that someone forgot a memset. sep-boot-flow.puml asks for
-#    the SMC SRAM clear only "if SMC SRAM used", and puml:384-392 decides "used"
+#    missing is NOT that someone forgot a memset. The boot flow asks for the SMC
+#    SRAM clear only when SMC SRAM is used, and decides "used"
 #    from the manifest USE_EXT bit. The stimulus side of that is implemented and in
 #    use: the packer emits the bit (bootrom/prod/tools/tt-boot-manifest/src/
 #    pack_images.py) and every image this tree boots is built with it CLEAR
@@ -465,7 +467,7 @@ args = [
 #    INHERITED rather than added here. The failover clear it asserts is 65536 CPU
 #    stores: measured in run 20260829_111100, MANIFEST_ERR=0x00030002 at 2154352 ns
 #    to MANIFEST_BACKUP at 18963904 ns is about 1.05M of that run's ~1.62M clocks.
-#    sep_spi_primary_fail_backup_test above pays the same cost in CYCLES -- it just
+#    sep_spi_primary_fail_backup_test pays the same cost in CYCLES -- it just
 #    does not assert anything about it. What this entry adds on top is the
 #    scoreboard's VPI traffic (one 32768-word fill plus its read-back, and one
 #    32768-word scan).
@@ -536,8 +538,7 @@ args = [
 # MBIST arm of the boot gate, FAILURE case -- the leg neither existing MBIST
 # test reaches. sep_firmware_mbist_fail_test injects 0xFFFFFFFD, which stops on
 # the REPAIR arm before MBIST is ever evaluated, so without this entry the MBIST
-# check added for sep-boot-flow.puml has no testcase that exercises its
-# rejection at all.
+# check has no testcase that exercises its rejection at all.
 #
 # +sep_dft_status=00000012 = mem_repair_success (bit 1) SET so the repair arm
 # passes, mbist_done (bit 4) SET so the gate stops polling and trusts the
@@ -800,7 +801,7 @@ args = [
 # left at full spec strength and therefore fires.
 #
 # Who is right is NOT yet decided, which is exactly why this stays red. The
-# authoritative flow diagram (sep-boot-flow.puml) sides with the ROM: a primary
+# authoritative flow diagram sides with the ROM: a primary
 # with an invalid TOC identifier is a <<Warning>> routed to the (S) backup-retry
 # connector, and only DECRYPTION_KEY_FAILED / DECRYPTION_FAILED are <<Error>> +
 # kill. So the procedure step looks over-generalised -- but that is the procedure
@@ -1892,14 +1893,13 @@ args = [
 # the register channel -- DEMOTE_1 (demote 1, lock 1) and DEMOTE_2 never written
 # (lock 0), against (0, 1) and (0, 1) there.
 #
-# +SECURE_BOOT_DIS DRIVES TWO SURFACES AND BOTH ARE PORTED. It sets
-# boot_arguments.secure_boot = 0 (sep_demotion_uid_checker.py) AND burns the
-# sboot_dis fuse (sep_firmware_demotion_decision_test.sv). Reading only
-# the manifest surface produced the VP half's worst error, retracted as
-# Here the preload
-# sep_efuse_lc_prod_sboot_dis.toml burns the fuse and the manifest is mutated on both
-# fields the packer would have changed: flag_args bit 30 cleared, and signature_type
-# forced to NO_SIGNATURE as manifest_signing.py does.
+# +SECURE_BOOT_DIS DRIVES TWO SURFACES AND BOTH ARE PORTED. It clears the
+# manifest's boot_arguments.secure_boot AND burns the sboot_dis fuse, so a
+# stimulus that drove the manifest surface alone would leave the fuse unburned.
+# Here the preload sep_efuse_lc_prod_sboot_dis.toml burns the fuse and the
+# manifest is mutated on both fields the packer would have changed: flag_args
+# bit 30 cleared, and signature_type forced to NO_SIGNATURE as
+# manifest_signing.py does.
 #
 # THE TWO SURFACES ARE COUPLED, which is what stops the port passing trivially: an unsigned
 # primary can only boot because the fuse is burned (manifest_load.c precedes the
@@ -1913,7 +1913,7 @@ args = [
 # rather than silently start needing the shortcut.
 #
 # SCOPE, disclosed, exactly as for the PROD_END sibling: the DECISION only, not
-# the KBKDF/SKS/UID half of sep_demotion_uid_checker.py.
+# the KBKDF/SKS/UID derivations the decision also feeds.
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
 target = "rom_boot"
@@ -1992,7 +1992,8 @@ args = [
 # The selector bit is the whole stimulus; the ordering argument below is what
 # this entry adds on top of a bare "demotion not selected" expectation.
 #
-# SCOPE, disclosed, exactly as for the sibling above: the DECISION only.
+# SCOPE, disclosed, exactly as for
+# sep_firmware_demotion_decision_no_flag_prod_end_test: the DECISION only.
 #
 # Needs +sep_crypto_edn_force: PROD_END enforces secure boot (lifecycle.c).
 name = "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test"
@@ -2014,18 +2015,18 @@ args = [
 # PROD, selector bit 17 CLEAR, BL1 demotion flag SET -> the flag is IGNORED.
 #
 # Outcome O5, and a NEGATIVE CONTROL. +AUTH_FLAG_0 sets usage_constraints.flags
-# bit 0 while the selector stays clear, so rom_main.c does not take the first
-# arm never runs: the request is discarded writes DEMOTE_1
+# bit 0 while the selector stays clear, so the selector-gated arm in rom_main.c
+# never runs and the flag is never read: the ROM falls through to the
+# BL2-deferred arm and writes DEMOTE_1
 # NOT demoted but locked. A ROM that read flags[0] without first testing the
 # selector bit, or that ORed the two, would write demote=1 and fail here. No
 # other member can catch that: R3's O2a sets both, so its demote=1 is correct
 # either way, and the PROD_END rows never reach.
 #
 # +SECURE_BOOT_DIS DRIVES TWO SURFACES AND BOTH ARE PORTED -- the sboot_dis eFuse
-# (sep_firmware_demotion_decision_test.sv) and the manifest
-# (sep_demotion_uid_checker.py, which the packer turns into flag_args bit
-# 30 cleared AND signature_type = NO_SIGNATURE, manifest_signing.py).
-# Reading only the manifest surface produced the VP half's worst error, retracted
+# and the manifest, which the packer turns into flag_args bit
+# 30 cleared AND signature_type = NO_SIGNATURE (manifest_signing.py).
+#
 # The two are COUPLED: an unsigned
 # primary boots only because manifest_load.c short-circuits before the PROD
 # rule, so dropping the fuse would refuse the primary at
@@ -2073,7 +2074,8 @@ args = [
 # the base rather than lowered there.
 #
 # +AUTH_FLAG_0 is also set and is ignored, for the same reason as in the O5
-# sibling. +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above.
+# sibling. +SECURE_BOOT_DIS is ported on both surfaces; see
+# sep_firmware_demotion_decision_auth_flag_0_prod_test.
 #
 # No +sep_crypto_edn_force: secure boot is off.
 #
@@ -2112,12 +2114,13 @@ args = [
 # demoted" here versus "never written" in the O4 sibling differ on exactly that
 # bit.
 #
-# +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above. No
+# +SECURE_BOOT_DIS is ported on both surfaces; see
+# sep_firmware_demotion_decision_auth_flag_0_prod_test. No
 # +sep_crypto_edn_force: secure boot is off.
 #
-# COLLAPSE NOTE: unauth_flag_30_prod_sel_bit_set (
-# batch) drives the same three demotion inputs and differs only on the
-# skip_SHA256 path, which is not a demotion input, so it is covered-by-O3a.
+# COLLAPSE NOTE: unauth_flag_30_prod_sel_bit_set drives the same three demotion
+# inputs and differs only on the skip_SHA256 path, which is not a demotion
+# input, so it is covered-by-O3a.
 #
 # SCOPE, disclosed, as for every member of this group: the DECISION only.
 name = "sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test"
@@ -2152,7 +2155,8 @@ args = [
 # every non-PROD_END arm (rom_main.c), so this entry requires BL2_DEMOTE_DEC=1
 # and forbids BL2_DEMOTE_DEC=0, separating the two.
 #
-# +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above. No
+# +SECURE_BOOT_DIS is ported on both surfaces; see
+# sep_firmware_demotion_decision_auth_flag_0_prod_test. No
 # +sep_crypto_edn_force: secure boot is off.
 #
 # SCOPE, disclosed, as for every member of this group: the DECISION only.
@@ -2248,8 +2252,8 @@ args = [
 ]
 
 [[tests]]
-# The mirror of the entry above: the BACKUP carries the bad
-# manifest_identifier, both slots are refused and the ROM halts.
+# The mirror of sep_firmware_primary_manifest_identifier_test: the BACKUP
+# carries the bad manifest_identifier, both slots are refused and the ROM halts.
 #
 # The failover trigger is the primary's manifest_length, NOT its identifier. The
 # family's usual identifier trigger would give both slots the same BAD_MAGIC
@@ -2312,8 +2316,9 @@ args = [
 ]
 
 [[tests]]
-# The mirror of the entry above: the BACKUP enables the
-# chiplet_id constraint, both slots are refused and the ROM halts.
+# The mirror of sep_firmware_manifest_primary_invalid_chiplet_id_test: the
+# BACKUP enables the chiplet_id constraint, both slots are refused and the ROM
+# halts.
 #
 # Reaching the backup by breaking the primary's payload TOC version does not work
 # here: this ROM validates the TOC inside the slot attempt and prints MANIFEST_OK
@@ -2379,8 +2384,9 @@ args = [
 ]
 
 [[tests]]
-# The mirror of the entry above: the BACKUP enables the
-# package_id constraint, both slots are refused and the ROM halts. The
+# The mirror of sep_firmware_manifest_primary_invalid_package_id_test: the
+# BACKUP enables the package_id constraint, both slots are refused and the ROM
+# halts. The
 # failover-trigger adaptation is the one described on
 # sep_firmware_manifest_backup_invalid_chiplet_id_test.
 #
@@ -2440,8 +2446,8 @@ args = [
 ]
 
 [[tests]]
-# The mirror of the entry above: the BACKUP does not permit the
-# live lifecycle, both slots are refused and the ROM halts.
+# The mirror of sep_firmware_manifest_primary_lc_state_failure_test: the BACKUP
+# does not permit the live lifecycle, both slots are refused and the ROM halts.
 #
 # Unlike the two device-id backup scenarios this one needs no special trigger:
 # corrupting the primary's manifest_identifier reaches the backup, which is
@@ -2481,10 +2487,10 @@ args = [
 # sep_firmware_primary_manifest_identifier_test.
 #
 # A pass here does NOT cover the version-and-length relationship field by field;
-# the version-and-length family is where that is graded. When its
-# sep_firmware_primary_manifest_major_version_invalid_test exists it will plant
-# this same defect with this same code, and the ordered backup chain is then the
-# only thing separating the two.
+# the version-and-length family is where that is graded.
+# sep_firmware_primary_manifest_major_version_invalid_test plants this same
+# defect with this same code, and the ordered backup chain is the only thing
+# separating the two.
 #
 # Needs +sep_crypto_edn_force: two modexps' worth of entropy is not needed, but
 # the one the backup runs is.
@@ -2539,7 +2545,9 @@ args = [
 #
 # The major-version rule is pinned rather than assumed: the backup's identifier,
 # minor version and length are all held at their VALID values, so BAD_MAGIC and
-# BAD_LENGTH cannot be the verdict. The sibling entry below is the same three
+# BAD_LENGTH cannot be the verdict.
+# sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test
+# is the same three
 # fields with major restored to 1, and it BOOTS -- the pair is a differential on
 # one field.
 #
@@ -2622,8 +2630,8 @@ args = [
 ]
 
 [[tests]]
-# The mirror of the entry above: the BACKUP's TOC is relabelled,
-# both slots are refused and the ROM halts.
+# The mirror of sep_firmware_manifest_primary_missing_sepbl1_test: the BACKUP's
+# TOC is relabelled, both slots are refused and the ROM halts.
 #
 # The failover trigger is the primary's package_id usage constraint rather than
 # the family's usual identifier corruption. Its code (0x00030013) differs
@@ -2942,8 +2950,8 @@ args = [
 # THE COLLAPSE NOTE ON ..._auth_flag_0_prod_test IS WRONG FOR THIS ROW. It predicts
 # that the two "differ only in the artefact". The three input bits do match, but
 # this row's reference entry carries no +SECURE_BOOT_DIS (+LC_STATE_PROD and
-# nothing else), and sep_demotion_uid_checker.py sets boot_arguments.secure_boot=1
-# on the else branch of that test. The primary is therefore genuinely signed and
+# nothing else), so boot_arguments.secure_boot stays 1 on that branch. The
+# primary is therefore genuinely signed and
 # PROD enforces secure boot, so RSA_VERIFY_START / SIG_VALID / CRYPTO_VALIDATE_OK
 # are REQUIRED here and FORBIDDEN there, and SBOOT_OFF / FUSE: SBOOT_DIS: 1 are the
 # inverse. This is the only O5 whose decision follows a full RSA-3072 chain.
@@ -3146,4 +3154,687 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_invalid.toml",
+]
+
+[[tests]]
+# The major-version rule on the PRIMARY. The primary declares major 2 with
+# minor 0 and manifest_length 1184 both left VALID, so BAD_VERSION is the only
+# verdict validate_manifest_header can reach for it; the primary-side rejection
+# returns into the retry loop and the untouched BACKUP boots. Both neighbouring
+# structural codes are forbidden, because the accepted backup emits no
+# MANIFEST_ERR= of its own and this run therefore holds exactly one.
+#
+# The ROM prints no token for BAD_VERSION, so the error code plus its position and
+# count inside the primary's own attempt carry the attribution, and the served
+# version-and-length bytes are the stimulus-side half.
+#
+# Needs +sep_crypto_edn_force: the recovering backup runs a full modexp.
+name = "sep_firmware_primary_manifest_major_version_invalid_test"
+module = "rom_fw.sep_firmware_primary_manifest_major_version_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# The minor-0 arm ACCEPTED on the PRIMARY. The primary declares the shipped
+# v1.0 with manifest_length exactly sizeof(manifest_t) and boots; the backup slot is
+# never read, and no MANIFEST_ERR= of any code appears. The correct length IS the
+# shipped value, so the three fields are asserted rather than written, and the flash
+# BFM must have served exactly those bytes.
+#
+# The device-side half is the ABSENCE of a read beginning at primary_base + 1184:
+# load_manifest_extra() returns without reading when manifest_length does not exceed
+# the header, so its positive counterpart is the
+# ..._nonzero_length_small_correct entry, where 1188 forces such a read.
+#
+# Needs +sep_crypto_edn_force: the accepted primary runs a full modexp.
+name = "sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test"
+module = "rom_fw.sep_firmware_primary_manifest_major_version_valid_minor_0_length_correct_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "version", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# The minor-0 arm REFUSED on the PRIMARY. The primary declares v1.0 with
+# manifest_length 1184 + 4: 4-byte aligned and inside the range the minor != 0 arm
+# accepts, so only the exact-match rule can refuse it. The primary-side rejection
+# returns into the retry loop and the untouched backup boots.
+#
+# This ROM returns MANIFEST_ERR_BAD_LENGTH for every length arm and prints no token
+# for any of them, so this row cannot be separated from its two length siblings on
+# the console. The served version-and-length bytes are the run-time discriminator.
+#
+# Needs +sep_crypto_edn_force: the recovering backup runs a full modexp.
+name = "sep_firmware_primary_manifest_major_version_valid_minor_0_length_incorrect_test"
+module = "rom_fw.sep_firmware_primary_manifest_major_version_valid_minor_0_length_incorrect_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# The 4-BYTE ALIGNMENT arm on the PRIMARY. The primary declares v1.1 with
+# manifest_length sizeof(manifest_t) + 1 = 1185: INSIDE the range the minor != 0 arm
+# accepts, so the range rule passed it, and misaligned, so only the alignment rule
+# can refuse it. The untouched backup boots. This is the reference's own stimulus for
+# this row, and the only length row whose arm needs no appeal to a bound.
+#
+# 1185 exceeds sizeof(manifest_t), so the absence of a read beginning at
+# primary_base + 1184 is device-side evidence the header was refused before
+# load_manifest_extra() could run. Same error code as the other length rows; see
+# sep_firmware_primary_manifest_major_version_valid_minor_0_length_incorrect_test.
+#
+# Needs +sep_crypto_edn_force: the recovering backup runs a full modexp.
+name = "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test"
+module = "rom_fw.sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# The minor != 0 arm ACCEPTED on the PRIMARY. The primary -- re-signed as v1.1
+# with manifest_length 1188 -- is accepted and boots, and the backup slot is never
+# read. The declared length exceeds sizeof(manifest_t), so load_manifest_extra() must
+# issue a separate 4-byte flash read at primary_base + 1184; the testcase requires
+# that transaction from the BFM record, which is the only channel that can see it.
+#
+# This is the primary-side pair partner for both the minor-0 row (1188 refused at
+# minor 0, the minor-version discriminator) and the alignment row (1185 refused at
+# minor 1, the alignment discriminator). The range rule's LOWER bound is exercised
+# by no row in this group and is recorded as a coverage gap.
+#
+# Needs +sep_crypto_edn_force: the accepted primary runs a full modexp.
+name = "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_correct_test"
+module = "rom_fw.sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_correct_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "version", "cpu", "subsystem", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# The minor != 0 arm's UPPER BOUND on the PRIMARY. The primary declares v1.1
+# with manifest_length MANIFEST_MAX_SIZE + 4 = 2052, aligned and above the bound, so
+# only the range rule's upper limit can refuse it; the untouched backup boots. 2052
+# exceeds sizeof(manifest_t), so the absence of a read beginning at
+# primary_base + 1184 is device-side evidence the header was refused before
+# load_manifest_extra() could run.
+#
+# Same error code as the other length rows; see the minor-0 length entries.
+#
+# Needs +sep_crypto_edn_force: the recovering backup runs a full modexp.
+name = "sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test"
+module = "rom_fw.sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_large_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# The 4-BYTE ALIGNMENT arm on the BACKUP. The BACKUP declares v1.1 with
+# manifest_length sizeof(manifest_t) + 1 = 1185: inside the range the minor != 0 arm
+# accepts, and misaligned, so only the alignment rule can refuse it. Both slots are
+# refused and the ROM halts. The accepted 1188 backup sibling is the aligned half of
+# that pair.
+#
+# Same error code as the other length rows, and no token for either, so the served
+# version-and-length bytes are the run-time discriminator.
+#
+# No +sep_crypto_edn_force: neither slot reaches manifest_crypto_validate.
+name = "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test"
+module = "rom_fw.sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_incorrect_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+]
+
+[[tests]]
+# payload_hashed_length = 0 on the PRIMARY. The only BAD_LENGTH arm in
+# validate_manifest_header that prints its own token, and it prints the offending
+# VALUE, so the attribution is ROM-side rather than stimulus-side: the testcase
+# requires PAYLOAD_HASHED_LEN_BAD= exactly once inside the primary's attempt and the
+# echoed value to equal the planted 0. The untouched backup boots.
+#
+# Zero is the reference's own draw, and the only one of its five that reaches this
+# ROM's bound with the verdict this row is named for; it is also the arm that matters,
+# since verify_payload_hash() returns OK for a zero length. The payload stays
+# non-encrypted, unlike the reference's backup config -- see the module docstring.
+#
+# The field sits inside the signed TBS, so manifest_hash is recomputed; the signature
+# is left stale because the bound is checked upstream of both the integrity check and
+# rsa_3072_verify.
+#
+# Needs +sep_crypto_edn_force: the recovering backup runs a full modexp.
+name = "sep_firmware_primary_payload_invalid_payload_hash_length_test"
+module = "rom_fw.sep_firmware_primary_payload_invalid_payload_hash_length_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# payload_hashed_length = 0 on the BACKUP. Both slots are refused and the ROM
+# halts. Like its primary-side sibling this row is separable on the console alone --
+# PAYLOAD_HASHED_LEN_BAD= with the planted value -- so unlike every
+# version-and-length row it needs no stimulus-side discriminator.
+#
+# No +sep_crypto_edn_force: neither slot reaches manifest_crypto_validate.
+name = "sep_firmware_backup_payload_invalid_payload_hash_length_test"
+module = "rom_fw.sep_firmware_backup_payload_invalid_payload_hash_length_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "error", "cpu", "subsystem", "failover"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+]
+
+# ############################################################################
+# TOC major version and image count: the two SILENT arms of
+# validate_manifest_payload (bootrom/prod/src/manifest_load.c). Neither prints a
+# token of its own, so every row below is graded on its error code
+# (0x00030006 for the version, 0x00030010 for the count), on the position of the
+# rejection inside its slot's attempt, and on the bytes the flash device served
+# at the field address. Each row also FORBIDS the sibling arm's code, so a row
+# cannot pass on the other family's verdict. See cocotb/tests/rom_fw/sep_toc_defect.py.
+#
+# Two images are used, and which one a row loads is the encrypted/non-encrypted
+# axis: secure_boot.bin has encrypted_payload = 0 on BOTH slots, encrypted_boot.bin
+# has 1 on both. The encrypted rows plant the defect in the DECRYPTED payload and
+# re-encrypt, because the ROM parses the TOC only after decrypt_payload; the
+# encrypted image also needs the CLASS_KEY fuse preload, or decryption produces
+# garbage and the run dies one arm earlier at BAD_TOC_ID.
+#
+# Every row needs +sep_crypto_edn_force. The primary rows run two RSA-3072
+# modexps (the mutated primary's signature is re-sealed and verifies, then the
+# recovering backup's); the encrypted rows additionally drive AES, which is EDN
+# client 0. Budget the primary rows like sep_decryption_failure_terminal_test.
+# ############################################################################
+
+[[tests]]
+# Primary encrypted TOC major_version = 2. Primary decrypts, its TOC is refused,
+# the backup decrypts and boots. DECRYPT_START/DECRYPT_OK twice each.
+name = "sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test"
+module = "rom_fw.sep_firmware_primary_encrypted_payload_toc_version_major_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup encrypted TOC major_version = 2. Primary refused on its magic word, so
+# only the backup decrypts: DECRYPT_START/DECRYPT_OK once each. Terminal.
+name = "sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test"
+module = "rom_fw.sep_firmware_backup_encrypted_payload_toc_version_major_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary plaintext TOC major_version = 2. DECRYPT_START is forbidden, which is
+# this row's evidence that it ran the non-encrypted arm.
+name = "sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test"
+module = "rom_fw.sep_firmware_primary_non_encrypted_payload_toc_version_major_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup plaintext TOC major_version = 2. Terminal; DECRYPT_START forbidden.
+name = "sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test"
+module = "rom_fw.sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary encrypted TOC image_count = 257, one past the n > 256 bound.
+# TOC_REGION_OOB= is forbidden, which asserts the count bound ran first.
+name = "sep_firmware_primary_encrypted_invalid_payload_image_count_test"
+module = "rom_fw.sep_firmware_primary_encrypted_invalid_payload_image_count_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup encrypted TOC image_count = 257. Terminal.
+name = "sep_firmware_backup_encrypted_invalid_payload_image_count_test"
+module = "rom_fw.sep_firmware_backup_encrypted_invalid_payload_image_count_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary plaintext TOC image_count = 257.
+name = "sep_firmware_primary_non_encrypted_invalid_payload_image_count_test"
+module = "rom_fw.sep_firmware_primary_non_encrypted_invalid_payload_image_count_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup plaintext TOC image_count = 257. Terminal.
+name = "sep_firmware_backup_non_encrypted_invalid_payload_image_count_test"
+module = "rom_fw.sep_firmware_backup_non_encrypted_invalid_payload_image_count_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary encrypted TOC entry 1 offset 0x500, below entry 0's end 0x1730.
+# IMAGE_ORDER_BAD idx=0x00000001; the backup decrypts and boots.
+name = "sep_firmware_primary_encrypted_payload_images_out_of_order_test"
+module = "rom_fw.sep_firmware_primary_encrypted_payload_images_out_of_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup encrypted TOC entry 1 offset 0x500, below entry 0's end. Terminal.
+name = "sep_firmware_backup_encrypted_payload_images_out_of_order_test"
+module = "rom_fw.sep_firmware_backup_encrypted_payload_images_out_of_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary plaintext TOC entry 1 offset 0x500. DECRYPT_START is forbidden, which
+# is this row's evidence that it ran the non-encrypted arm.
+name = "sep_firmware_primary_non_encrypted_payload_images_out_of_order_test"
+module = "rom_fw.sep_firmware_primary_non_encrypted_payload_images_out_of_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup plaintext TOC entry 1 offset 0x500. Terminal; DECRYPT_START forbidden.
+name = "sep_firmware_backup_non_encrypted_payload_images_out_of_order_test"
+module = "rom_fw.sep_firmware_backup_non_encrypted_payload_images_out_of_order_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary encrypted TOC image 0 length 0x72D, 1 modulo 4.
+# IMAGE_LEN_ALIGN idx=0x00000000; the backup decrypts and boots.
+name = "sep_firmware_primary_encrypted_invalid_payload_image_size_test"
+module = "rom_fw.sep_firmware_primary_encrypted_invalid_payload_image_size_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup encrypted TOC image 0 length 0x72D, 1 modulo 4. Terminal.
+name = "sep_firmware_backup_encrypted_invalid_payload_image_size_test"
+module = "rom_fw.sep_firmware_backup_encrypted_invalid_payload_image_size_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary plaintext TOC image 0 length 0x72D. DECRYPT_START forbidden.
+name = "sep_firmware_primary_non_encrypted_invalid_payload_image_size_test"
+module = "rom_fw.sep_firmware_primary_non_encrypted_invalid_payload_image_size_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup plaintext TOC image 0 length 0x72D. Terminal; DECRYPT_START forbidden.
+name = "sep_firmware_backup_non_encrypted_invalid_payload_image_size_test"
+module = "rom_fw.sep_firmware_backup_non_encrypted_invalid_payload_image_size_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary encrypted TOC image 0 offset 240, inside the 248-byte TOC region.
+# IMAGE_ORDER_BAD idx=0x00000000; the backup decrypts and boots.
+name = "sep_firmware_primary_encrypted_payload_image_exceeds_bound_test"
+module = "rom_fw.sep_firmware_primary_encrypted_payload_image_exceeds_bound_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup encrypted TOC image 0 offset 240, inside the TOC region. Terminal.
+name = "sep_firmware_backup_encrypted_payload_image_exceeds_bound_test"
+module = "rom_fw.sep_firmware_backup_encrypted_payload_image_exceeds_bound_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary plaintext TOC image 0 offset 240. DECRYPT_START is forbidden, which
+# is this row's evidence that it ran the non-encrypted arm.
+name = "sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test"
+module = "rom_fw.sep_firmware_primary_non_encrypted_payload_image_exceeds_bound_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup plaintext TOC image 0 offset 240. Terminal; DECRYPT_START forbidden.
+name = "sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test"
+module = "rom_fw.sep_firmware_backup_non_encrypted_payload_image_exceeds_bound_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary encrypted TOC payload_length 0x2000 against the manifest's 5952.
+# TOC_PLEN_MISMATCH=; the backup decrypts and boots.
+name = "sep_firmware_primary_encrypted_toc_payload_size_mismatch_test"
+module = "rom_fw.sep_firmware_primary_encrypted_toc_payload_size_mismatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup encrypted TOC payload_length 0x2000 against the manifest's 5952. Terminal.
+name = "sep_firmware_backup_encrypted_toc_payload_size_mismatch_test"
+module = "rom_fw.sep_firmware_backup_encrypted_toc_payload_size_mismatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "encrypted", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Primary plaintext TOC payload_length 0x2000 against the manifest's 5936.
+# DECRYPT_START is forbidden.
+name = "sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test"
+module = "rom_fw.sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
+]
+
+[[tests]]
+# Backup plaintext TOC payload_length 0x2000 against the manifest's 5936. Terminal.
+name = "sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test"
+module = "rom_fw.sep_firmware_backup_non_encrypted_toc_payload_size_mismatch_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 14400
+tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "error", "failover", "crypto", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
+  "+sep_crypto_edn_force",
 ]

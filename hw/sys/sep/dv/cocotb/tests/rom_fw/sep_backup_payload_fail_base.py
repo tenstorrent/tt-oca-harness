@@ -65,7 +65,13 @@ _CRYPTO_CHAIN = ("RSA_VERIFY_START", "SIG_VALID", "PLD_HASH_OK",
 class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
     """Primary refused; backup passes crypto, fails its payload, ROM halts."""
 
-    # The arm's own console token, e.g. NO_BL1_IMAGE.
+    # The arm's own console token, e.g. NO_BL1_IMAGE, or "" for an arm that prints
+    # none. Two arms of validate_manifest_payload return silently -- the TOC major
+    # version and the image count (manifest_load.c) -- so for those the error code
+    # and the ordering carry the whole ROM-side attribution, and the member is
+    # required to compensate with device-side evidence instead. A member that HAS
+    # a token must still declare it: the check below is unchanged for every one
+    # that does.
     backup_defect_marker: str = ""
     expected_error: int = 0
     primary_expected_error: int = 0
@@ -85,11 +91,26 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
             f"indistinguishable on the console, so nothing would attribute the "
             f"terminal verdict to the backup"
         )
-        assert self.backup_defect_marker, (
-            "subclass must declare backup_defect_marker: the payload arm prints a "
-            "token of its own, and without it the error code alone would not say "
-            "WHICH payload check refused the slot"
-        )
+        # Dropping the token is only allowed in exchange for evidence that
+        # replaces it. A member whose ROM arm is silent must add checks of its
+        # own -- the error codes of the arms it could be confused with, and
+        # something the DUT rather than the ROM produced -- so the opt-out cannot
+        # become a softer grade that a later member takes for free.
+        if not self.backup_defect_marker:
+            assert type(self)._check is not sep_backup_payload_fail_base._check, (
+                f"{type(self).__name__} declares no backup_defect_marker and adds "
+                f"no checks of its own. The silent payload arms leave only the "
+                f"error code, which several arms could produce; a member here must "
+                f"override _check to forbid the codes it could be confused with "
+                f"and to assert what the flash device served"
+            )
+            neighbours = [m for m in self.extra_forbidden
+                          if m.startswith("MANIFEST_ERR=")]
+            assert neighbours, (
+                f"{type(self).__name__} declares no backup_defect_marker and "
+                f"forbids no neighbouring MANIFEST_ERR= code, so a rejection by a "
+                f"different payload arm would satisfy this run"
+            )
 
         # Guard the guards: a dark console makes every marker check trivially satisfied.
         assert retired, "core retired no instructions; the ROM never ran"
@@ -157,15 +178,19 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
                                       zip(_CRYPTO_CHAIN, positions)))
 
         # CHK-DEFECT: the backup was refused by the payload arm, for the planted
-        # reason, after its crypto chain passed and inside its own attempt.
-        i_defect = fd.assert_slot_attributed(console, self.backup_defect_marker,
-                                             after=positions[-1], before=i_all)
-        fd.assert_slot_attributed(console, backup_err, after=i_defect,
-                                  before=i_all)
-        log.info("CHK-BACKUP-DEFECT: %s@%d then %s, both after "
-                 "CRYPTO_VALIDATE_OK@%d and inside the backup attempt (..%d)",
-                 self.backup_defect_marker, i_defect, backup_err, positions[-1],
-                 i_all)
+        # reason, after its crypto chain passed and inside its own attempt. An arm
+        # that prints no token of its own is graded on the error code alone, which
+        # still has to sit after CRYPTO_VALIDATE_OK -- that is what places the
+        # rejection downstream of the crypto chain rather than inside it.
+        after = positions[-1]
+        if self.backup_defect_marker:
+            after = fd.assert_slot_attributed(console, self.backup_defect_marker,
+                                              after=positions[-1], before=i_all)
+        fd.assert_slot_attributed(console, backup_err, after=after, before=i_all)
+        log.info("CHK-BACKUP-DEFECT: %s then %s, both after CRYPTO_VALIDATE_OK@%d "
+                 "and inside the backup attempt (..%d)",
+                 self.backup_defect_marker or "(this arm prints no token)",
+                 backup_err, positions[-1], i_all)
 
         # CHK-NOT-A-CRYPTO-FAILURE: the run must not be confused with the sibling
         # family whose backup dies inside manifest_crypto_validate. CRYPTO_FAIL= is

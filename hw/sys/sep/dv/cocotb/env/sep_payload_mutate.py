@@ -53,6 +53,7 @@ import base64
 import hashlib
 from pathlib import Path
 
+from env import sep_aes128cbc as aes
 from env import sep_manifest_mutate as mm
 
 # ── Manifest fields this module touches (manifest.h) ──────────────────
@@ -68,8 +69,24 @@ OFF_USAGE_FLAGS = 92            # uint32, usage_constraints.flags (16 + 76)
 TOC_MAGIC = b"PTOC"             # TOC_HEADER_MAGIC_WORD 0x434f5450
 TOC_HDR_SIZE = 32
 TOC_ENTRY_SIZE = 216
+TOC_OFF_MAJOR_VERSION = 4       # uint16 in the header
+TOC_OFF_MINOR_VERSION = 6       # uint16 in the header
 TOC_OFF_PAYLOAD_LENGTH = 8      # uint64 in the header
 TOC_OFF_IMAGE_COUNT = 16        # uint64 in the header
+
+# manifest.h -- the only major version validate_manifest_payload accepts.
+TOC_MAJOR_VERSION = 1
+# manifest_load.c -- image_count must satisfy 0 < n <= 256.
+TOC_MAX_IMAGE_COUNT = 256
+
+# AES parameters of the encrypted image, verbatim from
+# ``bootrom/prod/configs/encrypted_boot_test.yaml``. The DERIVED key is what the
+# cipher takes; the ROM reaches the same 16 bytes by running
+# ``kbkdf_hmac_sha256`` over the CLASS_KEY fuse and the manifest's
+# ``encryption_kdf_input`` (``manifest_crypto.c``), which is why a testcase using
+# these must also preload the matching fuse image.
+ENC_DERIVED_KEY = bytes.fromhex("a6a3a5b9ae7a9e141484ab2ba268cb41")
+ENC_IV = bytes.fromhex("00112233445566778899aabbccddeeff")
 
 # Field offsets within a toc_entry.
 E_TYPE = 0
@@ -405,6 +422,57 @@ def reseal(buf: bytearray, slot: str) -> None:
 
 
 # ── the mutations ────────────────────────────────────────────────────────────
+def set_payload_hashed_length(buf: bytearray, slot: str, value: int) -> int:
+    """Set ``payload_hashed_length`` past its bound, so the slot is refused.
+
+    ``validate_manifest_header`` (``manifest_load.c``) demands
+    ``0 < payload_hashed_length <= payload_length`` and echoes the offending value
+    as ``PAYLOAD_HASHED_LEN_BAD=``, then returns ``MANIFEST_ERR_BAD_LENGTH``. Both
+    out-of-bound classes are reachable and they mean different things:
+
+      * ``value == 0`` asks the ROM to skip the payload digest entirely --
+        ``verify_payload_hash`` returns OK for a zero length, which is the hole the
+        bound exists to close;
+      * ``value > payload_length`` declares a hashed region larger than the payload
+        that exists, which is the malformed-length class.
+
+    The field sits at offset 584, INSIDE the TBS (``manifest.h``), so
+    ``manifest_hash`` is recomputed. The signature is deliberately NOT renewed: the
+    bound is checked in ``validate_manifest_header``, upstream of both
+    ``manifest_check_integrity`` and ``rsa_3072_verify``, so the stale signature is
+    never examined. Re-hashing anyway is what keeps the declared length the only
+    defect rather than one of two.
+
+    ``verify_sealed`` cannot run afterwards -- it reproduces the very bound this
+    breaks -- so the anchoring pass runs on the untouched slot first. Returns the
+    previous value.
+    """
+    verify_sealed(buf, slot)
+    base = mm.slot_base(slot)
+    was = payload_hashed_length(buf, slot)
+    p_len = manifest_payload_length(buf, slot)
+    if not 0 <= value <= 0xFFFF_FFFF_FFFF_FFFF:
+        raise ValueError("payload_hashed_length is 64 bits")
+    if value == was:
+        raise ValueError(
+            f"{slot} payload_hashed_length is already {value}; that is not a mutation"
+        )
+    if 0 < value <= p_len:
+        raise ValueError(
+            f"payload_hashed_length {value} satisfies 0 < value <= payload_length "
+            f"({p_len}), so validate_manifest_header would ACCEPT it; this mutator "
+            f"exists to violate that bound"
+        )
+    _put_u64(buf, base + OFF_PAYLOAD_HASHED_LEN, value)
+    mm.rehash(buf, slot)
+    if payload_hashed_length(buf, slot) != value:
+        raise AssertionError(
+            f"{slot} payload_hashed_length is {payload_hashed_length(buf, slot)} "
+            f"after the write, expected {value}; the mutation did not land"
+        )
+    return was
+
+
 def set_bl1_entry_point(buf: bytearray, slot: str, value: int | None = None) -> int:
     """Make BL1's ``entry_point`` violate ``entry_point < length``.
 
@@ -696,6 +764,539 @@ def bl1_sram_source(buf, slot: str) -> int:
                                      base + OFF_BOOT_PAYLOAD_OFFSET + 8]),
                            "little", signed=True)
     return SEP_SRAM_BASE + p_off + bl1_field(buf, slot, E_OFFSET)
+
+
+# ── TOC header mutations, plaintext or encrypted ─────────────────────────────
+def toc_plaintext(buf, slot: str) -> bytes:
+    """The payload bytes ``validate_manifest_payload`` will actually parse.
+
+    For a plaintext slot that is the payload itself. For an encrypted one the
+    stored bytes are ciphertext and the ROM only reaches the TOC after
+    ``decrypt_payload`` (``manifest_load.c`` states the ordering: the TOC is read
+    LAST because an encrypted payload's TOC is itself ciphertext), so the same
+    view has to be obtained here by decrypting. ``verify_roundtrip`` anchors that
+    decryption against the packer's own bytes.
+
+    WHY ``payload_hashed_length`` IS THE RIGHT CIPHERTEXT LENGTH, even though the
+    ROM hands ``payload_length`` to the AES engine (``manifest_crypto.c``). For an
+    ENCRYPTED slot the two are required to be equal: ``validate_manifest_header``
+    (``manifest_load.c``) refuses ``h_len != p_len`` on an encrypted payload as
+    ``ENC_HASHED_LEN_PARTIAL``. So on any image the ROM can accept the two reads
+    name the same bytes, and an image where they differ is refused before the TOC
+    is parsed at all, so this view would never be consulted for it.
+    """
+    p = payload_base(buf, slot)
+    if not is_encrypted(buf, slot):
+        return read_bytes(buf, p, manifest_payload_length(buf, slot))
+    ct = read_bytes(buf, p, payload_hashed_length(buf, slot))
+    return aes.verify_roundtrip(ENC_DERIVED_KEY, ENC_IV, ct)
+
+
+def edit_toc(buf: bytearray, slot: str, mutate, *,
+             post_check_toc: bool = False,
+             new_hashed_length: int | None = None) -> None:
+    """Apply ``mutate`` to the PLAINTEXT payload view and re-seal the slot.
+
+    The single path by which every TOC mutation in this module reaches the packed
+    bytes, for both payload kinds:
+
+      * plaintext slot -- ``mutate`` edits the flash bytes themselves, written
+        back in place;
+      * encrypted slot -- the payload is decrypted, ``mutate`` edits the recovered
+        plaintext, and the whole payload is re-encrypted. CBC chains forward, so
+        every block from the edited one onwards changes and re-encrypting the
+        entire payload is the only correct form; ``mutate`` must not change the
+        plaintext LENGTH, or the ciphertext length and its PKCS#7 padding move.
+
+    ``mutate`` receives the plaintext as a ``bytearray`` and edits it in place. It
+    sees image bodies as well as TOC metadata, which is what lets a mutator that
+    relocates or resizes an image recompute that image's digest over the bytes the
+    ROM will actually hash.
+
+    Re-sealing is obligatory either way. ``payload_hash`` covers the stored bytes
+    (``manifest_crypto.c`` verifies it over the CIPHERTEXT, before decryption), so
+    an un-resealed edit dies at ``PLD_HASH_MISMATCH`` and the check under test is
+    never reached. ``new_hashed_length`` is applied between the payload write and
+    the re-seal, for a mutator that grows the TOC region and must extend
+    ``payload_hash`` to keep the new metadata authenticated.
+
+    ``post_check_toc`` grades the result with :func:`verify_sealed`'s TOC arm. It
+    is off by default because an encrypted payload has no offline TOC to parse and
+    because some mutations deliberately produce a TOC that arm cannot enumerate.
+    """
+    verify_sealed(buf, slot, check_toc=not is_encrypted(buf, slot))
+    verify_signing_key(buf, slot)
+
+    p = payload_base(buf, slot)
+    plain = bytearray(toc_plaintext(buf, slot))
+    if bytes(plain[:4]) != TOC_MAGIC:
+        raise AssertionError(
+            f"{slot} payload does not start with {TOC_MAGIC!r} "
+            f"(got {bytes(plain[:4])!r}); the bytes this mutation is about to edit "
+            f"are not a TOC header"
+        )
+    before = bytes(plain)
+    mutate(plain)
+    if len(plain) != len(before):
+        raise AssertionError(
+            f"the mutation changed the {slot} plaintext payload from {len(before)} "
+            f"to {len(plain)} bytes; every bound the ROM checks is computed from the "
+            f"declared payload_length, which this helper does not move"
+        )
+
+    if is_encrypted(buf, slot):
+        ct = aes.encrypt(ENC_DERIVED_KEY, ENC_IV, bytes(plain))
+        stored = payload_hashed_length(buf, slot)
+        if len(ct) != stored:
+            raise AssertionError(
+                f"re-encrypting {slot} produced {len(ct)} bytes but the manifest "
+                f"declares payload_hashed_length {stored}; a length change here "
+                f"would move every bound the ROM checks"
+            )
+        buf[p:p + len(ct)] = ct
+    else:
+        if p + len(plain) > len(buf):
+            raise AssertionError(
+                f"{slot} payload runs to {p + len(plain)} but the flash image is "
+                f"{len(buf)} bytes; writing the plaintext view back would EXTEND the "
+                f"artefact instead of editing it"
+            )
+        buf[p:p + len(plain)] = plain
+
+    if new_hashed_length is not None:
+        _put_u64(buf, mm.slot_base(slot) + OFF_PAYLOAD_HASHED_LEN, new_hashed_length)
+
+    reseal(buf, slot)
+    verify_sealed(buf, slot, check_toc=post_check_toc)
+
+
+def _edit_toc_header(buf: bytearray, slot: str, off: int, size: int,
+                     value: int) -> int:
+    """Write one TOC header field in the PLAINTEXT view and re-seal the slot.
+
+    A thin wrapper over :func:`edit_toc`; see there for how the two payload kinds
+    are handled and why the re-seal is obligatory. Returns the previous value of
+    the field.
+
+    The post-mutation TOC arm is off for BOTH kinds, and every caller needs it off
+    except one. Encrypted: the stored bytes are ciphertext, so there is no TOC to
+    parse either way. Plaintext image_count: the mutated count makes toc_entries()
+    refuse to enumerate, which is the point of the mutation rather than a fault.
+    Plaintext payload_length: :func:`verify_sealed` refuses a TOC whose
+    payload_length disagrees with the manifest's, which is exactly what that mutator
+    plants, so the arm MUST stay off for it. Plaintext version_major is the only
+    caller the arm would pass, and it is turned off there too so that one
+    post-mutation call covers every caller.
+    """
+    was = int.from_bytes(bytes(toc_plaintext(buf, slot)[off:off + size]), "little")
+
+    def _write(plain: bytearray) -> None:
+        plain[off:off + size] = int(value).to_bytes(size, "little")
+
+    edit_toc(buf, slot, _write)
+
+    now = int.from_bytes(bytes(toc_plaintext(buf, slot)[off:off + size]), "little")
+    if now != value:
+        raise AssertionError(
+            f"{slot} TOC field at payload offset {off} reads {now} after the write, "
+            f"expected {value}; the mutation did not land"
+        )
+    return was
+
+
+def set_toc_version_major(buf: bytearray, slot: str, value: int) -> int:
+    """Declare a TOC major version the ROM must refuse.
+
+    ``validate_manifest_payload`` (``manifest_load.c``) requires
+    ``toc->major_version == TOC_MAJOR_VERSION`` exactly and returns
+    ``MANIFEST_ERR_BAD_TOC_VERSION`` otherwise. The arm prints NO console token of
+    its own, so the error code is the whole of the ROM-side attribution -- which is
+    why the callers pair it with device-side evidence that the planted bytes were
+    the ones served.
+
+    The field is a ``uint16`` at offset 4 of the TOC header. Returns the previous
+    value.
+    """
+    if not 0 <= value <= 0xFFFF:
+        raise ValueError("toc_header.major_version is 16 bits")
+    if value == TOC_MAJOR_VERSION:
+        raise ValueError(
+            f"major_version {value} is the version the ROM ACCEPTS; this mutator "
+            f"exists to violate that equality"
+        )
+    return _edit_toc_header(buf, slot, TOC_OFF_MAJOR_VERSION, 2, value)
+
+
+def set_toc_image_count(buf: bytearray, slot: str, value: int) -> int:
+    """Declare an image count outside ``0 < n <= 256``.
+
+    ``validate_manifest_payload`` (``manifest_load.c``) refuses both arms with
+    ``MANIFEST_ERR_TOC_COUNT``, and they close different holes: ``0`` is a TOC that
+    declares no images at all, so every per-image check below is skipped and the
+    payload is accepted without a BL1; ``> 256`` is the overlarge count whose TOC
+    region would run past the payload the DMA actually staged.
+
+    Both arms are refused BEFORE the ``TOC_REGION_OOB`` bound that follows them, so
+    a count just over the limit produces the count verdict rather than the region
+    one -- which is what keeps this stimulus attributable.
+
+    LIMIT WORTH KNOWING: the ROM truncates the ``uint64`` field to 32 bits
+    (``uint32_t n = (uint32_t)toc->image_count``), so a value whose low 32 bits
+    land inside the legal range is ACCEPTED however large the 64-bit number is.
+    This mutator refuses such a value rather than planting a stimulus that would
+    not reach the check. Returns the previous value.
+    """
+    if not 0 <= value <= 0xFFFF_FFFF_FFFF_FFFF:
+        raise ValueError("toc_header.image_count is 64 bits")
+    truncated = value & 0xFFFF_FFFF
+    if 0 < truncated <= TOC_MAX_IMAGE_COUNT:
+        raise ValueError(
+            f"image_count {value} truncates to {truncated}, which satisfies "
+            f"0 < n <= {TOC_MAX_IMAGE_COUNT}, so validate_manifest_payload would "
+            f"ACCEPT it; this mutator exists to violate that bound"
+        )
+    return _edit_toc_header(buf, slot, TOC_OFF_IMAGE_COUNT, 8, value)
+
+
+def set_toc_payload_length(buf: bytearray, slot: str, value: int) -> int:
+    """Declare a TOC payload_length that contradicts the manifest's.
+
+    ``validate_manifest_payload`` (``manifest_load.c``) cross-checks the TOC's copy
+    of the payload length against the manifest's, echoes the offending value as
+    ``TOC_PLEN_MISMATCH=`` and returns ``MANIFEST_ERR_BAD_LENGTH``. The rule differs
+    by payload kind, and this mutator enforces the same distinction the ROM does::
+
+        plaintext -- the two describe the same bytes: toc_p_len != p_len is bad
+        encrypted -- the manifest counts CIPHERTEXT and the TOC counts plaintext,
+                     so the manifest may legitimately run up to one AES block ahead:
+                     toc_p_len > p_len, or p_len - toc_p_len > BLOCK, is bad
+
+    The arm sits in the TOC HEADER stage, above the per-image loop, so a value
+    planted here is evaluated before any image offset or length is looked at. That
+    ordering is what keeps this stimulus separable from the per-image bound arms.
+
+    Refuses a value the ROM would ACCEPT, so a row cannot silently fall through to
+    a later check and report this arm's verdict. Returns the previous value.
+    """
+    if not 0 <= value <= 0xFFFF_FFFF_FFFF_FFFF:
+        raise ValueError("toc_header.payload_length is 64 bits")
+    p_len = manifest_payload_length(buf, slot)
+    if is_encrypted(buf, slot):
+        bad = value > p_len or p_len - value > aes.BLOCK_BYTES
+        rule = (f"toc_payload_length > {p_len} or {p_len} - toc_payload_length > "
+                f"{aes.BLOCK_BYTES}")
+    else:
+        bad = value != p_len
+        rule = f"toc_payload_length != {p_len}"
+    if not bad:
+        raise ValueError(
+            f"toc payload_length {value} satisfies the ROM's agreement rule for a "
+            f"{'n encrypted' if is_encrypted(buf, slot) else ' plaintext'} payload "
+            f"({rule}), so validate_manifest_payload would ACCEPT it; this mutator "
+            f"exists to violate that agreement"
+        )
+    return _edit_toc_header(buf, slot, TOC_OFF_PAYLOAD_LENGTH, 8, value)
+
+
+# ── TOC ENTRY mutations, plaintext or encrypted ──────────────────────────────
+# manifest_load.c -- every image length must be a multiple of this, checked as
+# ``(len & 3u) != 0``.
+TOC_IMAGE_LENGTH_ALIGN = 4
+
+
+def toc_entry_at(index: int) -> int:
+    """Payload-relative offset of TOC entry ``index``."""
+    return TOC_HDR_SIZE + index * TOC_ENTRY_SIZE
+
+
+def _plain_u64(plain, at: int) -> int:
+    return int.from_bytes(bytes(plain[at:at + 8]), "little")
+
+
+def _plain_put_u64(plain: bytearray, at: int, value: int) -> None:
+    plain[at:at + 8] = int(value).to_bytes(8, "little")
+
+
+def _plain_rehash_entry(plain: bytearray, entry: int) -> None:
+    """Recompute one TOC entry's digest over the body it now declares."""
+    off, ln = _plain_u64(plain, entry + E_OFFSET), _plain_u64(plain, entry + E_LENGTH)
+    body = bytes(plain[off:off + ln])
+    if len(body) != ln:
+        raise AssertionError(
+            f"TOC entry at payload offset {entry} declares {ln} bytes at {off}, "
+            f"but only {len(body)} are inside the payload; the digest would cover "
+            f"a different range from the one the ROM will hash"
+        )
+    plain[entry + E_HASH:entry + E_HASH + 32] = hashlib.sha256(body).digest()
+
+
+def set_toc_entry_length(buf: bytearray, slot: str, index: int, value: int) -> int:
+    """Declare an image length that is not 4-byte aligned, so the slot is refused.
+
+    ``validate_manifest_payload`` (``manifest_load.c``) grades each TOC entry in a
+    fixed order, and this mutator targets the alignment arm::
+
+        end > p_len      -> MANIFEST_ERR_IMAGE_OOB      (SILENT)
+        off < prev_end   -> IMAGE_ORDER_BAD idx= + MANIFEST_ERR_IMAGE_OVERLAP
+        length == 0      -> IMAGE_LEN_ZERO  idx= + MANIFEST_ERR_IMAGE_OOB
+        (len & 3) != 0   -> IMAGE_LEN_ALIGN idx= + MANIFEST_ERR_IMAGE_OOB
+
+    THE ERROR CODE ALONE CANNOT ATTRIBUTE THIS ARM. The bounds arm above it
+    returns the SAME ``MANIFEST_ERR_IMAGE_OOB`` and prints nothing, so a length
+    that overran the payload would produce this mutator's error code by a different
+    check entirely. Two things stop that: the caller requires the
+    ``IMAGE_LEN_ALIGN idx=`` token, which only this arm prints, and the guard below
+    refuses any value that would reach the bounds arm first.
+
+    The entry's digest is recomputed over the newly declared range, so the image
+    still hashes correctly and alignment is the ONLY rule the slot violates.
+    Returns the previous length.
+    """
+    if not 0 <= value <= 0xFFFF_FFFF_FFFF_FFFF:
+        raise ValueError("toc_entry.length is 64 bits")
+    if value == 0:
+        raise ValueError(
+            "length 0 is the IMAGE_LEN_ZERO arm, a different check with its own "
+            "token; this mutator exists to violate the alignment rule"
+        )
+    if value % TOC_IMAGE_LENGTH_ALIGN == 0:
+        raise ValueError(
+            f"length {value} is {TOC_IMAGE_LENGTH_ALIGN}-byte aligned, which the ROM "
+            f"ACCEPTS; this mutator exists to violate that alignment"
+        )
+    entry = toc_entry_at(index)
+    was = 0
+
+    def _write(plain: bytearray) -> None:
+        nonlocal was
+        count = _plain_u64(plain, TOC_OFF_IMAGE_COUNT)
+        if not index < count:
+            raise AssertionError(
+                f"{slot} TOC declares {count} images; entry {index} does not exist"
+            )
+        off = _plain_u64(plain, entry + E_OFFSET)
+        was = _plain_u64(plain, entry + E_LENGTH)
+        # The bounds arm runs BEFORE the alignment arm and returns the same error
+        # code without printing, so a value that overran the payload would swap the
+        # check under test for a silent one and the row would still see its code.
+        limit = min(manifest_payload_length(buf, slot), len(plain))
+        if off + value > limit:
+            raise AssertionError(
+                f"image {index} at offset {off} with length {value} ends at "
+                f"{off + value}, past the {limit} bytes the ROM bounds it to; "
+                f"MANIFEST_ERR_IMAGE_OOB would be returned by the SILENT bounds arm "
+                f"instead of by the alignment arm this mutator targets"
+            )
+        _plain_put_u64(plain, entry + E_LENGTH, value)
+        _plain_rehash_entry(plain, entry)
+
+    edit_toc(buf, slot, _write, post_check_toc=not is_encrypted(buf, slot))
+    return was
+
+
+def toc_entry_lower_bound(buf, slot: str, index: int) -> int:
+    """The lowest offset ``validate_manifest_payload`` will accept for image ``index``.
+
+    The ROM seeds ``prev_end`` at the TOC region and then carries each accepted
+    image's end forward, so the bound an entry must clear is the TOC region for
+    entry 0 and the previous image's end for every entry after it. Exposed because
+    a testcase that plants a violating offset has to state the bound it violates,
+    and computing it from the artefact is the only way that statement stays true
+    when the shipped payload's geometry changes.
+    """
+    plain = toc_plaintext(buf, slot)
+    count = _plain_u64(plain, TOC_OFF_IMAGE_COUNT)
+    if not 0 <= index < count:
+        raise AssertionError(
+            f"{slot} TOC declares {count} images; entry {index} does not exist"
+        )
+    if index == 0:
+        return toc_region_bytes(count)
+    prev = toc_entry_at(index - 1)
+    return _plain_u64(plain, prev + E_OFFSET) + _plain_u64(plain, prev + E_LENGTH)
+
+
+def set_toc_entry_offset(buf: bytearray, slot: str, index: int, value: int) -> int:
+    """Declare an image body starting below the region it is allowed to occupy.
+
+    ``validate_manifest_payload`` (``manifest_load.c``) requires every image body to
+    begin at or after ``prev_end`` -- the TOC region for entry 0, the previous
+    image's end afterwards -- and refuses the rest as
+    ``IMAGE_ORDER_BAD idx=`` + ``MANIFEST_ERR_IMAGE_OVERLAP``. This mutator targets
+    the ENTRY-0 half of that rule, where the bound being violated is the TOC region
+    itself: the declared body would overlap the metadata the ROM is parsing.
+
+    THE ARM ABOVE IT IS SILENT AND MUST NOT BE REACHED. ``end > p_len`` returns
+    ``MANIFEST_ERR_IMAGE_OOB`` without printing, so an offset that pushed the body
+    past the payload would produce a different verdict with no token to say so. The
+    guard below refuses any such value rather than planting it.
+
+    The entry's digest is recomputed over the range it now declares, so the image
+    still hashes correctly and the ordering bound is the ONLY rule the slot
+    violates. ``image_count`` and the TOC's ``payload_length`` are untouched, so
+    neither the TOC-region bound nor the TOC/manifest agreement can pre-empt this
+    arm. Returns the previous offset.
+    """
+    if not 0 <= value <= 0xFFFF_FFFF_FFFF_FFFF:
+        raise ValueError("toc_entry.offset is 64 bits")
+    entry = toc_entry_at(index)
+    bound = toc_entry_lower_bound(buf, slot, index)
+    if value >= bound:
+        raise ValueError(
+            f"offset {value} is at or above the lowest offset the ROM accepts for "
+            f"image {index} ({bound}), so validate_manifest_payload would ACCEPT the "
+            f"ordering of this entry; this mutator exists to violate that bound"
+        )
+    was = 0
+
+    def _write(plain: bytearray) -> None:
+        nonlocal was
+        was = _plain_u64(plain, entry + E_OFFSET)
+        ln = _plain_u64(plain, entry + E_LENGTH)
+        end = value + ln
+        # The SILENT bounds arm runs BEFORE the ordering arm, so a body that ran off
+        # the payload would swap the announced check under test for an unannounced
+        # one and the row would have no token to attribute its verdict to.
+        limit = min(manifest_payload_length(buf, slot), len(plain))
+        if end < value or end > limit:
+            raise AssertionError(
+                f"image {index} at offset {value} with length {ln} ends at {end}, "
+                f"outside the {limit} bytes the ROM bounds it to; the SILENT "
+                f"MANIFEST_ERR_IMAGE_OOB arm would fire instead of the ordering arm "
+                f"this mutator targets"
+            )
+        _plain_put_u64(plain, entry + E_OFFSET, value)
+        _plain_rehash_entry(plain, entry)
+
+    edit_toc(buf, slot, _write, post_check_toc=not is_encrypted(buf, slot))
+    return was
+
+
+def make_images_out_of_order(buf: bytearray, slot: str, *, second_offset: int,
+                             second_length: int,
+                             second_type: int = IMAGE_TYPE_SEP_BL2) -> dict:
+    """Add a second image BELOW the first, so the TOC is not in ascending order.
+
+    ``validate_manifest_payload`` (``manifest_load.c``) requires image bodies to
+    start after the TOC region and to run in strictly ascending order, enforced as
+    ``off < prev_end`` with ``prev_end`` seeded at the TOC region and then carrying
+    the previous image's end. Entry 1 declaring an offset below entry 0's end
+    violates the ascending half, which is the half a two-image payload can reach;
+    the same ``if`` also covers "before the TOC region", and the assertions here
+    keep entry 0 clear of it so the violation is unambiguously the ordering one.
+
+    The shipped payload declares exactly ONE image, so the second has to be
+    created, as in :func:`insert_leading_image`. What differs is the intent: that
+    helper builds an ASCENDING two-image layout to prove the ROM finds SEP_BL1 by
+    type, and this one builds a DESCENDING pair to make the ROM refuse it.
+
+    The transformation, all inside the payload:
+
+      * ``image_count`` 1 -> 2, moving the image region's lower bound from
+        ``toc_region_bytes(1)`` to ``toc_region_bytes(2)``;
+      * entry 0 keeps the SEP_BL1 metadata and body EXACTLY as shipped, so its
+        digest stays valid and it passes every per-entry check;
+      * entry 1 is a new ``second_type`` image at ``second_offset``, its body taken
+        from the head of the BL1 image so the digest covers genuine content, and
+        its ``load_addr``/``entry_point`` cleared so it claims no ICCM window.
+
+    ``payload_length`` and the TOC header's copy of it are untouched, so the
+    TOC/manifest agreement still holds and the DMA moves the same bytes. The
+    caller passes ``payload_hashed_length`` forward for a plaintext slot, whose
+    hash covers only the TOC region and would otherwise leave the new entry
+    unauthenticated. Returns the resulting geometry.
+    """
+    region = toc_region_bytes(2)
+    e0, e1 = toc_entry_at(0), toc_entry_at(1)
+    if second_type not in KNOWN_IMAGE_TYPES:
+        raise ValueError(
+            f"type 0x{second_type:x} is not one of the four is_known_image_type() "
+            f"accepts; the slot would be refused as BAD_IMAGE_TYPE before the "
+            f"ordering check this mutator targets"
+        )
+    if second_length % TOC_IMAGE_LENGTH_ALIGN != 0 or second_length == 0:
+        raise ValueError(
+            f"second_length {second_length} is zero or misaligned, which would let "
+            f"IMAGE_LEN_ZERO or IMAGE_LEN_ALIGN fire instead of the ordering check"
+        )
+    geometry: dict = {}
+
+    def _write(plain: bytearray) -> None:
+        count = _plain_u64(plain, TOC_OFF_IMAGE_COUNT)
+        if count != 1:
+            raise AssertionError(
+                f"{slot} TOC holds {count} images; this helper turns the "
+                f"single-image payload into a two-image one and has no defined "
+                f"meaning for any other starting shape"
+            )
+        if _plain_u64(plain, e0 + E_TYPE) != IMAGE_TYPE_SEP_BL1:
+            raise AssertionError(
+                f"{slot} TOC entry 0 is type 0x{_plain_u64(plain, e0 + E_TYPE):x}, "
+                f"not SEP_BL1: the starting image is not the one this helper assumes"
+            )
+        off0 = _plain_u64(plain, e0 + E_OFFSET)
+        len0 = _plain_u64(plain, e0 + E_LENGTH)
+        # Entry 0 must survive every per-entry check, or the ROM stops on entry 0
+        # and the ordering violation planted in entry 1 is never evaluated.
+        if off0 < region:
+            raise AssertionError(
+                f"entry 0 starts at {off0}, inside the two-image TOC region "
+                f"({region}); it would trip the ordering check itself and the "
+                f"violation under test would be attributed to the wrong entry"
+            )
+        if off0 + len0 > min(manifest_payload_length(buf, slot), len(plain)):
+            raise AssertionError(
+                f"entry 0 spans {off0}..{off0 + len0}, past the payload; the SILENT "
+                f"bounds arm would refuse it before entry 1 is reached"
+            )
+        if len0 < second_length:
+            raise AssertionError(
+                f"the BL1 image is {len0} bytes, shorter than the {second_length} "
+                f"the second image borrows from it"
+            )
+        # Entry 1 must reach the ordering check, so it has to clear the bounds arm
+        # ahead of it, and it must actually violate the ordering it is planted for.
+        if second_offset < region:
+            raise AssertionError(
+                f"second_offset {second_offset} is inside the TOC region ({region}); "
+                f"entry 1's body would overlap the metadata the ROM is parsing"
+            )
+        if second_offset + second_length > off0:
+            raise AssertionError(
+                f"the second image ({second_offset}..{second_offset + second_length}) "
+                f"runs into entry 0 at {off0}; the payload would hold two overlapping "
+                f"bodies rather than one out-of-order pair"
+            )
+        if not second_offset < off0 + len0:
+            raise AssertionError(
+                f"second_offset {second_offset} is not below entry 0's end "
+                f"({off0 + len0}), so the TOC would be in ascending order and the "
+                f"ROM would ACCEPT it"
+            )
+
+        _plain_put_u64(plain, TOC_OFF_IMAGE_COUNT, 2)
+        plain[e1:e1 + TOC_ENTRY_SIZE] = bytes(plain[e0:e0 + TOC_ENTRY_SIZE])
+        _plain_put_u64(plain, e1 + E_TYPE, second_type)
+        _plain_put_u64(plain, e1 + E_OFFSET, second_offset)
+        _plain_put_u64(plain, e1 + E_LENGTH, second_length)
+        # Copied from BL1's entry, so clear the two fields that would otherwise
+        # claim BL1's ICCM window for a second image. The ROM validates neither for
+        # a non-SEP_BL1 type, so they are inert today, but a payload declaring two
+        # images at one load address is not what this stimulus means.
+        _plain_put_u64(plain, e1 + E_LOAD_ADDR, 0)
+        _plain_put_u64(plain, e1 + E_ENTRY_POINT, 0)
+        plain[second_offset:second_offset + second_length] = \
+            bytes(plain[off0:off0 + second_length])
+        _plain_rehash_entry(plain, e1)
+        geometry.update(toc_region=region, first_offset=off0, first_length=len0,
+                        second_offset=second_offset, second_length=second_length,
+                        second_type=second_type)
+
+    edit_toc(buf, slot, _write,
+             post_check_toc=not is_encrypted(buf, slot),
+             new_hashed_length=None if is_encrypted(buf, slot) else region)
+    geometry["payload_hashed_length"] = payload_hashed_length(buf, slot)
+    return geometry
 
 
 def corrupt_ciphertext(buf: bytearray, slot: str, *, block: int = 0,
