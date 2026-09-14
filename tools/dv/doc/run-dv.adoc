@@ -281,28 +281,35 @@ The shared cocotb profile allows these simulation backends:
 |Xcelium |`xrun` |SHM |IMC
 |===
 
-The shared `native-formal` profile (`kind = "fv"`, framework `formal`) allows
-these formal backends:
+The shared `native-formal` profile (`kind = "fv"`, framework `formal`) lists
+the open formal backend; a licensed backend reaches the runner through the
+site layer:
 
 [cols="<2,<2,<2,<5",options="header"]
 |===
 |Tool |Binary |License |Toolchain
 
-|SymbiYosys |`sby` |none |Profile default. Yosys with the yosys-slang
-frontend, `yosys-smtbmc`, `yosys-abc`, and an SMT solver on the same `PATH`.
-The property subset and task-file layout are in the Formal Property Style
-and Layout chapter of `hw/common/dv/docs/index.adoc`; the launch shape is in
+|SymbiYosys |`sby` |none |Profile default and the only formal backend the
+open registry names. Yosys with the yosys-slang frontend, `yosys-smtbmc`,
+`yosys-abc`, and an SMT solver on the same `PATH`. The property subset and
+task-file layout are in the Formal Property Style and Layout chapter of
+`hw/common/dv/docs/index.adoc`; the launch shape is in
 <<runner-formal-templates>> and the `sby-summary` policy grades its runs
 (<<runner-formal-grading>>).
-|Jasper |`jg` |commercial |Site-supplied.
-|VC Formal |`vcf` |commercial |Site-supplied.
+|Site-supplied backend |from its site table |per its `license_env` |A
+complete `[simulators.<name>]` table in the site layer
+(<<runner-site-layer>>) with `kind = "formal"`, `frameworks = ["formal"]`,
+and an `argv` launch template; the runner validates it with the registry
+schema and treats it exactly like a checked-in table. A DUT formal config
+that lists the name in `tools` selects it; the companion repository's site
+file and formal configs are the reference deployment.
 |===
 
-The profile carries `license = "none"` because its default backend needs no
-license; `--list` marks each licensed backend `(licensed)` from its registry
-`license_env`, and `--doctor` and the launcher point at that marking when the
-selected backend is absent. A DUT selects a backend only through its formal
-configuration (`<name>_formal_cfg.toml`).
+The profile carries `license = "none"` because the backend it lists needs no
+license; `--list` marks a site-supplied backend `(licensed)` from its
+`license_env`, and `--doctor` and the launcher point at that marking when
+the selected backend is absent. A DUT selects a backend only through its
+formal configuration (`<name>_formal_cfg.toml`).
 
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow whose tool allowlist is VCS only; it carries
@@ -514,10 +521,10 @@ sby resolves the task file's `[files]` entries against its working
 directory, so the app's `cwd` is the directory holding the task file. Each
 task's work directory lands under the run's formal stage directory as
 `<item>_<task>`, and the app's `args` name the tasks to run. sby takes its
-depth from the task file, so its template has no `{proof_depth}` group. The
-licensed backends' registry templates are
-`{binary} {args} {script} {formal_args}`; a site supplies a tool's own flags
-through an app-table `argv`.
+depth from the task file, so its template has no `{proof_depth}` group. A
+site-supplied backend carries its template in its site tool table, where the
+generic shape `{binary} {args} {script} {formal_args}` suits a Tcl-driven
+tool; an app-table `argv` overrides it for one app.
 
 [[runner-formal-grading]]
 === Formal result grading
