@@ -578,11 +578,12 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: OTP vs fabric MAP race: coherent winner, no silent tear.
+*Objective*: OTP then fabric JTAG2AXI writes to the same MAP BIRA word back to back: the later writer wins on both read paths and in the shadow register, with no torn value.
 
 *Test Coverage*:
 
-* OTP vs fabric J2A MAP BIRA race; last writer wins, no tear.
+* Both writers are JTAG2AXI bridges behind the one primary TAP, so their DR shifts are serialised and the OTP write has completed before the fabric write can be issued; the sequence records the OTP status at its first capture after the kick and requires it complete before issuing the fabric write. No overlap between the two writes is claimed.
+* The fabric write must then be the value read back over the OTP bridge, over the fabric bridge, and in the shadow register (last writer wins), followed by an alternating OTP/fabric ping-pong with the same last-writer rule.
 
 *Test Procedure*:
 
@@ -597,9 +598,9 @@ check.
 |===
 |Checker |Description
 |`CHK-OTPFAB-GATE-OPEN` |Evidence token, emitted only after the compares it names have held
-|`CHK-OTPFAB-OVERLAP-FAB` |Evidence token, emitted only after the compares it names have held
-|`CHK-OTPFAB-OVERLAP-COHERENT` |Evidence token, emitted only after the compares it names have held
-|`CHK-OTPFAB-OVERLAP-SHADOW` |Evidence token, emitted only after the compares it names have held
+|`CHK-OTPFAB-B2B-ISSUED` |OTP write completed, then the fabric write completed
+|`CHK-OTPFAB-B2B-COHERENT` |OTP-bridge and fabric-bridge readbacks both equal the later (fabric) pattern
+|`CHK-OTPFAB-B2B-SHADOW` |shadow-map word equals that readback
 |`CHK-OTPFAB-PINGPONG` |Evidence token, emitted only after the compares it names have held
 |`CHK-RACE-OTP-FAB` |Evidence token, emitted only after the compares it names have held
 |assertion |otp_vs_fabric race incomplete s1=<value> s2=<value> s3=<value>
