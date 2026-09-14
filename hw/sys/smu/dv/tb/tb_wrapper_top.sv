@@ -48,6 +48,9 @@ module smu_wrapper_uvm_top (
   output logic [1:0]  lcc_demote_state_2_o,
   output logic [63:0] lcc_feat_ctrl_o,
   output logic [15:0] lcc_dbg_disable_o,     // to DTP
+  // The one dbg_disable path field the DTP specification ties to the SMC
+  // fabric JTAG2AXI bridge, read by its spec name rather than by bit position.
+  output logic        lcc_dbg_disable_smc_jtag2axi_o,
   output logic [7:0]  smc_lc_state_in_o,     // as SMC receives it
   // DTP JTAG2AXI traffic into the SMC. dbg_disable.smc_jtag2axi stops the
   // bridge from launching a transaction at all (jtag2axi.sv: the update is
@@ -371,10 +374,12 @@ module smu_wrapper_uvm_top (
   assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.sep_crypto
         .u_sep_lifecycle_ctrl.feat_ctrl_o);
   assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
+  assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 `else
   assign lcc_feat_ctrl_o      = '0;
   assign lcc_dbg_disable_o    = '0;
+  assign lcc_dbg_disable_smc_jtag2axi_o = 1'b0;
   assign smc_lc_state_in_o    = '0;
 `endif
 

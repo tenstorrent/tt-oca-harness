@@ -3294,7 +3294,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SEP-DBG-OPEN` |`lc_state` reads as TEST_DEV expects, `dbg_disable` is clear, and the bridge launched the transaction: AW and AR both advanced
+|`CHK-SEP-DBG-OPEN` |`lc_state` equals the TEST_DEV word of `seq_lib/smu_lifecycle_table.py` (spec raw encoding, RDL `{~raw, raw}` packing), `dbg_disable` is all-clear and its `smc_jtag2axi` field is 0, and the bridge launched the transaction: AW and AR both advanced
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
@@ -3330,7 +3330,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SEP-DBG-GATED` |`lc_state` and `dbg_disable` read as PROD_END expects and the bridge launched nothing: AW and AR both unchanged
+|`CHK-SEP-DBG-GATED` |`lc_state` equals the PROD_END word of `seq_lib/smu_lifecycle_table.py`, the `dbg_disable.smc_jtag2axi` field is 1 (path-gating Case 2 with DBG_1/DBG_2 both disabled), and the bridge launched nothing: AW and AR both unchanged
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
@@ -3368,7 +3368,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DTP-SEP-SMC-CHAIN` |SEP demote cleared `dbg_disable`, the DTP launched the read, and the SMC answered OKAY with the value its own firmware wrote
+|`CHK-DTP-SEP-SMC-CHAIN` |`lc_state` equals the PROD word of `seq_lib/smu_lifecycle_table.py`, `dbg_disable` is all-clear after the demote, the DTP launched the read, and the SMC answered OKAY with the value its own firmware wrote
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_chain`, `all_with_sep_exec`.
@@ -3406,7 +3406,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DTP-SEP-SMC-CHAIN-BLOCKED` |same firmware and same JTAG operation, but PROD_END ignores the demote: `dbg_disable` stays asserted and the bridge launched nothing
+|`CHK-DTP-SEP-SMC-CHAIN-BLOCKED` |same firmware and same JTAG operation, but PROD_END ignores the demote: `lc_state` equals the PROD_END word of `seq_lib/smu_lifecycle_table.py`, `dbg_disable.smc_jtag2axi` stays 1, and the bridge launched nothing
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_chain`, `all_with_sep_exec`.
