@@ -26,7 +26,7 @@ from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
 from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiSlaveSequence
-from smc_base_test import _EvidenceRecorder
+from smc_base_test import _EvidenceRecorder, log_build_model_identity
 
 # This file lives at hw/sys/smc/dv/cocotb/tests/<this>.py, so the DV root is six
 # levels up from the file and one below the repo root. Anchored on the DV root
@@ -54,6 +54,11 @@ AXI_TIMEOUT_NS = 20_000
 # enough that the AXI-to-TileLink bridge into the CPU cluster carries it; see
 # DualCsr.write_bytes for the burst length that does not.
 BULK_CHUNK_BYTES = 64
+
+# The smc_sim_cfg.toml target whose model every dual leaf must run on. The
+# identity stamp fails a run whose exported build directory belongs to any
+# other target, so a dual log can never be backed by a single-instance model.
+DUAL_TARGET = "dual"
 
 
 def random_seed() -> int:
@@ -218,9 +223,19 @@ class DualCsr:
 class SmcDualHarness:
     """Clock/reset bring-up, per-instance idle pin defaults, and CPU trace state."""
 
-    def __init__(self, *, test_name: str = "", required_evidence: tuple[str, ...] = ()) -> None:
+    def __init__(
+        self,
+        *,
+        test_name: str = "",
+        required_evidence: tuple[str, ...] = (),
+        require_clean_tree: bool = True,
+    ) -> None:
         self.dut = cocotb.top
         self.log = cocotb.log
+        # Same provenance gate as smc_base_test.require_clean_tree: the identity
+        # line names the commit the model was built from, and uncommitted
+        # changes on the model or bench sources fail the run unless allowed.
+        self.require_clean_tree = require_clean_tree
         # The CHK-* lines this run emits are read off the log records the way
         # smc_base_test._finalize_evidence reads them; finalize_evidence()
         # grades them against the IDs the test owes, with no min_evidence
@@ -299,6 +314,12 @@ class SmcDualHarness:
         dut.bfm_gpio_ext_drive_value.value = 0
 
     async def bring_up(self, *, hold_dut_boot: bool = True, hold_bfm_boot: bool = True) -> None:
+        # First line of every dual log: which model this run simulated, and
+        # that it is the dual target's ([BUILD-MODEL-IDENTITY]). Raises rather
+        # than logging a placeholder.
+        log_build_model_identity(
+            require_clean_tree=self.require_clean_tree, expect_target=DUAL_TARGET
+        )
         dut = self.dut
         self.log.info(
             "dual bring-up: ref=%dns smc=%dns periph=%dns (seed=%d)",
