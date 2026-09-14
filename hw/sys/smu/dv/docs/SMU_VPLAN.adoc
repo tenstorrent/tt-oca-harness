@@ -2436,7 +2436,7 @@ Two things are worth reading before the entries:
 
 * `SmuWrapperElaborationSeq` takes the `+expected_sep=0` branch (`_run_legacy_no_sep`), which is a different check set from the SEP=1 branch of the same module.
 * `sep_enabled_o` (the compile-time `SMU_NO_SEP` define) is compared against `+expected_sep` from the testlist -- two independent inputs, so a testlist entry pointing this leaf at the wrong build fails.
-* `obs_powergood_stable_o` is the DUT synchronizer output with a sticky `low_seen`, not an echo of the TB's own `powergood_i`.
+* The sequence drives its own `powergood_i` deassertion and observes `obs_powergood_stable_o` -- the DUT synchronizer output, not an echo of `powergood_i` -- go 1 -> 0 -> 1 around it. The leading high is required before the deassertion, so the low is a response and not the power-up value of a bench that initialises every node to 0; a run that never deasserts `powergood_i` expires the bounded wait for the low and fails.
 * Cold reset is asserted and released over several randomised hold lengths and the propagation is observed each time.
 * No SEP is instantiated in this profile, so nothing here carries SEP, lifecycle or crypto credit.
 
@@ -2444,7 +2444,7 @@ Two things are worth reading before the entries:
 
 [arabic]
 . Sample `sep_enabled_o` and compare it against `+expected_sep=0`.
-. Wait for `obs_powergood_stable_o` to rise, having first observed it low.
+. Require `obs_powergood_stable_o` high, drive `powergood_i` low and require the synchronizer output to fall while the pin reads low, then release `powergood_i` and require the output to rise again -- each leg a bounded wait that fails on expiry.
 . Wait for `rst_cold_n_o` to release and stamp step S2 in simulation time.
 . Assert and release cold reset over the randomised hold iterations and observe the propagation each time.
 . Run the non-vacuity fence over the S1/S2/S3/PASS step stamps, then emit `WRAP_ELAB_OK` from the test body.
@@ -2455,7 +2455,7 @@ Two things are worth reading before the entries:
 |===
 |Checker |Description
 |`CHK-WRAPPER-SEP-BUILD-PROFILE` |`sep_enabled_o` equals the `+expected_sep` the testlist declares
-|`CHK-WRAPPER-POWERGOOD` |`obs_powergood_stable_o` was observed low and then released within the bounded wait
+|`CHK-WRAPPER-POWERGOOD` |`obs_powergood_stable_o` was observed high, then low while the driven `powergood_i` read low, then released again -- each within its own bounded wait
 |`CHK-WRAPPER-RST-COLD-RELEASE` |`rst_cold_n_o` released after bring-up
 |`CHK-WRAPPER-RST-PROPAGATION` |cold reset assert/release propagated on every randomised iteration
 |`CHK-NONVAC` |S1 < S2 < S3 < PASS ordering holds in *simulation* time, each transition advances at least one clock period, and the fail-capable DUT comparison count is above the floor
@@ -2477,6 +2477,7 @@ Two things are worth reading before the entries:
 *Test Coverage*:
 
 * `+expected_sep=1` selects `_run_smu_all_001`, the DV-CARD SMU_ALL_001 path; this is the only leaf that runs it.
+* The S1 setup is a driven observation, not a sampled level: the sequence deasserts `powergood_i` and requires `obs_powergood_stable_o` to fall after a proven high and to rise again afterwards, so a composition that never sees power-good deasserted fails the bounded wait.
 * Hierarchical clock identity is sampled at the SMC, SEP, DTP and xbar levels and each must equal the top-level `clk_smu` level on the same edge.
 * The three clock domains (`clk_smu`, telemetry/reference, SEP watchdog) must have distinct periods, and their level transitions counted over a fixed 240 ns window must differ accordingly -- a coincidence is ruled out by the period check, not assumed.
 * `lc_state_o` at the SMU boundary is compared against the SEP-sourced lifecycle value, so the export is a compare and not a tie-off read.
@@ -2485,6 +2486,7 @@ Two things are worth reading before the entries:
 *Test Procedure*:
 
 [arabic]
+. Drive a `powergood_i` deassertion and observe `obs_powergood_stable_o` go 1 -> 0 -> 1 around it, then wait for `rst_cold_n_o` to release.
 . Assert `sep_enabled_o == 1` -- this leaf refuses to run against a `no_sep` build.
 . Sample the SMC/SEP/DTP/xbar hierarchical clock levels against the top-level clock on the same edges.
 . Observe the primary SMC reset through a cold assert and a cold deassert.
