@@ -303,6 +303,10 @@ enum {
     // backup may well fit. The SMC-window refusals are terminal instead --
     // see ROM_ERR_SMC_STAGING in manifest_load.c.
     MANIFEST_ERR_PAYLOAD_NO_ROOM = 0x0003001Au,
+    // An image body starts on an address the DMA source cannot be programmed
+    // with. The length rule is only 4-byte, so a chain of 4-byte-aligned
+    // lengths reaches a misaligned offset without any field being malformed.
+    MANIFEST_ERR_IMAGE_ALIGN = 0x0003001Bu,
 };
 
 // ── API declarations ──

@@ -336,16 +336,16 @@ static uint32_t validate_manifest_payload(const manifest_t *m, bool sha_checks) 
     // block-aligned, so the manifest length legitimately runs up to one AES
     // block ahead of the TOC's.
     //
-    // The property worth enforcing in both cases is that the TOC cannot claim
-    // more than was actually loaded; the padding bound keeps the slack from
-    // being an arbitrary amount of unaccounted payload.
+    // PKCS#7 makes the padded length a single value, so require exactly that
+    // rather than a slack window: a window also admits zero padding, which the
+    // scheme never emits.
     const uint64_t toc_p_len = (uint64_t)toc->payload_length;
     const bool encrypted = (m->usage_constraints.flags &
                             (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD)) != 0u;
-    const bool plen_bad = encrypted
-        ? (toc_p_len > m->payload_length ||
-           m->payload_length - toc_p_len > AES_CBC_BLOCK_BYTES)
-        : (toc_p_len != m->payload_length);
+    const uint64_t expect_p_len = encrypted
+        ? ((toc_p_len & ~(uint64_t)(AES_CBC_BLOCK_BYTES - 1u)) + AES_CBC_BLOCK_BYTES)
+        : toc_p_len;
+    const bool plen_bad = (m->payload_length != expect_p_len);
     if (plen_bad) {
         simputshex32("TOC_PLEN_MISMATCH=", (uint32_t)toc_p_len);
         return MANIFEST_ERR_BAD_LENGTH;
@@ -366,10 +366,22 @@ static uint32_t validate_manifest_payload(const manifest_t *m, bool sha_checks) 
         uint32_t off = (uint32_t)e->offset;
         uint32_t len = (uint32_t)e->length;
         uint32_t end = off + len;
+        // The body address reaches sep_dma_copy() as the DMA source unchecked,
+        // so refuse it here rather than at the transfer. Checked before the
+        // arithmetic arms so a misaligned offset is never reported as a bound
+        // or ordering failure.
+        if ((off & 7u) != 0u) {
+            simputshex32("IMAGE_OFF_ALIGN idx=", i);
+            return MANIFEST_ERR_IMAGE_ALIGN;
+        }
+        // Four arms return MANIFEST_ERR_IMAGE_OOB, so the status word alone
+        // cannot say which one refused the image. These two name themselves.
         if (end < off) { // overflow
+            simputshex32("IMAGE_END_OVERFLOW idx=", i);
             return MANIFEST_ERR_IMAGE_OOB;
         }
         if (end > p_len) {
+            simputshex32("IMAGE_OOB_BOUND idx=", i);
             return MANIFEST_ERR_IMAGE_OOB;
         }
 
@@ -378,11 +390,18 @@ static uint32_t validate_manifest_payload(const manifest_t *m, bool sha_checks) 
         // bound: it turns overlap detection into a single comparison and, with
         // the gap zeroization below, means every byte of the payload is either
         // inside a validated image or has been cleared.
+        //
+        // Comparing against the previous image's end refuses both a body that
+        // starts before its predecessor's and one that starts inside it, so a
+        // port carrying two separate ordering rules across collapses to this
+        // one arm. No case is lost; the two are not told apart.
         if (off < prev_end) {
             simputshex32("IMAGE_ORDER_BAD idx=", i);
             return MANIFEST_ERR_IMAGE_OVERLAP;
         }
-        if (e->length == 0u) {
+        // Test the truncated width every other arm and every consumer uses, or
+        // a length of 0x1_0000_0000 passes as non-zero and reaches them as 0.
+        if (len == 0u) {
             simputshex32("IMAGE_LEN_ZERO idx=", i);
             return MANIFEST_ERR_IMAGE_OOB;
         }
@@ -399,16 +418,6 @@ static uint32_t validate_manifest_payload(const manifest_t *m, bool sha_checks) 
             explicit_memzero((uint8_t *)(uintptr_t)toc + prev_end, off - prev_end);
         }
         prev_end = end;
-
-        // Check no overlap with any earlier entry.
-        for (uint32_t j = 0; j < i; ++j) {
-            uint32_t b_off = (uint32_t)toc->images[j].offset;
-            uint32_t b_len = (uint32_t)toc->images[j].length;
-            uint32_t b_end = b_off + b_len;
-            if (off < b_end && b_off < end) {
-                return MANIFEST_ERR_IMAGE_OVERLAP;
-            }
-        }
 
         // Per-image hash, over the image body, against the digest in its TOC
         // entry. This runs after the bounds check above so only bytes already
