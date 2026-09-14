@@ -20,8 +20,10 @@ SCRATCH_BANK_COUNT = 32
 _BANK_COUNTER_WIDTH = 32
 _BANK_COUNTER_MASK = (1 << _BANK_COUNTER_WIDTH) - 1
 
-# The SMC VPLAN entry for smc_fw_hello_world_test places the hello_world image
-# in scratch banks 0-3 only.
+# The hello_world link map (sram.ld ORIGIN 0xC006_0000, 4 KB stacks and 2 KB
+# heap from toolchain.mk) ends at offset 0x8730, inside the first 128 KB group;
+# smc_scratch_map_pkg maps that group to banks 0-3 and, because the footprint
+# spans more than one 256-byte stripe cycle, to all four of them.
 HELLO_WORLD_RESIDENT_BANKS = frozenset(range(4))
 
 
