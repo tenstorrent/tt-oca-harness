@@ -199,8 +199,9 @@
 <div class="sectionbody">
 <div class="paragraph">
 <p>This chapter defines the mandatory qualification set: the <strong>live</strong> CI matrix on
-Verilator — <code>smoke</code> per PR, <code>hosted</code> nightly and weekly. It is not narrowed
-to a smaller tier.</p>
+Verilator — <code>smoke</code> per PR, <code>hosted</code> nightly and weekly, <code>rtl_issue</code> weekly
+on its own row. It is not narrowed to a smaller tier. The leaves no tier
+runs, and why, are recorded in <code>SMC_DEFERRED_DISPOSITION.adoc</code>.</p>
 </div>
 <div class="paragraph">
 <p><code>--dut smc</code> already instantiates <code>smc_wrapper</code>. There is no separate
@@ -242,11 +243,18 @@ to a smaller tier.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Coverage / dashboard; same group</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Weekly</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>--dut smc --tool verilator --items rtl_issue</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Defect reproducers graded under <code>expect_fail</code> (<code>regress.yml</code> <code>rtl_issue</code> row); red on <code>expected_fail_passed</code> when a defect is fixed. Not qualification credit</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Group sizes are the <code>expected_count</code> guards in
-<code>hw/sys/smc/dv/testlists/all.toml</code>.</p>
+<p>Group sizes are the <code>expected_count</code> guards: <code>all</code> and <code>hosted</code> in
+<code>hw/sys/smc/dv/testlists/all.toml</code>, <code>rtl_issue</code> in
+<code>hw/sys/smc/dv/testlists/rtl_issue.toml</code>.</p>
 </div>
 </div>
 <div class="sect2">
