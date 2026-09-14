@@ -314,8 +314,10 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
                 busy = dut.tb_zeroer_busy.value
                 assert busy.is_resolvable, "Zeroer control: tb_zeroer_busy sampled X/Z"
                 if int(busy):
+                    state = dut.tb_zeroer_state.value
+                    assert state.is_resolvable, "Zeroer control: tb_zeroer_state sampled X/Z"
                     seen["busy_cycles"] += 1
-                    seen["states"].add(int(dut.tb_zeroer_state.value))
+                    seen["states"].add(int(state))
                 elif seen["busy_cycles"]:
                     return
             raise AssertionError(
@@ -327,6 +329,9 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
         await self.csr_write("ZEROER_CONTROL_START", ZEROER_CTRL_STATUS, ZEROER_START, length=8)
         await monitor
         assert seen["busy_cycles"], "Zeroer control: the start write never raised busy"
+        # Busy asserts before the state register moves, so IDLE appears in the
+        # first busy sample; what the control needs is that the FSM was also
+        # seen somewhere else, i.e. the write actually advanced it.
         assert seen["states"] - {ZEROER_IDLE}, (
             f"Zeroer control: busy for {seen['busy_cycles']} cycle(s) without leaving IDLE"
         )

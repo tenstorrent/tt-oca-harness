@@ -3725,8 +3725,9 @@ traffic
   first injection the same `CTRL_STATUS` write (`INT_EN`, packed from the
   generated `ZEROER_CTRL_CTRL_STATUS_reg_t` layout), with `DEST_ADDR`/`SIZE`
   programmed to one 8-byte beat at the output fabric, starts the Zeroer from
-  `IDLE`: busy is sampled high with the FSM out of `IDLE` and never in `ERROR`,
-  the SYS_OUT responder counts exactly one write beat of zero at that address,
+  `IDLE`: busy is sampled high, the FSM is seen somewhere other than `IDLE`
+  during that busy interval and never in `ERROR`, the SYS_OUT responder counts
+  exactly one write beat of zero at that address,
   and the FSM returns to `IDLE` with `CTRL_STATUS` busy clear. Every `ERROR`-leg
   deny then programs the same `DEST_ADDR`/`SIZE` and also asserts the responder
   write count did not move, so the deny differs from the control in the FSM
@@ -3755,10 +3756,10 @@ traffic
 . Zeroer start control: program the inbound/outbound output-fabric filters to
   pass all, confirm the Zeroer is in `IDLE` with `CTRL_STATUS` not reporting busy,
   program `DEST_ADDR` to the output-fabric address and `SIZE` to 8, then write
-  `CTRL_STATUS` with `INT_EN` while sampling busy every cycle; confirm busy rose
-  with the FSM out of `IDLE` and never in `ERROR`, the SYS_OUT responder saw
-  exactly one write of zero at that address, and the FSM is back in `IDLE` with
-  `CTRL_STATUS` busy clear.
+  `CTRL_STATUS` with `INT_EN` while sampling busy every cycle; confirm busy rose,
+  the FSM was seen somewhere other than `IDLE` during the busy interval and never
+  in `ERROR`, the SYS_OUT responder saw exactly one write of zero at that address,
+  and the FSM is back in `IDLE` with `CTRL_STATUS` busy clear.
 . For each of the four illegal Zeroer encodings: start from `IDLE` with
   `CTRL_STATUS` not reporting busy, program the same `DEST_ADDR`/`SIZE`, inject,
   confirm the absorbing `ERROR` state holds with `CTRL_STATUS` reporting busy,
@@ -3771,7 +3772,7 @@ traffic
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ZEROER-START-CONTROL` |From `IDLE`, with `DEST_ADDR`/`SIZE` programmed, the `CTRL_STATUS` start write raises busy with the FSM out of `IDLE` and never in `ERROR`, the SYS_OUT responder counts exactly one write beat of zero at `DEST_ADDR`, and the FSM returns to `IDLE` with `CTRL_STATUS` busy clear
+|`CHK-ZEROER-START-CONTROL` |From `IDLE`, with `DEST_ADDR`/`SIZE` programmed, the `CTRL_STATUS` start write raises busy with the FSM seen outside `IDLE` during the busy interval and never in `ERROR`, the SYS_OUT responder counts exactly one write beat of zero at `DEST_ADDR`, and the FSM returns to `IDLE` with `CTRL_STATUS` busy clear
 |`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path, with done and status set in `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL`, and a legal operation completes without error afterwards; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state from `IDLE`, report busy in `CTRL_STATUS`, ignore the `CTRL_STATUS` start write that the control ran from `IDLE` (state, busy, `intp`, AXI valids and the responder write count all unchanged), and only a cold reset escapes it
 |===
 
