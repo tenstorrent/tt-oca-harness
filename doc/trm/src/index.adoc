@@ -35,6 +35,7 @@ endif::release[]
 ** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
 ** xref:sep:index.adoc[Security Processor (SEP)]
 ** xref:smc:index.adoc[System Management Controller (SMC)]
+* xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
 * xref:dashboard.adoc[Verification Dashboard]
 endif::backend-html5[]
 
