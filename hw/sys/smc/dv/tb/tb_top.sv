@@ -1620,7 +1620,8 @@ module smc_uvm_top
         `SMC_INB.smc_alias_remap_wrap.o_remap_debug_jtag.ar_remap_hit_debug;
     `undef SMC_INB
 
-    // Isolation / FLR sequencing state, and the two watchdog timeout pins.
+    // Isolation / FLR sequencing state. The two watchdog timeout pins are
+    // already exported from the wrapper boundary above.
     `define SMC_COOL u_dut.u_smc.u_smc_peripherals.u_smc_reset_unit.u_smc_cool_reset_wrap
     assign tb_isolate_req_reg       = `SMC_COOL.isolate_req_reg;
     assign tb_isolate_req_smcen_reg = `SMC_COOL.isolate_req_smcen_reg;
@@ -1629,9 +1630,6 @@ module smc_uvm_top
     assign tb_flr_posedge_ref       = `SMC_COOL.cfg_flr_pf_active_sync_ref_posedge;
     assign tb_flr_counter_state     = `SMC_COOL.flr_counter_state;
     `undef SMC_COOL
-    assign tb_wdt_first_timeout  = u_dut.u_smc.u_smc_base.wdt_first_timeout_o;
-    assign tb_wdt_second_timeout =
-        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.wdt_second_timeout_o;
 
     // Peripherals: ATB per receiver, I2C mode enables, mailbox 0 FIFO levels,
     // UART TX lines, and the I2C leg of the peripheral-domain AXI-Lite CDC.

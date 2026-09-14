@@ -671,8 +671,6 @@
 `SMC_TB_OUT(logic, tb_flr_sync_ref)
 `SMC_TB_OUT(logic, tb_flr_posedge_ref)
 `SMC_TB_OUT(logic [1:0], tb_flr_counter_state)
-`SMC_TB_OUT(logic, tb_wdt_first_timeout)
-`SMC_TB_OUT(logic, tb_wdt_second_timeout)
 
 // Peripherals: ATB per receiver, I2C mode enables, mailbox 0 FIFO levels,
 // the UART TX lines and one AXI-Lite CDC bridge on its peripheral-clock side.
