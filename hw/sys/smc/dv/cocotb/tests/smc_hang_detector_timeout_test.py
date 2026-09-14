@@ -15,6 +15,16 @@ from smc_base_test import smc_base_test
 class smc_hang_detector_timeout_test(smc_base_test):
     """SEP outstanding stall → timeout irq; unique vs irq_test sanity."""
 
+    required_evidence = (
+        "CHK-HANG-TIMEOUT-AR",
+        "CHK-HANG-TIMEOUT-ARM",
+        "CHK-HANG-TIMEOUT-BASIC",
+        "CHK-HANG-TIMEOUT-DISABLED",
+        "CHK-HANG-TIMEOUT-DROP",
+        "CHK-HANG-TIMEOUT-FIRE",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

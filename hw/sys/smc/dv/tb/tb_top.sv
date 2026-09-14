@@ -2127,8 +2127,7 @@ module smc_uvm_top
     assign dual_present_o = 1'b1;
 
     // Scratch SRAM bank/entry decode. smc_scratch_map_pkg holds the one copy
-    // of it and cites the cluster RTL it was read out of; see that file before
-    // changing anything here.
+    // of it and names its sources; see that file before changing anything here.
     localparam int unsigned SCRATCH_NUM_BANKS = chipyard_4core_mem_pkg::NUM_SRAM_BANKS;
 
     // ------------------------------------------------------------------

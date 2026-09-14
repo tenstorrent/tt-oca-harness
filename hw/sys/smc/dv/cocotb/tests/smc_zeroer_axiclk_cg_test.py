@@ -18,6 +18,19 @@ from smc_base_test import smc_base_test
 class smc_zeroer_axiclk_cg_test(smc_base_test):
     """LIVE Zeroer axi_clk gating."""
 
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-NONVAC-P2",
+        "CHK-TIMEOUT-PATHS",
+        "CHK-ZAXI-BUSY-ENABLE",
+        "CHK-ZAXI-DISABLE-CG",
+        "CHK-ZAXI-GATE-OFF-IDLE",
+        "CHK-ZAXI-RESET-OVERRIDE",
+        "CHK-ZEROER-AXICLK-COMPLETION",
+        "CHK-ZEROER-AXICLK-NOGLITCH",
+    )
+    min_evidence = 9
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

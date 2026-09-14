@@ -155,6 +155,16 @@ _LC_PROBE_VARS = ("lc_state_smc_raw", "lc_sigint_err", "is_prod_or_rma_sip")
 class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
     """Drive lc_state_i + JTAG eFuse accesses; assert the block/allow matrix."""
 
+    required_evidence = (
+        "CHK-EFUSE-JTAG-LC-PROD",
+        "CHK-EFUSE-JTAG-LC-PROD_END",
+        "CHK-EFUSE-JTAG-LC-RMA_CHIPLET",
+        "CHK-EFUSE-JTAG-LC-RMA_SOP",
+        "CHK-EFUSE-JTAG-LC-SIGINT",
+        "CHK-EFUSE-JTAG-LC-TEST_DEV",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
