@@ -55,9 +55,7 @@ FW_INCLUDES += \
 # hw/common/dv/fw + this sys's generated headers).
 FW_REG_SYS := smc
 
-# Test discovery is unified in compile.mk; declare only the SMC deltas. coremark
-# pulls in the shared core_portme.c harness alongside its own source.
-FW_TEST_EXTRA_SRCS_coremark := $(FW_DIR)/tests/core_portme.c
+# Test discovery is unified in compile.mk; declare only the SMC deltas.
 # The SMU-SEP tests are two-sided: an SMC image and a SEP image agreeing on a
 # scratch/mailbox protocol. The protocol headers live with the SEP firmware and
 # are shared, not copied, so the two sides cannot drift apart.
