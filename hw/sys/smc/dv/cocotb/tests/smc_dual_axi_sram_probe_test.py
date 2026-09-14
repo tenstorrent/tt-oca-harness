@@ -236,3 +236,7 @@ async def smc_dual_axi_sram_probe_test(harness: SmcDualHarness) -> None:
         "smc_scratch_map_pkg gives the +smc_scratch_ram_hex loader agrees with "
         "the cluster's own."
     )
+    # A front-door probe that raised a DED or tripped a watchdog on either
+    # instance would still have read its patterns back; the latches say it
+    # did neither.
+    harness.assert_no_fault_latched("AXI-PROBE fault-latches")
