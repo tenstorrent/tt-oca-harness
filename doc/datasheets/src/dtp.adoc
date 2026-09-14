@@ -113,9 +113,6 @@ all 16 CTPs remain externally visible.
 
 <<<
 
-[cols="52,48",frame=none,grid=none,stripes=none]
-|===
-a|
 // datasheet-section: capabilities
 [.datasheet-section]
 CAPABILITIES
@@ -152,18 +149,18 @@ CAPABILITIES
 INTERFACES AND CONFIGURATION
 
 [cols="38,62",options="header"]
-!===
-!Feature !Integration options
-!Clocks and resets !System clock/reset, JTAG TCK/TRST_N, JTAG power-on reset,
+|===
+|Feature |Integration options
+|Clocks and resets |System clock/reset, JTAG TCK/TRST_N, JTAG power-on reset,
 scan reset, test enable
-!Lifecycle policy !Active-high, per-path debug and test disable controls
-!Scan !PTAP pins; BSR/iJTAG scan controls; I/O, SMC, SEP, and extra STAPs
-!Fabric !One AXI4 manager, two AXI4-Lite managers, one AXI4-Lite subordinate
-!Cross trigger !External pad controls, internal source/sink interfaces,
+|Lifecycle policy |Active-high, per-path debug and test disable controls
+|Scan |PTAP pins; BSR/iJTAG scan controls; I/O, SMC, SEP, and extra STAPs
+|Fabric |One AXI4 manager, two AXI4-Lite managers, one AXI4-Lite subordinate
+|Cross trigger |External pad controls, internal source/sink interfaces,
 clock-stop requests and output
-!Build-time !Instruction/path enables, extra STAP count, IDCODE/version fields,
+|Build-time |Instruction/path enables, extra STAP count, IDCODE/version fields,
 reset-control output types, trigger protocol modes, AXI type parameters
-!===
+|===
 
 [.datasheet-small]
 Build-time parameters select the boundary and internal feature set. Optional
@@ -177,7 +174,6 @@ reset-control slices are enabled per domain (`JTAG_IC_RESET_SMC_ENABLE`,
 protocol, and AXI types are set through the IDCODE, `XTRIG_INT_CT_MODE`, and AXI
 type parameters.
 
-a|
 // datasheet-section: integration-dependencies
 [.datasheet-section]
 INTEGRATION DEPENDENCIES
@@ -256,8 +252,7 @@ CSR: control and status register.
 DOCUMENT CONTROL
 
 [cols="18,20,30,32",options="header"]
-!===
-!Version !Date !Author !Change
-! ! ! !
-!===
+|===
+|Version |Date |Author |Change
+| | | |
 |===

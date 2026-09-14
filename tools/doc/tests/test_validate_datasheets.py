@@ -227,7 +227,7 @@ class RepositoryContractTests(unittest.TestCase):
 
         self.assertNotIn("!Debug security !`dbg_disable_i`", source)
         self.assertIn(
-            "!Lifecycle policy !Active-high, per-path debug and test disable controls", source
+            "|Lifecycle policy |Active-high, per-path debug and test disable controls", source
         )
 
     def test_dtp_points_to_current_status_and_uses_full_size_resources(self) -> None:
