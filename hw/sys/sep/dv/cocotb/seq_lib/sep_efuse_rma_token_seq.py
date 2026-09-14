@@ -78,6 +78,7 @@ class SepRmaTokenMatchSeq(uvm_sequence):
         self.token = token
         self.matched: bool | None = None
         self.match_code: int | None = None
+        self.timed_out = False
 
     async def _write(self, addr: int, data: int, label: str) -> None:
         item = SepAxiItem(f"{label}_0x{addr:08x}")
@@ -135,11 +136,15 @@ class SepRmaTokenMatchSeq(uvm_sequence):
                     self.matched,
                 )
                 return
-        self.matched = False
-        cocotb.log.info(
-            "[rma] %s token did not settle (last code=0x%02x)",
-            token_name,
-            self.match_code,
+        # Never settling is a DUT failure, not a mismatch. Recording it as
+        # matched=False would make a token block that answers nothing
+        # indistinguishable from one that correctly rejected a wrong token, so
+        # every "mismatch" check in every caller would pass on a dead comparator.
+        raise AssertionError(
+            f"{token_name} token match status never settled after {_POLL_CYCLES} "
+            f"cycles (last code=0x{self.match_code:02x}; expected one of "
+            f"match 0x{_TOKEN_MATCH:02x}, mismatch 0x{_TOKEN_MISMATCH:02x}, "
+            f"error 0x{_TOKEN_ERROR:02x})"
         )
 
 

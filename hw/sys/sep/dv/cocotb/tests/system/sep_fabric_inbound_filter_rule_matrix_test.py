@@ -564,10 +564,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
         )
-        # No image.lc_raw() == LC_PROD assert here: select_efuse_image was called with
-        # lc_raw=LC_PROD and randomize() pins the field to exactly that, so the check
-        # compares a value to itself. The DUT-side evidence that PROD actually took
-        # effect is the FEAT_CTRL read below, value-checked against feat_ctrl_expected.
+        # select_efuse_image pins lc_raw to LC_PROD, so the DUT-side evidence that
+        # PROD took effect is the FEAT_CTRL read below, value-checked against
+        # feat_ctrl_expected.
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         # security_disable read from the DUT rather than passed as a literal. This

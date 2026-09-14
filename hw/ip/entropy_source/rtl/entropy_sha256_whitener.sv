@@ -29,7 +29,7 @@ module entropy_sha256_whitener (
 
   output      logic       busy_o,
   output      logic [3:0] input_count_o,
-  output      logic [2:0] output_count_o
+  output      logic [3:0] output_count_o
 );
 
   /////////////////////
@@ -46,7 +46,7 @@ module entropy_sha256_whitener (
   assign bypass_mode = !enable_i;
 
   logic [3:0] input_word_count_q, input_word_count_d;
-  logic [3:0] output_word_count_q, output_word_count_d;
+  logic [3:0] output_words_remaining_q, output_words_remaining_d;
   logic hashing_q, hashing_d;
   logic input_phase_q, input_phase_d;
   logic       sha_hash_done_q;
@@ -97,7 +97,7 @@ module entropy_sha256_whitener (
   always_comb begin
     // Defaults
     input_word_count_d = input_word_count_q;
-    output_word_count_d = output_word_count_q;
+    output_words_remaining_d = output_words_remaining_q;
     hashing_d = hashing_q;
     input_phase_d = input_phase_q;
     output_buffer_d = output_buffer_q;
@@ -118,15 +118,17 @@ module entropy_sha256_whitener (
       whitened_valid_o = entropy_valid_i;
       whitened_data_o = entropy_data_i;
       input_phase_d = 1'b0;
-    end else if (output_word_count_q < 4'(SHA256_DIGEST_WORDS)) begin
+      output_words_remaining_d = 4'd0;
+    end else if (output_words_remaining_q != 4'd0) begin
       // Output phase: stream digest words
       whitened_valid_o = 1'b1;
-      // [2:0]: 3-bit index matches the 8-entry buffer, branch is guarded by output_word_count_q < SHA256_DIGEST_WORDS (8).
-      whitened_data_o = output_buffer_q[output_word_count_q[2:0]];
+      whitened_data_o = output_buffer_q[
+          3'(4'(SHA256_DIGEST_WORDS) - output_words_remaining_q)
+      ];
       input_phase_d = 1'b0;
 
       if (whitened_ready_i) begin
-        output_word_count_d = output_word_count_q + 4'd1;
+        output_words_remaining_d = output_words_remaining_q - 4'd1;
       end
     end else if (!hashing_q) begin
       // Input phase: stream to SHA-256 (not hashing, output complete)
@@ -158,7 +160,7 @@ module entropy_sha256_whitener (
       input_phase_d = 1'b0;
       if (sha_hash_done_q) begin
         hashing_d = 1'b0;
-        output_word_count_d = 4'd0;
+        output_words_remaining_d = 4'(SHA256_DIGEST_WORDS);
 
         // Load digest into output buffer (extract lower 32 bits)
         for (int i = 0; i < SHA256_DIGEST_WORDS; i++) begin
@@ -174,14 +176,14 @@ module entropy_sha256_whitener (
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       input_word_count_q <= 4'h0;
-      output_word_count_q <= 4'(SHA256_DIGEST_WORDS);  // Start in "done outputting" state (8)
+      output_words_remaining_q <= 4'd0;
       hashing_q <= 1'b0;
       input_phase_q <= 1'b0;
       output_buffer_q <= '{default: '0};
       sha_hash_done_q <= 1'b0;
     end else begin
       input_word_count_q <= input_word_count_d;
-      output_word_count_q <= output_word_count_d;
+      output_words_remaining_q <= output_words_remaining_d;
       hashing_q <= hashing_d;
       input_phase_q <= input_phase_d;
       output_buffer_q <= output_buffer_d;
@@ -192,8 +194,8 @@ module entropy_sha256_whitener (
   ///////////
   // Output
   ///////////
-  assign busy_o = hashing_q;
+  assign busy_o = enable_i && (hashing_q || output_words_remaining_q != 4'd0);
   assign input_count_o = input_word_count_q;
-  assign output_count_o = output_word_count_q;
+  assign output_count_o = enable_i ? output_words_remaining_q : 4'd0;
 
 endmodule

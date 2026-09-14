@@ -87,11 +87,10 @@ class DeadWindow:
     # CLEARED in the DUT, so the "restore" destroys the live status it claims to
     # put back.
     #
-    # LIMITATION: populated for entropy_src only. Its leaf Python header opts into
-    # generated field-access metadata. The other nine windows still need that
-    # metadata enabled and wired here; until then, W1C registers such as
-    # spi_controller ERROR_STATUS and km_mailbox status_reg / irq_status_reg are
-    # written back by restore(). restore() runs only after a probe already failed,
+    # Populated for entropy_src only, the one leaf whose Python header carries
+    # generated field-access metadata. For the other nine windows restore() writes
+    # back W1C registers such as spi_controller ERROR_STATUS and km_mailbox
+    # status_reg / irq_status_reg. restore() runs only after a probe has failed,
     # so the corruption is confined to a run that is already reporting failure.
     write_destructive: frozenset[int] = frozenset()
 
@@ -350,8 +349,8 @@ class SepDeadspace:
         boundary, which is what normally makes a refused address unreachable. An
         extent that does not end on a 4 KB boundary breaks that: a burst begun in
         the last live words is routed wholly to this block, and its later beats
-        land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says returns
-        DECERR and never reaches the unit.
+        land past ``REG_MAP_SIZE`` -- the span `memory_map.adoc` says is
+        refused at the fabric and never reaches a unit.
 
         Returns the start address, the responses the master reported, the
         timeout flag, the four beats, a single-beat read of each of the same
@@ -370,8 +369,8 @@ class SepDeadspace:
         # The later beats land in dead space, so a correct fabric answers this
         # burst with an error. Credit those beats and hand back whatever the
         # fabric did not use: without the credit the monitor reports a correct
-        # refusal as a protocol error, and this walk cannot pass even once the
-        # block starts refusing.
+        # refusal as a protocol error, and this walk could not pass against a
+        # block that refuses correctly.
         mon.arm_expected_decerr(beats)
         seq = SepAxiAccessSeq(
             f"dead_burst_0x{start:08x}",
@@ -493,9 +492,9 @@ class SepDeadspace:
                 item.addr,
                 expect_error=True,
             )
-            # `memory_map.adoc` makes two statements about the reserved
-            # remainder: it returns DECERR, and an access there never reaches
-            # the unit. The second holds whatever the response was, so the
+            # `memory_map.adoc` says an address past the extent a unit
+            # allocates is refused at the fabric and never reaches a unit. The
+            # second half holds whatever the response flavour was, so the
             # alias compare is not gated on OKAY -- a refused read that still
             # hands back a live register's value has reached the unit. A real
             # refusal carries the error slave's poison, which matches no
@@ -521,8 +520,8 @@ class SepDeadspace:
         elif resp != RESP_DECERR:
             # The contract asserted here is that the access is REFUSED, and any
             # error response satisfies it. `hw/sys/sep/doc/memory_map.adoc`
-            # names DECERR for the reserved remainder inside an aperture, so a
-            # refusal in another flavour is reported for the design owner
+            # says such an access is refused but names no flavour, so a
+            # refusal in any flavour is reported for the design owner
             # rather than failed: which responses are permitted is a
             # specification question, and the defect this walk exists to catch
             # is OKAY plus aliasing.

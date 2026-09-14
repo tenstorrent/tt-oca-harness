@@ -9,12 +9,9 @@ KMAC-256 (cSHAKE, PREFIX="KMAC") over a fixed message; the test proves KMAC
 consumed exactly the sideloaded key.
 
 KMAC DOES have a CFG.sideload bit, so (like AES, unlike HMAC) the consume-proof is
-a sideload-vs-SW cross-check rather than a comparison against a known answer. Note
-this is a gap in THIS test, not a missing capability: env/sep_kmac_golden.py is a
-pure-Python FIPS-202/SP800-185 KMAC model that self-tests at import against hashlib
-and the NIST sample vectors, and sep_kmac_mode_strength_rand_test already compares
-it bit-exactly against this same masked engine. Attaching it here would upgrade the
-cross-check below into a real known-answer test. The OSS port is a FRONTDOOR
+a sideload-vs-SW cross-check rather than a comparison against a known answer
+(env/sep_kmac_golden.py holds a bit-exact KMAC model; sep_kmac_mode_strength_rand_test
+compares it against this engine). The OSS port is a FRONTDOOR
 known-key variant: it loads a KNOWN distinct-word key, so the cross-check ties the
 sideload output to that specific key via the SW path, and the dummy-key negative
 reference proves the key actually drives the output. Consume-proof is
@@ -37,7 +34,7 @@ VPLAN-parity checkers:
   CHK-ERR   KMAC ERR_CODE == 0
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (KM boot/load consumer)
 
-Accepted scope deltas vs the reference suite (documented; no silent skips):
+Scope deltas vs the reference suite:
   * Like the reference suite, no bit-exact KMAC golden -- the consume-proof is the cross-check.
     The OSS port strengthens it with a KNOWN distinct-word key (vs the reference suite's
     backdoor-reconstructed KM-generated key), so no backdoor and no key/mask
@@ -131,7 +128,7 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         self.logger.info("CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox")
 
         # --- Frontdoor consume-proof: load known key -> transfer -> keyed MAC ---
-        # CHK-A: provision the KNOWN key into a KPV handle (no backdoor needed).
+        # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_KMAC)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
@@ -179,7 +176,7 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         )
 
         # CHK-B: sideload the handle's key to the KMAC wrapper KEY CSRs.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_KMAC)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_KMAC)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to KMAC)")
 

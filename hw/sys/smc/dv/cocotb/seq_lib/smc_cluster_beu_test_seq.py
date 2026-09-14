@@ -6,17 +6,13 @@ THIS TESTCASE DOES NOT PROVE ANY BEU PROPERTY, AND DOES NOT CLAIM TO.
 
 The address map places one Bus Error Unit per core at
 ``0xC801_0000 + core*0x1000``. Nothing in this bench reaches them.
-``hw/sys/smc/rtl/smc_fabric/smc_local_fabric/rtl/smc_local_fabric.sv:66-78``
-rewrites the address of every request entering the local fabric as
-``{local_base_addr_i[31:25], addr[24:0]}`` -- its own comment says "replace
-upper 7 bits with local_base_addr" -- and ``local_base_addr_i`` comes from
-``SMC_BASE_CONFIG.LOCAL_BASE`` (``smc_base.sv:381`` -> ``smc_fabric.sv:141``),
-whose generated reset is ``0xC000_0000`` and which nothing here writes. Bits
-``[31:25]`` of the incoming address are therefore discarded, and
-``0xC801_x000`` becomes ``0xC001_x000``.
-
-Filed as #1237, with the region-wide measurement and the RTL site in the comment
-on it, and the parent #1249.
+The local fabric folds every request into the local-alias aperture: it keeps
+the address bits under ``REGION_SIZE - 1`` and prefixes ``LOCAL_BASE`` (RDL
+``SMC_BASE_CONFIG.REGION_SIZE`` field description; ``hw/sys/smc/doc/fabric.adoc``
+"Local and Remote Resource Access"). At the generated resets -- ``LOCAL_BASE``
+``0xC000_0000``, ``REGION_SIZE`` 16 MiB, neither written here -- only
+``addr[23:0]`` survives, so ``0xC801_x000`` becomes ``0xC001_x000``
+(``local_fabric_masked_addr`` in ``smc_addr_map``).
 
 The reads do not reach the cluster at all, so the value mismatch is not an
 unmodelled register block behind a cluster black-box. The three non-zero words
@@ -41,9 +37,10 @@ WHAT IT PROVES. Two things about the decode, both asserted rather than assumed:
    one that temporal isolation cannot manufacture, because the write and the
    readback address different words of the address space.
 
-Cores 0 and 1 return identical triples because ``SMC_BASE_CONFIG`` is an 8 KB
-window (``smc_internal_axi_lite_xbar_pkg.sv:95-97``) and ``0xC001_1xxx`` wraps
-inside it; cores 2 and 3 map onto ``alias_remap`` / ``mmode_remap``, which are
+Cores 0 and 1 return identical triples because ``0xC001_1xxx`` is RDL deadspace
+between ``SMC_BASE_CONFIG`` and ``SMC_ALIAS_REMAP`` that the DUT answers with
+the ``SMC_BASE_CONFIG`` words (the aliasing ``smc_deadspace_decode_test``
+tracks); cores 2 and 3 map onto ``alias_remap`` / ``mmode_remap``, which are
 reset-zero. Those six pairs are 0 == 0 and carry no discrimination on their own;
 they are swept and counted separately from the discriminating pairs, and the
 evidence token says which is which.
@@ -108,7 +105,7 @@ _CORESIDENCY_MAPPED_ADDR = local_fabric_masked_addr(_CORESIDENCY_BEU_ADDR)
 
 
 class smc_cluster_beu_test_seq(SmcCsrSeq):
-    """Locks the BEU-window aliasing of #1237 by reads and a write co-residency."""
+    """Locks the BEU-window aliasing by reads and a write co-residency."""
 
     def __init__(self, name: str = "smc_cluster_beu_test_seq") -> None:
         super().__init__(name)
@@ -147,8 +144,7 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
                     f"returned 0x{via_beu:08x} but the address the local-fabric "
                     f"fold maps it to, 0x{mapped:08x}, returned "
                     f"0x{via_mapped:08x}. If these have diverged the fold has "
-                    f"changed -- see #1237 / #1249 -- and this testcase's premise "
-                    f"needs revisiting."
+                    f"changed and this testcase's premise needs revisiting."
                 )
                 self.alias_pairs.append((beu_addr, mapped, via_beu))
                 if via_beu != 0:
@@ -180,10 +176,10 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-BEU-WINDOW-ALIASED: %d (core, register) pairs read at BOTH the "
             "documented BEU address and the 0xC001_xxxx address "
-            "smc_local_fabric.sv:66-78 folds it to (LOCAL_BASE reset 0x%08x); "
+            "the local-alias fold maps it to (LOCAL_BASE reset 0x%08x); "
             "each pair returned the same word, %d of them a non-zero one. "
             "Write co-residency: hysteresis 0x%x written at 0x%08x read back as "
-            "0x%08x at 0x%08x. This testcase locks the #1237 / #1249 aliasing; "
+            "0x%08x at 0x%08x. This testcase locks the local-fabric fold aliasing; "
             "it proves NO BEU property, because no access reaches a BEU.",
             len(self.alias_pairs),
             LOCAL_BASE_RESET,

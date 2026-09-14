@@ -163,7 +163,8 @@ class APBConfig:
     addr_width: int = 9  # APB address width (entropy_source_reg uses 9-bit for 0x12C)
     data_width: int = 32  # APB data width
     addr_min: int = 0x00  # Min valid address
-    # Per RTL entropy_source_reg.sv, highest implemented offset is 0x12C (GENERATOR_11_HEALTH_STATUS)
+    # Per entropy_source.rdl the highest implemented offset is 0x12C
+    # (GENERATOR_11_SAMPLE_CLK_CONFIG).
     addr_max: int = 0x12C  # Max valid address (inclusive)
     addr_step: int = 4  # Address alignment (word-aligned)
     # No page register in entropy_source_reg; use exclusive upper bound helper at addr_max+step
@@ -174,7 +175,7 @@ class APBConfig:
 class ROConfig:
     """Ring Oscillator model configuration"""
 
-    num_lanes: int = 12  # Number of RO lanes (updated from 16 to 12)
+    num_lanes: int = 12  # Number of RO lanes
     prob_scale: int = 1_000_000  # Probability scaling factor
 
     # Model injection control
@@ -229,12 +230,12 @@ class DecorrelatorConfig:
         Mode 3 (LFSR_29): 64 cycles - 29-bit Fibonacci LFSR
         Mode 4 (LFSR_7):  16 cycles - 7-bit Fibonacci LFSR
 
-    NOTE: sample_period is currently a testbench parameter (hardcoded to 64 in
-    tb_entropy_source.sv). To change it, edit the .SAMPLE_PERIOD() parameter in
-    the u_decorrelator instantiation.
+    sample_period is informational: the reference model in tb_entropy_top.sv samples on
+    the DUT clock divider (DECORRELATOR_CTRL.SAMPLE_CLK_DIV), and no testbench module
+    reads decor_cfg.sample_period.
 
     DUT Configuration (applies to RTL):
-    - bypass_dut: Enable bypass mode in DUT (due to RTL bugs, decorrelation broken)
+    - bypass_dut: Enable bypass mode in DUT
     - sample_clk_div: Clock divider value (actual division = sample_clk_div + 1)
                      Example: 63 → divide by 64
     - bypass_mask: Per-lane bypass control (0x000=none, 0xFFF=all)

@@ -6,7 +6,7 @@ DV-CARD:          SMC_001   ANCHOR: smc_cold_reset_test
 
 Brings the SMC OSS top out of cold reset (handled by ``smc_base_test``), then
 runs the SMC_001 checkbox sequence on the reset + clk agents and emits exact
-``CHK-*`` evidence lines required by the approved card.
+``CHK-*`` evidence lines the SMC_001 card requires.
 """
 
 from __future__ import annotations

@@ -9,21 +9,12 @@ import random
 import cocotb
 from env.dtp_scan_model import DtpScanModel
 from env.dtp_tap_device import DTP_BSR_MODEL_LEN
+from env.dtp_tb_if import JTAG_SIGNAL_MAP
 from env.dtp_types import DTP_IR_WIDTH, DtpJtagInstr, DtpTapFsm, DtpTapState
 from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
 from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
-
-# Pin map for the passive scan monitor (shared by every family-checked test).
-DTP_JTAG_SIGNAL_MAP = {
-    "tck": "jtag_tck",
-    "tms": "jtag_tms",
-    "tdi": "jtag_tdi",
-    "tdo": "jtag_tdo",
-    "trst": "jtag_trst",
-    "tdo_oen": "jtag_tdo_oen",
-}
 
 
 class dtp_jtag_base_test_seq(dtp_base_test_seq):
@@ -77,9 +68,9 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         self._expected_dr_widths: list[int] = []
         if use_monitor:
             self.family_monitor = OcahJtagMasterMonitor(
-                cocotb.top,
+                self.cfg.tb_if.jtag,
                 name=f"{self.get_name()}.monitor",
-                signal_map=DTP_JTAG_SIGNAL_MAP,
+                signal_map=JTAG_SIGNAL_MAP,
             )
             await self.family_monitor.start()
         return checker

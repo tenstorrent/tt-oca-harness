@@ -176,7 +176,8 @@ int main(void) {
             sep_mbx_putc('\n');
             errors++;
         } else {
-            sep_mbx_puts("CHK-WDT-CLEAR PASS: INTR_STATE.bark observed set in handler, cleared after, WDOG_CTRL disabled\n");
+            sep_mbx_puts("CHK-WDT-CLEAR PASS: INTR_STATE.bark observed set in handler, cleared "
+                         "after, WDOG_CTRL disabled\n");
         }
     }
 

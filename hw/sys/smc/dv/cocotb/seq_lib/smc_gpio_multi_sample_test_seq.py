@@ -5,19 +5,19 @@
 Three spaced SAMPLEs of the GPIO pad-output observables, consumed into a real
 cross-sample property that a *dead* observable cannot pass.
 
-Why the checked observable is not the ``tb_gpio_*_any`` aggregate any more. Those
-three are OR-reductions over the whole pad bus (``tb_top.sv:1375-1377``), which
-also carries idle-high LSIO pads such as UART TX: they read 1 from reset onward in
-every retained run and no frontdoor stimulus can drive any of them to 0. A
-cross-sample "it did not move" compare on them is fail-capable against a moving
-aggregate but not against a stuck-at-1, undriven or mis-bound net -- which passes
-all of them exactly as a live quiet DUT does, and which no control can ever
-distinguish (``[NEGATIVE-NEEDS-POSITIVE-CONTROL]``). All three are consequently
-declared in ``env.smc_probe_liveness.UNBACKABLE_PROBES``: the scoreboard reports
-them OBSERVED-ONLY and refuses a stated expectation on them.
+The checked observable is not the ``tb_gpio_*_any`` aggregate. Those three are
+OR-reductions over the whole pad bus (``tb_top.sv``), which also carries
+idle-high LSIO pads such as UART TX: they read 1 from reset onward and no
+frontdoor stimulus can drive any of them to 0. A cross-sample "it did not move"
+compare on them is fail-capable against a moving aggregate but not against a
+stuck-at-1, undriven or mis-bound net -- which passes all of them exactly as a
+live quiet DUT does, and which no control can distinguish
+(``[NEGATIVE-NEEDS-POSITIVE-CONTROL]``). All three are declared in
+``env.smc_probe_liveness.UNBACKABLE_PROBES``: the scoreboard reports them
+OBSERVED-ONLY and refuses a stated expectation on them.
 
-The property therefore moved to the raw pad-output vectors ``tb_core2pad_o`` /
-``tb_core2pad_en_o`` (``tb_top.sv:1378-1379``, per-pad mirrors of the same
+The property lives on the raw pad-output vectors ``tb_core2pad_o`` /
+``tb_core2pad_en_o`` (``tb_top.sv``, per-pad mirrors of the same
 ``u_dut.u_smc.core2pad*_o`` nets the aggregates reduce). Those *do* move under
 real frontdoor GPIO CSR programming, so this sequence:
 
@@ -116,7 +116,7 @@ class smc_gpio_multi_sample_test_seq(smc_base_test_seq):
                 # against the reference on the credited pad output-enable vector
                 # (a spurious pad-bus change fails it). Sample 0 states no
                 # expectation, and its only gate -- resolvability -- cannot fail
-                # under the 2-state simulator every retained run uses, so no CHK-
+                # under a 2-state simulator, so no CHK-
                 # token is emitted for it: it is logged below as the reference it
                 # is ([EVIDENCE-TOKEN-CONDITIONAL]).
                 cocotb.log.info(

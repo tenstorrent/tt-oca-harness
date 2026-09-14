@@ -14,10 +14,6 @@
  * 4. Test CMDINVAL error with invalid SPEED=3
  * 5. Test CSIDINVAL error with CSID > NUM_CS
  * 6. Verify ERROR_STATUS W1C clear
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_cmd_queue_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -81,7 +77,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
-
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

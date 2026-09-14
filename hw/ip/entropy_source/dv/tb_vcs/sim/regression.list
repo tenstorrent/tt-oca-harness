@@ -22,18 +22,16 @@
 # Sanity and Basic Tests
 test_entropy_sanity
 
-# Decorrelator Mode Tests (15 tests)
-# Run all decorrelator tests - simpler than maintaining individual test names
+# Decorrelator Mode Tests
 test_decorrelator_modes
 
-# FIFO Tests (16 tests)
-# Run all FIFO tests - simpler than maintaining individual test names
+# FIFO Tests
 test_entropy_fifo
 
-# Health Test Suite (13 tests)
+# Health Test Suite
 test_health_tests
 
-# Debug Monitor Tests (5 tests)
+# Debug Monitor Tests
 test_debug_monitor
 
 # Register Tests

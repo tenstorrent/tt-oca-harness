@@ -54,8 +54,7 @@ class smc_spm_mem_boundary_test_seq(SmcCsrSeq):
         observed = {}
         for name, addr, pattern in _PATTERNS:
             # `expected=` hands the compare to the scoreboard, which raises on
-            # mismatch, so a local `assert got == pattern` would only restate
-            # it and would carry no failure mode of its own.
+            # mismatch.
             observed[name] = await self.csr_read(name, addr, expected=pattern, length=8)
             cocotb.log.info(
                 "CHK-SPM-MEM-%s: addr=0x%x data=0x%x (read while all %d edge "
@@ -66,10 +65,8 @@ class smc_spm_mem_boundary_test_seq(SmcCsrSeq):
                 len(_PATTERNS),
             )
 
-        # `lo_ok`/`mid_ok`/`hi_ok` were `flags.append(True)` inside the loop --
-        # literal True whenever the body completed -- and the BASIC token below
-        # printed exactly those three constants. Both are replaced by the
-        # measured words ([NO-ALWAYS-PASS-CHECKER]).
+        # `lo_ok`/`mid_ok`/`hi_ok` carry the measured words the BASIC token
+        # prints ([NO-ALWAYS-PASS-CHECKER]).
         self.lo_ok, self.mid_ok, self.hi_ok = (
             observed["SPM_LO"],
             observed["SPM_LO_NEXT"],
@@ -87,8 +84,8 @@ class smc_spm_mem_boundary_test_seq(SmcCsrSeq):
             self.hi_ok,
         )
 
-        # Reconcile the accesses the scoreboard actually saw against the count
-        # this body constructs: 3 pattern writes + 3 readbacks. Without it a
-        # body that stopped after the writes still produced a clean run,
-        # because the three exact compares it never reached cannot complain.
+        # Reconcile the accesses the scoreboard saw against the count this body
+        # constructs: 3 pattern writes + 3 readbacks. A body that stops after
+        # the writes never reaches the three exact compares, so only this count
+        # fails it.
         self.assert_all_reachable(len(_PATTERNS) * 2, "SPM_MEM_BOUNDARY")

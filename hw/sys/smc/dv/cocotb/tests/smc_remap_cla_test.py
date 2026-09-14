@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap: ALIAS_REMAP translation + MMODE/ALIAS sweep + CLA."""
+"""SMC OSS ALIAS_REMAP translation + MMODE/ALIAS sweep + CLA."""
 
 from __future__ import annotations
 
@@ -13,20 +13,19 @@ from seq_lib.smc_remap_cla_test_seq import (
 from smc_base_test import smc_base_test
 
 # Directed stimulus floor for the SEP_IN AXI CSR traffic, written out here as an
-# independent constant. It is deliberately NOT read back from the sequence's own
+# independent constant. It is NOT read back from the sequence's own
 # counter: a floor that shrinks with the sequence cannot catch a sequence that
 # silently stops short. Composition: 32 remap-table reset reads + 9 CLA aperture
-# accesses + 18 remap-programming/filter accesses + 57 CLA full-aperture reset
-# reads.
+# accesses + 18 remap-programming/filter accesses + 82 CLA full-aperture reset
+# reads (32 + 9 + 18 + 82 = 141).
 #
-# The 57 is the software-owned subset of the 103 registers in
-# hw/ip/dfd/regs/smc_cla.rdl -- the 46 registers with a `hw = w`/`hw = rw` field
-# are hardware-driven and cannot be held to an RDL reset (measured: `Timestamp`
-# @0x200 reads 0x2ad against a generated reset of 0x0, being a free-running
-# counter). The sequence additionally asserts `len(CLA_RESET_SWEEP) >= 55`, so a
-# generated map that lost rows fails there rather than quietly lowering this
-# floor.
-REMAP_CLA_MIN_CSR_ACCESSES = 116
+# The 82 is the software-owned subset of the 137 registers in the generated
+# CLA map -- the remaining registers are hardware-driven and cannot be held
+# to an RDL reset (`Timestamp` @0x200 is a free-running counter and never
+# reads its generated reset of 0x0). The sequence additionally asserts
+# `len(CLA_RESET_SWEEP) >= 82`, so a generated map that lost rows fails there
+# rather than quietly lowering this floor.
+REMAP_CLA_MIN_CSR_ACCESSES = 141
 
 
 @pyuvm.test()

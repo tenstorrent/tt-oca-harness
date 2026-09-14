@@ -26,8 +26,7 @@
 //       path, so PTAP readbacks use select=0);
 //   tms_hold       per-STAP (seeded order) TRST + SIB-open flow: the
 //       unselected port must never drive tdo_oen; the parked TMS polarity
-//       is logged only (proving it needs the downstream TAP attached —
-//       follow-up to #1056).
+//       is logged only (proving it needs the downstream TAP attached).
 
 class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_stap_scan_test_seq)

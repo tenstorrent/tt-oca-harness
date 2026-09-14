@@ -5,7 +5,7 @@
 Drives the SEP reset_ctrl SW_RESET_N register over the CPU-LSU master (no_cpu) to
 pulse one crypto engine's per-IP reset while a sibling holds a live, golden-checked
 crypto RESULT in its datapath output registers. The crypto operations themselves
-(SHA-256 on HMAC, ECB-256 on AES) run on the proven SepHmac / SepAes drivers; this
+(SHA-256 on HMAC, ECB-256 on AES) run on the SepHmac / SepAes drivers; this
 module only owns the reset-control register so the held-result observation is a
 real crypto-datapath state, not a poked status bit.
 
@@ -33,7 +33,8 @@ SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 SW_RESET_N_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
 RST_KM, RST_OTBN, RST_AES, RST_HMAC, RST_KMAC, RST_TRNG = 0, 1, 2, 3, 4, 5
 RESP_OKAY = 0
-RESP_DECERR = 3
+RESP_SLVERR = 2
+
 # DIGEST_0 has no generated REG_DEFAULT; OpenTitan HMAC clears it to 0 on rst_ni.
 HMAC_DIGEST_RESET = 0
 

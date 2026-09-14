@@ -22,7 +22,7 @@ Standard boot-scoreboard checks (banner + firmware PASS + PC advance) apply on
 top. The firmware image is fw/build/tests/cpu_trace_diag_test/*.{itcm,dtcm}.hex,
 built by the c_compile stage (make dv-fw-tests TEST=cpu_trace_diag_test).
 
-Stimulus is deliberately deterministic: the reconstruction is auditable only
+Stimulus is deterministic: the reconstruction is auditable only
 against a known call chain and a known trap site, and the prebuilt image fixes
 both at compile time (same shape as every cpu firmware test here). The seeded
 clock-timing randomization from sep_base_test still applies on top, so the

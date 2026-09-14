@@ -1,20 +1,5 @@
-// *************************************************************************
-// *
-// * Tenstorrent CONFIDENTIAL
-// * __________________
-// *
-// *  Tenstorrent Inc.
-// *  All Rights Reserved.
-// *
-// * NOTICE:  All information contained herein is, and remains the property
-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
-// * Canadian and Foreign Patents, patents in process, and are protected by
-// * trade secret or copyright law.  Dissemination of this information or
-// * reproduction of this material is strictly forbidden unless prior
-// * written permission is obtained from Tenstorrent Inc.
-// *
-// *************************************************************************
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 `ifndef CLA_PKG_SVH
 `define CLA_PKG_SVH
@@ -60,7 +45,6 @@ parameter ACTION_BASE_COUNTER_INCREMENT_PULSE      = 16;
 parameter ACTION_BASE_COUNTER_CLEAR_CTR            = 17;
 parameter ACTION_BASE_COUNTER_AUTO_INCREMENT       = 18;
 parameter ACTION_BASE_COUNTER_STOP_AUTO_INCREMENT  = 19;
-parameter ACTION_TIMESTAMP_CAPTURE                 = 20;
 
 //Event Positions
 parameter NUMBER_OF_EVENTS_PER_COUNTER = 3;

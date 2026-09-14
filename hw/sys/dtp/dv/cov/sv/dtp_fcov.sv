@@ -16,9 +16,9 @@
 //     (Verilator cannot compile covergroups; the public build defines
 //     VERILATOR explicitly).
 //
-// Scenario-area sections (JTAG core, JTAG2AXI/OTP, debug TDR, scan/STAP,
-// cross-trigger) are populated by their owning changes; the shared event
-// decode and the per-boundary liveness points live at the top.
+// JTAG-core coverage lives here; JTAG2AXI/OTP, debug TDR, scan/STAP, and
+// cross-trigger coverage live in the sibling dtp_*_fcov.sv modules. The
+// shared event decode and the per-boundary liveness points come first.
 
 `include "ocah_fcov_macros.svh"
 
@@ -48,10 +48,9 @@ module dtp_fcov (
   wire update_dr = (tap_state_i == jtag_tap_pkg::UPDATE_DR);
 
   // No declaration initializers: VCS rejects them on always_ff-driven
-  // variables (initializer_driver_checks). Until the first TCK edge the
-  // history is 0 (Verilator, 2-state) or X (VCS); either way the covers
-  // below can only under-fire, never false-fire, because every condition
-  // requires a specific defined non-zero pattern.
+  // variables (initializer_driver_checks). Before the first TCK edge the
+  // history reads 0 (Verilator, 2-state) or X (VCS), so every cover
+  // condition must require a defined non-zero history pattern.
   logic [15:0] tap_state_q;
   logic        tms_q;
   logic        ir_loaded_since_tlr;

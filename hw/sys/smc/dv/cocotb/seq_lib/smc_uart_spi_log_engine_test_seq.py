@@ -48,22 +48,21 @@ UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t",
 # so DSR = RI = DCD = 0, and with RI never moving TERI = DDSR = DDCD = 0. Only
 # CTS/DCTS are live, which is what this sequence exercises.
 #
-# CTS INPUT LEVEL -- driven by this test, not inherited from a pad default.
-# "The SMC cocotb bench drives no external value on that pad, so cts_ni = 0" is
-# not a safe premise here, and neither is "identical on Verilator and VCS":
+# CTS INPUT LEVEL -- driven by this test, because an undriven pad has no
+# simulator-independent level:
 #   * ``tb_top.sv:803`` instantiates ``pullup u_pad_pullup (gpio_pad_io[i])`` on
-#     EVERY pad, deliberately, "to give idle/unconnected pads a defined '1"
+#     EVERY pad, "to give idle/unconnected pads a defined '1"
 #     (tb_top.sv:692-693) -- an undriven pad here is 1, not 0; and
 #   * whether that pullup resolves at all is a tool property: the same TB notes
 #     at :723-724 that "Verilator ignores `pullup`". An expectation resting on
 #     an undriven pad is therefore an expectation resting on a simulator
 #     artefact, and would flip on a 4-state simulator.
-# So the level is now stimulus this sequence establishes: pad 14 is driven from
+# So the level is stimulus this sequence establishes: pad 14 is driven from
 # the top-level ``tb_gpio_ext_drive_en`` / ``tb_gpio_ext_drive_value`` pins,
 # which are the highest-precedence entry in tb_top's pad-injection mux
 # (``tb_top.sv:716-721``, evaluated before the pullup and before every other
-# injector) -- the same approved external pad-drive path the GPIO/I2C sequences
-# use. No force, no deposit, no hierarchical write.
+# injector) -- the same external pad-drive path the GPIO/I2C sequences use. No
+# force, no deposit, no hierarchical write.
 #
 # PAD IDENTITY: pad 14 is UART[0].CTS per the authoritative integrator pin table
 # ``doc/integrator/meta/ocah_gpio_table.csv:16`` /
@@ -101,9 +100,8 @@ UART0_CTS_PAD = 14
 # Bounded poll for a driven pad level to appear in MSR. There is no handshake to
 # wait on (the pad is an asynchronous input crossing into the UART's clock
 # domain), so completion is a bounded retry whose expiry is a hard failure
-# ([TIMEOUT-MUST-FAIL]); each CSR read is itself hundreds of ns of sim time, so
-# this bound is orders of magnitude above the observed 1-read latency and is
-# never tuned to make a pass happen.
+# ([TIMEOUT-MUST-FAIL]); each CSR read is hundreds of ns of sim time, so the
+# bound sits far above the pad-to-MSR latency.
 MSR_POLL_READS = 40
 
 UART_LOG_READS = [
@@ -252,9 +250,9 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
             )
 
         # Establish the CTS level as this test's own stimulus and route the pad
-        # to the pin. Driving pad 14 LOW first is deliberate: cts_ni reads 0
-        # both before and after the UART_EN write, so enabling the pad function
-        # cannot itself move CTS and the first MSR read needs no settling.
+        # to the pin. Pad 14 is driven LOW before UART_EN: cts_ni then reads 0
+        # both before and after the write, so enabling the pad function cannot
+        # itself move CTS and the first MSR read needs no settling.
         self._drive_cts_pad(0)
         await self.csr_write(
             "UART_LOG_ENGINE_CTRL_UART_EN", UART_LOG_ENGINE_CTRL_CTRL, UART_LOG_ENGINE_CTRL_UART_EN
@@ -282,8 +280,7 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         )
 
         # Both polarities of the pin->MSR mapping, and DCTS set->clear in both
-        # directions. This is the leg an observed-HW golden could never assert
-        # and the leg a pad default could never establish.
+        # directions.
         try:
             await self._msr_follow_pad(1)
             await self._msr_follow_pad(0)

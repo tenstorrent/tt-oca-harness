@@ -7,7 +7,7 @@ SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 These are short product summaries for SoC and chiplet integrators. They are not
 substitutes for the Integrator Guide or Technical Reference Manual. Each sheet
-uses a common two-page structure derived from the way mature commercial IP
+uses a common structure derived from the way mature commercial IP
 datasheets expose highlights, architecture, stable specifications, features,
 integration dependencies, verification status, and deliverables.
 

@@ -8,7 +8,7 @@ helpers in the reference sep_km_aes_sideload_kat_test_seq (RAL there; direct AXI
 here, like SepOtbn). All accesses are 32-bit beats (size=2): the AES register
 block is 32-bit behind the wrapper's 64->32 dw-converter.
 
-AES register map (base 0x1091_0000; vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_reg_pkg.sv offsets):
+AES register map (base from the generated SEP header; offsets from aes.adoc):
   KEY_SHARE0_0..7 @ 0x04..0x20   KEY_SHARE1_0..7 @ 0x24..0x40
   DATA_IN_0..3    @ 0x54..0x60   DATA_OUT_0..3   @ 0x64..0x70
   CTRL_SHADOWED   @ 0x74 (shadowed: written twice)
@@ -35,7 +35,7 @@ AES_CTRL_SHADOWED = AES.addr("CTRL_SHADOWED")
 AES_TRIGGER = AES.addr("TRIGGER")
 AES_STATUS = AES.addr("STATUS")
 
-# CTRL_SHADOWED field encodings (aes_reg_pkg.sv / vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc):
+# CTRL_SHADOWED field encodings (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc):
 #   OPERATION[1:0]=01 ENC, MODE[7:2]=000001 ECB, KEY_LEN[10:8]=100 AES-256,
 #   SIDELOAD[11], PRNG_RESEED_RATE[14:12]=100 PER_8K, MANUAL_OPERATION[15]=0.
 AES_OP_ENC = 0b01
@@ -48,7 +48,7 @@ AES_KEY_LEN_192 = 0b010
 AES_KEY_LEN_256 = 0b100
 AES_PRS_RATE_PER_8K = 0b100
 
-# mode name / key-bit-width -> CTRL_SHADOWED field encodings (aes_reg_pkg.sv).
+# mode name / key-bit-width -> CTRL_SHADOWED field encodings (aes.adoc).
 AES_MODE_CTRL = {"ecb": AES_MODE_ECB, "cbc": AES_MODE_CBC, "ctr": AES_MODE_CTR}
 AES_KEYLEN_CTRL = {128: AES_KEY_LEN_128, 192: AES_KEY_LEN_192, 256: AES_KEY_LEN_256}
 
@@ -160,8 +160,8 @@ class SepAes(SepAxiRegDriver):
         await self._configure_ecb_256(sideload=sideload, operation=AES_OP_DEC, op_name="DEC")
 
     def _key_mask_rng(self):
-        """Independent stream for KEY_SHARE1 so the test's RAND-REP key/pt
-        draws are unchanged. ``0xA5E5`` is a domain tag, not a credential."""
+        """Independent stream for KEY_SHARE1, so the share draws do not consume
+        the test's RAND-REP key/pt stream. ``0xA5E5`` is a domain tag, not a credential."""
         rng = getattr(self, "_key_mask_rng_inst", None)
         if rng is None:
             from env.sep_seeded_rng import SepSeededRng
@@ -287,6 +287,26 @@ class SepAes(SepAxiRegDriver):
             await self._wr(AES_DATA_IN_0 + i * 4, word & 0xFFFF_FFFF)
         await self._poll_status_bit(AES_STATUS_OUTPUT_VALID, "output_valid")
         return await self.read_data_out()
+
+    async def output_valid_within(self, polls: int, *, poll_cycles: int = 20) -> bool:
+        """Bounded probe: did OUTPUT_VALID assert within this window?
+
+        Returns rather than raises, because a caller proving the engine must
+        REFUSE to start needs the negative as a result, not as an error. Keep
+        the window short: it is spent in full on every passing run.
+        """
+        for _ in range(polls):
+            if await self._rd(AES_STATUS) & (1 << AES_STATUS_OUTPUT_VALID):
+                return True
+            await ClockCycles(cocotb.top.clk_i, poll_cycles)
+        return False
+
+    async def start_block_no_wait(self, pt_words: list[int]) -> None:
+        """Write one input block and return without waiting for a result."""
+        assert len(pt_words) == 4, "AES block needs 4 data words"
+        await self._poll_status_bit(AES_STATUS_INPUT_READY, "input_ready")
+        for i, word in enumerate(pt_words):
+            await self._wr(AES_DATA_IN_0 + i * 4, word & 0xFFFF_FFFF)
 
     async def read_data_out(self) -> list[int]:
         """Read DATA_OUT_0..3. Re-readable: AES holds the last ciphertext in the

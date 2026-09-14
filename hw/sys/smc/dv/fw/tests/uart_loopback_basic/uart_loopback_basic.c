@@ -65,7 +65,7 @@ static void uart_init_loopback_basic(uint32_t uart_base, uint32_t divisor) {
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               (divisor >> 8) & 0xFFu);
-#
+
     // Configure 8N1 (DLAB=0).
     lcr.f.DLAB = 0x0u;
     lcr.f.WLS = 0x3u; // 8 bits
@@ -109,7 +109,6 @@ int main(void) {
     const uint32_t uart_base = get_uart_reg_base(uart_idx);
     const uint32_t divisor = 1u;
 
-    // peripherals_out_of_reset();
     uart_enable_single(uart_idx);
     uart_init_loopback_basic(uart_base, divisor);
 
@@ -177,13 +176,12 @@ int main(void) {
     simputs("UART_LOOPBACK: All bytes matched.\n");
 
     //--------------------------------------------------------------------------
-    // SCENARIO 2 (v003) — LCR.SET_BREAK exercise.
+    // SCENARIO 2 — LCR.SET_BREAK exercise.
     //
-    // Covers uart_core.sv:272 `assign tx_out = set_break ? 1'b0 : uart_tx_out;`
-    // and the corresponding branch / line coverage holes. With sys_loopback
-    // still enabled (MCR.LOOP=1), set LCR.SET_BREAK=1 then transmit a byte;
-    // the RX should observe a 0x00 (break-condition character) and LSR.BI
-    // should latch.
+    // Covers uart_core.sv:272 `assign tx_out = set_break ? 1'b0 : uart_tx_out;`.
+    // With sys_loopback still enabled (MCR.LOOP=1), set LCR.SET_BREAK=1 then
+    // transmit a byte; the RX should observe a 0x00 (break-condition character)
+    // and LSR.BI should latch.
     //--------------------------------------------------------------------------
     simputs("UART_LOOPBACK: scenario 2 — LCR.set_break\n");
     {
@@ -246,7 +244,7 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO 3 (v003) — MCR.LINE_LOOPBACK exercise.
+    // SCENARIO 3 — MCR.LINE_LOOPBACK exercise.
     //
     // Covers uart_core.sv:274 `assign tx_o = line_loopback ? rx_i : tx_out_q;`
     // and :317 `line_loopback ? 1'h1 : rx_in_maj` mux selects. Toggle the bit
@@ -265,9 +263,7 @@ int main(void) {
                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
                   mcr3.w);
 
-        // Enable line_loopback (MCR bit 5). Some struct definitions name this
-        // field differently; if not in the bitfield, use bit-encoded write.
-        // For SMC's 16550 implementation MCR bit 5 is LINE_LOOPBACK.
+        // Enable line_loopback: MCR bit 5 is LINE_LOOPBACK (bit-encoded write).
         uint32_t mcr_raw =
             read_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) -
                                   SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)));
@@ -279,8 +275,7 @@ int main(void) {
         for (volatile int i = 0; i < 200; i++) { /* settle */
         }
 
-        // Drive a TX byte; in line_loopback mode rx_in stays high so DR never
-        // arrives — that's expected. The point is the branch select fires.
+        // Drive a TX byte; in line_loopback mode rx_in is held high, so no DR is expected.
         write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR(0) -
                                SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
                   0xA5u);

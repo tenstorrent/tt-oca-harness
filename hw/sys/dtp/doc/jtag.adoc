@@ -88,55 +88,49 @@ OCAH-defined. The external slice is adopter-defined: its width and fields come
 from the SMU type parameter `ic_reset_ext_t`. The Integrator Guide records the
 SMU-composed port map.
 
-==== Lifecycle Feature Control
+==== Debug Disable
 
-The DTP top level consumes `feat_ctrl_i` using the SEP lifecycle feature control
-type `sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t`. That type is reused for
-its bit layout only: the bits themselves are active-high feature *enables* (1 =
-feature enabled), driven by the SEP lifecycle controller. The DTP synchronizes
-`feat_ctrl_i` into the TCK domain before use, then derives a security disable
-signal per gated path.
-
-Because `feat_ctrl_i` is enable-polarity, a path is enabled only when *all* of
-its required enables are asserted, and is therefore disabled whenever *any* one
-of them is deasserted:
+`dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is a per-path
+debug/test disable vector. Each field is active-high (1 = path disabled). The
+JTAG interface unit synchronizes the vector into the TCK domain and applies
+each field to the named path.
 
 [cols="<40%,<60%",options="header"]
 |===
-|Gated Path |Security Disable Condition
+|Path |Disable Field
 
 |I/O STAP host path
-|`!feat_ctrl_i.sip_debug`
+|`dbg_disable_i.stap_io`
 
 |SMC debug STAP host path
-|`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`dbg_disable_i.stap_smc`
 
 |SEP debug STAP host path
-|`!feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`dbg_disable_i.stap_sep`
 
 |Extra STAP host paths
-|`!feat_ctrl_i.ap_debug`
+|`dbg_disable_i.stap_extra`
 
 |External STAP return path
-|`!feat_ctrl_i.ap_debug`
+|`dbg_disable_i.stap_host`
 
 |Secure external DFT iJTAG path
-|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`dbg_disable_i.dft_secure`
 
 |Non-secure external DFT iJTAG path
-|`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`dbg_disable_i.dft_nonsecure`
 
 |DFD iJTAG path
-|`!feat_ctrl_i.ap_debug`
+|`dbg_disable_i.dfd`
 
 |SMC fabric JTAG2AXI path
-|`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`dbg_disable_i.smc_jtag2axi`
 
 |SMC OTP JTAG2AXI path
-|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`dbg_disable_i.smc_otp_jtag2axi`
 
 |SEP OTP JTAG2AXI path
-|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`dbg_disable_i.sep_otp_jtag2axi`
 |===
 
 A disabled path remains observable only where required for control and readback;
@@ -146,5 +140,5 @@ means its TDR update registers are not latched, buffered requests are dropped,
 and the AXI state machine is held in idle, so no AXI traffic can be generated at
 all.
 
-The STAP and iJTAG conditions are implemented in `jtag_intf_unit`; the three
-JTAG2AXI conditions are implemented in `jtag_ptap`.
+The STAP and iJTAG fields are applied in `jtag_intf_unit`; the three JTAG2AXI
+fields are applied in `jtag_ptap`.

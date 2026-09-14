@@ -21,6 +21,12 @@ localparam int unsigned DtpIrWidth = jtag_inst_reg_pkg::IR_WIDTH;
 // IEEE 1149.1 marker bit.
 localparam bit [31:0] DtpDefaultIdcode = 32'h0000_0001;
 
+// Capture-IR loads the instruction shift register with 01 in its two LSBs
+// (IEEE 1149.1 7.1.1) and zeros above (jtag_inst_reg), so an IR scan that
+// reaches Update-IR without a Shift-IR cycle activates this opcode, the
+// IDCODE instruction.
+localparam bit [DtpIrWidth-1:0] DtpIrCapturePattern = DtpIrWidth'(2'b01);
+
 // Scoreboard feature names: one dtp_<feature>_ref_model each (test cfg
 // policy names them in required_features).
 localparam string DtpFeatureIrDecode = "ir_decode";

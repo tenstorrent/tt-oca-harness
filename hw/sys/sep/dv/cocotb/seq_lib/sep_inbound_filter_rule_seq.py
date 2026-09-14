@@ -330,8 +330,8 @@ class SepInboundFilterMatrixCfg:
     def ownership_targets(self, inbound_cfg_addr: int) -> list[tuple[str, int]]:
         """CSRs that must stay outside every programmed allow window.
 
-        Inbound CFG is the original ownership probe. The rest sit in the same
-        reachable system-CSR window and were previously uncovered. Window 0 is
+        Inbound CFG is the primary ownership probe. The rest sit in the same
+        reachable system-CSR window. Window 0 is
         ``SEP_SW_DEBUG``; ``SEP_GLOBAL_BASE_ADDR`` and ``SEP_REGION_SIZE`` share
         that 4 KB page, so they prove START/END (not the page) under
         ``allow_burst=0``.

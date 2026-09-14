@@ -23,10 +23,10 @@
  *   S10 waits (bounded) for ROUTE_DONE_SMC at scratch9, then writes SMU016_SMC_PASS
  *       to LOCAL scratch10 and parks in smu_sep_ext_axi_smc_pass_loop.
  *
- * STACKLESS BY DESIGN (smc_stackless_test.h): the SEP-driven / cocotb-backdoor
- * boot does not init the SMC SRAM stack, so main() makes NO function calls (only
- * SMC_* absolute-MMIO/poll macros) and the terminal pass/fail loops are noreturn
- * so the compiler tail-calls them -> no `add sp,sp,-N` in main (verify the .dis).
+ * STACKLESS (smc_stackless_test.h): the SEP-driven / cocotb-backdoor boot does
+ * not init the SMC SRAM stack, so main() makes no function calls (only SMC_*
+ * absolute-MMIO/poll macros) and the terminal pass/fail loops are noreturn so
+ * the compiler tail-calls them; main must contain no `add sp,sp,-N`.
  *
  * The outbound/inbound filter blocks are write-only programming interfaces (a CPU
  * read of one stalls), so only the aperture CSRs are read back in firmware; the

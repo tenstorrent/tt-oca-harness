@@ -14,10 +14,6 @@
  * 4. Test TX watermark (TXWM) with configurable TX_WATERMARK
  * 5. Write until TXFULL, verify overflow error
  * 6. SW_RST, verify TXEMPTY after reset
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_tx_fifo_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -52,7 +48,6 @@ int main(void) {
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
-
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

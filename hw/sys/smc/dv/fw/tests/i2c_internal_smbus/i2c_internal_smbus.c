@@ -201,7 +201,7 @@ static bool check_target_smbus_alert_status(uint32_t idx) {
 }
 
 /**
- * @brief Debug: Print Controller FIFO and status information
+ * @brief Debug probe: read Controller FIFO/status registers, tracing progress in scratch[1]
  *
  * @param idx Controller I2C instance index
  * @param label Debug label string
@@ -233,13 +233,13 @@ static void debug_controller_status(uint32_t idx, const char *label) {
     (void)smbus_status_val;       // Read for side effects
     write_scratch(1, 0x00000076); // After reading SMBUS_STATUS
 
-    // Commented out simputs to avoid blocking - use scratchpad markers instead
+    // Progress is traced through scratch[1] markers; simputs inside this probe blocks the run.
 
     write_scratch(1, 0x00000077); // Before exit debug_controller_status
 }
 
 /**
- * @brief Debug: Print Target FIFO and status information
+ * @brief Debug probe: read Target FIFO/status registers, tracing progress in scratch[1]
  *
  * @param idx Target I2C instance index
  * @param label Debug label string
@@ -270,20 +270,11 @@ static void debug_target_status(uint32_t idx, const char *label) {
     (void)smbus_ctrl_val;         // Read for side effects
     write_scratch(1, 0x0000006C); // After reading SMBUS_CTRL
 
-    // Commented out simputs to avoid blocking - use scratchpad markers instead
+    // Progress is traced through scratch[1] markers; simputs inside this probe blocks the run.
 
     write_scratch(1, 0x0000006D); // Before exit debug_target_status
 }
 
-/**
- * @brief Debug: Print ARA transaction details
- *
- * @param controller_idx Controller I2C instance index
- * @param target_idx Target I2C instance index
- * @param ara_addr ARA address (should be 0x0C)
- * @param read_addr Address read from Target
- * @param expected_addr Expected target address (7-bit)
- */
 /**
  * @brief Debug: Print ARA transaction details
  *
@@ -322,9 +313,6 @@ int main(void) {
     const uint8_t TARGET_ADDR = 0x10;  // Target address (7-bit)
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
     simputs("\n");
     simputs("################################################\n");
     simputs("##      I2C Internal SMBus Alert Test         ##\n");
@@ -502,7 +490,7 @@ int main(void) {
     simputs("  Controller reading from ARA address (0x0C)...\n");
     write_scratch(1, 0x00000052); // ARA protocol start marker
 
-    // Debug: Initial state (simplified to avoid blocking)
+    // Debug: initial state
     write_scratch(1, 0x00000062); // Before starting debug status checks
     simputs("  [PROGRESS] Starting debug status checks...\n");
 
@@ -544,7 +532,7 @@ int main(void) {
         test_fail(0);
     }
 
-    // Debug: After preparing TX FIFO (simplified)
+    // Debug: after preparing TX FIFO
     write_scratch(1, 0x00000059); // Before debug after TX FIFO
     debug_target_status(TARGET_IDX, "After TX FIFO");
     debug_controller_status(CONTROLLER_IDX, "Before ARA cmd");
@@ -552,22 +540,12 @@ int main(void) {
 
     // Execute ARA read: Controller reads from Alert Response Address (0x0C)
     write_scratch(1, 0x0000005B); // Start ARA read transaction
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Starting ARA read transaction...\n");
-    // simputs("  Executing ARA read transaction...\n");
-    // simputs("  Controller sending START + ARA address (0x0C << 1 | 1 = 0x19)...\n");
 
     // Check Controller idle before ARA read
     write_scratch(1, 0x0000005C); // Before waiting for Controller idle
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Waiting for Controller to be idle...\n");
     int idle_ret = i2c_controller_wait_idle(CONTROLLER_IDX, I2C_TIMEOUT_DEFAULT);
     write_scratch(1, 0x0000005D); // After waiting for Controller idle
     if (idle_ret != I2C_OK) {
-        // Commented out simputs to avoid blocking
-        // simputs("  ERROR: Controller not idle before ARA read (error: ");
-        // simputshex32("", idle_ret);
-        // simputs(")\n");
         write_scratch(0, 0xBAD00052);
         test_fail(0);
     }
@@ -656,7 +634,7 @@ int main(void) {
     // Debug: ARA transaction details
     debug_ara_transaction(SMBUS_ADDR_ARA, alert_addr, TARGET_ADDR);
 
-    // Debug: After ARA read (simplified)
+    // Debug: after ARA read
     simputs("  [PROGRESS] Debug after ARA read...\n");
     debug_controller_status(CONTROLLER_IDX, "After ARA");
     debug_target_status(TARGET_IDX, "After ARA");
@@ -817,7 +795,7 @@ int main(void) {
     //=========================================================================
     write_scratch(1, 0x00000090);
 
-    // Signal setup complete to testbench
+    // Final DONE marker for the testbench
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
     simputs("################################################\n");

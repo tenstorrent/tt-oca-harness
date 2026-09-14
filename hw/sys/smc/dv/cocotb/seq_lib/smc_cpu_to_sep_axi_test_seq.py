@@ -32,16 +32,11 @@ from smc_reg import (  # noqa: E402
 # 0xC0039000+ AND full RDL reset content — not merely OKAY. The addresses are
 # CPU_CTRL's own, not BASE_CONFIG's.
 #
-# The access width is now per-register and no ``& 0xFFFF_FFFF`` masking is
-# applied anywhere: masking to [31:0] silently dropped
-# CORE_RESET_PULSE_COUNT.core_resets_done, whose RDL reset 0xF sits at bits
-# [35:32] — no access in this test ever read it, so its reset content was absent
-# from the retained evidence while the log line read like a full reset-default
-# check ([EXACT-EXPECTATION]). CORE_RESET_PULSE_COUNT is declared
-# ``regwidth = 64; accesswidth = 64`` at cpu_ctrl.rdl:89-91 and sits on an
-# 8-byte-aligned offset (0x28), so a single AxSIZE=8 beat is the natural access.
-# The other four defaults are zero above bit 31, so their AxSIZE stays 4 and the
-# unmasked constant is identical to the masked one.
+# The access width is per-register: CORE_RESET_PULSE_COUNT.core_resets_done has
+# RDL reset 0xF at bits [35:32], is declared ``regwidth = 64; accesswidth = 64``
+# (cpu_ctrl.rdl:89-91) and sits 8-byte aligned (0x28), so it is read as one
+# AxSIZE=8 beat and never masked to [31:0] ([EXACT-EXPECTATION]). The other four
+# defaults are zero above bit 31, so their AxSIZE stays 4.
 CPU_CTRL_READS = [
     ("RESET_VECTOR_0", SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR, CPU_CTRL_RESET_VECTOR_REG_DEFAULT, 4),
     ("RESET_CTRL", SMC_CPU_CTRL_RESET_CTRL_REG_ADDR, CPU_CTRL_RESET_CTRL_REG_DEFAULT, 4),
@@ -60,7 +55,7 @@ CPU_PATTERN = 0xC511_0001
 
 
 class smc_cpu_to_sep_axi_test_seq(SmcCsrSeq):
-    """Precheck CPU-control CSR path until a CPU/firmware source is available."""
+    """Read the CPU_CTRL reset defaults and write/readback SCRATCH_0 over SEP_IN."""
 
     def __init__(self, name: str = "smc_cpu_to_sep_axi_test_seq") -> None:
         super().__init__(name)

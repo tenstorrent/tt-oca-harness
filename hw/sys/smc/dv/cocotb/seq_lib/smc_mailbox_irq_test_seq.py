@@ -18,9 +18,8 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import _REPO, _field_mask, smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
-# smc_addr_map.py exposes no generic accessor for these two generated headers
-# (and is shared/frozen for this change), so the module-level parser is reused
-# here rather than re-implementing a second offset table by hand.
+# smc_addr_map.py exposes no generic accessor for these two generated headers,
+# so the module-level parser is reused here rather than a second offset table.
 _SMC_BASE_CFG_H = (
     _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_base_config.h"
 )
@@ -70,9 +69,8 @@ MAILBOX_ERROR_FLAGS_IDLE = 0
 # documented in hw/ip/axi_lite_mailbox_unit/doc/architecture.adoc). So the exact
 # readback is `min(written, depth - 1)` with `depth` read from
 # CPU_CTRL.SMC_ATTRIBUTES.MAILBOX_DEPTH -- a stated exact expectation that an
-# all-zero dead register fails, instead of the previous decode-and-response-only
-# read ([EXACT-EXPECTATION]). Their restore-to-0 leg is exact either way (0 is
-# always in range).
+# all-zero dead register fails ([EXACT-EXPECTATION]). Their restore-to-0 leg is
+# exact either way (0 is always in range).
 CLAMPED_THRESHOLD = "clamped-to-depth"
 
 
@@ -94,8 +92,8 @@ WRITE_READBACK = [
 ]
 
 
-# Directed, non-polling access count of `body()`: the callers' protocol-VIP
-# stimulus floors (19) are minima, so this stays >= that.
+# Directed, non-polling access count of `body()`; the callers' protocol-VIP
+# stimulus floors are minima below this.
 EXPECTED_ACCESSES = 24
 
 
@@ -135,7 +133,7 @@ class smc_mailbox_irq_test_seq(smc_base_test_seq):
         await self._read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, expected=enabled)
 
         # Exact idle expectations: a non-idle STATUS or any sticky error flag on
-        # an untouched mailbox now fails in the scoreboard value compare instead
+        # an untouched mailbox fails in the scoreboard value compare instead
         # of only proving the access returned OKAY.
         await self._read("MAILBOX_STATUS", MAILBOX_STATUS, expected=MAILBOX_STATUS_IDLE)
         await self._read(

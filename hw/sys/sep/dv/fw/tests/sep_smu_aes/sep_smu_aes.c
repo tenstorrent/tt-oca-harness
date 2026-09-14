@@ -56,9 +56,9 @@ __attribute__((used, noinline, noreturn)) void smu_sep_aes_fail_loop(void) {
     }
 }
 
-/* Kept separate from the AES fail loop: an entropy bring-up that never completed
- * is a missing prerequisite, not an AES defect. Conflating the two is what made
- * this image's original stall in wait_for_idle read as an AES bug. */
+/* Separate from the AES fail loop: an entropy bring-up that never completed is a
+ * missing prerequisite, not an AES defect, and the testbench classifies the run
+ * by which loop the CPU parks in. */
 __attribute__((used, noinline, noreturn)) void smu_sep_aes_fail_entropy_loop(void) {
     while (1) {
         __asm__ volatile("wfi");

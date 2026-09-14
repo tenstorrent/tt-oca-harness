@@ -118,14 +118,6 @@ int main(void) {
 
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
-    // Note: peripherals_out_of_reset() is no longer needed as peripherals
-    // are automatically released from reset
-    // peripherals_out_of_reset();
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##   I2C P0 Stretch Test - Clock Stretch Test   ##\n");
@@ -243,15 +235,13 @@ int main(void) {
 
     //-------------------------------------------------------------------------
     // Step 4.1: Controller sends first WRITE (no STOP)
-    // Reference: i2c_write_sanity uses i2c_controller_write_with_header_nonblock
-    // Note: i2c_target_receive_transaction expects length header, so we need
-    //       to use write_with_header functions, not plain i2c_controller_write
+    // Note: i2c_target_receive_transaction() expects a length header, so the
+    //       write_with_header variant is used
     //-------------------------------------------------------------------------
     simputs("\n  Step 4.1: Controller sending first WRITE (no STOP)...\n");
     write_scratch(0, 0xDEB01001);
 
     // Use i2c_controller_write_with_header_nonblock for non-blocking write
-    // Reference: i2c_write_sanity/src/main.c:450
     ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR, &write_data1,
                                                     DATA_SIZE);
     if (ret != I2C_OK) {
@@ -262,7 +252,6 @@ int main(void) {
     simputs("    [Controller] First write sent successfully\n");
 
     // Clear Target ACQ FIFO after write (for repeated start scenario)
-    // Reference: i2c_read_sanity/src/main.c:434-459
     i2c_reset_fifos(TARGET_IDX, false, false, false, true);
     uint32_t target_events = i2c_get_target_events(TARGET_IDX);
     if (target_events != 0) {
@@ -304,21 +293,11 @@ int main(void) {
     simputshex32("", write_data1);
     simputs("\n");
 
-    // ==================================================================
-    // CRITICAL FIX: Clear Target ACQ FIFO after receiving write transaction
-    // ==================================================================
-    // Problem: i2c_target_receive_transaction() reads ACQ FIFO entries until STOP,
-    //   but this transaction has no STOP (repeated START). This means:
-    //   - i2c_target_receive_transaction() may not fully drain ACQ FIFO
-    //   - Remaining entries (START + address + data) may accumulate
-    //   - When ACQ FIFO depth > 6 (remainder <= 2), acq_fifo_plenty_space = 0
-    //   - This causes stretch_addr = 1 and stretch_rx = 1
-    //   - Target cannot leave stretch state until ACQ FIFO is cleared
-    //
-    // Solution: Clear ACQ FIFO immediately after receiving transaction
-    //   - This ensures ACQ FIFO is completely empty before next transaction
-    //   - Prevents ACQ FIFO accumulation and stretch issues
-    // ==================================================================
+    // i2c_target_receive_transaction() drains ACQ entries only up to a STOP; this
+    // transaction ends in a repeated START, so START/address/data entries can remain.
+    // Once ACQ depth exceeds 6, acq_fifo_plenty_space drops and the target stretches on
+    // address and RX until the FIFO is cleared, so drain and reset ACQ before the next
+    // transaction.
     simputs("    [Target] Write transaction received, length=");
     simputshex32("", write_received_len1);
     simputs("\n");
@@ -370,17 +349,14 @@ int main(void) {
     simputs("\n  Step 4.3: Controller sending READ (no STOP) - should trigger clock stretch...\n");
     write_scratch(0, 0xDEB01003);
 
-    // CRITICAL: Controller sends read BEFORE Target prepares TX FIFO
-    // This ensures TX FIFO is empty when read command arrives, triggering clock stretch
-    // Reference: User requirement - "I2C controller immediately sends I2C read to I2C target
-    // this should enter clock stretch"
+    // The controller issues the read before the target loads its TX FIFO, so the read
+    // arrives on an empty TX FIFO and the target stretches SCL.
     simputs("    [Controller] Sending read transaction IMMEDIATELY (no STOP, should trigger clock "
             "stretch)...\n");
     write_scratch(0, 0xDEB02002);
 
-    // CRITICAL: Enter delay loop IMMEDIATELY after receiving write
-    // This ensures TX FIFO is empty when Controller sends read, triggering clock stretch
-    // Reference: User requirement - "I2C target receives write command and enters for() _nop"
+    // The target enters the delay loop right after the write so its TX FIFO is still
+    // empty when the read arrives.
     // Clock stretch must last at least 100us
     // Calculation: clock_period_nanos = 10ns (100MHz), target = 100us = 100,000ns
     // Required clock cycles = 100,000ns / 10ns = 10,000 cycles
@@ -390,38 +366,12 @@ int main(void) {
             "stretch (min 100us)...\n");
     const uint32_t DELAY_COUNT = 3000; // Delay for at least 100us clock stretch (100MHz CPU clock)
 
-    // CRITICAL: Start Controller read BEFORE delay loop completes
-    // Since i2c_controller_read is blocking, we need to ensure Target is in delay loop
-    // when Controller sends read command. The correct sequence is:
-    //   1. Target enters delay loop (TX FIFO empty)
-    //   2. Controller sends read command (while Target in delay loop)
-    //   3. Target FSM detects TX FIFO empty, enters StretchTx state
-    //   4. Target ends delay loop, prepares TX FIFO
-    //   5. Target FSM leaves StretchTx state, sends data
-    //   6. Controller receives data
-    //
-    // However, since i2c_controller_read is blocking, we need to start it BEFORE delay loop,
-    // but ensure delay loop executes while Controller is waiting for data.
-    //
-    // SOLUTION: Start Controller read, which will send START+address+read command immediately
-    // and then wait. During the wait, execute delay loop. When delay loop completes,
-    // prepare TX FIFO to release stretch.
+    // i2c_controller_read() blocks, so the read is enqueued by hand: START+address and the
+    // read count go into FMT with no STOP, the delay loop runs while the target stretches on
+    // its empty TX FIFO, and loading TX afterwards releases the stretch.
     simputs("    [Controller] Starting read transaction (will send read command, Target will be in "
             "delay loop, TX FIFO empty)...\n");
     write_scratch(0, 0xDEB02002);
-
-    // Start Controller read in a way that allows delay loop to execute
-    // We'll use a manual approach: send START+address+read command, then wait for data
-    // But first, let's try the simpler approach: start read, then delay, then prepare TX FIFO
-    // The issue is that i2c_controller_read is blocking, so delay won't execute until read
-    // completes.
-    //
-    // ACTUAL SOLUTION: Execute delay loop FIRST, then start Controller read.
-    // But this means Controller read won't trigger stretch during delay.
-    //
-    // CORRECT SOLUTION: Use manual read command sending (non-blocking), similar to manual write.
-    // Send START+address+read command manually, then execute delay loop, then prepare TX FIFO,
-    // then wait for and receive data.
 
     // Manual read command sending (non-blocking)
     uint32_t controller_base = i2c_get_base(CONTROLLER_IDX);
@@ -466,23 +416,12 @@ int main(void) {
     // Now prepare TX FIFO - this will release the clock stretch
     // Target FSM will detect stretch_tx = 0 (because tx_fifo_rvalid_i = 1), leave StretchTx state
 
-    // ==================================================================
-    // CRITICAL FIX: Prepare TX FIFO and Clear TARGET_EVENTS in Correct Order
-    // ==================================================================
-    // Problem: TARGET_EVENTS.TX_PENDING is set when TX FIFO is prepared
-    //   - This causes unhandled_tx_stretch_event_i = 1
-    //   - Which causes stretch_tx = 1, preventing target from leaving stretch
-    //
-    // Solution: Follow correct sequence (reference: i2c_p0_rdwr/src/main.c:330-369)
-    //   1. Prepare TX FIFO FIRST (may generate TARGET_EVENTS.TX_PENDING)
-    //   2. Clear TARGET_EVENTS IMMEDIATELY AFTER (clears TX_PENDING)
-    //   3. Ensure ACQ FIFO is empty (acq_fifo_depth_i <= 1)
-    // ==================================================================
+    // TARGET_EVENTS.TX_PENDING raised by the TX FIFO load sets unhandled_tx_stretch_event_i,
+    // which holds stretch_tx = 1, so the order is: load TX FIFO, clear TARGET_EVENTS, then
+    // confirm acq_fifo_depth_i <= 1.
 
-    // CRITICAL: Target ends delay loop and prepares TX FIFO for read response
-    // Reference: User requirement - "I2C target finishes loop and sends data to I2C controller"
-    // Step 1: Prepare TX FIFO for read response
-    // CRITICAL: Pre-loading TX FIFO may generate TARGET_EVENTS.TX_PENDING
+    // Step 1: load the TX FIFO for the read response; the load may raise
+    // TARGET_EVENTS.TX_PENDING
     simputs("    [Target] Ending delay loop, preparing TX FIFO for read response...\n");
     uint32_t written = i2c_target_transmit(TARGET_IDX, &read_data, DATA_SIZE);
     if (written != DATA_SIZE) {
@@ -492,11 +431,9 @@ int main(void) {
     }
     simputs("    [Target] TX FIFO prepared, ready to send data to Controller\n");
 
-    // Step 2: Clear TARGET_EVENTS IMMEDIATELY AFTER TX FIFO pre-load
-    // NOTE: In Automatic Mode (tx_stretch_ctrl = false), TARGET_EVENTS.TX_PENDING is NOT set
-    //   This clearing is only needed in Software Mode (tx_stretch_ctrl = true)
-    //   However, we keep this code for compatibility and to handle any unexpected events
-    // Reference: i2c_p0_rdwr/src/main.c:358-369
+    // Step 2: Clear TARGET_EVENTS right after the TX FIFO load. TX_PENDING is raised only in
+    // software stretch mode (tx_stretch_ctrl = true); in automatic mode this clears any
+    // other pending event.
     simputs("    [Target] Clearing TARGET_EVENTS after TX FIFO pre-load...\n");
     target_events = i2c_get_target_events(TARGET_IDX);
     if (target_events != 0) {
@@ -529,9 +466,8 @@ int main(void) {
     simputs("    [Target] All stretch conditions met - target ready to leave stretch\n");
     write_scratch(0, 0xDEB02003);
 
-    // NOTE: Clear TARGET_EVENTS one more time right before Controller read completes
-    // In Automatic Mode (tx_stretch_ctrl = false), TARGET_EVENTS.TX_PENDING is NOT set
-    //   This clearing is only needed in Software Mode, but kept for compatibility
+    // Clear TARGET_EVENTS once more before the controller read completes (TX_PENDING is
+    // raised only in software stretch mode).
     target_events = i2c_get_target_events(TARGET_IDX);
     if (target_events != 0) {
         simputs("    [Target] Final TARGET_EVENTS clear before read completes: 0x");
@@ -540,13 +476,9 @@ int main(void) {
         i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF);
     }
 
-    // Wait for and receive data from Target
-    // Reference: User requirement - "I2C controller immediately sends I2C read to I2C target
-    // this should enter clock stretch" In Automatic Mode (tx_stretch_ctrl = false):
-    //   - Initially TX FIFO was empty (during delay), causing clock stretch (StretchTx state)
-    //   - Now TX FIFO has data (tx_fifo_rvalid_i = 1), so stretch_tx = 0
-    //   - ACQ FIFO empty (acq_fifo_depth_i <= 1)
-    //   - Target leaves StretchTx state and completes read automatically
+    // Wait for and receive data from Target. In automatic mode (tx_stretch_ctrl = false)
+    // stretch_tx = !tx_fifo_rvalid_i || (acq_fifo_depth_i > 1); with TX loaded and ACQ
+    // empty the target leaves StretchTx and completes the read.
     simputs("    [Controller] Waiting for data from Target...\n");
 
     // Read data from RX FIFO
@@ -613,9 +545,8 @@ int main(void) {
     simputs("\n");
     simputs("    [Controller] Read completed successfully (received data from Target)\n");
 
-    // NOTE: Clear TARGET_EVENTS immediately after read completion
-    // In Automatic Mode (tx_stretch_ctrl = false), TARGET_EVENTS.TX_PENDING is NOT set
-    //   This clearing is only needed in Software Mode, but kept for compatibility
+    // Clear TARGET_EVENTS after the read completes (TX_PENDING is raised only in software
+    // stretch mode).
     simputs("    [Target] Clearing TARGET_EVENTS after read (ensuring TX_PENDING is cleared)...\n");
     uint32_t clear_attempts = 0;
     const uint32_t MAX_CLEAR_ATTEMPTS = 10;
@@ -655,7 +586,6 @@ int main(void) {
     }
 
     // CRITICAL: Drain Target ACQ FIFO after read operation
-    // Reference: i2c_read_sanity/src/main.c:518-558
     simputs("    [Target] Draining ACQ FIFO after read...\n");
     uint32_t target_base = i2c_get_base(TARGET_IDX);
     uint32_t drain_count = 0;
@@ -686,7 +616,6 @@ int main(void) {
 
     // Manual write with length header (for repeated START, no STOP)
     // This is similar to i2c_controller_write_with_header_nonblock but without STOP
-    // Note: controller_base is already defined above, reuse it
 
     // Check if controller is idle (for repeated START, it should be busy)
     i2c__STATUS_t status = {
@@ -719,7 +648,6 @@ int main(void) {
     }
 
     // Send START + address (write)
-    // Note: fdata is already defined above, reuse it
     fdata.w = 0;
     fdata.f.FBYTE = (TARGET_ADDR << 1) | 0x0;
     fdata.f.START = 1;
@@ -814,21 +742,11 @@ int main(void) {
     simputshex32("", write_data2);
     simputs("\n");
 
-    // ==================================================================
-    // CRITICAL FIX: Clear Target ACQ FIFO after receiving write transaction
-    // ==================================================================
-    // Problem: i2c_target_receive_transaction() reads ACQ FIFO entries until STOP,
-    //   but this transaction has no STOP (repeated START). This means:
-    //   - i2c_target_receive_transaction() may not fully drain ACQ FIFO
-    //   - Remaining entries (START + address + data) may accumulate
-    //   - When ACQ FIFO depth > 6 (remainder <= 2), acq_fifo_plenty_space = 0
-    //   - This causes stretch_addr = 1 and stretch_rx = 1
-    //   - Target cannot leave stretch state until ACQ FIFO is cleared
-    //
-    // Solution: Clear ACQ FIFO immediately after receiving transaction
-    //   - This ensures ACQ FIFO is completely empty before next transaction
-    //   - Prevents ACQ FIFO accumulation and stretch issues
-    // ==================================================================
+    // i2c_target_receive_transaction() drains ACQ entries only up to a STOP; this
+    // transaction ends in a repeated START, so START/address/data entries can remain.
+    // Once ACQ depth exceeds 6, acq_fifo_plenty_space drops and the target stretches on
+    // address and RX until the FIFO is cleared, so drain and reset ACQ before the next
+    // transaction.
     simputs("    [Target] Second write transaction received, length=");
     simputshex32("", write_received_len2);
     simputs("\n");
@@ -873,13 +791,7 @@ int main(void) {
     simputs(" entries)\n");
     write_scratch(0, 0xDEB02005);
 
-    // Test complete - all steps according to user requirements:
-    // 1. I2C controller sends I2C write to I2C target ✓
-    // 2. I2C target receives write command and enters for() _nop ✓
-    // 3. I2C controller immediately sends I2C read to I2C target this should enter clock stretch ✓
-    // 4. I2C target finishes loop and sends data to I2C controller ✓
-    // 5. After receiving data, I2C controller omits STOP and issues another I2C write to target ✓
-    // 6. Confirm I2C target received all data; test ends ✓
+    // Test complete
     simputs("\n  All test steps completed successfully\n");
     write_scratch(1, 0x00000041);
 

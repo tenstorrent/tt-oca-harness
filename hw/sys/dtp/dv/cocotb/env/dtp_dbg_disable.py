@@ -4,7 +4,8 @@
 
 The DUT takes ``sep_lifecycle_ctrl_pkg::dbg_disable_t``: eleven pre-resolved
 active-high disables, one per gated interface (1 = interface disabled).
-``tb_top.sv`` exposes one scalar input per field, named ``dbg_disable_<field>``.
+``dtp_tb_if.dbg_disable`` carries the packed struct; ``pack_dbg_disable`` and
+``unpack_dbg_disable`` convert between it and the named fields.
 Deriving these disables from lifecycle policy is SEP-level behavior; DTP DV
 drives and checks each field directly.
 """
@@ -12,6 +13,18 @@ drives and checks each field directly.
 from __future__ import annotations
 
 from collections.abc import Mapping
+
+__all__ = [
+    "DBG_DISABLE_FIELDS",
+    "IJTAG_SIB_DISABLE",
+    "JTAG2AXI_DISABLE",
+    "STAP_DISABLE",
+    "format_dbg_disable",
+    "full_dbg_disable",
+    "pack_dbg_disable",
+    "unpack_dbg_disable",
+    "validate_dbg_disable",
+]
 
 # Declaration order of sep_lifecycle_ctrl_pkg::dbg_disable_t (MSB first).
 DBG_DISABLE_FIELDS: tuple[str, ...] = (
@@ -72,3 +85,18 @@ def format_dbg_disable(values: Mapping[str, int]) -> str:
     return " ".join(
         f"{name}={int(values[name]) & 1}" for name in DBG_DISABLE_FIELDS if name in values
     )
+
+
+def pack_dbg_disable(values: Mapping[str, int]) -> int:
+    """Packed ``dbg_disable_t`` word; the first declared field is the MSB."""
+    full = full_dbg_disable(values)
+    word = 0
+    for name in DBG_DISABLE_FIELDS:
+        word = (word << 1) | full[name]
+    return word
+
+
+def unpack_dbg_disable(word: int) -> dict[str, int]:
+    """Named fields of a packed ``dbg_disable_t`` word."""
+    msb = len(DBG_DISABLE_FIELDS) - 1
+    return {name: (word >> (msb - index)) & 1 for index, name in enumerate(DBG_DISABLE_FIELDS)}

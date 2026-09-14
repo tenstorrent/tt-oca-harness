@@ -39,6 +39,7 @@ UART_IIR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR
 UART_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
 UART_MCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0)
 UART_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0)
+UART_ECR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_ECR_BASE_ADDR", 0)
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
@@ -46,6 +47,7 @@ FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_
 FCR_RCVR_FIFO_RESET = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_FIFO_RESET_bm")
 FCR_XMIT_FIFO_RESET = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__XMIT_FIFO_RESET_bm")
 FCR_RCVR_TRIGGER_BP = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__RCVR_TRIGGER_bp")
+ECR_RCVR_TRIGGER_MS2B_BP = _field_mask(_UART_H, "UART_16550_MAIN__ECR__RCVR_TRIGGER_MS2B_bp")
 IIR_INTERRUPT_PENDING = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_INTERRUPT_ID = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_INTERRUPT_ID_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
@@ -68,10 +70,20 @@ _INTR_ID_CHAR_TIMEOUT = 0x6
 #   0x0 - 1 character, 0x1 - 4 characters, 0x2 - 8, 0x3 - 14.
 _TRIG_1B = 0
 _TRIG_4B = 1
-_TRIG_LEVEL_CHARS = {_TRIG_1B: 1, _TRIG_4B: 4}
+_TRIG_32B = 4
+_TRIG_LEVEL_CHARS = {_TRIG_1B: 1, _TRIG_4B: 4, _TRIG_32B: 32}
+_ABOVE_FIFO_DEPTH_TRIGGERS = {
+    5: 64,
+    6: 128,
+    7: 256,
+    8: 512,
+    9: 1024,
+    10: 2048,
+    11: 4096,
+}
 
 # Baud divisor used by the TX-FIFO-reset leg to hold data in the transmitter
-# long enough for LSR.THRE to be sampled at 0. Not a tuned magic number:
+# long enough for LSR.THRE to be sampled at 0. Derivation:
 # uart_16550/doc/interface.adoc ("Serial Interface Timing") states the serial
 # rate comes from the divisor latches with **16x oversampling**, so one 8N1
 # character (start + 8 data + 1 stop = 10 bit times) occupies
@@ -106,6 +118,8 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         super().__init__(name)
         self.trigger_1b_ok: bool = False
         self.trigger_4b_ok: bool = False
+        self.trigger_32b_ok: bool = False
+        self.above_depth_ok: bool = False
         self.reset_ok: bool = False
         # label -> (pre-threshold IIR id, at-threshold IIR id, below-level IIR
         # id). Measured values the test module gates on, so a cell that ran but
@@ -119,6 +133,11 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         await self.csr_write("FCR_via_UART_IIR", UART_IIR, value)
 
     async def _fifo_set_trigger(self, trigger_cfg: int) -> None:
+        await self.csr_write(
+            "ECR_RCVR_TRIGGER_MS2B",
+            UART_ECR,
+            ((trigger_cfg >> 2) & 0x3) << ECR_RCVR_TRIGGER_MS2B_BP,
+        )
         fcr = FCR_FIFO_ENABLE | ((trigger_cfg & 0x3) << FCR_RCVR_TRIGGER_BP)
         await self._write_fcr(fcr)
 
@@ -324,6 +343,29 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
             raise AssertionError(f"TEMT not set after TX reset LSR=0x{lsr:08x}")
         cocotb.log.info("CHK-UART-FIFO-RST-TX: THRE+TEMT after XMIT_FIFO_RESET")
 
+    async def _test_above_depth_triggers(self) -> None:
+        """An empty 32-entry FIFO never reaches unsupported thresholds 64 through 4096."""
+        await self._fifo_reset(rx=True, tx=True)
+        for trigger_cfg, threshold in _ABOVE_FIFO_DEPTH_TRIGGERS.items():
+            await self._fifo_set_trigger(trigger_cfg)
+            samples = []
+            for sample in range(_PRE_HOLD_SAMPLES):
+                iir = await self.csr_read(f"ABOVE_DEPTH_{threshold}_{sample}_IIR", UART_IIR)
+                samples.append(iir)
+                if _iir_pending(iir) and _iir_id(iir) == _INTR_ID_RDR:
+                    raise AssertionError(
+                        f"RCVR trigger {trigger_cfg:#x} ({threshold} characters) "
+                        f"raised RECEIVED_DATA_READY for an empty 32-entry FIFO: "
+                        f"IIR=0x{iir:08x}"
+                    )
+            cocotb.log.info(
+                "CHK-UART-FIFO-TRIG-ABOVE-DEPTH: encoding=0x%x threshold=%d "
+                "characters stayed below RECEIVED_DATA_READY across IIR samples %s",
+                trigger_cfg,
+                threshold,
+                [f"0x{value:08x}" for value in samples],
+            )
+
     async def body(self) -> None:
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)
         await self.csr_write("UART_UNGATE", CLOCK_GATE_CONTROL, cg & ~UART_CG_EN)
@@ -333,5 +375,9 @@ class smc_uart_fifo_basic_trigger_reset_test_seq(SmcCsrSeq):
         self.trigger_1b_ok = True
         await self._test_rx_trigger("4B", _TRIG_4B)
         self.trigger_4b_ok = True
+        await self._test_rx_trigger("32B", _TRIG_32B)
+        self.trigger_32b_ok = True
+        await self._test_above_depth_triggers()
+        self.above_depth_ok = True
         await self._test_fifo_reset()
         self.reset_ok = True

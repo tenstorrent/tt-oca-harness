@@ -3,7 +3,7 @@
 """AXI4 master sequence API: the VIP's test-facing stimulus surface.
 
 `OcahAxiMasterSequence` wraps one `OcahAxiMasterDriver` and provides the
-blocking, checked transaction API tests consume: compatibility helpers
+blocking, checked transaction API tests consume: plain-value helpers
 (``write``/``read``), result helpers (``*_result``), burst variants, timeout
 handling, and typed non-OKAY raising. Tests and DUT sequence layers drive the
 VIP through this class (or the agent's ``sequence``), never through the raw
@@ -12,12 +12,14 @@ driver; missing operations get added here first.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 from .ocah_axi_item import OcahAxiReadResult, OcahAxiWriteResult
 from .ocah_axi_master_driver import OcahAxiMasterDriver
 from .ocah_axi_types import (
     axi_resp_ok,
+    default_timeout_ns,
     normalize_resp_list,
     words_from_bytes,
     worst_resp,
@@ -38,20 +40,17 @@ def _sim_timeout_error():
     return SimTimeoutError
 
 
-async def _wait_event(event, timeout_ns: int | None):
-    if timeout_ns is None:
-        await event.wait()
-    else:
-        from cocotb.triggers import with_timeout
+async def _wait_event(event, timeout_ns: int):
+    from cocotb.triggers import with_timeout
 
-        await with_timeout(event.wait(), timeout_ns, "ns")
+    await with_timeout(event.wait(), timeout_ns, "ns")
     return event.data
 
 
 class OcahAxiMasterSequence:
     """Checked AXI4 transaction operations over one master driver.
 
-    Compatibility methods return plain Python values and ``*_result`` methods
+    ``write``/``read`` return plain Python values and ``*_result`` methods
     return plain result dataclasses; ``init_read``/``init_write`` pass through
     to the driver for explicit event-style timeout flows.
     """
@@ -60,13 +59,16 @@ class OcahAxiMasterSequence:
         self,
         driver: OcahAxiMasterDriver,
         *,
-        timeout_cycles: int = 1000,
+        timeout_cycles: int | None = None,
         timeout_ns: int | None = None,
         raise_on_error: bool = True,
     ) -> None:
         self.driver = driver
-        self.timeout_cycles = timeout_cycles
-        self.timeout_ns = timeout_ns
+        self._deprecations_logged: set[str] = set()
+        self.timeout_cycles = 1000
+        if timeout_cycles is not None:
+            self._set_timeout_cycles(timeout_cycles)
+        self.timeout_ns = default_timeout_ns() if timeout_ns is None else int(timeout_ns)
         self.raise_on_error = raise_on_error
         self._read_count = 0
         self._write_count = 0
@@ -350,9 +352,9 @@ class OcahAxiMasterSequence:
         )
 
     def configure(self, **kwargs: Any) -> None:
-        """Store wrapper configuration knobs accepted by earlier implementations."""
+        """Apply the supported knobs (timeout_cycles, timeout_ns, default_id); reject others."""
         if "timeout_cycles" in kwargs:
-            self.timeout_cycles = int(kwargs["timeout_cycles"])
+            self._set_timeout_cycles(kwargs["timeout_cycles"])
         if "timeout_ns" in kwargs:
             self.timeout_ns = int(kwargs["timeout_ns"])
         unsupported = set(kwargs) - {"timeout_cycles", "timeout_ns", "default_id"}
@@ -367,11 +369,24 @@ class OcahAxiMasterSequence:
             "write_transactions": self._write_count,
             "read_transactions": self._read_count,
             "timeout_cycles": self.timeout_cycles,
+            "timeout_ns": self.timeout_ns,
         }
 
     def reset_statistics(self) -> None:
         self._write_count = 0
         self._read_count = 0
+
+    def _set_timeout_cycles(self, value: int) -> None:
+        """Deprecated knob: the AXI4 engine bounds a transaction with ``timeout_ns``."""
+        self.timeout_cycles = int(value)
+        if "timeout_cycles" in self._deprecations_logged:
+            return
+        self._deprecations_logged.add("timeout_cycles")
+        message = (
+            "timeout_cycles is deprecated: the AXI4 master bounds a transaction with timeout_ns"
+        )
+        self.log.warning("%s: %s", self.name, message)
+        warnings.warn(message, DeprecationWarning, stacklevel=3)
 
     # ------------------------------------------------------------------
     # Completion, result packaging, and response checking.

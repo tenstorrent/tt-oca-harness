@@ -13,7 +13,7 @@ transcription of ``smc_cpu_ctrl_wrap.sv`` / ``prim_refclk_count_w_cdc``
 ([INDEPENDENT-EXPECTED-MODEL]).  The check below turns that rate into a
 two-sided bound on the observed delta, measured over the very interval the two
 CSR samples bracket -- so a counter clocked by ``clk_smc_i`` (faster), by
-``clk_periph_i``, or at half rate fails, where the old ``c1 > c0`` floor passed.
+``clk_periph_i``, or at half rate fails.
 """
 
 from __future__ import annotations
@@ -31,8 +31,7 @@ _REF_WAIT = 32
 # the count crosses a CDC synchroniser on its way to the CPU domain.  The
 # bracketing counts below already absorb the whole duration of both accesses;
 # this allowance only covers the synchroniser depth (a couple of refclk
-# periods).  It is a stated tolerance on an exact expectation, not a fudge
-# factor tuned until the test passed.
+# periods).
 _CDC_SKEW_REF = 4
 
 EXPECTED_ACCESSES = 2
@@ -108,7 +107,7 @@ class smc_reference_counter_test_seq(SmcCsrSeq):
 
         # Loop integrity + scoreboard cross-check: the two reads must have
         # reached the checker at all ([NO-ZERO-ACTIVITY-PASS]).  No bounded
-        # read runs here, so `timeouts == 0` is deliberately not asserted.
+        # read runs here, so `timeouts == 0` is not asserted.
         self.assert_all_reachable(EXPECTED_ACCESSES, "REFERENCE_COUNTER")
 
         cocotb.log.info(

@@ -42,8 +42,8 @@ See ``examples/example_idcode.py`` for a complete runnable snippet.
 
 Scope
 -----
-This package covers *IEEE 1149.1 only*.  IJTAG (IEEE 1687) instruments stay in
-``bfm/ijtag_vip/``.  Boundary-scan (EXTEST/SAMPLE) is out of scope.
+This package covers *IEEE 1149.1 only*.  IJTAG (IEEE 1687) instruments and
+boundary-scan (EXTEST/SAMPLE) are out of scope.
 """
 
 from .ocah_jtag_checker import OcahJtagChecker, OcahJtagCheckerError

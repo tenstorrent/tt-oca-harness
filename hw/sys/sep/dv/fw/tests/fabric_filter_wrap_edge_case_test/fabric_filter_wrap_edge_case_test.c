@@ -205,7 +205,6 @@ static int test_concurrent_filter_wrap_conflicts(void) {
         for (int disable_test = 0; disable_test < 8; disable_test++) {
             int target_filter = (conflict_test * 2 + disable_test) % 16;
 
-            // Disable filter
             if (setup_axi_filter_wrap_entry(target_filter, 0, 0, // dummy addresses
                                             FILTER_TYPE_ALLOWLIST,
                                             0, // disable
@@ -246,7 +245,6 @@ static int test_wrap_mode_state_transitions(void) {
                 int current_wrap_mode = wrap_modes[state];
                 int current_filter_type = filter_types[state % 7];
 
-                // Configure for this state
                 if (setup_axi_filter_wrap_entry(filter_idx, trans_base, trans_base + 0x80000,
                                                 current_filter_type,
                                                 1,     // enable
@@ -262,16 +260,16 @@ static int test_wrap_mode_state_transitions(void) {
 
                 // State-specific testing
                 switch (current_wrap_mode) {
-                case 0: // No wrap
+                case 0:                                                      // No wrap
                     test_axi_transaction(trans_base + 0x7FFFC, 4, AXI_READ); // Near end
                     break;
-                case 1: // Address wrap
+                case 1:                                                      // Address wrap
                     test_axi_transaction(trans_base + 0x80000, 4, AXI_READ); // Beyond end
                     break;
-                case 2: // Size wrap
+                case 2:                                                   // Size wrap
                     test_axi_transaction(state_test_addr, 128, AXI_READ); // Large burst
                     break;
-                case 3: // Full wrap
+                case 3:                                                       // Full wrap
                     test_axi_transaction(trans_base + 0x100000, 4, AXI_READ); // Far beyond
                     break;
                 }
@@ -517,7 +515,6 @@ int main(void) {
     printf("Filter Wrap Edge Case Test\n");
     printf("Strategy: Precise filter-wrap boundary and anomaly cases\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_filter_wrap_edge_case_test");
         return TEST_FAIL;

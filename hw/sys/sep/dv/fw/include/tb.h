@@ -6,9 +6,9 @@
 
 #ifdef __ASSEMBLER__
 /* Assembly TUs (e.g. crt0.s) must not pull in the C register typedefs from the
- * umbrella sep.h. They only need address macros, so include the address-only
- * generated header instead. Drop this once the generated block headers carry
- * their own #ifndef __ASSEMBLER__ guard. */
+ * umbrella sep.h: the generated block headers carry no __ASSEMBLER__ guard.
+ * They only need address macros, so include the address-only generated header
+ * instead. */
 #include "sep_addr.h"
 #else
 #include "sep.h"

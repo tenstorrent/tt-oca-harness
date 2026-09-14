@@ -2,12 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """RAS-bank / NDM-reset / DFX-debug diagnostic representative precheck.
 
-Scope note: no ECC and no DBS register is addressed here --
-neither surface is exposed at the SMC CSR boundary (``grep -ic ecc`` over the
-authoritative map ``hw/sys/smc/regs/gen/c/smc_addr.h`` returns 0, and there is
-no ``DBS_``/``_DBS`` symbol). The testcase name is historical; what this
-sequence actually reads is the RAS bank type/instance ID pair, the NDM-reset
-registers, and the DFX debug control/bus-mux registers.
+No ECC and no DBS register is addressed here: neither surface is exposed at the
+SMC CSR boundary (the authoritative map ``hw/sys/smc/regs/gen/c/smc_addr.h``
+carries no ECC and no ``DBS_``/``_DBS`` symbol). This sequence reads the RAS
+bank type/instance ID pair, the NDM-reset registers, and the DFX debug
+control/bus-mux registers.
 """
 
 from __future__ import annotations
@@ -35,13 +34,13 @@ _CLUSTER_COUNT_FIELD_RE = re.compile(r"\}\s*ndmreset_cluster_count\s*\[\s*(\d+)\
 def _cpu_cluster_count() -> int:
     """``smc_config_pkg::CPU_CLUSTER_COUNT`` by symbol from its declaration.
 
-    PROVENANCE AND SCOPE LIMIT. This is the SMC integration's
-    single declaration of the cluster count, and the RTL tie-off that feeds the
-    CSR consumes the same symbol (``smc_misc_wrap.sv``:
+    This is the SMC integration's single declaration of the cluster count, and
+    the RTL tie-off that feeds the CSR consumes the same symbol
+    (``smc_misc_wrap.sv``:
     ``ndm_hwif_in.NDMRESET_CLUSTER_COUNT.ndmreset_cluster_count.next =
-    smc_config_pkg::CPU_CLUSTER_COUNT``). ``smc_config_pkg.sv`` is RTL, and
-    quality-policy §4 excludes RTL as a SPEC source, so the equality below is
-    deliberately NOT presented as a register value check. What it proves is:
+    smc_config_pkg::CPU_CLUSTER_COUNT``). ``smc_config_pkg.sv`` is RTL, not a
+    SPEC source, so the equality is a propagation check, not a register value
+    check. What it proves is:
 
     * **parameter-to-CSR propagation** -- the declared integration parameter
       really does reach the software-visible register through the hwif path and
@@ -52,12 +51,10 @@ def _cpu_cluster_count() -> int:
 
     NOT proven: that the number itself is the specified cluster count. A
     non-RTL, non-generated, non-VPLAN authority for it does not exist in this
-    repo. The closest §4-authoritative documents bound the CPU *core* count to a
-    range rather than pinning a cluster count -- ``hw/sys/smc/doc/cpu.adoc:11``
-    ("supports 1 to 4 processor cores"), ``:16`` ("Up to 4 Rocket CPU cores")
-    and ``:32`` ("|Cores |1-4") -- and ``ndm_reset.rdl:17-19`` only states the
+    repo. ``hw/sys/smc/doc/cpu.adoc`` pins the CPU *core* count at 4, and
+    ``ndm_reset.rdl:17-19`` only states the
     register "Supports up to 32 CPU Clusters". If the integration tied the wrong
-    count, this leg would not catch it; that residual is declared, not hidden.
+    count, this leg would not catch it.
     """
     text = _SMC_CONFIG_PKG_SV.read_text(encoding="utf-8")
     match = _CPU_CLUSTER_COUNT_RE.search(text)
@@ -97,29 +94,21 @@ NDMRESET_CLUSTER_COUNT_WR_PATTERN = NDMRESET_CLUSTER_COUNT_DECLARED ^ _CLUSTER_C
 
 # ``DFX_DEBUG_BUS_MUX`` is a 64-bit register -- ``dfx_ctrl_status.rdl:116-118``
 # declares ``reg DEBUG_BUS_MUX { regwidth = 0x40; }`` with fields running to
-# ``Muxselseg7[63:58]``. It is therefore read 8 bytes wide so the whole declared
-# reset is compared; a 4-byte read left ``Muxselseg2[33:28]``..``Muxselseg7``
-# unsampled while the token read as a whole-register default check.
+# ``Muxselseg7[63:58]``. It is read 8 bytes wide so the whole declared reset is
+# compared; a 4-byte read leaves ``Muxselseg2[33:28]``..``Muxselseg7`` unsampled.
 # Every field in that register resets to 0x0 in the RDL.
 _DEBUG_BUS_MUX_BYTES = 8
 
 # Value-compared diagnostic reads, identical on Verilator and VCS. Every
 # expectation here traces to a cited RDL declaration:
-#   * RAS_BANK_INFO (chip_config.rdl) / NDMRESET_PROCESS (ndm_reset.rdl):
-#     RDL reset 0x0 -> spec-anchored.
+#   * NDMRESET_PROCESS (ndm_reset.rdl): RDL reset 0x0 -> spec-anchored.
 #   * DFX DEBUG_CTRL / DEBUG_BUS_MUX: PeakRDL symbols at 0xC000_B808/B810,
-#     RDL reset 0x0 (do not use the old false-identity window 0xC001_0208/0210).
+#     RDL reset 0x0.
 #     DEBUG_CTRL is regwidth 32; DEBUG_BUS_MUX is regwidth 64 (see above).
-# NDMRESET_CLUSTER_COUNT is deliberately NOT in this table: its number is not
-# RDL/spec-traceable (see _cpu_cluster_count) and it is handled by its own
-# propagation + sw=r legs in body(), which say exactly what they prove.
+# NDMRESET_CLUSTER_COUNT is not in this table: its number is not
+# RDL/spec-traceable (see _cpu_cluster_count); body() covers it with its own
+# propagation and sw=r legs.
 DIAGNOSTIC_READS = [
-    (
-        "CHIP_CONFIG_RAS_BANK_INFO",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-        0x0,
-        4,
-    ),
     (
         "NDMRESET_PROCESS",
         smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"),

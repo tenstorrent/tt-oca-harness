@@ -7,19 +7,16 @@ only property this leaf can honestly claim: **every aggregate reads its idle 0
 and every one of the three probes carries a same-run liveness credit**, so the
 scoreboard exact-compared all three legs instead of booking them OBSERVED-ONLY.
 
-Why the credit is part of the assertion and not a comment: an idle ``== 0`` is a
-pure negative check, and the scoreboard *silently* downgrades an uncredited leg
-to ``OBSERVED-ONLY (NOT checked evidence)`` rather than failing. Without the gate
-below, dropping ``probe_positive_controls`` from the test would turn this
-testcase into an all-observed-only run that still passes. The credits come from
-the passive ledger in ``env/smc_probe_liveness.py``, which is fed by a DUT
-observation (the probe seen at 1), so requiring them is DUT-sensitive: a
-stuck-at-0 / undriven / mis-bound aggregate fails here.
+The scoreboard *silently* downgrades an uncredited idle ``== 0`` leg to
+``OBSERVED-ONLY (NOT checked evidence)`` rather than failing, so the gate below
+requires the credit explicitly. The credits come from the passive ledger in
+``env/smc_probe_liveness.py``, which is fed by a DUT observation (the probe seen
+at 1), so requiring them is DUT-sensitive: a stuck-at-0 / undriven / mis-bound
+aggregate fails here.
 
-``item.resolvable`` is deliberately **not** presented as this testcase's check:
-every retained run is Verilator (2-state), where ``value.is_resolvable`` cannot
-be False, so it has no FAIL-ON path in the evidence that exists. The former
-``CHK-NONVAC`` token claimed exactly that and is gone.
+``item.resolvable`` is **not** presented as this testcase's check: on a 2-state
+Verilator build ``value.is_resolvable`` cannot be False, so it has no FAIL-ON
+path there.
 """
 
 from __future__ import annotations
@@ -46,11 +43,6 @@ class smc_irq_observe_test_seq(smc_base_test_seq):
         sb = self.env.scoreboard
         seen_before = sb.irq_samples_seen
 
-        # No SETUP step is narrated here: clocks/resets are brought up by
-        # smc_base_test._bring_up before this sequence starts, and this leaf
-        # owns no setup action of its own. The former "STEP S1: SETUP
-        # clocks/resets" line performed nothing and read as an implemented
-        # phase ([NO-EMPTY-PHASE]).
         cocotb.log.info(
             "STEP S1: INSTRUMENTATION-ONLY one SmcIrqItem SAMPLE "
             "(tb_sync_irq/tb_gpio_irq_any/tb_uart_irq_any)"
@@ -103,8 +95,3 @@ class smc_irq_observe_test_seq(smc_base_test_seq):
             IRQ_IDLE_LEVEL,
             "; ".join(f"{f}: {probe_evidence(f)}" for f in IRQ_SAMPLE_FIELDS),
         )
-        # No `SMC_007 scenario PASS` line: the DV-CARD header it mirrored cited
-        # `hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md`, which does not exist at this
-        # revision, so that anchor resolves to no record and neither the test nor
-        # this sequence may assert a contract identity in the kept log
-        # ([NO-DUMMY-DEAD-CODE]). The evidence line above is the verdict.

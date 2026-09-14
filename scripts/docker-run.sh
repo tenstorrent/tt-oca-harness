@@ -355,7 +355,7 @@ doc_product_paths() {
   integrator) echo "doc/integrator antora-integrator-playbook.yml ocah-doc-integrator-setup ocah-doc-integrator-pdf" ;;
   programmer) echo "doc/programmer antora-programmer-playbook.yml ocah-doc-programmer-setup ocah-doc-programmer-pdf" ;;
   appnotes) echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
-  contributing) echo "doc/contributing antora-contributing-playbook.yml ocah-doc-contributing-setup ocah-doc-contributing-pdf" ;;
+  starting) echo "doc/starting antora-starting-playbook.yml ocah-doc-starting-setup ocah-doc-starting-pdf" ;;
   home) echo "doc/home antora-home-playbook.yml ocah-doc-home-setup" ;;
   datasheets) echo "doc/datasheets - ocah-doc-datasheets-setup ocah-doc-datasheets-pdf" ;;
   *)
@@ -419,7 +419,7 @@ doc_html_all() {
   doc_setup programmer
   doc_setup appnotes
   doc_setup home
-  doc_setup contributing
+  doc_setup starting
   # The prebuilt antora/antora:3.1.10 image has Antora pre-installed but
   # NOT the Node extensions used by the npx-based OCAH_ANTORA path in
   # doc/doc.mk, which real CI uses via `make ocah-doc-combined-html`.
@@ -489,10 +489,10 @@ doc_stage() {
     echo "warning: Application Notes PDF not found at $appnotes_dist/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
   fi
 
-  if [[ -f "$ROOT/$contributing_dist/$contributing_pdf" ]]; then
-    cp "$ROOT/$contributing_dist/$contributing_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$starting_dist/$starting_pdf" ]]; then
+    cp "$ROOT/$starting_dist/$starting_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Contributing PDF not found at $contributing_dist/$contributing_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf contributing)"
+    echo "warning: Getting Started PDF not found at $starting_dist/$starting_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf starting)"
   fi
 
   local datasheet_pdf

@@ -8,14 +8,14 @@ digest ``SEP_SEC_DISABLE_TOKEN``. ``tb_top`` binds that parameter to
 SHA-256 of the all-zero 32-byte token so a frontdoor write of zeros can
 match. A nonzero token still mismatches. On match, ``sec_dis`` asserts and
 ``FEAT_CTRL`` follows ``feat_ctrl_expected(..., sec_dis=1)`` (all features
-on, test group still gated by ``SECURE_TM=0``). A later mismatch drops
+on). A later mismatch drops
 ``sec_dis`` and restores the fail-closed PROD golden. The test does not
 force ``sec_dis``.
 
 A SEC_DIS match does not by itself boot SEP. ``reset_n = fuse_sense_done
 && rst_ni && ext_boot_seq_done_i`` (``efuse_interface_controller.sv``) has
-no SEC_DIS term, and the owner ruling on issue 1462 is that the release is
-a separate DTP ``sep_reset_n`` TDR step. So the first match is presented
+no SEC_DIS term; the release is a separate DTP ``sep_reset_n`` TDR step. So
+the first match is presented
 after ``release_no_cpu_reset`` and before ``sep_fuse_sense_done_o``, and
 with ``ext_boot_seq_done_i`` already 1 the reset probes must stay 0. The
 token is written over the CPU-LSU AXI MMR (xbar and eFuse sit on
@@ -59,10 +59,15 @@ class sep_sec_dis_override_test(sep_base_test):
     async def _check_feat(self, sec_dis: int, label: str) -> int:
         observed = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
-        assert feat != (M64 if sec_dis else 0), (
-            f"{label} FAIL: golden collapsed to a vacuous constant "
-            f"0x{feat:016x} for sec_dis={sec_dis}"
-        )
+        if sec_dis:
+            # Override is all ones in the chapter and in the RTL (`security_disable_i
+            # ? 64'hffff_ffff_ffff_ffff`). That constant is the contract, not a
+            # collapse. The fail-closed word above is the contrast.
+            assert feat == M64, f"{label} FAIL: override golden 0x{feat:016x} is not all ones"
+        else:
+            assert feat not in (0, M64), (
+                f"{label} FAIL: fail-closed golden collapsed to 0x{feat:016x}"
+            )
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
         assert observed == sec_dis and ctl.feat_ctrl == feat, (
@@ -83,8 +88,8 @@ class sep_sec_dis_override_test(sep_base_test):
 
         ``reset_n = fuse_sense_done && rst_ni && ext_boot_seq_done_i``
         (``hw/ip/efuse/rtl/efuse_interface_controller.sv``) carries no
-        SEC_DIS term. Issue 1462: the release is a DTP ``sep_reset_n`` TDR
-        step, not a side effect of the match. ``ext_boot_seq_done_i`` is
+        SEC_DIS term; the release is a DTP ``sep_reset_n`` TDR step, not a
+        side effect of the match. ``ext_boot_seq_done_i`` is
         already 1, so sense is the only term still holding the reset --
         this checker fails if SEC_DIS were ever to bypass it.
         """

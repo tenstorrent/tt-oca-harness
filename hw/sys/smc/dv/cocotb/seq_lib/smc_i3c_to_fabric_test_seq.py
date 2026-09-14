@@ -22,9 +22,9 @@ from .smc_base_test_seq import smc_base_test_seq
 from .smc_i3c_vip_utils import observe_i3c0_external_pull_low
 
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
-# Entry-state precondition for the CLOCK_GATE_CONTROL set/restore claim
-#: the generated header declares this field's reset as 0, so
-# the toggle below really is 0 -> 1 -> 0 rather than "wrote the same word twice".
+# Entry-state precondition for the CLOCK_GATE_CONTROL set/restore claim: the
+# generated header declares this field's reset as 0, so the toggle below is
+# 0 -> 1 -> 0.
 I3C_CG_EN_RESET = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__I3C_CG_EN_reset"
 )
@@ -33,14 +33,13 @@ I3C_CG_EN_RESET = _field_mask(
 #
 # Both the register's offset inside the I3C CSR window and its reset value are
 # read here from the I3C core's SystemRDL register source
-# ``vendor/chipsalliance/i3c-core/upstream/src/rdl/base_registers.rdl``
-# (repo revision 8f738aca6d7c9e2c6a9eed81ec68b44aef4bc80f, reg ``HCI_VERSION``:
-# ``VERSION[31:0] reset = 32'h00000120`` at ``@ 0x0``; the generated doc
-# ``.../src/rdl/docs/README.md`` tables the same reset).
+# ``vendor/chipsalliance/i3c-core/upstream/src/rdl/base_registers.rdl`` (reg
+# ``HCI_VERSION``; the generated doc ``.../src/rdl/docs/README.md`` tables the
+# same reset).
 #
-# Why parsed instead of hand-copied:
-#   * the expected value is no longer "observed on this DUT" -- a wrong constant
-#     in the RTL readback mux (``I3CCSR.sv``) is now caught rather than mirrored
+# Parsed from the RDL so that:
+#   * the expected value is independent of this DUT -- a wrong constant in the
+#     RTL readback mux (``I3CCSR.sv``) is caught rather than mirrored
 #     ([INDEPENDENT-EXPECTED-MODEL]);
 #   * the register identity printed in the log derives from the same symbol that
 #     formed the address -- window base (generated ``smc_addr.h``) plus the
@@ -250,12 +249,11 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         )
 
         # --- Enable the real I3C core, observe the pads, restore -------------
-        # that the pad-level idle-zero compares were
-        # unfalsifiable partly because no test ever enabled the core. This leg
-        # enables it through the RDL-declared HC_CONTROL.BUS_ENABLE and holds it
-        # enabled across the pad observation, so what the helper records is the
-        # pad state of a *running* controller rather than of a permanently
-        # disabled one. All three expectations are RDL-sourced, not observed:
+        # Pad-level idle-zero compares are unfalsifiable while the core is
+        # disabled. This leg enables it through the RDL-declared
+        # HC_CONTROL.BUS_ENABLE and holds it enabled across the pad observation,
+        # so the helper records the pad state of a running controller. All three
+        # expectations are RDL-sourced:
         #   * entry word == the sum of HC_CONTROL's declared field resets
         #     (BUS_ENABLE=0, MODE_SELECTOR=1 -> 0x00000040),
         #   * after the write == that word with BUS_ENABLE set, proving the
@@ -293,12 +291,10 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
             expected=I3C_HC_CONTROL_RESET,
         )
 
-        # Structural refactor guard, not the activity gate: the fail-capable
-        # stimulus floor is `min_csr_accesses` at the record_protocol_vip call in
-        # tests/smc_i3c_to_fabric_test.py, measured there from the scoreboard's
-        # own independent access tally. This equality is strictly stronger on the
-        # same counters and runs first, so the floor is defence-in-depth against a
-        # future refactor that bypasses this assert.
+        # Exact access count of this body. The fail-capable stimulus floor is
+        # `min_csr_accesses` at the record_protocol_vip call in
+        # tests/smc_i3c_to_fabric_test.py, taken from the scoreboard's own
+        # access tally.
         assert (self.reads, self.writes) == (7, 4), (
             f"I3C fabric smoke issued {self.reads} reads / {self.writes} writes, expected 7 / 4"
         )

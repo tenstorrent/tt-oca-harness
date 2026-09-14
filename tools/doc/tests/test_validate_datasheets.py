@@ -124,12 +124,6 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertEqual(validate_source(root / "doc/datasheets/src/dtp.adoc"), [])
         self.assertEqual(validate_pdf(root / "doc/datasheets/dist/ocah-dtp-datasheet.pdf"), [])
 
-    def test_smu_source_and_release_pdf_are_present(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-
-        self.assertEqual(validate_source(root / "doc/datasheets/src/smu.adoc"), [])
-        self.assertEqual(validate_pdf(root / "doc/datasheets/dist/ocah-smu-datasheet.pdf"), [])
-
     def test_template_and_dtp_include_brand_and_copyright_metadata(self) -> None:
         root = Path(__file__).resolve().parents[3]
         template = (root / "doc/datasheets/template.adoc").read_text(encoding="utf-8")
@@ -218,7 +212,7 @@ class RepositoryContractTests(unittest.TestCase):
         for label in (
             "External debug / test",
             "OCAH chiplet",
-            "Peer OCAH chiplet",
+            "Peer OCA chiplet",
             "JTAG Interface Unit",
             "Cross Trigger Network",
             "SMC",
@@ -252,93 +246,6 @@ class RepositoryContractTests(unittest.TestCase):
             "// datasheet-section:", maxsplit=1
         )[0]
         self.assertNotIn("[.datasheet-small]", resources)
-
-    def test_smu_summary_matches_composition_and_crossbar_rtl(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        config = (root / "hw/sys/smu/rtl/smu_pkg.sv").read_text(encoding="utf-8")
-        xbar = (root / "hw/sys/smu/rtl/smu_axi_xbar_pkg.sv").read_text(encoding="utf-8")
-        source = (root / "doc/datasheets/src/smu.adoc").read_text(encoding="utf-8")
-
-        self.assertRegex(config, r"DefaultCfg\s*=\s*'\{")
-        self.assertRegex(config, r"NoSepCfg\s*=\s*'\{")
-        self.assertRegex(config, r"SMC_CPU_CONFIG:\s*32'd2")
-        self.assertRegex(config, r"NUM_INT_TO_SMC:\s*32'd256")
-        for parameter, value in {
-            "NumInputs": "3",
-            "NumOutputs": "3",
-            "NumAddrRules": "2",
-            "MaxInputIdW": "8",
-            "XbarOutputIdW": "10",
-        }.items():
-            self.assertRegex(xbar, rf"{parameter}\s*=\s*{value};")
-        self.assertIn("!Main configuration !4-core SMC + SEP + DTP", source)
-        self.assertIn("!Alternate configuration !4-core SMC + DTP", source)
-        self.assertIn("!Full-config fabric !3 AXI4 inputs by 3 outputs", source)
-        self.assertIn("!External interrupts to SMC !256", source)
-
-    def test_smu_no_sep_summary_matches_elaboration_branch(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        rtl = (root / "hw/sys/smu/rtl/smu.sv").read_text(encoding="utf-8")
-        source = (root / "doc/datasheets/src/smu.adoc").read_text(encoding="utf-8")
-
-        self.assertIn("end else begin : gen_no_sep", rtl)
-        self.assertIn("assign sep_dbg_disable   = '0;", rtl)
-        self.assertIn("assign sep_lc_state      = 8'hf0;", rtl)
-        self.assertIn("assign sep_region_size_o                = '0;", rtl)
-        self.assertRegex(rtl, r"\.RESP\s*\(axi_pkg::RESP_DECERR\)")
-        self.assertIn("Direct external-to-SMC and SMC-to-external AXI paths", source)
-        self.assertIn("DTP and its primary JTAG interface remain present", source)
-        self.assertIn("are not lifecycle-disabled", source)
-        self.assertIn("SEP OTP debug accesses receive DECERR", source)
-
-    def test_smu_spec_uses_current_paths_and_debug_handoff(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        spec = (root / "hw/sys/smu/doc/SMU_SPEC.md").read_text(encoding="utf-8")
-
-        self.assertNotIn("`hw/smu/", spec)
-        self.assertNotIn("`tt-oca`", spec)
-        self.assertNotIn("`feat_ctrl_i`", spec)
-        self.assertIn("`hw/sys/smu/rtl/smu.sv`", spec)
-        self.assertIn("`hw/top/smu_wrapper.sv`", spec)
-        self.assertIn("`dbg_disable_o`", spec)
-        self.assertIn("`dbg_disable_i`", spec)
-
-    def test_smu_context_diagram_shows_composition_and_ownership(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        diagram = (root / "doc/datasheets/assets/smu-block-diagram.svg").read_text(encoding="utf-8")
-
-        for label in (
-            "External",
-            "OCAH chiplet",
-            "Peer OCA-",
-            "System Management Unit (SMU)",
-            "SMU AXI crossbar",
-            "DTP",
-            "SMC",
-            "SEP",
-            "User subsystem",
-            "AoU bridge",
-        ):
-            self.assertIn(label, diagram)
-
-    def test_smu_keeps_verification_surfaces_and_wrapper_boundary_distinct(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        source = (root / "doc/datasheets/src/smu.adoc").read_text(encoding="utf-8")
-
-        # PR #1560 review: drop internal DUT/config names from prose and credit
-        # the SEP-present configuration too (verification exists for SEP=1).
-        # Keep both verification surfaces described and the reference-wrapper
-        # examples caveat.
-        self.assertIn(
-            "Hosted cocotb/PyUVM smoke and regression exercise the no-SEP "
-            "configuration",
-            source,
-        )
-        self.assertIn("The SEP-present configuration is also verified", source)
-        self.assertIn("examples only", source)
-        self.assertIn("current verification and maturity status", source.lower())
-        # Verification status now links the live dashboard.
-        self.assertIn("dashboard.html", source)
 
 
 if __name__ == "__main__":

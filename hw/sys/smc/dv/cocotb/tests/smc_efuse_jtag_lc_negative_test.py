@@ -196,7 +196,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             return
         # ALLOW: response-code contract only. Verilator eFuse stub still
         # returns 0xBADCAB1E on the allow path — do not treat rdata as a
-        # chiplet/package identity golden (value proof deferred to sensed HW).
+        # chiplet/package identity golden (value proof needs sensed HW).
         if code != RESP_OKAY:
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW "

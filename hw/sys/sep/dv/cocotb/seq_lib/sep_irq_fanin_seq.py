@@ -4,24 +4,20 @@
 
 sep_irq_simultaneous_fanin_no_alias_test drives SEVERAL IP interrupts at
 once and proves the sep_internal_interrupts[8:33] OR-packing assembles exactly the
-driven bits with NO neighbor aliasing -- the same packing-bug class that caught the
-mailbox 8->1 truncation, re-run for the crypto/KM region. This asserts several
+driven bits with NO neighbor aliasing, for the crypto/KM region. This asserts several
 sources at once (vs sep_irq_ip_to_aggregator_test, which asserts one at a time).
 
 Reuses the generic INTR_TEST driver (SepIrqIp) and IrqSrc from
 sep_irq_aggregator_seq -- the OpenTitan INTR_STATE/ENABLE/TEST layout is identical
-across these IPs, so no new driver is needed. The CROSS-IP set spans four different
+across these IPs. The CROSS-IP set spans four different
 IPs (HMAC, KMAC, CSRNG, EDN) at non-adjacent aggregator bits so the anti-alias
 check exercises a real OR-network fan-in, not adjacent bits of one IP.
 
-Aggregator bit map (hw/sys/sep/rtl/sep.sv); FANIN_SOURCES drives the four *_done
-bits (one per IP, so each IP's INTR_ENABLE/INTR_TEST is a single-bit write -- the
-SepIrqIp driver writes the whole register, so one bit per base avoids clobber):
-  HMAC  done  -> [17]   (base 0x1091_1000; err -> [19], in RTL but not driven here)
-  KMAC  done  -> [20]   (base 0x1091_3000; err -> [22], in RTL but not driven here)
-  CSRNG cmd_req_done -> [23]          (base 0x1091_5000)
-  EDN   cmd_req_done -> [27]          (base 0x1091_5800)
-HMAC/KMAC INTR bit0 = <ip>_done (OpenTitan INTR layout).
+Aggregator bit = PIC source − 1 from hw/sys/sep/doc/interrupts.adoc.
+FANIN_SOURCES drives the four *_done bits (one per IP, so each IP's
+INTR_ENABLE/INTR_TEST is a single-bit write -- the SepIrqIp driver writes
+the whole register, so one bit per base avoids clobber). HMAC/KMAC INTR
+bit0 = <ip>_done (OpenTitan INTR layout).
 """
 
 from __future__ import annotations
@@ -29,17 +25,26 @@ from __future__ import annotations
 from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import sym
 
-from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE, IrqSrc
+from seq_lib.sep_irq_aggregator_seq import (
+    CSRNG_BASE,
+    EDN_BASE,
+    PIC_CSRNG_CMD_REQ_DONE,
+    PIC_EDN_CMD_REQ_DONE,
+    PIC_HMAC_DONE,
+    PIC_KMAC_DONE,
+    IrqSrc,
+    agg_from_pic,
+)
 
 HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
 KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 
 # The simultaneous cross-IP set: four IPs, four non-adjacent aggregator bits.
 FANIN_SOURCES = (
-    IrqSrc("hmac_done", HMAC_BASE, 0, 17),
-    IrqSrc("kmac_done", KMAC_BASE, 0, 20),
-    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, 23),
-    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, 27),
+    IrqSrc("hmac_done", HMAC_BASE, 0, agg_from_pic(PIC_HMAC_DONE)),
+    IrqSrc("kmac_done", KMAC_BASE, 0, agg_from_pic(PIC_KMAC_DONE)),
+    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, agg_from_pic(PIC_CSRNG_CMD_REQ_DONE)),
+    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, agg_from_pic(PIC_EDN_CMD_REQ_DONE)),
 )
 
 # The aggregator region this test owns: sep_internal_interrupts[8:33] (the

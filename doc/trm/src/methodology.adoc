@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[methodology]]
@@ -603,18 +603,10 @@ replace those interfaces with AMBA versions.
 
 === Component Directory Organization
 
-All components will have a uniform directory structure which has the
-following elements:
-
-* README.md : component overview and quick start guide in Markdown
-format
-* doc/ : detailed AsciiDoc documentation (architecture.adoc, interface.adoc,
-memmap.adoc, index.adoc)
-* rtl : all SystemVerilog modules <component>_*.sv
-* tb : unit level Verilator tests
-* regs/ : <component>.rdl SystemRDL CSR memory map definition and generated collateral
-* syn : logic synthesis constraints (optional)
-* lint : lint waiver files
+Every `hw/ip/<ip>/` and `hw/sys/<sys>/` component follows the same directory
+template, detailed in
+xref:ocah-starting:ROOT:guidelines.adoc#component-directory-organization[the
+Getting Started Guide].
 
 === SystemVerilog Coding Guidelines
 
@@ -684,6 +676,3 @@ JSON.
 
 As described earlier, memory maps and CSRs we will be declared in
 SystemRDL.
-
-
-

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Internal Revision History
@@ -102,7 +102,7 @@ REQUIRED_ALGS policy vectors, generalized CHIPLET_PUBK_REVOKE to all owners'
 keys, and removed PUBK_PROVISIONED.
 |0.5.16 |2026-07-13 |Alessandro Ottaviano |Document dual LSIO on GPIO[25:26] in
 `ocah_gpio_table.adoc`: PSYSCRITB/VRHOTB when enabled, else UART[3].RTS/CTS when
-UART[3] is enabled (QUAS-4655).
+UART[3] is enabled.
 |0.5.17 |2026-07-13 |Alessandro Ottaviano |Clarify that GPIO[52]/[55]/[57]
 (Thermal Emergency / PLL OBS / PVT RO) claim the pad only when that function is enabled.
 |0.5.18 |2026-07-14 |Haohao Liao |Reframed the SEP secure-boot signing model as
@@ -173,4 +173,16 @@ SW_RESET_N now resets to 0x3E; reserved CTRL[0] reads zero and ignores writes.
 |0.5.29 |2026-09-02 |Alessandro Ottaviano |Aligned the SMC Boot ROM chapter
 with the current four-core hardware ROM interface, 128 KiB linker map, macro
 configuration, and response endianness control.
+|0.5.30 |2026-09-07 |Haohao Liao |Corrected the SEP Lifecycle Controller
+multi-chiplet debug model: primary-chiplet SiP-owner feature control gates DFT
+traffic before downstream forwarding, and reserved DBG_2 bits gate
+adopter-defined forwarding paths on LCC-bearing chiplets.
+|0.5.31 |2026-09-10 |Ben Melton |Recorded that the SEP TRNG aperture is a
+full-window passthrough to an adopter-defined IP, and that intra-aperture
+SLVERR and no-alias decode is an integrator constraint.
+|0.5.32 |2026-09-10 |Ben Melton |Key Manager: public identity OTP fields
+(SEP_CHIPLET_ID / SEP_SIP_ID / SEP_SYS_ID) are delivered from the sensed eFuse
+shadow, dual-rail encoded like the secrets, and not blanked in secure test mode.
+|0.5.33 |2026-09-11 |Alessandro Ottaviano |Recorded that the SMC PLIC accepts
+active-high level sources or pulses long enough to be sampled on `clk_smc`.
 |=======================================================================

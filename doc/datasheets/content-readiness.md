@@ -93,27 +93,21 @@ Before drafting the SMC sheet, resolve or bound:
 
 ## SMU
 
-The sheet positions SMU as the composed integration product with a standardized
-OCAH chiplet interface. Its main configuration is four-core SMC + SEP + DTP,
-corresponding to `DefaultCfg`, `SEP=1`; the alternate omits SEP. The underlying
-configuration fields and no-SEP behavior are recorded here and in `smu.sv`.
-The architectural positioning does not claim completed standards certification
-or product security assessment.
+The SMU sheet must describe a composed integration product, not repeat the
+three component sheets. Before drafting it, resolve or bound:
 
-|Priority |Missing or conflicting detail |Current evidence |Required resolution |
-|---|---|---|---|
-|Before publication |Approved public configuration names and support status |`smu_pkg.sv` defines `DefaultCfg` and `NoSepCfg`, but their struct fields are identical; the separate `SEP` parameter selects presence. `smu.sv` implements both elaboration branches. |Approve customer-facing names, declare whether both are release configurations, and publish one complete generated parameter manifest for each. |
-|Before publication |Multi-chiplet SEP placement and security ownership |`smu.sv` selects SEP per instance. `hw/sys/sep/doc/lifecycle_controller.adoc`, Multiple Security Domains and Non-Primary Chiplets, describes primary and secondary chiplets with local SEP/LCC and secondaries without SEP. Forwarding lifecycle/debug controls to chiplets without SEP is an adopter integration responsibility; the SMU's no-SEP tie-offs do not implement it. |Define the SEP placement, SiP-owner and chiplet-owner domains, control propagation and enforcement, and verification plan for the integrated system. Per-instance configurability does not establish verified multi-SEP operation. |
-|Before publication |No-SEP security posture |With `SEP=0`, RTL ties `sep_dbg_disable` to zero, reports fixed lifecycle value `8'hf0`, disables SEP endpoints, and returns DECERR on the SEP OTP debug path. DTP and the SMU's primary JTAG interface remain instantiated. No automatic handoff of debug authorization to another chiplet is implemented by this selection. |Define the system JTAG topology and no-SEP debug/security policy, including any alternative enforcement mechanism. Document the meaning of the fixed lifecycle value and all required system enforcement. |
-|Before publication |Runtime aperture programming and ownership |The full 3-by-3 crossbar accepts CSR-driven SMC/SEP base and size values. RTL asserts non-overlap in simulation but does not freeze updates while traffic is in flight. Unmatched SMC/SEP egress uses the external output; unmatched external ingress decode-errors. |Assign firmware ownership, reset values, programming order, lock/stability rules, containment checks, and permitted error responses. Publish the chiplet-envelope relationship. |
-|Before publication |System boot and handoff contract |SMC owns primary reset and external boot/repair gating; SEP supplies lifecycle, mailbox, watchdog-reset, and debug-disable signals when present. Wrapper smoke observes SMC firmware and real-SEP boot readiness, while broader production boot policy belongs to component firmware owners. |Approve the system sequence from power-good through memory repair, fuse sense, reset release, firmware readiness, lifecycle handoff, failure/recovery, and clock-stop interaction. |
-|Before publication |Reference-wrapper boundary |`hw/top/smu_wrapper.sv` attaches open memory/eFuse/pad and termination models through `smc_ip_integration.sv` and `sep_ip_integration.sv`; the Integrator Guide describes these as examples for replacement. |List which wrapper and model files ship as examples, identify non-synthesizable or non-production behavior, and provide an adopter replacement/qualification checklist. |
-|Before publication |Adopter extension and macro ownership |The `smu` boundary exposes SMN AXI, adopter AXI/AXI4-Lite extensions, JTAG/scan, triggers, interrupts, resets/isolation, SMC/SEP memories, OTP/eFuse, I3C tables, telemetry, GPIO, PLL/PVT, trace, entropy, and I/O connections. |Approve the supported/tie-off matrix and identify clock domains, CDC assumptions, macro latency/integrity, pad ownership, interrupt aggregation, and security restrictions per interface. |
-|Before publication |Verification baseline represented by the beta statement |Hosted `--dut smu` smoke/nightly uses `SEP=0`; `sep0_all` has 53 tests. A distinct `--dut smu_wrapper` catalog has four smoke entries across no-SEP and real-SEP profiles plus separately enrolled real-firmware/lifecycle/entropy/chain groups. Wrapper results are not bare-SMU signoff; some groups remain blocked. |Pin a release-tag regression for each supported configuration and publish pass/skip/known-failure, backend, seed, firmware, force/stub, and coverage information without merging the two evidence surfaces. |
-|Before publication |Designer approval and traceability |`SMU_FEATURE_LIST.adoc` labels the v0.5.0 SEP=0 subset candidate/unsigned and records open designer-confirmation and traceability trackers. |Obtain the named design and DV approvals and reconcile the feature list with the current wrapper real-SEP catalog before final publication. |
-|Can follow beta |Implementation, performance, certification, and silicon results |No portable frequency, area, power, latency, throughput, standards-certification, system-security-assessment, or silicon signoff package is identified. |Add only with configuration, workloads, firmware, tools, libraries/process, physical conditions, assessment method, and owner. |
-
-Resolved during initial review: `SMU_SPEC.md` now names the current
-`hw/sys/smu/rtl/` core paths, `hw/top/smu_wrapper.sv`, the
-`tt-oca-harness` repository, and the current `dbg_disable_o` to
-`dbg_disable_i` lifecycle handoff.
+- the public release configurations, including SEP-present and SEP-absent
+  behavior and which configuration is the headline reference;
+- the authoritative top-level module/wrapper names and paths—the current
+  `hw/sys/smu/doc/SMU_SPEC.md` still contains obsolete `hw/smu/...` paths;
+- top-level clock, reset, power, pad, macro, interrupt, SMN-facing AXI, JTAG,
+  and adopter-extension boundaries;
+- the 3-by-3 crossbar routing model, aperture defaults, fixed alias/remap paths,
+  ID conversion, atomic-operation behavior, and unmatched-access responses;
+- which SMC, SEP, and DTP parameters the SMU configuration overrides and how an
+  adopter records a reproducible configuration;
+- wrapper contents that are illustrative shims versus integration-ready logic;
+- system-level boot, security handoff, debug authorization, and isolation
+  assumptions; and
+- the regression evidence that validates interaction among SMC, SEP, DTP, and
+  the external interfaces, separately from block-level verification.

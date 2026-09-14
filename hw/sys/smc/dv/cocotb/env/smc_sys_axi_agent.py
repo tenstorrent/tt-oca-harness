@@ -3,8 +3,7 @@
 """SMC OSS SEP-input AXI UVM agent.
 
 Drives real AXI traffic through the tb_top ``s_axi_*`` bridge into
-``smc.sep_axi_in_req_i``. This mirrors the SEP OSS AXI agent pattern and the
-legacy SMC DV ``sep_in_master`` access path.
+``smc.sep_axi_in_req_i``. This mirrors the SEP OSS AXI agent pattern.
 """
 
 from __future__ import annotations
@@ -77,9 +76,9 @@ def idle_axil_master_inputs(dut, prefix: str) -> None:
     samples its own VALID and cocotb raises out of the stream driver, before any
     checker runs and naming no signal.
 
-    Measured on `ej_axi`: at the first clock edge after attach, `ej_axi_awready`
-    read 1 from the DUT while `ej_axi_awvalid` read Z. The undriven line is the
-    bench's, not the design's.
+    On `ej_axi` the DUT drives `ej_axi_awready` (it reads 1 once out of reset)
+    while `ej_axi_awvalid` is a top-level input nothing has driven: the undriven
+    line is the bench's, not the design's.
 
     The write is immediate because the VIP reads these lines during
     `from_prefix`, before a scheduled write would land.
@@ -116,8 +115,8 @@ class SmcSysAxiItem(uvm_sequence_item):
         # access fails at the checker layer, not only in the sequence body.
         # Implies allow_error for the driver (the error response is expected).
         self.expect_error: bool = False
-        # Soft-complete on AXI timeout. Default False. Setting True requires a
-        # comment at the call site explaining why incomplete traffic is OK and
+        # Soft-complete on AXI timeout. Default False. A call site that sets it
+        # True states why incomplete traffic is acceptable there.
         self.allow_timeout: bool = False
         self.timed_out: bool = False
         self.timeout_ns: int | None = None
@@ -127,8 +126,8 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.update_golden: bool = False
         self.check_golden: bool = False
         self.memory_region: str | None = None
-        # AXI AxPROT. Default 0 (unprivileged) matches historical SEP_IN CSR
-        # traffic. GPIO ACCESS_FILTER tests program this to 1 (privileged).
+        # AXI AxPROT. Default 0 (unprivileged); GPIO ACCESS_FILTER tests program
+        # this to 1 (privileged).
         self.prot: int = 0
         # Stamped by the driver that actually drove this item (its `bus_name`),
         # so the scoreboard can keep a MEASURED per-port access tally. A test

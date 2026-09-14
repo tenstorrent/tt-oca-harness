@@ -3,9 +3,9 @@
 """HMAC-SHA256 golden for the KM->HMAC sideload KAT.
 
 Independent reference for the keyed-MAC the OpenTitan HMAC engine produces from a
-KM-sideloaded key. Uses the Python standard library (`hmac` + `hashlib`) -- this
-is stdlib, not a third-party crypto dependency, so the env stays self-contained
-The construction is validated at import against RFC 4231 Test
+KM-sideloaded key. Uses the Python standard library (`hmac` + `hashlib`), so the
+env has no third-party crypto dependency. The construction is validated at import
+against RFC 4231 Test
 Case 1, so a transcription error fails loudly rather than silently agreeing with
 a broken DUT.
 
@@ -106,8 +106,8 @@ def hmac_or_sha_words(
     ``digest_swap=0`` (RTL default) DIGEST_0 is the most-significant word and each
     word is big-endian, matching the engine read-back; ``digest_swap=1`` byte-
     swaps within each word. ``key_words`` is required when ``hmac_en`` and ignored
-    for plain SHA. The key/msg byte conventions stay parameters because the
-    directed bring-up pins them from the DUT for the SW-key path (§9).
+    for plain SHA. The key/msg byte conventions stay parameters: the SW-key path
+    pins them from the DUT rather than from this golden.
     """
     msg = _words_to_bytes(msg_words, word_rev=False, big_endian=msg_be)
     if hmac_en:

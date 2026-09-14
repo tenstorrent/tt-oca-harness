@@ -2,21 +2,20 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Prove whether SMC register windows alias unmapped offsets onto live CSRs.
 
-Related: GitHub #214 (undefined-space aliasing) and SEP #228.
 Golden legality is PeakRDL ``SIZE`` / ``TOTAL_SIZE`` read by symbol from
 ``smc_addr.h`` (``_block_extent`` + ``DeadspaceProbe.__post_init__``), never
 the xbar window and never a hand-copied literal.
 A dead write that wraps onto a live register is the defect under test.
 
 SCOPE -- OKAY-into-void: a write into unmapped space that returns OKAY and
-leaves the live register alone is tallied as ACCEPTED and is deliberately OUT
+leaves the live register alone is tallied as ACCEPTED and is OUT
 OF SCOPE for eight of the nine probes; only ``i2c0_intr_enable`` carries
 ``expect_refuse`` and asserts on it, because the i2c_wrap SIZE range-check is a
 decode contract this testcase can hold the DUT to. For the other eight no
 authority establishes that the SMC xbar must DECERR an unmapped offset rather
 than silently accept it, so ``accepted=N`` in the summary is a reported tally
-and not a verdict. Deciding that contract for the whole map is the #214
-follow-up, not this testcase.
+and not a verdict. Deciding that contract for the whole map is not this
+testcase's job.
 """
 
 from __future__ import annotations
@@ -33,7 +32,7 @@ AXI_RESP_OKAY = 0
 PAYLOAD = 0xA5A5A5A5
 PAYLOAD_ZERO = 0x00000000
 # Non-zero seed written into every live CSR before the dead access, so the
-# read-alias compare is discriminating (a dead read of 0 can no longer look
+# read-alias compare is discriminating (a dead read of 0 cannot look
 # like the live value) and so the wrap compare starts from a value the probe
 # itself established. Chosen to differ from BOTH dead payloads, which is what
 # makes the PAYLOAD/PAYLOAD_ZERO collision case impossible by construction.
@@ -55,7 +54,7 @@ def _block_extent(prefix: str, *, indexed: bool) -> int:
     in the ``_BASE_ADDR(idx)`` macro; otherwise ``_SIZE``. Nothing here is
     hand-copied, so a PeakRDL regeneration that grows a block moves the
     deadness predicate with it instead of silently turning a "deadspace" probe
-    into a probe of a legitimately mapped register.
+    into a probe of a mapped register.
     """
     try:
         return _smc_def(f"{prefix}_TOTAL_SIZE")
@@ -169,7 +168,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
         # PeakRDL I2C instance SIZE is 0x84, STRIDE is 0x200. live+0x100 lands
         # in the SIZE-to-stride hole (not I2C1 at +0x200), so the extent used
         # here is the INSTANCE `_SIZE`, not the array `_TOTAL_SIZE`.
-        # expect_refuse is the #214 decode-window contract: OKAY-into-void and
+        # expect_refuse is the decode-window contract: OKAY-into-void and
         # wrap onto INTR_ENABLE both fail this probe.
         DeadspaceProbe(
             "i2c0_intr_enable",
@@ -215,12 +214,10 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         await self.start_item(item)
         await self.finish_item(item)
         self.accesses += 1
-        # Unreachable on this path and kept deliberately: with
+        # Guard for a caller that sets `allow_timeout=True`. With
         # `allow_timeout = False` the driver raises from `_timed_event`
-        # (env/smc_sys_axi_agent.py:159-173) before `item_done()`, so the
-        # sequence never regains control with `timed_out` set. This is a guard
-        # for a future caller that sets `allow_timeout=True`, not a live check
-        # .
+        # (env/smc_sys_axi_agent.py) before `item_done()`, so the sequence
+        # never regains control with `timed_out` set and this path is not taken.
         assert not item.timed_out, (
             f"{name} @ 0x{addr:08x}: timed out (deadspace probe must complete)"
         )
@@ -247,7 +244,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
     async def _seed_live(self, probe: DeadspaceProbe) -> tuple[int, int]:
         """Seed a known non-zero value into the live CSR and prove it took.
 
-        This is ONE remediation closing two holes:
+        Seeding serves two purposes:
 
         * the read-alias leg is gated on ``before != 0`` and an unseeded live
           CSR that happens to read 0 makes the compare non-discriminating -- a
@@ -355,7 +352,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
             self.read_alias.append(proof)
             self._log_proof("READ-ALIAS", probe, rdata=f"0x{before:08x}")
         elif before == 0:
-            # The alias compare is gated on `before != 0` on purpose (unmapped
+            # The alias compare is gated on `before != 0` (unmapped
             # reads commonly return 0, so dead == live == 0 is not evidence).
             # Seeding is what normally makes `before` non-zero; when the live
             # CSR refused the seed and still reads 0, a perfect read alias
@@ -371,11 +368,11 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
 
         # The second payload exists for the collision case: if the live CSR
         # already held the first payload, `after == before` even though the
-        # dead write wrapped through. `_seed_live` now requires the seeded
-        # `before` to equal neither payload, so that collision is impossible by
-        # construction and the OKAY path's early return can no longer hide it
-        # . PAYLOAD_ZERO therefore remains only as the
-        # second attempt on the refused path.
+        # dead write wrapped through. `_seed_live` requires the seeded `before`
+        # to equal neither payload, so that collision is impossible by
+        # construction and the OKAY path's early return cannot hide it.
+        # PAYLOAD_ZERO is therefore only the second attempt on the refused
+        # path.
         for payload in (PAYLOAD, PAYLOAD_ZERO):
             dead_wr = await self._xfer(
                 f"{probe.name}_dead_wr_{payload:08x}",
@@ -445,7 +442,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         await self.wait_fuse_sense_done()
 
         # Bystander check: a CSR none of the probes touches must be byte-identical
-        # after a sweep that deliberately writes 0xA5A5A5A5 into nine unmapped
+        # after a sweep that writes 0xA5A5A5A5 into nine unmapped
         # windows. The baseline is captured and passed as `expected=` to the
         # recovery read, so the scoreboard's exact compare FAILS on collateral
         # damage instead of the pair being two discarded reads.
@@ -473,7 +470,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
 
         # The summary distinguishes "no alias found" from "alias not
         # checkable": `alias_checked` is the denominator the read_alias count
-        # is a numerator of, so `read_alias=0` can no longer read as "0 of 9
+        # is a numerator of, so `read_alias=0` cannot read as "0 of 9
         # alias" when some probes were never testable.
         alias_checked = len(probes) - len(self.alias_not_checkable)
         cocotb.log.info(
@@ -511,7 +508,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
 
         # Two ways for this testcase to fail, in one gate so the leading cause
         # stays the aliasing evidence:
-        #   1. aliasing was FOUND (the #214/#585 defect under test), or
+        #   1. aliasing was FOUND (the defect under test), or
         #   2. a probe reached a NEGATIVE conclusion its own run could not
         #      support, because the live CSR refused this run's seed -- a
         #      "clean" result there would be an unchecked leg presented as a

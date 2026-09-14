@@ -64,12 +64,12 @@ class SmcCsrSeq(smc_base_test_seq):
             await self.csr_read(name, addr, expected)
 
     async def csr_read_many_allow_error(self, regs: list[tuple[str, int, int | None]]) -> None:
-        """Read a list of windows that are intentionally terminated as AXI error
+        """Read a list of windows that are terminated as AXI error
         slaves. ``allow_error`` lets the DECERR/SLVERR response count as a
         completed access, so the sequence still proves the fabric decodes/
         routes to the window and the bus never hangs, without asserting a real
         register value the terminator cannot provide. The per-entry ``expected``
-        field is ignored here on purpose (kept so the reg tables stay uniform)."""
+        field is ignored here (the reg tables stay uniform)."""
         for name, addr, _expected in regs:
             await self.csr_read_allow_error(name, addr)
 
@@ -80,7 +80,7 @@ class SmcCsrSeq(smc_base_test_seq):
     async def csr_read_err_signature(
         self, name: str, addr: int, length: int = 4, prot: int = 0
     ) -> int:
-        """Read a window intentionally terminated by an AXI error slave and
+        """Read a window terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
         complete with an error response (SLVERR/DECERR) AND return the
         0xBADCAB1E signature (default ``prim_axi_lite_err_slv`` RESP_DATA).
@@ -175,7 +175,7 @@ class SmcCsrSeq(smc_base_test_seq):
         """Bounded read: tolerates DECERR **and** timeout (no-decode).
 
         Intended for coverage-gap CSR probes where the block may be
-        clock-gated or absent from the current bring-up and there is no
+        clock-gated or absent from this bench and there is no
         AXI responder to send back OKAY/DECERR. Increments `timeouts` on
         no-response, `accesses` unconditionally.
         """
@@ -209,7 +209,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
-        item.allow_timeout = True  # intentional: assert timed_out below
+        item.allow_timeout = True  # the assert below requires timed_out
         item.timeout_ns = timeout_ns
         await self.start_item(item)
         await self.finish_item(item)
@@ -239,8 +239,8 @@ class SmcCsrSeq(smc_base_test_seq):
     # CSR write ack (clk_smc) -> i2c_wrap OVRD -> GPIO pad mux -> the tb_top
     # open-drain resolver (tb_top.sv:635-638), i.e. a handful of clk_smc cycles
     # plus the AXI-Lite write completion the caller already awaited. The bound is
-    # generous (~30x the observed settle) purely so a slow build cannot flake;
-    # expiry is a FAILURE, never a pass ([TIMEOUT-MUST-FAIL]).
+    # generous so a slow build cannot flake; expiry is a FAILURE, never a pass
+    # ([TIMEOUT-MUST-FAIL]).
     _I2C0_PAD_SETTLE_TIMEOUT_CYCLES = 400
     _I2C0_PAD_POLL_CYCLES = 2
     # After the expected level is first seen, require it to still hold this many
@@ -251,8 +251,7 @@ class SmcCsrSeq(smc_base_test_seq):
     async def _i2c0_check_line(self, name: str, exp_scl: int, exp_sda: int) -> None:
         """Bounded poll of the real I2C0 open-drain pad nets after an OVRD write.
 
-        Replaces a blind ``ClockCycles(clk_smc_i, 100)`` + single sample
-        ([NO-BLIND-DELAY-SYNC]): poll ``tb_i2c0_scl`` / ``tb_i2c0_sda`` (the
+        Polls ``tb_i2c0_scl`` / ``tb_i2c0_sda`` ([NO-BLIND-DELAY-SYNC]; the
         tb_top open-drain resolution of the DUT-driven pads) until they match the
         level the just-written OVRD value demands, then re-sample to confirm the
         level is stable. Expiry raises with the last observed state, so a pad
@@ -438,8 +437,8 @@ class SmcCsrSeq(smc_base_test_seq):
     def assert_reachable_or_gated(
         self, expected_accesses: int, block: str, gated_note: str
     ) -> None:
-        """Reachability gate for windows that are *legitimately* clock-gated or
-        absent in the current OSS bring-up (e.g. the CPU cluster before firmware
+        """Reachability gate for windows that are clock-gated or
+        absent in this OSS bench (e.g. the CPU cluster before firmware
         boot, a Verilator/vendor-stubbed macro).
 
         Unlike ``assert_all_reachable`` this does not hard-fail on a no-response,
@@ -453,9 +452,9 @@ class SmcCsrSeq(smc_base_test_seq):
         * the reachable subset is response-gated (those reads DID get an AXI
           answer), giving genuine decode coverage for whatever is present.
 
-        Any gated window is logged (not silently swallowed) so the deferred
-        register-level coverage is visible rather than hidden behind a green
-        vacuous ``accesses == N``.
+        Any gated window is logged (not silently swallowed) so the register-level
+        coverage this bench cannot take is visible rather than hidden behind a
+        green vacuous ``accesses == N``.
         """
         assert self.accesses == expected_accesses, (
             f"{block}: issued {self.accesses} accesses, expected "

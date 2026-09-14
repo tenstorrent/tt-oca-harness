@@ -13,10 +13,6 @@
  * 3. Test all 4 SPI modes (CPOL/CPHA combinations)
  * 4. Test FULLCYC mode
  * 5. Test CS timing fields (CSNIDLE, CSNLEAD, CSNTRAIL)
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_clock_config_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -41,7 +37,6 @@ int main(void) {
 
     int pass = 1;
     spi_controller__CFG_t cfg;
-
 
     /* Step 1: Verify CFG default */
     printf("Step 1: CFG default check\n");

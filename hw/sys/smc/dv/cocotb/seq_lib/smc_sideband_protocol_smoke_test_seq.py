@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import cocotb
 
-# ``_REPO`` / ``_field_mask`` come from the authoritative-map module on purpose:
+# ``_REPO`` / ``_field_mask`` come from the authoritative-map module:
 # it is the single place that knows the repo layout and how to read a generated
 # PeakRDL C header, and AVSBus has no ``smc_addr_map`` accessor of its own.
 from .smc_addr_map import _REPO, _field_mask, smc_addr
@@ -122,9 +122,7 @@ AVS_FIFOS_STATUS_EMPTY = (
 # Value-checked OKAY status reads. Every row carries an exact expected word, so
 # the loop below needs no slice and no `expected is not None` guard: a row added
 # without an expectation is a TypeError/None compare, not a silently skipped
-# read. (The former dead ``("AVS_DEBUG_READBACK", ..., None)`` row at index 0 was
-# removed -- it had no importer outside this file, the body sliced it off with
-# ``[1:]``, and it silently inflated SIDEBAND_TOTAL_ACCESSES.)
+# read.
 SIDEBAND_OKAY_READS = [
     ("AVS_NORMAL_STATUS", AVS_NORMAL_STATUS, AVS_NORMAL_STATUS_IDLE),
     ("AVS_SLAVE_STATUS", AVS_SLAVE_STATUS, AVS_SLAVE_STATUS_RESET),
@@ -216,10 +214,10 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             # rdata == 0 -- that half IS document-cited
             # (memmap.adoc:95, "AVS_READBACK |0x00000000 |Empty FIFO, no response
             # data") -- together with an AXI error response. The error response
-            # itself is NOT claimed as a documented property: it is how the
-            # current SEP_IN integration terminates an empty-readback read, and
-            # is pinned here only so the leg cannot silently degrade into an OKAY
-            # or a wedge. csr_read_decerr_zero asserts both halves.
+            # is an integration behaviour of the SEP_IN path on an empty-readback
+            # read, not a documented register property; it is pinned so the leg
+            # cannot degrade into an OKAY or a wedge. csr_read_decerr_zero
+            # asserts both halves.
             await self.csr_read_decerr_zero(name, addr)
             cocotb.log.info(
                 "CHK-AVS-READBACK-EMPTY-FIFO-READ: 0x%08x resp=SLVERR/DECERR and "
@@ -272,7 +270,7 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             AVS_INTERRUPT_NONE_PENDING,
         )
 
-        # AVS_INTERRUPT_MASK write/read-back/restore. Placed LAST on purpose:
+        # AVS_INTERRUPT_MASK write/read-back/restore. Placed LAST:
         # every AVS_INTERRUPT check above depends on the interrupt state being
         # untouched, and clearing a mask bit un-masks a real source into the
         # PLIC. Nothing is driven between the write and the restore, and the AVS
@@ -315,12 +313,8 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             f"sideband CSR precheck issued {self.accesses} accesses, expected "
             f"{SIDEBAND_TOTAL_ACCESSES + 5}"
         )
-        # NOTE: there is deliberately no ``assert
-        # self.timeouts == 0`` here. Every access above goes through csr_read /
-        # csr_write / csr_read_decerr_zero, all of which leave ``allow_timeout``
-        # False, so SmcSysAxiDriver._timed_event already raises on expiry
-        # (env/smc_sys_axi_agent.py) and this counter can only ever be 0 on this
-        # path. Asserting it would read as an active no-hang check while being
-        # unable to fire; the real no-hang property is enforced one layer up in
-        # the driver. The test likewise publishes ``timeouts=None`` rather than a
-        # structural zero.
+        # Every access above goes through csr_read / csr_write /
+        # csr_read_decerr_zero and leaves ``allow_timeout`` False, so
+        # SmcSysAxiDriver._timed_event raises on expiry and ``self.timeouts``
+        # stays 0 on this path; the driver enforces the no-hang property and the
+        # test publishes ``timeouts=None``.

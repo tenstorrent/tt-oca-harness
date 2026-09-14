@@ -16,8 +16,7 @@ NDM_CLUSTERS = smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_
 # NDMRESET_CLUSTER_COUNT carries no golden here: `ndm_reset.rdl:33-39` declares
 # it `sw = r; hw = w` with reset 0x0, i.e. the value is driven by the
 # integration's cluster count and no SPEC table in this repository pins it to a
-# number. Transcribing `smc_config_pkg::CPU_CLUSTER_COUNT` into the test would
-# be the RTL grading its own homework ([INDEPENDENT-EXPECTED-MODEL]).
+# number ([INDEPENDENT-EXPECTED-MODEL]).
 #
 # What the RDL DOES state is the register's contract, and that is what is
 # checked instead:
@@ -79,21 +78,14 @@ class smc_ndm_reset_test_seq(SmcCsrSeq):
             f"REQUEST/PROCESS registers"
         )
         port_width = len(dut.tb_ndmreset_request.value)
-        # PROVENANCE, stated plainly: `port_width` is the width of the TB
-        # OBSERVATION port `tb_ndmreset_request`, which `tb_top.sv:149` declares
-        # as a hard-coded `[3:0]` -- its comment claims "Width =
-        # CPU_CLUSTER_COUNT" but it is a literal that mirrors
-        # `smc_config_pkg.sv:58`, not the DUT's parameterised
-        # `smc.sv:179` port. So this compare is a TB/DUT integration check (the
-        # bench cannot carry more lines than it declares); it CANNOT validate
-        # the count against a specification, because no spec value for it exists
-        # in the tree: `ndm_reset.rdl:33-38` declares
-        # `ndmreset_cluster_count[7:0] = 0x0` as `sw=r; hw=w` -- hardware-driven
-        # with reset 0x0 -- and its "up to 32 CPU Clusters" wording bounds the
-        # REQUEST/PROCESS width, supplying no expected count. The claim that the
-        # count is CORRECT is therefore NOT made by this testcase; what is
-        # proven is that the count agrees with the request bits that physically
-        # reach the register (see the all-lines leg below).
+        # `port_width` is the width of the TB observation port
+        # `tb_ndmreset_request`, a hard-coded `[3:0]` in tb_top.sv that mirrors
+        # `smc_config_pkg.sv`, not the DUT's parameterised `smc.sv` port. The
+        # compare is a TB/DUT integration check -- the bench cannot observe more
+        # lines than it declares -- and, with no spec value for the count in
+        # the tree (module comment above), it does not claim the count is
+        # correct; the all-lines leg below proves the count agrees with the
+        # request bits that reach the register.
         assert count == port_width, (
             f"NDMRESET_CLUSTER_COUNT reports {count} cluster(s) but the TB "
             f"observation port tb_ndmreset_request is {port_width} bit(s) wide "

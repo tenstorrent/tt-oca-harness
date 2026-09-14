@@ -13,10 +13,6 @@
  * 3. Enable controller (SPIEN=1), verify STATUS
  * 4. Software reset (SW_RST pulse), verify state clears
  * 5. Disable controller (SPIEN=0)
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_enable_disable_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -42,7 +38,6 @@ int main(void) {
     int pass = 1;
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
-
 
     /* Step 1: Read CTRL default */
     printf("Step 1: CTRL default check\n");

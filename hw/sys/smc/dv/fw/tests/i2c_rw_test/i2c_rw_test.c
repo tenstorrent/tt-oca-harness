@@ -91,10 +91,6 @@ int main(void) {
     const uint8_t TARGET_ADDR = 0x5a;  // Target address (7-bit) - from 0x5a5a
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##      I2C Read Test                        ##\n");

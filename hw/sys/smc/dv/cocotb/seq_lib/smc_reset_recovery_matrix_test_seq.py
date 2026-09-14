@@ -6,7 +6,7 @@ This sequence compresses the reset-depth variants into one coverage-oriented
 scenario: baseline sample, powergood glitch, cold-reset reassert, cool-reset
 pulse, and final recovery sample.
 
-Every leg of the matrix is now fail-capable at both ends:
+Every leg of the matrix is fail-capable at both ends:
 
 * the assert half rides an exact expectation on the reset item, so a DUT that
   never asserts the driven reset fails there instead of leaving an
@@ -52,17 +52,11 @@ class smc_reset_recovery_matrix_test_seq(SmcResetSeqBase):
     # clk_ref_i edges, and therefore also the stimulus low time of each leg
     # (the pin/level is restored only after the window closes). As wide as
     # smc_reset_ctrl's 32-sample de-glitch window: a DUT that releases the
-    # driven reset at *any* sample inside the hold fails, which the single
-    # instantaneous `_raw_after` snapshot this replaces could not see
-    # ([EXACT-EXPECTATION]).
+    # driven reset at *any* sample inside the hold fails ([EXACT-EXPECTATION]).
     MID_ASSERT_HOLD_REF_CYCLES = 32
     # Held mid-assert legs, each contributing a full checked window to the
     # scoreboard's reset_raw_checks_seen floor below.
     MID_ASSERT_LEGS = 3
-
-    # `_send` (with its `expect_*` keyword guard), `_raw_after`, `_hold_raw` and
-    # `_wait_released` come from SmcResetSeqBase so the guard is defined once
-    # for the whole reset family ([REUSE-AND-LAYERING]).
 
     async def _recover_and_sample(self) -> SmcResetItem:
         await self._wait_released()
@@ -149,13 +143,10 @@ class smc_reset_recovery_matrix_test_seq(SmcResetSeqBase):
         await self._raw_after(16)
         await self._recover_and_sample()
 
-        # Sequence structure (baseline + 3 recovery SAMPLEs, RAW snapshots at the
-        # transitions) is a property of the code above, not of the DUT, so it is
-        # stated here as a comment rather than as asserts that could only fail on
-        # a source edit. `resolvable` on every checked item is already asserted by
-        # the scoreboard. The activity gate below is the real one: it counts only
-        # the fail-capable legs, so the expectation-free transition snapshots
-        # cannot satisfy it ([NO-ZERO-ACTIVITY-PASS]).
+        # The activity gate counts only the fail-capable legs, so the
+        # expectation-free transition snapshots cannot satisfy it
+        # ([NO-ZERO-ACTIVITY-PASS]); `resolvable` on every checked item is
+        # asserted by the scoreboard.
         sb = self.env.scoreboard
         assert sb.reset_wait_checks_seen >= 6, (
             f"expected 6 bounded reset WAIT_STATE checks (3 asserts + 3 "

@@ -35,15 +35,11 @@
  * cumulative, and a stale literal does not fail to compile.
  */
 #define EFUSE_FW_BIT0(field_base_addr) \
-    (((uint32_t)(field_base_addr) -    \
-      (uint32_t)OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR) * 8u)
+    (((uint32_t)(field_base_addr) - (uint32_t)OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR) * 8u)
 
-#define EFUSE_FW_CLASS_KEY_BIT0 \
-    EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR)
-#define EFUSE_FW_BL1_VERSION_BIT0 \
-    EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR)
-#define EFUSE_FW_CHIPLET_UID_BIT0 \
-    EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR)
+#define EFUSE_FW_CLASS_KEY_BIT0 EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR)
+#define EFUSE_FW_BL1_VERSION_BIT0 EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR)
+#define EFUSE_FW_CHIPLET_UID_BIT0 EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR)
 
 typedef struct {
     uint32_t completed;
@@ -73,8 +69,8 @@ static inline void efuse_clear_req_error(void) {
 
 /*
  * efuse_config_program_clock() is implemented by adopter overlays that need a
- * macro programming clock. This open helper intentionally only provides the
- * OpenTitan EFUSE_INTERFACE_CTRL surface.
+ * macro programming clock; this helper provides only the OpenTitan
+ * EFUSE_INTERFACE_CTRL surface.
  */
 
 static inline int efuse_program_bit(uint32_t bit_addr) {

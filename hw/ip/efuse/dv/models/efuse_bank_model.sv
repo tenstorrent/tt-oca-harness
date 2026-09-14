@@ -126,28 +126,31 @@ module efuse_bank_model #(
     .hwif_out(hwif_out)
   );
 
-  // Sim-only OTP image preload, deposited into the register storage at time 0
-  // so fuse data is valid before the first clock edge. It survives reset, and so
-  // do words programmed at run time: the EFUSE_BANK_REG.dout field carries no
-  // reset value in hw/ip/efuse/dv/models/regs/efuse_bank.rdl, so the storage
-  // process in hw/ip/efuse/dv/models/efuse_bank_reg.sv has no reset branch --
-  // a fuse holds its state across every reset. $readmemh cannot target the
-  // unpacked struct array directly, hence the scratch array. Image selected by
-  // +smc_efuse_hex / +sep_efuse_hex (default out/sep_efuse.hex).
+  // Sim-only OTP image preload. The plusarg is a path sampled at time 0;
+  // $readmemh waits for rst_ni so the testbench can write that file after the
+  // simulator starts (per-run seed). Silicon has fuse contents from power-on;
+  // the preload must land before fuse sense, which starts well after reset
+  // release. EFUSE_BANK_REG.dout has no reset, so the image and later programs
+  // survive every reset. $readmemh cannot target the unpacked struct array,
+  // hence the scratch array. Selected by +smc_efuse_hex / +sep_efuse_hex
+  // (default out/sep_efuse.hex).
   initial begin
     string img;
     logic [31:0] otp_preload_mem [1024];
     for (int unsigned i = 0; i < 1024; i++) otp_preload_mem[i] = '0;
     if (IsSmcInstance) begin
       if ($value$plusargs("smc_efuse_hex=%s", img)) begin
+        wait (rst_ni);
         $readmemh(img, otp_preload_mem);
         $display("[efuse_bank_model:SMC] loaded %s", img);
       end
     end else begin
       if ($value$plusargs("sep_efuse_hex=%s", img)) begin
+        wait (rst_ni);
         $readmemh(img, otp_preload_mem);
         $display("[efuse_bank_model:SEP] loaded %s", img);
       end else begin
+        wait (rst_ni);
         $readmemh("out/sep_efuse.hex", otp_preload_mem);
         $display("[efuse_bank_model:SEP] loaded out/sep_efuse.hex");
       end

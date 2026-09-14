@@ -6,3 +6,6 @@ waive --rule=module-filename --regex="module ocah_axi_vip_tb_top" --location=".*
 
 # PeakRDL AXI4-Lite CPUIF import predating the `_if` convention.
 waive --rule=interface-name-style --regex="interface axi4lite_intf " --location=".*hw/common/axi/axi4lite_intf\.sv$"
+
+# Synthesis elaboration requires this string-valued parameter to remain untyped.
+waive --rule=explicit-parameter-storage-type --regex="parameter ArbiterImpl " --location=".*hw/common/tlul/rtl/tlul_pkg\.sv$"

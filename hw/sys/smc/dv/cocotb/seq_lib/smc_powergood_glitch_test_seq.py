@@ -18,9 +18,8 @@ Two proof properties, both fail-capable:
   expectations ride on the reset items, so the scoreboard -- not this sequence
   -- owns the verdict, and a DUT that ignores ``powergood_i`` fails instead of
   producing an OBSERVED-ONLY snapshot.
-* recovery: a ``WAIT_STATE`` handshake on the released levels replaces the
-  former fixed settle, so recovery latency is bounded and expiry raises with
-  the last observed state ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]).
+* recovery: a ``WAIT_STATE`` handshake on the released levels, so recovery
+  latency is bounded and expiry raises with the last observed state ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]).
 """
 
 from __future__ import annotations
@@ -37,8 +36,7 @@ class smc_powergood_glitch_test_seq(SmcResetSeqBase):
     # long powergood_i stays low (it is restored only after the window closes).
     # As wide as smc_reset_ctrl's 32-sample de-glitch window: the gated state is
     # proven at EVERY sample of the glitch, so a DUT that lets the functional
-    # reset path release at any instant while power-good is unstable fails --
-    # which the single mid-glitch snapshot this replaces could not see
+    # reset path release at any instant while power-good is unstable fails
     # ([EXACT-EXPECTATION]).
     MID_GLITCH_HOLD_REF_CYCLES = 32
 
@@ -50,17 +48,13 @@ class smc_powergood_glitch_test_seq(SmcResetSeqBase):
     MIN_WAIT_CHECKS = 2  # glitch-effect + recovery handshakes
     MIN_RAW_CHECKS = MID_GLITCH_HOLD_REF_CYCLES  # the whole checked hold window
 
-    # `_send` (with its `expect_*` keyword guard) and `_hold_raw` come from
-    # SmcResetSeqBase so the guard is defined once for the whole reset family
-    # ([REUSE-AND-LAYERING]).
-
     # powergood_stable_o is the stretcher's asynchronously-asserted output, so
     # the glitch must be visible within a few clk_ref_i edges; the bound is a
     # generous ceiling, never the checked quantity.
     GLITCH_EFFECT_BOUND_REF_CYCLES = 64
     # Recovery re-qualifies power-good and then walks the cold-reset extender
-    # before primary is released (observed ~300 clk_ref_i edges). The bound only
-    # has to be a safe ceiling -- expiry fails the test with the last state.
+    # before primary is released, which takes a few hundred clk_ref_i edges. The
+    # bound only has to be a safe ceiling -- expiry fails the test with the last state.
     RECOVER_BOUND_REF_CYCLES = 2000
 
     def __init__(self, name: str = "smc_powergood_glitch_test_seq") -> None:

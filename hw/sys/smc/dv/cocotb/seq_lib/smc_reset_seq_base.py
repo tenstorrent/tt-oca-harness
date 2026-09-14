@@ -17,14 +17,12 @@ they are defined here once instead of being copy-pasted per sequence:
   sample passes for a DUT that releases the reset anywhere else inside the
   driven hold ([EXACT-EXPECTATION]).
 
-Why the keyword guard lives here rather than in each sequence: ``_send``
-applies the expectations with ``setattr``, so a mistyped ``expect_*`` would
-silently become a non-check instead of a compare ([NO-ALWAYS-PASS-CHECKER]).
-``_SEND_KEYS`` is derived from ``RESET_SAMPLE_FIELDS`` so it tracks the item
-definition automatically, and any keyword outside it (plus
-``expect_left_stable`` / ``timeout_ref_cycles``) raises. One definition is what
-keeps the guard uniform across the family; per-sequence copies drift, and the
-sequence that never got a copy had no guard at all ([REUSE-AND-LAYERING]).
+The keyword guard: ``_send`` applies the expectations with ``setattr``, so a
+mistyped ``expect_*`` would silently become a non-check instead of a compare
+([NO-ALWAYS-PASS-CHECKER]). ``_SEND_KEYS`` is derived from
+``RESET_SAMPLE_FIELDS`` so it tracks the item definition, and any keyword
+outside it (plus ``expect_left_stable`` / ``timeout_ref_cycles``) raises
+([REUSE-AND-LAYERING]).
 
 Sequences whose reset items travel on a *different* sequencer than the one they
 were started on (the CSR-across-reset sequences run on the SEP_IN AXI

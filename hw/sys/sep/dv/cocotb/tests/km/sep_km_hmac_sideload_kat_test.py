@@ -8,18 +8,17 @@ then CMD_KEY_TRANSFERs it to the OpenTitan HMAC engine. The host runs a keyed
 HMAC-SHA256 over a fixed message with the sideloaded key and proves HMAC consumed
 exactly that key: the engine digest equals an independent HMAC-SHA256 golden
 (env/sep_hmac_golden.py, Python stdlib hmac/hashlib, RFC 4231 self-tested) of the
-known key. There is deliberately no decoy-key comparison: it would be entailed by
-that equality, since both goldens are pure functions of file-scope constants.
+known key.
 
 HMAC has NO CFG sideload bit and KEY_VALID is set on the KM's private key bus
 (the host cannot clear it), so the AES-style sideload-vs-SW-key cross-check is
-impossible -- the consume-proof IS the digest-vs-golden compare (this is how reference suite
-does it too). This OSS port is a FRONTDOOR known-key variant, STRONGER than the reference suite:
+impossible -- the consume-proof IS the digest-vs-golden compare (as in the reference
+suite). This port is a FRONTDOOR known-key variant:
 the reference suite generates a random key, reconstructs it by a read-only backdoor of the
 wrapper shares, then SEARCHES 8 byte/word representations for the one that
 reproduces the engine digest; here the key is known a priori and the digest is
 checked directly against the golden under the RTL-pinned convention
-(key_word_rev=1, key_be=1, msg_be=0 -- the structural contract reference suite confirmed),
+(key_word_rev=1, key_be=1, msg_be=0),
 so a truncated/word-swapped/wrong-key sideload changes the digest and fails.
 
 VPLAN-parity checkers:
@@ -35,7 +34,7 @@ VPLAN-parity checkers:
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (the KM boot/load consumer);
             HMAC is not an EDN consumer, so no crypto EDN sink is scored.
 
-Accepted scope deltas vs the reference suite (documented; no silent skips):
+Scope deltas vs the reference suite:
   * known-key golden value-compare under the RTL-pinned convention (proves the
     exact key flowed). The HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is
     out of frontdoor scope (covered frontdoor by the OTBN KAT's CHK-F, as for the
@@ -113,7 +112,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         self.logger.info("CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox")
 
         # --- Frontdoor consume-proof: load known key -> transfer -> keyed MAC ---
-        # CHK-A: provision the KNOWN key into a KPV handle (no backdoor needed).
+        # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_HMAC)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
@@ -143,7 +142,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         )
 
         # CHK-B: sideload the handle's key to the HMAC wrapper KEY CSRs.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to HMAC)")
 

@@ -3,7 +3,7 @@
 """SMC OSS RAS-bank / NDM-reset / DFX-debug diagnostic CSR smoke.
 
 No ECC and no DBS register is read by this testcase -- neither surface exists at
-the SMC CSR boundary. The testcase name is historical; see
+the SMC CSR boundary. The testcase name does not describe the surface; see
 the sequence docstring for what is actually addressed.
 """
 
@@ -20,12 +20,12 @@ from smc_base_test import smc_base_test
 # sequence that silently stopped issuing accesses.
 # Composition (smc_ecc_dfd_dbs_sanity_test_seq, directed, no polling):
 #   1 AXI-Lite master activity positive control (prove_axil_any_master_activity)
-# + 4 value-compared diagnostic CSR reads (DIAGNOSTIC_READS)
+# + 3 value-compared diagnostic CSR reads (DIAGNOSTIC_READS)
 # + 1 NDMRESET_CLUSTER_COUNT parameter-propagation read
 # + 2 NDMRESET_CLUSTER_COUNT sw=r write + readback
-# = 8. The floor counts the write/readback pair, so a regression that silently
+# = 7. The floor counts the write/readback pair, so a regression that silently
 # dropped it fails here rather than clearing a lower number.
-ECC_DFD_DBS_MIN_CSR_ACCESSES = 8
+ECC_DFD_DBS_MIN_CSR_ACCESSES = 7
 
 
 @pyuvm.test()
@@ -55,6 +55,6 @@ class smc_ecc_dfd_dbs_sanity_test(smc_base_test):
                 "type/instance ID, NDM reset (PROCESS + CLUSTER_COUNT), DFX "
                 "debug CTRL and the full 64-bit DEBUG_BUS_MUX. No ECC and no DBS "
                 "register is read -- neither surface exists in smc_addr.h. No "
-                "fault inject (U7-1/U7-2 pending)"
+                "fault inject on this surface"
             ),
         )

@@ -48,12 +48,11 @@ class smc_i2c_multi_sample_test_seq(smc_base_test_seq):
 
         # Activity gate on the *analysis path*, not on this body's own list:
         # `self.samples.append(item)` runs unconditionally inside a
-        # `range(NUM_SAMPLES)` loop, so `len(self.samples) == NUM_SAMPLES` was
-        # true by construction of the loop bound and could only fail if this file
-        # were edited. The scoreboard counter is incremented by `_check_i2c` on
-        # the analysis path, so a mis-bound analysis port -- which would leave
-        # every scoreboard compare below vacuous -- fails here. Same gate the
-        # sibling `smc_i2c_cg_sanity_test_seq.py:46-60` carries
+        # `range(NUM_SAMPLES)` loop, so its length cannot fail on anything the
+        # DUT did. The scoreboard counter is incremented by `_check_i2c` on the
+        # analysis path, so a mis-bound analysis port -- which would leave every
+        # scoreboard compare below vacuous -- fails here. Same gate the sibling
+        # `smc_i2c_cg_sanity_test_seq` carries
         # ([NO-DUMMY-DEAD-CODE] / [NO-ZERO-ACTIVITY-PASS]).
         booked = sb.i2c_samples_seen - seen_before
         assert booked == self.NUM_SAMPLES, (

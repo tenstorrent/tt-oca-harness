@@ -1,8 +1,0 @@
-# Python cache
-__pycache__
-*egg-info
-
-# Simmulation generated files
-sim_build
-*.vcd
-*.xml

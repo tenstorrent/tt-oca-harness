@@ -2,18 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Default register read smoke over the real SEP_IN AXI ingress port.
 
-This is the OSS-safe slice of the legacy default-reg-read flow: it reads
+This is the OSS-safe slice of the default-reg-read flow: it reads
 side-effect-free internal SMC CSRs through ``sep_axi_in_req_i`` and checks
 that every selected address returns an OKAY AXI response **and** — wherever the
 generated register map defines one — the exact reset value for that register.
 
-Access-port identity (do not restate this as "SYS AXI"): the test starts this
-sequence on ``env.sys_axi_agent``, whose driver declares ``bus_prefix =
-"s_axi"`` / ``bus_name = "SEP_IN AXI"`` (``env/smc_sys_axi_agent.py``), and
-``tb_top.sv`` wires the top-level ``s_axi_*`` pins into
-``smc.sep_axi_in_req_i``. The SYS_IN port (``sys_axi_*`` -> ``sys_axi_in_req_i``)
-is driven by the separate ``env.sys_in_axi_agent``, which this test never starts,
-so the historical ``sys_axi_agent`` handle name is misleading.
+Access-port identity: the test starts this sequence on ``env.sys_axi_agent``,
+whose driver declares ``bus_prefix = "s_axi"`` / ``bus_name = "SEP_IN AXI"``
+(``env/smc_sys_axi_agent.py``), and ``tb_top.sv`` wires the top-level
+``s_axi_*`` pins into ``smc.sep_axi_in_req_i``. The SYS_IN port (``sys_axi_*``
+-> ``sys_axi_in_req_i``) is driven by the separate ``env.sys_in_axi_agent``,
+which this test never starts.
 
 What that does and does not prove: every register read below lives inside
 ``smc_misc_wrap`` and is reached over the same internal register fabric from
@@ -52,14 +51,12 @@ READABLE_REGS = [
 # Stimulus-derived floor for the value compares -- the ONE DUT-sensitive check
 # this testcase performs ([NO-ZERO-ACTIVITY-PASS]).
 #
-# Deliberately a LITERAL and deliberately NOT read from the catalog. The previous
-# expression summed the same ``catalog_entry(...).expected is not None`` predicate
-# the read loop applies, so both sides moved together: a catalog regression that
-# dropped all six entries to ``expected=None`` would have compared zero values
-# and still satisfied ``value_checks == EXPECTED_VALUE_CHECKS`` as ``0 == 0``.
-# With a literal, that regression fails the sweep. ``tests/smc_default_reg_rd_
-# test.py`` floors the same number a second time against the scoreboard's own
-# independent ``sys_axi_value_checks_seen`` tally.
+# A LITERAL, not read from the catalog: a floor summed from the same
+# ``catalog_entry(...).expected is not None`` predicate the read loop applies
+# moves with the catalog, so a regression that dropped all six entries to
+# ``expected=None`` would compare zero values and still pass as ``0 == 0``.
+# ``tests/smc_default_reg_rd_test.py`` floors the same number a second time
+# against the scoreboard's own independent ``sys_axi_value_checks_seen`` tally.
 #
 # All six READABLE_REGS entries must therefore carry a cataloged expected value;
 # ``_read`` raises rather than skipping if one does not.
@@ -80,12 +77,9 @@ class smc_default_reg_rd_test_seq(smc_base_test_seq):
         self.value_checks = 0
 
     async def _read(self, name: str, addr: int, expected: int, kind: SmcCsrAccessKind) -> None:
-        # ``expected`` is non-optional: a catalog entry that
-        # carries no expectation is a hard error here, not a silently
-        # decode-only read. The former ``expected is None`` branch and its
-        # ``CHK-DEFAULT-REG-DECODE`` token were unreachable for every register
-        # this testcase reads, and keeping them would let a catalog regression
-        # shrink the value-compare count instead of failing.
+        # ``expected`` is non-optional: a catalog entry that carries no
+        # expectation is a hard error here, not a silently decode-only read, so
+        # a catalog regression cannot shrink the value-compare count.
         assert expected is not None, (
             f"{name} @ 0x{addr:08x}: smc_csr_field_catalog states no expected "
             f"value, but every register in this sweep must be value-compared "

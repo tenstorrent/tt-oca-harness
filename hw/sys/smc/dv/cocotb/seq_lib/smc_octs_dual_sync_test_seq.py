@@ -34,7 +34,7 @@ _OCTS_COUNT_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADD
 _OCTS_COUNT_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR")
 _OCTS_TIMER_GPIO_ENABLE = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR")
 
-# CTRL: CREDIT_VAL=0x10, PULSE_WIDTH=0x02, STEP=0x01 (matches legacy FW).
+# CTRL: CREDIT_VAL=0x10, PULSE_WIDTH=0x02, STEP=0x01.
 _OCTS_CTRL_VAL = 0x0001_0210
 _OCTS_CREDIT_VAL = 0x10
 _OCTS_PULSE_WIDTH = 0x02
@@ -149,9 +149,9 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
 
         count_pri = await self._read_count()
         # Anchored to values this run measured, not to the PRESET this sequence
-        # programmed: COUNT enters the phase already above PRESET (0x1096 in the
-        # retained run), so an absolute comparison against it holds with or
-        # without the TIMER_START write.
+        # programmed: COUNT enters this phase above PRESET, so an absolute
+        # comparison against PRESET would hold with or without the TIMER_START
+        # write.
         assert count_reloaded < count_before_start, (
             f"OCTS TIMER_START did not reload COUNT: 0x{count_before_start:x} -> "
             f"0x{count_reloaded:x} (a free-running counter only increases)"

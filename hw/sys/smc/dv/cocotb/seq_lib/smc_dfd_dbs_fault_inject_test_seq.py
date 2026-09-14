@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TB-glue demo (deferred): pulse tb_dfd_fault_inject → latch 0xDB5C_AFE1.
+"""TB-glue demo: pulse tb_dfd_fault_inject → latch 0xDB5C_AFE1.
 
 DOES NOT DEFEND: smc_dfd_wrap / hw/ip/dfd CLA / trace-RAM (real DFD RTL).
 DEFENDS only: TB public capture ports wired in tb_top.sv.
@@ -14,8 +14,8 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Keep a diagnostic CSR touch so the test still exercises SEP_IN.
-RAS_BANK_INFO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR")
+# One diagnostic CSR read so the test exercises SEP_IN as well as the TB ports.
+VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 
 
 class smc_dfd_dbs_fault_inject_test_seq(SmcCsrSeq):
@@ -25,7 +25,7 @@ class smc_dfd_dbs_fault_inject_test_seq(SmcCsrSeq):
         dut = cocotb.top
         clk = dut.clk_smc_i
 
-        await self.csr_read("RAS_BANK_INFO", RAS_BANK_INFO)
+        await self.csr_read("VERSION_LO", VERSION_LO)
 
         dut.tb_dfd_fault_inject.value = 0
         await ClockCycles(clk, 5)

@@ -77,19 +77,6 @@ package sep_cpu_ctrl_reg_pkg;
 
     typedef struct {
         logic next;
-    } sep_cpu_ctrl__SEP_STRAPS__test_en__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__SEP_STRAPS__bypass_mem_repair__in_t;
-
-    typedef struct {
-        sep_cpu_ctrl__SEP_STRAPS__test_en__in_t test_en;
-        sep_cpu_ctrl__SEP_STRAPS__bypass_mem_repair__in_t bypass_mem_repair;
-    } sep_cpu_ctrl__SEP_STRAPS__in_t;
-
-    typedef struct {
-        logic next;
     } sep_cpu_ctrl__DMA_BUS_ERR_STATUS__reg_path_err__in_t;
 
     typedef struct {
@@ -145,7 +132,6 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__SEP_TEST_CTRL__in_t SEP_TEST_CTRL;
         sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS__in_t SMC_FUSE_SENSE_STATUS;
         sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS__in_t SEP_FUSE_SENSE_STATUS;
-        sep_cpu_ctrl__SEP_STRAPS__in_t SEP_STRAPS;
         sep_cpu_ctrl__DMA_BUS_ERR_STATUS__in_t DMA_BUS_ERR_STATUS;
         sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__in_t PERIPH_BUS_ERR_STATUS;
     } sep_cpu_ctrl__in_t;
@@ -256,19 +242,6 @@ package sep_cpu_ctrl_reg_pkg;
     typedef struct {
         sep_cpu_ctrl__SMU_REGION_SIZE__size__out_t size;
     } sep_cpu_ctrl__SMU_REGION_SIZE__out_t;
-
-    typedef struct {
-        logic [3:0] value;
-    } sep_cpu_ctrl__RAS_BANK_INFO__bank_chip__out_t;
-
-    typedef struct {
-        logic [3:0] value;
-    } sep_cpu_ctrl__RAS_BANK_INFO__bank_instance__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__RAS_BANK_INFO__bank_chip__out_t bank_chip;
-        sep_cpu_ctrl__RAS_BANK_INFO__bank_instance__out_t bank_instance;
-    } sep_cpu_ctrl__RAS_BANK_INFO__out_t;
 
     typedef struct {
         logic [31:0] value;
@@ -389,7 +362,6 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__SEP_REGION_SIZE__out_t SEP_REGION_SIZE;
         sep_cpu_ctrl__SMU_GLOBAL_BASE_ADDR__out_t SMU_GLOBAL_BASE_ADDR;
         sep_cpu_ctrl__SMU_REGION_SIZE__out_t SMU_REGION_SIZE;
-        sep_cpu_ctrl__RAS_BANK_INFO__out_t RAS_BANK_INFO;
         sep_cpu_ctrl__SEP_SW_DEBUG__out_t SEP_SW_DEBUG;
         sep_cpu_ctrl__SEP_NMI_VEC_nmi_vec_a3690e40__out_t SEP_NMI_VEC;
         sep_cpu_ctrl__SEP_NMI_VEC_LOCK__out_t SEP_NMI_VEC_LOCK;

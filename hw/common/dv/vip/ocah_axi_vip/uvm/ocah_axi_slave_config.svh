@@ -9,7 +9,7 @@
 // ONCE, skips the memory update (writes), and returns zero data (reads) —
 // plus per-direction one-shot response-ID corruption and per-channel
 // bounded READY backpressure. This table makes the
-// responder MISBEHAVE on purpose; the separate passive ocah_axi_config
+// responder MISBEHAVE; the separate passive ocah_axi_config
 // arm_expected_resp table is what classifies the observed non-OKAY as
 // EXPECTED for the scoreboard — tests arm both through their sequence layer.
 
@@ -68,7 +68,7 @@ class ocah_axi_slave_config extends uvm_object;
   endfunction
 
   // Beat-align, then wrap into the memory footprint (mem_bytes is a power
-  // of two, matching the SV RAM responder's address masking).
+  // of two).
   function bit [63:0] beat_align(bit [63:0] addr);
     return ((addr / 64'(beat_bytes())) * 64'(beat_bytes())) % 64'(mem_bytes);
   endfunction

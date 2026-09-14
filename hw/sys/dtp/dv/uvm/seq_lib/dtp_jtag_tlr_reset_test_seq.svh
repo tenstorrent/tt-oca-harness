@@ -15,14 +15,14 @@
 //     walks, or missed IDCODE restores).
 // Per-cycle walk legality lives in the env's dtp_tap_fsm_checker (aggregate
 // CHK-TAP-STATE armed by the test). +DTP_JTAG_TAP_CHECKER_NEGATIVE arms a
-// deliberately WRONG expected IDCODE so the run must FAIL (the same
+// WRONG expected IDCODE so the run must FAIL (the same
 // convention as dtp_sanity_test_seq), proving the TLR-selects-IDCODE
 // evidence path rejects a bad expectation end to end.
 //
-// The scan-count cross-check is disabled (cocotb ran without the pin-level
-// monitor here): both the navigation into the Pause states and the
-// TMS-high walk out of the Shift states cross Shift -> Exit1, publishing
-// partial scans the sequence cannot count.
+// The scan-count cross-check is disabled (cocotb use_monitor=False parity):
+// both the navigation into the Pause states and the TMS-high walk out of
+// the Shift states cross Shift -> Exit1, publishing partial scans the
+// sequence cannot count.
 
 class dtp_jtag_tlr_reset_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_jtag_tlr_reset_test_seq)

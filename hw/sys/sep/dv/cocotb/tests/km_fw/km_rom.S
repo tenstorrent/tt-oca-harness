@@ -9,8 +9,8 @@
 #   KM SRAM base = 0x0000_8000  (km_intf_pkg::SRAM_BASE_ADDR)
 #
 # The marker value is mirrored by KM_SMOKE_SRAM_WORD0 in
-# cocotb/seq_lib/sep_km_mem_smoke_seq.py; the test's value-compare fails loudly
-# if the two diverge.
+# cocotb/seq_lib/sep_km_mem_smoke_seq.py; a divergence between the two fails the
+# test's value-compare loudly.
 #
 # Build (output committed as ../km_rom.parhex):
 #   riscv64-unknown-elf-gcc -nostdlib -march=rv32i -mabi=ilp32 -Ttext=0 \

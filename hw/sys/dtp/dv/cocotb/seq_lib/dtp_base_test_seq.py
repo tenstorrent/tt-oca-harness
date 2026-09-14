@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Generic base sequence for DTP cocotb stimulus.
 
-This class intentionally stays feature-agnostic. Feature-specific helpers live in
+This class stays feature-agnostic. Feature-specific helpers live in
 child base sequences such as ``dtp_jtag_base_test_seq``,
 ``dtp_debug_tdr_base_test_seq``, and ``dtp_jtag2axi_base_test_seq``.
 The test assigns ``cfg`` before starting the sequence (dtp_base_test.plumb_scenario_seq).
@@ -11,7 +11,6 @@ The seed, loop, pattern, and step-logging helpers come from ``ocah_lib.OcahSeque
 
 from __future__ import annotations
 
-import cocotb
 from cocotb.triggers import ClockCycles
 from env.dtp_dbg_disable import (
     DBG_DISABLE_FIELDS,
@@ -215,9 +214,7 @@ class dtp_base_test_seq(OcahSequence):
     async def set_dbg_disable(self, **bits: int) -> None:
         """Drive named dbg_disable fields (1 = disabled); others keep state."""
         named = validate_dbg_disable(bits)
-        dut = cocotb.top
-        for name, value in named.items():
-            getattr(dut, f"dbg_disable_{name}").value = value
+        self.cfg.tb_if.set_dbg_disable(named)
         self.log.info("dbg_disable set %s", format_dbg_disable(named))
         await self.wait_dbg_disable_sync()
 
@@ -237,22 +234,22 @@ class dtp_base_test_seq(OcahSequence):
         """Read back one driven dbg_disable input; True when enabled (0)."""
         if name not in DBG_DISABLE_FIELDS:
             raise ValueError(f"unknown dbg_disable field {name!r}")
-        return int(getattr(cocotb.top, f"dbg_disable_{name}").value) == 0
+        return self.cfg.tb_if.dbg_field(name) == 0
 
     # --- system-domain helpers ----------------------------------------------
     async def wait_sys_cycles(self, cycles: int = 4) -> None:
         """Wait in the system-clock domain for registered DTP outputs to update."""
-        await ClockCycles(cocotb.top.clk_i, cycles)
+        await ClockCycles(self.cfg.tb_if.clk, cycles)
 
     async def pulse_system_reset(self, cycles: int = 5) -> None:
         """Pulse rst_n_i without asserting POR/TRST, preserving TAP accessibility."""
-        cocotb.top.rst_n_i.value = 0
+        self.cfg.tb_if.sys_rst_n.value = 0
         await self.wait_sys_cycles(cycles)
-        cocotb.top.rst_n_i.value = 1
+        self.cfg.tb_if.sys_rst_n.value = 1
         await self.wait_sys_cycles(cycles)
 
     async def expect_signal(self, name: str, expected: int) -> None:
-        """Sample a flattened top-level observable and compare it."""
+        """Sample a DTP observable by its flat name and compare it."""
         item = await self.sample_observables()
         assert name in item.signals, f"{name} is not exposed by the DTP JTAG driver"
         observed = item.signals[name]

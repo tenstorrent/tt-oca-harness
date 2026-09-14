@@ -279,11 +279,12 @@ static int test_disable_enable_sequence_comprehensive(void) {
             test_axi_transaction(test_addr + 0x100, 4, AXI_WRITE);
 
             // Phase 3: Re-enable with different config
-            if (setup_local_alias_remap_extended(region, seq_src, seq_dest + 0x1000000, // different dest
-                                                 1,                                     // re-enable
+            if (setup_local_alias_remap_extended(region, seq_src,
+                                                 seq_dest + 0x1000000,    // different dest
+                                                 1,                       // re-enable
                                                  (sequence_test + 4) % 8, // different priority
-                                                 (region + 2) % 4, // different access type
-                                                 CACHE_ATTR_NORMAL_NC, // different cache
+                                                 (region + 2) % 4,        // different access type
+                                                 CACHE_ATTR_NORMAL_NC,    // different cache
                                                  0xFFF80000) != 0) {
                 continue;
             }
@@ -362,7 +363,7 @@ static int test_concurrent_multi_region_stress(void) {
 
             if (setup_local_alias_remap_extended(region, stress_src, stress_dest,
                                                  1,               // enable
-                                                 region, // different priority per region
+                                                 region,          // different priority per region
                                                  stress_test % 4, // cycle access type
                                                  (stress_test * region) % 8, // varying cache attr
                                                  0xFFE00000) != 0) {         // 2MB granularity
@@ -397,7 +398,6 @@ int main(void) {
     printf("Local Alias Remap Toggle Test\n");
     printf("Strategy: Local-alias remap toggle stress; full CSR field coverage\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_local_alias_remap_toggle_p3_test");
         return TEST_FAIL;

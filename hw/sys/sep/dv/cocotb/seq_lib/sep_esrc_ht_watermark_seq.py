@@ -7,13 +7,16 @@ One shared register, not a per-mode bank. Arming is health_test_clr
 Changing the selector alone does not re-arm. An unsupported selector maps to
 REPCNT_HI. HEALTH_TEST_CTRL.ENABLE stays 0 on every arming leg so a window wrap
 cannot move the register between the event and the read. The shared TRNG reset
-resets the selector and watermark together and is covered by the recovery test.
+clears the selector and the watermark together; that path is not claimed here.
 
 SepHtWatermarkCfg is the single source of truth for the walk, the unsupported
 selector, and the low-mode fall selector.
 """
 
 from __future__ import annotations
+
+import re
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -31,6 +34,21 @@ from seq_lib.sep_esrc_bringup_seq import (
     ESRC_RING_OSC_ENABLE,
     RING_OSC_ALL_ON,
 )
+
+_RDL = Path(__file__).resolve().parents[5] / "ip" / "entropy_source" / "regs" / "entropy_source.rdl"
+
+
+def _rdl_watermark_modes() -> dict[str, int]:
+    """Encodings of enum WATERMARK_TEST, read from the RDL that defines them."""
+    text = _RDL.read_text(encoding="utf-8")
+    body = re.search(r"enum WATERMARK_TEST \{(.*?)\n    \};", text, re.S)
+    if not body:
+        raise RuntimeError(f"enum WATERMARK_TEST not found in {_RDL}")
+    return {
+        name: int(enc, 16)
+        for name, enc in re.findall(r"(\w+)\s*=\s*4'h([0-9A-Fa-f])", body.group(1))
+    }
+
 
 # entropy_source.sv watermark_test_e
 REPCNT_HI = 0x0
@@ -53,6 +71,9 @@ WATERMARK_MASK = 0xFFFF
 SEL_MASK = 0xF
 ARM_HIGH = 0x0000
 ARM_LOW = 0xFFFF
+# Independent of SUPPORTED: the count the RDL enum defines, so a walk that
+# skips a mode fails the tally in the test rather than shrinking the bound.
+RDL_MODE_COUNT = len(_rdl_watermark_modes())
 
 
 def arm_value(sel: int) -> int:
@@ -68,16 +89,17 @@ def sel_name(sel: int) -> str:
 class SepHtWatermarkCfg:
     """RANDCFG: every supported selector through MODULE_ENABLE every seed.
 
-    Continuous knobs from the seed: which illegal HT_WATERMARK_NUM value is
-    used for the unsupported->REPCNT_HI proof, and which low mode is allowed
-    to run after ENABLE so the watermark can fall.
+    Continuous knob from the seed: which illegal HT_WATERMARK_NUM value is used
+    for the unsupported->REPCNT_HI proof. Both low modes take the fall path on
+    every seed -- APT_LO and MARKOV_LO drive separate event counters in
+    entropy_source.sv, so picking one per seed would leave the other permanently unproven.
     """
 
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
         self.unsupported = rng.choice(tuple(range(5, 16)))
-        self.fall_sel = rng.choice((APT_LO, MARKOV_LO))
+        self.fall_sels = (APT_LO, MARKOV_LO)
         self.selectors = SUPPORTED
         self.paths = PATHS
 
@@ -92,7 +114,8 @@ class SepHtWatermarkCfg:
     def summary(self) -> str:
         return (
             f"seed={self.seed} selectors={list(self.selectors)} paths={list(self.paths)} "
-            f"unsupported={self.unsupported:#x} fall_sel={sel_name(self.fall_sel)} "
+            f"unsupported={self.unsupported:#x} "
+            f"fall={[sel_name(s) for s in self.fall_sels]} "
             f"cells={self.n_cells()}"
         )
 
@@ -141,3 +164,17 @@ class SepHtWatermark(SepAxiRegDriver):
     async def enable_sample_path(self) -> None:
         await self._wr(ESRC_DECORRELATOR_CTRL, DECOR_CTRL_DIV8)
         await self._wr(ESRC_RING_OSC_ENABLE, RING_OSC_ALL_ON)
+
+
+def _selftest() -> None:
+    """SUPPORTED and SEL_NAMES must match enum WATERMARK_TEST in the RDL."""
+    rdl = _rdl_watermark_modes()
+    assert rdl == {name: sel for sel, name in SEL_NAMES.items()}, (
+        f"HT_WATERMARK_NUM selector drift: RDL {rdl} vs seq {SEL_NAMES}"
+    )
+    assert tuple(sorted(rdl.values())) == tuple(sorted(SUPPORTED))
+    assert RDL_MODE_COUNT == 5
+    assert HIGH_MODES | LOW_MODES == frozenset(SUPPORTED)
+
+
+_selftest()

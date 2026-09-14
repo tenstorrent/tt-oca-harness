@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_rom_kpv.c
- * @brief T023 - KPV driver unit test
+ * @brief KPV driver unit test
  *
  * Exercises rom_kpv.h against actual KPV hardware in simulation:
  * - Scrambler init; shred with scrambler off, verify shred worked, then turn
@@ -230,8 +230,8 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /* 9. Shred-slot: slot 1 (unlocked) wipes all words; slot 0 (write+read
-     *    locked) now also wipes via the hardware erase path and clears its
-     *    CTRL locks, leaving the slot reusable. */
+     *    locked) wipes via the hardware erase path and clears its CTRL
+     *    locks, leaving the slot reusable. */
     TEST_SUBTEST_START("Shred-slot");
     {
         if (!tb_drbg_set_seed(123, 1000)) {

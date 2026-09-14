@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP XTRIG cocotb helpers: shared AXI-Lite master attach and GPIO pins.
 
-The `xtrig_axil_*` CSR port is driven through the shared ``ocah_axi_vip``
+The XTRIG CSR AXI-Lite port (u_xtrig_master_if) is driven through the shared ``ocah_axi_vip``
 AXI-Lite master; its sequence API carries the protocol-control operations the
 XTRIG scenarios need (``write_skewed_result``, ``read_hold_result``,
 contiguous partial strobes).
@@ -10,7 +10,6 @@ contiguous partial strobes).
 
 from __future__ import annotations
 
-import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 from pyuvm import ConfigDB, uvm_agent
@@ -31,11 +30,12 @@ def _int(signal) -> int:
 
 
 class DtpXtrigBfm:
-    """Drive and sample DTP XTRIG CTM/CTP pins."""
+    """Drive and sample DTP XTRIG CTM/CTP pins through dtp_xtrig_if."""
 
-    def __init__(self, dut, clk) -> None:
-        self.dut = dut
-        self.clk = clk
+    def __init__(self, tb_if) -> None:
+        self.tb_if = tb_if
+        self.pins = tb_if.xtrig
+        self.clk = tb_if.clk
 
     def init_signals(self) -> None:
         for name in (
@@ -46,8 +46,7 @@ class DtpXtrigBfm:
             "xtrig_ctp_ack_in_din",
             "xtrig_ctp_ack_out_din",
         ):
-            if hasattr(self.dut, name):
-                getattr(self.dut, name).value = 0
+            getattr(self.pins, name).value = 0
 
     async def sample(self) -> dict[str, int]:
         await ReadOnly()
@@ -76,38 +75,50 @@ class DtpXtrigBfm:
             "xtrig_axil_wvalid_count",
             "xtrig_axil_arvalid_count",
         )
-        sample = {name: _int(getattr(self.dut, name)) for name in names if hasattr(self.dut, name)}
+        sample = {name: self.tb_if.sample(name) for name in names if self.tb_if.has(name)}
         await NextTimeStep()
         return sample
 
     async def drive_internal_dst_pulse(self, int_idx: int, cycles: int = 1) -> None:
         mask = 1 << int_idx
-        self.dut.xtrig_ctm_dst_req.value = _int(self.dut.xtrig_ctm_dst_req) | mask
+        self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) | mask
         await ClockCycles(self.clk, cycles)
-        self.dut.xtrig_ctm_dst_req.value = _int(self.dut.xtrig_ctm_dst_req) & ~mask
+        self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) & ~mask
 
     async def drive_ctp_req_out_din_pulse(self, ctp_idx: int, cycles: int = 2) -> None:
         mask = 1 << ctp_idx
-        self.dut.xtrig_ctp_req_out_din.value = _int(self.dut.xtrig_ctp_req_out_din) | mask
+        self.pins.xtrig_ctp_req_out_din.value = _int(self.pins.xtrig_ctp_req_out_din) | mask
         await ClockCycles(self.clk, cycles)
-        self.dut.xtrig_ctp_req_out_din.value = _int(self.dut.xtrig_ctp_req_out_din) & ~mask
+        self.pins.xtrig_ctp_req_out_din.value = _int(self.pins.xtrig_ctp_req_out_din) & ~mask
 
     async def drive_ctp_p2p_req_in(self, ctp_idx: int, value: int) -> None:
         mask = 1 << ctp_idx
-        current = _int(self.dut.xtrig_ctp_req_in_din)
-        self.dut.xtrig_ctp_req_in_din.value = (current | mask) if value else (current & ~mask)
+        current = _int(self.pins.xtrig_ctp_req_in_din)
+        self.pins.xtrig_ctp_req_in_din.value = (current | mask) if value else (current & ~mask)
         await ClockCycles(self.clk, 1)
 
     async def drive_ctp_p2p_ack_in(self, ctp_idx: int, value: int) -> None:
         mask = 1 << ctp_idx
-        current = _int(self.dut.xtrig_ctp_ack_in_din)
-        self.dut.xtrig_ctp_ack_in_din.value = (current | mask) if value else (current & ~mask)
+        current = _int(self.pins.xtrig_ctp_ack_in_din)
+        self.pins.xtrig_ctp_ack_in_din.value = (current | mask) if value else (current & ~mask)
         await ClockCycles(self.clk, 1)
 
     async def pulse_ctm_dst_req(self, mask: int, cycles: int = 1) -> None:
-        self.dut.xtrig_ctm_dst_req.value = mask & ((1 << XTRIG_NUM_INT_CT) - 1)
+        self.pins.xtrig_ctm_dst_req.value = mask & ((1 << XTRIG_NUM_INT_CT) - 1)
         await ClockCycles(self.clk, cycles)
-        self.dut.xtrig_ctm_dst_req.value = 0
+        self.pins.xtrig_ctm_dst_req.value = 0
+
+    def sample_signal(self, name: str) -> int:
+        """Integer value of one cross-trigger observable or counter by its flat name."""
+        return self.tb_if.sample(name)
+
+    def set_ctp_ack_in_din(self, mask: int) -> None:
+        """Drive the CTP ack-in pad inputs to ``mask``."""
+        self.pins.xtrig_ctp_ack_in_din.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+
+    def set_ctm_src_ack(self, mask: int) -> None:
+        """Drive the CTM source-ack inputs to ``mask``."""
+        self.pins.xtrig_ctm_src_ack.value = mask & ((1 << XTRIG_NUM_INT_CT) - 1)
 
     async def clear_inputs(self) -> None:
         self.init_signals()
@@ -119,7 +130,7 @@ class DtpXtrigBfm:
         started = False
         for _ in range(timeout_cycles):
             await ReadOnly()
-            active = bool(_int(getattr(self.dut, name)) & mask)
+            active = bool(self.tb_if.sample(name) & mask)
             await NextTimeStep()
             if active:
                 width += 1
@@ -135,7 +146,7 @@ class DtpXtrigBfm:
         for _ in range(cycles):
             await ReadOnly()
             for name in names:
-                activity[name] |= _int(getattr(self.dut, name))
+                activity[name] |= self.tb_if.sample(name)
             await NextTimeStep()
             await ClockCycles(self.clk, 1)
         return activity
@@ -143,9 +154,9 @@ class DtpXtrigBfm:
     async def pulse_reset(self, cycles: int = 3) -> None:
         """Pulse system reset while keeping cocotb-driven XTRIG inputs idle."""
         self.init_signals()
-        self.dut.rst_n_i.value = 0
+        self.tb_if.sys_rst_n.value = 0
         await ClockCycles(self.clk, cycles)
-        self.dut.rst_n_i.value = 1
+        self.tb_if.sys_rst_n.value = 1
         await ClockCycles(self.clk, cycles + 2)
 
     @staticmethod
@@ -164,26 +175,26 @@ class DtpXtrigAgent(uvm_agent):
 
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
+        self.tb_if = ConfigDB().get(self, "", "tb_if")
         self.axil_agent = None
         self.axil = None
         self.bfm = None
 
     async def run_phase(self) -> None:
-        dut = cocotb.top
+        tb = self.tb_if
         # Tests judge response codes themselves (the decode-backpressure
         # scenario expects DECERR), so the sequence must return non-OKAY
         # responses instead of raising.
-        self.axil_agent = OcahAxiLiteMasterAgent.from_prefix(
-            dut,
-            "xtrig_axil",
-            dut.clk_i,
-            dut.rst_n_i,
+        self.axil_agent = OcahAxiLiteMasterAgent(
+            tb.axi_bus("xtrig"),
+            tb.clk,
+            tb.sys_rst_n,
             name="dtp_xtrig_axil",
             raise_on_error=False,
         )
         await self.axil_agent.start()
         self.axil = self.axil_agent.sequence
-        self.bfm = DtpXtrigBfm(dut, dut.clk_i)
+        self.bfm = DtpXtrigBfm(tb)
         self.bfm.init_signals()
         self.cfg.xtrig_axil = self.axil
         self.cfg.xtrig_bfm = self.bfm

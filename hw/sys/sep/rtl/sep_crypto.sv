@@ -67,12 +67,14 @@ module sep_crypto #(
   // Efuse intermediate reset
   output logic           sep_intermediate_reset_no,
   // Efuse signals
-  input  sep_pkg::sep_straps_t              sep_straps_i,
+  input  logic                              secure_tm_req_i,
   input  logic                               ext_boot_seq_done_i,
   output logic                               security_disable_o,       // To SMC
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
   output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
+  output logic                               sep_fuse_dft_disable_o,   // To DFT insertion
+  output logic                               smc_fuse_dft_disable_o,   // To DFT insertion
   output logic                               lc_sigint_err_o,
   output sep_efuse_pkg::efuse_map_t      shadow_regs_o,
   output logic                               fuse_sense_done_o,
@@ -573,7 +575,7 @@ module sep_crypto #(
     .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
   ) u_abr_key_err_slv (
     .clk_i       (clk_i),
-    .rst_ni      (sep_reset_ni),
+    .rst_ni      (rst_ni),
     .axil_req_i  (abr_key_axil_isolated_req),
     .axil_resp_o (abr_key_axil_isolated_resp)
   );
@@ -676,7 +678,7 @@ module sep_crypto #(
     .test_en_i    (test_en_i),
     .scan_rst_ni  (scan_rst_ni),
 
-    .sep_straps_i                          (sep_straps_i),
+    .secure_tm_req_i                       (secure_tm_req_i),
     .ext_boot_seq_done_i                   (ext_boot_seq_done_i),
 
     .security_disable_o                    (security_disable_o),
@@ -719,11 +721,12 @@ module sep_crypto #(
     .reset_n_i            (rst_ni),
     .test_en_i            (test_en_i),
 
-    .security_disable_i   (security_disable_o), // From efuse wrapper
-    .secure_tm_i          (secure_tm_o),        // From efuse wrapper
-    .shadow_regs_i        (shadow_regs_o),      // From efuse wrapper
+    .security_disable_i   (security_disable_o),
+    .shadow_regs_i        (shadow_regs_o),
     .feat_ctrl_o          (feat_ctrl_o),
     .dbg_disable_o        (dbg_disable_o),
+    .sep_fuse_dft_disable_o (sep_fuse_dft_disable_o),
+    .smc_fuse_dft_disable_o (smc_fuse_dft_disable_o),
     .lcc_demote_state_1_o (lcc_demote_state_1_o),
     .lcc_demote_state_2_o (lcc_demote_state_2_o),
     .lc_sigint_err_o      (lc_sigint_err_o),
@@ -738,11 +741,16 @@ module sep_crypto #(
   // Assemble km_otp_data_t from efuse shadow registers and lifecycle ctrl.
   // LC state and demotion state arrive already differentially encoded from
   // their respective sources (shadow register and LCC output).
-  // The four 256-bit secret fields (chiplet_uid, class_key, sip_uid, sys_uid)
-  // and the three 256-bit public identity fields (sep_chiplet_id, sep_sip_id,
-  // sep_sys_id) are dual-rail encoded here at the source (Sep->KM boundary)
+  // Seven 256-bit fields are dual-rail encoded here at the Sep->KM boundary
   // using prim_diff_encode_multi so that any fault on the wire is detectable.
   // Encoded format: data_o = {~value[255:0], value[255:0]} (512 bits total).
+  //
+  // The four secrets (chiplet_uid, sip_uid, sys_uid, class_key) sit in
+  // sep_efuse_pkg::SecretShadowRanges. Under secure_tm the eFuse shadow
+  // hardware output zeros those words, so the encoder dual-rail-encodes
+  // zero. The three public identity fields (sep_chiplet_id, sep_sip_id,
+  // sep_sys_id) are outside SecretShadowRanges and remain on the shadow
+  // output in secure test mode.
 
   km_intf_pkg::km_otp_data_t km_otp_data;
 
@@ -794,14 +802,13 @@ module sep_crypto #(
     .data_o (km_otp_data.sys_uid)
   );
 
-  // The SEP_*_ID fuses are not in the efuse map yet, so encode a zero value.
   prim_diff_encode_multi #(
     .Width      (256),
     .OutputFlop (1'b0)
   ) u_sep_chiplet_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_chiplet_id.id),
     .data_o (km_otp_data.sep_chiplet_id)
   );
 
@@ -811,7 +818,7 @@ module sep_crypto #(
   ) u_sep_sip_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_sip_id.id),
     .data_o (km_otp_data.sep_sip_id)
   );
 
@@ -821,7 +828,7 @@ module sep_crypto #(
   ) u_sep_sys_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_sys_id.id),
     .data_o (km_otp_data.sep_sys_id)
   );
 

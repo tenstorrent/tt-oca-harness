@@ -13,8 +13,7 @@ Inbound-filter START/END stay in the write sweep under the full export
 mask. ``axi_filter_wrap`` rewrites a same-beat window only
 (``START[2:0]->0``, ``END[2:0]->1``; END reset ``0x7``). Solo bash keeps
 the peer at reset, so the checker compares readback to that wrap model
-rather than stripping ``[2:0]`` from the mask. Skipping those 32
-registers is a coverage hole, not a fix.
+rather than stripping ``[2:0]`` from the mask.
 
 Full complement bash stays on no-side-effect blocks. The masked storage
 touch is wider: every register the safety gate admits gets a seed-derived
@@ -58,7 +57,6 @@ RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("SEP_CPU_CTRL", "SEP_TEST_CTRL"): "hw-driven straps",
     ("SEP_CPU_CTRL", "SEP_FUSE_SENSE_STATUS"): "hw-driven fuse-sense status",
     ("SEP_CPU_CTRL", "SMC_FUSE_SENSE_STATUS"): "hw-driven fuse-sense status",
-    ("SEP_CPU_CTRL", "SEP_STRAPS"): "hw-driven straps",
     ("SEP_CPU_CTRL", "TIMEOUT_CLEAR"): "write-only",
     ("SEP_CPU_CTRL", "TIMEOUT_MODE"): "write-only",
     ("SEP_CPU_CTRL", "DMA_BUS_ERR_CLEAR"): "write-only",
@@ -223,7 +221,7 @@ _TOUCH_DENY_PREFIX_HW: dict[str, str] = {
 # export-rw but do not behave as plain storage under a random ``x``.
 _TOUCH_DENY_NAME: dict[str, str] = {
     "FIPS_LOCK": "sticky lock; setting it freezes the block for the rest of the run",
-    # Both refuse a random mask-legal value by design, and both are documented.
+    # Both refuse a random mask-legal value:
     # HT_WATERMARK_NUM.WATERMARK_NUM carries `encode = WATERMARK_TEST`:
     # "Unsupported values are sanitized to REPCNT_HI", so a legal encoding lands
     # and any other reads back 0. NOISE_OBS_CTRL holds FLUSH[1:1], `sw = w` and

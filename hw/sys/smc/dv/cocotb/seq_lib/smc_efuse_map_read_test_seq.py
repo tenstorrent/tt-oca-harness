@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap: SMC_EFUSE_MAP direct read (TC_SMC_P1CG_04).
+"""SMC_EFUSE_MAP direct read (TC_SMC_P1CG_04).
 
-Existing tests only touch ``CHIP_CONFIG_*`` (mirrored eFuse fields). This test
-reads the structured SMC_EFUSE_MAP window (PeakRDL map) over real SEP_IN AXI.
+``CHIP_CONFIG_*`` mirrors eFuse fields; this test reads the structured
+SMC_EFUSE_MAP window (PeakRDL map) itself over real SEP_IN AXI.
 
 **Proof class: transport.** Every expectation below is the word the bench-wide
 ``+smc_efuse_hex`` preload (``smc_sim_cfg.toml:132-134``) deposited into the
@@ -29,18 +29,14 @@ literal and none is locked to an observed read:
   with data value `0xbadcab1e`" (``architecture.adoc:297-299``), and
   ``lock[0] = 1`` is "read-locked" (``architecture.adoc:198``).
 
-Every row carries an expectation. A "map read" with ``expected=None`` compares
-nothing while still counting toward the stimulus floor, and would let a region
-returning the ``0xBADCAB1E`` blocked signature pass unnoticed
-([NO-ALWAYS-PASS-CHECKER]). ``BIRA`` carries its asset-derived expectation.
-``RESERVED_0`` is not read at all; ``CHIPLET_ID`` is read in its place, because
-its
-blocked outcome *is* derivable from the sources above: the RESERVED region's
-observed block comes from the hardware field-map lock (``rule_t.lock[0]``,
+Every row carries an exact, independently sourced expectation: a "map read"
+with ``expected=None`` compares nothing while counting toward the stimulus
+floor, and would let a region returning the ``0xBADCAB1E`` blocked signature
+pass unnoticed ([NO-ALWAYS-PASS-CHECKER]). ``RESERVED_0`` is not read: its
+block comes from the hardware field-map lock (``rule_t.lock[0]``,
 ``architecture.adoc:179-201``), which is fused into the array rather than
-published in any artifact this testbench can read, so an expectation for it
-could only have been copied off the DUT. All four reads now carry an exact,
-independently sourced expectation.
+published in any artifact this testbench can read, so no expectation for it can
+be derived independently of the DUT.
 """
 
 from __future__ import annotations
@@ -71,8 +67,7 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
     fused hardware field map (``architecture.adoc:203-226``), so a set LOCKS bit
     always blocks, while a clear one still leaves the fused lock free to block.
     A region that is clear here and nevertheless answers with the blocked
-    signature therefore FAILS this compare -- correctly, because the retained
-    evidence would otherwise record a fuse value that was never read.
+    signature fails this compare.
     """
     if lock_field is not None and efuse_map_read_locked(lock_field):
         return EFUSE_BLOCKED_READ_DATA
@@ -82,7 +77,7 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
 # Every SMC_EFUSE_MAP region that has BOTH a generated base address and a
 # generated `*_READ_LOCK` bit in blocks/smc_efuse_map.h, so `_map_expect` can
 # derive an exact expectation for it from the preload asset plus the generated
-# map. Excluded on purpose:
+# map. Excluded:
 #   * `RESERVED_0..64` -- see the module docstring: its blocked outcome is not
 #     independently derivable, so a compare on it would not be evidence.
 #   * `SPI_CONFIG` / `SPI_CTRL_FIELD_ENABLE` -- a LOCKS read-lock bit exists for
@@ -182,8 +177,8 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
         # cannot see a mis-bound analysis path ([NO-ZERO-ACTIVITY-PASS]).
         self.assert_all_reachable(len(EFUSE_MAP_READS), "EFUSE_MAP_READ")
 
-        # Non-vacuity of the sweep: the four expectations must not all be the
-        # same word, or a window stuck at one value would satisfy every row.
+        # Non-vacuity of the sweep: the expectations must not all be the same
+        # word, or a window stuck at one value would satisfy every row.
         distinct = {exp for _n, _a, exp in EFUSE_MAP_READS}
         assert len(distinct) >= 3, (
             "EFUSE_MAP_READ: the preload asset makes "
@@ -191,11 +186,27 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
             f"{len(EFUSE_MAP_READS)} rows -- the sweep can no longer "
             "discriminate a stuck map window from a working one"
         )
+        # Split the rows by what each one proves. A blocked row's expectation is
+        # the SPEC error-slave signature, so it predicts a refusal and says
+        # nothing about fuse content; an unlocked row compares the preload word
+        # and is the content proof. Naming both in the token keeps a reader from
+        # counting the first kind as the second.
+        blocked = [r for r in EFUSE_MAP_READS if r[2] == EFUSE_BLOCKED_READ_DATA]
+        content = [r for r in EFUSE_MAP_READS if r[2] != EFUSE_BLOCKED_READ_DATA]
+        assert content, (
+            "every SMC_EFUSE_MAP row expects the blocked signature, so no read "
+            "in this sweep proves fuse content"
+        )
         cocotb.log.info(
-            "CHK-EFUSE-MAP-READ: %s (expectations derived from "
-            "assets/smc_efuse_default.hex + SMC_EFUSE_MAP LOCKS read-lock bits, "
-            "%d distinct values)",
-            "; ".join(f"{name}@0x{addr:08x}==0x{exp:08x}" for name, addr, exp in EFUSE_MAP_READS),
+            "CHK-EFUSE-MAP-READ: %d content rows compared against "
+            "assets/smc_efuse_default.hex (%s); %d blocked rows compared against "
+            "the SPEC error-slave signature 0x%08x, which predicts a refusal and "
+            "is not a content proof (%s); %d distinct values overall",
+            len(content),
+            "; ".join(f"{n}@0x{a:08x}==0x{e:08x}" for n, a, e in content),
+            len(blocked),
+            EFUSE_BLOCKED_READ_DATA,
+            "; ".join(f"{n}@0x{a:08x}" for n, a, _e in blocked) or "none",
             len(distinct),
         )
         self.chk_seen.add("CHK-EFUSE-MAP-READ")

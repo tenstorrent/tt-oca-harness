@@ -403,12 +403,12 @@ w_num_bytes_to_pb = w_page_num_bytes_to_pb;
         // Legalize read transaction
         //--------------------------------------
         // more bytes remaining than we can read
-        if (r_tf_q.length > r_num_bytes_possible) begin
+        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
             r_num_bytes = r_num_bytes_possible;
             // calculate remainder
-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
+            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
             // next address
-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
+            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -422,12 +422,12 @@ w_num_bytes_to_pb = w_page_num_bytes_to_pb;
         // Legalize write transaction
         //--------------------------------------
         // more bytes remaining than we can write
-        if (w_tf_q.length > w_num_bytes_possible) begin
+        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
             w_num_bytes = w_num_bytes_possible;
             // calculate remainder
-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
+            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
             // next address
-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
+            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
 
         // remaining bytes fit in one burst
         end else begin
@@ -533,7 +533,7 @@ ${database[protocol]['legalizer_read_meta_channel']}
         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
         shift:        opt_tf_q.read_shift,
         decouple_aw:  opt_tf_q.decouple_aw,
-        is_single:    r_num_bytes <= StrbWidth
+        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
     };
 
     // Write meta channel and data path

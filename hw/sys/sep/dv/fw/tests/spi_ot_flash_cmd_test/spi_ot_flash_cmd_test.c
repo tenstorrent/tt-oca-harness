@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan-SPI flash command-breadth firmware test (OSS rep SPI flash command breadth). Direct
-// cpu-firmware port of the reference spi_ot_flash_write_read_test +
-// spi_ot_flash_sector_erase_test, driving the OT SPI host (@ 0x10B0_0000) against
-// the OcahSpiFlash BFM. Firmware-mode (like every reference spi_ot flash test + the
-// Phase-1 sep_spi_ot_dma_rx) -- the OT spi_host multi-command flash sequence runs
-// from the EL2 CPU, not the no_cpu AXI splice.
+// SEP OpenTitan-SPI flash command-breadth firmware test. Direct cpu-firmware port
+// of the reference spi_ot_flash_write_read_test + spi_ot_flash_sector_erase_test,
+// driving the OT SPI host (@ 0x10B0_0000) against the OcahSpiFlash BFM.
+// Firmware-mode (like every reference spi_ot flash test and sep_spi_ot_dma_rx) --
+// the OT spi_host multi-command flash sequence runs from the EL2 CPU, not the
+// no_cpu AXI splice.
 //
 // Flow: JEDEC, then WREN -> RDSR (WEL set) -> WRDI -> RDSR (WEL clear), then
 // WREN -> PAGE PROGRAM -> READ + verify == pattern -> FAST_READ, then neighbour
@@ -18,7 +18,7 @@
 // time (underflow, reserved CMD.SPEED, out-of-range CSID) and recovered.
 //
 // The flash model is instant-ready, so WIP is never observed set. There is
-// deliberately no WIP checker: a "WIP clear" assertion could not fail. Dual and
+// no WIP checker: a "WIP clear" assertion could not fail. Dual and
 // quad lanes are not modeled, so no checker here covers them.
 //
 // The BFM memory inits to 0xFF (erased), so PAGE PROGRAM (NOR-AND) writes the
@@ -31,7 +31,7 @@
 // image per run by locating the SPI1_PARAM_MAGIC sentinel. The firmware just
 // consumes the block, so the same compiled image covers every seed.
 //
-// main returns the error count; start.S emits PASS (0xCAFEBABE) / FAIL
+// main returns the error count; crt0.s emits PASS (0xCAFEBABE) / FAIL
 // (0xDEADBEEF) magic on the 0x8000_0000 mailbox. Each checker logs a positive
 // PASS line.
 
@@ -158,7 +158,7 @@ static int flash_page_program(uint32_t addr, const uint32_t *data, uint32_t nwor
     // (cmd+addr word + every data word), then issue ONE TX segment covering all
     // of it (CSAAT=0 releases CS at the end). Chaining a separate CMD per word
     // exercises the segment-boundary FSM path that stalls the host (the FSM holds
-    // command_ready low under tx_stall mid-segment); the proven dma_rx path also
+    // command_ready low under tx_stall mid-segment); the dma_rx path also
     // uses a single TX segment.
     if (spi_wait_ready(TIMEOUT)) return -1;
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR,
@@ -200,8 +200,7 @@ static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0); // dummy byte
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 5, 1));
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0));
     if (spi_wait_idle(TIMEOUT)) return -1;
     for (uint32_t i = 0; i < nwords; i++) {
         out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
@@ -454,7 +453,7 @@ int main(void) {
     // --- CHK-WEL-AUTOCLR: SECTOR ERASE must consume the write-enable latch ---
     // A WEL left set leaves the device armed for a program nobody asked for,
     // which is exactly the state CHK-WP-PP below relies on being absent. WIP is
-    // deliberately NOT a checker here: the device model is instant-ready and
+    // not a checker here: the device model is instant-ready and
     // never raises it, so a "WIP clear" assertion could not fail.
     uint8_t sr_post;
     if (flash_rdsr_checked(&sr_post)) {
@@ -503,7 +502,7 @@ int main(void) {
     // --- CHK-RDSR2: opcode 0x35 reads status register 2, not status register 1 ---
     // Run it with WEL KNOWN set, so SR1 reads 0x02: a 0x35 decoded as (or aliased
     // onto) 0x05 returns 0x02 and fails. The device model is built with a
-    // deliberately non-zero SR2 (FLASH_SR2_SEEDED, matching status_reg2 in
+    // non-zero SR2 (FLASH_SR2_SEEDED, matching status_reg2 in
     // sep_spi_ot_flash_cmd_rand_test.py) so that an RX path that returns all-zero
     // -- a stuck MISO, a byte count that never shifts -- fails here too. An SR2
     // of 0x00 would let that dead path pass.
@@ -556,8 +555,7 @@ int main(void) {
                               SPI_CONTROLLER__STATUS__RXQD_bm) != 0) {
         (void)spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     }
-    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
-        SPI_CONTROLLER__STATUS__RXQD_bm) {
+    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) & SPI_CONTROLLER__STATUS__RXQD_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-UNDERFLOW RX FIFO would not drain; the empty-read "
                      "injection cannot be set up\n");
         return errors + 1;

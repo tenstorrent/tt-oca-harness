@@ -3,9 +3,9 @@
 """ocah_spi_vip — hierarchical VIP layout.
 
 cocotb/     cocotb (Python) VIP; its stable public API is re-exported here,
-            so ``from ocah_spi_vip import <Class>`` keeps working unchanged
+            so ``from ocah_spi_vip import <Class>`` is the import every test uses
 interface/  SV interfaces shared by the cocotb and UVM flows (where present)
-uvm/        SV-UVM agent collateral (added as it lands)
+uvm/        SV-UVM agent collateral (where present)
 cov/        framework-neutral SV coverage models (where present)
 """
 

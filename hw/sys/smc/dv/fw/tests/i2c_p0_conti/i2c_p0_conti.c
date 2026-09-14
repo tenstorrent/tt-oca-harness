@@ -9,12 +9,12 @@
  * Test Mode Selection
  * =============================================================================
  *
- * This test supports three modes (configured via TEST_MODE constant):
+ * This test supports three modes, selected at run time through scratch[3]
+ * (0 = ALL_WRITE, 1 = ALL_READ, 2 = ALTERNATING; any other value selects
+ * ALTERNATING):
  *   - I2C_TEST_MODE_ALL_WRITE:    All transactions are Write
  *   - I2C_TEST_MODE_ALL_READ:    All transactions are Read
  *   - I2C_TEST_MODE_ALTERNATING: Alternating Write/Read pattern
- *
- * Change TEST_MODE in main() to select the desired test mode.
  *
  * =============================================================================
  * Test Architecture: Two-Level I2C Control
@@ -22,7 +22,7 @@
  *
  * The I2C system uses a two-level architecture:
  *
- * LEVEL 1: Wrapper Control (0xC0009E00)
+ * LEVEL 1: Wrapper Control (0xC0005E00)
  *   - Controls GPIO pad multiplexing
  *   - Selects I2C mode (Controller/Target)
  *   - MUST be configured FIRST before IP-level configuration
@@ -30,13 +30,13 @@
  *     * Bit[0]: I2C_EN - Enable GPIO pad connection
  *     * Bit[4]: I2C_CONTROLLER_MODE_EN - Mode selection
  *
- * LEVEL 2: IP Control (0xC0009000 + 0x200*idx)
+ * LEVEL 2: IP Control (0xC0005000 + 0x200*idx)
  *   - OpenTitan I2C IP protocol layer
  *   - Handles timing, FIFO, interrupts, transactions
- *   - Base addresses:
- *     * I2C_0: 0xC0009000
- *     * I2C_1: 0xC0009200
- *     * I2C_2: 0xC0009400
+ *   - Base addresses (smc_addr.h:54; 0xC0009000 is the telemetry receiver):
+ *     * I2C_0: 0xC0005000
+ *     * I2C_1: 0xC0005200
+ *     * I2C_2: 0xC0005400
  *
  * =============================================================================
  * Test Configuration Details
@@ -181,11 +181,21 @@ static int target_verify_acq_data_and_clear(uint32_t target_idx, uint8_t expecte
         }
     }
     i2c_reset_fifos(target_idx, false, false, false, true);
+
+    /* No second drain here.
+     *
+     * Emptying the ACQ FIFO by hand whenever ACQRST leaves entries behind would
+     * re-create, one frame up, the software repair the driver refuses: it would
+     * make "ACQ empty after reset" this loop's doing rather than the hardware's,
+     * and on a target that never drains it could only end in a simulator
+     * timeout.
+     *
+     * A non-empty ACQ after ACQRST is a real DUT observation, so report it. */
     if (!i2c_target_acq_fifo_empty(target_idx)) {
-        while (!i2c_target_acq_fifo_empty(target_idx)) {
-            (void)read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
-                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-        }
+        simputs("  ERROR: ACQ FIFO not empty after ACQRST, idx=");
+        simputshex32("", target_idx);
+        simputs("\n");
+        return I2C_ERROR;
     }
 
     simputs("    ACQ verified and cleared (extra drained ");
@@ -216,7 +226,7 @@ int main(void) {
 
     // Parse test mode from scratch[3]
     // 0 = ALL_WRITE, 1 = ALL_READ, 2 = ALTERNATING
-    // If scratch[3] is 0 or invalid, default to ALTERNATING (backward compatibility)
+    // Any other value selects ALTERNATING
     if (test_mode_raw == 0) {
         TEST_MODE = I2C_TEST_MODE_ALL_WRITE;
     } else if (test_mode_raw == 1) {
@@ -224,17 +234,9 @@ int main(void) {
     } else if (test_mode_raw == 2) {
         TEST_MODE = I2C_TEST_MODE_ALTERNATING;
     } else {
-        // Default to ALTERNATING for backward compatibility (when scratch[3] is unset or invalid)
+        // Any other value selects ALTERNATING
         TEST_MODE = I2C_TEST_MODE_ALTERNATING;
     }
-
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
-    // Note: peripherals_out_of_reset() is no longer needed as peripherals
-    // are automatically released from reset
-    // peripherals_out_of_reset();
 
     simputs("\n");
     simputs("################################################\n");
@@ -356,9 +358,6 @@ int main(void) {
 
     write_scratch(1, 0x00000031);
 
-    //=========================================================================
-    // Step 4: Continuous Transactions with Repeated START
-    //=========================================================================
     write_scratch(1, 0x00000040);
     //=========================================================================
     // Step 4: Continuous transactions with Repeated START
@@ -372,7 +371,7 @@ int main(void) {
     const uint32_t DATA_SIZE = 1;
 
     // Test data: Transaction 0 = 0x5A, Transaction 1 = 0x5B
-    // Use single variables like i2c_p0_cwr, update value in each loop iteration
+    // One data byte per transaction, updated each iteration
     uint8_t write_data;
     uint8_t read_data;
     uint8_t read_recv_buffer[2]; // Buffer to receive read data
@@ -401,7 +400,6 @@ int main(void) {
         if (is_write) {
             // ==================================================================
             // Write Transaction (Controller -> Target)
-            // Reference: i2c_p0_cwr - Use i2c_controller_write() function
             // ==================================================================
             // Set data value for this transaction (0x5A for txn 0, 0x5B for txn 1)
             write_data = (txn == 0) ? 0x5A : 0x5B;
@@ -417,8 +415,7 @@ int main(void) {
                 simputs(" [NO STOP - Repeated START]\n");
             }
 
-            // Use basic i2c_controller_write function from i2c_opentitan.c (exactly like
-            // i2c_p0_cwr)
+            // Blocking i2c_controller_write(); send_stop selects STOP vs repeated START
             ret = i2c_controller_write(CONTROLLER_IDX, TARGET_ADDR, &write_data, DATA_SIZE,
                                        send_stop);
 
@@ -447,7 +444,7 @@ int main(void) {
         } else {
             // ==================================================================
             // Read Transaction (Controller <- Target)
-            // Reference: i2c_read_sanity - Pre-load TX FIFO, then use i2c_controller_read()
+            // Pre-load the target TX FIFO, then issue the read
             //
             // CRITICAL for Auto Stretch Mode (tx_stretch_ctrl = false):
             //   - In auto stretch mode, target automatically stretches clock when TX FIFO is empty
@@ -548,8 +545,13 @@ int main(void) {
     simputs("################################################\n");
     simputs("\n");
     simputs("Summary:\n");
-    simputs("  - I2C_0 (Target):     Addr 0x10 @ 0xC0009000\n");
-    simputs("  - I2C_1 (Controller): @ 0xC0009200\n");
+    /* Print the bases actually used, not literals: the printed value is derived
+     * from the same symbol as the accesses, so the retained evidence cannot
+     * name a register the test did not touch. */
+    simputshex32("  - I2C_0 (Target):     Addr 0x10 @ ", i2c_get_base(TARGET_IDX));
+    simputs("\n");
+    simputshex32("  - I2C_1 (Controller): @ ", i2c_get_base(CONTROLLER_IDX));
+    simputs("\n");
     simputshex32("  - Total transactions: ", NUM_TRANSACTIONS);
     simputs("\n");
     simputshex32("  - Bytes per txn:      ", DATA_SIZE);

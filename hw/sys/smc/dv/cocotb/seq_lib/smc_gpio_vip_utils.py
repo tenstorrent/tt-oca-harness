@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO external interrupt VIP helpers for SMC OSS tests.
 
-Callers: ``smc_gpio_irq_active_test``, ``smc_external_interrupts_test``,
-``smc_gpio_strap_sanity_test`` -- each runs ``smc_gpio_irq_active_test_seq``
-first, which programs GPIO0 as RX + interrupt_enable + interrupt_type=active-low
+Caller: ``smc_gpio_irq_active_test``, which runs ``smc_gpio_irq_active_test_seq``
+first, programming GPIO0 as RX + interrupt_enable + interrupt_type=active-low
 level (DATA_CTRL field bits sourced from generated ``gpio_intf.h``).
 
 Public interface:
@@ -14,9 +13,8 @@ Public interface:
 * :func:`await_gpio_irq_level` -- the bounded assert-and-hold poll the three-leg
   proof is built from, published for callers that need the pad left *held* while
   they sample something else inside the asserted window (the IRQ positive
-  control in ``smc_5agent_observability_test_seq``). Published so that poll is a
-  supported seam rather than a leading-underscore name two modules depend on
-  (`[REUSE-AND-LAYERING]`); the caller owns pad drive and release.
+  control in ``smc_5agent_observability_test_seq``); the caller owns pad drive
+  and release (`[REUSE-AND-LAYERING]`).
 """
 
 from __future__ import annotations

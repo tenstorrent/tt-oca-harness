@@ -3,10 +3,10 @@
 """AXI4-Lite master sequence API: the VIP's test-facing stimulus surface.
 
 `OcahAxiLiteMasterSequence` wraps one `OcahAxiLiteMasterDriver` and provides
-the blocking, checked transaction API tests consume. Compatibility calls keep
-their historical return values: ``write()`` returns a response code and
-``read()`` returns data; ``write_result()``/``read_result()`` expose response
-codes, data, and timeout state through plain dataclasses.
+the blocking, checked transaction API tests consume. ``write()`` returns a
+response code and ``read()`` returns data as plain values;
+``write_result()``/``read_result()`` expose response codes, data, and timeout
+state through plain dataclasses.
 ``write_skewed_result()`` and ``read_hold_result()`` are the SV-UVM parity
 protocol-control operations (independent AW/W launch skew, deferred
 BREADY/RREADY with a response-stability check). Tests drive the VIP through
@@ -23,6 +23,7 @@ from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
 from .ocah_axi_types import (
     axi_resp_ok,
     bytes_to_int,
+    default_timeout_ns,
     normalize_resp_list,
     worst_resp,
 )
@@ -42,13 +43,10 @@ def _sim_timeout_error():
     return SimTimeoutError
 
 
-async def _wait_event(event, timeout_ns: int | None):
-    if timeout_ns is None:
-        await event.wait()
-    else:
-        from cocotb.triggers import with_timeout
+async def _wait_event(event, timeout_ns: int):
+    from cocotb.triggers import with_timeout
 
-        await with_timeout(event.wait(), timeout_ns, "ns")
+    await with_timeout(event.wait(), timeout_ns, "ns")
     return event.data
 
 
@@ -65,7 +63,7 @@ class OcahAxiLiteMasterSequence:
     ) -> None:
         self.driver = driver
         self.timeout_cycles = timeout_cycles
-        self.timeout_ns = timeout_ns
+        self.timeout_ns = default_timeout_ns() if timeout_ns is None else int(timeout_ns)
         self.raise_on_error = raise_on_error
         self._read_count = 0
         self._write_count = 0
@@ -168,7 +166,7 @@ class OcahAxiLiteMasterSequence:
 
         ``aw_valid_delay``/``w_valid_delay`` hold that channel's VALID low for
         N cycles before it launches — AXI permits either arrival order, so
-        demux and channel-ordering paths are exercised deliberately — and
+        demux and channel-ordering paths are exercised — and
         ``b_ready_delay`` defers the BREADY assert after the request phase.
         """
         cycles = self.timeout_cycles if timeout_cycles is None else int(timeout_cycles)
@@ -312,7 +310,7 @@ class OcahAxiLiteMasterSequence:
         return result
 
     def configure(self, **kwargs: Any) -> None:
-        """Store wrapper configuration knobs accepted by earlier implementations."""
+        """Apply the supported knobs (timeout_cycles, timeout_ns); any other key is rejected."""
         if "timeout_cycles" in kwargs:
             self.timeout_cycles = int(kwargs["timeout_cycles"])
         if "timeout_ns" in kwargs:
@@ -329,6 +327,7 @@ class OcahAxiLiteMasterSequence:
             "write_transactions": self._write_count,
             "read_transactions": self._read_count,
             "timeout_cycles": self.timeout_cycles,
+            "timeout_ns": self.timeout_ns,
         }
 
     def reset_statistics(self) -> None:

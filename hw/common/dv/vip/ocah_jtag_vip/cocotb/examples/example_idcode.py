@@ -19,7 +19,7 @@ Assumptions
 -----------
 - A clock is driven externally before calling ``init_signals()``.
 - The DUT implements IEEE 1149.1 with IDCODE opcode 0x01 and a 5-bit IR.
-- TRST is active-low and connected (jtag_intf.sv default).
+- TRST is active-low and connected.
 """
 
 import cocotb
@@ -48,7 +48,7 @@ async def example_ptap_idcode(dut):
 
     # Construct the TAP driver for the PTAP.
     tap = OcahJtagMasterDriver(
-        dut.jtag_ptap_if,  # jtag_intf.sv handle in the testbench
+        dut.jtag_ptap_if,  # JTAG interface handle in the testbench
         name="ptap",
         tck_period_ns=10,
         ir_width=5,
@@ -192,7 +192,7 @@ async def example_stap_idcode(dut):
 async def example_cpu_tap_idcode(dut):
     """Read IDCODE from the CPU debug TAP.
 
-    CPU TAPs typically have a wider IR (e.g., 10-bit for ARM DAP).
+    CPU debug TAPs often have a wider IR than the chip-level TAP.
     Demonstrates overriding ir_width per-instance.
     """
 
@@ -202,7 +202,7 @@ async def example_cpu_tap_idcode(dut):
         dut.jtag_cpu_if,
         name="cpu_tap",
         tck_period_ns=10,
-        ir_width=10,  # ARM DAP uses 10-bit IR (others may differ)
+        ir_width=10,  # wider CPU-debug IR; width is per instance
         tap_type="cpu_tap",
     )
 

@@ -145,7 +145,7 @@ READ_CLASSES = (
 # Hierarchical decode probe. `hw/sys/smc/dv/tb/smc_public_scope.vlt` publishes
 # `lc_state_smc_raw` / `lc_sigint_err` / `is_prod_or_rma_sip` READ-ONLY
 # (`public_flat_rd -module "smc_efuse_wrapper"`), which is what makes this path
-# resolvable under Verilator. Read-only on purpose: this test only samples them,
+# resolvable under Verilator. Read-only: this test only samples them,
 # so cocotb cannot write internal state even by accident.
 _LC_PROBE_PATH = ("u_dut", "u_smc", "u_smc_peripherals", "u_smc_efuse_wrapper")
 _LC_PROBE_VARS = ("lc_state_smc_raw", "lc_sigint_err", "is_prod_or_rma_sip")
@@ -421,11 +421,11 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
             )
         elif expect_block and rdata != BLOCK_SIGNATURE:
-            # architecture.adoc:297-299. Note this compare cannot discriminate
-            # on the current bench (every access returns the signature); it is
-            # retained because it is the SPEC'd blocked-read data and would fire
-            # if the error slave's RESP_DATA override were ever changed. It is
-            # NOT presented as a verified property in `details=`.
+            # architecture.adoc:297-299. This compare cannot discriminate on
+            # this bench (every access returns the signature); it holds the
+            # SPEC'd blocked-read data and fires if the error slave's RESP_DATA
+            # override changes. It is NOT presented as a verified property in
+            # `details=`.
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} blocked but data "
                 f"0x{rdata:08x} != SPEC err-slv signature "

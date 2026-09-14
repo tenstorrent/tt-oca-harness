@@ -9,9 +9,9 @@
 /*
  * SMU-SEP DV boot shim.
  *
- * This image is intentionally scoped to the SMU-SEP real-CLA boot flow. The
- * reset vector points at smu_sep_boot_entry so the test does not depend on the
- * generic multihart C runtime reaching main before CLA is armed.
+ * The reset vector points at smu_sep_boot_entry: the SMU-SEP real-CLA boot flow
+ * must not depend on the generic multihart C runtime reaching main before CLA is
+ * armed.
  */
 void smu_sep_boot_entry(void) __attribute__((naked, section(".init"), used));
 void smu_sep_boot_entry(void) {

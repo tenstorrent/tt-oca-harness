@@ -30,7 +30,7 @@ positive control behind it, or it is declared unchecked in the kept log.
 
 The stimulus that makes a probe read 1 lives in
 ``seq_lib/smc_probe_positive_control.py`` (bounded, fail-capable, frontdoor
-only).  The ledger is deliberately separate from that stimulus so the credit is
+only).  The ledger is separate from that stimulus so the credit is
 an *observation* of the DUT rather than a claim made by the code that drove it.
 
 Probes with no buildable control
@@ -40,17 +40,18 @@ distinguish the net from a stuck one, in either direction**.  Such a probe is
 never exact-compared by the scoreboard, never credited, and never counted as
 checked evidence; its value is logged as a diagnostic and declared as such.
 
-* ``tb_axil_dtp_csr_active`` -- unbackable *at 1*. ``tb_top.sv:1151`` ties
+* ``tb_axil_dtp_csr_active`` -- unbackable *at 1*. ``tb_top.sv:1100`` ties
   ``axil_dtp_csr_resp = '0'``: there is no responder, so an AXI-Lite access to
   the DTP CSR window would wedge rather than complete, and the DTP CSR boundary
   is a recorded TB-policy deferral (``hw/sys/smc/dv/README.md``).
 * ``gpio_core2pad_any`` / ``gpio_core2pad_en_any`` / ``gpio_pad2core_en_any`` --
-  unbackable *at 0*.  ``tb_top.sv:1375-1377`` defines all three as OR-reductions
-  over the **whole** pad bus (``|u_dut.u_smc.core2pad_o`` and friends), which
-  also carries idle-high LSIO pads (UART TX) and default-enabled pad inputs, so
-  every retained run reads all three at 1 from reset onward and no frontdoor
-  stimulus can drive any of them to 0.  A net tied to constant 1 is therefore
-  indistinguishable from the real aggregate, which is exactly what
+  unbackable *at 0*.  ``tb_top.sv`` defines all three as OR-reductions over the
+  **whole** pad bus (``|u_dut.u_smc.core2pad_o`` and friends).  The AVSBus
+  clock and mdata pads (bits 49/50, ``tb_top.sv``) are output-enabled from
+  reset and no frontdoor CSR write (including ``CLOCK_GATE_CONTROL.AVS_CG_EN``)
+  clears them, so all three reductions read 1 from reset onward and this TB has
+  no frontdoor path that drives any of them to 0.  A net tied to constant 1 is
+  therefore indistinguishable from the real aggregate, which is exactly what
   ``[NEGATIVE-NEEDS-POSITIVE-CONTROL]`` forbids presenting as evidence -- so
   they are OBSERVED-ONLY and a stated ``expect_<field>`` on them is refused.
   The *fail-capable* GPIO pad-bus observability proof is on the raw vectors
@@ -86,7 +87,7 @@ PROBE_SIGNALS: dict[str, str] = {
     "axil_efuse_bank_active": "tb_axil_efuse_bank_active",
     "axil_any_master_active": "tb_axil_any_master_active",
     # GPIO pad-output bus vectors. Non-zero at idle (LSIO pads), so the passive
-    # first-1 credit would be automatic and prove nothing: they are deliberately
+    # first-1 credit would be automatic and prove nothing: they are
     # NOT in WATCHED_PROBES and can only be credited by
     # seq_lib.smc_probe_positive_control.prove_gpio_pad_bus_probe, which drives a
     # real frontdoor CSR change and requires the vector to MOVE.
@@ -113,7 +114,7 @@ WATCHED_PROBES: tuple[str, ...] = (
 # counted as checked evidence, regardless of the ledger.
 UNBACKABLE_PROBES: dict[str, str] = {
     "axil_dtp_csr_active": (
-        "tb_top.sv:1151 ties axil_dtp_csr_resp = '0' (no responder, an access "
+        "tb_top.sv:1100 ties axil_dtp_csr_resp = '0' (no responder, an access "
         "would wedge instead of completing) and the DTP CSR boundary is a "
         "recorded TB-policy deferral (hw/sys/smc/dv/README.md); no "
         "frontdoor stimulus can "
@@ -121,26 +122,34 @@ UNBACKABLE_PROBES: dict[str, str] = {
         "OBSERVED-ONLY and NOT closure evidence"
     ),
     "gpio_core2pad_any": (
-        "tb_top.sv:1375 defines tb_gpio_core2pad_any = |u_dut.u_smc.core2pad_o, "
-        "an OR-reduction over the WHOLE pad-output bus which also carries "
-        "idle-high LSIO pads (UART TX); it reads 1 from reset onward in every "
-        "retained run and no frontdoor stimulus can drive it to 0, so a net tied "
-        "to constant 1 is indistinguishable from the real aggregate. Its value is "
-        "OBSERVED-ONLY and NOT closure evidence; the fail-capable pad-bus proof is "
-        "on the raw vector probe gpio_core2pad_vec (tb_core2pad_o)"
+        "tb_top.sv:1306 defines tb_gpio_core2pad_any = |u_dut.u_smc.core2pad_o, "
+        "an OR-reduction over the WHOLE pad-output bus. A one-off bench "
+        "reading at reset (no kept artifact) saw set bits 28, 30, 32, 34, 36, "
+        "49, 50 and 64; 49 and 50 are the AVSBus clock and mdata outputs "
+        "(tb_top.sv:727-728). One frontdoor write of "
+        "CLOCK_GATE_CONTROL.AVS_CG_EN was tried and did not move those bits, "
+        "so this TB has no frontdoor path that drives the reduction to "
+        "0 and a net tied to constant 1 is indistinguishable from the real "
+        "aggregate. Its value is OBSERVED-ONLY and NOT closure evidence; the "
+        "fail-capable pad-bus proof is on the raw vector probe "
+        "gpio_core2pad_vec (tb_core2pad_o)"
     ),
     "gpio_core2pad_en_any": (
-        "tb_top.sv:1376 defines tb_gpio_core2pad_en_any = "
+        "tb_top.sv:1307 defines tb_gpio_core2pad_en_any = "
         "|u_dut.u_smc.core2pad_en_o, an OR-reduction over the WHOLE pad "
-        "output-enable bus; LSIO pads are output-enabled at reset so it reads 1 "
-        "from reset onward and no frontdoor stimulus can drive it to 0. "
+        "output-enable bus. A one-off bench reading at reset (no kept "
+        "artifact) saw exactly two bits set -- 49 and 50, the AVSBus clock "
+        "and mdata pads (tb_top.sv:727-728) -- not a broad band of LSIO pads. "
+        "One frontdoor write of CLOCK_GATE_CONTROL.AVS_CG_EN was tried and "
+        "did not move them, so nothing here drives the reduction to 0. "
         "OBSERVED-ONLY; the fail-capable pad-bus proof is on the raw vector probe "
         "gpio_core2pad_en_vec (tb_core2pad_en_o)"
     ),
     "gpio_pad2core_en_any": (
-        "tb_top.sv:1377 defines tb_gpio_pad2core_en_any = "
+        "tb_top.sv:1308 defines tb_gpio_pad2core_en_any = "
         "|u_dut.u_smc.pad2core_en_o, an OR-reduction over the WHOLE pad "
-        "input-enable bus, which is 1 from reset onward; tb_top exposes no "
+        "input-enable bus, which is measured at 1 from reset onward; tb_top "
+        "exposes no "
         "pad2core_en_o vector, so there is neither a level control nor an "
         "independent per-pad observable for it in this TB. OBSERVED-ONLY and NOT "
         "closure evidence"
@@ -230,10 +239,9 @@ async def watch_probe_liveness(dut=None) -> None:
     be credited on the first edge, which would certify nothing and would turn the
     ledger into a rubber stamp.
 
-    A watched probe whose ``tb_top`` handle is missing raises immediately. The
-    previous ``hasattr`` drop removed that probe from the watched set, so an
-    RTL rename failed as an uncredited idle leg (or not at all) instead of
-    naming the absent signal.
+    A watched probe whose ``tb_top`` handle is missing raises immediately, so
+    an RTL rename fails by naming the absent signal rather than as an
+    uncredited idle leg.
     """
     dut = dut if dut is not None else cocotb.top
     clk = dut.clk_smc_i

@@ -3,14 +3,14 @@
 """Canonical high-density SMC smoke sequence.
 
 This sequence combines the six-agent observability smoke with the reset recovery
-matrix so one canonical test covers the already-public Batch A surface.
+matrix so one canonical test covers the public smoke surface.
 
 Synchronization contract: no step waits a magic number of ``clk_ref_i`` cycles
 and then samples. Every one is a bounded poll on the real reset observables via
 ``SmcResetOp.WAIT_STATE`` -- the driver polls until the exact
 expected state appears and the scoreboard converts bound expiry into a testcase
 failure with the last observed state (`[NO-BLIND-DELAY-SYNC]`,
-`[TIMEOUT-MUST-FAIL]`). Mid-window ``RAW_SAMPLE`` snapshots now carry the exact
+`[TIMEOUT-MUST-FAIL]`). Mid-window ``RAW_SAMPLE`` snapshots carry the exact
 asserted expectation they are taken for, so they are checked evidence instead of
 observations (`[EXACT-EXPECTATION]`). The remaining fixed ``ClockCycles`` are
 *driven stimulus widths* (how long a pin is held low), which is the quantity the
@@ -52,14 +52,14 @@ _ALL_RELEASED = {field: 1 for field in RESET_SAMPLE_FIELDS}
 
 # Of the two backable pad-bus vectors, only the output-ENABLE vector is a
 # defensible cross-sample expectation here. `tb_core2pad_o` (the pad *value*
-# bus) carries live LSIO traffic -- UART TX toggles inside the sampling window
-# in some runs (observed: bit 49 flipping between two samples 40 clk_ref_i
-# apart) -- so a "did not move" claim on it is a flaky claim about traffic this
-# scenario does not own. `tb_core2pad_en_o` only changes when a GPIO wrap's
-# direction is programmed, which this scenario does not do after the pad-bus
-# control restores it, so its persistence is a real property. Its liveness
-# credit comes from the same control (exactly one new enable bit appears and is
-# then released), so a stuck / undriven / mis-bound enable vector cannot pass.
+# bus) carries live DUT outputs -- the AVSBus clock on pad 49 can toggle inside
+# the sampling window -- so a "did not move" claim on it is a flaky claim about
+# traffic this scenario does not own. `tb_core2pad_en_o` only changes when a
+# GPIO wrap's direction is programmed, which this scenario does not do after
+# the pad-bus control restores it, so its persistence is a real property. Its
+# liveness credit comes from the same control (exactly one new enable bit
+# appears and is then released), so a stuck / undriven / mis-bound enable
+# vector cannot pass.
 GPIO_STABLE_VECTOR_FIELDS = ("core2pad_en_vec",)
 
 
@@ -107,8 +107,8 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
     COOL_ASSERT_REF_CYCLES = 80
     # --- observation bounds (expiry is a failure, never a settle delay) ---
     ASSERT_BOUND_REF_CYCLES = 200
-    # Covers the whole reset-recovery chain; the previous fixed 700-cycle
-    # recover wait is now only the upper bound of this poll.
+    # Covers the whole reset-recovery chain; this is the upper bound of a poll,
+    # not a fixed wait.
     RELEASE_BOUND_REF_CYCLES = 2000
 
     def __init__(self, name: str = "smc_canonical_smoke_test_seq") -> None:
@@ -199,10 +199,8 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         # 1 from reset onward and no frontdoor stimulus can drive them to 0, so
         # they are declared in `env.smc_probe_liveness.UNBACKABLE_PROBES` and
         # `SmcScoreboard._check_gpio` REFUSES a stated `expect_` on them. With no
-        # expectation at all its only gate was `assert item.resolvable`, which
-        # cannot be False under the 2-state simulator every retained run uses --
-        # so GPIO was the one agent in a "six-agent sweep" contributing no
-        # fail-capable compare.
+        # expectation the only gate would be `assert item.resolvable`, which
+        # cannot be False on a 2-state simulator (Verilator).
         #
         # `tb_core2pad_o` / `tb_core2pad_en_o` DO move under real frontdoor GPIO
         # CSR programming, so an expectation on them is backable; `body()` runs

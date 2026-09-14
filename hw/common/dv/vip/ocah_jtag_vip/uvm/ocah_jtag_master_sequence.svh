@@ -14,14 +14,16 @@
 // goto_state() can plan a shortest TMS path from the current state and
 // current_state() stays valid across raw walks and scans. Tracking is per
 // sequence instance and assumes this sequence is the TAP's only stimulus
-// source; after TB-side TAP movement the sequence cannot see (e.g. a
-// TB-driven TRST pulse), re-align with sync_model(). Any five consecutive
+// source; after TAP movement the sequence cannot see (e.g. a power-on
+// reset), re-align with sync_model(). Any five consecutive
 // TMS=1 steps self-correct the model regardless of prior drift.
 
 class ocah_jtag_master_sequence extends uvm_sequence #(ocah_jtag_item);
   `uvm_object_utils(ocah_jtag_master_sequence)
 
   protected ocah_jtag_ref_model m_model;
+  // TRST level after the last assert_trst()/release_trst(); released at construction.
+  protected bit m_trst_asserted = 1'b0;
 
   function new(string name = "ocah_jtag_master_sequence");
     super.new(name);
@@ -150,6 +152,32 @@ class ocah_jtag_master_sequence extends uvm_sequence #(ocah_jtag_item);
     it.op = OCAH_JTAG_TAP_RESET;
     do_jtag(it);
     m_model.reset_model();
+  endtask
+
+  // TRST level control through one TRST_LEVEL item: `tck_cycles` TCK cycles
+  // run with TMS high after the level change. Asserting resets the tracked
+  // model to Test-Logic-Reset; releasing steps it through the TMS-high cycles.
+  task assert_trst(int unsigned tck_cycles = 1);
+    trst_level_op(1'b1, tck_cycles);
+    m_model.reset_model();
+  endtask
+
+  task release_trst(int unsigned tck_cycles = 0);
+    trst_level_op(1'b0, tck_cycles);
+    repeat (tck_cycles) void'(m_model.step(1'b1));
+  endtask
+
+  function bit trst_asserted();
+    return m_trst_asserted;
+  endfunction
+
+  protected task trst_level_op(bit asserted, int unsigned tck_cycles);
+    ocah_jtag_item it = ocah_jtag_item::type_id::create("trst_level");
+    it.op              = OCAH_JTAG_TRST_LEVEL;
+    it.trst_asserted   = asserted;
+    it.trst_tck_cycles = tck_cycles;
+    do_jtag(it);
+    m_trst_asserted = asserted;
   endtask
 
   // IR scan from Run-Test/Idle (LSB-first), back to Run-Test/Idle.

@@ -50,5 +50,6 @@ fi
 
 data="$site/ocah-docs/latest/data"
 mkdir -p "$data"
-python3 "$root/tools/doc/trim_dashboard_data.py" "$summary" "$data/summary.json"
+python3 "$root/tools/doc/trim_dashboard_data.py" "$summary" "$data/summary.json" \
+  --tests-out "$data/tests.json"
 echo "Staged dashboard data into $data/"

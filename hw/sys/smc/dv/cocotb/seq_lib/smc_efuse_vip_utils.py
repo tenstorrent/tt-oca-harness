@@ -48,9 +48,8 @@ from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_bootrom_addr
 # ``efuse_bank_model.sv:140-160`` ``$readmemh`` this file into the bank storage
 # at time 0, one 32-bit word per line, word ``n`` backing
 # ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + 4*n``. Tests that want an exact expectation
-# for a map read must derive it from this file at run time rather than
-# hand-transcribing a word, so the expectation follows the asset when the asset
-# is regenerated instead of rotting into a false identity
+# for a map read derive it from this file at run time, so the expectation
+# follows a regenerated asset
 # ([NO-UNJUSTIFIED-PRELOAD] / [ADDRESS-FROM-AUTHORITATIVE-MAP]).
 #
 # Proof class of anything checked this way is **transport**: it proves the map
@@ -136,11 +135,8 @@ EFUSE_SHIM_CTRL_WINDOW = smc_bootrom_addr(
 # so the RDL reset is the expected value for a first read after reset.
 #
 # The value is imported by symbol from the generated PeakRDL C header
-# (``EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_reset``) rather than
-# hand-copied as 0x20: a hand literal rots silently the next time that RDL is
-# regenerated, while the log line would keep asserting the old default
-# ([ADDRESS-FROM-AUTHORITATIVE-MAP]). Same
-# read-one-generated-#define accessor the rest of this package uses.
+# (``EFUSE_SHIM_CTRL__EFUSE_BANK_INIT_TIME__INIT_TIME_reset``), so it follows
+# an RDL regeneration ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _EFUSE_SHIM_CTRL_H = (
     _REPO / "hw" / "ip" / "efuse" / "dv" / "models" / "regs" / "gen" / "c" / "efuse_shim_ctrl.h"
 )
@@ -150,7 +146,7 @@ EFUSE_BANK_INIT_TIME_RESET = _field_mask(
 
 # Consume-once record of the positive-control observation so the idle leg can
 # state, in the kept log, whether it is backed by one *in this test*.
-# Module-private on purpose: use the public
+# Module-private: use the public
 # ``prove_efuse_bank_axil_activity(..., record=False)`` / :func:
 # ``consume_positive_control`` API below instead of reaching in from another
 # module ([REUSE-AND-LAYERING]).
@@ -171,11 +167,8 @@ def consume_positive_control() -> str | None:
 
 
 def stop_sampler(task) -> None:
-    """Stop a ``count_probe_high_cycles`` task (cocotb 1.x kill / 2.x cancel)."""
-    if hasattr(task, "cancel"):
-        task.cancel()
-    else:  # pragma: no cover - cocotb 1.x fallback
-        task.kill()
+    """Stop a ``count_probe_high_cycles`` task."""
+    task.cancel()
 
 
 async def count_probe_high_cycles(sig, clk, hits: list[int]) -> None:

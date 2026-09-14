@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# TEST_DEV lifecycle carrying the class key the encrypted-payload test decrypts.
+#
+# CLASS_KEY is the KBKDF root: ROM derives the payload AES key from it, so this
+# value must stay byte-identical to the key pack_images.py encrypts with, or
+# sep_firmware_encrypted_boot_test decrypts to garbage. It is a published test
+# vector, not a device secret.
+#
+# TEST_DEV rather than PROD: the test exercises decryption, and PROD
+# would additionally demand a valid signature, so a signature failure could mask
+# a decryption failure.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xF0   # TEST_DEV (raw=0x0)
+
+[CLASS_KEY]
+  [CLASS_KEY.fields.key]
+  value = 0x0000000000000000000000000000000054e01f1d0eb208a04dbd502a53bda99b

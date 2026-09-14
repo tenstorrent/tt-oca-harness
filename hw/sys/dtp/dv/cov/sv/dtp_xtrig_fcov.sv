@@ -9,10 +9,6 @@
 // decode the CSR writes, the P2P phases and the CTM source/destination
 // index bins follow the GPIO and matrix handshake pins.
 //
-// The SV-UVM tb shape ties the XTRIG CSR bus and the cross-trigger inputs
-// quiescent, so these bins collect only where the stimulus exists (the
-// cocotb flow today); DTP_FCOV.adoc records the simulator scoping.
-//
 // CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
 // argument is a single continuous-assign wire; no declaration initializers
 // on always_ff-driven variables; declare wires before use.
@@ -23,7 +19,7 @@ module dtp_xtrig_fcov (
   input wire        clk_i,
   input wire        rst_ni,
 
-  // XTRIG CSR AXI-Lite write channel (driven by the cocotb flow)
+  // XTRIG CSR AXI-Lite write channel (shared ocah_axi_vip master, both flows)
   input wire [31:0] axil_awaddr_i,
   input wire        axil_awvalid_i,
   input wire        axil_awready_i,

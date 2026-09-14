@@ -77,6 +77,7 @@ OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
 	hw/sys/dtp/dv/tb/tb_top.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/smc/dv/tb/tb_top.sv \
+	hw/sys/smu/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv \
 	hw/top/smc_ip_integration.sv
 
@@ -113,9 +114,10 @@ OCAH_VERIBLE_FORMAT_EXCLUDES := \
 #
 # Exclusions cover build output, materialized third-party sources, nested
 # copied vendor trees, PeakRDL output, generated fabrics and CPU internals,
-# OpenTitan-origin package stubs, the individually generated overlay files
-# that ship pre-generated rather than built by this tree, and the eFuse DV
-# model's register block, which PeakRDL generated once into dv/models/
+# OCAH-owned OpenTitan chip config packages, the individually
+# generated overlay files that ship pre-generated rather than built by
+# this tree, and the eFuse DV model's register block, which PeakRDL
+# generated once into dv/models/
 # (outside any regs/gen/ tree) and which stays hand-maintained rather than
 # regenerated (see hw/ip/efuse/dv/models/README.md), so its struct/union
 # style still reflects that origin rather than this repo's conventions.
@@ -127,7 +129,7 @@ ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv'
 	-not -path '*/rdl/gen/*' \
 	-not -path '*/crossbars/*' \
 	-not -path '*/chipyard_generated_files/*' \
-	-not -path '*/hw/common/ot_pkg/*' \
+	-not -path '*/hw/common/ot_chip_cfg/*' \
 	-not -path '$(OCAH_ROOT)/vendor/pulp-platform/idma/overlay/target/rtl/*' \
 	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv' \
 	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg_pkg.sv' \

@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // JTAG TAP checker with named evidence -- the SV analogue of the cocotb
-// ocah_jtag_vip.OcahJtagChecker (issue tt-oca-hw#3296). The named-evidence
-// mechanics (CHK-*/CHECKER_SUMMARY grammar, severity routing, finalization)
-// are inherited from ocah_checker_uvm_pkg::ocah_checker (issue #1132); this
-// class owns the IEEE 1149.1 TAP reference-model checks for the core TAP
-// contracts: reset-to-TLR, per-step state transitions, the five-TMS-high
-// reset walk, BYPASS one-TCK latency, and reconstructed scan lengths.
-// Observed TAP states are taken in the common one-hot exported-observable
-// form (bit index == the VIP enum's IEEE state number).
+// ocah_jtag_vip.OcahJtagChecker. The named-evidence mechanics
+// (CHK-*/CHECKER_SUMMARY grammar, severity routing, finalization) are
+// inherited from ocah_checker_uvm_pkg::ocah_checker; this class owns the
+// IEEE 1149.1 TAP reference-model checks for the core TAP contracts:
+// reset-to-TLR, per-step state transitions, the five-TMS-high reset walk,
+// BYPASS one-TCK latency, and reconstructed scan lengths. Observed TAP states
+// are taken in the common one-hot exported-observable form (bit index == the
+// VIP enum's IEEE state number).
 //
 // Rule provenance: all TAP contracts are implemented from the public IEEE
 // Std 1149.1 clause descriptions. No third-party protocol-checker source
@@ -33,8 +33,8 @@ class ocah_jtag_checker extends ocah_checker;
   endfunction
 
   // ------------------------------------------------------------------
-  // TAP reference model (owned ocah_jtag_ref_model; thin forwarders keep
-  // the checker's public API stable).
+  // TAP reference model (owned ocah_jtag_ref_model); the checker's public
+  // API forwards to it.
   // ------------------------------------------------------------------
 
   function ocah_jtag_tap_state_e model_state();

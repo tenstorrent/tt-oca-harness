@@ -1,33 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: (c) 2024-2026 Tenstorrent Inc. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
 #
 # sep_compress_golden.py
 #
 # Pure-Python golden model for the SEP DRBG entropy compression / conditioning
-# datapath. Cross-checked against the public RTL:
-#
-#   * BIW compressor (GF(2^8) multiply-add extractor):
-#       hw/ip/entropy_source/rtl/entropy_generator_complex.sv
-#       hw/ip/entropy_source/rtl/gf_muladd.sv
-#
-#   * SHA-256 conditioner / whitener:
-#       hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
+# datapath. The architecture is ``hw/ip/entropy_source/doc/architecture.adoc``:
+# BIW compressor (GF(2^8) multiply-add) and SHA-256 conditioner.
 #
 # ----------------------------------------------------------------------------
-# SHA-256 primitive: hashlib substituted (justification)
+# SHA-256 primitive
 # ----------------------------------------------------------------------------
-# The conditioner uses FIPS 180-4 SHA-256:
-#   - the standard IV and round constants;
-#   - the standard message schedule and round function;
-#   - standard padding: append 0x80, then zeros, then the 64-bit big-endian bit
-#     length;
-#   - digest emitted big-endian, state[i] MSB-first.
-# This is byte-for-byte the FIPS-180-4 algorithm operating on a big-endian byte
-# stream, so Python's stdlib `hashlib.sha256` over the SAME big-endian byte
-# stream yields an identical digest. We therefore substitute hashlib for the
-# core compression function. The Python class preserves the RTL word/byte
-# framing. The self-test additionally re-derives the digest with a fully manual
-# FIPS-180-4 transform.
+# The conditioner is FIPS 180-4 SHA-256 over a big-endian byte stream: the
+# standard IV and round constants, the standard message schedule and round
+# function, standard padding (0x80, zeros, 64-bit big-endian bit length) and a
+# big-endian digest with state[i] MSB-first. `hashlib.sha256` over the SAME byte
+# stream yields the identical digest and is the core compression function here;
+# the class keeps the RTL word/byte framing, and the self-test re-derives the
+# digest with a fully manual FIPS-180-4 transform.
 # ----------------------------------------------------------------------------
 
 GF_POLY = 0x1B  # AES reduction polynomial
@@ -45,8 +34,8 @@ class SepBiwCompress:
         out[1] = (b[1] * b[5]) + b[9]   -> word[23:16]
         out[2] = (b[2] * b[6]) + b[10]  -> word[15:8]
         out[3] = (b[3] * b[7]) + b[11]  -> word[7:0]   (LSB)
-    RTL packs {biw[0],biw[1],biw[2],biw[3]} with biw[0] as MSB (line 245),
-    matching the C shift pattern out[0]<<24 ... out[3]<<0.
+    RTL packs {biw[0],biw[1],biw[2],biw[3]} with biw[0] as MSB (line 245), i.e.
+    out[0]<<24 ... out[3]<<0.
     """
 
     @staticmethod
@@ -103,8 +92,9 @@ class SepSha256Conditioner:
     """SHA-256 entropy conditioner / whitener.
 
     Accumulates `block_words` 32-bit compressor words; when full, hashes the
-    block and exposes the 256-bit digest as 8 x 32-bit words. This mirrors
-    `entropy_sha256_whitener.sv` (16 words -> 512-bit block -> 8 digest words).
+    block and exposes the 256-bit digest as 8 x 32-bit words, matching
+    the SHA-256 conditioner in ``hw/ip/entropy_source/doc/architecture.adoc``
+    (16 words -> 512-bit block -> 8 digest words).
 
     Each accumulated 32-bit word is serialized BIG-ENDIAN
     (w>>24, w>>16, w>>8, w) into the SHA input stream. This matches the RTL
@@ -434,7 +424,7 @@ def _selftest():
     assert cond.total_blocks == 1
     assert cond.pending_count == 0
 
-    # Independent expected: big-endian serialize the 16 words (cond.c:185-192),
+    # Independent expected: big-endian serialize the 16 words,
     # then SHA-256. This is bytes 0x00..0x3F.
     expected_stream = bytes(range(0x00, 0x40))
     # Build the same stream via the documented word->byte framing.
@@ -443,7 +433,7 @@ def _selftest():
         framed += w.to_bytes(4, "big")
     assert bytes(framed) == expected_stream, "word->byte framing wrong"
 
-    # Prove hashlib (used inside the conditioner) == the manual C primitive.
+    # Prove hashlib (used inside the conditioner) == the manual FIPS-180-4 transform.
     import hashlib
 
     manual = _manual_sha256(expected_stream)
@@ -453,7 +443,7 @@ def _selftest():
     # The conditioner digest must match both.
     assert cond.get_digest_bytes() == lib, "conditioner digest != expected"
 
-    # Word framing of the output (cond.c:131-136 / get_digest:217-222).
+    # Word framing of the output: 8 big-endian words, word[0] most significant.
     exp_words = [int.from_bytes(lib[i * 4 : i * 4 + 4], "big") for i in range(8)]
     assert cond.get_digest_words() == exp_words, "digest word framing wrong"
 
