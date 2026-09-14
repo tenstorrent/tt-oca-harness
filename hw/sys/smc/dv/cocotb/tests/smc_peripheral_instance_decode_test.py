@@ -35,6 +35,13 @@ from smc_base_test import smc_base_test
 class smc_peripheral_instance_decode_test(smc_base_test):
     """Block decode and first/last-instance decode of every SMC peripheral."""
 
+    required_evidence = (
+        "CHK-PERIPHERAL-INSTANCE",
+        "CHK-PERIPHERAL-INSTANCE-DECODE",
+        "CHK-PERIPHERAL-INSTANCE-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

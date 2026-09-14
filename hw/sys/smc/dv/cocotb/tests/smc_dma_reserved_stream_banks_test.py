@@ -31,6 +31,13 @@ from smc_base_test import smc_base_test
 class smc_dma_reserved_stream_banks_test(smc_base_test):
     """Sixteen-bank DMA stream register decode with a single functional stream."""
 
+    required_evidence = (
+        "CHK-DMA-RESERVED-STREAM-BANKS",
+        "CHK-DMA-STREAM-BANKS",
+        "CHK-DMA-STREAM-BANKS-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

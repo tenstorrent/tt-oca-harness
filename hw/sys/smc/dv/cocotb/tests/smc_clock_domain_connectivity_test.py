@@ -31,6 +31,13 @@ from smc_base_test import smc_base_test
 class smc_clock_domain_connectivity_test(smc_base_test):
     """UART0 bit time measured against the peripheral clock period."""
 
+    required_evidence = (
+        "CHK-CLOCK-DOMAIN-CONNECTIVITY",
+        "CHK-CLOCK-DOMAIN-NOT-CLOSED",
+        "CHK-UART-ON-CLK-PERIPH",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

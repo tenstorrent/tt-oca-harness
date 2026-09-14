@@ -30,6 +30,13 @@ from smc_base_test import smc_base_test
 class smc_dual_base_addressing_test(smc_base_test):
     """LOCAL_BASE read-only at 0xC000_0000, GLOBAL_BASE programmable."""
 
+    required_evidence = (
+        "CHK-DUAL-BASE",
+        "CHK-DUAL-BASE-ADDRESSING",
+        "CHK-DUAL-BASE-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

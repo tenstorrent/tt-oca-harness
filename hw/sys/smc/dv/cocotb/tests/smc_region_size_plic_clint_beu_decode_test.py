@@ -35,6 +35,13 @@ from smc_base_test import smc_base_test
 class smc_region_size_plic_clint_beu_decode_test(smc_base_test):
     """PLIC / CLINT / BEU decode above the reset aperture, and the fold below it."""
 
+    required_evidence = (
+        "CHK-REGION-SIZE-PLIC-CLINT-BEU",
+        "CHK-REGION-SIZE-PLIC-CLINT-BEU-DECODE",
+        "CHK-REGION-SIZE-PLIC-CLINT-BEU-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

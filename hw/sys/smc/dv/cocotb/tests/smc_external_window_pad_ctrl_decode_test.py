@@ -31,6 +31,13 @@ from smc_base_test import smc_base_test
 class smc_external_window_pad_ctrl_decode_test(smc_base_test):
     """External-window control and per-pad block decode at the adopter port."""
 
+    required_evidence = (
+        "CHK-EXTERNAL-WINDOW-PAD-CTRL-DECODE",
+        "CHK-EXTWIN-PAD-CTRL",
+        "CHK-EXTWIN-PAD-CTRL-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

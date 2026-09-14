@@ -6673,6 +6673,531 @@ Drive `smc_wdt_timeout_pin_test_seq`. Each checker below is a bounded observatio
 '''''
 
 
+[[sec-179-smc_address_map_region_decode_test]]
+===== 179 `smc_address_map_region_decode_test`
+
+*Source Module*: `smc_address_map_region_decode_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); `tb_axil_external_active`, a mirror of `smc_external_req_o`, sampled on every `clk_smc_i` edge for the adopter external AXI-Lite window
+
+*Objective*: Every address-map region an inbound SEP_IN master can reach decodes at a base-side register and at the last register of its extent; three addresses no block declares are answered DECERR by the fabric error slave; the external window is proven at its own AXI-Lite port.
+
+*Test Coverage*:
+
+* Every expectation comes from the generated register map (`hw/sys/smc/regs/gen/py/smc_reg.py`) or from a co-resident write/readback pattern, never from a first read of the DUT. A region whose reset is zero throughout is proven by the co-resident pattern rather than by a 0 == 0 compare, because a dead or unmapped window commonly reads 0.
+* The co-resident shape writes several addresses before any of them is read back, so a decode that collapses two windows onto one physical register returns a neighbour's pattern and fails the exact compare -- which a per-address write-then-read cannot see.
+* Three addresses no generated-map block declares and no crossbar rule covers (past the watchdog cluster, past the DFX block, past the fabric-control block) are declared expected-error to the SEP_IN monitor and required to answer DECERR from the fabric error slave.
+* The APB4-fronted blocks are read at their 32-bit generated-map addresses, and 32-bit reads are required to return values with bits above 16 set, so the APB4 data path is exercised beyond a 16-bit window.
+* The regions SEP_IN cannot reach in this bench are named in the log and left open rather than claimed: the PLIC and CLINT/BEU windows fold onto the local base in `smc_local_fabric`, the generated map declares no register in the debug-module region, and the M-mode/Xvisor remap regions are outbound apertures with no inbound decode pinned by the specification.
+
+*Test Procedure*:
+
+Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The sequence sweeps every reachable region at its base side and at the top of its extent, probes the three beyond-region addresses, routes one access into the external window, requires the scoreboard's exact-value compare count to have advanced by its floor, and prints the cell ledger. The leaf then re-checks the scoreboard compare count and books a protocol-VIP record with the sequence's measured access count against a stimulus floor.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ADDRESS-MAP-REGION` |The cell ledger. One line per coverage cell the sequence closed, naming the measured evidence that closed it, plus one line per cell left NOT closed in this bench with the reason. A cell is entered only after its own compare passed, and the ledger raises if no cell closed at all; the NOT-closed lines are recorded gaps, not compares
+|`CHK-ADDRESS-MAP-REGION-DECODE` |Summary line: cells closed, the scoreboard exact-value compare count against its floor, the number of beyond-region DECERR probes, the external-port active cycles and the number of cells left open. Logged only once every per-region compare and the compare-count floor have held; it carries no compare of its own
+|`CHK-ADDRESS-MAP-REGION-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged, so a run whose stimulus stopped reaching the DUT fails instead of passing with a short sweep
+|===
+
+*Pass Criteria*: every region's generated-reset compare or co-resident readback holds, the three beyond-region addresses each answer DECERR, the external window access drives `smc_external_req_o`, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` exact-value compares. The cells named NOT closed are not part of the claim. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-180-smc_address_window_top_decode_test]]
+===== 180 `smc_address_window_top_decode_test`
+
+*Source Module*: `smc_address_window_top_decode_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP)
+
+*Objective*: The last word of every SEP_IN-reachable window `memmap.adoc` pins answers, and answers from its own block: a window sized short bus-errors there and one sized long is answered by the next block.
+
+*Test Coverage*:
+
+* Scratchpad memory: the first and the last 64-bit word of the 128 KiB window hold distinct co-resident patterns and each reads back exactly, so the window reaches its last word without aliasing.
+* Boot ROM: the last word of the 128 KiB region answers, returns neither resident scratchpad pattern, refuses a write with an error response, and still holds the same word afterwards -- which is what read-only means at this boundary.
+* DMA controller and memory zeroer: with distinct patterns resident in `DMA_CTRL.DST_ADDRESS_LO` and `ZEROER_CTRL.DEST_ADDR`, the last word of each 512 B aperture answers and returns neither pattern.
+* DMA stream banks: `NEXT_ID_1` through `NEXT_ID_15` read exactly 0 as `dma.adoc` states, each checked to sit at the 8-byte stream-bank stride from `NEXT_ID_0`. `NEXT_ID_0` is read last and for an OKAY response only, because reading it is the one access that launches a transfer.
+* CLA: the trace-sink `TRDSTRAMIMPL` identification word, in the first 8 bytes of the window, reads its generated reset.
+* The two window tops the chapter pins that the reference RTL sizes shorter -- the miscellaneous wrapper and the CLA -- are read with the error response tolerated and left open with their measured response and the chapter line they disagree with. They are recorded gaps, not claims.
+
+*Test Procedure*:
+
+Drive `smc_address_window_top_decode_test_seq` on the SEP_IN AXI sequencer, then let the leaf re-check the scoreboard's exact-value compare count and book a protocol-VIP record against a stimulus floor.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ADDRESS-WINDOW-TOP` |The cell ledger: one line per window top closed with the measured evidence, plus one line per top left NOT closed with the response it actually gave and the chapter line it disagrees with. Cells are entered only after their compare passed; the NOT-closed lines are recorded gaps
+|`CHK-ADDRESS-WINDOW-TOP-DECODE` |Summary line: window tops closed, the scoreboard exact-value compare count against its floor, the access count, and how many tops the reference RTL does not answer. Logged after the per-window compares and the floor have held
+|`CHK-ADDRESS-WINDOW-TOP-FLOOR` |The leaf requires `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
+|===
+
+*Pass Criteria*: every closed window top matched its generated reset or its co-resident pattern exactly, the ROM write was refused and left the word unchanged, and the scoreboard booked at least `EXPECTED_VALUE_CHECKS` compares. The two short window tops are reported, not claimed. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-181-smc_alias_remap_spare_block_decode_test]]
+===== 181 `smc_alias_remap_spare_block_decode_test`
+
+*Source Module*: `smc_alias_remap_spare_block_decode_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP)
+
+*Objective*: `LOCAL_BASE` reaches the SMC's own resources through the alias remap's reset setting, and the ends of the eight-entry alias-remap array, the two spare register blocks and the four end mailbox halves each decode as separate storage.
+
+*Test Coverage*:
+
+* The first access of the run is a read at `LOCAL_BASE` itself -- the core-0 watchdog `CTRL` sits at window offset 0 -- taken before anything is written to the remap block, so the same access carries both the local-alias claim and the transparent-at-reset claim. `CMP` in the same block carries a non-zero generated reset, which is what makes the offset-0 read decode evidence rather than a 0 == 0 compare.
+* Alias-remap regions 0 and 7, the ends of the array, are checked to sit at the chapter's 0x20 stride, configured with distinct co-resident `REGION_START` values and restored to the generated reset, so a decoder that collapses the eight instances onto one fails the readback.
+* Spare blocks: the scratch word holds an all-ones pattern and reads it back exactly, so all 32 bits are storage; the chip-config block is written and must still read its generated reset, because every `chip_config.rdl` field is `sw = r`.
+* Mailbox: the two halves of pair 0 and of pair 31 hold four distinct co-resident `IRQEN` patterns at once, then read back 0. The offset of each half inside a pair comes from the generated map.
+
+*Test Procedure*:
+
+Drive `smc_alias_remap_spare_block_decode_test_seq` on the SEP_IN AXI sequencer, then let the leaf re-check the scoreboard's exact-value compare count and book a protocol-VIP record against a stimulus floor.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-ALIAS-REMAP-SPARE-BLOCK` |The cell ledger: one line per cell closed with the measured evidence behind it. A cell is entered only after its compare passed, and the ledger raises if no cell closed
+|`CHK-ALIAS-REMAP-SPARE-BLOCK-DECODE` |Summary line: cells closed, accesses issued and the scoreboard exact-value compare count against its floor, naming the `LOCAL_BASE` read taken before any remap write, the two alias-array ends, the two spare blocks and the four mailbox halves. Logged after those compares and the floor have held
+|`CHK-ALIAS-REMAP-SPARE-BLOCK-FLOOR` |The leaf requires `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
+|===
+
+*Pass Criteria*: the `LOCAL_BASE` and `CMP` reads match the generated resets, every co-resident pattern reads back exactly and every register is restored, the chip-config write leaves the register at its reset, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-182-smc_clock_domain_connectivity_test]]
+===== 182 `smc_clock_domain_connectivity_test`
+
+*Source Module*: `smc_clock_domain_connectivity_test`
+
+*BFM / Model*: SEP_IN AXI driver for the UART CSRs; `tb_uart0_tx_from_dut` timestamped at simulation-time resolution
+
+*Objective*: The UART 16550 is clocked from `clk_periph_i`: an all-zero frame holds TX low for nine bit times of 16 x (DIVISOR + 1) peripheral-clock periods, within two peripheral clocks.
+
+*Test Coverage*:
+
+* Before the measurement the sequence requires the run's `clk_periph_i` and `clk_smc_i` periods to differ, and requires the same frame clocked from `clk_smc_i` to fall outside the tolerance. Without that, the compare could not tell the two domains apart on this seed.
+* TX is required idle-high after the divisor programming and before `THR` is written; the start of the frame is bounded at three bit times of `THR`, and the low pulse is bounded at twice the expected width. Both bounds raise rather than being absorbed.
+* The expected pulse is computed from the programmed divisor and the run's configured peripheral-clock period, not read back from the DUT.
+* Only the UART cell of the peripheral-clock scenario is closed. The AVSBus, I2C and I3C cells need their bus protocols in flight, the PLL wrapper is a behavioural model here with no reference-clock consumer to observe, and `rst_telemetry_ni` is tied to the cold reset in `tb_top`.
+
+*Test Procedure*:
+
+Drive `smc_clock_domain_connectivity_test_seq` on the SEP_IN AXI sequencer: ungate the UART clock, enable UART0, program the divisor through `LCR.DLAB`, confirm TX idle-high, write an all-zero byte to `THR`, timestamp the falling and rising edge of the frame's low pulse, compare it with nine peripheral-clock bit times, and restore the clock-gate register. The leaf then books a protocol-VIP record against a stimulus floor.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-UART-ON-CLK-PERIPH` |The measured low pulse equals nine bit times of the run's `clk_periph_i` period within two peripheral clocks. Logged only after that compare holds; the line also prints what the same frame would have measured on `clk_smc_i`, which the sequence proved lies outside the tolerance
+|`CHK-CLOCK-DOMAIN-NOT-CLOSED` |A recorded gap, not a compare. Names the cells of this scenario the bench cannot drive -- avsbus/i2c/i3c-on-clk-periph, clk-ref-reaches-pll-wrapper, telemetry-reset-asserted/released -- each with its reason. Logged unconditionally
+|`CHK-CLOCK-DOMAIN-CONNECTIVITY` |Ledger line in the leaf: the measured pulse, the expected pulse and the tolerance, logged after the leaf requires the sequence to have produced a measurement at all. The compare itself is the sequence's; this line carries none of its own
+|===
+
+*Pass Criteria*: the UART0 all-zero frame holds TX low for nine `clk_periph_i` bit times within two peripheral clocks, having been proven distinguishable from the `clk_smc_i` alternative on this seed. The other cells of the peripheral-clock scenario are recorded as not closed and are not part of the claim. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-183-smc_cold_boot_chain_order_test]]
+===== 183 `smc_cold_boot_chain_order_test`
+
+*Source Module*: `smc_cold_boot_chain_order_test`
+
+*BFM / Model*: reset agent driving `powergood_i` and `rst_cold_ni` (no external VIP); the boundary observables and the hart-0 retire trace sampled on every `clk_smc_i` edge in `tb_top`
+
+*Objective*: On a second cold reset, power-good is stable before fuse sense completes, fuse sense completes before the core reset releases, the first retired instruction sits at the specified ROM vector, and cluster isolation is held past both `smc_init_mem_done_o` and the core reset release.
+
+*Test Coverage*:
+
+* Every observable -- `powergood_stable_o`, `smc_fuse_sense_done_o`, `smc_init_mem_done_o`, core 0 `tb_cpu_core_reset_n`, cluster `tb_cpu_cluster_isolate` -- is first required at its reset level while the cold pin is held, within a bound. Each recorded rise is therefore a bring-up event of this reset and not a stale level left from the initial bring-up.
+* All stamps come from one `clk_smc_i` timeline taken by a single monitor, and the ordering claims are strict inequalities between those stamps; each observable is required resolvable at every sample.
+* The first retired PC is compared against the vector `rom.adoc` pins, not against the `CPU_CTRL` reset value the DUT reads back.
+* The two bounded reset legs are scoreboard `WAIT_STATE` handshakes carrying exact expected levels, and the leaf requires the scoreboard to have booked at least two of them, so an expired bound raises there with the last observed state.
+* What this bench cannot show is named and left open: the automatic SRAM zeroing never runs (`smc_disable_sram_auto_init_i` is tied high in `tb_top`, so `smc_init_mem_done_o` rises as soon as the cluster reset releases), the repair and MBIST done inputs are tied high so there is no engine to observe, and the uncore reset has no separate probe.
+
+*Test Procedure*:
+
+[arabic]
+. Sample the entry state, drop `powergood_i` and assert `rst_cold_ni`, and match a bounded `WAIT_STATE` on power-good low with the cold-stable and both primary resets asserted and left stable.
+. Require every boot observable to reach its reset level while the pin is held.
+. Start the per-edge monitor, restore `powergood_i`, hold the cold pin ten `clk_ref_i` cycles, release it, and match the bounded released handshake.
+. Wait, bounded, for every observable to reach its boot level and for hart 0 to retire its first instruction.
+. Assert the ordering inequalities and the ROM vector, then emit the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COLD-BOOT-ORDER` |`powergood_stable` < `fuse_sense_done` < `core_reset_release` <= first retired instruction, as strict inequalities between cycle stamps on one `clk_smc_i` timeline; any observable that never reached its boot level inside the bound raises first
+|`CHK-COLD-BOOT-FIRST-FETCH-AT-ROM-VECTOR` |The first retired hart-0 PC equals the cold-reset ROM vector `rom.adoc` pins, and the retire happened no earlier than the core reset release
+|`CHK-CLUSTER-SELF-ISOLATED-AT-COLD-BOOT` |`tb_cpu_cluster_isolate` read 1 while the cold pin was held and released strictly after both `smc_init_mem_done_o` rose and the core reset released
+|`CHK-COLD-BOOT-NOT-CLOSED` |A recorded gap, not a compare: sram-auto-init-runs, repair-triggered-by-fuse-sense-done and the repair/MBIST steps, and release-requires-uncore-out-of-reset, each with the tie-off or missing probe that prevents it. Logged unconditionally
+|`CHK-TIMEOUT-PATHS` |One line per bounded reset leg the run took, naming the bound and the `clk_ref_i` cycle at which the expected levels matched. The compare is the scoreboard's -- an expired bound raises there -- so these lines are the record of the bounded legs, not a separate compare
+|`CHK-COLD-BOOT-CHAIN` |Ledger line in the leaf: the stamp dictionary, the first-fetch cycle and PC, and the scoreboard's reset `WAIT_STATE` count. Logged after the leaf requires at least two booked wait checks and requires the sequence to have observed both the reset levels and a first fetch
+|===
+
+*Pass Criteria*: every boot observable reaches its reset level and then its boot level inside the bounds, the three ordering inequalities and the two isolation inequalities hold, the first retired PC is the ROM vector, and the scoreboard books at least two reset `WAIT_STATE` checks. The memory-repair and SRAM-init steps are recorded as not closed and are not part of the claim. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-184-smc_dma_reserved_stream_banks_test]]
+===== 184 `smc_dma_reserved_stream_banks_test`
+
+*Source Module*: `smc_dma_reserved_stream_banks_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP); `tb_dma_busy` sampled on every `clk_smc_i` edge across the sweep
+
+*Objective*: All sixteen DMA stream banks decode with `NUM_CTRL_STREAMS = 1`: the reserved `STATUS`, `DONE` and `NEXT_ID` registers complete OKAY and read the value `dma.adoc` gives a reserved bank, and no reserved `NEXT_ID` read launches a transfer.
+
+*Test Coverage*:
+
+* The zeros are given teeth: `DST_ADDRESS_LO` in the same block takes and returns a pattern before the sweep and is restored after it, so a bank reading 0 is reading from a block that answers rather than from a dead bus.
+* `tb_dma_busy` is required resolvable and 0 at every sampled `clk_smc_i` edge across the whole sweep, and the watcher is required to have sampled at least one edge, so "no transfer started" is a per-sample compare and not an untaken branch.
+* Bank 0 is the functional stream: its `STATUS_0` and `DONE_0` are hardware status the specification pins to no value, so they are read for an OKAY response only and their values are reported, not compared. `NEXT_ID_0` is not read here, because reading it launches a transfer.
+* The DMA clock gate is saved, ungated for the sweep, and restored with an exact readback.
+
+*Test Procedure*:
+
+Drive `smc_dma_reserved_stream_banks_test_seq` on the SEP_IN AXI sequencer: ungate the DMA clock, start the busy watcher, write and read back the liveness pattern, read `STATUS_0` and `DONE_0` for a response, sweep `STATUS_1..15`, `DONE_1..15` and `NEXT_ID_1..15` against an exact 0, restore the pattern and the clock gate, then require the busy count to be 0 and the access count to have reached its floor. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DMA-STREAM-BANKS` |The cell ledger: the `all-16-banks-decode` cell with the measured evidence that closed it -- the reserved sweep's exact zeros, bank 0's reported status, the liveness pattern and the sampled busy count. Entered only after those compares passed
+|`CHK-DMA-RESERVED-STREAM-BANKS` |Summary line: banks decoded, SEP_IN accesses issued, and the busy-high count out of the sampled cycles. Logged after the busy compare and the stimulus floor have held
+|`CHK-DMA-STREAM-BANKS-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
+|===
+
+*Pass Criteria*: every reserved `STATUS`, `DONE` and `NEXT_ID` register reads exactly 0 over an OKAY response, the liveness pattern reads back exactly, `tb_dma_busy` is 0 at all sampled cycles, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Bank 0's status values are reported only. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-185-smc_dual_base_addressing_test]]
+===== 185 `smc_dual_base_addressing_test`
+
+*Source Module*: `smc_dual_base_addressing_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP)
+
+*Objective*: `LOCAL_BASE` is fixed read-only at 0xC000_0000 and keeps that value across a write attempt, `GLOBAL_BASE` in the same block takes and returns a pattern through the identical write path, and `REGION_SIZE` reads its specified 16 MiB reset.
+
+*Test Coverage*:
+
+* The three expectations are the sentences of `memmap.adoc` (Memory Map); nothing is read back from the DUT to form them.
+* The write-has-no-effect leg has a positive control in the same register block: `GLOBAL_BASE`, the programmable sibling, is written and read back through the same path, so a dropped `LOCAL_BASE` write is attributable to the read-only attribute and not to a dead write channel. The control is checked not to already hold the probe pattern, and `GLOBAL_BASE` is restored to the value read at entry.
+* `LOCAL_BASE` is written last, so a DUT that wrongly accepted the write fails its own readback rather than silently re-basing every later access of the run.
+* `smc_region_size_o` is unconnected in `tb_top`, so the pin-side effect of `REGION_SIZE` is not claimed here.
+
+*Test Procedure*:
+
+Drive `smc_dual_base_addressing_test_seq` on the SEP_IN AXI sequencer: read `REGION_SIZE` and `LOCAL_BASE` against their specified values, save `GLOBAL_BASE` and prove the write path on it, then attempt the `LOCAL_BASE` write and require the register to still read 0xC000_0000. The leaf re-checks the scoreboard compare count and books a protocol-VIP record against a stimulus floor.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DUAL-BASE` |The cell ledger: `local-base-reads-c0000000` and `local-base-write-has-no-effect`, each with the measured evidence behind it, including the `GLOBAL_BASE` write that serves as the positive control
+|`CHK-DUAL-BASE-ADDRESSING` |Summary line: the `LOCAL_BASE` value across the write attempt, the `GLOBAL_BASE` save/pattern/restore sequence and the `REGION_SIZE` reset. Logged after those compares and the stimulus floor have held
+|`CHK-DUAL-BASE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
+|===
+
+*Pass Criteria*: `REGION_SIZE` reads the specified 16 MiB reset, `LOCAL_BASE` reads 0xC000_0000 before and after the write attempt, `GLOBAL_BASE` returns the probe pattern and then the restored value, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-186-smc_external_window_pad_ctrl_decode_test]]
+===== 186 `smc_external_window_pad_ctrl_decode_test`
+
+*Source Module*: `smc_external_window_pad_ctrl_decode_test`
+
+*BFM / Model*: SEP_IN AXI driver; `tb_axil_external_active`, a mirror of `smc_external_req_o`, sampled on every `clk_smc_i` edge while each access is in flight; the reference `smc_ip_integration` AXI-Lite error slave terminates the window
+
+*Objective*: The six mandatory external-window control blocks and the first, second and last of the 65 per-pad control blocks decode into the adopter external AXI-Lite window.
+
+*Test Coverage*:
+
+* Addresses come from the generated bootrom register header, the same map the boot ROM is built against.
+* The adopter's implementation of these blocks is outside this repository; the reference integration terminates every one with an error slave answering DECERR and zero data. What the SMC side owns, and what is measured here, is the decode into the window: every access must drive the external port while it is in flight and must complete with the terminator's DECERR *and* its zero data, so an access wedging or being answered by another block fails.
+* The activity sampler keeps running for a few cycles after the access completes, so a request still being drained is not missed; a zero active-cycle count fails.
+* The per-pad instance list and stride are checked against the chapter's 65 instances and 0x20 stride, and the last instance's address is checked to equal base plus index times stride, before the first, second and last instance are probed.
+
+*Test Procedure*:
+
+Drive `smc_external_window_pad_ctrl_decode_test_seq` on the SEP_IN AXI sequencer: probe the six control blocks, check the generated per-pad geometry against the chapter, probe per-pad instances 0, 1 and 64, require the access count to have reached its floor and print the cell ledger. The leaf then requires an external-port activity record for every probe with a non-zero active-cycle count, and books a protocol-VIP record.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EXTWIN-PAD-CTRL` |The cell ledger: one line per control block and per-pad instance closed, naming the number of `clk_smc_i` cycles the access drove `smc_external_req_o` and the DECERR/0 answer it received. A cell is entered only after both of those held
+|`CHK-EXTERNAL-WINDOW-PAD-CTRL-DECODE` |Summary line: the control-block and per-pad probe counts, the per-probe active-cycle counts, the measured per-pad stride and the instance count. Logged after every probe's routing and response compare and the stimulus floor have held
+|`CHK-EXTWIN-PAD-CTRL-FLOOR` |The leaf requires one external-port activity record per expected probe and a non-zero active-cycle count on every one of them before this token is logged, so a run that stopped probing part-way fails
+|===
+
+*Pass Criteria*: all nine probes drive the adopter external AXI-Lite port for at least one cycle while in flight and complete DECERR with zero data, the generated per-pad geometry matches the chapter, and the leaf's per-probe activity check holds. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-187-smc_gpio_pad_input_readback_test]]
+===== 187 `smc_gpio_pad_input_readback_test`
+
+*Source Module*: `smc_gpio_pad_input_readback_test`
+
+*BFM / Model*: SEP_IN AXI driver for the GPIO CSRs; the bench external-pin path `tb_gpio_ext_drive_en` / `tb_gpio_ext_drive_value`; `tb_core2pad_en_o`, a mirror of the `core2pad_en_o` port
+
+*Objective*: On six bonded GPIO wraps a pad input transition is captured in `DATA_CTRL.pad2core` in both directions, and TX enable raises and releases only that wrap's `core2pad_en_o` bit.
+
+*Test Coverage*:
+
+* The six wraps are chosen as bonded, input-by-default wraps that no LSIO function owns while the SPI mux is off and that no bench block drives permanently; the padring and `tb_top` bindings that rule the others out are recorded in the sequence.
+* Each wrap's `core2pad_en_o` bit is required to read 0 before it is programmed, so the bit that later moves is the one this test caused to move; a wrap already enabled fails rather than being skipped.
+* The pad is driven 0, then 1, then 0, and `DATA_CTRL.pad2core` is polled to follow each level within a bounded number of reads; the bound raises, and the number of reads each level needed is reported.
+* While a wrap's output enable is programmed, exactly one bit of `tb_core2pad_en_o` may move: any other bit moving raises, which is what attributes the change to that wrap rather than to the write itself.
+* `pad2core_en_o` has no vector probe in `tb_top` and `lsio_interface_select_o` is unconnected, so the RX direction enable and the interface-select output are not claimed.
+
+*Test Procedure*:
+
+Drive `smc_gpio_pad_input_readback_test_seq` on the SEP_IN AXI sequencer. Per wrap: require the enable bit clear, program the wrap as a register-controlled input, drive the pad 0/1/0 and poll `pad2core` to each level, release the bench drive, program the wrap as a register-controlled output and require its own enable bit to rise, restore `DATA_CTRL` and require the bit to clear. Afterwards require the access count and the scoreboard's SEP_IN item count to cover every access. The leaf requires every wrap to have completed both legs and books a protocol-VIP record.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-PAD-INPUT-WRAP<wrap>` |Per wrap: the pad 0 -> 1 -> 0 sequence was followed in `DATA_CTRL.pad2core` inside the read bound at each level, and the wrap's own `core2pad_en_o` bit rose under TX enable and cleared on the restore without any other bit of the vector moving. One token per member of `WRAPS`, so the recorded name carries the wrap number
+|`CHK-GPIO-PAD-INPUT-READBACK` |Summary line: the wraps that completed both legs and the SEP_IN access count, restating that `pad2core_en_o` and `lsio_interface_select_o` are not probed. Logged after every wrap's compares and the access floors have held
+|`CHK-GPIO-PAD-INPUT-FLOOR` |The leaf requires every wrap in `WRAPS` to have completed both legs before this token is logged; the line prints the SEP_IN access count against the stimulus floor the sequence already asserted
+|===
+
+*Pass Criteria*: on every wrap, `DATA_CTRL.pad2core` follows the driven pad at all three levels inside the read bound, and the wrap's own `core2pad_en_o` bit rises and falls with the register while no other bit of the vector moves. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-188-smc_peripheral_instance_decode_test]]
+===== 188 `smc_peripheral_instance_decode_test`
+
+*Source Module*: `smc_peripheral_instance_decode_test`
+
+*BFM / Model*: SEP_IN AXI driver; `tb_axil_external_active` sampled on every `clk_smc_i` edge for the PVT wrapper access, which the bench PVT model answers OKAY with zero data
+
+*Objective*: Every peripheral block the generated map declares reads a register with a non-zero generated reset, every multi-instance peripheral is proven at its first and last instance, and the PVT wrapper is proven at the adopter external port.
+
+*Test Coverage*:
+
+* Single-instance blocks are closed by a register whose generated reset is non-zero, so the compare can tell a decoded block from an absent window that reads 0.
+* Multi-instance peripherals are additionally proven with distinct patterns written to all probed instances before any is read back, so a stride that aliases two instances returns a neighbour's pattern and fails: the I3C CSR windows, the GPIO interfaces, the mailbox pairs, the watchdog instances and the log engines are each driven at their first and last instance.
+* The PVT wrapper is proven at its consumer: the access must drive `smc_external_req_o` while in flight, not merely complete.
+* Left open and named, not claimed: the DTP control window (`tb_top` leaves its AXI-Lite response idle, so an access there would never complete) and the bus error units (behind the bit-25 fold of `smc_local_fabric`, so no SEP_IN access reaches one).
+
+*Test Procedure*:
+
+Drive `smc_peripheral_instance_decode_test_seq` on the SEP_IN AXI sequencer: sweep the I3C, GPIO, mailbox, watchdog and log-engine instances, then the single-instance blocks, then route the PVT access; name the two unreachable cells, require the exact-value compare count and the access count to have reached their floors, and print the cell ledger. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PERIPHERAL-INSTANCE` |The cell ledger: one line per block or instance cell closed with the measured evidence behind it, plus one line per cell left NOT closed in this bench with the tie-off or address fold that prevents it. The NOT-closed lines are recorded gaps, not compares
+|`CHK-PERIPHERAL-INSTANCE-DECODE` |Summary line: cells closed, the scoreboard exact-value compare count against its floor, the access count, the PVT external-port active cycles and the number of cells left open. Logged after the per-block compares and both floors have held
+|`CHK-PERIPHERAL-INSTANCE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
+|===
+
+*Pass Criteria*: every probed block matches its non-zero generated reset, every probed instance returns its own co-resident pattern, the PVT access drives the external port, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. The DTP window and the bus error units are recorded as not closed. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-189-smc_primary_reset_scope_test]]
+===== 189 `smc_primary_reset_scope_test`
+
+*Source Module*: `smc_primary_reset_scope_test`
+
+*BFM / Model*: SEP_IN AXI driver for the CSR legs, with the reset items dispatched to the reset agent through a one-shot; `tb_cpu_core_reset_n`, `tb_cpu_rom_read_count`, the SEP_IN response channels and the UART0 TX pad output enable sampled every clock edge of the held window
+
+*Objective*: With a core fetching ROM, an outbound filter register holding a pattern and UART0 mid-frame, the cool pin asserts the primary reset and the cores, the fabric and the peripheral controllers are all held across the whole asserted window.
+
+*Test Coverage*:
+
+* Each consumer is first put into a state a reset would visibly end -- the ROM read counter advancing, a pattern resident in `OUTBOUND_FILTER_CTRL[0].END_ADDR`, UART0 enabled and driving a start bit -- so the held observation is not trivially satisfied by an idle DUT.
+* Every held claim is a per-sample compare across the window rather than one instant: the core reset must read 0 at every sample, the SEP_IN `rvalid`/`bvalid` must be low at every sample, and the UART TX pad output enable must read 0 at every sample after a stated settle. A consumer released anywhere inside the window fails.
+* The pad *value* probe cannot carry the peripheral claim: `tb_uart0_tx_from_dut` mirrors `core2pad_o`, which a GPIO wrap in reset parks at 0 with its driver off. The pad's output enable is the observable that distinguishes "transmitter stopped driving" from "wrap parked the pin".
+* A ROM fetch counted inside the window must sit at its head, before the cores' reset had propagated; an advance later in the window fails as a fetch by a core that was not held.
+* After release, the outbound filter register, UART0 `CTRL` and `CLOCK_GATE_CONTROL` are required to read their generated resets, and core 0's reset release is bounded.
+
+*Test Procedure*:
+
+[arabic]
+. Sample the entry state; prove the cores are fetching by measuring `tb_cpu_rom_read_count` advancing over a window.
+. Write and read back the filter pattern; arm UART0 mid-frame at the slowest divisor so the de-glitched reset assertion lands inside the frame.
+. Assert `rst_cool_ni` and match a bounded `WAIT_STATE` on power-good and cold-stable released with both primary resets asserted and left stable.
+. Sample the held window every clock edge and assert the three per-sample claims plus the frozen ROM counter.
+. Release the pin, match the bounded released handshake, bound core 0's reset release, and read the three registers against their generated resets.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PRIMARY-RESET-CORES-HELD` |`tb_cpu_core_reset_n` read 0 at every sample of the held window, the ROM read counter stopped advancing after the reset propagated, and core 0 released inside its bound after `rst_cool_ni` returned. The pre-reset fetch count is reported as the precondition
+|`CHK-PRIMARY-RESET-FABRIC-HELD` |`s_axi_rvalid` and `s_axi_bvalid` were low at every sample of the held window, and the outbound filter register went from the resident pattern to its generated reset across the reset
+|`CHK-PRIMARY-RESET-PERIPHERALS-HELD` |UART0 was mid-frame with its TX pad output enable asserted when the reset landed; the output enable read 0 at every sample after the stated settle, and UART0 `CTRL` and `CLOCK_GATE_CONTROL` read their generated resets afterwards
+|`CHK-TIMEOUT-PATHS` |One line per bounded reset leg the run took, naming the bound and the `clk_ref_i` cycle at which the expected levels matched. The compare is the scoreboard's -- an expired bound raises there -- so these lines are the record of the bounded legs, not a separate compare
+|`CHK-PRIMARY-RESET-SCOPE` |Ledger line in the leaf: the held-window sample count and the three per-sample tallies. Logged after the leaf requires at least two booked reset `WAIT_STATE` checks, the SEP_IN exact-value compare floor, a non-empty held window and a non-zero pre-reset fetch delta
+|===
+
+*Pass Criteria*: all three per-sample held claims hold across the whole window, the ROM counter freezes at its head, the three registers read their generated resets after release, core 0 releases inside its bound, and the scoreboard books at least two reset `WAIT_STATE` checks and the SEP_IN value-compare floor. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-190-smc_region_size_plic_clint_beu_decode_test]]
+===== 190 `smc_region_size_plic_clint_beu_decode_test`
+
+*Source Module*: `smc_region_size_plic_clint_beu_decode_test`
+
+*BFM / Model*: SEP_IN AXI driver (no external VIP)
+
+*Objective*: At the 16 MiB `REGION_SIZE` reset the PLIC offset folds onto the bottom of the local window; with `REGION_SIZE` programmed to 256 MiB the PLIC, the CLINT and the four bus error units decode at the addresses the chapters give them.
+
+*Test Coverage*:
+
+* The fold is measured rather than assumed: at the reset aperture the PLIC priority word at window offset 0x20 returns the watchdog `CMP` reset, and once the aperture is widened the same address no longer returns it. Both halves are exact compares.
+* 256 MiB is the smallest legal power of two whose aperture contains the whole documented map up to BASE + 0x801_3FFF; the sequence asserts that relation against the generated reset size rather than hard-coding a verdict.
+* PLIC: the priority and per-core enable words hold distinct co-resident patterns, are then written to the priority-0 / disabled state `interrupts.adoc` requires of firmware and read back exactly; the top word of the 4 MiB window and the first word above it must answer without returning either pattern.
+* CLINT: `MSIP_0` and `MTIMECMP_0` hold distinct co-resident patterns, and the top word of the 64 KiB window must not return them.
+* BEU: the four `ENABLE` registers read their generated reset, are each checked against the specified 0x1000 stride, and then hold four distinct co-resident patterns, so the per-core instances are proven separate registers rather than one alias.
+* `REGION_SIZE` is restored to its generated reset and a local-window register is read afterwards, so the aperture is left as the rest of the suite expects.
+
+*Test Procedure*:
+
+Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequencer: measure the fold at the reset aperture, widen `REGION_SIZE` and show the same address no longer folds, drive the PLIC, its window edges, the CLINT and the four BEUs, restore `REGION_SIZE` and re-read a local-window register, then require the exact-value compare floor and print the cell ledger. The leaf re-checks the scoreboard compare count and books a protocol-VIP record.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-REGION-SIZE-PLIC-CLINT-BEU` |The cell ledger: one line per cell closed with the measured evidence -- the 16 MiB fold, the PLIC base, edge and firmware-init cells, the CLINT base and top, and the four BEU instances. A cell is entered only after its compare passed
+|`CHK-REGION-SIZE-PLIC-CLINT-BEU-DECODE` |Summary line: the folded word at the reset aperture, the unfolded word at 256 MiB, cells closed, accesses issued and the scoreboard exact-value compare count against its floor. Logged after those compares and the floor have held
+|`CHK-REGION-SIZE-PLIC-CLINT-BEU-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
+|===
+
+*Pass Criteria*: the fold at the reset aperture and its absence at 256 MiB both hold as exact compares, every PLIC, CLINT and BEU co-resident pattern reads back exactly, the window-edge reads return neither resident pattern, `REGION_SIZE` is restored and the local-window register reads its reset afterwards, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-191-smc_reset_sync_edge_test]]
+===== 191 `smc_reset_sync_edge_test`
+
+*Source Module*: `smc_reset_sync_edge_test`
+
+*BFM / Model*: reset agent for the bounded handshakes, with `rst_cool_ni` driven directly at a controlled sub-cycle phase; `clk_ref_i` and `clk_smc_i` rising-edge timestamps and both synchronized reset outputs read at simulation-time resolution
+
+*Objective*: Assertion of the synchronized primary resets is asynchronous and anchored on `clk_ref_i`, deassertion is synchronous to each output's own target clock, and more than one target-clock edge separates the release anchor from each output's rise.
+
+*Test Coverage*:
+
+* The pin is driven one third into a clock period on both the assert and the release, so none of the timestamp coincidences below can be an artefact of the stimulus landing on a clock edge.
+* Assertion: `rst_primary_smc_clk_no` is required to read 0 at the very instant `rst_primary_ref_clk_no` falls, and that instant is required to equal the most recent recorded `clk_ref_i` rising edge. A synchronous assertion in the SMC domain would have waited for the next `clk_smc_i` edge and could not coincide.
+* Deassertion: each output's rise is required to fall exactly on a recorded rising edge of its own clock, and the reference output's rise is required to be a whole number of `clk_ref_i` periods after the release anchor -- the first `clk_ref_i` edge after the pin was released.
+* Stages: `clk_rst.adoc` pins no stage count, so only "at least two target-clock edges" is asserted, in both domains, and the measured counts are reported.
+* The cool pin is the source because its de-glitch path has no release extender. Both bounded legs are scoreboard `WAIT_STATE` handshakes with exact expected levels, and the leaf requires at least two of them.
+* `rst_primary_periph_clk_no` is unconnected in `tb_top` and is not claimed.
+
+*Test Procedure*:
+
+[arabic]
+. Start the two edge logs, sample the entry state with every reset observable released.
+. Assert `rst_cool_ni` one third into a `clk_smc_i` period; timestamp the reference output's fall, inspect the SMC output at that instant, and check the instant against the `clk_ref_i` edge log. Match the bounded asserted handshake and hold the pin low past the de-glitch window.
+. Release `rst_cool_ni` one third into a `clk_ref_i` period; timestamp each output's rise against its own clock's edge log. Match the bounded released handshake.
+. Compute the release anchor and the per-domain edge counts, and assert the period relation and the stage minimums.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RESET-SYNC-ASYNC-ASSERT` |`rst_primary_ref_clk_no` and `rst_primary_smc_clk_no` were both asserted at the same simulation instant, and that instant is a recorded `clk_ref_i` rising edge, so the SMC-domain output asserted without waiting for its own clock
+|`CHK-RESET-SYNC-SYNC-DEASSERT` |Each output rose exactly at a recorded rising edge of its own target clock, and the reference output's rise is a whole number of `clk_ref_i` periods after the release anchor
+|`CHK-RESET-SYNC-MULTI-STAGE` |At least two `clk_ref_i` edges and at least two `clk_smc_i` edges separate the release anchor from the corresponding output's rise. The measured counts are reported; the specification pins no exact stage count
+|`CHK-RESET-SYNC-REF-ANCHOR` |Both the assertion instant and the release anchor are `clk_ref_i` rising edges, which is what makes the reference domain the synchronization anchor for these crossings
+|`CHK-TIMEOUT-PATHS` |One line per bounded reset leg the run took, naming the bound and the `clk_ref_i` cycle at which the expected levels matched. The compare is the scoreboard's -- an expired bound raises there -- so these lines are the record of the bounded legs, not a separate compare
+|`CHK-RESET-SYNC-EDGE` |Ledger line in the leaf: the assert instant, both release timestamps and both stage counts. Logged after the leaf requires at least two booked reset `WAIT_STATE` checks and requires the sequence to have timestamped every edge it claims
+|===
+
+*Pass Criteria*: the two outputs assert in the same `clk_ref_i`-anchored instant, each releases on a rising edge of its own clock, the reference release is a whole number of reference periods after the anchor, both stage counts are at least two, and the scoreboard books at least two reset `WAIT_STATE` checks. `rst_primary_periph_clk_no` is not part of the claim. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-192-smc_sys_axi_in_port_test]]
+===== 192 `smc_sys_axi_in_port_test`
+
+*Source Module*: `smc_sys_axi_in_port_test`
+
+*BFM / Model*: the SEP_IN AXI driver for the filter programming and the readbacks, plus the SYS_IN AXI agent (`sys_in_axi_agent`) driving `sys_axi_in_req_i`
+
+*Objective*: Once inbound filter entry 0 admits, `sys_axi_in` carries a read of a register with a non-zero generated reset and a write whose value both ports read back.
+
+*Test Coverage*:
+
+* Inbound entry 0 is programmed over SEP_IN with the pass-all recipe the output-fabric tests use, its config word is read back exactly, and all three of its registers are restored to their generated resets with a further config readback at the end.
+* The SYS_IN read compares against the generated reset of `CHIP_CONFIG.VERSION_LO`, which is non-zero, so the compare distinguishes a decoded read from a window that answers 0.
+* The scratch word written over SYS_IN is read back over SEP_IN and then over SYS_IN, so the same storage is shown reachable from the system port and from SEP_IN; the scratch register is restored to 0 with a readback.
+* The access counts are the measured ones, not declarations: the sequence requires its own SEP_IN count to equal exactly the expected number and requires the scoreboard's completed SYS_IN AXI count to equal exactly four.
+* The pre-admit SYS_IN read is issued with the error response tolerated and its response is reported, not asserted: the specification leaves the reset state of the sixteen inbound entries to the chiplet integration, so no verdict is claimed on it.
+* Every inbound port of this bench carries an agent, so the "unused port tied idle" cell cannot be driven here.
+
+*Test Procedure*:
+
+Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_IN accesses issued as one-shots on the SYS_IN sequencer: pre-admit read, program and read back entry 0, SYS_IN read of `VERSION_LO`, SYS_IN scratch write, SEP_IN and SYS_IN readbacks, restore the scratch word and the filter entry, then require both access counts exactly. The leaf requires both SYS_IN read values to have been captured and books a protocol-VIP record carrying the measured SEP_IN and SYS_IN counts against their floors.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SYS-AXI-IN-READ` |After entry 0 admitted the whole address range, a `sys_axi_in` read of `CHIP_CONFIG.VERSION_LO` returned its non-zero generated reset exactly. The pre-admit response at the same address is printed on the same line as reported, not asserted
+|`CHK-SYS-AXI-IN-WRITE` |A `sys_axi_in` write of the scratch pattern was read back exactly over SEP_IN and over `sys_axi_in`, and the scoreboard had completed exactly the expected number of SYS_IN and SEP_IN accesses
+|`CHK-SYS-AXI-IN-NOT-CLOSED` |A recorded gap, not a compare: the unused-port-tied-idle cell, with the reason -- every inbound port of this bench carries an agent and none is tied to zero. Logged unconditionally
+|`CHK-SYS-AXI-IN-PORT` |Ledger line in the leaf: the SYS_IN read value, the scratch readback and the SEP_IN access count, logged after the leaf requires both SYS_IN reads to have been captured. The compares are the sequence's and the scoreboard's
+|===
+
+*Pass Criteria*: the admitted `sys_axi_in` read matches the generated reset, the scratch write reads back exactly over both ports, the filter entry and the scratch register are restored, and the measured SEP_IN and SYS_IN access counts equal the expected ones. The pre-admit response and the tied-idle cell are recorded, not claimed. Enrolled in: `all`.
+
+'''''
+
+
 === Regression Groups
 
 [cols=",",options="header",]

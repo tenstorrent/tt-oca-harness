@@ -35,6 +35,13 @@ from smc_base_test import smc_base_test
 class smc_alias_remap_spare_block_decode_test(smc_base_test):
     """LOCAL_BASE, the alias-remap array ends, the spare blocks and the mailbox halves."""
 
+    required_evidence = (
+        "CHK-ALIAS-REMAP-SPARE-BLOCK",
+        "CHK-ALIAS-REMAP-SPARE-BLOCK-DECODE",
+        "CHK-ALIAS-REMAP-SPARE-BLOCK-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -37,6 +37,13 @@ EXPECTED_ACCESSES = 60
 class smc_address_map_region_decode_test(smc_base_test):
     """Base/top/beyond decode of every SEP_IN-reachable address-map region."""
 
+    required_evidence = (
+        "CHK-ADDRESS-MAP-REGION",
+        "CHK-ADDRESS-MAP-REGION-DECODE",
+        "CHK-ADDRESS-MAP-REGION-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

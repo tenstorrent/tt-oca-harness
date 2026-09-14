@@ -31,6 +31,14 @@ from smc_base_test import smc_base_test
 class smc_sys_axi_in_port_test(smc_base_test):
     """SYS_IN read/write into a local register once inbound entry 0 admits."""
 
+    required_evidence = (
+        "CHK-SYS-AXI-IN-NOT-CLOSED",
+        "CHK-SYS-AXI-IN-PORT",
+        "CHK-SYS-AXI-IN-READ",
+        "CHK-SYS-AXI-IN-WRITE",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

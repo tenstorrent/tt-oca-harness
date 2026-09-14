@@ -33,6 +33,15 @@ EXPECTED_WAIT_CHECKS = 2
 class smc_primary_reset_scope_test(smc_base_test):
     """Held state of cores, fabric and peripherals under a cool-pin primary reset."""
 
+    required_evidence = (
+        "CHK-PRIMARY-RESET-CORES-HELD",
+        "CHK-PRIMARY-RESET-FABRIC-HELD",
+        "CHK-PRIMARY-RESET-PERIPHERALS-HELD",
+        "CHK-PRIMARY-RESET-SCOPE",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 5
+
     async def run_scenario(self) -> None:
         seq = smc_primary_reset_scope_test_seq("primary_reset_scope_seq")
 

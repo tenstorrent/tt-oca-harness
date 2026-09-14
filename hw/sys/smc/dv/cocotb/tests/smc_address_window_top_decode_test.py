@@ -35,6 +35,13 @@ from smc_base_test import smc_base_test
 class smc_address_window_top_decode_test(smc_base_test):
     """Window-top decode of the memory, data-processing and CLA windows."""
 
+    required_evidence = (
+        "CHK-ADDRESS-WINDOW-TOP",
+        "CHK-ADDRESS-WINDOW-TOP-DECODE",
+        "CHK-ADDRESS-WINDOW-TOP-FLOOR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -31,6 +31,16 @@ EXPECTED_WAIT_CHECKS = 2
 class smc_reset_sync_edge_test(smc_base_test):
     """Sub-cycle edge alignment of the synchronized primary resets."""
 
+    required_evidence = (
+        "CHK-RESET-SYNC-ASYNC-ASSERT",
+        "CHK-RESET-SYNC-EDGE",
+        "CHK-RESET-SYNC-MULTI-STAGE",
+        "CHK-RESET-SYNC-REF-ANCHOR",
+        "CHK-RESET-SYNC-SYNC-DEASSERT",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 6
+
     async def run_scenario(self) -> None:
         seq = smc_reset_sync_edge_test_seq("reset_sync_edge_seq")
         await self.start_seq(seq, self.env.reset_agent.sequencer)

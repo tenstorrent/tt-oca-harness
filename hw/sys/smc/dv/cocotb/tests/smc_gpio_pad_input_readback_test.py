@@ -31,6 +31,19 @@ from smc_base_test import smc_base_test
 class smc_gpio_pad_input_readback_test(smc_base_test):
     """pad2core capture and core2pad_en direction on several GPIO wraps."""
 
+    # The per-wrap token carries the wrap number, so the required set is built
+    # from WRAPS: every wrap in it logs its own CHK-GPIO-PAD-INPUT-WRAP<n> line.
+    required_evidence = tuple(
+        sorted(
+            (
+                "CHK-GPIO-PAD-INPUT-FLOOR",
+                "CHK-GPIO-PAD-INPUT-READBACK",
+                *(f"CHK-GPIO-PAD-INPUT-WRAP{wrap}" for wrap in WRAPS),
+            )
+        )
+    )
+    min_evidence = len(required_evidence)
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

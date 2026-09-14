@@ -32,6 +32,16 @@ EXPECTED_WAIT_CHECKS = 2
 class smc_cold_boot_chain_order_test(smc_base_test):
     """Boot-chain ordering and the cluster self-isolation window on a cold reset."""
 
+    required_evidence = (
+        "CHK-CLUSTER-SELF-ISOLATED-AT-COLD-BOOT",
+        "CHK-COLD-BOOT-CHAIN",
+        "CHK-COLD-BOOT-FIRST-FETCH-AT-ROM-VECTOR",
+        "CHK-COLD-BOOT-NOT-CLOSED",
+        "CHK-COLD-BOOT-ORDER",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 6
+
     async def run_scenario(self) -> None:
         seq = smc_cold_boot_chain_order_test_seq("cold_boot_chain_order_seq")
         await self.start_seq(seq, self.env.reset_agent.sequencer)
