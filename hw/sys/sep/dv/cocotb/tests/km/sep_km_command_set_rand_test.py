@@ -22,6 +22,12 @@ Checkers:
   CHK-XFER    CMD_KEY_TRANSFER of a known loaded key to AES returns rc=0 and
               the AES ciphertext equals the independent AES-256-ECB golden, so
               the transfer moved that exact key
+  CHK-XFER-DEST
+              a dedicated CMD_KEY_TRANSFER of that same handle to the
+              seed-selected dest (HMAC / KMAC / AES / OTBN) returns rc=0 and
+              echoes the dest. Consume proof stays on the sideload KATs and
+              on CHK-XFER; this checker is the mailbox dest cell. One seed
+              writes this dest only; daily reseed accumulates
   CHK-DEST    a transfer to an engine OUTSIDE the key's DEST_VALID is refused
   CHK-SHRED   CMD_ENGINE_SHRED returns rc=0 with its destination echoed, and
               the engine is still correctly re-keyable afterwards: a second,
@@ -127,6 +133,17 @@ AES_ECB_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 # Sizes CMD_KEY_GENERATE may be asked for, as word counts.
 GEN_KEY_WORDS = (8, 12)
 
+# Sideload dest bits. AES is always permitted so CHK-XFER / CHK-SHRED /
+# CHK-GONE keep a consume witness. The seed adds one of these four as the
+# extra CMD_KEY_TRANSFER dest that sep_km_command_sideload_cg.cp_dest samples.
+LEGAL_DESTS = (KM_DEST_HMAC, KM_DEST_KMAC, KM_DEST_AES, KM_DEST_OTBN)
+DEST_NAME = {
+    KM_DEST_HMAC: "hmac",
+    KM_DEST_KMAC: "kmac",
+    KM_DEST_AES: "aes",
+    KM_DEST_OTBN: "otbn",
+}
+
 # Number of undefined command IDs to walk per run.
 N_ILLEGAL_IDS = 7
 
@@ -142,9 +159,11 @@ class SepKmCommandSetCfg:
         self.seed = seed
         rng = SepSeededRng(seed)
         self.gen_words = rng.choice(GEN_KEY_WORDS)
-        # The key is loaded for AES only, so any other engine is outside its
-        # permitted set and is a legal target for the refusal check.
-        self.bad_dest = rng.choice((KM_DEST_HMAC, KM_DEST_KMAC, KM_DEST_OTBN))
+        self.xfer_dest = rng.choice(LEGAL_DESTS)
+        # AES stays on the mask so the consume / shred / gone path is unchanged.
+        self.load_dest = KM_DEST_AES | self.xfer_dest
+        others = tuple(d for d in LEGAL_DESTS if (d & self.load_dest) == 0)
+        self.bad_dest = rng.choice(others)
         self.illegal_ids = self._pick_illegal(rng)
 
     @staticmethod
@@ -168,6 +187,8 @@ class SepKmCommandSetCfg:
     def summary(self) -> str:
         return (
             f"seed={self.seed} gen_words={self.gen_words} "
+            f"xfer_dest=0x{self.xfer_dest:02x}({DEST_NAME[self.xfer_dest]}) "
+            f"load_dest=0x{self.load_dest:02x} "
             f"bad_dest=0x{self.bad_dest:02x} "
             f"illegal_ids={[hex(i) for i in self.illegal_ids]}"
         )
@@ -251,7 +272,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             "test construction error: the two KAT keys encrypt the plaintext identically"
         )
 
-        handle_a = await self.km.key_load(key_words=list(KAT_KEY_A), dest=KM_DEST_AES)
+        handle_a = await self.km.key_load(key_words=list(KAT_KEY_A), dest=cfg.load_dest)
         rc, arg = await self.km.key_transfer(handle=handle_a, dest=KM_DEST_AES)
         assert rc == KM_RC_SUCCESS, f"CHK-XFER FAIL: CMD_KEY_TRANSFER rc={rc}"
         assert (arg & 0xFF) == handle_a and ((arg >> 8) & 0xFF) == KM_DEST_AES, (
@@ -268,6 +289,13 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info("CHK-XFER PASS: rc=0 and ct == AES(KAT_KEY_A, PT) golden")
 
+        # --- CHK-XFER-DEST: seed-selected mailbox dest -----------------------
+        # AES consume stays on CHK-XFER. This extra transfer is the dest cell
+        # sep_km_command_sideload_cg.cp_dest samples. The dest engine is
+        # released only for this beat so it can accept the key-bus write, then
+        # parked again. Consume of that dest stays on the sideload KAT.
+        await self._transfer_seeded_dest(handle_a, cfg)
+
         # --- CHK-DEST: the permitted destination set is enforced --------------
         # The destination is a legal engine bit, so the command passes argument
         # validation and is refused by the transfer itself: RC_FAILURE, not
@@ -277,7 +305,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         assert rc == KM_RC_FAILURE, (
             f"CHK-DEST FAIL: transfer to 0x{cfg.bad_dest:02x} returned rc={rc}, expected "
             f"{KM_RC_FAILURE} (RC_FAILURE) -- the key was loaded for "
-            f"0x{KM_DEST_AES:02x} only"
+            f"mask 0x{cfg.load_dest:02x}"
         )
         self.logger.info(
             "CHK-DEST PASS: transfer to 0x%02x refused with RC_FAILURE -- outside DEST_VALID",
@@ -458,3 +486,31 @@ class sep_km_command_set_rand_test(sep_base_test):
             "state, so the refusal checkers around here prove nothing"
         )
         self.logger.info("CHK-ALIVE PASS [%s]: CMD_STAT rc=0 and no latched recoverable error", tag)
+
+    async def _transfer_seeded_dest(self, handle: int, cfg: SepKmCommandSetCfg) -> None:
+        """CHK-XFER-DEST: transfer the loaded handle to the seed-selected dest."""
+        dest = cfg.xfer_dest
+        name = DEST_NAME[dest]
+        extra = dest != KM_DEST_AES
+        if extra:
+            await self.swrst.release(name)
+            if name == "otbn":
+                from seq_lib.sep_otbn_seq import SepOtbn
+
+                await SepOtbn(self).wait_idle("xfer-dest-release")
+        rc, arg = await self.km.key_transfer(handle=handle, dest=dest)
+        if extra:
+            await self.swrst.park(name)
+        assert rc == KM_RC_SUCCESS, (
+            f"CHK-XFER-DEST FAIL: CMD_KEY_TRANSFER dest=0x{dest:02x} ({name}) rc={rc}"
+        )
+        assert (arg & 0xFF) == handle and ((arg >> 8) & 0xFF) == dest, (
+            f"CHK-XFER-DEST FAIL: RETURN_ARG 0x{arg:08x} does not echo handle "
+            f"0x{handle:02x} and dest 0x{dest:02x}"
+        )
+        self.logger.info(
+            "CHK-XFER-DEST PASS: dest=0x%02x (%s) rc=0, load_dest=0x%02x",
+            dest,
+            name,
+            cfg.load_dest,
+        )

@@ -137,12 +137,12 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]
 
 [[tests]]
 # KM mailbox command set: generate, transfer, revoke-or-shred, illegal-to-error.
-# RANDCFG: generated key size, the out-of-policy destination and the undefined
-# command IDs come from the run seed. Boots the real KM firmware (rom_main) and
-# uses the AES engine as the consume witness, so a transfer is proven by an
-# independent AES-256-ECB golden rather than by a return code alone. Frontdoor
-# throughout. REAL fuse-sense (rom_main reads OTP at boot); +esrc_noise_force
-# makes the ring oscillators alive under Verilator.
+# RANDCFG: generated key size, the extra transfer dest (HMAC / KMAC / AES /
+# OTBN), the out-of-policy destination and the undefined command IDs come from
+# the run seed. AES stays the consume witness. The extra dest is a mailbox
+# transfer only; consume of HMAC / KMAC / OTBN stays on the sideload KATs.
+# Frontdoor throughout. REAL fuse-sense (rom_main reads OTP at boot);
+# +esrc_noise_force makes the ring oscillators alive under Verilator.
 name = "sep_km_command_set_rand_test"
 module = "km.sep_km_command_set_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }

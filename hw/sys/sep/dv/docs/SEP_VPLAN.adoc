@@ -581,7 +581,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_command_set_rand_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, KM path / golden
-|Produce, move and destroy a key over the KM mailbox; reject illegal, over-long and mis-framed commands. AES is the consume witness.
+|Produce, move and destroy a key over the KM mailbox; reject illegal, over-long and mis-framed commands. AES is the consume witness. RANDCFG extra transfer dest (HMAC / KMAC / AES / OTBN) writes one `sep_km_command_sideload_cg.cp_dest` cell per seed; daily reseed accumulates. The four sideload KATs remain the MUST-fill owners.
 |`sep_km_mailbox_protocol_rand_test`
 |no_cpu, +skip_fuse_sense, KM held
 |ocah_axi_vip
@@ -667,7 +667,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`. Fail-closed START without a valid key is proven on `sep_km_command_set_rand_test` CHK-GONE: after the engine's key is shredded it produces no output in a bounded window. Post-error recovery is not claimed.
 
 |KM mailbox command set
-|`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness; the three framing rejections with the values they carry; illegal-command and bad-length refusals; and a shredded engine refusing to start. The DRBG fault SOURCE is not claimed -- its organic conditions cannot be provoked from the SEP fabric and the KM halts rather than answering -- but the interrupt plumbing for that bit is graded on the vault vehicle through the architected `IRQ_SET` inject. The mailbox's own register surface is a separate entry, `sep_km_mailbox_protocol_rand_test`.
+|`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness; one seed-selected extra `CMD_KEY_TRANSFER` dest (HMAC / KMAC / AES / OTBN) for `sep_km_command_sideload_cg.cp_dest`; the three framing rejections with the values they carry; illegal-command and bad-length refusals; and a shredded engine refusing to start. One seed does not fill all four dest cells — daily reseed accumulates, and the four sideload KATs remain the MUST-fill owners. The DRBG fault SOURCE is not claimed -- its organic conditions cannot be provoked from the SEP fabric and the KM halts rather than answering -- but the interrupt plumbing for that bit is graded on the vault vehicle through the architected `IRQ_SET` inject. The mailbox's own register surface is a separate entry, `sep_km_mailbox_protocol_rand_test`.
 
 |KM mailbox protocol (FIFO status, over/underflow, flush)
 |`sep_km_mailbox_protocol_rand_test`. Empty-FIFO read and inbound overrun, both `SEP_CTRL` response modes, STATUS depth/full/empty against a golden, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush that empties both FIFOs without clearing the stickies. KM is held so firmware cannot drain or fault the FIFOs. The command-set vehicle stays the transport and is not re-credited here. KM-peer events (`flushed_by_km`, inbound underflow, outbound overflow, separators) stay on the KM IP mailbox vehicles.
@@ -5441,8 +5441,12 @@ at boot. Park OTBN, KMAC and HMAC, leave AES released as the consume witness, so
 a transferred key can only land where the test says it lands.
 . Bring entropy up strict, then release the KM and wait for `RESP_KM_READY`.
 . Generate a key for AES twice; check the handle and the echoed argument fields.
-. Load a known key, transfer it to AES, and encrypt: the ciphertext is compared
-against an independent AES-256-ECB golden.
+. Load a known key with `DEST_VALID = AES | xfer_dest`, transfer it to AES, and
+encrypt: the ciphertext is compared against an independent AES-256-ECB golden.
+. Transfer the same handle to the seed-selected dest (`xfer_dest`) in a
+dedicated mailbox beat. When that dest is not AES, release that engine for
+the key-bus write (OTBN waits idle after release), then park it again.
+Consume of HMAC / KMAC / OTBN stays on the sideload KATs.
 . Transfer the same handle to an engine outside its permitted set.
 . Shred the AES key, then load and transfer a second, distinct known key and
 encrypt again.
@@ -5451,10 +5455,13 @@ encrypt again.
 defined command with the wrong payload length. Probe with `CMD_STAT` after each
 refusal.
 
-*Randomization*: RAND-REP — generate / transfer / revoke-or-shred /
-illegal-to-error every seed. RANDCFG for the generated key size, the
-out-of-policy destination, and the undefined command IDs, which always include
-the four IDs immediately outside the defined runs.
+*Randomization*: RANDCFG. Generate / transfer / revoke-or-shred /
+illegal-to-error walk every seed. The generated key size, the extra transfer
+dest (one of HMAC / KMAC / AES / OTBN), the out-of-policy destination (outside
+`AES | xfer_dest`), and the undefined command IDs come from the run seed. The
+undefined IDs always include the five IDs immediately outside the defined
+runs. One seed writes one dest cell; the card does not claim all four dests
+in one invocation.
 
 *Scope*: sideload KATs stay consume proofs; this vehicle owns the mailbox command
 set. The mailbox PROTOCOL is its own entry: see
@@ -5475,6 +5482,8 @@ slot, so over this surface an erase always frees.
 |A second generate returns a different handle.
 |CHK-XFER
 |`CMD_KEY_TRANSFER` of a known loaded key succeeds and the AES ciphertext equals the independent golden.
+|CHK-XFER-DEST
+|A dedicated `CMD_KEY_TRANSFER` of that same handle to the seed-selected dest returns success and echoes the dest. Consume of HMAC / KMAC / OTBN is not claimed here.
 |CHK-DEST
 |A transfer to an engine outside the key's permitted set is refused with the failure code, not an argument-validation code.
 |CHK-SHRED
@@ -5498,6 +5507,11 @@ slot, so over this surface an erase always frees.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: Verilator `20260914_042328` seed 1 (OTBN dest). Named `CHK-* PASS`
+including CHK-XFER-DEST dest=0x08. VCS FCOV `20260914_042304` seed 1:
+`sep_km_generate_cg` 100%, `sep_km_command_sideload_cg.cp_dest` 75%
+(aes/otbn/hmac; kmac empty). One seed does not fill all four dest cells.
 
 *Anti-vacuity*: every frame is built with a correct header CRC-8, a correct
 declared length and a correct payload CRC-32C, so a refusal is a verdict on the
@@ -5918,6 +5932,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
 
 |Contracts not claimed (no vehicle in `all`)
-|KM emergency wipe (`KM_WIPE_CTRL.wipe_state`); CPU-firmware AES SRAM round-trip; AES CTR DECRYPT; ABR sign/verify, ML-KEM-1024, and key-vault seed; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
+|Phase 3 KM (no card this stage): emergency wipe (`KM_WIPE_CTRL.wipe_state`), KM to ABR seed / shared-key, KM `SW_RESET_N` warm-reset + `RESP_KM_READY`. Also: CPU-firmware AES SRAM round-trip; AES CTR DECRYPT; ABR sign/verify and ML-KEM-1024; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
 
 |===

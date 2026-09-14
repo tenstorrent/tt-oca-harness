@@ -106,7 +106,7 @@ human. Other members may fill a group in passing.
 |`sep_abr_keygen_cg` |`sep_abr_mldsa_keygen_kat_test`
 |`sep_esrc_edn_flow_cg` |`sep_esrc_e2e_smoke_test`; KM sink `sep_drbg_real_sink_multi_km_aes_test`
 |`sep_km_generate_cg` |`sep_km_command_set_rand_test`
-|`sep_km_command_sideload_cg` |the four `sep_km_{aes,hmac,kmac,otbn}_sideload_kat_test`
+|`sep_km_command_sideload_cg` |the four `sep_km_{aes,hmac,kmac,otbn}_sideload_kat_test` (MUST-fill). `sep_km_command_set_rand_test` also writes one seed-selected dest; daily reseed accumulates. One seed of that leaf does not fill all four cells.
 |`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash)
 |`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_host_csr_irq_rand_test`; DMA handshake `sep_spi_ot_dma_rx_test` / `sep_spi_ot_dma_tx_test`
 |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
@@ -351,8 +351,13 @@ bin needs the KM's own answer. Silence cannot score it.
 |===
 
 The consumer's use of the sideloaded key (the KAT digest) stays on the four
-`sep_km_*_sideload_kat_test` checkers. The full 15-command set, the vault slot
-walk, and the SRAM-exec path are Phase 2.
+`sep_km_*_sideload_kat_test` checkers. Those four leaves are the MUST-fill
+owners. `sep_km_command_set_rand_test` also writes one seed-selected dest
+in a dedicated `CMD_KEY_TRANSFER` beat. The sampler scores the dest word of
+the command frame, so a later-refused dest (CHK-DEST) can fill that cell
+without consume. One seed of that leaf does not fill all four cells; daily
+reseed accumulates. The full
+15-command set, the vault slot walk, and the SRAM-exec path are Phase 2.
 
 ==== `sep_dma_copy_hash_cg`
 
@@ -741,10 +746,10 @@ only that a legal access completed OKAY.
 `sep_debug_trace_cg`, `sep_efuse_map_geometry_cg`, `sep_efuse_field_value_cg`,
 `sep_lc_feat_ctrl_profile_cg`, `sep_lc_feature_bit_semantics_cg`,
 `sep_dtp_gating_ladder_cg`, `sep_feat_ctrl_export_cg`, `sep_lc_demotion_cg`,
-`sep_token_channel_cg`, `sep_sec_dis_activation_cg`, `sep_km_reset_domain_cg`,
+`sep_token_channel_cg`, `sep_sec_dis_activation_cg`,
 `sep_km_memory_boot_cg`, `sep_km_mailbox_transport_cg`, `sep_km_command_cg`
 (full 15-ID set), `sep_km_kpv_slot_cg`, `sep_km_key_registry_cg`,
-`sep_km_abr_shared_key_cg`, `sep_km_drbg_sampler_cg`, `sep_km_kmcsr_status_cg`,
+`sep_km_drbg_sampler_cg`, `sep_km_kmcsr_status_cg`,
 `sep_km_otp_readout_cg`, `sep_km_handover_cg`.
 
 ==== Error / fault groups
@@ -765,9 +770,18 @@ only that a legal access completed OKAY.
 `sep_lc_demote_lock_cg`, `sep_token_fault_cg`, `sep_sec_dis_robustness_cg`,
 `sep_km_integrity_fault_cg`, `sep_km_mailbox_fault_cg`,
 `sep_km_frame_validation_cg`, `sep_km_cmd_reject_cg`,
-`sep_km_kpv_locked_access_cg`, `sep_km_vault_wipe_cg`,
+`sep_km_kpv_locked_access_cg`,
 `sep_km_exec_protection_cg`, `sep_km_drbg_fault_cg`,
 `sep_km_fault_report_cg`, `sep_km_secret_nonexposure_cg`.
+
+=== Phase 3 — named set
+
+Not instrumented. No Phase 3 VPLAN card is required at this stage. These
+names record subsystem KM vehicles that are not Phase 1 or Phase 2.
+
+`sep_km_reset_domain_cg` (SEP `SW_RESET_N` KM bit, `RESP_KM_READY` after
+release), `sep_km_abr_shared_key_cg` (KM to ABR seed / shared-key),
+`sep_km_vault_wipe_cg` (`KM_WIPE_CTRL.wipe_state`).
 
 === Exclusions
 
