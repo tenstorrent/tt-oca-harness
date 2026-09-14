@@ -15,6 +15,7 @@ from .smc_addr_map import (
     smc_indexed_addr,
 )
 from .smc_base_test_seq import smc_base_test_seq
+from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA
 
 
 class SmcCsrSeq(smc_base_test_seq):
@@ -73,19 +74,23 @@ class SmcCsrSeq(smc_base_test_seq):
         for name, addr, _expected in regs:
             await self.csr_read_allow_error(name, addr)
 
-    # AXI error-slave data signature returned by the boundary/stub responders
-    # (prim_axi_lite_err_slv macro terminators, efuse stub, etc.).
-    ERR_SLAVE_SIGNATURE = 0xBADCAB1E
+    # Data word an AXI error slave returns alongside its error response. The
+    # one place the value is specified is the eFuse architecture document
+    # (``hw/ip/efuse/doc/architecture.adoc``, JTAG access control: "When a
+    # request is blocked, the error slave returns an error response with data
+    # value 0xbadcab1e"); ``EFUSE_BLOCKED_READ_DATA`` is the DV-owned copy of
+    # that sentence, and the error-slave sweeps use the same constant here.
+    ERR_SLAVE_SIGNATURE = EFUSE_BLOCKED_READ_DATA
 
     async def csr_read_err_signature(
         self, name: str, addr: int, length: int = 4, prot: int = 0
     ) -> int:
         """Read a window terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
-        complete with an error response (SLVERR/DECERR) AND return the
-        0xBADCAB1E signature (default ``prim_axi_lite_err_slv`` RESP_DATA).
-        Used for TB-side terminators (e.g. DTP CSR) and in-RTL stubs that keep
-        that signature."""
+        complete with an error response (SLVERR/DECERR) AND return
+        ``ERR_SLAVE_SIGNATURE``, the data word the eFuse architecture document
+        specifies for a blocked request. Used for TB-side terminators (e.g. DTP
+        CSR) and design-side error slaves that return that signature."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
