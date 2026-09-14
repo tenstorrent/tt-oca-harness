@@ -53,12 +53,12 @@ JTAG2AXI_CAPS_DATA_SIZE_8B = 3
 JTAG2AXI_CAPS_BUS_AXI4 = 0
 JTAG2AXI_CAPS_BUS_AXI4_LITE = 1
 
-# hw/sys/smu/doc/SMU_SPEC.md, "Subsystem configuration" table:
-# SMC_OTP_RD/WR_PL_DEPTH and SMC_RD/WR_PL_DEPTH default 3; the SEP OTP
-# depths are fixed at 3.
+# doc/integrator/src/smu.adoc, "SMU Default Parameters": SMC_OTP_RD/WR_PL_DEPTH
+# and SMC_RD/WR_PL_DEPTH default to 2'h3; the SEP OTP depths are fixed at 3.
 SMU_JTAG2AXI_RD_PL_DEPTH = 3
 SMU_JTAG2AXI_WR_PL_DEPTH = 3
-# Same document, "Specifications" table: 56-bit address, 64-bit data fabric.
+# doc/integrator/src/smu.adoc, "Specifications": 56-bit address, 64-bit data
+# fabric.
 # The fabric bridge is the AXI4 instance and the OTP bridges the AXI-Lite
 # instances of the PTAP "Module Hierarchy" table; the OTP word is 32 bits
 # (hw/ip/efuse/doc/interface.adoc) and the eFuse AXI-Lite interface is
@@ -85,8 +85,10 @@ def pack_jtag2axi_caps(
     )
 
 
-# IDCODE with every SMU_SPEC.md IDCODE_* field at its default 0: only the
-# architecture.adoc "ID Code" marker bit (bit 0, always 1) is set.
+# IDCODE with every JTAG_IDCODE_* parameter at the default given in
+# doc/integrator/src/smu.adoc, "SMU Default Parameters" (MFR_ID 11'h000,
+# PART_NUM 16'h0000, SI_REV 4'h0): only the architecture.adoc "ID Code"
+# marker bit (bit 0, always 1) is set.
 DTP_DEFAULT_IDCODE = 0x0000_0001
 DTP_IR_IDCODE = dtp_ir_opcode("IDCODE")
 DTP_IR_DEBUG_CONTROL = dtp_ir_opcode("DEBUG_CONTROL")

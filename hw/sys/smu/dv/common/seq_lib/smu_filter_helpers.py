@@ -52,7 +52,7 @@ FILTER_READY_POLLS = 64
 FILTER_READY_STEP = 4
 
 
-# hw/common/axi/axi_filter/doc/index.adoc, "Address Range Granule": with
+# hw/ip/axi_filter/doc/index.adoc, "Address Range Granule": with
 # allow_burst=1 the granule is 4 KB and address bits [11:0] are ignored;
 # START_ADDR widens down and END_ADDR widens up to the granule, and the
 # widened values are written back into START_ADDR/END_ADDR when both land in

@@ -16,8 +16,9 @@ from dtp_types import DTP_IR_WIDTH, DtpJtagInstr
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 
 PTAP_IR_WIDTH = DTP_IR_WIDTH
-# Every SMU_SPEC.md IDCODE_* field defaults to 0; only the architecture.adoc
-# "ID Code" marker bit (bit 0, always 1) is set.
+# Every JTAG_IDCODE_* parameter defaults to 0 in doc/integrator/src/smu.adoc,
+# "SMU Default Parameters"; only the architecture.adoc "ID Code" marker bit
+# (bit 0, always 1) is set.
 PTAP_DEFAULT_IDCODE = 0x0000_0001
 
 #: JTAG2AXI CAPS geometry register width (architecture.adoc, bits 13:0).

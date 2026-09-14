@@ -156,7 +156,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-DTP-CLKSTOP-AGG-S3",
             "CHK-DTP-CLKSTOP-AGG-S3",
-            "Port [0] reserved for SMC participates in SMC CLA handshake",
+            "DTP[0] unchanged by the TB clock-stop pins while DTP[8:1] follows them",
         ),
         (
             "CHK-NONVAC",

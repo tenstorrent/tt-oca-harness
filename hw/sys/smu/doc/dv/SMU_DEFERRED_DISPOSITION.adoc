@@ -5,12 +5,16 @@
 == SMU deferred and OUT disposition
 
 This chapter has two parts. The table below is the catalog of every SMU test
-name outside the SEP=0 credit set `sep0_all`; <<smu-bench-standins>> is the
-record of every stand-in, force, skip and waiver on a proof path of an
-enrolled test. The table first. Two kinds of name are in it. Eleven have a test body and are
+name classified deferred or OUT, and none of those names is in the SEP=0
+credit set `sep0_all`; <<smu-bench-standins>> is the record of every
+stand-in, force, skip and waiver on a proof path of an enrolled test. The
+table first. Two kinds of name are in it. Eleven have a test body and are
 enrolled in `testlists/wrapper.toml`; their bucket says which group holds
 them and why that group is not credit. The rest have no test body in this
-tree and are not reportable as PASS.
+tree and are not reportable as PASS. Enrolled names outside `sep0_all` that
+carry neither classification — the lifecycle, debug-gating, chain and
+elaboration leaves — are not in this table: each is carded in
+`SMU_VPLAN.adoc` and enrolled in a named group of `testlists/wrapper.toml`.
 
 Buckets:
 
