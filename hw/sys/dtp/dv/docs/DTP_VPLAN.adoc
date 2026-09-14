@@ -10,7 +10,7 @@
 |===
 |Field |Value
 |Design Under Test |`dtp`
-|Repository |`tt-oca`
+|Repository |`tt-oca-harness`
 |Project |OCAH
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator

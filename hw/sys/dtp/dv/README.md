@@ -1,26 +1,35 @@
 # DTP OCAH Open-Source TB
 
 OCAH open-source **PyUVM** DV testbench for **DTP (Debug & Test Ports)** in the
-`tt-oca` repository. DTP is the
+`tt-oca-harness` repository. DTP is the
 subsystem that hosts the primary JTAG TAP (IEEE 1149.1), the JTAG2AXI debug
 bridges, the iJTAG networks (IEEE 1687), and the cross-trigger network (CTP/CTM).
 It follows the canonical `hw/sys/<system>/dv/` layout and runs on Verilator.
 
-The TB wraps unified OCAH BFMs in a UVM hierarchy:
+The cocotb realization composes the shared OCAH VIPs in a PyUVM hierarchy;
+the SV-UVM twin and the differences between the two realizations are in
+`docs/DTP_TB_ARCH.adoc`:
 
 ```
-dtp_<scenario>_test (uvm_test, @pyuvm.test)
+dtp_<scenario>_test (@pyuvm.test, on dtp_base_test from the ocah_lib OcahTest base)
   └─ DtpEnv
-       ├─ DtpJtagAgent   sequencer + driver (wraps ocah_jtag_vip) + analysis port
-       ├─ DtpAxiAgent    ocah_axi_vip OcahAxiSlaveAgent responder + backdoor
-       └─ DtpScoreboard  IDCODE / JTAG2AXI data-integrity checks
-  seq_lib/ dtp_base_test_seq → dtp_sanity_test_seq, dtp_jtag_idcode_test_seq,
-           dtp_jtag2axi_smc_axi_wr_test_seq, dtp_jtag2axi_smc_axi_rd_test_seq
+       ├─ DtpJtagAgent      sequencer + DtpJtagDriver over the ocah_jtag_vip engine
+       ├─ DtpAxiAgent       ocah_axi_vip slave agents and passive monitors on the three
+       │                    JTAG2AXI bridge ports, with memory backdoor
+       ├─ DtpXtrigAgent     ocah_axi_vip AXI-Lite master on the CSR port + CTP/CTM pin BFM
+       ├─ DtpStapDsAgent    ocah_jtag_vip slave devices behind the STAP host ports
+       ├─ DtpScoreboard     IDCODE and JTAG2AXI data-integrity checks on the driver's
+       │                    completed-item stream
+       └─ DtpAxiScoreboard  shared ocah_axi_vip reference models and scoreboard, armed
+                            by the JTAG2AXI tests with required evidence IDs
+  seq_lib/ dtp_base_test_seq → dtp_<family>_base_test_seq → dtp_<scenario>_test_seq
 ```
 
-Tests inherit `dtp_base_test` (env build + clock/reset + `start_seq` helper);
-sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test has
-its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
+Tests inherit `dtp_base_test` (env build, the `bring_up()` reset ladder, the
+looped `run_scenario()`); scenario sequences inherit a family base on
+`dtp_base_test_seq` (common TAP building blocks). A single-scenario test pairs
+`tests/<name>.py` with `seq_lib/<name>_seq.py`; a multi-scenario family shares
+one parameterized sequence.
 
 - `docs/` — public verification plan, TB architecture, functional-coverage plan, and the requirement-to-test matrix (`docs/DTP_SCOPE_TRACEABILITY.adoc`). The design specification and the register maps are designer-owned: `../doc/` (DTP integration plus the JTAG and cross-trigger IP chapters) and the SystemRDL under `hw/ip/cross_trigger/*/regs/`.
 - `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, one framework-neutral core shared by the cocotb and SV-UVM flows) and the `dtp_tb_if`, `dtp_scan_if`, and `dtp_xtrig_if` TB interfaces.
@@ -28,7 +37,7 @@ its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
-- `dtp_sim_cfg.toml` — `tt-oca`-local simulation defaults, modes, bender targets, tool knobs.
+- `dtp_sim_cfg.toml` — the DUT's simulation defaults, run modes, Bender targets, and tool knobs.
 - `formal/` — formal properties on the TAP controller (`props/`), the open-path SymbiYosys task file and reset environment (`fpv/sby/`), and the generated filelist and work directories (`build/`); see `hw/common/dv/docs/formal-property-style.adoc`.
 
 ## BFM Policy
@@ -181,7 +190,7 @@ python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --co
 
 ### SystemVerilog UVM framework (`--framework uvm`)
 
-The SV-UVM smoke flow shares this DV root, sim config, and testlist with the
+The SV-UVM flow shares this DV root, sim config, and testlist with the
 cocotb flow: `dtp_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay
 (same Bender RTL recipe and defines), and `--dut dtp --framework uvm` selects
 it. A testlist scenario carries both implementations in its `module` binding
