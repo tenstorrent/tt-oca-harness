@@ -26,7 +26,7 @@ This documentation is organized into the following sections:
 ifndef::release[]
 * xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
-* xref:about-ocah.adoc[About OCAH] - Learn about OCAH motivation, overview, and use cases
+* xref:about-ocah.adoc[About OCAH] - Learn about OCAH motivation and overview
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
 endif::backend-html5[]
 

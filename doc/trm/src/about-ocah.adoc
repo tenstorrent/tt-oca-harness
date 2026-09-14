@@ -11,5 +11,3 @@
 include::motivation.adoc[]
 
 include::oca.adoc[]
-
-include::use_cases.adoc[]
