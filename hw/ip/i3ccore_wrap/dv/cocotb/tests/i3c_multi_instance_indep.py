@@ -57,11 +57,9 @@ async def test_multi_instance_indep(dut):
     assert b2 == pat_a, f"instance1 swap wrong: 0x{b2:08X} != 0x{pat_a:08X}"
 
     # --- Directional leak checks: victim written FIRST, aggressor SECOND ---
-    # Both phases above write instance 0 then instance 1 then read, so an instance-0
-    # write that also lands in instance 1 is overwritten by the instance-1 write before
-    # the read samples it. That makes the "instance0 write must not disturb instance1"
-    # direction -- the one the docstring names -- unfalsifiable. Ordering the writes the
-    # other way round is what makes each direction observable.
+    # Writing instance 0 then instance 1 hides a 0->1 leak: the instance-1 write
+    # overwrites the leaked value before the read samples it. Writing the victim
+    # first makes each direction observable.
 
     # Direction A: does writing instance 0 disturb instance 1?
     await helper.write(TGT_BASE + QUEUE_THLD_CTRL, pat_a)          # victim first

@@ -6,7 +6,7 @@
 
 Directed-random CCC ordering: repeatedly pick a CCC from the supported set in
 random order and issue it, stressing the command FSM. SET values are drawn from
-the full legal range (not a 3-value pool), and SET/GET round-trips self-check.
+the full legal range, and SET/GET round-trips self-check.
 
 Uses the shared constrained-random framework (constrained_random + i3c_rand):
 seed from +seed=<n> / SEED=<n> / default, logged, so regression runs vary the

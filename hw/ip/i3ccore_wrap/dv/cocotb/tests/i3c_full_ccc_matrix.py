@@ -10,8 +10,8 @@ counterpart exists: GETBCR, GET/SET MWL, GET/SET MRL, RSTACT.
 Constrained-random: the SET values for MWL/MRL/IBI-payload are drawn from the
 full legal range (shared framework, seed from +seed/SEED/default) and verified
 by the GET counterpart each time — the SET/GET round-trip is the scoreboard, so
-randomizing the value is free coverage of the length-limit datapath. RSTACT is
-kept directed (defining-byte semantics are fixed).
+the randomized value also covers the length-limit datapath. RSTACT is kept
+directed (defining-byte semantics are fixed).
 
 Note: the i3c_api GET helpers return tuples — getbcr/getmwl -> (ok, value),
 getmrl -> (ok, mrl, ibi_payload), set*/rstact -> (ok, resp).

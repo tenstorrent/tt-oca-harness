@@ -11,7 +11,7 @@ Threshold encoding note: the RTL threshold is in FIFO *entries* (4 bytes each),
 mapping reg value t -> (1 << (t+1)) entries:
     t=0 -> 2 entries (8 B), t=1 -> 4 (16 B), t=2 -> 8 (32 B), t=3 -> 16 (64 B).
 
-We sweep t = 0..2 only. The 32-byte transfer is exactly 8 entries, so t=0/1/2
+The sweep covers t = 0..2 only. The 32-byte transfer is exactly 8 entries, so t=0/1/2
 thresholds (2/4/8 entries) are reachable and the RX-data threshold interrupt
 fires and drives the drain as intended. t=3 needs >=16 entries (>=64 B) before
 the threshold can fire, so a 32-byte transfer cannot exercise it.

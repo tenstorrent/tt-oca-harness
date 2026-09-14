@@ -27,7 +27,7 @@ XOR-ed into the shared bus.
 
 Two independent checkers validate the result:
 
-  1. TARGET_ERR_CNT_TE2 (offset 0x244) increments by exactly 1.
+  1. TARGET_ERR_CNT_TE2 increments by exactly 1.
   2. The corrupted byte -- and every byte after it in the same transfer -- must NOT
      reach the target RX FIFO because parity_err suppresses RX FIFO writes until the
      target returns idle. Injecting into byte k must leave exactly k bytes received.
@@ -162,7 +162,7 @@ async def _inject_bit_flip(dut, byte_index, bit_index, log):
             break
         prev = cur
 
-    # Count up to the edge just before the one we want to corrupt.
+    # Count up to the edge before the targeted bit slot.
     edges = 0
     while edges < target_edge - 1:
         while bus_scl() == 1:
@@ -261,7 +261,7 @@ async def test_error_parity_inject(dut):
     got_resp, resp, err = await _wait_response(helper, ctrl, tb.log)
     await injector
 
-    # Belt and braces: the injection hook must be back at rest.
+    # The injection hook must be back at rest before the next transfer.
     assert int(dut.sda_corrupt.value) == 0, "sda_corrupt left asserted"
 
     n_bad, data_bad = await _drain_target_rx(helper, tgt, tb.log)
@@ -272,7 +272,7 @@ async def test_error_parity_inject(dut):
     assert bad_cnt == clean_cnt + 1, (
         f"TE2 counter went {clean_cnt} -> {bad_cnt}, expected exactly one increment. "
         f"A parity mismatch on data byte {INJECT_BYTE} must raise te2_err_priv_wr "
-        f"(i3c_target_fsm.sv:745) and tti.sv:709-710 increments TARGET_ERR_CNT_TE2 on it."
+        f"in i3c_target_fsm, which increments TARGET_ERR_CNT_TE2 in tti."
     )
 
     # Checker 2: parity_err remains asserted until target idle and suppresses RX FIFO

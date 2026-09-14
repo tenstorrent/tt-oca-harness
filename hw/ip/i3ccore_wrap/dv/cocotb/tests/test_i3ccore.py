@@ -579,7 +579,6 @@ WRITABLE_REGISTERS = [
 
     # -------------------------------------------------------------------------
     # EC Registers - Target Transaction Interface (target_transaction_interface.rdl)
-    # The generated register map places TTI at 0x200.
     # -------------------------------------------------------------------------
     # TTI_CONTROL @ 0x1C4 - IBI_RETRY_NUM[15:13], IBI_EN[12], CRR_EN[11], HJ_EN[10]
     (0x1C4, 0x0000FC00, "TTI_CONTROL", "target_transaction_interface.rdl"),
@@ -598,7 +597,6 @@ WRITABLE_REGISTERS = [
 
     # -------------------------------------------------------------------------
     # EC Registers - SoC Management Interface (soc_management_interface.rdl)
-    # The generated register map places SoCMgmtIf at 0x300.
     # -------------------------------------------------------------------------
     # SOC_MGMT_CONTROL @ 0x204
     (0x204, 0xFFFFFFFF, "SOC_MGMT_CONTROL", "soc_management_interface.rdl"),

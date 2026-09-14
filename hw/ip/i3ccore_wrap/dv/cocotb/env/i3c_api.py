@@ -1634,7 +1634,7 @@ HC_ERR_CMD_SEQ_TIMEOUT_STAT_BIT = _bit(IntrStatus, "hc_err_cmd_seq_timeout_stat"
 SCHED_CMD_MISSED_TICK_STAT_BIT = _bit(IntrStatus, "sched_cmd_missed_tick_stat")
 
 # Ordered (name, bit) pairs for the five general Host Controller interrupt
-# events; the card's decode walk iterates exactly this set.
+# events; the interrupt decode walk iterates exactly this set.
 HC_INTR_BITS = (
     ("HC_INTERNAL_ERR_STAT", HC_INTERNAL_ERR_STAT_BIT),
     ("HC_SEQ_CANCEL_STAT", HC_SEQ_CANCEL_STAT_BIT),

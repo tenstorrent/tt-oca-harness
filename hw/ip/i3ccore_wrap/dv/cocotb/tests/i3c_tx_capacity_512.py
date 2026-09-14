@@ -162,4 +162,4 @@ async def test_tx_capacity_512(dut):
         assert got >= n, f"[{name}] short read: {got}/{n} bytes"
         assert match, f"[{name}] data mismatch ({n} bytes)"
 
-    tb.log.info("All legs byte-exact -- capacity gate not limiting (RTL fixed?)")
+    tb.log.info("All legs byte-exact: every response completed at its full length")

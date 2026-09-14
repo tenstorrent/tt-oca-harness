@@ -29,8 +29,8 @@ async def test_max_length_transfer(dut):
     await bring_up_and_assign(ctrl, tgt)
 
     # MWL/MRL are what make the 256-byte boundary leg legal, so a silently failed CCC
-    # would leave the target at its reset envelope while we keep calling the result a
-    # boundary proof. set_ccc reports failure only via a returned flag.
+    # would leave the boundary legs running against the target's reset envelope.
+    # set_ccc reports failure only via a returned flag.
     ok, resp = await ctrl.setmwl(MWL, dat_idx=0)
     assert ok, f"SETMWL({MWL}) failed resp=0x{resp:08X}"
     ok, resp = await ctrl.setmrl(MWL, ibi_payload_size=0xFF, dat_idx=0)

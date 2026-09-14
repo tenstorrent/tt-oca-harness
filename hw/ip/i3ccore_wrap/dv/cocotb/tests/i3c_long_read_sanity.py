@@ -57,7 +57,7 @@ async def test_long_read_sanity(dut):
     tb = TB(dut)
 
     tb.log.info("=" * 60)
-    tb.log.info("I3C Long Read Sanity Test (200 bytes)")
+    tb.log.info(f"I3C Long Read Sanity Test ({READ_LENGTH} bytes)")
     tb.log.info("=" * 60)
 
     await Timer(500, units="ns")

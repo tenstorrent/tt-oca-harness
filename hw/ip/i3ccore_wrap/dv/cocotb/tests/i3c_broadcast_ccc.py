@@ -13,7 +13,7 @@ Bring-up still uses SETDASA so the target has a Dynamic Address before
 RSTDAA; after RSTDAA the test asserts DYNAMIC_ADDR_VALID clears.
 
 Constrained-random: the ENEC/DISEC *event defining byte* is randomized (shared
-framework, seed from +seed/SEED/default) instead of a fixed 0x01. Per MIPI I3C
+framework, seed from +seed/SEED/default). Per MIPI I3C
 the defined event bits are ENINT/IBI (bit0), ENCR (bit1) and ENHJ (bit3); a
 random subset (at least one bit, only legal bits) is generated so the defining-
 byte datapath sees the full legal event-mask space. DISEC mirrors whatever
