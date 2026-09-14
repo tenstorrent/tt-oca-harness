@@ -23,13 +23,14 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib import stages  # noqa: E402
+from runlib import cli, stages  # noqa: E402
 from runlib.config import (  # noqa: E402
     load_simulators,
     render_formal_argv,
     validate_formal_argv_template,
     validate_native_config_shape,
 )
+from runlib.duts import resolve_dut  # noqa: E402
 from runlib.logparse import validate_parser_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
 
@@ -351,6 +352,44 @@ class FormalDryRunStageTest(unittest.TestCase):
         self.assertEqual((result.stage, result.item, result.status), ("formal", "dtp_fpv", "PASS"))
         self.assertIsNone(result.formal)
         self.assertIsNone(result.parser)
+
+
+class FormalStageSelectionTest(unittest.TestCase):
+    """`selected_stages` on a formal flow: the filelist stage precedes the proof when declared."""
+
+    def stages(self, raw: dict, **overrides) -> list[str]:
+        values = {
+            "cov": False,
+            "stage": None,
+            "build_only": False,
+            "run_only": False,
+            "regress": False,
+        }
+        values.update(overrides)
+        return cli.selected_stages(formal_flow("sby", raw), Namespace(**values))
+
+    def test_declared_filelist_stage_runs_before_the_proof(self) -> None:
+        raw = {
+            "native": {"stages": {"flist": {"kind": "filelist"}, "formal": {"kind": "formal_run"}}}
+        }
+        self.assertEqual(self.stages(raw), ["flist", "formal"])
+        self.assertEqual(self.stages(raw, build_only=True), ["flist"])
+        self.assertEqual(self.stages(raw, run_only=True), ["formal"])
+
+    def test_profile_without_a_filelist_stage_runs_the_proof_alone(self) -> None:
+        raw = {"native": {"stages": {"formal": {"kind": "formal_run"}}}}
+        self.assertEqual(self.stages(raw), ["formal"])
+
+    def test_checked_in_dtp_formal_config_plans_both_stages(self) -> None:
+        flow = resolve_dut(REPO_ROOT, "dtp", mode="formal")
+        self.assertEqual(flow.kind, "fv")
+        self.assertEqual(
+            cli.selected_stages(
+                flow,
+                Namespace(cov=False, stage=None, build_only=False, run_only=False, regress=False),
+            ),
+            ["flist", "formal"],
+        )
 
 
 class FormalConfigShapeTest(unittest.TestCase):

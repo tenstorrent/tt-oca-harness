@@ -2189,7 +2189,9 @@ def selected_stages(flow: Flow, args: argparse.Namespace) -> list[str]:
             stage for stage in ("flist", "hdl_compile", "elaborate", "sim") if stage in available
         ]
     elif flow.kind == "fv" and "formal" in available:
-        requested = ["formal"]
+        # A formal config that declares a filelist stage regenerates the filelist its task file
+        # reads before every proof, the way a simulation flow does before its compile.
+        requested = [stage for stage in ("flist", "formal") if stage in available]
     else:
         requested = [
             stage for stage in ("flist", "hdl_compile", "elaborate", "sim") if stage in available
