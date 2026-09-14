@@ -7487,12 +7487,7 @@ Write 0 to invalidate the current key.</ipxact:description>
         <ipxact:name>hmac_wrapper_key</ipxact:name>
         <ipxact:displayName>HMAC Wrapper Key Registers</ipxact:displayName>
         <ipxact:description>Key storage registers for the HMAC sideload interface.
-Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.
-KEY_SHARE0[0] is the first 32-bit word (offset 0). For a 256-bit
-sideload the HMAC core consumes the key most-significant word first:
-KEY_SHARE0[7] is the most-significant word of the 256-bit key and
-KEY_SHARE0[0] is the least-significant. Each word is big-endian on
-the byte lane.</ipxact:description>
+Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.</ipxact:description>
         <ipxact:baseAddress>'h1b000</ipxact:baseAddress>
         <ipxact:range>'h44</ipxact:range>
         <ipxact:width>32</ipxact:width>

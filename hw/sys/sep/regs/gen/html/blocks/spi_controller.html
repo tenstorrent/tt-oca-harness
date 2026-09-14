@@ -10,7 +10,7 @@
 <h2>Register List:</h2>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x0</td><td><a href="#INTR_STATUS">INTR_STATUS</a></td><td>R</td><td>Interrupt Status Register. Each bit is<br>(source | INTR_TEST) &amp; INTR_ENABLE. INTR_ENABLE gates the<br>status bit itself, not only the interrupt output.</td></tr>
+<tr><td>0x0</td><td><a href="#INTR_STATUS">INTR_STATUS</a></td><td>R</td><td>Interrupt Status Register</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
 <tr><td>0x8</td><td><a href="#INTR_TEST">INTR_TEST</a></td><td>RW</td><td>Interrupt Test Register</td></tr>
 <tr><td>0x10</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
@@ -45,9 +45,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>SPI_EVENT</td><td>RW</td><td>0x0</td><td>SPI Event Interrupt Test. Writing `1` to this bit forces the SPI Event<br>Interrupt and writing `0` releases it. The force appears in INTR_STATUS<br>only while INTR_ENABLE.SPI_EVENT is set.</td></tr>
+<tr><td>4</td><td>SPI_EVENT</td><td>RW</td><td>0x0</td><td>SPI Event Interrupt Test. Writing `1` to this bit forces the SPI Event<br>Interrupt and writing `0` releases it.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>ERROR</td><td>RW</td><td>0x0</td><td>Error Interrupt Test. Writing `1` to this bit forces the Error Interrupt and<br>writing `0` releases it. The force appears in INTR_STATUS only while<br>INTR_ENABLE.ERROR is set.</td></tr>
+<tr><td>0</td><td>ERROR</td><td>RW</td><td>0x0</td><td>Error Interrupt Test. Writing `1` to this bit forces the Error Interrupt and<br>writing `0` releases it.</td></tr>
 </table>
 <h3 id="CTRL">CTRL</h3>
 <table>
