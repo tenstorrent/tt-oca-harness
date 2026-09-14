@@ -19,7 +19,6 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_km_mailbox_seq import (
     KM_DEST_AES,
-    KM_RC_SUCCESS,
     KM_RESP_UNRECOVERABLE_FAULT,
     SepKmMailbox,
 )
