@@ -462,7 +462,7 @@ until eFuse sensing completes during boot. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.
 
 [[sep-trng-reset]]
-===== Resetting the TRNG
+=== Resetting the TRNG
 
 The TRNG reset bit controls one reset domain containing the entropy source,
 CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three

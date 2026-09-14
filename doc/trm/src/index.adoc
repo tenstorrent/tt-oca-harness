@@ -31,10 +31,18 @@ ifndef::release[]
 * xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
-* xref:smu:index.adoc[System Management Unit] - SMU composition, AXI crossbar and child subsystems
-** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
-** xref:sep:index.adoc[Security Processor (SEP)]
-** xref:smc:index.adoc[System Management Controller (SMC)]
+** xref:overview.adoc[Platform Overview]
+** xref:memory_map.adoc[OCAH Memory Map]
+** xref:power_domains.adoc[Power Domains]
+** xref:clock_domains.adoc[Clock Domains]
+** xref:reset.adoc[Reset]
+* OCAH Platform Components - The subsystems that make up the OCAH platform
+** xref:smu:index.adoc[System Management Unit (SMU)] - SMU composition, AXI crossbar and child subsystems
+*** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
+*** xref:sep:index.adoc[Security Processor (SEP)]
+*** xref:smc:index.adoc[System Management Controller (SMC)]
+** xref:smn.placeholder.adoc[System Management Network (SMN)]
+** xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
 * xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
 * xref:dashboard.adoc[Verification Dashboard]
 endif::backend-html5[]
@@ -45,9 +53,15 @@ ifndef::release[]
 include::revision.adoc[]
 endif::release[]
 = OCAH Platform Architecture
+// Architecture landing page at chapter level, followed by its topic pages.
 include::architecture.adoc[leveloffset=+1]
+include::overview.adoc[leveloffset=+2]
+include::memory_map.adoc[leveloffset=+2]
+include::power_domains.adoc[leveloffset=+2]
+include::clock_domains.adoc[leveloffset=+2]
+include::reset.adoc[leveloffset=+2]
 
-= System Management Unit
+= OCAH Platform Components
 // SMU landing page: = Title → == (chapter)
 include::../../../hw/sys/smu/doc/index.adoc[leveloffset=+1]
 
@@ -73,9 +87,10 @@ include::../../../hw/sys/sep/doc/threat_model.adoc[leveloffset=+3]
 include::../../../hw/sys/sep/doc/attack_countermeasures.adoc[leveloffset=+3]
 include::../../../hw/sys/sep/doc/overview.adoc[leveloffset=+2]
 include::../../../hw/sys/sep/doc/fabric.adoc[leveloffset=+2]
-include::../../../hw/common/axi/axi_filter/doc/index.adoc[leveloffset=+2]
+include::../../../hw/ip/axi_filter/doc/index.adoc[leveloffset=+2]
 include::../../../hw/sys/sep/doc/memory_map.adoc[leveloffset=+2]
 include::../../../hw/sys/sep/doc/cpu.adoc[leveloffset=+2]
+include::../../../hw/sys/sep/doc/rom.adoc[leveloffset=+2]
 include::../../../hw/sys/sep/doc/interrupts.adoc[leveloffset=+2]
 include::../../../hw/sys/sep/doc/crypto.adoc[leveloffset=+2]
 include::../../../hw/sys/sep/doc/periphs.adoc[leveloffset=+2]
@@ -100,8 +115,7 @@ include::../../../hw/sys/smc/doc/zeroer.adoc[leveloffset=+2]
 include::../../../hw/sys/smc/doc/scan_protection.adoc[leveloffset=+2]
 include::../../../hw/sys/smc/doc/memmap.adoc[leveloffset=+2]
 
-= OCAH Platform Components
-// SMN/AoU: placeholder Setext headings render as == chapters at offset 0.
-include::smn.placeholder.adoc[leveloffset=0]
+// SMN/AoU landing pages: = Title -> == (chapter).
+include::smn.placeholder.adoc[leveloffset=+1]
 include::aou.adoc[leveloffset=+1]
 endif::backend-pdf[]

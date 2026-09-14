@@ -27,6 +27,7 @@ ifdef::backend-html5[]
 * xref:memory_map.adoc[Memory Map and Register Reference] -- address regions and
   generated register tables.
 * xref:cpu.adoc[CPU Subsystem] -- VeeR EL2 configuration, boot, DMA, and alarms.
+* xref:rom.adoc[Boot ROM] -- immutable boot firmware and ROM architecture.
 * xref:interrupts.adoc[Interrupts] -- PIC assignments and non-PIC interrupt paths.
 * xref:crypto.adoc[Cryptographic Subsystem] -- cryptographic accelerators,
   entropy, and key management.

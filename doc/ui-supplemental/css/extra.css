@@ -229,6 +229,22 @@
     color: var(--oca-gold) !important;
 }
 
+/* Keep the desktop navigation within the viewport while the menu tree uses
+   its existing internal scroll area. */
+@media screen and (min-width: 1024px) {
+    .nav-container {
+        align-self: flex-start;
+        position: sticky;
+        top: 3.5rem;
+        height: calc(100vh - 3.5rem);
+    }
+
+    .nav {
+        position: static;
+        height: 100%;
+    }
+}
+
 /* Component/version switcher panel (".nav-panel-explore") -- shows when
    toggled from the context bar below the page nav tree. */
 .nav-panel-explore {
