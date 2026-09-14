@@ -121,8 +121,8 @@ class SepSenseMonitor:
         self.log = test.logger
         self.sensed = Event()
         self.errors: list[str] = []
-        self.presense: dict[str, int] | None = None
-        self.presense_at: tuple[int, float] | None = None
+        self.pre_sense: dict[str, int] | None = None
+        self.pre_sense_at: tuple[int, float] | None = None
         self.lc_moved_at: tuple[int, float] | None = None
         self.sense_done_at: tuple[int, float] | None = None
         self.post: dict[str, int] | None = None
@@ -179,12 +179,12 @@ class SepSenseMonitor:
                     continue
                 armed = True
                 self.skipped = self._rd(dut.sep_fuse_sense_skipped_o, "sep_fuse_sense_skipped_o")
-                self.presense = cur
-                self.presense_at = (cycle, _now_ns())
+                self.pre_sense = cur
+                self.pre_sense_at = (cycle, _now_ns())
                 self.log.info(
                     "SEP sense monitor: cold reset released at %.1f ns; "
                     "sep_fuse_sense_skipped_o=%d sep_fuse_sense_done_o=%d",
-                    self.presense_at[1],
+                    self.pre_sense_at[1],
                     self.skipped,
                     done,
                 )
@@ -339,7 +339,7 @@ class SmuSepLccFlowSeq:
         # Sense half: the monitor bounds the wait itself.
         await self.mon.sensed.wait()
         assert not self.mon.errors, "SEP LCC flow: " + "; ".join(self.mon.errors)
-        before = self.mon.presense
+        before = self.mon.pre_sense
         sensed = self.mon.post
         assert before is not None and sensed is not None
         self.log.info(
