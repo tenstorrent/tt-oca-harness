@@ -6,8 +6,13 @@
 # GENERATED from a measured run: the [[holes]] below are the `user` points the
 # graded run left unhit, each carried with a category, a rationale, an owner
 # and an expiry. Regenerate them from a fresh coverage-details.json rather
-# than editing them by hand; the header above the first [[thresholds]] is the
-# only part written by a person.
+# than editing them by hand; this header is the only part written by a person.
+# They were measured from `--dut smu_block --items all --cov`.
+#
+# No [[thresholds]] are set here. A floor on the `user` family is set only
+# from a measured weekly `--cov` database, by the SMU DV owner, together with
+# `max_unclassified_points` -- see SMU_COVERAGE_POLICY.adoc. The effective
+# percentage is still reported, just not gated.
 #
 # Three mechanisms, do not confuse them:
 #
@@ -92,12 +97,6 @@
 schema_version = 1
 dut = "smu_block"
 scope_epoch = "smu-toggle-v1"
-
-[[thresholds]]
-id = "user-effective-floor"
-metric_family = "user"
-population = "effective"
-minimum_percent = 90.0
 
 [[holes]]
 id = "fcov-smu_block-c_boot_stall_both_sources"

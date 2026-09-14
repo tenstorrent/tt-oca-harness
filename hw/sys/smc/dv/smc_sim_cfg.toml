@@ -120,14 +120,14 @@ sources = [
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
-  # Spec-derived P0 coverage (cov/smc_cell_map.json maps points to cells).
+  # Spec-derived P0 coverage.
   "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
-  # Spec-derived P1 coverage (cov/smc_cell_map.json, milestone "P1").
+  # Spec-derived P1 coverage.
   "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
@@ -514,14 +514,14 @@ sources = [
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
-  # Spec-derived P0 coverage (cov/smc_cell_map.json maps points to cells).
+  # Spec-derived P0 coverage.
   "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
-  # Spec-derived P1 coverage (cov/smc_cell_map.json, milestone "P1").
+  # Spec-derived P1 coverage.
   "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",

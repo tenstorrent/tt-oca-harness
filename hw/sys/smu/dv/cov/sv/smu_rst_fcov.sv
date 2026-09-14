@@ -4,7 +4,7 @@
 // SMU reset, power-good and boot-completion functional coverage, from the
 // SMU-RST-*, SMU-PWRGOOD, SMU-BOOTSEQ-GATE, SMU-FUSE-SENSE, SMU-MEMINIT and
 // SMU-CLK-DOMAINS.S4 scenarios of the feature list. The point names are the
-// scenarios' required_cells; cov/smu_cell_map.json carries the mapping.
+// scenarios' required_cells.
 //
 // One passive, signal-driven module shared by tb_top and tb_wrapper_top.
 // Every port is a signal both benches expose at their top level; a bench

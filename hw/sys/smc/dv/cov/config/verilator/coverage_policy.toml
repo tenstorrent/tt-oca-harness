@@ -24,9 +24,16 @@
 # The scoped number is "the SMC DUT minus the CPU cluster, the I3C core, the
 # lowRISC prims and TB code" -- not "SMC coverage". Quote it that way.
 #
-# The threshold grades the `user` family (the cov/sv functional-coverage
-# points) on the effective population: every accepted hole below leaves the
-# denominator until its `expires` date, after which it grades as open again.
+# No [[thresholds]] are set here. SMC_COVERAGE_POLICY.adoc puts the numeric
+# target at "none until an owner signs a measured number", and a floor written
+# from a local run would be that signature. One is set from a measured weekly
+# `--cov` database, by the SMC DV owner, together with
+# `max_unclassified_points`. The effective percentage is still reported: every
+# accepted hole below leaves the denominator until its `expires` date, after
+# which it grades as open again.
+#
+# The holes below were measured from `--dut smc --items hosted --cov`.
+#
 # Hole categories in this file:
 #   missing_stimulus  no enrolled test drives the condition; the rationale
 #                     names the cell and, where one is proposed, the test.
@@ -39,12 +46,6 @@
 schema_version = 1
 dut = "smc"
 scope_epoch = "smc-fcov-v1"
-
-[[thresholds]]
-id = "user-effective-floor"
-metric_family = "user"
-population = "effective"
-minimum_percent = 90.0
 
 [[holes]]
 id = "fcov-smc-c_clk_periph_stalled_window"

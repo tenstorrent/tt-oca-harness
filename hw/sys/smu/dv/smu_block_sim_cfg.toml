@@ -155,15 +155,6 @@ build_args = [
 # the wrapper `--dut smu` carry its own without collision.
 policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_block_coverage_policy.toml"
 
-[coverage.vcs]
-# Scope and policy carrier only: no SMU coverage run on VCS exists, so there
-# are no compile_args here and nothing passes cov/config/vcs/smu_cov_scope.hier
-# to a compile. The table exists so the VCS policy is reachable by the same
-# DUT-qualified `policy_file` convention as the Verilator one above, and so
-# `--validate-configs` checks it. cov/config/vcs/README.md says what wiring the
-# compile up takes.
-policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_block_coverage_policy.toml"
-
 [frameworks.cocotb]
 python_root = "hw/sys/smu/dv/cocotb"
 test_dir = "hw/sys/smu/dv/cocotb/tests"

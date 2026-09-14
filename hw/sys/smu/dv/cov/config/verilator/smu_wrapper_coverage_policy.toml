@@ -6,8 +6,14 @@
 # GENERATED from a measured run: the [[holes]] below are the `user` points the
 # graded run left unhit, each carried with a category, a rationale, an owner
 # and an expiry. Regenerate them from a fresh coverage-details.json rather
-# than editing them by hand; the header above the first [[thresholds]] is the
-# only part written by a person.
+# than editing them by hand; this header is the only part written by a person.
+# They were measured from the no_sep target of `--dut smu --items sep0_all
+# --cov`.
+#
+# No [[thresholds]] are set here. A floor on the `user` family is set only
+# from a measured weekly `--cov` database, by the SMU DV owner, together with
+# `max_unclassified_points` -- see SMU_COVERAGE_POLICY.adoc. The effective
+# percentage is still reported, just not gated.
 #
 # ONE POLICY, TWO TARGETS. [coverage.verilator].policy_file is resolved per
 # tool, not per target, so this one file grades both
@@ -40,19 +46,6 @@
 schema_version = 1
 dut = "smu"
 scope_epoch = "smu-fcov-v1"
-
-# The holes below are generated from the no_sep run, so the floor is scoped to
-# that target: it is the one CI gates (regress.yml weekly, --dut smu --items
-# sep0_all). A sep_rtl grade carries the SEP-only points that no_sep never
-# elaborates and no waiver names, so it reports a lower effective percentage
-# and is deliberately left ungated. The `target` line is hand-added; the
-# generator writes the rest of this table.
-[[thresholds]]
-id = "user-effective-floor"
-target = "compile_smu_chiplet_no_sep"
-metric_family = "user"
-population = "effective"
-minimum_percent = 90.0
 
 [[holes]]
 id = "fcov-smu-c_boot_stall_both_sources"

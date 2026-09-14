@@ -633,7 +633,7 @@ module smu_uvm_top
 
   // Bare `smu` exposes neither the per-block resets nor the DUT-internal
   // clock mirrors the wrapper bench has, so those ports are tied off here and
-  // the points that need them fire only on tb_wrapper_top (cov/smu_cell_map.json).
+  // the points that need them fire only on tb_wrapper_top.
   // This bench is SEP=0, so the SEP-only points are not elaborated.
   smu_rst_fcov #(
       .SepPresent (1'b0)

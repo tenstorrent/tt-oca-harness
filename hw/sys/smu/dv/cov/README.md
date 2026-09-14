@@ -91,10 +91,6 @@ elaborate on its no-SEP target:
 `smu_alias_fcov.sv` and `smu_clk_fcov.sv` are wrapper-bench only:
 `smu_clk_fcov` reads clock mirrors that only that bench publishes.
 
-`smu_cell_map.json` traces every point back to the scenario that asked for it:
-205 entries, 76 naming a point and 129 `UNMAPPED:` -- 118 `blocked` by an open
-spec finding, 10 `unreachable_at_level`, 1 `tbd`.
-
 `smu_fcov.py` is a static `TEST_FCOV_HITS` table mapping a test class name to
 the bins it is *claimed* to hit — running the test marks the bins, no signal is
 observed — and nothing under `tools/` or `.github/` reads its output. The
@@ -149,13 +145,7 @@ canonical `cov/config/<tool>/coverage_policy.toml` discovery resolves
 identically for both and whichever DUT the file does not name fails
 `--validate-configs`. `[coverage.verilator].policy_file` names a DUT-qualified
 file instead: `smu_block_coverage_policy.toml` for the block bench and
-`smu_wrapper_coverage_policy.toml` for `--dut smu`. Both grade the `user`
-family against a 90% floor on the effective population, with one `[[holes]]`
-entry per unhit point, each `disposition = "waive"`, `status = "accepted"` and
-carrying an `expires` date after which it grades as open again.
-
-`cov/config/vcs/` mirrors the same layout for VCS -- `smu_cov_scope.hier`, a
-`README.md` and `smu_block_coverage_policy.toml` -- so scope, policy and README
-sit in the same place on SMU as on SEP and SMC. **Nothing there has been run on
-VCS**: the policy is a scope carrier with no thresholds and no holes, and no
-compile passes the `.hier` file. See `cov/config/vcs/README.md`.
+`smu_wrapper_coverage_policy.toml` for `--dut smu`. Each carries one
+`[[holes]]` entry per unhit point, with `disposition = "waive"`,
+`status = "accepted"` and an `expires` date after which it grades as open
+again. Neither sets a threshold.
