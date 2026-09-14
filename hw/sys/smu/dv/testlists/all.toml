@@ -22,6 +22,10 @@ schema_version = 1
 # resolves through. Its cocotb side is enrolled in migrated_dtp on the wrapper,
 # and that is the copy the regression scores.
 
+# testlists/wrapper.toml, the `--dut smu` regression, is not an include of this
+# file: smu_sim_cfg.toml [testlist] selects it directly, and the two DUTs have
+# separate configs and separate testlist roots, so no wrapper leaf is reachable
+# from here and none is meant to be.
 includes = ["dtp.toml"]
 
 [[groups]]
