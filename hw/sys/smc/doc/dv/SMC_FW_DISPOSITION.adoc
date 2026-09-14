@@ -51,6 +51,42 @@ point at it. SMU's record of the tests that stage SMC images is
 |occp_unsecure_boot_test
 |enrolled
 |`smc_occp_dual_unsecure_boot_test` (`testlists/dual.toml`, `[c_build.dual_occp]`; held out of `all` on runtime, runs as `dual_all` / `occp_dual`).
+|hello_world_multicore
+|enrolled
+|`smc_fw_hello_world_multicore_test` (`testlists/fw.toml`, `[c_build.default]`); the bench reads harts 2 and 3's markers back from `CPU_CTRL SCRATCH_2/3`.
+|octs_p0_primary_test
+|enrolled
+|`smc_fw_octs_p0_primary_test` (`testlists/fw.toml`, `[c_build.default]`); the bench reads COUNT advancing and counts PRIMARY credit pulses on pad 56.
+|i2c_sanity
+|enrolled
+|`smc_fw_i2c_sanity_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); carries the `SMC_I2C_001` c-fw contract; the bench decodes the write and the NACKed probe on the pad bus.
+|i2c_target_sanity
+|enrolled
+|`smc_fw_i2c_target_sanity_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); carries the `SMC_I2C_005` c-fw contract; the bench plays the S6 host from the `SCRATCH_1` marker and decodes the pad bus.
+|i2c_acq_fifo_stretch_reset
+|enrolled
+|`smc_fw_i2c_acq_fifo_stretch_reset_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); the bench samples the target's SCL pull in both `tb_sync` windows and acknowledges through `SCRATCH_4`.
+|i2c_p1_fifo_depth_xfer
+|enrolled
+|`smc_fw_i2c_p1_fifo_depth_xfer_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); the bench decodes the 64 acknowledged bytes on the pad bus.
+|i2c_tx_stretch_timeout_recovery
+|enrolled
+|`smc_fw_i2c_tx_stretch_timeout_recovery_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); the bench decodes the stretched read and the 16-byte recovery write.
+|i2c_fifo_full
+|enrolled
+|`smc_fw_i2c_fifo_full_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); the bench decodes the RX read and the ACQ write on the pad bus. The cocotb `smc_i2c_fifo_full_test` stays the CSR-level check.
+|uart_log_engine_single_entry
+|enrolled
+|`smc_fw_uart_log_engine_single_entry_test` (`testlists/fw.toml`, `[c_build.default]`); the bench reads the SPM source, the engine's programming and the UART IRQ line.
+|uart_log_engine_boundary_backpressure
+|enrolled
+|`smc_fw_uart_log_engine_boundary_backpressure_test` (`testlists/fw.toml`, `[c_build.default]`); the bench reads the SPM source and the engine's final programming.
+|uart_log_engine_disable_during_xfer
+|enrolled
+|`smc_fw_uart_log_engine_disable_during_xfer_test` (`testlists/fw.toml`, `[c_build.default]`); the bench reads the SPM source and both engines' final programming.
+|uart_log_engine_fetch_err
+|enrolled
+|`smc_fw_uart_log_engine_fetch_err_test` (`testlists/fw.toml`, `[c_build.default]`); the bench probes the unmapped fetch address from SEP_IN for DECERR and reads the engines' final programming.
 |===
 
 === External-consumer images
@@ -261,45 +297,9 @@ the first image that consumes it, not ahead of it.
 [cols="3,2,5",options="header"]
 |===
 |Image |Bucket |Blocker and what closes the row
-|hello_world_multicore
-|deferred
-|Four-hart check-in; `hello_world` proves only hart 0's store. Closes when the tier-1 intake enrols it as `smc_fw_hello_world_multicore_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "hello_world_multicore"`, `+smc_scratch_ram_hex=hello_world_multicore.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|octs_p0_primary_test
-|deferred
-|OCTS PRIMARY preset sweep on a single DUT, no BFM chiplet. Closes when the tier-1 intake enrols it as `smc_fw_octs_p0_primary_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "octs_p0_primary_test"`, `+smc_scratch_ram_hex=octs_p0_primary_test.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|i2c_sanity
-|deferred
-|Internal I2C_0 -> I2C_1 loopback; carries the `SMC_I2C_001` c-fw testcase contract. Closes when the tier-1 intake enrols it as `smc_fw_i2c_sanity_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "i2c_sanity"`, `+smc_scratch_ram_hex=i2c_sanity.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|i2c_target_sanity
-|deferred
-|Target-side loopback; carries the `SMC_I2C_005` c-fw testcase contract (the waived `smc_i2c_target_sanity_test` is the cocotb alias, not this image). Closes when the tier-1 intake enrols it as `smc_fw_i2c_target_sanity_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "i2c_target_sanity"`, `+smc_scratch_ram_hex=i2c_target_sanity.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|i2c_acq_fifo_stretch_reset
-|deferred
-|Target ACQ FIFO auto-stretch threshold and ACQ reset; no cocotb body covers the stretch release. Closes when the tier-1 intake enrols it as `smc_fw_i2c_acq_fifo_stretch_reset_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "i2c_acq_fifo_stretch_reset"`, `+smc_scratch_ram_hex=i2c_acq_fifo_stretch_reset.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
 |i2c_p1_back_to_back_xfer
 |deferred
-|Eight back-to-back transfers with FIFO and state recovery between transactions. Closes when the tier-1 intake enrols it as `smc_fw_i2c_p1_back_to_back_xfer_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "i2c_p1_back_to_back_xfer"`, `+smc_scratch_ram_hex=i2c_p1_back_to_back_xfer.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|i2c_p1_fifo_depth_xfer
-|deferred
-|64-byte full-depth transfer with interleaved push and drain. Closes when the tier-1 intake enrols it as `smc_fw_i2c_p1_fifo_depth_xfer_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "i2c_p1_fifo_depth_xfer"`, `+smc_scratch_ram_hex=i2c_p1_fifo_depth_xfer.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|i2c_tx_stretch_timeout_recovery
-|deferred
-|Controller recovery after a TX stretch timeout. Closes when the tier-1 intake enrols it as `smc_fw_i2c_tx_stretch_timeout_recovery_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "i2c_tx_stretch_timeout_recovery"`, `+smc_scratch_ram_hex=i2c_tx_stretch_timeout_recovery.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|i2c_fifo_full
-|deferred
-|FIFO fill through real transfers; the cocotb `smc_i2c_fifo_full_test` (`testlists/i2c.toml`) is CSR-only. Closes when the tier-1 intake enrols it as `smc_fw_i2c_fifo_full_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "i2c_fifo_full"`, `+smc_scratch_ram_hex=i2c_fifo_full.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|uart_log_engine_single_entry
-|deferred
-|Log-engine golden path SRAM -> UART loopback -> RBR; the data path is CPU-side. Closes when the tier-1 intake enrols it as `smc_fw_uart_log_engine_single_entry_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "uart_log_engine_single_entry"`, `+smc_scratch_ram_hex=uart_log_engine_single_entry.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|uart_log_engine_boundary_backpressure
-|deferred
-|Effective-length boundary under UART TX backpressure. Closes when the tier-1 intake enrols it as `smc_fw_uart_log_engine_boundary_backpressure_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "uart_log_engine_boundary_backpressure"`, `+smc_scratch_ram_hex=uart_log_engine_boundary_backpressure.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|uart_log_engine_disable_during_xfer
-|deferred
-|CTRL.EN cleared mid-transfer. Closes when the tier-1 intake enrols it as `smc_fw_uart_log_engine_disable_during_xfer_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "uart_log_engine_disable_during_xfer"`, `+smc_scratch_ram_hex=uart_log_engine_disable_during_xfer.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
-|uart_log_engine_fetch_err
-|deferred
-|AXI fetch error -> `INTR_STATUS.LOG_FETCH_ERR`; `smc_uart_log_engine_error_boundary_test` (`testlists/depth.toml`) covers only the CSR-visible boundary. Closes when the tier-1 intake enrols it as `smc_fw_uart_log_engine_fetch_err_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "uart_log_engine_fetch_err"`, `+smc_scratch_ram_hex=uart_log_engine_fetch_err.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
+|The header promises eight back-to-back transfers but `main()` performs one 4-byte write (Step 4) and posts PASS; a wire decoder on the pad bus saw one START and one STOP. Closes when the image runs the transactions its header describes and is enrolled as `smc_fw_i2c_p1_back_to_back_xfer_test` on the `smc_fw_i2c_pair_test_seq` wire-floor pattern.
 |mailbox_sanity
 |deferred
 |PLIC claim of a mailbox IRQ is provable only from the CPU; `smc_mailbox_irq_test` and `smc_mailbox_event_irq_test` observe the IRQ pin. Closes with a `smc_fw_plic_claim_test`-pattern leaf (`arm_value` plus an `on_armed` stimulus from cocotb) in `testlists/fw.toml` whose stimulus writes the mailbox after the 'interrupts set up' word.
