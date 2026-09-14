@@ -82,8 +82,7 @@ Environment variables the package reads:
 |---|---|---|
 | `TMPDIR` | the runner and the container scripts | scratch; must exist and be large (`AGENTS.md`). Never `/tmp` |
 | `RANDOM_SEED` | `smu_base_test`, two fabric sequences | the run seed; set by the runner from `--seed` or its own draw |
-| `RISCV_TOOLCHAIN` | `fw/build_firmware.py` | directory holding `riscv64-unknown-elf-*`; otherwise `PATH` is searched |
-| `RISCV_GCC`, `RISCV_OBJCOPY`, `RISCV_NM` | `fw/build_firmware.py` | per-tool overrides that win over `RISCV_TOOLCHAIN` |
+| `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | `fw/build_firmware.py`, i.e. every `[c_build.*]` stage | directory and tool prefix (default `riscv64-unknown-elf-`) of a RISC-V toolchain that has picolibc; unset, or without picolibc, the stage re-runs itself in the `ocah-toolchain` container through `scripts/docker-run.sh run-here`. No `PATH` or site probe |
 | `SMU_SMC_BOOT_MAX_CYCLES` | `smu_smc_smoke_seq.py` | SMC ROM boot budget in `clk_smu` cycles |
 | `SMU_SEP_BOOT_MAX_CYCLES` | `smu_sep_smoke_seq.py`, `smu_sep_boot_health_seq.py` | SEP boot budget |
 | `SMU_SEP_FW_MAX_CYCLES` | the `sep_real_fw`, lifecycle and chain sequences | terminal-loop budget for a SEP firmware image |
@@ -108,9 +107,10 @@ python3 tools/dv/run_dv.py --dut smu --items smoke_sep0
 python3 tools/dv/run_dv.py --dut smu --items sep0_all
 
 # 3. The whole package: `all` adds the SEP=1 firmware set (81 leaves). The
-#    firmware c_build stages call the toolchain container for every SEP
-#    image, so build that image once first. Nothing schedules this group:
-#    the hosted runners have Verilator and no container toolchain.
+#    firmware c_build stages build every image in the toolchain container
+#    (unless RISCV_TOOLCHAIN names a picolibc gcc), so build that image once
+#    first. Nothing schedules this group: the hosted runners have Verilator
+#    and no container toolchain.
 ./scripts/docker-run.sh build
 python3 tools/dv/run_dv.py --dut smu --items all
 ```
@@ -193,13 +193,15 @@ The SMC boot path's MEM_ZERO FSM writes every word of scratch RAM after the
 time-zero backdoor load unless held off; `tb_wrapper_top.sv` asserts that hold
 whenever `+smc_scratch_ram_hex` supplies an image.
 
-Firmware images are built by `fw/build_firmware.py` into `build/firmware/`
-(declared per test as `[c_build.*].outputs`, then staged into each per-test
-run directory). The `sep_real_fw` images are built by the SEP firmware engine
-inside the `ocah-toolchain` container (`[c_build.sep_dv_fw]` in
-`smu_sim_cfg.toml` calls `./scripts/docker-run.sh run make ocah-dv-fw-tests
-TARGET=sep TEST=<image>` for each), because they link against picolibc and
-`libsep.a`, which a host toolchain does not carry.
+Firmware images are declared per test as `[c_build.*].outputs` and staged
+into each per-test run directory. Every stage runs `fw/build_firmware.py`: its
+own freestanding images land in `build/firmware/`, and for the SEP=1 leaves it
+also builds the selected image of the SEP firmware engine (`hw/sys/sep/dv/fw`,
+`--sep-test {fw_target}`; the dual leaves add one SMC engine image) into
+`hw/sys/<sys>/dv/fw/build/tests/`. Those link against picolibc and `libsep.a`,
+so the builder uses the caller's `RISCV_TOOLCHAIN` only when that gcc has
+picolibc and otherwise re-runs itself inside the `ocah-toolchain` container
+(`scripts/docker-run.sh run-here`).
 
 `+esrc_noise_force` (three entries of `sep_real_fw` / `sep_entropy`) drives
 the twelve ESRC raw-noise lanes from `common/seq_lib/esrc_noise.py`, because
@@ -224,8 +226,8 @@ python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
 ### Single test, cached model
 
 ```bash
-# Firmware toolchain (firmware leaves only): riscv64-unknown-elf-* on PATH,
-# RISCV_TOOLCHAIN, or per-tool overrides RISCV_GCC/RISCV_OBJCOPY/RISCV_NM.
+# Firmware toolchain (firmware leaves only): RISCV_TOOLCHAIN with picolibc,
+# otherwise the ocah-toolchain container via scripts/docker-run.sh run-here.
 python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
   --seed 1 --stage c_compile --stage sim
 ```

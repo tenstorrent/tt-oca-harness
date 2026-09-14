@@ -90,9 +90,9 @@ args = [
 ]
 
 # Real SEP DV firmware (hw/sys/sep/dv/fw/tests/sep_smu_boot_health), built by
-# [c_build.sep_dv_fw] in smu_sim_cfg.toml inside the OCAH toolchain container,
-# so it is enrolled in `sep_real_fw` and not in `smoke`: the hosted CI runners
-# carry no container image.
+# [c_build.sep_dv_fw] in smu_sim_cfg.toml -- in the OCAH toolchain container
+# unless the caller's RISCV_TOOLCHAIN has picolibc -- so it is enrolled in
+# `sep_real_fw` and not in `smoke`: the hosted CI runners carry neither.
 [[tests]]
 name = "smu_sep_boot_health_test"
 module = "smu_sep_boot_health_test"
@@ -245,7 +245,7 @@ args = [
 name = "smu_sep_ext_axi_test"
 module = "smu_sep_ext_axi_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_ext_axi", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_ext_axi", mode = "sep_dv_fw_smu_sep_ext_axi" }
 seed = 1
 timeout_sec = 3600
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -332,7 +332,7 @@ args = [
 name = "smu_sep_bidirect_test"
 module = "smu_sep_bidirect_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_bidirect", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_bidirect", mode = "sep_dv_fw_bidirect_arm" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -383,7 +383,7 @@ args = [
 name = "smu_sep_rom_tcm_load_test"
 module = "smu_sep_rom_tcm_load_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "rom_no_tcm_preload_mem_init", mode = "sep_dv_fw" }
+firmware = { name = "rom_no_tcm_preload_mem_init", mode = "sep_dv_fw_rom_only" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "real_rtl", "real_fw", "boot"]
@@ -439,7 +439,7 @@ args = [
 name = "smu_sep_smc_xbar_test"
 module = "smu_sep_smc_xbar_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smc_xbar", mode = "sep_dv_fw" }
+firmware = { name = "sep_smc_xbar", mode = "sep_dv_fw_smc_sep_xbar" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -464,7 +464,7 @@ args = [
 name = "smu_sep_debug_bus_test"
 module = "smu_sep_debug_bus_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_debug_bus", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_debug_bus", mode = "sep_dv_fw_smu_sep_debug_bus" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -485,7 +485,7 @@ args = [
 name = "smu_sep_wdt_reset_to_smc_test"
 module = "smu_sep_wdt_reset_to_smc_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_wdt_reset_to_smc", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_wdt_reset_to_smc", mode = "sep_dv_fw_smu_sep_boot" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -506,7 +506,7 @@ args = [
 name = "smu_sep_lc_handoff_test"
 module = "smu_sep_lc_handoff_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_lc_handoff", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_lc_handoff", mode = "sep_dv_fw_smu_sep_lc_handoff" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -527,7 +527,7 @@ args = [
 name = "smu_cla_sep_cpu_debug_test"
 module = "smu_cla_sep_cpu_debug_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "smu_cla_sep_cpu_debug", mode = "sep_dv_fw" }
+firmware = { name = "smu_cla_sep_cpu_debug", mode = "sep_dv_fw_smu_cla_sep_cpu_debug" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
