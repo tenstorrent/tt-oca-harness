@@ -6,7 +6,7 @@ Programs one of the sixteen ``axi_alias_remap`` regions on the system-
 peripherals local-master path so a CPU-LSU beat of a filter-bank page is
 rewritten to ``CLOCK_GATE_CTRL``. The predicted address is
 ``{offset[55:12] + addr[55:12], addr[11:0]}``
-(``hw/common/axi/axi_alias_remap/rtl/axi_alias_remap.sv``). The mailbox
+(``hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv``). The mailbox
 window at ``0x8000_0000`` is not an LSU identity target.
 
 CSR programming of the bank stays on ``sep_fabric_csr_bank_seq``. This

@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[aou-integration]]
+= AXI-over-UCIe Bridge (AoU) Integration
+
+Parameters, clocks, resets, and bring-up for the vendored AXI-over-UCIe
+bridge.
+
+== Integration guide
+
+:sectnums!:
+ifdef::backend-pdf[]
+:aou-ig-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/integration_guide/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/integration_guide/integrator.adoc[leveloffset=+1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::aou:partial$integrator.adoc[leveloffset=+1]
+endif::backend-html5[]
+:sectnums:

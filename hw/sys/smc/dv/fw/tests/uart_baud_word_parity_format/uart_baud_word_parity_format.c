@@ -234,7 +234,6 @@ int main(void) {
     uint32_t num_tgts = sizeof(uart_ctrlrs) / sizeof(uart_ctrlrs[0]);
     uint32_t num_uarts = num_ctrlrs + num_tgts;
 
-
     // Enable all UART instances under test.
     uart_enable_all(num_uarts);
 

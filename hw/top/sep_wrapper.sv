@@ -166,7 +166,6 @@ module sep_wrapper
   ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
-  logic ext_trng_alarm;
 
   // OTBN SRAM interfaces (sep <-> sep_ip_integration)
   sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req;
@@ -217,8 +216,7 @@ module sep_wrapper
     .ext_trng_axis_req_i (ext_trng_axis_req),
     .ext_trng_axis_rsp_o (ext_trng_axis_rsp),
 
-    .ext_trng_irq_i   (ext_trng_irq),
-    .ext_trng_alarm_i (ext_trng_alarm),
+    .ext_trng_irq_i (ext_trng_irq),
 
     .km_rom_mem_req_o (km_rom_mem_req),
     .km_rom_mem_rsp_i (km_rom_mem_rsp),
@@ -281,8 +279,7 @@ module sep_wrapper
     .ext_trng_axis_req_o (ext_trng_axis_req),
     .ext_trng_axis_rsp_i (ext_trng_axis_rsp),
 
-    .ext_trng_irq_o   (ext_trng_irq),
-    .ext_trng_alarm_o (ext_trng_alarm),
+    .ext_trng_irq_o (ext_trng_irq),
 
     .axi_extension_axi_req_i  (axi_extension_axi_req),
     .axi_extension_axi_resp_o (axi_extension_axi_resp),

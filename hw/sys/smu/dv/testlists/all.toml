@@ -36,7 +36,7 @@ tests = [
 # carries no firmware, which matters: the hosted runner in .github/actions/dv-run installs
 # Verilator and nothing else, so a group needing the RISC-V toolchain cannot
 # run there. It is also the scenario the SV-UVM view binds to, so
-# `--framework uvm --items smoke --skip-unimplemented` still selects something.
+# `--framework uvm --items smoke` selects it.
 [[groups]]
 name = "smoke"
 tests = [

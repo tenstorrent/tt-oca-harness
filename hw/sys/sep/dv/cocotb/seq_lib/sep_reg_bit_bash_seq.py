@@ -282,7 +282,7 @@ def inbound_addr_expected(name: str, written: int) -> int:
     """Readback after a solo START/END write with the peer at reset.
 
     ``allow_burst`` reset is 0, so the granule is 8 bytes
-    (``hw/common/axi/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
+    (``hw/ip/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
     when START and END share a beat, START[2:0] clears and END[2:0] sets;
     otherwise the write lands. The 4 KB granule is CHK-PAGE-WIDEN.
     """
