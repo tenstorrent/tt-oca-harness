@@ -7,9 +7,10 @@
 // Open-source reference models for the technology-specific IP SMC exposes
 // at this boundary: the shared eFuse bank/shim model (IsSmcInstance=1), the
 // PLL/PVT AXI-Lite models (pll_wrap.sv / pvt_wrap.sv), the I3C DAT/DCT/RLT
-// table memories, and a captured GPIO strap register. The GPIO-shim
-// per-pin CSR and adopter peripheral extension AXI-Lite buses are terminated
-// with prim_axi_lite_err_slv (DECERR).
+// table memories, and one prim_pad_shim.sv instance per GPIO pin standing
+// in for the physical padring. The GPIO-shim per-pin CSR and adopter
+// peripheral extension AXI-Lite buses are terminated with
+// prim_axi_lite_err_slv (DECERR).
 //
 // smc_wrapper.sv instantiates this module alongside the bare smc.sv core
 // and wires the two together (smu_wrapper.sv does the same directly
@@ -164,7 +165,7 @@ module smc_ip_integration (
     // smc.sv presents the adopter blocks as a single AXI-Lite window; the map
     // inside it is the adopter contract, so the decode lives here where a
     // vendor integration replaces it wholesale. Offsets are relative to the
-    // window base and follow the smc_external map.
+    // window base and follow the smc_external mandatory map.
     //=========================================================================
 
     // The vendor eFuse shim CSR occupies the base of the window, so everything
