@@ -25,7 +25,8 @@ runs, and why, are recorded in `SMC_DEFERRED_DISPOSITION.adoc`.
 |===
 
 Group sizes are the `expected_count` guards: `all` and `hosted` in
-`testlists/all.toml`, `rtl_issue` in `testlists/rtl_issue.toml`.
+`hw/sys/smc/dv/testlists/all.toml`, `rtl_issue` in
+`hw/sys/smc/dv/testlists/rtl_issue.toml`.
 
 [[smc-release-credit]]
 === Credit versus the CI group

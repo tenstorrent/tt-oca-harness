@@ -288,7 +288,8 @@ typedef struct {
 } __attribute__((packed)) occp_exec_header_t;
 
 static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
-    // TODO: check if this is correct, initial value undefined
+    // CRC-8 per occp-protocol.adoc: initial value 0xFF, polynomial 0xD3, MSB first,
+    // no final XOR.
     uint8_t crc = 0xFF;
     const uint8_t poly = 0xD3u; /* x^8 + x^7 + x^6 + x^4 + x + 1 */
     for (int i = 0; i < length; i++) {
@@ -310,7 +311,8 @@ static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
 }
 
 static inline uint32_t calculate_crc32(uint8_t *data, size_t length) {
-    // TODO: check if this is correct, initial value undefined
+    // CRC-32 per occp-protocol.adoc: initial value 0xFFFFFFFF, polynomial 0x992C1A4C,
+    // MSB first, final XOR 0xFFFFFFFF.
     uint32_t crc = 0xFFFFFFFF;
     const uint32_t poly = 0x992c1a4c; /* x^32 + x^26 + x^23 + x^22 + x^16 + x^12 + x^11 + x^10 + x^8
                                          + x^7 + x^5 + x^4 + x^2 + x + 1 */

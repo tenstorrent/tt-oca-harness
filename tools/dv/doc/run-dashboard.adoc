@@ -207,10 +207,19 @@ flows.failing  = count(result.status == "FAIL")
 flows.unknown  = flows.total - flows.passing - flows.failing
 flows.pass_rate = 100 * flows.passing / flows.total
 
-tests.total     = sum(result.tests.total)
-tests.passing   = sum(result.tests.passing)
+tests.total     = sum(result.tests.total)      over records with tests.completed != false
+tests.passing   = sum(result.tests.passing)    over the same records
 tests.pass_rate = 100 * tests.passing / tests.total
+tests.incomplete_runs = count(result.tests.completed == false)
 ----
+
+A record whose run did not finish (`tests.completed` is `false`: the native
+`result.json` was interrupted or truncated) still counts as a failing flow and
+keeps its failure buckets, but its leaves are left out of the test counters
+and of the per-category rollups; a rate over the leaves that happened to run
+would read as a grade the run never earned. Such a record carries
+`tests.pass_rate = null`, and the HTML shows `incomplete run` in its pass-rate
+cell.
 
 The overall flow status and test pass rate answer different questions. A DUT
 can have many passing tests but remain a failing flow because one test,
@@ -327,6 +336,7 @@ An abbreviated normalized `dtp.result.json` has this form:
     "total": 10,
     "passing": 10,
     "failing": 0,
+    "completed": true,
     "pass_rate": 100.0
   },
   "coverage": {
@@ -366,7 +376,8 @@ Aggregating `dtp` and `sep` yields this summary shape:
     "failing": 2,
     "skipped": 0,
     "unknown": 0,
-    "pass_rate": 90.0
+    "pass_rate": 90.0,
+    "incomplete_runs": 0
   },
   "coverage": {
     "average_total_percent": null,
@@ -854,7 +865,9 @@ run-time values remain in `run_metadata.git`.
 plus `duration_sec`: the sum of native stage durations, not wall-clock time.
 
 |`tests` |object |`total`, `passing`, `failing` (computed as
-`total - passing`), `pass_rate`.
+`total - passing`), `completed` (the native `tests.completed`, or `null` when
+the producer did not record it), `pass_rate` (`null` when `completed` is
+`false`).
 
 |`coverage` |object |The native coverage object (see
 <<dashboard-coverage-formation,coverage fields>>) with staged-path rewrites
@@ -929,8 +942,9 @@ Each `tests_detail` entry carries: `name`, `module`, `category`, `tags`,
 collected records.
 
 |`tests` |object |`total`, `passing`, `failing`, `skipped`, `unknown`,
-`pass_rate` summed across records (see the
-<<dashboard-counter-semantics,counter caveat>>).
+`pass_rate` summed across the records whose run finished (see the
+<<dashboard-counter-semantics,counter caveat>>), and `incomplete_runs`, the
+number of records left out because `tests.completed` is `false`.
 
 |`coverage` |object |`average_total_percent` (always `null`),
 `cross_tool_average_disabled` (always `true`), `available`, `missing`. No
@@ -961,7 +975,8 @@ primary table for per-DUT parsing.
 
 Each `dut_status` row carries: `flow`, `kind`, `tool`, `status`,
 `tests_total`, `tests_passing`, `tests_failing`, `tests_skipped`,
-`tests_unknown`, `pass_rate`, `category_count`, `categories`, `failed_tests`,
+`tests_unknown`, `tests_completed`, `pass_rate`, `category_count`,
+`categories`, `failed_tests`,
 `flaky_tests`, `coverage_total_percent`, `coverage_status`,
 `coverage_threshold`, `coverage_threshold_met`,
 `coverage_details_available`, `coverage_open_holes`,

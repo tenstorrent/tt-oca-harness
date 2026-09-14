@@ -8,7 +8,7 @@ This table is the disposition of record for every test name that is
 catalogued but not enrolled, and for every enrolled leaf that no scheduled
 tier runs (<<smc-scheduled-holdouts>>). Nothing here is enrolled PASS. The blocker for
 each surviving body lives in its own docstring; `hw/sys/smc/dv/README.md`
-tabulates the ones under `cocotb/tests/`.
+tabulates the ones under `hw/sys/smc/dv/cocotb/tests/`.
 
 Buckets:
 
@@ -20,8 +20,8 @@ Buckets:
 === Idle smc_wrapper boundaries (OUT)
 
 These ports have no TB terminator on `--dut smc` / `smc_wrapper`
-(`models/README.md`). They are OUT rather than terminated by a placeholder
-responder. Block-level I3C and DTP signoff stay on those TBs;
+(`hw/sys/smc/dv/models/README.md`). They are OUT rather than terminated by a
+placeholder responder. Block-level I3C and DTP signoff stay on those TBs;
 do not count a wrapper terminator as that proof.
 
 [cols="2,2,4",options="header"]
