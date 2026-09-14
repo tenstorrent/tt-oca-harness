@@ -442,3 +442,83 @@ DFX_MBIST_ABORT = dfx_status_u32("DFX_CTRL_STATUS__STATUS__MBIST_ABORT_bm")
 # constant as a golden is asserting the tie-off block above, so a change there
 # must move this constant with it.
 DFX_STATUS_IDLE = DFX_MEM_REPAIR_DONE | DFX_MEM_REPAIR_SUCCESS | DFX_MBIST_DONE | DFX_MBIST_PASS
+
+
+# --- RDL-declared windows and deadspace -------------------------------------
+# The generated map is the only authority for which SMC addresses hold a
+# register or memory. Everything else inside the map is deadspace, which the
+# RDL cannot express and is therefore derived from the neighbouring windows
+# rather than listed ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+_ROOT_BASE_SYMBOL = "SMC_TOP_BASE_ADDR"
+
+
+@lru_cache(maxsize=1)
+def smc_rdl_windows() -> tuple[tuple[int, int], ...]:
+    """Merged, ascending ``[base, end)`` ranges of every RDL-declared SMC block.
+
+    Built from every ``SMC_TOP_*_BASE_ADDR`` / ``_SIZE`` pair and every indexed
+    ``_BASE_ADDR(idx)`` macro with its ``_TOTAL_SIZE`` (or ``_NUM`` and stride)
+    in ``smc_addr.h``. The root addrmap's own extent is excluded: it spans the
+    holes this function exists to expose.
+    """
+    defs = _parse_simple_defines(_SMC_ADDR_H)
+    spans: list[tuple[int, int]] = []
+    for name, base in defs.items():
+        if not name.endswith("_BASE_ADDR") or name == _ROOT_BASE_SYMBOL:
+            continue
+        size = defs.get(name[: -len("_BASE_ADDR")] + "_SIZE")
+        if size:
+            spans.append((base, base + size))
+    for name, (base, stride) in _parse_indexed_bases(_SMC_ADDR_H).items():
+        prefix = name[: -len("_BASE_ADDR")]
+        total = defs.get(f"{prefix}_TOTAL_SIZE")
+        if total is None:
+            num = defs[f"{prefix}_NUM"]
+            total = (num - 1) * stride + defs.get(f"{prefix}_SIZE", stride)
+        spans.append((base, base + total))
+    if not spans:
+        raise RuntimeError(f"no block windows parsed from {_SMC_ADDR_H}")
+    merged: list[tuple[int, int]] = []
+    for base, end in sorted(spans):
+        if merged and base <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((base, end))
+    return tuple(merged)
+
+
+@lru_cache(maxsize=1)
+def smc_deadspace_ranges() -> tuple[tuple[int, int], ...]:
+    """Gaps ``[base, end)`` between the RDL windows; nothing in the map lives there."""
+    windows = smc_rdl_windows()
+    return tuple((lo_end, hi_base) for (_, lo_end), (hi_base, _) in zip(windows, windows[1:]))
+
+
+def smc_map_extent() -> tuple[int, int]:
+    """``[first window base, last window end)`` -- the span the RDL map describes."""
+    windows = smc_rdl_windows()
+    return windows[0][0], windows[-1][1]
+
+
+def smc_addr_is_deadspace(addr: int) -> bool:
+    """True when no RDL-declared SMC window contains ``addr``."""
+    return not any(base <= addr < end for base, end in smc_rdl_windows())
+
+
+def check_rdl_window_tiling() -> None:
+    """Self-check: windows and deadspace tile the map extent with no overlap."""
+    windows = smc_rdl_windows()
+    gaps = smc_deadspace_ranges()
+    for (b0, e0), (b1, e1) in zip(windows, windows[1:]):
+        assert b0 < e0 <= b1 < e1, (
+            f"RDL windows misordered or overlapping: {b0:#x}-{e0:#x} / {b1:#x}-{e1:#x}"
+        )
+    covered = sum(end - base for base, end in windows) + sum(end - base for base, end in gaps)
+    lo, hi = smc_map_extent()
+    assert covered == hi - lo, (
+        f"windows + deadspace cover {covered:#x} of the {hi - lo:#x} map bytes"
+    )
+    for base, end in gaps:
+        assert smc_addr_is_deadspace(base) and smc_addr_is_deadspace(end - 1), (
+            f"deadspace gap {base:#x}-{end:#x} intersects an RDL window"
+        )
