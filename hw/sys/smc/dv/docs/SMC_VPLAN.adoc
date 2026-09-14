@@ -358,6 +358,18 @@ the wrong reason.
 |===
 |Testcase |Objective
 |`smc_fw_hello_world_test` |Boot the smallest SMC C image and read the verdict it posts over MMIO.
+|`smc_fw_hello_world_multicore_test` |All four harts of the CPU cluster run the scratch image and check in with each other; `smc_fw_hello_world_test` proves hart 0 only.
+|`smc_fw_octs_p0_primary_test` |The OCTS system timer is configured and swept from the hart that owns it in the product: CTRL writability, TIMER_GPIO_ENABLE, 64-bit PRESET, TIMER_START, monotonic COUNT.
+|`smc_fw_i2c_sanity_test` |I2C controller bring-up from the CPU, the `i2c_sanity` image: TIMING0-4 read-back, FMT reset on a non-empty FIFO, a 3-byte write with STOP received by the I2C_1 target, the CMD_COMPLETE lifecycle through the PLIC pending bit, CONTROLLER_HALT provoked by a NACK.
+|`smc_fw_i2c_target_sanity_test` |I2C target bring-up from the CPU, the `i2c_target_sanity` image: ADDR0 match and mismatch, dual address, ACQ write, TX read, TX stretch control -- and the UNEXP_STOP lifecycle with the bench as the external host.
+|`smc_fw_i2c_acq_fifo_stretch_reset_test` |The target's ACQ FIFO stretches SCL automatically when full, and ACQ reset releases the stretch, observed on the target's own SCL driver.
+|`smc_fw_i2c_p1_fifo_depth_xfer_test` |A full-FIFO-depth 64-byte transfer with the controller pushing while the target drains; length and every byte compared, NACKed entries excluded from the payload.
+|`smc_fw_i2c_tx_stretch_timeout_recovery_test` |The controller's stretch timeout fires on a read the empty target TX FIFO stretches; the recovery -- target disable releases SCL, controller disable drives the automatic STOP, both re-initialised -- ends in a clean 16-byte write.
+|`smc_fw_i2c_fifo_full_test` |Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the declared depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
+|`smc_fw_uart_log_engine_single_entry_test` |Log-engine golden path: one 16-byte SRAM entry fetched and written to UART0, returned through MCR.LOOP and read back from RBR in order; LOG_CTRL[0] hwclr; INTR_STATUS 0.
+|`smc_fw_uart_log_engine_boundary_backpressure_test` |Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
+|`smc_fw_uart_log_engine_disable_during_xfer_test` |CTRL.EN cleared mid-transfer halts the engine cleanly; a re-trigger completes; four entries triggered together all hwclr; an abort from WAIT; replica 1 runs an entry.
+|`smc_fw_uart_log_engine_fetch_err_test` |A log-engine fetch from an unmapped address latches INTR_STATUS.LOG_FETCH_ERR: INTR_TEST self-test, INTR_ENABLE gating, stuck-cause re-latch and retirement by a good fetch, sustained DECERR with LOG_CTRL not hwclr, WRITE_ERR staying clear, and the fault on replica 1.
 |===
 
 === Test Procedures
@@ -6128,6 +6140,453 @@ For each of the two (target, lock) pairs:
 |===
 
 *Pass Criteria*: both checkers hold: the level bit reads 0, then 0x4 after the push, then 0 after the flush. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-167-smc_fw_hello_world_multicore_test]]
+===== 167 `smc_fw_hello_world_multicore_test`
+
+*Source Module*: `smc_fw_hello_world_multicore_test`
+
+*BFM / Model*: the SMC C image `fw/tests/hello_world_multicore`, executed by all four harts of the CPU cluster; verdict and hart markers read over SEP_IN AXI
+
+*Objective*: All four harts of the CPU cluster run the scratch image and check in with each other; `smc_fw_hello_world_test` proves hart 0 only.
+
+*Test Coverage*:
+
+* The three secondary harts past the crt0 barrier. Hart 0 spins until harts 1..3 have each added to a shared atomic counter and only then posts PASS under a Freedom-Metal lock, so the verdict word itself depends on three harts running `main`. `smc_fw_hello_world_test` cannot tell a hart that stalls after `__metal_synchronize_harts` from one that runs.
+* Per-hart stores the bench can attribute: every secondary hart writes its hart id into SCRATCH[hartid] before checking in, and the bench reads SCRATCH_2 and SCRATCH_3 back -- words hart 0 never writes.
+* SCRATCH_1 is not asserted: hart 0 rewrites it in its wait loop while hart 1 is storing to it, so its final value is a race the image does not define. It is logged only.
+
+*Test Procedure*:
+
+[arabic]
+. Build `hello_world_multicore` through `[c_build.default]`, stage `hello_world_multicore.ecc.hex` beside the simulator, hold `boot_stall` from t=0 (`+smc_hold_cpu_boot`), clear CPU_CTRL SCRATCH_0 and read the clear back.
+. Clear SCRATCH_2, which doubles as the console/error word and could hold a residue from an earlier test. SCRATCH_3 is the seed word the boot contract overwrites with this run's `RANDOM_SEED` before release, so a 3 read back afterwards can only have come from hart 3; a run whose seed is itself 3 could not tell the two apart, and the sequence refuses it before release.
+. Program the reset vector, release all four cores, then release `boot_stall`.
+. Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+. Read SCRATCH_2 and SCRATCH_3 over SEP_IN AXI and require the hart ids 2 and 3.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-MULTICORE-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start, with the scratch fetch evidence the boot contract carries. Hart 0 posts it only after three check-ins, so the word is a four-hart result
+|`CHK-FW-MULTICORE-HART-MARKERS` |SCRATCH_2 reads 2 and SCRATCH_3 reads 3 after PASS. Neither can be a residue: one was cleared by the bench before release and the other overwritten by the seed publish
+|===
+
+*Pass Criteria*: both checkers hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-168-smc_fw_octs_p0_primary_test]]
+===== 168 `smc_fw_octs_p0_primary_test`
+
+*Source Module*: `smc_fw_octs_p0_primary_test`
+
+*BFM / Model*: the SMC C image `fw/tests/octs_p0_primary_test`, executed by the CPU cluster; timer CSRs read over SEP_IN AXI, credit pulses counted on `tb_octs_cnt_credit_from_dut` (pad 56)
+
+*Objective*: The OCTS system timer is configured and swept from the hart that owns it in the product: CTRL writability, TIMER_GPIO_ENABLE, 64-bit PRESET, TIMER_START, monotonic COUNT.
+
+*Test Coverage*:
+
+* CPU-side programming of OCTS. The cocotb OCTS leaves drive the same registers from SEP_IN; this image probes CTRL against a value that differs from the reset default in every field, programs CTRL and TIMER_GPIO_ENABLE, writes and reads back PRESET including a 64-bit value only a live HI half can return, starts the timer and requires COUNT to grow across three reads. Those compares are the firmware's.
+* The timer left running after the verdict, which the bench measures on its own: STATUS.RUNNING, TIMER_COUNT_LO advancing, and credit pulses on pad 56 -- the PRIMARY outbound observation `smc_octs_dual_sync_test` uses. `tb_chiplet_is_primary` keeps its default of 1.
+
+*Test Procedure*:
+
+[arabic]
+. Build `octs_p0_primary_test` through `[c_build.default]`, stage `octs_p0_primary_test.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic. The image parks with the timer running and the pad output enabled.
+. Read STATUS.RUNNING and TIMER_GPIO_ENABLE and require both set; read TIMER_COUNT_LO, wait 256 `clk_smc_i`, read it again and require it to have advanced.
+. Count rising edges on `tb_octs_cnt_credit_from_dut` over 1024 `clk_smc_i` and require at least two.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-OCTS-PRIMARY-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-OCTS-COUNT-ADVANCES` |STATUS.RUNNING and TIMER_GPIO_ENABLE read set and TIMER_COUNT_LO advanced across 256 `clk_smc_i`, so the timer the image started is still counting when the bench looks
+|`CHK-FW-OCTS-CREDIT-PAD` |At least two rising edges on pad 56 in 1024 `clk_smc_i`. Two is the floor `smc_octs_dual_sync_test` uses for PRIMARY outbound; the RDL gives CREDIT_VAL no period semantics a tighter floor could be derived from, and the image's CREDIT_VAL of 0xA pulses more often than that test's 0x10
+|===
+
+*Pass Criteria*: all three checkers hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-169-smc_fw_i2c_sanity_test]]
+===== 169 `smc_fw_i2c_sanity_test`
+
+*Source Module*: `smc_fw_i2c_sanity_test`
+
+*BFM / Model*: the SMC C image `fw/tests/i2c_sanity`, executed by the CPU cluster, I2C_0 as controller against I2C_1 as target on the shared pad bus; `SmcFwI2cWireMonitor` decoding `tb_i2c0_scl/sda`; verdict read over SEP_IN AXI
+
+*Objective*: I2C controller bring-up from the CPU, the `i2c_sanity` image: TIMING0-4 read-back, FMT reset on a non-empty FIFO, a 3-byte write with STOP received by the I2C_1 target, the CMD_COMPLETE lifecycle through the PLIC pending bit, CONTROLLER_HALT provoked by a NACK.
+
+*Test Coverage*:
+
+* What the firmware grades from both instances' CSRs: TIMING0-4 read back field by field, FMT reset on a FIFO observed non-empty, a 3-byte write whose bytes the target ACQ FIFO returns, CMD_COMPLETE read through the PLIC pending bit, and CONTROLLER_HALT at the unanswered address 0x55. The FIFO-level and byte compares are the firmware's, graded from both instances' CSRs.
+* The wire, which the bench vouches for. With `+smc_i2c_shared_bus` the I2C0/1/2 pads share one resolved open-drain bus, so the transfer the firmware describes has to appear on `tb_i2c0_scl/sda` as START, address, direction, acknowledge, data bytes, STOP. A PASS word without that traffic -- an image that short-circuited, a pad mux left disabled, a target that never acknowledged -- fails here.
+* Floors, not exact counts: the driver splits long transfers and retries are legal, so the wire can carry more frames than the minimum, never fewer. For a write the bytes counted are those the target acknowledged.
+
+*Test Procedure*:
+
+[arabic]
+. Build `i2c_sanity` through `[c_build.default]`, stage `i2c_sanity.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, and arm `SmcFwI2cWireMonitor` on `tb_i2c0_scl/sda`.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
+. Grade the decoded frames against the floors the image implies.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-I2C-SANITY-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-I2C-WIRE-TRAFFIC` |Emitted once per floor, twice here: at least one acknowledged write frame to 0x10 carrying at least 3 data bytes (the write with STOP), and at least one frame to 0x55 whose address byte no target acknowledged (the halt provocation). Decoded passively from the pads, not reported by the firmware
+|===
+
+*Pass Criteria*: the boot token and both wire floors hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-170-smc_fw_i2c_target_sanity_test]]
+===== 170 `smc_fw_i2c_target_sanity_test`
+
+*Source Module*: `smc_fw_i2c_target_sanity_test`
+
+*BFM / Model*: the SMC C image `fw/tests/i2c_target_sanity`, executed by the CPU cluster, I2C_0 as controller against I2C_1 as target on the shared pad bus; `SmcI2cMasterVip` as the external host for step S6, played from a `smc_fw_scratch_marker_watch` on SCRATCH_1; `SmcFwI2cWireMonitor`; verdict read over SEP_IN AXI
+
+*Objective*: I2C target bring-up from the CPU, the `i2c_target_sanity` image: ADDR0 match and mismatch, dual address, ACQ write, TX read, TX stretch control -- and the UNEXP_STOP lifecycle with the bench as the external host.
+
+*Test Coverage*:
+
+* Steps S1..S5, CPU-driven and graded by the firmware from both instances' CSRs.
+* Step S6 needs a host the OpenTitan controller cannot be: one that ends a read with a STOP and no NACK. The image disables I2C_0, publishes 0xEBEDEBE3 in SCRATCH_1 and waits for INTR_STATE.UNEXP_STOP. The bench is that host: START, 0x10 with the read bit, one data byte, then the STOP inside that byte's acknowledge clock -- the ACK level driven, SCL allowed to rise, SDA released while SCL is still high. That is the only placement that is a STOP without a preceding NACK: once the acknowledge clock completes the target is already presenting its next bit, so a host pull on SDA is a lost transfer to it rather than an unexpected STOP, and a host that acknowledges every byte ends against an empty TX FIFO with the target stretching SCL (INTR_STATE.TX_STRETCH).
+* The byte the host reads is data the DUT clocked out: the image preloads 0x77, 0x88 and the host must read 0x77. The firmware's UNEXP_STOP check is the other half of the same event.
+
+*Test Procedure*:
+
+[arabic]
+. Build `i2c_target_sanity` through `[c_build.default]`, stage `i2c_target_sanity.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, arm the wire monitor and the SCRATCH_1 watcher.
+. Program the reset vector and release. The image runs S1..S5 between I2C_0 and I2C_1.
+. When SCRATCH_1 reads 0xEBEDEBE3, drive the one-byte read from 0x10 with the STOP inside the acknowledge clock; require the address acknowledged and the byte equal to 0x77.
+. Poll SCRATCH_0 for the PASS magic, then grade the wire: at least two frames to 0x10 and at least one to 0x20.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-I2C-TARGET-SANITY-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-I2C-TARGET-VIP-READ` |The bench host's read of 0x10 was acknowledged and returned 0x77, the first preloaded TX byte, clocked out onto the wire by the DUT target
+|`CHK-FW-I2C-WIRE-TRAFFIC` |At least two frames to 0x10 and at least one to 0x20 (the dual address), decoded from the pads
+|===
+
+*Pass Criteria*: all three checkers hold. The image cannot reach PASS without the S6 STOP, so the VIP read precedes the verdict. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-171-smc_fw_i2c_acq_fifo_stretch_reset_test]]
+===== 171 `smc_fw_i2c_acq_fifo_stretch_reset_test`
+
+*Source Module*: `smc_fw_i2c_acq_fifo_stretch_reset_test`
+
+*BFM / Model*: the SMC C image `fw/tests/i2c_acq_fifo_stretch_reset`, executed by the CPU cluster, I2C_1 as controller into I2C_0 as target on the shared pad bus; `smc_fw_scratch_marker_watch` sampling `tb_i2c0_scl_dut_low` at two markers; `SmcFwI2cWireMonitor`; verdict read over SEP_IN AXI
+
+*Objective*: The target's ACQ FIFO stretches SCL automatically when full, and ACQ reset releases the stretch, observed on the target's own SCL driver.
+
+*Test Coverage*:
+
+* STATUS.ACQFULL reached by a 70-byte write the firmware does not service, the ACQ FIFO reset, recovery of the abandoned write, and a 4-byte verify write received and compared. The FIFO levels and the compare are the firmware's.
+* The stretch itself, a duration on SCL that no register reports. `tb_i2c0_scl_dut_low` is I2C_0's open-drain pull alone; a target never drives SCL except to stretch, and the FSM enters StretchAcqFull at the ACK phase of the byte in flight when STATUS.ACQFULL asserts, so the window may open on that byte's last clocks. What is required is a pull asserted for a contiguous span far longer than any clock-low phase, still asserted with SCL low over the whole final quarter of the window: the target, not the controller, is holding the clock.
+* The release. After the ACQ reset the same pull must be absent throughout the window. The controller may still be clocking the line while it finishes recovering the abandoned write, so the resolved SCL is reported, not required idle.
+
+*Test Procedure*:
+
+[arabic]
+. Build `i2c_acq_fifo_stretch_reset` through `[c_build.default]`, stage `i2c_acq_fifo_stretch_reset.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, arm the wire monitor and a SCRATCH_1 watcher.
+. Program the reset vector and release. The image parks at SCRATCH_1 = 0x31 with the ACQ FIFO full and waits for SCRATCH_4 = 0xC10A.
+. At 0x31, sample `tb_i2c0_scl_dut_low` across a window of about 20 SCL periods; require it asserted continuously for at least 20 us and through the final quarter of the window with SCL low; read the ACQ level the image published in SCRATCH_5 and require it non-zero. Only then write the acknowledge.
+. The image resets the ACQ FIFO, recovers the write and parks at SCRATCH_1 = 0x32. Sample the same window and require the pull absent throughout; read the level from SCRATCH_6 and require zero. Acknowledge.
+. Poll SCRATCH_0 for the PASS magic and grade the wire: at least one acknowledged write frame to 0x10 carrying at least 4 data bytes.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-I2C-ACQ-STRETCH-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-I2C-ACQ-STRETCH-SCL` |At marker 0x31 the target's SCL pull is asserted continuously for at least 20 us and through the final quarter of the window with SCL low, and the ACQ level the firmware published is non-zero
+|`CHK-FW-I2C-ACQ-RELEASE-SCL` |At marker 0x32 the target's pull is absent throughout the window (resolved SCL reported, not required idle), and the published ACQ level is zero
+|`CHK-FW-I2C-WIRE-TRAFFIC` |At least one acknowledged write frame to 0x10 carrying at least 4 data bytes: the verify write after recovery crossed the pads
+|===
+
+*Pass Criteria*: all four checkers hold. Each acknowledge is written only after its window is graded, so the firmware cannot run past either. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-172-smc_fw_i2c_p1_fifo_depth_xfer_test]]
+===== 172 `smc_fw_i2c_p1_fifo_depth_xfer_test`
+
+*Source Module*: `smc_fw_i2c_p1_fifo_depth_xfer_test`
+
+*BFM / Model*: the SMC C image `fw/tests/i2c_p1_fifo_depth_xfer`, executed by the CPU cluster, I2C_0 as controller against I2C_1 as target on the shared pad bus; `SmcFwI2cWireMonitor` decoding `tb_i2c0_scl/sda`; verdict read over SEP_IN AXI
+
+*Objective*: A full-FIFO-depth 64-byte transfer with the controller pushing while the target drains; length and every byte compared, NACKed entries excluded from the payload.
+
+*Test Coverage*:
+
+* A 64-byte payload -- the FIFO depth -- moved one byte per controller write from I2C_0 to I2C_1 while the target drains its ACQ FIFO concurrently; the length and every byte compared, entries classified by ACQ signal so a NACKed byte cannot pass as payload. Those compares are the firmware's.
+* The wire, graded by the bench as on card 168: acknowledged write frames to 0x10 carrying at least 64 data bytes in total. Floors, not exact counts, since the driver may split the transfer.
+
+*Test Procedure*:
+
+[arabic]
+. Build `i2c_p1_fifo_depth_xfer` through `[c_build.default]`, stage `i2c_p1_fifo_depth_xfer.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, and arm the wire monitor.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
+. Sum the acknowledged data bytes of the write frames to 0x10 and require at least 64.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-I2C-FIFO-DEPTH-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-I2C-WIRE-TRAFFIC` |Acknowledged write frames to 0x10 carrying at least 64 data bytes in total, decoded from the pads
+|===
+
+*Pass Criteria*: both checkers hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-173-smc_fw_i2c_tx_stretch_timeout_recovery_test]]
+===== 173 `smc_fw_i2c_tx_stretch_timeout_recovery_test`
+
+*Source Module*: `smc_fw_i2c_tx_stretch_timeout_recovery_test`
+
+*BFM / Model*: the SMC C image `fw/tests/i2c_tx_stretch_timeout_recovery`, executed by the CPU cluster, I2C_1 as controller against I2C_0 as target on the shared pad bus; `SmcFwI2cWireMonitor` decoding `tb_i2c0_scl/sda`; verdict read over SEP_IN AXI
+
+*Objective*: The controller's stretch timeout fires on a read the empty target TX FIFO stretches; the recovery -- target disable releases SCL, controller disable drives the automatic STOP, both re-initialised -- ends in a clean 16-byte write.
+
+*Test Coverage*:
+
+* I2C_1 reads from I2C_0 while the target TX FIFO is empty, so the target stretches SCL until the controller stretch timeout fires; the firmware then disables the target to release SCL, disables the controller to exercise the automatic STOP recovery, re-initialises both and checks a 16-byte write. Those compares are the firmware's.
+* The wire, graded by the bench as on card 168. For a read the bytes counted are those the target clocked out, since the controller NACKs the last one by design.
+
+*Test Procedure*:
+
+[arabic]
+. Build `i2c_tx_stretch_timeout_recovery` through `[c_build.default]`, stage `i2c_tx_stretch_timeout_recovery.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, and arm the wire monitor.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
+. Grade the decoded frames: at least one acknowledged read frame to 0x10 (the stretched read) and at least one acknowledged write frame to 0x10 carrying at least 16 data bytes (the recovery write).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-I2C-TX-STRETCH-TIMEOUT-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-I2C-WIRE-TRAFFIC` |Emitted once per floor, twice here: at least one acknowledged read frame to 0x10, and at least one acknowledged write frame to 0x10 carrying at least 16 data bytes. Both transfers crossed the pads, so the recovery followed a real stretched read
+|===
+
+*Pass Criteria*: the boot token and both wire floors hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-174-smc_fw_i2c_fifo_full_test]]
+===== 174 `smc_fw_i2c_fifo_full_test`
+
+*Source Module*: `smc_fw_i2c_fifo_full_test`
+
+*BFM / Model*: the SMC C image `fw/tests/i2c_fifo_full`, executed by the CPU cluster, I2C_0 as controller against I2C_1 as target on the shared pad bus; `SmcFwI2cWireMonitor` decoding `tb_i2c0_scl/sda`; verdict read over SEP_IN AXI
+
+*Objective*: Fill and reset of the four FIFOs of an I2C pair: FMT and TX by software stores to the declared depth, RX and ACQ by real 8-byte transfers, with the driver's software-drain repair flag read back so a repaired FIFO fails.
+
+*Test Coverage*:
+
+* FMT and TX filled by software stores to the depth the RTL declares and reset; RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
+* The cocotb `smc_i2c_fifo_full_test` covers the CSR-level full/empty flags only; this leaf is the one that fills RX and ACQ by transfers.
+* The wire, graded by the bench as on card 168.
+
+*Test Procedure*:
+
+[arabic]
+. Build `i2c_fifo_full` through `[c_build.default]`, stage `i2c_fifo_full.ecc.hex`, select the shared pad bus, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, and arm the wire monitor.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
+. Grade the decoded frames: a read frame to 0x10 that returned at least 8 bytes and an acknowledged write frame to 0x10 carrying at least 8 bytes.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-I2C-FIFO-FULL-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-I2C-WIRE-TRAFFIC` |Emitted once per floor, twice here: a read frame to 0x10 returning at least 8 bytes, and an acknowledged write frame to 0x10 carrying at least 8 bytes -- the transfers that filled RX and ACQ crossed the pads
+|===
+
+*Pass Criteria*: the boot token and both wire floors hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-175-smc_fw_uart_log_engine_single_entry_test]]
+===== 175 `smc_fw_uart_log_engine_single_entry_test`
+
+*Source Module*: `smc_fw_uart_log_engine_single_entry_test`
+
+*BFM / Model*: the SMC C image `fw/tests/uart_log_engine_single_entry`, executed by the CPU cluster, UART0 in MCR.LOOP; rising edges counted on `tb_uart_irq_any`; engine CSRs and the SPM source read over SEP_IN AXI
+
+*Objective*: Log-engine golden path: one 16-byte SRAM entry fetched and written to UART0, returned through MCR.LOOP and read back from RBR in order; LOG_CTRL[0] hwclr; INTR_STATUS 0.
+
+*Test Coverage*:
+
+* The engine's data path is CPU-side -- SRAM fetch, UART write, MCR.LOOP return through the UART's own receiver -- which no cocotb body drives. The image writes 0xA0..0xAF into SPM, points wrap 0's LOG_REGION_ADDR/SIZE at it and LOG_WRITE_ADDR at UART0's THR, puts UART0 in MCR.LOOP with the received-data interrupt enabled, triggers LOG_CTRL[0] = 16, reads the 16 bytes back from RBR in order and requires LOG_CTRL[0] to have hwclr'd and INTR_STATUS to be 0. MCR.LOOP keeps the bytes inside the UART -- `tx_o` stays marking and no pad carries them -- so the byte-for-byte compare is the firmware's and this card does not claim it.
+* What the bench observes on its own: the UART interrupt line rose while the image ran, so a looped-back byte did land in the RX FIFO; after PASS the SPM source still holds the pattern the image says it transferred, and the engine reads back programmed at that region with CTRL.EN and MCR.LOOP cleared as the image's cleanup left them.
+
+*Test Procedure*:
+
+[arabic]
+. Build `uart_log_engine_single_entry` through `[c_build.default]`, stage `uart_log_engine_single_entry.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, and start counting rising edges on `tb_uart_irq_any`.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
+. Read wrap 0's LOG_REGION_ADDR, LOG_REGION_SIZE, LOG_WRITE_ADDR and CTRL and UART0's MCR over SEP_IN and compare with the image's final programming.
+. Read the 16-byte SPM source, 64 bits at a time, and compare with 0xA0..0xAF.
+. Require the interrupt edge count to be at least one.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-LOG-ENGINE-SINGLE-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-LOG-ENGINE-CSR-STATE` |Wrap 0 reads back CTRL.EN = 0, REGION_ADDR = SPM + 0x40000, REGION_SIZE = 0x100, WRITE_ADDR = UART0 offset 0 (THR/RBR), and UART0 MCR.LOOP cleared -- the state the image's cleanup leaves, read by the bench rather than reported by the image
+|`CHK-FW-LOG-ENGINE-SPM-PATTERN` |The 16 bytes at the fetch source read 0xA0..0xAF over SEP_IN AXI
+|`CHK-FW-LOG-ENGINE-UART-IRQ` |`tb_uart_irq_any`, the OR over the UART wraps' interrupt outputs, rose at least once during the run. UART0 is the only UART the image programs, so the edge is its received-data interrupt
+|===
+
+*Pass Criteria*: all four checkers hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-176-smc_fw_uart_log_engine_boundary_backpressure_test]]
+===== 176 `smc_fw_uart_log_engine_boundary_backpressure_test`
+
+*Source Module*: `smc_fw_uart_log_engine_boundary_backpressure_test`
+
+*BFM / Model*: the SMC C image `fw/tests/uart_log_engine_boundary_backpressure`, executed by the CPU cluster, UART0 in MCR.LOOP; engine CSRs and the SPM source read over SEP_IN AXI
+
+*Objective*: Log-engine effective-length boundaries -- request shorter than the slot, request clamped to the slot, non-word-aligned slot rounded to one beat -- and a log write under UART TX backpressure.
+
+*Test Coverage*:
+
+* Scenarios A..E on wrap 0: A, an 8-byte request inside a 16-byte slot (one fetch beat); B, a 64-byte request into a 64-byte slot that overfills the 32-entry UART TX FIFO so the write FSM runs against `uart_tx_ready` low; C, a completion check against a defined UART offset (the write-error path is unreachable, as the image documents); D, a 24-byte request clamped to its 16-byte slot; E, a 15-byte slot rounded down to one 8-byte beat. D and E read back exactly the clamped byte count from RBR and require no extra byte. Those compares are the firmware's.
+* What the bench observes on its own: the SPM source holds E's 0xE0..0xEF in its first 16 bytes and B's 0x50..0x7F behind them -- B was the only scenario to write past byte 16 -- and the engine reads back programmed as E left it, with CTRL.EN and MCR.LOOP cleared by the cleanup.
+
+*Test Procedure*:
+
+[arabic]
+. Build `uart_log_engine_boundary_backpressure` through `[c_build.default]`, stage `uart_log_engine_boundary_backpressure.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
+. Read wrap 0's engine registers and UART0's MCR over SEP_IN and compare with scenario E's programming.
+. Read the 64-byte SPM source and compare bytes 0..15 with 0xE0..0xEF and bytes 16..63 with 0x50..0x7F.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-LOG-ENGINE-BOUNDARY-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-LOG-ENGINE-CSR-STATE` |Wrap 0 reads back as scenario E left it: REGION_SIZE 0xF0 at SPM + 0x40000, WRITE_ADDR = UART0 offset 0 (THR/RBR), CTRL.EN and UART0 MCR.LOOP cleared
+|`CHK-FW-LOG-ENGINE-SPM-PATTERN` |Bytes 0..15 of the source read 0xE0..0xEF and bytes 16..63 read 0x50..0x7F over SEP_IN AXI
+|===
+
+*Pass Criteria*: all three checkers hold. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-177-smc_fw_uart_log_engine_disable_during_xfer_test]]
+===== 177 `smc_fw_uart_log_engine_disable_during_xfer_test`
+
+*Source Module*: `smc_fw_uart_log_engine_disable_during_xfer_test`
+
+*BFM / Model*: the SMC C image `fw/tests/uart_log_engine_disable_during_xfer`, executed by the CPU cluster, UART0 and UART1 in MCR.LOOP; both wraps' engine CSRs and the SPM source read over SEP_IN AXI
+
+*Objective*: CTRL.EN cleared mid-transfer halts the engine cleanly; a re-trigger completes; four entries triggered together all hwclr; an abort from WAIT; replica 1 runs an entry.
+
+*Test Coverage*:
+
+* On wrap 0 with UART0 in MCR.LOOP: a 16-byte entry triggered and CTRL.EN cleared immediately, with INTR_STATUS required to stay 0 while both error interrupts are enabled; a re-enable and a clean re-trigger; four entries fired at once and all four LOG_CTRL words waited to hwclr; another transfer aborted from the WAIT state; and a 16-byte entry on replica 1 (wrap 1). Every completion and status check is the firmware's.
+* What the bench observes on its own: the 256-byte SPM source holds the multi-entry fill 0xC0 + (i & 0x3F) that the later scenarios reuse, and both engines read back programmed at that buffer with CTRL.EN and MCR.LOOP cleared on both wraps by the cleanup.
+
+*Test Procedure*:
+
+[arabic]
+. Build `uart_log_engine_disable_during_xfer` through `[c_build.default]`, stage `uart_log_engine_disable_during_xfer.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
+. Read both wraps' engine registers and both UARTs' MCR over SEP_IN and compare with the image's final programming.
+. Read the 256-byte SPM source and compare with 0xC0 + (i & 0x3F).
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-LOG-ENGINE-DISABLE-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-LOG-ENGINE-CSR-STATE` |For wrap 0 and wrap 1: CTRL.EN = 0, REGION_ADDR = SPM + 0x40000, REGION_SIZE 0x100, WRITE_ADDR = the wrap's own UART offset 0 (THR/RBR), and MCR.LOOP cleared on both UARTs
+|`CHK-FW-LOG-ENGINE-SPM-PATTERN` |The 256 bytes of the source read 0xC0 + (i & 0x3F) over SEP_IN AXI
+|===
+
+*Pass Criteria*: all three checkers hold, the CSR compare on both wraps. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-178-smc_fw_uart_log_engine_fetch_err_test]]
+===== 178 `smc_fw_uart_log_engine_fetch_err_test`
+
+*Source Module*: `smc_fw_uart_log_engine_fetch_err_test`
+
+*BFM / Model*: the SMC C image `fw/tests/uart_log_engine_fetch_err`, executed by the CPU cluster, UART0 in MCR.LOOP; both wraps' engine CSRs, the SPM source and the unmapped address read over SEP_IN AXI
+
+*Objective*: A log-engine fetch from an unmapped address latches INTR_STATUS.LOG_FETCH_ERR: INTR_TEST self-test, INTR_ENABLE gating, stuck-cause re-latch and retirement by a good fetch, sustained DECERR with LOG_CTRL not hwclr, WRITE_ERR staying clear, and the fault on replica 1.
+
+*Test Coverage*:
+
+* The unmapped SMC-local address is derived from the generated map -- the first 4 KB boundary past the WDT cluster, checked at compile time to lie before the reset unit. On wrap 0 the image runs the INTR_TEST self-test for both bits, INTR_ENABLE gating of status capture, a fetch from the unmapped region that must latch LOG_FETCH_ERR, proof that the stuck cause re-latches after a W1C and is retired only by a successful fetch, a sustained DECERR over a 4 KB region whose LOG_CTRL must not hwclr, the same fault with WRITE_ERR unmasked, and the fault on replica 1. Sixteen CHK tokens are counted inside the image and PASS is refused if any is missing.
+* What the bench observes on its own: a SEP_IN AXI read of the unmapped address returns an error response, so the fabric really answers the image's fetch region with DECERR -- the cause the firmware's LOG_FETCH_ERR check rests on; after PASS the SPM region used for the retiring good fetches still holds 0xD0..0xDF, and both engines read back pointed at the unmapped region with CTRL.EN cleared.
+
+*Test Procedure*:
+
+[arabic]
+. Build `uart_log_engine_fetch_err` through `[c_build.default]`, stage `uart_log_engine_fetch_err.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back.
+. Program the reset vector, release, and poll SCRATCH_0 for the PASS magic.
+. Read both wraps' engine registers and UART0's MCR over SEP_IN and compare with the image's final programming.
+. Read the 16-byte SPM region used for the retiring good fetches and compare with 0xD0..0xDF.
+. Declare the unmapped address to the SEP_IN AXI monitor as expected-error, read it (`csr_read_expect_error`) and require an AXI error response.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-LOG-ENGINE-FETCH-ERR-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start; the image counts its 16 CHK tokens before it posts PASS
+|`CHK-FW-LOG-ENGINE-CSR-STATE` |For wrap 0 and wrap 1: CTRL.EN = 0, REGION_ADDR = the unmapped address, REGION_SIZE 0x100, WRITE_ADDR = the wrap's own UART offset 0 (THR/RBR). Wrap 0's MCR.LOOP is cleared by the cleanup; wrap 1's UART is never programmed by the image and its MCR is not checked
+|`CHK-FW-LOG-ENGINE-SPM-PATTERN` |The 16 bytes at the good-fetch source read 0xD0..0xDF over SEP_IN AXI
+|`CHK-FW-LOG-ENGINE-FETCH-DECERR` |A SEP_IN read of the unmapped address returns an AXI error response, so the DECERR the image's fetch met is the fabric's answer to that address and not a property of the engine's bus master alone
+|===
+
+*Pass Criteria*: all four checkers hold, the CSR compare on both wraps. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
 
 '''''
 
