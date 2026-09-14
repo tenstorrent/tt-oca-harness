@@ -5,10 +5,10 @@
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
 The 14-word blob is the KM IP ``mutable_fw_blob_small`` image. After a
-successful ``CMD_SRAM_LOAD_EXEC`` the KM jumps to SRAM and stops answering
-as ``rom_main``. A warm reset brings ROM back; ``CMD_SRAM_EXEC`` then
-restarts the persisted image. KMCSR ``TEST_SIGNATURE`` is not SEP-visible;
-the mailbox return codes and the second jump are the frontdoor proof.
+successful ``CMD_SRAM_LOAD_EXEC`` the KM jumps to SRAM. A warm reset
+brings ROM back; ``CMD_SRAM_EXEC`` then restarts the persisted image.
+ROM posts the success word before that jump. KMCSR ``TEST_SIGNATURE``
+is not SEP-visible.
 """
 
 from __future__ import annotations
@@ -109,9 +109,7 @@ class sep_km_handover_test(sep_base_test):
 
         await self._warm_reset_km()
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_EXEC_ROM, [])
-        assert rc == KM_RC_SUCCESS, (
-            f"CHK-INHIBIT-RST FAIL: CMD_EXEC_ROM after warm reset rc={rc}"
-        )
+        assert rc == KM_RC_SUCCESS, f"CHK-INHIBIT-RST FAIL: CMD_EXEC_ROM after warm reset rc={rc}"
         self.logger.info("CHK-INHIBIT-RST PASS: warm reset cleared the inhibit; CMD_EXEC_ROM rc=0")
 
         # New epoch so the load is not inhibited by the EXEC_ROM above.
@@ -140,7 +138,7 @@ class sep_km_handover_test(sep_base_test):
         assert rc == KM_RC_SUCCESS, (
             f"CHK-EXEC FAIL: CMD_SRAM_EXEC rc={rc} -- persisted image did not restart"
         )
-        self.logger.info("CHK-EXEC PASS: CMD_SRAM_EXEC rc=0 after warm reset (image persisted)")
+        self.logger.info("CHK-EXEC PASS: CMD_SRAM_EXEC rc=0 -- image persisted")
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()

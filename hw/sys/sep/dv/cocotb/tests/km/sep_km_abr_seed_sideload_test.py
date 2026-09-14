@@ -74,9 +74,7 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         entropy = [rng.getrandbits(32) for _ in range(ENTROPY_WORDS)]
         if not any(w != 0 for w in entropy):
             entropy[0] = 0xA5A5A5A5
-        self.logger.info(
-            "km abr seed: seed=%s entropy[0]=0x%08x", self.random_seed(), entropy[0]
-        )
+        self.logger.info("km abr seed: seed=%s entropy[0]=0x%08x", self.random_seed(), entropy[0])
 
         image = self.select_efuse_image(lc_raw=0x1)
         self.write_efuse_image(image)
@@ -115,8 +113,7 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         rc, arg = await self.km.key_transfer(handle=handle, dest=KM_DEST_ABR_MLDSA_SEED)
         assert rc == KM_RC_SUCCESS, f"CHK-XFER FAIL: CMD_KEY_TRANSFER dest=0x10 rc={rc}"
         assert (arg & 0xFF) == handle and ((arg >> 8) & 0xFF) == KM_DEST_ABR_MLDSA_SEED, (
-            f"CHK-XFER FAIL: RETURN_ARG 0x{arg:08x} does not echo handle "
-            f"0x{handle:02x} dest 0x10"
+            f"CHK-XFER FAIL: RETURN_ARG 0x{arg:08x} does not echo handle 0x{handle:02x} dest 0x10"
         )
         self.logger.info("CHK-XFER PASS: dest=0x10 (abr_mldsa_seed) rc=0 handle=0x%02x", handle)
 

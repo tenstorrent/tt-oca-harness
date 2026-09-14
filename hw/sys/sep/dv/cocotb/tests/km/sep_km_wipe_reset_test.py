@@ -66,8 +66,7 @@ class sep_km_wipe_reset_test(sep_base_test):
         handle1 = await self.km.key_load(key_words=list(_RESET_KEY), dest=KM_DEST_AES)
         assert handle1 != 0, "CHK-RESET FAIL: post-reset CMD_KEY_LOAD returned a null handle"
         self.logger.info(
-            "CHK-RESET PASS: SW_RESET_N park/release, RESP_KM_READY, CMD_KEY_LOAD "
-            "handle=0x%02x",
+            "CHK-RESET PASS: SW_RESET_N park/release, RESP_KM_READY, CMD_KEY_LOAD handle=0x%02x",
             handle1,
         )
 
@@ -82,17 +81,14 @@ class sep_km_wipe_reset_test(sep_base_test):
         )
         await self.start_seq(seq)
         if not seq.resp_ok:
-            raise AssertionError(
-                f"CHK-WIPE FAIL: KM_WIPE_CTRL write @0x{wipe_addr:08x} not OKAY"
-            )
+            raise AssertionError(f"CHK-WIPE FAIL: KM_WIPE_CTRL write @0x{wipe_addr:08x} not OKAY")
         words = await self.km.recv_unsolicited(KM_RESP_UNRECOVERABLE_FAULT, timeout=400_000)
         payload_len = (words[0] >> 16) & 0xFF
         assert payload_len >= 1, (
             f"CHK-WIPE FAIL: unrecoverable frame has no payload ({[hex(w) for w in words]})"
         )
         self.logger.info(
-            "CHK-WIPE PASS: KM_WIPE_CTRL posted RESP_UNRECOVERABLE_FAULT "
-            f"payload=0x{words[1]:08x}"
+            f"CHK-WIPE PASS: KM_WIPE_CTRL posted RESP_UNRECOVERABLE_FAULT payload=0x{words[1]:08x}"
         )
 
         await self.stop_fifo_drain()

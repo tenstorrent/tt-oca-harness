@@ -24,8 +24,7 @@ ABR_STATUS = ABR_BASE + abr_off("MLDSA_STATUS")
 ABR_ENTROPY = ABR_BASE + abr_off("ABR_ENTROPY")
 ABR_SEED = ABR_BASE + abr_off("MLDSA_SEED")
 ABR_PUBKEY = ABR_BASE + abr_off("MLDSA_PUBKEY")
-# abr_wrapper KV seed-read control (fw/tests/common/abr_mldsa.h).
-ABR_MLDSA_KV_RD_SEED_CTRL = ABR_BASE + 0x8000
+ABR_MLDSA_KV_RD_SEED_CTRL = ABR_BASE + abr_off("kv_mldsa_seed_rd_ctrl")
 ABR_KV_RD_SEED_READ_EN = 1 << 0
 ABR_INTR = ABR_BASE + abr_off("intr_block_rf")
 ABR_GLOBAL_INTR_EN = ABR_INTR + abr_off("global_intr_en_r")

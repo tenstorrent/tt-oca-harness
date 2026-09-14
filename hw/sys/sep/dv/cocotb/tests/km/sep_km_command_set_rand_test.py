@@ -540,13 +540,11 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_RESERVED])
         assert rc == KM_RC_INVALID_ARG, (
-            f"CHK-OTP FAIL: reserved lock bit returned rc={rc}, expected "
-            f"{KM_RC_INVALID_ARG}"
+            f"CHK-OTP FAIL: reserved lock bit returned rc={rc}, expected {KM_RC_INVALID_ARG}"
         )
         rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [])
         assert rc == KM_RC_INVALID_LEN, (
-            f"CHK-OTP FAIL: zero-length lock payload returned rc={rc}, expected "
-            f"{KM_RC_INVALID_LEN}"
+            f"CHK-OTP FAIL: zero-length lock payload returned rc={rc}, expected {KM_RC_INVALID_LEN}"
         )
         self.logger.info(
             "CHK-OTP PASS: identity bit locked and echoed; reserved bit RC_INVALID_ARG; "
@@ -559,7 +557,9 @@ class sep_km_command_set_rand_test(sep_base_test):
         self.km.reset_host_seq()
         words = await self.km.recv_unsolicited(KM_RESP_RECOVERABLE_FAULT)
         payload_len = (words[0] >> 16) & 0xFF
-        assert payload_len >= 1, f"CHK-RECOV FAIL: fault frame has no payload ({[hex(w) for w in words]})"
+        assert payload_len >= 1, (
+            f"CHK-RECOV FAIL: fault frame has no payload ({[hex(w) for w in words]})"
+        )
         fault_raw = words[1] & 0xFF
         fault = fault_raw - 256 if fault_raw >= 128 else fault_raw
         assert fault == _RFAULT_FLUSHED_BY_SEP, (

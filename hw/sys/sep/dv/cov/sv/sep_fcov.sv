@@ -209,11 +209,14 @@ module sep_fcov (
   // KM mailbox frame (seq_lib/sep_km_mailbox_seq.py):
   //   header = {crc8[31:24], payload_len[23:16], cmd_id[15:8], seq_num[7:0]}
   //   RESP_CMD payload = [cmd_seq, cmd_id, rc, arg]
+  localparam logic [7:0] KmRespCmd = 8'h00;
   localparam logic [7:0] KmCmdHwVer = 8'h00;
   localparam logic [7:0] KmCmdRomVer = 8'h01;
+  localparam logic [7:0] KmCmdSramVer = 8'h02;
   localparam logic [7:0] KmCmdRecovAck = 8'h04;
   localparam logic [7:0] KmCmdExecRom = 8'h10;
   localparam logic [7:0] KmCmdSramLoadExec = 8'h11;
+  localparam logic [7:0] KmCmdSramExec = 8'h12;
   localparam logic [7:0] KmCmdGenerate = 8'h22;
   localparam logic [7:0] KmCmdTransfer = 8'h24;
   localparam logic [7:0] KmCmdOtpLock = 8'h28;
@@ -444,6 +447,8 @@ module sep_fcov (
   logic       km_rsp_arm_q;      // a command frame has been sent, response pending
   logic [7:0] km_rsp_cmd_q;      // echoed cmd_id (payload word 2)
   logic [7:0] km_rsp_rc_q;       // rc (payload word 3)
+  logic       km_rsp_is_cmd_q;   // outbound header resp_id was RESP_CMD
+  logic [7:0] km_xfer_dest_q;    // dest word latched from CMD_KEY_TRANSFER
 
   // Generate succeeded: the response frame echoed CMD_KEY_GENERATE with rc 0
   // and a non-null handle. Nothing here is inferred from silence.
@@ -453,12 +458,15 @@ module sep_fcov (
   // (payload = [handle, dest]). km_cmd_idx_q counts words already written
   // after the header, so the dest word is the cycle it reads 1.
   wire km_transfer_dest = km_wr_data && (km_cmd_q == KmCmdTransfer) && (km_cmd_idx_q == 9'd1);
-  // Header write of a new mailbox command frame.
-  wire km_cmd_hdr = km_wr_data && km_cmd_hdr_next_q;
+  // Score dest/cmd on a RESP_CMD payload, not on inbound WRITE_DATA.
+  wire km_host_cmd_seen = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
+      (km_rsp_idx_q == 9'd2);
+  wire km_xfer_scored = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
+      (km_rsp_idx_q == 9'd4) && (km_rsp_cmd_q == KmCmdTransfer);
   wire km_wipe = wr_ev && (aw_addr_q == SEP_CPU_CTRL_KM_WIPE_CTRL_REG_ADDR) &&
-      wr_data[0];
+      wr_strb[0] && wr_data[0];
   wire km_swrst_rel = wr_ev && (aw_addr_q == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR) &&
-      wr_data[0];
+      wr_strb[0] && wr_data[0];
 
   // --- Secure DMA --------------------------------------------------------
   wire dma_go = wr_ev && (aw_addr_q == SECURE_DMA_CONTROL_REG_ADDR) &&
@@ -769,6 +777,8 @@ module sep_fcov (
       km_cmd_idx_q      <= '0;
       km_rsp_idx_q      <= '0;
       km_rsp_arm_q      <= 1'b0;
+      km_rsp_is_cmd_q   <= 1'b0;
+      km_xfer_dest_q    <= '0;
       dma_copy_q        <= 1'b0;
       dma_hs_q          <= 1'b0;
       dma_hash_q        <= 1'b0;
@@ -892,6 +902,7 @@ module sep_fcov (
           // last word of the frame = payload_len + 1 (the CRC word)
           km_cmd_hdr_next_q <= ((km_cmd_idx_q + 9'd1) >= (9'(km_cmd_len_q) + 9'd1));
         end
+        if (km_transfer_dest) km_xfer_dest_q <= wr_data[7:0];
       end
 
       // KM response frame: header, then payload [cmd_seq, cmd_id, rc, arg].
@@ -900,6 +911,7 @@ module sep_fcov (
       // would shift a later word onto index 4 and false-hit cp_generate.
       if (km_rd_data && km_rsp_arm_q) begin
         km_rsp_idx_q <= km_rsp_idx_q + 9'd1;
+        if (km_rsp_idx_q == 9'd0) km_rsp_is_cmd_q <= (rd_data[15:8] == KmRespCmd);
         if (km_rsp_idx_q == 9'd2) km_rsp_cmd_q <= rd_data[7:0];
         if (km_rsp_idx_q == 9'd3) km_rsp_rc_q <= rd_data[7:0];
         if (km_rsp_idx_q >= 9'd4) km_rsp_arm_q <= 1'b0;
@@ -1166,9 +1178,11 @@ module sep_fcov (
     cp_cmd: coverpoint cmd_id {
       bins hw_ver = {KmCmdHwVer};
       bins rom_ver = {KmCmdRomVer};
+      bins sram_ver = {KmCmdSramVer};
       bins recov_ack = {KmCmdRecovAck};
       bins exec_rom = {KmCmdExecRom};
       bins sram_load_exec = {KmCmdSramLoadExec};
+      bins sram_exec = {KmCmdSramExec};
       bins otp_lock = {KmCmdOtpLock};
     }
   endgroup
@@ -1467,8 +1481,8 @@ module sep_fcov (
       if (kmac_cell_done)
         u_sep_kmac_mode_cg.sample(kmac_en_q, kmac_mode_q, kmac_str_q,
                                   kmac_keylen_valid_q ? kmac_keylen_q : 3'd7, kmac_sideload_q);
-      if (km_transfer_dest) u_sep_km_command_sideload_cg.sample(wr_data[7:0]);
-      if (km_cmd_hdr) u_sep_km_host_cmd_cg.sample(wr_data[15:8]);
+      if (km_xfer_scored) u_sep_km_command_sideload_cg.sample(km_xfer_dest_q);
+      if (km_host_cmd_seen) u_sep_km_host_cmd_cg.sample(rd_data[7:0]);
       if (efuse_rd_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_read_state_i, 1'b0);
       if (efuse_pg_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_program_state_i, 1'b1);
       if (lc_diff_ok) u_sep_lc_state_cg.sample(lc_raw);
