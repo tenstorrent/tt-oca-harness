@@ -1,6 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP vs fabric J2A MAP BIRA race; last writer wins, no tear. SEP=0, no Force."""
+"""OTP and fabric J2A writes to MAP BIRA back to back; last writer wins, no tear. SEP=0, no Force.
+
+Both writers are JTAG2AXI bridges behind the one TAP, so their DR shifts are
+serialised by construction and the OTP op has completed before the fabric
+write can be issued -- the first capture after the kick already reports it
+done. What this sequence proves is therefore back-to-back coherence between two
+masters on the same shadow-map word: the later writer wins on both read paths
+and in the shadow register, with no torn value in between. The OTP status seen
+at that first capture is logged so a run in which the op was still BUSY is
+visible in the record.
+"""
 
 from __future__ import annotations
 
@@ -37,7 +47,7 @@ SEP0_LC_STATE = 0xF0
 
 
 class smu_otp_vs_fabric_map_race_test_seq:
-    """OTP vs fabric MAP race: coherent winner, no silent tear."""
+    """OTP then fabric MAP write back to back: last writer wins, no silent tear."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -100,7 +110,23 @@ class smu_otp_vs_fabric_map_race_test_seq:
             size=SMC_OTP_AXSIZE_4B,
         )
         await jtag.write("SMC_OTP_AXI_SINGLE_OP", raw_o)
-        require_jtag_tdo_resolved("OTP overlap kick")
+        require_jtag_tdo_resolved("OTP kick")
+        # First look at the OTP op: the earliest the TAP can observe it. The
+        # fabric write below is issued only after the op has completed, so the
+        # pair is back to back, and this status says whether the op was ever
+        # seen in flight.
+        capt = await jtag.read("SMC_OTP_AXI_SINGLE_OP", shift_value=0)
+        require_jtag_tdo_resolved("OTP status at first capture")
+        st_o_first, _ = unpack_otp_single_op(capt)
+        st_o = st_o_first
+        if st_o == J2A_STATUS_BUSY:
+            st_o = await self._poll_otp_status(jtag)
+        if st_o != J2A_STATUS_SUCCESS:
+            raise AssertionError(f"OTP write before the fabric write: status={st_o}")
+        self._log(
+            f"OTPFAB back-to-back: OTP write status at first capture={st_o_first} "
+            f"(BUSY={J2A_STATUS_BUSY}), completed={st_o}"
+        )
         st_f, _ = await jtag2axi_single_write(
             jtag,
             BIRA,
@@ -109,48 +135,49 @@ class smu_otp_vs_fabric_map_race_test_seq:
             size=SMC_DBG_AXSIZE_4B,
             require_complete=True,
         )
-        require_jtag_tdo_resolved("fabric overlap write")
+        require_jtag_tdo_resolved("fabric write after the OTP write")
         if st_f != J2A_STATUS_SUCCESS:
-            raise AssertionError(f"overlap fabric write status={st_f}")
-        st_o = await self._poll_otp_status(jtag)
-        if st_o == J2A_STATUS_BUSY:
-            raise AssertionError("overlap OTP stuck BUSY")
-        sb.expect_eq("CHK-OTPFAB-OVERLAP-FAB", st_f, J2A_STATUS_SUCCESS)
+            raise AssertionError(f"back-to-back fabric write status={st_f}")
+        sb.expect_eq(
+            "CHK-OTPFAB-B2B-ISSUED", (st_o, st_f), (J2A_STATUS_SUCCESS, J2A_STATUS_SUCCESS)
+        )
 
         await ClockCycles(dut.clk_smu_i, 32)
         st_or, ord_ = await otp_jtag2axi_single_read(
             jtag, BIRA, require_complete=True, poll_limit=OTP_POLL
         )
-        require_jtag_tdo_resolved("overlap OTP read")
+        require_jtag_tdo_resolved("back-to-back OTP read")
         st_fr, frd = await jtag2axi_single_read(
             jtag,
             BIRA,
             size=SMC_DBG_AXSIZE_4B,
             require_complete=True,
         )
-        require_jtag_tdo_resolved("overlap fabric read")
+        require_jtag_tdo_resolved("back-to-back fabric read")
         if st_or != J2A_STATUS_SUCCESS or st_fr != J2A_STATUS_SUCCESS:
-            raise AssertionError(f"overlap read OTP st={st_or} fabric st={st_fr}")
+            raise AssertionError(f"back-to-back read OTP st={st_or} fabric st={st_fr}")
         o_val = int(ord_) & 0xFFFF_FFFF
         f_val = int(frd) & 0xFFFF_FFFF
         if o_val != f_val:
-            raise AssertionError(f"overlap OTP=0x{o_val:08x} fabric=0x{f_val:08x} disagree")
-        if o_val not in (PAT_O, PAT_F):
-            raise AssertionError(f"overlap tear: got 0x{o_val:08x}")
+            raise AssertionError(f"back-to-back OTP=0x{o_val:08x} fabric=0x{f_val:08x} disagree")
+        if o_val != PAT_F:
+            raise AssertionError(
+                f"back-to-back last writer: want the fabric pattern 0x{PAT_F:08x}, got 0x{o_val:08x}"
+            )
         shadow = shadow_map_word32(dut, MAP_BYTE_OFF)
         if shadow is None:
             raise AssertionError(
-                "overlap shadow_map_word32 returned None (smc_shadow_regs missing or unreadable)"
+                "back-to-back shadow_map_word32 returned None (smc_shadow_regs missing or unreadable)"
             )
         if shadow != o_val:
-            raise AssertionError(f"overlap shadow=0x{shadow:08x} != readback 0x{o_val:08x}")
+            raise AssertionError(f"back-to-back shadow=0x{shadow:08x} != readback 0x{o_val:08x}")
         self.s2_ok = True
         self._log(
-            f"OTPFAB overlap winner=0x{o_val:08x} shadow=0x{shadow:08x} "
+            f"OTPFAB back-to-back last writer=0x{o_val:08x} shadow=0x{shadow:08x} "
             f"bira=0x{BIRA:08x} off=0x{MAP_BYTE_OFF:x}"
         )
-        sb.expect_eq("CHK-OTPFAB-OVERLAP-COHERENT", o_val, f_val)
-        sb.expect_eq("CHK-OTPFAB-OVERLAP-SHADOW", shadow, o_val)
+        sb.expect_eq("CHK-OTPFAB-B2B-COHERENT", (o_val, f_val), (PAT_F, PAT_F))
+        sb.expect_eq("CHK-OTPFAB-B2B-SHADOW", shadow, o_val)
 
         last = o_val
         for i in range(PINGPONG):

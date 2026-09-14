@@ -578,11 +578,12 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: OTP vs fabric MAP race: coherent winner, no silent tear.
+*Objective*: OTP then fabric JTAG2AXI writes to the same MAP BIRA word back to back: the later writer wins on both read paths and in the shadow register, with no torn value.
 
 *Test Coverage*:
 
-* OTP vs fabric J2A MAP BIRA race; last writer wins, no tear.
+* Both writers are JTAG2AXI bridges behind the one primary TAP, so their DR shifts are serialised and the OTP write has completed before the fabric write can be issued; the sequence records the OTP status at its first capture after the kick and requires it complete before issuing the fabric write. No overlap between the two writes is claimed.
+* The fabric write must then be the value read back over the OTP bridge, over the fabric bridge, and in the shadow register (last writer wins), followed by an alternating OTP/fabric ping-pong with the same last-writer rule.
 
 *Test Procedure*:
 
@@ -597,9 +598,9 @@ check.
 |===
 |Checker |Description
 |`CHK-OTPFAB-GATE-OPEN` |Evidence token, emitted only after the compares it names have held
-|`CHK-OTPFAB-OVERLAP-FAB` |Evidence token, emitted only after the compares it names have held
-|`CHK-OTPFAB-OVERLAP-COHERENT` |Evidence token, emitted only after the compares it names have held
-|`CHK-OTPFAB-OVERLAP-SHADOW` |Evidence token, emitted only after the compares it names have held
+|`CHK-OTPFAB-B2B-ISSUED` |OTP write completed, then the fabric write completed
+|`CHK-OTPFAB-B2B-COHERENT` |OTP-bridge and fabric-bridge readbacks both equal the later (fabric) pattern
+|`CHK-OTPFAB-B2B-SHADOW` |shadow-map word equals that readback
 |`CHK-OTPFAB-PINGPONG` |Evidence token, emitted only after the compares it names have held
 |`CHK-RACE-OTP-FAB` |Evidence token, emitted only after the compares it names have held
 |assertion |otp_vs_fabric race incomplete s1=<value> s2=<value> s3=<value>
@@ -1131,6 +1132,7 @@ check.
 * Sequence for smu_clock_stop_coordination_test (SMU_ALL_006).
 * DV-CARD: SMU_ALL_006 ANCHOR: smu_clock_stop_coordination_test Allocated (narrowed Option B; SEP=0 bare tb_top): DTP-BOOT-STALL.S1 / S2 DTP-IC-RESET.S1 / S3 DTP-CLKSTOP-AGG.S1 / S2 / S3 No Force/deposit.
 * No DTP-FEAT-GATE.* / INT-FEAT-CTRL-DTP-GATE (re-homed to 008).
+* DTP-CLKSTOP-AGG.S3 attests only the reserved-port property: with `cla_clock_stop_en` set, the TB clock-stop request pins land on DTP[8:1] and leave DTP[0] unchanged. DTP[0] is the SMC's `clocks_stopped_by_cla`, which this bench cannot provoke (default SMC ROM, no CSR path to the CLA event), so its level is logged and no SMC-to-DTP connectivity is claimed for it.
 
 *Test Procedure*:
 
@@ -1150,7 +1152,7 @@ check.
 |`CHK-DTP-IC-RESET-S3` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S1` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-DTP-CLKSTOP-AGG-S3` |Evidence token, emitted only after the compares it names have held
+|`CHK-DTP-CLKSTOP-AGG-S3` |DTP[0] unchanged by the TB clock-stop pins, DTP[8:1] follows them, `dtp_cla_clock_stop_en` set and cleared as programmed
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
@@ -1201,11 +1203,12 @@ check.
 
 *BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
-*Objective*: Race J2A vs SMN on SCRATCH; coherent winner, no tear.
+*Objective*: Race J2A vs SMN on SCRATCH with the overlap established from handshakes; coherent winner, no tear.
 
 *Test Coverage*:
 
 * JTAG2AXI vs SMN concurrent write on the same CSR; no tear.
+* The SMN writer is released only after the J2A write's AW handshake is seen on the DTP -> SMC debug port, and the J2A AW/B handshakes there plus the SMN AW/B handshakes at the SMU boundary are timestamped; the race is accepted only when the SMN AW was accepted before the J2A B returned, so both writes were outstanding in the SMC at once.
 
 *Test Procedure*:
 
@@ -1223,6 +1226,7 @@ check.
 |`CHK-J2ASMN-CLEAR` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2ASMN-WR-J` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2ASMN-WR-S` |Evidence token, emitted only after the compares it names have held
+|`CHK-J2ASMN-OVERLAP` |SMN AW accepted inside the J2A write's AW..B window at the debug port
 |`CHK-RACE-J2A-SMN` |Evidence token, emitted only after the compares it names have held
 |`CHK-J2ASMN-VERSION` |Evidence token, emitted only after the compares it names have held
 |assertion |jtag2axi_vs_smn race incomplete s1=<value> s2=<value>
@@ -1283,11 +1287,12 @@ check.
 
 *BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
 
-*Objective*: Illegal CTM: abort + double-req on product pins; SMC[1:0] clean.
+*Objective*: Illegal CTM: abort + double-req on product pins with a live ack control; SMC[1:0] clean.
 
 *Test Coverage*:
 
-* req drop without ack: assert then clear dst_req -> TB ack stays 0; SMC[1:0] idle (no phantom handshake)
+* live control: lane 7 is the one lane both TB tops configure in req/ack mode (`XTRIG_INT_CT_MODE = 8'h80`; per the Integrator Guide cross-trigger port section a mode bit of 1 uses the ack, 0 is pulse-synchronisation with no ack). A request on lane 7 must raise `xtrig_ctm_dst_ack[7]` within the settle window and hold it, and releasing the request must clear it, so the "ack stays 0" legs below measure a path shown alive in the same run.
+* req drop without ack: assert then clear dst_req on pulse-sync lanes -> TB ack stays 0; SMC[1:0] idle (no phantom handshake)
 * double-req: change pattern mid-req without completing four-phase -> new pattern visible on DTP[9:2]; SMC[1:0] never polluted
 
 *Test Procedure*:
@@ -1302,7 +1307,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-XT-ILLEGAL` |Evidence token `XT_ILLEGAL_PHASE`: DTP[9:2] follows abort/double-req pin patterns
+|`CHK-XT-ILLEGAL` |Evidence token `XT_ILLEGAL_PHASE`: lane-7 ack rises and falls with its request, then DTP[9:2] follows abort/double-req pin patterns with the ack held at 0
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -1439,11 +1444,12 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: IR+TRST abort of hung OTP SINGLE_OP; fabric VERSION_LO recovers.
+*Objective*: IR+TRST abort of hung OTP SINGLE_OP, observed on that op's status; fabric VERSION_LO recovers.
 
 *Test Coverage*:
 
-* OTP J2A mid-BUSY abort then fabric VERSION_LO recovery.
+* OTP J2A mid-BUSY abort: after the TAP reset the OTP SINGLE_OP DR is captured again and must no longer report BUSY.
+* Fabric VERSION_LO recovery after the abort.
 * Requires +skip_fuse_sense.
 
 *Test Procedure*:
@@ -1462,7 +1468,7 @@ check.
 |`CHK-ABORT-GATE-OPEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-ABORT-BUSY` |Evidence token, emitted only after the compares it names have held
 |`CHK-ABORT-IR-TRST` |Evidence token, emitted only after the compares it names have held
-|`CHK-J2A-ABORT` |Evidence token, emitted only after the compares it names have held
+|`CHK-J2A-ABORT` |OTP SINGLE_OP status after the TAP reset is not BUSY, and two fabric VERSION_LO reads return the reset value
 |assertion |jtag2axi_abort incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
@@ -2051,7 +2057,7 @@ check.
 
 *BFM / Model*: TB pin drive only (no external VIP); `sep_smoke` firmware mode -- the SMC runs the `smu_sep_smoke` arm image from ROM and the real SEP RTL boots under it; verdict through `SmuSepBootScoreboard` on the SEP trace probes
 
-*Objective*: The real SEP RTL comes out of reset under the SMU wrapper, fetches from boot ROM, executes from ICCM and stores to DCCM, after the SMC arm firmware releases it.
+*Objective*: The real SEP RTL comes out of reset under the SMU wrapper, fetches from boot ROM, executes from ICCM and stores to DCCM, in the same run in which the SMC arm firmware boots from ROM and signals `TEST_PASS`. The SEP runs on its default run gate; the arm image (`fw/tests/smu_sep_arm/main.c`) writes its marker and does not release the SEP, so no arm-before-boot ordering is claimed.
 
 *Test Coverage*:
 
@@ -2081,7 +2087,7 @@ check.
 |`sep_boot_rom_iccm` |boot-ROM fetch seen and ICCM execution seen
 |`sep_retire_floor` |>= 256 retired instructions over >= 16 distinct PCs
 |`sep_dccm_write` |`sep_dccm_write_count_o` advanced above 0
-|`post_arm_idle` |released SEP retired something within 100 000 cycles of the SMC arm
+|`post_arm_idle` |a SEP out of reset retired something within 100 000 cycles of the SMC arm marker being seen
 |`CHK-NONVAC` |emitted by the scoreboard only after every term above held
 |===
 
@@ -2287,11 +2293,11 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: CORE0 WDT first timeout sets sticky WDOGIP0.
+*Objective*: CORE0 WDT first timeout sets WDOGIP0 and holds it with no software clear.
 
 *Test Coverage*:
 
-* CORE0 WDT first timeout sticky WDOGIP0 via J2A.
+* CORE0 WDT timeout via J2A: WDOGIP0 is clear before the enable, set once the counter has passed CMP, and then re-read four more times 512 cycles apart with no software clear in between; every sample must still show it set.
 
 *Test Procedure*:
 
@@ -2309,7 +2315,7 @@ check.
 |`CHK-WDT-TO-CMP` |Evidence token, emitted only after the compares it names have held
 |`CHK-WDT-TO-IP0-PRE` |Evidence token, emitted only after the compares it names have held
 |`CHK-WDT-TO-EN` |Evidence token, emitted only after the compares it names have held
-|`CHK-WDT-IP0` |Evidence token, emitted only after the compares it names have held
+|`CHK-WDT-IP0` |WDOGIP0 set after enable+CMP and still set at every sample of the hold window
 |assertion |wdt_timeout incomplete s1=<value> s2=<value> s3=<value>
 |===
 
@@ -3288,7 +3294,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SEP-DBG-OPEN` |`lc_state` reads as TEST_DEV expects, `dbg_disable` is clear, and the bridge launched the transaction: AW and AR both advanced
+|`CHK-SEP-DBG-OPEN` |`lc_state` equals the TEST_DEV word of `seq_lib/smu_lifecycle_table.py` (spec raw encoding, RDL `{~raw, raw}` packing), `dbg_disable` is all-clear and its `smc_jtag2axi` field is 0, and the bridge launched the transaction: AW and AR both advanced
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
@@ -3324,7 +3330,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SEP-DBG-GATED` |`lc_state` and `dbg_disable` read as PROD_END expects and the bridge launched nothing: AW and AR both unchanged
+|`CHK-SEP-DBG-GATED` |`lc_state` equals the PROD_END word of `seq_lib/smu_lifecycle_table.py`, the `dbg_disable.smc_jtag2axi` field is 1 (path-gating Case 2 with DBG_1/DBG_2 both disabled), and the bridge launched nothing: AW and AR both unchanged
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
@@ -3362,7 +3368,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DTP-SEP-SMC-CHAIN` |SEP demote cleared `dbg_disable`, the DTP launched the read, and the SMC answered OKAY with the value its own firmware wrote
+|`CHK-DTP-SEP-SMC-CHAIN` |`lc_state` equals the PROD word of `seq_lib/smu_lifecycle_table.py`, `dbg_disable` is all-clear after the demote, the DTP launched the read, and the SMC answered OKAY with the value its own firmware wrote
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_chain`, `all_with_sep_exec`.
@@ -3400,7 +3406,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DTP-SEP-SMC-CHAIN-BLOCKED` |same firmware and same JTAG operation, but PROD_END ignores the demote: `dbg_disable` stays asserted and the bridge launched nothing
+|`CHK-DTP-SEP-SMC-CHAIN-BLOCKED` |same firmware and same JTAG operation, but PROD_END ignores the demote: `lc_state` equals the PROD_END word of `seq_lib/smu_lifecycle_table.py`, `dbg_disable.smc_jtag2axi` stays 1, and the bridge launched nothing
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_chain`, `all_with_sep_exec`.

@@ -547,14 +547,19 @@ class smu_clock_stop_coordination_test_seq:
         )
 
         # ------------------------------------------------------------------
-        # S8 DTP-CLKSTOP-AGG.S3 — port[0] SMC reserved handshake
+        # S8 DTP-CLKSTOP-AGG.S3 — port[0] reserved for the SMC
         # ------------------------------------------------------------------
+        # Only the reserved-port property is attested here: the TB clock-stop
+        # request pins land on DTP[8:1] and leave DTP[0] untouched. DTP[0] is
+        # the SMC's clocks_stopped_by_cla, which this bench has no way to
+        # provoke (the SMC runs the default ROM and the CLA event has no CSR
+        # path), so its level is logged, not compared.
         self._mark_step(
             "S8",
-            "ACTION/RESPONSE/EFFECT DTP-CLKSTOP-AGG.S3: port[0] reserved for "
-            "SMC participates in SMC CLA handshake (CONNECTIVITY)",
+            "ACTION/RESPONSE/EFFECT DTP-CLKSTOP-AGG.S3: port[0] is reserved for "
+            "the SMC; TB clock-stop requests land on DTP[8:1] and do not reach DTP[0]",
         )
-        self._log("COVERAGE DTP-CLKSTOP-AGG.S3 cells: port0=smc_reserved,smc_cla=handshake")
+        self._log("COVERAGE DTP-CLKSTOP-AGG.S3 cells: port0=smc_reserved")
         cla_en = pack_debug_control(cla_clock_stop_en=1)
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
@@ -566,6 +571,9 @@ class smu_clock_stop_coordination_test_seq:
         en_o = self._sample(dut.dtp_cla_clock_stop_en, "dtp_cla_clock_stop_en")
         if en_o != 1:
             raise AssertionError(f"CLKSTOP-AGG.S3 handshake en fail: dtp_cla_clock_stop_en={en_o}")
+        dtp0_before = (
+            self._sample(smu_scope(dut).dtp_xtrig_clk_stop_req, "dtp_xtrig_clk_stop_req") & 0x1
+        )
         # Drive TB xtrig[0]=1; must appear at DTP[1], NOT DTP[0]
         dut.xtrig_clk_stop_req.value = 0x1
         await RisingEdge(dut.clk_smu_i)
@@ -577,10 +585,10 @@ class smu_clock_stop_coordination_test_seq:
         )
         dtp0 = dtp_req & 0x1
         dtp_hi = (dtp_req >> 1) & 0xFF
-        if dtp0 != smc_fb:
+        if dtp0 != dtp0_before:
             raise AssertionError(
-                f"CLKSTOP-AGG.S3 port0 not SMC-reserved: dtp0={dtp0} "
-                f"smc_fb={smc_fb} dtp_req=0x{dtp_req:x}"
+                f"CLKSTOP-AGG.S3 port0 not SMC-reserved: TB xtrig[0] moved DTP[0] "
+                f"{dtp0_before}->{dtp0} dtp_req=0x{dtp_req:x}"
             )
         if dtp_hi != 0x1:
             raise AssertionError(
@@ -589,8 +597,8 @@ class smu_clock_stop_coordination_test_seq:
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
             "observed",
-            f"consumer samples port0=smc_reserved dtp0={dtp0} smc_fb={smc_fb} "
-            f"DTP[8:1]=0x{dtp_hi:x} en={en_o} smc_cla=handshake",
+            f"consumer samples port0=smc_reserved dtp0={dtp0} (before={dtp0_before}) "
+            f"DTP[8:1]=0x{dtp_hi:x} en={en_o}; SMC clocks_stopped_by_cla={smc_fb} (logged only)",
         )
         dut.xtrig_clk_stop_req.value = 0
         await jtag.write("DEBUG_CONTROL", 0)
@@ -605,24 +613,18 @@ class smu_clock_stop_coordination_test_seq:
         )
         dtp_idle = await self._wait_eq(
             smu_scope(dut).dtp_xtrig_clk_stop_req,
-            smc_fb & 0x1,  # only SMC fb bit may remain; upper bits 0
+            dtp0_before,  # DTP[8:1] back to 0; DTP[0] as it was before the drive
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
             label="s8_port0_idle",
             name="dtp_xtrig_clk_stop_req",
         )
-        # Upper bits must be 0; port0 still equals SMC fb
         if ((dtp_idle >> 1) & 0xFF) != 0:
             raise AssertionError(
                 f"CLKSTOP-AGG.S3 checked_cleared upper bits live: dtp=0x{dtp_idle:x}"
             )
-        if (dtp_idle & 0x1) != (
-            self._sample(
-                smu_scope(dut).tdr_dbg_ctrl_clocks_stopped_by_cla,
-                "tdr_dbg_ctrl_clocks_stopped_by_cla",
-            )
-        ):
-            raise AssertionError("CLKSTOP-AGG.S3 checked_cleared port0/SMC fb mismatch")
+        if (dtp_idle & 0x1) != dtp0_before:
+            raise AssertionError("CLKSTOP-AGG.S3 checked_cleared DTP[0] moved with the TB pins")
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
             "checked_cleared",
@@ -630,15 +632,14 @@ class smu_clock_stop_coordination_test_seq:
         )
         self._check_lifecycle("CHK-DTP-CLKSTOP-AGG-S3")
         detail_c3 = (
-            f"port0=smc_reserved smc_cla=handshake dtp0={dtp0} "
-            f"smc_fb={smc_fb} DTP[8:1]=0x{dtp_hi:x} "
-            f"cells=port0=smc_reserved,smc_cla=handshake"
+            f"port0=smc_reserved dtp0={dtp0} unchanged from {dtp0_before} "
+            f"DTP[8:1]=0x{dtp_hi:x} cells=port0=smc_reserved"
         )
         self._log(f"CHK-DTP-CLKSTOP-AGG-S3: PASS ({detail_c3})")
         sb.expect_eq(
             "CHK-DTP-CLKSTOP-AGG-S3 port0 SMC reserved",
-            (dtp0, dtp_hi, en_o),
-            (smc_fb, 0x1, 1),
+            (dtp0 == dtp0_before, dtp_hi, en_o),
+            (True, 0x1, 1),
             evidence="CHK-DTP-CLKSTOP-AGG-S3",
         )
 

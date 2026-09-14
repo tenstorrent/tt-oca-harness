@@ -48,6 +48,9 @@ module smu_wrapper_uvm_top (
   output logic [1:0]  lcc_demote_state_2_o,
   output logic [63:0] lcc_feat_ctrl_o,
   output logic [15:0] lcc_dbg_disable_o,     // to DTP
+  // The one dbg_disable path field the DTP specification ties to the SMC
+  // fabric JTAG2AXI bridge, read by its spec name rather than by bit position.
+  output logic        lcc_dbg_disable_smc_jtag2axi_o,
   output logic [7:0]  smc_lc_state_in_o,     // as SMC receives it
   // DTP JTAG2AXI traffic into the SMC. dbg_disable.smc_jtag2axi stops the
   // bridge from launching a transaction at all (jtag2axi.sv: the update is
@@ -55,6 +58,7 @@ module smu_wrapper_uvm_top (
   // tells "debug is gated" from "the signal merely says so".
   output logic [31:0] dtp_smc_dbg_aw_count_o,
   output logic [31:0] dtp_smc_dbg_ar_count_o,
+  output logic [31:0] dtp_smc_dbg_b_count_o,
   input  wire logic clk_ref_i,
   input  wire logic clk_periph_i,
   input  wire logic clk_sep_wdt_i,
@@ -271,7 +275,7 @@ module smu_wrapper_uvm_top (
   output logic [15:0] smu_axi_out_aw_ready_cycles_o,
   output logic [15:0] smu_axi_out_w_valid_cycles_o,
   output logic [15:0] smu_axi_out_w_ready_cycles_o,
-  output logic [31:0] ext_mailbox_interrupts_o,
+  output logic [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts_o,
   // SEP run-gate / IFU bring-up probes (keep nets visible under VCS)
   output logic [15:0] sep_cla_custom_o,
   output logic        sep_mpc_reset_run_o,
@@ -367,17 +371,15 @@ module smu_wrapper_uvm_top (
     };
   assign jtag_ptap_tdi = jtag_tdi;
 `ifndef SMU_NO_SEP
-  assign lcc_demote_state_1_o = u_dut.u_smu.lcc_demote_state_1_o;
-  assign lcc_demote_state_2_o = u_dut.u_smu.lcc_demote_state_2_o;
   assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.sep_crypto
         .u_sep_lifecycle_ctrl.feat_ctrl_o);
   assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
+  assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 `else
-  assign lcc_demote_state_1_o = '0;
-  assign lcc_demote_state_2_o = '0;
   assign lcc_feat_ctrl_o      = '0;
   assign lcc_dbg_disable_o    = '0;
+  assign lcc_dbg_disable_smc_jtag2axi_o = 1'b0;
   assign smc_lc_state_in_o    = '0;
 `endif
 
@@ -385,6 +387,7 @@ module smu_wrapper_uvm_top (
     if (!rst_cold_ni) begin
       dtp_smc_dbg_aw_count_o <= '0;
       dtp_smc_dbg_ar_count_o <= '0;
+      dtp_smc_dbg_b_count_o  <= '0;
     end else begin
       if (u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid &&
                 u_dut.u_smu.dtp_axi_smc_dbg_resp.aw_ready) begin
@@ -393,6 +396,10 @@ module smu_wrapper_uvm_top (
       if (u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid &&
                 u_dut.u_smu.dtp_axi_smc_dbg_resp.ar_ready) begin
         dtp_smc_dbg_ar_count_o <= dtp_smc_dbg_ar_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid &&
+                u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready) begin
+        dtp_smc_dbg_b_count_o <= dtp_smc_dbg_b_count_o + 32'd1;
       end
     end
   end
@@ -545,7 +552,7 @@ module smu_wrapper_uvm_top (
   );
 
   wire [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_io;
-  logic [31:0] ext_mailbox_interrupts;
+  logic [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts;
   logic [31:0] smc_scratch_0_q;
   logic        rst_cold_stable_ref_clk_n;
   prim_jtag_pkg::jtag_scan_ctrl_t bsr_ctrl_w;
@@ -1466,8 +1473,8 @@ module smu_wrapper_uvm_top (
 
     .sep_cpu_trace_o (sep_cpu_trace),
     .sep_ext_interrupts_i ('0),
-    .lcc_demote_state_1_o (),
-    .lcc_demote_state_2_o (),
+    .lcc_demote_state_1_o (lcc_demote_state_1_o),
+    .lcc_demote_state_2_o (lcc_demote_state_2_o),
     .sep_fuse_dft_disable_o (),
     .smc_fuse_dft_disable_o (),
     .sep_fuse_sense_done_o,
