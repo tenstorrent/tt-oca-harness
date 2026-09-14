@@ -19,6 +19,13 @@ Sources, by value:
 * The name of the disable field that gates that path:
   ``hw/sys/dtp/doc/jtag.adoc``, section "Debug Disable"
   (``dbg_disable_i.smc_jtag2axi``).
+* The word the boundary carries when no SEP, and therefore no lifecycle
+  controller, is instantiated: ``doc/integrator/src/index.adoc``, SMU port
+  table section "Lifecycle State" -- ``lc_state_o`` is the "SEP lifecycle
+  state when ``SEP=1``, else ``8'hf0``". ``hw/sys/smc/doc/port_table.adoc``
+  states the same word for the receiving port ``lc_state_i`` ("tie to 8'hf0
+  if unused (encoded TEST_DEV)") and names the state it encodes, which is the
+  TEST_DEV row of the encoding table above.
 
 The packing of ``dbg_disable_t`` into a word is not specified anywhere in the
 tree, so this table carries no full-word expectation for a *disabled* posture.
@@ -54,6 +61,9 @@ def lc_state_word(raw: int) -> int:
 
 #: What lc_state reads before the shadow registers are loaded.
 LC_STATE_PRESENSE = lc_state_word(LC_INVALID_RAW)
+
+#: What lc_state carries at a boundary that has no lifecycle controller behind it.
+LC_STATE_NO_LCC = lc_state_word(LC_RAW["TEST_DEV"])
 
 
 def lc_state_name(raw: int) -> str:

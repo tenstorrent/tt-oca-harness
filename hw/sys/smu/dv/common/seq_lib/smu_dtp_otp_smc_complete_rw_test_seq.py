@@ -19,6 +19,7 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
     shadow_map_word32,
 )
+from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
@@ -28,7 +29,6 @@ RESERVED_SYM = "SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR"
 RESERVED_IDX = (1, 9, 17)
 PATTERNS = (0xA11C_E001, 0xB22D_F112, 0xC33E_0223)
 REWRITE0 = 0xD44F_1334
-SEP0_LC_STATE = 0xF0
 OTP_POLL = 128
 MASK32 = 0xFFFF_FFFF
 
@@ -137,9 +137,9 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         sigint = self._sample_int("lc_sigint_err_o") & 1
         if gate != 0:
             raise AssertionError(f"OTP J2A still gated after TCK sync: security_disable={gate}")
-        if lc != SEP0_LC_STATE:
+        if lc != LC_STATE_NO_LCC:
             raise AssertionError(
-                f"lc_state_o=0x{lc:02x} want 0x{SEP0_LC_STATE:02x} "
+                f"lc_state_o=0x{lc:02x} want 0x{LC_STATE_NO_LCC:02x} "
                 "(PROD would steer eFuse JTAG demux to err_slv)"
             )
         if sigint != 0:
@@ -149,7 +149,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         sb.expect_eq(
             "CHK-OTP-COMPLETE-GATE-OPEN",
             (gate, lc, sigint),
-            (0, SEP0_LC_STATE, 0),
+            (0, LC_STATE_NO_LCC, 0),
         )
 
         for addr, pat, idx in zip(RESERVED_ADDRS, PATTERNS, RESERVED_IDX):

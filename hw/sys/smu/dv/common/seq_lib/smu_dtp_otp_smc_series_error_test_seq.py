@@ -3,7 +3,8 @@
 """SMC OTP JTAG2AXI series NO_INCR R/W + MAP-CTRL hole SLVERR (SEP=0, no Force).
 
 S1: After TCK sync, OTP J2A gate is open (gen_no_sep ties feat_ctrl including
-    fuse_test). ``lc_state_o==0xF0`` so the eFuse JTAG demux is not err_slv.
+    fuse_test). ``lc_state_o`` is the no-LCC word of
+    ``seq_lib.smu_lifecycle_table``, so the eFuse JTAG demux is not err_slv.
 S2: Series NO_INCR write PATTERN_A to MAP BIRA, then series NO_INCR readback
     OKAY + data match.
 S3: SINGLE_OP read of BIRA (same IR as the hole) returns SUCCESS + PATTERN_A;
@@ -34,6 +35,7 @@ from seq_lib.smu_jtag_helpers import (
     otp_jtag2axi_single_read,
     otp_series_data_mask,
 )
+from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
 BIRA = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR")
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
@@ -45,7 +47,6 @@ if not (MAP_BASE < HOLE < CTRL_BASE):
         f"MAP-CTRL hole 0x{HOLE:08x} not strictly between MAP 0x{MAP_BASE:08x} "
         f"and CTRL 0x{CTRL_BASE:08x}"
     )
-SEP0_LC_STATE = 0xF0
 PATTERN_A = 0xA5A5_5A5A
 OTP_POLL = 128
 
@@ -97,9 +98,9 @@ class smu_dtp_otp_smc_series_error_test_seq:
         sigint = self._sample_int("lc_sigint_err_o") & 1
         if gate != 0:
             raise AssertionError(f"OTP J2A still gated after TCK sync: security_disable={gate}")
-        if lc != SEP0_LC_STATE:
+        if lc != LC_STATE_NO_LCC:
             raise AssertionError(
-                f"lc_state_o=0x{lc:02x} want 0x{SEP0_LC_STATE:02x} "
+                f"lc_state_o=0x{lc:02x} want 0x{LC_STATE_NO_LCC:02x} "
                 "(PROD would steer eFuse JTAG demux to err_slv)"
             )
         if sigint != 0:
