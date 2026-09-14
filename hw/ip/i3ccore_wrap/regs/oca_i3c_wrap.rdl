@@ -9,7 +9,7 @@
 addrmap oca_i3c_wrap #(
     longint unsigned NUM_I3CS = 6
 ) {
-    desc = "OCA I3C Controller wrapper (i3c-core-fork)";
+    desc = "OCA I3C Controller wrapper";
 
     /////////////////
     // Address Map //

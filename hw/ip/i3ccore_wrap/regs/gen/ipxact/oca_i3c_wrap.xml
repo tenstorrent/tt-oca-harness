@@ -12,7 +12,7 @@
       <ipxact:name>oca_i3c_wrap_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>oca_i3c_wrap</ipxact:name>
-        <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
+        <ipxact:description>OCA I3C Controller wrapper</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h6000</ipxact:range>
         <ipxact:width>32</ipxact:width>
