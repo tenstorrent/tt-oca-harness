@@ -325,11 +325,10 @@ async def i3c_error_wrong_addr(dut):
 
 @cocotb.test(timeout_time=10000, timeout_unit='us')
 async def i3c_fifo_overflow(dut):
-    """I3C FIFO overflow test: 500-byte read without draining RX FIFO should cause overflow error.
+    """RX FIFO overflow: read past the FIFO capacity without draining it.
 
-    This test:
     1. Initialize controller and target, perform SETDASA
-    2. Issue a 500-byte private read
+    2. Issue a private read longer than the RX FIFO depth read from QUEUE_SIZE
     3. Fill target TX FIFO but DO NOT drain controller RX FIFO
     4. Verify response descriptor reports Ovl (0x6) error status
     """
@@ -388,7 +387,7 @@ async def i3c_fifo_overflow(dut):
     queue_size_reg = await helper.read(ctrl.base + PIOCONTROL_QUEUE_SIZE_REG_ADDR)
     rx_fifo_entries = 1 << (((queue_size_reg >> 16) & 0xFF) + 1)
     rx_fifo_bytes = rx_fifo_entries * bytes_per_entry
-    # Read well past the RX FIFO so it overflows even though we never drain it. Kept a
+    # Read well past the RX FIFO so it overflows while the drain stays off. Kept a
     # multiple of 4 for clean FIFO-entry accounting.
     data_len = rx_fifo_bytes + r.randint(16, 96) * 4   # RX FIFO + 64..384 bytes
 
@@ -435,11 +434,10 @@ async def i3c_fifo_overflow(dut):
     # Before issuing the read, prefill until the target TX queue is full or the
     # complete payload is queued. The target only ACKs when enough data is queued
     # to start the transfer.
-    _TTI_QUEUE_STATUS = 0x210            # I3C_EC_TTI QUEUE_STATUS (offset from i3c base)
-    _TTI_TX_DATA_QUEUE_FULL = (1 << 6)
     while bytes_written < data_len:
-        qs = await helper.read(tgt.base + _TTI_QUEUE_STATUS)
-        if qs & _TTI_TX_DATA_QUEUE_FULL:
+        qs = await helper.read_into(
+            tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
+        if qs.f.tx_data_queue_full:
             break
         word = helper.pack_bytes(tx_data[bytes_written:bytes_written + bytes_per_entry])
         await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
@@ -524,14 +522,13 @@ async def i3c_fifo_overflow(dut):
 
 @cocotb.test(timeout_time=10000, timeout_unit='us')
 async def i3c_tx_fifo_underflow(dut):
-    """I3C TX FIFO underflow test: Start 200-byte write but only fill 5 TX entries.
+    """TX FIFO underflow: declare a write longer than the bytes actually supplied.
 
-    This test:
     1. Initialize controller and target, perform SETDASA
-    2. Issue a 200-byte private write (regular descriptor)
-    3. Fill only 5 entries (20 bytes) to controller TX FIFO
-    4. Stop filling - controller should detect underflow
-    5. Verify response descriptor reports Ovl (0x6) error status
+    2. Issue a randomized 100..300 byte private write (regular descriptor)
+    3. Supply only 8..32 bytes to the controller TX FIFO
+    4. Stop filling, so the controller runs the queue dry mid-transfer
+    5. Verify the response descriptor reports Ovl (0x6) error status
     """
     tb = TB(dut)
 
@@ -613,7 +610,7 @@ async def i3c_tx_fifo_underflow(dut):
     )
     assert ok, "Timeout waiting for TX threshold interrupt"
 
-    # Fill only 5 entries (20 bytes) - NOT enough for 200-byte write
+    # Supply fewer bytes than the command declared, so the FIFO runs dry.
     tb.log.info(f"Filling only {bytes_to_fill} bytes to TX FIFO (deliberately insufficient)...")
     for i in range(0, bytes_to_fill, bytes_per_entry):
         word = helper.pack_bytes(tx_data[i:i + bytes_per_entry])
