@@ -6242,6 +6242,38 @@ For each of the two (target, lock) pairs:
 '''''
 
 
+[[smc-formal-plan]]
+=== Formal Verification Plan
+
+Formal property checking is not part of the SMC DV package at this
+revision. Every row of this plan is credited by simulation alone, and
+`hw/sys/smc/dv/` carries no formal collateral: no `smc_formal_cfg.toml`
+beside `smc_sim_cfg.toml`, no `testlists/formal.toml`, and no `formal/`
+directory holding a property set, a bind file, a task file or a reset
+environment. `python3 tools/dv/run_dv.py --validate-configs` lists no
+`smc (formal)` view, `--list` shows no `fv` row for `smc`, and
+`python3 tools/dv/run_dv.py --dut smc --mode formal` stops with
+`formal config not found`. Hosted CI runs no formal job for any DUT
+(`tools/dv/doc/run-dv.adoc`, Formal verification), so the PR gate and the
+nightly and weekly tiers under Regression Groups are complete without one.
+The absence is a scope decision of this package, not a deferred item: no
+Known Limitations row records it.
+
+A formal view for `smc` is added the way `hw/sys/dtp/dv/` adds one, the
+runner's reference implementation: an `smc_formal_cfg.toml` beside the sim
+config on the `native-formal` profile -- or a `formal_cfg` pointer in the
+registry or the site layer -- naming the formal top and the Bender targets
+of the design closure, a `[testlist]` of formal items and one
+`[formal.apps.<app>.sby]` table per app; the items in `testlists/formal.toml`;
+the properties, the bind file, the task file and the reset environment under
+`formal/`, in the style of `hw/common/dv/docs/formal-property-style.adoc`; a
+`## Formal` section in `README.md` in the shape that chapter gives; and this
+section rewritten in the shape of the one in
+`hw/sys/dtp/dv/docs/DTP_VPLAN.adoc` -- scope, properties with the plan rows
+they corroborate, tasks and depths, running and grading -- with the FAIL path
+checked by inverting one assertion. `--validate-configs` then lists
+`smc (formal)` and this section stops describing an absence.
+
 === Regression Groups
 
 [cols=",",options="header",]
