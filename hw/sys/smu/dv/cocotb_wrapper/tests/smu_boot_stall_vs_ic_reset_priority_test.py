@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_boot_stall_vs_ic_reset_priority_test - P3-H5b stall vs IC_RESET priority.
+"""smu_boot_stall_vs_ic_reset_priority_test - stall vs IC_RESET priority.
 
 Boot-stall (DEBUG_CONTROL) and IC_RESET are independent TDRs. After stall is
 made sticky across cold (fuse gated), this corner checks:
@@ -53,7 +53,8 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
             1,
         )
 
-        # --- Make stall sticky across cold (same window as P2-I3a) ---
+        # --- Make stall sticky across cold (the same window as
+        #     smu_boot_stall_jtag_cold_reset_matrix_test uses) ---
         await jtag.write(
             "DEBUG_CONTROL",
             pack_debug_control(boot_stall_ovrd=1, boot_stall=1),
