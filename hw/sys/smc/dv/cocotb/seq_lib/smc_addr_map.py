@@ -309,79 +309,57 @@ def reset_unit_u32(symbol: str) -> int:
     return _field_mask(_RESET_UNIT_H, symbol)
 
 
-_SMC_PKG_SV = _REPO / "hw" / "sys" / "smc" / "rtl" / "smc_pkg.sv"
-_PACKED_STRUCT_RE = re.compile(
-    r"typedef\s+struct\s+packed\s*\{(.*?)\}\s*(\w+)\s*;",
-    re.S,
+# --- JTAG IC_RESET SMC slice (`jtag_reset_ctrl_i`) ---------------------------
+# DV-owned layout of the SMC slice of the IEEE 1149.1 IC_RESET TDR. Shape:
+# hw/ip/jtag/jtag_ptap/doc/architecture.adoc "IC_RESET Support" -- the slice is
+# a packed struct of an `.ovrd` half (active-high JTAG-override flags) above a
+# `.val` half (active-low reset values) of identical width, one pair per
+# controlled reset -- and hw/sys/dtp/doc/port_table.adoc `jtag_ic_reset_smc_o`,
+# which sizes each half to the SMC reset-control set (hw/sys/smc/doc/
+# port_table.adoc `jtag_reset_ctrl_i`). Members: the fuse / warm / cool / cold
+# reset levels of hw/sys/smc/doc/clk_rst.adoc plus the per-subsystem warm and
+# cold vectors, whose widths are the RDL fields RESET_UNIT.SS_WARM_RESET_N /
+# SS_COLD_RESET_N (generated `reset_unit.h`). No document fixes the order of
+# the leaves inside a half, so that order is a DV-owned golden:
+# smc_jtag_reset_ctrl_test drives one leaf at a time and requires the matching
+# reset pin -- and only that pin -- to move, which fails on a wrong position.
+JTAG_RESET_CTRL_HALVES: tuple[str, ...] = ("ovrd", "val")  # MSB half first
+JTAG_RESET_CTRL_LEAVES: tuple[tuple[str, int], ...] = (  # MSB leaf first
+    ("ss_warm_reset_n", reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_bw")),
+    ("ss_cold_reset_n", reset_unit_u32("RESET_UNIT__SS_COLD_RESET_N__RESET_N_N0_SCAN_bw")),
+    ("cold_reset_n", 1),
+    ("cool_reset_n", 1),
+    ("warm_reset_n", 1),
+    ("fuse_reset_n", 1),
 )
-_LOGIC_VEC_RE = re.compile(r"logic\s+\[(\d+)\s*:\s*0\]\s+(\w+)\s*;")
-_LOGIC_BIT_RE = re.compile(r"logic\s+(\w+)\s*;")
-_NESTED_RE = re.compile(r"(\w+)\s+(\w+)\s*;")
+
+
+def jtag_smc_reset_ctrl_width() -> int:
+    """Packed width of the SMC IC_RESET slice: both halves of the DV-owned table."""
+    return len(JTAG_RESET_CTRL_HALVES) * sum(width for _, width in JTAG_RESET_CTRL_LEAVES)
 
 
 @lru_cache(maxsize=1)
 def _jtag_smc_reset_ctrl_layout() -> dict[str, tuple[int, int]]:
-    """Leaf name → (lsb, width) in packed ``jtag_smc_reset_ctrl_t`` from smc_pkg.sv.
-
-    SystemVerilog packed structs put the first declared field at the MSB.
-    Nested ``ovrd``/``val`` types are flattened; vector index 0 is the field LSB.
-    """
-    text = _SMC_PKG_SV.read_text(encoding="utf-8")
-    structs: dict[str, list[tuple[str, int | str]]] = {}
-    for body, name in _PACKED_STRUCT_RE.findall(text):
-        fields: list[tuple[str, int | str]] = []
-        for raw in body.splitlines():
-            line = raw.split("//", 1)[0].strip()
-            if not line:
-                continue
-            m = _LOGIC_VEC_RE.search(line)
-            if m:
-                fields.append((m.group(2), int(m.group(1)) + 1))
-                continue
-            m = _LOGIC_BIT_RE.search(line)
-            if m:
-                fields.append((m.group(1), 1))
-                continue
-            m = _NESTED_RE.search(line)
-            if m and m.group(1) not in ("logic", "typedef"):
-                fields.append((m.group(2), m.group(1)))
-        if fields:
-            structs[name] = fields
-    if "jtag_smc_reset_ctrl_t" not in structs:
-        raise RuntimeError(f"jtag_smc_reset_ctrl_t not in {_SMC_PKG_SV}")
-
-    def _flatten(type_name: str) -> list[tuple[str, int]]:
-        out: list[tuple[str, int]] = []
-        for fname, spec in structs[type_name]:
-            if isinstance(spec, int):
-                out.append((fname, spec))
-            else:
-                out.extend(_flatten(spec))
-        return out
-
-    leaves = _flatten("jtag_smc_reset_ctrl_t")
-    total = sum(width for _, width in leaves)
+    """Leaf name (``<leaf>_ovrd`` / ``<leaf>_val``) -> (lsb, width) in the packed slice."""
     layout: dict[str, tuple[int, int]] = {}
-    bit = total - 1
-    for fname, width in leaves:
-        lsb = bit - width + 1
-        layout[fname] = (lsb, width)
-        bit = lsb - 1
+    bit = jtag_smc_reset_ctrl_width() - 1
+    for half in JTAG_RESET_CTRL_HALVES:
+        for leaf, width in JTAG_RESET_CTRL_LEAVES:
+            lsb = bit - width + 1
+            layout[f"{leaf}_{half}"] = (lsb, width)
+            bit = lsb - 1
+    assert bit == -1, "JTAG reset-control table does not tile its packed width"
     return layout
 
 
-def jtag_smc_reset_ctrl_width() -> int:
-    """``$bits(jtag_smc_reset_ctrl_t)`` from ``smc_pkg.sv``."""
-    return sum(width for _, width in _jtag_smc_reset_ctrl_layout().values())
-
-
 def jtag_smc_reset_ctrl_bit(leaf: str, idx: int = 0) -> int:
-    """Packed bit index of ``jtag_smc_reset_ctrl_t.<leaf>[idx]`` from smc_pkg.sv."""
+    """Packed bit index of ``jtag_reset_ctrl_i.<leaf>[idx]`` from the DV-owned table."""
     layout = _jtag_smc_reset_ctrl_layout()
     try:
         lsb, width = layout[leaf]
     except KeyError as exc:
-        raise KeyError(f"{leaf} not in jtag_smc_reset_ctrl_t") from exc
+        raise KeyError(f"{leaf} not in the JTAG reset-control table") from exc
     if idx < 0 or idx >= width:
         raise AssertionError(f"{leaf}[{idx}] out of range width={width}")
     return lsb + idx
