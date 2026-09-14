@@ -175,6 +175,7 @@ def _dut_status(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "tests_failing": int(tests.get("failing") or 0),
                 "tests_skipped": int(tests.get("skipped") or 0),
                 "tests_unknown": int(tests.get("unknown") or 0),
+                "tests_completed": tests.get("completed"),
                 "pass_rate": tests.get("pass_rate"),
                 "category_count": len(categories),
                 "categories": categories,

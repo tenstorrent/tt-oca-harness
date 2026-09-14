@@ -67,6 +67,9 @@ def _dut_rows(summary: dict) -> str:
         flow = str(row.get("flow") or "")
         flow_cell = link(report_href, flow) if report_href else fmt(flow)
         categories = ", ".join(row.get("categories") or [])
+        pass_rate = (
+            "incomplete run" if row.get("tests_completed") is False else fmt(row.get("pass_rate"))
+        )
         rows.append(
             "<tr>"
             f"<td>{flow_cell}</td>"
@@ -77,7 +80,7 @@ def _dut_rows(summary: dict) -> str:
             f"<td>{fmt(row.get('tests_failing'))}</td>"
             f"<td>{fmt(row.get('tests_skipped'))}</td>"
             f"<td>{fmt(row.get('tests_unknown'))}</td>"
-            f"<td>{fmt(row.get('pass_rate'))}</td>"
+            f"<td>{pass_rate}</td>"
             f"<td>{fmt(row.get('failed_tests'))}</td>"
             f"<td>{fmt(row.get('flaky_tests'))}</td>"
             f"<td>{fmt(row.get('coverage_total_percent'))}</td>"

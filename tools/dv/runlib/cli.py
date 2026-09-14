@@ -71,7 +71,7 @@ from .duts import (
     load_formal_views,
     resolve_dut,
 )
-from .junit import materialize_stage_junit
+from .junit import materialize_interruption_junit, materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
@@ -81,9 +81,11 @@ from .results import (
     exit_code_for_status,
     fragment_payload,
     git_info,
+    incomplete_run_note,
     regression_payload,
     result_payload,
     rollup_payload,
+    run_is_complete,
     tool_versions,
     write_result,
 )
@@ -1638,6 +1640,7 @@ def _existing_run_result(
         raise ConfigError(
             f"{result_path}: flow is `{existing.get('flow')}`, expected `{flow.name}`"
         )
+    _require_completed_run(existing, result_path)
     existing_tool = existing.get("tool")
     if not isinstance(existing_tool, str) or not existing_tool:
         raise ConfigError(f"{result_path}: missing original tool")
@@ -1648,6 +1651,18 @@ def _existing_run_result(
     args.tool = existing_tool
     args.cov = True
     return run_dir, existing
+
+
+def _require_completed_run(existing: dict[str, Any], result_path: Path) -> None:
+    """Coverage is graded over a finished regression only; a truncated run has no grade."""
+
+    if run_is_complete(existing):
+        return
+    note = incomplete_run_note(existing.get("tests")) or "incomplete run"
+    raise ConfigError(
+        f"{result_path}: {note}; an interrupted or truncated run is not gradeable, "
+        "rerun the regression"
+    )
 
 
 def _status_from_values(values: list[str]) -> str:
@@ -1886,13 +1901,14 @@ def waive_run(
 
     if tool not in flow.tools:
         raise ConfigError(f"tool `{tool}` is not allowed for flow `{flow.name}`")
+    result_path = run_dir / "result.json"
+    _require_completed_run(existing, result_path)
     sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
     cov = coverage_cfg(sim_cfg)
     tool_cov = cov.get(tool, {}) if isinstance(cov.get(tool, {}), dict) else {}
     if not tool_cov:
         raise ConfigError(f"no coverage configuration is available for tool `{tool}`")
     paths = coverage_run_paths(run_dir, coverage_merged_name(tool, tool_cov))
-    result_path = run_dir / "result.json"
     stages = [stage for stage in existing.get("stages", []) if isinstance(stage, dict)]
     record = _waive_report_record(stages, paths.raw_details, result_path, str(args.run_dir))
     manifest = load_manifest(paths.manifest)
@@ -2471,6 +2487,7 @@ def write_regression_summary(
     interruption: dict[str, Any] | None = None,
     versions: dict[str, str] | None = None,
     git_metadata: dict[str, str] | None = None,
+    planned_leaves: int | None = None,
 ) -> None:
     path = run_dir / "stages" / "regress" / "regression.json"
     write_result(
@@ -2490,6 +2507,7 @@ def write_regression_summary(
             interruption=interruption,
             versions=versions,
             git_metadata=git_metadata,
+            planned_leaves=planned_leaves,
         ),
     )
 
@@ -2796,6 +2814,7 @@ def run_flow(
             interruption=interruption,
             versions=run_versions,
             git_metadata=run_git,
+            planned_leaves=len(expected_leaves),
         )
         write_result(result_path, payload)
         if export_path is not None:
@@ -3310,12 +3329,14 @@ def run_flow(
                 time.monotonic() - run_started,
                 versions=run_versions,
                 git_metadata=run_git,
+                planned_leaves=len(expected_leaves),
             )
         if scheduler:
             console.regression_summary(
                 runs_by_item,
                 ordered_items=items,
                 elapsed_sec=time.monotonic() - run_started,
+                planned=len(expected_leaves),
             )
 
         # Structured-result guarantee, leafless case: a non-passing run in which no sim
@@ -3347,6 +3368,7 @@ def run_flow(
             executor=executor,
             versions=run_versions,
             git_metadata=run_git,
+            planned_leaves=len(expected_leaves),
         )
         if replaying_coverage:
             payload = _merge_coverage_replay_result(existing_result, payload)
@@ -3367,6 +3389,7 @@ def run_flow(
             tests=len(items) if need_items else 0,
             run_dir=repo_rel(root, run_dir),
             result_json=repo_rel(root, result_path),
+            incomplete=incomplete_run_note(payload.get("tests")),
         )
         return exit_code_for_status(status)
     except RunInterrupted as exc:
@@ -3397,13 +3420,26 @@ def run_flow(
                 interruption=interruption,
                 versions=run_versions,
                 git_metadata=run_git,
+                planned_leaves=len(expected_leaves),
             )
-        write_checkpoint(
+        payload = write_checkpoint(
             state="interrupted",
             status="ERROR",
             progress=progress,
             interruption=interruption,
         )
+        if payload is not None:
+            try:
+                materialize_interruption_junit(
+                    flow=flow,
+                    root=root,
+                    run_dir=run_dir,
+                    tool=tool,
+                    interruption=interruption,
+                    progress=progress,
+                )
+            except Exception as junit_exc:  # noqa: BLE001
+                console.event("warning", f"junit synthesis failed: {junit_exc}", force=True)
         console.event("error", interruption["reason"], force=True)
         console.result(
             status="ERROR",
@@ -3411,6 +3447,10 @@ def run_flow(
             tests=len(items) if need_items else 0,
             run_dir=repo_rel(root, run_dir),
             result_json=repo_rel(root, result_path),
+            incomplete=incomplete_run_note((payload or {}).get("tests"))
+            or f"incomplete run: {progress['completed_count']} of "
+            f"{progress['expected_count']} planned leaves ran",
+            force=True,
         )
         return 128 + exc.signum
     finally:
