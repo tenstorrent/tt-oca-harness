@@ -544,6 +544,7 @@ module smc_base #(
     .trace_mem_resp_i                 (trace_mem_resp_i),
 
     .test_en_i                        (test_en_i),
+    .scan_rst_ni                      (scan_rst_ni),
 
     .mem_repair_done_i                (mem_repair_done_i),
     .mem_repair_success_i             (mem_repair_success_i),
