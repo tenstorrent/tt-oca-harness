@@ -38,6 +38,7 @@ REQ_ERR_CLR = efuse_ifc_u32(
 # ZEROER_CTRL CTRL_STATUS.STATUS mirrors the Zeroer's busy output and sits
 # above bit 31, so the register is read as a 64-bit word.
 ZEROER_STATUS_BUSY = 1 << 32
+ZEROER_INT_EN = 1 << 0
 
 EFUSE_IDLE = 0b01
 EFUSE_ERROR_DATA = 0xBADCAB1E
@@ -281,6 +282,22 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             )
             assert int(dut.tb_zeroer_state.value) == ZEROER_ERROR, f"{encoding:03b}: left ERROR"
 
+            # Writing CTRL_STATUS is the software start. In ERROR it must be
+            # ignored: the state, busy and the AXI valids stay where they are.
+            await self.csr_write(
+                f"ZEROER_{encoding:03b}_ERROR_START", ZEROER_CTRL_STATUS, ZEROER_INT_EN, length=8
+            )
+            for _ in range(2):
+                await RisingEdge(dut.clk_smc_i)
+                await ReadOnly()
+                assert int(dut.tb_zeroer_state.value) == ZEROER_ERROR, (
+                    f"{encoding:03b}: a CTRL_STATUS start write left ERROR"
+                )
+                assert int(dut.tb_zeroer_busy.value) == 1, f"{encoding:03b}: busy dropped on start"
+                assert int(dut.tb_zeroer_intp.value) == 0, f"{encoding:03b}: intp raised on start"
+                assert int(dut.tb_zeroer_awvalid.value) == 0, f"{encoding:03b}: awvalid on start"
+                assert int(dut.tb_zeroer_wvalid.value) == 0, f"{encoding:03b}: wvalid on start"
+
             await self._zeroer_cold_reset(f"Zeroer {encoding:03b}")
 
         status = await self.csr_read("ZEROER_RESET_STATUS", ZEROER_CTRL_STATUS, length=8)
@@ -297,6 +314,6 @@ class smc_state_fault_inject_test_seq(SmcCsrSeq):
             "CHK-STATE-FAULT PASS: eFuse 00/11 suppressed the request, failed closed with "
             "done/status set in the CSR and the sentinel read-back, then completed a legal "
             "operation; read error sources set status; Zeroer 011/101/110/111 each entered the "
-            "absorbing error state from IDLE, reported busy over the CSR, and only a cold reset "
-            "returned it to IDLE"
+            "absorbing error state from IDLE, reported busy over the CSR, ignored a CTRL_STATUS "
+            "start write, and a cold reset returned it to IDLE"
         )
