@@ -1569,8 +1569,6 @@ starved it to a handful of writes fails.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260911_123206` seed 1. Named `CHK-* PASS` for LC-INPUT, GOLDEN, NONVAC, OTP-RETRY, SECURE-TM (parent plus OFF/ON), SECRET-BLANK, SECURE-TM-PROG-BLOCK, DFT-SECURE, SIGINT and SIGINT-RELEASE.
-
 [[lcc-golden-from-spec]]
 [NOTE]
 ====
@@ -2620,8 +2618,6 @@ on this path.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260911_123224` seed 1. Thirteen `CHK-CELL` / `CHK-DONE-RW1C` / `CHK-ERR` lines, `CHK-RAND-REP` over the full walk, CHK1..CHK4 mismatch=0, and `CHK5_kmac` match=6.
-
 *Shared-code limit*: the SP800-185 encoders (`right_encode`, `encode_string`) are
 shared between the stimulus and the golden, so an encoder error would program the
 DUT and build the expectation identically. This is mitigated rather than
@@ -2925,8 +2921,6 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260911_120722` seed `650837049`. Named `CHK-TRNG-* PASS` for fill, isolate, drain, packer, SLVERR, external non-reset source-select, JTAG, consumers-held, CSR reset including CTRL[0] RAZ/WI, stale empty-pop, fresh seed, and recovery.
-
 *Why the pool is checked from outside the domain*: the entropy pool's AXI
 responder is not in the TRNG reset domain, which is what makes the scrub
 observable at all — the port stays live while its contents are invalidated.
@@ -3075,8 +3069,6 @@ green keyGen closes none of them. This leaf writes the seed window over the bus.
 |CSRNG/EDN error and recoverable-alert status are clear after the aperture walk.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
-*Evidence*: Verilator `20260911_123310` seed 1, plus RANDCFG three-seed `20260911_121800`. Named `CHK-* PASS` for the live `pool_low` walk, fill, stall, refuse, pop, and `CHK5_pool`.
 
 *Anti-vacuity*: fill is observed as `pool_low` clear and `fifo_level` greater than 0 before any refusal is
 scored. An accepted pop happens before the empty-pop SLVERR. `[36]` is seen
@@ -3270,8 +3262,6 @@ immediate neighbour, and nothing records which indices a regression covered.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
-*Evidence*: Verilator `20260911_123341` seed 1, plus RANDCFG three-seed `20260911_121800`. Named `CHK-* PASS` for NONVAC, 64B, WIRQT, ERR-RD, ERR-IRQ, ERR-WR, ERR-WR-IRQ, FLUSH, and WDATA-RD.
 
 *Not claimed*: the read half of the threshold pair. `RIRQT` and
 `STATUS.read_level_above` need the receive FIFO filled from the peer side,
@@ -4348,8 +4338,6 @@ rather than covered by a check that cannot fail.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260911_121524` seed 1. Named `CHK-* PASS` for both alive controls, the read hold window, both illegal encodings on read suppress and fail-closed, program fail-closed, and the four read-error lifecycle legs. Recovery data is not the sensed SPARE0 control word.
-
 '''''
 
 [[sep_efuse_digest_latch_fault_test]]
@@ -4884,7 +4872,6 @@ watermark together; no vehicle asserts that pair.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
 
 [[sep_axi_partial_lane_read_test]]
 ===== `sep_axi_partial_lane_read_test`
@@ -5553,10 +5540,6 @@ slot, so over this surface an erase always frees.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_140142` seed 1. Named `CHK-* PASS`
-including CHK-HW-VER, CHK-ROM-VER, CHK-SRAM-VER, CHK-SAMPLER, CHK-ABR-DEST,
-CHK-OTP, CHK-RECOV, CHK-XFER-DEST.
-
 *Anti-vacuity*: every frame is built with a correct header CRC-8, a correct
 declared length and a correct payload CRC-32C, so a refusal is a verdict on the
 command ID or its arguments and never on framing. The refusal checkers assert
@@ -5629,9 +5612,6 @@ frontdoor.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_135457`. Named `CHK-PRE`, `CHK-RESET`,
-`CHK-WIPE` PASS (`RESP_UNRECOVERABLE_FAULT`).
-
 *Anti-vacuity*: the post-reset load is a value-bearing command, not only the
 ready banner. Wipe is last: after the fault frame the test does not issue
 another mailbox command.
@@ -5697,9 +5677,6 @@ success, then stream the 14-word blob plus CRC-32C.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_134717`. Named `CHK-EMPTY`, `CHK-ARG`,
-`CHK-INHIBIT`, `CHK-INHIBIT-RST`, `CHK-LOAD`, `CHK-EXEC` PASS.
-
 *Anti-vacuity*: inhibit cells assert the failure code, not "not success". The
 load response is taken before the stream, matching the ROM handler. CHK-EMPTY
 refuses `CMD_SRAM_EXEC` with no image, so CHK-EXEC success is against that
@@ -5764,9 +5741,6 @@ capture are not claimed.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
-*Evidence*: Verilator `20260914_125125`. Named `CHK-RANDCFG`, `CHK-DIRECT`,
-`CHK-XFER`, `CHK-PK` PASS (648-word public-key match).
 
 *Anti-vacuity*: both compare public keys must be non-zero. The palindrome
 absorbs the KV dword reversal, so a mismatch is a sideload failure, not an
