@@ -1278,7 +1278,7 @@ Drive `smc_filter_multi_entry_test_seq`. Each checker below is a named compare t
 
 *Test Procedure*:
 
-Drive `smc_input_fabric_axi_wr_rd_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_input_output_fabric_wr_rd_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -1305,11 +1305,11 @@ Drive `smc_input_fabric_axi_wr_rd_test_seq`. Each checker below is a named compa
 
 *Test Coverage*:
 
-* Input/output fabric CSR precheck over real SEP_IN AXI.
+* Output-fabric write/read over JTAG AXI, with the filter/remap windows programmed first.
 
 *Test Procedure*:
 
-Drive `smc_input_output_fabric_wr_rd_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `output_fabric_pass_all_cfg_seq`, then a JTAG-AXI write and read of the output-fabric window. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -1317,13 +1317,12 @@ Drive `smc_input_output_fabric_wr_rd_test_seq`. Each checker below is a named co
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ALIAS-REMAP-RESET-DEFAULT` |Named compare in `smc_input_output_fabric_wr_rd_test_seq.py`; the run fails if it mismatches
 |`CHK-INPUT-OUTPUT-FABRIC-WR-RD` |Named compare in `smc_input_output_fabric_wr_rd_test.py`; the run fails if it mismatches
-|`CHK-NONVAC` |Non-vacuity count in `smc_input_output_fabric_wr_rd_test_seq.py`
+|`CHK-NONVAC` |Non-vacuity count in `smc_input_output_fabric_wr_rd_test.py`
 |===
 
 
-*Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-029-smc_local_fabric_csr_depth_test]]
