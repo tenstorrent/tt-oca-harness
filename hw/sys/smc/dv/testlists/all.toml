@@ -77,25 +77,16 @@ name = "all"
 #                                 return non-OKAY. See the docstring and
 #                                 SMC_VPLAN Known Limitations
 #
-# Two enrolled tests are also held out of this group: each fails on an RTL
-# defect rather than a test defect. They keep their own [[tests]] entries and
-# run on demand.
-#
-#   smc_remap_cla_test          -- its CLA reset sweep passes, but the deny leg
-#                                  never completes: the SEP_IN read at
-#                                  0xC016_0038 times out (CLA aperture hang).
-#   smc_deadspace_decode_test   -- the DUT aliases deadspace onto live
-#                                  registers (wrap_to_live=7 read_alias=6).
-#                                  Also listed in depth.toml.
-#
-# The `rtl_issue` group is also out, and being red is its whole purpose -- it is
-# the runnable evidence for filed RTL defects. rtl_issue.toml is included above
-# so the names resolve and the file is reachable; the group is how they are run.
-# See that file for the conventions and the members.
+# The `rtl_issue` group is out: its members (smc_deadspace_decode_test and
+# smc_remap_cla_test among them) fail on RTL defects rather than test defects,
+# every entry carries `expect_fail`, and the weekly tier runs the group on its
+# own row so a graded expected failure never counts as a pass here or in
+# `hosted`. rtl_issue.toml is included above so the names resolve; see that
+# file for the conventions and the members.
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
-expected_count = 157
+expected_count = 159
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -147,6 +138,7 @@ tests = [
     "smc_efuse_otp_clock_test",
     "smc_efuse_permission_boundary_test",
     "smc_efuse_read_program_timeout_test",
+    "smc_efuse_read_timeout_status_test",
     "smc_efuse_shim_ctrl_test",
     "smc_ext_interrupts_pin_test",
     "smc_filter_field_sweep_test",
@@ -232,6 +224,7 @@ tests = [
     "smc_spi_pad_bfm_test",
     "smc_spm_mem_boundary_test",
     "smc_ss_reset_complete_test",
+    "smc_state_fault_inject_test",
     "smc_static_cg_sanity_test",
     "smc_sys_out_aw_w_split_test",
     "smc_telemetry_receiver_csr_test",
@@ -258,11 +251,12 @@ tests = [
 
 [[groups]]
 name = "hosted"
-# `all` minus the five leaves that need a RISC-V toolchain or an SMC_DUAL
-# elaboration. Nightly and weekly schedule this group; the per-PR gate stays
+# `all` minus the five leaves that need the RISC-V toolchain: the two `fw`
+# leaves and the three dual-target leaves, which all declare a firmware or ROM
+# image. Nightly and weekly schedule this group; the per-PR gate stays
 # on the 3-leaf `smoke`. Guarded by expected_count so a leaf cannot join
 # `all` and silently miss the hosted set.
-expected_count = 152
+expected_count = 154
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -312,6 +306,7 @@ tests = [
     "smc_efuse_otp_clock_test",
     "smc_efuse_permission_boundary_test",
     "smc_efuse_read_program_timeout_test",
+    "smc_efuse_read_timeout_status_test",
     "smc_efuse_shim_ctrl_test",
     "smc_ext_interrupts_pin_test",
     "smc_filter_field_sweep_test",
@@ -394,6 +389,7 @@ tests = [
     "smc_spi_pad_bfm_test",
     "smc_spm_mem_boundary_test",
     "smc_ss_reset_complete_test",
+    "smc_state_fault_inject_test",
     "smc_static_cg_sanity_test",
     "smc_sys_out_aw_w_split_test",
     "smc_telemetry_receiver_csr_test",
