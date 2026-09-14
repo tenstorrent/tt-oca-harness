@@ -10,12 +10,10 @@ This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
 that carry one. The enrolled testcases and the membership of the `all`
-sign-off group are defined in `testlists/all.toml`. Enrolled leaves held
-out of `all`: `smc_deadspace_decode_test` and `smc_remap_cla_test` run on
-demand and each measures a decode defect recorded under Known
-Limitations; two dual / production-ROM leaves are held on runtime; the
-`rtl_issue` reproducers fail on RTL that carries the defect they
-reproduce. Three other dual bring-up scenarios ride in `all`.
+sign-off group are defined in `testlists/all.toml`. The seven enrolled
+leaves outside `all`, and why, are named in the `all` row under
+Regression Groups; where the reason is a defect, Known Limitations records
+the hole.
 
 Every entry below names a testcase that exists and runs. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is
@@ -205,6 +203,7 @@ verifying the block behind the port.
 |`smc_efuse_otp_clock_config_depth_test` |Run eFuse OTP clock/timing register programming depth checks.
 |`smc_efuse_otp_clock_test` |Run the eFuse/OTP and clock-control CSR precheck.
 |`smc_efuse_permission_boundary_test` |PROXY -- run eFuse-derived chip-config reads; raw OTP permission paths have no responder in this bench.
+|`smc_efuse_read_timeout_status_test` |A read that hits `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, after a successful read shows it clear.
 |`smc_efuse_read_program_timeout_test` |timeout_enable\|0 aborts; default timeout recovers OTP bit0.
 |`smc_efuse_shim_ctrl_test` |EFUSE_INTERFACE + SHIM_CTRL probe.
 |`smc_state_fault_inject_test` |Every unused state encoding in the eFuse interface controller and in the Zeroer fails closed, and the block recovers.
@@ -336,8 +335,14 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 
 Tests whose job is to fail. Each holds the runnable evidence for one RTL
 defect, so the defect has a measurement rather than a description alone. All
-are enrolled through `rtl_issue` alone -- no `ci` tag, not in `smoke`, held
-out of `all`.
+are enrolled through `rtl_issue` -- no `ci` tag, not in `smoke`, `hosted` or
+`all`. Every `[[tests]]` entry carries `expect_fail` naming the issue and
+`expect_fail_match` pinned to the assertion it raises; the weekly tier runs
+the group on its own `regress.yml` row and grades the recorded failure as
+PASS, so the row goes red (`expected_fail_passed`) the week a defect is
+fixed and the leaf moves to its feature testlist. `smc_deadspace_decode_test`
+(#585) and `smc_remap_cla_test` (#1855) are members too; their cards are under
+FABRIC.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -347,7 +352,6 @@ the wrong reason.
 |===
 |Testcase |Objective
 |`smc_gpio_irq_mask_deassert_test` |Clearing DATA_CTRL.interrupt_enable must de-assert interrupt_o.
-|`smc_efuse_read_timeout_status_test` |A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
 |`smc_log_engine_intr_mask_test` |INTR_ENABLE must mask the log-engine interrupt output, not its set path.
 |`smc_i2c_intr_mask_test` |INTR_ENABLE must mask the I2C interrupt output, not its set path.
 |===
@@ -1195,7 +1199,7 @@ Drive `smc_deadspace_decode_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing and is held out of `all`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `per_ip`.
+*Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing (dead offsets in seven register windows wrap onto live registers with an OKAY response) and runs weekly in `rtl_issue` under `expect_fail`, with `expect_fail_match` pinned to the `wrap_to_live` / `read_alias` assertion; the observed failure grades PASS and an observed PASS grades `expected_fail_passed`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `rtl_issue`, `per_ip`.
 '''''
 
 [[sec-025-smc_filter_field_sweep_test]]
@@ -1492,7 +1496,7 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. Named checkers hold when the leaf is run on demand; it is held out of `all` because the CLA deny leg hangs at 0xC016_0038. Known Limitations records the hole. Enrolled in: `per_ip`.
+*Pass Criteria*: not a sign-off PASS. The ALIAS_REMAP translation, the remap-table reset sweep and the CLA allow leg hold; the CLA deny leg fails because the first unmapped in-window offset, `+0x38` (0xC016_0038), completes with OKAY instead of SLVERR/DECERR. The leaf runs weekly in `rtl_issue` under `expect_fail` with `expect_fail_match` pinned to that `resp=0` assertion, so the recorded failure grades PASS and any other failure grades FAIL. Known Limitations records the hole. Enrolled in: `rtl_issue`, `per_ip`.
 '''''
 
 [[sec-034-smc_sys_out_aw_w_split_test]]
@@ -3739,26 +3743,33 @@ testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
 . Wait for fuse-sense-done.
 . Run a legal program command, confirm completion, and record a read-back that is
   not the illegal-state sentinel.
-. Inject eFuse program state `0b00` with no request outstanding; confirm the state
-  is held, the request stays low, recovery reaches `IDLE` with done and error set,
-  and the read-back is the sentinel.
+. Inject eFuse program state `0b00` with no request outstanding; confirm the
+  request stays low in the corrupted cycle, recovery reaches `IDLE` with done and
+  error set, `EFUSE_PROGRAM_CTRL` reads done with status set and busy clear, and
+  the read-back is the sentinel. Run a legal program and confirm it completes
+  without error and its read-back is no longer the sentinel.
 . Arm the `0b11` injection concurrently with a legal program `GO`, confirm the
-  request is suppressed in the same cycle, then confirm the same recovery.
-. Repeat both encodings on the read path; inject a read error and confirm the
-  status sets and the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
-. Inject each of the four illegal Zeroer encodings, confirm the absorbing `ERROR`
-  state holds, then assert cold reset and confirm the escape to `IDLE`.
+  request is suppressed in the same cycle, then confirm the same recovery and the
+  same legal program afterwards.
+. Repeat both encodings on the read path, each followed by a legal read that
+  completes without error; inject a read error and confirm the status sets and
+  the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
+. For each of the four illegal Zeroer encodings: start from `IDLE` with
+  `CTRL_STATUS` not reporting busy, inject, confirm the absorbing `ERROR` state
+  holds with `CTRL_STATUS` reporting busy, write `CTRL_STATUS` and confirm the
+  start is ignored, then assert cold reset and confirm the escape to `IDLE` with
+  `CTRL_STATUS` clear.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state and only a cold reset escapes it
+|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path, with done and status set in `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL`, and a legal operation completes without error afterwards; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state from `IDLE`, report busy in `CTRL_STATUS`, ignore a `CTRL_STATUS` start write, and only a cold reset escapes it
 |===
 
 
-*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
+*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
 
 '''''
 
@@ -5888,11 +5899,12 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 
 *BFM / Model*: ocah_axi_vip (AXI) against the eFuse bank model
 
-*Objective*: A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
+*Objective*: A read that hits `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, after a successful read shows it clear.
 
 *Test Coverage*:
 
-* The timeout arm of `efuse_read_interface.sv`'s ST_WAIT_RESP, which never assigns `read_err_d` while `efuse_program_interface.sv` sets `program_err_d` on the identical arm.
+* `hw/ip/efuse/regs/efuse_interface_ctrl.rdl` defines `EFUSE_READ_CTRL.READ_STATUS` as the read interface's error report (`read_done` says the read completed, `read_status` says how) and `EFUSE_READ_REQ_TIMEOUT` as a bound on the cycles the interface waits for a SHIM response; `hw/ip/efuse/doc/programming.adoc` has software check `read_status` after every completion. A read that hits the bound is a completed read with an error: `read_done=1` and `read_status=1`.
+* The arming leg makes the check real: `READ_STATUS` holds until the next completion, so a stale 1 would satisfy the timeout leg on its own. A successful read at the RDL-default cycle count comes first and must show `READ_STATUS` 0; `STATUS.EFUSE_REQ_ERROR` is required clear beforehand because a sticky request error also reports through `READ_STATUS`.
 
 *Test Procedure*:
 
@@ -5907,11 +5919,11 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-TMO-RD-STATUS-ARM` |A successful read gives READ_CTRL=0x12000000 with READ_STATUS clear, arming the leg below. Depends on `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE` in smc_efuse_read_program_timeout_test having proven the bit can read 1 at all
-|`CHK-EFUSE-TMO-RD-STATUS-SET` |A timed-out read sets READ_STATUS. **Expected to fail**: READ_CTRL reads 0x12000000 on both the successful and the timed-out read, so the register carries nothing that separates them
+|`CHK-EFUSE-TMO-RD-STATUS-ARM` |A successful read at the RDL-default timeout completes with `READ_DONE` set and `READ_STATUS` clear, with `STATUS.EFUSE_REQ_ERROR` clear, arming the leg below (`smc_efuse_read_timeout_status_test_seq.py`)
+|`CHK-EFUSE-TMO-RD-STATUS-SET` |The read that hits the programmed timeout completes with `READ_DONE` set and `READ_STATUS` set (`smc_efuse_read_timeout_status_test_seq.py`)
 |===
 
-*Pass Criteria*: both legs hold. The second leg fails on RTL that carries the defect. Enrolled in: `rtl_issue`.
+*Pass Criteria*: `CHK-EFUSE-TMO-RD-STATUS-ARM`, `CHK-EFUSE-TMO-RD-STATUS-SET` hold after their compares. Enrolled in: `all`, `depth_efuse`.
 
 '''''
 
@@ -6011,16 +6023,17 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 . Hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, so a residual verdict from an earlier test cannot be counted.
 . Program the reset vector, release all four cores, then release `boot_stall`.
 . Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+. Compare the per-bank scratch read counters (`tb_cpu_scratch_bank_read_count`) snapshotted before step 2 and after step 4: every bank whose counter advanced is one of banks 0-3, and at least one did.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start, and every scratch bank the CPU read between the two counter snapshots is one of banks 0-3
 |===
 
-*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is part of the evidence: it is what the `smc_scratch_map_pkg` decode predicts for a 9 KB image, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
+*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is asserted from the per-bank scratch read counters: the `hello_world` link map ends at offset `0x8730` (code, data, four 4 KB stacks and the 2 KB heap), inside the first 128 KB group, which the `smc_scratch_map_pkg` decode places in banks 0-3, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
 
 '''''
 
@@ -6144,8 +6157,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-167-smc_fw_hello_world_multicore_test]]
-===== 167 `smc_fw_hello_world_multicore_test`
+[[sec-166-smc_fw_hello_world_multicore_test]]
+===== 166 `smc_fw_hello_world_multicore_test`
 
 *Source Module*: `smc_fw_hello_world_multicore_test`
 
@@ -6182,8 +6195,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-168-smc_fw_octs_p0_primary_test]]
-===== 168 `smc_fw_octs_p0_primary_test`
+[[sec-167-smc_fw_octs_p0_primary_test]]
+===== 167 `smc_fw_octs_p0_primary_test`
 
 *Source Module*: `smc_fw_octs_p0_primary_test`
 
@@ -6219,8 +6232,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-169-smc_fw_i2c_sanity_test]]
-===== 169 `smc_fw_i2c_sanity_test`
+[[sec-168-smc_fw_i2c_sanity_test]]
+===== 168 `smc_fw_i2c_sanity_test`
 
 *Source Module*: `smc_fw_i2c_sanity_test`
 
@@ -6255,8 +6268,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-170-smc_fw_i2c_target_sanity_test]]
-===== 170 `smc_fw_i2c_target_sanity_test`
+[[sec-169-smc_fw_i2c_target_sanity_test]]
+===== 169 `smc_fw_i2c_target_sanity_test`
 
 *Source Module*: `smc_fw_i2c_target_sanity_test`
 
@@ -6293,8 +6306,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-171-smc_fw_i2c_acq_fifo_stretch_reset_test]]
-===== 171 `smc_fw_i2c_acq_fifo_stretch_reset_test`
+[[sec-170-smc_fw_i2c_acq_fifo_stretch_reset_test]]
+===== 170 `smc_fw_i2c_acq_fifo_stretch_reset_test`
 
 *Source Module*: `smc_fw_i2c_acq_fifo_stretch_reset_test`
 
@@ -6333,8 +6346,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-172-smc_fw_i2c_p1_fifo_depth_xfer_test]]
-===== 172 `smc_fw_i2c_p1_fifo_depth_xfer_test`
+[[sec-171-smc_fw_i2c_p1_fifo_depth_xfer_test]]
+===== 171 `smc_fw_i2c_p1_fifo_depth_xfer_test`
 
 *Source Module*: `smc_fw_i2c_p1_fifo_depth_xfer_test`
 
@@ -6345,7 +6358,7 @@ For each of the two (target, lock) pairs:
 *Test Coverage*:
 
 * A 64-byte payload -- the FIFO depth -- moved one byte per controller write from I2C_0 to I2C_1 while the target drains its ACQ FIFO concurrently; the length and every byte compared, entries classified by ACQ signal so a NACKed byte cannot pass as payload. Those compares are the firmware's.
-* The wire, graded by the bench as on card 169: acknowledged write frames to 0x10 carrying at least 64 data bytes in total. Floors, not exact counts, since the driver may split the transfer.
+* The wire, graded by the bench as on card 168: acknowledged write frames to 0x10 carrying at least 64 data bytes in total. Floors, not exact counts, since the driver may split the transfer.
 
 *Test Procedure*:
 
@@ -6368,8 +6381,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-173-smc_fw_i2c_tx_stretch_timeout_recovery_test]]
-===== 173 `smc_fw_i2c_tx_stretch_timeout_recovery_test`
+[[sec-172-smc_fw_i2c_tx_stretch_timeout_recovery_test]]
+===== 172 `smc_fw_i2c_tx_stretch_timeout_recovery_test`
 
 *Source Module*: `smc_fw_i2c_tx_stretch_timeout_recovery_test`
 
@@ -6380,7 +6393,7 @@ For each of the two (target, lock) pairs:
 *Test Coverage*:
 
 * I2C_1 reads from I2C_0 while the target TX FIFO is empty, so the target stretches SCL until the controller stretch timeout fires; the firmware then disables the target to release SCL, disables the controller to exercise the automatic STOP recovery, re-initialises both and checks a 16-byte write. Those compares are the firmware's.
-* The wire, graded by the bench as on card 169. For a read the bytes counted are those the target clocked out, since the controller NACKs the last one by design.
+* The wire, graded by the bench as on card 168. For a read the bytes counted are those the target clocked out, since the controller NACKs the last one by design.
 
 *Test Procedure*:
 
@@ -6403,8 +6416,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-174-smc_fw_i2c_fifo_full_test]]
-===== 174 `smc_fw_i2c_fifo_full_test`
+[[sec-173-smc_fw_i2c_fifo_full_test]]
+===== 173 `smc_fw_i2c_fifo_full_test`
 
 *Source Module*: `smc_fw_i2c_fifo_full_test`
 
@@ -6416,7 +6429,7 @@ For each of the two (target, lock) pairs:
 
 * FMT and TX filled by software stores to the depth the RTL declares and reset; RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
 * The cocotb `smc_i2c_fifo_full_test` covers the CSR-level full/empty flags only; this leaf is the one that fills RX and ACQ by transfers.
-* The wire, graded by the bench as on card 169.
+* The wire, graded by the bench as on card 168.
 
 *Test Procedure*:
 
@@ -6439,8 +6452,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-175-smc_fw_uart_log_engine_single_entry_test]]
-===== 175 `smc_fw_uart_log_engine_single_entry_test`
+[[sec-174-smc_fw_uart_log_engine_single_entry_test]]
+===== 174 `smc_fw_uart_log_engine_single_entry_test`
 
 *Source Module*: `smc_fw_uart_log_engine_single_entry_test`
 
@@ -6478,8 +6491,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-176-smc_fw_uart_log_engine_boundary_backpressure_test]]
-===== 176 `smc_fw_uart_log_engine_boundary_backpressure_test`
+[[sec-175-smc_fw_uart_log_engine_boundary_backpressure_test]]
+===== 175 `smc_fw_uart_log_engine_boundary_backpressure_test`
 
 *Source Module*: `smc_fw_uart_log_engine_boundary_backpressure_test`
 
@@ -6515,8 +6528,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-177-smc_fw_uart_log_engine_disable_during_xfer_test]]
-===== 177 `smc_fw_uart_log_engine_disable_during_xfer_test`
+[[sec-176-smc_fw_uart_log_engine_disable_during_xfer_test]]
+===== 176 `smc_fw_uart_log_engine_disable_during_xfer_test`
 
 *Source Module*: `smc_fw_uart_log_engine_disable_during_xfer_test`
 
@@ -6552,8 +6565,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-178-smc_fw_uart_log_engine_fetch_err_test]]
-===== 178 `smc_fw_uart_log_engine_fetch_err_test`
+[[sec-177-smc_fw_uart_log_engine_fetch_err_test]]
+===== 177 `smc_fw_uart_log_engine_fetch_err_test`
 
 *Source Module*: `smc_fw_uart_log_engine_fetch_err_test`
 
@@ -6596,7 +6609,7 @@ For each of the two (target, lock) pairs:
 [cols=",",options="header",]
 |===
 |Group |Purpose
-|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Enrolled leaves outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the `rtl_issue` reproducers whose job is to fail
+|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Seven enrolled leaves are outside it: `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime; each runs in its own group), and the five `rtl_issue` reproducers, whose job is to fail and which the weekly tier runs on their own row. Seventeen members of `all` need more than a plain hosted runner: the fourteen `fw` leaves build a C image with the RISC-V toolchain, and the three dual-target leaves run the production ROM or a DV ROM image on the `SMC_DUAL` elaboration
 |`avsbus_depth` |avsbus depth coverage
 |`axil` |axil coverage
 |`per_ip` |One-per-IP breadth run used for routine regression
@@ -6609,7 +6622,7 @@ For each of the two (target, lock) pairs:
 |`depth_uart_log` |depth uart log coverage
 |`dual_all` |Every `SMC_DUAL` two-instance testcase
 |`dual_smoke` |Two-instance bring-up: elaboration and the AXI scratch probe
-|`fw` |Firmware images executed by the CPU cluster
+|`fw` |Firmware images executed by the CPU cluster, each graded by a bench observation as well as the image's own verdict word
 |`gpio` |gpio coverage
 |`i2c` |i2c coverage
 |`i3c_depth` |i3c_depth coverage
@@ -6622,9 +6635,9 @@ For each of the two (target, lock) pairs:
 |`functional_depth` |core functional gate plus its depth companions
 |`pyuvm` |Scenarios with a PyUVM implementation
 |`reset` |reset coverage
-|`rtl_issue` |Reproducers for RTL defects; they fail on RTL that carries the defect and are held out of `all`
+|`rtl_issue` |Reproducers for RTL defects, each carrying `expect_fail` and `expect_fail_match`; the weekly tier runs the group on its own `regress.yml` row and grades the recorded failure as PASS, so the row goes red (`expected_fail_passed`) when a defect is fixed and the leaf moves to its feature testlist. Not in `all` or `hosted`
 |`smoke` |PR gate (`sim.yml`)
-|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the firmware and `SMC_DUAL` leaves
+|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the seventeen leaves that need the RISC-V toolchain (the fourteen `fw` leaves and the three dual-target leaves, which all declare a firmware or ROM image)
 |`uart` |uart coverage
 |`coverage_closure` |Leaves that close a feature no other testcase reaches
 |`depth` |cross-feature depth testcases
@@ -6650,8 +6663,8 @@ design-side claim; the per-leaf cards below are the detail.
 |GPIO / ext IRQ |`smc_gpio_irq_active_test` |same plus the GPIO cluster
 |UART / log / sideband |`smc_sideband_protocol_smoke_test` |same plus UART / AVSBus / OCTS
 |ECC / DFD / DBS |`smc_ecc_dfd_dbs_sanity_test` |same plus diagnostic depth
-|Deadspace aliasing |`smc_deadspace_decode_test` (on demand) |held out of `all`
-|CLA / ALIAS_REMAP |`smc_remap_cla_test` (on demand) |held out of `all`
+|Deadspace aliasing |`smc_deadspace_decode_test` (`per_ip`; weekly `rtl_issue` under `expect_fail`) |not in `all`
+|CLA / ALIAS_REMAP |`smc_remap_cla_test` (`per_ip`; weekly `rtl_issue` under `expect_fail`) |not in `all`
 |===
 
 [[lifecycle-gated-efuse-jtag-access-control-coverage-gap]]
@@ -6688,6 +6701,7 @@ SMC; that connection stays a negative item.
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. `smc_cluster_plic_csr_test` holds that evidence and is not enrolled; its four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
-|`smc_deadspace_decode_test` measures wrap-to-live aliasing |Held out of `all`; the card does not claim sign-off PASS |Resolve the wrap-to-live aliasing decode contract
-|`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 |Held out of `all`; the card does not claim sign-off PASS |Fix the CLA deny-leg hang
+|`smc_deadspace_decode_test` measures wrap-to-live aliasing: dead offsets in seven register windows wrap onto live registers with an OKAY response |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail`, so the defect has a graded measurement and the row goes red when the decode changes |Resolve the wrap-to-live aliasing decode contract (#585); the leaf then moves to its feature testlist with the `ci` tag
+|`smc_remap_cla_test` CLA deny leg: the unmapped in-window offset `+0x38` (0xC016_0038) completes with OKAY instead of SLVERR/DECERR |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail` |Resolve #1855, which rules whether an unmapped in-window CLA offset may complete OKAY, and decide the aperture's decode contract; the leaf then moves to its feature testlist with the `ci` tag
+|`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |===

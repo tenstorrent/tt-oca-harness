@@ -295,7 +295,8 @@ python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
 ```
 
 Not every test the package defines is in `all` — `testlists/all.toml` names
-the held-out testcases and why.
+the held-out testcases and why, and `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`
+records the leaves no scheduled tier runs.
 
 ### One named test
 
