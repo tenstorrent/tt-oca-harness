@@ -264,9 +264,15 @@ python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 
 The scheduled nightly and weekly (`.github/workflows/regress.yml`) run the
 `hosted` group on Verilator with three seeds per leaf. `hosted` is `all`
-without the leaves that need a RISC-V toolchain or an `SMC_DUAL` elaboration,
-which the hosted GitHub runners do not have; `testlists/all.toml` defines the
-set.
+without the five leaves that need a RISC-V toolchain, which the hosted GitHub
+runners do not have: the two `fw` leaves and the three dual-target leaves,
+which run a ROM or firmware image on top of the `SMC_DUAL` elaboration;
+`testlists/all.toml` defines the set. The weekly tier also runs `rtl_issue`
+on its own row: its leaves carry `expect_fail` and are graded green while the
+filed defects stand. `fw`, `occp_boot` and the `dual` groups need the RISC-V
+toolchain and run on demand (`scripts/docker-run.sh` builds the images) until
+CI has a toolchain; `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` records
+each held-out leaf with its owner and closing condition.
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
