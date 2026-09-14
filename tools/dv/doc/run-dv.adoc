@@ -250,13 +250,21 @@ python3 tools/dv/run_dv.py --help
 `hw/common/prim/<name>/dv`.
 
 Simulation mode, the default, loads `<name>_sim_cfg.toml`. Formal mode loads
-`<name>_formal_cfg.toml`, the registry's `formal_cfg` override, or the
-`[duts.<name>].formal_cfg` pointer of the site layer (<<runner-site-layer>>):
+the `[duts.<name>].formal_cfg` pointer of the site layer
+(<<runner-site-layer>>), else the registry's `formal_cfg` override, else
+`<name>_formal_cfg.toml` beside the sim config:
 
 [source,bash]
 ----
 python3 tools/dv/run_dv.py --dut <dut> --mode formal --items <task>
 ----
+
+A selectable DUT that one of those names is also a _formal view_: `--list`
+shows it as a `fv` row and `--validate-configs` validates it as
+`<name> (formal)`. A site-named file that is absent leaves the view
+unavailable in both listings and is an error only when selected; a registry
+`formal_cfg` that is absent fails validation. A DV root that carries a formal
+config and no sim config is not a DUT.
 
 `--tool TOOL` overrides the DUT's `default_tool`, but the selected tool must be
 present in the flow's `tools` allowlist and in `simulators.toml`.
@@ -783,8 +791,9 @@ selects it through its config's `tools` and `default_tool`.
 |The formal config `--mode formal` loads for that DUT, ahead of the
 registry's `formal_cfg` and the `<name>_formal_cfg.toml` convention: how a
 companion-owned formal view is reached without editing `duts.toml`. The DUT
-must be selectable and the file must exist; the path is repo-relative or
-absolute.
+must be selectable; the path is repo-relative or absolute. An absent file
+leaves the view `unavailable` in `--list` and `--validate-configs` and is an
+error only when the DUT is selected with `--mode formal`.
 |===
 
 Any other key fails validation, as does a checked-in registry that carries
@@ -1222,14 +1231,19 @@ view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
 |`--list`
 |List selectable DUTs, or details for `--dut`. Each row shows the DUT's
 default tool; tools that need a license, and frameworks that no open-source
-tool serves, are marked `(licensed)`. The per-DUT detail view adds the
-`license` and `runnability` fields from the merged config.
+tool serves, are marked `(licensed)`. A DUT with a formal config adds a `fv`
+row with the formal tool set; a site-named formal config that is absent
+shows as `unavailable`. The per-DUT detail view adds the `license` and
+`runnability` fields from the merged config; `--mode formal` selects the
+formal view.
 
 |`--validate-configs`
-|Validate registries (with the site layer merged in when one is active) and
-every selectable simulation DUT. Exit `2` if any fail. With `--overlay`,
-every framework view is additionally validated with the overlay applied
-(guard-excluded views fall back to base validation).
+|Validate registries (with the site layer merged in when one is active),
+every selectable DUT's simulation views, and every discovered formal view.
+Exit `2` if any fail; a site-named formal config that is absent is reported
+`UNAVAILABLE` without failing the set. With `--overlay`, every view is
+additionally validated with the overlay applied (guard-excluded views fall
+back to base validation).
 
 |`--doctor`
 |Report configuration and tool availability; each tool row names the file
@@ -1632,11 +1646,15 @@ from configuration instead of hardcoding DUT names: `--list --json` emits one
 entry per view with its tool set, default tool, and license need, so
 a licensed UVM job selects `.duts[] | select(.framework == "uvm")` and a DUT
 joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
-— no CI edit. `--list --dut <dut> --json` additionally carries the
-per-scenario binding matrix (`tests.<name>.bindings`) and per-framework
-implemented counts for dashboards. `--validate-configs` validates every
-framework view a DUT implements, so a broken UVM overlay fails config
-validation even in cocotb-only CI.
+— no CI edit. Every entry carries `mode` (`sim` or `formal`) and
+`available`; a formal view whose site-named config is absent is listed with
+`available: false`, its `path`, and a `reason`, so a formal job selects
+`.duts[] | select(.mode == "formal" and .available)`. `--list --dut <dut>
+--json` additionally carries the per-scenario binding matrix
+(`tests.<name>.bindings`) and per-framework implemented counts for
+dashboards. `--validate-configs` validates every framework view a DUT
+implements and every available formal view, so a broken UVM overlay or
+formal config fails config validation even in cocotb-only CI.
 
 === Qualification and limits
 
@@ -1655,9 +1673,11 @@ fan-out.
 
 === A different DUT's config blocks the run
 
-Normal execution validates every selectable simulation DUT before resolving
-the requested one. Run `--validate-configs` and fix every reported failure; a
-stale registry entry or config can block an otherwise unrelated DUT.
+Normal execution validates every selectable DUT, its simulation views and
+any available formal view, before resolving the requested one. Run
+`--validate-configs` and fix every reported failure; a stale registry entry
+or config can block an otherwise unrelated DUT. An unavailable site-named
+formal config does not block anything.
 
 === The selected tool is missing
 
@@ -1736,9 +1756,9 @@ The following behaviors are not part of the runner contract:
 
 * Only the `local` executor dispatches work. Queue, core, memory, and wall-time
   flags are metadata; there is no LSF/SLURM or other non-local dispatch.
-* Formal CLI and stage plumbing exist, but this checkout contains no
-  `*_formal_cfg.toml`; a DUT cannot run formal mode without one, whether its
-  own or one the site layer points at.
+* This checkout contains no `*_formal_cfg.toml`; a DUT cannot run formal
+  mode without one, whether its own or one the site layer points at, and
+  `--list` shows no `fv` row until one exists.
 * The runner writes no `run.json` and has no background execution or job
   lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may
@@ -1754,4 +1774,5 @@ The following behaviors are not part of the runner contract:
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
   despite running no tests; use a positive threshold.
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
-* Formal flows are not discovered automatically.
+* A DV root that carries a formal config and no sim config is not a DUT;
+  formal views attach to selectable DUTs.
