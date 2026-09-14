@@ -409,6 +409,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-OCTS-COUNT-MONOTONIC",
             "OCTS timer pin count advances after START",
         ),
+        (
+            "CHK-OCTS-CSR-COUNT",
+            "CHK-OCTS-CSR-COUNT",
+            "TIMER_COUNT_{HI,LO} read over J2A lands between the tb_timer_count "
+            "samples taken either side of the read",
+        ),
     ],
     "smu_wrapper_elaboration_test": [
         ("CHK-WRAP-ELAB", "WRAP_ELAB_OK", "wrapper elab/reset contract"),
