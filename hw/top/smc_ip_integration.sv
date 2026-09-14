@@ -266,14 +266,14 @@ module smc_ip_integration (
     // Captured GPIO straps     //
     //////////////////////////////
 
-    logic [smc_pkg::NUM_BONDED_GPIO-1:0] captured_straps;
-    assign captured_straps = '0;
+    logic [smc_pkg::NUM_BONDED_GPIO-1:0] rom_straps;
+    assign rom_straps = '0;
 
     straps_reg_pkg::straps__in_t straps_hwif_in;
 
     always_comb begin
-        straps_hwif_in.STRAPS_LO.straps.next = captured_straps[31:0];
-        straps_hwif_in.STRAPS_HI.straps.next = captured_straps[smc_pkg::NUM_BONDED_GPIO-1:32];
+        straps_hwif_in.STRAPS_LO.straps.next = rom_straps[31:0];
+        straps_hwif_in.STRAPS_HI.straps.next = rom_straps[smc_pkg::NUM_BONDED_GPIO-1:32];
     end
 
     straps_reg u_straps_reg (
