@@ -19,7 +19,10 @@ static void run_test_suite(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // TODO: audit these values OCCP spec
+    // Interface status 0x1 is OCCP_INTERFACE_STATUS_READY and boot status 0x5 is
+    // OCCP_BOOT_STATUS_COMPLETE (bootrom smc_occp_status.h); check_occp_status_data
+    // compares only the interface nibble because the ROM main flow leaves the
+    // boot nibble at zero (status-coordination.adoc).
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
 

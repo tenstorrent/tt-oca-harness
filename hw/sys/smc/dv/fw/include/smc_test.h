@@ -144,7 +144,7 @@ static inline __attribute__((noreturn)) void raise_fatal_hex32_s(int hartid, con
 
 /* Test lifecycle ************************************************************/
 static inline void init_test(int hartid) {
-    (void)hartid; // TODO this is unused
+    (void)hartid; // seeding is per image; the parameter mirrors end_test()
     const uint32_t seed = read_scratch(SEED_REG);
     simputshex32("Seeding test: ", seed);
     _RANDOM_LFSR = seed;

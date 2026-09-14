@@ -37,16 +37,17 @@
 //       that reads back nonzero is its statement that it did not.  [S1]:118-128
 //
 // SPEC-OPEN -- not settled from RTL:
-//   [S1]:148-150 leaves the two enable properties commented out:
-//       // TODO // INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR;
-//       // TODO // INTR_STATUS.LOG_WRITE_ERR->hwenable = INTR_ENABLE.LOG_WRITE_ERR;
-//   So the RDL DECLARES the intent -- a masked interrupt must not capture
-//   into its status bit -- but does not yet express it as a generated
-//   property.  The ENABLE-gating arms below check that DECLARED INTENT and
-//   nothing more.  Open spec question:
+//   [S1]:148-150 leaves the two `hwenable` bindings commented out
+//   (INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR, and the
+//   LOG_WRITE_ERR twin).  So the RDL DECLARES the intent -- a masked interrupt
+//   must not capture into its status bit -- but does not yet express it as a
+//   generated property.  The ENABLE-gating arms below check that DECLARED
+//   INTENT and nothing more.  Open spec question:
 //       "Does INTR_ENABLE gate INTR_STATUS capture, or only the IRQ output?"
-//   If the answer comes back "IRQ output only", the two gating arms below are
-//   the checks that must change, and they are marked so a reader can find them.
+//   #1635 records that the RTL gates the SET path where prim_intr_hw masks the
+//   OUTPUT, and asks for the output-mask form.
+// TODO(minshaohoTT, #1635): once the log engine masks the output instead, the
+//   two ENABLE-gating arms below must expect capture while masked.
 //
 //==========================================================================
 // OBSERVED DUT BEHAVIOUR THIS TEST MUST WORK AROUND (not an expectation)
