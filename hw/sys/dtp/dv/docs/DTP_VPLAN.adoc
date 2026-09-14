@@ -6714,7 +6714,119 @@ d. Confirm the written value affects only this source register and no neighborin
 SMC fabric write/read scenarios map to the source modules recorded in the
 scenario tables.
 
+[[dtp-formal-plan]]
+=== Formal Verification Plan
+
+Formal property checking corroborates the F1 state-machine rows of the
+traceability matrix; it does not replace the simulation credit. The open-path
+flow runs SymbiYosys through the runner's formal mode
+(`tools/dv/doc/run-dv.adoc`) and follows the property style in
+`hw/common/dv/docs/formal-property-style.adoc`. `dtp_formal_cfg.toml` and
+`testlists/formal.toml` are the launch entry; the properties, the bind file,
+the task file and the reset environment live under `formal/`.
+
+==== Scope
+
+The described block is the IEEE 1149.1 TAP controller of the primary TAP
+(`jtag_tap_ctrlr`), checked with `dtp` as the formal top so that the controller
+sees the design's own reset combination and clocking. The block is a
+sixteen-state Moore machine with a three-bit saturating TMS counter and no
+datapath, so every property is a boolean over the state, the counter and the
+scan-control flags, and both the bounded and the unbounded engines finish in
+seconds. Blocks whose behavior depends on scan-in data — the instruction
+register decode, the TAP_3DCR and STAP selection logic, the JTAG2AXI request
+machine — are outside this section: they need constrained scan-in stimulus
+and a horizon that spans a full register shift.
+
+==== Properties, assumptions and covers
+
+`formal/props/dtp_tap_props.sv` carries every label; `formal/props/dtp_tap_bind.sv`
+binds it to each `jtag_tap_ctrlr` instance under `dtp`.
+
+[cols="3,3,1",options="header",]
+|===
+|Label |Checks |Row
+|`ast_tap_state_one_hot` |The state register holds exactly one state |F1.1
+|`ast_tap_five_tms_high_reach_tlr` |A saturated TMS counter implies Test-Logic-Reset |F1.2
+|`ast_tap_tlr_holds_on_tms_high`, `ast_tap_tlr_exits_to_rti`, `ast_tap_rti_holds_on_tms_low`, `ast_tap_shift_holds_on_tms_low`, `ast_tap_update_dr_only_from_exit`, `ast_tap_update_ir_only_from_exit` |The legal TMS arcs into and out of the reset, idle, shift and update states |F1.1
+|`ast_tap_select_exclusive`, `ast_tap_moore_flags_follow_state`, `ast_tap_negedge_flags_follow_state` |The DR and IR selects are exclusive; the Moore flags and the negedge-clocked scan-control flags follow the state |F1.1
+|===
+
+Assumptions: `asm_initial_reset` (the macro layer) holds the reset low in the
+first cycle; `asm_env_resets_released` and `asm_env_scan_reset_inactive`
+(`formal/fpv/sby/dtp_sby_env.sv`) release the free asynchronous resets at the
+first `tck` posedge and keep the scan reset inactive. Covers: six `cov_`
+labels, one per non-trivial antecedent and per scan path
+(<<dtp-formal-depths>>). Every cover stays reachable under the assumptions;
+an unreached cover fails the item.
+
+[[dtp-formal-depths]]
+==== Tasks and depths
+
+[cols="1,2,1,4",options="header",]
+|===
+|Task |Engine |Depth |Bound
+|`bmc` |`smtbmc` with yices |30 |Same horizon as `cover`, so every assertion is checked over the horizon in which every cover is reachable
+|`cover` |`smtbmc` with yices |30 |Above the deepest cover (step 19) by more than one full TMS reset sequence
+|`prove` |`abc pdr` |unbounded |Induction; no depth
+|===
+
+The bound follows the block's structural latency. Under `multiclock on` every
+step is a time point and one `tck` cycle costs two steps; the reset environment
+releases the resets at the first `tck` posedge, so a state that is `n` `tck`
+edges from Test-Logic-Reset is first observable at step `3 + 2n`. The TAP
+state graph has diameter seven from Test-Logic-Reset (Exit2-IR), and the TMS
+reset counter saturates after five consecutive `tck` edges. The covers sit at
+these distances:
+
+[cols="3,1,1",options="header",]
+|===
+|Cover |`tck` edges from Test-Logic-Reset |Step
+|`cov_tap_shift_dr`, `cov_tap_tdo_driven` |4 |11
+|`cov_tap_shift_ir` |5 |13
+|`cov_tap_update_ir_from_exit1` |6 |15
+|`cov_tap_update_dr_from_exit2` |7 |17
+|`cov_tap_tlr_from_five_tms_high`: Run-Test/Idle, Select-DR, Capture-DR, then five TMS-high edges through Exit1-DR, Update-DR, Select-DR and Select-IR into Test-Logic-Reset |8 |19
+|===
+
+Depth 30 is a horizon of thirteen `tck` edges after reset release: the graph
+diameter plus a complete five-edge TMS reset sequence with one edge of slack,
+so from any reachable state the bounded check reaches every other state and a
+synchronous reset within the horizon. A cover added at a greater distance
+raises both depths together (`formal-property-style.adoc`, cover reachability).
+
+==== Running and grading
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp --mode formal            # the smoke group: dtp_tap_fpv
+python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run  # the rendered sby command
+----
+
+The `flist` stage regenerates `formal/build/dtp.f` from Bender; the `formal`
+stage runs `bmc`, `cover` and `prove` in one `sby` invocation whose work
+directories are `<run>/stages/formal/dtp_tap_fpv_<task>/`. The runner grades
+the item from the task status files and JUnit reports, never from the exit
+code: every task `PASS` with every cover reached is `PASS`; a counterexample,
+an induction failure or an unreached cover is `FAIL` in the `formal_fail`
+bucket, and `result.json` carries the `formal` object with the proven and
+covered counts (`run-dv.adoc`, Formal result grading).
+
+The FAIL path is checked by inverting one assertion body — for example
+`dr_select_i == ir_select_i` in `ast_tap_select_exclusive` — and running the
+same command: the `bmc` task reports `FAIL` with the counterexample trace at
+`stages/formal/dtp_tap_fpv_bmc/engine_0/trace.vcd`, the `prove` task reports
+`FAIL`, and the item is `FAIL`.
+
+The open path needs a yosys-slang build with the concurrent-assertion
+lowering and an SMT solver beside `sby` (`formal-property-style.adoc`,
+Open-path toolchain).
+
 === Regression Groups
+
+The simulation groups below come from `testlists/all.toml`;
+`testlists/formal.toml` carries the formal item `dtp_tap_fpv` in its own
+`smoke` group (<<dtp-formal-plan>>).
 
 [cols=",,",options="header",]
 |===

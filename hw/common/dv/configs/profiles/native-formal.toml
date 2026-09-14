@@ -3,9 +3,9 @@
 
 # Shared profile for formal tasks launched by the native runner.
 #
-# `license` describes the default backend, which needs none; `--list` marks each licensed
-# backend `(licensed)` from its registry `license_env`, and those backends stay selectable
-# with `--tool` where a site supplies them.
+# `tools` names the open backend only, and `license` describes it. A site-supplied formal
+# backend (a complete tool table in the site layer) is selected by a DUT formal config that
+# lists it in its own `tools`; `--list` marks such a backend `(licensed)` from its `license_env`.
 
 kind = "fv"
 framework = "formal"
@@ -14,7 +14,7 @@ runnability = "contributor"
 license = "none"
 
 default_tool = "sby"
-tools = ["sby", "jasper", "vcf"]
+tools = ["sby"]
 
 [scheduler]
 default_executor = "local"
