@@ -42,7 +42,7 @@ import logging
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.smc_virt_console import VirtConsole
-from smc_dual_base_test import DualCsr, SmcDualHarness, random_seed
+from smc_dual_base_test import DualCsr, SmcDualHarness, dual_test, random_seed
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
     SCRATCH_PASS_FAIL,
@@ -66,9 +66,8 @@ SANITY_POLL_CYCLES = 2000
 PROGRESS_EVERY = 200
 
 
-@cocotb.test()
-async def smc_occp_sanity_test(_dut) -> None:
-    harness = SmcDualHarness(test_name="smc_occp_sanity_test", required_evidence=REQUIRED_EVIDENCE)
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_occp_sanity_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_occp_sanity_test")
@@ -199,4 +198,3 @@ async def smc_occp_sanity_test(_dut) -> None:
         describe_post_code(post),
     )
     cocotb.log.info("smc_occp_sanity_test PASS")
-    harness.finalize_evidence()

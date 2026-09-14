@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from smc_dual_base_test import SmcDualHarness
+from smc_dual_base_test import SmcDualHarness, dual_test
 from smc_occp_dual_defs import SHARED_I3C_CHANNELS
 
 REQUIRED_EVIDENCE = (
@@ -76,11 +76,8 @@ def _check_i3c_counter_indexing(dut) -> None:
     )
 
 
-@cocotb.test()
-async def smc_dual_elaboration_test(_dut) -> None:
-    harness = SmcDualHarness(
-        test_name="smc_dual_elaboration_test", required_evidence=REQUIRED_EVIDENCE
-    )
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_dual_elaboration_test(harness: SmcDualHarness) -> None:
     _check_i3c_counter_indexing(cocotb.top)
     dut = harness.dut
 
@@ -201,4 +198,3 @@ async def smc_dual_elaboration_test(_dut) -> None:
     )
 
     cocotb.log.info("smc_dual_elaboration_test PASS")
-    harness.finalize_evidence()

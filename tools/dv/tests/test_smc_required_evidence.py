@@ -18,9 +18,10 @@ reads a log line, up to the first character outside `[A-Za-z0-9_-]`, so
 inside the name makes it a template (`CHK-NDM-REQ-<bit>`) that concrete required
 names instantiate.
 
-A plain cocotb leaf over `SmcDualHarness` is gated only by the
-`finalize_evidence()` call it makes itself, so each one must hand its
-`REQUIRED_EVIDENCE` to the harness and end on that call.
+A plain cocotb leaf over `SmcDualHarness` is gated by the `dual_test`
+decorator, which builds the harness from the leaf's `REQUIRED_EVIDENCE` and
+runs the gate when the leaf returns, so each one must be registered through it
+and neither build a harness nor call the gate itself.
 
 Importing the leaves needs the `dv` dependency group (cocotb, pyuvm). Run from
 the repository root:
@@ -258,27 +259,19 @@ class SmcRequiredEvidenceTest(unittest.TestCase):
                 for node in tree.body
                 if isinstance(node, ast.AsyncFunctionDef) and node.name == name
             )
-            harness_calls = [
-                node
-                for node in ast.walk(leaf)
-                if isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Name)
-                and node.func.id == "SmcDualHarness"
-            ]
+            decorators = [ast.unparse(node) for node in leaf.decorator_list]
+            called = {
+                ast.unparse(node.func) for node in ast.walk(leaf) if isinstance(node, ast.Call)
+            }
             with self.subTest(leaf=name):
                 self.assertNotEqual(required, (), "a dual leaf requires nothing")
-                self.assertEqual(len(harness_calls), 1, "one SmcDualHarness per leaf")
-                keywords = {kw.arg: ast.unparse(kw.value) for kw in harness_calls[0].keywords}
                 self.assertEqual(
-                    keywords,
-                    {"test_name": repr(name), "required_evidence": "REQUIRED_EVIDENCE"},
-                    "the harness must receive the leaf's name and REQUIRED_EVIDENCE",
+                    decorators,
+                    ["dual_test(REQUIRED_EVIDENCE)"],
+                    "the leaf is registered through dual_test with its REQUIRED_EVIDENCE",
                 )
-                self.assertEqual(
-                    ast.unparse(leaf.body[-1]),
-                    "harness.finalize_evidence()",
-                    "finalize_evidence() must be the leaf's last statement",
-                )
+                self.assertNotIn("SmcDualHarness", called, "the decorator builds the harness")
+                self.assertNotIn("harness.finalize_evidence", called, "the decorator runs the gate")
 
 
 if __name__ == "__main__":

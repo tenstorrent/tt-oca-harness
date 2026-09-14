@@ -11,14 +11,17 @@ master.
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import subprocess
 import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
+from cocotb.regression import Test
 from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
 from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE
@@ -407,9 +410,9 @@ class SmcDualHarness:
     def finalize_evidence(self) -> None:
         """Report the evidence this run produced, and grade it.
 
-        Call it as the test's last statement, after every compare has held:
-        a test that already failed raised, and this must not turn that into a
-        different complaint.
+        ``dual_test`` runs it once the leaf has returned, after every compare
+        has held: a leaf that already failed raised, and this must not turn
+        that into a different complaint.
         """
         seen = sorted(self._evidence.seen)
         own = [check_id for check_id in seen if not _EvidenceRecorder.is_base(check_id)]
@@ -436,3 +439,26 @@ class SmcDualHarness:
                 + "; ".join(problems)
                 + " -- the run exited cleanly without grading what it claims to grade"
             )
+
+
+def dual_test(
+    required_evidence: tuple[str, ...],
+) -> Callable[[Callable[[SmcDualHarness], Awaitable[None]]], Test]:
+    """Register a plain cocotb leaf that runs over ``SmcDualHarness``.
+
+    The leaf receives, in place of the DUT handle, a harness named after it
+    and carrying ``required_evidence``. The evidence gate runs once the leaf
+    returns, so no leaf has to remember it; a leaf that raised keeps its own
+    failure.
+    """
+
+    def register(leaf: Callable[[SmcDualHarness], Awaitable[None]]) -> Test:
+        @functools.wraps(leaf)
+        async def run(_dut: object) -> None:
+            harness = SmcDualHarness(test_name=leaf.__name__, required_evidence=required_evidence)
+            await leaf(harness)
+            harness.finalize_evidence()
+
+        return cocotb.test()(run)
+
+    return register
