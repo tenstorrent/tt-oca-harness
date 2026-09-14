@@ -27,7 +27,8 @@ makes that decode a measured fact rather than an assumption, so the offsets are
 chosen to exercise each of its fields: the two stripe bits, the wrap of the
 four-bank cycle, and a jump to the next 128 KB group.
 
-``init_mem_done_o`` is reported but gates nothing.
+``init_mem_done_o`` must reach 1 on both instances before the probe starts
+(``CHK-AXI-INIT-MEM-DONE``); the watcher raises if either is still 0 at the bound.
 """
 
 from __future__ import annotations
@@ -63,7 +64,7 @@ PROBE_PATTERNS = {
     PROBE_BASE + 0x2_0000: 0xFEDC_BA98_7654_3210,
 }
 
-# How long to watch init_mem_done_o before giving up on it (informational).
+# Bound on init_mem_done_o rising on both instances; expiry fails the test.
 INIT_MEM_WATCH_CYCLES = 100_000
 INIT_MEM_POLL_CYCLES = 500
 
