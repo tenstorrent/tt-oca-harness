@@ -48,6 +48,97 @@ safe-outputs:
   mentions:
     allowed-collaborators: true
     allow-context: true
+    # add_comment re-sanitizes against this list plus the parent author.
+    allowed:
+      - achayunTT
+      - ahsiaoTT
+      - akaviTT
+      - akeshavarajTT
+      - alexyapTT
+      - alpeshoza-tt
+      - aottavianoTT
+      - aulmerTT
+      - berwinTT
+      - bkeith-TT
+      - bmeltonTT
+      - bonnie-banks123
+      - bparsonsTT
+      - brucehsu-TT
+      - ctr-shanthiprasad
+      - ctr-smondal-TT
+      - dangthai-vnchip
+      - DanielG-lowRISC
+      - dkimTT
+      - dsheets-tt
+      - duyhuynh-vnchip
+      - efedotovaTT
+      - erentschler-TT
+      - ftorresmanobanda-TT
+      - gabrielgobTT
+      - gchangTT
+      - gchott
+      - gczajkowskiTT
+      - gsinghtt
+      - hcallahan-lowrisc
+      - hkanayaTT
+      - hliaott
+      - ikonumaTT
+      - inmcm
+      - jayalp
+      - jbakerTT
+      - joonkim-tt
+      - kaugustineTT
+      - kevinngTT
+      - kgreigTT
+      - luismarques
+      - lwengTT
+      - machshev
+      - marnovandermaas
+      - mattjohnson-TT
+      - minaliuTT
+      - minoruodaTT
+      - minshaohoTT
+      - mkimuraTT
+      - mkj121
+      - msollanych-tt
+      - mtomicTT
+      - MWoytovichTT
+      - mwvd
+      - nbetikTT
+      - nboettcher-tenstorrent
+      - nfarheenTT
+      - ngocnguyen-vnchip
+      - nranceTT
+      - nsextonTT
+      - nshivaprasad-tt
+      - nwistoffTT
+      - nxuTT
+      - pdroyTT
+      - pkulkarniTT
+      - quangle-vnchip
+      - rextsaiTT
+      - rmalhotraTT
+      - royfranz
+      - rswarbrick
+      - sangameshshettyTT
+      - schenTT
+      - sebphem-tt
+      - skuppuswamyTT
+      - stephencoTT
+      - svisalli-tt
+      - taek-tt
+      - tikedaTT
+      - TT-kqin
+      - ttssokorac
+      - tye-b
+      - uvaughanTT
+      - vinhtrieu-vnchip
+      - vpangTT
+      - vphanTT
+      - yenhenglaiTT
+      - yiyiwuTT
+      - zchenTT
+      - ziuziakowska
   update-project:
     project: https://github.com/orgs/tenstorrent/projects/291
     target-repo: tenstorrent/tt-oca-harness
