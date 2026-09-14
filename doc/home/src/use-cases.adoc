@@ -3,6 +3,5 @@
 
 [[use-cases]]
 = Use Cases
----------
 
-include::use-cases-content.adoc[leveloffset=-1]
+include::use-cases-content.adoc[]
