@@ -48,12 +48,12 @@ approved release group or carried as a classified hole in the coverage policy
 |Functional coverage (observation) |Every `FUNC_COV_VALUE` bin named below is
 hit by the enrolled `smoke` / `per_ip` suite |Python-side counters in `SmcScoreboard`
 |Line/branch/FSM/condition coverage |Collected for signoff in the commercial
-flow |VCS/Xcelium coverage databases (`--cov`)
+flow |VCS native coverage databases (`--cov --tool vcs`)
 |Assertion coverage |Collected for enabled assertions in the commercial flow
-|Xcelium UCIS / IMC
+|VCS `-cm assert` under the same `-cm_common_hier` scope, read in URG
 |===
 
-Targets are deliberately absent: no numeric threshold is committed here.
+No numeric threshold is committed here.
 Thresholds belong in `cov/config/<tool>/coverage_policy.toml` and only after
 an owner approves a measured baseline, so a run cannot be graded against a
 number nobody signed.
@@ -118,7 +118,7 @@ JTAG AXI-Lite responses, SYS_OUT responses and counter advance
 |===
 
 `protocol_vip` has no RTL signal to observe -- it is a DV-bookkeeping ledger
-of promoted tests -- so it deliberately has no `cov/sv/` module and stays on
+of promoted tests -- so it has no `cov/sv/` module and stays on
 the Python path.
 
 Point naming is `c_<area>_<point>`, which makes the coverage-policy
@@ -138,7 +138,7 @@ after working". `c_gpio_boot_stall_pad_*` is qualified by the pad having
 changed at least once, because which of its two values is the power-on
 default depends on the straps.
 
-Two conventions are load-bearing and were both learned from build failures:
+Two conventions are load-bearing:
 
 * Every cover-property body and disable-iff argument is a single
   continuous-assign wire (the `dtp_fcov.sv` convention; Verilator's
@@ -241,10 +241,10 @@ and the coverage policy act on
 below, not a gateable metric
 |Aggregator |Scan one or more run dirs and report unique events per bin plus
 the union across runs
-|Commercial simulation |`--cov` on Xcelium emits UCIS under
-`<run_dir>/<test>/coverage/scope/`; `cov_merge` / `cov_report` call Cadence IMC
-|Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion
-coverage
+|Commercial simulation |`--cov --tool vcs` writes one native database per test
+leaf (`coverage/simv.vdb`); `cov_merge` / `cov_report` merge and report it with
+`urg`
+|Code coverage |VCS line, branch, condition, FSM, toggle, assertion coverage
 |Closure triage |Grow SAMPLE-only bins with an active driver; keep PLL/PVT
 placeholder windows out of feature PASS
 |===
@@ -268,8 +268,8 @@ prunes the report pages and still grades the whole database.
 They express the same intent in two forms the simulators cannot share —
 Verilator has no `-module` form for `coverage_off`, and no `-tree` reaches the
 pulp glue that VCS would have to name — so they must be kept in step by hand.
-`cov/config/vcs/README.md` records what each number is, the measured bucket
-split behind the exclusions, and the checklist for the first VCS run.
+`cov/config/vcs/README.md` records what each scoped number is, how to
+measure a scope change, and the VCS bring-up checklist.
 
 The scoped Verilator number is *the SMC DUT minus the CPU cluster, the I3C
 core, the lowRISC prims and TB code*. `vendor/pulp-platform/**` and
@@ -339,21 +339,24 @@ if __name__ == "__main__":
 [[sec-4-simulator-side-coverage]]
 ==== Commercial simulator collection
 
-With `--cov` on Xcelium the runner instructs `xrun` to emit UCIS coverage data
-per test under `<run_dir>/<test>/coverage/scope/`:
+`--cov --tool vcs` instruments the build with
+`-cm line+cond+tgl+fsm+branch+assert`, scoped at compile time by
+`cov/config/vcs/smc_cov_scope.hier` (`-cm_hier` plus `-cm_common_hier`, so one
+scope file governs code and assertion coverage), and writes one native
+database per test leaf:
 
 ....
-coverage/scope/icc_<hash>.ucm        # design model
-coverage/scope/test/icc_<hash>.ucd   # per-test data
+<run_dir>/<test>/coverage/simv.vdb
 ....
 
-The `cov_merge` / `cov_report` stages call Cadence IMC. Where IMC is not
-installed, both stages report ERROR while the per-test `.ucd` files remain on
-disk for offline merge.
+The `cov_merge` / `cov_report` stages merge the per-leaf databases with `urg`
+into `<run_dir>/cov/merged.vdb` and report from there.
+`cov/config/vcs/README.md` carries the VCS bring-up checklist and how to
+measure a scope change.
 
-The runner passes `-covworkdir <abs path>` and `-covoverwrite` to `xrun -R`.
-Without those, the sim stage wrote to a `./cov_work` relative to the cocotb test
-cwd and hit `*F,C58EXS` ("database already exists") on the second run.
+`smc_sim_cfg.toml` has `[coverage.vcs]` and `[coverage.verilator]` tables and
+no `[coverage.xcelium]`: Xcelium builds and runs the same tests, but there is
+no SMC coverage scope for it and no Xcelium number is graded.
 
 === Exclusions and Limitations
 
@@ -361,8 +364,8 @@ cwd and hit `*F,C58EXS` ("database already exists") on the second run.
 |===
 |Item |Reason
 |SV covergroups in Verilator |Unsupported by the tool
-|SAMPLE-only bins at unique=1 |No active driver yet; not a missing coverpoint
+|SAMPLE-only bins at unique=1 |No active driver; not a missing coverpoint
 |PLL / PVT placeholder windows |`pll_wrap` / `pvt_wrap` complete OKAY+0;
-handshake only, deferred from feature PASS
+handshake only; not feature PASS
 |I3C CCC/IBI |Owned by IP-level DV
 |===

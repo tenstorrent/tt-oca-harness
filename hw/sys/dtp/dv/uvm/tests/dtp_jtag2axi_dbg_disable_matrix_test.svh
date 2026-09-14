@@ -4,10 +4,10 @@
 // dtp_jtag2axi_dbg_disable_matrix_test — the debug-disable matrix over the
 // three JTAG2AXI bridge gate fields: allowed bridges complete write+read
 // with real request activity, blocked bridges show zero activity with RAM
-// sentinels intact through release (no delayed replay), then recover. One
-// matrix pass carries 16 seeded rows (1 all_clear + 3 one-hot + 11
-// multi-hot + 1 all_disabled), meeting the 16-iteration floor in a single
-// pass.
+// sentinels intact through release (no delayed replay), then recover. Each
+// matrix pass sweeps one all_clear row, one one-hot row per bridge gate
+// field, the configured number of seeded multi-hot rows, and one
+// all_disabled row.
 
 class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_test;
   `uvm_component_utils(dtp_jtag2axi_dbg_disable_matrix_test)
@@ -32,7 +32,7 @@ class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_
             dtp_dbg_disable_jtag2axi_matrix_test_seq::type_id::create(
         "seq"
     );
-    seq.multi_hot_rows = test_cfg.scan_matrix_multi_hot_rows;
+    seq.multi_hot_rows = test_cfg.jtag2axi_matrix_multi_hot_rows;
     return seq;
   endfunction
 

@@ -2,14 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The reset unit's two woset lock registers: sticky, and they mask their target.
 
-`RESET_UNIT.SS_COLD_RESET_LOCK` and `RESET_UNIT.SS_CONFIG_LOCK` had no enrolled
-coverage. The first came out of the porting necessity analysis --
-`fw/tests/cold_reset_lock_sanity` was the only thing in the tree touching it --
-and the second out of the measured pass over the regression's AXI transactions,
-which found it driven by nothing at all. Rather than port a firmware image,
-this covers both natively, where SEP_IN AXI already reaches the reset unit.
+`RESET_UNIT.SS_COLD_RESET_LOCK` and `RESET_UNIT.SS_CONFIG_LOCK` are covered
+natively over SEP_IN AXI, which reaches the reset unit without a firmware image
+(`fw/tests/cold_reset_lock_sanity` exercises the cold-reset lock from firmware).
 
-The semantics are taken from the RDL and the RTL, not assumed. Both lock fields
+The semantics come from the RDL and the RTL. Both lock fields
 are `sw = rw; hw = r; onwrite = woset;` with reset 0, one bit per subsystem
 (`reset_unit.rdl:18-26` and `:87-95`), and both are consumed the same way in
 `smc_subsystem_resets.sv`:
@@ -17,8 +14,7 @@ are `sw = rw; hw = r; onwrite = woset;` with reset 0, one bit per subsystem
     config_filtered_wr_mask = (~ss_config_lock) & ss_config_wr_mask     (:81)
     ... the same gate on SS_COLD_RESET_N with ~ss_cold_reset_lock
 
-Two consequences are worth a test, and they are the same two for both pairs,
-which is why one sequence covers both rather than two near-identical ones.
+Two consequences hold for both pairs, so one sequence covers both:
 
 **The lock is sticky.** `woset` means a written 1 sets and a written 0 does
 nothing, so software cannot release a lock it has taken. A register that

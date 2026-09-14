@@ -3,10 +3,10 @@
 
 """Build acceleration knobs, object cache, and a fingerprinted build cache.
 
-All behavior here is opt-in via the DUT `[build.options]` and `[build.cache]` config tables so a
-contributor controls the full stack:
+All behavior here is opt-in via the DUT `[build.options]` config table so a contributor controls
+the full stack:
 
-`[build.options]` carries simulator-neutral knobs (OD-19 folded the former `[build.cache]` in here):
+`[build.options]` carries simulator-neutral knobs:
 
 - build acceleration — parallel build (`build_jobs`) and dev-time `cflags` (e.g. ``-O0``).
   Tool-specific acceleration, such as Verilator `output_split` and `ccache`, lives under
@@ -134,13 +134,11 @@ def xcelium_build_args(
     - ``extra_args``        -> appended verbatim
 
     ``build_jobs`` does not reach Xcelium on its own. On Verilator and VCS it is
-    a build-time knob (``--build-jobs`` / ``-j``), but the nearest Xcelium option
-    is ``-mce``, which turns on the Multi-Core Engine for the *simulation* and so
+    a build-time knob (``--build-jobs`` / ``-j``); the nearest Xcelium option is
+    ``-mce``, which turns on the Multi-Core Engine for the *simulation* and so
     makes ``xmsim`` check out an ``Xcelium_Multi_Core`` feature instead of
-    ``Xcelium_Single_Core``. Treating a compile-parallelism setting as a request
-    for a different runtime licence class means a single-core entitlement cannot
-    run at all, which is a steep price for elaboration speed. Sites holding a
-    multi-core licence ask for it by name via ``[build.xcelium] mce``.
+    ``Xcelium_Single_Core``. A single-core entitlement cannot run under ``-mce``,
+    so only ``[build.xcelium] mce`` requests it.
     """
     extra: list[str] = []
     if bool(xcelium_cfg.get("mce", False)):

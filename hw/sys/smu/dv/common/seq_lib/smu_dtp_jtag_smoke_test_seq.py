@@ -253,7 +253,7 @@ class smu_dtp_jtag_smoke_test_seq:
         for bit_idx in range(width):
             tdi = (pattern >> bit_idx) & 0x1
             end = 1 if bit_idx == width - 1 else 0
-            tdo = await jtag._cycle(end, tdi)
+            tdo = await jtag.step(end, tdi)
             captured |= (tdo & 0x1) << bit_idx
 
         st_upd = await self._wait_state_after_step(
@@ -307,14 +307,11 @@ class smu_dtp_jtag_smoke_test_seq:
             )
 
         # TRST path (active-low): assert while holding TCK, observe TLR
-        dut.jtag_trst.value = 0
-        for _ in range(self.TRST_CYCLES):
-            await jtag.step_tms(1)
+        await jtag.assert_trst(tck_cycles=self.TRST_CYCLES)
         tlr_trst = await self._wait_tap_eq_ref(OcahJtagState.TEST_LOGIC_RESET, label="s4_trst_tlr")
-        dut.jtag_trst.value = 1
+        await jtag.release_trst()
         await ClockCycles(dut.clk_ref_i, 4)
-        jtag._state = OcahJtagState.TEST_LOGIC_RESET
-        jtag._current_instruction = None
+        jtag.sync_model(OcahJtagState.TEST_LOGIC_RESET)
 
         # POR path: hold TRST deasserted; pulse powergood_i (SMC→DTP
         # pwr_on_rst_ni = powergood_stable). Async drop forces TLR.
@@ -339,9 +336,8 @@ class smu_dtp_jtag_smoke_test_seq:
         dut.powergood_i.value = 1
         await ClockCycles(dut.clk_ref_i, self.POR_RECOVER_REF)
         dut.rst_cold_ni.value = 1
-        dut.jtag_trst.value = 1
-        jtag._state = OcahJtagState.TEST_LOGIC_RESET
-        jtag._current_instruction = None
+        await jtag.release_trst()
+        jtag.sync_model(OcahJtagState.TEST_LOGIC_RESET)
 
         detail_s3 = (
             f"pre_trst=0x{pre_trst:x} tlr_trst=0x{tlr_trst:x} "

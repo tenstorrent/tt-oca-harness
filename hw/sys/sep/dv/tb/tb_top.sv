@@ -44,10 +44,10 @@
 //   * CPU firmware boot (+cpu_boot): runs on the full-CPU build, the core owns all of
 //     its master buses, fetches firmware out of the wrapper's real TCM macros, and
 //     runs. The boot test backdoor-loads the TCM (tb_backdoor_mem, on tcm_load_i),
-//     passes the desired reset vector to this top, which programs the EL2
-//     reset-vector TDR through JTAG, asserts mpc_reset_run_req, and observes PC
-//     advance (sep_cpu_trace) plus the firmware console/PASS magic on the outbound
-//     mailbox responder (sep_outbound_mbx).
+//     passes the desired reset vector to this top, which drives the wrapper's
+//     direct reset-vector input before reset releases, asserts mpc_reset_run_req,
+//     and observes PC advance (sep_cpu_trace) plus the firmware console/PASS
+//     magic on the outbound mailbox responder (sep_outbound_mbx).
 //
 // Boot/reset invariants:
 //   * ext_boot_seq_done_i = 1   (DUT port, driven by cocotb)
@@ -178,29 +178,29 @@ module sep_uvm_top
 
     // Assertion classes held off, and why each is not a DUT contract here.
     //
-    // AssertConnected_A: 408 instances across three subtrees (403 entropy_source,
-    // 4 axis_edn_crypto, 1 axis_edn_pool). It asks whether a hardened counter's
-    // err_o reaches an OpenTitan alert, so it cannot fail on DUT behaviour. It is
+    // AssertConnected_A (every hardened counter under entropy_source,
+    // axis_edn_crypto and axis_edn_pool) asks whether the counter's err_o reaches
+    // an OpenTitan alert, so it cannot fail on DUT behaviour. It is
     // ASSERT_INIT_NET -- an immediate assert in `initial #1ps`, with no clock and
     // no reset -- so `disable iff` cannot gate it and the scope is the only knob.
     //
-    // ~23 do not apply: their err_o is wired and reaches escalation and irq_o, and
-    // SEP's entropy_source has no alert output for the OT convention to test. The
-    // declarative escape is EnableAlertTriggerSVA(0) at those instantiations.
+    // Where err_o is wired it reaches escalation and irq_o, and SEP's
+    // entropy_source has no alert output for the OT convention to test; the
+    // declarative escape there is EnableAlertTriggerSVA(0) at the instantiation.
     //
-    // The other 385 are a real defect: the counters raise err_o into a net
-    // nothing reads. A green run is therefore NOT evidence that a glitched
-    // health-test counter would be reported. The SPI assertions in this subtree
-    // are armed only during reset, so they judge nothing after it.
+    // The remaining counters raise err_o into a net nothing reads, so a green run
+    // is NOT evidence that a glitched health-test counter would be reported. The
+    // SPI assertions in this subtree are armed only during reset, so they judge
+    // nothing after it.
     //
     // Scope is by subtree because these are generate-loop instances with no single
     // name to target, which also disables every other assertion under those three
     // blocks -- so the one OCAH contract in the set is re-armed by name below.
 `ifndef VERILATOR
     initial begin
-        // Remove these three once the counters are wired and the alert
-        // convention is settled for this block. Re-arm by an assertion's own
-        // hierarchical name, never by re-enabling a parent instance.
+        // Scope-level $assertoff: these instances have no clock or reset for
+        // `disable iff` to gate. Re-arm by an assertion's own hierarchical
+        // name, never by re-enabling a parent instance.
         $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan);
@@ -258,15 +258,10 @@ module sep_uvm_top
     // software reset whatever the DUT does.
     //
     // This holds the property off for the WHOLE RUN, not just that edge, so no
-    // in-reset cycle is checked in any test. Little is lost because of the flop at
-    // otbn_rnd.sv:205-213: seed_en_q is asynchronously cleared by the same rst_ni
-    // the property checks it against, and that flop is what stops a reseed request
-    // -- held high through reset by design -- from starting one. A reseed cannot
-    // begin mid-reset unless that flop's reset is broken, and its declaration is
-    // what guarantees it is not.
-    //
-    // The repair is upstream: the guard should sample as the body does. It belongs
-    // to a vendor bump, not to this tree.
+    // in-reset cycle is checked in any test. The flop at otbn_rnd.sv:205-213
+    // covers the same contract: seed_en_q is asynchronously cleared by the same
+    // rst_ni the property checks it against, which is what stops a reseed
+    // request held high through reset from starting one mid-reset.
     initial begin
         $assertoff(0, `SEP_CORE.sep_crypto.sep_crypto_otbn_wrapper_s3c_scan
             .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
@@ -356,7 +351,7 @@ module sep_uvm_top
     // could fire late (after reset release) and latch a stale/zero vector. Program
     // exactly once on the first clock where reset is asserted and rst_vec_i is a
     // known non-zero entry (clocks start while rst_ni is still low, so the window is
-    // always seen). Bit math unchanged: RSTVEC stores PC[31:1] = rst_vec_i.
+    // always seen). RSTVEC stores PC[31:1] = rst_vec_i.
     initial begin : init_reset_vector_tdr
         if ($test$plusargs("cpu_boot")) begin
             forever begin
@@ -391,8 +386,8 @@ module sep_uvm_top
     // genbits blocks and a single seed serves several Generate commands. That is
     // why the CHK4 golden is demand-driven (sep_entropy_golden.genbits_block() /
     // genbits_gen_last()): a fixed glen-blocks-per-seed model desynchronises at
-    // the first extra Generate. Truncating to 2 to dodge that is not an option
-    // either -- it left the dropped leg's inputs X-driven.
+    // the first extra Generate. Truncating to 2 endpoints leaves the third leg's
+    // inputs X-driven.
     //
     // SEP_SEC_DISABLE_TOKEN is the metal expected digest, not an AXI register.
     // Product RTL defaults it to 0, which no SHA-256 output matches. Bind the
@@ -1040,7 +1035,7 @@ module sep_uvm_top
 
     // SEP scratch-cold CSR words [0..7], each `data.value` [31:0]. Explicit
     // per-index assigns avoid a cross-hierarchy indexed XMR (same style as the
-    // ESRC decorrelator-SR probe above). The EL2 coexist firmware mirrors its
+    // ESRC decorrelator-SR probe below). The EL2 coexist firmware mirrors its
     // measured summary into these; the cocotb test reads them back as the observer.
 `define SCRATCH_COLD(i) \
     assign scratch_cold_probe_o[32*(i) +: 32] = \
@@ -1119,7 +1114,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // LC differential-integrity error inject.
-    // SIGNED OFF 2026-08-20 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // No legal OTP image can present a broken {~raw, raw} LC_STATE pair: the
     // sense FSM regenerates the pair from the raw nibble. The specification's
@@ -1143,7 +1137,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // Token-comparator redundancy fault inject.
-    // SIGNED OFF 2026-08-24 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // The three digest comparators see the same inputs. A legal token write
     // can only produce a unanimous legal pair (match or mismatch). Collapse
@@ -1217,8 +1210,8 @@ module sep_uvm_top
         end
     end
     // The production DFT input is tied low at this TB boundary. Use the same
-    // clock-reissued force/release convention as the signed-off comparator
-    // hook to reach the digest latch's scan-freeze gate. Token commands and
+    // clock-reissued force/release convention as the comparator hook above to
+    // reach the digest latch's scan-freeze gate. Token commands and
     // digest capture remain frontdoor; only this otherwise unreachable input
     // is forced.
     assign token_digest_sticky_o = `DIGEST_SIP.sha_digest_sticky_n0_scan;
@@ -1304,7 +1297,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // DMA host-path command-integrity inject.
-    // SIGNED OFF 2026-09-01 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // host_path_err is the OR of a fabric non-OKAY on a DMA transfer and a
     // TL-UL command-integrity fail on a DMA-issued command. A legal
@@ -1313,7 +1305,7 @@ module sep_uvm_top
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
     // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
-    // frontdoor or the signed-off aggregate probe. Re-issue every clock
+    // frontdoor or the aggregate interrupt probe. Re-issue every clock
     // (Verilator snapshots a force RHS). Release when the port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \
@@ -1359,11 +1351,9 @@ module sep_uvm_top
     // Explicit per-lane indices avoid a cross-hierarchy genvar-indexed force.
 `define ESRC_NOISE_FORCE(i) \
     force `SEP_ESRC.u_generator_complex.gen_ecmplx[i].u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
-    // Plain `always` (NOT always_ff): `force` is a procedural continuous override,
-    // not a flop assignment, so always_ff semantics do not apply.
-    // No explicit `release` is needed: the force is gated by `+esrc_noise_force` (only
-    // active in noise-injection runs) and each test is its own elaboration, so the force
-    // cannot leak into another test; it is simply torn down when the sim ends.
+    // `force` is a procedural continuous override, so a plain `always` carries it.
+    // The force is gated by `+esrc_noise_force` and each test is its own
+    // elaboration, so it ends with the sim and needs no `release`.
     always @(negedge clk_i) begin
         if ($test$plusargs("esrc_noise_force")) begin
             `ESRC_NOISE_FORCE(0);  `ESRC_NOISE_FORCE(1);  `ESRC_NOISE_FORCE(2);
@@ -1462,7 +1452,7 @@ module sep_uvm_top
     // drbg_axil64_lane_adapter arbitration, sampled at each DUT adapter's
     // own AXI-Lite-64 port:
     // {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
-    // Observation-only (SIGNED OFF 2026-09-07 by yenhenglai). No CSR mirrors
+    // Observation-only. No CSR mirrors
     // the three-ready interlock, and a frontdoor timeout names only that the
     // access did not retire. Outside the tb s_axi / m_axi ready/valid cones.
     assign drbg_csrng_axil_chan_o = {
@@ -1536,7 +1526,7 @@ module sep_uvm_top
     assign tbadp_r_resp_o  = tbadp_rsp.r.resp;
 
     // Always-ready axil32 responder: every ready is an unconditional 1'b1.
-    // Deliberately NOT gated on the peer channel's valid -- cross-gating the
+    // Not gated on the peer channel's valid: cross-gating the
     // readys is the exact shape this vehicle exists to catch, and putting it
     // one hop downstream would make a stall ambiguous about which side
     // produced it.
@@ -1814,8 +1804,8 @@ module sep_uvm_top
     );
 
     // ------------------------------------------------------------------
-    // Key Manager internal AXI-Lite, CPU side. SIGNED OFF 2026-08-30 by
-    // yenhenglai. Every access KM firmware makes to KPV, KMCSR, the DRBG
+    // Key Manager internal AXI-Lite, CPU side. Every access KM firmware makes
+    // to KPV, KMCSR, the DRBG
     // sampler and the mailbox crosses this one port: the KM crossbar has a
     // single slave port wired to the internal picorv32, so no testbench
     // master can reach it.
@@ -2126,19 +2116,16 @@ module sep_uvm_top
     // not compile `covergroup`, and cov/sv/sep_fcov.sv is `ifndef VERILATOR`,
     // so there is no module to bind on the Verilator targets.
     //
-    // NEW DUT OBSERVATION, and it needs a sign-off rather than a claim that it
-    // is free. The response side (`lsu_axi_resp`) is already mirrored to the
-    // flat s_axi_* outputs above, but the REQUEST side (`lsu_axi_req` AW/W/AR
-    // and B/R ready) is read here for the first time: it is not one of the
-    // named probe ports in sep_tb_signal_list.svh.
+    // The response side (`lsu_axi_resp`) is mirrored to the flat s_axi_* outputs
+    // above; the REQUEST side (`lsu_axi_req` AW/W/AR and B/R ready) is read only
+    // here and is not one of the named probe ports in sep_tb_signal_list.svh.
     //
-    // Why it is the request bus and not the flat s_axi_* inputs: those inputs
-    // carry TB stimulus only. Under +cpu_boot the EL2 owns this bus and the
-    // input ports sit idle, so a port-side sampler scores nothing on any
-    // firmware test -- no DMA, SPI-DMA, boot-ROM LSU, mailbox or NMI cell could
-    // ever fill. It is the same node the no-CPU builds already force-splice
-    // (see the CPU-LSU AXI splice above), read-only, with no force and no new
-    // hierarchy depth.
+    // The flat s_axi_* inputs carry TB stimulus only: under +cpu_boot the EL2 owns
+    // this bus and the input ports sit idle, so a port-side sampler scores nothing
+    // on any firmware test -- no DMA, SPI-DMA, boot-ROM LSU, mailbox or NMI cell
+    // could ever fill. The request bus is the same node the no-CPU builds
+    // force-splice (see the CPU-LSU AXI splice above), read-only, with no force
+    // and no new hierarchy depth.
     // ------------------------------------------------------------------
 `ifndef VERILATOR
     sep_fcov u_sep_fcov (

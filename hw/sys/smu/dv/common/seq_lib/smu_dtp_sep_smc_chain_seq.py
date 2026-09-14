@@ -2,13 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """All three subsystems active in one run: SEP decides, DTP enforces, SMC serves.
 
-The other anchors each cover part of this. smu_sep_lcc_flow_test has the SEP
-firmware drive the posture but only reads the DTP- and SMC-facing signals.
-smu_sep_dbg_gating_* proves DTP acts on the posture, but its SEP payload is
-hello_world and its SMC end is only a transaction count. Neither has all three
-subsystems doing something.
-
-Here they all do:
+smu_sep_lcc_flow_test covers the SEP posture alone and smu_sep_dbg_gating_*
+covers the DTP gate alone. Here all three subsystems act:
 
   SMC   firmware boots from ROM and writes its scratch0 marker.
   SEP   firmware (sep_smu_lcc_flow) sets DEMOTE_1/2 -- the one LCC input

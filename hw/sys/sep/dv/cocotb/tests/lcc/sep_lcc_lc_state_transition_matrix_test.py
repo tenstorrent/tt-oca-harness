@@ -267,8 +267,8 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._last_feat = seq.observed_feat
 
         # The transition rules again, in observed-code form, against the code the
-        # DUT returned. Redundant with the per-cell value check by design: it
-        # fails on a step that is wrong in a way the expectation shares.
+        # DUT returned. It overlaps the per-cell value check and fails on a step
+        # that is wrong in a way the expectation shares.
         assert is_valid_lc_transition(prev, observed), (
             f"{tag}: DUT stepped {lc_state_name(prev)} -> {lc_state_name(observed)}, "
             "which the lifecycle does not permit"

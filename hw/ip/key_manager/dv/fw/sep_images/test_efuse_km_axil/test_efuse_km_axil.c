@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_efuse_km_axil.c
- * @brief SEP-TB KM CPU -> real eFuse controller routing/remap test (eFuse Suite 10.1).
+ * @brief SEP-TB KM CPU -> real eFuse controller routing/remap test.
  *
  * Runs as the KM ROM image inside the SEP UVM testbench (loaded via
  * +KM_ROM_HEX_FILE). Unlike the KM block-level test_efuse_axil.c (which hits a
@@ -22,7 +22,7 @@
  *   - MAP  read : CHIPLET_UID word0      (preloaded shadow field, benign read)
  *   - CTRL read : INTERFACE_CTRL_STATUS  (controller CSR, benign read)
  *   - MMR  write+read : RMA_SIP_TOKEN_I_0 (plain RW token-input CSR, benign)
- * (LOCKS / PROGRAM_CTRL / READ_CTRL are deliberately avoided — they have
+ * (LOCKS / PROGRAM_CTRL / READ_CTRL are avoided — they have
  *  functional side effects in the real controller.)
  *
  * Results are reported to the SEP host over the KM<->SEP hardware mailbox as a

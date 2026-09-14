@@ -10,9 +10,8 @@ issuing one -- hence a dedicated service ROM rather than ``rom_main``. The ROM
 applies one instruction per request and returns the raw result; every golden
 and cross-check lives here.
 
-All three modes walk in this leaf. They share one datapath, one state register
-and one result path, so splitting them into siblings would triple the boot cost
-to prove less.
+All three modes walk in this leaf: they share one datapath, one state register
+and one result path.
 
 Checkers:
   CHK-WORD    every seeded CRC-32C word vector equals the independent golden
@@ -26,9 +25,8 @@ Checkers:
               compared over the low byte so the two modes' differing result
               WIDTHS cannot satisfy it on their own
   CHK-NARROW  CRC-8/ROHC leaves the upper 24 result bits clear. The golden
-              already masks to eight bits, so CHK-ROHC covers this; it is
-              stated separately because the zero-extension is its own RTL
-              assertion and a reader should see it named
+              already masks to eight bits, so CHK-ROHC covers the value; the
+              zero-extension is its own RTL assertion and is named here
   CHK-UPPER   both byte modes ignore the operand's upper 24 bits: the same low
               byte under different garbage returns the same result
   CHK-MOVE    a guard on the operand screen rather than independent evidence:

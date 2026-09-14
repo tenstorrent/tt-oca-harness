@@ -178,7 +178,7 @@ async def mailbox_sanity_test(dut):
         assert rcvd == test_datas[num * 2 + 1], (
             f"Test failed for inbound mailbox {num}. Expected {hex(test_datas[num * 2 + 1])}, got {hex(rcvd)}"
         )
-        # TODO: Check o_int_mailbox_interrupt
+        # TODO: check inbound_interrupt_o
         log.info(f"Inbound mailbox {num} test passed")
 
     # Disable inbound mailbox IRQs
@@ -222,9 +222,7 @@ async def mailbox_sanity_test(dut):
 
 if cocotb.SIM_NAME:
     sanity_tests = [mailbox_sanity_test]
-    stress_tests: list[Callable] = [
-        # Add mailbox-specific stress tests here
-    ]
+    stress_tests: list[Callable] = []
     tests: list[Callable] = []
 
     if "+stress" in cocotb.argv:

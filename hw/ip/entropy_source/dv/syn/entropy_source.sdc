@@ -22,7 +22,7 @@
 #    entropy_noise_sourc.sv should be broken as this is the first stage of a
 #    synchronizer. The second stage is instance sync1 and is treated as normal.
 # 4. entropy_ripple_divider.sv
-#    Asynchronous ripple dividers create intentional combinational feedback paths
+#    Asynchronous ripple dividers contain combinational feedback paths
 #    (D=QB for toggle operation) and ripple chain connections where each stage
 #    clocks the next. These paths must be marked as false paths and the divider
 #    instances must not be optimized by synthesis. The structure is critical for
@@ -90,7 +90,7 @@ set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_stdbuf"]
 set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_stdmux2"]
 
 # Break timing paths on ring oscillator feedback loops
-# The feedback path creates a combinational loop which is intentional
+# The feedback path is a combinational loop and is not a timed path
 set_false_path -through [get_pins -hierarchical -filter "name =~ */ro/feedback"]
 
 # Break timing on all ring oscillator internal paths
@@ -109,7 +109,7 @@ set_max_fanout 12 [get_nets -hierarchical -filter "name =~ *sclk/shared_ring_osc
 # Each divider has 5 stages providing division factors: 1, 2, 4, 8, 16, 32
 #
 # Critical constraints:
-# 1. Toggle flip-flops (D=QB) create intentional combinational paths
+# 1. Toggle flip-flops (D=QB) create combinational feedback paths
 # 2. Each stage's Q output clocks the next stage (ripple chain)
 # 3. Dividers must not be optimized - structure is critical for function
 # 4. No timing analysis should be performed on the ripple paths
@@ -126,7 +126,7 @@ set_dont_touch [get_cells -hierarchical -filter "ref_name =~ entropy_ripple_divi
 # set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_dffrxq"]
 
 # Break timing paths on ripple divider feedback loops
-# Each toggle flip-flop has D connected to QB (intentional feedback)
+# Each toggle flip-flop has D connected to QB (feedback path)
 # Pattern: ripple_divider instance -> stage generate block -> flip-flop -> i_D pin
 set_false_path -through [get_pins -hierarchical -filter "name =~ *u_ripple_divider*/u_div_ff/i_D"]
 set_false_path -through [get_pins -hierarchical -filter "name =~ *u_sample_clk_divider*/u_div_ff/i_D"]
@@ -153,8 +153,8 @@ set_false_path -from [get_pins -hierarchical -filter "name =~ *u_sample_clk_divi
 # METASTABLE SAMPLING CONSTRAINTS
 #------------------------------------------------------------------------------
 
-# The sampling flip-flop (u_smpl) intentionally captures metastable events
-# from the asynchronous ring oscillator - this is the entropy source
+# The sampling flip-flop (u_smpl) captures metastable events from the
+# asynchronous ring oscillator; those events are the entropy source
 # Disable timing checks on the data input to the sampling flip-flop
 set_false_path -to [get_pins -hierarchical -filter "name =~ *u_noise_source*/u_smpl/i_D"]
 
@@ -169,9 +169,8 @@ set_false_path -to [get_pins -hierarchical -filter "name =~ *u_noise_source*/u_s
 # DECORRELATOR SHIFT REGISTER
 #------------------------------------------------------------------------------
 
-# The decorrelator shift register can be multi-cycle if needed
-# Currently uses normal single-cycle timing
-# Uncomment if timing closure is difficult:
+# Optional multi-cycle relaxation for the decorrelator shift register;
+# enable if single-cycle timing closure fails:
 # set_multicycle_path -setup 2 -through [get_cells -hierarchical -filter "ref_name =~ entropy_decorrelator"]
 # set_multicycle_path -hold 1 -through [get_cells -hierarchical -filter "ref_name =~ entropy_decorrelator"]
 

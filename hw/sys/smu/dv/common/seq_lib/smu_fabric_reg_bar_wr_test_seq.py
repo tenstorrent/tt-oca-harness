@@ -7,8 +7,8 @@ SEP=0 honest scope (no sep_in / no Force):
       fabric configuration-register destination (delivery-only; no field
       semantics).
 
-Commercial used sep_in_master AXIL; OSS uses JTAG2AXI frontdoor to the same
-authoritative PeakRDL destinations.
+Delivery goes over the JTAG2AXI frontdoor to the authoritative PeakRDL
+destinations.
 """
 
 from __future__ import annotations

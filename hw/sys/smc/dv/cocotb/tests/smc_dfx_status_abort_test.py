@@ -16,27 +16,26 @@ from smc_base_test import smc_base_test
 class smc_dfx_status_abort_test(smc_base_test):
     """mem_repair_abort / mbist_abort → STATUS_SMU sticky bits."""
 
+    required_evidence = (
+        "CHK-DFX-ABORT-BASIC",
+        "CHK-DFX-ABORT-IDLE",
+        "CHK-DFX-ABORT-MBIST",
+        "CHK-DFX-ABORT-REPAIR",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         seq = smc_dfx_status_abort_test_seq("dfx_status_abort_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # WHERE THE TEETH ARE, and what this gate can and cannot add.
+        # The DUT-sensitive checks are in the sequence: each stage is an exact
+        # STATUS_SMU equality reached inside a bounded poll loop that RAISES on
+        # expiry, and the two sticky readbacks carry `expected=` so the
+        # scoreboard compares them.
         #
-        # In the sequence: each stage is an exact STATUS_SMU equality reached
-        # inside a bounded poll loop that RAISES on expiry, and the two sticky
-        # readbacks carry `expected=` so the scoreboard compares them. Those are
-        # the DUT-sensitive checks.
-        #
-        # A gate here that restates the observed words, their ordering or their
-        # accumulation adds nothing: with all three stages pinned by exact
-        # compares upstream, "each stage is a superset of the previous" is
-        # arithmetic on constants, and any count of the recorded stages is a
-        # straight-line postcondition of a body that already raised on every
-        # other path ([NO-ALWAYS-PASS-CHECKER]).
-        #
-        # What is NOT determined upstream is whether those compares ever reached
-        # the scoreboard: `csr_read` does not compare `expected` itself. The
+        # `csr_read` does not compare `expected` itself, so whether those
+        # compares reached the scoreboard is not determined upstream. The
         # sequence asserts that against `sys_axi_value_checks_seen`, and this
         # gate re-reads the scoreboard directly so the testcase-level verdict
         # rests on the analysis path having been bound, not on a value the

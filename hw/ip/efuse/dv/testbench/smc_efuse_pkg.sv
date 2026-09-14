@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/*************************************************************************
-*
-* SMC Efuse Package
-*
-*
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
- */
+// SMC eFuse package: register-map shadow types, fuse-bank geometry and bus typedefs.
 
 package smc_efuse_pkg;
   import smc_top_addrmap_pkg::*;
@@ -18,7 +10,7 @@ package smc_efuse_pkg;
     return addr - smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR;
   endfunction
 
-  // Shadow register layout preserved from the legacy generated sub-block header.
+  // LOCKS shadow register, packed in the 64-bit OTP LOCKS word order (LockFieldBits below).
   typedef struct packed {
     logic [37:0]   unused_lock_bits ;
     logic [0:0]   reserved_read_lock ;

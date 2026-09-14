@@ -2,11 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C IBI when Disabled  (Test Plan #34)
+I3C IBI when Disabled
 
 With target IBI generation NOT enabled, confirm the controller does not see a
 spurious IBI (the request should be NACKed / not serviced).
-Compile-only: exact NACK-status assertion confirmed during sim-verify.
 """
 
 import cocotb

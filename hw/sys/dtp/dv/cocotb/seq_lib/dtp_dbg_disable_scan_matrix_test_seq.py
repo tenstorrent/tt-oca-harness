@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Debug-disable matrix over the eight scan-side gate fields.
 
-One compact matrix instead of eight duplicate wrappers: deterministic one-hot
-rows, the all-clear and all-disabled boundary masks, and seeded multi-hot
-masks. Every row drives the full disable vector, then proves each resource's
+Deterministic one-hot rows, the all-clear and all-disabled boundary masks, and
+seeded multi-hot masks. Every row drives the full disable vector, then proves each resource's
 allowed/blocked outcome with temporal windows and chain readbacks, and only
 then samples the functional-coverage cell.
 """

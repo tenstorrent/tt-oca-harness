@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_ijtag_basic_test (Batch C).
+"""Sequence for smc_ijtag_basic_test.
 
-The public OSS TB has no active JTAG/iJTAG VIP. This active precheck proves the
-surrounding CSR/AXI environment is healthy; the real JTAG/iJTAG transaction
-needs VIP integration. Do not probe the DFT window over SEP_IN AXI because it does not
-return in the current public Verilator model.
+The bench has no iJTAG (IEEE 1687) VIP; this sequence checks the CSR/AXI path
+around the DFT window, and the test module drives the CPU JTAG TAP through
+``smc_jtag_vip_utils``. The DFT window is not probed over SEP_IN AXI: that
+access does not return on the Verilator model.
 """
 
 from __future__ import annotations

@@ -17,7 +17,7 @@ from sep_reg_meta import OTBN, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-# OTBN SEP register map (direct AXI; OTBN RAL offsets are unreliable).
+# OTBN SEP register map (direct AXI).
 OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
 OTBN_ADDR_CMD = OTBN.addr("CMD")
 OTBN_ADDR_STATUS = OTBN.addr("STATUS")

@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "ocah_spi_jedec_test"
+module = "ocah_spi_jedec_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "spi_jedec"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_spi_program_readback_test"
+module = "ocah_spi_program_readback_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "spi_program"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_spi_erase_test"
+module = "ocah_spi_erase_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "spi_erase"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_spi_ordering_test"
+module = "ocah_spi_ordering_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "spi_ordering"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_spi_unsupported_test"
+module = "ocah_spi_unsupported_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "spi_unsupported"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "smoke"
+tests = [
+    "ocah_spi_jedec_test",
+    "ocah_spi_program_readback_test",
+    "ocah_spi_erase_test",
+    "ocah_spi_ordering_test",
+    "ocah_spi_unsupported_test",
+]
+
+[[groups]]
+name = "all"
+tests = [
+    "ocah_spi_jedec_test",
+    "ocah_spi_program_readback_test",
+    "ocah_spi_erase_test",
+    "ocah_spi_ordering_test",
+    "ocah_spi_unsupported_test",
+]

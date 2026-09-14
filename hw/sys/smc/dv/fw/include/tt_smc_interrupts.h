@@ -12,7 +12,7 @@ extern "C" {
 
 // SMC CPU interrupt map (4-core config: NUM_EXT_INTERRUPTS=256, NUM_CPU_INTERRUPTS=328)
 //
-// cpu_interrupts_o layout (hw/smc/smc_base.sv):
+// cpu_interrupts_o layout (hw/sys/smc/rtl/smc_base.sv):
 //   [255:0]   ext_interrupts_i            -> PLIC IDs   1-256
 //   [287:256] peripheral_interrupts_i     -> PLIC IDs 257-288
 //   [319:288] mailbox_interrupts[31:0]    -> PLIC IDs 289-320

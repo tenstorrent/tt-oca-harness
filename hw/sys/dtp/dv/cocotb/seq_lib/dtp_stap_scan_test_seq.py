@@ -436,12 +436,12 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             )
             prefix = self.stap_signal_prefix(stap)
             self.log.info(
-                "%s sampled TMS=%d in OSS loopback; high/low parked polarity is "
-                "state-dependent here; proving it needs the downstream TAP attached "
-                "(follow-up to #1056).",
+                "%s sampled TMS=%d through the wire loopback; the parked TMS "
+                "polarity is provable only with a downstream TAP attached "
+                "(stap_sel scenarios).",
                 stap,
                 low_signals[f"{prefix}_tms"],
             )
         self.log_summary(
-            "TMS_HOLD", staps=STAP_ORDER, polarities=("low observable", "high OSS-limited")
+            "TMS_HOLD", staps=STAP_ORDER, polarities=("low observable", "high needs downstream TAP")
         )

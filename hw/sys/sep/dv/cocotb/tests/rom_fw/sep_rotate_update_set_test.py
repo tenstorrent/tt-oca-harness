@@ -30,7 +30,7 @@ is the whole test, and it is asserted three independent ways:
 actually read, so the run is attributable to this stimulus and not to a strap
 that happened to be set some other way.
 
-The image is the unsigned one and the OTP is the inherited TEST_DEV, on purpose.
+The image is the unsigned one and the OTP is the inherited TEST_DEV.
 Slot selection is upstream of the crypto chain, so adding secure boot here would
 only introduce failure modes that say nothing about rotation.
 """

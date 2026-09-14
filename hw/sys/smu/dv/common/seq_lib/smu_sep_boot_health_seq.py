@@ -2,11 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Real SEP DV boot-health firmware under the OSS SMU wrapper.
 
-Runs hw/sys/sep/dv/fw/tests/sep_smu_boot_health -- the same image the internal
-SMU suite boots -- instead of this DV root's minimal freestanding smoke. The
-firmware itself carries the verdict: it parks in one of two named terminal
-loops, so the test classifies the run by which loop PC the SEP settles on
-rather than by any TB-side inference.
+Runs hw/sys/sep/dv/fw/tests/sep_smu_boot_health instead of this DV root's
+minimal freestanding smoke. The firmware itself carries the verdict: it parks
+in one of two named terminal loops, so the test classifies the run by which
+loop PC the SEP settles on rather than by any TB-side inference.
 
 Symbol addresses come from the staged .sym, so the contract survives a firmware
 relink. SEP-local cold scratch7 (0x10802038) marker observation is out of scope

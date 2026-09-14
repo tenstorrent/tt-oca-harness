@@ -9,9 +9,9 @@
 // internal divided clock signals for testbench verification. This is only used
 // for testing the sample clock divider functionality.
 //
-// Note: Since ripple dividers are now in entropy_sampler_clocks (not in
-// entropy_generator), this wrapper instantiates both modules to expose
-// the divided clock signals.
+// The ripple dividers live in entropy_sampler_clocks, so this wrapper
+// instantiates it together with entropy_generator to expose the divided
+// clock signals.
 //------------------------------------------------------------------------------
 `timescale 1ns / 1ps
 

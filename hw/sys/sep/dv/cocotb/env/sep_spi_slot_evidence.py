@@ -14,7 +14,7 @@ task and logs a count (``:326-339``), so the history survives it.
 
 Everything here matches on "the read whose span COVERS this address" rather than
 "addr EQUALS it": the driver may split one ROM request into several CS-framed
-bursts, and equality would work today but silently stop checking the first time the
+bursts, and equality would silently stop checking the first time the
 chunk size changed.
 """
 
@@ -94,10 +94,8 @@ def all_erased(data: bytes) -> bool:
 def summarize(transactions: Sequence[Txn], image_len: int, *, limit: int = 12) -> str:
     """Compact one-line-per-read digest for the run log.
 
-    Logged by every one of these testcases whether it passes or fails: when one
-    of the ordering assertions trips, the reason is almost always visible in the
-    address sequence, and reconstructing it from a waveform afterwards is far more
-    expensive than printing it now.
+    Logged by every one of these testcases whether it passes or fails, so an
+    ordering-assertion failure can be read from the address sequence.
     """
     rds = reads(transactions)
     lines = [

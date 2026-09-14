@@ -8,8 +8,9 @@
  *  - KEY_IV_DATA_IN_CLEAR changes software-visible key/IV state and invalidates
  *    the previously programmed key material.
  *  - DATA_OUT_CLEAR clears OUTPUT_VALID and overwrites unread output data.
- *  - AES software reset controller bit is toggled, and full reset effects are
- *    checked when the integration wires the reset into the AES wrapper.
+ *  - AES software reset is pulsed through sep_reset_ctrl, and the full reset
+ *    effects are checked: idle, CTRL_AUX_REGWEN restored, IV cleared, key
+ *    wiped, then normal operation with the original key.
  */
 
 #include <stdint.h>

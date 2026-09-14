@@ -13,10 +13,6 @@
  * 3. Test all 4 SPI modes (CPOL/CPHA combinations)
  * 4. Test FULLCYC mode
  * 5. Test CS timing fields (CSNIDLE, CSNLEAD, CSNTRAIL)
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_clock_config_test STACK=sim
- *
  */
 
 #include <stdint.h>

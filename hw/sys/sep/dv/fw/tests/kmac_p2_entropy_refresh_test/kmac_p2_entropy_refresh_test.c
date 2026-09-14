@@ -8,9 +8,6 @@
  *   1) ENTROPY_REFRESH_THRESHOLD_SHADOWED accepts matching shadowed writes.
  *   2) ENTROPY_REFRESH_HASH_CNT is observable after hashing.
  *   3) CMD.hash_cnt_clr clears the refresh hash counter.
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_kmac_p2_entropy_refresh_test STACK=cgen,sim
  */
 
 #include <stdint.h>

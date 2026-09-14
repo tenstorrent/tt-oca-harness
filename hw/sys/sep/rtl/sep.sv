@@ -127,9 +127,8 @@ module sep #(
   input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
   output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
 
-  // External TRNG irq (PIC); alarm reserved for RAS (wired in sep_wrapper → sep)
+  // External TRNG irq (PIC)
   input logic ext_trng_irq_i,
-  input logic ext_trng_alarm_i,
 
   // Key Manager ROM/SRAM memory interfaces (hard macros at integration level)
   output km_intf_pkg::km_rom_mem_req_t   km_rom_mem_req_o,
@@ -583,10 +582,6 @@ NUM_EXT_DEMUX_PORTS
   // Expose KM error signals as output ports
   assign km_unrecoverable_err_o = km_unrecoverable_err;
   assign km_recoverable_err_o   = km_recoverable_err;
-
-  // TRNG alarm: route to SoC RAS when integrated (stub drives 0 today)
-  logic unused_ext_trng_alarm_sink;
-  assign unused_ext_trng_alarm_sink = ext_trng_alarm_i;
 
   /////////////
   // SEP CPU //

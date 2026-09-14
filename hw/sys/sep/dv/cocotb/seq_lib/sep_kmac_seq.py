@@ -67,11 +67,11 @@ KMAC_INTR_KMAC_ERR = 1 << 2
 
 KMAC_KEY_LEN_256 = 0x0000_0002
 
-# PREFIX for KMAC mode: encode_string("KMAC"), S empty (FW-confirmed).
+# PREFIX for KMAC mode: encode_string("KMAC"), S empty.
 KMAC_PREFIX_WORD0 = 0x4D4B_2001
 KMAC_PREFIX_WORD1 = 0x0000_4341
 
-# right_encode(256) appended after the message -> spec-correct KMAC (FW-confirmed).
+# right_encode(256) appended after the message -> spec-correct KMAC.
 KMAC_RIGHT_ENCODE_256 = 0x0002_0001
 
 # CFG_SHADOWED write map. kmac.adoc names mode[5:4] and kstrength[3:1];

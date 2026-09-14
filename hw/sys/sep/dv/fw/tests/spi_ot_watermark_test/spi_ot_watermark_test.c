@@ -23,10 +23,6 @@
  * 6. Set TX_WM=0: TXWM=0 always (0 < 0 is false)
  * 7. Verify RX_WM write-readback (min=0, max=0xFF, restore default)
  * 8. SW_RST to drain TX FIFO
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_watermark_test STACK=sim
- *
  */
 
 #include <stdint.h>

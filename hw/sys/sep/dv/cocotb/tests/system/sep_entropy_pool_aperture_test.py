@@ -190,10 +190,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # full pool cannot show a refused fill.
         await pool.disable_edn()
         level_room = await self._arm_not_full_no_ack(pool)
-        # _arm_not_full_no_ack only returns while level < FIFO_DEPTH, so re-testing
-        # that bound here would restate its exit condition. Assert the DUT-side
-        # precondition the refused-fill check actually needs instead: the pool is
-        # still asking for entropy, which is what keeps req_pending asserted.
+        # DUT-side precondition for the refused-fill check: the pool has an
+        # outstanding entropy request, which is what keeps req_pending asserted.
         req = cocotb.top.pool_edn_req_o.value
         assert req.is_resolvable, f"pool_edn_req_o is unresolvable ({req})"
         assert int(req) == 1, (

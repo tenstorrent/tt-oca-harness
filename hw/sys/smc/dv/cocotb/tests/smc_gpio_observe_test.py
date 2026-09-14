@@ -8,10 +8,9 @@ Samples the tb_top GPIO observability outputs: the three OR-of-vector aggregates
 (``tb_core2pad_o`` / ``tb_core2pad_en_o``).
 
 **This testcase's checker is the cross-sample pad-bus compare, and nothing else.**
-Resolvability is a precondition, not the contract: every retained run of this
-testcase is Verilator, a 2-state simulator in which ``sig.value.is_resolvable``
-cannot be False, so ``assert item.resolvable`` has no FAIL-ON path in the evidence
-that exists.
+Resolvability is a precondition, not the contract: under Verilator, a 2-state
+simulator, ``sig.value.is_resolvable`` cannot be False, so ``assert
+item.resolvable`` has no FAIL-ON path there.
 
 The three aggregates are **not** checked here and carry no claim. They are
 OR-reductions over the whole pad bus, which also carries idle-high LSIO pads (e.g.
@@ -54,6 +53,13 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_gpio_observe_test(smc_base_test):
+    required_evidence = (
+        "CHK-GPIO-PAD-BUS-STABLE",
+        "CHK-PROBE-CONTROLS",
+        "CHK-PROBE-GPIO-PAD-BUS-ALIVE",
+    )
+    min_evidence = 1
+
     # Number of further samples exact-compared against the reference sample, and
     # their spacing. Two samples over 160 clk_ref_i cycles keep the window long
     # enough for a spurious toggle to be visible without lengthening the run.

@@ -7,10 +7,8 @@
 # verification, and SBOOT_DIS stays 0 so nothing can opt out of it.
 #
 # It is the default preload for every secure-boot testcase that needs no other
-# fuse, which as of 2026-08-31 is 18 entries. The list is NOT enumerated here: it
-# was enumerated once, went stale at seven names, and a comment cannot be kept
-# correct by hand for a file this widely selected. Enumerate it mechanically
-# instead:
+# fuse. The list is not kept here (a hand-kept list drifts); enumerate it
+# mechanically:
 #
 #   awk 'BEGIN{RS="\\[\\[tests\\]\\]"} /efuse_configurations\/sep_efuse_lc_prod\.toml"/ \
 #     {match($0,/name = "[^"]+"/); print substr($0,RSTART+8,RLENGTH-9)}' \

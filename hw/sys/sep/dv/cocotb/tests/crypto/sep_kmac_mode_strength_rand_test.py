@@ -3,18 +3,17 @@
 """Standalone KMAC-engine mode x strength breadth, RAND-REP (KMAC mode/strength breadth).
 
 Drives the OpenTitan KMAC engine directly over the CPU-LSU AXI master (no_cpu, no
-firmware) across the SHA-3 / SHAKE / cSHAKE / KMAC family the Phase-1 KM->KMAC
+firmware) across the SHA-3 / SHAKE / cSHAKE / KMAC family the KM->KMAC
 sideload KAT (`sep_km_kmac_sideload_kat_test`, KMAC-256 keyed via keymgr,
 cross-check only) does not reach:
 
     SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256,
     KMAC-128/256 across all five key lengths  (13 cells).
 
-reference parity: MERGED_INTO the reference suite kmac mode/strength directed set. The reference SEP
-KMAC coverage is a keyed KMAC cross-check (no standalone SHA3/SHAKE/cSHAKE digest
-golden), so the independent pure-Python Keccak golden (env/sep_kmac_golden.py:
-SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs NIST SP800-185) is the
-reference and this rep is stronger than the reference suite. DISTINCT from
+Reference parity: the reference SEP KMAC coverage is a keyed KMAC cross-check (no
+standalone SHA3/SHAKE/cSHAKE digest golden), so the independent pure-Python Keccak
+golden (env/sep_kmac_golden.py: SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs
+NIST SP800-185) is the reference here. DISTINCT from
 `sep_km_kmac_sideload_kat_test` (KMAC-256 via sideload, cross-check) -- KMAC
 mode/strength breadth is standalone SW-key with an exact golden.
 

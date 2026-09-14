@@ -214,10 +214,10 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             # rdata == 0 -- that half IS document-cited
             # (memmap.adoc:95, "AVS_READBACK |0x00000000 |Empty FIFO, no response
             # data") -- together with an AXI error response. The error response
-            # itself is NOT claimed as a documented property: it is how the
-            # current SEP_IN integration terminates an empty-readback read, and
-            # is pinned here only so the leg cannot silently degrade into an OKAY
-            # or a wedge. csr_read_decerr_zero asserts both halves.
+            # is an integration behaviour of the SEP_IN path on an empty-readback
+            # read, not a documented register property; it is pinned so the leg
+            # cannot degrade into an OKAY or a wedge. csr_read_decerr_zero
+            # asserts both halves.
             await self.csr_read_decerr_zero(name, addr)
             cocotb.log.info(
                 "CHK-AVS-READBACK-EMPTY-FIFO-READ: 0x%08x resp=SLVERR/DECERR and "
@@ -313,9 +313,8 @@ class smc_sideband_protocol_smoke_test_seq(SmcCsrSeq):
             f"sideband CSR precheck issued {self.accesses} accesses, expected "
             f"{SIDEBAND_TOTAL_ACCESSES + 5}"
         )
-        # `self.timeouts` is not asserted: every access above goes through
-        # csr_read / csr_write / csr_read_decerr_zero, all of which leave
-        # ``allow_timeout`` False, so SmcSysAxiDriver._timed_event raises on
-        # expiry and the counter can only be 0 on this path; the no-hang
-        # property is enforced by the driver. The test publishes
-        # ``timeouts=None`` for the same reason.
+        # Every access above goes through csr_read / csr_write /
+        # csr_read_decerr_zero and leaves ``allow_timeout`` False, so
+        # SmcSysAxiDriver._timed_event raises on expiry and ``self.timeouts``
+        # stays 0 on this path; the driver enforces the no-hang property and the
+        # test publishes ``timeouts=None``.

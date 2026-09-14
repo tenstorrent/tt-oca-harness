@@ -2,16 +2,16 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //------------------------------------------------------------------------------
-// Testbench: Decorrelator Disable Bug Fix Verification
+// Testbench: Decorrelator Disable Behaviour
 //
 // Description:
 // Verifies that entropy_byte_valid_o properly clears when enable_i goes LOW,
 // even if valid was HIGH at the time of disable.
 //
-// Bug Description:
-// If entropy_byte_valid_o was HIGH when we disabled, it stays HIGH forever.
-// This keeps entropy_stream_valid HIGH. This keeps fifo_push trying to push.
-// Combined with fifo_full, we get continuous overflow = push_i & fifo_full.
+// Failure mode guarded against:
+// A valid that stays HIGH after enable_i drops keeps entropy_stream_valid
+// HIGH and fifo_push asserted; with fifo_full that yields continuous
+// overflow (overflow = push_i & fifo_full).
 //
 // Test Strategy:
 // 1. Enable decorrelator and wait for valid pulse
@@ -104,7 +104,7 @@ module tb_decorrelator_disable;
     sample_clk_div = 24'd15;  // Short divider for faster testing
 
     $display("\n========================================");
-    $display("Decorrelator Disable Bug Fix Test");
+    $display("Decorrelator Disable Test");
     $display("========================================\n");
 
     // Release reset
@@ -174,7 +174,7 @@ module tb_decorrelator_disable;
     #1;
 
     if (entropy_valid) begin
-      $display("  ✗ ERROR: Valid is still HIGH after disable! (BUG NOT FIXED)");
+      $display("  ✗ ERROR: Valid is still HIGH after disable!");
       test_errors = test_errors + 1;
     end else begin
       $display("  ✓ PASS: Valid cleared on first clock after disable");
@@ -320,14 +320,14 @@ module tb_decorrelator_disable;
 
     if (test_errors == 0) begin
       $display("\n✓✓✓ ALL TESTS PASSED ✓✓✓");
-      $display("\nBug Fix Verified:");
+      $display("\nVerified:");
       $display("  - entropy_byte_valid_o clears when enable_i goes LOW");
       $display("  - Valid signal doesn't get stuck HIGH");
       $display("  - Normal operation resumes correctly after re-enable");
       $display("  - Rapid enable/disable transitions handled correctly");
     end else begin
       $display("\n✗✗✗ TESTS FAILED ✗✗✗");
-      $display("Bug may not be fully fixed!");
+      $display("Valid did not clear on disable in at least one test.");
     end
 
     $display("\n");

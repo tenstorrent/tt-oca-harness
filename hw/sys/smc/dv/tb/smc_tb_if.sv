@@ -45,4 +45,7 @@ interface smc_tb_if;
   // Runtime enable for the shared AXI protocol SVA checker.
   logic axi_sva_en = 1'b1;
 
+  // Runtime enable for the shared JTAG protocol SVA checker on the CPU TAP.
+  logic jtag_sva_en = 1'b1;
+
 endinterface : smc_tb_if

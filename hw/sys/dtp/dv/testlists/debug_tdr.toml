@@ -101,6 +101,7 @@ run_modes = ["debug_tdr"]
 
 [[groups]]
 name = "debug_tdr"
+expected_count = 12
 tests = [
     "dtp_jtag_tmp_status_register_smoke_test",
     "dtp_jtag_tmp_status_chrst_n_in_persistence_test",

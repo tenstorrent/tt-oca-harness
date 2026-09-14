@@ -8,7 +8,7 @@ with ``BAD_SIG_TYPE=`` (``manifest_crypto.c``), returning
 ``MANIFEST_ERR_SIG_FAILED``.
 
 THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. The reference modifies only the
-primary's ``signature_type`` and deliberately does NOT corrupt the primary's
+primary's ``signature_type`` and does NOT corrupt the primary's
 ``manifest_identifier`` the way its backup-side scenarios do,
 because the primary has to REACH the check under test. So there is no BAD_MAGIC
 failover trigger here.
@@ -28,9 +28,7 @@ the shipped, syntactically complete, merely stale dev0 signature, which is the
 harder case: the ROM must refuse on the declared TYPE alone with a plausible
 signature sitting right there. Both are refused at ``manifest_crypto.c``
 before the signature is read at all, so the outcome is the same and the stimulus
-here is strictly less forgiving. Stated because the earlier wording of this
-paragraph claimed the reference re-signed with dev0, which is not what its packer
-does.
+here is strictly less forgiving.
 
 THE EXPECTED OUTCOME IS A COMPLETED BOOT. The reference's ``expected_patterns``
 (``sep_firmware_secure_boot_test.py``) grade the primary rejection
@@ -39,7 +37,7 @@ THE EXPECTED OUTCOME IS A COMPLETED BOOT. The reference's ``expected_patterns``
 
 WHY 0, AND WHY A FIXED VALUE. The reference draws from
 ``random.choice([0, random.randint(3, 10)])``, so 0 is one of its own
-values; it is deliberately NOT 2, because 2 is ``MANIFEST_SIG_TYPE_ECC_P_256``
+values; it is NOT 2, because 2 is ``MANIFEST_SIG_TYPE_ECC_P_256``
 (``manifest.h``), the one non-RSA type its packer treats specially. The ROM's
 check is a single ``!=`` against RSA-3072, so every value in that set exercises the
 identical arm, and fixing it is what lets this testcase assert the exact
@@ -53,8 +51,8 @@ testcases interchangeable. The console separates them in BOTH directions, and bo
 halves are asserted here:
 
   * the type check is the FIRST arm of ``validate_signature``
-    (``manifest_crypto.c``), ahead even of the ``PUBK_SEL=`` echo at
-. So this run must show the primary's selector NEVER echoed: with the
+    (``manifest_crypto.c``), ahead even of the ``PUBK_SEL=`` echo. So this run
+    must show the primary's selector NEVER echoed: with the
     backup booting from ROM slot 0, ``PUBK_SEL=0x00000000`` is pinned to exactly
     **one** occurrence, the backup's. Its sibling pins the same token to **two**,
     because there both manifests reach key selection. That single count makes the

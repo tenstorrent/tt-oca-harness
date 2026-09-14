@@ -160,30 +160,20 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         # models/smc_cpu_mem_dv.sv:scratch0_inject_fire_q, whose enable term is
         #   scratch_ram_req_i[0].en && !wmode && (ecc_inject_sbe_i || ecc_inject_dbe_i)
         # -- both inject pins are TB inputs and both are 0 here, so
-        # `mid_after == mid` alone is true for every DUT state and cannot fail
-        # on any RTL. What carries the claim is the CONTRAST across
-        # the two halves of this run, on the same counter:
-        #   armed   (inject=1) -> the counter advanced. The fail-capable check
-        #                         for this half is _clear_sbe_on_first_fire's
-        #                         own bound: it returns only once
-        #                         fire_count > baseline and raises on expiry, so
-        #                         reaching this line at all is that half's
-        #                         evidence. No assert is restated here -- `sbe >
-        #                         base` would be true by construction and would
-        #                         read as a check that cannot fail.
-        #   cleared (inject=0) -> the counter holds WHILE further scratch reads
-        #                         are still arriving, which
-        #                         _wait_scratch_reads_gt raises on if they stop.
-        # Both halves are needed: the first is what makes the second mean
-        # anything, and the traffic gate is what stops "no reads happened" from
-        # masquerading as recovery. Both counts are carried in the token below
-        # so a reader can see the contrast without the source.
+        # `mid_after == mid` alone holds for every DUT state. The claim is the
+        # CONTRAST across the two halves of this run, on the same counter:
+        #   armed   (inject=1) -> the counter advanced; _clear_sbe_on_first_fire
+        #                         returns only once fire_count > baseline and
+        #                         raises on expiry.
+        #   cleared (inject=0) -> the counter holds while further scratch reads
+        #                         arrive; _wait_scratch_reads_gt raises if they
+        #                         stop.
+        # Both counts are carried in the token below.
         #
-        # Scope, stated because the counter name invites over-reading it: this
-        # proves the injection hook is gated by its enable pins and that scratch
-        # traffic survives the clear. It does NOT prove Rocket SECDED behaviour
-        # -- no corrupted data is forced onto any macro response anywhere in
-        # this bench (CHK-ECC-INJECT-NO-DUT-SECDED says the same).
+        # Scope: this proves the injection hook is gated by its enable pins and
+        # that scratch traffic survives the clear. It does not prove Rocket
+        # SECDED behaviour -- no corrupted data is forced onto any macro
+        # response in this bench (CHK-ECC-INJECT-NO-DUT-SECDED says the same).
         await self._wait_scratch_reads_gt(scratch_hold, label="RECOVERY")
         await ClockCycles(clk, 8)
         mid_after = int(dut.tb_cpu_ecc_inject_fire_count.value)
@@ -204,8 +194,9 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
             scratch_after,
         )
 
-        # DBE while the first-boot I$ fill is still settling — a later
-        # pulse_core_reset has not been producing fresh bank0 traffic here.
+        # Arm DBE while the first-boot I$ fill is in flight: once the boot
+        # fetch has completed, a later pulse_core_reset produces no fresh bank0
+        # traffic.
         scratch_dbe_base = int(dut.tb_cpu_scratch_read_count.value)
         dut.tb_cpu_ecc_inject_dbe.value = 1
         await RisingEdge(clk)
@@ -225,12 +216,9 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         # [NO-ALWAYS-PASS-CHECKER]).
         await boot_task
         # The CPU does not re-fetch from scratch bank0 once the boot fetch has
-        # completed (the scratch-read count stays static over 50_000 cycles,
-        # and after a further `_pulse_scratch_boot()`), so no scratch-read wait
-        # belongs here: a wait with no stimulus behind it can only be satisfied
-        # by a stale baseline ([NO-ALWAYS-PASS-CHECKER]). The recovery property
-        # -- further scratch traffic with the inject cleared must not score --
-        # is proven by the `RECOVERY` leg above (`assert mid_after == mid`).
+        # completed, so the recovery property -- further scratch traffic with
+        # the inject cleared must not score -- is proven only by the `RECOVERY`
+        # leg above ([NO-ALWAYS-PASS-CHECKER]).
 
         await self.wait_fuse_sense_done()
         await self.csr_read("VERSION_LO", VERSION_LO)

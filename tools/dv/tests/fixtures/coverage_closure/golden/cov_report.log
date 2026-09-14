@@ -1,4 +1,0 @@
-# cmd: echo report-stub
-report-stub
-# COVERAGE THRESHOLD: 57.1429 < 60.0
-# COVERAGE THRESHOLD: toggle-effective metric=toggle actual=60.0 minimum=90.0 unclassified=1

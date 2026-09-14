@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_flr_sanity_test (Batch D).
+"""Sequence for smc_flr_sanity_test.
 
 Scope: this test verifies the *downstream* half of an FLR
 recovery only -- the cool reset itself and the CSR path across it -- and drives
@@ -34,8 +34,8 @@ post-release checks ([NO-ALWAYS-PASS-CHECKER]):
   write/read-back is the positive control that the CSR path is alive again.
 
 Both waits are bounded and raise with the last observed state on expiry
-([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]); no fixed settle remains on the
-proof path.
+([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]); the proof path has no fixed
+settle.
 """
 
 from __future__ import annotations
@@ -80,12 +80,10 @@ EXPECTED_VALUE_CHECKS = 5
 class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
     """Pin-cool reset + CSR recovery sanity (FLR trigger path: see docstring).
 
-    Reset items come from ``SmcResetSeqBase`` -- including the ``expect_*``
-    keyword guard, without which a mistyped expectation becomes a silent
-    non-check -- the failure mode of building reset items with a bare
-    ``setattr`` loop. Only the dispatch is local: this
-    sequence runs on the SEP_IN AXI sequencer, so its reset items are handed to
-    the reset agent's sequencer via ``dispatch_reset``.
+    Reset items come from ``SmcResetSeqBase``, whose ``expect_*`` keyword guard
+    rejects a mistyped expectation. Only the dispatch is local: this sequence
+    runs on the SEP_IN AXI sequencer, so its reset items are handed to the reset
+    agent's sequencer via ``dispatch_reset``.
     """
 
     # Ceilings only, never the checked quantity (see the constants above).
@@ -206,13 +204,10 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
             assert s.rst_primary_smc_clk_n == 1, f"primary smc reset asserted at {s.get_name()}"
             assert s.rst_wdt_smc_clk_n == 1, f"wdt reset asserted at {s.get_name()}"
         self._assert_flr_pin_idle("post cool recovery")
-        # Loop integrity + scoreboard cross-check. This sweep issues no bounded
-        # read, so `assert_all_reachable` does NOT assert
-        # `timeouts == 0` here (it could not fail on this path -- a no-response
-        # raises in the AXI driver instead); what it does assert is that the
-        # scoreboard actually checked at least as many SYS AXI items as this
-        # sequence issued, which the sequence's own counter cannot see. The
-        # fail-capable value proof is the floor below.
+        # Loop integrity + scoreboard cross-check: the scoreboard must have
+        # checked at least as many SYS AXI items as this sequence issued, which
+        # the sequence's own counter cannot see (a no-response raises in the
+        # AXI driver). The fail-capable value proof is the floor below.
         self.assert_all_reachable(EXPECTED_ACCESSES, "FLR sanity CSR sweep")
         sb = self.env.scoreboard
         # Fail-capable floor: the scoreboard books a value check only after an
