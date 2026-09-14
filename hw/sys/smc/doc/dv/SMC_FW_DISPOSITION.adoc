@@ -478,6 +478,9 @@ the first image that consumes it, not ahead of it.
 |uart_log_engine_region_size
 |deferred
 |Per-entry slot address math. Closes with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "uart_log_engine_region_size"`, `+smc_scratch_ram_hex=uart_log_engine_region_size.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml` after the tier-1 `uart_log_engine_single_entry` leaf proves the pattern.
+|uart_log_engine_intr
+|deferred
+|Log-engine `INTR_ENABLE` / `INTR_TEST` / `INTR_STATUS` truth table and W1C clear from the CPU. Its cocotb counterpart `smc_log_engine_intr_mask_test` (`testlists/rtl_issue.toml`) reproduces the open RTL issue #1635 (`INTERRUPT_ENABLE` gates the interrupt set path instead of masking the output) and is expected to fail against the current RTL, so no enrolled leaf proves the property; this image's expected table encodes the set-path gating that issue names as the defect and is re-derived against the fixed RTL before it is enrolled. Closes when #1635 is fixed and `smc_log_engine_intr_mask_test` is enrolled in `all`, or with a `smc_fw_hello_world_test`-pattern leaf `smc_fw_uart_log_engine_intr_test` (`firmware = "uart_log_engine_intr"`, `+smc_scratch_ram_hex=uart_log_engine_intr.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
 |===
 
 === Superseded images
@@ -515,8 +518,6 @@ the first image that consumes it, not ahead of it.
 |`octs_p2_sync_recovery_test` (deferred); sixteen-line diff duplicate.
 |sep_rtl_boot
 |`smu_sep_boot` (external-consumer row above), the SMC image SMU's `smu_sep_wdt_reset_to_smc_test` loads; `smu_sep_smc_notify_test` boots the SMC from SMU's own `smu_sep_arm` ROM and references no SMC DV image. This image passes immediately and no SMU test references it.
-|uart_log_engine_intr
-|`smc_log_engine_intr_mask_test` (`testlists/rtl_issue.toml`); CSR-only.
 |uart_log_engine_reg_rw
 |`smc_uart_log_engine_reg_rw_test` (`testlists/uart.toml`), same objective.
 |uart_log_engine_reset
