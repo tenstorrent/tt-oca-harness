@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OTP JTAG2AXI write/readback of eFuse MAP BIRA (SEP=0, no Force).
 
-S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` is 0 (gen_no_sep ties
-    ``sep_feat_ctrl='1`` including fuse_test). ``lc_state_o`` is the no-LCC
+S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
+    J2A gate is open in this configuration. ``lc_state_o`` is the no-LCC
     word of ``seq_lib.smu_lifecycle_table`` (not PROD), so the eFuse JTAG
     demux stays off err_slv.
 S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the 14-bit packing of

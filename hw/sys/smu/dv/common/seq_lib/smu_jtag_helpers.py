@@ -21,7 +21,7 @@ from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 from seq_lib.smu_tb_pins import smu_scope
 
 # Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
-# SEP=0 gen_no_sep ties sep_feat_ctrl='1' (enable); J2A opens after TCK sync.
+# On SEP=0 there is no lifecycle controller; the J2A gate opens after TCK sync.
 
 
 def dtp_ir_opcode(name: str) -> int:

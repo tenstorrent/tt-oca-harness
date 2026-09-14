@@ -1828,7 +1828,7 @@ check.
 *Test Coverage*:
 
 * SMC OTP JTAG2AXI write/readback of eFuse MAP BIRA (SEP=0, no Force).
-* S1: After TCK sync, `tb_otp_jtag2axi_security_disable` is 0 (gen_no_sep ties `sep_feat_ctrl='1` including fuse_test).
+* S1: After TCK sync, `tb_otp_jtag2axi_security_disable` reads 0 -- the OTP JTAG2AXI gate is open in this configuration.
 * `lc_state_o` equals the no-LCC word of `seq_lib/smu_lifecycle_table.py` (not PROD), so the eFuse JTAG demux stays off err_slv.
 * S2: `SMC_OTP_JTAG2AXI_CAPS` matches the 14-bit packing of `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`.
 * S3: Write PATTERN_A to MAP BIRA, readback OKAY + data match.
@@ -1872,7 +1872,7 @@ check.
 *Test Coverage*:
 
 * SMC OTP JTAG2AXI series NO_INCR R/W + MAP-CTRL hole SLVERR (SEP=0, no Force).
-* S1: After TCK sync, OTP J2A gate is open (gen_no_sep ties feat_ctrl including fuse_test).
+* S1: After TCK sync, `tb_otp_jtag2axi_security_disable` reads 0 -- the OTP JTAG2AXI gate is open in this configuration.
 * `lc_state_o` equals the no-LCC word of `seq_lib/smu_lifecycle_table.py`, so the eFuse JTAG demux is not err_slv.
 * S2: Series NO_INCR write PATTERN_A to MAP BIRA, then series NO_INCR readback OKAY + data match.
 * S3: SINGLE_OP read of BIRA (same IR as the hole) returns SUCCESS + PATTERN_A; SINGLE_OP read of MAP_BASE+MAP_SIZE (below CTRL) returns SLVERR + `0xbadcab1e`; SINGLE_OP re-read of BIRA still SUCCESS + PATTERN_A.

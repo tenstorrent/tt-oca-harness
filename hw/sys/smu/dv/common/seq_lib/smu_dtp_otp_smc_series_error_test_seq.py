@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OTP JTAG2AXI series NO_INCR R/W + MAP-CTRL hole SLVERR (SEP=0, no Force).
 
-S1: After TCK sync, OTP J2A gate is open (gen_no_sep ties feat_ctrl including
-    fuse_test). ``lc_state_o`` is the no-LCC word of
-    ``seq_lib.smu_lifecycle_table``, so the eFuse JTAG demux is not err_slv.
+S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
+    J2A gate is open in this configuration. ``lc_state_o`` is the no-LCC word
+    of ``seq_lib.smu_lifecycle_table``, so the eFuse JTAG demux is not
+    err_slv.
 S2: Series NO_INCR write PATTERN_A to MAP BIRA, then series NO_INCR readback
     OKAY + data match.
 S3: SINGLE_OP read of BIRA (same IR as the hole) returns SUCCESS + PATTERN_A;
