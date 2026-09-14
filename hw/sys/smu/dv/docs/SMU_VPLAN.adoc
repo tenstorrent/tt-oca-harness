@@ -2094,12 +2094,12 @@ check.
 
 *BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
 
-*Objective*: SMU_005: SEP=0 lc_state 0xf0 only; the direct SMN->SMC path is not covered.
+*Objective*: SMU_005: SEP=0 lc_state carries the no-LCC word of `seq_lib/smu_lifecycle_table.py` only; the direct SMN->SMC path is not covered.
 
 *Test Coverage*:
 
 * Sequence for smu_no_sep_configuration_test (SMU_005).
-* Proves SEP=0 lc_state_o==8'hf0 only.
+* Proves that on SEP=0 `lc_state_o` carries the no-LCC word of `seq_lib/smu_lifecycle_table.py` and nothing else.
 * Direct SMN→SMC path deferred: SYS_IN BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC hit under SEP=0.
 
 *Test Procedure*:
@@ -2258,7 +2258,7 @@ check.
 *Test Coverage*:
 
 * lcc_demote_state_1/2_o == 0 (SEP=0 hardwire observe across hold window)
-* lc_state_o == 0xf0 stable (positive non-zero LC payload)
+* `lc_state_o` == the no-LCC word of `seq_lib/smu_lifecycle_table.py`, stable (positive non-zero LC payload)
 
 *Test Procedure*:
 

@@ -35,6 +35,7 @@ from seq_lib.smu_jtag_helpers import (
     shadow_map_word32,
     unpack_otp_single_op,
 )
+from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
 BIRA = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR")
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
@@ -43,7 +44,6 @@ PAT_O = 0x0A70_AAA1
 PAT_F = 0xFAB0_BBB2
 PINGPONG = 4
 OTP_POLL = 128
-SEP0_LC_STATE = 0xF0
 
 
 class smu_otp_vs_fabric_map_race_test_seq:
@@ -97,8 +97,8 @@ class smu_otp_vs_fabric_map_race_test_seq:
         lc = self._sample_int("lc_state_o") & 0xFF
         if otp_gate != 0 or fab_gate != 0:
             raise AssertionError(f"J2A gated after TCK: otp={otp_gate} fab={fab_gate}")
-        if lc != SEP0_LC_STATE:
-            raise AssertionError(f"lc_state_o=0x{lc:02x} want 0x{SEP0_LC_STATE:02x}")
+        if lc != LC_STATE_NO_LCC:
+            raise AssertionError(f"lc_state_o=0x{lc:02x} want 0x{LC_STATE_NO_LCC:02x}")
         self.s1_ok = True
         sb.expect_eq("CHK-OTPFAB-GATE-OPEN", (otp_gate, fab_gate), (0, 0))
 
