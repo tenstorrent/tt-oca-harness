@@ -49,8 +49,8 @@ do not depend on. That class is waived at time 0 only, in `smc_sim_cfg.toml`
 `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux`
 (`prim_ag_clk_mux.sv`) at 4688 ns on seed 1611842931. The waiver does not
 cover it -- a replay of the leaf on that seed grades FAIL on that line -- and
-no Verilator run can observe it because assertions are compiled out there. It
-is tracked as an RTL issue and remains an open item of this signoff.
+no Verilator run can observe it because assertions are compiled out there.
+#1854 tracks that firing; it remains an open item of this signoff.
 
 The cool-reset OUT names (`smc_cool_reset_from_primary_chiplet_test`,
 `smc_cool_reset_from_bmc_test`, `smc_cool_reset_x_cool_reset_test`) have rows
