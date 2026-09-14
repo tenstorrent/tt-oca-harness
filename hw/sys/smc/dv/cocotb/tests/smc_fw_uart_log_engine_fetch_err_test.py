@@ -58,11 +58,12 @@ class smc_fw_uart_log_engine_fetch_err_test(smc_base_test):
 
     auto_protocol_vip = False
     required_evidence = (
-        "CHK-FW-LOG-ENGINE-FETCH-ERR-BOOT",
         "CHK-FW-LOG-ENGINE-CSR-STATE",
-        "CHK-FW-LOG-ENGINE-SPM-PATTERN",
         "CHK-FW-LOG-ENGINE-FETCH-DECERR",
+        "CHK-FW-LOG-ENGINE-FETCH-ERR-BOOT",
+        "CHK-FW-LOG-ENGINE-SPM-PATTERN",
     )
+    min_evidence = 4
 
     async def run_scenario(self) -> None:
         seq = smc_fw_log_engine_test_seq(

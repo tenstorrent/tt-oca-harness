@@ -40,7 +40,11 @@ class smc_fw_i2c_tx_stretch_timeout_recovery_test(smc_base_test):
     """Firmware times out a stretched read and recovers; the bench sees both transfers."""
 
     auto_protocol_vip = False
-    required_evidence = ("CHK-FW-I2C-TX-STRETCH-TIMEOUT-BOOT", "CHK-FW-I2C-WIRE-TRAFFIC")
+    required_evidence = (
+        "CHK-FW-I2C-TX-STRETCH-TIMEOUT-BOOT",
+        "CHK-FW-I2C-WIRE-TRAFFIC",
+    )
+    min_evidence = 2
 
     async def run_scenario(self) -> None:
         seq = smc_fw_i2c_pair_test_seq(

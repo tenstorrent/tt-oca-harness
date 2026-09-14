@@ -39,7 +39,11 @@ class smc_fw_i2c_p1_fifo_depth_xfer_test(smc_base_test):
     """Firmware moves 64 bytes with overlapped push and drain; the bench counts them on the wire."""
 
     auto_protocol_vip = False
-    required_evidence = ("CHK-FW-I2C-FIFO-DEPTH-BOOT", "CHK-FW-I2C-WIRE-TRAFFIC")
+    required_evidence = (
+        "CHK-FW-I2C-FIFO-DEPTH-BOOT",
+        "CHK-FW-I2C-WIRE-TRAFFIC",
+    )
+    min_evidence = 2
 
     async def run_scenario(self) -> None:
         seq = smc_fw_i2c_pair_test_seq(

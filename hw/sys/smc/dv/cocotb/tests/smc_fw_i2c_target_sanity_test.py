@@ -44,6 +44,7 @@ class smc_fw_i2c_target_sanity_test(smc_base_test):
         "CHK-FW-I2C-TARGET-VIP-READ",
         "CHK-FW-I2C-WIRE-TRAFFIC",
     )
+    min_evidence = 3
 
     async def run_scenario(self) -> None:
         seq = smc_fw_i2c_target_sanity_test_seq("fw_i2c_target_sanity_seq")

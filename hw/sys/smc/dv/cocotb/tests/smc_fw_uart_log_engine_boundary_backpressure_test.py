@@ -55,6 +55,7 @@ class smc_fw_uart_log_engine_boundary_backpressure_test(smc_base_test):
         "CHK-FW-LOG-ENGINE-CSR-STATE",
         "CHK-FW-LOG-ENGINE-SPM-PATTERN",
     )
+    min_evidence = 3
 
     async def run_scenario(self) -> None:
         seq = smc_fw_log_engine_test_seq(

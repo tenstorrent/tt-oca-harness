@@ -42,7 +42,11 @@ class smc_fw_i2c_fifo_full_test(smc_base_test):
     """Firmware fills FMT/TX by stores and RX/ACQ by transfers; the bench sees the transfers."""
 
     auto_protocol_vip = False
-    required_evidence = ("CHK-FW-I2C-FIFO-FULL-BOOT", "CHK-FW-I2C-WIRE-TRAFFIC")
+    required_evidence = (
+        "CHK-FW-I2C-FIFO-FULL-BOOT",
+        "CHK-FW-I2C-WIRE-TRAFFIC",
+    )
+    min_evidence = 2
 
     async def run_scenario(self) -> None:
         seq = smc_fw_i2c_pair_test_seq(

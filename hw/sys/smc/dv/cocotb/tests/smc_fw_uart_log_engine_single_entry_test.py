@@ -46,11 +46,12 @@ class smc_fw_uart_log_engine_single_entry_test(smc_base_test):
 
     auto_protocol_vip = False
     required_evidence = (
-        "CHK-FW-LOG-ENGINE-SINGLE-BOOT",
         "CHK-FW-LOG-ENGINE-CSR-STATE",
+        "CHK-FW-LOG-ENGINE-SINGLE-BOOT",
         "CHK-FW-LOG-ENGINE-SPM-PATTERN",
         "CHK-FW-LOG-ENGINE-UART-IRQ",
     )
+    min_evidence = 4
 
     async def run_scenario(self) -> None:
         seq = smc_fw_log_engine_test_seq(

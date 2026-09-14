@@ -83,6 +83,7 @@ verifying the block behind the port.
 |`smc_sideband_protocol_smoke_test` |Run the AVSBus sideband CSR representative precheck.
 |`smc_telemetry_receiver_csr_test` |U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
 |`smc_wdt_key_csr_test` |CMP writes are gated by the KEY magic value, proven per core.
+|`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |Run zeroer over output-fabric payload bytes and check the model.
 |`smc_zeroer_sanity_test` |Run zeroer over output-fabric payload bytes and check the model.
 |===
@@ -915,9 +916,9 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 
 *Test Coverage*:
 
-* 8-bit beats and the assembly into packets -- `doc/interface.adoc:59,69` ("8-bit data beats", "Data Width: 8 bits per beat") and `doc/architecture.adoc:56`; `NUM_BEATS_PER_PACKET` is the RTL localparam `TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH` (`rtl/telemetry_receiver_pkg.sv:51`), used at `rtl/telemetry_receiver.sv:134`.
-* `probe_id` at bits `[60:56]` -- `rtl/telemetry_receiver.sv:77-81`, `get_telemetry_probe_id` returns `telemetry_packets[0][60:56]`.
-* `last_packet` at bit 63 -- it is the most significant field of the 64-bit packed `telemetry_packet_t` (`rtl/telemetry_receiver_pkg.sv:60-63`), read at `rtl/telemetry_receiver.sv:139`.
+* The ATB framing the sequence drives is a DV-owned table. 8-bit beats assembled LSB-first into 64-bit packets, 9-bit blocks, the 5-bit probe ID and the last-packet flag are cited to `hw/ip/telemetry_receiver/doc/interface.adoc`, `doc/architecture.adoc` and `regs/telemetry_receiver.rdl` (`TELEMETRY_PROBE_ID.PROBE_ID[4:0]`, `INTR_STATUS.MISSING_LAST`).
+* The bit positions of the probe-ID header, the last-packet flag and the first block of each packet are fixed by no document and are declared as DV-owned framing assumptions in the sequence.
+* What is scored is the CSR-visible consequence of a message framed per that table (STATUS.EMPTY clearing, PROBE_ID reading back the framed value), not that the table is the specified telemetry format.
 
 *Test Procedure*:
 
@@ -2756,7 +2757,7 @@ Drive `smc_cpu_ecc_lint_pint_depth_test_seq`. Each checker below is a named comp
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
@@ -2922,7 +2923,7 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
@@ -3134,7 +3135,7 @@ Drive `smc_dbs_idle_test_seq`. Each checker below is a named compare the DUT can
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
@@ -3171,7 +3172,7 @@ Drive `smc_dfd_sanity_test_seq`. Each checker below is a named compare the DUT c
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS` |Bounds check in `smc_ecc_dfd_dbs_sanity_test_seq.py`: the count is nonzero, inside the generated 8-bit field with reserved bits 0, and at most the 32 `ndmreset_request` bits the RDL has it mask; the run fails outside those bounds. The count itself is reported, not compared, because no document states it
 |`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |===
 
@@ -3440,7 +3441,8 @@ Drive `smc_efuse_jtag_lc_negative_test_seq`. Each checker below is a named compa
 * `CHIPLET_ID` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `CHIPLET_ID_READ_LOCK` set, and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/depth.toml`).
 * The read-lock leg therefore proves that the DUT ENFORCES a lock it found already set; it does not prove a lock can be established through the fuse-programming path.
 * The write-lock leg does establish its own lock, through the real `LOCKS` CSR write path.
-* Everything asserted below -- lock enforcement, the blocked-read data, the non-disclosure property and the interrupt itself -- is produced by RTL under `hw/ip/efuse/rtl/` and `hw/sys/smc/rtl/`.
+* Everything asserted below -- lock enforcement, the non-disclosure property and the interrupt itself -- is produced by the design under test.
+* The read-locked read is not value-compared: `hw/ip/efuse/doc/architecture.adoc` fixes `0xbadcab1e` only for the JTAG lifecycle-demux error slave and does not state what a read-locked shadow register returns over the CSR path, so that leg claims the interrupt pulse and non-disclosure (`lock[0] = 1` is read-locked) and nothing about the substituted word.
 * The model contributes the fuse CONTENT only, and every expectation that depends on that content is derived from the asset at run time rather than hand-transcribed.
 
 *Test Procedure*:
@@ -3788,7 +3790,7 @@ testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
 
 * GPIO_CTRL window routing sweep.
 * Sweeps every bootrom `EXTERNAL_MANDATORY_GPIO_CTRL_N` CONTROL address.
-* `smc_ip_integration` terminates that window with DECERR + 0.
+* The OSS tree carries no GPIO pad block behind that window (`memmap.adoc` lists it as technology-specific), so every address must answer with an AXI error response and the all-zero word `csr_read_decerr_zero` expects.
 
 *Test Procedure*:
 
@@ -5715,7 +5717,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 * Front-door AXI write and readback into the CPU scratch banks, which is how the OCCP boot flow stages its payload.
 * Six distinct patterns, placed one per field of the scratch decode: the two stripe bits (`address[7:6]`), the wrap of the four-bank cycle at +0x100, the entry low bits (`address[5:3]`), and the next 128 KB group (`address[19:17]`).
-* `smc_scratch_map_pkg`, the decode the `+smc_scratch_ram_hex` image loader in `smc_cpu_mem_dv.sv` uses to scatter firmware across the 32 banks. It is read out of the cluster's own decode -- `OCAH4CORECluster_TLXbar_mbus_i1_o33_a32d64s11k1z3u.sv:700-755` for the bank and `OCAH4CORECluster_TLRAM.sv:308` for the entry -- and this testcase is where that reading is measured rather than assumed.
+* `smc_scratch_map_pkg`, the decode the `+smc_scratch_ram_hex` image loader in `smc_cpu_mem_dv.sv` uses to scatter firmware across the 32 banks. Its geometry comes from `spm_memory.rdl` and `cpu.adoc`; the bank interleave is a DV-owned table declared in the package header, and this testcase is where that table is measured against the design rather than assumed.
 
 *Test Procedure*:
 
@@ -6156,9 +6158,42 @@ For each of the two (target, lock) pairs:
 
 '''''
 
+[[sec-166-smc_wdt_timeout_pin_test]]
+===== 166 `smc_wdt_timeout_pin_test`
 
-[[sec-166-smc_fw_hello_world_multicore_test]]
-===== 166 `smc_fw_hello_world_multicore_test`
+*Source Module*: `smc_wdt_timeout_pin_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `tb_top.sv` sticky latches `tb_wdt_first_timeout_seen` / `tb_wdt_second_timeout_seen` on the `smc_wrapper` timeout outputs
+
+*Objective*: A programmed first timeout raises `smc_wdt_first_timeout_o` at the DUT boundary; left uncleared, the stage-2 count in `CPU_CTRL.WDT_TIMEOUT` raises `smc_wdt_second_timeout_o`, and the reset unit turns that into the warm reset.
+
+*Test Coverage*:
+
+* core-0 WDT armed over SEP_IN with the magic-key protocol of `wdt.rdl` (`KEY` before each of `CMP`, `COUNT`, `CTRL`; `CTRL.wdogrsten | wdogenalways`);
+* `smc_wdt_first_timeout_o` latched within a bound of arming, with `smc_wdt_second_timeout_o` still 0 on that cycle;
+* `smc_wdt_second_timeout_o` latched `WDT_TIMEOUT` (`cpu_ctrl.rdl` reset `0x4000`) cycles after the first, within a stated slack;
+* `rst_warm` still released on the cycle the first timeout latches, asserted after the second timeout, then released; both live pins read 0 afterwards while both sticky latches still read 1.
+
+*Test Procedure*:
+
+Drive `smc_wdt_timeout_pin_test_seq`. Each checker below is a bounded observation of a `tb_top` pin the DUT can fail to drive; a token is emitted only after that observation holds. `+smc_wdt_timeout_negative` inverts the second-timeout expectation (demands it on the cycle the first one latches) and must FAIL; it is the control for the second-timeout observer.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WDT-TIMEOUT-FIRST` |`tb_wdt_first_timeout_seen` reaches 1 within `FIRST_TIMEOUT_BOUND_CYCLES` of the arming readback, `tb_wdt_second_timeout_seen` still 0 on that cycle
+|`CHK-WDT-TIMEOUT-SECOND` |`tb_wdt_second_timeout_seen` reaches 1 between `WDT_TIMEOUT` and `WDT_TIMEOUT + SECOND_TIMEOUT_SLACK_CYCLES` cycles after the first
+|`CHK-WDT-TIMEOUT-RESET` |`tb_rst_warm_smc_clk_n` reads 1 on the cycle the first timeout latches, falls within `WARM_RESET_BOUND_CYCLES` of the second timeout and rises again; live pins then 0, sticky latches 1
+|===
+
+*Pass Criteria*: `CHK-WDT-TIMEOUT-FIRST`, `CHK-WDT-TIMEOUT-SECOND`, `CHK-WDT-TIMEOUT-RESET` hold after their observations. Enrolled in: `all`, `per_ip`.
+'''''
+
+
+[[sec-167-smc_fw_hello_world_multicore_test]]
+===== 167 `smc_fw_hello_world_multicore_test`
 
 *Source Module*: `smc_fw_hello_world_multicore_test`
 
@@ -6195,8 +6230,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-167-smc_fw_octs_p0_primary_test]]
-===== 167 `smc_fw_octs_p0_primary_test`
+[[sec-168-smc_fw_octs_p0_primary_test]]
+===== 168 `smc_fw_octs_p0_primary_test`
 
 *Source Module*: `smc_fw_octs_p0_primary_test`
 
@@ -6232,8 +6267,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-168-smc_fw_i2c_sanity_test]]
-===== 168 `smc_fw_i2c_sanity_test`
+[[sec-169-smc_fw_i2c_sanity_test]]
+===== 169 `smc_fw_i2c_sanity_test`
 
 *Source Module*: `smc_fw_i2c_sanity_test`
 
@@ -6268,8 +6303,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-169-smc_fw_i2c_target_sanity_test]]
-===== 169 `smc_fw_i2c_target_sanity_test`
+[[sec-170-smc_fw_i2c_target_sanity_test]]
+===== 170 `smc_fw_i2c_target_sanity_test`
 
 *Source Module*: `smc_fw_i2c_target_sanity_test`
 
@@ -6306,8 +6341,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-170-smc_fw_i2c_acq_fifo_stretch_reset_test]]
-===== 170 `smc_fw_i2c_acq_fifo_stretch_reset_test`
+[[sec-171-smc_fw_i2c_acq_fifo_stretch_reset_test]]
+===== 171 `smc_fw_i2c_acq_fifo_stretch_reset_test`
 
 *Source Module*: `smc_fw_i2c_acq_fifo_stretch_reset_test`
 
@@ -6346,8 +6381,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-171-smc_fw_i2c_p1_fifo_depth_xfer_test]]
-===== 171 `smc_fw_i2c_p1_fifo_depth_xfer_test`
+[[sec-172-smc_fw_i2c_p1_fifo_depth_xfer_test]]
+===== 172 `smc_fw_i2c_p1_fifo_depth_xfer_test`
 
 *Source Module*: `smc_fw_i2c_p1_fifo_depth_xfer_test`
 
@@ -6358,7 +6393,7 @@ For each of the two (target, lock) pairs:
 *Test Coverage*:
 
 * A 64-byte payload -- the FIFO depth -- moved one byte per controller write from I2C_0 to I2C_1 while the target drains its ACQ FIFO concurrently; the length and every byte compared, entries classified by ACQ signal so a NACKed byte cannot pass as payload. Those compares are the firmware's.
-* The wire, graded by the bench as on card 168: acknowledged write frames to 0x10 carrying at least 64 data bytes in total. Floors, not exact counts, since the driver may split the transfer.
+* The wire, graded by the bench as on card 169: acknowledged write frames to 0x10 carrying at least 64 data bytes in total. Floors, not exact counts, since the driver may split the transfer.
 
 *Test Procedure*:
 
@@ -6381,8 +6416,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-172-smc_fw_i2c_tx_stretch_timeout_recovery_test]]
-===== 172 `smc_fw_i2c_tx_stretch_timeout_recovery_test`
+[[sec-173-smc_fw_i2c_tx_stretch_timeout_recovery_test]]
+===== 173 `smc_fw_i2c_tx_stretch_timeout_recovery_test`
 
 *Source Module*: `smc_fw_i2c_tx_stretch_timeout_recovery_test`
 
@@ -6393,7 +6428,7 @@ For each of the two (target, lock) pairs:
 *Test Coverage*:
 
 * I2C_1 reads from I2C_0 while the target TX FIFO is empty, so the target stretches SCL until the controller stretch timeout fires; the firmware then disables the target to release SCL, disables the controller to exercise the automatic STOP recovery, re-initialises both and checks a 16-byte write. Those compares are the firmware's.
-* The wire, graded by the bench as on card 168. For a read the bytes counted are those the target clocked out, since the controller NACKs the last one by design.
+* The wire, graded by the bench as on card 169. For a read the bytes counted are those the target clocked out, since the controller NACKs the last one by design.
 
 *Test Procedure*:
 
@@ -6416,8 +6451,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-173-smc_fw_i2c_fifo_full_test]]
-===== 173 `smc_fw_i2c_fifo_full_test`
+[[sec-174-smc_fw_i2c_fifo_full_test]]
+===== 174 `smc_fw_i2c_fifo_full_test`
 
 *Source Module*: `smc_fw_i2c_fifo_full_test`
 
@@ -6429,7 +6464,7 @@ For each of the two (target, lock) pairs:
 
 * FMT and TX filled by software stores to the depth the RTL declares and reset; RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
 * The cocotb `smc_i2c_fifo_full_test` covers the CSR-level full/empty flags only; this leaf is the one that fills RX and ACQ by transfers.
-* The wire, graded by the bench as on card 168.
+* The wire, graded by the bench as on card 169.
 
 *Test Procedure*:
 
@@ -6452,8 +6487,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-174-smc_fw_uart_log_engine_single_entry_test]]
-===== 174 `smc_fw_uart_log_engine_single_entry_test`
+[[sec-175-smc_fw_uart_log_engine_single_entry_test]]
+===== 175 `smc_fw_uart_log_engine_single_entry_test`
 
 *Source Module*: `smc_fw_uart_log_engine_single_entry_test`
 
@@ -6491,8 +6526,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-175-smc_fw_uart_log_engine_boundary_backpressure_test]]
-===== 175 `smc_fw_uart_log_engine_boundary_backpressure_test`
+[[sec-176-smc_fw_uart_log_engine_boundary_backpressure_test]]
+===== 176 `smc_fw_uart_log_engine_boundary_backpressure_test`
 
 *Source Module*: `smc_fw_uart_log_engine_boundary_backpressure_test`
 
@@ -6528,8 +6563,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-176-smc_fw_uart_log_engine_disable_during_xfer_test]]
-===== 176 `smc_fw_uart_log_engine_disable_during_xfer_test`
+[[sec-177-smc_fw_uart_log_engine_disable_during_xfer_test]]
+===== 177 `smc_fw_uart_log_engine_disable_during_xfer_test`
 
 *Source Module*: `smc_fw_uart_log_engine_disable_during_xfer_test`
 
@@ -6565,8 +6600,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-177-smc_fw_uart_log_engine_fetch_err_test]]
-===== 177 `smc_fw_uart_log_engine_fetch_err_test`
+[[sec-178-smc_fw_uart_log_engine_fetch_err_test]]
+===== 178 `smc_fw_uart_log_engine_fetch_err_test`
 
 *Source Module*: `smc_fw_uart_log_engine_fetch_err_test`
 

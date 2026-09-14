@@ -26,6 +26,12 @@ from smc_base_test import smc_base_test
 class smc_efuse_permission_boundary_test(smc_base_test):
     """Run eFuse-derived chip-config reads as the proxy for raw OTP permission paths."""
 
+    required_evidence = (
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-IDLE",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

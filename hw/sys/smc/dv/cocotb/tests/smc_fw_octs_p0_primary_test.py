@@ -37,10 +37,11 @@ class smc_fw_octs_p0_primary_test(smc_base_test):
 
     auto_protocol_vip = False
     required_evidence = (
-        "CHK-FW-OCTS-PRIMARY-BOOT",
         "CHK-FW-OCTS-COUNT-ADVANCES",
         "CHK-FW-OCTS-CREDIT-PAD",
+        "CHK-FW-OCTS-PRIMARY-BOOT",
     )
+    min_evidence = 3
 
     async def run_scenario(self) -> None:
         seq = smc_fw_octs_p0_primary_test_seq("fw_octs_p0_primary_seq")

@@ -42,7 +42,11 @@ class smc_fw_i2c_sanity_test(smc_base_test):
     """Firmware controller bring-up; the bench decodes the ACKed write and the NACKed probe."""
 
     auto_protocol_vip = False
-    required_evidence = ("CHK-FW-I2C-SANITY-BOOT", "CHK-FW-I2C-WIRE-TRAFFIC")
+    required_evidence = (
+        "CHK-FW-I2C-SANITY-BOOT",
+        "CHK-FW-I2C-WIRE-TRAFFIC",
+    )
+    min_evidence = 2
 
     async def run_scenario(self) -> None:
         seq = smc_fw_i2c_pair_test_seq(

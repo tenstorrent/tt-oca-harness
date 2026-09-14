@@ -35,7 +35,13 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from smc_dual_base_test import DualCsr, SmcDualHarness
+from smc_dual_base_test import DualCsr, SmcDualHarness, dual_test
+
+REQUIRED_EVIDENCE = (
+    "CHK-AXI-INIT-MEM-DONE",
+    "CHK-AXI-SCRATCH-REACHABLE",
+    "CHK-SCRATCH-BACKDOOR-DECODE",
+)
 
 # Start of the OCCP-writable SRAM window (SMC_ROM_STACK_END): the address the
 # real flow stages a payload at, so the probe asks about the address that
@@ -106,12 +112,11 @@ async def _watch_init_mem_done(dut, log) -> None:
     )
 
 
-@cocotb.test()
-async def smc_dual_axi_sram_probe_test(_dut) -> None:
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_dual_axi_sram_probe_test(harness: SmcDualHarness) -> None:
     dut = cocotb.top
     log = cocotb.log
 
-    harness = SmcDualHarness()
     # boot_stall released on both: holding it keeps fuse_reset_n asserted and
     # the whole warm domain -- including the CPU cluster the scratch banks hang
     # off -- in reset. See the module docstring.
@@ -231,3 +236,7 @@ async def smc_dual_axi_sram_probe_test(_dut) -> None:
         "smc_scratch_map_pkg gives the +smc_scratch_ram_hex loader agrees with "
         "the cluster's own."
     )
+    # A front-door probe that raised a DED or tripped a watchdog on either
+    # instance would still have read its patterns back; the latches say it
+    # did neither.
+    harness.assert_no_fault_latched("AXI-PROBE fault-latches")

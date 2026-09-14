@@ -44,11 +44,12 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test(smc_base_test):
 
     auto_protocol_vip = False
     required_evidence = (
+        "CHK-FW-I2C-ACQ-RELEASE-SCL",
         "CHK-FW-I2C-ACQ-STRETCH-BOOT",
         "CHK-FW-I2C-ACQ-STRETCH-SCL",
-        "CHK-FW-I2C-ACQ-RELEASE-SCL",
         "CHK-FW-I2C-WIRE-TRAFFIC",
     )
+    min_evidence = 4
 
     async def run_scenario(self) -> None:
         seq = smc_fw_i2c_acq_fifo_stretch_reset_test_seq("fw_i2c_acq_fifo_stretch_reset_seq")

@@ -36,7 +36,11 @@ class smc_fw_hello_world_multicore_test(smc_base_test):
     """Four harts check in; the bench reads harts 2 and 3's own markers."""
 
     auto_protocol_vip = False
-    required_evidence = ("CHK-FW-MULTICORE-BOOT", "CHK-FW-MULTICORE-HART-MARKERS")
+    required_evidence = (
+        "CHK-FW-MULTICORE-BOOT",
+        "CHK-FW-MULTICORE-HART-MARKERS",
+    )
+    min_evidence = 2
 
     async def run_scenario(self) -> None:
         seq = smc_fw_hello_world_multicore_test_seq("fw_hello_world_multicore_seq")
