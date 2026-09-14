@@ -74,9 +74,7 @@ def validate_pdf(pdf: Path) -> list[str]:
             page_tree_counts.append(int(count.group(1)))
     pages = max(page_tree_counts) if page_tree_counts else len(PAGE_RE.findall(data))
     if pages < 1 or pages > MAX_DATASHEET_PAGES:
-        return [
-            f"{pdf}: expected 1 to {MAX_DATASHEET_PAGES} pages, found {pages} pages"
-        ]
+        return [f"{pdf}: expected 1 to {MAX_DATASHEET_PAGES} pages, found {pages} pages"]
     return []
 
 
