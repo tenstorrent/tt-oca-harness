@@ -85,6 +85,7 @@ verifying the block behind the port.
 |`smc_sideband_protocol_smoke_test` |Run the AVSBus sideband CSR representative precheck.
 |`smc_telemetry_receiver_csr_test` |U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any.
 |`smc_wdt_key_csr_test` |CMP writes are gated by the KEY magic value, proven per core.
+|`smc_wdt_timeout_pin_test` |A programmed first timeout raises `smc_wdt_first_timeout_o`; uncleared, the second timeout raises `smc_wdt_second_timeout_o` and the warm reset follows.
 |`smc_zeroer_dma_timeout_test` |Run zeroer over output-fabric payload bytes and check the model.
 |`smc_zeroer_sanity_test` |Run zeroer over output-fabric payload bytes and check the model.
 |===
@@ -6093,6 +6094,39 @@ For each of the two (target, lock) pairs:
 
 *Pass Criteria*: both checkers hold: the level bit reads 0, then 0x4 after the push, then 0 after the flush. Enrolled in: `all`.
 
+'''''
+
+[[sec-166-smc_wdt_timeout_pin_test]]
+===== 166 `smc_wdt_timeout_pin_test`
+
+*Source Module*: `smc_wdt_timeout_pin_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); `tb_top.sv` sticky latches `tb_wdt_first_timeout_seen` / `tb_wdt_second_timeout_seen` on the `smc_wrapper` timeout outputs
+
+*Objective*: A programmed first timeout raises `smc_wdt_first_timeout_o` at the DUT boundary; left uncleared, the stage-2 count in `CPU_CTRL.WDT_TIMEOUT` raises `smc_wdt_second_timeout_o`, and the reset unit turns that into the warm reset.
+
+*Test Coverage*:
+
+* core-0 WDT armed over SEP_IN with the magic-key protocol of `wdt.rdl` (`KEY` before each of `CMP`, `COUNT`, `CTRL`; `CTRL.wdogrsten | wdogenalways`);
+* `smc_wdt_first_timeout_o` latched within a bound of arming, with `smc_wdt_second_timeout_o` still 0 on that cycle;
+* `smc_wdt_second_timeout_o` latched `WDT_TIMEOUT` (`cpu_ctrl.rdl` reset `0x4000`) cycles after the first, within a stated slack;
+* `rst_warm` asserts after the second timeout and releases; both live pins read 0 afterwards while both sticky latches still read 1.
+
+*Test Procedure*:
+
+Drive `smc_wdt_timeout_pin_test_seq`. Each checker below is a bounded observation of a `tb_top` pin the DUT can fail to drive; a token is emitted only after that observation holds. `+smc_wdt_timeout_negative` inverts the second-timeout expectation (demands it on the cycle the first one latches) and must FAIL; it is the control for the second-timeout observer.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WDT-TIMEOUT-FIRST` |`tb_wdt_first_timeout_seen` reaches 1 within `FIRST_TIMEOUT_BOUND_CYCLES` of the arming readback, `tb_wdt_second_timeout_seen` still 0 on that cycle
+|`CHK-WDT-TIMEOUT-SECOND` |`tb_wdt_second_timeout_seen` reaches 1 between `WDT_TIMEOUT` and `WDT_TIMEOUT + SECOND_TIMEOUT_SLACK_CYCLES` cycles after the first
+|`CHK-WDT-TIMEOUT-RESET` |`tb_rst_warm_smc_clk_n` falls within `WARM_RESET_BOUND_CYCLES` of the second timeout and rises again; live pins then 0, sticky latches 1
+|===
+
+*Pass Criteria*: `CHK-WDT-TIMEOUT-FIRST`, `CHK-WDT-TIMEOUT-SECOND`, `CHK-WDT-TIMEOUT-RESET` hold after their observations. Enrolled in: `all`, `per_ip`.
 '''''
 
 

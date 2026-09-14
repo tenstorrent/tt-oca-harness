@@ -25,6 +25,9 @@ observation with a bound:
 * ``rst_warm`` then asserts and releases, after which both live pins read 0
   while both sticky latches still read 1.
 
+Each holds before its ``CHK-WDT-TIMEOUT-{FIRST,SECOND,RESET}`` line is logged;
+the SMC_VPLAN card of the same name declares the three.
+
 ``+smc_wdt_timeout_negative`` is the same run with one expectation inverted:
 it requires the second timeout to be visible on the cycle the first one is,
 before its stage-2 count could have elapsed. That run must FAIL; it is the
@@ -60,8 +63,9 @@ WDT_CORE = 0
 # Polling bounds, in clk_smc_i cycles. The first timeout needs CMP scaled
 # cycles plus the arming write's completion. The second is WDT_TIMEOUT
 # decrements plus the output flop in smc_cpu_ctrl_wrap.sv, so it lands one
-# cycle past the count; the slack covers that flop and nothing wider. The warm
-# reset follows within a synchroniser depth.
+# cycle past the count; the slack covers that flop with a few cycles to spare
+# and the lower bound stays at the count itself. The warm reset follows within
+# a synchroniser depth.
 FIRST_TIMEOUT_BOUND_CYCLES = 4 * WDT_CMP_FIRST
 SECOND_TIMEOUT_SLACK_CYCLES = 8
 WARM_RESET_BOUND_CYCLES = 256
@@ -162,7 +166,7 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
             f"stage-2 count of 0x{stage2:x} cycles could have run"
         )
         cocotb.log.info(
-            "WDT-TIMEOUT-PIN first: smc_wdt_first_timeout_o latched %d cycles "
+            "CHK-WDT-TIMEOUT-FIRST: smc_wdt_first_timeout_o latched %d cycles "
             "after the core-%d arming readback (CMP=0x%x, CTRL=0x%x); "
             "smc_wdt_second_timeout_o still 0",
             first_cycles,
@@ -183,7 +187,7 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
             f"WDT_TIMEOUT stage-2 count 0x{stage2:x} (+{SECOND_TIMEOUT_SLACK_CYCLES})"
         )
         cocotb.log.info(
-            "WDT-TIMEOUT-PIN second: smc_wdt_second_timeout_o latched %d cycles "
+            "CHK-WDT-TIMEOUT-SECOND: smc_wdt_second_timeout_o latched %d cycles "
             "after the first (CPU_CTRL.WDT_TIMEOUT=0x%x)",
             gap,
             stage2,
@@ -208,7 +212,7 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
         assert int(dut.tb_wdt_first_timeout_seen.value) == 1
         assert int(dut.tb_wdt_second_timeout_seen.value) == 1
         cocotb.log.info(
-            "WDT-TIMEOUT-PIN reset: rst_warm asserted %d cycles after the second "
+            "CHK-WDT-TIMEOUT-RESET: rst_warm asserted %d cycles after the second "
             "timeout and released again; live pins back to %s, sticky latches "
             "still set",
             warm,
