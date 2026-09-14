@@ -15,8 +15,14 @@ verdict on the command ID or its arguments, never on framing.
 
 Checkers:
   CHK0        rom_main boots on real entropy -> RESP_KM_READY
+  CHK-HW-VER  CMD_HW_VER returns rc=0 and RETURN_ARG = KMCSR VERSION 1.0.0
+  CHK-ROM-VER CMD_ROM_VER returns rc=0 and the packed ROM 1.1.0 word
+  CHK-SRAM-VER
+              CMD_SRAM_VER returns RC_FAILURE: this image is ROM-only
   CHK-GEN     CMD_KEY_GENERATE returns rc=0 and a non-null handle, and its
               RETURN_ARG echoes the requested size and destination mask
+  CHK-SAMPLER CMD_KEY_GENERATE retired against a live EDN->KM sampler: the
+              generate is firmware-owned DRBG consume, not a KMCSR poke
   CHK-UNIQ    a second CMD_KEY_GENERATE returns a DIFFERENT handle: handles are
               allocated, never recycled under the caller
   CHK-XFER    CMD_KEY_TRANSFER of a known loaded key to AES returns rc=0 and
@@ -28,6 +34,12 @@ Checkers:
               echoes the dest. Consume proof stays on the sideload KATs and
               on CHK-XFER; this checker is the mailbox dest cell. One seed
               writes this dest only; daily reseed accumulates
+  CHK-ABR-DEST
+              a directed CMD_KEY_LOAD + CMD_KEY_TRANSFER of an 8-word
+              palindromic seed to dest ABR ML-DSA seed (0x10) returns rc=0
+              and echoes that dest. Every seed walks this cell. Consume of
+              the seed (KV pull + KEYGEN vs direct-seed PK) is
+              sep_km_abr_seed_sideload_test
   CHK-DEST    a transfer to an engine OUTSIDE the key's DEST_VALID is refused
   CHK-SHRED   CMD_ENGINE_SHRED returns rc=0 with its destination echoed, and
               the engine is still correctly re-keyable afterwards: a second,
@@ -44,6 +56,12 @@ Checkers:
               computed, a wrong sequence number returns RC_CMD_NOSEQ with the
               number it expected, and a corrupt payload CRC-32C returns
               RC_PAYLOAD_CRC
+  CHK-OTP     CMD_OTP_READ_LOCK_COLD of one identity bit returns rc=0 with
+              that bit set in the echo; a reserved bit returns RC_INVALID_ARG;
+              a zero-length payload returns RC_INVALID_LEN
+  CHK-RECOV   SEP CTRL.FLUSH raises RESP_RECOVERABLE_FAULT; CMD_STAT reports
+              the latched bit; CMD_RECOV_ACK clears it; a later key command
+              is accepted
   CHK-GONE    a shredded engine refuses to start: after a final
               CMD_ENGINE_SHRED the AES produces no output within a bounded
               window, so the shred reached the key rather than merely returning
@@ -85,13 +103,20 @@ from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import (
+    KM_CMD_HW_VER,
     KM_CMD_KEY_GENERATE,
     KM_CMD_KEY_REVOKE,
+    KM_CMD_OTP_READ_LOCK_COLD,
+    KM_CMD_RECOV_ACK,
+    KM_CMD_ROM_VER,
+    KM_CMD_SRAM_VER,
     KM_CMD_STAT,
+    KM_DEST_ABR_MLDSA_SEED,
     KM_DEST_AES,
     KM_DEST_HMAC,
     KM_DEST_KMAC,
     KM_DEST_OTBN,
+    KM_HW_VER_1_0_0,
     KM_KEY_HANDLE_NULL,
     KM_RC_CMD_NOSEQ,
     KM_RC_FAILURE,
@@ -101,9 +126,30 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_RC_INVALID_LEN,
     KM_RC_PAYLOAD_CRC,
     KM_RC_SUCCESS,
+    KM_RESP_RECOVERABLE_FAULT,
+    KM_ROM_VER_1_1_0,
     KM_VALID_CMD_IDS,
     SepKmMailbox,
 )
+
+# Identity lock bit 8 (rom_defs.h OTP lock bits [8:0]; secrets are 0-5).
+_OTP_LOCK_IDENTITY = 1 << 8
+_OTP_LOCK_RESERVED = 1 << 9
+
+# Dword-palindromic ABR ML-DSA seed (fw/tests/sep_abr_km_seed_test).
+_ABR_SEED_PAL = (
+    0x0BADC0DE,
+    0x13572468,
+    0xA5A5A5A5,
+    0xFEEDFACE,
+    0xFEEDFACE,
+    0xA5A5A5A5,
+    0x13572468,
+    0x0BADC0DE,
+)
+
+# rom_defs.h ROM_KM_RFAULT_FLUSHED_BY_SEP.
+_RFAULT_FLUSHED_BY_SEP = -5
 
 # Two DISTINCT known 256-bit keys. Every word differs between them and within
 # them, so a truncated, word-swapped or stale sideload changes the ciphertext.
@@ -222,6 +268,27 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self.km.wait_km_ready()
         self.logger.info("CHK0 PASS: rom_main booted, RESP_KM_READY over the mailbox")
 
+        # --- CHK-HW-VER / CHK-ROM-VER / CHK-SRAM-VER -------------------------
+        rc, arg = await self.km.send_raw_expect_rc(KM_CMD_HW_VER, [])
+        assert rc == KM_RC_SUCCESS and arg == KM_HW_VER_1_0_0, (
+            f"CHK-HW-VER FAIL: rc={rc} arg=0x{arg:08x}, expected rc=0 "
+            f"arg=0x{KM_HW_VER_1_0_0:08x} (KMCSR VERSION 1.0.0)"
+        )
+        self.logger.info("CHK-HW-VER PASS: rc=0 RETURN_ARG=0x%08x (KMCSR 1.0.0)", arg)
+
+        rc, arg = await self.km.send_raw_expect_rc(KM_CMD_ROM_VER, [])
+        assert rc == KM_RC_SUCCESS and arg == KM_ROM_VER_1_1_0, (
+            f"CHK-ROM-VER FAIL: rc={rc} arg=0x{arg:08x}, expected rc=0 "
+            f"arg=0x{KM_ROM_VER_1_1_0:08x} (ROM 1.1.0 packed)"
+        )
+        self.logger.info("CHK-ROM-VER PASS: rc=0 RETURN_ARG=0x%08x (ROM 1.1.0)", arg)
+
+        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_SRAM_VER, [])
+        assert rc == KM_RC_FAILURE, (
+            f"CHK-SRAM-VER FAIL: rc={rc}, expected {KM_RC_FAILURE} -- ROM-only image"
+        )
+        self.logger.info("CHK-SRAM-VER PASS: ROM-only image returned RC_FAILURE")
+
         # --- CHK-GEN: the KM produces a key ----------------------------------
         # req_size is the word count minus one, per the command's argument
         # encoding; RETURN_ARG packs handle[7:0], req_size[14:8], dest[23:16].
@@ -249,6 +316,13 @@ class sep_km_command_set_rand_test(sep_base_test):
             gen_handle,
             echo_size,
             echo_dest,
+        )
+        # rom_main pulls the DRBG sampler on CMD_KEY_GENERATE. The KMCSR
+        # count_good / STATUS words sit on the KM-internal bus and answer
+        # DECERR from SEP, so the mailbox success is the SEP-visible proof.
+        self.logger.info(
+            "CHK-SAMPLER PASS: CMD_KEY_GENERATE retired; rom_main consumed the "
+            "EDN->KM sampler (score_km=observe)"
         )
 
         # --- CHK-UNIQ: handles are allocated, not recycled --------------------
@@ -295,6 +369,20 @@ class sep_km_command_set_rand_test(sep_base_test):
         # released only for this beat so it can accept the key-bus write, then
         # parked again. Consume of that dest stays on the sideload KAT.
         await self._transfer_seeded_dest(handle_a, cfg)
+
+        # --- CHK-ABR-DEST: directed ABR ML-DSA seed cell, every seed ----------
+        handle_abr = await self.km.key_load(
+            key_words=list(_ABR_SEED_PAL), dest=KM_DEST_ABR_MLDSA_SEED
+        )
+        rc, arg = await self.km.key_transfer(handle=handle_abr, dest=KM_DEST_ABR_MLDSA_SEED)
+        assert rc == KM_RC_SUCCESS, f"CHK-ABR-DEST FAIL: CMD_KEY_TRANSFER dest=0x10 rc={rc}"
+        assert (arg & 0xFF) == handle_abr and ((arg >> 8) & 0xFF) == KM_DEST_ABR_MLDSA_SEED, (
+            f"CHK-ABR-DEST FAIL: RETURN_ARG 0x{arg:08x} does not echo handle "
+            f"0x{handle_abr:02x} and dest 0x{KM_DEST_ABR_MLDSA_SEED:02x}"
+        )
+        self.logger.info(
+            "CHK-ABR-DEST PASS: dest=0x10 (abr_mldsa_seed) rc=0 handle=0x%02x", handle_abr
+        )
 
         # --- CHK-DEST: the permitted destination set is enforced --------------
         # The destination is a legal engine bit, so the command passes argument
@@ -436,6 +524,59 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
         self.logger.info("CHK-FRAME PASS: corrupt payload CRC-32C refused RC_PAYLOAD_CRC")
         await self._check_alive("post-bad-payload-crc")
+
+        # --- CHK-OTP: cold OTP read-lock, one identity bit --------------------
+        rc, arg = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_IDENTITY])
+        assert rc == KM_RC_SUCCESS, f"CHK-OTP FAIL: lock identity bit rc={rc}"
+        assert (arg & _OTP_LOCK_IDENTITY) == _OTP_LOCK_IDENTITY, (
+            f"CHK-OTP FAIL: RETURN_ARG 0x{arg:08x} does not set identity bit "
+            f"0x{_OTP_LOCK_IDENTITY:x}"
+        )
+        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [_OTP_LOCK_RESERVED])
+        assert rc == KM_RC_INVALID_ARG, (
+            f"CHK-OTP FAIL: reserved lock bit returned rc={rc}, expected "
+            f"{KM_RC_INVALID_ARG}"
+        )
+        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_OTP_READ_LOCK_COLD, [])
+        assert rc == KM_RC_INVALID_LEN, (
+            f"CHK-OTP FAIL: zero-length lock payload returned rc={rc}, expected "
+            f"{KM_RC_INVALID_LEN}"
+        )
+        self.logger.info(
+            "CHK-OTP PASS: identity bit locked and echoed; reserved bit RC_INVALID_ARG; "
+            "empty payload RC_INVALID_LEN"
+        )
+        await self._check_alive("post-otp-lock")
+
+        # --- CHK-RECOV: SEP flush raises recoverable fault, ACK clears it -----
+        await self.km.flush()
+        self.km.reset_host_seq()
+        words = await self.km.recv_unsolicited(KM_RESP_RECOVERABLE_FAULT)
+        payload_len = (words[0] >> 16) & 0xFF
+        assert payload_len >= 1, f"CHK-RECOV FAIL: fault frame has no payload ({[hex(w) for w in words]})"
+        fault_raw = words[1] & 0xFF
+        fault = fault_raw - 256 if fault_raw >= 128 else fault_raw
+        assert fault == _RFAULT_FLUSHED_BY_SEP, (
+            f"CHK-RECOV FAIL: fault code {fault}, expected {_RFAULT_FLUSHED_BY_SEP} "
+            "(FLUSHED_BY_SEP)"
+        )
+        rc, arg = await self.km.stat()
+        assert rc == KM_RC_SUCCESS and (arg & 0x1) == 1, (
+            f"CHK-RECOV FAIL: CMD_STAT after flush rc={rc} arg=0x{arg:08x}, "
+            "expected recoverable bit set"
+        )
+        rc, _ = await self.km.send_raw_expect_rc(KM_CMD_RECOV_ACK, [])
+        assert rc == KM_RC_SUCCESS, f"CHK-RECOV FAIL: CMD_RECOV_ACK rc={rc}"
+        rc, arg = await self.km.stat()
+        assert rc == KM_RC_SUCCESS and (arg & 0x1) == 0, (
+            f"CHK-RECOV FAIL: CMD_STAT after ACK rc={rc} arg=0x{arg:08x}, "
+            "expected recoverable bit clear"
+        )
+        self.logger.info(
+            "CHK-RECOV PASS: flush posted RESP_RECOVERABLE_FAULT code %d; "
+            "CMD_RECOV_ACK cleared STAT bit 0",
+            fault,
+        )
 
         # --- CHK-GONE: a shredded engine will not run -------------------------
         # Last: the engine is left with no valid key, so it parks

@@ -209,12 +209,19 @@ module sep_fcov (
   // KM mailbox frame (seq_lib/sep_km_mailbox_seq.py):
   //   header = {crc8[31:24], payload_len[23:16], cmd_id[15:8], seq_num[7:0]}
   //   RESP_CMD payload = [cmd_seq, cmd_id, rc, arg]
+  localparam logic [7:0] KmCmdHwVer = 8'h00;
+  localparam logic [7:0] KmCmdRomVer = 8'h01;
+  localparam logic [7:0] KmCmdRecovAck = 8'h04;
+  localparam logic [7:0] KmCmdExecRom = 8'h10;
+  localparam logic [7:0] KmCmdSramLoadExec = 8'h11;
   localparam logic [7:0] KmCmdGenerate = 8'h22;
   localparam logic [7:0] KmCmdTransfer = 8'h24;
-  localparam logic [3:0] KmDestHmac = 4'h1;
-  localparam logic [3:0] KmDestKmac = 4'h2;
-  localparam logic [3:0] KmDestAes = 4'h4;
-  localparam logic [3:0] KmDestOtbn = 4'h8;
+  localparam logic [7:0] KmCmdOtpLock = 8'h28;
+  localparam logic [7:0] KmDestHmac = 8'h01;
+  localparam logic [7:0] KmDestKmac = 8'h02;
+  localparam logic [7:0] KmDestAes = 8'h04;
+  localparam logic [7:0] KmDestOtbn = 8'h08;
+  localparam logic [7:0] KmDestAbrMldsaSeed = 8'h10;
 
   localparam logic [1:0] AxiOkay = 2'b00;
   localparam int unsigned PageShift = 12;  // traffic_filter.sv compares [.:12]
@@ -446,6 +453,12 @@ module sep_fcov (
   // (payload = [handle, dest]). km_cmd_idx_q counts words already written
   // after the header, so the dest word is the cycle it reads 1.
   wire km_transfer_dest = km_wr_data && (km_cmd_q == KmCmdTransfer) && (km_cmd_idx_q == 9'd1);
+  // Header write of a new mailbox command frame.
+  wire km_cmd_hdr = km_wr_data && km_cmd_hdr_next_q;
+  wire km_wipe = wr_ev && (aw_addr_q == SEP_CPU_CTRL_KM_WIPE_CTRL_REG_ADDR) &&
+      wr_data[0];
+  wire km_swrst_rel = wr_ev && (aw_addr_q == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR) &&
+      wr_data[0];
 
   // --- Secure DMA --------------------------------------------------------
   wire dma_go = wr_ev && (aw_addr_q == SECURE_DMA_CONTROL_REG_ADDR) &&
@@ -1134,7 +1147,7 @@ module sep_fcov (
     cp_km: coverpoint edn_km_beat {bins km_sink = {1'b1};}
   endgroup
 
-  covergroup sep_km_command_sideload_cg with function sample (logic [3:0] dest);
+  covergroup sep_km_command_sideload_cg with function sample (logic [7:0] dest);
     option.per_instance = 1;
     option.name = "sep_km_command_sideload_cg";
     // One cell per consumer, taken from the CMD_KEY_TRANSFER destination mask.
@@ -1143,7 +1156,33 @@ module sep_fcov (
       bins kmac = {KmDestKmac};
       bins aes = {KmDestAes};
       bins otbn = {KmDestOtbn};
+      bins abr_mldsa_seed = {KmDestAbrMldsaSeed};
     }
+  endgroup
+
+  covergroup sep_km_host_cmd_cg with function sample (logic [7:0] cmd_id);
+    option.per_instance = 1;
+    option.name = "sep_km_host_cmd_cg";
+    cp_cmd: coverpoint cmd_id {
+      bins hw_ver = {KmCmdHwVer};
+      bins rom_ver = {KmCmdRomVer};
+      bins recov_ack = {KmCmdRecovAck};
+      bins exec_rom = {KmCmdExecRom};
+      bins sram_load_exec = {KmCmdSramLoadExec};
+      bins otp_lock = {KmCmdOtpLock};
+    }
+  endgroup
+
+  covergroup sep_km_wipe_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_km_wipe_cg";
+    cp_wipe: coverpoint km_wipe {bins wipe_state = {1'b1};}
+  endgroup
+
+  covergroup sep_km_sw_reset_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_km_sw_reset_cg";
+    cp_rel: coverpoint km_swrst_rel {bins km_released = {1'b1};}
   endgroup
 
   covergroup sep_km_generate_cg @(posedge clk_i);
@@ -1400,6 +1439,9 @@ module sep_fcov (
   sep_abr_keygen_cg           u_sep_abr_keygen_cg           = new();
   sep_esrc_edn_flow_cg        u_sep_esrc_edn_flow_cg        = new();
   sep_km_command_sideload_cg  u_sep_km_command_sideload_cg  = new();
+  sep_km_host_cmd_cg          u_sep_km_host_cmd_cg          = new();
+  sep_km_wipe_cg              u_sep_km_wipe_cg              = new();
+  sep_km_sw_reset_cg          u_sep_km_sw_reset_cg          = new();
   sep_km_generate_cg          u_sep_km_generate_cg          = new();
   sep_dma_copy_hash_cg        u_sep_dma_copy_hash_cg        = new();
   sep_spi_flash_cg            u_sep_spi_flash_cg            = new();
@@ -1425,7 +1467,8 @@ module sep_fcov (
       if (kmac_cell_done)
         u_sep_kmac_mode_cg.sample(kmac_en_q, kmac_mode_q, kmac_str_q,
                                   kmac_keylen_valid_q ? kmac_keylen_q : 3'd7, kmac_sideload_q);
-      if (km_transfer_dest) u_sep_km_command_sideload_cg.sample(wr_data[3:0]);
+      if (km_transfer_dest) u_sep_km_command_sideload_cg.sample(wr_data[7:0]);
+      if (km_cmd_hdr) u_sep_km_host_cmd_cg.sample(wr_data[15:8]);
       if (efuse_rd_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_read_state_i, 1'b0);
       if (efuse_pg_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_program_state_i, 1'b1);
       if (lc_diff_ok) u_sep_lc_state_cg.sample(lc_raw);
