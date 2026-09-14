@@ -22,8 +22,6 @@ uv-sync:
 OCAH_PHONY += uv-sync
 
 OCAH_NONFREE_REMOTE ?= git@github.com:tenstorrent/tt-oca-harness-nonfree.git
-# Pin the optional nonfree clone to a known-good commit (override to float).
-OCAH_NONFREE_COMMIT ?= 63d98be
 OCAH_NONFREE_DIR ?= $(OCAH_ROOT)/nonfree
 OCAH_ADOPTER_OVERLAY_MK ?=
 
@@ -35,7 +33,6 @@ OCAH_ADOPTER_OVERLAY_MK ?=
 ocah-nonfree-init:
 	@test -n "$(OCAH_NONFREE_REMOTE)" || { echo "error: OCAH_NONFREE_REMOTE is not set"; exit 1; }
 	@[ -d "$(OCAH_NONFREE_DIR)/.git" ] && echo "nonfree repo already cloned at $(OCAH_NONFREE_DIR)" || git clone "$(OCAH_NONFREE_REMOTE)" "$(OCAH_NONFREE_DIR)"
-	@test -z "$(OCAH_NONFREE_COMMIT)" || git -C "$(OCAH_NONFREE_DIR)" checkout "$(OCAH_NONFREE_COMMIT)"
 
 -include $(OCAH_ROOT)/nonfree/nonfree.mk
 -include $(OCAH_ADOPTER_OVERLAY_MK)
@@ -51,9 +48,20 @@ include $(OCAH_ROOT)/doc/doc.mk
 ## yosys Docker-by-default; see tools/docker/README.md and
 ## flows/synth/yosys/README.md).
 include $(OCAH_ROOT)/flows/lint/slang.mk
-include $(OCAH_ROOT)/flows/lint/tclint.mk
+include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/lint/verible.mk
 include $(OCAH_ROOT)/flows/lint/clang-format.mk
+include $(OCAH_ROOT)/flows/lint/ruff.mk
+include $(OCAH_ROOT)/flows/lint/mypy.mk
+include $(OCAH_ROOT)/flows/lint/codespell.mk
+include $(OCAH_ROOT)/flows/lint/markdownlint.mk
+include $(OCAH_ROOT)/flows/lint/vale.mk
+include $(OCAH_ROOT)/flows/lint/yamllint.mk
+include $(OCAH_ROOT)/flows/lint/tomllint.mk
+include $(OCAH_ROOT)/flows/lint/checkmake.mk
+include $(OCAH_ROOT)/flows/lint/shell.mk
+include $(OCAH_ROOT)/flows/lint/pre-commit.mk
+include $(OCAH_ROOT)/flows/lint/tclint.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk
 
 ## Generate the filelist for the OCAH repository.

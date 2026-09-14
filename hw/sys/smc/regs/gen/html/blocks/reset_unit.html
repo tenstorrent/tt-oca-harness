@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
 <style>
 .ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
@@ -19,8 +21,6 @@
 <tr><td>0x60</td><td><a href="#SS_RESET_COMPLETE">SS_RESET_COMPLETE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x70</td><td><a href="#SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x80</td><td><a href="#SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x90</td><td><a href="#STRAPS_LO">STRAPS_LO</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x94</td><td><a href="#STRAPS_HI">STRAPS_HI</a></td><td>R</td><td>-</td></tr>
 <tr><td>0xA8</td><td><a href="#SYNC_REG">SYNC_REG</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xB0</td><td><a href="#ISOLATE_REQ_REG">ISOLATE_REQ_REG</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0xB4</td><td><a href="#ISOLATE_REQ_PINEN_REG">ISOLATE_REQ_PINEN_REG</a></td><td>RW</td><td>-</td></tr>
@@ -85,16 +85,6 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>force_ss_to_ref_clk_n</td><td>RW</td><td>0x0</td><td>Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle</td></tr>
-</table>
-<h3 id="STRAPS_LO">STRAPS_LO</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 0 - 31</td></tr>
-</table>
-<h3 id="STRAPS_HI">STRAPS_HI</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>straps</td><td>R</td><td>0x0</td><td>Strap value from GPIOs 32 - 63</td></tr>
 </table>
 <h3 id="SYNC_REG">SYNC_REG</h3>
 <table>

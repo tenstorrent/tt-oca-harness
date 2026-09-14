@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base for direct-AXI register drivers on the SEP CPU-LSU bus.
 
 The OpenTitan crypto run-control drivers (AES/HMAC/KMAC/OTBN) and the CSRNG/EDN
@@ -20,6 +21,7 @@ cocotb AXI driver component ``SepAxiDriver(uvm_driver)`` in ``env.sep_axi_agent`
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 
@@ -38,8 +40,11 @@ class SepAxiRegDriver:
 
     async def _wr(self, addr: int, data: int) -> None:
         seq = SepAxiAccessSeq(
-            f"{self._DRIVER_TAG.lower()}_wr", op=SepAxiOp.WRITE,
-            addr=addr, wdata=data, size=self._AXI_SIZE,
+            f"{self._DRIVER_TAG.lower()}_wr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            size=self._AXI_SIZE,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:
@@ -47,8 +52,10 @@ class SepAxiRegDriver:
 
     async def _rd(self, addr: int) -> int:
         seq = SepAxiAccessSeq(
-            f"{self._DRIVER_TAG.lower()}_rd", op=SepAxiOp.READ,
-            addr=addr, size=self._AXI_SIZE,
+            f"{self._DRIVER_TAG.lower()}_rd",
+            op=SepAxiOp.READ,
+            addr=addr,
+            size=self._AXI_SIZE,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:

@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""SMC fabric JTAG2AXI write-side scenarios for GH issue #3210."""
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""SMC fabric JTAG2AXI write-side scenarios."""
 
 from __future__ import annotations
 
 from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus, DtpJtagInstr, pack_single_op
 
-from .dtp_jtag2axi_base_test_seq import AXI_MEM_SIZE, dtp_jtag2axi_base_test_seq
+from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
 
 DEFAULT_AXI_ADDR = 0x40
 DEFAULT_AXI_DATA = 0x0123_4567_89AB_CDEF
@@ -47,6 +48,15 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             cases.append((addr, size, data, wstrb))
         cases.append((DEFAULT_AXI_ADDR + 0x140, 3, 0xA5A5_5A5A_C3C3_3C3C, 0x55))
         cases.append((DEFAULT_AXI_ADDR + 0x180, 3, 0x5A5A_A5A5_3C3C_C3C3, 0xAA))
+        # Seeded per-pass random cases on top of the deterministic sweep:
+        # every loop drives different address/size/data/strobe values.
+        rng = self.rng("smc_axi_directed_cases")
+        for _ in range(self.random_count):
+            size = rng.choice([0, 1, 2, 3])
+            addr = self.random_aligned_addr(rng, size)
+            data = rng.getrandbits(64) & self.data_mask(size)
+            wstrb = rng.randint(1, self.full_wstrb(size))
+            cases.append((addr, size, data, wstrb))
         return cases
 
     async def run_single_write(self) -> None:
@@ -79,7 +89,8 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         await self.reset_tap()
         self.log_step(1, "Write non-trivial data, then read it back through JTAG2AXI")
         addr = DEFAULT_AXI_ADDR + 0x200
-        data = 0xD00D_F00D_CAFE_BEEF
+        # Seeded per-pass payload: each loop verifies readback of different data.
+        data = self.rng("smc_axi_write_readback").getrandbits(64)
         write_item = await self.write_single_and_check(
             addr,
             data,
@@ -94,9 +105,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
             context="write_readback.read",
         )
         self.status = (
-            read_item.status
-            if read_item.status != DtpJtag2AxiStatus.SUCCESS
-            else write_item.status
+            read_item.status if read_item.status != DtpJtag2AxiStatus.SUCCESS else write_item.status
         )
         self.operation_count += 2
 
@@ -133,6 +142,41 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
         self.assert_equal("series_incr.status", status, DtpJtag2AxiStatus.SUCCESS)
         self.assert_equal("series_incr.addr_after", addr_after, base + (beats * stride))
+        self.status = status
+
+    async def run_series_write_incr_narrow(self) -> None:
+        self.log_banner("SMC_AXI_SERIES_DATA_INCR 32-bit Write Sweep at Beat Offset +4")
+        await self.reset_tap()
+        rng = self.rng("series_write_incr_narrow")
+        size = 2
+        stride = self.size_bytes(size)
+        beats = max(2, min(self.random_count, 6))
+        base = (self.random_aligned_addr(rng, 3) & ~0x3F) + 4
+        self.log_step(1, "Program SERIES_CTRL for 32-bit incrementing writes at +4")
+        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size)
+        for idx in range(beats):
+            addr = base + (idx * stride)
+            data = rng.getrandbits(64) & self.data_mask(size)
+            self.log_iteration(
+                idx + 1,
+                beats,
+                "series incr narrow write addr=0x%08x data=0x%x",
+                addr,
+                data,
+            )
+            before = await self.axi_activity_counts()
+            await self.series_data_incr(data, size=size, back_to_rti=True)
+            await self.wait_for_smc_axi_activity(
+                before=before,
+                read=False,
+                context=f"series_incr_narrow.axi#{idx}",
+            )
+            observed = self.read_mem_int(addr, size)
+            self.assert_equal(f"series_incr_narrow.mem#{idx}", observed, data, f"addr=0x{addr:x}")
+            self.operation_count += 1
+        _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
+        self.assert_equal("series_incr_narrow.status", status, DtpJtag2AxiStatus.SUCCESS)
+        self.assert_equal("series_incr_narrow.addr_after", addr_after, base + (beats * stride))
         self.status = status
 
     async def run_series_write_no_incr(self) -> None:
@@ -238,20 +282,58 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner("SMC_AXI_SINGLE_OP Write Security Gating")
         await self.reset_tap()
         addr = DEFAULT_AXI_ADDR + 0x300
-        data = 0xFACE_CAFE_1234_5678
+        # Seeded per-pass payload for baseline/gated/restore writes.
+        data = self.rng("smc_axi_write_gate").getrandbits(64)
         self.log_step(1, "Establish baseline write and AXI activity")
         before = await self.axi_activity_counts()
         await self.write_single_and_check(addr, data, context="gate.baseline")
         await self.expect_smc_axi_activity(before=before, read=False, context="gate.baseline")
 
-        for idx, bit_name in enumerate(("ap_debug", "soc_debug"), start=1):
-            self.log_step(idx + 1, "Gate SMC fabric write with %s", bit_name)
-            await self.set_lifecycle(**{bit_name: 0})
-            raw = pack_single_op(DtpJtag2AxiOp.WRITE, addr + (idx * AXI_BEAT_BYTES), data)
+        # Two assert/release passes of the one direct disable prove the gate
+        # is repeatable, not a one-shot POR effect.
+        for idx in (1, 2):
+            bit_name = f"smc_jtag2axi_pass{idx}"
+            self.log_step(idx + 1, "Gate SMC fabric write with smc_jtag2axi (pass %d)", idx)
+            await self.disable_debug_bits("smc_jtag2axi")
+            # Preload a sentinel at the gated-attempt address: the blocked
+            # write must leave memory untouched, both while gated and after
+            # the disable is released (a delayed replay would overwrite it).
+            gate_addr = addr + (idx * AXI_BEAT_BYTES)
+            sentinel = 0x5EA1_0000_0000_0000 | idx
+            self.write_mem_int(gate_addr, sentinel, 3)
+            # Snapshot BEFORE the gated attempt and hold a blocked window
+            # across it: any monitored m_axi transaction inside the window
+            # fails (CHK-AXI-BLOCKED).
+            gate_before = await self.axi_activity_counts()
+            self.scoreboard_begin_blocked("smc_axi")
+            raw = pack_single_op(DtpJtag2AxiOp.WRITE, gate_addr, data)
             await self.load_ir(DtpJtagInstr.SMC_AXI_SINGLE_OP, back_to_rti=True)
             await self.shift_dr(raw, 132, back_to_rti=True)
             await self.expect_no_smc_axi_activity(8, context=f"gate.{bit_name}.no_axi")
-            await self.clear_lifecycle()
+            if self.axi_scoreboard is not None:
+                gate_after = await self.axi_activity_counts()
+                self.axi_scoreboard.expect_no_activity(
+                    before=gate_before,
+                    after=gate_after,
+                    context=(
+                        f"gate.{bit_name} target=smc_axi "
+                        f"source=tb_pulse_counters window=gated_attempt+8cyc"
+                    ),
+                )
+            self.assert_equal(
+                f"gate.{bit_name}.sentinel", self.read_mem_int(gate_addr, 3), sentinel
+            )
+            # Hold the blocked window ACROSS disable release: a bridge that
+            # queued the gated request and replays it once the gate re-opens
+            # is the exact leak this scenario must catch.
+            await self.enable_all_debug()
+            await self.wait_sys_cycles(8)
+            self.scoreboard_end_blocked("smc_axi", context=f"gate.{bit_name}")
+            self.assert_equal(
+                f"gate.{bit_name}.sentinel_post_release",
+                self.read_mem_int(gate_addr, 3),
+                sentinel,
+            )
             before = await self.axi_activity_counts()
             item = await self.write_single_and_check(
                 addr + (idx * 0x40),
@@ -263,15 +345,47 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
                 read=False,
                 context=f"gate.{bit_name}.restore",
             )
+            if self.axi_scoreboard is not None:
+                # Exact-delta proof from BEFORE the gated attempt to AFTER the
+                # restore write: only the sanctioned restore write may appear
+                # (aw/w +1, ar +0). A delayed replay anywhere in the span
+                # makes aw >= +2 and fails.
+                final = await self.axi_activity_counts()
+                expected_exact = {
+                    "aw": gate_before["aw"] + 1,
+                    "w": gate_before["w"] + 1,
+                    "ar": gate_before["ar"],
+                }
+                self.axi_scoreboard.expect_no_activity(
+                    before=expected_exact,
+                    after=final,
+                    context=(
+                        f"gate.{bit_name} target=smc_axi "
+                        f"source=tb_pulse_counters window=exact_delta "
+                        f"sanctioned=restore_write(aw+1,w+1)"
+                    ),
+                )
             self.status = item.status
             self.operation_count += 1
+        if self.axi_scoreboard is not None:
+            # CHK-AXI-NONVAC: the counters that stayed flat while gated
+            # demonstrably move for real traffic (baseline + both restores).
+            final = await self.axi_activity_counts()
+            self.axi_scoreboard.expect_nonvacuous(
+                self.operation_count >= 2 and final["aw"] >= 3,
+                context=(
+                    f"gated_attempts={self.operation_count} aw_pulses={final['aw']} "
+                    f"expected_aw>=3 (baseline+2 restores)"
+                ),
+            )
 
     async def body(self) -> None:
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         scenarios = {
             "single_write": self.run_single_write,
             "single_write_data_verify": self.run_single_write_data_verify,
             "series_write_incr": self.run_series_write_incr,
+            "series_write_incr_narrow": self.run_series_write_incr_narrow,
             "series_write_no_incr": self.run_series_write_no_incr,
             "series_write_incr_with_error": self.run_series_write_incr_with_error,
             "random_ops": self.run_random_ops,
@@ -280,7 +394,7 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         if self.scenario not in scenarios:
             raise ValueError(f"unknown write-side JTAG2AXI scenario {self.scenario!r}")
         await scenarios[self.scenario]()
-        await self.clear_lifecycle()
+        await self.enable_all_debug()
         self.log_summary(
             "SMC fabric write-side scenario complete",
             scenario=self.scenario,

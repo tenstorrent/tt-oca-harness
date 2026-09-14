@@ -26,6 +26,8 @@ from cocotb.triggers import RisingEdge, Timer, ClockCycles, FallingEdge
 from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 from cocotb.handle import Force, Release
 
+from env.i3c_api import I3CHelper
+
 # Import tests from other test files
 from i3c_error_sanity import i3c_error_wrong_addr, i3c_fifo_overflow
 
@@ -126,6 +128,7 @@ class TB:
 
         # AXI-Lite master will be set up after simulation initializes
         self.axi_master = None
+        self.helper = None
 
     async def setup_axi_master(self):
         """
@@ -145,6 +148,11 @@ class TB:
             # Suppress verbose AXI logging
             self.axi_master.write_if.log.setLevel(logging.ERROR)
             self.axi_master.read_if.log.setLevel(logging.ERROR)
+
+            # Register access goes through I3CHelper so this module gets the same
+            # AXI handshake keepalive as the rest of the suite; without it a read
+            # response can be missed and the transfer never completes.
+            self.helper = I3CHelper(self.axi_master, self.dut, self.log)
 
             self.log.info("AXI-Lite master connected successfully")
 
@@ -277,10 +285,10 @@ class TB:
         Returns:
             32-bit register value
         """
-        if self.axi_master is None:
+        if self.helper is None:
             raise RuntimeError("AXI-Lite master not initialized")
 
-        data = await self.axi_master.read_dword(addr)
+        data = await self.helper.read(addr)
         self.log.debug(f"Read  [0x{addr:08X}] = 0x{data:08X}")
         return data
 
@@ -292,10 +300,10 @@ class TB:
             addr: Register address
             data: 32-bit value to write
         """
-        if self.axi_master is None:
+        if self.helper is None:
             raise RuntimeError("AXI-Lite master not initialized")
 
-        await self.axi_master.write_dword(addr, data)
+        await self.helper.write(addr, data)
         self.log.debug(f"Write [0x{addr:08X}] = 0x{data:08X}")
 
     async def read_and_verify(self, addr: int, expected: int, name: str):

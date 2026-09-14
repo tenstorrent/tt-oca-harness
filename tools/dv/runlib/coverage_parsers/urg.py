@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Detailed and scalar parsing for URG/VCS coverage reports."""
 
 from __future__ import annotations
@@ -8,13 +11,13 @@ import re
 import shlex
 from pathlib import Path
 
+from ..coverage import parse_urg_summary_table
 from ..coverage_model import (
     CoverageDetails,
     CoverageObservation,
     MetricRecord,
     stable_id,
 )
-
 
 URG_METRIC_MAP = {
     "line": "line",
@@ -44,6 +47,26 @@ def _text(path: Path) -> str:
 
 def _summary_metrics(paths: list[Path]) -> list[MetricRecord]:
     values: dict[str, tuple[str, float]] = {}
+    # Prefer the dashboard's `Total Coverage Summary`: it is the only URG
+    # table guaranteed to hold pure percentages, whereas the loose scan below
+    # can mistake covered/total counts in other report files for percentages.
+    for path in paths:
+        if path.name.lower() != "dashboard.txt":
+            continue
+        for native, value in parse_urg_summary_table(_text(path)).items():
+            family = URG_METRIC_MAP.get(native)
+            if family:
+                values.setdefault(family, (native, value))
+    if values:
+        return [
+            MetricRecord(
+                metric_family=family,
+                native_metric=native,
+                raw_percent=value,
+                effective_percent=value,
+            )
+            for family, (native, value) in sorted(values.items())
+        ]
     for path in paths:
         text = _text(path)
         for match in re.finditer(
@@ -144,9 +167,7 @@ def _hole_observations(paths: list[Path], tool: str) -> list[CoverageObservation
         for line in _text(path).splitlines():
             fields = _kv_hole(line)
             observation = (
-                _observation_from_fields(fields, tool=tool)
-                if fields is not None
-                else None
+                _observation_from_fields(fields, tool=tool) if fields is not None else None
             )
             if observation is None:
                 match = simple.search(line)
@@ -185,26 +206,21 @@ def parse_urg_details(
         for pattern in ("*.txt", "*.html", "*.htm"):
             report_paths.extend(report_dir.rglob(pattern))
         detail_paths = [
-            path
-            for path in report_paths
-            if path.name not in {"dashboard.txt", "dashboard.html"}
+            path for path in report_paths if path.name not in {"dashboard.txt", "dashboard.html"}
         ]
     if log_path is not None and log_path.is_file():
         report_paths.append(log_path)
     report_paths = sorted(set(report_paths))
     observations = _hole_observations(detail_paths, tool)
     details_available = bool(detail_paths) and any(
-        "COVERAGE_HOLE" in _text(path)
-        or re.search(r"(?i)\b(uncovered|urg)\b", _text(path))
+        "COVERAGE_HOLE" in _text(path) or re.search(r"(?i)\b(uncovered|urg)\b", _text(path))
         for path in detail_paths
     )
     warnings: list[str] = []
     if not report_paths:
         warnings.append("URG report files were not found")
     elif not details_available:
-        warnings.append(
-            "URG scalar summary found, but detailed hole files are unavailable"
-        )
+        warnings.append("URG scalar summary found, but detailed hole files are unavailable")
     details = CoverageDetails(
         dut=dut,
         tool=tool,
@@ -217,8 +233,7 @@ def parse_urg_details(
         warnings=warnings,
     )
     scope_payload = "\n".join(
-        f"{path}:{hashlib.sha256(path.read_bytes()).hexdigest()}"
-        for path in detail_paths
+        f"{path}:{hashlib.sha256(path.read_bytes()).hexdigest()}" for path in detail_paths
     )
     details.scope_fingerprint = hashlib.sha256(scope_payload.encode()).hexdigest()
     details.finalize()

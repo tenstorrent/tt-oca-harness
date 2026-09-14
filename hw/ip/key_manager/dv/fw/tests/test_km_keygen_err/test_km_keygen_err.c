@@ -166,7 +166,6 @@ int main(void) {
     /*=================================================================
      * Test 4: key_size too large → INVALID_ARG
      *
-     * Max key occupies all 32 slots × 16 words = 512 words (0x200).
      * A key_size of 255 (max in 8-bit field) might be acceptable
      * depending on slot availability, but 0 is always invalid.
      * Here we test with wrong payload_len=0 for KEY_GENERATE to

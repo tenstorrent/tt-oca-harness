@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP HMAC + KMAC CPU crypto smoke test (PyUVM).
 
-OSS port combining the OCAH ``hmac_test`` and ``kmac_test`` (TOP-10 #9, crypto
+OSS port combining the reference suite ``hmac_test`` and ``kmac_test`` (crypto
 engine datapath). Boots the VeeR EL2 core and runs the hmac_kmac firmware, which
 exercises the two OpenTitan crypto engines over the real CPU->fabric path on bare
 ``sep``:
@@ -28,16 +29,16 @@ import os
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "hmac_kmac_smoke_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "hmac_kmac_smoke_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "hmac_kmac_smoke_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # 3 HMAC hashes (+ SW SHA-256) and one KMAC masked hash; the run loop early-exits
 # on fw_done, so this is an upper bound.
 _MAX_RUN_CYCLES = 2_000_000
@@ -61,7 +62,9 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,

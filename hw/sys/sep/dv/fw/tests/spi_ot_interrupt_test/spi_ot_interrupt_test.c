@@ -2,33 +2,33 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Interrupt Test - TC_SPIOT_011 (P0)
+ * SPI OT Interrupt Test
  *
  * Verifies interrupt generation/masking for error and event classes,
  * INTR_TEST register forcing, and EVENT_ENABLE individual control.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Test INTR_ENABLE defaults and write-readback
- *   3. INTR_TEST injection → verify INTR_STATUS asserts/deasserts (ERROR and SPI_EVENT)
- *   3.5. Real UNDERFLOW event → INTR_STATUS.error functional path
- *   4. EVENT_ENABLE configuration write-readback
- *   4.5. Real TXEMPTY event → INTR_STATUS.spi_event functional path
- *   4.6. EVENT_ENABLE.ready / .idle functional path
- *   5. Masking test: INTR_ENABLE=0 blocks INTR_TEST injection (ERROR and SPI_EVENT)
+ * 1. Enable controller
+ * 2. Test INTR_ENABLE defaults and write-readback
+ * 3. INTR_TEST injection → verify INTR_STATUS asserts/deasserts (ERROR and SPI_EVENT)
+ * 3.5. Real UNDERFLOW event → INTR_STATUS.error functional path
+ * 4. EVENT_ENABLE configuration write-readback
+ * 4.5. Real TXEMPTY event → INTR_STATUS.spi_event functional path
+ * 4.6. EVENT_ENABLE.ready / .idle functional path
+ * 5. Masking test: INTR_ENABLE=0 blocks INTR_TEST injection (ERROR and SPI_EVENT)
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_interrupt_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_interrupt_test STACK=sim
  *
  */
 
 #include <stdint.h>
 #include <stdio.h>
 #include "sep.h"
+#include "sep_spi.h"
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -40,7 +40,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Interrupt Test (TC_SPIOT_011)\n");
+    printf("SPI OT Interrupt Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -51,9 +51,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__CTRL_t ctrl;
     uint32_t dummy_rx;
-
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller (required for event signals to be valid) */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
@@ -70,7 +67,8 @@ int main(void) {
     /* Step 2: INTR_ENABLE write-readback */
     printf("\nStep 2: INTR_ENABLE write-readback\n");
     intr_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_INTR_ENABLE_BASE_ADDR);
-    if (!check_reg("INTR_ENABLE default", intr_enable.w, 0)) pass = 0;
+    if (!check_reg("INTR_ENABLE default", intr_enable.w, SPI_CONTROLLER__INTR_ENABLE_reset))
+        pass = 0;
 
     intr_enable.w = 0;
     intr_enable.f.ERROR = 1;
@@ -82,7 +80,7 @@ int main(void) {
 
     /* Step 3: INTR_TEST forcing — verify INTR_TEST injection sets INTR_STATUS
      * RTL: error_intr = (ERROR_STATUS.intr || INTR_TEST.ERROR.wue) && INTR_ENABLE.ERROR.wue
-     *      INTR_STATUS.ERROR.next = error_intr  (spi_controller.sv:363-365)
+     * INTR_STATUS.ERROR.next = error_intr  (spi_controller.sv:363-365)
      * INTR_ENABLE.error is already set from Step 2.
      */
     printf("\nStep 3: INTR_TEST forcing → INTR_STATUS assertion\n");
@@ -129,7 +127,8 @@ int main(void) {
     /* Step 4: EVENT_ENABLE configuration */
     printf("\nStep 4: EVENT_ENABLE configuration\n");
     event_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
-    if (!check_reg("EVENT_ENABLE default", event_enable.w, 0)) pass = 0;
+    if (!check_reg("EVENT_ENABLE default", event_enable.w, SPI_CONTROLLER__EVENT_ENABLE_reset))
+        pass = 0;
 
     /* Step 4.5: INTR_STATUS.spi_event via TXEMPTY event */
     printf("\nStep 4.5: INTR_STATUS.spi_event via TXEMPTY\n");

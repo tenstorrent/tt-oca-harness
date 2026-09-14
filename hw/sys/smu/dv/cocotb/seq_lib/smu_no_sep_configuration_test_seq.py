@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_no_sep_configuration_test (SMU_005 rev 3).
 
-Proves SEP=0 lc_state_o==8'hf0 only. Direct SMN→SMC path deferred: SYS_IN
+Proves SEP=0 lc_state_o==8'hf0 only. The direct SMN→SMC path is not covered: SYS_IN
 BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC hit under SEP=0.
 """
 
@@ -93,9 +94,7 @@ class smu_no_sep_configuration_test_seq:
                 f"expect {self.EXPECTED_TIMEOUT_PATHS}"
             )
         for i, line in enumerate(self._timeout_paths):
-            if "bound=" not in line or (
-                "ok last=" not in line and "EXPIRED last=" not in line
-            ):
+            if "bound=" not in line or ("ok last=" not in line and "EXPIRED last=" not in line):
                 raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] shape fail: {line}")
         chk_to = (
             "CHK-TIMEOUT-PATHS: every bounded wait names finite bound, "
@@ -113,13 +112,20 @@ class smu_no_sep_configuration_test_seq:
         self._step_ts["PASS"] = time.monotonic()
         self._log("SMU_005 sequence complete (PASS term recorded for NONVAC fence)")
 
+        # Ordered-fence pairs from the measured step timestamps.
         order = ["S1", "S2", "PASS"]
-        for step_id in order:
-            if step_id not in self._step_ts:
-                raise AssertionError(f"CHK-NONVAC missing step term: {step_id}")
-        for a, b in zip(order, order[1:]):
-            if self._step_ts[a] >= self._step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        chk_nonvac = "CHK-NONVAC: ordered fence S2<PASS all present"
+        pairs_ok = sum(
+            1
+            for a, b in zip(order, order[1:])
+            if a in self._step_ts and b in self._step_ts and self._step_ts[a] < self._step_ts[b]
+        )
+        chk_nonvac = (
+            f"CHK-NONVAC: ordered fence S1<S2<PASS (pairs_ok={pairs_ok} expect={len(order) - 1})"
+        )
         self._log(chk_nonvac)
-        sb.expect_eq("CHK-NONVAC ordered fence", True, True, evidence="CHK-NONVAC")
+        sb.expect_eq(
+            "CHK-NONVAC ordered fence",
+            pairs_ok,
+            len(order) - 1,
+            evidence="CHK-NONVAC",
+        )

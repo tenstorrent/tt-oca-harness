@@ -34,16 +34,24 @@ flowchart TD
 | Region | Address Range | Size | Contents |
 |--------|--------------|------|----------|
 | ROM | 0x0000_0000 – 0x0000_3FFF | 16KB | Boot code + constants |
-| SRAM | 0x0000_4000 – 0x0000_7FFF | 16KB | Runtime `.data`, `.bss`, main stack, IRQ stack |
-| KPV | 0x0000_D000 – 0x0000_DFFF | 4KB | Key Provisioning Vault |
-| KMCSR | 0x0000_E000 – 0x0000_EFFF | 4KB | KM Control/Status |
-| DRBG | 0x0000_F000 – 0x0000_FFFF | 4KB | DRBG Sampler |
-| Mailbox | 0x0001_0000 – 0x0001_0FFF | 4KB | Mailbox FIFOs |
-| OTBN | 0x0001_8000 – 0x0001_8FFF | 4KB | OTBN key wrapper |
-| AES | 0x0001_9000 – 0x0001_9FFF | 4KB | AES key wrapper |
-| KMAC | 0x0001_A000 – 0x0001_AFFF | 4KB | KMAC key wrapper |
-| HMAC | 0x0001_B000 – 0x0001_BFFF | 4KB | HMAC key wrapper |
-| ABR | 0x0001_C000 – 0x0001_CFFF | 4KB | ABR key wrapper |
+| Reserved | 0x0000_4000 – 0x0000_7FFF | 16KB | Unmapped (DECERR) |
+| SRAM | 0x0000_8000 – 0x0000_FFFF | 32KB | Runtime `.data`, `.bss`, main stack, IRQ stack, `rom_persist` |
+| Mailbox | 0x0001_0000 – 0x0001_001F | 32B | Mailbox FIFOs |
+| OTP/eFuse | 0x0001_1000 – 0x0001_1FFF | 4KB | eFuse pass-through, remapped by hardware |
+| KPV | 0x0001_2000 – 0x0001_3FFF | 8KB | Key Provisioning Vault |
+| KMCSR | 0x0001_4000 – 0x0001_47FF | 2KB | KM Control/Status |
+| DRBG | 0x0001_5000 – 0x0001_500F | 16B | DRBG Sampler |
+| OTBN | 0x0001_8000 – 0x0001_807F | 128B | OTBN key wrapper |
+| AES | 0x0001_9000 – 0x0001_907F | 128B | AES key wrapper |
+| KMAC | 0x0001_A000 – 0x0001_A07F | 128B | KMAC key wrapper |
+| HMAC | 0x0001_B000 – 0x0001_B07F | 128B | HMAC key wrapper |
+| ABR | 0x0001_C000 – 0x0001_C7FF | 2KB | ABR key wrapper |
+
+Each peripheral window is only as wide as its register block decodes, so no
+register is reachable from a second address. An address between two windows is
+routed nowhere and answers DECERR; an unmapped offset inside a window reaches
+its register block and answers SLVERR. `test_km_addr_alias` sweeps the whole map
+to hold that invariant.
 
 ### SRAM Packing
 
@@ -56,13 +64,13 @@ Production and test linker scripts both pack runtime SRAM from the top down:
 
 This means the main C stack and the IRQ stack are distinct:
 
-- Main stack: below `.data`, grows downward toward `0x0000_4000`
+- Main stack: below `.data`, grows downward toward `0x0000_8000`
 - IRQ stack: inside `.bss`, near the top of SRAM
 
 ```text
-0x0000_8000  +--------------------------------------+
-             | Top of SRAM                          |
-             +--------------------------------------+
+0x0001_0000  +--------------------------------------+
+             | .rom_persist (region 31, 1KB)        |
+0x0000_FC00  +--------------------------------------+
              | .bss                                 |
              | - zero-initialized globals           |
              | - irq_frame                          |
@@ -81,7 +89,7 @@ This means the main C stack and the IRQ stack are distinct:
              |                                      |
              +--------------------------------------+
              | Base of SRAM                         |
-0x0000_4000  +--------------------------------------+
+0x0000_8000  +--------------------------------------+
 ```
 
 ## File Organization
@@ -118,7 +126,7 @@ This means the main C stack and the IRQ stack are distinct:
 | `irq_common.h` | KMCSR and mailbox IRQ register accessors |
 | `rom_kmcsr.h` | KMCSR helpers: version, recoverable error, SRAM scrambler, SRAM write-lock (`rom_kmcsr_sram_lock_set`/`rom_kmcsr_sram_lock_read`), IRQ entry address/lock |
 | `rom_otp.h` | OTP readout driver: life-cycle/demotion readers, dual-rail 256-bit field readers, warm-reset read-lock (`OTP_READ_LOCK`), cold-reset read-lock (`OTP_READ_LOCK_COLD`), change-status |
-| `rom_persist.h` | ROM warm-persistent SRAM region (`rom_persist_t` at `0x7E00–0x7FFF`, region 31): cold-init, `sram_fw_size` accessors, write-lock helper |
+| `rom_persist.h` | ROM warm-persistent SRAM region (`rom_persist_t` at `0xFC00–0xFFFF`, region 31): cold-init, `sram_fw_size` accessors, write-lock helper |
 | `rom_handover.h` | ROM-to-SRAM handover declarations |
 | `key_manager_fw.h` | Umbrella include for the generated register collateral |
 
@@ -136,7 +144,7 @@ This means the main C stack and the IRQ stack are distinct:
 | `rom_msg_tx.c` | Outbound frame construction (buffered + direct) |
 | `rom_wipe.S` | SRAM shred assembly (xoshiro128++ in registers, noreturn) |
 | `rom_handover.c` | ROM-to-SRAM handover: bounds check, direct confirmation, FIFO image stream, CRC-32C verify, sensitive-data locking, SRAM write-lock mask, IRQ disable + vector, PRNG seed capture |
-| `rom_handover_jump.S` | Stack-less assembly handoff: scrambles entire SRAM with xoshiro128++, clears GPRs, jumps to 0x4000 (noreturn) |
+| `rom_handover_jump.S` | Stack-less assembly handoff: scrambles entire SRAM with xoshiro128++, clears GPRs, jumps to 0x8000 (noreturn) |
 | `rom_crc.c` | Public CRC-8/ROHC + CRC-32C drivers routed through PCPI update helpers |
 | `rom_sha256.c` | Software SHA-256 with length/overflow hardening |
 | `rom_hmac.c` | Software HMAC-SHA256 |

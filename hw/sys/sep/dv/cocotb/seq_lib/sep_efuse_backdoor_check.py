@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Backdoor shadow-readout checker for the SEP eFuse OSS flow.
 
 Reads the sensed shadow-register array directly via the top-level
@@ -14,8 +15,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 import cocotb
-
-from env.sep_efuse_image import SepEfuseImage, WORD_BITS, WORD_MASK
+from env.sep_efuse_image import WORD_BITS, WORD_MASK, SepEfuseImage
 
 
 def check_efuse_shadow_backdoor(
@@ -24,11 +24,15 @@ def check_efuse_shadow_backdoor(
     *,
     fields: Optional[List[str]] = None,
     dut=None,
+    secure_tm: int = 0,
 ) -> None:
     """Compare the backdoor-read shadow array against the golden image.
 
     Raises AssertionError (failing the test) if any word mismatches, mirroring
     the front-door scoreboard's fail-on-error semantics.
+
+    ``secure_tm`` must match the strap the DUT actually latched: with it asserted the
+    Class-1a secrets read back zero, and the golden blanks the same words.
     """
     if dut is None:
         dut = cocotb.top
@@ -45,7 +49,7 @@ def check_efuse_shadow_backdoor(
         nbits = len(bits)
 
         def read_word(i: int):
-            chunk = bits[nbits - WORD_BITS * (i + 1): nbits - WORD_BITS * i]
+            chunk = bits[nbits - WORD_BITS * (i + 1) : nbits - WORD_BITS * i]
             if "x" in chunk.lower() or "z" in chunk.lower():
                 return None  # unresolved
             return int(chunk, 2)
@@ -58,18 +62,26 @@ def check_efuse_shadow_backdoor(
         for k in range(fld.n_words):
             widx = fld.word + k
             got = read_word(widx)
-            exp = image.shadow_word(widx)
+            exp = image.shadow_word(widx, secure_tm=secure_tm)
             checked += 1
             if got is None:
                 errors.append(f"{name}[{k}] word{widx}: sensed X/Z (expected 0x{exp:08x})")
             elif got != exp:
-                errors.append(
-                    f"{name}[{k}] word{widx}: sensed 0x{got:08x} != expected 0x{exp:08x}"
-                )
+                errors.append(f"{name}[{k}] word{widx}: sensed 0x{got:08x} != expected 0x{exp:08x}")
     for e in errors:
         logger.error("EFUSE BACKDOOR FAIL: %s", e)
-    logger.info("eFuse backdoor check: %d words, %d error(s)", checked, len(errors))
+    logger.info(
+        "eFuse backdoor check: %d words, %d error(s), secure_tm=%d", checked, len(errors), secure_tm
+    )
+    # Guard against a vacuous "0 words, 0 error(s)" pass. Only meaningful for a
+    # whole-image compare: a caller that asked for a subset via fields= is not
+    # expected to span the image, and asserting the full count there would fail
+    # every such call.
+    if fields is None:
+        assert checked == len(image.words), (
+            f"eFuse backdoor check covered {checked} words, expected all "
+            f"{len(image.words)}: the field table does not span the image"
+        )
     assert not errors, (
-        f"eFuse backdoor shadow check found {len(errors)} mismatch(es): "
-        + "; ".join(errors[:8])
+        f"eFuse backdoor shadow check found {len(errors)} mismatch(es): " + "; ".join(errors[:8])
     )

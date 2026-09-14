@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC protocol VIP agent.
 
 The current public OSS SMC top does not expose every protocol pad/responder.
@@ -16,8 +17,6 @@ from pyuvm import (
     uvm_driver,
     uvm_sequencer,
 )
-
-from .smc_protocol_vip_item import SmcProtocolVipItem
 
 
 class SmcProtocolVipDriver(uvm_driver):

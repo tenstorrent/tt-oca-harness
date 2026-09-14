@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Try git first, fall back to OCH_ROOT, fail if neither available
 _OCH_ROOT_GIT := $(shell git rev-parse --show-toplevel 2>/dev/null)
 ifneq ($(_OCH_ROOT_GIT),)
@@ -36,8 +39,8 @@ COMPILE_ARGS += +incdir+$(OCH_ROOT)/vendor/pulp-platform/register_interface/upst
 
 COMPILE_ARGS += -lca +rad -kdb +nospecify
 COMPILE_ARGS += -debug_access+r+w+cbk -debug_access+thread+class+cbkd+dmpt+dmpf+idents_db
-COMPILE_ARGS += -l vcs.log +define+SIM
-COMPILE_ARGS += +define+VCS +define+COCOTB_SIM=1 -assert svaext
+COMPILE_ARGS += -l vcs.log
+COMPILE_ARGS += +define+VCS -assert svaext
 COMPILE_ARGS += +lint=TFIPC-L +lint=PCWM
 
 SIM_ARGS += -assert nopostproc +vcs+dumparrays +vcs+lic+wait +initRandMem=1

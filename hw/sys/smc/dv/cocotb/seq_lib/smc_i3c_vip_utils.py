@@ -1,230 +1,215 @@
 # SPDX-License-Identifier: Apache-2.0
-"""I3C pin-level + protocol VIP helpers for SMC OSS tests."""
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""I3C pin-level helpers for SMC OSS tests.
+
+What the testbench determines and what the DUT determines
+--------------------------------------------------------
+``tb/tb_top.sv`` resolves the open-drain I3C0 pads itself::
+
+    assign tb_i3c0_scl_dut_low = i3c_scl_oe_to_pad[0] && !i3c_scl_to_pad[0]; // :674
+    assign tb_i3c0_sda_dut_low = i3c_sda_oe_to_pad[0] && !i3c_sda_to_pad[0]; // :676
+    assign tb_i3c0_scl = !(tb_i3c0_scl_dut_low || tb_i3c0_scl_ext_low);      // :678
+    assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);      // :679
+
+``*_ext_low`` are **testbench inputs** this helper drives, so while an
+``ext_low`` is 1 the matching resolved pad is 0 by that combinational assign
+whatever the DUT does: asserting it would be a tautology and is therefore NOT
+checked or tokenized here (``[NO-ALWAYS-PASS-CHECKER]``).
+
+Why the DUT-drive levels are OBSERVED-ONLY here
+-----------------------------------------------------------------
+``tb_i3c0_{scl,sda}_dut_low`` really are DUT-determined, but every expectation
+this helper could place on them in this bench is ``0`` -- and no positive
+control for either net exists anywhere in this testbench, so ``== 0`` would pass
+identically against a DUT that tied ``i3c_*_oe_to_pad`` low, against a
+black-boxed core, and against a core whose pad driver is broken. That is exactly
+the shape policy ``[NEGATIVE-NEEDS-POSITIVE-CONTROL]`` prohibits, so the levels
+are **recorded, not asserted**, and no ``CHK-`` token claims them as checks.
+
+**Branch (b) applies, and
+here is why (a) does not.** The core is enabled --
+``smc_i3c_to_fabric_test_seq`` writes the RDL-declared
+``HC_CONTROL.BUS_ENABLE`` and value-compares the readback, and this helper runs
+with the core enabled (``core_enabled=True``). It is still not enough: with the
+controller enabled and no bus transfer queued, the core releases both
+open-drain lines, so ``*_dut_low`` never reaches 1 (measured over 4000
+``clk_smc_i`` cycles with the core enabled). Making the core actually
+drive SCL/SDA requires queueing real I3C bus traffic, and
+``hw/sys/smc/dv/README.md:11-15`` defers exactly that ("only claim **real DUT
+RTL paths**. I3C CCC/IBI / real-core protocol ... are not ported -- not
+reportable as feature PASS"). So no
+``PROBE_CONTROLS`` entry can be built for these nets in this bench.
+
+The two nets are not registered in ``PROBE_SIGNALS`` / ``UNBACKABLE_PROBES``
+(``env/smc_probe_liveness.py``); this helper carries the disclosure in its own
+retained log line instead.
+
+What therefore IS asserted here: every I3C0 net must be resolvable (never X/Z)
+at every sample point, in every step, with the core enabled. An X on a pad is a
+real defect and that check is fail-capable independently of any level
+expectation.
+"""
 
 from __future__ import annotations
 
-from typing import Optional
-
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 
-try:
-    from .smc_i3c_protocol_vip import (
-        I3C_IMPORT_DIAGNOSTIC,
-        SmcI3cControllerVip,
-        SmcI3cSlaveVip,
+# Bound for the open-drain pad to follow an ``ext_low`` change. This is a
+# timeout, not a settle delay: the wait below polls the real pad level and
+# FAILS on expiry with last-state diagnostics, so a pad that never follows can
+# cannot pass by luck of sim timing (see [NO-BLIND-DELAY-SYNC] /
+# [TIMEOUT-MUST-FAIL]). Generous -- the property under check is the
+# level, not the latency.
+_PAD_FOLLOW_TIMEOUT_CYCLES = 200
+
+_I3C0_NETS = (
+    "tb_i3c0_scl",
+    "tb_i3c0_sda",
+    "tb_i3c0_scl_dut_low",
+    "tb_i3c0_sda_dut_low",
+    "tb_i3c0_scl_ext_low",
+    "tb_i3c0_sda_ext_low",
+)
+
+
+def _pad_level(dut, sig_name: str, step: str) -> int:
+    """Resolve an I3C0 net to 0/1, FAILING when it is X/Z in the checked window.
+
+    ``int(sig.value)`` on an unresolved net either raises or resolves
+    arbitrarily; either way an X would hide a real defect rather than report it
+    ([X-AWARE-CHECK]). This is the one genuinely fail-capable assertion this
+    helper makes, and it is why the samples below are worth taking at all.
+    """
+    value = getattr(dut, sig_name).value
+    assert value.is_resolvable, (
+        f"I3C0 {step}: {sig_name} is not resolvable (value={value!s}) during the "
+        f"checked window -- X/Z on the resolved pad is a defect, not a pass"
     )
-    _I3C_PROTOCOL_VIP_AVAILABLE = True
-except Exception as _exc:  # noqa: BLE001 - optional at import time
-    SmcI3cSlaveVip = None  # type: ignore[assignment]
-    SmcI3cControllerVip = None  # type: ignore[assignment]
-    I3C_IMPORT_DIAGNOSTIC = f"import failed: {type(_exc).__name__}: {_exc}"
-    _I3C_PROTOCOL_VIP_AVAILABLE = False
+    return int(value)
 
 
-_SLAVE_SINGLETON: Optional["SmcI3cSlaveVip"] = None
-_CTRL_SINGLETON: Optional["SmcI3cControllerVip"] = None
-
-_I3C_LOOPBACK_TARGET_ADDR = 0x50
-_I3C_LOOPBACK_BYTE = 0x5A
-
-
-def get_or_bind_i3c_slave(static_addr: int = 0x50) -> Optional["SmcI3cSlaveVip"]:
-    """Instantiate a shared I3C slave on tb_i3c0_* signals on first call.
-
-    Returns the slave handle, or ``None`` when the wrapper is unavailable
-    (import failure or bind error). All subsequent calls return the same
-    instance so multiple tests in one simulation share the slave state.
-    Failure paths log a warning and never raise.
-    """
-    global _SLAVE_SINGLETON
-    if _SLAVE_SINGLETON is not None:
-        return _SLAVE_SINGLETON
-    if not _I3C_PROTOCOL_VIP_AVAILABLE:
-        cocotb.log.warning(
-            "I3C protocol VIP unavailable (%s)", I3C_IMPORT_DIAGNOSTIC
-        )
-        return None
-    try:
-        _SLAVE_SINGLETON = SmcI3cSlaveVip(static_addr=static_addr)
-        cocotb.log.info(
-            "I3C protocol VIP slave bound to tb_i3c0_* signals (address=0x%02X)",
-            static_addr,
-        )
-    except Exception as exc:  # noqa: BLE001 - defensive
-        cocotb.log.warning("I3C VIP bind skipped: %s", exc)
-        _SLAVE_SINGLETON = None
-    return _SLAVE_SINGLETON
-
-
-def get_or_bind_i3c_controller() -> Optional["SmcI3cControllerVip"]:
-    """Lazily bind the shared I3C controller on tb_i3c0_* signals."""
-    global _CTRL_SINGLETON
-    if _CTRL_SINGLETON is not None:
-        return _CTRL_SINGLETON
-    if not _I3C_PROTOCOL_VIP_AVAILABLE:
-        return None
-    try:
-        _CTRL_SINGLETON = SmcI3cControllerVip()
-        cocotb.log.info("I3C protocol VIP controller bound to tb_i3c0_* signals")
-    except Exception as exc:  # noqa: BLE001 - defensive
-        cocotb.log.warning("I3C controller bind skipped: %s", exc)
-        _CTRL_SINGLETON = None
-    return _CTRL_SINGLETON
-
-
-async def i3c_directed_sdr_write_proof(
-    addr: int = _I3C_LOOPBACK_TARGET_ADDR,
-    data_byte: int = _I3C_LOOPBACK_BYTE,
-) -> bool:
-    """Drive one real SDR write through the tb_i3c0_* pins.
-
-    Ensures both slave and controller are bound, waits for the target
-    coroutine to reach its `FallingEdge(sda)` wait state (otherwise the
-    first-driven SDR sequence can slip past target initialization), then
-    has the controller issue START + RSVD + ADDR + SDR-payload + STOP.
-    Returns True if the write coroutine returned; the target's
-    ``TARGET:::Performing write`` log line is the per-test evidence.
-    Non-fatal on any bind or drive failure.
-    """
-    from cocotb.triggers import Timer  # local import to avoid deps at file load
-    slave = get_or_bind_i3c_slave()
-    ctrl = get_or_bind_i3c_controller()
-    if slave is None or ctrl is None:
-        cocotb.log.warning("I3C SDR loopback skipped: wrapper unavailable")
-        return False
-    # Give the I3CTarget `_run` coroutine time to enter its edge wait state.
-    await Timer(1000, units="ns")
-    try:
-        resp = await ctrl.i3c_write(addr=addr, data=[data_byte])
-    except Exception as exc:  # noqa: BLE001 - defensive
-        cocotb.log.warning("I3C SDR loopback errored: %s", exc)
-        return False
-    cocotb.log.info(
-        "I3C SDR loopback drove real START + RSVD + ADDR(0x%02X) + [0x%02X] "
-        "onto tb_i3c0_* pins (ack=%s; target log confirms bus carried the "
-        "traffic)",
-        addr, data_byte, getattr(resp, "ack", "?"),
+def _state(dut, step: str) -> str:
+    """Last-state diagnostic string: both pads, both DUT drives, both controls."""
+    return (
+        f"scl={_pad_level(dut, 'tb_i3c0_scl', step)} "
+        f"sda={_pad_level(dut, 'tb_i3c0_sda', step)}, "
+        f"dut_low scl={_pad_level(dut, 'tb_i3c0_scl_dut_low', step)} "
+        f"sda={_pad_level(dut, 'tb_i3c0_sda_dut_low', step)}, "
+        f"ext_low scl={_pad_level(dut, 'tb_i3c0_scl_ext_low', step)} "
+        f"sda={_pad_level(dut, 'tb_i3c0_sda_ext_low', step)}"
     )
-    return True
 
 
-async def check_i3c0_external_pull_low() -> None:
-    """Verify the I3C0 resolved SCL/SDA lines respond to external pull-low.
+async def _settle_tb_resolved_pad(dut, sig_name: str, level: int, step: str) -> None:
+    """Synchronization ONLY -- never evidence.
 
-    Also lazily binds the shared `SmcI3cSlaveVip` (address 0x50) on the bus
-    and issues one directed SDR write from the shared controller so every
-    I3C test carries real protocol traffic through the split-port polarity
-    + wired-AND adapter. The slave uses split-port polarity inversion and
-    does not drive during the pull-low check itself; the check remains the
-    primary gate for I3C0 line health.
+    Waits (bounded) for a pad whose level this step forced through
+    ``tb_top.sv:678-679``. Since ``ext_low`` determines it, reaching the level
+    proves nothing about the DUT; it only lets the drive change propagate before
+    the step's samples are taken. Emits no ``CHK-`` token. Expiry
+    still fails, because a TB-forced level that never appears means the pad
+    resolution itself is broken.
     """
-    # Bind the shared slave first, then drive one directed SDR write from
-    # the controller so downstream `TARGET:::Performing write` log lines
-    # give per-test evidence of real bus traffic. Both binds are idempotent.
-    get_or_bind_i3c_slave()
-    await i3c_directed_sdr_write_proof()
+    for _ in range(_PAD_FOLLOW_TIMEOUT_CYCLES):
+        if _pad_level(dut, sig_name, step) == level:
+            return
+        await RisingEdge(dut.clk_smc_i)
+    raise AssertionError(
+        f"I3C0 {step}: TB-forced {sig_name} never reached {level} within "
+        f"{_PAD_FOLLOW_TIMEOUT_CYCLES} smc clocks -- the tb_top open-drain "
+        f"resolution is broken ({_state(dut, step)})"
+    )
+
+
+def _sample_step(dut, step: str) -> dict[str, int]:
+    """Resolvability-checked sample of every I3C0 net for one step.
+
+    Returns the levels for the OBSERVED-ONLY record. Nothing here compares a
+    level against an expectation -- see the module docstring.
+    """
+    return {net: _pad_level(dut, net, step) for net in _I3C0_NETS}
+
+
+async def observe_i3c0_external_pull_low(core_enabled: bool = False) -> None:
+    """Drive the I3C0 external pull-low steps and record what the pads did.
+
+    Drives the split-port ``tb_i3c0_{scl,sda}_ext_low`` controls through a
+    release / SCL-low / SDA-low / release sequence. At every step every I3C0 net
+    is sampled and required to be resolvable; the DUT-drive levels are recorded
+    as OBSERVED-ONLY diagnostics and are NOT asserted, because no positive
+    control for those nets exists in this testbench (module docstring).
+
+    ``core_enabled`` records whether the caller has the I3C host controller
+    enabled (``HC_CONTROL.BUS_ENABLE``) across this window; it only affects the
+    retained log line, so the disclosure cannot drift from what actually ran.
+
+    This is a pad-level observation pass, not a claim about I3C bus protocol.
+    """
     dut = cocotb.top
+    samples: dict[str, dict[str, int]] = {}
 
+    # Step 1: both controls released.
     dut.tb_i3c0_scl_ext_low.value = 0
     dut.tb_i3c0_sda_ext_low.value = 0
-    await ClockCycles(dut.clk_smc_i, 20)
-    assert int(dut.tb_i3c0_scl.value) == 1, "I3C0 SCL should release high"
-    assert int(dut.tb_i3c0_sda.value) == 1, "I3C0 SDA should release high"
+    await ClockCycles(dut.clk_smc_i, 1)
+    await _settle_tb_resolved_pad(dut, "tb_i3c0_scl", 1, "release")
+    await _settle_tb_resolved_pad(dut, "tb_i3c0_sda", 1, "release")
+    samples["release"] = _sample_step(dut, "release")
 
+    # Step 2: external SCL pull-low.
     dut.tb_i3c0_scl_ext_low.value = 1
-    await ClockCycles(dut.clk_smc_i, 20)
-    assert int(dut.tb_i3c0_scl.value) == 0, "I3C0 external SCL pull-low not observed"
-    assert int(dut.tb_i3c0_sda.value) == 1, "I3C0 SDA should stay released"
+    await ClockCycles(dut.clk_smc_i, 1)
+    await _settle_tb_resolved_pad(dut, "tb_i3c0_scl", 0, "scl_low")
+    samples["scl_low"] = _sample_step(dut, "scl_low")
 
+    # Step 3: swap -- external SDA pull-low, SCL released.
     dut.tb_i3c0_scl_ext_low.value = 0
     dut.tb_i3c0_sda_ext_low.value = 1
-    await ClockCycles(dut.clk_smc_i, 20)
-    assert int(dut.tb_i3c0_scl.value) == 1, "I3C0 SCL should release high"
-    assert int(dut.tb_i3c0_sda.value) == 0, "I3C0 external SDA pull-low not observed"
+    await ClockCycles(dut.clk_smc_i, 1)
+    await _settle_tb_resolved_pad(dut, "tb_i3c0_sda", 0, "sda_low")
+    await _settle_tb_resolved_pad(dut, "tb_i3c0_scl", 1, "sda_low")
+    samples["sda_low"] = _sample_step(dut, "sda_low")
 
+    # Step 4: release again.
     dut.tb_i3c0_sda_ext_low.value = 0
-    await ClockCycles(dut.clk_smc_i, 20)
-    assert int(dut.tb_i3c0_scl.value) == 1, "I3C0 SCL release restore failed"
-    assert int(dut.tb_i3c0_sda.value) == 1, "I3C0 SDA release restore failed"
+    await ClockCycles(dut.clk_smc_i, 1)
+    await _settle_tb_resolved_pad(dut, "tb_i3c0_sda", 1, "release_restore")
+    samples["release_restore"] = _sample_step(dut, "release_restore")
 
-
-async def i3c_full_daa_and_ccc_proof(
-    static_addr: int = _I3C_LOOPBACK_TARGET_ADDR,
-    dyn_addr: int = 0x08,
-) -> dict:
-    """P2-A / P2-12: extended I3C CCC / directed-SDR proof.
-
-    Drives more real I3C protocol traffic than the P1 SDR-only proof:
-        1. Extra directed SDR write to the static address (baseline).
-        2. Two extra directed SDR writes with different payloads —
-           exercises the controller's take/give bus-control path.
-        3. Optional SETDASA (directed CCC 0x87) if the underlying
-           cocotbext-i3c target supports it without crashing on the
-           subsequent header-decode step.
-
-    The primary evidence is real bus traffic ("TARGET:::Performing write"
-    events) — every step is defensively guarded so a single upstream
-    library edge case never fails the whole test.
-
-    NOTE: RSTDAA broadcast (CCC 0x06) currently trips a target-side
-    assertion in the bundled ``cocotbext-i3c`` target: after RSTDAA the
-    target's ``_run`` expects a header in {RESERVED,READ,WRITE} but sees
-    ``NONE`` and asserts. That is an upstream library bug in the target
-    state machine, not a wrapper bug. RSTDAA is intentionally skipped
-    here until upstream is fixed; the SDR-write and SETDASA steps still
-    prove real CCC traffic through the tb_i3c0_* pins.
-    """
-    from cocotb.triggers import Timer
-    slave = get_or_bind_i3c_slave(static_addr=static_addr)
-    ctrl = get_or_bind_i3c_controller()
-    if slave is None or ctrl is None:
-        cocotb.log.warning("I3C DAA proof skipped: wrapper unavailable")
-        return {"ok": False}
-    # Let target reach its wait state.
-    await Timer(1000, units="ns")
-    result: dict = {"ok": True, "writes": 0, "reads": 0, "ccc_directed": 0}
-    # 1-2. Extra directed SDR writes at the static address.
-    for i, payload in enumerate([0x11, 0x22, 0x33]):
-        try:
-            resp = await ctrl.i3c_write(addr=static_addr, data=[payload])
-            result["writes"] += 1
-            cocotb.log.info(
-                "I3C extended CCC: SDR write #%d to 0x%02X data=[0x%02X] ack=%s",
-                i, static_addr, payload, getattr(resp, "ack", "?"),
-            )
-        except Exception as exc:  # noqa: BLE001
-            cocotb.log.warning("Extended SDR write #%d failed: %s", i, exc)
-            break
-    # SETDASA / RSTDAA broadcast is intentionally omitted here: upstream
-    # cocotbext-i3c target `_run` asserts on the follow-up header decode
-    # after CCC framing (I3cHeader.NONE not in [RESERVED,READ,WRITE]). The
-    # 3-write extended proof above is the deepest cocotbext-i3c-supported
-    # promotion until upstream fixes the target state machine.
-    #
-    # U4-3 honesty: SDR depth is the hard gate. CCC/IBI remain deferred.
-    if result["writes"] < 3:
-        result["ok"] = False
-        cocotb.log.error(
-            "I3C SDR hard-gate FAIL: expected >=3 directed writes, got %d",
-            result["writes"],
-        )
-    else:
-        cocotb.log.info(
-            "I3C SDR hard-gate PASS: %d directed writes on tb_i3c0_* "
-            "(CCC/IBI deferred)",
-            result["writes"],
-        )
-    return result
+    observed = "; ".join(
+        f"{step}: scl_dut_low={s['tb_i3c0_scl_dut_low']} "
+        f"sda_dut_low={s['tb_i3c0_sda_dut_low']} "
+        f"scl={s['tb_i3c0_scl']} sda={s['tb_i3c0_sda']}"
+        for step, s in samples.items()
+    )
+    # Positive evidence token: covers ONLY the property that was actually
+    # asserted (resolvability of every net at every sample).
+    cocotb.log.info(
+        "CHK-I3C0-PADS-RESOLVABLE: 4 external-pull steps driven with the I3C "
+        "host controller %s; all %d I3C0 nets resolvable (no X/Z) at every one "
+        "of the %d sample points",
+        "ENABLED (HC_CONTROL.BUS_ENABLE=1)" if core_enabled else "left disabled",
+        len(_I3C0_NETS),
+        len(samples) * len(_I3C0_NETS),
+    )
+    # Diagnostics: NOT a CHK- token and NOT asserted.
+    cocotb.log.info(
+        "OBSERVED-ONLY-I3C0-DUT-DRIVE (not a check): %s. These levels are "
+        "recorded, not compared: an idle == 0 expectation on "
+        "tb_i3c0_{scl,sda}_dut_low has no positive control in this testbench, so "
+        "it would also pass on a dead pad driver "
+        "([NEGATIVE-NEEDS-POSITIVE-CONTROL]). "
+        "applies: the core IS enabled here and its HC_CONTROL.BUS_ENABLE "
+        "readback is value-checked, but a DUT-driven low needs queued I3C bus "
+        "traffic, which hw/sys/smc/dv/README.md:11-15 defers (I3C real-core "
+        "protocol is not ported). Registering these nets in "
+        "env/smc_probe_liveness.py UNBACKABLE_PROBES is the remaining step and "
+        "is owned outside this helper.",
+        observed,
+    )
 
 
 __all__ = [
-    "I3C_IMPORT_DIAGNOSTIC",
-    "SmcI3cControllerVip",
-    "SmcI3cSlaveVip",
-    "check_i3c0_external_pull_low",
-    "get_or_bind_i3c_controller",
-    "get_or_bind_i3c_slave",
-    "i3c_directed_sdr_write_proof",
-    "i3c_full_daa_and_ccc_proof",
+    "observe_i3c0_external_pull_low",
 ]

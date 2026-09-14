@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= OCH UART 16550 Unit Tests
+= OCAH UART 16550 Unit Tests
 :sectnums:
 
-This document describes how to run the unit tests for the OCH UART 16550 IP using VCS.
+This document describes how to run the unit tests for the OCAH UART 16550 IP using VCS.
 
-First, make sure you have set up the environment as described in the main `README.adoc` file of the OCH repository:
+First, make sure you have set up the environment as described in the main `README.adoc` file of the OCAH repository:
 
 ```bash
 pushd ../../../..

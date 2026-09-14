@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Terminal UI helpers for the native DV runner."""
 
 from __future__ import annotations
@@ -9,7 +12,6 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterator, TextIO
-
 
 _CI_TRUE = {"1", "true", "yes", "on"}
 _STATUS_COLOR = {

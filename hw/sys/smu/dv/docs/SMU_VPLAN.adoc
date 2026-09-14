@@ -1,0 +1,209 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-dv-verification-plan]]
+== SMU OCAH Open-Source Verification Plan
+
+=== Overview
+
+[cols=",",options="header",]
+|===
+|Field |Value
+|Design Under Test |`smu #(.SEP(0))` through `hw/sys/smu/dv/tb/tb_top.sv`
+|Framework |PyUVM on cocotb
+|Primary simulator |Verilator
+|Reference testbench architecture |`SMU_TB_ARCH.adoc`
+|Live test bodies |59 under `cocotb/tests/`, 56 of them enrolled
+|Enrolled leaf entries |54 in `sep0_p4_all`, 52 in `sep0_all`
+|Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
+|===
+
+This plan describes what the SMU open-source suite verifies and against which
+RTL. The executable contract is the enrolled testlist groups; this document
+describes them, it does not replace them.
+
+=== Verification Strategy
+
+The SMU is verified at its own boundary with `SEP=0`: the SMC and DTP
+subsystems below it are real RTL, the SEP is not instantiated, and the external
+SMN fabric is driven by the shared AXI VIP. Four surfaces are covered:
+
+. *Fabric and address decode* — external SMN AXI into SMC, ID-width conversion,
+  crossbar error handling, ATOP rejection, alias remap and the inbound and
+  outbound filters, driven both from the external port and through JTAG2AXI.
+. *SMC under SMU* — bring-up, reset control, mailbox, watchdog, GPIO straps and
+  the security demote path, reached through the SMU rather than at the SMC
+  boundary.
+. *DTP under SMU* — primary JTAG, STAP selection, boundary-scan and iJTAG, the
+  OTP bridge and the cross-trigger routing, as they appear once DTP sits under
+  the SMU.
+. *Clock, reset and boot sequencing* — clock-stop coordination, boot stall,
+  IC_RESET domains and external boot-sequence gating.
+
+Checking is centralised in `SmuScoreboard`, which refuses a vacuous PASS and
+requires every mapped evidence token to have been proven by a real check. See
+the checking strategy in `SMU_TB_ARCH.adoc`.
+
+=== Naming Rules
+
+[cols=",",options="header",]
+|===
+|Rule |Requirement
+|Single-scenario module |Use the module name, for example `smu_clock_stop_coordination_test`
+|Multi-scenario module |Use `+smu_<feature>_<scenario>_test+`, for example
+`smu_axi_filter_in_instance_matrix_test`
+|Scenario names |Use descriptive lower-snake-case names that encode operation,
+mode, direction or coverage target
+|Names from another subsystem |Normalise to `+smu_*+` and keep the target inside
+the name, for example `smu_smc_wdt_sanity_test` for the SMC watchdog reached
+through the SMU
+|Open-source files |One PyUVM test class per scenario in `cocotb/tests/`, so
+each scenario is independently selectable from a testlist. Sequences in
+`seq_lib/` are shared where scenarios differ only in stimulus
+|===
+
+=== Open-Source BFM Policy
+
+The BFM table lives in `SMU_TB_ARCH.adoc` so the testbench chapter and the plan
+cannot drift apart. The policy itself: standard protocols use the shared OCAH
+VIP packages, SMU-specific behaviour uses OCAH-local models under `env/`, and
+no enrolled test may reach into the DUT with Force or deposit.
+
+=== Enrolled Test Summary
+
+The 56 enrolled tests — the union of the enrolled groups — with the testlist
+leaf each is declared in. Fifty-four of them are in `sep0_p4_all`;
+`smu_ext_boot_seq_gate_test` is enrolled only through `smoke`, `top10`, `smc`
+and `phase1`, and `smu_smc_mailbox_int_test` only through `smc`
+(see <<smu-known-limitations,Known Limitations>>).
+
+[cols="2,1,3",options="header",]
+|===
+|Test |Leaf |Scenario
+|`smu_axi_alias_remap_manager_scope_test` |fabric |SMU Tier A alias-remap (S3 LIVE)
+|`smu_axi_atomic_operation_test` |fabric |ATOP non-support on SEP=0 SMN path
+|`smu_axi_crossbar_error_handling_test` |fabric |SMU_ALL_008 Option-B PWRGOOD-only
+|`smu_axi_external_port_connectivity_test` |fabric |SMU_ALL_002
+|`smu_axi_filter_allow_ns_test` |fabric |SMU Tier A allow_ns (SEP=0 J2A + s_axi)
+|`smu_axi_filter_in_instance_matrix_test` |fabric |SMU Tier A inbound instance matrix
+|`smu_axi_filter_out_instance_matrix_test` |fabric |SMU Tier A outbound instance DECODE
+|`smu_axi_id_width_conversion_test` |fabric |SEP=0 external->SMC ID converter live path
+|`smu_axi_prot_encoding_decode_test` |fabric |SMU Tier A AxPROT S9 (SEP=0 J2A + s_axi)
+|`smu_axi_xbar_structure_test` |fabric |SEP=0 xbar absent (Nightly FAB_SMU_003)
+|`smu_boot_stall_jtag_cold_reset_matrix_test` |dtp |P2-I3a boot-stall sticky matrix
+|`smu_boot_stall_vs_ic_reset_priority_test` |dtp |P3-H5b stall vs IC_RESET priority
+|`smu_clock_stop_coordination_test` |dtp |SMU_ALL_006 boot-stall/IC-reset/clkstop
+|`smu_dft_dtp_boot_stall_test` |dtp |DTP DEBUG_CONTROL boot-stall -> SMC fuse_reset
+|`smu_dft_gpio_boot_stall_test` |dtp |GPIO pad boot-stall gates fuse_reset
+|`smu_dtp_bsr_extest_loopback_test` |dtp |P4 EXTEST BSR scan loopback
+|`smu_dtp_bsr_ijtag_scan_test` |dtp |BSR .select gating (EXTEST / SAMPLE_PRELOAD)
+|`smu_dtp_io_stap_smoke_test` |dtp |DTP-IO-STAP host TCK observe
+|`smu_dtp_jtag2axi_abort_mid_op_test` |dtp |OTP BUSY abort, fabric recovers
+|`smu_dtp_jtag2axi_back_to_back_error_ok_test` |dtp |DECERR then immediate OK
+|`smu_dtp_jtag2axi_smc_error_path_test` |dtp |SMC J2A unmapped DECERR (SEP=0)
+|`smu_dtp_jtag2axi_smc_rw_matrix_test` |dtp |WSTRB-width + partial merge on SPM (SEP=0)
+|`smu_dtp_jtag2axi_wstrb_partial_sticky_test` |dtp |partial WSTRB + neighbor (SEP=0)
+|`smu_dtp_jtag_smc_cpu_register_test` |dtp |CPU_CTRL SCRATCH_15 via J2A (SEP=0)
+|`smu_dtp_jtag_smoke_test` |dtp |SMU_ALL_005 PTAP IDCODE/BYPASS/TRST (SEP=0)
+|`smu_dtp_otp_smc_complete_rw_test` |dtp |OTP MAP RESERVED walk (SEP=0, no Force)
+|`smu_dtp_otp_smc_map_rw_test` |dtp |SMC OTP J2A MAP BIRA R/W (SEP=0, no Force)
+|`smu_dtp_otp_smc_series_error_test` |dtp |OTP series NO_INCR + decode-hole SLVERR
+|`smu_dtp_ptap_otp_instr_scan_test` |dtp |PTAP OTP CAPS + SINGLE_OP IR/DR (SEP=0)
+|`smu_dtp_smc_stap_smoke_test` |dtp |DTP-SMC-STAP TRST + TAP_3DCR select
+|`smu_ext_boot_seq_gate_test` |smc |SMU P0 external boot-sequence gate (SMU_006)
+|`smu_fabric_reg_bar_wr_test` |fabric |SMU Tier A fabric config CSR delivery
+|`smu_i3c_mem_port_connectivity_test` |smc |FAB_SMC_031 local peripheral delivery
+|`smu_ic_reset_dual_domain_illegal_test` |dtp |P3-H5a dual IC_RESET in one DR
+|`smu_ic_reset_smc_multi_domain_test` |dtp |P2-I5a IC_RESET SMC multi-domain
+|`smu_ic_reset_ss_domain_matrix_test` |dtp |P4 IC_RESET SS cold/warm domains
+|`smu_jtag2axi_vs_smn_same_csr_race_test` |dtp |J2A vs SMN coherent winner
+|`smu_jtag_chain_enhanced_test` |dtp |IDCODE/BYPASS at 1/5/10/20 MHz TCK (SEP=0)
+|`smu_jtag_reset_override_test` |dtp |IC_RESET TDR override of EXT/SMC slices
+|`smu_no_sep_configuration_test` |smc |SMU P0 SEP=0 composition (SMU_005)
+|`smu_otp_vs_fabric_map_race_test` |dtp |OTP vs fabric MAP last-writer
+|`smu_sep_smoke_test` |deferred |SMU_ALL_007 RST-PRIMARY + CTM.S2/S3 (SEP=0 bare)
+|`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=0, no Force)
+|`smu_smc_mailbox_int_test` |smc |ext_mailbox_interrupts width DECODE (SMU_ALL_004)
+|`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A (SEP=0)
+|`smu_smc_reset_ctrl_test` |smc |primary/cold/periph reset release under SMU SEP=0
+|`smu_smc_security_demote_pm_test` |smc |SEP=0 demote / lc_state observe-only
+|`smu_smc_smoke_test` |smc |SMU_ALL_003
+|`smu_smc_wdt_sanity_test` |smc |CORE0 WDT unlock + CMP via J2A
+|`smu_smc_wdt_timeout_irq_test` |smc |CORE0 WDT sticky WDOGIP0
+|`smu_sys_in_filter_program_jtag_test` |fabric |inbound0 program then SMN OKAY
+|`smu_sys_in_filter_reprogram_shrink_test` |fabric |wide, shrink, clear
+|`smu_sys_in_filter_window_edge_test` |fabric |page interior OKAY, ±4B DECERR
+|`smu_system_timer_octs_test` |smc |SMU Tier C OCTS primary free-run
+|`smu_xtrig_ctm_illegal_phase_test` |dtp |pin-only illegal CTM corners
+|`smu_xtrig_ctm_remap_test` |dtp |product-pin CTM remap
+|===
+
+=== Test Procedures
+
+Per-test procedures are the test bodies under `cocotb/tests/` and their
+sequences under `seq_lib/`, together with the `(CHK_ID, TOKEN, EXPECT)` rows in
+`cocotb/env/smu_evidence_map.py`. Those rows are the checkbox contract: the
+scoreboard fails the test if any mapped token was not proven by a real check,
+so the map cannot drift away from what the test does.
+
+=== Counts
+
+[cols=",",options="header",]
+|===
+|Population |Count
+|Live test bodies (`cocotb/tests/`) |59
+|Enrolled in `sep0_p4_all` |54
+|Enrolled in `sep0_all` (nightly) |52
+|Non-enrolled bodies (`cocotb/tests_deferred/`) |28
+|===
+
+=== Regression Groups
+
+[cols=",,",options="header",]
+|===
+|Group |Tests |Notes
+|`smoke` |4 |
+|`top5` |5 |
+|`top10` |11 |
+|`phase1` |48 |
+|`smc` |11 |
+|`dtp` |29 |
+|`phase2_smc_dtp` |2 |
+|`phase2` |49 |
+|`phase3_corner` |3 |
+|`phase3` |5 |
+|`fabric` |14 |
+|`phase4_sep0` |19 |
+|`sep0_all` |52 |
+|`sep0_p4_all` |54 |
+|===
+
+`sep0_all` is the group `.github/workflows/regress.yml` runs as the SMU
+nightly (one seed per test) and weekly (three seeds per test). `smoke` is what
+pull requests run (`.github/workflows/sim.yml`). `smoke` is not a subset of
+`sep0_all`.
+
+[[smu-known-limitations]]
+=== Known Limitations
+
+* *`smoke` is not a subset of `sep0_all`.* `smu_ext_boot_seq_gate_test` is in
+  `smoke`, `top10`, `smc` and `phase1` but in neither `sep0_all` nor
+  `sep0_p4_all`, so the nightly does not run a test every pull request does.
+  #485 keeps it PR-only. Re-enrollment is a later #493 choice.
+
+* *SEP=1 is out of scope here.* Everything in this plan runs with `SEP=0`. The
+  dual-firmware SEP-under-SMU work is gated on the SEP instruction-fetch
+  blocker and is not ported.
+* *The wrapper is a separate surface.* `--dut smu_wrapper` proves production-pin
+  boot and elaboration. Its PASSes are labelled `DUT_TAG=WRAPPER` and are not
+  counted as `sep0_all` density evidence.
+* *123 catalogued entries are not enrolled*, against 28 bodies under
+  `cocotb/tests_deferred/`. The rest are named for catalog continuity and have
+  no body at all. Per-entry v0.5.0 bucket, owner, and reintroduction trigger
+  are in `SMU_DEFERRED_DISPOSITION.adoc`. None of those names is a v0.5.0
+  restore.
+* *Cross-trigger and iJTAG have no OCAH-local model yet*, so the coverage those
+  interfaces get is whatever the DTP-under-SMU tests reach through JTAG.
+* *No functional coverage closure target is set.* `smu_fcov.py` records
+  scenario intent, but there is no agreed bin list to close against and no RTL
+  code-coverage configuration checked in for this DUT.

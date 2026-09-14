@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: PLL AWM FREQUENCY + CGM sub-block sweep.
 
 Each AWM (0/1) exposes 6 FREQUENCY + 3 CGM sub-blocks. Under
@@ -18,9 +19,9 @@ _SUB_BLOCKS = [
     ("AWM_FREQUENCY3", 0x1C0),
     ("AWM_FREQUENCY4", 0x200),
     ("AWM_FREQUENCY5", 0x240),
-    ("AWM_CGM0",       0x280),
-    ("AWM_CGM1",       0x380),
-    ("AWM_CGM2",       0x480),
+    ("AWM_CGM0", 0x280),
+    ("AWM_CGM1", 0x380),
+    ("AWM_CGM2", 0x480),
 ]
 
 

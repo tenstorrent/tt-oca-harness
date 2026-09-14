@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Generic single-beat AXI access sequence on the SEP CPU-LSU bus.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Generic AXI access sequence on a SEP master bus.
 
 A thin reusable wrapper so higher-level drivers (KM mailbox, OTBN exec) can issue
-one register read/write through the SEP AXI agent without re-declaring a sequence
+one register read/write through the SEP AXI agent without redeclaring a sequence
 each time. The result (``rdata`` / ``resp_ok``) is published on the sequence
 object after ``start_seq``.
 """
 
 from __future__ import annotations
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
 
 
 class SepAxiAccessSeq(uvm_sequence):
@@ -28,6 +28,8 @@ class SepAxiAccessSeq(uvm_sequence):
         size: int | None = None,
         allow_unverified_write_resp: bool = False,
         expect_error: bool = False,
+        user: int = 0,
+        burst: int | None = None,
     ) -> None:
         super().__init__(name)
         self._op = op
@@ -44,9 +46,15 @@ class SepAxiAccessSeq(uvm_sequence):
         # failing, and fails a probe that wrongly returns OKAY (e.g. a read from an
         # empty mailbox FIFO must SLVERR).
         self._expect_error = expect_error
+        # Packed AWUSER/ARUSER (inbound FILTER_CONFIG.src_id matches user[3:0]).
+        self._user = user
+        # AXI AxBURST. None = VIP default (single-beat callers stay unchanged).
+        self._burst = burst
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
+        self.resp_list: tuple[int, ...] = ()
+        self.timed_out: bool = False
 
     async def body(self) -> None:
         item = SepAxiItem(self.get_name())
@@ -57,8 +65,12 @@ class SepAxiAccessSeq(uvm_sequence):
         item.size = self._size
         item.allow_unverified_write_resp = self._allow_unverified_write_resp
         item.expect_error = self._expect_error
+        item.user = self._user
+        item.burst = self._burst
         await self.start_item(item)
         await self.finish_item(item)
         self.rdata = item.rdata
         self.resp_ok = item.resp_ok
         self.resp_code = item.resp_code
+        self.resp_list = item.resp_list
+        self.timed_out = item.timed_out

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP dual-CPU eFuse AXI-lite mux coexistence firmware (EL2 host side).
 //
-// OSS port of the OCAH TEST 10.3 sep_efuse_km_axil_cpu_mux_coexist_test (#2936).
+// OSS port of the reference-suite sep_efuse_km_axil_cpu_mux_coexist_test.
 // Two REAL CPUs contend at the SEP eFuse AXI-lite mux (u_km_efuse_axi_lite_mux):
 //   * this EL2 host firmware, and
 //   * the Key Manager (KM) PicoRV32 running km_rom_coexist (the KM ROM image).
@@ -24,13 +25,12 @@
 // monotonic, MMR1 >= MMR0 reads. A torn/stale/cross-attributed mux response
 // shows up as a nonzero backward / bad_tag / bad_uid count -> FAIL.
 //
-// OSS delta vs OCAH: the OCAH UVM sequence deposits an UVM_DONE marker to release
-// a host loop that otherwise waits; cocotb cannot deposit an internal register
-// without a force port, so the OSS host loop is a FIXED contended window and the
-// observer is read-only. Mutual non-starvation is proven by the host completing
-// all CONTENDED_LOOPS (final COUNT) AND the KM making progress (CHANGES > 0) in
-// the same window -- equivalent-or-stronger evidence than a single sampled
-// before/after window plus a release handshake.
+// OSS delta vs the reference suite: the reference UVM sequence deposits an UVM_DONE marker to
+// release a host loop that otherwise waits; cocotb cannot deposit an internal register without a
+// force port, so the OSS host loop is a FIXED contended window and the observer is read-only.
+// Mutual non-starvation is proven by the host completing all CONTENDED_LOOPS (final COUNT) AND the
+// KM making progress (CHANGES > 0) in the same window -- equivalent-or-stronger evidence than a
+// single sampled before/after window plus a release handshake.
 
 #include <stdint.h>
 
@@ -62,7 +62,7 @@
 
 // Fixed contended window. Long enough that the free-running KM makes many MMR
 // changes through the mux while the (slower, multi-read) host completes; above
-// the OCAH minimum-evidence floor (MIN_CPU_EFUSE_LOOPS = 256).
+// the reference suite minimum-evidence floor (MIN_CPU_EFUSE_LOOPS = 256).
 #define CONTENDED_LOOPS 512u
 #define SENSE_WAIT_LIMIT 1000000
 #define MBOX_WAIT_LIMIT 500000
@@ -91,6 +91,7 @@ int main(void) {
     // Release the KM, then handshake: receive READY, send GO. (Release BEFORE
     // waiting for READY, or the KM -- still in reset -- can never send it.)
     sep_reset_release_km();
+    sep_mbx_puts("STEP Key Manager released from software reset\n");
 
     uint32_t km_ready = 0;
     if (sep_km_mbox_get(&km_ready, MBOX_WAIT_LIMIT) != 0) {
@@ -148,7 +149,7 @@ int main(void) {
     sep_scratch_wr(SCRATCH_BACKWARD, backward);
     sep_scratch_wr(SCRATCH_BAD_TAG, bad_tag);
 
-    // Verdict (matches OCAH): KM made progress, host data uncorrupted, KM counter
+    // Verdict (matches reference suite): KM made progress, host data uncorrupted, KM counter
     // monotonic, KM MMRs correctly attributed.
     if (changes == 0) {
         sep_mbx_puts("FAIL: KM made no progress through the mux\n");

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP VPLAN scenario `dtp_ctm_rand_wire_or_only_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
 
@@ -14,6 +14,6 @@ class dtp_ctm_rand_wire_or_only_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "ctm_rand_wire_or_only",
             scenario="ctm_rand_wire_or_only",
-            specific_env="DTP_CTM_RAND_WIRE_OR_ONLY_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_CTM_RAND_WIRE_OR_ONLY_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

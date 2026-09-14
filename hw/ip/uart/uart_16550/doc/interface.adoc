@@ -54,33 +54,47 @@ state is high (logic 1).
 ====== Modem Control Interface
 
 The modem control interface provides full RS-232 modem signaling
-compatibility with hardware flow control support.
+compatibility. All modem signals are active low at the pins, matching the
+RS-232 convention.
+
+The modem inputs are *status only*. Each one is synchronized and then
+reported in the `MSR` register in the opposite polarity (a bit reads `1`
+while its pin is asserted low), and a change on any of them raises the
+Modem Status Interrupt. None of them gates the datapath: this component
+implements no automatic flow control, so software must act on the
+interrupt to throttle traffic. See the Programming section.
 
 .Modem Control Input Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
 |Signal Name |Width |Direction |Active Level |Description
 |`cts_ni` |1 |Input |Low |Clear To Send. Asynchronous modem input. When
-asserted (low), indicates remote device is ready to receive data. Used
-for hardware flow control.
+asserted (low), indicates remote device is ready to receive data.
+Reported in `MSR.CTS`; a change sets `MSR.DCTS` and raises the Modem
+Status Interrupt. Does not stall the transmitter - flow control is
+performed by software.
 
 |`dsr_ni` |1 |Input |Low |Data Set Ready. Asynchronous modem input.
-Indicates remote modem is connected and ready.
+Indicates remote modem is connected and ready. Reported in `MSR.DSR`; a
+change sets `MSR.DDSR`.
 
 |`ri_ni` |1 |Input |Low |Ring Indicator. Asynchronous modem input.
-Indicates incoming call on modem connection.
+Indicates incoming call on modem connection. Reported in `MSR.RI`; a
+trailing edge sets `MSR.TERI`.
 
 |`dcd_ni` |1 |Input |Low |Data Carrier Detect. Asynchronous modem input.
-Indicates carrier signal detected on modem connection.
+Indicates carrier signal detected on modem connection. Reported in
+`MSR.DCD`; a change sets `MSR.DDCD`.
 |=======================================================================
 
 .Modem Control Output Signals
 [width="100%",cols="15%,10%,15%,10%,50%",options="header",]
 |=======================================================================
 |Signal Name |Width |Direction |Active Level |Description
-|`rts_no` |1 |Output |Low |Request To Send. Modem control output. When
-asserted (low), indicates this device is ready to receive data. Used for
-hardware flow control.
+|`rts_no` |1 |Output |Low |Request To Send. Modem control output driven
+from `MCR.RTS` in the opposite polarity. When asserted (low), indicates
+this device is ready to receive data. Driven by software; the receiver
+does not deassert it automatically when the RX FIFO fills.
 
 |`dtr_no` |1 |Output |Low |Data Terminal Ready. Modem control output.
 Indicates this device is connected and ready for communication.
@@ -152,7 +166,9 @@ deasserted synchronously relative to `clk_i`
 
 * *Baud Rate*: Serial data rate is determined by the divisor latch
 registers (DLL/DLM) and uses 16x oversampling
-* *Maximum Baud Rate*: Limited to `system_clock_frequency / 16`
+* *Maximum Baud Rate*: Limited to `system_clock_frequency / 32` - a
+divisor of `0` disables the transmitter and receiver, so the smallest
+usable divisor is `1`
 * *Data Frame*: Configurable start bit (always 1), 5-8 data bits,
 optional parity bit, 1-2 stop bits
 

@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_dbg_sep_otp_jtag2axi_caps_test."""
 
 from __future__ import annotations
 
 from env.dtp_tap_device import (
-    DTP_OTP_ADDR_WIDTH,
-    DTP_OTP_DATA_WIDTH,
     DTP_JTAG2AXI_RD_PL_DEPTH,
     DTP_JTAG2AXI_WR_PL_DEPTH,
+    DTP_OTP_ADDR_WIDTH,
+    DTP_OTP_DATA_WIDTH,
 )
 
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq

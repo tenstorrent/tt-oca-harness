@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * OCCP Comprehensive Error Verification Test
  *
@@ -241,20 +244,11 @@ static bool test_invalid_command_injection(comprehensive_error_test_context_t *c
         cmd_packet[3] = (invalid_commands[i] >> 24) & 0xFF;
 
         // Send raw invalid command
-        // if (ctx->occp_ctx->type == DRIVER_TYPE_I3C) {
-        //     if (ctx->occp_ctx->drv.i3c_drv != NULL) {
-        //         ctx->occp_ctx->drv.i3c_drv->send_payload_stream(ctx->occp_ctx->drv.i3c_drv,
-        //                                                       ctx->occp_ctx->slave_addr,
-        //                                                       cmd_packet, sizeof(cmd_packet));
-        //         ctx->violations_triggered++;
-        //     }
-        // } else {
         if (ctx->occp_ctx->drv.i2c_drv != NULL) {
             ctx->occp_ctx->drv.i2c_drv->ctrlr_send_data(ctx->occp_ctx->drv.i2c_drv, cmd_packet,
                                                         sizeof(cmd_packet));
             ctx->violations_triggered++;
         }
-        // }
     }
 
     simputs("Invalid command injection tests completed\n");

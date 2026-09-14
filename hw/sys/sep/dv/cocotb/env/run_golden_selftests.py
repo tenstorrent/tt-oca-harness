@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Run every SEP golden-model self-test and fail if any does not pass.
 
 Each ``env/sep_*_golden.py`` carries a standalone self-test (a KAT / NIST / FIPS /
@@ -32,6 +33,7 @@ _GOLDENS = (
     "sep_noise_golden.py",
     "sep_entropy_golden.py",
     "sep_lcc_golden.py",
+    "sep_crc_golden.py",
 )
 
 
@@ -54,8 +56,9 @@ def main() -> int:
             failures.append(name)
 
     if failures:
-        print(f"\n{len(failures)} golden self-test(s) FAILED: {', '.join(failures)}",
-              file=sys.stderr)
+        print(
+            f"\n{len(failures)} golden self-test(s) FAILED: {', '.join(failures)}", file=sys.stderr
+        )
         return 1
     print(f"\nAll {len(_GOLDENS)} golden self-tests passed.")
     return 0

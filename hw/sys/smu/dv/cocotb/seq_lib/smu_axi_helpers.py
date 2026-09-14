@@ -1,106 +1,208 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared AXI helpers for SMU external SMN port and outbound observe."""
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Shared AXI helpers for SMU external SMN port and outbound observe.
+
+All SMN AXI traffic goes through the shared ``ocah_axi_vip`` master sequence.
+Helpers accept and return plain values only: response codes are the OCAH
+``RESP_*`` integers and IDs come from the result objects' independently
+sampled ``observed_id``, so no backend transaction objects escape.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import cocotb
-from cocotb.triggers import RisingEdge, Timer, with_timeout
-from cocotbext.axi import AxiBus, AxiMaster, AxiResp
+from cocotb.triggers import RisingEdge, Timer
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence, resp_name
+
+__all__ = [
+    "AXI_TIMEOUT_NS",
+    "AXI_BOUND_LABEL",
+    "make_smu_axi_master",
+    "axi_read32",
+    "axi_read32_resp",
+    "axi_read32_resp_ids",
+    "axi_read32_resp_ids_bounded",
+    "axi_read32_resp_bounded",
+    "axi_write32",
+    "axi_write32_resp",
+    "axi_write32_resp_bounded",
+    "axi_write32_resp_ids",
+    "wait_signal_high",
+    "OutboundAxiRecord",
+    "SmuOutboundMonitor",
+    "wait_outbound_aw_count",
+    "resp_name",
+]
 
 # Bounded completion wait for SMN ingress (must fail the testcase on expiry).
 AXI_TIMEOUT_NS = 200_000
 AXI_BOUND_LABEL = "bound=200us"
 
 
-async def make_smu_axi_master(dut, clk, reset) -> AxiMaster:
-    bus = AxiBus.from_prefix(dut, "s_axi")
-    master = AxiMaster(bus, clk, reset, reset_active_level=False)
+async def make_smu_axi_master(dut, clk, reset) -> OcahAxiMasterSequence:
+    agent = OcahAxiMasterAgent.from_prefix(dut, "s_axi", clk, reset)
+    await agent.start()
     await Timer(1, unit="ns")
-    return master
+    return agent.sequence
 
 
-async def axi_read32(master: AxiMaster, addr: int) -> int:
-    data = await master.read(addr, 4)
-    return int.from_bytes(bytes(data.data), byteorder="little")
+async def axi_read32(master: OcahAxiMasterSequence, addr: int) -> int:
+    result = await master.read_bytes_result(addr, 4, check_response=False)
+    return result.data
 
 
 async def axi_read32_resp(
-    master: AxiMaster,
+    master: OcahAxiMasterSequence,
     addr: int,
     *,
     arid: int | None = None,
-) -> tuple[int, object]:
-    """Return (rdata32, AxiResp) so callers can assert DECERR vs OKAY."""
-    beat = await master.read(addr, 4, arid=arid)
-    value = int.from_bytes(bytes(beat.data), byteorder="little")
-    return value, beat.resp
+) -> tuple[int, int]:
+    """Return (rdata32, RESP_*) so callers can assert DECERR vs OKAY."""
+    result = await master.read_bytes_result(
+        addr, 4, id=0 if arid is None else int(arid), check_response=False
+    )
+    return result.data, result.resp
 
 
 async def axi_read32_resp_ids(
-    master: AxiMaster,
+    master: OcahAxiMasterSequence,
     addr: int,
     *,
     arid: int | None = None,
-) -> tuple[int, object, int, int]:
-    """Return (rdata32, AxiResp, arid_issued, rid_returned)."""
+    timeout_ns: int | None = None,
+    label: str = "axi_read",
+) -> tuple[int, int, int, int]:
+    """Return (rdata32, RESP_*, arid_issued, rid_returned).
+
+    RID is the result's ``observed_id``, sampled from the live R channel on the
+    completing beat — never a copy of the issued ARID, so RID==ARID compares
+    stay falsifiable. A capture miss fails the call.
+    """
     issued = 0 if arid is None else int(arid)
-    beat = await master.read(addr, 4, arid=arid)
-    value = int.from_bytes(bytes(beat.data), byteorder="little")
-    rid = int(beat.id) if hasattr(beat, "id") else issued
-    return value, beat.resp, issued, rid
+    result = await master.read_bytes_result(
+        addr,
+        4,
+        id=issued,
+        check_response=False,
+        timeout_ns=timeout_ns,
+        allow_timeout=timeout_ns is not None,
+    )
+    if result.timed_out:
+        raise AssertionError(
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp addr=0x{addr:08x}"
+        )
+    if result.observed_id is None:
+        raise AssertionError(f"RID capture miss after read addr=0x{addr:08x} arid=0x{issued:x}")
+    return result.data, result.resp, int(result.issued_id), int(result.observed_id)
 
 
 async def axi_read32_resp_ids_bounded(
-    master: AxiMaster,
+    master: OcahAxiMasterSequence,
     addr: int,
     *,
     arid: int | None = None,
     label: str = "axi_read",
     timeout_ns: int = AXI_TIMEOUT_NS,
-) -> tuple[int, object, int, int]:
+) -> tuple[int, int, int, int]:
     """Like axi_read32_resp_ids but fail-closed on hang with last-state diagnostics."""
-    try:
-        return await with_timeout(
-            axi_read32_resp_ids(master, addr, arid=arid),
-            timeout_time=timeout_ns,
-            timeout_unit="ns",
-        )
-    except Exception:
+    return await axi_read32_resp_ids(master, addr, arid=arid, timeout_ns=timeout_ns, label=label)
+
+
+async def axi_read32_resp_bounded(
+    master: OcahAxiMasterSequence,
+    addr: int,
+    *,
+    label: str = "axi_read",
+    timeout_ns: int = AXI_TIMEOUT_NS,
+) -> tuple[int, int]:
+    """Like axi_read32_resp but fail-closed on hang."""
+    result = await master.read_bytes_result(
+        addr, 4, check_response=False, timeout_ns=timeout_ns, allow_timeout=True
+    )
+    if result.timed_out:
         raise AssertionError(
             f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp addr=0x{addr:08x}"
-        ) from None
+        )
+    return result.data, result.resp
 
 
-async def axi_write32(master: AxiMaster, addr: int, value: int) -> None:
-    await master.write(addr, value.to_bytes(4, byteorder="little"))
+async def axi_write32(master: OcahAxiMasterSequence, addr: int, value: int) -> None:
+    await master.write_bytes_result(
+        addr, value.to_bytes(4, byteorder="little"), check_response=False
+    )
 
 
 async def axi_write32_resp(
-    master: AxiMaster,
+    master: OcahAxiMasterSequence,
     addr: int,
     value: int,
     *,
     awid: int | None = None,
-) -> object:
-    """Return AxiResp from a 32-bit write."""
-    beat = await master.write(addr, value.to_bytes(4, byteorder="little"), awid=awid)
-    return beat.resp
+) -> int:
+    """Return the RESP_* code from a 32-bit write."""
+    result = await master.write_bytes_result(
+        addr,
+        value.to_bytes(4, byteorder="little"),
+        id=0 if awid is None else int(awid),
+        check_response=False,
+    )
+    return result.resp
+
+
+async def axi_write32_resp_bounded(
+    master: OcahAxiMasterSequence,
+    addr: int,
+    value: int,
+    *,
+    label: str = "axi_write",
+    timeout_ns: int = AXI_TIMEOUT_NS,
+) -> int:
+    """Like axi_write32_resp but fail-closed on hang."""
+    result = await master.write_bytes_result(
+        addr,
+        value.to_bytes(4, byteorder="little"),
+        check_response=False,
+        timeout_ns=timeout_ns,
+        allow_timeout=True,
+    )
+    if result.timed_out:
+        raise AssertionError(
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp addr=0x{addr:08x}"
+        )
+    return result.resp
 
 
 async def axi_write32_resp_ids(
-    master: AxiMaster,
+    master: OcahAxiMasterSequence,
     addr: int,
     value: int,
     *,
     awid: int | None = None,
-) -> tuple[object, int, int]:
-    """Return (AxiResp, awid_issued, bid_returned)."""
+    timeout_ns: int | None = None,
+    label: str = "axi_write",
+) -> tuple[int, int, int]:
+    """Return (RESP_*, awid_issued, bid_returned).
+
+    BID is the result's ``observed_id``, sampled from the live B channel —
+    never a copy of the issued AWID. A capture miss fails the call.
+    """
     issued = 0 if awid is None else int(awid)
-    beat = await master.write(addr, value.to_bytes(4, byteorder="little"), awid=awid)
-    bid = int(beat.id) if hasattr(beat, "id") else issued
-    return beat.resp, issued, bid
+    result = await master.write_bytes_result(
+        addr,
+        value.to_bytes(4, byteorder="little"),
+        id=issued,
+        check_response=False,
+        timeout_ns=timeout_ns,
+        allow_timeout=timeout_ns is not None,
+    )
+    if result.timed_out:
+        raise AssertionError(
+            f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_bresp addr=0x{addr:08x}"
+        )
+    if result.observed_id is None:
+        raise AssertionError(f"BID capture miss after write addr=0x{addr:08x} awid=0x{issued:x}")
+    return result.resp, int(result.issued_id), int(result.observed_id)
 
 
 async def wait_signal_high(signal, clk, timeout_cycles: int = 5000, name: str = "sig") -> None:
@@ -176,15 +278,3 @@ async def wait_outbound_aw_count(
         f"TIMEOUT {label}: bound={bound} last_count={last} "
         f"baseline={baseline} need_delta>={min_delta}"
     )
-
-
-def resp_name(resp) -> str:
-    if resp == AxiResp.OKAY:
-        return "OKAY"
-    if resp == AxiResp.DECERR:
-        return "DECERR"
-    if resp == AxiResp.SLVERR:
-        return "SLVERR"
-    if resp == AxiResp.EXOKAY:
-        return "EXOKAY"
-    return str(resp)

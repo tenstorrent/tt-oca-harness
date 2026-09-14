@@ -2,37 +2,37 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT ACCESSINVAL Test - TC_SPIOT_021 (P1)
+ * SPI OT ACCESSINVAL Test
  *
  * Verifies the ERROR_STATUS.ACCESSINVAL[20] register field behavior.
  *
  * RTL Implementation Note:
- *   ACCESSINVAL fires when TXDATA is written with an INVALID byte-enable pattern
- *   (non-contiguous or non-standard byte lanes). Source:
- *     assign error_access_inval = tx_valid & ~access_valid;
- *   where access_valid is 1 only for aligned 1/2/4 byte patterns:
- *     4'b0001, 4'b0010, 4'b0100, 4'b1000 (single byte)
- *     4'b0011, 4'b0110, 4'b1100 (contiguous 2-byte)
- *     4'b1111 (4-byte word)
- *   This differs from the OpenTitan spec which defines ACCESSINVAL as
- *   "write to protected register while ACTIVE=1".
+ * ACCESSINVAL fires when TXDATA is written with an INVALID byte-enable pattern
+ * (non-contiguous or non-standard byte lanes). Source:
+ * assign error_access_inval = tx_valid & ~access_valid;
+ * where access_valid is 1 only for aligned 1/2/4 byte patterns:
+ * 4'b0001, 4'b0010, 4'b0100, 4'b1000 (single byte)
+ * 4'b0011, 4'b0110, 4'b1100 (contiguous 2-byte)
+ * 4'b1111 (4-byte word)
+ * This differs from the OpenTitan spec which defines ACCESSINVAL as
+ * "write to protected register while ACTIVE=1".
  *
  * FW Testability:
- *   Standard RISC-V instructions (SW/SH/SB) always produce valid AXI byte
- *   enables, so ACCESSINVAL cannot be triggered from firmware. This test
- *   verifies:
- *     1. ACCESSINVAL=0 after valid TXDATA writes (happy path)
- *     2. ACCESSINVAL[20] bit position and mask are correct
- *     3. ERROR_STATUS W1C works (writing 1 to bit 20 when already 0 has no effect)
- *     4. ACCESSINVAL is NOT gated by ERROR_ENABLE (no corresponding bit in ERROR_ENABLE)
- *     5. Other ERROR_STATUS bits (e.g., UNDERFLOW) are unaffected by ACCESSINVAL W1C
+ * Standard RISC-V instructions (SW/SH/SB) always produce valid AXI byte
+ * enables, so ACCESSINVAL cannot be triggered from firmware. This test
+ * verifies:
+ * 1. ACCESSINVAL=0 after valid TXDATA SW/SH/SB writes (happy path)
+ * 2. ACCESSINVAL[20] bit position and mask are correct
+ * 3. ERROR_STATUS W1C works (writing 1 to bit 20 when already 0 has no effect)
+ * 4. ACCESSINVAL is NOT gated by ERROR_ENABLE (no corresponding bit in ERROR_ENABLE)
+ * 5. Other ERROR_STATUS bits (e.g., UNDERFLOW) are unaffected by ACCESSINVAL W1C
  *
  * Note: Actual ACCESSINVAL triggering requires UVM-level TB injection of
  * non-contiguous byte enables on the TXDATA register write — not testable
  * via CPU firmware.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_accessinval_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_accessinval_test STACK=sim
  *
  */
 
@@ -43,13 +43,12 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT ACCESSINVAL Test (TC_SPIOT_021)\n");
+    printf("SPI OT ACCESSINVAL Test\n");
     printf("========================================\n\n");
 
     printf("NOTE: ACCESSINVAL fires on invalid byte-enable writes to TXDATA.\n");
@@ -63,9 +62,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
     uint32_t dummy;
-
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
@@ -95,7 +91,7 @@ int main(void) {
 
     /* ------------------------------------------------------------------ */
     /* Step 2: Valid TXDATA writes must NOT trigger ACCESSINVAL            */
-    /* SW/SH/SB from RISC-V always produce valid aligned byte enables      */
+    /* SW/SH/SB from RISC-V produce valid aligned AXI byte enables.        */
     /* ------------------------------------------------------------------ */
     printf("\nStep 2: Valid TXDATA writes (SW, SH, SB) must not trigger ACCESSINVAL\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
@@ -109,6 +105,30 @@ int main(void) {
         pass = 0;
     } else {
         printf("  PASS: 32-bit TXDATA write does not trigger ACCESSINVAL\n");
+    }
+
+    /* Half-word store (SH → contiguous 2-byte enable, valid) */
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    *(volatile uint16_t *)(uintptr_t)OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR = 0x5678u;
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    printf("  After 16-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
+    if (err_status.f.ACCESSINVAL != 0) {
+        printf("  FAIL: ACCESSINVAL set by valid 16-bit TXDATA write\n");
+        pass = 0;
+    } else {
+        printf("  PASS: 16-bit TXDATA write does not trigger ACCESSINVAL\n");
+    }
+
+    /* Byte store (SB → single-byte enable, valid) */
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    *(volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR = 0x78u;
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    printf("  After 8-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
+    if (err_status.f.ACCESSINVAL != 0) {
+        printf("  FAIL: ACCESSINVAL set by valid 8-bit TXDATA write\n");
+        pass = 0;
+    } else {
+        printf("  PASS: 8-bit TXDATA write does not trigger ACCESSINVAL\n");
     }
 
     /* ------------------------------------------------------------------ */
@@ -148,19 +168,25 @@ int main(void) {
     }
 
     /* ------------------------------------------------------------------ */
-    /* Step 5: ACCESSINVAL is NOT in ERROR_ENABLE (always reported)        */
-    /* ERROR_ENABLE has bits for: CMDBUSY[0], OVERFLOW[4], UNDERFLOW[8],  */
-    /* CMDINVAL[12], CSIDINVAL[16] — no bit for ACCESSINVAL[20]           */
+    /* Step 5: ACCESSINVAL is NOT in ERROR_ENABLE (no bit 20 in RDL map)   */
+    /* Prove bit 20 is RAZ/WI: write 1 and readback must stay clear.       */
     /* ------------------------------------------------------------------ */
-    printf("\nStep 5: ACCESSINVAL not gated by ERROR_ENABLE (no bit 20 in ERROR_ENABLE)\n");
+    printf("\nStep 5: ERROR_ENABLE bit 20 is not writable (ACCESSINVAL not gated)\n");
     err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
-    printf("  ERROR_ENABLE=0x%08x (bit 20 expected 0 — not controllable)\n", err_enable.w);
+    printf("  ERROR_ENABLE before probe: 0x%08x\n", err_enable.w);
+    err_enable.w |= (1u << 20);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, err_enable.w);
+    err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
+    printf("  ERROR_ENABLE after write-1 to bit 20: 0x%08x\n", err_enable.w);
     if ((err_enable.w >> 20) & 1) {
-        printf("  FAIL: ERROR_ENABLE has bit 20 set (unexpected)\n");
+        printf("  FAIL: ERROR_ENABLE bit 20 is writable (ACCESSINVAL gate unexpected)\n");
         pass = 0;
     } else {
-        printf("  PASS: ERROR_ENABLE bit 20 = 0 (ACCESSINVAL not gated)\n");
+        printf("  PASS: ERROR_ENABLE bit 20 RAZ/WI (ACCESSINVAL not in enable map)\n");
     }
+    /* Restore POR default composed from generated field resets */
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR,
+              SPI_CONTROLLER__ERROR_ENABLE_reset);
 
     /* ------------------------------------------------------------------ */
     /* Step 6: Other ERROR_STATUS bits unaffected by ACCESSINVAL W1C      */

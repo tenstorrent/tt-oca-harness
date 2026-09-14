@@ -1,27 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Command-line orchestration for the native DV runner."""
 
 from __future__ import annotations
 
 import argparse
 import copy
-import importlib
 import importlib.metadata
 import json
 import os
 import secrets
 import shutil
+import signal
+import subprocess
 import sys
 import textwrap
+import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from datetime import datetime
 from pathlib import Path
+from re import compile
 from typing import Any
 
 from .compat import UTC
 from .config import (
     CANONICAL_STAGES,
+    OverlayFrameworkMismatch,
     as_str_list,
+    cocotb_cfg,
     default_target_name,
     flow_stages,
     load_executors,
@@ -31,11 +39,13 @@ from .config import (
     merge_simulator_defaults,
     resolved_target_name,
     selected_target,
-    targeted_sim_cfg,
     target_names,
+    targeted_sim_cfg,
     validate_native_config_shape,
+    validate_run_mode_request,
 )
 from .duts import load_duts, resolve_dut
+from .junit import materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
@@ -43,47 +53,94 @@ from .results import (
     aggregate_status,
     exit_code_for_status,
     fragment_payload,
+    git_info,
     regression_payload,
     result_payload,
     rollup_payload,
+    tool_versions,
     write_result,
 )
-from .stages import item_artifact_dir, run_stage, seed_for_item
+from .stages import (
+    cocotb_python_paths,
+    item_artifact_dir,
+    request_stage_cancellation,
+    reset_stage_cancellation,
+    run_stage,
+    seed_for_item,
+)
 from .ui import Console
 from .waves import (
     WAVE_DEFAULT,
     find_failure_time_ps,
     parse_time_ps,
+    require_verdi_home,
     resolve_wave_format,
     waves_on_fail_requested,
 )
-
 
 REGRESSION_SEED_MAX = 2_147_483_647
 SUPPORTED_PYTHON_MIN = (3, 11)
 SUPPORTED_PYTHON_MAX_EXCLUSIVE = (3, 14)
 _COVERAGE_STAGES = {"cov_merge", "cov_report"}
+# --doctor import probe: modules per child interpreter, and the seconds each child
+# has before it is killed. OCAH_DOCTOR_PROBE_TIMEOUT replaces the default budget.
+DOCTOR_PROBE_BATCH_SIZE = 20
+DOCTOR_PROBE_TIMEOUT_DEFAULT = 120.0
+DOCTOR_PROBE_TIMEOUT_ENV = os.environ.get("OCAH_DOCTOR_PROBE_TIMEOUT", "")
+
+
+class RunInterrupted(BaseException):
+    """Raised by the main-thread signal handler after recording the signal."""
+
+    def __init__(self, signum: int):
+        self.signum = signum
+        super().__init__(signal.Signals(signum).name)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        usage="%(prog)s [options]",
-        description=(
-            "Native OSS DV/FV launcher for listing DUTs, validating configs, "
-            "and running simulation or formal flows."
+        usage=(
+            "%(prog)s --dut NAME [--framework NAME] [--items ITEM ...] [options]\n"
+            "       %(prog)s --list | --validate-configs | --doctor [options]"
+        ),
+        description=textwrap.dedent(
+            """\
+            Native OSS DV/FV launcher.
+
+            Select a DUT (--dut) and, when it implements more than one test framework,
+            a framework (--framework); pick tests or groups from its testlist
+            (--items/--tag); run them on a simulator (--tool). Start with --list to see
+            what exists and --doctor to check this machine can run it.
+            """
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent(
             """\
             Examples:
-              python3 tools/dv/run_dv.py --list
-              python3 tools/dv/run_dv.py --validate-configs
-              python3 tools/dv/run_dv.py --doctor --dut dtp
-              python3 tools/dv/run_dv.py --dut smc_wrapper --list
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --tool verilator --dry-run
-              python3 tools/dv/run_dv.py --dut smc_wrapper --build-only --dry-run
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --regress --reseed 10
-              python3 tools/dv/run_dv.py --dut smc_wrapper --items smoke --waves-on-fail fst
+
+              Discover what exists:
+                python3 tools/dv/run_dv.py --list                    # DUTs, frameworks, tools
+                python3 tools/dv/run_dv.py --dut dtp --list          # one DUT's tests and groups
+                python3 tools/dv/run_dv.py --doctor --dut dtp        # can this machine run it?
+                python3 tools/dv/run_dv.py --validate-configs        # are all configs consistent?
+
+              Run tests (the DUT's default framework and tool):
+                python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
+                python3 tools/dv/run_dv.py --dut smc --items smoke --tool vcs
+                python3 tools/dv/run_dv.py --dut smc --items smoke --regress --reseed 10
+                python3 tools/dv/run_dv.py --dut smc --build-only --dry-run
+
+              Pick a framework (same scenario names, different implementation):
+                python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test
+                python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
+
+              Debug a failure:
+                python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
+                python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --stage sim --seed 7
+
+              Feed CI or the dashboard:
+                python3 tools/dv/run_dv.py --list --json             # (DUT, framework) matrix
+                python3 tools/dv/run_dv.py --dut dtp --list --json   # scenario binding matrix
             """
         ),
     )
@@ -101,10 +158,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Verification mode: simulation (default) or formal",
     )
     common.add_argument(
+        "--framework",
+        metavar="NAME",
+        help="Test framework (e.g. cocotb, uvm); defaults to the DUT's default_framework",
+    )
+    common.add_argument(
         "--items",
         nargs="+",
         metavar="ITEM",
-        help="Test/check names or groups",
+        help="Test or group names from the DUT's testlist (default: the `smoke` group)",
     )
     common.add_argument(
         "--tag",
@@ -117,14 +179,55 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Keep duplicate items when selected groups overlap",
     )
-    common.add_argument("--tool", metavar="TOOL", help="Backend tool override")
-    common.add_argument("--run-mode", metavar="NAME", help="Named run mode from sim cfg")
+    common.add_argument(
+        "--skip-unimplemented",
+        action="store_true",
+        help=(
+            "Skip group/tag-selected scenarios not implemented in the selected framework "
+            "(default: error); explicitly named --items tests still error"
+        ),
+    )
+    common.add_argument(
+        "--tool",
+        metavar="TOOL",
+        help="Simulator from simulators.toml (verilator, vcs, xcelium); defaults to the framework's default tool",
+    )
+    common.add_argument(
+        "--run-mode",
+        metavar="NAME",
+        help="Run mode from the DUT sim config [run_modes.<name>] (default: the test's first run mode)",
+    )
+    common.add_argument(
+        "--target",
+        metavar="NAME",
+        help=(
+            "Build target from the DUT sim config [targets.<name>]; "
+            "overrides every selected test's target (default: each test's own target)"
+        ),
+    )
+    common.add_argument(
+        "--overlay",
+        metavar="PATH",
+        help=(
+            "Adopter overlay config applied append-only on top of the merged DUT view "
+            "(extra build sources/incdirs/source_lists, target defines/flags, [sim].args); "
+            "also read from OCAH_DV_OVERLAY, never auto-activated"
+        ),
+    )
 
     actions = parser.add_argument_group("Actions And Introspection")
     actions.add_argument(
         "--list",
         action="store_true",
         help="List configured DUTs or selected DUT details",
+    )
+    actions.add_argument(
+        "--json",
+        action="store_true",
+        help=(
+            "With --list: emit machine-readable JSON — one entry per (DUT, framework) view "
+            "globally, or the full scenario binding matrix with --dut"
+        ),
     )
     actions.add_argument(
         "--validate-configs",
@@ -143,7 +246,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     stages = parser.add_argument_group("Stage And Build Control")
-    stages.add_argument("--stage", action="append", metavar="NAME", help="Native stage to run")
+    stages.add_argument(
+        "--stage",
+        action="append",
+        metavar="NAME",
+        help="Run one named stage (repeatable), e.g. --stage flist --stage hdl_compile; `--dut X --list` shows a DUT's stages",
+    )
     stages.add_argument("--build-only", action="store_true", help="Run build stages only")
     stages.add_argument("--run-only", action="store_true", help="Run sim/regress stages only")
     stages.add_argument(
@@ -159,8 +267,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     output = parser.add_argument_group("Output And UI")
-    output.add_argument("--run-dir", metavar="DIR", help="Run output directory")
-    output.add_argument("--result", metavar="PATH", help="Result JSON output path")
+    output.add_argument(
+        "--run-dir",
+        metavar="DIR",
+        help="Run output directory (default: <dut-dv-root>/build/runs/<stamp>__<tool>__<label>)",
+    )
+    output.add_argument(
+        "--result",
+        metavar="PATH",
+        help="Write an extra copy of the run-level result JSON here (primary stays <run-dir>/result.json)",
+    )
     output.add_argument(
         "--quiet",
         action="store_true",
@@ -193,7 +309,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="N",
         help="Backend compile/build job count; uses --sim-jobs when omitted",
     )
-    parallel.add_argument("--executor", default=None, metavar="NAME", help="Executor backend")
+    parallel.add_argument(
+        "--executor",
+        default=None,
+        metavar="NAME",
+        help="Executor from executors.toml (`local` is the implemented dispatch)",
+    )
     parallel.add_argument("--queue", metavar="NAME", help="Executor queue/partition metadata")
     parallel.add_argument("--cores", type=int, metavar="N", help="Executor CPU-core request")
     parallel.add_argument("--mem-mb", type=int, metavar="MB", help="Executor memory request")
@@ -205,7 +326,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Run selected items through the local regression scheduler",
     )
-    regression.add_argument("--seed", type=int, metavar="N", help="Seed override")
+    regression.add_argument(
+        "--seed",
+        type=int,
+        metavar="N",
+        help="Single-simulation seed override (integer; rejected in regression mode — use --reseed there)",
+    )
     regression.add_argument(
         "--reseed",
         type=int,
@@ -232,7 +358,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         nargs="?",
         const=WAVE_DEFAULT,
         metavar="FMT",
-        help="Enable waves, optionally naming a format",
+        help="Enable waves; FMT defaults to the tool's native format (fst/vpd/shm)",
     )
     waves.add_argument(
         "--waves-on-fail",
@@ -268,7 +394,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     coverage = parser.add_argument_group("Coverage")
-    coverage.add_argument("--cov", action="store_true", help="Enable coverage where supported")
+    coverage.add_argument(
+        "--cov",
+        action="store_true",
+        help="Enable simulator-native coverage and append the cov_merge/cov_report stages",
+    )
     coverage.add_argument(
         "--fail-under",
         type=float,
@@ -280,8 +410,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     backend.add_argument(
         "--define",
         action="append",
-        metavar="VALUE",
-        help="Extra +define+ value",
+        metavar="NAME[=VALUE]",
+        help="Extra Verilog define for compile/elaboration",
     )
     backend.add_argument(
         "--comp-arg",
@@ -343,6 +473,7 @@ def validate_mode_options(args: argparse.Namespace) -> None:
         "retry": "--retry",
         "max_failures": "--max-failures",
         "run_mode": "--run-mode",
+        "target": "--target",
         "waves": "--waves",
         "waves_on_fail": "--waves-on-fail",
         "wave_start": "--wave-start",
@@ -404,7 +535,9 @@ def validate_mode_options(args: argparse.Namespace) -> None:
         parse_time_ps(getattr(args, attr, None), flag)
 
 
-def validate_duplicate_purpose_keys(flow: Flow, sim_cfg: dict[str, Any], simulators: dict[str, Any]) -> None:
+def validate_duplicate_purpose_keys(
+    flow: Flow, sim_cfg: dict[str, Any], simulators: dict[str, Any]
+) -> None:
     errors: list[str] = []
     defaults = sim_cfg.get("defaults", {})
     if isinstance(defaults, dict) and "tool" in defaults:
@@ -416,11 +549,17 @@ def validate_duplicate_purpose_keys(flow: Flow, sim_cfg: dict[str, Any], simulat
             if isinstance(mode, dict) and "tags" in mode:
                 errors.append(f"[run_modes.{name}].tags duplicates testlist tags; remove it")
 
-    build_options = sim_cfg.get("build", {}).get("options", {}) if isinstance(sim_cfg.get("build"), dict) else {}
+    build_options = (
+        sim_cfg.get("build", {}).get("options", {})
+        if isinstance(sim_cfg.get("build"), dict)
+        else {}
+    )
     if isinstance(build_options, dict):
         for key in ("ccache", "output_split"):
             if key in build_options:
-                errors.append(f"[build.options].{key} is Verilator-specific; use [build.verilator].{key}")
+                errors.append(
+                    f"[build.options].{key} is Verilator-specific; use [build.verilator].{key}"
+                )
 
     deprecated_target_keys = {
         "verilator_flags": "tools.verilator.flags",
@@ -436,7 +575,9 @@ def validate_duplicate_purpose_keys(flow: Flow, sim_cfg: dict[str, Any], simulat
                 continue
             for old_key, new_key in deprecated_target_keys.items():
                 if old_key in target:
-                    errors.append(f"[{section_name}.{target_name}].{old_key} is deprecated; use {new_key}")
+                    errors.append(
+                        f"[{section_name}.{target_name}].{old_key} is deprecated; use {new_key}"
+                    )
 
     for section, default_key in (
         ("build", "build_defaults"),
@@ -465,7 +606,9 @@ def validate_duplicate_purpose_keys(flow: Flow, sim_cfg: dict[str, Any], simulat
                     "vcs_sim_args",
                 ):
                     if old_key in tool_cfg:
-                        errors.append(f"[coverage.{tool}].{old_key} is deprecated; use generic build_args/compile_args/sim_args/test_args")
+                        errors.append(
+                            f"[coverage.{tool}].{old_key} is deprecated; use generic build_args/compile_args/sim_args/test_args"
+                        )
             defaults_for_tool = sim_tool.get(default_key, {})
             if not isinstance(defaults_for_tool, dict):
                 continue
@@ -493,6 +636,12 @@ def validate_flow(
     for tool in flow.tools:
         if tool not in simulators:
             raise ConfigError(f"{flow.path}: tool `{tool}` missing from simulators.toml")
+        capable = _tool_frameworks(simulators, tool)
+        if flow.framework and capable and flow.framework not in capable:
+            raise ConfigError(
+                f"{flow.path}: tool `{tool}` does not support framework `{flow.framework}` "
+                f"(supports: {', '.join(capable)})"
+            )
     stages = flow_stages(flow)
     for stage_name, stage in stages.items():
         if stage_name not in CANONICAL_STAGES:
@@ -517,18 +666,10 @@ def validate_flow(
                 if not candidate.is_absolute():
                     repo_candidate = root / candidate
                     candidate = (
-                        repo_candidate
-                        if repo_candidate.is_file()
-                        else flow.path.parent / candidate
+                        repo_candidate if repo_candidate.is_file() else flow.path.parent / candidate
                     )
             else:
-                candidate = (
-                    flow.path.parent
-                    / "cov"
-                    / "config"
-                    / tool
-                    / "coverage_policy.toml"
-                )
+                candidate = flow.path.parent / "cov" / "config" / tool / "coverage_policy.toml"
             if candidate.is_file():
                 load_coverage_policy(candidate, expected_dut=flow.name)
     if executors is not None:
@@ -546,7 +687,9 @@ def validate_flow(
     validate_parser_extensions(flow, simulators, policies)
 
 
-def validate_all(root: Path) -> tuple[dict[str, Flow], dict[str, Any], dict[str, Any], dict[str, Any]]:
+def validate_all(
+    root: Path,
+) -> tuple[dict[str, Flow], dict[str, Any], dict[str, Any], dict[str, Any]]:
     duts = load_duts(root)
     simulators = load_simulators(root)
     executors = load_executors(root)
@@ -556,13 +699,30 @@ def validate_all(root: Path) -> tuple[dict[str, Flow], dict[str, Any], dict[str,
     return duts, simulators, policies, executors
 
 
-def cmd_validate_configs(root: Path) -> int:
+def adopter_overlay_path(args: Any) -> Path | None:
+    """The adopter overlay selected by ``--overlay`` (wins) or ``OCAH_DV_OVERLAY``; else None.
+
+    A relative path resolves against the invocation directory, like any other CLI path. The
+    overlay is never inferred from the tree — only these two explicit channels activate it.
+    """
+    text = getattr(args, "overlay", None) or os.environ.get("OCAH_DV_OVERLAY", "").strip()
+    if not text:
+        return None
+    return Path(text).expanduser().resolve()
+
+
+def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
     """Validate every config and print a per-DUT summary.
 
     Unlike the run path (which fails fast), this reports every DUT's status in one pass so a user
-    sees all config problems at once instead of fixing them one re-run at a time.
+    sees all config problems at once instead of fixing them one re-run at a time. With an adopter
+    overlay active, every framework view is validated WITH the overlay applied; views excluded by
+    the overlay's `frameworks` guard fall back to their base validation and say so.
     """
-    print(f"Validating configs in {repo_rel(root, configs_root(root))}\n")
+    print(f"Validating configs in {repo_rel(root, configs_root(root))}")
+    if overlay is not None:
+        print(f"Adopter overlay: {repo_rel(root, overlay)}")
+    print()
 
     # The registries are structural: per-flow validation cannot run without them, so a failure here
     # is reported on its own and stops the report.
@@ -586,16 +746,36 @@ def cmd_validate_configs(root: Path) -> int:
         return 2
 
     failures = 0
+    rows = 0
     for name in sorted(duts):
-        try:
-            validate_flow(duts[name], root, simulators, policies, executors)
-            print(f"  {name:<16} OK")
-        except ConfigError as exc:
-            failures += 1
-            print(f"  {name:<16} FAIL: {exc}")
+        flow = duts[name]
+        # Validate every framework view a DUT implements, not only its default: the default row
+        # keeps the bare DUT name; additional frameworks get their own `name (fw)` row.
+        views: list[tuple[str, str | None]] = [(name, None)]
+        views += [(f"{name} ({fw})", fw) for fw in flow.frameworks if fw != flow.framework]
+        for label, fw in views:
+            rows += 1
+            try:
+                suffix = ""
+                if overlay is not None:
+                    try:
+                        view = resolve_dut(root, name, framework=fw, adopter_overlay=overlay)
+                        suffix = " [+overlay]"
+                    except OverlayFrameworkMismatch:
+                        view = flow if fw is None else resolve_dut(root, name, framework=fw)
+                        suffix = " [overlay skipped: frameworks guard]"
+                else:
+                    view = flow if fw is None else resolve_dut(root, name, framework=fw)
+                validate_flow(view, root, simulators, policies, executors)
+                print(f"  {label:<16} OK{suffix}")
+            except ConfigError as exc:
+                failures += 1
+                print(f"  {label:<16} FAIL: {exc}")
 
     total = len(duts)
-    print(f"\nResult: {total} DUT(s): {total - failures} OK, {failures} FAILED")
+    print(
+        f"\nResult: {total} DUT(s), {rows} framework view(s): {rows - failures} OK, {failures} FAILED"
+    )
     return 0 if failures == 0 else 2
 
 
@@ -610,8 +790,7 @@ def _python_supported() -> tuple[bool, str]:
     if min_ok and max_ok:
         return True, f"{version[0]}.{version[1]}.{version[2]}"
     supported = (
-        f">={_version_text(SUPPORTED_PYTHON_MIN)},"
-        f"<{_version_text(SUPPORTED_PYTHON_MAX_EXCLUSIVE)}"
+        f">={_version_text(SUPPORTED_PYTHON_MIN)},<{_version_text(SUPPORTED_PYTHON_MAX_EXCLUSIVE)}"
     )
     return (
         False,
@@ -654,12 +833,108 @@ def _path_in_pythonpath(path: Path) -> bool:
     return False
 
 
-def _try_import(module_name: str) -> tuple[bool, str]:
+_PROBE_SCRIPT = """\
+import importlib, json, sys
+# cocotb assigns simulation-time attributes before importing test modules
+# (cocotb._init._setup_logging); mirror the one commonly touched at import
+# scope so this bare-interpreter probe matches the run's import context.
+try:
+    import cocotb, logging
+    cocotb.log = logging.getLogger("test")
+except ImportError:
+    pass
+out = {}
+for name in sys.argv[1:]:
     try:
-        importlib.import_module(module_name)
-        return True, "import OK"
-    except Exception as exc:  # noqa: BLE001 - doctor must report actionable import failures.
-        return False, f"{type(exc).__name__}: {exc}"
+        importlib.import_module(name)
+        out[name] = [True, "import OK"]
+    except Exception as exc:
+        out[name] = [False, f"{type(exc).__name__}: {exc}"]
+print(json.dumps(out))
+"""
+
+
+def doctor_probe_timeout() -> float:
+    """Return the per-batch import-probe budget in seconds.
+
+    `OCAH_DOCTOR_PROBE_TIMEOUT` must be a positive number when set; unset means the default.
+    """
+    raw = DOCTOR_PROBE_TIMEOUT_ENV.strip()
+    if not raw:
+        return DOCTOR_PROBE_TIMEOUT_DEFAULT
+    try:
+        seconds = float(raw)
+    except ValueError as exc:
+        raise ConfigError(
+            f"OCAH_DOCTOR_PROBE_TIMEOUT must be a number of seconds, got {raw!r}"
+        ) from exc
+    if seconds <= 0:
+        raise ConfigError(f"OCAH_DOCTOR_PROBE_TIMEOUT must be positive, got {raw!r}")
+    return seconds
+
+
+def _probe_batch(
+    python_paths: list[Path], batch: list[str], timeout: float
+) -> dict[str, tuple[bool, str]] | None:
+    """Import `batch` in one child interpreter; None means the child exceeded `timeout`."""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", _PROBE_SCRIPT, *batch],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return None
+    except OSError as exc:
+        return {name: (False, f"import probe failed to run: {exc}") for name in batch}
+    try:
+        raw = json.loads(proc.stdout.strip().splitlines()[-1])
+        return {name: (bool(ok), str(detail)) for name, (ok, detail) in raw.items()}
+    except (ValueError, IndexError):
+        detail = (proc.stderr or proc.stdout).strip().splitlines()
+        tail = detail[-1] if detail else f"exit code {proc.returncode}"
+        return {name: (False, f"import probe crashed: {tail}") for name in batch}
+
+
+def _probe_imports(
+    python_paths: list[Path],
+    modules: list[str],
+    *,
+    timeout: float = DOCTOR_PROBE_TIMEOUT_DEFAULT,
+    batch_size: int = DOCTOR_PROBE_BATCH_SIZE,
+) -> dict[str, tuple[bool, str]]:
+    """Import each module in child interpreters whose PYTHONPATH is exactly `python_paths`.
+
+    Run stages rebuild PYTHONPATH for simulator children from the DUT config
+    (:func:`runlib.stages.cocotb_python_paths`) instead of inheriting the launcher's ambient
+    one, so probing through this process's ``sys.path`` reports failures runs never see.
+
+    Modules are probed `batch_size` per child with `timeout` seconds each. A batch whose
+    child exceeds the budget is retried once with twice the budget; only a batch that
+    exceeds both is reported as failed, and only for its own modules.
+    """
+    if not modules:
+        return {}
+    results: dict[str, tuple[bool, str]] = {}
+    for start in range(0, len(modules), batch_size):
+        batch = modules[start : start + batch_size]
+        outcome = _probe_batch(python_paths, batch, timeout)
+        if outcome is None:
+            outcome = _probe_batch(python_paths, batch, timeout * 2)
+        if outcome is None:
+            why = (
+                f"import probe timed out twice ({timeout:g}s, then {timeout * 2:g}s) for a "
+                f"batch of {len(batch)} modules; raise OCAH_DOCTOR_PROBE_TIMEOUT on a slow "
+                "filesystem"
+            )
+            outcome = {name: (False, why) for name in batch}
+        results.update(outcome)
+    return results
 
 
 def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
@@ -681,12 +956,10 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
         )
 
     distributions = [
-        ("shared dv package", "ocah-dv"),
         ("cocotb", "cocotb"),
         ("pyuvm", "pyuvm"),
         ("cocotbext-axi", "cocotbext-axi"),
         ("cocotbext-jtag", "cocotbext-jtag"),
-        ("cocotbext-i2c", "cocotbext-i2c"),
     ]
     for label, dist_name in distributions:
         version = _dist_version(dist_name)
@@ -701,6 +974,16 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             )
         else:
             _print_doctor_row(label, "OK", version)
+
+    # The shared VIP (`ocah-dv`) needs no installed distribution: every run rebuilds
+    # PYTHONPATH from the DUT config, which carries the in-repo VIP root.
+    ocah_dv_version = _dist_version("ocah-dv")
+    _print_doctor_row(
+        "shared dv package",
+        "OK" if ocah_dv_version else "WARN",
+        ocah_dv_version
+        or "distribution `ocah-dv` not installed; runs import the VIP from hw/common/dv/vip",
+    )
 
     namespace_root = root / "build/dv/python"
     if namespace_root.is_dir():
@@ -725,31 +1008,58 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             "so its bootstrap exports it",
         )
 
-    ok, detail = _try_import("ocah_axi_vip")
+    try:
+        probe_timeout = doctor_probe_timeout()
+    except ConfigError as exc:
+        _print_doctor_row("probe budget", "FAIL", str(exc))
+        print()
+        return True
+
+    # Probe the shared VIP from its in-repo root, the way DUT configs put it on PYTHONPATH.
+    vip_root = root / "hw" / "common" / "dv" / "vip"
+    vip_result = _probe_imports([vip_root, namespace_root], ["ocah_axi_vip"], timeout=probe_timeout)
+    ok, detail = vip_result["ocah_axi_vip"]
     _print_doctor_row("import ocah_axi_vip", "OK" if ok else "FAIL", detail)
     failed |= not ok
 
     if flow is not None and flow.framework == "cocotb":
-        dut_module = flow.name
-        ok, detail = _try_import(dut_module)
-        _print_doctor_row(f"import {dut_module}", "OK" if ok else "FAIL", detail)
-        failed |= not ok
-
-        env_module = f"{dut_module}.cocotb.env"
+        # Import exactly what a run imports (each testlist `module`, cocotb's MODULE=) with
+        # exactly the PYTHONPATH a run rebuilds, so pass/fail here predicts pass/fail there.
+        run_paths = cocotb_python_paths(root, cocotb_cfg(flow, flow.raw))
         try:
-            env_spec = importlib.util.find_spec(env_module)
-        except ModuleNotFoundError:
-            env_spec = None
-        if env_spec is not None:
-            ok, detail = _try_import(env_module)
-            _print_doctor_row(f"import {env_module}", "OK" if ok else "FAIL", detail)
-            failed |= not ok
+            catalog = load_test_catalog(flow, root)
+        except ConfigError as exc:
+            _print_doctor_row("test modules", "FAIL", f"testlist did not load: {exc}")
+            print()
+            return True
+        modules = sorted({test.module for test in catalog.tests.values()})
+        results = _probe_imports(run_paths, modules, timeout=probe_timeout)
+        failures = [(name, results[name][1]) for name in modules if not results[name][0]]
+        if not modules:
+            _print_doctor_row("test modules", "WARN", "testlist declares no tests")
+        elif not failures:
+            _print_doctor_row(
+                "test modules", "OK", f"{len(modules)} modules import with the run PYTHONPATH"
+            )
+        else:
+            failed = True
+            _print_doctor_row(
+                "test modules", "FAIL", f"{len(failures)}/{len(modules)} modules failed to import"
+            )
+            for name, why in failures[:5]:
+                _print_doctor_row(f"  {name}", "FAIL", why)
+            if len(failures) > 5:
+                _print_doctor_row(
+                    "  ...", "FAIL", f"{len(failures) - 5} more (same run PYTHONPATH)"
+                )
     elif flow is not None:
         _print_doctor_row(
             "DUT-local import", "SKIP", f"framework `{flow.framework}` has no DUT Python package"
         )
     else:
-        _print_doctor_row("DUT-local import", "SKIP", "select --dut <name> to check one DUT package")
+        _print_doctor_row(
+            "DUT-local import", "SKIP", "select --dut <name> to check one DUT package"
+        )
 
     print()
     return failed
@@ -766,8 +1076,8 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         executors = load_executors(root)
         policies = validate_parser_registry(root)
         duts = load_duts(root)
-        for flow in duts.values():
-            validate_flow(flow, root, simulators, policies, executors)
+        for candidate_flow in duts.values():
+            validate_flow(candidate_flow, root, simulators, policies, executors)
     except ConfigError as exc:
         print(f"configs : FAIL: {exc}")
         print("\nResult: fix config errors first (run --validate-configs for the full list)")
@@ -777,7 +1087,13 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     flow: Flow | None = None
     if args.dut:
         try:
-            flow = resolve_dut(root, args.dut, mode=args.mode)
+            flow = resolve_dut(
+                root,
+                args.dut,
+                mode=args.mode,
+                framework=args.framework,
+                adopter_overlay=adopter_overlay_path(args),
+            )
             validate_flow(flow, root, simulators, policies, executors)
         except ConfigError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
@@ -786,7 +1102,7 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     required: str | None = None
     if flow is not None:
         tools = list(flow.tools)
-        required = selected_tool(flow, args)
+        required = selected_tool(flow, args, simulators)
         scope = f"DUT `{flow.name}` (would run with: {required})"
     elif args.tool:
         tools = [args.tool]
@@ -833,33 +1149,206 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         return 2
     if missing_required:
         print(f"Result: required tool `{required}` is NOT available — this flow cannot run here")
+        if flow is not None and flow.license == "required-commercial":
+            print(
+                f"Note: `{flow.name}` needs a commercially licensed simulator; "
+                "`--list` marks such flows (licensed) — the others run on open-source tools"
+            )
         return 2
     print(f"Result: required tool `{required}` is available")
     return 0
 
 
-def list_flows(flows: dict[str, Flow]) -> None:
+def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
+    BOLD = "\033[1m"
+    NORMAL = "\033[0m"
+    SELECT_BEGIN = BOLD
+    SELECT_END = NORMAL
+
+    # If using ANSI codes, these confuse fstring alignment, so must align manually
+    ANSI_RE = compile(r"\033\[[0-9;]*m")
+
+    def align(txt: str, width: int) -> str:
+        return txt + " " * max(0, width - len(ANSI_RE.sub("", txt)))
+
+    def format_selected_licensed(value: str, selected: bool, unlicensed: bool):
+        return (
+            (f"{SELECT_BEGIN}{value}{SELECT_END}" if selected else value)
+            if unlicensed
+            else (
+                f"{SELECT_BEGIN}{value} (licensed){SELECT_END}"
+                if selected
+                else value + " (licensed)"
+            )
+        )
+
+    print(
+        f"{BOLD}{'NAME':<12} {'KIND':<4} {'FRAMEWORKS':<14} {'TOOLS':<46} {'DESCRIPTION'}{NORMAL}"
+    )
+    freesims = {name: not bool(attrs["license_env"]) for name, attrs in simulators.items()}
+    freeframeworks: dict[str, bool] = {}
+    frameworkTools: dict[str, list[str]] = {"": []}
+    for sim, free in freesims.items():
+        for framework in simulators[sim]["frameworks"]:
+            freeframeworks[framework] = free or freeframeworks.get(framework, False)
+            frameworkTools[framework] = frameworkTools.get(framework, []) + [sim]
     for flow in sorted(flows.values(), key=lambda item: item.name):
-        print(f"{flow.name:<16} {flow.kind:<3} {flow.framework:<8} {flow.description}")
+        spill = False
+        frameworks = {
+            framework: format_selected_licensed(
+                framework,
+                (flow.framework and framework == flow.framework)
+                or (not flow.framework and framework == flow.default_framework),
+                freeframeworks[framework],
+            )
+            for framework in sorted(
+                flow.frameworks,
+                key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
+            )
+        } or {"": "-"}
+        for framework, label in frameworks.items():
+            toolArr = list(set(flow.tools) & set(frameworkTools[framework]))
+            defaultTool = (
+                flow.default_tool
+                if flow.default_tool in toolArr
+                else toolArr[0]
+                if len(toolArr)
+                else ""
+            )
+            toolsArr = [
+                format_selected_licensed(tool, tool == defaultTool, freesims[tool])
+                for tool in sorted(
+                    toolArr, key=lambda x: (0, 0) if x == flow.default_tool else (1, str.lower(x))
+                )
+            ] or ["-"]
+            tools = "/".join(toolsArr)
+
+            print(
+                f"{(flow.name if not spill else ''):<12} {flow.kind if not spill else ' ' + chr(8627):<4} {align(label, 14)} {align(tools, 46)} {flow.description if not spill else ''}"
+            )
+            spill = True
+
+
+def _implemented_counts(flow: Flow, catalog: TestCatalog) -> dict[str, int]:
+    """Scenario count per implemented framework — the binding-matrix summary."""
+    frameworks = flow.frameworks or ([flow.framework] if flow.framework else [])
+    return {
+        fw: sum(1 for test in catalog.tests.values() if fw in test.bindings) for fw in frameworks
+    }
 
 
 def list_flow_detail(flow: Flow, root: Path) -> None:
     catalog = load_test_catalog(flow, root)
+    multi_framework = bool(flow.frameworks) and flow.frameworks != [flow.framework]
     print(f"name       : {flow.name}")
     print(f"kind       : {flow.kind}")
     print(f"framework  : {flow.framework}")
+    if multi_framework:
+        print(f"frameworks : {', '.join(flow.frameworks)} (default: {flow.default_framework})")
+        counts = _implemented_counts(flow, catalog)
+        print(
+            "implemented: "
+            + ", ".join(f"{fw} {n}/{len(catalog.tests)}" for fw, n in counts.items())
+        )
     print(f"root       : {flow.root}")
     print(f"tools      : {', '.join(flow.tools)}")
     print(f"default    : {flow.default_tool}")
+    print(f"license    : {flow.license}")
+    print(f"runnability: {flow.runnability}")
     print(f"stages     : {', '.join(flow_stages(flow))}")
     if catalog.tests:
-        print("tests      : " + ", ".join(sorted(catalog.tests)))
+        # Scenarios implemented beyond the default framework are marked (+fw): the compact
+        # human view of the binding matrix (--json carries the full per-scenario map).
+        default = flow.default_framework or flow.framework
+        names = []
+        for name in sorted(catalog.tests):
+            extras = sorted(set(catalog.tests[name].bindings) - {default})
+            names.append(name + (f" (+{','.join(extras)})" if extras else ""))
+        print("tests      : " + ", ".join(names))
     if catalog.groups:
-        print("groups     : " + ", ".join(f"{name}={','.join(items)}" for name, items in sorted(catalog.groups.items())))
+        print(
+            "groups     : "
+            + ", ".join(
+                f"{name}={','.join(items)}" for name, items in sorted(catalog.groups.items())
+            )
+        )
 
 
-def selected_tool(flow: Flow, args: argparse.Namespace) -> str:
+def _flow_view_dict(flow: Flow) -> dict[str, Any]:
+    return {
+        "name": flow.name,
+        "kind": flow.kind,
+        "framework": flow.framework,
+        "default": flow.framework == flow.default_framework,
+        "frameworks": list(flow.frameworks),
+        "default_framework": flow.default_framework,
+        "tools": list(flow.tools),
+        "default_tool": flow.default_tool,
+        "visibility": flow.visibility,
+        "runnability": flow.runnability,
+        "license": flow.license,
+        "root": flow.root,
+        "description": flow.description,
+    }
+
+
+def list_flows_json(root: Path, flows: dict[str, Flow]) -> None:
+    """Machine-readable enumeration: one entry per (DUT, framework) view.
+
+    CI matrices consume this instead of hardcoding DUT names — e.g. a licensed UVM job selects
+    `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need.
+    """
+    views: list[dict[str, Any]] = []
+    for name in sorted(flows):
+        flow = flows[name]
+        views.append(_flow_view_dict(flow))
+        for fw in flow.frameworks:
+            if fw != flow.framework:
+                views.append(_flow_view_dict(resolve_dut(root, name, framework=fw)))
+    print(json.dumps({"schema_version": 1, "duts": views}, indent=2))
+
+
+def list_flow_detail_json(flow: Flow, root: Path) -> None:
+    """Machine-readable DUT detail: the selected view plus the full scenario binding matrix."""
+    catalog = load_test_catalog(flow, root)
+    payload = {"schema_version": 1, **_flow_view_dict(flow)}
+    payload["stages"] = list(flow_stages(flow))
+    payload["total_scenarios"] = len(catalog.tests)
+    payload["implemented"] = _implemented_counts(flow, catalog)
+    payload["tests"] = {
+        name: {"bindings": dict(test.bindings), "tags": list(test.tags or [])}
+        for name, test in sorted(catalog.tests.items())
+    }
+    payload["groups"] = {name: list(members) for name, members in sorted(catalog.groups.items())}
+    print(json.dumps(payload, indent=2))
+
+
+def _tool_frameworks(simulators: dict[str, Any], tool: str) -> list[str]:
+    cfg = simulators.get(tool)
+    if not isinstance(cfg, dict):
+        return []
+    return as_str_list(cfg.get("frameworks"), f"{tool}.frameworks")
+
+
+def selected_tool(
+    flow: Flow, args: argparse.Namespace, simulators: dict[str, Any] | None = None
+) -> str:
     tool = args.tool or flow.default_tool
+    if simulators is not None and flow.framework:
+        capable = _tool_frameworks(simulators, tool)
+        if capable and flow.framework not in capable:
+            others = sorted(
+                name for name in flow.tools if flow.framework in _tool_frameworks(simulators, name)
+            )
+            hint = (
+                f"; `{flow.framework}`-capable tools for dut `{flow.name}`: {', '.join(others)}"
+                if others
+                else ""
+            )
+            raise ConfigError(
+                f"tool `{tool}` does not support framework `{flow.framework}` "
+                f"(`{tool}` supports: {', '.join(capable)}){hint}"
+            )
     if tool not in flow.tools:
         raise ConfigError(f"tool `{tool}` is not allowed for flow `{flow.name}`")
     return tool
@@ -896,9 +1385,7 @@ def _existing_run_result(
     existing = _read_json_object(result_path)
     if existing is None:
         if not args.dry_run:
-            raise ConfigError(
-                f"coverage replay requires an existing result.json: {result_path}"
-            )
+            raise ConfigError(f"coverage replay requires an existing result.json: {result_path}")
         return run_dir, None
     if existing.get("flow") != flow.name:
         raise ConfigError(
@@ -935,13 +1422,15 @@ def _merge_coverage_replay_result(
         for stage in existing.get("stages", [])
         if isinstance(stage, dict) and stage.get("name") not in _COVERAGE_STAGES
     ]
-    new_stages = [
-        stage for stage in current.get("stages", []) if isinstance(stage, dict)
-    ]
+    new_stages = [stage for stage in current.get("stages", []) if isinstance(stage, dict)]
     stages = [*old_stages, *new_stages]
-    status = _status_from_values(
-        [str(stage.get("status", "UNKNOWN")) for stage in stages]
-    )
+    status_values = [str(stage.get("status", "UNKNOWN")) for stage in stages]
+    progress = existing.get("progress")
+    if (isinstance(progress, dict) and progress.get("state") != "final") or existing.get(
+        "interruption"
+    ):
+        status_values.append(str(existing.get("status", "UNKNOWN")))
+    status = _status_from_values(status_values)
     payload.update(
         {
             "status": status,
@@ -1006,20 +1495,33 @@ def selected_executor(flow: Flow, args: argparse.Namespace) -> str:
     if allowed and executor not in allowed:
         raise ConfigError(f"executor `{executor}` is not allowed for flow `{flow.name}`")
     if executor != "local":
-        raise ConfigError(f"executor `{executor}` is configured but non-local dispatch is not implemented")
+        raise ConfigError(
+            f"executor `{executor}` is configured but non-local dispatch is not implemented"
+        )
     return executor
 
 
-def validate_selected_tool_available(tool: str, simulators: dict[str, Any], args: argparse.Namespace) -> None:
+def validate_selected_tool_available(
+    tool: str,
+    simulators: dict[str, Any],
+    args: argparse.Namespace,
+    flow: Flow | None = None,
+) -> None:
     if args.dry_run:
         return
     cfg = simulators.get(tool, {})
     binary = str(cfg.get("binary", tool)) if isinstance(cfg, dict) else tool
     if shutil.which(binary):
         return
+    hint = ""
+    if flow is not None and flow.license == "required-commercial":
+        hint = (
+            f" DUT `{flow.name}` needs a commercially licensed simulator; "
+            "`--list` marks such flows (licensed) — the others run on open-source tools."
+        )
     raise ConfigError(
         f"selected tool `{tool}` requires `{binary}` in PATH. "
-        f"Load the simulator environment or run `--doctor --tool {tool}` for details."
+        f"Load the simulator environment or run `--doctor --tool {tool}` for details.{hint}"
     )
 
 
@@ -1077,13 +1579,21 @@ def selected_stages(flow: Flow, args: argparse.Namespace) -> list[str]:
     elif args.build_only:
         requested = [s for s in ("flist", "hdl_compile", "elaborate") if s in available]
     elif args.run_only:
-        requested = ["formal"] if flow.kind == "fv" and "formal" in available else ["sim" if "sim" in available else "regress"]
+        requested = (
+            ["formal"]
+            if flow.kind == "fv" and "formal" in available
+            else ["sim" if "sim" in available else "regress"]
+        )
     elif args.regress:
-        requested = [stage for stage in ("flist", "hdl_compile", "elaborate", "sim") if stage in available]
+        requested = [
+            stage for stage in ("flist", "hdl_compile", "elaborate", "sim") if stage in available
+        ]
     elif flow.kind == "fv" and "formal" in available:
         requested = ["formal"]
     else:
-        requested = [stage for stage in ("flist", "hdl_compile", "elaborate", "sim") if stage in available]
+        requested = [
+            stage for stage in ("flist", "hdl_compile", "elaborate", "sim") if stage in available
+        ]
 
     # With --cov, append the coverage merge/report stages after sim when the flow defines them.
     if args.cov and not args.stage and any(stage in requested for stage in ("sim", "regress")):
@@ -1113,6 +1623,13 @@ def expand_items(
     for name in requested:
         if name in catalog.groups:
             members = catalog.groups[name]
+            # Catalog loading already rejects unresolved members; this keeps directly
+            # constructed catalogs on the same contract instead of a downstream KeyError.
+            missing = [member for member in members if member not in catalog.tests]
+            if missing:
+                raise ConfigError(
+                    f"group `{name}` references missing test(s): {', '.join(missing)}"
+                )
         elif name in catalog.tests:
             members = [name]
         else:
@@ -1129,11 +1646,56 @@ def expand_items(
     return expanded
 
 
+def validate_item_bindings(
+    flow: Flow, catalog: TestCatalog, items: list[str], args: argparse.Namespace
+) -> list[str]:
+    """Enforce that every selected scenario is implemented in the selected framework.
+
+    A selected scenario with no `module` entry for the selected framework is a config error.
+    `--skip-unimplemented` skips group/tag-derived unimplemented scenarios instead — loudly, and
+    recorded in run metadata — while an explicitly named `--items` test always errors.
+    """
+    if not flow.framework:
+        return items
+    unimplemented = [
+        name for name in items if name in catalog.tests and not catalog.tests[name].module
+    ]
+    if not unimplemented:
+        return items
+    explicit = [name for name in unimplemented if name in set(args.items or [])]
+    if explicit or not args.skip_unimplemented:
+        width = max(len(name) for name in unimplemented)
+        lines = "\n".join(
+            f"  {name:<{width}}  (implemented: {', '.join(sorted(catalog.tests[name].bindings)) or 'none'})"
+            for name in unimplemented
+        )
+        fix = (
+            f"  fix: add a `{flow.framework}` module entry or narrow the selection"
+            if explicit
+            else f"  fix: add a `{flow.framework}` module entry, narrow the selection, or pass --skip-unimplemented"
+        )
+        raise ConfigError(
+            f"{len(unimplemented)} selected scenario(s) are not implemented for framework "
+            f"`{flow.framework}`:\n{lines}\n{fix}"
+        )
+    kept = [name for name in items if name not in set(unimplemented)]
+    if not kept:
+        raise ConfigError(
+            "--skip-unimplemented left no runnable scenarios: none of the selected tests are "
+            f"implemented for framework `{flow.framework}`"
+        )
+    setattr(args, "_skipped_unimplemented", unimplemented)
+    return kept
+
+
 def select_by_tags(catalog: TestCatalog, candidates: list[str], tags: list[str]) -> list[str]:
     """Keep candidate test names whose tags intersect any of `tags`, preserving order."""
     wanted = set(tags)
-    return [name for name in candidates
-            if (test := catalog.tests.get(name)) is not None and wanted.intersection(test.tags)]
+    return [
+        name
+        for name in candidates
+        if (test := catalog.tests.get(name)) is not None and wanted.intersection(test.tags)
+    ]
 
 
 def run_label(catalog: TestCatalog, requested: list[str], items: list[str]) -> str:
@@ -1148,7 +1710,9 @@ def run_label(catalog: TestCatalog, requested: list[str], items: list[str]) -> s
     return "build"
 
 
-def scheduler_requested(args: argparse.Namespace, requested: list[str], items: list[str], catalog: TestCatalog) -> bool:
+def scheduler_requested(
+    args: argparse.Namespace, requested: list[str], items: list[str], catalog: TestCatalog
+) -> bool:
     if args.regress or args.reseed or args.retry or args.max_failures is not None:
         return True
     if args.stage and "regress" in args.stage:
@@ -1158,7 +1722,9 @@ def scheduler_requested(args: argparse.Namespace, requested: list[str], items: l
     return len(items) > 1
 
 
-def validate_regression_seed_options(args: argparse.Namespace, randomize_regression_seeds: bool) -> None:
+def validate_regression_seed_options(
+    args: argparse.Namespace, randomize_regression_seeds: bool
+) -> None:
     if randomize_regression_seeds and args.seed is not None:
         raise ConfigError(
             "--seed cannot be used with regression mode; rerun an individual test "
@@ -1166,14 +1732,20 @@ def validate_regression_seed_options(args: argparse.Namespace, randomize_regress
         )
 
 
-def sim_seed_plan(catalog: TestCatalog, sim_cfg: dict[str, Any], args: argparse.Namespace, item: str) -> list[int]:
+def sim_seed_plan(
+    catalog: TestCatalog, sim_cfg: dict[str, Any], args: argparse.Namespace, item: str
+) -> list[int]:
     """Deterministic single-simulation seed priority: CLI, testlist, defaults."""
     return [seed_for_item(catalog, sim_cfg, args, item)]
 
 
 def regression_reseed_count(catalog: TestCatalog, args: argparse.Namespace, item: str) -> int:
     test = catalog.tests.get(item)
-    count = test.reseed if test and test.reseed is not None else (args.reseed if args.reseed is not None else 1)
+    count = (
+        test.reseed
+        if test and test.reseed is not None
+        else (args.reseed if args.reseed is not None else 1)
+    )
     if count < 1:
         raise ConfigError("--reseed must be >= 1")
     return count
@@ -1188,7 +1760,9 @@ def random_regression_seed(seen_seeds: set[int]) -> int:
             return seed
 
 
-def regression_seed_plan(catalog: TestCatalog, args: argparse.Namespace, item: str, seen_seeds: set[int]) -> list[int]:
+def regression_seed_plan(
+    catalog: TestCatalog, args: argparse.Namespace, item: str, seen_seeds: set[int]
+) -> list[int]:
     count = regression_reseed_count(catalog, args, item)
     return [random_regression_seed(seen_seeds) for _ in range(count)]
 
@@ -1207,7 +1781,9 @@ def seed_plan(
     base seeds and assigns fresh random seeds to each leaf.
     """
     if scheduler:
-        return regression_seed_plan(catalog, args, item, seen_seeds if seen_seeds is not None else set())
+        return regression_seed_plan(
+            catalog, args, item, seen_seeds if seen_seeds is not None else set()
+        )
     return sim_seed_plan(catalog, sim_cfg, args, item)
 
 
@@ -1227,18 +1803,27 @@ def target_plan(
     catalog: TestCatalog,
     sim_cfg: dict[str, Any],
     items: list[str],
+    override: str | None = None,
 ) -> tuple[dict[str, str], list[str]]:
-    """Resolve a target per selected test and return first-seen unique target order."""
+    """Resolve a target per selected test and return first-seen unique target order.
+
+    ``override`` (``--target``) maps every selected item onto that name.
+    Omitted, each test keeps its own target. ``validate_target_plan`` rejects
+    an unknown name.
+    """
+    chosen = override.strip() if isinstance(override, str) and override.strip() else None
     if not items:
-        target = default_target_name(sim_cfg)
+        target = chosen or default_target_name(sim_cfg)
         return {}, [target]
 
     target_by_item: dict[str, str] = {}
     ordered: list[str] = []
     seen: set[str] = set()
     for item in items:
-        test = catalog.tests[item]
-        target = resolved_target_name(sim_cfg, test)
+        test = catalog.tests.get(item)
+        if test is None:
+            raise ConfigError(f"selected item `{item}` is not a test in the catalog")
+        target = chosen or resolved_target_name(sim_cfg, test)
         target_by_item[item] = target
         if target not in seen:
             seen.add(target)
@@ -1280,6 +1865,12 @@ def write_regression_summary(
     args: argparse.Namespace,
     items: list[str],
     elapsed_sec: float,
+    *,
+    status_override: str | None = None,
+    progress: dict[str, Any] | None = None,
+    interruption: dict[str, Any] | None = None,
+    versions: dict[str, str] | None = None,
+    git_metadata: dict[str, str] | None = None,
 ) -> None:
     path = run_dir / "stages" / "regress" / "regression.json"
     write_result(
@@ -1294,6 +1885,11 @@ def write_regression_summary(
             args=args,
             items=items,
             elapsed_sec=elapsed_sec,
+            status_override=status_override,
+            progress=progress,
+            interruption=interruption,
+            versions=versions,
+            git_metadata=git_metadata,
         ),
     )
 
@@ -1341,16 +1937,23 @@ def run_flow(
     policies: dict[str, Any],
     args: argparse.Namespace,
 ) -> int:
+    reset_stage_cancellation()
     replay_run_dir, existing_result = _existing_run_result(root, flow, args)
-    tool = selected_tool(flow, args)
+    tool = selected_tool(flow, args, simulators)
     executor = selected_executor(flow, args)
-    validate_selected_tool_available(tool, simulators, args)
+    validate_selected_tool_available(tool, simulators, args, flow)
     if args.waves:
-        resolve_wave_format(args, simulators, tool)
+        wave_format = resolve_wave_format(args, simulators, tool)
+        if not args.dry_run:
+            require_verdi_home(tool, wave_format)
     if args.waves_on_fail:
-        resolve_wave_format(args, simulators, tool, on_fail=True)
+        wave_format = resolve_wave_format(args, simulators, tool, on_fail=True)
+        if not args.dry_run:
+            require_verdi_home(tool, wave_format)
     sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
     catalog = load_test_catalog(flow, root)
+    if args.run_mode:
+        validate_run_mode_request(sim_cfg, str(args.run_mode), "--run-mode")
     stages = selected_stages(flow, args)
     need_items = any(stage_needs_item(stage) for stage in stages)
     requested: list[str] = []
@@ -1358,17 +1961,22 @@ def run_flow(
     if need_items:
         if args.items:
             requested = list(args.items)
-            items = expand_items(catalog, requested, need_items, allow_duplicates=args.allow_duplicates)
+            items = expand_items(
+                catalog, requested, need_items, allow_duplicates=args.allow_duplicates
+            )
         elif args.tag:
             # Tag-only selection starts from the whole catalog (in definition order).
             items = list(catalog.tests)
         else:
             requested = requested_items(catalog, args)
-            items = expand_items(catalog, requested, need_items, allow_duplicates=args.allow_duplicates)
+            items = expand_items(
+                catalog, requested, need_items, allow_duplicates=args.allow_duplicates
+            )
         if args.tag:
             items = select_by_tags(catalog, items, args.tag)
             if not items:
                 raise ConfigError(f"no tests match tag(s): {', '.join(args.tag)}")
+        items = validate_item_bindings(flow, catalog, items, args)
 
     if need_items and not args.stage and "c_compile" in flow_stages(flow):
         if any(catalog.tests[item].firmware is not None for item in items):
@@ -1388,7 +1996,9 @@ def run_flow(
     # Regression/group runs nest every test uniformly; a single explicit test stays flat.
     nest = need_items and bool(items) and scheduler
     label = run_label(catalog, requested, items)
-    target_by_item, build_targets = target_plan(catalog, sim_cfg, items if need_items else [])
+    target_by_item, build_targets = target_plan(
+        catalog, sim_cfg, items if need_items else [], override=getattr(args, "target", None)
+    )
     if flow.kind == "fv":
         explicit_targets = [item for item in items if catalog.tests[item].target]
         if explicit_targets:
@@ -1396,8 +2006,13 @@ def run_flow(
                 "per-test `target` selection is supported for simulation flows only; "
                 f"formal item(s) set target: {', '.join(explicit_targets)}"
             )
-    else:
-        validate_target_plan(sim_cfg, build_targets)
+    validate_target_plan(sim_cfg, build_targets)
+    if args.cov and len(build_targets) > 1:
+        raise ConfigError(
+            "coverage merge accepts one build target; this selection plans "
+            + ", ".join(build_targets)
+            + ". Pass --target <name> to run every selected test on one elaboration"
+        )
     multi_target = len(build_targets) > 1
     setattr(args, "_multi_target_run", multi_target)
     target_cfgs = {
@@ -1420,14 +2035,159 @@ def run_flow(
         run_dir = reserve_run_dir(run_dir, args.dry_run)
         update_latest_symlink(run_dir, args.dry_run)
 
+    result_path = run_dir / "result.json"
+    export_path: Path | None = None
+    if args.result:
+        export_path = Path(args.result).expanduser()
+        if not export_path.is_absolute():
+            export_path = root / export_path
+        if export_path == result_path:
+            export_path = None
+
+    leaf_plans_by_stage: dict[int, list[dict[str, Any]]] = {}
+    expected_leaves: list[dict[str, Any]] = []
+    next_leaf_id = 0
+    for stage_index, stage in enumerate(stages):
+        if stage not in {"sim", "regress", "formal"}:
+            continue
+        seen_regression_seeds: set[int] = set()
+        stage_plans: list[dict[str, Any]] = []
+        for item in items:
+            for seed in seed_plan(
+                catalog,
+                sim_cfg,
+                args,
+                item,
+                scheduler and stage in {"sim", "regress"},
+                seen_regression_seeds,
+            ):
+                identity = {
+                    "id": next_leaf_id,
+                    "stage": stage,
+                    "item": item,
+                    "target": target_by_item.get(item),
+                    "seed": seed,
+                }
+                stage_plans.append(identity)
+                expected_leaves.append(identity)
+                next_leaf_id += 1
+        leaf_plans_by_stage[stage_index] = stage_plans
+
+    replaying_coverage = existing_result is not None and replay_run_dir == run_dir
+    checkpoint_enabled = bool(expected_leaves) and not args.dry_run and not replaying_coverage
+    run_versions = tool_versions(root)
+    run_git = git_info(root)
+
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console
     args._ui_leaf_mode = "compact" if scheduler else "full"
+    skipped_unimplemented = list(getattr(args, "_skipped_unimplemented", []) or [])
+    if skipped_unimplemented:
+        console.event(
+            "selection",
+            f"skipped_unimplemented={len(skipped_unimplemented)} framework={flow.framework} "
+            f"tests={','.join(skipped_unimplemented)}",
+        )
     run_started = time.monotonic()
     results: list[StageResult] = []
     runs_by_item: dict[str, list[tuple[int, StageResult]]] = {}
     regression_jobs: list[dict[str, Any]] = []
     final_failures = 0
+    progress_lock = threading.Lock()
+    interruption_requested = threading.Event()
+    args._cancellation_event = interruption_requested
+    active_leaf_ids: set[int] = set()
+    completed_leaves_by_id: dict[int, dict[str, Any]] = {}
+    checkpoint_sequence = 0
+
+    def checkpoint_progress(state: str) -> dict[str, Any]:
+        nonlocal checkpoint_sequence
+        with progress_lock:
+            checkpoint_sequence += 1
+            completed_ids = set(completed_leaves_by_id)
+            active_ids = set(active_leaf_ids) - completed_ids
+            completed = [
+                completed_leaves_by_id[int(leaf["id"])]
+                for leaf in expected_leaves
+                if int(leaf["id"]) in completed_ids
+            ]
+            active = [dict(leaf) for leaf in expected_leaves if int(leaf["id"]) in active_ids]
+            missing = [
+                dict(leaf)
+                for leaf in expected_leaves
+                if int(leaf["id"]) not in completed_ids | active_ids
+            ]
+        interrupted = active if state == "interrupted" else []
+        visible_active = [] if state == "interrupted" else active
+        return {
+            "state": state,
+            "sequence": checkpoint_sequence,
+            "updated_at": datetime.now(UTC).isoformat(),
+            "expected_count": len(expected_leaves),
+            "completed_count": len(completed),
+            "active_count": len(visible_active),
+            "missing_count": len(missing),
+            "interrupted_count": len(interrupted),
+            "expected": [dict(leaf) for leaf in expected_leaves],
+            "completed": completed,
+            "active": visible_active,
+            "missing": missing,
+            "interrupted": interrupted,
+        }
+
+    def mark_leaf_active(leaf: dict[str, Any]) -> bool:
+        with progress_lock:
+            if interruption_requested.is_set():
+                return False
+            active_leaf_ids.add(int(leaf["id"]))
+            return True
+
+    def mark_leaf_completed(leaf: dict[str, Any], result: StageResult) -> None:
+        leaf_id = int(leaf["id"])
+        completed = {
+            **leaf,
+            "status": result.status,
+            "return_code": result.return_code,
+        }
+        with progress_lock:
+            active_leaf_ids.discard(leaf_id)
+            completed_leaves_by_id[leaf_id] = completed
+
+    def leaf_is_completed(leaf: dict[str, Any]) -> bool:
+        with progress_lock:
+            return int(leaf["id"]) in completed_leaves_by_id
+
+    def write_checkpoint(
+        *,
+        state: str = "running",
+        status: str = "UNKNOWN",
+        progress: dict[str, Any] | None = None,
+        interruption: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        if not checkpoint_enabled:
+            return None
+        progress = progress or checkpoint_progress(state)
+        payload = result_payload(
+            flow=flow,
+            root=root,
+            tool=tool,
+            run_dir=run_dir,
+            stages=list(results),
+            dry_run=False,
+            items=items,
+            label=label,
+            args=args,
+            executor=executor,
+            status_override=status,
+            progress=progress,
+            interruption=interruption,
+            versions=run_versions,
+            git_metadata=run_git,
+        )
+        write_result(result_path, payload)
+        if export_path is not None:
+            write_result(export_path, payload)
+        return payload
 
     def regression_job(
         stage: str,
@@ -1511,7 +2271,14 @@ def run_flow(
             )
         return debug_result, result_json
 
-    def run_leaf(stage: str, item: str, seed: int) -> tuple[str, int, StageResult, list[dict[str, Any]]]:
+    def run_leaf(
+        leaf: dict[str, Any],
+    ) -> tuple[dict[str, Any], StageResult, list[dict[str, Any]]]:
+        if not mark_leaf_active(leaf):
+            raise RuntimeError("run interrupted before leaf execution")
+        stage = str(leaf["stage"])
+        item = str(leaf["item"])
+        seed = int(leaf["seed"])
         attempt_results: list[StageResult] = []
         jobs: list[dict[str, Any]] = []
         for attempt in range((args.retry or 0) + 1):
@@ -1558,7 +2325,9 @@ def run_flow(
         ):
             debug_attempt = len(jobs)
             debug_result, debug_json = run_wave_debug_leaf(stage, item, seed, debug_attempt, final)
-            debug_record = regression_job(stage, item, seed, debug_attempt, debug_result, debug_json)
+            debug_record = regression_job(
+                stage, item, seed, debug_attempt, debug_result, debug_json
+            )
             debug_record["debug_only"] = True
             debug_record["status_affects_final_result"] = False
             final.metadata = dict(final.metadata or {})
@@ -1575,12 +2344,23 @@ def run_flow(
                 jobs[-1]["artifacts"]["debug_result_json"] = debug_json
                 final.artifacts = dict(final.artifacts or {})
                 final.artifacts["debug_result_json"] = debug_json
-        return item, seed, attempt_results[-1], jobs
+        return leaf, attempt_results[-1], jobs
 
-    def record_leaf(item: str, seed: int, result: StageResult, jobs: list[dict[str, Any]]) -> bool:
+    def record_leaf(
+        leaf: dict[str, Any],
+        result: StageResult,
+        jobs: list[dict[str, Any]],
+        *,
+        refresh_checkpoint: bool = True,
+    ) -> bool:
+        item = str(leaf["item"])
+        seed = int(leaf["seed"])
         results.append(result)
         runs_by_item.setdefault(item, []).append((seed, result))
         regression_jobs.extend(jobs)
+        mark_leaf_completed(leaf, result)
+        if refresh_checkpoint:
+            write_checkpoint()
         return scheduler and result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
 
     def needs_parallel_cocotb_prebuild(stage: str, target: str) -> bool:
@@ -1589,8 +2369,11 @@ def run_flow(
         hdl_compile_stage = available.get("hdl_compile")
         elaborate_stage = available.get("elaborate")
         cocotb_build_defined = (
-            (isinstance(hdl_compile_stage, dict) and str(hdl_compile_stage.get("kind", "")) == "cocotb_build")
-            or (isinstance(elaborate_stage, dict) and str(elaborate_stage.get("kind", "")) == "cocotb_build")
+            isinstance(hdl_compile_stage, dict)
+            and str(hdl_compile_stage.get("kind", "")) == "cocotb_build"
+        ) or (
+            isinstance(elaborate_stage, dict)
+            and str(elaborate_stage.get("kind", "")) == "cocotb_build"
         )
         return (
             stage in {"sim", "regress"}
@@ -1600,7 +2383,18 @@ def run_flow(
             and target not in getattr(args, "_cocotb_prebuilt_targets", set())
         )
 
+    previous_signal_handlers: dict[int, Any] = {}
+
+    def interrupt_handler(signum: int, _frame: Any) -> None:
+        interruption_requested.set()
+        raise RunInterrupted(signum)
+
     try:
+        if checkpoint_enabled:
+            for signum in (signal.SIGINT, signal.SIGTERM):
+                previous_signal_handlers[signum] = signal.getsignal(signum)
+                signal.signal(signum, interrupt_handler)
+            write_checkpoint()
         console.run_header(
             flow=flow.name,
             tool=tool,
@@ -1613,7 +2407,7 @@ def run_flow(
             mode="regression" if scheduler else None,
         )
         emit_dry_run_config_summary(console, flow, root, sim_cfg, simulators, tool, args)
-        for stage in stages:
+        for stage_index, stage in enumerate(stages):
             if stage in {"flist", "hdl_compile", "elaborate"}:
                 for target in build_targets:
                     result = run_stage(
@@ -1636,21 +2430,15 @@ def run_flow(
                 if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
                     break
             elif stage in {"sim", "regress", "formal"}:
-                seen_regression_seeds: set[int] = set()
-                leaves = [
-                    (item, seed)
-                    for item in items
-                    for seed in seed_plan(
-                        catalog,
-                        sim_cfg,
-                        args,
-                        item,
-                        scheduler and stage in {"sim", "regress"},
-                        seen_regression_seeds,
-                    )
-                ]
-                leaf_item_width = max((len(item) for item, _ in leaves), default=44)
-                leaf_seed_width = max((len(str(seed)) for _, seed in leaves), default=8)
+                leaves = leaf_plans_by_stage.get(stage_index, [])
+                leaf_item_width = max(
+                    (len(str(leaf["item"])) for leaf in leaves),
+                    default=44,
+                )
+                leaf_seed_width = max(
+                    (len(str(leaf["seed"])) for leaf in leaves),
+                    default=8,
+                )
                 completed_leaves = 0
                 parallel = (
                     scheduler
@@ -1661,12 +2449,18 @@ def run_flow(
                 )
                 if parallel:
                     missing_prebuilds = [
-                        target for target in build_targets
+                        target
+                        for target in build_targets
                         if needs_parallel_cocotb_prebuild(stage, target)
                     ]
                     for target in missing_prebuilds:
-                        prebuild_stage = "hdl_compile" if "hdl_compile" in flow_stages(flow) else "elaborate"
-                        console.event("scheduler", f"pre-building cocotb model for target `{target}` before parallel sim")
+                        prebuild_stage = (
+                            "hdl_compile" if "hdl_compile" in flow_stages(flow) else "elaborate"
+                        )
+                        console.event(
+                            "scheduler",
+                            f"pre-building cocotb model for target `{target}` before parallel sim",
+                        )
                         prebuild = run_stage(
                             flow,
                             root,
@@ -1684,22 +2478,33 @@ def run_flow(
                         results.append(prebuild)
                         if prebuild.status != "PASS":
                             break
-                    if missing_prebuilds and aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                    if missing_prebuilds and aggregate_status(results) in {
+                        "FAIL",
+                        "ERROR",
+                        "TIMEOUT",
+                        "UNKNOWN",
+                    }:
                         break
                     console.regression_start(
                         total=len(leaves),
                         jobs=args.sim_jobs,
                         executor=executor,
-                        seeds=regression_seed_label(leaves),
+                        seeds=regression_seed_label(
+                            [(str(leaf["item"]), int(leaf["seed"])) for leaf in leaves]
+                        ),
                         retry=args.retry or 0,
                         item_width=leaf_item_width,
                         seed_width=leaf_seed_width,
                     )
-                    with ThreadPoolExecutor(max_workers=args.sim_jobs) as pool:
-                        futures = {pool.submit(run_leaf, stage, item, seed): (item, seed) for item, seed in leaves}
+                    pool = ThreadPoolExecutor(max_workers=args.sim_jobs)
+                    futures: dict[Any, dict[str, Any]] = {}
+                    try:
+                        futures = {pool.submit(run_leaf, leaf): leaf for leaf in leaves}
                         for future in as_completed(futures):
-                            item, seed, result, jobs = future.result()
-                            failed = record_leaf(item, seed, result, jobs)
+                            leaf, result, jobs = future.result()
+                            item = str(leaf["item"])
+                            seed = int(leaf["seed"])
+                            failed = record_leaf(leaf, result, jobs)
                             completed_leaves += 1
                             console.regression_leaf_done(
                                 index=completed_leaves,
@@ -1711,23 +2516,57 @@ def run_flow(
                                 duration_sec=result.duration_sec,
                                 log=result.log,
                                 reason=result.reason,
-                                target=(result.target or target_by_item.get(item)) if multi_target else None,
+                                target=(result.target or target_by_item.get(item))
+                                if multi_target
+                                else None,
                             )
                             if failed:
                                 final_failures += 1
+                    except BaseException:
+                        completed_before_interrupt = [
+                            future for future in futures if future.done() and not future.cancelled()
+                        ]
+                        for future in futures:
+                            future.cancel()
+                        request_stage_cancellation()
+                        wait(futures, timeout=3)
+                        for future in completed_before_interrupt:
+                            try:
+                                leaf, result, jobs = future.result()
+                            except BaseException:
+                                continue
+                            if not leaf_is_completed(leaf):
+                                record_leaf(
+                                    leaf,
+                                    result,
+                                    jobs,
+                                    refresh_checkpoint=False,
+                                )
+                        pool.shutdown(wait=False, cancel_futures=True)
+                        raise
+                    else:
+                        pool.shutdown()
                 else:
                     if scheduler:
                         console.regression_start(
                             total=len(leaves),
                             jobs=args.sim_jobs,
                             executor=executor,
-                            seeds=regression_seed_label(leaves),
+                            seeds=regression_seed_label(
+                                [(str(leaf["item"]), int(leaf["seed"])) for leaf in leaves]
+                            ),
                             retry=args.retry or 0,
                             item_width=leaf_item_width,
                             seed_width=leaf_seed_width,
                         )
-                    for item, seed in leaves:
-                        if scheduler and args.max_failures is not None and final_failures >= args.max_failures:
+                    for leaf in leaves:
+                        item = str(leaf["item"])
+                        seed = int(leaf["seed"])
+                        if (
+                            scheduler
+                            and args.max_failures is not None
+                            and final_failures >= args.max_failures
+                        ):
                             skipped = StageResult(
                                 stage=stage,
                                 item=item,
@@ -1738,9 +2577,11 @@ def run_flow(
                                 ended_at=datetime.now(UTC).isoformat(),
                                 reason="skipped after --max-failures threshold",
                             )
-                            results.append(skipped)
-                            runs_by_item.setdefault(item, []).append((seed, skipped))
-                            regression_jobs.append(regression_job(stage, item, seed, 0, skipped))
+                            record_leaf(
+                                leaf,
+                                skipped,
+                                [regression_job(stage, item, seed, 0, skipped)],
+                            )
                             completed_leaves += 1
                             console.regression_leaf_done(
                                 index=completed_leaves,
@@ -1756,8 +2597,8 @@ def run_flow(
                             )
                             continue
 
-                        item, seed, result, jobs = run_leaf(stage, item, seed)
-                        failed = record_leaf(item, seed, result, jobs)
+                        leaf, result, jobs = run_leaf(leaf)
+                        failed = record_leaf(leaf, result, jobs)
                         if scheduler:
                             completed_leaves += 1
                             console.regression_leaf_done(
@@ -1770,11 +2611,16 @@ def run_flow(
                                 duration_sec=result.duration_sec,
                                 log=result.log,
                                 reason=result.reason,
-                                target=(result.target or target_by_item.get(item)) if multi_target else None,
+                                target=(result.target or target_by_item.get(item))
+                                if multi_target
+                                else None,
                             )
                         if failed:
                             final_failures += 1
-                            if args.max_failures is not None and final_failures >= args.max_failures:
+                            if (
+                                args.max_failures is not None
+                                and final_failures >= args.max_failures
+                            ):
                                 console.event(
                                     "note",
                                     f"max failures reached ({args.max_failures}); remaining jobs will be skipped",
@@ -1784,17 +2630,58 @@ def run_flow(
                     for item in items:
                         item_cfg = sim_cfg_for_item(item)
                         seed = seed_for_item(catalog, item_cfg, args, item)
-                        results.append(run_stage(flow, root, item_cfg, catalog, stage, item, args, tool, run_dir, simulators, policies, nest=nest, seed_override=seed))
+                        results.append(
+                            run_stage(
+                                flow,
+                                root,
+                                item_cfg,
+                                catalog,
+                                stage,
+                                item,
+                                args,
+                                tool,
+                                run_dir,
+                                simulators,
+                                policies,
+                                nest=nest,
+                                seed_override=seed,
+                            )
+                        )
                 else:
-                    results.append(run_stage(flow, root, sim_cfg, catalog, stage, None, args, tool, run_dir, simulators, policies, nest=nest))
-            if not scheduler and aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                    results.append(
+                        run_stage(
+                            flow,
+                            root,
+                            sim_cfg,
+                            catalog,
+                            stage,
+                            None,
+                            args,
+                            tool,
+                            run_dir,
+                            simulators,
+                            policies,
+                            nest=nest,
+                        )
+                    )
+            if not scheduler and aggregate_status(results) in {
+                "FAIL",
+                "ERROR",
+                "TIMEOUT",
+                "UNKNOWN",
+            }:
                 break
 
         # Per-test rollups across seeds/attempts. Only when nested: in a flat run the leaf fragment is
         # already the per-test `<test>/result.json`, so writing a rollup there would clobber it.
         if nest and not args.dry_run:
             for item, runs in runs_by_item.items():
-                write_result(run_dir / item / "result.json", rollup_payload(flow=flow, root=root, tool=tool, run_dir=run_dir, item=item, runs=runs))
+                write_result(
+                    run_dir / item / "result.json",
+                    rollup_payload(
+                        flow=flow, root=root, tool=tool, run_dir=run_dir, item=item, runs=runs
+                    ),
+                )
             write_regression_summary(
                 root,
                 run_dir,
@@ -1805,6 +2692,8 @@ def run_flow(
                 args,
                 items,
                 time.monotonic() - run_started,
+                versions=run_versions,
+                git_metadata=run_git,
             )
         if scheduler:
             console.regression_summary(
@@ -1813,6 +2702,22 @@ def run_flow(
                 elapsed_sec=time.monotonic() - run_started,
             )
 
+        # Structured-result guarantee, leafless case: a non-passing run in which no sim
+        # leaf executed (compile/elaboration/filelist failure) gets one run-level stage
+        # XML so the failure is visible to JUnit consumers. Runs before result_payload
+        # so the failing stage's artifact pointer lands in result.json; skipped on
+        # coverage replay, which re-enters a run dir whose leaves did not rerun.
+        if not args.dry_run and not replaying_coverage:
+            try:
+                materialize_stage_junit(
+                    flow=flow,
+                    root=root,
+                    run_dir=run_dir,
+                    tool=tool,
+                    stages=results,
+                )
+            except Exception as exc:  # noqa: BLE001
+                console.event("warning", f"junit synthesis failed: {exc}", force=True)
         payload = result_payload(
             flow=flow,
             root=root,
@@ -1824,19 +2729,16 @@ def run_flow(
             label=label,
             args=args,
             executor=executor,
+            versions=run_versions,
+            git_metadata=run_git,
         )
-        if existing_result is not None and replay_run_dir == run_dir:
+        if replaying_coverage:
             payload = _merge_coverage_replay_result(existing_result, payload)
-        result_path = run_dir / "result.json"
         if not args.dry_run:
             write_result(result_path, payload)
-            if args.result:
-                export_path = Path(args.result).expanduser()
-                if not export_path.is_absolute():
-                    export_path = root / export_path
-                if export_path != result_path:
-                    write_result(export_path, payload)
-            if existing_result is not None and replay_run_dir == run_dir:
+            if export_path is not None:
+                write_result(export_path, payload)
+            if replaying_coverage:
                 _update_regression_coverage(
                     run_dir,
                     payload.get("coverage", {}),
@@ -1851,20 +2753,73 @@ def run_flow(
             result_json=repo_rel(root, result_path),
         )
         return exit_code_for_status(status)
+    except RunInterrupted as exc:
+        request_stage_cancellation()
+        signal_name = signal.Signals(exc.signum).name
+        interruption = {
+            "kind": "signal",
+            "signal": signal_name,
+            "signal_number": exc.signum,
+            "reason": f"run interrupted by {signal_name}",
+            "recorded_at": datetime.now(UTC).isoformat(),
+        }
+        progress = checkpoint_progress("interrupted")
+        elapsed_sec = time.monotonic() - run_started
+        if nest and checkpoint_enabled:
+            write_regression_summary(
+                root,
+                run_dir,
+                flow,
+                tool,
+                regression_jobs,
+                results,
+                args,
+                items,
+                elapsed_sec,
+                status_override="ERROR",
+                progress=progress,
+                interruption=interruption,
+                versions=run_versions,
+                git_metadata=run_git,
+            )
+        write_checkpoint(
+            state="interrupted",
+            status="ERROR",
+            progress=progress,
+            interruption=interruption,
+        )
+        console.event("error", interruption["reason"], force=True)
+        console.result(
+            status="ERROR",
+            elapsed_sec=elapsed_sec,
+            tests=len(items) if need_items else 0,
+            run_dir=repo_rel(root, run_dir),
+            result_json=repo_rel(root, result_path),
+        )
+        return 128 + exc.signum
     finally:
+        for signum, previous_handler in previous_signal_handlers.items():
+            signal.signal(signum, previous_handler)
         console.close()
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    if not raw_argv:
+        # A bare invocation is a person exploring, not a run: show the full help page
+        # (with the examples) instead of the --dut-required error.
+        parse_args(["--help"])
+    args = parse_args(raw_argv)
     try:
         validate_mode_options(args)
+        if args.json and not args.list:
+            raise ConfigError("--json applies to --list only")
         root = repo_root(Path(__file__))
 
-        # Diagnostics report their own findings (and must not be pre-empted by the fail-fast
+        # Diagnostics report their own findings (and must not be preempted by the fail-fast
         # validate_all below), so dispatch them first.
         if args.validate_configs:
-            return cmd_validate_configs(root)
+            return cmd_validate_configs(root, adopter_overlay_path(args))
         if args.doctor:
             return cmd_doctor(root, args)
 
@@ -1872,18 +2827,38 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.list:
             if args.dut:
-                flow = resolve_dut(root, args.dut, mode=args.mode)
+                flow = resolve_dut(
+                    root,
+                    args.dut,
+                    mode=args.mode,
+                    framework=args.framework,
+                    adopter_overlay=adopter_overlay_path(args),
+                )
                 validate_flow(flow, root, simulators, policies, executors)
-                list_flow_detail(flow, root)
+                if args.json:
+                    list_flow_detail_json(flow, root)
+                else:
+                    list_flow_detail(flow, root)
+            elif args.json:
+                list_flows_json(root, duts)
             else:
-                list_flows(duts)
+                list_flows(duts, simulators)
             return 0
 
         if not args.dut:
-            raise ConfigError("--dut is required unless --list, --validate-configs, or --doctor is used")
+            raise ConfigError(
+                "--dut is required unless --list, --validate-configs, or --doctor is used "
+                "(start with --list to see the selectable DUTs)"
+            )
         if args.dut not in duts:
             raise ConfigError(f"unknown DUT `{args.dut}`")
-        flow = resolve_dut(root, args.dut, mode=args.mode)
+        flow = resolve_dut(
+            root,
+            args.dut,
+            mode=args.mode,
+            framework=args.framework,
+            adopter_overlay=adopter_overlay_path(args),
+        )
         validate_flow(flow, root, simulators, policies, executors)
         return run_flow(root=root, flow=flow, simulators=simulators, policies=policies, args=args)
     except ConfigError as exc:

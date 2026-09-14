@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """PASS/FAIL parser policy handling for native DV runs."""
 
 from __future__ import annotations
@@ -79,7 +82,9 @@ def validate_parser_registry(root: Path) -> dict[str, Any]:
         if not isinstance(policy, dict):
             raise ConfigError(f"parsers.toml: [policy.{name}] must be a table")
         if not isinstance(policy.get("require_positive_evidence", True), bool):
-            raise ConfigError(f"parsers.toml: policy `{name}` require_positive_evidence must be bool")
+            raise ConfigError(
+                f"parsers.toml: policy `{name}` require_positive_evidence must be bool"
+            )
         if str(policy.get("structured_format", "none")) not in {"xunit", "junit", "none"}:
             raise ConfigError(f"parsers.toml: policy `{name}` structured_format is unsupported")
         for key in PARSER_LIST_KEYS:
@@ -90,7 +95,9 @@ def validate_parser_registry(root: Path) -> dict[str, Any]:
     return policies
 
 
-def validate_parser_extensions(flow: Flow, simulators: dict[str, Any], policies: dict[str, Any]) -> None:
+def validate_parser_extensions(
+    flow: Flow, simulators: dict[str, Any], policies: dict[str, Any]
+) -> None:
     if flow.framework == "formal":
         return
     policy_name = parser_policy_name(flow)
@@ -105,7 +112,9 @@ def validate_parser_extensions(flow: Flow, simulators: dict[str, Any], policies:
         if key == "policy":
             continue
         if key.startswith("replace_"):
-            raise ConfigError(f"{flow.path}: `{key}` weakens parser policy; use additive extra_* keys")
+            raise ConfigError(
+                f"{flow.path}: `{key}` weakens parser policy; use additive extra_* keys"
+            )
         if key not in FLOW_PARSER_EXTENSION_KEYS:
             raise ConfigError(f"{flow.path}: unsupported [pass_fail] key `{key}`")
         for pattern in as_str_list(value, f"pass_fail.{key}"):
@@ -118,8 +127,12 @@ def validate_parser_extensions(flow: Flow, simulators: dict[str, Any], policies:
             as_str_list(policy.get("structured_results"), "generic-regex.structured_results")
             or as_str_list(policy.get("summary_patterns"), "generic-regex.summary_patterns")
             or as_str_list(policy.get("pass_patterns"), "generic-regex.pass_patterns")
-            or as_str_list(pass_fail.get("extra_structured_results"), "pass_fail.extra_structured_results")
-            or as_str_list(pass_fail.get("extra_summary_patterns"), "pass_fail.extra_summary_patterns")
+            or as_str_list(
+                pass_fail.get("extra_structured_results"), "pass_fail.extra_structured_results"
+            )
+            or as_str_list(
+                pass_fail.get("extra_summary_patterns"), "pass_fail.extra_summary_patterns"
+            )
             or as_str_list(pass_fail.get("extra_pass_patterns"), "pass_fail.extra_pass_patterns")
         )
         if not positive_sources:
@@ -134,7 +147,9 @@ def validate_parser_extensions(flow: Flow, simulators: dict[str, Any], policies:
             raise ConfigError(f"simulators.toml: [{tool}.parser_extensions] must be a table")
         for key, value in extensions.items():
             if key not in SIMULATOR_PARSER_EXTENSION_KEYS:
-                raise ConfigError(f"simulators.toml: unsupported [{tool}.parser_extensions] key `{key}`")
+                raise ConfigError(
+                    f"simulators.toml: unsupported [{tool}.parser_extensions] key `{key}`"
+                )
             for pattern in as_str_list(value, f"{tool}.parser_extensions.{key}"):
                 _compile_regex(pattern, f"simulators.toml {tool}.parser_extensions.{key}")
 
@@ -192,20 +207,30 @@ def evidence_record(kind: str, path: Path, root: Path, status: str, message: str
 
 def parse_xunit_result(path: Path, root: Path) -> tuple[str, dict[str, str]]:
     if not path.is_file():
-        return "UNKNOWN", evidence_record("results_xml", path, root, "UNKNOWN", "structured result missing")
+        return "UNKNOWN", evidence_record(
+            "results_xml", path, root, "UNKNOWN", "structured result missing"
+        )
     if path.stat().st_size == 0:
-        return "UNKNOWN", evidence_record("results_xml", path, root, "UNKNOWN", "structured result is empty")
+        return "UNKNOWN", evidence_record(
+            "results_xml", path, root, "UNKNOWN", "structured result is empty"
+        )
     try:
         root_elem = ET.parse(path).getroot()
     except ET.ParseError as exc:
-        return "UNKNOWN", evidence_record("results_xml", path, root, "UNKNOWN", f"malformed XML: {exc}")
+        return "UNKNOWN", evidence_record(
+            "results_xml", path, root, "UNKNOWN", f"malformed XML: {exc}"
+        )
 
     total = len(root_elem.findall(".//testcase"))
     failing = len(root_elem.findall(".//failure")) + len(root_elem.findall(".//error"))
     if total == 0:
-        return "UNKNOWN", evidence_record("results_xml", path, root, "UNKNOWN", "0 testcase(s) found")
+        return "UNKNOWN", evidence_record(
+            "results_xml", path, root, "UNKNOWN", "0 testcase(s) found"
+        )
     if failing:
-        return "FAIL", evidence_record("results_xml", path, root, "FAIL", f"{failing} testcase failure/error node(s)")
+        return "FAIL", evidence_record(
+            "results_xml", path, root, "FAIL", f"{failing} testcase failure/error node(s)"
+        )
     return "PASS", evidence_record("results_xml", path, root, "PASS", f"{total} testcase(s) passed")
 
 
@@ -221,7 +246,9 @@ def _is_ignored(line: str, patterns: list[str]) -> bool:
     return any(re.search(pattern, line, flags=re.MULTILINE) for pattern in patterns)
 
 
-def _summary_evidence(pattern: str, match: re.Match[str], log_path: Path, root: Path) -> dict[str, str]:
+def _summary_evidence(
+    pattern: str, match: re.Match[str], log_path: Path, root: Path
+) -> dict[str, str]:
     numbers = {
         key: int(value)
         for key, value in match.groupdict().items()
@@ -232,14 +259,19 @@ def _summary_evidence(pattern: str, match: re.Match[str], log_path: Path, root: 
     if {"tests", "pass", "fail", "skip"}.issubset(numbers):
         status = (
             "PASS"
-            if numbers["tests"] > 0 and numbers["fail"] == 0
+            if numbers["tests"] > 0
+            and numbers["fail"] == 0
             and numbers["pass"] + numbers["skip"] == numbers["tests"]
             else "FAIL"
         )
         return evidence_record("log_summary", log_path, root, status, message)
 
     if "uvm_error" in numbers or "uvm_fatal" in numbers:
-        status = "PASS" if numbers.get("uvm_error", 0) == 0 and numbers.get("uvm_fatal", 0) == 0 else "FAIL"
+        status = (
+            "PASS"
+            if numbers.get("uvm_error", 0) == 0 and numbers.get("uvm_fatal", 0) == 0
+            else "FAIL"
+        )
         return evidence_record("log_summary", log_path, root, status, message)
 
     return evidence_record("log_summary", log_path, root, "PASS", message or pattern)
@@ -298,7 +330,16 @@ def parse_stage_result(
         structured_status, record = parse_xunit_result(results_dir / result_name, root)
         evidence.append(record)
         if structured_status == "FAIL":
-            return _decision(policy_name, policy, extensions, "FAIL", record["message"], "structured_result", evidence, "sim_failure")
+            return _decision(
+                policy_name,
+                policy,
+                extensions,
+                "FAIL",
+                record["message"],
+                "structured_result",
+                evidence,
+                "sim_failure",
+            )
         if structured_status == "PASS":
             positive = True
         else:
@@ -308,17 +349,46 @@ def parse_stage_result(
     if hard_fail_matches:
         for line in hard_fail_matches[:10]:
             evidence.append(evidence_record("hard_fail_pattern", log_path, root, "ERROR", line))
-        return _decision(policy_name, policy, extensions, "ERROR", f"hard-fail pattern matched: {hard_fail_matches[0]}", "log_pattern", evidence, "tool_error")
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "ERROR",
+            f"hard-fail pattern matched: {hard_fail_matches[0]}",
+            "log_pattern",
+            evidence,
+            "tool_error",
+        )
 
     if return_code != 0:
-        evidence.append(evidence_record("return_code", log_path, root, "FAIL", f"process exited {return_code}"))
-        return _decision(policy_name, policy, extensions, "FAIL", f"process exited {return_code}", "return_code", evidence, "sim_failure")
+        evidence.append(
+            evidence_record("return_code", log_path, root, "FAIL", f"process exited {return_code}")
+        )
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "FAIL",
+            f"process exited {return_code}",
+            "return_code",
+            evidence,
+            "sim_failure",
+        )
 
     for pattern in policy["required_patterns"]:
         if not re.search(pattern, text, flags=re.MULTILINE):
             message = f"required pattern missing: {pattern}"
             evidence.append(evidence_record("required_pattern", log_path, root, "FAIL", message))
-            return _decision(policy_name, policy, extensions, "FAIL", message, "log_pattern", evidence, "sim_failure")
+            return _decision(
+                policy_name,
+                policy,
+                extensions,
+                "FAIL",
+                message,
+                "log_pattern",
+                evidence,
+                "sim_failure",
+            )
 
     unignored_failures: list[str] = []
     for line in _match_lines(policy["fail_patterns"], text):
@@ -328,7 +398,16 @@ def parse_stage_result(
             unignored_failures.append(line)
             evidence.append(evidence_record("fail_pattern", log_path, root, "FAIL", line))
     if unignored_failures:
-        return _decision(policy_name, policy, extensions, "FAIL", f"fail pattern matched: {unignored_failures[0]}", "log_pattern", evidence, "sim_failure")
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "FAIL",
+            f"fail pattern matched: {unignored_failures[0]}",
+            "log_pattern",
+            evidence,
+            "sim_failure",
+        )
 
     for pattern in policy["summary_patterns"]:
         matches = list(re.finditer(pattern, text, flags=re.MULTILINE))
@@ -337,7 +416,16 @@ def parse_stage_result(
         record = _summary_evidence(pattern, matches[-1], log_path, root)
         evidence.append(record)
         if record["status"] == "FAIL":
-            return _decision(policy_name, policy, extensions, "FAIL", record["message"], "log_summary", evidence, "sim_failure")
+            return _decision(
+                policy_name,
+                policy,
+                extensions,
+                "FAIL",
+                record["message"],
+                "log_summary",
+                evidence,
+                "sim_failure",
+            )
         positive = True
 
     for line in _match_lines(policy["pass_patterns"], text):
@@ -346,7 +434,34 @@ def parse_stage_result(
             positive = True
 
     if structured_unknown:
-        return _decision(policy_name, policy, extensions, "UNKNOWN", "structured result missing or inconclusive", "structured_result", evidence, "unknown")
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "UNKNOWN",
+            "structured result missing or inconclusive",
+            "structured_result",
+            evidence,
+            "unknown",
+        )
     if policy["require_positive_evidence"] and not positive:
-        return _decision(policy_name, policy, extensions, "UNKNOWN", "no positive pass evidence matched", "log_pattern", evidence, "unknown")
-    return _decision(policy_name, policy, extensions, "PASS", "positive pass evidence matched", "structured_result" if policy["structured_results"] else "log_pattern", evidence, None)
+        return _decision(
+            policy_name,
+            policy,
+            extensions,
+            "UNKNOWN",
+            "no positive pass evidence matched",
+            "log_pattern",
+            evidence,
+            "unknown",
+        )
+    return _decision(
+        policy_name,
+        policy,
+        extensions,
+        "PASS",
+        "positive pass evidence matched",
+        "structured_result" if policy["structured_results"] else "log_pattern",
+        evidence,
+        None,
+    )

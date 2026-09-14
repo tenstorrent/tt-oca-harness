@@ -1,9 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Waveform option resolution, ranged capture metadata, and retention helpers."""
 
 from __future__ import annotations
 
-import re
 import json
+import os
+import re
 import shlex
 import shutil
 from pathlib import Path
@@ -61,7 +65,13 @@ def parse_time_ps(value: str | None, option: str) -> int | None:
 def format_time_ps(ps: int | None) -> str | None:
     if ps is None:
         return None
-    for unit, scale in (("s", TIME_UNITS_PS["s"]), ("ms", TIME_UNITS_PS["ms"]), ("us", TIME_UNITS_PS["us"]), ("ns", TIME_UNITS_PS["ns"]), ("ps", 1)):
+    for unit, scale in (
+        ("s", TIME_UNITS_PS["s"]),
+        ("ms", TIME_UNITS_PS["ms"]),
+        ("us", TIME_UNITS_PS["us"]),
+        ("ns", TIME_UNITS_PS["ns"]),
+        ("ps", 1),
+    ):
         if ps >= scale and ps % int(scale) == 0:
             return f"{ps // int(scale)}{unit}"
     return f"{ps}ps"
@@ -87,12 +97,14 @@ def find_failure_time_ps(log_path: Path | None) -> dict[str, Any]:
         severity_score = 1
         if re.search(r"fail|fatal|error|assert|timeout", line, re.IGNORECASE):
             severity_score = 0
-        matches.append({
-            "time_ps": time_ps,
-            "raw": match.group(0).strip(),
-            "line": line[:240],
-            "severity_score": severity_score,
-        })
+        matches.append(
+            {
+                "time_ps": time_ps,
+                "raw": match.group(0).strip(),
+                "line": line[:240],
+                "severity_score": severity_score,
+            }
+        )
     if not matches:
         return {"time_ps": None, "source": "not_found"}
     matches.sort(key=lambda item: (item["severity_score"], item["time_ps"]))
@@ -105,6 +117,60 @@ def find_failure_time_ps(log_path: Path | None) -> dict[str, Any]:
     }
 
 
+# simv dlopens <VERDI_HOME>/<subdir>/libnovas.so for UCLI `dump -type FSDB`; the platform
+# directory name differs across Verdi releases.
+NOVAS_PLI_SUBDIRS = ("share/PLI/VCS/LINUXAMD64", "share/PLI/VCS/LINUX64")
+
+
+def _has_novas_pli(home: Path) -> bool:
+    return any((home / sub / "libnovas.so").is_file() for sub in NOVAS_PLI_SUBDIRS)
+
+
+def verdi_home_candidates() -> list[Path]:
+    """Possible Verdi roots: $VERDI_HOME, then the install root above `verdi` on PATH."""
+    candidates: list[Path] = []
+    explicit = os.environ.get("VERDI_HOME", "").strip()
+    if explicit:
+        candidates.append(Path(explicit))
+    verdi = shutil.which("verdi")
+    if verdi:
+        derived = Path(verdi).resolve().parents[1]
+        if derived not in candidates:
+            candidates.append(derived)
+    return candidates
+
+
+def resolve_verdi_home() -> str | None:
+    """First candidate Verdi root that actually ships the Novas FSDB writer."""
+    for home in verdi_home_candidates():
+        if _has_novas_pli(home):
+            return str(home)
+    return None
+
+
+def require_verdi_home(tool: str, wave_format: str) -> str | None:
+    """FSDB dumping on VCS loads Verdi's FSDB writer through VERDI_HOME; fail fast when absent."""
+    if tool != "vcs" or wave_format != "fsdb":
+        return None
+    home = resolve_verdi_home()
+    if home is None:
+        candidates = verdi_home_candidates()
+        checked = (
+            "; ".join(
+                f"`{c}` (missing <home>/{{{'|'.join(NOVAS_PLI_SUBDIRS)}}}/libnovas.so)"
+                for c in candidates
+            )
+            if candidates
+            else "VERDI_HOME is unset and `verdi` is not on PATH"
+        )
+        raise ConfigError(
+            "waveform format `fsdb` on VCS needs Verdi's FSDB writer (libnovas.so). "
+            f"Checked: {checked}. Set VERDI_HOME to a Verdi installation root, or use "
+            "`--waves vpd` which needs no Verdi installation"
+        )
+    return home
+
+
 def _tool_wave_cfg(simulators: dict[str, Any], tool: str) -> dict[str, Any]:
     cfg = simulators.get(tool, {})
     if not isinstance(cfg, dict):
@@ -112,7 +178,9 @@ def _tool_wave_cfg(simulators: dict[str, Any], tool: str) -> dict[str, Any]:
     return cfg
 
 
-def resolve_wave_format(args: Any, simulators: dict[str, Any], tool: str, *, on_fail: bool = False) -> str:
+def resolve_wave_format(
+    args: Any, simulators: dict[str, Any], tool: str, *, on_fail: bool = False
+) -> str:
     request = getattr(args, "waves_on_fail", None) if on_fail else getattr(args, "waves", None)
     if request is None and bool(getattr(args, "_wave_debug_rerun", False)):
         request = getattr(args, "waves", None)
@@ -120,7 +188,9 @@ def resolve_wave_format(args: Any, simulators: dict[str, Any], tool: str, *, on_
         return ""
     request_text = str(request).strip().lower()
     cfg = _tool_wave_cfg(simulators, tool)
-    supported = [fmt.lower() for fmt in as_str_list(cfg.get("supports_waves"), f"{tool}.supports_waves")]
+    supported = [
+        fmt.lower() for fmt in as_str_list(cfg.get("supports_waves"), f"{tool}.supports_waves")
+    ]
     default = str(cfg.get("default_waves") or "").strip().lower()
     if request_text == WAVE_DEFAULT:
         request_text = default
@@ -208,9 +278,18 @@ def actual_wave_paths(waves_dir: Path, item: str, tool: str, wave_format: str) -
     paths = [path for path in expected if path.exists()]
     if waves_dir.is_dir():
         for path in sorted(waves_dir.glob("*")):
-            if path.is_file() and path.suffix.lstrip(".").lower() == wave_format and path not in paths:
+            if (
+                path.is_file()
+                and path.suffix.lstrip(".").lower() == wave_format
+                and path not in paths
+            ):
                 paths.append(path)
-            elif wave_format == "shm" and path.is_dir() and path.suffix.lower() == ".shm" and path not in paths:
+            elif (
+                wave_format == "shm"
+                and path.is_dir()
+                and path.suffix.lower() == ".shm"
+                and path not in paths
+            ):
                 paths.append(path)
     return paths
 
@@ -228,7 +307,9 @@ def viewer_commands(wave_files: list[str], wave_format: str) -> list[str]:
         elif wave_format == "shm":
             commands.append(f"simvision {quoted}")
         else:
-            commands.append(f"# Open {quoted} with a viewer that supports {shlex.quote(wave_format)}")
+            commands.append(
+                f"# Open {quoted} with a viewer that supports {shlex.quote(wave_format)}"
+            )
     return commands
 
 
@@ -259,6 +340,8 @@ def same_seed_replay_command(
     ]
     if getattr(args, "run_mode", None):
         command.extend(["--run-mode", str(args.run_mode)])
+    if getattr(args, "target", None):
+        command.extend(["--target", str(args.target)])
     for attr, flag in (
         ("wave_start", "--wave-start"),
         ("wave_end", "--wave-end"),
@@ -324,7 +407,11 @@ def build_wave_metadata(
     retention = retention_policy(args)
     dry_run = bool(getattr(args, "dry_run", False))
     retention_action = apply_wave_retention(waves_dir, status, retention, dry_run)
-    files = discovered_wave_paths(waves_dir, item, tool, wave_format) if dry_run else actual_wave_paths(waves_dir, item, tool, wave_format)
+    files = (
+        discovered_wave_paths(waves_dir, item, tool, wave_format)
+        if dry_run
+        else actual_wave_paths(waves_dir, item, tool, wave_format)
+    )
     rel_files = [repo_rel(root, path) or str(path) for path in files]
     rel_dir = repo_rel(root, waves_dir) or str(waves_dir)
     viewer_cmds = viewer_commands(rel_files, wave_format)
@@ -353,7 +440,9 @@ def build_wave_metadata(
     if range_meta:
         metadata["range"] = range_meta
         if not backend_range_supported:
-            metadata["range_note"] = "requested range recorded, but this backend path does not enforce ranged dumping"
+            metadata["range_note"] = (
+                "requested range recorded, but this backend path does not enforce ranged dumping"
+            )
     if retention_action == "kept":
         copied_log = waves_dir / log_path.name
         context_json = waves_dir / "debug_context.json"
@@ -386,5 +475,7 @@ def build_wave_metadata(
                 "viewer_commands": viewer_cmds,
                 "same_seed_replay": replay_cmd,
             }
-            context_json.write_text(json.dumps(context, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            context_json.write_text(
+                json.dumps(context, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
     return metadata, rel_files, rel_dir

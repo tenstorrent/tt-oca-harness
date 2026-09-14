@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP VPLAN scenario `dtp_ijtag_dfd_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_ijtag_scan_test_seq import dtp_ijtag_scan_test_seq
 
@@ -14,7 +14,6 @@ class dtp_ijtag_dfd_test(dtp_base_test):
             dtp_ijtag_scan_test_seq,
             "dfd",
             scenario="dfd",
-            specific_env="DTP_IJTAG_DFD_TEST_LOOPS",
-            group_env="DTP_SCAN_TEST_LOOPS",
+            specific_knob="DTP_IJTAG_DFD_TEST_LOOPS",
+            group_knob="DTP_SCAN_TEST_LOOPS",
         )
-

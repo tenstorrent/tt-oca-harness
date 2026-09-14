@@ -1,27 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OTBN run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Loads an OTBN program into IMEM over the AXI front door (the OTBN TL/AXI adapter
 SECDED-encodes each word into the external IMEM macro, so a faithful memory
 responder backs a genuinely executing OpenTitan OTBN core), issues EXECUTE, polls
-STATUS to IDLE, and reads DMEM / ERR_BITS back. Mirrors the OCAH
+STATUS to IDLE, and reads DMEM / ERR_BITS back. Mirrors the reference suite
 sep_km_otbn_sideload_kat_test_seq run mechanics.
 """
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 import cocotb
 from cocotb.triggers import ClockCycles
+from sep_reg_meta import OTBN, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # OTBN SEP register map (direct AXI; OTBN RAL offsets are unreliable).
 OTBN_BASE = sym("OTBN_REG_MAP_BASE_ADDR")
-OTBN_ADDR_CMD = OTBN_BASE + 0x010
-OTBN_ADDR_STATUS = OTBN_BASE + 0x018
-OTBN_ADDR_ERRBIT = OTBN_BASE + 0x01C
+OTBN_ADDR_CMD = OTBN.addr("CMD")
+OTBN_ADDR_STATUS = OTBN.addr("STATUS")
+OTBN_ADDR_ERRBIT = OTBN.addr("ERR_BITS")
+OTBN_ADDR_LOAD_CHECKSUM = OTBN.addr("LOAD_CHECKSUM")
+OTBN_LOAD_CHECKSUM_RESET = OTBN.reset32("LOAD_CHECKSUM")
 OTBN_IMEM_BASE = sym("OTBN_IMEM_MEM_BASE_ADDR")
 OTBN_DMEM_BASE = sym("OTBN_DMEM_MEM_BASE_ADDR")
 
@@ -45,11 +47,10 @@ OTBN_DMEM_SHARE0_HI = 0x60
 OTBN_DMEM_SHARE1_LO = 0x80
 OTBN_DMEM_SHARE1_HI = 0xA0
 
-# Assembled OTBN key-dump program
-# (fw/sep/tests/otbn_km_sideload_keydump/otbn_src/keydump.s, extended to also dump
-# the raw shares). Reads the sideload key WSRs (KEY_S0_L=4, KEY_S0_H=5, KEY_S1_L=6,
-# KEY_S1_H=7), reconstructs key = share0 ^ share1, and writes both the key and the
-# two raw shares to DMEM. bn.sid encoding: (wdr_idx_reg<<20)|(base_reg<<15)|(0b101<<12)|0x0B.
+# Assembled OTBN key-dump program (OTBN_KEYDUMP_PROG). Reads the sideload key
+# WSRs (KEY_S0_L=4, KEY_S0_H=5, KEY_S1_L=6, KEY_S1_H=7), reconstructs
+# key = share0 ^ share1, and writes both the key and the two raw shares to
+# DMEM. bn.sid encoding: (wdr_idx_reg<<20)|(base_reg<<15)|(0b101<<12)|0x0B.
 OTBN_KEYDUMP_PROG = (
     0x0040700B,  # bn.wsrr w0, KEY_S0_L    (share0[255:0])
     0x0060708B,  # bn.wsrr w1, KEY_S1_L    (share1[255:0])
@@ -122,6 +123,16 @@ class SepOtbn(SepAxiRegDriver):
     async def read_dmem(self, offset: int) -> int:
         return await self._rd(OTBN_DMEM_BASE + offset)
 
+    async def write_dmem(self, offset: int, val: int) -> None:
+        await self._wr(OTBN_DMEM_BASE + offset, val & 0xFFFF_FFFF)
+
+    async def write_load_checksum(self, val: int) -> None:
+        """LOAD_CHECKSUM is a 32-bit RW CSR in the OTBN rst_ni domain (reset 0)."""
+        await self._wr(OTBN_ADDR_LOAD_CHECKSUM, val & 0xFFFF_FFFF)
+
+    async def read_load_checksum(self) -> int:
+        return await self._rd(OTBN_ADDR_LOAD_CHECKSUM)
+
     async def read_dmem_words(self, base_offset: int, count: int) -> list[int]:
         return [await self.read_dmem(base_offset + i * 4) for i in range(count)]
 
@@ -132,8 +143,10 @@ class SepOtbn(SepAxiRegDriver):
         the 4 upper words of result_hi (the zero pad above the 384b key)."""
         res_lo = await self.read_dmem_words(OTBN_DMEM_RESULT_LO, 8)
         res_hi = await self.read_dmem_words(OTBN_DMEM_RESULT_HI, 8)
-        share0 = (await self.read_dmem_words(OTBN_DMEM_SHARE0_LO, 8)) + \
-                 (await self.read_dmem_words(OTBN_DMEM_SHARE0_HI, 8))[:4]
-        share1 = (await self.read_dmem_words(OTBN_DMEM_SHARE1_LO, 8)) + \
-                 (await self.read_dmem_words(OTBN_DMEM_SHARE1_HI, 8))[:4]
+        share0 = (await self.read_dmem_words(OTBN_DMEM_SHARE0_LO, 8)) + (
+            await self.read_dmem_words(OTBN_DMEM_SHARE0_HI, 8)
+        )[:4]
+        share1 = (await self.read_dmem_words(OTBN_DMEM_SHARE1_LO, 8)) + (
+            await self.read_dmem_words(OTBN_DMEM_SHARE1_HI, 8)
+        )[:4]
         return res_lo + res_hi[:4], share0, share1, res_hi[4:]

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 //-----------------------------------------------------------------------------
 // File: test_jtag_stap_tb.cpp
 // Description: Verilator C++ driver for JTAG STAP testbench

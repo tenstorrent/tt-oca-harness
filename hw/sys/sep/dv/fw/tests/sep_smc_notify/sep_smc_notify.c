@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * sep_smc_notify — minimal SEP firmware for SMC-SEP co-simulation boot test.
  *
@@ -13,7 +16,7 @@
  *      ext_out_wdata at the top level of the SMU testbench to detect this.
  *   3. Spin forever in WFI (the SMC cocotb test handles overall pass/fail).
  *
- * Spec basis: OCH Specification §Crypto Key Manager — SEP must be able to
+ * Spec basis: OCAH Specification §Crypto Key Manager — SEP must be able to
  * reach the outbound AXI fabric (smn_outbound_axi → smu_axi_out) to
  * communicate results/status.  This test verifies the basic path from SEP
  * CPU reset-vector execution through the outbound filter and crossbar to the

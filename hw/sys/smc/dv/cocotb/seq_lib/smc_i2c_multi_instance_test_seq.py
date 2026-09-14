@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P1 coverage-gap: I2C multi-instance CSR precheck (TC_SMC_P1CG_02).
 
 Existing tests only touch I2C_0. RTL exposes 3 controllers (I2C_0/1/2)
@@ -9,16 +10,14 @@ reset defaults.
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Instance base = i2c.rdl INTR_STATE (0xC000_9200) / i2c_ctrl.rdl (0xC000_9E00);
-# all fields reset 0x0 per RDL -> composite reset 0x0 (RDL-traceable, G3
-# spec-anchored; identical on Verilator and VCS). Asserting it verifies
-# per-instance decode AND spec-defined reset content, not merely an OKAY reply.
+# Instance base = PeakRDL I2C INTR_STATE / I2C_CTRL_REGS; all fields reset 0x0.
 I2C_INSTANCE_READS = [
-    ("I2C_1_BASE",  0xC000_9200, 0x0),
-    ("I2C_2_BASE",  0xC000_9400, 0x0),
-    ("I2C_CTRL",    0xC000_9E00, 0x0),
+    ("I2C_1_BASE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1), 0x0),
+    ("I2C_2_BASE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 2), 0x0),
+    ("I2C_CTRL", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0), 0x0),
 ]
 
 

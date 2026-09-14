@@ -51,7 +51,42 @@
 #     primitive instance called `div_clk`), so the pin only resolves
 #     post-synthesis once technology mapping assigns it a cell name; it will
 #     not resolve against the elaborated RTL.
+#   - CDC crossings are bounded in two layers, both included from this file.
+#     `set_async_clock_groups` below declares the asynchronous groups with
+#     `-allow_paths` and applies a loose default max_delay per inter-group
+#     clock pair; `smu_cdc_max_delay.tcl`, sourced at the end, tightens each
+#     synchronizer and async FIFO individually. This is separate from the
+#     CDC/RDC signoff notes above, which concern how individual crossings are
+#     modeled or waived, not how they are bounded. The `-allow_paths` is not
+#     optional: `set_false_path` outranks `set_max_delay` in exception
+#     priority, so a bare `set_clock_groups -asynchronous` would silently mask
+#     every per-instance bound.
+#   - `smu_cdc_max_delay_generated.tcl` enumerates this block's CDC elements.
+#     It is produced once, offline, against an elaborated design and checked
+#     in; nothing discovers instances when this file is read. Its paths and
+#     clock names are OCAH's, so instantiating this block deeper in a
+#     hierarchy or driving it from differently named clocks needs no edit
+#     here -- set `::cdc_hier_prefix` and `::cdc_clock_alias` before sourcing
+#     it. Regeneration, which runs in the closed synthesis flow, is needed
+#     only when the block is reconfigured such that the set of CDC elements
+#     changes: the file then goes stale silently, since no prefix can supply
+#     constraints for elements it never listed.
+#     It is a full-hierarchy enumeration: under the SAM flow the AVS clocks do
+#     not exist, and the calls naming them warn and are skipped.
+#     See "CDC Timing Constraints" in the Integrator Guide.
 #-----------------------------------------------------------------------------
+
+# Directory holding this file, so the CDC collateral below resolves regardless
+# of the invoking tool's working directory. `info script` is the file currently
+# being read; GIT_ROOT covers tools that do not set it.
+if {[info script] ne ""} {
+    set ocah_sdc_dir [file dirname [file normalize [info script]]]
+} elseif {[info exists ::env(GIT_ROOT)]} {
+    set ocah_sdc_dir [file normalize $::env(GIT_ROOT)/hw/sys/smu/synth]
+} else {
+    error "constraints.sdc: cannot locate this file's directory; set GIT_ROOT"
+}
+set ocah_flow_constraints_dir [file normalize $ocah_sdc_dir/../../../../flows/synth/constraints]
 
 ##################
 # CLOCK PERIODS
@@ -363,14 +398,25 @@ if {$smu_full_hier} {
     set smu_periph_async_grp {PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK AVS_CLK_FROM_PERIPHERALCLK AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK AVS_DIV_TOGGLE_FROM_PERIPHERALCLK AVS_DIV_CLK_Q_FROM_PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO AVS_CLK_FROM_PERIPHERALCLK_GPIO}
 }
 
-set_clock_groups -asynchronous \
-    -group $smu_refclk_async_grp\
-    -group {SMUCLK}\
-    -group $smu_periph_async_grp\
-    -group {TELEMETRYCLK}\
-    -group {JTAG_TCK JTAG_STAP_IO_TCK JTAG_STAP_EXTRA_TCK JTAG_BSR_TCK JTAG_STAP_SCAN_TCK JTAG_DFD_TCK JTAG_DFT_SECURE_TCK JTAG_DFT_TCK}\
-    -group {SEP_WDT_CLK}\
-    -group {ck_feedthru}
+# Asynchronous groups, declared with `-allow_paths` plus a loose default bound
+# on every inter-group clock pair. The per-instance bounds sourced at the end of
+# this file refine that default; without `-allow_paths` they would be masked.
+# Under the SAM flow the AVS groups collapse to the bare parents and the
+# `-exclude` matches nothing, which is harmless. With full hierarchy the two AVS
+# families are already `-logically_exclusive` above, so `-exclude` keeps them out
+# of the asynchronous declaration -- a clock pair cannot carry both
+# relationships. Their async relationship with every other clock is unaffected.
+source [file join $ocah_flow_constraints_dir async_clock_groups.tcl]
+
+set_async_clock_groups [list \
+    $smu_refclk_async_grp \
+    {SMUCLK SMUCLK_*} \
+    $smu_periph_async_grp \
+    {TELEMETRYCLK} \
+    {JTAG_TCK JTAG_STAP_IO_TCK JTAG_STAP_EXTRA_TCK JTAG_BSR_TCK JTAG_STAP_SCAN_TCK JTAG_DFD_TCK JTAG_DFT_SECURE_TCK JTAG_DFT_TCK JTAG_TCK_*} \
+    {SEP_WDT_CLK} \
+    {ck_feedthru} \
+] -exclude {{AVS_*_FROM_REFCLK* AVS_*_FROM_PERIPHERALCLK*}}
 
 
 ########################################################
@@ -395,14 +441,6 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smu_axi_out_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smu_axi_out_resp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_pll_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_pll_resp_i*}] -add_delay
-
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_pvt_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_pvt_resp_i*}] -add_delay
-
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_req_gpio_ctrl_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {axil_resp_gpio_ctrl_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_external_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {smc_external_resp_i*}] -add_delay
@@ -518,7 +556,6 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 
 # will transition once as a strap (one time capture on cold reset de-assertion)
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {disable_sram_auto_init_i}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {captured_straps_i*}] -add_delay
 
 # memory
 # set the outputs to lower delay, they should go direct to the memory macro
@@ -635,7 +672,8 @@ set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_cloc
 
 # `jtag_ic_reset_ext_o` is a real `smu` top-level output (the external slice
 # of DTP's IC_RESET TDR), modeled the same as the other JTAG_TCK-domain state
-# outputs above.
+# outputs above. Width follows `ic_reset_ext_t`; the integrator carries the SEP
+# xSPI reset overrides here, so the wildcard must stay a wildcard.
 set_output_delay [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports {jtag_ic_reset_ext_o*}] -add_delay
 
 # DTP Clock Stop Output
@@ -726,14 +764,12 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # SEP SPI Interface
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports spi_irq_i] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports ot_spi_irq_o] -add_delay
 
 # SEP External
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_external_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_external_resp_i*}] -add_delay
 
 # SEP Reset
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports sep_reset_n_o] -add_delay
 
 # SEP CPU Trace
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_cpu_trace_o*}] -add_delay
@@ -751,7 +787,7 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports sep_fuse_sense_done_o] -add_delay
 
 # SEP Straps
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {sep_straps_i*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {secure_tm_req_i}] -add_delay
 
 # SEP Security Disable
 # `sep_security_disable_i` does not exist at the current `smu` top level --
@@ -923,3 +959,12 @@ set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock
 # Misc GPIO inputs — thermal/isolate and observability (SMUCLK); reserved/unbonded (generic feedthru).
 set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [add_to_collection $gpio_misc_a $gpio_misc_b] -add_delay
 set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] $gpio_misc_c -add_delay
+########################################################
+# CDC max_delay bounds
+########################################################
+# Layer 2: a per-instance bound on every synchronizer and async FIFO, tighter
+# than the inter-group default applied by set_async_clock_groups above. Loaded
+# last so these exceptions are the ones the tool keeps where both apply, and so
+# the primary-input relaxation at the end sees every constrained pin.
+source [file join $ocah_flow_constraints_dir cdc_max_delay_procs.tcl]
+source [file join $ocah_sdc_dir smu_cdc_max_delay.tcl]

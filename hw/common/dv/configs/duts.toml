@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # DUT registry for the native DV runner.
 #
 # `--dut <name>` resolves here first; an unregistered name falls back to the directory convention
@@ -7,20 +10,17 @@
 #
 # Register only DUTs whose sim config exists: every registered entry is loaded and validated
 # before any run or diagnostic, so a stale entry blocks all flows. Conventional DUTs
-# (e.g. SMC/SEP) are discovered automatically once their `<name>_sim_cfg.toml` is ported.
+# (e.g. SMC/SEP) are discovered automatically from their `<name>_sim_cfg.toml`.
 # Non-conventional aliases — such as `smu_wrapper` sharing hw/sys/smu/dv with a separate sim
 # config for the production-wrapper baseline flow — must be registered here when their
 # configs are added.
 
 schema_version = 1
 
-# SMC production-wrapper baseline (shares hw/sys/smc/dv; no bare `--dut smc`).
-[duts.smc_wrapper]
-root = "hw/sys/smc/dv"
-sim_cfg = "hw/sys/smc/dv/smc_wrapper_sim_cfg.toml"
-
 # SMU production-wrapper baseline (shares hw/sys/smu/dv with bare `smu`,
-# but uses smu_wrapper_sim_cfg.toml).
+# but uses smu_wrapper_sim_cfg.toml). Frameworks are NOT registered here: a DUT
+# implementing both cocotb and SV-UVM (e.g. dtp) declares them as [frameworks.<name>]
+# tables in its one sim config and is selected with `--framework`.
 [duts.smu_wrapper]
 root = "hw/sys/smu/dv"
 sim_cfg = "hw/sys/smu/dv/smu_wrapper_sim_cfg.toml"
@@ -28,8 +28,20 @@ sim_cfg = "hw/sys/smu/dv/smu_wrapper_sim_cfg.toml"
 [duts.dtp]
 root = "hw/sys/dtp/dv"
 
-# DTP SV-UVM flow (shares hw/sys/dtp/dv with the cocotb `dtp` flow; separate sim config,
-# testlist namespace, and build/uvm work dir).
-[duts.dtp_uvm]
-root = "hw/sys/dtp/dv"
-sim_cfg = "hw/sys/dtp/dv/dtp_uvm_sim_cfg.toml"
+# Shared AXI VIP wire-harness selftests: the master and fault-slave VIPs
+# exercise each other on passive tb nets (no DUT RTL). Non-conventional root
+# under the shared VIP tree, so it is registered here.
+[duts.ocah_axi_vip]
+root = "hw/common/dv/vip/ocah_axi_vip/dv"
+
+# Cross-trigger IP-level benches: the family nests one level below the
+# hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is
+# registered here.
+[duts.cross_trigger_port]
+root = "hw/ip/cross_trigger/cross_trigger_port/dv"
+
+[duts.cross_trigger_matrix]
+root = "hw/ip/cross_trigger/cross_trigger_matrix/dv"
+
+[duts.cross_trigger_network]
+root = "hw/ip/cross_trigger/cross_trigger_network/dv"

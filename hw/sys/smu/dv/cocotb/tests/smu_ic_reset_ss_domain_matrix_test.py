@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ic_reset_ss_domain_matrix_test - P4 IC_RESET SS cold/warm domains.
 
 Exercises SS_COLD0 (port 5) and SS_WARM0 (port 37) one at a time with mutual
@@ -12,7 +13,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
     SMU_IC_RESET_SMC_COLD_PORT,
@@ -26,10 +26,6 @@ from seq_lib.smu_jtag_helpers import (
     read_smc_reset_ctrl_bit,
 )
 from smu_base_test import smu_base_test
-
-from env import cocotb_compat as _cocotb_compat
-
-_cocotb_compat.apply()
 
 # (port, ovrd leaf, val leaf, ss_idx or None for scalar)
 _SS_DOMAINS = (

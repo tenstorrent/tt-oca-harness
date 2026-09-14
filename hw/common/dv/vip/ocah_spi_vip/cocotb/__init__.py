@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 ocah_spi_vip — OCAH-stable SPI/QSPI/OSPI flash BFM for cocotb testbenches.
 
@@ -62,8 +62,8 @@ Quick-start (SEP xSPI)
 See ``examples/example_jedec_id.py`` for an annotated usage snippet.
 """
 
-from .ocah_spi_flash import OcahSpiFlash, OcahSpiFlashError, SpiMode
 from .ocah_sep_spi_flash import OcahSepSpiFlash, OcahSepSpiFlashError
+from .ocah_spi_flash import OcahSpiFlash, OcahSpiFlashError, SpiMode
 from .ocah_spi_monitor import OcahSpiMonitor
 
 __all__ = [

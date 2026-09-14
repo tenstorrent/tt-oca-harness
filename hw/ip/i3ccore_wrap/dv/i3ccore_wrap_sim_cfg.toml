@@ -7,7 +7,8 @@
 schema_version = 1
 
 name = "i3ccore_wrap"
-profile = "native-cocotb"
+profile = "native"
+default_framework = "cocotb"
 description = "I3C core wrapper block cocotb DV (controller/target loopback)"
 default_tool = "verilator"
 tools = ["verilator", "xcelium", "vcs"]
@@ -51,7 +52,7 @@ exclude_files = [
   "hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv",
 ]
 
-[cocotb]
+[frameworks.cocotb]
 python_root = "hw/ip/i3ccore_wrap/dv/cocotb"
 test_dir = "hw/ip/i3ccore_wrap/dv/cocotb/tests"
 python_paths = [
@@ -79,6 +80,9 @@ defines = [
 [targets.default.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
+  # The shared profile defines SIMULATION, which arms prim_cdc_rand_delay's CDC
+  # instrumentation; Verilator rejects its mixed blocking/non-blocking select.
+  "-Wno-BLKANDNBLK",
   "+define+VERILATOR",
   "--timescale",
   "1ns/1ps",

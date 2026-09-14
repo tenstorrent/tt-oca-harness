@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Open Chiplet Atlas Harness (OCAH): Technical Reference Manual
@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.5.12
-:revdate: 2026-06-17
+:revnumber: 0.5.29
+:revdate: 2026-09-02
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 
 The Open Chiplet Atlas Harness (OCAH) is a chiplet design IP where the
@@ -23,16 +23,19 @@ ifdef::backend-html5[]
 
 This documentation is organized into the following sections:
 
-* xref:revision.adoc[Revision History] - Track major revisions and updates to the OCAH documentation
+ifndef::release[]
+* xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
+endif::release[]
 * xref:about-ocah.adoc[About OCAH] - Learn about OCAH motivation, overview, and use cases
-* xref:getting-started.adoc[Getting Started] - Dependencies, tools, and methodology
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: ../assets
+ifndef::release[]
 include::revision.adoc[]
+endif::release[]
+= Introduction
 include::about-ocah.adoc[leveloffset=+1]
-include::getting-started.adoc[leveloffset=+1]
 include::architecture.adoc[]
 endif::backend-pdf[]

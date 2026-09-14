@@ -1,23 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Compact register-boundary depth sweep over real SEP_IN AXI."""
 
 from __future__ import annotations
 
-from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_addr_map import smc_addr
 from .smc_csr_field_catalog import catalog_entry
+from .smc_csr_seq_utils import SmcCsrSeq
 
-SCRATCH_COLD_0 = 0xC000_2800
-SCRATCH_COLD_7 = 0xC000_281C
-SCRATCH_COLD_WARM_0 = 0xC000_2880
-SCRATCH_COLD_WARM_7 = 0xC000_289C
+SCRATCH_COLD_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
+SCRATCH_COLD_7 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR") + 0x1C
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
+SCRATCH_COLD_WARM_7 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR") + 0x1C
 
 BOUNDARY_READS = [
     ("SCRATCH_COLD_0", SCRATCH_COLD_0, 0),
     ("SCRATCH_COLD_7", SCRATCH_COLD_7, 0),
     ("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, 0),
     ("SCRATCH_COLD_WARM_7", SCRATCH_COLD_WARM_7, 0),
-    ("CHIP_CONFIG_VERSION_LO", 0xC000_2900, 0x0001_00A0),
-    ("CHIP_CONFIG_VERSION_HI", 0xC000_2904, 0),
+    (
+        "CHIP_CONFIG_VERSION_LO",
+        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR"),
+        0x0001_00A0,
+    ),
+    ("CHIP_CONFIG_VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR") + 0x4, 0),
 ]
 
 BOUNDARY_WRITES = [

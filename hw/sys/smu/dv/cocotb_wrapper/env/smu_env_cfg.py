@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Configuration and deterministic timing choices for the SMU OSS environment."""
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ class SmuEnvCfg(uvm_object):
         self.ref_clk_period_ns = 10
         self.smu_clk_period_ns = 10
         self.periph_clk_period_ns = 20
+        self.entropy_clk_period_ns = 3
         self.sep_wdt_clk_period_ns = 100
         self.powergood_delay_cycles = 8
         self.reset_hold_cycles = 12

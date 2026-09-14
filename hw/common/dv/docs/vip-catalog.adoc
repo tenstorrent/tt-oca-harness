@@ -20,12 +20,12 @@ error behavior, and a named real DUT consumer.
 
 |Experimental
 |Useful API exists, but a dependency, integration, documentation, or gating
-consumer is missing. Experimental VIP cannot be the sole P0/P1 milestone
-evidence.
+consumer is missing. Experimental VIP cannot be the sole evidence for a
+release gate.
 
 |Deferred
-|Capability is intentionally outside the current milestone. It must not block
-baseline transaction BFMs or portable checker work.
+|Capability is intentionally out of scope for the current release. It must
+not block baseline transaction BFMs or portable checker work.
 |===
 
 [[shared-vip-catalog-summary]]
@@ -53,35 +53,11 @@ shared SV interface, and UVM agent. iJTAG and DUT TDR maps remain local.
 |NOR flash responder and passive monitor. Quad/octal personalities currently
 use single-bit data timing; DDR and vendor timing are deferred.
 
-|`ocah_apb_vip`
-|Experimental / unadopted
-|`cocotbext-axi` APB support
-|Master, responder/RAM, results, item, monitor, and checker. A package-local
-example and real DUT consumer are still required.
-
-|`ocah_entropy_vip`
+|`ocah_uart_vip`
 |Experimental
 |OCAH-native cocotb model
-|Deterministic/random entropy source, passive monitor, backpressure, IRQ, and
-alarm injection. A gating subsystem consumer is missing.
-
-|`ocah_i2c_vip`
-|Experimental
-|`cocotbext-i2c`
-|Master, target/device, EEPROM memory, monitor, and split-port adapters. SMC
-still owns a local open-drain/timing adaptation.
-
-|`ocah_i3c_vip`
-|Experimental / dependency-gated
-|Vendored `cocotbext-i3c`
-|SDR controller, target, monitor, and split-port adapters. Backend provisioning
-and a gating DUT transaction remain open.
-
-|`ocah_uart_vip`
-|Experimental / dependency-gated
-|Optional `cocotbext-uart`
-|Console/source-sink wrapper and passive monitor. The backend is intentionally
-not part of the locked default environment.
+|Console wrapper, native 8-N-1 line driver/sampler, and passive monitor. No
+external UART library.
 
 |`ocah_checker`
 |Shared infrastructure
@@ -97,12 +73,23 @@ Package: `hw/common/dv/vip/ocah_axi_vip/`
 
 Primary classes:
 
-* `OcahAxiMaster`, `OcahAxiLiteMaster`;
-* `OcahAxiSlave`, `OcahAxiRam`, `OcahFaultAxiRam`;
-* `OcahAxiLiteSlave`, `OcahAxiLiteRam`, `OcahFaultAxiLiteRam`;
+* `OcahAxiMasterAgent`, `OcahAxiLiteMasterAgent`;
+* `OcahAxiSlaveAgent`, `OcahAxiSlaveAgent`, `OcahAxiSlaveAgent`;
+* `OcahAxiLiteSlaveAgent`, `OcahAxiLiteSlaveAgent`, `OcahAxiLiteSlaveAgent`;
 * `OcahAxiReadResult`, `OcahAxiWriteResult`;
 * `OcahAxiItem` and direction/protocol-specific item subclasses;
-* `OcahAxiMonitor`, `OcahAxiLiteMonitor`, `OcahAxiChecker`.
+* `OcahAxiMonitor`, `OcahAxiLiteMonitor`, `OcahAxiChecker`;
+* `OcahAxiRefModel`, `OcahAxiRegionExpectation`, `OcahAxiScoreboard`
+  (checker/reference-model contract adopters);
+* `OcahAxiProtocolWatcher`, `OcahAxiLiteProtocolWatcher` (cycle-level rules).
+
+SystemVerilog layer (compiled by explicit sim-cfg sources, never Verilator
+filelists): `interface/ocah_axi_if.sv`, the clean-room
+`sva/ocah_axi_sva.sv` (`OCAH_AXI_*` rules from IHI 0022 rule
+descriptions), behavioral error-injectable responders under `sv/`, and the
+passive `uvm/ocah_axi_uvm_pkg.sv` (monitor, reference model, scoreboard with
+`CHK-*`/`CHECKER_SUMMARY` evidence, optional coverage subscriber, env).
+The DTP SV-UVM flow is the first consumer.
 
 Use compatibility `read()`/`write()` methods for positive paths. Use
 `read_result()`/`write_result()` when checking responses, expected errors, or
@@ -130,15 +117,9 @@ sequence items and scoreboards.
 [[shared-vip-apb]]
 === APB
 
-Package: `hw/common/dv/vip/ocah_apb_vip/`
-
-`OcahApbMaster`, `OcahApbSlave`, and `OcahApbRam` mirror the AXI-Lite register
-access shape. `OcahApbReadResult` and `OcahApbWriteResult` expose `pslverr`,
-`ok`, and timeout state. `OcahApbMonitor` emits `OcahApbItem` records consumed
-by `OcahApbChecker`.
-
-Promotion requires a package-local example and a real DUT regression. Until
-then it is available for opt-in experiments but is not a milestone-gating VIP.
+No shared APB package ships. No DUT exposes an APB surface to a testbench
+today; a shared APB VIP is introduced only when a DUT regression gates real
+APB traffic.
 
 [[shared-vip-jtag]]
 === JTAG
@@ -147,10 +128,10 @@ Package: `hw/common/dv/vip/ocah_jtag_vip/`
 
 The cocotb API provides:
 
-* `OcahJtagTap` active TAP control and scanning;
+* `OcahJtagMasterDriver` active TAP control and scanning;
 * `OcahJtagDevice` / `OcahJtagRegister` maps;
 * `OcahJtagScanItem` / `OcahJtagStateItem`;
-* `OcahJtagMonitor` and `OcahJtagChecker`;
+* `OcahJtagMasterMonitor` and `OcahJtagChecker`;
 * `OcahJtagState`, `next_jtag_state()`, and `jtag_tms_path()`.
 
 The SystemVerilog UVM layer provides a pin-level interface, item, config,
@@ -177,30 +158,19 @@ DDR, vendor-accurate BUSY timing, and vendor-specific commands are deferred.
 [[shared-vip-i2c]]
 === I2C
 
-Package: `hw/common/dv/vip/ocah_i2c_vip/`
-
-The package provides active master, target/device, EEPROM memory, passive
-monitor, and split-port open-drain adapters. The supported baseline is 7-bit
-Standard/Fast mode with write, read, and combined transfers.
-
-SMC currently retains local timing/polarity integration. Reusable fixes should
-be moved into this package rather than creating another shared I2C VIP.
+No shared I2C package ships. The SMC-local clock-sampled model
+(`hw/sys/smc/dv/cocotb/seq_lib/smc_i2c_protocol_vip.py`) owns I2C/SMBus/PMBus
+traffic because `cocotbext-i2c` edge waits miss open-drain transitions under
+Verilator. A shared I2C VIP is introduced only when a second subsystem needs
+one and the open-drain timing fix is protocol-neutral.
 
 [[shared-vip-i3c]]
 === I3C
 
-Package: `hw/common/dv/vip/ocah_i3c_vip/`
-
-The package exposes:
-
-* `OcahI3cBus` for a testbench controller driving a DUT target;
-* `OcahI3cTarget` for a testbench target responding to a DUT controller;
-* `OcahI3cMonitor` for passive START/STOP-level observation;
-* split-port controller/target adapters for open-drain OCAH testbenches.
-
-The current scope is SDR private traffic and a CCC subset. ENTDAA arbitration,
-target-initiated IBI, byte-level passive decode, HDR modes, and reproducible
-backend provisioning remain limited or deferred.
+No shared I3C package ships. SMC gates I3C on CSR decode plus a line-level
+external pull-low check; the vendored I3C core is an RTL dependency only. A
+shared I3C VIP is introduced only with a reproducibly provisioned backend and
+a gating DUT smoke test.
 
 [[shared-vip-uart]]
 === UART
@@ -215,15 +185,9 @@ handle `OcahUartImportError`.
 [[shared-vip-entropy]]
 === Entropy Stream
 
-Package: `hw/common/dv/vip/ocah_entropy_vip/`
-
-`OcahEntropySource` drives deterministic words by default, supports explicitly
-seeded random mode and backpressure, and can inject IRQ/alarm sideband events.
-`OcahEntropyMonitor` passively records stream activity. Randomness without an
-explicit seed is forbidden.
-
-The package remains experimental until a real subsystem gates its source and
-monitor behavior.
+No shared entropy package ships. SEP-local models drive `esrc_noise_ext_i` and
+check the ESRC-to-DRBG-to-EDN chain; a shared entropy VIP is introduced only
+when a second subsystem needs one and gates it with a real regression.
 
 [[shared-vip-checker]]
 === Common Checker Evidence

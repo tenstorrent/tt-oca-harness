@@ -3,7 +3,7 @@ packages:
     revision: null
     version: null
     source:
-      Path: vendor/tenstorrent/aou-rtl
+      Path: vendor/tenstorrent/aou
     dependencies: []
   apb:
     revision: null
@@ -88,3 +88,10 @@ packages:
     - axi
     - common_cells
     - common_verification
+  tt_dfd:
+    revision: null
+    version: null
+    source:
+      Path: vendor/tenstorrent/tt-hw-debug
+    dependencies:
+    - axi

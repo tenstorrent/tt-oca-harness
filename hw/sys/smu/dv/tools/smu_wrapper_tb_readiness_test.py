@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Fast source/filelist/artifact readiness gate for the SMU wrapper OSS flow."""
 
 from __future__ import annotations
@@ -10,16 +11,9 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-
 DV_ROOT = Path(__file__).resolve().parents[1]
-# dv/ -> smu/ -> sys/ -> hw/ -> repo
 REPO_ROOT = DV_ROOT.parents[3]
-# Prefer in-tree tools/dv (OSS); fall back to legacy dv/oss path if present.
-_OSS_CANDIDATES = (
-    REPO_ROOT / "tools" / "dv",
-    REPO_ROOT / "dv" / "oss" / "tools" / "dv",
-)
-OSS_DV_TOOLS = next((p for p in _OSS_CANDIDATES if p.is_dir()), _OSS_CANDIDATES[0])
+OSS_DV_TOOLS = REPO_ROOT / "tools" / "dv"
 
 if str(OSS_DV_TOOLS) not in sys.path:
     sys.path.insert(0, str(OSS_DV_TOOLS))
@@ -29,7 +23,6 @@ from check_no_vendor_paths import (  # noqa: E402
     _collect_filelist_paths,
     _load_config,
 )
-
 
 SIM_CFG = "smu_wrapper_sim_cfg.toml"
 CATALOG = "testlists/wrapper.toml"
@@ -41,10 +34,12 @@ SMOKE_TESTS = {
     "smu_smc_smoke_test": TARGET_NO_SEP,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
-# Green merge-gate smoke (no SEP=1 / no TCM shim).
+# Merge-gate smoke covers both wrapper profiles.
 EXPECTED_SMOKE_GROUP = {
     "smu_wrapper_elaboration_no_sep_test",
+    "smu_wrapper_elaboration_sep_rtl_test",
     "smu_smc_smoke_test",
+    "smu_sep_smoke_test",
 }
 
 REQUIRED_SOURCES = (
@@ -75,7 +70,6 @@ REQUIRED_REFERENCE_ROOTS = (
 )
 
 FORBIDDEN_ENV_REFERENCES = (
-    "dv/smu/tb/tb_uvm",
     "testlist_smu_chiplet.yaml",
     "project_smu_chiplet.yaml",
 )
@@ -164,9 +158,7 @@ def check_sources(result: Readiness) -> None:
             "defined" if target in targets else f"missing from {SIM_CFG}",
         )
 
-    bender_targets = [
-        str(value) for value in config.get("build", {}).get("bender_targets", [])
-    ]
+    bender_targets = [str(value) for value in config.get("build", {}).get("bender_targets", [])]
     result.record(
         "dut:smu_wrapper_bender_target",
         "smu_wrapper" in bender_targets,
@@ -179,11 +171,7 @@ def check_sources(result: Readiness) -> None:
         for test_name, target in SMOKE_TESTS.items():
             test = tests.get(test_name)
             passed = test is not None and test.get("target") == target
-            detail = (
-                f"target={test.get('target')}"
-                if test is not None
-                else "missing from catalog"
-            )
+            detail = f"target={test.get('target')}" if test is not None else "missing from catalog"
             result.record(f"catalog:{test_name}", passed, detail)
         expected_group = EXPECTED_SMOKE_GROUP
         smoke_group = set(groups.get("smoke", []))
@@ -229,7 +217,7 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
         "axi_sim_mem.sv",
     )
     forbidden_tokens = (
-        # Stale foundry path + retired DV TCM shim must not appear.
+        # Foundry-path and DV TCM shim tokens must not appear.
         # (OSS TCM is hw/sys/sep/rtl/sep_tcm_wrapper.sv; blocker is ram_*.)
         "hw/sep/sep_tcm_wrapper.sv",
         "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",
@@ -263,9 +251,7 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
                 "absent" if token not in text else "unexpectedly present",
             )
         violations = _check_tokens(tokens, forbidden, allowed)
-        detail = (
-            "vendor-free" if not violations else ", ".join(v.path for v in violations)
-        )
+        detail = "vendor-free" if not violations else ", ".join(v.path for v in violations)
         result.record(f"filelist:{label}:vendor_free", not violations, detail)
 
 

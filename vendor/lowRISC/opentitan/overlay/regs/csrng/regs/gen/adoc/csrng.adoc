@@ -1,4 +1,7 @@
-[cols="1,1,1,3", options="header"]
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -28,49 +31,49 @@
 | 0x5C | MAIN_SM_STATE | R a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `CS_FATAL_ERR` | RW | - a| Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.
-| 2 | `CS_HW_INST_EXC` | RW | - a| Asserted when a hardware-attached CSRNG instance encounters a command exception
-| 1 | `CS_ENTROPY_REQ` | RW | - a| Asserted when a request for entropy has been made.
-| 0 | `CS_CMD_REQ_DONE` | RW | - a| Asserted when a command request is completed.
+| 3 | `CS_FATAL_ERR` | RW | 0x0 a| Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.
+| 2 | `CS_HW_INST_EXC` | RW | 0x0 a| Asserted when a hardware-attached CSRNG instance encounters a command exception
+| 1 | `CS_ENTROPY_REQ` | RW | 0x0 a| Asserted when a request for entropy has been made.
+| 0 | `CS_CMD_REQ_DONE` | RW | 0x0 a| Asserted when a command request is completed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `CS_FATAL_ERR` | RW | - a| Enable interrupt when cs_fatal_err is set.
-| 2 | `CS_HW_INST_EXC` | RW | - a| Enable interrupt when cs_hw_inst_exc is set.
-| 1 | `CS_ENTROPY_REQ` | RW | - a| Enable interrupt when cs_entropy_req is set.
-| 0 | `CS_CMD_REQ_DONE` | RW | - a| Enable interrupt when cs_cmd_req_done is set.
+| 3 | `CS_FATAL_ERR` | RW | 0x0 a| Enable interrupt when cs_fatal_err is set.
+| 2 | `CS_HW_INST_EXC` | RW | 0x0 a| Enable interrupt when cs_hw_inst_exc is set.
+| 1 | `CS_ENTROPY_REQ` | RW | 0x0 a| Enable interrupt when cs_entropy_req is set.
+| 0 | `CS_CMD_REQ_DONE` | RW | 0x0 a| Enable interrupt when cs_cmd_req_done is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `CS_FATAL_ERR` | W | - a| Write 1 to force cs_fatal_err to 1.
-| 2 | `CS_HW_INST_EXC` | W | - a| Write 1 to force cs_hw_inst_exc to 1.
-| 1 | `CS_ENTROPY_REQ` | W | - a| Write 1 to force cs_entropy_req to 1.
-| 0 | `CS_CMD_REQ_DONE` | W | - a| Write 1 to force cs_cmd_req_done to 1.
+| 3 | `CS_FATAL_ERR` | W | 0x0 a| Write 1 to force cs_fatal_err to 1.
+| 2 | `CS_HW_INST_EXC` | W | 0x0 a| Write 1 to force cs_hw_inst_exc to 1.
+| 1 | `CS_ENTROPY_REQ` | W | 0x0 a| Write 1 to force cs_entropy_req to 1.
+| 0 | `CS_CMD_REQ_DONE` | W | 0x0 a| Write 1 to force cs_cmd_req_done to 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `FATAL_ALERT` | W | - a| Write 1 to trigger one alert event of this kind.
-| 0 | `RECOV_ALERT` | W | - a| Write 1 to trigger one alert event of this kind.
+| 1 | `FATAL_ALERT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
+| 0 | `RECOV_ALERT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -79,7 +82,7 @@
 When false, they become read-only.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -97,12 +100,12 @@ of the entropy complex may only be enabled and disabled in a specific order, see
 Programmers Guide for details.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CMD_REQ Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:25 | `Reserved` | - | - a| Reserved
-| 24:12 | `glen` | W | - a| Generate Length: Only defined for the generate command, this field
+| 24:12 | `glen` | W | 0x0 a| Generate Length: Only defined for the generate command, this field
 is the total number of cryptographic entropy blocks requested. Each
 unit represents 128 bits of entropy returned. The NIST reference name
 is max_number_of_bit_per_request, and this field size supports the
@@ -110,20 +113,20 @@ maximum size of 219 bits. For the maximum size, this field should be
 set to 4096, resulting in a max_number_of_bit_per_request value of
 4096 x 128 bits. For a smaller example, a value of 8 would return
 a total of 1024 bits.
-| 11:8 | `flag0` | W | - a| Command Flag0: flag0 is associated with current command. Setting this
+| 11:8 | `flag0` | W | 0x0 a| Command Flag0: flag0 is associated with current command. Setting this
 field to kMultiBitBool4True will enable flag0 to be enabled. Note that
 flag0 is used for the instantiate and reseed commands only, for all other commands its value is ignored.
-| 7:4 | `clen` | W | - a| Command Length: Number of 32-bit words that can optionally be appended
+| 7:4 | `clen` | W | 0x0 a| Command Length: Number of 32-bit words that can optionally be appended
 to the command. A value of zero will only transfer the command header.
 A value of 4'hc will transfer the header plus an additional twelve
 32-bit words of data.
-| 3:0 | `acmd` | W | - a| Application Command: Selects one of five operations to perform.
+| 3:0 | `acmd` | W | 0x0 a| Application Command: Selects one of five operations to perform.
 The commands supported are instantiate, reseed, generate, update,
 and uninstantiate. Each application interface port used by peripheral
 hardware commands a unique instance number in CSRNG.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESEED_INTERVAL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -138,28 +141,28 @@ If the violating command was issued by a HW instance, an interrupt will
 be triggered.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESEED_COUNTER_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RESEED_COUNTER_0` | R | 0x0 a| Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESEED_COUNTER_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RESEED_COUNTER_0` | R | 0x0 a| Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESEED_COUNTER_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RESEED_COUNTER_0` | R | 0x0 a| Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SW_CMD_STS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -181,20 +184,20 @@ Before starting to write a new command to !!SW_CMD_REQ, this field needs to be p
 | 0 | `Reserved` | - | - a| Reserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENBITS_VLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `GENBITS_FIPS` | R | - a| This bit is set when genbits are FIPS/CC compliant.
-| 0 | `GENBITS_VLD` | R | - a| This bit is set when genbits are available on this application interface.
+| 1 | `GENBITS_FIPS` | R | 0x0 a| This bit is set when genbits are FIPS/CC compliant.
+| 0 | `GENBITS_VLD` | R | 0x0 a| This bit is set when genbits are available on this application interface.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .GENBITS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `GENBITS` | R | - a| Reading this register will get the generated bits that were requested with
+| 31:0 | `GENBITS` | R | 0x0 a| Reading this register will get the generated bits that were requested with
 the generate request. This register must be read four times for each request
 made. For example, an application command generate request with
 a `clen` value of 4 requires this register to be read 16 times to get all
@@ -204,7 +207,7 @@ In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBoo
 Otherwise, the register reads as 0.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INT_STATE_READ_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -215,7 +218,7 @@ Note that for !!INT_STATE_VAL to provide read access to the internal state, also
 In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INT_STATE_READ_ENABLE_REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -224,12 +227,12 @@ In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBoo
 If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INT_STATE_NUM Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3:0 | `INT_STATE_NUM` | RW | - a| Setting this field will set the number for which internal state can be
+| 3:0 | `INT_STATE_NUM` | RW | 0x0 a| Setting this field will set the number for which internal state can be
 selected for a read access. Up to 16 internal state values can be chosen
 from this register. The actual number of valid internal state fields
 is set by parameter NHwApps plus 1 software app. For those selections that point
@@ -240,11 +243,11 @@ Note: This register should be read back after being written to ensure
 that the !!INT_STATE_VAL read back is accurate.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INT_STATE_VAL Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `INT_STATE_VAL` | R | - a| Reading this register will dump out the contents of the selected internal state field.
+| 31:0 | `INT_STATE_VAL` | R | 0x0 a| Reading this register will dump out the contents of the selected internal state field.
 Since the internal state field is 448 bits wide, it will require 14 reads from this
 register to gather the entire field. Once 14 reads have been done, the internal read
 pointer (selects 32 bits of the 448 bit field) will reset to zero. The !!INT_STATE_NUM
@@ -256,12 +259,12 @@ Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set t
 Otherwise, the register reads as 0.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FIPS_FORCE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `FIPS_FORCE` | RW | - a| Force the FIPS/CC compliance flag of individual instances to true.
+| 2:0 | `FIPS_FORCE` | RW | 0x0 a| Force the FIPS/CC compliance flag of individual instances to true.
 This allows CSRNG to set the output FIPS/CC compliance flag to true despite running in fully deterministic mode (flag0 being true).
 This can be useful e.g. for known-answer testing through entropy consumers accepting FIPS/CC compliant entropy only, or when firmware is used to derive FIPS/CC compliant entropy seeds.
 After setting a particular bit to 1, the FIPS/CC compliance flag of the corresponding instance will be forced to true upon the next Instantiate or Reseed command.
@@ -269,12 +272,12 @@ After setting a particular bit to 1, the FIPS/CC compliance flag of the correspo
 Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBitBool4True.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .HW_EXC_STS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
-| 15:0 | `HW_EXC_STS` | RW | - a| Reading this register indicates whether one of the CSRNG HW instances has
+| 15:0 | `HW_EXC_STS` | RW | 0x0 a| Reading this register indicates whether one of the CSRNG HW instances has
 encountered an exception.  Each bit corresponds to a particular hardware
 instance, with bit 0 corresponding to instance HW0, bit 1 corresponding
 to instance HW1, and so forth. (To monitor the status of requests made
@@ -282,165 +285,102 @@ to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this reg
 resets the status bits.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RECOV_ALERT_STS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
-| 15 | `CMD_STAGE_RESEED_CNT_ALERT` | RW | - a| This bit is set when the maximum number of generate requests between reseeds is
+| 15 | `CMD_STAGE_RESEED_CNT_ALERT` | RW | 0x0 a| This bit is set when the maximum number of generate requests between reseeds is
 exceeded.
 The invalid generate command is ignored and CSRNG continues to operate.
 Writing a zero resets this status bit.
-| 14 | `CMD_STAGE_INVALID_CMD_SEQ_ALERT` | RW | - a| This bit is set when an out of order command is received by the main state machine.
+| 14 | `CMD_STAGE_INVALID_CMD_SEQ_ALERT` | RW | 0x0 a| This bit is set when an out of order command is received by the main state machine.
 This happens when an instantiate command is sent for a state that was already
 instantiated or when any command other than instantiate is sent for a state that
 wasn't instantiated yet.
 The invalid command is ignored and CSRNG continues to operate.
 Writing a zero resets this status bit.
-| 13 | `CMD_STAGE_INVALID_ACMD_ALERT` | RW | - a| This bit is set when an unsupported/illegal CSRNG command is received by the
+| 13 | `CMD_STAGE_INVALID_ACMD_ALERT` | RW | 0x0 a| This bit is set when an unsupported/illegal CSRNG command is received by the
 main state machine.
 The invalid command is ignored and CSRNG continues to operate.
 Writing a zero resets this status bit.
-| 12 | `CS_BUS_CMP_ALERT` | RW | - a| This bit is set when the software application port genbits bus value is equal
+| 12 | `CS_BUS_CMP_ALERT` | RW | 0x0 a| This bit is set when the software application port genbits bus value is equal
 to the prior valid value on the bus, indicating a possible attack.
 Writing a zero resets this status bit.
 | 11:5 | `Reserved` | - | - a| Reserved
-| 4 | `ACMD_FLAG0_FIELD_ALERT` | RW | - a| This bit is set when the FLAG0 field in the Application Command is set to
+| 4 | `ACMD_FLAG0_FIELD_ALERT` | RW | 0x0 a| This bit is set when the FLAG0 field in the Application Command is set to
 a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 3 | `FIPS_FORCE_ENABLE_FIELD_ALERT` | RW | - a| This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.
+| 3 | `FIPS_FORCE_ENABLE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 2 | `READ_INT_STATE_FIELD_ALERT` | RW | - a| This bit is set when the READ_INT_STATE field in the !!CTRL register is set to
+| 2 | `READ_INT_STATE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the READ_INT_STATE field in the !!CTRL register is set to
 a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 1 | `SW_APP_ENABLE_FIELD_ALERT` | RW | - a| This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to
+| 1 | `SW_APP_ENABLE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to
 a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 0 | `ENABLE_FIELD_ALERT` | RW | - a| This bit is set when the ENABLE field in the !!CTRL register is set to
+| 0 | `ENABLE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the ENABLE field in the !!CTRL register is set to
 a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERR_CODE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `Reserved` | - | - a| Reserved
-| 30 | `FIFO_STATE_ERR` | R | - a| This bit will be set to one when any of the source bits (bits 0 through 15 of this
+| 30 | `FIFO_STATE_ERR` | R | 0x0 a| This bit will be set to one when any of the source bits (bits 0 through 15 of this
 this register) are asserted as a result of an error pulse generated from
 any FIFO where both the empty and full status bits are set.
 This bit will stay set until the next reset.
-| 29 | `FIFO_READ_ERR` | R | - a| This bit will be set to one when any of the source bits (bits 0 through 15 of this
+| 29 | `FIFO_READ_ERR` | R | 0x0 a| This bit will be set to one when any of the source bits (bits 0 through 15 of this
 this register) are asserted as a result of an error pulse generated from
 any empty FIFO that has recieved a read pulse.
 This bit will stay set until the next reset.
-| 28 | `FIFO_WRITE_ERR` | R | - a| This bit will be set to one when any of the source bits (bits 0 through 15 of this
+| 28 | `FIFO_WRITE_ERR` | R | 0x0 a| This bit will be set to one when any of the source bits (bits 0 through 15 of this
 this register) are asserted as a result of an error pulse generated from
 any full FIFO that has been recieved a write pulse.
 This bit will stay set until the next reset.
 | 27 | `Reserved` | - | - a| Reserved
-| 26 | `CMD_GEN_CNT_ERR` | R | - a| This bit will be set to one when a mismatch in any of the hardened counters
+| 26 | `CTR_ERR` | R | 0x0 a| This bit will be set to one when a mismatch in any of the hardened counters
 has been detected.
 This error will signal a fatal alert, and also
 an interrupt if enabled.
 This bit will stay set until the next reset.
-| 25 | `AES_CIPHER_SM_ERR` | R | - a| This bit will be set to one when an AES fatal error has been detected.
+| 25 | `AES_CIPHER_SM_ERR` | R | 0x0 a| This bit will be set to one when an AES fatal error has been detected.
 This error will signal a fatal alert, and also
 an interrupt if enabled.
 This bit will stay set until the next reset.
-| 24 | `DRBG_UPDOB_SM_ERR` | R | - a| This bit will be set to one when an illegal state has been detected for the
-ctr_drbg update out block state machine. This error will signal a fatal alert, and also
-an interrupt if enabled.
-This bit will stay set until the next reset.
-| 23 | `DRBG_UPDBE_SM_ERR` | R | - a| This bit will be set to one when an illegal state has been detected for the
-ctr_drbg update block encode state machine. This error will signal a fatal alert, and also
-an interrupt if enabled.
-This bit will stay set until the next reset.
-| 22 | `DRBG_GEN_SM_ERR` | R | - a| This bit will be set to one when an illegal state has been detected for the
+| 24:23 | `Reserved` | - | - a| Reserved
+| 22 | `CTR_DRBG_SM_ERR` | R | 0x0 a| This bit will be set to one when an illegal state has been detected for the
 ctr_drbg gen state machine. This error will signal a fatal alert, and also
 an interrupt if enabled.
 This bit will stay set until the next reset.
-| 21 | `MAIN_SM_ERR` | R | - a| This bit will be set to one when an illegal state has been detected for the
+| 21 | `MAIN_SM_ERR` | R | 0x0 a| This bit will be set to one when an illegal state has been detected for the
 main state machine. This error will signal a fatal alert, and also
 an interrupt if enabled.
 This bit will stay set until the next reset.
-| 20 | `CMD_STAGE_SM_ERR` | R | - a| This bit will be set to one when an illegal state has been detected for the
+| 20 | `CMD_STAGE_SM_ERR` | R | 0x0 a| This bit will be set to one when an illegal state has been detected for the
 command stage state machine. This error will signal a fatal alert, and also
 an interrupt if enabled.
 This bit will stay set until the next reset.
-| 19:16 | `Reserved` | - | - a| Reserved
-| 15 | `SFIFO_BLKENC_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-blkenc FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 14 | `SFIFO_GGENBITS_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-ggenbits FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 13 | `SFIFO_GADSTAGE_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-gadstage FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 12 | `SFIFO_GGENREQ_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-ggenreq FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 11 | `SFIFO_GRCSTAGE_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-grcstage FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 10 | `SFIFO_GBENCACK_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-gbencack FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 9 | `SFIFO_FINAL_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-final FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 8 | `SFIFO_PDATA_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-pdata FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 7 | `SFIFO_BENCACK_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-bencack FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 6 | `SFIFO_BENCREQ_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-bencreq FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 5 | `SFIFO_UPDREQ_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-updreq FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 4 | `SFIFO_KEYVRC_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-keyvrc FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 3 | `SFIFO_RCSTAGE_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-rcstage FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 2 | `SFIFO_CMDREQ_ERR` | R | - a| This bit will be set to one when an error has been detected for the
-cmdreq FIFO. The type of error is reflected in the type status
-bits (bits 28 through 30 of this register).
-This bit will stay set until the next reset.
-| 1 | `SFIFO_GENBITS_ERR` | R | - a| This bit will be set to one when an error has been detected for the
+| 19:2 | `Reserved` | - | - a| Reserved
+| 1 | `SFIFO_GENBITS_ERR` | R | 0x0 a| This bit will be set to one when an error has been detected for the
 command stage genbits FIFO. The type of error is reflected in the type status
 bits (bits 28 through 30 of this register).
 This bit will stay set until the next reset.
-| 0 | `SFIFO_CMD_ERR` | R | - a| This bit will be set to one when an error has been detected for the
+| 0 | `SFIFO_CMD_ERR` | R | 0x0 a| This bit will be set to one when an error has been detected for the
 command stage command FIFO. The type of error is reflected in the type status
 bits (bits 28 through 30 of this register).
 This bit will stay set until the next reset.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERR_CODE_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
-| 4:0 | `ERR_CODE_TEST` | RW | - a| Setting this field will set the bit number for which an error
+| 4:0 | `ERR_CODE_TEST` | RW | 0x0 a| Setting this field will set the bit number for which an error
 will be forced in the hardware. This bit number is that same one
 found in the !!ERR_CODE register. The action of writing this
 register will force an error pulse. The sole purpose of this
@@ -448,11 +388,11 @@ register is to test that any error properly propagates to either
 an interrupt or an alert.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MAIN_SM_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `MAIN_SM_STATE` | R | 0x4E a| This is the state of the CSRNG main state machine.
+| 31:6 | `Reserved` | - | - a| Reserved
+| 5:0 | `MAIN_SM_STATE` | R | 0x37 a| This is the state of the CSRNG main state machine.
 See the RTL file `csrng_main_sm` for the meaning of the values.
 |===

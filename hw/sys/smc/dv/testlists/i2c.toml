@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
 [[tests]]
@@ -17,10 +18,171 @@ timeout_sec = 1800
 tags = ["smoke", "ci", "i2c", "pyuvm"]
 run_modes = ["smoke"]
 
+# Nightly Tier A: commercial smc_i2c_p0_rdwr BFM rebuild (I2C0↔I2C1).
+# Requires tb_top +smc_i2c_shared_bus.
+[[tests]]
+name = "smc_i2c_p0_rdwr_test"
+module = "smc_i2c_p0_rdwr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+# Nightly Tier A: commercial smc_i2c_p0_nack BFM (allow-path + VIP NACK legs).
+[[tests]]
+name = "smc_i2c_p0_nack_test"
+module = "smc_i2c_p0_nack_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+# Nightly Tier A: three-phase I2C0/1/2 shared-bus multiplex.
+[[tests]]
+name = "smc_i2c_p0_multictrl_test"
+module = "smc_i2c_p0_multictrl_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+# Nightly Tier A: ACQ/TX FIFO threshold IRQs.
+[[tests]]
+name = "smc_i2c_p0_fifo_test"
+module = "smc_i2c_p0_fifo_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+# Nightly Tier A: stretch-timeout observation (commercial timeout body).
+[[tests]]
+name = "smc_i2c_p0_timeout_test"
+module = "smc_i2c_p0_timeout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+# Nightly Tier A: TX stretch recover + RSTART read/write.
+[[tests]]
+name = "smc_i2c_p0_stretch_test"
+module = "smc_i2c_p0_stretch_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+# Nightly Tier A: controller FMT empty-threshold IRQ.
+[[tests]]
+name = "smc_i2c_p0_cfifo_test"
+module = "smc_i2c_p0_cfifo_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+
+# Nightly Tier A: alternating write/read pairs.
+[[tests]]
+name = "smc_i2c_p0_conti_test"
+module = "smc_i2c_p0_conti_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+# CSR-only FMT/TX full+empty and RX/ACQ empty (commercial i2c_fifo_full).
+[[tests]]
+name = "smc_i2c_fifo_full_test"
+module = "smc_i2c_fifo_full_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+
+# DUT-internal SMBALERT + ARA + SMBSUS (commercial smbus_alert_suspend).
+[[tests]]
+name = "smc_smbus_alert_suspend_test"
+module = "smc_smbus_alert_suspend_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "smbus", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+args = ["+smc_i2c_shared_bus"]
+
+# VIP ARA + external SMBSUS# into I2C0 target (commercial target_smbus).
+[[tests]]
+name = "smc_i2c_target_smbus_test"
+module = "smc_i2c_target_smbus_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "smbus", "depth", "tier_a_pilot", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "i2c"
 tests = [
     "smc_i2c_cg_sanity_test",
     "smc_i2c_multi_sample_test",
     "smc_i2c_master_target_test",
+    "smc_i2c_p0_rdwr_test",
+    "smc_i2c_p0_nack_test",
+    "smc_i2c_p0_multictrl_test",
+    "smc_i2c_p0_fifo_test",
+    "smc_i2c_p0_timeout_test",
+    "smc_i2c_p0_stretch_test",
+    "smc_i2c_p0_cfifo_test",
+    "smc_i2c_p0_conti_test",
+    "smc_i2c_fifo_full_test",
+    "smc_smbus_alert_suspend_test",
+    "smc_i2c_target_smbus_test",
 ]
+
+[[tests]]
+name = "smc_i2c_master_target_test"
+module = "smc_i2c_master_target_test"
+seed = 1
+timeout_sec = 1800
+tags = [
+    "smoke", "ci", "pyuvm"
+]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_pmbus_test"
+module = "smc_smbus_pmbus_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_hostnotify_test"
+module = "smc_smbus_hostnotify_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_alert_ara_test"
+module = "smc_smbus_alert_ara_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_multi_instance_test"
+module = "smc_i2c_multi_instance_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]

@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-5 OCTS dual-chiplet sync: SECONDARY inject then PRIMARY outbound.
 
-Legacy reference (dv/smc/tb): DUT PRIMARY drives pads 58/59; master BFM
-SECONDARY tracks. OSS has a single bare ``smc`` DUT, so this sequence:
+The DUT PRIMARY drives OCTS sync/credit pads and the master BFM tracks the
+SECONDARY side. This sequence:
 
-  1. Strap SECONDARY, inject ordered sync then credit on pad2core[58/59],
+  1. Strap SECONDARY, inject ordered sync then credit on pad2core[55/56],
      hard-gate COUNT / STATUS.MODE.
   2. Strap PRIMARY, TIMER_START, hard-gate rising edges on DUT pad observe.
 
@@ -17,22 +18,23 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_octs_sync_bfm import (
     count_rising_edges,
     drive_secondary_sync_then_credits,
 )
 
-_OCTS_TIMER_START = 0xC000_E000
-_OCTS_CTRL = 0xC000_E004
-_OCTS_STATUS = 0xC000_E008
-_OCTS_PRESET_LO = 0xC000_E00C
-_OCTS_PRESET_HI = 0xC000_E010
-_OCTS_COUNT_LO = 0xC000_E014
-_OCTS_COUNT_HI = 0xC000_E018
-_OCTS_TIMER_GPIO_ENABLE = 0xC000_E020
+_OCTS_TIMER_START = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR")
+_OCTS_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
+_OCTS_STATUS = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR")
+_OCTS_PRESET_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR")
+_OCTS_PRESET_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR")
+_OCTS_COUNT_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADDR")
+_OCTS_COUNT_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR")
+_OCTS_TIMER_GPIO_ENABLE = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_GPIO_ENABLE_BASE_ADDR")
 
-# CTRL: CREDIT_VAL=0x10, PULSE_WIDTH=0x02, STEP=0x01 (matches legacy FW).
+# CTRL: CREDIT_VAL=0x10, PULSE_WIDTH=0x02, STEP=0x01.
 _OCTS_CTRL_VAL = 0x0001_0210
 _OCTS_CREDIT_VAL = 0x10
 _OCTS_PULSE_WIDTH = 0x02
@@ -40,6 +42,10 @@ _OCTS_PRESET_VAL = 0x1000
 _OCTS_STATUS_MODE = 0x1
 _OCTS_STATUS_RUNNING = 0x10
 _OCTS_PRIMARY_WAIT = 256
+# COUNT lands a few ticks past PRESET by the time the reload read returns.
+_OCTS_RELOAD_SLACK = 0x100
+# STEP=1, so the advance over the edge-count window is bounded by it.
+_OCTS_MAX_ADVANCE = 4 * _OCTS_PRIMARY_WAIT
 
 
 class smc_octs_dual_sync_test_seq(SmcCsrSeq):
@@ -68,9 +74,7 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         await ClockCycles(clk, 8)
 
         await self.csr_write("OCTS_CTRL", _OCTS_CTRL, _OCTS_CTRL_VAL)
-        await self.csr_write(
-            "OCTS_TIMER_GPIO_ENABLE", _OCTS_TIMER_GPIO_ENABLE, 1
-        )
+        await self.csr_write("OCTS_TIMER_GPIO_ENABLE", _OCTS_TIMER_GPIO_ENABLE, 1)
         await self.csr_write("OCTS_PRESET_LO", _OCTS_PRESET_LO, _OCTS_PRESET_VAL)
         await self.csr_write("OCTS_PRESET_HI", _OCTS_PRESET_HI, 0)
 
@@ -92,8 +96,7 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         count_after = await self._read_count()
         status = await self.csr_read("OCTS_STATUS_RUNNING", _OCTS_STATUS)
         assert status & _OCTS_STATUS_RUNNING, (
-            f"OCTS STATUS.RUNNING not set after secondary sync "
-            f"(STATUS=0x{status:08x})"
+            f"OCTS STATUS.RUNNING not set after secondary sync (STATUS=0x{status:08x})"
         )
         # After sync+credits: COUNT near PRESET + N*CREDIT_VAL (N=2).
         expected_lo = _OCTS_PRESET_VAL + _OCTS_CREDIT_VAL
@@ -103,8 +106,7 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
             f"expected [{expected_lo:#x}, {expected_hi:#x}]"
         )
         cocotb.log.info(
-            "OCTS secondary inject PASS: STATUS=0x%x COUNT=0x%x "
-            "(preset=0x%x credit=0x%x)",
+            "OCTS secondary inject PASS: STATUS=0x%x COUNT=0x%x (preset=0x%x credit=0x%x)",
             status,
             count_after,
             _OCTS_PRESET_VAL,
@@ -123,36 +125,45 @@ class smc_octs_dual_sync_test_seq(SmcCsrSeq):
         )
 
         await self.csr_write("OCTS_CTRL", _OCTS_CTRL, _OCTS_CTRL_VAL)
-        await self.csr_write(
-            "OCTS_TIMER_GPIO_ENABLE", _OCTS_TIMER_GPIO_ENABLE, 1
-        )
+        await self.csr_write("OCTS_TIMER_GPIO_ENABLE", _OCTS_TIMER_GPIO_ENABLE, 1)
         await self.csr_write("OCTS_PRESET_LO", _OCTS_PRESET_LO, _OCTS_PRESET_VAL)
         await self.csr_write("OCTS_PRESET_HI", _OCTS_PRESET_HI, 0)
 
         edge_task_sync = cocotb.start_soon(
-            count_rising_edges(
-                dut.tb_octs_sync_load_from_dut, clk, _OCTS_PRIMARY_WAIT
-            )
+            count_rising_edges(dut.tb_octs_sync_load_from_dut, clk, _OCTS_PRIMARY_WAIT)
         )
         edge_task_credit = cocotb.start_soon(
-            count_rising_edges(
-                dut.tb_octs_cnt_credit_from_dut, clk, _OCTS_PRIMARY_WAIT
-            )
+            count_rising_edges(dut.tb_octs_cnt_credit_from_dut, clk, _OCTS_PRIMARY_WAIT)
         )
+        # COUNT is already running above PRESET here, left there by the
+        # secondary phase. TIMER_START reloads it, so the reload -- not the
+        # absolute value -- is what this write can be shown to have caused.
+        count_before_start = await self._read_count()
         await self.csr_write("OCTS_TIMER_START", _OCTS_TIMER_START, 1)
+        count_reloaded = await self._read_count()
 
         sync_edges = await edge_task_sync
         credit_edges = await edge_task_credit
-        assert sync_edges >= 1, (
-            f"OCTS primary pad58 sync_load edges={sync_edges}, need >= 1"
-        )
-        assert credit_edges >= 2, (
-            f"OCTS primary pad59 cnt_credit edges={credit_edges}, need >= 2"
-        )
+        assert sync_edges >= 1, f"OCTS primary pad55 sync_load edges={sync_edges}, need >= 1"
+        assert credit_edges >= 2, f"OCTS primary pad56 cnt_credit edges={credit_edges}, need >= 2"
 
         count_pri = await self._read_count()
-        assert count_pri > _OCTS_PRESET_VAL, (
-            f"OCTS primary COUNT did not advance: 0x{count_pri:x}"
+        # Anchored to values this run measured, not to the PRESET this sequence
+        # programmed: COUNT enters the phase already above PRESET (0x1096 in the
+        # retained run), so an absolute comparison against it holds with or
+        # without the TIMER_START write.
+        assert count_reloaded < count_before_start, (
+            f"OCTS TIMER_START did not reload COUNT: 0x{count_before_start:x} -> "
+            f"0x{count_reloaded:x} (a free-running counter only increases)"
+        )
+        assert count_reloaded - _OCTS_PRESET_VAL <= _OCTS_RELOAD_SLACK, (
+            f"OCTS COUNT reloaded to 0x{count_reloaded:x}, not to PRESET "
+            f"0x{_OCTS_PRESET_VAL:x} (+{_OCTS_RELOAD_SLACK} read latency)"
+        )
+        advance = count_pri - count_reloaded
+        assert 1 <= advance <= _OCTS_MAX_ADVANCE, (
+            f"OCTS COUNT advanced {advance} from 0x{count_reloaded:x} over "
+            f"{_OCTS_PRIMARY_WAIT} clk_smc_i, expected 1..{_OCTS_MAX_ADVANCE}"
         )
         cocotb.log.info(
             "OCTS dual-sync PASS: secondary COUNT=0x%x primary "

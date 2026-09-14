@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Coverage collection, merge input selection, and report normalization."""
 
 from __future__ import annotations
@@ -12,7 +15,6 @@ from typing import Any
 from .compat import UTC
 from .models import ConfigError
 from .paths import repo_rel
-
 
 CANONICAL_METRICS = (
     "line",
@@ -197,9 +199,7 @@ def _coverage_input_from_fragment(
         )
 
     metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
-    coverage_meta = (
-        metadata.get("coverage") if isinstance(metadata.get("coverage"), dict) else {}
-    )
+    coverage_meta = metadata.get("coverage") if isinstance(metadata.get("coverage"), dict) else {}
     if bool(metadata.get("debug_only") or coverage_meta.get("debug_only")):
         return None, {
             "result_json": repo_rel(root, result_path),
@@ -214,17 +214,13 @@ def _coverage_input_from_fragment(
             "reason": "coverage artifact missing or empty",
         }
 
-    target_build = (
-        data.get("target_build") if isinstance(data.get("target_build"), dict) else {}
-    )
+    target_build = data.get("target_build") if isinstance(data.get("target_build"), dict) else {}
     if not target_build and isinstance(metadata.get("target_build"), dict):
         target_build = metadata["target_build"]
     attempt_value = data.get("attempt", metadata.get("attempt"))
     try:
         attempt = (
-            int(attempt_value)
-            if attempt_value is not None
-            else _attempt_from_path(result_path)
+            int(attempt_value) if attempt_value is not None else _attempt_from_path(result_path)
         )
     except (TypeError, ValueError):
         attempt = _attempt_from_path(result_path)
@@ -241,9 +237,7 @@ def _coverage_input_from_fragment(
         status=str(data.get("status", "UNKNOWN")),
         target=str(data.get("target") or target_build.get("target") or "") or None,
         build_fingerprint=(
-            str(target_build.get("fingerprint"))
-            if target_build.get("fingerprint")
-            else None
+            str(target_build.get("fingerprint")) if target_build.get("fingerprint") else None
         ),
         result_json=repo_rel(root, result_path),
         source="result_json",
@@ -252,9 +246,7 @@ def _coverage_input_from_fragment(
 
 def _validate_compatibility(inputs: list[CoverageInput]) -> None:
     targets = {entry.target for entry in inputs if entry.target}
-    fingerprints = {
-        entry.build_fingerprint for entry in inputs if entry.build_fingerprint
-    }
+    fingerprints = {entry.build_fingerprint for entry in inputs if entry.build_fingerprint}
     if len(targets) > 1:
         raise CoverageCompatibilityError(
             "coverage inputs span incompatible targets: " + ", ".join(sorted(targets))
@@ -268,11 +260,7 @@ def _validate_compatibility(inputs: list[CoverageInput]) -> None:
         raise CoverageCompatibilityError(
             "coverage input target provenance is incomplete; refusing a mixed-provenance merge"
         )
-    if (
-        inputs
-        and any(entry.build_fingerprint is None for entry in inputs)
-        and fingerprints
-    ):
+    if inputs and any(entry.build_fingerprint is None for entry in inputs) and fingerprints:
         raise CoverageCompatibilityError(
             "coverage build fingerprints are incomplete; refusing a mixed-provenance merge"
         )
@@ -484,10 +472,7 @@ def _parse_text_table(text: str) -> tuple[dict[str, float], float | None]:
         ]
         if len(recognized) < 2:
             continue
-        values = [
-            float(match.group("value"))
-            for match in _PERCENT_RE.finditer(lines[index + 1])
-        ]
+        values = [float(match.group("value")) for match in _PERCENT_RE.finditer(lines[index + 1])]
         if len(values) < len(headers):
             continue
         for name, value in zip(headers, values, strict=False):
@@ -497,6 +482,68 @@ def _parse_text_table(text: str) -> tuple[dict[str, float], float | None]:
             elif name in _OVERALL_ALIASES and overall is None:
                 overall = value
     return metrics, overall
+
+
+_URG_SUMMARY_TITLE_RE = re.compile(r"(?i)^\s*total\s+coverage\s+summary\s*:?\s*$")
+
+
+def parse_urg_summary_table(text: str) -> dict[str, float]:
+    """Parse URG's authoritative `Total Coverage Summary` header/value table.
+
+    Returns lowercase native column names (score, line, cond, ...) mapped to
+    their percentages. Columns reported as `--` are omitted. An empty dict
+    means the table was not present in `text`.
+    """
+
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if not _URG_SUMMARY_TITLE_RE.match(line):
+            continue
+        rows = [row for row in lines[index + 1 : index + 6] if row.strip()]
+        if len(rows) < 2:
+            continue
+        headers = [token.lower() for token in rows[0].split()]
+        cells = rows[1].split()
+        if not headers or len(cells) != len(headers):
+            continue
+        if not any(_metric_name(name) is not None or name in _OVERALL_ALIASES for name in headers):
+            continue
+        values: dict[str, float] = {}
+        for name, cell in zip(headers, cells, strict=True):
+            if cell == "--":
+                continue
+            try:
+                values[name] = float(cell)
+            except ValueError:
+                values.clear()
+                break
+        if values:
+            return values
+    return {}
+
+
+def _parse_urg_dashboard(report_dir: Path) -> tuple[dict[str, float], float | None]:
+    if not report_dir.is_dir():
+        return {}, None
+    for dashboard in sorted(report_dir.rglob("dashboard.txt")):
+        try:
+            text = dashboard.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        table = parse_urg_summary_table(text)
+        if not table:
+            continue
+        metrics: dict[str, float] = {}
+        overall: float | None = None
+        for name, value in table.items():
+            canonical = _metric_name(name)
+            if canonical:
+                metrics[canonical] = value
+            elif name in _OVERALL_ALIASES:
+                overall = value
+        if metrics or overall is not None:
+            return metrics, overall
+    return {}, None
 
 
 def _report_text_files(report_dir: Path, log_path: Path | None) -> list[Path]:
@@ -520,6 +567,7 @@ def parse_coverage_report(
 
     metrics: dict[str, float] = {}
     overall: float | None = None
+    sweep_report_text = True
     if parser == "verilator":
         parsed_metrics, parsed_overall = _parse_verilator_dat(merged)
         metrics.update(parsed_metrics)
@@ -532,17 +580,27 @@ def parse_coverage_report(
                 metrics.setdefault(name, value)
             if overall is None and parsed_overall is not None:
                 overall = parsed_overall
-
-    for path in _report_text_files(report_dir, log_path):
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        parsed_metrics, parsed_overall = _parse_text_table(text)
-        for name, value in parsed_metrics.items():
-            metrics.setdefault(name, value)
-        if overall is None and parsed_overall is not None:
+    elif parser == "urg":
+        # URG's dashboard summary is the one table whose columns are pure
+        # percentages; the other report files interleave raw covered/total
+        # counts that the generic table sweep misreads as percentages.
+        parsed_metrics, parsed_overall = _parse_urg_dashboard(report_dir)
+        if parsed_metrics or parsed_overall is not None:
+            metrics.update(parsed_metrics)
             overall = parsed_overall
+            sweep_report_text = False
+
+    if sweep_report_text:
+        for path in _report_text_files(report_dir, log_path):
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            parsed_metrics, parsed_overall = _parse_text_table(text)
+            for name, value in parsed_metrics.items():
+                metrics.setdefault(name, value)
+            if overall is None and parsed_overall is not None:
+                overall = parsed_overall
 
     if overall is None and len(metrics) == 1:
         overall = next(iter(metrics.values()))
@@ -551,15 +609,11 @@ def parse_coverage_report(
             f"{parser} report did not contain a usable overall percentage and metric breakdown "
             f"(report={report_dir}, merged={merged})"
         )
-    invalid = {
-        name: value for name, value in metrics.items() if value < 0.0 or value > 100.0
-    }
+    invalid = {name: value for name, value in metrics.items() if value < 0.0 or value > 100.0}
     if overall < 0.0 or overall > 100.0 or invalid:
         raise CoverageReportError("coverage report contains percentages outside 0..100")
     return {
-        name: round(value, 4)
-        for name, value in metrics.items()
-        if name in CANONICAL_METRICS
+        name: round(value, 4) for name, value in metrics.items() if name in CANONICAL_METRICS
     }, round(overall, 4)
 
 

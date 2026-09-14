@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 example_jedec_id.py — OcahSpiFlash JEDEC-ID read snippet.
 
@@ -23,17 +23,15 @@ Assumptions
 """
 
 import cocotb
-from cocotb.clock import Clock
-from cocotb.triggers import Timer, RisingEdge, FallingEdge
+from cocotb.triggers import Timer
 
 from ocah_spi_vip import OcahSpiFlash, OcahSpiMonitor
-
 
 # ---------------------------------------------------------------------------
 # Testbench-level clock helper
 # ---------------------------------------------------------------------------
 
-_SPI_PERIOD_NS = 20   # 50 MHz SPI clock
+_SPI_PERIOD_NS = 20  # 50 MHz SPI clock
 
 
 async def _spi_clk_cycle(clk_sig):
@@ -48,13 +46,14 @@ async def _spi_clk_cycle(clk_sig):
 # Low-level SPI master helpers (stand-in for real DUT SPI controller)
 # ---------------------------------------------------------------------------
 
+
 async def _spi_transfer_byte(clk_sig, mosi_sig, miso_sig, byte_val: int) -> int:
     """Transfer one byte MSB-first over SPI Mode 0; return received byte."""
     rx = 0
     for bit_idx in range(7, -1, -1):
         # Setup MOSI before rising edge.
         mosi_sig.value = (byte_val >> bit_idx) & 0x1
-        await Timer(2, units="ns")   # setup time
+        await Timer(2, units="ns")  # setup time
         clk_sig.value = 1
         await Timer(_SPI_PERIOD_NS // 2, units="ns")
         # Sample MISO on rising edge.
@@ -67,6 +66,7 @@ async def _spi_transfer_byte(clk_sig, mosi_sig, miso_sig, byte_val: int) -> int:
 # ---------------------------------------------------------------------------
 # Example test
 # ---------------------------------------------------------------------------
+
 
 @cocotb.test()
 async def example_jedec_id(dut):
@@ -85,16 +85,16 @@ async def example_jedec_id(dut):
     # -----------------------------------------------------------------
     # Step 1: configure and start the flash BFM
     # -----------------------------------------------------------------
-    TARGET_JEDEC_ID = 0xEF4018     # 24-bit generic NOR JEDEC ID (no brand)
+    TARGET_JEDEC_ID = 0xEF4018  # 24-bit generic NOR JEDEC ID (no brand)
 
     flash = OcahSpiFlash(
-        cs_n     = dut.spi_cs_n,
-        sclk     = dut.spi_sclk,
-        mosi     = dut.spi_mosi,
-        miso     = dut.spi_miso,
-        name     = "flash0",
-        mode     = "single",
-        jedec_id = TARGET_JEDEC_ID,
+        cs_n=dut.spi_cs_n,
+        sclk=dut.spi_sclk,
+        mosi=dut.spi_mosi,
+        miso=dut.spi_miso,
+        name="flash0",
+        mode="single",
+        jedec_id=TARGET_JEDEC_ID,
     )
 
     flash.init_signals()
@@ -108,15 +108,17 @@ async def example_jedec_id(dut):
         observed_txns.append(txn)
         cocotb.log.info(
             "[monitor] opcode=0x%02X addr=0x%06X miso=%s",
-            txn["opcode"], txn["addr"], txn["data_miso"].hex()
+            txn["opcode"],
+            txn["addr"],
+            txn["data_miso"].hex(),
         )
 
     monitor = OcahSpiMonitor(
-        cs_n = dut.spi_cs_n,
-        sclk = dut.spi_sclk,
-        mosi = dut.spi_mosi,
-        miso = dut.spi_miso,
-        name = "spi_mon",
+        cs_n=dut.spi_cs_n,
+        sclk=dut.spi_sclk,
+        mosi=dut.spi_mosi,
+        miso=dut.spi_miso,
+        name="spi_mon",
     )
     monitor.add_transaction_callback(on_transaction)
     await monitor.start()
@@ -130,9 +132,9 @@ async def example_jedec_id(dut):
     # Step 4: drive the SPI controller to assert CS and send 0x9F
     # -----------------------------------------------------------------
     # Drive initial idle state.
-    dut.spi_cs_n.value  = 1
-    dut.spi_sclk.value  = 0
-    dut.spi_mosi.value  = 0
+    dut.spi_cs_n.value = 1
+    dut.spi_sclk.value = 0
+    dut.spi_mosi.value = 0
     await Timer(100, units="ns")
 
     # Assert CS_N (active low).
@@ -140,7 +142,7 @@ async def example_jedec_id(dut):
     await Timer(10, units="ns")
 
     # Send READ JEDEC ID command byte 0x9F.
-    b0 = await _spi_transfer_byte(dut.spi_sclk, dut.spi_mosi, dut.spi_miso, 0x9F)
+    await _spi_transfer_byte(dut.spi_sclk, dut.spi_mosi, dut.spi_miso, 0x9F)
 
     # Receive 3 response bytes (manufacturer, memory type, capacity).
     b1 = await _spi_transfer_byte(dut.spi_sclk, dut.spi_mosi, dut.spi_miso, 0x00)
@@ -149,7 +151,7 @@ async def example_jedec_id(dut):
 
     # Deassert CS_N.
     dut.spi_cs_n.value = 1
-    await Timer(50, units="ns")   # let monitor dispatch
+    await Timer(50, units="ns")  # let monitor dispatch
 
     # -----------------------------------------------------------------
     # Step 5: verify
@@ -157,8 +159,7 @@ async def example_jedec_id(dut):
     received_id = (b1 << 16) | (b2 << 8) | b3
 
     assert received_id == TARGET_JEDEC_ID, (
-        f"JEDEC ID mismatch: expected 0x{TARGET_JEDEC_ID:06X}, "
-        f"got 0x{received_id:06X}"
+        f"JEDEC ID mismatch: expected 0x{TARGET_JEDEC_ID:06X}, got 0x{received_id:06X}"
     )
 
     # Verify the monitor captured one transaction with opcode 0x9F.

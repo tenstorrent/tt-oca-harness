@@ -309,7 +309,7 @@ addrmap spi_controller {
 
             For read or write segments, this field controls the
             number of 1-byte bursts to transmit and or receive in
-            this command segment.  The number of cyles required
+            this command segment.  The number of cycles required
             to send or received a byte will depend on !!COMMAND.SPEED.
             For dummy segments, (!!COMMAND.DIRECTION == 0), this register
             controls the number of dummy cycles to issue.
@@ -371,7 +371,7 @@ addrmap spi_controller {
     reg ERROR_ENABLE {
         field {
             sw = rw;
-            hw = na;
+            hw = r;
             desc = "Command Error: If this bit is set, the block sends an error
             interrupt whenever a command is issued while busy (i.e. a 1 is
             when !!STATUS.READY is not asserted.)";
@@ -379,14 +379,14 @@ addrmap spi_controller {
 
         field {
             sw = rw;
-            hw = na;
+            hw = r;
             desc = "Overflow Errors: If this bit is set, the block sends an
             error interrupt whenever the TX FIFO overflows.";
         } OVERFLOW[4:4] = 0x1;
 
         field {
             sw = rw;
-            hw = na;
+            hw = r;
             desc = "Underflow Errors: If this bit is set, the block sends an
             error interrupt whenever there is a read from !!RXDATA
             but the RX FIFO is empty.";
@@ -394,7 +394,7 @@ addrmap spi_controller {
 
         field {
             sw = rw;
-            hw = na;
+            hw = r;
             desc = "Invalid Command Errors: If this bit is set, the block sends an
             error interrupt whenever a command is sent with invalid values for
             !!COMMAND.SPEED or !!COMMAND.DIRECTION.";
@@ -402,7 +402,7 @@ addrmap spi_controller {
 
         field {
             sw = rw;
-            hw = na;
+            hw = r;
             desc = "Invalid CSID: If this bit is set, the block sends an error interrupt whenever
             a command is submitted, but CSID exceeds NumCS.";
         } CSIDINVAL[16:16] = 0x1;
@@ -528,17 +528,6 @@ addrmap spi_controller {
              ERROR_ENABLE    ERROR_ENABLE    @0x2C;
              ERROR_STATUS    ERROR_STATUS    @0x30;
              EVENT_ENABLE    EVENT_ENABLE    @0x34;
-
-
-    ////////////////////////////
-    // Error Enable Logic //
-    ////////////////////////////
-
-    ERROR_STATUS.CMDBUSY  ->hwenable = ERROR_ENABLE.CMDBUSY;
-    ERROR_STATUS.OVERFLOW ->hwenable = ERROR_ENABLE.OVERFLOW;
-    ERROR_STATUS.UNDERFLOW->hwenable = ERROR_ENABLE.UNDERFLOW;
-    ERROR_STATUS.CMDINVAL ->hwenable = ERROR_ENABLE.CMDINVAL;
-    ERROR_STATUS.CSIDINVAL->hwenable = ERROR_ENABLE.CSIDINVAL;
 
 };
 

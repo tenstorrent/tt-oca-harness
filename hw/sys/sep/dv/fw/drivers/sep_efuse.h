@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP eFuse host-read driver (EL2 host side).
 //
@@ -13,19 +14,27 @@
 
 #include <stdint.h>
 
-// eFuse MAP shadow block (sensed OTP), CHIPLET_UID at byte offset 0xC8 (8 words).
-#define SEP_EFUSE_MAP_BASE 0x10930000u
-#define SEP_EFUSE_CHIPLET_UID0 (SEP_EFUSE_MAP_BASE + 0xC8u) // 0x109300C8 (word0)
+#include "sep.h"
 
-// eFuse interface-control STATUS: bit0 = efuse_sense_done.
-#define SEP_EFUSE_IFC_STATUS 0x10930400u
-#define SEP_EFUSE_SENSE_DONE (1u << 0)
+// eFuse MAP shadow block (sensed OTP). CHIPLET_UID's offset comes from the generated
+// map, not a literal: it moved when LOCKS_SPARE was inserted ahead of it, and the
+// hardcoded copy here stayed consistent with the equally-stale copy in the cocotb
+// image model -- so the UID check passed while both sides read the wrong word.
+#define SEP_EFUSE_MAP_BASE OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR
+#define SEP_EFUSE_CHIPLET_UID0 OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR
+
+// eFuse interface-control STATUS: bit0 = efuse_sense_done. Block base from the
+// generated map, not a literal -- same class of defect as the CHIPLET_UID offset
+// above, one level up: a block that moves would leave this pointing at whatever
+// now occupies 0x10930400.
+#define SEP_EFUSE_IFC_STATUS OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR
+#define SEP_EFUSE_SENSE_DONE EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm
 
 // eFuse MMR block, RMA_SIP_TOKEN_I[0..1] (sw=rw): used here as KM-owned scratch
 // MMRs. The KM writes an owner-tagged incrementing counter; the EL2 reads back.
-#define SEP_EFUSE_MMR0 0x10930500u // RMA_SIP_TOKEN_I[0]
-#define SEP_EFUSE_MMR1 0x10930504u // RMA_SIP_TOKEN_I[1]
-#define SEP_EFUSE_MMR2 0x10930508u // RMA_SIP_TOKEN_I[2]
+#define SEP_EFUSE_MMR0 OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)
+#define SEP_EFUSE_MMR1 OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(1)
+#define SEP_EFUSE_MMR2 OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(2)
 
 static inline uint32_t sep_efuse_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-"""KM -> OTBN sideload consume-proof KAT (OCAH , sep_km_otbn_sideload_kat_test).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""KM -> OTBN sideload consume-proof KAT (reference suite, sep_km_otbn_sideload_kat_test).
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 384-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -10,21 +11,21 @@ writes the 384-bit result to DMEM. The host asserts DMEM == the exact known key.
 This is a fully FRONTDOOR consume-proof with NO backdoor: because the host loaded
 the key value itself, the expected value is known without reading the wrapper
 shares (which are write-only / on the KM-private bus anyway). It is STRONGER than
-the OCAH reference, which generates a random key and reconstructs it by a read-only
+the reference suite, which generates a random key and reconstructs it by a read-only
 backdoor of the wrapper shares. Here the 12 distinct key words make an exact compare
 catch any truncation, word-swap, or share-defeat bug.
 
-VPLAN-parity checkers (mapped to the OCAH  checker list):
-  CHK0       boot KM on real DRBG -> RESP_KM_READY                 (OCAH P1)
-  CHK-A      CMD_KEY_LOAD known key (replaces OCAH's CMD_KEY_GENERATE+backdoor)
-  CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN                          (OCAH P4 transfer)
-  CHK-C      OTBN EXECUTE -> IDLE, ERR_BITS == 0                    (OCAH P6)
-  CHK-D/E    DMEM == exact known key; result_hi pad == 0           (OCAH P7, stronger)
+VPLAN-parity checkers (mapped to the reference suite's checker list):
+  CHK0       boot KM on real DRBG -> RESP_KM_READY
+  CHK-A      CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
+  CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN
+  CHK-C      OTBN EXECUTE -> IDLE, ERR_BITS == 0
+  CHK-D/E    DMEM == exact known key; result_hi pad == 0
   CHK-F      mask non-degeneracy: OTBN dumps its own KEY_S0/S1 WSRs (raw shares) to
              DMEM; host asserts share0/share1 are non-trivial, differ, neither equals
              the key, and share0^share1 == K -- 2-share masking proven NOT defeated,
-             frontdoor (OCAH P5, without the backdoor)
-  CHK1..CHK4 strict golden proof via the DRBG scoreboard (OCAH CHK0..CHK4);
+             frontdoor
+  CHK1..CHK4 strict golden proof via the DRBG scoreboard;
              CHK5 is alive/observed (not bit-exact, since the pull order is firmware/
              secure-wipe-driven, not golden-predictable). Two real EDN consumers are
              witnessed off one DRBG:
@@ -33,13 +34,13 @@ VPLAN-parity checkers (mapped to the OCAH  checker list):
                  drbg_axis_edn_adapter -> crypto_edn[3]); OTBN's post-op secure wipe
                  refreshes URND from the crypto EDN leg; score_sinks={"otbn_urnd":"observe"}.
                  Proves the crypto leg delivers real entropy, not only the KM leg.
-Key-bus isolation (OCAH P4 "others idle") is covered by construction: the transfer
+Key-bus isolation (other sideload targets idle) is covered by construction: the transfer
 dest mask is OTBN-only and AES/KMAC/HMAC are held parked in SW reset, so they cannot
 receive the key; CHK-D (exact distinct key) further proves OTBN consumed the correct
 sideloaded key, not stale/zero/another engine's. There is no RW1C done-status bit on
 this consume path (OTBN completion is the STATUS->IDLE state + ERR_BITS==0).
 
-Boot recipe (must match the OCAH subsystem tb to clear the SRAM scrambler cold-boot
+Boot recipe (must match the reference subsystem tb to clear the SRAM scrambler cold-boot
 without a parity fault): rom_main built with PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0,
 and the KM SRAM macro is backdoor-filled to zero+valid-parity by tb_backdoor_mem
 (tb/tb_top.sv). Real fuse-sense (no +skip_fuse_sense): the KM
@@ -49,19 +50,27 @@ firmware reads OTP/lifecycle at boot, so a valid PROD-lifecycle image is staged.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
-from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_OTBN
+from seq_lib.sep_km_mailbox_seq import KM_DEST_OTBN, SepKmMailbox
 from seq_lib.sep_otbn_seq import SepOtbn
-from seq_lib.sep_sw_reset_seq import SepSwReset, SW_RESET_N_BIT
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 384-bit KAT key: 12 DISTINCT 32-bit words so an exact DMEM compare catches
 # a truncated / word-swapped / share-defeated sideload (a single repeated word
 # would let such bugs pass silently).
 KAT_KEY = (
-    0xDEADBEEF, 0x00112233, 0x44556677, 0x8899AABB,
-    0xCCDDEEFF, 0x01234567, 0x89ABCDEF, 0xFEDCBA98,
-    0x13579BDF, 0x2468ACE0, 0x0F1E2D3C, 0x4B5A6978,
+    0xDEADBEEF,
+    0x00112233,
+    0x44556677,
+    0x8899AABB,
+    0xCCDDEEFF,
+    0x01234567,
+    0x89ABCDEF,
+    0xFEDCBA98,
+    0x13579BDF,
+    0x2468ACE0,
+    0x0F1E2D3C,
+    0x4B5A6978,
 )
 
 
@@ -75,18 +84,15 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # OTP at boot); stage it before bring-up so sense populates the shadow.
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "aes", "hmac", "kmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.otbn = SepOtbn(self)
 
-        # Park the EDN-consuming crypto engines (OTBN/AES/KMAC) BEFORE entropy comes
-        # up so all CSRNG/EDN flow is dedicated to the KM; otherwise OTBN's own
-        # post-reset entropy requests starve the KM's DRBG reads (the OCAH consume
-        # ordering). They power up released (SW_RESET_N reset = 0x1E), so this is a
-        # real state change, not a no-op. HMAC is parked too for a clean baseline.
-        await self.swrst.park("otbn", "aes", "hmac", "kmac")
+        # AES/KMAC/OTBN JTAG-held across rst_ni release, then parked in SW_RESET_N so they never sit as ungranted
+        # crypto-EDN requesters through fuse sense. HMAC is parked too for
+        # key-bus isolation. KM owns CSRNG/EDN once entropy is up; OTBN is
+        # released later for the transfer.
 
         # Shared entropy bring-up with the STRICT golden scoreboard so this test
         # proves CHK1..CHK4 itself (decorrelator/compressor/seed/genbits), not just
@@ -101,11 +107,11 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # the KM leg. observe = positive beat evidence, no bit-exact compare (secure-
         # wipe-driven pull order). Only OTBN-URND is scored: the key-dump program issues
         # no BN.WSRR(RND), so crypto_edn[2] (OTBN-RND) never fires here (empirically 0
-        # beats) -- exercising RND belongs to a dedicated consumer port (OCAH P3.3
-        # real_sink_otbn_rnd). AES/KMAC stay disabled (parked, no entropy requests).
+        # beats) -- exercising RND belongs to a dedicated consumer port.
+        # AES/KMAC stay disabled (parked, no entropy requests).
         await self.bring_up_entropy(
-            strict=True, score_km="observe",
-            score_sinks={"otbn_urnd": "observe"})
+            strict=True, score_km="observe", score_sinks={"otbn_urnd": "observe"}
+        )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
         self.logger.info("real entropy flowing; releasing KM firmware (rom_main)")
@@ -127,10 +133,10 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # If OTBN stays parked the KM's wrapper write never completes and the KM
         # hangs with no mailbox response. OTBN is held parked through KM boot/load
         # so KM owns the entropy stream, then released here to receive the key and
-        # run the key-dump (mirrors OCAH's "release the target engine when ready to
+        # run the key-dump (mirrors the reference suite's "release the target engine when ready to
         # receive the key + run the consume op"). Wait for OTBN's post-reset secure
         # wipe to finish (STATUS IDLE) BEFORE transferring, else the wipe can clobber
-        # the just-sideloaded key (OCAH P3->P4 ordering).
+        # the just-sideloaded key.
         await self.swrst.release("otbn")
         await self.otbn.wait_idle("post-reset")
 
@@ -138,21 +144,27 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # Read back SW_RESET_N and prove the other sideload engines (AES/KMAC/HMAC)
         # are HELD in reset -- they physically cannot receive the key -- while OTBN
         # is released. Combined with the OTBN-only transfer dest mask and CHK-D
-        # (OTBN got the exact key), this is the OSS analog of OCAH's bus-target check.
+        # (OTBN got the exact key), this is the OSS analog of the reference suite's bus-target check.
         rst = await self.swrst.read_back()
-        parked = (1 << SW_RESET_N_BIT["aes"]) | (1 << SW_RESET_N_BIT["hmac"]) \
+        parked = (
+            (1 << SW_RESET_N_BIT["aes"])
+            | (1 << SW_RESET_N_BIT["hmac"])
             | (1 << SW_RESET_N_BIT["kmac"])
-        assert (rst & parked) == 0, \
+        )
+        assert (rst & parked) == 0, (
             f"key-bus isolation: AES/KMAC/HMAC not parked before transfer (SW_RESET_N=0x{rst:08x})"
-        assert rst & (1 << SW_RESET_N_BIT["otbn"]), \
+        )
+        assert rst & (1 << SW_RESET_N_BIT["otbn"]), (
             f"OTBN not released before transfer (SW_RESET_N=0x{rst:08x})"
+        )
         self.logger.info(
             "CHK-ISO key-bus isolation PASS: only KM+OTBN released, AES/KMAC/HMAC parked "
-            "(SW_RESET_N=0x%02x)", rst
+            "(SW_RESET_N=0x%02x)",
+            rst,
         )
 
         # CHK-B: sideload the handle's key to the OTBN wrapper.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_OTBN)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_OTBN)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to OTBN)")
 
@@ -177,11 +189,9 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         assert all(w == 0 for w in key_pad), (
             f"OTBN result_hi padding words [4..7] not zero: {[hex(w) for w in key_pad]}"
         )
-        self.logger.info(
-            "CHK-D/E KM->OTBN sideload KAT PASS: DMEM == known 384b key, padding=0"
-        )
+        self.logger.info("CHK-D/E KM->OTBN sideload KAT PASS: DMEM == known 384b key, padding=0")
 
-        # CHK-F: 2-share masking non-degeneracy (OCAH P5, frontdoor). The keydump
+        # CHK-F: 2-share masking non-degeneracy (frontdoor). The keydump
         # also wrote OTBN's raw KEY_S0/S1 WSRs (the shares) to DMEM. Prove the
         # masking is real and not defeated: shares non-trivial, distinct, neither
         # equals the key, and share0 ^ share1 reconstructs the known key.
@@ -190,10 +200,10 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
             f"  s0^s1 = {[hex(a ^ b) for a, b in zip(s0, s1)]}\n"
             f"  key   = {[hex(w) for w in kat]}"
         )
-        assert any(w != 0 for w in s0) and any(w != 0 for w in s1), \
+        assert any(w != 0 for w in s0) and any(w != 0 for w in s1), (
             f"degenerate share (all-zero): s0={[hex(w) for w in s0]} s1={[hex(w) for w in s1]}"
-        assert s0 != kat and s1 != kat, \
-            "a share equals the raw key -> 2-share masking defeated"
+        )
+        assert s0 != kat and s1 != kat, "a share equals the raw key -> 2-share masking defeated"
         assert s0 != s1, "shares identical -> masking defeated"
         assert len(set(s0)) > 1, f"SHARE0 (mask) degenerate (constant): {[hex(w) for w in s0]}"
         self.logger.info(
@@ -208,5 +218,5 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # error + recoverable-alert regs stayed zero across the run.
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info("CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)")

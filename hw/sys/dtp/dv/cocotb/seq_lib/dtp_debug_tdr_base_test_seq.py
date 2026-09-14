@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Debug TDR helper base sequence for DTP tests."""
 
 from __future__ import annotations
-
-import cocotb
 
 from env.dtp_tap_device import (
     DTP_DEBUG_CONTROL_LEN,
@@ -47,7 +46,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
     def decode_tmp_status(self, value: int) -> dict[str, int]:
         """Decode TMP_STATUS. Bit 1 reflects TMP persistence; bit 0 arms escape."""
         return {
-            "raw": value & self._bit_mask(DTP_TMP_STATUS_LEN),
+            "raw": value & self.bit_mask(DTP_TMP_STATUS_LEN),
             "persistence": self.bit(value, 1),
             "bypass_escape": self.bit(value, 0),
         }
@@ -65,18 +64,16 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
 
     async def read_tmp_status(self, shift_value: int = 0) -> int:
         """Read TMP_STATUS[1:0]. Bit 1 is persistence, bit 0 is BYPASS_ESCAPE."""
-        return (await self.read_tdr("TMP_STATUS", shift_value)) & self._bit_mask(
-            DTP_TMP_STATUS_LEN
-        )
+        return (await self.read_tdr("TMP_STATUS", shift_value)) & self.bit_mask(DTP_TMP_STATUS_LEN)
 
     async def write_tmp_status(self, value: int) -> None:
         """Write TMP_STATUS[1:0], used to arm BYPASS_ESCAPE."""
-        await self.write_tdr("TMP_STATUS", value & self._bit_mask(DTP_TMP_STATUS_LEN))
+        await self.write_tdr("TMP_STATUS", value & self.bit_mask(DTP_TMP_STATUS_LEN))
 
     def decode_debug_control(self, value: int) -> dict[str, int]:
         """Decode DEBUG_CONTROL with writable bits [3:0] and CLA status bit [4]."""
         return {
-            "raw": value & self._bit_mask(DTP_DEBUG_CONTROL_LEN),
+            "raw": value & self.bit_mask(DTP_DEBUG_CONTROL_LEN),
             "boot_stall": self.bit(value, DBG_BOOT_STALL_BIT),
             "boot_stall_ovrd": self.bit(value, DBG_BOOT_STALL_OVRD_BIT),
             "cla_clock_stop_en": self.bit(value, DBG_CLA_CLOCK_STOP_EN_BIT),
@@ -117,13 +114,13 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
 
     async def read_debug_control(self, shift_value: int = 0) -> int:
         """Read DEBUG_CONTROL[4:0]."""
-        return (await self.read_tdr("DEBUG_CONTROL", shift_value)) & self._bit_mask(
+        return (await self.read_tdr("DEBUG_CONTROL", shift_value)) & self.bit_mask(
             DTP_DEBUG_CONTROL_LEN
         )
 
     async def write_debug_control(self, value: int) -> None:
         """Write DEBUG_CONTROL[3:0]; bit 4 is read-only CLA status."""
-        await self.write_tdr("DEBUG_CONTROL", value & self._bit_mask(DTP_DEBUG_CONTROL_LEN))
+        await self.write_tdr("DEBUG_CONTROL", value & self.bit_mask(DTP_DEBUG_CONTROL_LEN))
 
     def decode_ic_reset(self, value: int) -> dict[str, object]:
         """Decode IC_RESET TDR using OSS default EXT, SEP, SMC one-port order."""
@@ -134,7 +131,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
                 "reset_control": self.bit(value, 2 + (2 * index)),
             }
         return {
-            "raw": value & self._bit_mask(DTP_IC_RESET_LEN),
+            "raw": value & self.bit_mask(DTP_IC_RESET_LEN),
             "reset_hold": self.bit(value, 0),
             "ports": decoded_ports,
         }
@@ -175,9 +172,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
 
     async def read_ic_reset(self, shift_value: int = 0) -> int:
         """Read the IC_RESET TDR."""
-        return (await self.read_tdr("IC_RESET", shift_value)) & self._bit_mask(
-            DTP_IC_RESET_LEN
-        )
+        return (await self.read_tdr("IC_RESET", shift_value)) & self.bit_mask(DTP_IC_RESET_LEN)
 
     async def write_ic_reset(
         self,
@@ -199,7 +194,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         """Read a JTAG_CAPS or JTAG2AXI_CAPS TDR."""
         value = await self.read_tdr(reg)
         width = DTP_JTAG_CAPS_LEN if reg == "JTAG_CAPS" else DTP_JTAG2AXI_CAPS_LEN
-        return value & self._bit_mask(width)
+        return value & self.bit_mask(width)
 
     def expect_caps_value(self, reg: str, value: int) -> None:
         """Compare a CAPS TDR against the centralized expected value."""
@@ -241,7 +236,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         """Decode a 14-bit JTAG2AXI_CAPS value."""
         data_size = self.field(value, 7, 3)
         return {
-            "raw": value & self._bit_mask(DTP_JTAG2AXI_CAPS_LEN),
+            "raw": value & self.bit_mask(DTP_JTAG2AXI_CAPS_LEN),
             "rd_pl_depth": self.field(value, 12, 2),
             "wr_pl_depth": self.field(value, 10, 2),
             "data_size": data_size,
@@ -280,7 +275,7 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
 
     def caps_write_patterns(self, width: int, label: str) -> list[int]:
         """Return directed and seeded random write-attempt patterns for RO CAPS TDRs."""
-        mask = self._bit_mask(width)
+        mask = self.bit_mask(width)
         rng = self.rng(f"{label}_ro_patterns")
         patterns = [
             0,
@@ -382,9 +377,9 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         )
 
     async def set_clk_stop_requests(self, value: int, cycles: int = 4) -> None:
-        """Drive the CLA clock-stop request vector exposed by the OSS TB."""
+        """Drive the CLA clock-stop request vector on dtp_tb_if."""
         assert value < (1 << DTP_NUM_CLK_STOP_REQ), (
             f"xtrig_clk_stop_req value 0x{value:x} exceeds {DTP_NUM_CLK_STOP_REQ} bits"
         )
-        cocotb.top.xtrig_clk_stop_req.value = value
+        self.cfg.tb_if.ctrl.xtrig_clk_stop_req.value = value
         await self.wait_sys_cycles(cycles)

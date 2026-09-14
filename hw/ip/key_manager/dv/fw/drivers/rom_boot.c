@@ -73,6 +73,7 @@ void rom_boot_init(void) {
     irq_en.f.wipe_state_en = 1;
     irq_en.f.otp_sigint_en = 1;
     irq_en.f.exec_violation_en = 1;
+    irq_en.f.rom_access_violation_en = 1;
     rom_kmcsr_irq_status_clear(0xFFFFFFFF);
     rom_kmcsr_irq_enable_write(irq_en.w);
 

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Small HTML rendering helpers for static dashboard pages."""
 
 from __future__ import annotations
@@ -133,4 +136,3 @@ def coverage_value(result: dict[str, Any], name: str) -> Any:
     if name == "total":
         return coverage.get("total_percent")
     return coverage.get(f"{name}_percent", source.get(f"coverage_{name}"))
-

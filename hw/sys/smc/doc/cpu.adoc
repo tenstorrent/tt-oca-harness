@@ -102,12 +102,11 @@ ensuring SRAM arrays are functional before the CPU cluster begins execution.
 
 **Status Reporting:**
 
-Repair completion and success are reported through DFT Control Status registers
-(`DFX_CTRL_STATUS_SOC` at `0xC000D800` and `DFX_CTRL_STATUS_SEP_SMC` at
-`0xC000D80C`). The `mem_repair_done` bit indicates completion, while
-`mem_repair_success` indicates successful repair. The SMC ROM firmware monitors
-these bits during initialization to verify repair completion before proceeding
-with boot operations.
+Repair completion and success are reported through
+`DFX_CTRL_STATUS.STATUS_SMU` at `0xC000_B800`. The `mem_repair_done` bit
+indicates completion, while `mem_repair_success` indicates successful repair.
+The SMC ROM firmware monitors these bits during initialization to verify repair
+completion before proceeding with boot operations.
 
 **Boot Sequence Integration:**
 
@@ -238,6 +237,8 @@ firmware development and diagnostics.
 
 ifdef::backend-html5[]
 ++++
+include::partial$smc/regs/gen/html/blocks/cpu_ctrl.html[]
+include::partial$smc/regs/gen/html/blocks/clint.html[]
 include::partial$smc/regs/gen/html/blocks/debug_module.html[]
 include::partial$smc/regs/gen/html/blocks/bus_error_unit.html[]
 include::partial$smc/regs/gen/html/blocks/wdt.html[]
@@ -245,6 +246,8 @@ include::partial$smc/regs/gen/html/blocks/wdt.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
+include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/clint.adoc[]
 include::../regs/gen/adoc/blocks/debug_module.adoc[]
 include::../regs/gen/adoc/blocks/bus_error_unit.adoc[]
 include::../regs/gen/adoc/blocks/wdt.adoc[]

@@ -2,21 +2,21 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT TX FIFO Test - TC_SPIOT_005 (P0)
+ * SPI OT TX FIFO Test
  *
  * Verifies TX FIFO write, status monitoring (TXQD, TXEMPTY, TXFULL, TXWM),
  * overflow error detection, and SW_RST drain behavior.
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Verify TXEMPTY=1 initially
- *   3. Write multiple words to TXDATA, monitor TXQD
- *   4. Test TX watermark (TXWM) with configurable TX_WATERMARK
- *   5. Write until TXFULL, verify overflow error
- *   6. SW_RST, verify TXEMPTY after reset
+ * 1. Enable controller
+ * 2. Verify TXEMPTY=1 initially
+ * 3. Write multiple words to TXDATA, monitor TXQD
+ * 4. Test TX watermark (TXWM) with configurable TX_WATERMARK
+ * 5. Write until TXFULL, verify overflow error
+ * 6. SW_RST, verify TXEMPTY after reset
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_tx_fifo_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_tx_fifo_test STACK=sim
  *
  */
 
@@ -26,25 +26,32 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
-#define TX_FIFO_DEPTH 73 /* effective capacity: 72 FIFO slots + 1 byte_select stage */
+#define TX_FILL_LIMIT 256 /* upper bound while probing TXFULL */
+
+static int wait_for_tx_empty(int timeout) {
+    spi_controller__STATUS_t status;
+    while (timeout-- > 0) {
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        if (status.f.TXEMPTY) return 0;
+    }
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    printf("  FAIL: TIMEOUT waiting for TXEMPTY after SW_RST (STATUS=0x%08x)\n", status.w);
+    return -1;
+}
 
 int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT TX FIFO Test (TC_SPIOT_005)\n");
+    printf("SPI OT TX FIFO Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
-
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
@@ -85,6 +92,12 @@ int main(void) {
     } else {
         printf("  PASS: TXEMPTY cleared after writes\n");
     }
+    if (status.f.TXQD != 8) {
+        printf("  FAIL: TXQD expected 8 after 8 writes, got %u\n", status.f.TXQD);
+        pass = 0;
+    } else {
+        printf("  PASS: TXQD=8 matches issued write count\n");
+    }
 
     /* Step 3: Check TX watermark */
     printf("\nStep 3: TX watermark check (TX_WATERMARK=4)\n");
@@ -97,18 +110,27 @@ int main(void) {
         printf("  PASS: TXWM=0 correct (TXQD >= WM=4)\n");
     }
 
-    /* Step 4: Fill TX FIFO to capacity */
-    printf("\nStep 4: Fill TX FIFO (writing %d more words)\n", TX_FIFO_DEPTH - 8);
-    for (i = 8; i < TX_FIFO_DEPTH; i++) {
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xB0000000 | i);
+    /* Step 4: Fill TX FIFO until TXFULL (probe capacity; no RTL-transcribed depth) */
+    printf("\nStep 4: Fill TX FIFO until TXFULL\n");
+    uint32_t fill_count = 8; /* already written in step 2 */
+    while (!status.f.TXFULL && fill_count < TX_FILL_LIMIT) {
+        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xB0000000 | fill_count);
+        fill_count++;
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     }
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    printf("  After filling: TXQD=%u, TXFULL=%u\n", status.f.TXQD, status.f.TXFULL);
+    printf("  After %u writes: TXQD=%u, TXFULL=%u\n", fill_count, status.f.TXQD, status.f.TXFULL);
     if (!status.f.TXFULL) {
-        printf("  FAIL: TXFULL should be 1 after filling %d words\n", TX_FIFO_DEPTH);
+        printf("  FAIL: TXFULL never asserted after %u writes\n", fill_count);
         pass = 0;
     } else {
-        printf("  PASS: TXFULL=1 correct\n");
+        printf("  PASS: TXFULL=1 after %u writes\n", fill_count);
+    }
+    if (status.f.TXFULL && status.f.TXQD != fill_count) {
+        printf("  FAIL: TXQD=%u does not match issued occupancy %u at TXFULL\n", status.f.TXQD,
+               fill_count);
+        pass = 0;
+    } else if (status.f.TXFULL) {
+        printf("  PASS: TXQD=%u matches issued occupancy at TXFULL\n", status.f.TXQD);
     }
 
     /* Step 5: Attempt overflow - write one more word */
@@ -135,13 +157,23 @@ int main(void) {
     ctrl.f.SW_RST = 1;
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
 
-    volatile int delay;
-    for (delay = 0; delay < 5000; delay++) {
+    if (wait_for_tx_empty(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
     }
 
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  After SW_RST: TXEMPTY=%u, TXQD=%u\n", status.f.TXEMPTY, status.f.TXQD);
+    if (status.f.TXEMPTY != 1) {
+        printf("  FAIL: TXEMPTY should be 1 after SW_RST drain\n");
+        pass = 0;
+    }
+    if (status.f.TXQD != 0) {
+        printf("  FAIL: TXQD should be 0 after SW_RST drain (got %u)\n", status.f.TXQD);
+        pass = 0;
+    }
 
+done:
     printf("\n========================================\n");
     if (pass) {
         printf("=== SPI OT TX FIFO TEST PASSED ===\n");

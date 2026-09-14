@@ -1,40 +1,44 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP HMAC (OpenTitan HMAC engine) firmware driver, SHA-256 mode. Header-only.
-// The engine is on the SEP crypto fabric at 0x1091_1000 (CSR clock always on at
-// reset). This driver runs it as a plain SHA-256 hash (hmac_en=0, sha_en=1):
-// configure, push the message bytes through the byte-addressable MSG FIFO,
-// hash_process, poll the done status, and read the 256-bit digest.
-//
-// DIGEST_SWAP=1 makes the digest CSRs read back so that an 8x uint32 read,
-// compared byte-wise (memcmp) to a standard big-endian SHA-256 byte array,
-// matches -- the same convention the dma_hash test uses against sha256.c.
+// SEP HMAC (OpenTitan HMAC engine) firmware helpers, SHA-256 mode. Header-only.
+// Addresses and field masks come from generated sep_addr.h / hmac.h (via sep.h).
+// Do not alias those symbols. The encodings below are SW contracts PeakRDL
+// does not emit (digest_size / key_length / ERR_CODE tables).
 
 #ifndef SEP_HMAC_H
 #define SEP_HMAC_H
 
 #include <stdint.h>
 
-#define SEP_HMAC_BASE 0x10911000u
-#define SEP_HMAC_INTR_STATE (SEP_HMAC_BASE + 0x000)
-#define SEP_HMAC_CFG (SEP_HMAC_BASE + 0x010)
-#define SEP_HMAC_CMD (SEP_HMAC_BASE + 0x014)
-#define SEP_HMAC_STATUS (SEP_HMAC_BASE + 0x018)
-#define SEP_HMAC_ERR_CODE (SEP_HMAC_BASE + 0x01C)
-#define SEP_HMAC_DIGEST_0 (SEP_HMAC_BASE + 0x0A4)
-#define SEP_HMAC_MSG_FIFO 0x10912000u
+#include "sep.h"
 
-// CFG fields.
-#define SEP_HMAC_CFG_SHA_EN (1u << 1)
-#define SEP_HMAC_CFG_DIGEST_SWAP (1u << 3)
-#define SEP_HMAC_CFG_DIGEST_SHA256 (1u << 5) // digest_size[8:5] = 1 (SHA2_256)
-// CMD fields.
-#define SEP_HMAC_CMD_HASH_START (1u << 0)
-#define SEP_HMAC_CMD_HASH_PROCESS (1u << 1)
-// STATUS / INTR_STATE bits.
-#define SEP_HMAC_STATUS_IDLE (1u << 0)
-#define SEP_HMAC_STATUS_FIFO_FULL (1u << 2)
-#define SEP_HMAC_INTR_DONE (1u << 0)
+/*
+ * CFG.digest_size / CFG.key_length field encodings (OpenTitan hmac.hjson).
+ * Use with PeakRDL unions: cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256.
+ */
+#define SEP_HMAC_DIGEST_SIZE_SHA2_256 ((uint32_t)0x1u)
+#define SEP_HMAC_DIGEST_SIZE_SHA2_384 ((uint32_t)0x2u)
+#define SEP_HMAC_DIGEST_SIZE_SHA2_512 ((uint32_t)0x4u)
+#define SEP_HMAC_DIGEST_SIZE_SHA2_NONE ((uint32_t)0x8u)
+
+#define SEP_HMAC_KEY_LENGTH_128 ((uint32_t)0x01u)
+#define SEP_HMAC_KEY_LENGTH_256 ((uint32_t)0x02u)
+#define SEP_HMAC_KEY_LENGTH_384 ((uint32_t)0x04u)
+#define SEP_HMAC_KEY_LENGTH_512 ((uint32_t)0x08u)
+#define SEP_HMAC_KEY_LENGTH_1024 ((uint32_t)0x10u)
+#define SEP_HMAC_KEY_LENGTH_NONE ((uint32_t)0x20u)
+
+/*
+ * ERR_CODE encodings (OT HMAC Programmer's Guide / SW error table).
+ * DV fixed-vector table — not sampled from DUT RTL under test.
+ */
+#define SEP_HMAC_ERR_NO_ERROR ((uint32_t)0x0u)
+#define SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_SHA_DISABLED ((uint32_t)0x1u) /* unused */
+#define SEP_HMAC_ERR_SW_HASH_START_WHEN_SHA_DISABLED ((uint32_t)0x2u)
+#define SEP_HMAC_ERR_SW_UPDATE_SECRET_KEY_IN_PROCESS ((uint32_t)0x3u)
+#define SEP_HMAC_ERR_SW_HASH_START_WHEN_ACTIVE ((uint32_t)0x4u)
+#define SEP_HMAC_ERR_SW_PUSH_MSG_WHEN_DISALLOWED ((uint32_t)0x5u)
 
 #define SEP_HMAC_TIMEOUT 1000000
 
@@ -50,14 +54,16 @@ static inline void sep_hmac_wr(uint32_t addr, uint32_t value) {
 // byte-compatible with a standard SHA-256 byte array), 1 on done-timeout,
 // 2 on a nonzero HMAC ERR_CODE, 3 if the done status did not RW1C-clear.
 static inline int sep_hmac_sha256(const uint8_t *msg, uint32_t len, uint32_t digest_out[8]) {
-    sep_hmac_wr(SEP_HMAC_CFG,
-                SEP_HMAC_CFG_SHA_EN | SEP_HMAC_CFG_DIGEST_SWAP | SEP_HMAC_CFG_DIGEST_SHA256);
-    sep_hmac_wr(SEP_HMAC_CMD, SEP_HMAC_CMD_HASH_START);
+    uint32_t cfg = HMAC__CFG__SHA_EN_bm | HMAC__CFG__DIGEST_SWAP_bm |
+                   (SEP_HMAC_DIGEST_SIZE_SHA2_256 << HMAC__CFG__DIGEST_SIZE_bp);
+    sep_hmac_wr(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg);
+    sep_hmac_wr(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, HMAC__CMD__HASH_START_bm);
 
-    volatile uint8_t *fifo = (volatile uint8_t *)SEP_HMAC_MSG_FIFO;
+    volatile uint8_t *fifo = (volatile uint8_t *)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     for (uint32_t i = 0; i < len; i++) {
         int t = SEP_HMAC_TIMEOUT;
-        while ((sep_hmac_rd(SEP_HMAC_STATUS) & SEP_HMAC_STATUS_FIFO_FULL) && (t-- > 0)) {
+        while ((sep_hmac_rd(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR) & HMAC__STATUS__FIFO_FULL_bm) &&
+               (t-- > 0)) {
         }
         if (t <= 0) {
             return 1;
@@ -66,27 +72,26 @@ static inline int sep_hmac_sha256(const uint8_t *msg, uint32_t len, uint32_t dig
         __asm__ volatile("fence" ::: "memory");
     }
 
-    sep_hmac_wr(SEP_HMAC_CMD, SEP_HMAC_CMD_HASH_PROCESS);
+    sep_hmac_wr(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, HMAC__CMD__HASH_PROCESS_bm);
 
     int t = SEP_HMAC_TIMEOUT;
     while (t-- > 0) {
-        if (sep_hmac_rd(SEP_HMAC_INTR_STATE) & SEP_HMAC_INTR_DONE) {
+        if (sep_hmac_rd(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR) & HMAC__INTR_STATE__HMAC_DONE_bm) {
             break;
         }
     }
     if (t <= 0) {
         return 1;
     }
-    sep_hmac_wr(SEP_HMAC_INTR_STATE, SEP_HMAC_INTR_DONE); // W1C the done event
-    // RW1C contract (AGENTS.md §7): the done status must read back cleared.
-    if (sep_hmac_rd(SEP_HMAC_INTR_STATE) & SEP_HMAC_INTR_DONE) {
+    sep_hmac_wr(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, HMAC__INTR_STATE__HMAC_DONE_bm);
+    if (sep_hmac_rd(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR) & HMAC__INTR_STATE__HMAC_DONE_bm) {
         return 3;
     }
 
     for (int i = 0; i < 8; i++) {
-        digest_out[i] = sep_hmac_rd(SEP_HMAC_DIGEST_0 + i * 4);
+        digest_out[i] = sep_hmac_rd(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
     }
-    if (sep_hmac_rd(SEP_HMAC_ERR_CODE) != 0) {
+    if (sep_hmac_rd(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR) != 0) {
         return 2;
     }
     return 0;

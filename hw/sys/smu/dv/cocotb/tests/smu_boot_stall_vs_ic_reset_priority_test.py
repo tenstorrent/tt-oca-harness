@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_boot_stall_vs_ic_reset_priority_test - P3-H5b stall vs IC_RESET priority.
 
 Boot-stall (DEBUG_CONTROL) and IC_RESET are independent TDRs. After stall is
@@ -17,7 +18,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_axi_helpers import wait_signal_high
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
@@ -29,10 +29,6 @@ from seq_lib.smu_jtag_helpers import (
     read_smc_reset_ctrl_bit,
 )
 from smu_base_test import smu_base_test
-
-from env import cocotb_compat as _cocotb_compat
-
-_cocotb_compat.apply()
 
 
 @pyuvm.test()
@@ -52,7 +48,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
             "fuse_reset after bring-up",
             int(dut.fuse_reset_n_delayed_o.value),
             1,
-        evidence="STALL_VS_IC_RESET")
+        )
 
         # --- Make stall sticky across cold (same window as P2-I3a) ---
         await jtag.write(
@@ -114,6 +110,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
             "stall survives IC_RESET warm",
             int(dut.jtag_boot_stall_ovrd.value),
             1,
+            evidence="STALL_VS_IC_RESET",
         )
         sb.expect_eq(
             "fuse still gated during warm ovrd",

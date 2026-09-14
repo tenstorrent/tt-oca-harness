@@ -31,15 +31,24 @@
 #include "tb.h"
 #include "nmi.h"
 #include "test_completion.h"
+#include "aon_timer.h"
 
 int interrupt_count;
+
+/* Busy-wait long enough to span multiple ~200 kHz AON ticks (CPU >> AON). */
+static void wait_multiple_aon_ticks(void) {
+    for (volatile int i = 0; i < 200000; i++) {
+        __asm__ volatile("nop");
+    }
+}
 
 void wdt_nmi_handler(void) {
 
     interrupt_count++;
 
-    /* Clear watchdog bark interrupt (bit 1 of INTR_STATE is wdog_timer_bark) */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, 0x2);
+    /* Clear watchdog bark interrupt (generated field bitmask). */
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
+              AON_TIMER__INTR_STATE__WDOG_TIMER_BARK_bm);
 
     if (interrupt_count == 1) {
 
@@ -87,18 +96,34 @@ void wdt_nmi_handler(void) {
         printf("// STEP 5: Disable WDT and verify count stops\n");
         printf("//////////////////////////////////////////////////\n\n");
 
-        // Wait for 500 cycles and verify its not counting
-        for (volatile int i = 0; i < 500; i++) {
-            __asm__ volatile("nop");
-        }
-
+        /* Positive control: with enable ON, count must advance within AON window. */
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
+        wait_multiple_aon_ticks();
         wdt_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
-        if (wdt_count != 0) {
-            printf("ERROR: WDT count was counting! Expected 0, got 0x%08x\n", wdt_count);
+        if (wdt_count == 0) {
+            printf("ERROR: positive-control count did not advance (still 0)\n");
             test_fail(1);
             return;
         }
-        printf("SUCCESS: WDT count after 500 cycles: 0x%08x\n", wdt_count);
+        printf("SUCCESS: positive control — count advanced to 0x%08x\n", wdt_count);
+
+        /* Disable, confirm enable cleared, pet to 0, then prove count stays 0. */
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+        uint32_t wdog_ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
+        if ((wdog_ctrl & AON_TIMER__WDOG_CTRL__ENABLE_bm) != 0) {
+            printf("ERROR: WDOG_CTRL.enable still set after disable (0x%08x)\n", wdog_ctrl);
+            test_fail(1);
+            return;
+        }
+        WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0);
+        wait_multiple_aon_ticks();
+        wdt_count = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+        if (wdt_count != 0) {
+            printf("ERROR: WDT count advanced while disabled! got 0x%08x\n", wdt_count);
+            test_fail(1);
+            return;
+        }
+        printf("SUCCESS: WDT count stayed 0 across multi-AON window while disabled\n");
 
         // return to main
         return;
@@ -162,7 +187,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, bark_threshold);
 
     printf("Enabling watchdog...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     printf("SUCCESS: WDT initialized\n");
 
@@ -187,9 +212,9 @@ int main(void) {
     printf("// STEP 6: Re-enable WDT and let it reach BITE threshold\n");
     printf("//////////////////////////////////////////////////\n\n");
 
-    // Reenable WDT
+    // Re-enable WDT
     printf("Reenabling watchdog...\n");
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x1);
+    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, AON_TIMER__WDOG_CTRL__ENABLE_bm);
 
     // Wait for BITE
     while (interrupt_count == 1) {

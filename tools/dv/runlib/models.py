@@ -1,8 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Data models and shared exceptions for the native DV runner."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +41,12 @@ class Dut:
     tools: list[str]
     path: Path
     raw: dict[str, Any]
+    # Frameworks this DUT implements: the declared `[frameworks.<fw>]` tables in its sim config
+    # (`framework` above is the selected one). Legacy single-framework configs get a one-item list.
+    frameworks: list[str] = field(default_factory=list)
+    # The framework selected when no --framework is given; bare-string testlist `module` values
+    # bind this framework only.
+    default_framework: str = ""
 
 
 # Back-compat alias: much of the runner/dashboard still annotates and imports `Flow`. The concept
@@ -48,6 +57,9 @@ Flow = Dut
 @dataclass
 class TestEntry:
     name: str
+    # The entry point for the selected framework. Resolved from `bindings` at catalog load;
+    # empty when the scenario has no binding for the selected framework (selection then fails
+    # loudly, or skips under --skip-unimplemented).
     module: str
     target: str | None = None
     seed: int | None = None
@@ -57,6 +69,14 @@ class TestEntry:
     run_modes: list[str] | None = None
     args: list[str] | None = None
     firmware: str | dict[str, Any] | None = None
+    # Per-framework entry points from a `module = { cocotb = "...", uvm = "..." }` binding map.
+    # A bare-string `module` is normalized to a single binding for the DUT's default framework.
+    bindings: dict[str, str] = field(default_factory=dict)
+    # Per-framework runtime overrides from `[tests.overrides.<fw>]` (seed/timeout_sec/args).
+    overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # The testlist file that declared this entry, so cross-reference errors (for example an
+    # unknown run mode) name the file to edit rather than the include root.
+    source: Path | None = None
 
 
 @dataclass

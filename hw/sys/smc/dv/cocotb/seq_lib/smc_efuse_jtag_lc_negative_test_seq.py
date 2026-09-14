@@ -1,52 +1,43 @@
 # SPDX-License-Identifier: Apache-2.0
-"""eFuse JTAG lifecycle-gating observable-subset sequence.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Helpers for smc_efuse_jtag_lc_negative_test (PROD deny / identity allow).
 
-The full SMC eFuse JTAG access-control policy lives in
-``hw/smc/smc_peripherals/efuse/smc_efuse_wrapper.sv``. It gates the
-*JTAG-side* AXI-Lite port (``axil_smc_otp_jtag_req_i``) by the decoded SMC
-lifecycle state:
-
-  * writes and non-identity reads are blocked (routed to
-    ``prim_axi_lite_err_slv`` -> SLVERR, data ``0xBADCAB1E``) in
-    PROD (``lc_state == 0x1``) and RMA_SIP (``0x2`` / ``0x3``);
-  * CHIPLET_ID / PACKAGE_ID reads stay allowed in every state; and
-  * a lifecycle differential-decode integrity error blocks everything.
-
-Exercising that matrix needs an ``lc_state_i`` drive hook plus a JTAG-side
-AXI-Lite master. The current SMC OSS ``tb_top`` only exposes the SEP_IN CSR
-path (``smc u_dut`` leaves ``lc_state_i`` / the JTAG eFuse port unconnected),
-so the full matrix is tracked as P2-15.
-
-This sequence covers the subset reachable today over SEP_IN CSR:
-  * read ``CHIP_CONFIG_LC_STATE`` to record the effective lifecycle state, and
-  * read the always-allowed identity registers ``CHIPLET_ID`` / ``PACKAGE_ID``
-    (the exact registers the RTL policy keeps readable in PROD / RMA_SIP).
+The lifecycle-gated JTAG eFuse policy is exercised end-to-end in the test via
+``tb_lc_state`` + ``ej_axi`` (same ports as the access-matrix test). This
+module only holds PeakRDL addresses and the CHIP_CONFIG LC_STATE CSR probe
+used as a secondary observability check over SEP_IN.
 """
 
 from __future__ import annotations
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-CHIP_CONFIG_LC_STATE = 0xC000_290C
-# SEP_IN CSR-mapped SMC_EFUSE_MAP identity registers (smc_reg.svh):
-#   SMC_EFUSE_MAP_CHIPLET_ID_REG_ADDR = 0xC000_B008
-#   SMC_EFUSE_MAP_PACKAGE_ID_REG_ADDR = 0xC000_B028
-SMC_EFUSE_MAP_CHIPLET_ID = 0xC000_B008
-SMC_EFUSE_MAP_PACKAGE_ID = 0xC000_B028
+# PeakRDL smc_addr.h — SMC_EFUSE_MAP identity / lock windows.
+CHIP_CONFIG_LC_STATE = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR")
+SMC_EFUSE_MAP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
+SMC_EFUSE_MAP_CHIPLET_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR")
+SMC_EFUSE_MAP_PACKAGE_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR")
 
 
 class smc_efuse_jtag_lc_negative_test_seq(SmcCsrSeq):
-    """CSR-observable subset of the eFuse JTAG lifecycle-gating policy."""
+    """Strict SEP_IN read of CHIP_CONFIG_LC_STATE (exact expected required)."""
 
     def __init__(self, name: str = "smc_efuse_jtag_lc_negative_test_seq") -> None:
         super().__init__(name)
         self.lc_state = 0
 
     async def body(self) -> None:
-        # CHIP_CONFIG_LC_STATE is a known-readable RO mirror; record the state.
-        self.lc_state = await self.csr_read("CHIP_CONFIG_LC_STATE", CHIP_CONFIG_LC_STATE)
-        # Identity registers the RTL policy keeps readable in every lifecycle
-        # state; bounded because the eFuse-map window may no-decode on a stub.
-        await self.csr_read_bounded("SMC_EFUSE_MAP_CHIPLET_ID", SMC_EFUSE_MAP_CHIPLET_ID)
-        await self.csr_read_bounded("SMC_EFUSE_MAP_PACKAGE_ID", SMC_EFUSE_MAP_PACKAGE_ID)
-        assert self.accesses == 3, "eFuse JTAG LC observable-subset mismatch"
+        raise NotImplementedError(
+            "Use read_lc_state_exact(); JTAG deny/allow is scored in the test"
+        )
+
+    async def read_lc_state_exact(self, expected: int) -> int:
+        """Fail if CHIP_CONFIG_LC_STATE is unreachable or value mismatches."""
+        self.lc_state = await self.csr_read(
+            "CHIP_CONFIG_LC_STATE",
+            CHIP_CONFIG_LC_STATE,
+            expected=expected,
+        )
+        assert self.timeouts == 0, "CHIP_CONFIG_LC_STATE timed out"
+        return self.lc_state

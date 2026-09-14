@@ -23,7 +23,7 @@ package prim_ram_1p_adv_ext_pkg;
   // Default external RAM response struct
   // Can be overridden with custom types in module instantiation
   typedef struct packed {
-    logic [31:0]     rdata;   // Read data (32-bit default, parameterizable)
+    logic [31:0] rdata;  // Read data (32-bit default, parameterizable)
   } prim_ram_1p_adv_ext_rsp_t;
 
 endpackage : prim_ram_1p_adv_ext_pkg

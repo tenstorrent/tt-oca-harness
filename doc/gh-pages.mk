@@ -14,19 +14,20 @@ OCAH_COMBINED_PLAYBOOK ?= $(OCAH_ROOT)/antora-playbook.yml
 # custom domain fronts the repo root. Left as an override, not hardcoded.
 OCAH_DOC_SITE_URL ?=
 
-## Build the combined multi-book site (all four books, one Antora run).
+## Build the combined multi-book site (Home + every book, one Antora run).
 .PHONY: ocah-doc-combined-html
-ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup
+ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-contributing-setup ocah-doc-home-setup 
 	@command -v npx >/dev/null 2>&1 || { \
 		echo "error: node/npx is required to build the Antora site."; \
 		echo "install Node.js, or run: ./scripts/docker-run.sh doc-html combined"; \
 		exit 1; \
 	}
-	@echo "Building combined OCAH documentation site (Antora, all 4 books) with node $$(node --version 2>/dev/null)"
+	@echo "Building combined OCAH documentation site (Antora, Home + books) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && SITE_SEARCH_PROVIDER=lunr $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
+		$(OCAH_DOC_ANTORA_RELEASE_ARG) \
 		"$(OCAH_COMBINED_PLAYBOOK)"
-	@echo "Done: $(OCAH_GHPAGES_DIR)/ocah-docs/latest/index.html"
+	@echo "Done: $(OCAH_GHPAGES_DIR)/ocah-home/latest/index.html"
 
 ## Stage the combined site for GitHub Pages: add PDFs + .nojekyll on top of
 ## the Antora output. No more manual copying of separate builds.
@@ -54,6 +55,7 @@ ocah-doc-stage-ghpages: ocah-doc-combined-html
 	else \
 		echo "warning: Application Notes PDF not found at $(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf appnotes"; \
 	fi
+	$(call ocah_stage_dashboard_data,$(OCAH_GHPAGES_DIR))
 	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
 	@echo "Note: Datasheet PDFs (SMU/DTP/SEP/SMC/AOU) have no build pipeline yet -- those Downloads links will 404 until that content and a PDF build step exist."
 

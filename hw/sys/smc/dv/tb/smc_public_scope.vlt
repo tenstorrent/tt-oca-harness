@@ -1,7 +1,19 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 `verilator_config
 // Scope cocotb public access to the TB top only. Global --public-flat-rw
 // explodes gpio hierarchy under Verilator 5.046.
 public_flat_rw -module "smc_uvm_top" -var "*"
 // SEP-aligned CPU / output / I3C mem: backdoor $readmemh into prim_* arrays.
+// prim_ram_2p is the I3C RLT memory, instantiated in smc_ip_integration.
 public_flat_rw -module "prim_rom" -var "mem"
 public_flat_rw -module "prim_ram_1p" -var "mem"
+public_flat_rw -module "prim_ram_2p" -var "mem"
+// Lifecycle decode observation for smc_efuse_jtag_lc_access_matrix_test's
+// white-box cross-check. READ-ONLY on purpose: the test only samples these,
+// and publishing them read-only keeps `[NO-FORCED-INTERNAL-STATE]` structurally
+// true (cocotb cannot write them even by accident).
+public_flat_rd -module "smc_efuse_wrapper" -var "lc_state_smc_raw"
+public_flat_rd -module "smc_efuse_wrapper" -var "lc_sigint_err"
+public_flat_rd -module "smc_efuse_wrapper" -var "is_prod_or_rma_sip"

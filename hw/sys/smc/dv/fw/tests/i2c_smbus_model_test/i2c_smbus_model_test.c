@@ -61,23 +61,6 @@
  *    - Device verifies suspend cleared
  *
  * =============================================================================
- * Execution Command
- * =============================================================================
- *
- * cd <project_root>
- * renew
- * drun yaml/regression_smc_chiplet.yaml smc_i2c_smbus_test --stack sim --no-lsf --seed=1 --c
- * compile_smc_chiplet
- *
- * =============================================================================
- * Waveform Command
- * =============================================================================
- *
- * cd <project_root>/dv/smc/tb/tb_uvm
- * verdi out/smc_i2c_smbus_test.time.<timestamp>/waves.fsdb -f tt_smc_chiplet.f -f
- * sv/tb_smc_chiplet_wrap.f -top smc_uvm_top &
- *
- * =============================================================================
  */
 
 #include <stdint.h>
@@ -250,15 +233,6 @@ static bool smbus_irq_alert_stat(uint32_t idx) {
     // Also check if SMBus status indicates alert (as backup verification)
     bool smbus_alert_active = smbus_get_alert_status(idx);
 
-    // Debug output for new model troubleshooting - Only enabled on error
-    // if (intr1 != intr2) {
-    // 	simputs("  [DEBUG] Interrupt state inconsistent: read1=");
-    // 	simputs(intr1 ? "1" : "0");
-    // 	simputs(", read2=");
-    // 	simputs(intr2 ? "1" : "0");
-    // 	simputs("\n");
-    // }
-
     // Return true if either interrupt read shows alert OR if SMBus status shows alert
     // This provides redundancy for new model's potential interrupt logic issues
     return intr1 || intr2 || smbus_alert_active;
@@ -346,9 +320,6 @@ int main(void) {
     simputs("\n");
     simputs("[MAIN] Firmware main() started\n");
     // Note: peripherals_out_of_reset() is no longer available
-    // simputs("[MAIN] Calling peripherals_out_of_reset()...\n");
-    // peripherals_out_of_reset();
-    // simputs("[MAIN] peripherals_out_of_reset() completed\n");
     simputs("[MAIN] Test initialization complete\n");
 
     //=========================================================================
@@ -497,7 +468,7 @@ int main(void) {
     simputs("\n");
 
     // ======================================================================
-    // Checker 1-2: 檢測到 SMBALERT# 信號（硬體）並更新 SMBUS_STATUS 寄存器
+    // Checker 1-2: Detect SMBALERT# (HW) and update SMBUS_STATUS
     // ======================================================================
     simputs("[MAIN] Starting wait_until() for alert status (timeout=50000 cycles)...\n");
     simputs("  [ALERT] Waiting for Host (I2C_0 Controller) to detect alert...\n");
@@ -533,9 +504,9 @@ int main(void) {
     simputs("  [ALERT] Host detected alert status successfully\n");
 
     // ======================================================================
-    // Checker 3: 觸發 alert interrupt（硬體）
-    // Checker 4: Firmware 檢測到 alert 狀態
-    // Checker 5: Firmware 檢測到 alert interrupt
+    // Checker 3: Trigger alert interrupt (HW)
+    // Checker 4: Firmware detects alert status
+    // Checker 5: Firmware detects alert interrupt
     // ======================================================================
     // [IMPROVED LOGIC - Scheme 3] Use smbus_get_alert_status() instead of smbus_irq_alert_stat()
     // Reason: SMBUS_STATUS.SMBALERT register may respond faster than INTR_STATE.SMBALERT
@@ -571,7 +542,7 @@ int main(void) {
     simputs("  [ALERT] Observed Host status=1 and IRQ asserted\n");
 
     // ======================================================================
-    // Checker 6: Firmware 執行 ARA read (0x0C)
+    // Checker 6: Firmware performs ARA read (0x0C)
     // ======================================================================
     simputs("  [ALERT] Host performing ARA read (0x0C)...\n");
     simputs("  [ALERT] Using SMBUS_ADDR_ARA=0x0C for ARA read\n");
@@ -581,7 +552,7 @@ int main(void) {
     simputshex32("", (uint32_t)ret);
     simputs("\n");
 
-    // Checker 6: ARA read 必須成功
+    // Checker 6: ARA read must succeed
     if (ret != I2C_OK) {
         simputs("  ERROR: ARA read failed (ret=");
         simputshex32("", (uint32_t)ret);
@@ -593,14 +564,14 @@ int main(void) {
     simputs("  [CHECKER 6 PASSED] ARA read executed successfully\n");
 
     // ======================================================================
-    // Checker 7: 收到 Model 回應 (0x80 = 0x40 << 1)
-    // Checker 8: 提取 alerting device 地址 (0x40)
+    // Checker 7: Receive model response (0x80 = 0x40 << 1)
+    // Checker 8: Extract alerting device address (0x40)
     // ======================================================================
     simputshex32("  [ALERT] ARA response address: ", (uint32_t)alert_addr);
     simputs("\n");
 
-    // Checker 7 & 8: 驗證回應地址
-    // 預期: response_byte = 0x80, alert_addr = 0x40
+    // Checker 7 & 8: Verify response address
+    // Expected: response_byte = 0x80, alert_addr = 0x40
     const uint8_t EXPECTED_ALERT_ADDR = 0x40; // pmbus_slave_i2c0 address
     if (alert_addr != EXPECTED_ALERT_ADDR) {
         simputs("  ERROR: ARA response address mismatch\n");
@@ -618,8 +589,8 @@ int main(void) {
     simputs("  [CHECKER 8 PASSED] Extracted alerting device address (0x40)\n");
 
     // ======================================================================
-    // Checker 9: Model 自動 deassert alert
-    // Checker 10: Firmware 檢測到 alert 已清除
+    // Checker 9: Model auto-deasserts alert
+    // Checker 10: Firmware detects alert cleared
     // ======================================================================
     simputs("  [ALERT] Waiting for Model to deassert alert after ARA read...\n");
     if (!wait_until(smbus_get_alert_status, CONTROLLER_IDX, false, 50000)) {
@@ -637,7 +608,7 @@ int main(void) {
     simputs("  [CHECKER 10 PASSED] Firmware detected alert cleared\n");
 
     // ======================================================================
-    // Checker 11: Firmware 清除 interrupt
+    // Checker 11: Firmware clears interrupt
     // [IMPROVED] Also use smbus_get_alert_status() for consistency
     // ======================================================================
     simputs("  [ALERT] Clearing alert interrupt...\n");

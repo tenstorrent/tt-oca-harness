@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-2 SMBALERT# path: DUT I2C0 target asserts alert; VIP host runs ARA.
 
 TB-driven (no FW binary): AXI programs DUT as SMBus target @ ADDRESS0 with
@@ -15,6 +16,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, Timer
 
+from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 try:
@@ -29,20 +31,20 @@ _TARGET_ADDR = 0x10
 _ARA_ADDR = 0x0C
 _ARA_REPLY = (_TARGET_ADDR & 0x7F) << 1  # 0x20
 
-CLOCK_GATE_CONTROL = 0xC001_0018
-I2C_CG_EN = 1 << 11
-I2C0_WRAP_CTRL = 0xC000_9E00
-I2C0_OVRD = 0xC000_9034
-I2C0_SMBUS_CTRL = 0xC000_900C
-I2C0_CTRL = 0xC000_9010
-I2C0_FIFO_CTRL = 0xC000_9020
-I2C0_TARGET_ID = 0xC000_9054
-I2C0_TXDATA = 0xC000_905C
-I2C0_TIMING0 = 0xC000_903C
-I2C0_TIMING1 = 0xC000_9040
-I2C0_TIMING2 = 0xC000_9044
-I2C0_TIMING3 = 0xC000_9048
-I2C0_TIMING4 = 0xC000_904C
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
+
+I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
+I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
+I2C0_SMBUS_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_SMBUS_CTRL_BASE_ADDR", 0)
+I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", 0)
+I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0)
+I2C0_TARGET_ID = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", 0)
+I2C0_TXDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TXDATA_BASE_ADDR", 0)
+I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", 0)
+I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", 0)
+I2C0_TIMING2 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR", 0)
+I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", 0)
+I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", 0)
 
 # WRAP I2C_CTRL: I2C_EN | SMBUS_EN (target path; not CONTROLLER_MODE)
 I2C_WRAP_TARGET_SMBUS = 0x101
@@ -72,9 +74,7 @@ def _pack_timing4(tsu_sto: int, t_buf: int) -> int:
     return (tsu_sto & 0x1FFF) | ((t_buf & 0x1FFF) << 16)
 
 
-def _pack_target_id(
-    address0: int, mask0: int = 0x7F, address1: int = 0, mask1: int = 0
-) -> int:
+def _pack_target_id(address0: int, mask0: int = 0x7F, address1: int = 0, mask1: int = 0) -> int:
     return (
         (address0 & 0x7F)
         | ((mask0 & 0x7F) << 7)
@@ -117,18 +117,12 @@ class smc_smbus_alert_ara_test_seq(SmcCsrSeq):
         await self.prove_dut_i2c0_pins()
 
         cg = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
-        await self.csr_write(
-            "CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN
-        )
-        await self.csr_write(
-            "I2C0_WRAP_TARGET_SMBUS", I2C0_WRAP_CTRL, I2C_WRAP_TARGET_SMBUS
-        )
+        await self.csr_write("CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, cg & ~I2C_CG_EN)
+        await self.csr_write("I2C0_WRAP_TARGET_SMBUS", I2C0_WRAP_CTRL, I2C_WRAP_TARGET_SMBUS)
         await self.wait_i2c0_lsio_ready("I2C0_ALERT_ARA_WRAP")
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
         await self._program_i2c0_timing()
-        await self.csr_write(
-            "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_ALL_RST
-        )
+        await self.csr_write("I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_ALL_RST)
         await self.csr_write(
             "I2C0_TARGET_ID_ARA",
             I2C0_TARGET_ID,
@@ -136,17 +130,13 @@ class smc_smbus_alert_ara_test_seq(SmcCsrSeq):
         )
         # Preload ARA reply before enabling target / asserting alert.
         await self.csr_write("I2C0_TXDATA_ARA", I2C0_TXDATA, _ARA_REPLY)
-        await self.csr_write(
-            "I2C0_ENABLETARGET", I2C0_CTRL, I2C_CTRL_ENABLETARGET
-        )
+        await self.csr_write("I2C0_ENABLETARGET", I2C0_CTRL, I2C_CTRL_ENABLETARGET)
         await ClockCycles(cocotb.top.clk_smc_i, 20)
 
         idle = int(cocotb.top.tb_i2c0_smbalert.value)
         assert idle == 1, f"SMBALERT# idle expected high, got {idle}"
 
-        await self.csr_write(
-            "I2C0_SMBUS_CTRL_ALERT", I2C0_SMBUS_CTRL, I2C_SMBUS_CTRL_SMBALERT
-        )
+        await self.csr_write("I2C0_SMBUS_CTRL_ALERT", I2C0_SMBUS_CTRL, I2C_SMBUS_CTRL_SMBALERT)
         self.alert_asserted = await self._wait_smbalert(expect_low=True)
         assert self.alert_asserted, "SMBALERT# (pad39) did not go low after CTRL write"
         cocotb.log.info("SMBALERT# asserted (tb_i2c0_smbalert=0)")
@@ -158,12 +148,8 @@ class smc_smbus_alert_ara_test_seq(SmcCsrSeq):
             f"ARA reply mismatch: got 0x{resp:02X}, expected 0x{_ARA_REPLY:02X}"
         )
         self.ara_ok = True
-        self.alert_cleared = await self._wait_smbalert(
-            expect_low=False, timeout_us=5000
-        )
-        assert self.alert_cleared, (
-            "SMBALERT# stayed low after ARA (expected hwclr)"
-        )
+        self.alert_cleared = await self._wait_smbalert(expect_low=False, timeout_us=5000)
+        assert self.alert_cleared, "SMBALERT# stayed low after ARA (expected hwclr)"
         cocotb.log.info(
             "ARA OK: reply=0x%02X; SMBALERT# cleared on pad39",
             resp,

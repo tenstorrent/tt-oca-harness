@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * OCCP Interface Unlatch Test
  *
@@ -225,7 +228,7 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         ctx->inject_undersize_header_err = false;
         ctx->exp_response_code = OCCP_ERROR_NONE;
         break;
-    case 10: // invalid comman
+    case 10: // invalid command
         simputs("Injecting Invalid command\n");
         int injection_mode = get_random_int() % 3;
         switch (injection_mode) {

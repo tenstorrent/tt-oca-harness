@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""OCTS dual-chiplet sync helpers for OSS SMC TB.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""OCTS dual-chiplet sync helpers for the SMC testbench.
 
-Mirrors legacy dv/smc/tb OCTS PRIMARY/SECONDARY pad protocol on pads 58/59:
+Implements the OCTS PRIMARY/SECONDARY pad protocol on pads 55/56:
   * PRIMARY: DUT drives tb_octs_sync_load_from_dut / tb_octs_cnt_credit_from_dut
   * SECONDARY: TB injects tb_octs_sync_load_ext / tb_octs_cnt_credit_ext
 

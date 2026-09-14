@@ -53,8 +53,13 @@ The CSRNG and EDN instances are standard OpenTitan IP blocks. The CSRNG implemen
 
 The EDN automates generate and reseed command sequences so that downstream consumers receive a continuous stream of random data without firmware intervention. The EDN endpoint interface uses a simple request/acknowledge handshake. The `drbg_edn_axis_adapter` converts this into the AXI-Stream protocol expected by the rest of the SEP fabric, buffering data in per-endpoint FIFOs.
 
-For a detailed description of the CSRNG and EDN theory of operation, register maps, and command protocol, refer to the OpenTitan documentation at https://opentitan.org/book/hw/ip/csrng/[CSRNG] and https://opentitan.org/book/hw/ip/edn/[EDN].
+Consult the OpenTitan documentation at
+https://opentitan.org/book/hw/ip/csrng/[CSRNG] and
+https://opentitan.org/book/hw/ip/edn/[EDN] for the authoritative core
+functionality of those IPs.
 
 ===== Bus Protocol Adaptation
 
 The CSRNG and EDN register interfaces use TL-UL, following the OpenTitan convention. The DRBG wrapper provides two levels of adaptation. The `drbg_axil64_lane_adapter` accepts 64-bit AXI-Lite transactions from the SoC interconnect and narrows them to 32-bit AXI-Lite by selecting the appropriate data lane based on address bit [2]. Only aligned single-lane accesses with strobe `0x0F` or `0xF0` are forwarded; all others are rejected with SLVERR. The downstream `axi_lite_to_tlul` bridge then converts 32-bit AXI-Lite into TL-UL for the CSRNG and EDN register blocks.
+
+The CSRNG and EDN register maps are reported in the SEP detailed register map.

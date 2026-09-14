@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
 [[tests]]
@@ -33,6 +34,33 @@ timeout_sec = 1800
 tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
 run_modes = ["smoke"]
 
+# BFM rebuild of FW gpio_p0_int_test (edge types; level is irq_type_matrix).
+[[tests]]
+name = "smc_gpio_p0_int_test"
+module = "smc_gpio_p0_int_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "gpio", "gpio_depth", "tier_c", "pyuvm"]
+run_modes = ["smoke"]
+
+# BFM rebuild of FW gpio_p0_mux_test (interface_enable vs lsio_select).
+[[tests]]
+name = "smc_gpio_p0_mux_test"
+module = "smc_gpio_p0_mux_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "gpio", "gpio_depth", "tier_c", "pyuvm"]
+run_modes = ["smoke"]
+
+# BFM rebuild of gpio_filter_access_sep (ACCESS_FILTER AxPROT allow/deny).
+[[tests]]
+name = "smc_gpio_filter_access_sep_test"
+module = "smc_gpio_filter_access_sep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "gpio", "gpio_depth", "tier_c", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "gpio"
 tests = [
@@ -41,4 +69,31 @@ tests = [
     "smc_gpio_irq_active_test",
     "smc_gpio_output_driveback_test",
     "smc_gpio_irq_type_matrix_test",
+    "smc_gpio_p0_int_test",
+    "smc_gpio_p0_mux_test",
+    "smc_gpio_filter_access_sep_test",
 ]
+
+[[tests]]
+name = "smc_gpio_irq_active_test"
+module = "smc_gpio_irq_active_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_ctrl_full_sweep_test"
+module = "smc_gpio_ctrl_full_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_intf_full_sweep_test"
+module = "smc_gpio_intf_full_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]

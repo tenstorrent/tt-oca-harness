@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 #include <stdint.h>
 #include <stddef.h>
 
@@ -8,7 +11,7 @@
 #include "smu_smc_stall_protocol.h"
 
 /*
- * SEP_SMU_004  smu_smc_stall_sep  --  SEP (consumer) firmware.
+ * smu_smc_stall_sep  --  SEP (consumer) firmware.
  *
  * The real SEP CPU boots from reset, brings the SMC up over the (unfiltered) SEP->SMC port
  * using the common sep_smc_bringup helpers (open outbound window -> wait exact SRAM cookie

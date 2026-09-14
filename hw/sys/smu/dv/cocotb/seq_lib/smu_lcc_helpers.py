@@ -1,12 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Real LCC / feat_ctrl ungating for SMU (no Force, no placeholder).
 
 Under ``smu #(.SEP(0))`` RTL ties ``sep_feat_ctrl = '0``, so JTAG2AXI stays
 gated and there is no LCC in the DUT. Ungating requires SEP=1 + eFuse sense
 producing soc_debug/ap_debug (and fuse_test for OTP), same path as SEP DV.
-
-Callers that previously used ``force_jtag2axi_lifecycle_*`` must switch here
-or be deferred until SEP=1 LCC bring-up (#3538).
 """
 
 from __future__ import annotations

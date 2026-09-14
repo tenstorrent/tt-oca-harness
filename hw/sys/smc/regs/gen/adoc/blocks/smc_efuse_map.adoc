@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 [NOTE]
 ======
 *Register Arrays:* This register map contains the following register arrays:
@@ -12,7 +15,7 @@
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -31,7 +34,7 @@ programmable. When read locked, the shadow register is not readable.
 | 0xAFC - 0xBFC | RESERVED[65] | RW a| Reserved register
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LOCKS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -64,7 +67,7 @@ programmable. When read locked, the shadow register is not readable.
 | 0 | `chiplet_id_write_lock` | RW | 0x0 a| Chiplet ID write lock. When set, chiplet ID field is not writable.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CHIPLET_ID Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -76,7 +79,7 @@ programmable. When read locked, the shadow register is not readable.
 [7:6]: Reserved for extension.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PACKAGE_ID Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -89,35 +92,35 @@ programmable. When read locked, the shadow register is not readable.
 [7:6]: Reserved for extension
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BIRA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 16383:0 | `repair_data` | RW | 0x0 a| 16KB memory repair data for SMC and SEP SRAMs
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CLUSTER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 511:0 | `cluster_config` | RW | 0x0 a| 512-bit fuses reserved for CPU cluster configuration
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FABRIC Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `fabric_config` | RW | 0x0 a| 256-bit fuses reserved for fabric configuration
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SOP_TOPOLOGY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `topology_serial` | RW | 0x0 a| Serial number of topology configuration
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .I2C_I3C_ID[9] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -126,28 +129,28 @@ programmable. When read locked, the shadow register is not readable.
 * Provisional ID mode: [63:0] full ID
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .I2C_CLOCK_GATING Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `clock_gating_config` | RW | 0x0 a| I2C clock gating configuration
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .I3C_DISABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `disable_config` | RW | 0x0 a| I3C interface disable configuration
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PLL_AND_SENSOR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 4095:0 | `pll_sensor_config` | RW | 0x0 a| 4KB fuses reserved for PLL and sensor configuration
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESERVED[65] Register
 |===
 | Bits | Field | Access | Reset | Description

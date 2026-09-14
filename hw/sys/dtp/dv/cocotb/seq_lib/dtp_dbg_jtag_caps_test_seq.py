@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_dbg_jtag_caps_test."""
 
 from __future__ import annotations
@@ -28,7 +29,9 @@ class dtp_dbg_jtag_caps_test_seq(dtp_debug_tdr_base_test_seq):
             self.assert_equal(f"JTAG_CAPS.{name}", observed, expected_fields[name])
 
         self.log_step(3, "Check multiple reads are stable")
-        self.assert_equal("JTAG_CAPS multi-read value", await self.check_caps_multi_read("JTAG_CAPS"), value)
+        self.assert_equal(
+            "JTAG_CAPS multi-read value", await self.check_caps_multi_read("JTAG_CAPS"), value
+        )
 
         self.log_step(4, "Check read-only behavior with directed and random patterns")
         self.assert_equal(

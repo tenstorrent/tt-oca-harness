@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_dbg_ctrl_clk_stop_random_clock_stop_test."""
 
 from __future__ import annotations
@@ -43,8 +44,12 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq(dtp_debug_tdr_base_test_s
 
         readback = await self.read_debug_control(shift_value=control_value)
         decoded = self.log_debug_control(f"{context} readback", readback)
-        self.assert_equal("DEBUG_CONTROL.cla_clock_stop", decoded["cla_clock_stop"], expected_cla, context)
-        self.assert_equal("DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], jtag_clock_stop, context)
+        self.assert_equal(
+            "DEBUG_CONTROL.cla_clock_stop", decoded["cla_clock_stop"], expected_cla, context
+        )
+        self.assert_equal(
+            "DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], jtag_clock_stop, context
+        )
         self.assert_equal(
             "DEBUG_CONTROL.cla_clock_stop_en",
             decoded["cla_clock_stop_en"],

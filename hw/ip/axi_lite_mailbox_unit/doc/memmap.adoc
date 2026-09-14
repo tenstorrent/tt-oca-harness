@@ -39,16 +39,16 @@ follows:
 [width="100%",cols="15%,20%,10%,15%,40%",options="header",]
 |==============================================================
 |Offset |Register Name |Width |Access |Description
-|0x00 |WRITE_DATA |64-bit |WO |Write data to mailbox FIFO
-|0x08 |READ_DATA |64-bit |RO |Read data from mailbox FIFO
-|0x10 |STATUS |64-bit |RO |FIFO status (empty, full, threshold)
-|0x18 |ERROR_FLAGS |64-bit |RO |Error flags (write/read errors)
+|0x00 |WRITE_DATA |64-bit |W |Write data to mailbox FIFO
+|0x08 |READ_DATA |64-bit |R |Read data from mailbox FIFO
+|0x10 |STATUS |64-bit |R |FIFO status (empty, full, threshold)
+|0x18 |ERROR_FLAGS |64-bit |R |Error flags (write/read errors)
 |0x20 |WIRQT |64-bit |RW |Write interrupt threshold
 |0x28 |RIRQT |64-bit |RW |Read interrupt threshold
 |0x30 |IRQS |64-bit |RW |Interrupt status (write-1-to-clear)
 |0x38 |IRQEN |64-bit |RW |Interrupt enable control
-|0x40 |IRQP |64-bit |RO |Interrupt pending status
-|0x48 |CTRL |64-bit |WO |Control register (FIFO flush)
+|0x40 |IRQP |64-bit |R |Interrupt pending status
+|0x48 |CTRL |64-bit |W |Control register (FIFO flush)
 |==============================================================
 
 ====== Address Examples

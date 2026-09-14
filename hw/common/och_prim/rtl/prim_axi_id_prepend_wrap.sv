@@ -7,21 +7,21 @@
 //--------------------------------------------------
 
 module prim_axi_id_prepend_wrap #(
-    parameter int unsigned AxiInIdWidth  = 6,
-    parameter int unsigned AxiOutIdWidth = 8,
-    parameter int unsigned AxiDataWidth  = 32,
-    parameter int unsigned AxiAddrWidth  = 32,
-    parameter int unsigned AxiUserWidth  = 8,
+  parameter int unsigned AxiInIdWidth  = 6,
+  parameter int unsigned AxiOutIdWidth = 8,
+  parameter int unsigned AxiDataWidth  = 32,
+  parameter int unsigned AxiAddrWidth  = 32,
+  parameter int unsigned AxiUserWidth  = 8,
 
-    parameter type axi_in_req_t   = logic,
-    parameter type axi_in_resp_t  = logic,
-    parameter type axi_out_req_t  = logic,
-    parameter type axi_out_resp_t = logic
+  parameter type axi_in_req_t   = logic,
+  parameter type axi_in_resp_t  = logic,
+  parameter type axi_out_req_t  = logic,
+  parameter type axi_out_resp_t = logic
 ) (
-    input axi_in_req_t axi_in_req_i,
-    output axi_in_resp_t axi_in_resp_o,
-    output axi_out_req_t axi_out_req_o,
-    input axi_out_resp_t axi_out_resp_i
+  input axi_in_req_t axi_in_req_i,
+  output axi_in_resp_t axi_in_resp_o,
+  output axi_out_req_t axi_out_req_o,
+  input axi_out_resp_t axi_out_resp_i
 );
 
   `include "ocah_assert.svh"

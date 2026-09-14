@@ -70,23 +70,6 @@
  * 5. Target automatically clears SMBALERT# after ACK
  *
  * =============================================================================
- * Execution Command
- * =============================================================================
- *
- * cd <project_root>
- * renew
- * drun yaml/testlist_smc_chiplet.yaml smc_i2c_target_smbus_test --stack sim --no-lsf --seed=1 --c
- * compile_smc_chiplet
- *
- * =============================================================================
- * Waveform Command
- * =============================================================================
- *
- * cd <project_root>/dv/smc/tb/tb_uvm
- * verdi out/smc_i2c_target_smbus_test.time.<timestamp>/waves.fsdb -f tt_smc_chiplet.f -f
- * sv/tb_smc_chiplet_wrap.f -top smc_uvm_top &
- *
- * =============================================================================
  */
 
 #include <stdint.h>

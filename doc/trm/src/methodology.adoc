@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[methodology]]
@@ -33,7 +33,7 @@ AXI4-lite is used for data interfaces and is generally configured with
 64-bit data and address. Control buses for accessing CSRs and other low
 speed sources are implemented with 32-bit APB.
 
-The system memory map and component CSRs (Configuration and Status
+The system memory map and component CSRs (Control and Status
 Registers) are defined in SystemRDL. This is the single source of truth
 and all downstream representations are rendered from this source.
 Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
@@ -80,7 +80,7 @@ portions of it, attempting to leave the core functionality unmodified.
 This may not always be possible, so the exact method of modification
 will vary.
 
-An example modification would be the CSR (Configuration and Status
+An example modification would be the CSR (Control and Status
 Register) design. As described further below, we intend to use SystemRDL
 for this purpose and generate those implementations. OpenTitan
 components for example, use a different CSR mechanism which will be
@@ -241,8 +241,8 @@ ssh-add -l
 \6. Clone the repository and create a feature branch for your work.
 +
 ....
-git clone git@github.com:tenstorrent/tt-oca.git
-cd tt-oca
+git clone git@github.com:tenstorrent/tt-oca-harness.git
+cd tt-oca-harness
 git checkout -b <your-branch>
 ....
 
@@ -482,7 +482,7 @@ clearly identified and easy to extract and bundle with a component for
 use in other non-OCAH systems. We want to avoid obfuscated, complex
 dependencies within the design that are difficult to unravel.
 
-=== CSRs : Configuration and Status Registers
+=== CSRs : Control and Status Registers
 
 Register and memory map descriptions are written in SystemRDL. Output
 renderings include:
@@ -507,7 +507,7 @@ Cryptographic components will have an additional private key block
 accessible via a 64-bit AXI4-lite link. Only the key manager will be
 able to write to individual component's key blocks. The separate key bus
 enables a design in which the CPU software never has direct access to
-the secret key data, whether intentionally or inadvertantly. As this is
+the secret key data, whether intentionally or inadvertently. As this is
 a write only interface, we will not implement the read address and read
 data channels. This will be done by tying off the applicable pins. for
 key distribution from the key manager to various cipher blocks and is
@@ -603,18 +603,10 @@ replace those interfaces with AMBA versions.
 
 === Component Directory Organization
 
-All components will have a uniform directory structure which has the
-following elements:
-
-* README.md : component overview and quick start guide in Markdown
-format
-* doc/ : detailed AsciiDoc documentation (architecture.adoc, interface.adoc,
-memmap.adoc, index.adoc)
-* rtl : all SystemVerilog modules <component>_*.sv
-* tb : unit level Verilator tests
-* regs/ : <component>.rdl SystemRDL CSR memory map definition and generated collateral
-* syn : logic synthesis constraints (optional)
-* lint : lint waiver files
+Every `hw/ip/<ip>/` and `hw/sys/<sys>/` component follows the same directory
+template, detailed in
+xref:ocah-contributing:ROOT:guidelines.adoc#component-directory-organization[the
+Contributing Guide].
 
 === SystemVerilog Coding Guidelines
 
@@ -635,7 +627,7 @@ This section highlights a few of the most important aspects as well as a
 few deviations from the OpenTitan rules. If there is a conflict between
 the two, the specification here takes precedence.
 
-* Use four spaces for indentation, rather than two for new files
+* Use two spaces for indentation, matching the lowRISC style guide.
 * Use all upper case letters to name enums, constants (localparam), and
 parameters instead of UpperCamelCase.
 * As stated in the lowRISC guidelines, SystemVerilog Interfaces can be

@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""smu_ext_boot_seq_gate_test — SMU P0 external boot-sequence gate (SMU_006 rev 2).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""smu_ext_boot_seq_gate_test — SMU P0 external boot-sequence gate (SMU_006).
 
 DV-CARD:          SMU_006   ANCHOR: smu_ext_boot_seq_gate_test
-DV-CARD-REVISION: 2   RECORD-SHA256: a7180c7f652446a8174b377245bc231220635de7c287395585b8e42869bb7899
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_VPLAN_DETAIL.md @ artifact_revision 2   ENV: cocotb
 """
 
 from __future__ import annotations
@@ -12,7 +11,6 @@ import cocotb
 import pyuvm
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_ext_boot_seq_gate_test_seq import smu_ext_boot_seq_gate_test_seq
 from smu_base_test import smu_base_test
 
@@ -24,22 +22,15 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
     async def bring_up(self) -> None:
         """Clocks + cold release with boot gate held at 0 (card S1)."""
         dut = cocotb.top
-        cocotb.start_soon(
-            Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start()
-        )
-        cocotb.start_soon(
-            Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(
             Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
         )
 
-        dut.powergood_i.value = 0
-        dut.rst_cold_ni.value = 0
         dut.ext_boot_seq_done_i.value = 0
         dut.jtag_tck.value = 0
-        dut.jtag_tms.value = 0
-        dut.jtag_trst.value = 0
+        dut.jtag_tms.value = 1
         dut.jtag_tdi.value = 0
         if hasattr(dut, "xtrig_ctm_dst_req"):
             dut.xtrig_ctm_dst_req.value = 0
@@ -60,6 +51,11 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
         ):
             getattr(dut, name).value = 0
 
+        await self.arm_async_resets()
+        dut.powergood_i.value = 0
+        dut.rst_cold_ni.value = 0
+        dut.jtag_trst.value = 0
+
         await ClockCycles(dut.clk_ref_i, 10)
         self.logger.info("Asserting powergood (boot gate ext_boot_seq_done_i=0)")
         dut.powergood_i.value = 1
@@ -67,6 +63,7 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
         self.logger.info("Releasing cold reset (primary gated by ext_boot_seq_done_i)")
         dut.rst_cold_ni.value = 1
         dut.jtag_trst.value = 1
+        await self.jtag_tap_reset(16)
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         self.cfg.reset_done.set()
         self.logger.info("SMU_006 bring-up: clocks running; boot gate=0; cold released")

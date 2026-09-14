@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse sense + backdoor shadow-readout test (OSS).
 
 Selects an OTP image through the shared eFuse image policy and senses it through
@@ -9,7 +10,6 @@ shadow registers against the golden via the backdoor probe.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 
 _MAX_SENSE_CYCLES = 20_000

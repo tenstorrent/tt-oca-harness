@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = OCAH Architecture & Design
@@ -25,7 +25,7 @@ detailed microarchitectural documentation for each subsystem.
 [[ocah-high-level-features]]
 === OCAH High-Level Features
 
-* *Security Enclave Processor (SEP)* -- Root of Trust (RoT) with the highest
+* *Security Processor (SEP)* -- Root of Trust (RoT) with the highest
   security privilege. Provides a physically isolated RISC-V execution
   environment for secure boot, lifecycle control, device attestation, and
   hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3,
@@ -252,6 +252,18 @@ top-level block diagram highlighting the clock domains.
 //.OCAH Clock Domains
 //image::ocah_clock_domains.png[OCAH Clock Domains,scaledwidth=100.0%]
 
+[[ocah-reference-counter]]
+==== Reference Counter
+
+Both the SMC and the SEP expose a free-running 64-bit reference counter in their
+CPU control register block (the `REFERENCE_COUNTER` CSR), clocked by the
+always-on reference clock (`clk_ref_i`). It advances continuously from reset,
+independent of the system clock (`clk_smu_i`) frequency or PLL state. Its value
+is synchronised into the CPU clock domain for software reads, and software may
+write the CSR to reload the counter, after which it resumes counting from the
+loaded value. Both subsystems share the same implementation
+(`prim_refclk_count_w_cdc`) and behave identically.
+
 [[ocah-reset]]
 === Reset
 
@@ -303,15 +315,45 @@ The reset hierarchy within the SMU proceeds as follows:
   infrastructure.
 
 . *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can
-  override cold, cool, and core reset domains independently for debug
-  scenarios. These are wired through the SMU to the SMC's
-  `rst_{cold,cool,core}_override_ni` / `rst_{cold,cool,core}_override_en_i`
-  ports.
+  override the fuse, cold, cool, warm, and per-subsystem reset domains
+  independently for debug scenarios. These are wired through the SMU into the
+  SMC reset unit and the SEP reset controller. The DTP JTAG chapter states the
+  programming order these overrides require.
+
+[[ocah-ic-reset]]
+==== IC_RESET TDR
+
+The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
+slices on the scan chain from TDI to TDO, followed by a single `reset_hold`
+bit nearest TDO:
+
+* *SMC slice* (nearest TDI). Fuse, cold, cool, and warm resets, plus cold and
+  warm resets for each of the 32 managed subsystems. The SMU consumes this
+  slice internally.
+* *SEP slice.* SEP main reset and the TRNG, KMAC, HMAC, AES, OTBN, and Key
+  Manager resets. Present when SEP is instantiated; omitted otherwise. The
+  SMU consumes this slice internally.
+* *External slice.* Reset overrides for logic outside the SMU. The ports in
+  this slice are adopter-defined: the integrator supplies the slice type and
+  routes the SMU output to that logic. OCAH does not name the external bits.
+  The default type is a single-override stub.
+
+Each port carries an override-enable bit and an active-low reset value. The
+Integrator Guide records the SMU port map, including how to size the external
+slice.
 
 For the detailed reset controller design, sequencing FSM, reset register
-interface, and clock-reset interaction, refer to the
-<<clock-and-reset-management>> chapter. For integration-level reset
-procedures, refer to the Integrator Guide.
+interface, and clock-reset interaction, refer to the Clock and Reset Management
+chapter:
+
+ifdef::backend-html5[]
+xref:smc:clk_rst.adoc#clock-and-reset-management[Clock and Reset Management]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<clock-and-reset-management,Clock and Reset Management>>
+endif::backend-pdf[]
+
+For integration-level reset procedures, refer to the Integrator Guide.
 
 // ============================================================================
 // Per-subsystem deep dives

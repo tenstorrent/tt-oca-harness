@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 OcahSpiMonitor — passive SPI bus monitor.
 
@@ -48,7 +48,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 import cocotb
-from cocotb.triggers import Edge, FallingEdge, RisingEdge, Timer
+from cocotb.triggers import FallingEdge, RisingEdge, Timer
 
 __all__ = ["OcahSpiMonitor"]
 
@@ -121,20 +121,20 @@ class OcahSpiMonitor:
         verbose: bool = False,
     ):
         self.name = name
-        self.log  = logging.getLogger(name)
+        self.log = logging.getLogger(name)
 
-        self._cs_n  = cs_n
-        self._sclk  = sclk
-        self._mosi  = mosi
-        self._miso  = miso
+        self._cs_n = cs_n
+        self._sclk = sclk
+        self._mosi = mosi
+        self._miso = miso
 
-        self._addr_bytes         = addr_bytes
-        self._fast_read_dummies  = fast_read_dummies
-        self._max_history        = max_history
-        self._verbose            = verbose
+        self._addr_bytes = addr_bytes
+        self._fast_read_dummies = fast_read_dummies
+        self._max_history = max_history
+        self._verbose = verbose
 
         self._callbacks: List[Callable] = []
-        self._history:   List[Dict[str, Any]] = []
+        self._history: List[Dict[str, Any]] = []
 
         self._task: Optional[Any] = None
         self._running = False
@@ -179,8 +179,7 @@ class OcahSpiMonitor:
         if self._task is not None:
             self._task.kill()
             self._task = None
-        self.log.info("%s: stopped (transactions=%d)",
-                      self.name, self._stats["transactions_seen"])
+        self.log.info("%s: stopped (transactions=%d)", self.name, self._stats["transactions_seen"])
 
     # ------------------------------------------------------------------
     # Query interface
@@ -211,8 +210,7 @@ class OcahSpiMonitor:
             try:
                 await self._observe_transaction()
             except Exception as exc:  # noqa: BLE001
-                self.log.error("%s: exception while observing: %s",
-                               self.name, exc)
+                self.log.error("%s: exception while observing: %s", self.name, exc)
 
     async def _observe_transaction(self) -> None:
         """Observe one SPI transaction from CS_N low to CS_N high."""
@@ -227,7 +225,7 @@ class OcahSpiMonitor:
         # Sample bits on rising SCLK edges until CS_N goes high.
         while True:
             # Wait for rising SCLK or CS_N going high.
-            edge_trig = await _first_of(RisingEdge(self._sclk), RisingEdge(self._cs_n))
+            await _first_of(RisingEdge(self._sclk), RisingEdge(self._cs_n))
             if int(self._cs_n.value) != 0:
                 break  # CS deasserted
 
@@ -276,9 +274,9 @@ class OcahSpiMonitor:
         mosi_bytes = _bits_to_bytes(mosi_bits)
         miso_bytes = _bits_to_bytes(miso_bits)
 
-        opcode   = mosi_bytes[0] if mosi_bytes else 0
+        opcode = mosi_bytes[0] if mosi_bytes else 0
         has_addr = opcode in _ADDR_COMMANDS
-        addr     = 0
+        addr = 0
 
         if has_addr and len(mosi_bytes) > 1:
             for i in range(1, min(1 + self._addr_bytes, len(mosi_bytes))):
@@ -292,20 +290,21 @@ class OcahSpiMonitor:
             data_mosi_start = 1  # skip opcode only
 
         return {
-            "opcode":    opcode,
-            "addr":      addr,
-            "has_addr":  has_addr,
+            "opcode": opcode,
+            "addr": addr,
+            "has_addr": has_addr,
             "data_mosi": mosi_bytes[data_mosi_start:] if opcode in _MOSI_COMMANDS else b"",
             "data_miso": miso_bytes,
             "bit_count": len(mosi_bits),
-            "start_ns":  start_ns,
-            "end_ns":    end_ns,
+            "start_ns": start_ns,
+            "end_ns": end_ns,
         }
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _bits_to_bytes(bits: List[int]) -> bytes:
     """Pack a list of 1/0 bits (MSB-first) into bytes, right-padding partial byte."""
@@ -329,9 +328,7 @@ def _fire_callbacks(callbacks: list, *args) -> None:
         try:
             fn(*args)
         except Exception as exc:  # noqa: BLE001
-            logging.getLogger(__name__).error(
-                "Exception in SpiMonitor callback %s: %s", fn, exc
-            )
+            logging.getLogger(__name__).error("Exception in SpiMonitor callback %s: %s", fn, exc)
 
 
 async def _first_of(*triggers):
@@ -344,12 +341,12 @@ async def _first_of(*triggers):
     # simple sequential poll pattern.
     try:
         from cocotb.triggers import First  # type: ignore[attr-defined]  # noqa: PLC0415
+
         return await First(*triggers)
     except ImportError:
         pass
 
     # Fallback: create tasks and race them.
-    import asyncio  # noqa: PLC0415
 
     tasks = [cocotb.start_soon(t) for t in triggers]
 

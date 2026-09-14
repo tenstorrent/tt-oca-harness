@@ -1,22 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shadow-register readout checker for the SEP eFuse OSS flow.
 
 After fuse-sense, reads the software-visible shadow-register block field-by-field
 over AXI and checks each word against the golden ``SepEfuseImage`` (which applies
 the LC_STATE differential-encode and reads every other readable field verbatim).
-A mismatch is caught by the scoreboard value-check (uvm_error). This is the
-checker that fails when the OTP responder mis-places a field (e.g. the LC_STATE
-word-2 bug).
+A mismatch is caught by the scoreboard value-check (uvm_error). Fails when a
+shadow word does not match the golden field placement.
 """
 
 from __future__ import annotations
 
 from typing import List, Optional
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from env.sep_efuse_image import SepEfuseImage, SEP_FUSE_SENSE_STATUS
+from env.sep_efuse_image import SEP_FUSE_SENSE_STATUS, SepEfuseImage
+from pyuvm import uvm_sequence
 
 
 class sep_efuse_shadow_check_seq(uvm_sequence):

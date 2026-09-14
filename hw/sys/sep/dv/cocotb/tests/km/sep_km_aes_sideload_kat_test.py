@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-"""KM -> AES sideload consume-proof KAT (OCAH SS-1 AES leaf, sep_km_aes_sideload_kat_test).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""KM -> AES sideload consume-proof KAT (reference suite, sep_km_aes_sideload_kat_test).
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -12,59 +13,58 @@ ECB-256 encryptions and proves the AES engine CONSUMED exactly that key:
 
 AES has write-only KEY CSRs and is not programmable, so (unlike the OTBN KAT)
 the delivered key cannot be dumped back; the consume-proof IS the encryption
-cross-check, exactly as the OCAH AES leaf does it. This OSS port is STRONGER than
-OCAH on two axes:
-  * frontdoor known key: CMD_KEY_LOAD replaces OCAH's CMD_KEY_GENERATE + read-only
+cross-check, exactly as the reference AES leaf does it. This OSS port is STRONGER than
+reference suite on two axes:
+  * frontdoor known key: CMD_KEY_LOAD replaces the reference suite's CMD_KEY_GENERATE + read-only
     backdoor share reconstruction, so the delivered key value is known a priori.
   * independent AES-256-ECB golden (env/sep_aes_golden.py, self-tested vs FIPS-197
     C.3): ct_side / ct_swref are value-checked against AES(known_key, PT), turning
-    OCAH's key-VALUE-agnostic cross-check (which needed backdoor share non-
+    the reference suite's key-VALUE-agnostic cross-check (which needed backdoor share non-
     degeneracy guards) into a value-specific KAT. A truncated / word-swapped /
     share-defeated sideload changes the ciphertext and fails the golden compare.
 
-VPLAN-parity checkers (mapped to the OCAH AES-leaf checker list):
-  CHK0     boot KM on real DRBG -> RESP_KM_READY                  (OCAH P1)
-  CHK-A    CMD_KEY_LOAD known key (replaces OCAH CMD_KEY_GENERATE+backdoor) (P2)
-  CHK-NEG  ct_dummy == AES(dummy, PT): negative reference is a real encryption (P3)
-  CHK-B    CMD_KEY_TRANSFER rc=0 to AES                           (OCAH P4)
+VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
+  CHK0     boot KM on real DRBG -> RESP_KM_READY
+  CHK-A    CMD_KEY_LOAD known key (replaces reference CMD_KEY_GENERATE+backdoor)
+  CHK-NEG  ct_dummy == AES(dummy, PT): negative reference is a real encryption
+  CHK-B    CMD_KEY_TRANSFER rc=0 to AES
   CHK-ISO  key-bus isolation: only AES released; OTBN/KMAC/HMAC parked in SW reset
-           so they physically cannot receive the key (OSS analog of OCAH's per-
-           engine key-bus AW monitor; same mechanism as the OTBN KAT)   (P4 "others idle")
+           so they physically cannot receive the key (OSS analog of the reference suite's per-
+           engine key-bus AW monitor; same mechanism as the OTBN KAT)
   CHK-PUB  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload:
            the KM-delivered key is not exposed through software-readable CSRs
   CHK-F    ct_side == AES(known_key, PT) golden: sideload delivered the exact key
-           (replaces OCAH's backdoor SHARE0^SHARE1 non-degeneracy proof)  (P5/P6, stronger)
-  CHK-G    ct_side != ct_dummy: a real distinct key was delivered (not stale/zero) (P6)
+           (replaces the reference suite's backdoor SHARE0^SHARE1 non-degeneracy proof)
   CHK-RT   DEC(ct_side) with the SIDELOAD key == original PT: the sideloaded key
-           drives a full ECB-256 ENC/DEC round-trip, not just encryption    (OCAH P6b)
-  CHK-H    ct_swref == AES(known_key, PT) golden: SW-key path is correct          (P7)
-  CHK-I    ct_side == ct_swref: sideload and SW paths agree (OCAH consume-proof)  (P7)
+           drives a full ECB-256 ENC/DEC round-trip, not just encryption
+  CHK-H    ct_swref == AES(known_key, PT) golden: SW-key path is correct
   CHK1..CHK4 strict golden proof via the DRBG scoreboard; CHK5_km alive/observed
            (rom_main pull order not golden-predictable) + CHK5_aes alive/observed:
            the released AES masking PRNG reseeds from the crypto EDN leg, so a
            second real EDN consumer (besides KM) is witnessed off one DRBG.
 
-Accepted scope deltas vs OCAH (documented, no silent skips):
-  * OCAH P5 backdoor SHARE0^SHARE1 reconstruction + non-degeneracy guards are
-    dropped: with a KNOWN, distinct-word key loaded via CMD_KEY_LOAD there is no
-    KM keygen and no constant-word keygen defect to guard against, and CHK-F (golden
-    value compare) proves the exact key flowed -- stronger than "the reconstructed
-    key is not a single repeated word". No backdoor is used. The ONE sub-property
-    OCAH's P5 checks that a frontdoor port cannot see is the raw SHARE0 *mask*
-    non-degeneracy inside the AES wrapper (its !mask_all_same guard): the combined
+Accepted scope deltas vs the reference suite (documented, no silent skips):
+  * the reference suite's backdoor SHARE0^SHARE1 reconstruction + non-degeneracy
+    guards are dropped: with a KNOWN, distinct-word key loaded via CMD_KEY_LOAD
+    there is no KM keygen and no constant-word keygen defect to guard against, and
+    CHK-F (golden value compare) proves the exact key flowed -- stronger than
+    "the reconstructed key is not a single repeated word". No backdoor is used.
+    The ONE sub-property the reference suite checks that a frontdoor port cannot
+    see is the raw SHARE0 *mask* non-degeneracy inside the AES wrapper (its
+    !mask_all_same guard): the combined
     key is correct (CHK-F) yet the 2-share masking could in principle be degenerate.
     That is an AES-wrapper-internal masking property, not the KM->AES sideload-consume
     contract this leaf owns, and it is proven frontdoor by the sibling OTBN KAT
     (sep_km_otbn_sideload_kat_test CHK-F dumps S0/S1) -- so it is out of frontdoor
     scope here by design, not a silent gap.
   * key-bus isolation is proven by SW_RESET_N read-back (only AES out of the four
-    sideload targets is released) rather than the OCAH bus-AW monitor, which has no
+    sideload targets is released) rather than the reference suite bus-AW monitor, which has no
     OSS frontdoor analog; CHK-F additionally proves AES got the correct key.
 
 Boot recipe matches the OTBN KAT (real fuse-sense, valid PROD OTP image; KM SRAM
 responder powers up zero+valid-parity; rom_main built PROD_BOOT_WIPE=0).
 
-Entropy ordering mirrors OCAH bringup_real_entropy_and_boot_km + the AES leaf's
+Entropy ordering mirrors reference suite bringup_real_entropy_and_boot_km + the AES leaf's
 release_consumers_pre_noise(): AES is left RELEASED through entropy bring-up (its
 masking-PRNG reseed is served as EDN starts), while OTBN/KMAC are parked so the KM
 owns the boot/seed stream; HMAC is parked too for key-bus isolation.
@@ -73,18 +73,23 @@ owns the boot/seed stream; HMAC is parked too for key-bus isolation.
 from __future__ import annotations
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import SepAes
-from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_AES
-from seq_lib.sep_sw_reset_seq import SepSwReset, SW_RESET_N_BIT
+from seq_lib.sep_km_mailbox_seq import KM_DEST_AES, SepKmMailbox
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT
 
 # Known 256-bit KAT key: 8 DISTINCT 32-bit words so the golden compare and the
 # negative reference catch a truncated / word-swapped / share-defeated sideload.
 KAT_KEY = (
-    0xDEADBEEF, 0x00112233, 0x44556677, 0x8899AABB,
-    0xCCDDEEFF, 0x01234567, 0x89ABCDEF, 0xFEDCBA98,
+    0xDEADBEEF,
+    0x00112233,
+    0x44556677,
+    0x8899AABB,
+    0xCCDDEEFF,
+    0x01234567,
+    0x89ABCDEF,
+    0xFEDCBA98,
 )
 
 # Fixed ECB plaintext block (ECB keeps the focus on the key-source path, no IV).
@@ -92,8 +97,14 @@ AES_ECB_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
 # Dummy SW key for the negative reference (unrelated to KAT_KEY).
 AES_DUMMY_SW_KEY = (
-    0xDEADBEEF, 0xCAFEF00D, 0x12345678, 0x9ABCDEF0,
-    0x0F0E0D0C, 0x0B0A0908, 0x07060504, 0x03020100,
+    0xDEADBEEF,
+    0xCAFEF00D,
+    0x12345678,
+    0x9ABCDEF0,
+    0x0F0E0D0C,
+    0x0B0A0908,
+    0x07060504,
+    0x03020100,
 )
 
 
@@ -107,27 +118,21 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # OTP at boot); stage it before bring-up so sense populates the shadow.
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "kmac", "hmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
-        # Park OTBN/KMAC (on-demand EDN consumers) so the KM owns the boot/seed
-        # stream, and HMAC (for key-bus isolation). Leave AES RELEASED (default
-        # 0x1E) so its masking-PRNG reseed is served as EDN starts -- the proven
-        # OCAH real_sink_aes ordering (release_consumers_pre_noise releases AES
-        # pre-noise). This both feeds the AES PRNG and isolates the key bus: only
-        # AES, of the four KM sideload targets, is released.
-        await self.swrst.park("otbn", "kmac", "hmac")
+        # OTBN/KMAC JTAG-held across rst_ni release, then parked in SW_RESET_N so they never sit ungranted through fuse
+        # sense; HMAC parked for key-bus isolation. AES stays released so its
+        # masking-PRNG reseed is served when EDN starts.
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
         # (rom_main pull order is firmware-driven); CHK5_aes observed proves the
         # crypto EDN leg delivers real beats to the released AES masking PRNG, not
         # only the KM leg. Fork the concurrent FIFO_RDATA drain so CHK2 is scored
         # without an ESRC FIFO overflow.
-        await self.bring_up_entropy(
-            strict=True, score_km="observe", score_sinks={"aes": "observe"})
+        await self.bring_up_entropy(strict=True, score_km="observe", score_sinks={"aes": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
         self.logger.info("real entropy flowing; releasing KM firmware (rom_main)")
@@ -142,7 +147,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
         # CHK-NEG: negative reference. Encrypt with an unrelated DUMMY SW key BEFORE
-        # the transfer (OCAH P3). A real encryption, golden-checked, so ct_side !=
+        # the transfer. A real encryption, golden-checked, so ct_side !=
         # ct_dummy later is a meaningful "a distinct key was delivered" proof.
         await self.aes.configure_ecb_enc_256(sideload=False)
         await self.aes.write_full_key(list(AES_DUMMY_SW_KEY))
@@ -156,35 +161,56 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info("CHK-NEG dummy-key ECB PASS: ct_dummy == AES(dummy, PT) golden")
 
         # CHK-B: sideload the handle's key to the AES wrapper KEY CSRs.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to AES)")
 
         # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the four KM
         # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset and
-        # cannot receive the key. OSS analog of OCAH's per-engine key-bus AW count.
+        # cannot receive the key. OSS analog of the reference suite's per-engine key-bus AW count.
         rst = await self.swrst.read_back()
-        parked = (1 << SW_RESET_N_BIT["otbn"]) | (1 << SW_RESET_N_BIT["kmac"]) \
+        parked = (
+            (1 << SW_RESET_N_BIT["otbn"])
+            | (1 << SW_RESET_N_BIT["kmac"])
             | (1 << SW_RESET_N_BIT["hmac"])
-        assert (rst & parked) == 0, \
+        )
+        assert (rst & parked) == 0, (
             f"key-bus isolation: OTBN/KMAC/HMAC not parked (SW_RESET_N=0x{rst:08x})"
-        assert rst & (1 << SW_RESET_N_BIT["aes"]), \
+        )
+        assert rst & (1 << SW_RESET_N_BIT["aes"]), (
             f"AES not released for the transfer (SW_RESET_N=0x{rst:08x})"
+        )
         self.logger.info(
             "CHK-ISO key-bus isolation PASS: only KM+AES released, OTBN/KMAC/HMAC "
-            "parked (SW_RESET_N=0x%02x)", rst)
+            "parked (SW_RESET_N=0x%02x)",
+            rst,
+        )
 
-        # CHK-PUB: the sideloaded key is NOT exposed on the public KEY_SHARE CSRs.
-        s0_pub, s1_pub = await self.aes.read_public_key_shares()
+        # CHK-PUB: the public KEY_SHARE CSRs still read zero, and the read path
+        # that produced those zeros is alive. The positive control is the point:
+        # KEY_SHARE0/1 are write-only with read data tied to zero in the generated
+        # register block, so on its own "reads zero" is unfalsifiable -- it holds
+        # whether the key is protected, mirrored elsewhere, or never delivered.
+        # Pairing it with a readable register in the same window at least makes
+        # the check fail if the read path dies or if these become readable.
+        s0_pub, s1_pub, ctl_pub = await self.aes.read_public_key_shares()
+        assert ctl_pub != 0, (
+            "CHK-PUB positive control failed: AES STATUS read back 0 over the same "
+            "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
+        )
         assert all(w == 0 for w in s0_pub) and all(w == 0 for w in s1_pub), (
             "AES public KEY_SHARE0/1 CSRs not all zero after sideload (key leak):\n"
             f"  s0={[hex(w) for w in s0_pub if w]}\n"
             f"  s1={[hex(w) for w in s1_pub if w]}"
         )
-        self.logger.info("CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload")
+        self.logger.info(
+            "CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload "
+            "(read path alive: STATUS=%#010x)",
+            ctl_pub,
+        )
 
         # CHK-F: encrypt with the SIDELOAD key and value-check against the golden.
-        # This proves AES consumed the exact KM-delivered key (stronger than OCAH's
+        # This proves AES consumed the exact KM-delivered key (stronger than the reference suite's
         # backdoor non-degeneracy guard).
         golden = aes256_ecb_encrypt_words(list(KAT_KEY), list(AES_ECB_PT))
         await self.aes.configure_ecb_enc_256(sideload=True)
@@ -198,13 +224,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         )
         self.logger.info("CHK-F KM->AES sideload KAT PASS: ct_side == AES(known_key, PT) golden")
 
-        # CHK-G: the sideload ciphertext differs from the dummy-key ciphertext, so a
-        # real, distinct key was delivered (not stale/zero/the previous SW key).
-        assert ct_side != ct_dummy, \
-            "sideload ciphertext equals the dummy-key ciphertext (no distinct key delivered)"
-        self.logger.info("CHK-G PASS: ct_side != ct_dummy (distinct delivered key)")
-
-        # CHK-RT (OCAH P6b): decrypt ct_side with the SIDELOAD key and prove it
+        # CHK-RT: decrypt ct_side with the SIDELOAD key and prove it
         # recovers the original plaintext -- the sideloaded key drives a full
         # ENC/DEC round-trip, not just one direction. The recovered PT is checked
         # against the known AES_ECB_PT (value-specific; no decrypt golden needed
@@ -217,12 +237,10 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  pt_side_dec={[hex(w) for w in pt_side_dec]}\n"
             f"  expected PT={[hex(w) for w in AES_ECB_PT]}"
         )
-        self.logger.info(
-            "CHK-RT sideload round-trip PASS: DEC(ct_side) == original PT")
+        self.logger.info("CHK-RT sideload round-trip PASS: DEC(ct_side) == original PT")
 
-        # CHK-H/I: write the KNOWN key through the SW KEY_SHARE path and prove it
-        # matches both the golden (SW path correct) and the sideload ciphertext
-        # (the OCAH consume cross-check: sideload and SW paths agree).
+        # CHK-H: write the KNOWN key through the SW KEY_SHARE path and prove
+        # the SW-key ciphertext equals AES(known_key, PT) golden.
         await self.aes.configure_ecb_enc_256(sideload=False)
         await self.aes.write_full_key(list(KAT_KEY))
         await self.aes.trigger_prng_reseed()
@@ -231,13 +249,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             "SW-key ciphertext != AES(known_key, PT) golden:\n"
             f"  ct_swref={[hex(w) for w in ct_swref]} golden={[hex(w) for w in golden]}"
         )
-        assert ct_side == ct_swref, (
-            "sideload vs SW-key ciphertext mismatch (consume cross-check):\n"
-            f"  ct_side ={[hex(w) for w in ct_side]}\n"
-            f"  ct_swref={[hex(w) for w in ct_swref]}"
-        )
-        self.logger.info(
-            "CHK-H/I consume-proof PASS: ct_swref == golden and ct_side == ct_swref")
+        self.logger.info("CHK-H consume-proof PASS: ct_swref == AES(known_key, PT) golden")
 
         # --- EOT: entropy health + clean shutdown ------------------------------
         await self.km.check_outbound_empty("EOT")
@@ -247,5 +259,5 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         await self.aes.check_status_clean("EOT")
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.drbg_sb.report()
+        assert self.drbg_sb.report()
         self.logger.info("CHK1..CHK5 alive + entropy alerts PASS (DRBG scoreboard)")

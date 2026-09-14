@@ -2,12 +2,12 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC CFG Digest Size Test - TC_HMAC_003 (P0)
+ * HMAC CFG Digest Size Test
  *
  * Verifies CFG.digest_size field for all SHA variants and CFG field independence.
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_cfg_digest_size_test STACK=sim
+ * make test-sep TEST_NAME=sep_hmac_cfg_digest_size_test STACK=sim
  *
  */
 
@@ -17,6 +17,7 @@
 #include "och_sep_common.h"
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -28,7 +29,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n============================================\n");
-    printf("HMAC CFG Digest Size Test (TC_HMAC_003)\n");
+    printf("HMAC CFG Digest Size Test\n");
     printf("============================================\n\n");
 
     int pass = 1;
@@ -40,35 +41,35 @@ int main(void) {
 
     printf("\nStep 2: Set digest_size=SHA-256 (0x1)\n");
     cfg.w = 0;
-    cfg.f.digest_size = 0x1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     cfg.f.sha_en = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
-    if (!check_reg("digest_size", cfg.f.digest_size, 0x1)) pass = 0;
+    if (!check_reg("digest_size", cfg.f.digest_size, SEP_HMAC_DIGEST_SIZE_SHA2_256)) pass = 0;
     if (!check_reg("sha_en", cfg.f.sha_en, 1)) pass = 0;
     if (!check_reg("hmac_en", cfg.f.hmac_en, 0)) pass = 0;
 
     printf("\nStep 3: Set digest_size=SHA-384 (0x2)\n");
     cfg.w = 0;
-    cfg.f.digest_size = 0x2;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_384;
     cfg.f.sha_en = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
-    if (!check_reg("digest_size", cfg.f.digest_size, 0x2)) pass = 0;
+    if (!check_reg("digest_size", cfg.f.digest_size, SEP_HMAC_DIGEST_SIZE_SHA2_384)) pass = 0;
 
     printf("\nStep 4: Set digest_size=SHA-512 (0x4)\n");
     cfg.w = 0;
-    cfg.f.digest_size = 0x4;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_512;
     cfg.f.sha_en = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
-    if (!check_reg("digest_size", cfg.f.digest_size, 0x4)) pass = 0;
+    if (!check_reg("digest_size", cfg.f.digest_size, SEP_HMAC_DIGEST_SIZE_SHA2_512)) pass = 0;
 
     printf("\nStep 5: Verify hmac_en and sha_en independence\n");
     cfg.w = 0;
     cfg.f.hmac_en = 1;
     cfg.f.sha_en = 0;
-    cfg.f.digest_size = 0x1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
     if (!check_reg("hmac_en=1", cfg.f.hmac_en, 1)) pass = 0;
@@ -84,21 +85,21 @@ int main(void) {
     printf("\nStep 6: Verify key_length field\n");
     cfg.w = 0;
     cfg.f.sha_en = 1;
-    cfg.f.digest_size = 0x1;
-    cfg.f.key_length = 0x02;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
+    cfg.f.key_length = SEP_HMAC_KEY_LENGTH_256;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
-    if (!check_reg("key_length=0x02 (256b)", cfg.f.key_length, 0x02)) pass = 0;
+    if (!check_reg("key_length=256b", cfg.f.key_length, SEP_HMAC_KEY_LENGTH_256)) pass = 0;
 
-    cfg.f.key_length = 0x08;
+    cfg.f.key_length = SEP_HMAC_KEY_LENGTH_512;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     cfg.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR);
-    if (!check_reg("key_length=0x08 (512b)", cfg.f.key_length, 0x08)) pass = 0;
+    if (!check_reg("key_length=512b", cfg.f.key_length, SEP_HMAC_KEY_LENGTH_512)) pass = 0;
 
     printf("\nStep 7: Verify swap fields\n");
     cfg.w = 0;
     cfg.f.sha_en = 1;
-    cfg.f.digest_size = 0x1;
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
     cfg.f.endian_swap = 1;
     cfg.f.digest_swap = 1;
     cfg.f.key_swap = 1;

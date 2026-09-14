@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Real-SEP firmware boot-readiness sequence inside the OSS SMU wrapper."""
 
 from __future__ import annotations
@@ -10,12 +11,13 @@ from cocotb.triggers import RisingEdge
 
 
 class SmuSepSmokeSeq:
-    """Collect reset, trace, and TCM evidence until SEP boot readiness.
+    """Collect reset, fetch-window, and TCM evidence until SEP boot readiness.
 
     The sequence finishes as soon as the scoreboard has every required
     boot-readiness evidence item (boot-ROM fetch, ICCM execution, DCCM
-    stores, SMC arm). Console bytes on the external AXI path are sampled
-    for information only; that path is tracked separately (issue #3939).
+    stores, SMC arm); the retirement count and distinct-PC set come from
+    the SEP CPU trace monitor. Console bytes on the external AXI path are
+    sampled for information only.
     """
 
     def __init__(self, test, scoreboard) -> None:
@@ -88,21 +90,13 @@ class SmuSepSmokeSeq:
         for cycle in range(max_cycles):
             await RisingEdge(self.dut.clk_smu_i)
             # SEP EL2 trace/PC stay X until the CPU leaves reset; treat as 0.
-            sep_reset = self.test.read_int(
-                self.dut.sep_reset_n_o, "sep_reset_n_o", allow_xz=True
-            )
+            sep_reset = self.test.read_int(self.dut.sep_reset_n_o, "sep_reset_n_o", allow_xz=True)
             sep_fuse = self.test.read_int(
                 self.dut.sep_fuse_sense_done_o, "sep_fuse_sense_done_o", allow_xz=True
             )
-            valid = self.test.read_int(
-                self.dut.sep_trace_valid_o, "sep_trace_valid_o", allow_xz=True
-            )
             pc = self.test.read_int(self.dut.sep_pc_o, "sep_pc_o", allow_xz=True)
             self.sb.sample_status(reset_n=sep_reset, fuse_done=sep_fuse)
-            self.sb.sample_arm(
-                self.test.read_int(self.dut.smc_test_pass_o, "smc_test_pass_o")
-            )
-            self.sb.sample_trace(valid, pc)
+            self.sb.sample_arm(self.test.read_int(self.dut.smc_test_pass_o, "smc_test_pass_o"))
             self.sb.sample_windows(
                 boot_rom_seen=self.test.read_int(
                     self.dut.sep_boot_rom_fetch_seen_o,
@@ -123,12 +117,8 @@ class SmuSepSmokeSeq:
                 )
             )
 
-            if self.test.read_int(
-                self.dut.fw_char_valid_o, "fw_char_valid_o", allow_xz=True
-            ):
-                char = self.test.read_int(
-                    self.dut.fw_char_o, "fw_char_o", allow_xz=True
-                )
+            if self.test.read_int(self.dut.fw_char_valid_o, "fw_char_valid_o", allow_xz=True):
+                char = self.test.read_int(self.dut.fw_char_o, "fw_char_o", allow_xz=True)
                 self.sb.sample_char(char)
 
             if self.sb.boot_ready():
@@ -150,9 +140,7 @@ class SmuSepSmokeSeq:
                 smc_rom_reads = self.test.read_int(
                     self.dut.smc_rom_read_count_o, "smc_rom_read_count_o"
                 )
-                smc_pass = self.test.read_int(
-                    self.dut.smc_test_pass_o, "smc_test_pass_o"
-                )
+                smc_pass = self.test.read_int(self.dut.smc_test_pass_o, "smc_test_pass_o")
                 axi_writes = self.test.read_int(
                     self.dut.smu_axi_out_write_count_o, "smu_axi_out_write_count_o"
                 )

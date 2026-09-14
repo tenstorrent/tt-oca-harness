@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """No-SEP SMC firmware boot sequence for the production SMU wrapper."""
 
 from __future__ import annotations
@@ -25,21 +26,14 @@ class SmuSmcSmokeSeq:
         max_cycles = int(os.environ.get("SMU_SMC_BOOT_MAX_CYCLES", "2000000"), 0)
         heartbeat = max(1, max_cycles // 20)
         self.log.info("=" * 70)
-        self.log.info(
-            "DUT_TAG=WRAPPER TEST: SMC firmware boot under production "
-            "smu_wrapper SEP=0"
-        )
+        self.log.info("DUT_TAG=WRAPPER TEST: SMC firmware boot under production smu_wrapper SEP=0")
         self.log.info("=" * 70)
         self.log.info(
             "Bring-up evidence: fuse_sense_done=%d fuse_reset_n_delayed=%d "
             "rst_primary=%d init_mem_done=%d rst_cold_n=%d powergood=%d",
             self.test.read_int(self.dut.fuse_sense_done_o, "fuse_sense_done_o"),
-            self.test.read_int(
-                self.dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o"
-            ),
-            self.test.read_int(
-                self.dut.rst_primary_smc_clk_n_o, "rst_primary_smc_clk_n_o"
-            ),
+            self.test.read_int(self.dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o"),
+            self.test.read_int(self.dut.rst_primary_smc_clk_n_o, "rst_primary_smc_clk_n_o"),
             self.test.read_int(self.dut.init_mem_done_o, "init_mem_done_o"),
             self.test.read_int(self.dut.rst_cold_n_o, "rst_cold_n_o"),
             self.test.read_int(self.dut.powergood_o, "powergood_o"),
@@ -58,9 +52,7 @@ class SmuSmcSmokeSeq:
             await RisingEdge(self.dut.clk_smu_i)
             passed = self.test.read_int(self.dut.smc_test_pass_o, "smc_test_pass_o")
             failed = self.test.read_int(self.dut.smc_test_fail_o, "smc_test_fail_o")
-            rom_reads = self.test.read_int(
-                self.dut.smc_rom_read_count_o, "smc_rom_read_count_o"
-            )
+            rom_reads = self.test.read_int(self.dut.smc_rom_read_count_o, "smc_rom_read_count_o")
             scratch_writes = self.test.read_int(
                 self.dut.smc_scratch_write_count_o,
                 "smc_scratch_write_count_o",

@@ -73,8 +73,6 @@ module entropy_source
     entropy_source_reg_pkg::entropy_source__in_t  reg_in;
     entropy_source_reg_pkg::entropy_source__out_t reg_out;
 
-    logic rst_n;
-
     logic [31:0]            entropy_stream;
     logic [NRINGS-1:0][7:0] entropy_stream_uncompressed;
     logic                   entropy_stream_valid;
@@ -93,19 +91,13 @@ module entropy_source
 
     logic [15:0] ctr_repetition;
     logic [15:0] apt_pattern_count_1bit,  apt_pattern_count_2bit;
-    logic [9:0]  apt_pattern_count_3bit,  apt_pattern_count_4bit;
-    logic [3:0]  apt_target_pattern_1bit, apt_target_pattern_2bit;
-    logic [3:0]  apt_target_pattern_3bit, apt_target_pattern_4bit;
-    logic [9:0]  apt_samples_processed_1bit, apt_samples_processed_2bit;
-    logic [9:0]  apt_samples_processed_3bit, apt_samples_processed_4bit;
-    logic [15:0] count_01, count_10, count_00, count_11;
-    logic [7:0]  prob_01, prob_10, prob_00, prob_11;
+    logic [15:0] count_01, count_10;
 
     logic        fifo_push;
     logic [31:0] fifo_wdata, fifo_rdata;
     logic [6:0]  fifo_level;
     /* verilator lint_off UNUSEDSIGNAL */
-    logic [5:0]  fifo_wptr, fifo_rptr;  // bit [5] unused — only [4:0] used in registers
+    logic [5:0]  fifo_wptr, fifo_rptr;
     /* verilator lint_on UNUSEDSIGNAL */
     logic        fifo_error;
     logic        fifo_overflow, fifo_underflow;
@@ -161,12 +153,13 @@ module entropy_source
 
     logic health_test_clr;
     logic alert_cntrs_clr;
+    logic module_en_q;
+    logic module_en_pulse;
     logic alert_cntr_clr_ok;
 
     logic repcnt_fail_pulse;
     logic apt_hi_fail_pulse,    apt_lo_fail_pulse;
     logic markov_hi_fail_pulse, markov_lo_fail_pulse;
-    logic any_fail_pulse;
 
     logic [31:0] repcnt_total_fails;
     logic [31:0] apt_hi_total_fails,    apt_lo_total_fails;
@@ -185,6 +178,8 @@ module entropy_source
     logic apt_hi_alert_cntr_err,    apt_lo_alert_cntr_err;
     logic markov_hi_alert_cntr_err, markov_lo_alert_cntr_err;
     logic es_cntr_err;
+    logic generator_complex_cntr_err;
+    logic health_test_cntr_err;
 
     // FIPS configuration lock: asserted once FIPS_LOCK.LOCK is written,
     // cleared only by reset. Drives swwel on every certified-config field.
@@ -241,14 +236,13 @@ module entropy_source
     logic                    noise_obs_sample_stb;
     logic [31:0]             noise_obs_shift_q,  noise_obs_shift_d;
     logic [4:0]              noise_obs_bit_cnt_q, noise_obs_bit_cnt_d;
+    logic [3:0]              noise_obs_lane_sel_eff;
     logic [3:0]              noise_obs_lane_sel_q;
     logic                    noise_obs_word_push;
 
     /////////////////
     // Combinational
     /////////////////
-
-    assign rst_n = rst_ni & ~reg_out.CTRL.RESET.value;
 
     // Expose raw stream before whitener/FIFO for external monitoring
     assign entropy_stream_data_o = fifo_wdata;
@@ -262,10 +256,10 @@ module entropy_source
 
     entropy_generator_complex #(
         .NRINGS       (NRINGS),
-        .CLKDIV_WIDTH (20)  // TODO: update to 24 as future feature
+        .CLKDIV_WIDTH (20)
     ) u_generator_complex (
         .clk_i,
-        .rst_ni                                 (rst_n),
+        .rst_ni                                 (rst_ni),
         .sample_clk_i                           (rosc_sample_clk_i),
         .entropy_stream_o                       (entropy_stream),
         .entropy_stream_uncompressed_o          (entropy_stream_uncompressed),
@@ -304,9 +298,6 @@ module entropy_source
         .health_test_repetition_limit_i         (reg_out.HEALTH_TEST_CTRL.REPETITION_LIMIT.value),
         .health_test_proportion_limit_1bit_i    (reg_out.APT_PROPORTION_1BIT.LIMIT.value),
         .health_test_proportion_limit_lo_i      (reg_out.APT_PROPORTION_LO.LIMIT.value),
-        .health_test_proportion_limit_2bit_i    (reg_out.APT_PROPORTION_2BIT.LIMIT.value),
-        .health_test_proportion_limit_3bit_i    (reg_out.APT_PROPORTION_3BIT.LIMIT.value),
-        .health_test_proportion_limit_4bit_i    (reg_out.APT_PROPORTION_4BIT.LIMIT.value),
         .health_test_markov_prob_01_threshold_i (
             reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value),
         .health_test_markov_prob_10_threshold_i (
@@ -327,6 +318,9 @@ module entropy_source
         .generator_10_test_status_o             (generator_10_test_status),
         .generator_11_test_status_o             (generator_11_test_status),
 
+        // Per-lane and window-counter self-check error, folded into es_cntr_err
+        .count_err_o                            (generator_complex_cntr_err),
+
         // Window wrap pulse output
         .window_wrap_pulse_o                    (window_wrap_pulse)
     );
@@ -334,7 +328,7 @@ module entropy_source
     entropy_debug_monitor #(
         .NSIGNALS          (256)
     ) u_debug_monitor (
-        .rst_ni            (rst_n),
+        .rst_ni            (rst_ni),
         .select_signal_i   (reg_out.DEBUG_CTRL.SELECT_SIGNAL.value),
         .signal_i          ({32'h0, entropy_stream_uncompressed, 32'h0, whitened_data,
                              entropy_stream, 4'h0, sample_clk_monitor, 4'h0, noise_bit_monitor}),
@@ -368,16 +362,13 @@ module entropy_source
         .DATA_WIDTH                   (32)
     ) u_health_test (
         .clk_i                        (health_test_clk),
-        .rst_ni                       (rst_n),
+        .rst_ni                       (rst_ni),
         .entropy_i                    (entropy_stream),
         .entropy_valid_i              (health_test_valid_gated),
         .enable_i                     (reg_out.HEALTH_TEST_CTRL.ENABLE.value),
         .repetition_limit_i           (reg_out.HEALTH_TEST_CTRL.REPETITION_LIMIT.value),
         .proportion_limit_1bit_i      (reg_out.APT_PROPORTION_1BIT.LIMIT.value),
         .proportion_limit_lo_i        (reg_out.APT_PROPORTION_LO.LIMIT.value),
-        .proportion_limit_2bit_i      (reg_out.APT_PROPORTION_2BIT.LIMIT.value),
-        .proportion_limit_3bit_i      (reg_out.APT_PROPORTION_3BIT.LIMIT.value),
-        .proportion_limit_4bit_i      (reg_out.APT_PROPORTION_4BIT.LIMIT.value),
         // Markov test thresholds
         .markov_prob_01_threshold_i   (reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.value),
         .markov_prob_10_threshold_i   (reg_out.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.value),
@@ -385,30 +376,17 @@ module entropy_source
         .ctr_repetition_o             (ctr_repetition),
         .apt_pattern_count_1bit_o     (apt_pattern_count_1bit),
         .apt_pattern_count_2bit_o     (apt_pattern_count_2bit),
-        .apt_pattern_count_3bit_o     (apt_pattern_count_3bit),
-        .apt_pattern_count_4bit_o     (apt_pattern_count_4bit),
-        .apt_target_pattern_1bit_o    (apt_target_pattern_1bit),
-        .apt_target_pattern_2bit_o    (apt_target_pattern_2bit),
-        .apt_target_pattern_3bit_o    (apt_target_pattern_3bit),
-        .apt_target_pattern_4bit_o    (apt_target_pattern_4bit),
-        .apt_samples_processed_1bit_o (apt_samples_processed_1bit),
-        .apt_samples_processed_2bit_o (apt_samples_processed_2bit),
-        .apt_samples_processed_3bit_o (apt_samples_processed_3bit),
-        .apt_samples_processed_4bit_o (apt_samples_processed_4bit),
         .count_01_o                   (count_01),
         .count_10_o                   (count_10),
-        .count_00_o                   (count_00),
-        .count_11_o                   (count_11),
-        .prob_01_o                    (prob_01),
-        .prob_10_o                    (prob_10),
-        .prob_00_o                    (prob_00),
-        .prob_11_o                    (prob_11),
-        .status_o                     (health_status)
+        .apt_fail_hi_o                (apt_hi_fail_pulse),
+        .apt_fail_lo_o                (apt_lo_fail_pulse),
+        .status_o                     (health_status),
+        .count_err_o                  (health_test_cntr_err)
     );
 
     entropy_sha256_whitener u_sha256_whitener (
         .clk_i               (clk_i),
-        .rst_ni              (rst_n),
+        .rst_ni              (rst_ni),
         .entropy_valid_i     (entropy_stream_valid_gated),
         .entropy_data_i      (entropy_stream),
         .entropy_ready_o     (),  // Not used - no backpressure
@@ -425,7 +403,7 @@ module entropy_source
         .DEPTH (64)
     ) u_entropy_fifo (
         .clk_i,
-        .rst_ni                 (rst_n),
+        .rst_ni                 (rst_ni),
         .push_i                 (reg_out.FIFO_CTRL.ENABLE.value && fifo_push),
         .pop_i                  (reg_out.FIFO_RDATA.req && !reg_out.FIFO_RDATA.req_is_wr),
         .clr_i                  (1'b0),  // Main datapath FIFO is never flushed.
@@ -471,7 +449,7 @@ module entropy_source
         .DEPTH (64)
     ) u_biw_obs_fifo (
         .clk_i,
-        .rst_ni                 (rst_n),
+        .rst_ni                 (rst_ni),
         .push_i                 (biw_obs_push),
         .pop_i                  (biw_obs_pop),
         .clr_i                  (1'b0),  // Diagnostic tap: no lane switch, no flush.
@@ -490,8 +468,8 @@ module entropy_source
 
     // BIW_OBS_STATUS feeds (mirrors FIFO_STATUS layout).
     assign reg_in.BIW_OBS_STATUS.LEVEL.next = biw_obs_level;
-    assign reg_in.BIW_OBS_STATUS.WPTR.next  = biw_obs_wptr[4:0];
-    assign reg_in.BIW_OBS_STATUS.RPTR.next  = biw_obs_rptr[4:0];
+    assign reg_in.BIW_OBS_STATUS.WPTR.next  = biw_obs_wptr;
+    assign reg_in.BIW_OBS_STATUS.RPTR.next  = biw_obs_rptr;
 
     // External auto-advancing read port (mirror of the FIFO_RDATA pattern):
     // reading BIW_OBS_RDATA pops one word. rd_ack is guarded with rst_ni so a
@@ -517,15 +495,16 @@ module entropy_source
     // full FIFO simply drops the word (never stalls capture or the datapath).
     // ----------------------------------------------------------------------
 
-    // Lane mux. LANE_SEL is 4 bits (0-15) but NRINGS==12, so zero-pad the
-    // monitor vectors to 16 entries before indexing: out-of-range selects
-    // (12-15) then read a constant 0 (no lane -> no sample strobe -> the raw
-    // observe FIFO simply never fills), and the index can never exceed the
-    // array bound (no SELRANGE lint warning).
+    // Lane mux. LANE_SEL is 4 bits (0-15) but NRINGS==12. Clamp out-of-range
+    // selects (>=12) to lane 0, matching the RDL contract. Zero-padding to 16
+    // entries keeps the index within array bounds (no SELRANGE lint warning).
+    assign noise_obs_lane_sel_eff =
+        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value >= 4'(NRINGS))
+        ? 4'd0 : reg_out.NOISE_OBS_CTRL.LANE_SEL.value;
     assign noise_bit_monitor_ext  = {{(16 - NRINGS){1'b0}}, noise_bit_monitor};
     assign sample_clk_monitor_ext = {{(16 - NRINGS){1'b0}}, sample_clk_monitor};
-    assign noise_obs_raw_bit  = noise_bit_monitor_ext [reg_out.NOISE_OBS_CTRL.LANE_SEL.value];
-    assign noise_obs_raw_sclk = sample_clk_monitor_ext[reg_out.NOISE_OBS_CTRL.LANE_SEL.value];
+    assign noise_obs_raw_bit  = noise_bit_monitor_ext [noise_obs_lane_sel_eff];
+    assign noise_obs_raw_sclk = sample_clk_monitor_ext[noise_obs_lane_sel_eff];
 
     // Rising-edge strobe on the selected lane's sample clock: a fresh raw bit
     // is available once per rising edge of the (async, divided) sample clock.
@@ -549,7 +528,7 @@ module entropy_source
         noise_obs_bit_cnt_d = noise_obs_bit_cnt_q;
 
         if (!reg_out.NOISE_OBS_CTRL.RAW_ENABLE.value ||
-            (reg_out.NOISE_OBS_CTRL.LANE_SEL.value != noise_obs_lane_sel_q)) begin
+            (noise_obs_lane_sel_eff != noise_obs_lane_sel_q)) begin
             // Disabled or lane switched: restart the packer so a word never
             // mixes samples from two lanes.
             noise_obs_shift_d   = 32'h0;
@@ -576,7 +555,7 @@ module entropy_source
             noise_obs_sclk_sync <= {noise_obs_sclk_sync[0], noise_obs_sclk_meta};
             noise_obs_shift_q    <= noise_obs_shift_d;
             noise_obs_bit_cnt_q  <= noise_obs_bit_cnt_d;
-            noise_obs_lane_sel_q <= reg_out.NOISE_OBS_CTRL.LANE_SEL.value;
+            noise_obs_lane_sel_q <= noise_obs_lane_sel_eff;
         end
     end
 
@@ -590,14 +569,14 @@ module entropy_source
     // software force a discard on demand. The packer already restarts on the
     // same lane-change edge (see above), so packer and FIFO stay consistent.
     assign noise_obs_flush =
-        (reg_out.NOISE_OBS_CTRL.LANE_SEL.value != noise_obs_lane_sel_q)
+        (noise_obs_lane_sel_eff != noise_obs_lane_sel_q)
         || reg_out.NOISE_OBS_CTRL.FLUSH.value;
 
     entropy_fifo #(
         .DEPTH (64)
     ) u_noise_obs_fifo (
         .clk_i,
-        .rst_ni                 (rst_n),
+        .rst_ni                 (rst_ni),
         .push_i                 (noise_obs_push),
         .pop_i                  (noise_obs_pop),
         .clr_i                  (noise_obs_flush),
@@ -616,8 +595,8 @@ module entropy_source
 
     // NOISE_OBS_STATUS feeds (mirrors FIFO_STATUS layout).
     assign reg_in.NOISE_OBS_STATUS.LEVEL.next = noise_obs_level;
-    assign reg_in.NOISE_OBS_STATUS.WPTR.next  = noise_obs_wptr[4:0];
-    assign reg_in.NOISE_OBS_STATUS.RPTR.next  = noise_obs_rptr[4:0];
+    assign reg_in.NOISE_OBS_STATUS.WPTR.next  = noise_obs_wptr;
+    assign reg_in.NOISE_OBS_STATUS.RPTR.next  = noise_obs_rptr;
 
     // External auto-advancing read port (mirror of the FIFO_RDATA pattern):
     // reading NOISE_OBS_RDATA pops one word. rd_ack is guarded with rst_ni so a
@@ -630,6 +609,7 @@ module entropy_source
     // Sequential
     ///////////////
 
+    // The SEP TRNG reset reloads the downsample cadence with the rest of ESRC.
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             downsample_count <= reg_out.CTRL.DOWNSAMPLE_RATE.value;
@@ -773,8 +753,6 @@ module entropy_source
     // Register feeds
     ///////////////////
 
-    assign reg_in.STATUS.RSVD.next = 1'b0;
-
     // ----------------------------------------------------------------------
     // FIPS configuration lock (swwel REGWEN).
     //
@@ -788,7 +766,7 @@ module entropy_source
     //   ALERT_THRESHOLD/MIN_ENTROPY_H.
     // Left writable by design: BIW_OBS_CTRL.RAW_ENABLE and
     //   NOISE_OBS_CTRL.{RAW_ENABLE,LANE_SEL} (diagnostic copy-only observe
-    //   taps), CTRL.RESET, INTR_*, and the W1C status/fail-count fields — these
+    //   taps), INTR_*, and the W1C status/fail-count fields — these
     //   support interrupt servicing and the on-demand health-test trigger
     //   (4.3 req 5) without altering the certified configuration.
     // ----------------------------------------------------------------------
@@ -801,9 +779,6 @@ module entropy_source
     assign reg_in.MARKOV_TEST_PROB_THRESHOLDS.PROB_01_THRESHOLD.swwel = fips_lock;
     assign reg_in.MARKOV_TEST_PROB_THRESHOLDS.PROB_10_THRESHOLD.swwel = fips_lock;
     assign reg_in.APT_PROPORTION_1BIT.LIMIT.swwel                = fips_lock;
-    assign reg_in.APT_PROPORTION_2BIT.LIMIT.swwel                = fips_lock;
-    assign reg_in.APT_PROPORTION_3BIT.LIMIT.swwel                = fips_lock;
-    assign reg_in.APT_PROPORTION_4BIT.LIMIT.swwel                = fips_lock;
     assign reg_in.APT_PROPORTION_LO.LIMIT.swwel                  = fips_lock;
     assign reg_in.ALERT_THRESHOLD.THRESHOLD.swwel                = fips_lock;
     assign reg_in.MIN_ENTROPY_H.H.swwel                          = fips_lock;
@@ -925,38 +900,18 @@ module entropy_source
     assign irq_o = reg_out.INTR_STATUS.intr;
 
     assign reg_in.FIFO_STATUS.LEVEL.next = fifo_level;
-    assign reg_in.FIFO_STATUS.WPTR.next  = fifo_wptr[4:0];
-    assign reg_in.FIFO_STATUS.RPTR.next  = fifo_rptr[4:0];
+    assign reg_in.FIFO_STATUS.WPTR.next  = fifo_wptr;
+    assign reg_in.FIFO_STATUS.RPTR.next  = fifo_rptr;
 
     assign reg_in.HEALTH_TEST_STATUS.HEALTH_STATUS.next = health_status;
 
-    // APT counters (4 sample sizes)
-    assign reg_in.APT_PATTERN_COUNT_1BIT.PATTERN_COUNT.next     = apt_pattern_count_1bit;
-    assign reg_in.APT_PATTERN_COUNT_1BIT.TARGET_PATTERN.next    = apt_target_pattern_1bit;
-    assign reg_in.APT_PATTERN_COUNT_1BIT.SAMPLES_PROCESSED.next = apt_samples_processed_1bit;
-
-    assign reg_in.APT_PATTERN_COUNT_2BIT.PATTERN_COUNT.next     = apt_pattern_count_2bit;
-    assign reg_in.APT_PATTERN_COUNT_2BIT.TARGET_PATTERN.next    = apt_target_pattern_2bit;
-    assign reg_in.APT_PATTERN_COUNT_2BIT.SAMPLES_PROCESSED.next = apt_samples_processed_2bit;
-
-    assign reg_in.APT_PATTERN_COUNT_3BIT.PATTERN_COUNT.next     = apt_pattern_count_3bit;
-    assign reg_in.APT_PATTERN_COUNT_3BIT.TARGET_PATTERN.next    = apt_target_pattern_3bit;
-    assign reg_in.APT_PATTERN_COUNT_3BIT.SAMPLES_PROCESSED.next = apt_samples_processed_3bit;
-
-    assign reg_in.APT_PATTERN_COUNT_4BIT.PATTERN_COUNT.next     = apt_pattern_count_4bit;
-    assign reg_in.APT_PATTERN_COUNT_4BIT.TARGET_PATTERN.next    = apt_target_pattern_4bit;
-    assign reg_in.APT_PATTERN_COUNT_4BIT.SAMPLES_PROCESSED.next = apt_samples_processed_4bit;
+    assign reg_in.APT_PATTERN_COUNT_1BIT.PATTERN_COUNT.next = apt_pattern_count_1bit;
+    assign reg_in.APT_PATTERN_COUNT_2BIT.PATTERN_COUNT.next = apt_pattern_count_2bit;
 
     assign reg_in.REPETITION_TEST_COUNT.REPETITION_COUNT.next = ctr_repetition;
 
     assign reg_in.MARKOV_TEST_COUNTS_0.COUNT_01.next = count_01;
     assign reg_in.MARKOV_TEST_COUNTS_0.COUNT_10.next = count_10;
-    assign reg_in.MARKOV_TEST_COUNTS_1.COUNT_00.next = count_00;
-    assign reg_in.MARKOV_TEST_COUNTS_1.COUNT_11.next = count_11;
-    assign reg_in.MARKOV_TEST_PROBABILITIES.PROB_01.next = prob_01;
-    assign reg_in.MARKOV_TEST_PROBABILITIES.PROB_10.next = prob_10;
-    assign reg_in.MARKOV_TEST_PROBABILITIES.PROB_00.next = prob_00;
-    assign reg_in.MARKOV_TEST_PROBABILITIES.PROB_11.next = prob_11;
 
     assign reg_in.GENERATOR_0_HEALTH_STATUS.STATUS.next  = generator_0_test_status;
     assign reg_in.GENERATOR_1_HEALTH_STATUS.STATUS.next  = generator_1_test_status;
@@ -976,38 +931,43 @@ module entropy_source
     /////////////////////////////
 
     assign repcnt_fail_pulse    = health_status[0];
-    assign apt_hi_fail_pulse    = health_status[3];  // hi|lo combined in current design
-    assign apt_lo_fail_pulse    = 1'b0;
     assign markov_hi_fail_pulse = health_status[4];
     assign markov_lo_fail_pulse = health_status[5];
 
-    assign any_fail_pulse = repcnt_fail_pulse || apt_hi_fail_pulse || apt_lo_fail_pulse ||
-                            markov_hi_fail_pulse || markov_lo_fail_pulse;
+    // MODULE_ENABLE rising-edge detect (OpenTitan module_en_pulse).
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) module_en_q <= 1'b0;
+        else         module_en_q <= reg_out.CTRL.MODULE_ENABLE.value;
+    end
+    assign module_en_pulse = reg_out.CTRL.MODULE_ENABLE.value && !module_en_q;
 
-    assign health_test_clr  = reg_out.CTRL.RESET.value;
+    assign health_test_clr  = module_en_pulse;
     assign alert_cntr_clr_ok = alert_cntr_clr_ok_main_sm;
     assign alert_cntrs_clr  = health_test_clr ||
-                               (window_wrap_pulse && alert_cntr_clr_ok && !any_fail_pulse);
+                               (window_wrap_pulse && alert_cntr_clr_ok && !ht_fail_pulse);
 
     assign es_cntr_err = repcnt_fails_cntr_err    || apt_hi_fails_cntr_err  ||
                          apt_lo_fails_cntr_err     || markov_hi_fails_cntr_err ||
                          markov_lo_fails_cntr_err  || any_fails_cntr_err    ||
                          repcnt_alert_cntr_err     || apt_hi_alert_cntr_err ||
                          apt_lo_alert_cntr_err     || markov_hi_alert_cntr_err ||
-                         markov_lo_alert_cntr_err;
+                         markov_lo_alert_cntr_err  || generator_complex_cntr_err ||
+                         health_test_cntr_err;
 
-    // per-window sticky health-test-fail latch for the boot gate.
+    // per-window sticky health-test-fail latch.
     //
-    // ht_fail_pulse samples health only at window wrap. APT/Markov are
-    // window-aligned, but the RCT is *continuous* — a mid-window failure that
-    // is not coincident with the wrap cycle could otherwise slip the boot gate
-    // and let a stuck source pass startup. This sticky latch records any
-    // |health_status assertion occurring during the window and holds it until
-    // the wrap cycle samples it, then clears for the next window. The sampled
-    // sticky value is OR'd into ht_fail_pulse so any mid-window failure forces
-    // a boot-window restart in main_sm.
-    always_ff @(posedge clk_i or negedge rst_n) begin
-        if (!rst_n) begin
+    // ht_fail_pulse is the canonical "one assertion per failing window" signal:
+    // it drives the boot gate, the ANY_FAIL_COUNT failing-window counter, and
+    // the clean-window alert-counter clear. It samples health only at window
+    // wrap. APT/Markov are window-aligned, but the RCT is *continuous* — a
+    // mid-window failure that is not coincident with the wrap cycle would
+    // otherwise be missed (slipping the boot gate, or under-counting failing
+    // windows). This sticky latch records any |health_status assertion
+    // occurring during the window and holds it until the wrap cycle samples it,
+    // then clears for the next window. The sampled sticky value is OR'd into
+    // ht_fail_pulse so any mid-window failure counts as one failing window.
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
             ht_fail_sticky_q <= 1'b0;
         end else if (window_wrap_pulse) begin
             // Sampled this cycle by ht_fail_pulse; restart accumulation. Capture
@@ -1033,20 +993,26 @@ module entropy_source
 
     // auto-detune fired.
     //
-    // AUTOTUNE_FAIL flags that an automatic per-lane retune ACTED, not that the
-    // autotune logic malfunctioned. When CTRL.AUTOTUNE_ENABLE=1, a health-test
-    // failure triggers a self-heal detune; that detune silently changes the
-    // noise-source geometry, which is a certification-relevant event. Pulsing
-    // autotune_fail on the triggering HT failure makes the otherwise-silent
-    // self-heal observable via INTR_STATUS.AUTOTUNE_FAIL. In the certified
-    // config AUTOTUNE_ENABLE is swwel-locked to 0, so this path stays idle and
-    // the geometry cannot self-adjust. autotune_fail feeds only the interrupt;
-    // any_fail_count and the ALERT_THRESHOLD persistent-halt path are separate.
-    assign autotune_fail = reg_out.CTRL.AUTOTUNE_ENABLE.value && ht_fail_pulse;
+    // AUTOTUNE_FAIL flags that an automatic per-lane retune acted. Each lane's
+    // tune FSM is driven by that lane's own health-test status, so the report is
+    // the OR of the twelve per-lane HT-fail signals gated by AUTOTUNE_ENABLE.
+    // When CTRL.AUTOTUNE_ENABLE=1 a per-lane HT failure triggers a self-heal
+    // detune that changes the noise-source geometry, a certification-relevant
+    // event surfaced via INTR_STATUS.AUTOTUNE_FAIL. In the certified config
+    // AUTOTUNE_ENABLE is swwel-locked to 0, so this path stays idle.
+    // autotune_fail feeds only the interrupt; the ALERT_THRESHOLD
+    // persistent-halt path is separate.
+    assign autotune_fail = reg_out.CTRL.AUTOTUNE_ENABLE.value &&
+                           |{generator_0_test_status,  generator_1_test_status,
+                             generator_2_test_status,  generator_3_test_status,
+                             generator_4_test_status,  generator_5_test_status,
+                             generator_6_test_status,  generator_7_test_status,
+                             generator_8_test_status,  generator_9_test_status,
+                             generator_10_test_status, generator_11_test_status};
 
     entropy_src_main_sm u_main_sm (
         .clk_i               (clk_i),
-        .rst_ni              (rst_n),
+        .rst_ni              (rst_ni),
         .enable_i            (reg_out.CTRL.MODULE_ENABLE.value),
         .fw_ov_ent_insert_i  (1'b0),  // Firmware entropy injection not used.
         .fw_ov_sha3_start_i  (1'b0),
@@ -1092,9 +1058,9 @@ module entropy_source
         endcase
     end
 
-    // Register the resolved value
-    always_ff @(posedge clk_i or negedge rst_n) begin
-        if (!rst_n) begin
+    // Register the resolved value; selector and watermark reset together.
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
             ht_watermark_num_q <= REPCNT_HI;
         end else begin
             ht_watermark_num_q <= ht_watermark_num_d;
@@ -1141,9 +1107,6 @@ module entropy_source
         endcase
     end
 
-    // Prevent watermark register updates while the module disabled. Upon enabling, we then clear
-    // the watermark register before we start recording.
-    // |ENABLE: reduce the 8-bit ENABLE field to a 1-bit enable (nonzero = enabled)
     assign ht_watermark_event = ht_watermark_event_pre && (|reg_out.HEALTH_TEST_CTRL.ENABLE.value);
 
     assign repcnt_event_cnt    = ctr_repetition;
@@ -1157,7 +1120,7 @@ module entropy_source
         .ResVal   (16'h0)
     ) u_entropy_src_ht_watermark_reg (
         .clk_i    (clk_i),
-        .rst_ni   (rst_n),
+        .rst_ni   (rst_ni),
         .high_i   (ht_watermark_high),
         .clear_i  (health_test_clr),
         .oneway_i (1'b1),
@@ -1170,7 +1133,7 @@ module entropy_source
         .RegWidth (32)
     ) u_entropy_src_cntr_reg_repcnt (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (health_test_clr),
         .event_i (repcnt_fail_pulse),
         .step_i  (32'd1),
@@ -1182,7 +1145,7 @@ module entropy_source
         .RegWidth (32)
     ) u_entropy_src_cntr_reg_apt_hi (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (health_test_clr),
         .event_i (apt_hi_fail_pulse),
         .step_i  (32'd1),
@@ -1194,7 +1157,7 @@ module entropy_source
         .RegWidth (32)
     ) u_entropy_src_cntr_reg_apt_lo (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (health_test_clr),
         .event_i (apt_lo_fail_pulse),
         .step_i  (32'd1),
@@ -1206,7 +1169,7 @@ module entropy_source
         .RegWidth (32)
     ) u_entropy_src_cntr_reg_markov_hi (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (health_test_clr),
         .event_i (markov_hi_fail_pulse),
         .step_i  (32'd1),
@@ -1218,7 +1181,7 @@ module entropy_source
         .RegWidth (32)
     ) u_entropy_src_cntr_reg_markov_lo (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (health_test_clr),
         .event_i (markov_lo_fail_pulse),
         .step_i  (32'd1),
@@ -1230,9 +1193,9 @@ module entropy_source
         .RegWidth (16)
     ) u_entropy_src_cntr_reg_any_alert_fails (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (alert_cntrs_clr),
-        .event_i (any_fail_pulse),
+        .event_i (ht_fail_pulse),
         .step_i  (16'd1),
         .value_o (any_fail_count),
         .err_o   (any_fails_cntr_err)
@@ -1242,7 +1205,7 @@ module entropy_source
         .RegWidth (4)
     ) u_entropy_src_cntr_reg_repcnt_alert (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (alert_cntrs_clr),
         .event_i (repcnt_fail_pulse),
         .step_i  (4'd1),
@@ -1254,7 +1217,7 @@ module entropy_source
         .RegWidth (4)
     ) u_entropy_src_cntr_reg_apt_hi_alert (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (alert_cntrs_clr),
         .event_i (apt_hi_fail_pulse),
         .step_i  (4'd1),
@@ -1266,7 +1229,7 @@ module entropy_source
         .RegWidth (4)
     ) u_entropy_src_cntr_reg_apt_lo_alert (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (alert_cntrs_clr),
         .event_i (apt_lo_fail_pulse),
         .step_i  (4'd1),
@@ -1278,7 +1241,7 @@ module entropy_source
         .RegWidth (4)
     ) u_entropy_src_cntr_reg_markov_hi_alert (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (alert_cntrs_clr),
         .event_i (markov_hi_fail_pulse),
         .step_i  (4'd1),
@@ -1290,7 +1253,7 @@ module entropy_source
         .RegWidth (4)
     ) u_entropy_src_cntr_reg_markov_lo_alert (
         .clk_i   (clk_i),
-        .rst_ni  (rst_n),
+        .rst_ni  (rst_ni),
         .clear_i (alert_cntrs_clr),
         .event_i (markov_lo_fail_pulse),
         .step_i  (4'd1),

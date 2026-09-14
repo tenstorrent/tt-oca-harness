@@ -1,2 +1,4 @@
-"""Static DV/FV dashboard generation helpers."""
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+"""Static DV/FV dashboard generation helpers."""

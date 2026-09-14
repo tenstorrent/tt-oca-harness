@@ -2,26 +2,26 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT CS Timing Test - TC_SPIOT_019 (P1)
+ * SPI OT CS Timing Test
  *
  * Verifies CS timing parameter configuration and write-readback correctness
  * for the CFG register fields: CSNIDLE, CSNLEAD, CSNTRAIL.
  *
  * CFG register fields (all 4-bit, range 0–15):
- *   CFG.CSNIDLE  [27:24]: CS idle time between back-to-back transfers
- *   CFG.CSNLEAD  [23:20]: CS setup time before first SCLK edge
- *   CFG.CSNTRAIL [19:16]: CS hold time after last SCLK edge
+ * CFG.CSNIDLE  [27:24]: CS idle time between back-to-back transfers
+ * CFG.CSNLEAD  [23:20]: CS setup time before first SCLK edge
+ * CFG.CSNTRAIL [19:16]: CS hold time after last SCLK edge
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Write min values (all 0): readback verify
- *   3. Write max values (all 15): readback verify
- *   4. Write mixed values (CSNIDLE=5, CSNLEAD=10, CSNTRAIL=3): readback verify
- *   5. Restore to working values (CSNIDLE=2, CSNLEAD=2, CSNTRAIL=2)
- *   6. Issue a simple TX command to verify SPI still operates correctly
+ * 1. Enable controller
+ * 2. Write min values (all 0): readback verify
+ * 3. Write max values (all 15): readback verify
+ * 4. Write mixed values (CSNIDLE=5, CSNLEAD=10, CSNTRAIL=3): readback verify
+ * 5. Restore to working values (CSNIDLE=2, CSNLEAD=2, CSNTRAIL=2)
+ * 6. Issue a simple TX command to verify SPI still operates correctly
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_cs_timing_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_cs_timing_test STACK=sim
  *
  */
 
@@ -32,7 +32,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -41,16 +40,16 @@ static int check_timing(const char *label, uint32_t csnidle, uint32_t csnlead, u
     int ok = 1;
     printf("  %s:\n", label);
     if (csnidle != exp_csnidle) {
-        printf("    CSNIDLE:  %u (expected %u) - FAIL\n", csnidle, exp_csnidle);
+        printf("    CSNIDLE: %u (expected %u) - FAIL\n", csnidle, exp_csnidle);
         ok = 0;
     } else {
-        printf("    CSNIDLE:  %u - PASS\n", csnidle);
+        printf("    CSNIDLE: %u - PASS\n", csnidle);
     }
     if (csnlead != exp_csnlead) {
-        printf("    CSNLEAD:  %u (expected %u) - FAIL\n", csnlead, exp_csnlead);
+        printf("    CSNLEAD: %u (expected %u) - FAIL\n", csnlead, exp_csnlead);
         ok = 0;
     } else {
-        printf("    CSNLEAD:  %u - PASS\n", csnlead);
+        printf("    CSNLEAD: %u - PASS\n", csnlead);
     }
     if (csntrail != exp_csntrail) {
         printf("    CSNTRAIL: %u (expected %u) - FAIL\n", csntrail, exp_csntrail);
@@ -76,7 +75,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT CS Timing Test (TC_SPIOT_019)\n");
+    printf("SPI OT CS Timing Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -84,9 +83,6 @@ int main(void) {
     spi_controller__CFG_t cfg;
     spi_controller__CMD_t cmd;
     spi_controller__ERROR_STATUS_t err_status;
-
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;

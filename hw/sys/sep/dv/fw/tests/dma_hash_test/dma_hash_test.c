@@ -21,14 +21,8 @@
 #include "sha256.h"
 #include "sep_pic.h"
 
-// Interrupt source IDs (from hw/sys/sep/rtl/sep.sv). PIC source = internal index + 1
-// (VeeR EL2 PIC source 0 is the tied no-interrupt source). After the 8-slot
-// mailbox reallocation (#3004), the DMA interrupts moved up by 8:
-//   intr_dma_done       -> sep_internal_interrupts[8]  -> PIC source 9
-//   intr_dma_chunk_done -> sep_internal_interrupts[10] -> PIC source 11
-//   intr_dma_error      -> sep_internal_interrupts[11] -> PIC source 12
+// PIC source = sep_internal_interrupts index + 1 (done [8]->9, error [11]->12).
 #define EXT_INT_DMA_DONE 9
-#define EXT_INT_DMA_CHUNK_DONE 11
 #define EXT_INT_DMA_ERROR 12
 
 // Flag set by interrupt handler
@@ -44,23 +38,11 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
 }
 
 // CFG_REGWEN values (multi-bit bool)
-#define MUBI4_TRUE 0x6  // Unlocked
-#define MUBI4_FALSE 0x9 // Locked
+#define MUBI4_TRUE 0x6 // Unlocked
 
-// ASID values (from RDL enum asid_e)
-#define ASID_OT_ADDR 0x7  // OpenTitan 32-bit internal bus
-#define ASID_SYS_ADDR 0x9 // SoC system address bus
-#define ASID_SOC_ADDR 0xa // SoC control register bus
-
-// Opcode values (from RDL enum opcode_e)
-#define OPCODE_COPY 0x0
+// ASID / opcode / width used by this SHA-256 copy.
+#define ASID_OT_ADDR 0x7
 #define OPCODE_SHA256 0x1
-#define OPCODE_SHA384 0x2
-#define OPCODE_SHA512 0x3
-
-// Transfer width values (from RDL enum transfer_width_e)
-#define TRANSFER_WIDTH_ONE_BYTE 0x0
-#define TRANSFER_WIDTH_TWO_BYTE 0x1
 #define TRANSFER_WIDTH_FOUR_BYTE 0x2
 
 // Test data size in bytes - must be a multiple of 4
@@ -107,6 +89,7 @@ int main(void) {
     pic_enable_source(EXT_INT_DMA_DONE);
     pic_enable_source(EXT_INT_DMA_ERROR);
     pic_enable_interrupts();
+    printf("STEP filter init done; DMA done/error handlers registered\n");
 
     int errors = 0;
 
@@ -117,7 +100,13 @@ int main(void) {
     printf("CFG_REGWEN = 0x%x (expected 0x%x for unlocked)\n", cfg_regwen, MUBI4_TRUE);
 
     if ((cfg_regwen & 0xF) != MUBI4_TRUE) {
-        printf("WARNING: DMA may be busy or locked\n");
+        // Must count as an error, not warn and continue. This is the only check
+        // that the config write-enable is actually open before we program the
+        // DMA; if it merely warned, a CFG_REGWEN stuck locked or reading as an
+        // unmapped 0x0 would print a line nobody reads and the test would still
+        // pass while claiming the lock was verified open.
+        printf("ERROR: CFG_REGWEN not unlocked (DMA busy or locked)\n");
+        errors++;
     }
 
     //==========================================================================
@@ -173,7 +162,8 @@ int main(void) {
            READ_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
 
     // Set the transfer width to 4 bytes
-    secure_dma__TRANSFER_WIDTH_t transfer_width = {.f = {.WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
+    secure_dma__TRANSFER_WIDTH_t transfer_width = {
+        .f = {.TRANSACTION_WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, transfer_width.w);
 
     // Set the chunk data size (single chunk = total size)
@@ -287,7 +277,7 @@ int main(void) {
 
     uint32_t expected_hash[8];
     for (int i = 0; i < 8; i++) {
-        expected_hash[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR + i * 4);
+        expected_hash[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
     }
 
     // Cast the 32-bit array to an 8-bit pointer for memcmp
@@ -320,15 +310,20 @@ int main(void) {
     // Get pointer to DCCM for comparison (must match DMA_DST_ADDR)
     volatile uint32_t *dccm_ptr = (volatile uint32_t *)DMA_DST_ADDR;
 
+    int copy_mismatches = 0;
     for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
         if (src_ptr[i] != dccm_ptr[i]) {
             printf("  ERROR: Data mismatch at offset 0x%x: SRAM=0x%08x, DCCM=0x%08x\n", i * 4,
                    src_ptr[i], dccm_ptr[i]);
             errors++;
+            copy_mismatches++;
         }
     }
 
-    printf("  PASS: SRAM and DCCM data matches!\n");
+    // Gate the pass token on the compare it claims to report.
+    if (copy_mismatches == 0) {
+        printf("  PASS: SRAM and DCCM data matches!\n");
+    }
 
     printf("\n=== Test Summary ===\n");
 

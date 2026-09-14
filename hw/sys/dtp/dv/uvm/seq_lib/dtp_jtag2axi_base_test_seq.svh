@@ -1,0 +1,576 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// JTAG2AXI family layer of the DTP scenario sequences — the SV analogue of
+// the cocotb dtp_jtag2axi_base_test_seq and dtp_jtag2axi_cmd_lib_seq. Every
+// bridge request is a reusable operation on the primary TAP sequencer
+// (dtp_jtag2axi_single_op_seq / _single_status_seq / _series_ctrl_seq /
+// _series_data_seq, all built on the dtp_types codec); this layer adds the
+// bridge geometry lookups, the status polling bound, the evidence arming,
+// the responder backdoor through the virtual sequencer's responder
+// sequences, the lifecycle debug-disable gating, and the request-activity
+// evidence from the dtp_tb_if pulse counters.
+//
+// The responders are shared ocah_axi_vip UVM slave agents reached through
+// the virtual sequencer by target name; the test plumbs the
+// target-under-test evidence bundle (axi_cfg / axi_evidence / axi_ref_model)
+// before start(). Error arming discipline: arm_target_error() programs the
+// responder injection AND cfg.arm_expected_resp() in one place, so the
+// injected non-OKAY is EXPECTED for the shared AXI scoreboard;
+// clear_target_error() reverses both. test_cfg.axi_scoreboard_negative
+// (+DTP_AXI_SCOREBOARD_NEGATIVE) is the negative-validation hook: it arms
+// the WRONG expected response so the run must FAIL, proving the checker
+// rejects a bad expectation end to end.
+//
+// Gated attempts must never arm credits: issue_single() skips intent arming
+// whenever the target's lifecycle disable is asserted (an armed credit that
+// is never consumed correctly fails at check_phase). The lifecycle debug
+// disables reset to the fail-closed '1 tie-off, so the target's disable
+// must be cleared before any JTAG2AXI op.
+
+class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
+  `uvm_object_utils(dtp_jtag2axi_base_test_seq)
+
+  // Plumbed by the test for the target under test: the shared AXI VIP
+  // passive cfg (expected-response/intent arming), its scoreboard evidence
+  // recorder, and the passive reference model (backdoor-preload mirror).
+  ocah_axi_config    axi_cfg;
+  ocah_axi_checker   axi_evidence;
+  ocah_axi_ref_model axi_ref_model;
+
+  // Settle after programming or clearing responder error injection
+  // (system-domain cycles).
+  localparam int unsigned InjectSettleCycles = 2;
+
+  function new(string name = "dtp_jtag2axi_base_test_seq");
+    super.new(name);
+  endfunction
+
+  // --- bridge geometry and codec (dtp_types; kept under their short names
+  //     for the scenario bodies) ------------------------------------------
+  static function dtp_j2a_target_t target_smc_otp();
+    return dtp_j2a_target_smc_otp();
+  endfunction
+
+  static function dtp_j2a_target_t target_sep_otp();
+    return dtp_j2a_target_sep_otp();
+  endfunction
+
+  static function dtp_j2a_target_t target_smc_axi();
+    return dtp_j2a_target_smc_axi();
+  endfunction
+
+  static function int unsigned single_op_len(dtp_j2a_target_t t);
+    return dtp_j2a_single_op_len(t);
+  endfunction
+
+  static function int unsigned series_ctrl_len(dtp_j2a_target_t t);
+    return dtp_j2a_series_ctrl_len(t);
+  endfunction
+
+  static function dtp_j2a_status_e axi_resp_to_status(ocah_axi_resp_e resp);
+    return dtp_j2a_axi_resp_to_status(resp);
+  endfunction
+
+  static function int unsigned size_bytes(int unsigned size);
+    return dtp_j2a_size_bytes(size);
+  endfunction
+
+  static function bit [63:0] data_mask(int unsigned size);
+    return dtp_j2a_data_mask(size);
+  endfunction
+
+  static function bit [7:0] full_wstrb(int unsigned size);
+    return dtp_j2a_full_wstrb(size);
+  endfunction
+
+  function bit [63:0] mask_target_data(dtp_j2a_target_t t, bit [63:0] value);
+    return value & bit_mask(t.data_width);
+  endfunction
+
+  // Beat-aligned random address inside the responder memory window; wider
+  // alignment when the transfer size exceeds the beat.
+  function bit [63:0] random_target_aligned_addr(dtp_j2a_target_t t, int unsigned size);
+    int unsigned align = (size_bytes(size) > t.beat_bytes) ? size_bytes(size)
+                                                               : t.beat_bytes;
+    int unsigned max_slot = (DtpJ2aTargetMemBytes - align) / align;
+    return 64'($urandom_range(max_slot) * align);
+  endfunction
+
+  // --- responder backdoor memory (shared slave agents) --------------------
+  // The target's responder sequence from the virtual sequencer.
+  protected function ocah_axi_slave_sequence responder(dtp_j2a_target_t t);
+    ocah_axi_slave_sequence seq = p_sequencer.axi_slave_seq(t.name);
+    if (seq == null)
+      `uvm_fatal(get_type_name(), $sformatf(
+                 "%s responder sequence not wired on the virtual sequencer", t.name))
+    return seq;
+  endfunction
+
+  // Backdoor-preload the responder RAM; mirrored into the passive reference
+  // model's shadow so front-door reads of preloaded data compare clean.
+  function void write_target_mem_int(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] value,
+                                     int unsigned size);
+    bit [7:0] payload[];
+    bit [63:0] masked = value & data_mask(size);
+    responder(t).write_int(addr, masked, size_bytes(size));
+    payload = new[size_bytes(size)];
+    foreach (payload[i]) payload[i] = masked[8*i+:8];
+    if (axi_ref_model != null) axi_ref_model.backdoor_write(addr, payload);
+  endfunction
+
+  function bit [63:0] read_target_mem_int(dtp_j2a_target_t t, bit [63:0] addr, int unsigned size);
+    return responder(t).read_int(addr, size_bytes(size)) & data_mask(size);
+  endfunction
+
+  // CHK-AXI-WMEM: responder RAM bytes versus the stimulus intent.
+  function void check_target_memory(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] expected,
+                                    int unsigned size, string context_s);
+    bit [63:0] observed = read_target_mem_int(t, addr, size);
+    if (axi_evidence != null)
+      void'(axi_evidence.expect_equal(
+          "CHK-AXI-WMEM",
+          observed,
+          expected & data_mask(
+              size
+          ),
+          $sformatf(
+              "%s target=%s addr=0x%0h bytes=%0d source=stimulus-intent",
+              context_s,
+              t.name,
+              addr,
+              size_bytes(
+                  size
+              ))
+      ));
+    else if (observed !== (expected & data_mask(size)))
+      `uvm_error("jtag2axi_mem_chk", $sformatf(
+                 "%s: memory at 0x%0h is 0x%0h, expected 0x%0h",
+                 context_s,
+                 addr,
+                 observed,
+                 expected & data_mask(
+                     size
+                 )
+                 ))
+  endfunction
+
+  // --- single-op TDR flow ------------------------------------------------
+  task issue_single(dtp_j2a_target_t t, dtp_j2a_op_e op, bit [63:0] addr, bit [63:0] data = '0,
+                    bit [7:0] wstrb = '0, int unsigned size = 0, bit use_default_size = 1'b1);
+    int unsigned eff_size = use_default_size ? t.default_size : size;
+    `uvm_info(get_type_name(), $sformatf(
+                                   "%s SINGLE_OP %s addr=0x%0h data=0x%0h wstrb=0x%0h size=%0d",
+                                   t.name, op.name(), addr, data, wstrb, eff_size), UVM_MEDIUM)
+    // Stimulus-intent records: the address/data/wstrb programmed into the
+    // TDR is the truth the observed bus transaction must match
+    // (CHK-AXI-WADDR / CHK-AXI-WDATA / CHK-AXI-STRB / CHK-AXI-RADDR).
+    // Gated ops never reach the bus: do not arm intents while the
+    // target's disable is asserted (the no-activity evidence owns that
+    // case; a dangling intent would false-fail at check_phase).
+    if (op == DTP_J2A_OP_WRITE && axi_cfg != null && target_enabled(t))
+      axi_cfg.arm_expected_write(addr & bit_mask(t.addr_width), data & bit_mask(t.data_width),
+                                 wstrb);
+    if (op == DTP_J2A_OP_READ && axi_cfg != null && target_enabled(t))
+      axi_cfg.arm_expected_read(addr & bit_mask(t.addr_width));
+    begin
+      dtp_jtag2axi_single_op_seq req = dtp_jtag2axi_single_op_seq::type_id::create("single_op");
+      req.target = t;
+      req.op     = op;
+      req.addr   = addr;
+      req.data   = data;
+      req.wstrb  = wstrb;
+      req.size   = eff_size;
+      run_jtag_op(req);
+    end
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SINGLE_OP request");
+    note_tdr_access(single_op_len(t), $sformatf("%s single_op request", t.name));
+  endtask
+
+  // Poll SINGLE_OP (shifting zeros) until the bridge leaves BUSY_OR_FULL,
+  // then land CHK-AXI-COMPLETION: a bridge stuck BUSY within the poll
+  // bound fails (every call site expects a final, settled status).
+  task poll_single(dtp_j2a_target_t t, output dtp_j2a_status_e status, output bit [63:0] rdata,
+                   input string context_s = "single_op");
+    status = DTP_J2A_BUSY_OR_FULL;
+    rdata  = '0;
+    for (int unsigned poll = 0; poll < DtpJ2aMaxStatusPolls; poll++) begin
+      dtp_jtag2axi_single_status_seq st = dtp_jtag2axi_single_status_seq::type_id::create(
+          "single_status"
+      );
+      st.target = t;
+      run_jtag_op(st);
+      check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SINGLE_OP status capture");
+      check_last_scan_length(1'b0, single_op_len(t), $sformatf("%s status poll", t.name));
+      note_scan(1'b0, single_op_len(t));
+      status = st.status;
+      rdata  = st.rdata;
+      if (status != DTP_J2A_BUSY_OR_FULL) break;
+    end
+    `uvm_info(get_type_name(), $sformatf("%s SINGLE_OP status=%s rdata=0x%0h", t.name,
+                                         status.name(), rdata), UVM_MEDIUM)
+    if (axi_evidence != null)
+      void'(axi_evidence.expect_true(
+          "CHK-AXI-COMPLETION",
+          status != DTP_J2A_BUSY_OR_FULL,
+          $sformatf(
+              "%s target=%s polls=%0d", context_s, t.name, DtpJ2aMaxStatusPolls)
+      ));
+  endtask
+
+  task single_write(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data, bit [7:0] wstrb,
+                    output dtp_j2a_status_e status, input int unsigned size = 0,
+                    input bit use_default_size = 1'b1, input string context_s = "single_write");
+    bit [63:0] unused_rdata;
+    issue_single(t, DTP_J2A_OP_WRITE, addr, data, wstrb, size, use_default_size);
+    poll_single(t, status, unused_rdata, context_s);
+  endtask
+
+  task single_read(dtp_j2a_target_t t, bit [63:0] addr, output dtp_j2a_status_e status,
+                   output bit [63:0] rdata, input int unsigned size = 0,
+                   input bit use_default_size = 1'b1, input string context_s = "single_read");
+    issue_single(t, DTP_J2A_OP_READ, addr, '0, '0, size, use_default_size);
+    poll_single(t, status, rdata, context_s);
+  endtask
+
+  function void check_status(string context_s, dtp_j2a_status_e observed,
+                             dtp_j2a_status_e expected);
+    if (observed !== expected)
+      `uvm_error("jtag2axi_status_chk", $sformatf(
+                 "%s: JTAG2AXI status %s, expected %s", context_s, observed.name(), expected.name()
+                 ))
+    else
+      `uvm_info("jtag2axi_status_chk", $sformatf(
+                "%s: JTAG2AXI status %s as expected", context_s, observed.name()), UVM_MEDIUM)
+  endfunction
+
+  // --- checked single operations (cocotb *_and_check parity) --------------
+  // Write, poll to completion, and verify enabled byte lanes landed in the
+  // responder memory.
+  task write_target_single_and_check(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data,
+                                     output dtp_j2a_status_e status, input int unsigned size,
+                                     input bit [7:0] wstrb = 8'hFF,
+                                     input string context_s = "single_write");
+    bit [63:0] observed;
+    bit [63:0] masked = data & data_mask(size);
+    single_write(t, addr, masked, wstrb, status, size, 1'b0, context_s);
+    check_status({context_s, ".status"}, status, DTP_J2A_SUCCESS);
+    observed = read_target_mem_int(t, addr, size);
+    for (int unsigned lane = 0; lane < size_bytes(size); lane++) begin
+      if (wstrb[lane]) begin
+        if (observed[8*lane+:8] !== masked[8*lane+:8])
+          `uvm_error("jtag2axi_data_chk", $sformatf(
+                     "%s.byte%0d: memory 0x%02h != written 0x%02h (addr=0x%0h wstrb=0x%02h)",
+                     context_s,
+                     lane,
+                     observed[8*lane+:8],
+                     masked[8*lane+:8],
+                     addr + lane,
+                     wstrb
+                     ))
+      end
+    end
+  endtask
+
+  // Read, poll to completion, and verify the returned data.
+  task read_target_single_and_check(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] expected,
+                                    output dtp_j2a_status_e status, input int unsigned size,
+                                    input string context_s = "single_read");
+    bit [63:0] rdata;
+    single_read(t, addr, status, rdata, size, 1'b0, context_s);
+    check_status({context_s, ".status"}, status, DTP_J2A_SUCCESS);
+    if ((rdata & data_mask(size)) !== (expected & data_mask(size)))
+      `uvm_error("jtag2axi_data_chk", $sformatf(
+                 "%s: rdata 0x%0h != expected 0x%0h (addr=0x%0h size=%0d)",
+                 context_s,
+                 rdata & data_mask(
+                     size
+                 ),
+                 expected & data_mask(
+                     size
+                 ),
+                 addr,
+                 size
+                 ))
+  endtask
+
+  // Error-path variants: complete and verify the requested status.
+  task write_target_single_expect_status(
+      dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data, dtp_j2a_status_e expected_status,
+      output dtp_j2a_status_e status, input int unsigned size, input bit [7:0] wstrb = 8'hFF,
+      input string context_s = "single_write_error");
+    single_write(t, addr, data & data_mask(size), wstrb, status, size, 1'b0, context_s);
+    check_status({context_s, ".status"}, status, expected_status);
+  endtask
+
+  task read_target_single_expect_status(
+      dtp_j2a_target_t t, bit [63:0] addr, dtp_j2a_status_e expected_status,
+      output dtp_j2a_status_e status, output bit [63:0] rdata, input int unsigned size,
+      input string context_s = "single_read_error");
+    single_read(t, addr, status, rdata, size, 1'b0, context_s);
+    check_status({context_s, ".status"}, status, expected_status);
+  endtask
+
+  // Verify an OKAY access after an error/reset path to catch stuck state.
+  task verify_target_recovery(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data, bit is_read,
+                              string context_s);
+    dtp_j2a_status_e status;
+    int unsigned size = t.default_size;
+    if (is_read) begin
+      write_target_mem_int(t, addr, data, size);
+      read_target_single_and_check(t, addr, data, status, size, {context_s, ".recover_read"});
+    end else begin
+      write_target_single_and_check(t, addr, data, status, size, full_wstrb(size), {
+                                    context_s, ".recover_write"});
+      // CHK-AXI-WMEM against the STIMULUS intent (non-circular).
+      check_target_memory(t, addr, data, size, {context_s, ".recover_write"});
+    end
+  endtask
+
+  // --- series TDR flow -----------------------------------------------------
+  // Program SERIES_CTRL (WRITE/READ arms a stream; NOP+reset clears it).
+  task series_ctrl_op(dtp_j2a_target_t t, dtp_j2a_op_e op, bit [63:0] addr, int unsigned size,
+                      int unsigned pipeline_depth = 0, bit series_reset = 1'b0);
+    dtp_jtag2axi_series_ctrl_seq ctrl = dtp_jtag2axi_series_ctrl_seq::type_id::create(
+        "series_ctrl"
+    );
+    `uvm_info(get_type_name(),
+              $sformatf("%s SERIES_CTRL %s addr=0x%0h size=%0d pl_depth=%0d reset=%0d", t.name,
+                        op.name(), addr, size, pipeline_depth, series_reset), UVM_MEDIUM)
+    ctrl.target         = t;
+    ctrl.op             = op;
+    ctrl.addr           = addr;
+    ctrl.size           = size;
+    ctrl.pipeline_depth = pipeline_depth;
+    ctrl.series_reset   = series_reset;
+    run_jtag_op(ctrl);
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_CTRL scan");
+    note_tdr_access(series_ctrl_len(t), $sformatf("%s series_ctrl", t.name));
+  endtask
+
+  // Capture and decode SERIES_CTRL (shifting a NOP image), landing
+  // CHK-AXI-COMPLETION on the settled status.
+  task read_series_ctrl(dtp_j2a_target_t t, input int unsigned size, output bit series_reset,
+                        output bit [63:0] addr_after, output int unsigned pipeline_depth,
+                        output int unsigned size_rd, output dtp_j2a_status_e status);
+    dtp_jtag2axi_series_ctrl_seq ctrl = dtp_jtag2axi_series_ctrl_seq::type_id::create(
+        "series_ctrl_read"
+    );
+    ctrl.target = t;
+    ctrl.op     = DTP_J2A_OP_NOP;
+    ctrl.addr   = '0;
+    ctrl.size   = size;
+    run_jtag_op(ctrl);
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_CTRL capture");
+    note_tdr_access(series_ctrl_len(t), $sformatf("%s series_ctrl capture", t.name));
+    dtp_j2a_unpack_series_ctrl(t, ctrl.captured, series_reset, addr_after, pipeline_depth, size_rd,
+                               status);
+    `uvm_info(get_type_name(),
+              $sformatf("%s SERIES_CTRL reset=%0d addr=0x%0h pl_depth=%0d size=%0d status=%s",
+                        t.name, series_reset, addr_after, pipeline_depth, size_rd, status.name()),
+              UVM_MEDIUM)
+    // Every series stream ends with this status capture; a bridge stuck
+    // BUSY fails here (call sites expect a settled status, never BUSY).
+    if (axi_evidence != null)
+      void'(axi_evidence.expect_true(
+          "CHK-AXI-COMPLETION",
+          status != DTP_J2A_BUSY_OR_FULL,
+          $sformatf(
+              "series_ctrl target=%s", t.name)
+      ));
+  endtask
+
+  // One series-data shift (dtp_jtag2axi_series_data_seq): payload-sized
+  // TDR, optional MSB increment bit (with-status mode), idle TCK cycles
+  // for the op to launch.
+  protected task series_data_shift(dtp_j2a_target_t t, jtag_inst_reg_pkg::jtag_instruction_e instr,
+                                   bit [63:0] data, int unsigned size,
+                                   input int increment,  // <0: no increment/status bit in the TDR
+                                   output bit [63:0] result);
+    int unsigned payload_bits = 8 * size_bytes(size);
+    int unsigned width = payload_bits + ((increment >= 0) ? 1 : 0);
+    dtp_jtag2axi_series_data_seq shift =
+            dtp_jtag2axi_series_data_seq::type_id::create("series_data");
+    shift.target    = t;
+    shift.instr     = instr;
+    shift.data      = data;
+    shift.size      = size;
+    shift.increment = increment;
+    run_jtag_op(shift);
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_DATA shift");
+    note_tdr_access(width, $sformatf("%s series_data", t.name));
+    result = shift.captured;
+  endtask
+
+  task series_data_incr(dtp_j2a_target_t t, bit [63:0] data, int unsigned size);
+    bit [63:0] unused;
+    series_data_shift(t, t.series_data_incr_instr, data, size, -1, unused);
+  endtask
+
+  task series_data_no_incr(dtp_j2a_target_t t, bit [63:0] data, int unsigned size);
+    bit [63:0] unused;
+    series_data_shift(t, t.series_data_no_incr_instr, data, size, -1, unused);
+  endtask
+
+  task series_data_with_status(dtp_j2a_target_t t, bit [63:0] data, int unsigned size,
+                               bit increment, output bit [63:0] rdata, output bit status_bit);
+    bit [63:0] result;
+    int unsigned payload_bits = 8 * size_bytes(size);
+    series_data_shift(t, t.series_data_with_status_instr, data, size, int'(increment), result);
+    rdata      = result & data_mask(size);
+    status_bit = result[payload_bits];
+  endtask
+
+  // --- lifecycle debug disables (must be cleared before JTAG2AXI ops) ----
+  // Assert exactly the disable that gates this target (all others clear).
+  task gate_target(dtp_j2a_target_t t);
+    set_dbg_disable(t.dbg_disable_mask);
+  endtask
+
+  function bit target_enabled(dtp_j2a_target_t t);
+    return (tb_vif.dbg_disable & t.dbg_disable_mask) == '0;
+  endfunction
+
+  // --- error arming (responder injection + shared checker, one place) ----
+  task arm_target_error(dtp_j2a_target_t t, bit [63:0] addr, ocah_axi_resp_e resp, bit for_read,
+                        bit for_write, bit arm_expected = 1'b1);
+    ocah_axi_resp_e armed_resp = resp;
+    responder(t).inject_error(addr, resp, for_read, for_write);
+    // arm_expected=0 injects WITHOUT arming the scoreboard expectation —
+    // for gated attempts whose op must never reach the bus.
+    if (arm_expected && axi_cfg != null) begin
+      if (test_cfg != null && test_cfg.axi_scoreboard_negative) begin
+        armed_resp = (resp == OCAH_AXI_RESP_DECERR) ? OCAH_AXI_RESP_SLVERR : OCAH_AXI_RESP_DECERR;
+        `uvm_info(get_type_name(),
+                  $sformatf("NEGATIVE VALIDATION: arming resp=%s instead of injected resp=%s",
+                            armed_resp.name(), resp.name()), UVM_LOW)
+      end
+      axi_cfg.arm_expected_resp(addr, armed_resp, for_read, for_write);
+    end
+    wait_sys_cycles(InjectSettleCycles);
+    `uvm_info(get_type_name(), $sformatf("%s armed error resp=%s addr=0x%0h read=%0d write=%0d",
+                                         t.name, resp.name(), addr, for_read, for_write),
+              UVM_MEDIUM)
+  endtask
+
+  task clear_target_error(dtp_j2a_target_t t);
+    responder(t).clear_errors();
+    wait_sys_cycles(InjectSettleCycles);
+  endtask
+
+  // Bounded responder READY backpressure on the target under test (cocotb
+  // configure_target_backpressure parity; channel names are "aw"/"w"/"ar").
+  function void configure_target_backpressure(dtp_j2a_target_t t, string channels[$],
+                                              int unsigned stall_cycles);
+    `uvm_info(
+        get_type_name(), $sformatf(
+        "%s configure backpressure channels=%p stall_cycles=%0d", t.name, channels, stall_cycles),
+        UVM_MEDIUM)
+    responder(t).enable_backpressure(channels, stall_cycles);
+  endfunction
+
+  function void clear_target_backpressure(dtp_j2a_target_t t);
+    responder(t).disable_backpressure();
+  endfunction
+
+  // --- request-activity evidence (security gating) -----------------------
+  function void sample_activity(dtp_j2a_target_t t, output int unsigned aw, output int unsigned w,
+                                output int unsigned ar);
+    if (t.name == "smc_otp") begin
+      aw = tb_vif.smc_otp_axil_awvalid_count;
+      w  = tb_vif.smc_otp_axil_wvalid_count;
+      ar = tb_vif.smc_otp_axil_arvalid_count;
+    end else if (t.name == "sep_otp") begin
+      aw = tb_vif.sep_otp_axil_awvalid_count;
+      w  = tb_vif.sep_otp_axil_wvalid_count;
+      ar = tb_vif.sep_otp_axil_arvalid_count;
+    end else begin
+      aw = tb_vif.smc_axi_awvalid_count;
+      w  = tb_vif.smc_axi_wvalid_count;
+      ar = tb_vif.smc_axi_arvalid_count;
+    end
+  endfunction
+
+  // Compare an activity snapshot pair through the shared evidence recorder.
+  function void expect_no_activity_evidence(
+      dtp_j2a_target_t t, int unsigned before_aw, int unsigned before_w, int unsigned before_ar,
+      int unsigned after_aw, int unsigned after_w, int unsigned after_ar, string context_s);
+    if (axi_evidence == null) return;
+    void'(axi_evidence.expect_equal(
+        "CHK-AXI-GATE-AW",
+        after_aw,
+        before_aw,
+        $sformatf(
+            "%s target=%s source=tb_pulse_counters", context_s, t.name)
+    ));
+    void'(axi_evidence.expect_equal(
+        "CHK-AXI-GATE-W",
+        after_w,
+        before_w,
+        $sformatf(
+            "%s target=%s source=tb_pulse_counters", context_s, t.name)
+    ));
+    void'(axi_evidence.expect_equal(
+        "CHK-AXI-GATE-AR",
+        after_ar,
+        before_ar,
+        $sformatf(
+            "%s target=%s source=tb_pulse_counters", context_s, t.name)
+    ));
+  endfunction
+
+  // Wait until an operation reaches the target's request channel (series
+  // ops launch in the system domain after the TDR shift completes).
+  task wait_for_target_activity(dtp_j2a_target_t t, int unsigned before_aw, int unsigned before_w,
+                                int unsigned before_ar, bit is_read, string context_s,
+                                int unsigned timeout_cycles = 200);
+    int unsigned aw, w, ar;
+    for (int unsigned cycle = 0; cycle < timeout_cycles; cycle++) begin
+      sample_activity(t, aw, w, ar);
+      if (is_read ? (ar > before_ar) : (aw > before_aw)) begin
+        `uvm_info(get_type_name(), $sformatf("%s: %s %s activity after %0d cycles", context_s,
+                                             t.name, is_read ? "AR" : "AW", cycle), UVM_MEDIUM)
+        return;
+      end
+      wait_sys_cycles(1);
+    end
+    `uvm_error("jtag2axi_activity_chk",
+               $sformatf("%s: expected %s %s activity within %0d cycles (aw=%0d->%0d ar=%0d->%0d)",
+                         context_s, t.name, is_read ? "AR" : "AW", timeout_cycles, before_aw, aw,
+                         before_ar, ar))
+  endtask
+
+  // CHK-AXI-NONVAC: scenario-level non-vacuity through the shared recorder
+  // (the SV analogue of the cocotb stream-minimum + nonvacuous evidence).
+  function void emit_nonvacuity_evidence(bit condition, string context_s);
+    if (axi_evidence != null)
+      void'(axi_evidence.expect_true("CHK-AXI-NONVAC", condition, context_s));
+  endfunction
+
+  // Completed-burst counters from the responder (exact per-transaction
+  // counts; the tb pulse counters count VALID-high cycles, which are
+  // timing-dependent per transaction on the reactive slave driver).
+  function int unsigned write_bursts_now(dtp_j2a_target_t t);
+    return responder(t).write_burst_count();
+  endfunction
+
+  function int unsigned read_bursts_now(dtp_j2a_target_t t);
+    return responder(t).read_burst_count();
+  endfunction
+
+  // Wait until the responder completes a write burst beyond before_count
+  // (bounded), so a backdoor memory check cannot race the W-beat commit —
+  // the request-pulse wait above returns on AW, cycles before the data
+  // beat lands in memory.
+  task wait_for_write_completion(dtp_j2a_target_t t, int unsigned before_count, string context_s,
+                                 int unsigned timeout_cycles = 200);
+    for (int unsigned cycle = 0; cycle < timeout_cycles; cycle++) begin
+      if (write_bursts_now(t) > before_count) return;
+      wait_sys_cycles(1);
+    end
+    `uvm_error("jtag2axi_activity_chk",
+               $sformatf("%s: %s write burst did not complete within %0d cycles", context_s,
+                         t.name, timeout_cycles))
+  endtask
+
+endclass : dtp_jtag2axi_base_test_seq

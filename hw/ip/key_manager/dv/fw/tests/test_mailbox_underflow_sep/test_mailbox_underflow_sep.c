@@ -15,8 +15,6 @@
  * - Status bits: Underflow status bits are write-1-to-clear (no read side-effects)
  * - IRQ aggregation: Mailbox IRQs aggregated and propagate to KMCSR
  *
- * Requirements: FR-0000-055, FR-0000-060, FR-0000-062 through FR-0000-064, User Story 1
- *
  * Run with:
  *   make run_fw FW_TEST=test_mailbox_underflow_sep
  */

@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS SEP-input AXI UVM agent.
 
 Drives real AXI traffic through the tb_top ``s_axi_*`` bridge into
-``smc.sep_axi_in_req_i``. This mirrors the SEP OSS AXI agent pattern and the
-legacy SMC DV ``sep_in_master`` access path.
+``smc.sep_axi_in_req_i``. This mirrors the SEP OSS AXI agent pattern.
 """
 
 from __future__ import annotations
@@ -11,8 +11,9 @@ from __future__ import annotations
 from enum import Enum
 
 import cocotb
-from cocotb.triggers import with_timeout
-from ocah_axi_vip import OcahAxiMaster
+from cocotb.handle import Immediate
+from cocotb.triggers import RisingEdge, with_timeout
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -26,6 +27,66 @@ try:
     from cocotb.result import SimTimeoutError
 except ImportError:
     from cocotb.triggers import SimTimeoutError
+
+
+# How long a DUT-generated reset is given to take a defined value before the VIP
+# is attached to it. The reset tree settles within a few clocks of the cold reset
+# being applied; this is generous enough not to be a tuning knob and short enough
+# that a reset which never resolves is reported rather than waited on forever.
+_RESET_RESOLVE_CYCLES = 200
+
+
+async def await_reset_resolved(reset_signal, clock, label: str) -> None:
+    """Hold until `reset_signal` reads 0 or 1 rather than X.
+
+    The VIP decides whether it is in reset by evaluating this signal, and an X
+    reads as de-asserted. It then starts sampling handshake lines that are
+    themselves X, and cocotb raises `Cannot convert Logic('X') to bool` out of
+    the stream driver before the test has run a single check.
+
+    The resets these agents watch are DUT outputs, not the cold reset the bench
+    drives, so they are X until the reset tree has propagated. On a two-state
+    simulator every signal is resolved from time 0 and this returns on the first
+    look; on a four-state one it defers attachment until the tree has settled,
+    which still lands well before reset is released.
+    """
+    for _ in range(_RESET_RESOLVE_CYCLES):
+        if reset_signal.value.is_resolvable:
+            return
+        await RisingEdge(clock)
+    raise AssertionError(
+        f"{label} reset never took a defined value within {_RESET_RESOLVE_CYCLES} "
+        f"clocks, so the VIP cannot tell whether it is in reset. Attaching anyway "
+        f"would make it sample X handshake lines and fail somewhere less obvious."
+    )
+
+
+# The request-side lines an AXI-Lite master drives. On this bench they are
+# inputs to the DUT wrapper, so nothing drives them until the bench does.
+_AXIL_MASTER_DRIVEN = ("awvalid", "wvalid", "arvalid", "bready", "rready")
+
+
+def idle_axil_master_inputs(dut, prefix: str) -> None:
+    """Park an AXI-Lite master's own request lines low before a VIP attaches.
+
+    The VIP only initialises VALID when its `_valid_init` is set, and zeroes it
+    otherwise only on seeing reset asserted. An agent built after reset has been
+    released hits neither path, so the line keeps whatever the bench left it at
+    -- for a top-level input nothing has driven yet, that is Z. The VIP then
+    samples its own VALID and cocotb raises out of the stream driver, before any
+    checker runs and naming no signal.
+
+    Measured on `ej_axi`: at the first clock edge after attach, `ej_axi_awready`
+    read 1 from the DUT while `ej_axi_awvalid` read Z. The undriven line is the
+    bench's, not the design's.
+
+    The write is immediate because the VIP reads these lines during
+    `from_prefix`, before a scheduled write would land.
+    """
+    for suffix in _AXIL_MASTER_DRIVEN:
+        signal = getattr(dut, f"{prefix}_{suffix}", None)
+        if signal is not None:
+            signal.value = Immediate(0)
 
 
 class SmcSysAxiOp(Enum):
@@ -56,7 +117,6 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.expect_error: bool = False
         # Soft-complete on AXI timeout. Default False. Setting True requires a
         # comment at the call site explaining why incomplete traffic is OK and
-        # a second positive evidence path (see dv_hack_cleanup_checklist.md §2.3).
         self.allow_timeout: bool = False
         self.timed_out: bool = False
         self.timeout_ns: int | None = None
@@ -66,6 +126,14 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.update_golden: bool = False
         self.check_golden: bool = False
         self.memory_region: str | None = None
+        # AXI AxPROT. Default 0 (unprivileged); GPIO ACCESS_FILTER tests program
+        # this to 1 (privileged).
+        self.prot: int = 0
+        # Stamped by the driver that actually drove this item (its `bus_name`),
+        # so the scoreboard can keep a MEASURED per-port access tally. A test
+        # never sets this: the point is that the count comes from the driver that
+        # completed the access, not from the test that claims to have issued it.
+        self.bus_name: str = ""
 
     def __str__(self) -> str:
         exp = "None" if self.expected is None else f"0x{self.expected:x}"
@@ -77,7 +145,7 @@ class SmcSysAxiItem(uvm_sequence_item):
 
 
 class SmcSysAxiDriver(uvm_driver):
-    """Drives SmcSysAxiItem transactions through ocah_axi_vip.OcahAxiMaster."""
+    """Drives SmcSysAxiItem transactions through ocah_axi_vip.OcahAxiMasterSequence."""
 
     bus_prefix = "s_axi"
     bus_name = "SEP_IN AXI"
@@ -85,23 +153,25 @@ class SmcSysAxiDriver(uvm_driver):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.ap = uvm_analysis_port("ap", self)
-        self.axi: OcahAxiMaster | None = None
+        self.axi: OcahAxiMasterSequence | None = None
 
     async def run_phase(self) -> None:
         dut = cocotb.top
-        self.axi = OcahAxiMaster.from_prefix(
+        await await_reset_resolved(dut.rst_primary_smc_clk_no, dut.clk_smc_i, self.bus_name)
+        self.axi = OcahAxiMasterAgent.from_prefix(
             dut,
             self.bus_prefix,
             dut.clk_smc_i,
             dut.rst_primary_smc_clk_no,
             name=f"smc_{self.bus_prefix}",
             reset_active_level=False,
-        )
+        ).sequence
         await self.cfg.reset_done.wait()
-        self.logger.info("SMC %s OcahAxiMaster ready on %s", self.bus_name, self.bus_prefix)
+        self.logger.info("SMC %s OcahAxiMasterSequence ready on %s", self.bus_name, self.bus_prefix)
 
         while True:
             item = await self.seq_item_port.get_next_item()
+            item.bus_name = self.bus_name
             await self._drive(item)
             self.ap.write(item)
             self.seq_item_port.item_done()
@@ -112,7 +182,7 @@ class SmcSysAxiDriver(uvm_driver):
                 address=item.addr,
                 length=item.length,
                 size=self._axi_size(item.length),
-                prot=0,
+                prot=int(item.prot),
             )
             resp = await self._timed_event(event, item, "read")
             if resp is None:
@@ -120,26 +190,55 @@ class SmcSysAxiDriver(uvm_driver):
                 return
             item.rdata = int.from_bytes(resp.data, "little")
             item.resp_code = self._resp_code(resp)
-            item.resp_ok = self._resp_ok(resp) or item.allow_error
-            self.logger.info("%s read  0x%014x -> 0x%x ok=%s",
-                             self.bus_name, item.addr, item.rdata, item.resp_ok)
+            _raw_ok = self._resp_ok(resp)
+            item.resp_ok = _raw_ok or item.allow_error
+            self.logger.info(
+                "%s read  0x%014x -> 0x%x ok=%s%s",
+                self.bus_name,
+                item.addr,
+                item.rdata,
+                item.resp_ok,
+                self._tolerated_note(_raw_ok, item.resp_code),
+            )
         elif item.op is SmcSysAxiOp.WRITE:
             event = self.axi.init_write(
                 address=item.addr,
                 data=item.wdata.to_bytes(item.length, "little"),
                 size=self._axi_size(item.length),
-                prot=0,
+                prot=int(item.prot),
             )
             resp = await self._timed_event(event, item, "write")
             if resp is None:
                 item.resp_ok = item.allow_timeout
                 return
             item.resp_code = self._resp_code(resp)
-            item.resp_ok = self._resp_ok(resp) or item.allow_error
-            self.logger.info("%s write 0x%014x <- 0x%x ok=%s",
-                             self.bus_name, item.addr, item.wdata, item.resp_ok)
+            _raw_ok = self._resp_ok(resp)
+            item.resp_ok = _raw_ok or item.allow_error
+            self.logger.info(
+                "%s write 0x%014x <- 0x%x ok=%s%s",
+                self.bus_name,
+                item.addr,
+                item.wdata,
+                item.resp_ok,
+                self._tolerated_note(_raw_ok, item.resp_code),
+            )
         else:
             raise ValueError(f"unknown SMC SYS AXI op {item.op}")
+
+    @staticmethod
+    def _tolerated_note(raw_ok: bool, resp_code: int) -> str:
+        """Suffix that makes a TOLERATED error response visible in the log.
+
+        `item.resp_ok` is `self._resp_ok(resp) or item.allow_error`, so without
+        this suffix a SLVERR/DECERR that a sequence chose to tolerate renders as
+        a bare `ok=True`, byte-identical to a genuine OKAY. The kept log is what
+        a reader uses to decide what a testcase proved, so a tolerated error has
+        to stay visible in it. The OKAY case keeps the plain format.
+        """
+        if raw_ok:
+            return ""
+        name = {1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}.get(resp_code, f"resp={resp_code}")
+        return f" [{name} TOLERATED via allow_error]"
 
     async def _timed_event(self, event, item: SmcSysAxiItem, what: str):
         timeout_ns = item.timeout_ns or self.cfg.axi_timeout_ns

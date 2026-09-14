@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_jtag_idcode_test.
 
 Verifies the DTP primary TAP IDCODE data register through the OCAH JTAG BFM.
@@ -42,9 +43,14 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
                 "CHK-IDCODE-VERSION",
                 "CHK-IDCODE-PART-NUMBER",
                 "CHK-IDCODE-MANUFACTURER",
+                "CHK-TAP-RESET-TLR",
+                "CHK-TAP-STATE",
                 "CHK-NONVAC",
             },
         )
+        # TAP resets and raw TMS walks in the random preconditions also emit
+        # reference-model evidence (CHK-TAP-RESET-TLR / CHK-TAP-STATE).
+        self.attach_tap_checker(self.checker)
 
     def check_idcode_fields(self) -> None:
         """Check raw IDCODE value and decoded IEEE 1149.1 fields."""
@@ -87,11 +93,16 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
 
     async def random_precondition(self, rng: random.Random, loop_idx: int) -> None:
         """Randomize the TAP context before reloading and reading IDCODE."""
-        action = rng.choice(["tap_reset", "tlr_walk", "safe_ir", "bypass_scan"])
+        # Loop 0 always walks through TLR so the required TAP reset/state
+        # evidence executes on every seed; later loops stay randomized.
+        if loop_idx == 0:
+            action = "tlr_walk"
+        else:
+            action = rng.choice(["tap_reset", "tlr_walk", "safe_ir", "bypass_scan"])
         self.log.info("IDCODE loop %d precondition: %s", loop_idx, action)
 
         if action == "tap_reset":
-            await self.reset_tap()
+            await self.reset_to_tlr()
         elif action == "tlr_walk":
             await self.reset_to_tlr()
             await self.random_tms_walk(rng.randint(1, 10), rng=rng)
@@ -109,9 +120,7 @@ class dtp_jtag_idcode_test_seq(dtp_jtag_base_test_seq):
             await self.check_bypass_delay(DtpJtagInstr.BYPASS_3F, pattern, width=32)
 
     async def body(self) -> None:
-        seed = (
-            self.scenario_seed if self.scenario_seed is not None else self.random_seed()
-        )
+        seed = self.scenario_seed
         self.log.info("Using IDCODE random seed %d", seed)
         rng = random.Random(seed)
 

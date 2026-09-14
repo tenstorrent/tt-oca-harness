@@ -34,16 +34,17 @@ interface i3c_coverage_if (
     input logic [31:0] rdata
 );
 
-    // Per-instance address window used to recover a register offset from an AXI
-    // address. Must match the INSTANCE_SPACING the wrapper is instantiated with.
-    localparam int unsigned INSTANCE_SPACING = 'h1000;
+    // Per-instance address window used to recover a register offset from an AXI address.
+    localparam int unsigned INSTANCE_SPACING =
+        int'(oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_I3C_CSR_STRIDE);
 
     // Port offsets come from the generated address map, so a regeneration that moves
-    // a port cannot leave this interface sampling a neighbouring register.
+    // a port cannot leave this interface sampling a neighbouring register. The map
+    // indexes by instance; index 0 gives the offset within any instance's window.
     localparam logic [11:0] COMMAND_PORT_OFF  =
-        12'(oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_COMMAND_PORT_BASE_ADDR);
+        12'(oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_COMMAND_PORT_BASE_ADDR(0));
     localparam logic [11:0] RESPONSE_PORT_OFF =
-        12'(oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RESPONSE_PORT_BASE_ADDR);
+        12'(oca_i3c_wrap_addrmap_pkg::OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RESPONSE_PORT_BASE_ADDR(0));
 
     //***********************************************************************
     // Captured-transaction state

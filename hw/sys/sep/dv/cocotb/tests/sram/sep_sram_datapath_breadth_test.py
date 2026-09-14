@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP external-SRAM datapath-breadth test (PyUVM).
 
-Memory-subsystem Phase-2 rep SRAM datapath breadth. OCAH provenance: uvm_tests/sram
+Memory-subsystem SRAM datapath breadth. reference provenance: uvm_tests/sram
 sep_sram_uvm_byte_strobe / byte_pattern / data_pattern / addr_boundary /
 write_read / sequential_access. Exercises the external scratch SRAM
-(0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the Phase-1
+(0x1000_0000, 256 KiB) over the CPU-LSU AXI splice (no_cpu) beyond the
 smoke (a single 64-bit R/W + one 32-bit partial).
 
 `[RANDCFG]` -- ``SepSramBreadthCfg`` is the single source of truth for both the
@@ -18,11 +19,11 @@ seed-randomized:
     init/new/pattern data values, the sequential-window length, plus a few extra
     random data patterns -- all masked so they read back exactly.
 
-The SRAM port is 64-bit SINGLE-BEAT (no multi-beat burst feature; OCAH's burst
+The SRAM port is 64-bit SINGLE-BEAT (no multi-beat burst feature; the reference suite's burst
 tests are audit-only AWLEN=0/ARLEN=0). WSTRB=0x00 is excluded (undefined). NON-
 contiguous WSTRB masks (e.g. 0x05) are infra-gated: cocotbext-axi derives the
 strobe from addr+length (contiguous only), so they need a lower-level explicit-
-strobe write -- deferred (documented delta vs OCAH's full byte-strobe matrix).
+strobe write -- deferred (documented delta vs the reference suite's full byte-strobe matrix).
 
 Checks (each value-compares an exact read-back against the cfg golden + logs a
 positive PASS line):
@@ -31,7 +32,8 @@ positive PASS line):
   CHK-PATTERN  : each cfg data pattern reads back exactly.
   CHK-BOUNDARY : the base word and the top valid word R/W read back exactly.
   CHK-SEQ      : a run of consecutive single-beat 64-bit words, per-word integrity.
-  CHK-NONVAC   : a distinct unwritten word differs from the written pattern.
+  CHK-NONVAC   : two addresses hold complementary written values, so a
+                 stuck read path fails.
 
 no_cpu / +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
 """
@@ -39,9 +41,11 @@ no_cpu / +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
-from seq_lib.sep_sram_breadth_seq import SepSramBreadthCfg, SepSramBreadth
+from seq_lib.sep_sram_breadth_seq import (
+    SepSramBreadth,
+    SepSramBreadthCfg,
+)
 
 
 @pyuvm.test()
@@ -60,7 +64,8 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         await self._chk_nonvac()
         self.logger.info(
             "SRAM datapath breadth PASS: SRAM datapath breadth verified "
-            "(wstrb / pattern / boundary / seq / nonvac)")
+            "(wstrb / pattern / boundary / seq / nonvac)"
+        )
 
     async def _chk_wstrb(self) -> None:
         cfg = self.scfg
@@ -77,11 +82,14 @@ class sep_sram_datapath_breadth_test(sep_base_test):
             exp = SepSramBreadth.apply_wstrb(cfg.wstrb_init, wr_data, offset, length)
             assert rb == exp, (
                 f"CHK-WSTRB mask 0x{mask:02x} (off {offset} len {length}): "
-                f"0x{rb:016x} != 0x{exp:016x} (only those lanes should change)")
+                f"0x{rb:016x} != 0x{exp:016x} (only those lanes should change)"
+            )
         self.logger.info(
             "CHK-WSTRB PASS: all %d contiguous WSTRB masks change only their byte "
             "lanes (neighbors preserved, apply_wstrb golden) @0x%08x",
-            len(cfg.wstrb_specs), addr)
+            len(cfg.wstrb_specs),
+            addr,
+        )
 
     async def _chk_pattern(self) -> None:
         cfg = self.scfg
@@ -92,7 +100,9 @@ class sep_sram_datapath_breadth_test(sep_base_test):
             assert rb == p, f"CHK-PATTERN 0x{p:016x} readback 0x{rb:016x}"
         self.logger.info(
             "CHK-PATTERN PASS: %d 64-bit data patterns read back exactly @0x%08x",
-            len(cfg.pattern_values), addr)
+            len(cfg.pattern_values),
+            addr,
+        )
 
     async def _chk_boundary(self) -> None:
         base, top = self.scfg.boundary_addrs
@@ -105,31 +115,53 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         assert rb_b == bval, f"CHK-BOUNDARY base 0x{rb_b:016x} != 0x{bval:016x}"
         assert rb_t == tval, f"CHK-BOUNDARY top@0x{top:08x} 0x{rb_t:016x} != 0x{tval:016x}"
         self.logger.info(
-            "CHK-BOUNDARY PASS: base 0x%08x and top valid word 0x%08x R/W exact",
-            base, top)
+            "CHK-BOUNDARY PASS: base 0x%08x and top valid word 0x%08x R/W exact", base, top
+        )
 
     async def _chk_seq(self) -> None:
         cfg = self.scfg
         addr0 = cfg.base_addr + cfg.seq_offset
-        words = [(cfg.seq_seed + (i << 4) + i) & 0xFFFF_FFFF_FFFF_FFFF for i in range(cfg.seq_words)]
+        words = [
+            (cfg.seq_seed + (i << 4) + i) & 0xFFFF_FFFF_FFFF_FFFF for i in range(cfg.seq_words)
+        ]
         for i, w in enumerate(words):
             await self.sram.write(addr0 + 8 * i, w, length=8)
         for i, w in enumerate(words):
             rb = await self.sram.read(addr0 + 8 * i, length=8)
-            assert rb == w, f"CHK-SEQ word {i} @0x{addr0 + 8*i:08x} 0x{rb:016x} != 0x{w:016x}"
+            assert rb == w, f"CHK-SEQ word {i} @0x{addr0 + 8 * i:08x} 0x{rb:016x} != 0x{w:016x}"
         self.logger.info(
             "CHK-SEQ PASS: %d consecutive single-beat 64-bit words write->read match @0x%08x",
-            cfg.seq_words, addr0)
+            cfg.seq_words,
+            addr0,
+        )
 
     async def _chk_nonvac(self) -> None:
         cfg = self.scfg
         wr_addr = cfg.base_addr + cfg.nonvac_wr_offset
         rd_addr = cfg.base_addr + cfg.nonvac_rd_offset
+        # Both addresses are written, with complementary patterns, and both are read
+        # back and value-checked. Comparing a written address against an unwritten one
+        # would not catch the stuck read path this names: zero-initialised memory
+        # differs from any non-zero pattern by construction, so a datapath returning
+        # all-zeros or all-ones would pass. Two written values that must differ from
+        # each other cannot be satisfied by a constant.
+        other_pattern = (~cfg.nonvac_pattern) & ((1 << 64) - 1)
         await self.sram.write(wr_addr, cfg.nonvac_pattern, length=8)
-        other = await self.sram.read(rd_addr, length=8)
-        assert other != cfg.nonvac_pattern, (
-            f"CHK-NONVAC unwritten word @0x{rd_addr:08x} == written pattern "
-            f"0x{cfg.nonvac_pattern:016x} -- read may be returning a stuck constant")
+        await self.sram.write(rd_addr, other_pattern, length=8)
+        got_wr = await self.sram.read(wr_addr, length=8)
+        got_rd = await self.sram.read(rd_addr, length=8)
+        assert got_wr == cfg.nonvac_pattern, (
+            f"CHK-NONVAC @0x{wr_addr:08x} read 0x{got_wr:016x} != written "
+            f"0x{cfg.nonvac_pattern:016x}"
+        )
+        assert got_rd == other_pattern, (
+            f"CHK-NONVAC @0x{rd_addr:08x} read 0x{got_rd:016x} != written "
+            f"0x{other_pattern:016x} -- a stuck read path returns the same value for "
+            f"both addresses"
+        )
         self.logger.info(
-            "CHK-NONVAC PASS: distinct unwritten word 0x%016x != written 0x%016x",
-            other, cfg.nonvac_pattern)
+            "CHK-NONVAC PASS: two addresses hold complementary values "
+            "(0x%016x / 0x%016x), so the read path is not a stuck constant",
+            got_wr,
+            got_rd,
+        )

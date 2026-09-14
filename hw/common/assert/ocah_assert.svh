@@ -12,9 +12,12 @@
 `define OCAH_STRINGIFY(__x) `"__x`"
 
 // OCAH_ASSERT_ERROR logs an error message with either `uvm_error or with $error.
+// The UVM call uses the five-argument form: portable across UVM versions
+// (uvm-1.1's global uvm_report_error has no context_name /
+// report_enabled_checked parameters, and later versions default them).
 `define OCAH_ASSERT_ERROR(__name)                                                                                      \
 `ifdef UVM                                                                                                           \
-  uvm_pkg::uvm_report_error("ASSERT FAILED", `OCAH_STRINGIFY(__name), uvm_pkg::UVM_NONE, `__FILE__, `__LINE__, "", 1); \
+  uvm_pkg::uvm_report_error("ASSERT FAILED", `OCAH_STRINGIFY(__name), uvm_pkg::UVM_NONE, `__FILE__, `__LINE__);        \
 `else                                                                                                                \
   $error("%0t: (%0s:%0d) [%m] [ASSERT FAILED] %0s", $time, `__FILE__, `__LINE__, `OCAH_STRINGIFY(__name));             \
 `endif
@@ -45,7 +48,7 @@
 `ifndef VERILATOR
 `ifndef TARGET_VERILATOR
 `ifndef NO_OCAH_ASSERT
-  `define OCAH_INC_ASSERT
+`define OCAH_INC_ASSERT
 `endif
 `endif
 `endif
@@ -56,15 +59,18 @@
 //////////////////////////////
 
 // Assert that signal is an active-high pulse with pulse length of 1 clock cycle
-`define OCAH_ASSERT_PULSE(__name, __sig, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
+`define OCAH_ASSERT_PULSE(__name, __sig, __clk = `OCAH_ASSERT_DEFAULT_CLK,
+                          __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT(__name, $rose(__sig) |=> !(__sig), __clk, __rst)
 
 // Assert that a property is true only when an enable signal is set.
-`define OCAH_ASSERT_IF(__name, __prop, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
+`define OCAH_ASSERT_IF(__name, __prop, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK,
+                       __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT(__name, (__enable) |-> (__prop), __clk, __rst)
 
 // Assert that signal has a known value (each bit is either '0' or '1') after reset if enable is set
-`define OCAH_ASSERT_KNOWN_IF(__name, __sig, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
+`define OCAH_ASSERT_KNOWN_IF(__name, __sig, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK,
+                             __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT_KNOWN(__name``KnownEnable, __enable, __clk, __rst)                                                     \
   `OCAH_ASSERT_IF(__name, !$isunknown(__sig), __enable, __clk, __rst)
 

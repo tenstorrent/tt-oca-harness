@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Detailed parser for Verilator's textual coverage database."""
 
 from __future__ import annotations
@@ -11,7 +14,6 @@ from ..coverage_model import (
     CoverageObservation,
     stable_id,
 )
-
 
 VERILATOR_METRIC_MAP = {
     "line": "line",

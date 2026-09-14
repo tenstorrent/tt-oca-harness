@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
-example_idcode.py — OcahJtagTap IDCODE read example.
+example_idcode.py — OcahJtagMasterDriver IDCODE read example.
 
 Demonstrates the minimal sequence to:
-  1. Construct an OcahJtagTap for the PTAP interface.
-  2. Attach a passive OcahJtagMonitor to log transactions.
+  1. Construct an OcahJtagMasterDriver for the PTAP interface.
+  2. Attach a passive OcahJtagMasterMonitor to log transactions.
   3. Reset the TAP.
   4. Shift the IDCODE instruction into the IR.
   5. Read back the 32-bit IDCODE from the DR.
@@ -19,7 +19,7 @@ Assumptions
 -----------
 - A clock is driven externally before calling ``init_signals()``.
 - The DUT implements IEEE 1149.1 with IDCODE opcode 0x01 and a 5-bit IR.
-- TRST is active-low and connected (jtag_intf.sv default).
+- TRST is active-low and connected.
 """
 
 import cocotb
@@ -29,15 +29,15 @@ from cocotb.triggers import Timer
 from ocah_jtag_vip import (
     IDCODE_OPCODE,
     OcahJtagChecker,
-    OcahJtagMonitor,
-    OcahJtagTap,
-    OcahJtagTapError,
+    OcahJtagMasterDriver,
+    OcahJtagMasterDriverError,
+    OcahJtagMasterMonitor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Example 1 — PTAP IDCODE read (most common OCAH debug use case)
 # ---------------------------------------------------------------------------
+
 
 @cocotb.test()
 async def example_ptap_idcode(dut):
@@ -47,8 +47,8 @@ async def example_ptap_idcode(dut):
     cocotb.start_soon(Clock(dut.tck, 10, units="ns").start())
 
     # Construct the TAP driver for the PTAP.
-    tap = OcahJtagTap(
-        dut.jtag_ptap_if,       # jtag_intf.sv handle in the testbench
+    tap = OcahJtagMasterDriver(
+        dut.jtag_ptap_if,  # JTAG interface handle in the testbench
         name="ptap",
         tck_period_ns=10,
         ir_width=5,
@@ -56,7 +56,7 @@ async def example_ptap_idcode(dut):
     )
 
     # Attach a passive monitor and checker before any activity.
-    monitor = OcahJtagMonitor(dut.jtag_ptap_if, name="ptap_mon")
+    monitor = OcahJtagMasterMonitor(dut.jtag_ptap_if, name="ptap_mon")
     checker = OcahJtagChecker(ir_width=5)
     checker.attach_monitor(monitor)
 
@@ -111,8 +111,7 @@ async def example_ptap_idcode(dut):
     await tap.reset_tap()
     idcode_via_helper = await tap.read_idcode()
     assert idcode_via_helper == idcode, (
-        f"IDCODE mismatch: manual=0x{idcode:08X} "
-        f"helper=0x{idcode_via_helper:08X}"
+        f"IDCODE mismatch: manual=0x{idcode:08X} helper=0x{idcode_via_helper:08X}"
     )
 
     # ---------- step 6: drain monitor and check it saw transactions ----------
@@ -139,11 +138,12 @@ async def example_ptap_idcode(dut):
 # Example 2 — STAP access with a custom signal map
 # ---------------------------------------------------------------------------
 
+
 @cocotb.test()
 async def example_stap_idcode(dut):
     """Read IDCODE from the Secondary TAP (STAP) via a custom signal map.
 
-    This shows how to reuse OcahJtagTap when the STAP interface uses
+    This shows how to reuse OcahJtagMasterDriver when the STAP interface uses
     different signal names (e.g., stap_tck instead of tck).
     """
 
@@ -151,15 +151,15 @@ async def example_stap_idcode(dut):
 
     # Custom signal map: logical name -> actual attribute on dut.jtag_stap_if.
     stap_signal_map = {
-        "tck":     "stap_tck",
-        "tms":     "stap_tms",
-        "tdi":     "stap_tdi",
-        "tdo":     "stap_tdo",
-        "trst":    "stap_trst",
+        "tck": "stap_tck",
+        "tms": "stap_tms",
+        "tdi": "stap_tdi",
+        "tdo": "stap_tdo",
+        "trst": "stap_trst",
         "tdo_oen": "stap_tdo_oen",
     }
 
-    tap = OcahJtagTap(
+    tap = OcahJtagMasterDriver(
         dut.jtag_stap_if,
         name="stap",
         tck_period_ns=20,
@@ -174,7 +174,7 @@ async def example_stap_idcode(dut):
     try:
         idcode = await tap.read_idcode()
         cocotb.log.info(f"[stap] IDCODE = 0x{idcode:08X}")
-    except OcahJtagTapError as exc:
+    except OcahJtagMasterDriverError as exc:
         cocotb.log.warning(f"[stap] {exc}")
 
     # Return TAP to safe idle state.
@@ -187,6 +187,7 @@ async def example_stap_idcode(dut):
 # Example 3 — CPU TAP access (SMC / SEP debug port scenario)
 # ---------------------------------------------------------------------------
 
+
 @cocotb.test()
 async def example_cpu_tap_idcode(dut):
     """Read IDCODE from the CPU debug TAP.
@@ -197,11 +198,11 @@ async def example_cpu_tap_idcode(dut):
 
     cocotb.start_soon(Clock(dut.tck, 10, units="ns").start())
 
-    tap = OcahJtagTap(
+    tap = OcahJtagMasterDriver(
         dut.jtag_cpu_if,
         name="cpu_tap",
         tck_period_ns=10,
-        ir_width=10,         # ARM DAP uses 10-bit IR (others may differ)
+        ir_width=10,  # ARM DAP uses 10-bit IR (others may differ)
         tap_type="cpu_tap",
     )
 
@@ -212,17 +213,15 @@ async def example_cpu_tap_idcode(dut):
     cocotb.log.info(f"[cpu_tap] IDCODE = 0x{idcode:08X}")
 
     # Decode standard IDCODE fields (IEEE 1149.1 §12.1.1):
-    version   = (idcode >> 28) & 0xF
-    part      = (idcode >> 12) & 0xFFFF
-    manuf     = (idcode >>  1) & 0x7FF
-    lsb       = (idcode >>  0) & 0x1
+    version = (idcode >> 28) & 0xF
+    part = (idcode >> 12) & 0xFFFF
+    manuf = (idcode >> 1) & 0x7FF
+    lsb = (idcode >> 0) & 0x1
     cocotb.log.info(
         f"[cpu_tap] IDCODE fields: version={version:#x}"
         f"  part={part:#x}  manuf={manuf:#x}  lsb={lsb}"
     )
 
-    assert lsb == 1, (
-        f"IEEE 1149.1 §12.1.1: IDCODE bit[0] must be 1, got {lsb}"
-    )
+    assert lsb == 1, f"IEEE 1149.1 §12.1.1: IDCODE bit[0] must be 1, got {lsb}"
 
     cocotb.log.info("example_cpu_tap_idcode PASSED")

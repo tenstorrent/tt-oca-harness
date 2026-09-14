@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dft_gpio_boot_stall_test - GPIO pad boot-stall gates fuse_reset.
 
-SMC padring maps lsio_pad2core_data[60] to boot_stall_from_bp. With JTAG
+SMC padring maps lsio_pad2core_data[57] to boot_stall_from_bp. With JTAG
 override idle, GPIO stall is sticky across cold reset until cleared.
 
 Stimulus uses TB ``gpio_boot_stall_drive_i`` (OR into pad2core).
 
 Real checkers:
-  1. Drive pad bit[60]=1 across cold reset -> fuse_reset_n_delayed_o stays 0
+  1. Drive pad bit[57]=1 across cold reset -> fuse_reset_n_delayed_o stays 0
   2. Clear pad -> fuse_reset rises
   3. Re-assert pad after release does not re-gate (sticky)
 """
@@ -17,13 +18,8 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_axi_helpers import wait_signal_high
 from smu_base_test import smu_base_test
-
-from env import cocotb_compat as _cocotb_compat
-
-_cocotb_compat.apply()
 
 
 @pyuvm.test()
@@ -40,7 +36,7 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
             "fuse_reset high after bring-up",
             int(dut.fuse_reset_n_delayed_o.value),
             1,
-        evidence="STALL_COLD_STICKY")
+        )
 
         stall = dut.gpio_boot_stall_drive_i
 
@@ -65,10 +61,16 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
             "fuse_reset gated by GPIO boot-stall",
             int(dut.fuse_reset_n_delayed_o.value),
             0,
-        evidence="STALL_REASSERT_STICKY")
+            evidence="STALL_COLD_STICKY",
+        )
 
         stall.value = 0
-        await ClockCycles(dut.clk_smu_i, 128)
+        await wait_signal_high(
+            dut.fuse_reset_n_delayed_o,
+            dut.clk_smu_i,
+            timeout_cycles=2000,
+            name="fuse_reset after GPIO clear",
+        )
         sb.expect_eq(
             "fuse_reset released after GPIO clear",
             int(dut.fuse_reset_n_delayed_o.value),
@@ -77,11 +79,12 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
 
         # Sticky: re-assert must not re-gate once released.
         stall.value = 1
-        await ClockCycles(dut.clk_smu_i, 128)
+        await ClockCycles(dut.clk_smu_i, 64)
         sb.expect_eq(
             "fuse_reset stays high on sticky re-assert",
             int(dut.fuse_reset_n_delayed_o.value),
             1,
+            evidence="STALL_REASSERT_STICKY",
         )
 
         stall.value = 0

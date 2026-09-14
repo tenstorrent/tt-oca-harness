@@ -9,9 +9,13 @@
 site:
   title: Open Chiplet Atlas Harness (OCAH) Documentation
   url: /
-  start_page: ocah-docs::index.adoc
+  start_page: ocah-home::index.adoc
 content:
   sources:
+    - url: .
+      branches: HEAD
+      start_path: doc/home
+      edit_url: false
     - url: .
       branches: HEAD
       start_path: doc/trm
@@ -28,6 +32,23 @@ content:
       branches: HEAD
       start_path: doc/appnotes
       edit_url: false
+    - url: .
+      branches: HEAD
+      start_path: doc/contributing
+      edit_url: false
+asciidoc:
+  attributes:
+    kroki-default-format: svg
+    kroki-fetch-diagram: true
+  extensions:
+    - asciidoctor-kroki
+runtime:
+  log:
+    # A broken xref or a missing include target is logged at ERROR, but
+    # Antora's own default (failure_level: fatal) still exits 0 on it, so
+    # the site builds and ships with the break silently rendered as dead
+    # text. Raise the threshold so doc.yml's build step fails instead.
+    failure_level: error
 ui:
   bundle:
     # Pinned 2026-07-24 to the latest antora-ui-default commit at the time

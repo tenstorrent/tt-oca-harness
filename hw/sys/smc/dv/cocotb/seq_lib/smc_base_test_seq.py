@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Base sequence for SMC OSS PyUVM tests.
 
 Agent-agnostic: child sequences override ``body`` and dispatch their own item
@@ -32,23 +33,32 @@ class smc_base_test_seq(uvm_sequence):
         """Block until warm-reset domain is released via fuse sense.
 
         ``SCRATCH_COLD_WARM_*`` (and other warm-reset CSRs) stay in reset until
-        ``fuse_reset_n`` asserts, which follows ``fuse_sense_done``. Without this
-        wait, early SEP_IN AXI accesses hang (~5 us into smoke) while sense is
-        still running.
+        ``rst_warm`` deasserts. That path is
+        ``fuse_sense_done → fuse_reset_n (16-stage delayed o) → rst_warm sync``.
+        Waiting only on ``tb_fuse_sense_done`` + a short settle is not enough —
+        warm-domain AXI then hangs with no ready.
         """
         dut = cocotb.top
         clk = dut.clk_smc_i
-        if not int(dut.tb_fuse_sense_done.value):
+
+        async def _wait_high(sig, name: str) -> None:
+            if int(sig.value):
+                return
             for _ in range(max_cycles):
                 await RisingEdge(clk)
-                if int(dut.tb_fuse_sense_done.value):
-                    break
-            else:
-                raise AssertionError(
-                    f"tb_fuse_sense_done never asserted within {max_cycles} smc clocks"
-                )
-        # Pipe delay between sense_done and fuse_reset_n / warm domain release.
-        await ClockCycles(clk, 20)
+                if int(sig.value):
+                    return
+            raise AssertionError(f"{name} never asserted within {max_cycles} smc clocks")
+
+        await _wait_high(dut.tb_fuse_sense_done, "tb_fuse_sense_done")
+        # Prefer the delayed fuse_reset (matches CPU/mem-init pipe) when present.
+        if hasattr(dut, "tb_fuse_reset_n"):
+            await _wait_high(dut.tb_fuse_reset_n, "tb_fuse_reset_n")
+        if hasattr(dut, "tb_rst_warm_smc_clk_n"):
+            await _wait_high(dut.tb_rst_warm_smc_clk_n, "tb_rst_warm_smc_clk_n")
+        else:
+            # Fallback when the TB probes are absent.
+            await ClockCycles(clk, 64)
 
     async def body(self) -> None:
         raise NotImplementedError

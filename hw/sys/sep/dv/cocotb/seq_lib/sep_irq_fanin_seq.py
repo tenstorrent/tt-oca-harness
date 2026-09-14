@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Simultaneous multi-source interrupt fan-in sources.
 
 sep_irq_simultaneous_fanin_no_alias_test drives SEVERAL IP interrupts at
@@ -25,6 +26,7 @@ HMAC/KMAC INTR bit0 = <ip>_done (OpenTitan INTR layout).
 
 from __future__ import annotations
 
+from env.sep_seeded_rng import SepSeededRng
 from sep_reg_meta import sym
 
 from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE, IrqSrc
@@ -34,10 +36,10 @@ KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
 
 # The simultaneous cross-IP set: four IPs, four non-adjacent aggregator bits.
 FANIN_SOURCES = (
-    IrqSrc("hmac_done",          HMAC_BASE,  0, 17),
-    IrqSrc("kmac_done",          KMAC_BASE,  0, 20),
+    IrqSrc("hmac_done", HMAC_BASE, 0, 17),
+    IrqSrc("kmac_done", KMAC_BASE, 0, 20),
     IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, 23),
-    IrqSrc("edn_cmd_req_done",   EDN_BASE,   0, 27),
+    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, 27),
 )
 
 # The aggregator region this test owns: sep_internal_interrupts[8:33] (the
@@ -66,10 +68,9 @@ class SepIrqFaninCfg:
     """
 
     def __init__(self, seed: int) -> None:
-        import random
         self.seed = seed
-        rng = random.Random(seed)
-        n = rng.randint(2, len(FANIN_SOURCES))
+        rng = SepSeededRng(seed)
+        n = rng.randrange(2, len(FANIN_SOURCES) + 1)
         self.sources = rng.sample(list(FANIN_SOURCES), n)
         # Baseline single source for non-vacuity (any one source; reproducible).
         self.baseline = rng.choice(list(FANIN_SOURCES))

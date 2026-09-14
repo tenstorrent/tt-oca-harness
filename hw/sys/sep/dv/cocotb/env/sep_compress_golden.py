@@ -1,58 +1,46 @@
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: (c) 2024-2026 Tenstorrent Inc. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
 #
 # sep_compress_golden.py
 #
 # Pure-Python golden model for the SEP DRBG entropy compression / conditioning
-# datapath. Ported bit-exactly from the OCAH C DPI ground-truth models:
+# datapath. Cross-checked against the public RTL:
 #
 #   * BIW compressor (GF(2^8) multiply-add extractor):
-#       dv/sep/tb/tb_uvm/common/dpi/drbg_compress_dpi.c
-#       dv/sep/tb/tb_uvm/common/dpi/drbg_compress_dpi_pkg.sv
-#     RTL cross-check: hw/ip/entropy_source/rtl/entropy_generator_complex.sv
-#                      (g_biw generate loop, gf_muladd.sv)
+#       hw/ip/entropy_source/rtl/entropy_generator_complex.sv
+#       hw/ip/entropy_source/rtl/gf_muladd.sv
 #
 #   * SHA-256 conditioner / whitener:
-#       dv/sep/tb/tb_uvm/common/dpi/drbg_sha256_cond_dpi.c
-#       dv/sep/tb/tb_uvm/common/dpi/drbg_sha256_cond_dpi_pkg.sv
-#       dv/sep/tb/tb_uvm/common/dpi/sha256_dpi.c (the SHA-256 primitive)
-#     RTL cross-check: hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
-#
-# The C is GROUND TRUTH. All ordering decisions below cite C line numbers.
+#       hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
 #
 # ----------------------------------------------------------------------------
 # SHA-256 primitive: hashlib substituted (justification)
 # ----------------------------------------------------------------------------
-# sha256_dpi.c / the embedded transform in drbg_sha256_cond_dpi.c implement the
-# textbook FIPS-180-4 SHA-256:
-#   - identical IV (drbg_sha256_cond_dpi.c:99-102) and round constants K
-#     (drbg_sha256_cond_dpi.c:35-52), which are the standard SHA-256 values;
-#   - standard message schedule and round function (lines 68-93);
+# The conditioner uses FIPS 180-4 SHA-256:
+#   - the standard IV and round constants;
+#   - the standard message schedule and round function;
 #   - standard padding: append 0x80, then zeros, then the 64-bit big-endian bit
-#     length (lines 113-128);
-#   - digest emitted big-endian, state[i] MSB-first (lines 130-136).
+#     length;
+#   - digest emitted big-endian, state[i] MSB-first.
 # This is byte-for-byte the FIPS-180-4 algorithm operating on a big-endian byte
 # stream, so Python's stdlib `hashlib.sha256` over the SAME big-endian byte
 # stream yields an identical digest. We therefore substitute hashlib for the
-# core compression function. The Python class still performs the C's exact
-# word->byte framing (drbg_sha256_cond_dpi.c:185-192) and digest->word framing
-# (drbg_sha256_cond_dpi.c:131-136 / get_digest lines 217-222) so the boundaries
-# remain bit-exact. The self-test additionally re-derives the digest with a
-# fully manual FIPS-180-4 transform to prove hashlib == the C primitive.
+# core compression function. The Python class preserves the RTL word/byte
+# framing. The self-test additionally re-derives the digest with a fully manual
+# FIPS-180-4 transform.
 # ----------------------------------------------------------------------------
 
-GF_POLY = 0x1B  # AES reduction polynomial; drbg_compress_dpi.c:29
-N_LANES = 12    # drbg_compress_dpi.c:30
+GF_POLY = 0x1B  # AES reduction polynomial
+N_LANES = 12
 
 
 class SepBiwCompress:
     """BIW (Barak-Impagliazzo-Wigderson) extractor: 12 lane bytes -> 32-bit word.
 
-    GF(2^8) multiply-add over the AES field, reduction value 0x1B
-    (drbg_compress_dpi.c:29). Addition in GF(2^8) is XOR.
+    GF(2^8) multiply-add over the AES field with reduction value 0x1B.
+    Addition in GF(2^8) is XOR.
 
-    Lane -> word mapping (drbg_compress_dpi.c:90-98, RTL
-    entropy_generator_complex.sv:230-245):
+    Lane -> word mapping from ``entropy_generator_complex.sv``:
         out[0] = (b[0] * b[4]) + b[8]   -> word[31:24]  (MSB)
         out[1] = (b[1] * b[5]) + b[9]   -> word[23:16]
         out[2] = (b[2] * b[6]) + b[10]  -> word[15:8]
@@ -63,7 +51,7 @@ class SepBiwCompress:
 
     @staticmethod
     def gf256_mult(a, b):
-        """GF(2^8) multiply a*b, shift-and-XOR. drbg_compress_dpi.c:37-52."""
+        """GF(2^8) multiply a*b using shift-and-XOR."""
         a &= 0xFF
         b &= 0xFF
         p = 0
@@ -79,33 +67,32 @@ class SepBiwCompress:
 
     @staticmethod
     def gf256_muladd(a, b, c):
-        """y = (a*b) + c, addition = XOR. drbg_compress_dpi.c:58-60."""
+        """Compute ``y = (a * b) + c``, where addition is XOR."""
         return (SepBiwCompress.gf256_mult(a, b) ^ (c & 0xFF)) & 0xFF
 
     @staticmethod
     def compress_from_lanes(lanes):
         """12 lane bytes -> 32-bit BIW word.
 
-        `lanes` is an indexable sequence of 12 ints (lane0..lane11), matching
-        drbg_compress_from_lanes (drbg_compress_dpi_pkg.sv:54-62) and
-        drbg_compress_biw_bytes (drbg_compress_dpi.c:109-128).
+        `lanes` is an indexable sequence of 12 ints (lane0..lane11).
         """
         if len(lanes) != N_LANES:
-            raise ValueError("BIW compress requires exactly %d lane bytes, got %d"
-                             % (N_LANES, len(lanes)))
+            raise ValueError(
+                "BIW compress requires exactly %d lane bytes, got %d" % (N_LANES, len(lanes))
+            )
         out0 = SepBiwCompress.gf256_muladd(lanes[0], lanes[4], lanes[8])
         out1 = SepBiwCompress.gf256_muladd(lanes[1], lanes[5], lanes[9])
         out2 = SepBiwCompress.gf256_muladd(lanes[2], lanes[6], lanes[10])
         out3 = SepBiwCompress.gf256_muladd(lanes[3], lanes[7], lanes[11])
-        # Pack: out[0] is MSB. drbg_compress_dpi.c:122-125.
+        # Pack out[0] as the most-significant byte.
         return ((out0 << 24) | (out1 << 16) | (out2 << 8) | out3) & 0xFFFFFFFF
 
     @staticmethod
     def compress_from_packed(packed_96):
         """Unpack a 96-bit packed SV vector and compress.
 
-        Matches drbg_compress_biw (drbg_compress_dpi.c:75-101): lane i lives in
-        bits [i*8 +: 8], i.e. lane0 in [7:0] ... lane11 in [95:88] (lines 82-86).
+        Lane i lives in bits [i*8 +: 8], so lane0 occupies [7:0] and lane11
+        occupies [95:88].
         `packed_96` is a Python int holding the 96-bit value.
         """
         lanes = [(packed_96 >> (i * 8)) & 0xFF for i in range(N_LANES)]
@@ -116,25 +103,22 @@ class SepSha256Conditioner:
     """SHA-256 entropy conditioner / whitener.
 
     Accumulates `block_words` 32-bit compressor words; when full, hashes the
-    block and exposes the 256-bit digest as 8 x 32-bit words. Mirrors
-    drbg_sha256_cond_dpi.c and RTL entropy_sha256_whitener.sv (16 words ->
-    512-bit block -> 8 digest words).
+    block and exposes the 256-bit digest as 8 x 32-bit words. This mirrors
+    `entropy_sha256_whitener.sv` (16 words -> 512-bit block -> 8 digest words).
 
-    Word -> byte framing (drbg_sha256_cond_dpi.c:185-192): each accumulated
-    32-bit word is serialized BIG-ENDIAN (w>>24, w>>16, w>>8, w) into the SHA
-    input stream. This matches the RTL feeding word[31:24] first.
+    Each accumulated 32-bit word is serialized BIG-ENDIAN
+    (w>>24, w>>16, w>>8, w) into the SHA input stream. This matches the RTL
+    feeding word[31:24] first.
 
     SHA -> output-word framing: the 32-byte digest is grouped big-endian into
-    8 words; digest[0..3] form word[0] (drbg_sha256_cond_dpi.c:131-136). The
-    DPI get_digest packs word[0] into the MSB lane of the 256-bit vector
-    (digest_out[7-i], lines 217-222); get_digest_words() below returns the
-    same word[0..7] MSB-first list.
+    8 words; digest[0..3] form word[0]. get_digest_words() returns the same
+    word[0..7] MSB-first list.
     """
 
-    MAX_BLOCK_WORDS = 64  # drbg_sha256_cond_dpi.c:142
+    MAX_BLOCK_WORDS = 64
 
     def __init__(self, block_words=16):
-        # drbg_cond_init: clamp to [1, MAX], default 16. lines 160-165.
+        # Clamp to [1, MAX], defaulting to 16.
         if block_words <= 0 or block_words > self.MAX_BLOCK_WORDS:
             block_words = 16
         self.block_words = block_words
@@ -148,14 +132,14 @@ class SepSha256Conditioner:
     def _sha256(data):
         """FIPS-180-4 SHA-256 over a big-endian byte stream.
 
-        hashlib substituted for the C primitive (see module header). Returns
-        32 bytes, big-endian, exactly as drbg_sha256_cond_dpi.c sha256_compute.
+        Returns 32 big-endian bytes.
         """
         import hashlib
+
         return hashlib.sha256(data).digest()
 
     def reset(self):
-        """drbg_cond_reset: clears state, keeps block_words. lines 238-242."""
+        """Clear state while preserving block_words."""
         self.buf = []
         self.count = 0
         self.digest_bytes = bytes(32)
@@ -163,7 +147,7 @@ class SepSha256Conditioner:
         self.total_blocks = 0
 
     def push_word(self, word):
-        """Push one 32-bit compressor word. drbg_cond_push_word lines 173-201.
+        """Push one 32-bit compressor word.
 
         Returns True iff a digest was produced on this push.
         """
@@ -178,7 +162,7 @@ class SepSha256Conditioner:
             self.count += 1
 
         if self.count >= self.block_words:
-            # Word buffer -> big-endian byte array. lines 185-192.
+            # Convert the word buffer to a big-endian byte array.
             data = bytearray()
             for i in range(self.block_words):
                 w = self.buf[i] & 0xFFFFFFFF
@@ -200,15 +184,14 @@ class SepSha256Conditioner:
     def get_digest_words(self):
         """Latest digest as 8 x 32-bit words, MSB word first (word[0..7]).
 
-        word[i] = big-endian pack of digest_bytes[i*4 .. i*4+3]
-        (drbg_sha256_cond_dpi.c:131-136). The DPI get_digest stores word[0] in
-        the most-significant 32-bit lane of the 256-bit SV vector (line 218,
-        digest_out[7-i]); this list is in that same word[0]-first order.
+        word[i] is the big-endian pack of digest_bytes[i*4 .. i*4+3].
         """
         d = self.digest_bytes
-        return [((d[i * 4] << 24) | (d[i * 4 + 1] << 16) |
-                 (d[i * 4 + 2] << 8) | d[i * 4 + 3]) & 0xFFFFFFFF
-                for i in range(8)]
+        return [
+            ((d[i * 4] << 24) | (d[i * 4 + 1] << 16) | (d[i * 4 + 2] << 8) | d[i * 4 + 3])
+            & 0xFFFFFFFF
+            for i in range(8)
+        ]
 
     def get_digest_int(self):
         """Latest digest as a single 256-bit int (word[0] most significant),
@@ -230,34 +213,89 @@ class SepSha256Conditioner:
 def _manual_sha256(data):
     """Independent, fully-manual FIPS-180-4 SHA-256 (no hashlib).
 
-    Re-implements drbg_sha256_cond_dpi.c sha256_transform/sha256_compute in
-    Python to PROVE hashlib == the C primitive over the same byte stream.
+    Used to cross-check hashlib over the same byte stream.
     """
     K = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
-        0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
-        0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
-        0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
-        0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
-        0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
-        0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+        0x428A2F98,
+        0x71374491,
+        0xB5C0FBCF,
+        0xE9B5DBA5,
+        0x3956C25B,
+        0x59F111F1,
+        0x923F82A4,
+        0xAB1C5ED5,
+        0xD807AA98,
+        0x12835B01,
+        0x243185BE,
+        0x550C7DC3,
+        0x72BE5D74,
+        0x80DEB1FE,
+        0x9BDC06A7,
+        0xC19BF174,
+        0xE49B69C1,
+        0xEFBE4786,
+        0x0FC19DC6,
+        0x240CA1CC,
+        0x2DE92C6F,
+        0x4A7484AA,
+        0x5CB0A9DC,
+        0x76F988DA,
+        0x983E5152,
+        0xA831C66D,
+        0xB00327C8,
+        0xBF597FC7,
+        0xC6E00BF3,
+        0xD5A79147,
+        0x06CA6351,
+        0x14292967,
+        0x27B70A85,
+        0x2E1B2138,
+        0x4D2C6DFC,
+        0x53380D13,
+        0x650A7354,
+        0x766A0ABB,
+        0x81C2C92E,
+        0x92722C85,
+        0xA2BFE8A1,
+        0xA81A664B,
+        0xC24B8B70,
+        0xC76C51A3,
+        0xD192E819,
+        0xD6990624,
+        0xF40E3585,
+        0x106AA070,
+        0x19A4C116,
+        0x1E376C08,
+        0x2748774C,
+        0x34B0BCB5,
+        0x391C0CB3,
+        0x4ED8AA4A,
+        0x5B9CCA4F,
+        0x682E6FF3,
+        0x748F82EE,
+        0x78A5636F,
+        0x84C87814,
+        0x8CC70208,
+        0x90BEFFFA,
+        0xA4506CEB,
+        0xBEF9A3F7,
+        0xC67178F2,
     ]
     M = 0xFFFFFFFF
 
     def rotr(x, n):
         return ((x >> n) | (x << (32 - n))) & M
 
-    state = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-             0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]
+    state = [
+        0x6A09E667,
+        0xBB67AE85,
+        0x3C6EF372,
+        0xA54FF53A,
+        0x510E527F,
+        0x9B05688C,
+        0x1F83D9AB,
+        0x5BE0CD19,
+    ]
 
     # Padding: 0x80, zeros, 64-bit big-endian bit length.
     bitlen = len(data) * 8
@@ -268,11 +306,15 @@ def _manual_sha256(data):
     msg += bitlen.to_bytes(8, "big")
 
     for off in range(0, len(msg), 64):
-        block = msg[off:off + 64]
+        block = msg[off : off + 64]
         W = [0] * 64
         for i in range(16):
-            W[i] = ((block[i * 4] << 24) | (block[i * 4 + 1] << 16) |
-                    (block[i * 4 + 2] << 8) | block[i * 4 + 3]) & M
+            W[i] = (
+                (block[i * 4] << 24)
+                | (block[i * 4 + 1] << 16)
+                | (block[i * 4 + 2] << 8)
+                | block[i * 4 + 3]
+            ) & M
         for i in range(16, 64):
             s0 = rotr(W[i - 15], 7) ^ rotr(W[i - 15], 18) ^ (W[i - 15] >> 3)
             s1 = rotr(W[i - 2], 17) ^ rotr(W[i - 2], 19) ^ (W[i - 2] >> 10)
@@ -309,12 +351,13 @@ def _selftest():
     assert SepBiwCompress.gf256_mult(0x80, 0x02) == 0x1B
 
     # ---------------------------------------------------------------------
-    # (2) BIW word assembly vs a hand-computed oracle re-implementing the C
-    #     inline (drbg_compress_dpi.c:117-125).
+    # (2) BIW word assembly vs an independent hand-computed oracle.
     # ---------------------------------------------------------------------
     def oracle(lanes):
         def mul(a, b):
-            a &= 0xFF; b &= 0xFF; p = 0
+            a &= 0xFF
+            b &= 0xFF
+            p = 0
             for _ in range(8):
                 if b & 1:
                     p ^= a
@@ -324,6 +367,7 @@ def _selftest():
                     a ^= 0x1B
                 b >>= 1
             return p
+
         o0 = mul(lanes[0], lanes[4]) ^ lanes[8]
         o1 = mul(lanes[1], lanes[5]) ^ lanes[9]
         o2 = mul(lanes[2], lanes[6]) ^ lanes[10]
@@ -340,8 +384,7 @@ def _selftest():
     for lanes in test_lanes:
         got = SepBiwCompress.compress_from_lanes(lanes)
         exp = oracle(lanes)
-        assert got == exp, ("BIW mismatch lanes=%s got=%08x exp=%08x"
-                            % (lanes, got, exp))
+        assert got == exp, "BIW mismatch lanes=%s got=%08x exp=%08x" % (lanes, got, exp)
     # Hand-checked single byte: out[0] = 0x57*0x57 + 0x00.
     # 0x57*0x57 in GF(2^8) = 0xA5 (AES field, reduction 0x1B). lanes feed
     # group0 = (b0,b4,b8), so the MSB byte of the word must be 0xA5.
@@ -354,18 +397,33 @@ def _selftest():
     packed = 0
     for i in range(12):
         packed |= lanes[i] << (i * 8)
-    assert SepBiwCompress.compress_from_packed(packed) == \
-        SepBiwCompress.compress_from_lanes(lanes), "packed unpack mismatch"
+    assert SepBiwCompress.compress_from_packed(packed) == SepBiwCompress.compress_from_lanes(
+        lanes
+    ), "packed unpack mismatch"
 
     # ---------------------------------------------------------------------
     # (3) SHA-256 conditioner: feed a known 16-word block and assert the
     #     digest equals an independently-computed expected value.
     # ---------------------------------------------------------------------
     cond = SepSha256Conditioner(16)
-    block_words = [0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F,
-                   0x10111213, 0x14151617, 0x18191A1B, 0x1C1D1E1F,
-                   0x20212223, 0x24252627, 0x28292A2B, 0x2C2D2E2F,
-                   0x30313233, 0x34353637, 0x38393A3B, 0x3C3D3E3F]
+    block_words = [
+        0x00010203,
+        0x04050607,
+        0x08090A0B,
+        0x0C0D0E0F,
+        0x10111213,
+        0x14151617,
+        0x18191A1B,
+        0x1C1D1E1F,
+        0x20212223,
+        0x24252627,
+        0x28292A2B,
+        0x2C2D2E2F,
+        0x30313233,
+        0x34353637,
+        0x38393A3B,
+        0x3C3D3E3F,
+    ]
     produced = False
     for idx, w in enumerate(block_words):
         produced = cond.push_word(w)
@@ -387,6 +445,7 @@ def _selftest():
 
     # Prove hashlib (used inside the conditioner) == the manual C primitive.
     import hashlib
+
     manual = _manual_sha256(expected_stream)
     lib = hashlib.sha256(expected_stream).digest()
     assert manual == lib, "manual FIPS-180-4 != hashlib (substitution unsafe)"
@@ -395,7 +454,7 @@ def _selftest():
     assert cond.get_digest_bytes() == lib, "conditioner digest != expected"
 
     # Word framing of the output (cond.c:131-136 / get_digest:217-222).
-    exp_words = [int.from_bytes(lib[i * 4:i * 4 + 4], "big") for i in range(8)]
+    exp_words = [int.from_bytes(lib[i * 4 : i * 4 + 4], "big") for i in range(8)]
     assert cond.get_digest_words() == exp_words, "digest word framing wrong"
 
     # 256-bit packed int: word[0] is most significant.

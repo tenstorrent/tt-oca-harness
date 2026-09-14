@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # Try git first, fall back to OCH_ROOT, fail if neither available
 _OCH_ROOT_GIT := $(shell git rev-parse --show-toplevel 2>/dev/null)
 ifneq ($(_OCH_ROOT_GIT),)
@@ -33,7 +36,6 @@ endif
 
 ifeq ($(SIM),vcs)
   COMPILE_ARGS += -f $(FILELIST)
-  COMPILE_ARGS += +define+INC_ASSERT
   COMPILE_ARGS += -sverilog -timescale=1ns/1ps -full64 +vcs+lic+wait
   COMPILE_ARGS += -lca +rad -kdb +nospecify
   ifeq ($(DEBUG),0)

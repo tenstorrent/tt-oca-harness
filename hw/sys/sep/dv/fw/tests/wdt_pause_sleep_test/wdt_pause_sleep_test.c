@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*******************************************************************************
- * TC_WDT_003 (V2, P1) - WDT Pause in Sleep Test
+ * WDT Pause in Sleep Test
  *
  * Verifies WDOG_CTRL.pause_in_sleep (bit 1) register configuration.
  * Full functional pause verification requires TB to assert wdt_debug_sleep_mode_i;
@@ -22,10 +22,13 @@
 #include "sep.h"
 #include "sep_outbound_filter.h"
 #include "test_completion.h"
+#include "aon_timer.h"
 
-/* WDOG_CTRL bit 0 = enable, bit 1 = pause_in_sleep */
-#define WDOG_CTRL_ENABLE 0x1
-#define WDOG_CTRL_PAUSE_SLEEP 0x3 /* enable=1, pause_in_sleep=1 */
+#define WDOG_CTRL_ENABLE AON_TIMER__WDOG_CTRL__ENABLE_bm
+#define WDOG_CTRL_PAUSE_SLEEP \
+    (AON_TIMER__WDOG_CTRL__ENABLE_bm | AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm)
+#define WDOG_CTRL_FIELD_MASK \
+    (AON_TIMER__WDOG_CTRL__ENABLE_bm | AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm)
 
 static void wdt_disable(void) {
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
@@ -35,7 +38,7 @@ static void wdt_disable(void) {
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("TC_WDT_003: WDT Pause in Sleep Test\n");
+    printf("WDT Pause in Sleep Test\n");
     printf("=====================================\n\n");
 
     int errors = 0;
@@ -50,8 +53,8 @@ int main(void) {
     /* Set enable=1, pause_in_sleep=1 */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_PAUSE_SLEEP);
     uint32_t ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
-    printf("  WDOG_CTRL written 0x3, readback = 0x%08x\n", ctrl);
-    if ((ctrl & 0x3) != 0x3) {
+    printf("  WDOG_CTRL written pause+enable, readback = 0x%08x\n", ctrl);
+    if ((ctrl & WDOG_CTRL_FIELD_MASK) != WDOG_CTRL_PAUSE_SLEEP) {
         printf("  FAIL: pause_in_sleep bit not retained (got 0x%08x)\n", ctrl);
         errors++;
     } else {
@@ -61,7 +64,7 @@ int main(void) {
     /* Clear pause_in_sleep */
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_ENABLE);
     ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
-    if ((ctrl & 0x3) != 0x1) {
+    if ((ctrl & WDOG_CTRL_FIELD_MASK) != WDOG_CTRL_ENABLE) {
         printf("  FAIL: pause_in_sleep clear failed (got 0x%08x)\n", ctrl);
         errors++;
     } else {
@@ -134,11 +137,11 @@ int main(void) {
 
     printf("\n=====================================\n");
     if (errors == 0) {
-        printf("TC_WDT_003: PASS\n");
+        printf("WDT Pause in Sleep Test: PASS\n");
         printf("Note: Full sleep-pause requires TB to assert wdt_debug_sleep_mode_i\n");
         test_pass(0);
     } else {
-        printf("TC_WDT_003: FAIL (errors=%d)\n", errors);
+        printf("WDT Pause in Sleep Test: FAIL (errors=%d)\n", errors);
         test_fail(1);
     }
     printf("=====================================\n");

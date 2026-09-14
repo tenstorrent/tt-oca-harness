@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMU OSS environment configuration."""
 
 from __future__ import annotations
 
-import cocotb
+import random
+
 from cocotb.triggers import Event
 
 
@@ -21,5 +23,12 @@ class SmuEnvCfg:
         self.reset_done = Event()
 
     def randomize_timing(self, seed: int) -> None:
-        # Deterministic defaults for Phase-1; seed reserved for later jitter.
-        _ = seed
+        """Choose reproducible clock / JTAG timing from RANDOM_SEED."""
+        rng = random.Random(seed)
+        self.smu_clk_period_ns = rng.choice((8, 10, 12))
+        self.ref_clk_period_ns = rng.choice((8, 10, 12, 16))
+        self.periph_clk_period_ns = rng.choice((8, 10, 12, 16))
+        self.jtag_period_ns = rng.choice((32, 40, 48))
+        self.idle_tck = rng.randint(2, 4)
+        # Keep settle above cold-reset extender (255) + deglitch margin.
+        self.post_reset_settle_cycles = rng.randint(500, 700)

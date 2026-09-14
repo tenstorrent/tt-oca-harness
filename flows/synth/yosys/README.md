@@ -3,7 +3,7 @@
 Slang and verible Make targets are native-or-fail (tools must be on `PATH`);
 yosys synthesis is Docker-by-default. Covered blocks: the four `hw/sys`
 blocks (`smc`, `sep`, `smu`, `dtp`) plus vendored IP packages (currently
-`aou-rtl`). The EDA container image,
+`aou`). The EDA container image,
 [`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools), bundles
 `slang`, `yosys` + the `yosys-slang` plugin, and `verible`. See
 [`tools/docker/README.md`](../../../tools/docker/README.md) for how the
@@ -19,7 +19,7 @@ make format-sv-check    [FORMAT_PATH=<path>]         # verible-verilog-format --
 ```
 
 `BLOCK` selects one of the discovered blocks (`smc`/`sep`/`smu`/`dtp`/
-`aou-rtl`; omit to run all of them - see [Layout](#layout) for how a block is
+`aou`; omit to run all of them - see [Layout](#layout) for how a block is
 discovered). It is not called `TARGET` because `hw/common/regs/classify.mk`
 already validates a top-level `TARGET=` against the (disjoint) register-block
 namespace, unconditionally, for every goal - `make lint-slang-all TARGET=smu` would fail with
@@ -101,10 +101,20 @@ for a new PDK - every tech-specific value is hidden behind the generic names
 
 Each `hw/sys/<block>/synth/constraints.sdc` (`smc`, `dtp`, `sep`, `smu`) is a
 full Synopsys Design Constraints file - `create_clock`/`create_generated_clock`
-for every clock domain, `set_clock_groups`, and `set_input_delay`/
+for every clock domain, asynchronous clock groups, and `set_input_delay`/
 `set_output_delay` for every top-level port - validated against this repo's
 actual RTL port lists and hierarchy (see the header comment in each file for
 block-specific caveats).
+
+Each one also bounds its clock-domain crossings, in two layers. The asynchronous
+groups are declared with `set_async_clock_groups`
+(`flows/synth/constraints/async_clock_groups.tcl`), which also applies a default
+`max_delay` to every inter-group clock pair. The block's
+`<block>_cdc_max_delay.tcl`, sourced at the end of the SDC, then bounds each
+synchronizer and async FIFO individually, using the procedures in
+`flows/synth/constraints/cdc_max_delay_procs.tcl` and the per-instance calls in
+`<block>_cdc_max_delay_generated.tcl`. "CDC Timing Constraints" in the Integrator
+Guide documents how the bounds are derived and the integration steps they require.
 
 **None of this is read by `make synth-all` today**, and that is intentional, not
 an oversight. Yosys's ABC step (`scripts/synth.tcl`) does not consume SDC at
@@ -132,6 +142,9 @@ work could land as pure documentation first.
 flows/
 ├── common.mk                # shared plumbing: docker-run + bender-flist + dispatch-loop macros
 ├── lint/slang.mk             # ocah-lint-slang-all / ocah-lint-slang
+├── synth/constraints/        # engine-agnostic SDC helpers, sourced by each block's constraints.sdc
+│   ├── async_clock_groups.tcl   # set_async_clock_groups: -allow_paths + default inter-group bound
+│   └── cdc_max_delay_procs.tcl  # one set_cdc_max_delay_* proc per CDC element type
 ├── synth/yosys/
 │   ├── yosys.mk              # ocah-synth-all / ocah-synth, TECH ?= ihp-sg13g2
 │   ├── scripts/
@@ -161,7 +174,7 @@ block's name is normally its own directory name, except under
 their flow descriptor in `overlay/` rather than editing the vendored tree
 directly, mirroring how other TT-specific collateral is already layered onto
 vendored packages in this repo (generated regs, waivers, etc.) - see
-`vendor/tenstorrent/aou-rtl/overlay/flow.mk` for an example.
+`vendor/tenstorrent/aou/overlay/flow.mk` for an example.
 
 ## Provenance
 

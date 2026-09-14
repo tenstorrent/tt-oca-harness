@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """LCC sep_debug -> inbound-filter gating sequences for the SEP OSS flow.
 
-Stimulus for the inbound-filter-gating test (OCAH ``sep_lcc_uvm_inbound_filter
-_gating_test``, TEST 3.7). The contract:
+Stimulus for the inbound-filter-gating test (reference suite ``sep_lcc_uvm_inbound_filter
+_gating_test``). The contract:
 
   feat_ctrl.sep_debug (FEAT_CTRL[0]) drives the SEP inbound filter's
   ``filter_skip_i`` (``sep.sv``: ``inbound_filter_skip_i = feat_ctrl_o.sep_debug``).
@@ -15,7 +16,7 @@ Two buses are exercised:
     DEMOTE_1 to flip PROD -> PROD_DBG_1. FEAT_CTRL reads carry an ``expected``
     golden value so the scoreboard exact-value-checks the lc_state -> feat_ctrl
     decode (and FEAT_CTRL[0] is the frontdoor mirror of the internal
-    ``filter_skip_i`` -- the OSS replacement for OCAH's backdoor ``uvm_hdl_read``).
+    ``filter_skip_i`` -- the OSS replacement for the reference suite's backdoor ``uvm_hdl_read``).
   * EXTERNAL (SMN-inbound, ``m_axi``): the filtered path. ``SepExtAxiProbeSeq``
     issues a single read and exposes resp_ok / resp_code / timed_out. Timeout is
     fatal by default; the inbound filter proves a blocked access by routing it to
@@ -27,14 +28,15 @@ the test). Offsets mirror ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecy
 
 from __future__ import annotations
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from env.sep_lcc_golden import LCC_DEMOTE_1, LCC_FEAT_CTRL
+from env.sep_lcc_golden import LCC_DEMOTE_1, LCC_DEMOTE_2, LCC_FEAT_CTRL
+from pyuvm import uvm_sequence
 
 # SEP-local lifecycle-controller block. The LCC register map lives in
 # env.sep_lcc_golden (single source of truth).
-DEMOTE_BIT = 0x1                        # DEMOTE.demote (field [0:0])
+DEMOTE_BIT = 0x1  # DEMOTE.demote (field [0:0])
+DEMOTE_LOCK_BIT = 0x2  # DEMOTE.lock (field [1:1])
+DEMOTE_FIELD_MASK = DEMOTE_BIT | DEMOTE_LOCK_BIT
 
 
 class SepLccFeatCtrlCheckSeq(uvm_sequence):
@@ -71,34 +73,55 @@ class SepLccFeatCtrlCheckSeq(uvm_sequence):
         self.sep_debug = lo & 0x1
 
 
-class SepLccDemote1Seq(uvm_sequence):
-    """Write DEMOTE_1.demote=1 on the CONTROL bus and read it back.
+class SepLccDemoteSeq(uvm_sequence):
+    """Write DEMOTE_{1,2} on the CONTROL bus and read it back.
 
-    Flips the live LCC decode PROD -> PROD_DBG_1 (DEMOTE_LOCK_1 is 0 at reset, so
-    the demote bit is writable). Exposes ``demote`` (the read-back demote bit).
+    The two demote registers act independently, each on its own debug group:
+    DEMOTE_1 relaxes DBG_1 ([15:0]) and DEMOTE_2 relaxes DBG_2 ([31:16]). Which
+    register this sequence drives is therefore load-bearing, not a detail -- so
+    it is a parameter rather than being baked into the class.
+
+    ``group`` is 1 or 2. ``value`` is the demote and/or lock bits (W1S). When
+    ``lock`` is set, ``demote.swwe`` is 0 and a later demote write is ignored
+    until ``rst_ni``. ``expected`` overrides the read-back check so a locked
+    reject can require the pre-write value. Exposes ``demote`` and ``lock``.
     """
 
-    def __init__(self, *, name: str = "lcc_demote1_seq") -> None:
-        super().__init__(name)
+    def __init__(
+        self,
+        group: int = 1,
+        value: int = DEMOTE_BIT,
+        *,
+        expected: int | None = None,
+        name: str | None = None,
+    ) -> None:
+        super().__init__(name or f"lcc_demote{group}_seq")
+        assert group in (1, 2), f"demote group must be 1 or 2, got {group}"
+        self.group = group
+        self.value = value & DEMOTE_FIELD_MASK
+        self.expected = self.value if expected is None else expected & DEMOTE_FIELD_MASK
+        self.addr = LCC_DEMOTE_1 if group == 1 else LCC_DEMOTE_2
         self.demote: int | None = None
+        self.lock: int | None = None
 
     async def body(self) -> None:
-        wr = SepAxiItem("wr_demote1")
+        wr = SepAxiItem(f"wr_demote{self.group}")
         wr.op = SepAxiOp.WRITE
-        wr.addr = LCC_DEMOTE_1
+        wr.addr = self.addr
         wr.length = 4
-        wr.wdata = DEMOTE_BIT
+        wr.wdata = self.value
         await self.start_item(wr)
         await self.finish_item(wr)
 
-        rd = SepAxiItem("rd_demote1")
+        rd = SepAxiItem(f"rd_demote{self.group}")
         rd.op = SepAxiOp.READ
-        rd.addr = LCC_DEMOTE_1
+        rd.addr = self.addr
         rd.length = 4
-        rd.expected = DEMOTE_BIT
+        rd.expected = self.expected
         await self.start_item(rd)
         await self.finish_item(rd)
-        self.demote = rd.rdata & 0x1
+        self.demote = rd.rdata & DEMOTE_BIT
+        self.lock = (rd.rdata >> 1) & 0x1
 
 
 # AXI response codes (axi_pkg): blocked inbound traffic is routed to axi_err_slv
@@ -120,8 +143,9 @@ class SepExtAxiProbeSeq(uvm_sequence):
     DECERR response code, not by a timeout.
     """
 
-    def __init__(self, addr: int, *, allow_timeout: bool = False,
-                 name: str = "ext_axi_probe_seq") -> None:
+    def __init__(
+        self, addr: int, *, allow_timeout: bool = False, name: str = "ext_axi_probe_seq"
+    ) -> None:
         super().__init__(name)
         self.addr = addr
         self.allow_timeout = allow_timeout

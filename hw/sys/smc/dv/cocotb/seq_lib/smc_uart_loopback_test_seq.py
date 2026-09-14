@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-1: DUT UART0 TX capture (THR -> pad12 -> OcahUartConsole sink)."""
 
 from __future__ import annotations
@@ -6,19 +7,23 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from .smc_addr_map import UART_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_uart_protocol_vip import SmcUartVip, SmcUartVipError
 
-# UART_LOG_ENGINE_WRAP_0
-UART_LOG_ENGINE_CTRL = 0xC000_A000
-UART0_BASE = 0xC000_A100
-UART0_THR = UART0_BASE + 0x00  # also RBR / DLL (DLAB)
-UART0_IER = UART0_BASE + 0x04  # also DLM (DLAB)
-UART0_LCR = UART0_BASE + 0x0C
-UART0_LSR = UART0_BASE + 0x14
+# UART_LOG_ENGINE_WRAP_0 (PeakRDL)
+UART_LOG_ENGINE_CTRL = smc_indexed_addr(
+    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
+    0,
+)
+UART0_THR = smc_indexed_addr(
+    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0
+)  # also THR / DLL (DLAB)
+UART0_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
+UART0_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
+UART0_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0)
 
-CLOCK_GATE_CONTROL = 0xC001_0018
-UART_CG_EN = 1 << 12  # clear to ungate (same polarity as I2C bit 11)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = 0x1
 LCR_DLAB = 0x80
@@ -38,9 +43,8 @@ class smc_uart_loopback_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         # start_seq assigns seq.cfg = env.cfg (includes randomized periph period).
         periph_ns = int(getattr(self.cfg, "periph_clk_period_ns", 10) or 10)
-        self.divisor = max(
-            1, int(round(1.0 / ((periph_ns * 1e-9) * 16 * BAUD)))
-        )
+        # Baud generator divides by (divisor + 1); divisor 0 disables TX/RX.
+        self.divisor = max(1, int(round(1.0 / ((periph_ns * 1e-9) * 16 * BAUD))) - 1)
         cocotb.log.info(
             "UART DUT TX: periph_clk=%dns baud=%d divisor=%d",
             periph_ns,
@@ -58,7 +62,7 @@ class smc_uart_loopback_test_seq(SmcCsrSeq):
         await self.csr_write("UART0_DLM", UART0_IER, (self.divisor >> 8) & 0xFF)
         await self.csr_write("UART0_LCR_8N1", UART0_LCR, LCR_8N1)
 
-        # Allow divisor reload to settle (legacy 16550 TB waits ~default*16).
+        # Allow divisor reload to settle.
         await ClockCycles(cocotb.top.clk_smc_i, max(64, self.divisor * 16))
 
         try:

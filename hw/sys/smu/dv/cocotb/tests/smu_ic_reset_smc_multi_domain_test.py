@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ic_reset_smc_multi_domain_test - P2-I5a IC_RESET SMC multi-domain.
 
 Exercises SMC fuse/warm/cool/cold IC_RESET ports one at a time and checks
@@ -14,7 +15,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
     SMU_IC_RESET_SMC_COLD_PORT,
@@ -27,9 +27,13 @@ from seq_lib.smu_jtag_helpers import (
 )
 from smu_base_test import smu_base_test
 
-from env import cocotb_compat as _cocotb_compat
 
-_cocotb_compat.apply()
+def _sample(signal, name: str) -> int:
+    val = signal.value
+    if not val.is_resolvable:
+        raise AssertionError(f"X/Z sample on {name}: {val}")
+    return int(val)
+
 
 # (port, ovrd leaf, val leaf) under u_dut.jtag_smc_reset_ctrl
 _DOMAINS = (
@@ -59,7 +63,7 @@ class smu_ic_reset_smc_multi_domain_test(smu_base_test):
                 f"idle {ovrd_name}",
                 read_smc_reset_ctrl_bit(dut, ovrd_name),
                 0,
-            evidence="IC_RESET_DOMAIN_EXCL")
+            )
 
         for port, ovrd_name, val_name in _DOMAINS:
             pattern = pack_ic_reset_ports(
@@ -89,18 +93,19 @@ class smu_ic_reset_smc_multi_domain_test(smu_base_test):
                     f"{other_ovrd} idle while {ovrd_name}",
                     read_smc_reset_ctrl_bit(dut, other_ovrd),
                     0,
+                    evidence="IC_RESET_DOMAIN_EXCL",
                 )
 
             # TB cold mirror only tracks cold domain.
             if port == SMU_IC_RESET_SMC_COLD_PORT:
                 sb.expect_eq(
                     "TB smc cold ovrd",
-                    int(dut.jtag_ic_reset_smc_ovrd.value),
+                    _sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"),
                     1,
                 )
                 sb.expect_eq(
                     "TB smc cold ctrl_n",
-                    int(dut.jtag_ic_reset_smc_ctrl_n.value),
+                    _sample(dut.jtag_ic_reset_smc_ctrl_n, "jtag_ic_reset_smc_ctrl_n"),
                     0,
                 )
 

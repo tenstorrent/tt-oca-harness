@@ -2,21 +2,21 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Command Queue Test - TC_SPIOT_007 (P0)
+ * SPI OT Command Queue Test
  *
  * Verifies command queue functionality, CMDQD monitoring, CSID selection,
  * and error conditions (CMDBUSY, CMDINVAL, CSIDINVAL).
  *
  * Test Flow:
- *   1. Configure SPI mux, enable controller
- *   2. Verify CMDQD=0 initially
- *   3. Write CSID=0, issue CMD, check CMDQD
- *   4. Test CMDINVAL error with invalid SPEED=3
- *   5. Test CSIDINVAL error with CSID > NUM_CS
- *   6. Verify ERROR_STATUS W1C clear
+ * 1. Enable controller
+ * 2. Verify CMDQD=0 initially
+ * 3. Write CSID=0, issue CMD, check CMDQD
+ * 4. Test CMDINVAL error with invalid SPEED=3
+ * 5. Test CSIDINVAL error with CSID > NUM_CS
+ * 6. Verify ERROR_STATUS W1C clear
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_cmd_queue_test STACK=sim
+ * make test-sep TEST_NAME=sep_spi_ot_cmd_queue_test STACK=sim
  *
  */
 
@@ -27,7 +27,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define TIMEOUT_LIMIT 100000
 
@@ -37,11 +36,43 @@ static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
     return ok;
 }
 
+/* Returns 0 when READY, -1 on timeout (fail-closed). */
+static int wait_for_ready(int timeout) {
+    spi_controller__STATUS_t status;
+    while (timeout-- > 0) {
+        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        if (status.f.READY) return 0;
+    }
+    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    printf("  FAIL: TIMEOUT waiting for READY (STATUS=0x%08x)\n", status.w);
+    return -1;
+}
+
+/* Poll until ERROR_STATUS bit set; returns 0 if seen, -1 on timeout. */
+static int wait_for_error_bit(int (*bit_set)(spi_controller__ERROR_STATUS_t), int timeout,
+                              const char *name) {
+    spi_controller__ERROR_STATUS_t err;
+    while (timeout-- > 0) {
+        err.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+        if (bit_set(err)) return 0;
+    }
+    err.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    printf("  FAIL: TIMEOUT waiting for %s (ERROR_STATUS=0x%08x)\n", name, err.w);
+    return -1;
+}
+
+static int err_cmdinval_set(spi_controller__ERROR_STATUS_t e) {
+    return e.f.CMDINVAL != 0;
+}
+static int err_csidinval_set(spi_controller__ERROR_STATUS_t e) {
+    return e.f.CSIDINVAL != 0;
+}
+
 int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Command Queue Test (TC_SPIOT_007)\n");
+    printf("SPI OT Command Queue Test\n");
     printf("========================================\n\n");
 
     int pass = 1;
@@ -50,9 +81,6 @@ int main(void) {
     spi_controller__CMD_t cmd;
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
-
-    spi_mux_select_ot();
-    printf("SPI mux configured for OpenTitan\n");
 
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
@@ -70,6 +98,10 @@ int main(void) {
     printf("\nStep 1: Command queue initial state\n");
     status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  CMDQD=%u, READY=%u\n", status.f.CMDQD, status.f.READY);
+    if (status.f.CMDQD != 0) {
+        printf("  FAIL: CMDQD expected 0 at idle\n");
+        pass = 0;
+    }
 
     /* Step 2: Set CSID and verify */
     printf("\nStep 2: CSID configuration\n");
@@ -77,35 +109,30 @@ int main(void) {
     uint32_t csid_val = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR);
     if (!check_reg("CSID=0", csid_val, 0)) pass = 0;
 
-    /* Step 3: Issue valid command */
+    /* Step 3: Issue valid command (positive control before negative tests) */
     printf("\nStep 3: Issue valid command (TX, Standard, LEN=3)\n");
-    /* Clear prior errors */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-
-    /* Load TX data first */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x9F000000);
 
-    /* Wait for READY */
-    int timeout = TIMEOUT_LIMIT;
-    do {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-        if (--timeout <= 0) break;
-    } while (status.f.READY == 0);
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
+    }
+    cmd.w = 0;
+    cmd.f.LEN = 3;
+    cmd.f.CSAAT = 0;
+    cmd.f.SPEED = 0;
+    cmd.f.DIRECTION = 2;
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    printf("  CMD issued: LEN=%u, SPEED=%u, DIR=%u, CSAAT=%u\n", cmd.f.LEN, cmd.f.SPEED,
+           cmd.f.DIRECTION, cmd.f.CSAAT);
 
-    if (status.f.READY) {
-        cmd.w = 0;
-        cmd.f.LEN = 3;
-        cmd.f.CSAAT = 0;
-        cmd.f.SPEED = 0;
-        cmd.f.DIRECTION = 2;
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
-        printf("  CMD issued: LEN=%u, SPEED=%u, DIR=%u, CSAAT=%u\n", cmd.f.LEN, cmd.f.SPEED,
-               cmd.f.DIRECTION, cmd.f.CSAAT);
-
-        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-        printf("  ERROR_STATUS=0x%08x (should be clean)\n", err_status.w);
-    } else {
-        printf("  WARN: Controller not READY, skipping CMD issue\n");
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    printf("  ERROR_STATUS=0x%08x (expect clean)\n", err_status.w);
+    if (err_status.w != 0) {
+        printf("  FAIL: ERROR_STATUS not clean after valid CMD\n");
+        pass = 0;
+        goto done;
     }
 
     /* Step 3.5: Test CMDINVAL error (SPEED=3, reserved value) */
@@ -113,70 +140,49 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
 
-    timeout = TIMEOUT_LIMIT;
-    do {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-        if (--timeout <= 0) break;
-    } while (status.f.READY == 0);
-
-    if (status.f.READY) {
-        cmd.w = 0;
-        cmd.f.LEN = 0;
-        cmd.f.SPEED = 3; /* reserved speed → CMDINVAL */
-        cmd.f.DIRECTION = 2;
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
-
-        volatile int delay;
-        for (delay = 0; delay < 100; delay++) {
-        }
-
-        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-        printf("  ERROR_STATUS=0x%08x, CMDINVAL=%u\n", err_status.w, err_status.f.CMDINVAL);
-        if (err_status.f.CMDINVAL) {
-            printf("  PASS: CMDINVAL error detected\n");
-        } else {
-            printf("  FAIL: CMDINVAL not set for SPEED=3\n");
-            pass = 0;
-        }
-        /* Clear errors */
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    } else {
-        printf("  WARN: Controller not READY, skipping CMDINVAL test\n");
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
     }
+    cmd.w = 0;
+    cmd.f.LEN = 0;
+    cmd.f.SPEED = 3; /* reserved speed → CMDINVAL */
+    cmd.f.DIRECTION = 2;
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+
+    if (wait_for_error_bit(err_cmdinval_set, TIMEOUT_LIMIT, "CMDINVAL")) {
+        pass = 0;
+        goto done;
+    }
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    printf("  ERROR_STATUS=0x%08x, CMDINVAL=%u\n", err_status.w, err_status.f.CMDINVAL);
+    printf("  PASS: CMDINVAL error detected\n");
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* Step 4: Test CSIDINVAL error */
     printf("\nStep 4: CSIDINVAL error test (CSID=5, NUM_CS=1)\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 5);
 
-    timeout = TIMEOUT_LIMIT;
-    do {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-        if (--timeout <= 0) break;
-    } while (status.f.READY == 0);
-
-    if (status.f.READY) {
-        cmd.w = 0;
-        cmd.f.LEN = 0;
-        cmd.f.SPEED = 0;
-        cmd.f.DIRECTION = 2;
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
-
-        volatile int delay;
-        for (delay = 0; delay < 100; delay++) {
-        }
-
-        err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-        printf("  ERROR_STATUS=0x%08x, CSIDINVAL=%u\n", err_status.w, err_status.f.CSIDINVAL);
-        if (err_status.f.CSIDINVAL) {
-            printf("  PASS: CSIDINVAL error detected\n");
-        } else {
-            printf("  FAIL: CSIDINVAL not set for CSID=5 (NUM_CS=1)\n");
-            pass = 0;
-        }
+    if (wait_for_ready(TIMEOUT_LIMIT)) {
+        pass = 0;
+        goto done;
     }
+    cmd.w = 0;
+    cmd.f.LEN = 0;
+    cmd.f.SPEED = 0;
+    cmd.f.DIRECTION = 2;
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x00);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+
+    if (wait_for_error_bit(err_csidinval_set, TIMEOUT_LIMIT, "CSIDINVAL")) {
+        pass = 0;
+        goto done;
+    }
+    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    printf("  ERROR_STATUS=0x%08x, CSIDINVAL=%u\n", err_status.w, err_status.f.CSIDINVAL);
+    printf("  PASS: CSIDINVAL error detected\n");
 
     /* Restore CSID=0 */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
@@ -188,11 +194,29 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, err_status.w);
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After W1C: ERROR_STATUS=0x%08x\n", err_status.w);
+    if (err_status.w != 0) {
+        printf("  FAIL: ERROR_STATUS not cleared after W1C\n");
+        pass = 0;
+    }
 
-    /* Step 6: Test ERROR_ENABLE defaults */
+    /* Step 6: Test ERROR_ENABLE defaults (from generated field resets) */
     printf("\nStep 6: ERROR_ENABLE default check\n");
-    err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
-    if (!check_reg("ERROR_ENABLE default", err_enable.w, 0x11111u)) pass = 0;
+    {
+        uint32_t err_en_default = (SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__CMDBUSY_bp) |
+                                  (SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__OVERFLOW_bp) |
+                                  (SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__UNDERFLOW_bp) |
+                                  (SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__CMDINVAL_bp) |
+                                  (SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_reset
+                                   << SPI_CONTROLLER__ERROR_ENABLE__CSIDINVAL_bp);
+        err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
+        if (!check_reg("ERROR_ENABLE default", err_enable.w, err_en_default)) pass = 0;
+    }
+
+done:
 
     printf("\n========================================\n");
     if (pass) {

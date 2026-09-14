@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Passive AXI protocol/integrity monitor for the SMC SEP_IN ``s_axi`` bus.
 
 This monitor snoops the top-level ``s_axi_*`` channels independently from the
@@ -62,7 +63,7 @@ class SmcAxiMonitor(uvm_component):
         #   * AXIL extension (0xC040_0000) → u_axil_extension_err_slv,
         #   * stale catalog holes around 0xC003_A000.
         # PLL/PVT are NOT listed: pll_wrap/pvt_wrap return OKAY + 0.
-        # I3C wraps (0xC000_5000) use i3ccore_stub → SLVERR (not flagged here).
+        # I3C wraps (0xC000_5000) are a real core and answer OKAY.
         self.expected_decerr_ranges: list[tuple[int, int]] = [
             (0xC000_4440, 0xC000_5000),  # GPIO_CTRL / POC-PBIAS (integration err_slv)
             (0xC000_F000, 0xC000_F800),  # DTP CSR TB terminator
@@ -91,10 +92,19 @@ class SmcAxiMonitor(uvm_component):
         sig = {
             name: getattr(dut, f"s_axi_{name}", None)
             for name in (
-                "arvalid", "arready", "araddr",
-                "awvalid", "awready", "awaddr",
-                "rvalid", "rready", "rdata", "rresp",
-                "bvalid", "bready", "bresp",
+                "arvalid",
+                "arready",
+                "araddr",
+                "awvalid",
+                "awready",
+                "awaddr",
+                "rvalid",
+                "rready",
+                "rdata",
+                "rresp",
+                "bvalid",
+                "bready",
+                "bresp",
             )
         }
         required = ("rvalid", "rready", "rdata", "rresp", "bvalid", "bready", "bresp")
@@ -119,13 +129,15 @@ class SmcAxiMonitor(uvm_component):
                 if _is_all_x(sig["rdata"]):
                     where = (
                         f" @ last AR 0x{self.last_araddr:014x}"
-                        if self.last_araddr is not None else ""
+                        if self.last_araddr is not None
+                        else ""
                     )
                     self._fail(f"R beat returned all-X data{where}")
                 if code == 3:
                     where = (
                         f" @ last AR 0x{self.last_araddr:014x}"
-                        if self.last_araddr is not None else ""
+                        if self.last_araddr is not None
+                        else ""
                     )
                     if self._decerr_expected(self.last_araddr):
                         self.logger.info("R beat DECERR (expected)%s", where)
@@ -138,7 +150,8 @@ class SmcAxiMonitor(uvm_component):
                 if code == 3:
                     where = (
                         f" @ last AW 0x{self.last_awaddr:014x}"
-                        if self.last_awaddr is not None else ""
+                        if self.last_awaddr is not None
+                        else ""
                     )
                     if self._decerr_expected(self.last_awaddr):
                         self.logger.info("B beat DECERR (expected)%s", where)

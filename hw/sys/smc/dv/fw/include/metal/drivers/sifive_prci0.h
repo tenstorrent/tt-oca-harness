@@ -1,6 +1,3 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
-
 /* Copyright 2021 SiFive, Inc */
 
 #ifndef METAL__DRIVERS__SIFIVE_PRCI0_H

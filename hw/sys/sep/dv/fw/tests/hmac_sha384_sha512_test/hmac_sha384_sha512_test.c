@@ -2,14 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * HMAC SHA-384 and SHA-512 Test - TC_HMAC_012 (P0)
+ * HMAC SHA-384 and SHA-512 Test
  *
- * Verifies SHA-384 and SHA-512 digest computation with known test vectors.
- * Tests both standalone SHA mode and HMAC mode.
+ * Verifies SHA-384 and SHA-512 digest computation against NIST FIPS 180-4
+ * known-answer vectors for message "abc".
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_hmac_sha384_sha512_test STACK=sim
- *
+ * make test-sep TEST_NAME=sep_hmac_sha384_sha512_test STACK=sim
  */
 
 #include <stdint.h>
@@ -19,6 +18,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static inline uint32_t bswap32(uint32_t x) {
     return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
@@ -39,7 +39,6 @@ static int wait_for_completion(void) {
         return -1;
     }
 
-    // Clear hmac_done if set
     hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (intr.f.hmac_done) {
         hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
@@ -48,187 +47,108 @@ static int wait_for_completion(void) {
     return 0;
 }
 
-static int feed_message(const char *msg, int len) {
-    printf("  Feeding message: \"%s\" (%d bytes)\n", msg, len);
-
-    int words = (len + 3) / 4; // Round up to word boundary
-    for (int i = 0; i < words; i++) {
-        // Pack bytes into word, pad with zeros if needed
-        uint32_t word = 0;
-        for (int j = 0; j < 4 && (i * 4 + j) < len; j++) {
-            word |= ((uint32_t)msg[i * 4 + j]) << (j * 8);
+static int feed_message_bytes(const uint8_t *msg, uint32_t len) {
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    for (uint32_t i = 0; i < len; i++) {
+        hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        int spins = 0;
+        while (s.f.fifo_full) {
+            if (spins++ > 10000) {
+                printf("  FIFO full timeout\n");
+                return -1;
+            }
+            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
         }
-
-        // Write to MSG FIFO
-        WRITE_REG(OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, word);
-        printf("    Word %d: 0x%08x\n", i, word);
+        *fifo8 = msg[i];
     }
-
     return 0;
 }
 
-static int test_sha384(void) {
-    printf("\n--- Testing SHA-384 ---\n");
-
-    // Configure for SHA-384
-    hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;       // SHA only
-    cfg.f.sha_en = 1;        // SHA enabled
-    cfg.f.digest_size = 0x2; // SHA-384
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    printf("  CFG: 0x%08x (SHA-384, SHA mode)\n", cfg.w);
-
-    // Start new hash
-    hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
-    printf("  Started new hash\n");
-
-    // Test message: "abc"
-    const char *msg = "abc";
-    int len = 3;
-    if (feed_message(msg, len) != 0) return -1;
-
-    // Set message length in bits
-    uint64_t msg_len_bits = len * 8;
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, (uint32_t)(msg_len_bits & 0xFFFFFFFF));
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
-    printf("  Message length: %llu bits\n", msg_len_bits);
-
-    // Trigger hash processing
-    cmd.w = 0;
-    cmd.f.hash_process = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
-    printf("  Processing hash...\n");
-
-    // Wait for completion
-    if (wait_for_completion() != 0) return -1;
-    printf("  Hash completed\n");
-
-    // Read digest (12 words for SHA-384)
-    uint32_t digest[12];
-    for (int i = 0; i < 12; i++) {
-        digest[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
+static void digest_to_hex(uint32_t nwords, char *hex_out) {
+    static const char hex_chars[] = "0123456789abcdef";
+    for (uint32_t word = 0; word < nwords; word++) {
+        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(word));
+        uint32_t digest_word = bswap32(raw);
+        for (int byte = 0; byte < 4; byte++) {
+            uint8_t value = (uint8_t)(digest_word >> (byte * 8));
+            int idx = (int)(word * 8u + (uint32_t)byte * 2u);
+            hex_out[idx + 0] = hex_chars[(value >> 4) & 0xf];
+            hex_out[idx + 1] = hex_chars[value & 0xf];
+        }
     }
-
-    printf("  SHA-384 digest:\n");
-    for (int i = 0; i < 12; i++) {
-        printf("    DIGEST_%d: 0x%08x\n", i, digest[i]);
-    }
-
-    // SHA-384("abc") expected result (NIST)
-    // cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7
-    uint32_t expected_sha384[12] = {
-        0x45a35e8b, 0xcb00753f, 0x9ac65007, 0xb5a03d69, 0xab0eded1, 0x272c32ab,
-        0x5a43ff5b, 0x631a8b60, 0x72ba1e7c, 0xed808607, 0xaeca134c, 0xc2358bae,
-        // Note: Only first 12 words used for SHA-384, word order may need swapping
-    };
-
-    // For now, just verify that we got a non-zero digest
-    int pass = 1;
-    int all_zero = 1;
-    for (int i = 0; i < 12; i++) {
-        if (digest[i] != 0) all_zero = 0;
-    }
-
-    if (all_zero) {
-        printf("  FAIL: SHA-384 digest is all zeros\n");
-        pass = 0;
-    } else {
-        printf("  PASS: SHA-384 digest computed (non-zero)\n");
-    }
-
-    return pass ? 0 : -1;
+    hex_out[nwords * 8u] = '\0';
 }
 
-static int test_sha512(void) {
-    printf("\n--- Testing SHA-512 ---\n");
+static int run_sha_case(const char *name, uint32_t digest_size, uint32_t nwords,
+                        const char *expected_hex) {
+    printf("\n--- Testing %s ---\n", name);
 
-    // Configure for SHA-512
     hmac__CFG_t cfg = {.w = 0};
-    cfg.f.hmac_en = 0;       // SHA only
-    cfg.f.sha_en = 1;        // SHA enabled
-    cfg.f.digest_size = 0x4; // SHA-512
+    cfg.f.hmac_en = 0;
+    cfg.f.sha_en = 1;
+    cfg.f.digest_size = digest_size;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    printf("  CFG: 0x%08x (SHA-512, SHA mode)\n", cfg.w);
+    printf("  CFG: 0x%08x\n", cfg.w);
 
-    // Start new hash
     hmac__CMD_t cmd = {.f.hash_start = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
-    printf("  Started new hash\n");
 
-    // Test message: "abc"
-    const char *msg = "abc";
-    int len = 3;
-    if (feed_message(msg, len) != 0) return -1;
+    const uint8_t msg[] = {'a', 'b', 'c'};
+    if (feed_message_bytes(msg, 3) != 0) return -1;
 
-    // Set message length in bits
-    uint64_t msg_len_bits = len * 8;
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR, (uint32_t)(msg_len_bits & 0xFFFFFFFF));
-    WRITE_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR, (uint32_t)(msg_len_bits >> 32));
-    printf("  Message length: %llu bits\n", msg_len_bits);
-
-    // Trigger hash processing
     cmd.w = 0;
     cmd.f.hash_process = 1;
     WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     printf("  Processing hash...\n");
 
-    // Wait for completion
     if (wait_for_completion() != 0) return -1;
     printf("  Hash completed\n");
 
-    // Read digest (16 words for SHA-512)
-    uint32_t digest[16];
-    for (int i = 0; i < 16; i++) {
-        digest[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
-    }
+    char got_hex[129];
+    if (nwords * 8u >= sizeof(got_hex)) return -1;
+    digest_to_hex(nwords, got_hex);
 
-    printf("  SHA-512 digest:\n");
-    for (int i = 0; i < 16; i++) {
-        printf("    DIGEST_%d: 0x%08x\n", i, digest[i]);
+    printf("  Digest: %s\n", got_hex);
+    printf("  Expected: %s\n", expected_hex);
+    if (strcmp(got_hex, expected_hex) != 0) {
+        printf("  FAIL: %s digest mismatch\n", name);
+        return -1;
     }
-
-    // For now, just verify that we got a non-zero digest
-    int pass = 1;
-    int all_zero = 1;
-    for (int i = 0; i < 16; i++) {
-        if (digest[i] != 0) all_zero = 0;
-    }
-
-    if (all_zero) {
-        printf("  FAIL: SHA-512 digest is all zeros\n");
-        pass = 0;
-    } else {
-        printf("  PASS: SHA-512 digest computed (non-zero)\n");
-    }
-
-    return pass ? 0 : -1;
+    printf("  PASS: %s matches NIST vector\n", name);
+    return 0;
 }
 
 int main(void) {
     sep_outbound_filter_init();
 
     printf("\n====================================================\n");
-    printf("HMAC SHA-384 and SHA-512 Test (TC_HMAC_012)\n");
+    printf("HMAC SHA-384 and SHA-512 Test\n");
     printf("====================================================\n");
 
     int pass = 1;
 
-    // Enable hmac_done interrupt
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
     WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
-    // Test SHA-384
-    if (test_sha384() != 0) {
-        printf("\nSHA-384 test FAILED\n");
+    /* NIST FIPS 180-4 SHA-384("abc") */
+    const char *sha384_hex = "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed"
+                             "8086072ba1e7cc2358baeca134c825a7";
+    if (run_sha_case("SHA-384", SEP_HMAC_DIGEST_SIZE_SHA2_384, 12, sha384_hex) != 0) {
         pass = 0;
     }
 
-    // Test SHA-512
-    if (test_sha512() != 0) {
-        printf("\nSHA-512 test FAILED\n");
+    /* NIST FIPS 180-4 SHA-512("abc") */
+    const char *sha512_hex = "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a"
+                             "2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f";
+    if (run_sha_case("SHA-512", SEP_HMAC_DIGEST_SIZE_SHA2_512, 16, sha512_hex) != 0) {
         pass = 0;
     }
+
+    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    cfg.f.sha_en = 0;
+    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 
     printf("\n====================================================\n");
     if (pass) {

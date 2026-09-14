@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P2 Phase A #1: SMBus / PMBus protocol extension over the I2C VIP.
 
 Proves that `SmcI2cMasterVip.smbus_*` and `pmbus_*` helpers drive real
@@ -24,6 +25,7 @@ try:
         SmcI2cEepromSlave,
         SmcI2cMasterVip,
     )
+
     _I2C_VIP_AVAILABLE = True
 except Exception:  # noqa: BLE001
     SmcI2cEepromSlave = None  # type: ignore[assignment]
@@ -46,8 +48,8 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
 
         # Real DUT gate (model-free): drive the DUT I2C0 controller and verify it
         # physically actuates the tb_i2c0 SCL/SDA pins via OVRD. This fails if the
-        # DUT I2C0 controller reg->pin path is broken, so the test is no longer a
-        # pure VIP-side self-check. (The SMBus PEC / PMBus Linear11 checks below
+        # DUT I2C0 controller reg->pin path is broken, so the test is not a pure
+        # VIP-side self-check. (The SMBus PEC / PMBus Linear11 checks below
         # are protocol-math helpers on the cocotb master VIP -- SMBus/PMBus are
         # software layers on top of I2C, verified VIP-side; the byte transaction,
         # when run, traverses the DUT-facing I2C0 pins.)
@@ -59,12 +61,15 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
             enc = SmcI2cMasterVip.pmbus_encode_linear11(v)
             dec = SmcI2cMasterVip.pmbus_decode_linear11(enc)
             cocotb.log.info(
-                "PMBus Linear11: %s -> enc=0x%04X -> dec=%s", v, enc, dec,
+                "PMBus Linear11: %s -> enc=0x%04X -> dec=%s",
+                v,
+                enc,
+                dec,
             )
             if v > 0:
                 relative = abs(dec - v) / v
                 assert relative < 0.02, (
-                    f"PMBus Linear11 round-trip error {relative*100:.1f}% for {v}"
+                    f"PMBus Linear11 round-trip error {relative * 100:.1f}% for {v}"
                 )
 
         # PMBus Linear16 encode/decode (fixed exponent) — P2-11 W3 tail.
@@ -81,12 +86,15 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
                 dec = decode16(enc, _PMBUS_LINEAR16_EXP)
                 cocotb.log.info(
                     "PMBus Linear16: %s exp=%d -> enc=0x%04X -> dec=%s",
-                    v, _PMBUS_LINEAR16_EXP, enc, dec,
+                    v,
+                    _PMBUS_LINEAR16_EXP,
+                    enc,
+                    dec,
                 )
                 if v > 0:
                     relative = abs(dec - v) / v
                     assert relative < 0.02, (
-                        f"PMBus Linear16 round-trip error {relative*100:.1f}% for {v}"
+                        f"PMBus Linear16 round-trip error {relative * 100:.1f}% for {v}"
                     )
 
         # Static PEC self-check for a known frame — SMBus 2.0 §5.5:
@@ -94,7 +102,9 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
         expected_pec = SmcI2cMasterVip.smbus_pec(_EEPROM_ADDR, 0, _SMBUS_PAYLOAD)
         cocotb.log.info(
             "SMBus PEC self-check: addr=0x%02X payload=%s -> PEC=0x%02X",
-            _EEPROM_ADDR, _SMBUS_PAYLOAD.hex(), expected_pec,
+            _EEPROM_ADDR,
+            _SMBUS_PAYLOAD.hex(),
+            expected_pec,
         )
 
         # Real bus traffic: SMBus write-with-PEC via master → slave EEPROM.
@@ -109,15 +119,14 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
         stored = slave.read_mem(0x10, 2)
         cocotb.log.info(
             "SMBus PEC bus proof: slave memory at 0x10 = %s (expected 0x%02X 0x%02X)",
-            stored.hex(), _SMBUS_PAYLOAD[1], pec,
+            stored.hex(),
+            _SMBUS_PAYLOAD[1],
+            pec,
         )
         assert stored[0] == _SMBUS_PAYLOAD[1], (
-            f"SMBus data byte mismatch: got 0x{stored[0]:02X}, "
-            f"expected 0x{_SMBUS_PAYLOAD[1]:02X}"
+            f"SMBus data byte mismatch: got 0x{stored[0]:02X}, expected 0x{_SMBUS_PAYLOAD[1]:02X}"
         )
-        assert stored[1] == pec, (
-            f"SMBus PEC mismatch: got 0x{stored[1]:02X}, expected 0x{pec:02X}"
-        )
+        assert stored[1] == pec, f"SMBus PEC mismatch: got 0x{stored[1]:02X}, expected 0x{pec:02X}"
 
         # ARA query — no target alerting, expected 0xFF NACK path.
         # Slave at 0x50 does not respond to reads for 0x0C address, so master
@@ -125,5 +134,6 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
         ara = await master.smbus_query_ara()
         cocotb.log.info(
             "SMBus ARA proof drove read to 0x0C; result byte = 0x%02X "
-            "(0xFF = no target alerting, expected in bring-up)", ara,
+            "(0xFF = no target alerting, expected in bring-up)",
+            ara,
         )

@@ -1,17 +1,16 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Revision History
+= Internal Revision History
 :doctype: book
 :sectanchors:
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
 
-This document tracks major revisions and updates to the OCAH
-documentation.
+This document tracks internal revisions and updates to the OCAH documentation.
 
-.Revision History
+.Internal Revision History
 [width="100%",cols="15%,15%,15%,55%",options="header",]
 |=======================================================================
 |Version |Date |Author |Description
@@ -146,4 +145,32 @@ being public, need no read protection. Replaced the two coarse reserved blocks
 with eight individually lockable 256-bit spare fields (spare0-spare7) so an
 adopter can provision and lock spare storage one field at a time. The map
 remains 8192 bits.
+|0.5.23 |2026-08-11 |Alessandro Ottaviano |Aligned entropy-source documentation with the
+RTL: corrected the MAIN_SM_STATUS.ALERT / AlertHang description and the DRBG EDN endpoint count.
+|0.5.24 |2026-08-11 |Alessandro Ottaviano |Entropy source: the sticky
+MAIN_SM_STATUS.ALERT and ERR status bits are now also cleared by a CTRL.RESET
+soft reset, keeping the status consistent with the FSM it reflects.
+|0.5.25 |2026-08-12 |Alessandro Ottaviano |Surfaced the Entropy Source IP
+register reference in the SEP Detailed Register Map (previously only prose was
+included) and reconciled the generated register tables with the RDL. Completed
+the HT_WATERMARK description: each watermark arms when the entropy source is
+enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse -- high watermarks to
+0x0000 (running maximum), low watermarks to 0xFFFF (running minimum).
+|0.5.26 |2026-08-13 |Alessandro Ottaviano |Completed the published-document
+migration audit. Restored the shared reference-counter description and UART
+software flow-control guidance; aligned DFX status, repository path, and
+cross-document link descriptions with the current implementation.
+
+|0.5.27 |2026-08-28 |Alessandro Ottaviano |Replaced the entropy source local
+CTRL.RESET with the SEP Reset Controller's active-low TRNG reset request.
+The shared reset drains and isolates the ESRC, CSRNG, and EDN AXI ports before
+resetting the full entropy complex, scrubs post-mux adapters and the fabric
+entropy pool, and requires full TRNG reinitialization before entropy resumes.
+Outstanding consumer requests stall until fresh entropy is available.
+SW_RESET_N now resets to 0x3E; reserved CTRL[0] reads zero and ignores writes.
+|0.5.28 |2026-08-31 |Ben Melton |Documented the IC_RESET TDR as three slices
+(SMC, SEP, external) with the external ports adopter-defined.
+|0.5.29 |2026-09-02 |Alessandro Ottaviano |Aligned the SMC Boot ROM chapter
+with the current four-core hardware ROM interface, 128 KiB linker map, macro
+configuration, and response endianness control.
 |=======================================================================

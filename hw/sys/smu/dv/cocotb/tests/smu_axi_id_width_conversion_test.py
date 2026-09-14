@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_id_width_conversion_test - SEP=0 external->SMC ID converter live path.
 
 Under SEP=0, ``smu_axi_in`` (8-bit ID) feeds ``axi_iw_converter`` -> SMC SYS_IN
@@ -8,15 +9,16 @@ authoritative-map probes.
 Deny-path (DECERR / err_slv poison) and filter allow/OKAY are out of scope here:
 SYS_IN BlockByDefault + gated JTAG2AXI prevent a frontdoor allow under SEP=0;
 claiming DECERR without that allow would violate NEGATIVE-NEEDS-POSITIVE-CONTROL.
-Filter program / allow contrast stays deferred (see tests_deferred filter suite).
+Filter program / allow contrast is not covered here (see tests_deferred).
 """
 
 from __future__ import annotations
 
+import random
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO, smc_addr
 from seq_lib.smu_axi_helpers import (
     axi_read32_resp_ids_bounded,
@@ -39,14 +41,25 @@ class smu_axi_id_width_conversion_test(smu_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         sb = self.env.scoreboard
-
-        await ClockCycles(dut.clk_smu_i, 50)
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
+        seed = self.random_seed()
+        rng = random.Random(seed ^ 0xFAB_1D00)
+        # Distinct non-zero 8-bit IDs per probe (seeded traffic).
+        arids: list[int] = []
+        while len(arids) < len(PROBE_ADDRS):
+            arid = rng.randint(1, 0xFF)
+            if arid not in arids:
+                arids.append(arid)
+        self.logger.info(
+            "SEED: %d id_width arids=%s",
+            seed,
+            [f"0x{a:x}" for a in arids],
         )
 
+        await ClockCycles(dut.clk_smu_i, 50)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+
         for idx, addr in enumerate(PROBE_ADDRS):
-            arid = (0x11 + idx) & 0xFF
+            arid = arids[idx]
             _value, resp, issued, rid = await axi_read32_resp_ids_bounded(
                 master,
                 addr,

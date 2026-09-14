@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
@@ -23,7 +20,9 @@
 
 */
 
-module tlul_rsp_intg_gen import tlul_pkg::*; #(
+module tlul_rsp_intg_gen
+  import tlul_pkg::*;
+#(
   parameter bit EnableRspIntgGen = 1'b1,
   parameter bit EnableDataIntgGen = 1'b1,
   parameter bit UserInIsZero = 1'b0,
@@ -79,8 +78,8 @@ module tlul_rsp_intg_gen import tlul_pkg::*; #(
   `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_d2h_rsp_intg_t) <= D2HRspMaxWidth)
   `OCAH_OT_ASSERT_INIT(DataWidthCheck_A, $bits(tl_i.d_data) <= DataMaxWidth)
 
-// the code below is not meant to be synthesized,
-// but it is intended to be used in simulation and FPV
+  // the code below is not meant to be synthesized,
+  // but it is intended to be used in simulation and FPV
 `ifndef SYNTHESIS
   always @(tl_i) begin
     `OCAH_OT_ASSERT_I(RspZero_A, tl_i.d_valid & RspIntgInIsZero -> ~|tl_i.d_user.rsp_intg)
@@ -88,4 +87,4 @@ module tlul_rsp_intg_gen import tlul_pkg::*; #(
   end
 `endif
 
-endmodule // tlul_rsp_intg_gen
+endmodule  // tlul_rsp_intg_gen

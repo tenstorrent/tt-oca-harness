@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """DUT registry + directory-convention resolution for the native DV runner.
 
 A run selects its device-under-test with ``--dut <name>``. The name is resolved against
@@ -16,7 +19,8 @@ from pathlib import Path
 
 from .config import load_dut, load_toml
 from .models import ConfigError, Dut
-from .paths import configs_root, dv_path, dv_root as active_dv_root, repo_path, repo_rel
+from .paths import configs_root, dv_path, repo_rel
+from .paths import dv_root as active_dv_root
 
 # Direct children of hw/ that are namespaces, not DUTs.
 _DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}
@@ -97,8 +101,20 @@ def _cfg_for(dv_root: Path, name: str, mode: str, entry: dict, root: Path) -> Pa
     return dv_root / f"{name}_{suffix}.toml"
 
 
-def resolve_dut(root: Path, name: str, mode: str = "sim") -> Dut:
-    """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry first, then convention)."""
+def resolve_dut(
+    root: Path,
+    name: str,
+    mode: str = "sim",
+    framework: str | None = None,
+    adopter_overlay: Path | None = None,
+) -> Dut:
+    """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry first, then convention).
+
+    ``framework`` is the CLI ``--framework`` request; ``None`` selects the DUT's default.
+    ``adopter_overlay`` is the resolved ``--overlay``/``OCAH_DV_OVERLAY`` path applied on top
+    of the merged view (see :func:`runlib.config.apply_adopter_overlay`); ``None`` when the
+    layer is inactive.
+    """
     registry = load_dut_registry(root)
     if name in registry:
         entry = registry[name]
@@ -113,7 +129,15 @@ def resolve_dut(root: Path, name: str, mode: str = "sim") -> Dut:
         cfg = _cfg_for(dv_root, name, mode, {}, root)
     if not cfg.is_file():
         raise ConfigError(f"DUT `{name}`: {mode} config not found: {cfg}")
-    return load_dut(cfg, configs_root(root), name=name, root_rel=str(repo_rel(root, dv_root)))
+    return load_dut(
+        cfg,
+        configs_root(root),
+        root=root,
+        name=name,
+        root_rel=str(repo_rel(root, dv_root)),
+        framework=framework,
+        adopter_overlay=adopter_overlay,
+    )
 
 
 def list_dut_names(root: Path) -> list[str]:

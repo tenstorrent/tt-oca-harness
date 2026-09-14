@@ -25,7 +25,38 @@
 #     instance called `div_clk`), so the pin only resolves post-synthesis
 #     once technology mapping assigns it a cell name; it will not resolve
 #     against the elaborated RTL.
+#   - CDC crossings are bounded in two layers, both included from this file.
+#     `set_async_clock_groups` below declares the asynchronous groups with
+#     `-allow_paths` and applies a loose default max_delay per inter-group
+#     clock pair; `smc_cdc_max_delay.tcl`, sourced at the end, tightens each
+#     synchronizer and async FIFO individually. The `-allow_paths` is not
+#     optional: `set_false_path` outranks `set_max_delay` in exception
+#     priority, so a bare `set_clock_groups -asynchronous` would silently mask
+#     every per-instance bound.
+#   - `smc_cdc_max_delay_generated.tcl` enumerates this block's CDC elements.
+#     It is produced once, offline, against an elaborated design and checked
+#     in; nothing discovers instances when this file is read. Its paths and
+#     clock names are OCAH's, so instantiating this block deeper in a
+#     hierarchy or driving it from differently named clocks needs no edit
+#     here -- set `::cdc_hier_prefix` and `::cdc_clock_alias` before sourcing
+#     it. Regeneration, which runs in the closed synthesis flow, is needed
+#     only when the block is reconfigured such that the set of CDC elements
+#     changes: the file then goes stale silently, since no prefix can supply
+#     constraints for elements it never listed.
+#     See "CDC Timing Constraints" in the Integrator Guide.
 #-----------------------------------------------------------------------------
+
+# Directory holding this file, so the CDC collateral below resolves regardless
+# of the invoking tool's working directory. `info script` is the file currently
+# being read; GIT_ROOT covers tools that do not set it.
+if {[info script] ne ""} {
+    set ocah_sdc_dir [file dirname [file normalize [info script]]]
+} elseif {[info exists ::env(GIT_ROOT)]} {
+    set ocah_sdc_dir [file normalize $::env(GIT_ROOT)/hw/sys/smc/synth]
+} else {
+    error "constraints.sdc: cannot locate this file's directory; set GIT_ROOT"
+}
+set ocah_flow_constraints_dir [file normalize $ocah_sdc_dir/../../../../flows/synth/constraints]
 
 ##################
 # CLOCK PERIODS
@@ -174,7 +205,7 @@ create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
 # `always_ff`-inferred `div_clk` register in prim_prog_clk_div_posedge.
 create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_REFCLK \
     -master_clock REFCLK \
-    -divide_by 4 \
+    -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
     [get_pins "${avs_hier}/u_clk_div/div_clk/Q"]
 
@@ -257,14 +288,24 @@ create_generated_clock [get_ports {core2pad_o[9]}] -name SPICLK_OUT_GPIO -master
 # feedthrough clock for any async input/outputs
 create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
 
-set_clock_groups -asynchronous \
-    -group {REFCLK AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLK_FROM_REFCLK AVS_CLK_DIV_CLK_O_FROM_REFCLK AVS_DIV_TOGGLE_FROM_REFCLK AVS_DIV_CLK_Q_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO AVS_CLK_FROM_REFCLK_GPIO}\
-    -group {SMCCLK}\
-    -group {PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK AVS_CLK_FROM_PERIPHERALCLK AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK AVS_DIV_TOGGLE_FROM_PERIPHERALCLK AVS_DIV_CLK_Q_FROM_PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO AVS_CLK_FROM_PERIPHERALCLK_GPIO}\
-    -group {SPICLK SPICLK_IN_GPIO SPICLK_OUT_GPIO}\
-    -group {TELEMETRYCLK}\
-    -group {JTAG_TCK}\
-    -group {ck_feedthru}
+# Asynchronous groups, declared with `-allow_paths` plus a loose default bound
+# on every inter-group clock pair. The per-instance bounds sourced at the end of
+# this file refine that default; without `-allow_paths` they would be masked.
+# The two AVS families are already `-logically_exclusive` above, so `-exclude`
+# keeps them out of the asynchronous declaration -- a clock pair cannot carry
+# both relationships. Their async relationship with every other clock is
+# unaffected.
+source [file join $ocah_flow_constraints_dir async_clock_groups.tcl]
+
+set_async_clock_groups {
+    {REFCLK AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLK_FROM_REFCLK AVS_CLK_DIV_CLK_O_FROM_REFCLK AVS_DIV_TOGGLE_FROM_REFCLK AVS_DIV_CLK_Q_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO AVS_CLK_FROM_REFCLK_GPIO}
+    {SMCCLK SMCCLK_*}
+    {PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK AVS_CLK_FROM_PERIPHERALCLK AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK AVS_DIV_TOGGLE_FROM_PERIPHERALCLK AVS_DIV_CLK_Q_FROM_PERIPHERALCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO AVS_CLK_FROM_PERIPHERALCLK_GPIO}
+    {SPICLK SPICLK_IN_GPIO SPICLK_OUT_GPIO}
+    {TELEMETRYCLK}
+    {JTAG_TCK}
+    {ck_feedthru}
+} -exclude {{AVS_*_FROM_REFCLK* AVS_*_FROM_PERIPHERALCLK*}}
 
 
 ########################################################
@@ -310,18 +351,10 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {axil_dtp_csr_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {axil_dtp_csr_resp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {axil_pll_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {axil_pll_resp_i*}] -add_delay
-
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {axil_pvt_req_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {axil_pvt_resp_i*}] -add_delay
-
-# GPIO padring control AXI-Lite is an SMC-domain control plane by contract.
-# Adopter-specific refclk logic inside the padring must add any local CDC
-# explicitly rather than reinterpret these top-level ports as REFCLK ports.
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {axil_req_gpio_ctrl_o*}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {axil_resp_gpio_ctrl_i*}] -add_delay
-
+# The GPIO padring, PLL, PVT and eFuse SHIM control planes all reach the adopter
+# through smc_external below; they are SMC-domain by contract. Adopter-specific
+# refclk logic behind that window must add any local CDC explicitly rather than
+# reinterpret these top-level ports as REFCLK ports.
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_external_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_external_resp_i*}] -add_delay
 
@@ -427,8 +460,6 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports test_en_i] -add_delay
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports scan_rst_ni] -add_delay
 
-# Straps
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {captured_straps_i*}] -add_delay
 
 # DFT
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports mem_repair_done_i] -add_delay
@@ -664,3 +695,14 @@ set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock
 # Misc GPIO inputs — thermal/isolate and observability (SMCCLK); reserved/unbonded (generic feedthru).
 set_input_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [add_to_collection $gpio_misc_a $gpio_misc_b] -add_delay
 set_input_delay [expr $clock_periods(ck_feedthru_PERIOD)*0.5] -clock [get_clock ck_feedthru] $gpio_misc_c -add_delay
+
+
+########################################################
+# CDC max_delay bounds
+########################################################
+# Layer 2: a per-instance bound on every synchronizer and async FIFO, tighter
+# than the inter-group default applied by set_async_clock_groups above. Loaded
+# last so these exceptions are the ones the tool keeps where both apply, and so
+# the primary-input relaxation at the end sees every constrained pin.
+source [file join $ocah_flow_constraints_dir cdc_max_delay_procs.tcl]
+source [file join $ocah_sdc_dir smc_cdc_max_delay.tcl]

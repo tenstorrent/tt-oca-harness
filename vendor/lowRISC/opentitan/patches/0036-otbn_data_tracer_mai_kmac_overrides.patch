@@ -1,0 +1,520 @@
+diff --git b/hw/ip/otbn/data/base-insns.yml a/hw/ip/otbn/data/base-insns.yml
+index 68a42cc0..c2e5c75d 100644
+--- b/hw/ip/otbn/data/base-insns.yml
++++ a/hw/ip/otbn/data/base-insns.yml
+@@ -594,7 +594,7 @@
+     `LOOP`, `LOOPI`, jump and branch instructions are all permitted inside a loop but may not appear as the last instruction in a loop.
+     OTBN will stop on that instruction, setting bit `loop` in `ERR_BITS`.
+ 
+-    For more information on how to correctly use `LOOP` see [loop nesting](developers_guide.md#loop-nesting).
++    For more information on how to correctly use `LOOP` see [loop nesting](programmers_guide.md#loop-nesting).
+   errs:
+     - &grs-call-stack A `CALL_STACK` error from using `x1` as `grs` when the call stack is empty.
+     - A `LOOP` error if the value in `grs` is zero.
+@@ -626,7 +626,7 @@
+     `LOOP`, `LOOPI`, jump and branch instructions are all permitted inside a loop but may not appear as the last instruction in a loop.
+     OTBN will stop on that instruction, setting bit `loop` in `ERR_BITS`.
+ 
+-    For more information on how to correctly use `LOOPI` see [loop nesting](developers_guide.md#loop-nesting).
++    For more information on how to correctly use `LOOPI` see [loop nesting](programmers_guide.md#loop-nesting).
+   encoding:
+     scheme: loopi
+     mapping:
+diff --git b/hw/ip/otbn/data/csr.yml a/hw/ip/otbn/data/csr.yml
+index 79fcd761..4dee642a 100644
+--- b/hw/ip/otbn/data/csr.yml
++++ a/hw/ip/otbn/data/csr.yml
+@@ -99,116 +99,68 @@
+     Write to this CSR to begin a request to fill the RND cache.
+     Always reads as 0.
+ 
+-- name: kmac_status
++- name: kmac_if_status
+   address: 0x7d9
+   doc: |
+-    KMAC_STATUS exposes status information for the OTBN-KMAC interface.
+-    All fields are read only except RSP_ERROR, CTRL_ERROR, and MSG_WRITE_ERROR which are W1C.
++    Write a 1 to bits 1 or 2 to clear the error bits.
++    KMAC_IF_STATUS is a CSR that exposes status information for the OTBN-KMAC interface.
+   bits:
+-    0: |
+-      READY is 1 when the interface is ready to accept a command and/or new data in KMAC_DATA_S0/1.
+-    1: |
+-      RSP_VALID is 1 when the lowest 64 bit words in KMAC_DATA_S0/1 contain valid data (actual digest data is only valid if RSP_ERROR is not 1).
+-      This flag is cleared once both, KMAC_DATA_S0 and KMAC_DATA_S1, have been read or when a DONE command is issued.
+-    2: |
+-      RSP_ERROR is set to 1 and held when a response is received that signals an error on the KMAC HWIP side.
+-      If 1, all received digest data (incl. previously received) must be considered as invalid.
+-      This flag is cleared (W1C) when SW writes a 1 to it.
+-    3: |
+-      CTRL_ERROR is 1 when a command was issued while the interface was not ready for it or the command violated the expected command order (for example, a SEND command is issued before a START command).
+-      A command raising this error is ignored.
+-      This flag is cleared (W1C) when SW writes a 1 to it.
+-    4: |
+-      MSG_WRITE_ERROR is 1 when a write to KMAC_DATA_S0/1, KMAC_STRB or KMAC_CFG occurred while the interface was not ready to accept new message data or a new configuration.
+-      It is also set when a write to KMAC_DATA_S0/1 collides with an incoming digest response.
+-      This flag is cleared (W1C) when SW writes a 1 to it.
+-    31-5: Reserved. Always reads as 0. Any write is ignored.
+-
+-- name: kmac_ctrl
++    0: MSG_WRITE_RDY indicates whether the KMAC_DATA_S0/1 WSR is ready for the next word.
++    1: MSG_SEND_ERROR (W1C) indicates whether an error occurred after issuing a message send command.
++    2: MSG_WRITE_ERROR (W1C) indicates whether an error occurred after writing to the KMAC_DATA_S0/1 WSR.
++    3: DIGEST_VALID indicates whether the 64 bit word in KMAC_DATA_S0/1 WSR is valid.
++    31-4: Reserved. Always reads as 0. Any write is ignored.
++
++- name: kmac_intr
+   address: 0x7da
+   doc: |
+-    The KMAC control register is used to control the KMAC interface.
+-    Always reads as 0.
++    KMAC_INTR is a CSR that exposes the KMAC_ERROR interrupt of the KMAC HWIP.
+   bits:
+-    0: |
+-      START: Writing 1 to this bit issues a START command.
+-    1: |
+-      SEND: Writing 1 to this bit starts sending the current message in KMAC_DATA_S0/1.
+-    2: |
+-      PROCESS: Writing 1 to this bit issues a PROCESS command.
+-    3: |
+-      DONE: Writing 1 to this bit issues a DONE command.
+-    4: |
+-      CLOSE: Writing 1 to this bit issues a CLOSE command.
+-    31-5: Reserved. Any write is ignored. Always reads as 0.
++    0: KMAC_ERROR (W1C) indicates whether an error occurred in the KMAC HWIP.
++    31-1: Reserved. Always reads as 0. Any write is ignored.
+ 
+ - name: kmac_cfg
+   address: 0x7db
+   doc: |
+-    The KMAC configuration register is used to set the hashing session configuration.
+-    The three fields EN_XOF, STRENGTH, and MODE are duplicated.
+-    For a configuration to be valid, the upper fields must contain the bitwise inverted value of the lower fields.
++    A configuration register for the KMAC interface.
++    The encodings for the fields are equivalent to the encodings for the CFG_SHADOWED register in the KMAC HWIP.
+   bits:
+-    0: |
+-      EN_XOF enables the eXtendable Output Function (XOF) operation.
+-      If 1, XOF operation is enabled and the KMAC HWIP will automatically trigger a RUN command once the full rate has been pushed.
+-      If 0, KMAC HWIP will only push the first rate, and no other digest will be produced.
+-      Usually enabled for SHAKE and cSHAKE and disabled for SHA3 and KMAC modes.
+-    3-1: |
+-      STRENGTH defines the security strength of the operation.
+-      Valid values are L128, L224, L256, L384, and L512.
+-      See KMAC HWIP for encoding of values.
+-      The selected value must be compatible with chosen mode (see corresponding standards).
+-
+-      If STRENGTH = L224 and MODE = SHA3, the digest size is not a multiple of 64 bits.
+-      As such, only the lower 32 bits of the last digest response (4th beat of the digest response) contain valid data.
+-    5-4: |
+-      MODE defines the hashing mode.
+-      This can be SHA3, SHAKE, cSHAKE, or KMAC.
+-      See KMAC HWIP for encoding of values.
+-      Note, cSHAKE uses prefix from KMAC HWIP CSRs (configured by SW), and KMAC always uses hard coded "KMAC" prefix.
+-    15-6: Reserved. Any write is ignored. Always reads as 0.
+-    16: |
+-      EN_XOF_INV must be the bitwise inverted value of EN_XOF.
+-    19-17: |
+-      STRENGTH_INV must be the bitwise inverted value of STRENGTH.
+-    21-20: |
+-      MODE_INV must be the bitwise inverted value of MODE.
+-    31-22: Reserved. Any write is ignored. Always reads as 0.
+-
+-- name: kmac_strb
++    0: KMAC_EN enables keyed operation in the KMAC HWIP (kmac_en = 0/1).
++    3-1: STRENGTH allows OTBN to select the desired security strength (kstrength = L128 / L224 / L256 / L384 / L512).
++    5-4: MODE allows OTBN to set the KMAC hashing mode (mode = SHAKE / cSHAKE / SHA3).
++    31-6: Reserved. Always reads as 0. Any write is ignored.
++
++- name: kmac_msg_send
+   address: 0x7dc
+   doc: |
+-    Defines which of the bytes of KMAC_DATA_S0/1 are valid and should be sent towards the KMAC HWIP.
+-    Each bit corresponds to one byte in KMAC_DATA_S0/1, with bit 0 corresponding to the least significant byte.
+-    May only be written to when KMAC_STATUS.READY = 1.
+-
+-    For all messages except the final one, KMAC_STRB must be programmed to all ones, indicating that all bytes in KMAC_DATA_S0/1 are valid.
+-    The final message can be shorter.
+-    It can be 1 to 32 bytes long which must be encoded in KMAC_STRB by setting the corresponding number of least significant bits to 1.
+-    The strobe therefore must always be contiguous and LSB aligned.
+-    If a non contiguous strobe is defined the behaviour is undefined.
++    A command register to send a message to KMAC.
++    Reads from this register always return a 0.
++  bits:
++    0: MSG_SEND can be set to send the contents of KMAC_DATA_S0 and KMAC_DATA_S1 to KMAC.
++    31-1: Reserved. Always reads as 0. Any write is ignored.
+ 
+-    Reads from this register return the current strobe.
++- name: kmac_cmd
++  address: 0x7dd
++  doc: |
++    The encodings for the commands are equivalent to the encodings for the CMD register in the KMAC HWIP.
++    Reads from this register always return a 0.
++  bits:
++    5-0: CMD is the KMAC command field used to issue START, PROCESS, RUN and DONE commands to KMAC.
++    31-6: Reserved. Always reads as 0. Any write is ignored.
+ 
+-- name: mai_ctrl
+-  address: 0x7e0
++- name: kmac_byte_strobe
++  address: 0x7de
+   doc: |
+-    The MAI control register. This is used to start MAI operations as well as configuring the accelerators.
++    The input bytes of KMAC_DATA_S0/1 that are valid and should be consumed by KMAC.
++
++    For all message chunks except the final one, BYTE_STROBE must be programmed to all ones, indicating that all bytes in KMAC_DATA are valid. For the final message chunk, selected bits may be cleared to indicate unused bytes.
++    Any cleared bits must correspond to the most-significant bytes only, that is, the mask must be contiguous, with no zero bit followed by a one at a higher significance.
++    This needs to be the case, because that's how SHA3 inside KMAC expects the data.
++    If a non contiguous strobe is defined the behaviour is undefined.
++
++    Reads from this register return the current configuration of the KMAC_BYTE_STROBE CSR.
+   bits:
+-    0: |
+-      MAI_START: Writing 1 to this bit starts the MAI operation.
+-      Writing it when MAI is busy will cause a MAI_ERROR software error.
+-    5-1:
+-      doc: |
+-        The MAI_OPERATION field defines which accelerator is used for the next operation.
+-        Invalid values and writing to these bits when MAI is busy will cause a MAI_ERROR software error.
+-      values:
+-        11: A2B
+-        16: B2A
+-        23: secAdd
+-        12: secAddMod
+-    31-6: Reserved. Any write is ignored. Always reads as 0.
++    31-0: BYTE_STROBE is the KMAC byte strobe field.
+ 
+ - name: rnd
+   address: 0xfc0
+@@ -231,15 +183,25 @@
+     The number is sourced from an local PRNG.
+     Reads never stall.
+ 
+-- name: mai_status
+-  address: 0xfca
++- name: kmac_status
++  address: 0xfc2
+   read-only: true
+   doc: |
+-    The MAI status register.
++    Writes to this CSR are always ignored.
++    This CSR exposes the internal state of the SHA3 FSM within KMAC.
+   bits:
+-    0: |
+-      MAI_BUSY: This bit is set to 1 when an MAI operation is in progress.
+-      If reset, the MAI accepts new configuration values and a new execution can be started by writing to the MAI_START bit in the MAI_CTRL CSR.
+-    1: |
+-      MAI_READY: This bit is set to 1 when the MAI_INx_Sx WSRs are ready to accept new values for the next execution.
+-    31-2: Reserved. Always reads as 0.
++    0: SHA3_IDLE indicates whether the SHA3 core is in the idle state.
++    1: SHA3_ABSORB indicates whether the SHA3 core is in the absorb state.
++    2: SHA3_SQUEEZE indicates whether the SHA3 core is in the squeeze state.
++    31-3: Reserved. Always reads as 0. Any write is ignored.
++
++- name: kmac_error
++  address: 0xfc3
++  read-only: true
++  doc: |
++    Writes to this register are ignored.
++    This register exposes the error code from the KMAC HWIP ERR_CODE register.
++    No other information from the KMAC HWIP ERR_CODE register is exposed.
++  bits:
++    7-0: ERROR_CODE contains the error code coming directly from the KMAC HWIP.
++    31-8: Reserved. Always reads as 0. Any write is ignored.
+diff --git b/hw/ip/otbn/data/wsr.yml a/hw/ip/otbn/data/wsr.yml
+index 5f122e4c..b5fdcdf3 100644
+--- b/hw/ip/otbn/data/wsr.yml
++++ a/hw/ip/otbn/data/wsr.yml
+@@ -71,72 +71,41 @@
+ - name: kmac_data_s0
+   address: 8
+   doc: |
+-    KMAC_DATA_S0 and KMAC_DATA_S1 are used to send message parts towards the KMAC HWIP as well as to receive the resulting digest.
++    KMAC_DATA_S0 is the first 256-bit share of the masked message or digest interface.
+ 
+-    For sending message parts, i.e., when writing to the WSRs, the WSRs are 256-bit wide.
+-    The message is sent towards the KMAC HWIP in 64-bit parts, starting with the least significant word.
+-    To send a masked message, provide the first share in KMAC_DATA_S0 and the second share in KMAC_DATA_S1.
+-    If no masking is required, set one share to the plaintext data and the other share to all-zeros.
++    For masked operations, provide the first share here and the second share in KMAC_DATA_S1.
+ 
+-    When reading from the WSRs, the digest data is only 64-bit wide and is placed in the least significant 64 bits.
+-    The upper bits [255:64] are not updated by the digest response.
+-    If a valid response is present (indicated by KMAC_STATUS.RSP_VALID), once both KMAC_DATA_S0 and KMAC_DATA_S1 are read, the KMAC interface starts accepting the next digest part.
++    If masking is not required:
++    - Set this share to the plaintext data.
++    - Set the other share to all-zeros.
+ 
+-    The provided digest is always in Boolean shared representation.
+-    To retrieve the plaintext digest, software must XOR the values from KMAC_DATA_S0 and KMAC_DATA_S1.
++    The digest data is provided in chunks of 64 bits at a time.
++    For plaintext retrieval of the digest, software must XOR the values from KMAC_DATA_S0 and KMAC_DATA_S1.
+   bits:
+     63-0: |
+       Write: Least significant word of the message share.
+       Read: Current 64-bit word of the digest share.
+     255-64: |
+       Write: Words 1-3 of the message share.
+-      Read: Digest shares are read out via the least significant word only, these bits are not affected by a digest response and keep the value written by SW.
++      Read: Returns `0`. Digest shares are read out via the least significant word only.
+ 
+ - name: kmac_data_s1
+   address: 9
+   doc: |
+-    KMAC_DATA_S1 is the counterpart of KMAC_DATA_S0: see its documentation for details.
++    KMAC_DATA_S1 is the second 256-bit share of the masked message or digest interface.
+ 
+-- name: mai_res_s0
+-  address: 10
+-  doc: |
+-    This WSR holds share 0 of the masked results produced by the MAI.
+-    The results are organized as eight 32-bit values.
+-    Results are valid when MAI is not busy anymore.
+-    The results are valid until the next operation produces its first result (depends on the selected accelerator's latency).
+-
+-- name: mai_res_s1
+-  address: 11
+-  doc: |
+-    This WSR holds share 1 of the masked results produced by the MAI.
+-    The results are organized as eight 32-bit values.
+-    Results are valid when MAI is not busy anymore.
+-    The results are valid until the next operation produces its first result (depends on the selected accelerator's latency).
+-
+-- name: mai_in0_s0
+-  address: 12
+-  doc: |
+-    This WSR transfers share 0 of the first input secrets towards the MAI.
+-    The inputs are considered as eight 32-bit values.
+-    Writing to this WSR while MAI is not ready will cause a MAI_ERROR software error.
+-
+-- name: mai_in0_s1
+-  address: 13
+-  doc: |
+-    This WSR transfers share 1 of the first input secrets towards the MAI.
+-    The inputs are considered as eight 32-bit values.
+-    Writing to this WSR while MAI is not ready will cause a MAI_ERROR software error.
++    For masked operations, provide the second share here and the second share in KMAC_DATA_S0.
+ 
+-- name: mai_in1_s0
+-  address: 14
+-  doc: |
+-    This WSR transfers share 0 of the second input secrets towards the MAI.
+-    The inputs are considered as eight 32-bit values.
+-    Writing to this WSR while MAI is not ready will cause a MAI_ERROR software error.
++    If masking is not required:
++    - Set this share to the plaintext data.
++    - Set the other share to all-zeros.
+ 
+-- name: mai_in1_s1
+-  address: 15
+-  doc: |
+-    This WSR transfers share 1 of the second input secrets towards the MAI.
+-    The inputs are considered as eight 32-bit values.
+-    Writing to this WSR while MAI is not ready will cause a MAI_ERROR software error.
++    The digest data is provided in chunks of 64 bits at a time.
++    For plaintext retrieval of the digest, software must XOR the values from KMAC_DATA_S0 and KMAC_DATA_S1.
++  bits:
++    63-0: |
++      Write: Least significant word of the message share.
++      Read: Current 64-bit word of the digest share.
++    255-64: |
++      Write: Words 1-3 of the message share.
++      Read: Returns `0`. Digest shares are read out via the least significant word only.
+diff --git b/hw/ip/otbn/dv/tracer/rtl/otbn_trace_if.sv a/hw/ip/otbn/dv/tracer/rtl/otbn_trace_if.sv
+index 80242c5c..57dd5603 100644
+--- b/hw/ip/otbn/dv/tracer/rtl/otbn_trace_if.sv
++++ a/hw/ip/otbn/dv/tracer/rtl/otbn_trace_if.sv
+@@ -81,7 +81,7 @@ interface otbn_trace_if
+   input logic                      rnd_req,
+   input logic                      rnd_valid,
+ 
+-  input logic [otbn_pkg::UrndLen-1:0] urnd_data,
++  input logic [otbn_pkg::WLEN-1:0] urnd_data,
+ 
+   input logic [1:0][otbn_pkg::SideloadKeyWidth-1:0] sideload_key_shares_i,
+ 
+@@ -287,11 +287,7 @@ interface otbn_trace_if
+   assign ispr_read_data[IsprRnd] = rnd_data;
+ 
+   assign ispr_read[IsprUrnd] = any_ispr_read & (ispr_addr == IsprUrnd);
+-  assign ispr_read_data[IsprUrnd] = urnd_data[WLEN-1:0];
+-
+-  // Upper bits of URND are currently unused in the tracer interface
+-  logic unused_urnd;
+-  assign unused_urnd = ^urnd_data[UrndLen-1:WLEN];
++  assign ispr_read_data[IsprUrnd] = urnd_data;
+ 
+   assign ispr_write[IsprKeyS0L] = 1'b0;
+   assign ispr_write_data[IsprKeyS0L] = '0;
+@@ -316,72 +312,6 @@ interface otbn_trace_if
+   assign ispr_read_data[IsprKeyS1H] = {{(WLEN - (SideloadKeyWidth - 256)){1'b0}},
+                                        sideload_key_shares_i[1][SideloadKeyWidth-1:256]};
+ 
+-
+-  assign ispr_read[IsprMaiResS0]  = any_ispr_read & (ispr_addr == IsprMaiResS0);
+-  assign ispr_read[IsprMaiResS1]  = any_ispr_read & (ispr_addr == IsprMaiResS1);
+-  assign ispr_read[IsprMaiIn0S0]  = any_ispr_read & (ispr_addr == IsprMaiIn0S0);
+-  assign ispr_read[IsprMaiIn0S1]  = any_ispr_read & (ispr_addr == IsprMaiIn0S1);
+-  assign ispr_read[IsprMaiIn1S0]  = any_ispr_read & (ispr_addr == IsprMaiIn1S0);
+-  assign ispr_read[IsprMaiIn1S1]  = any_ispr_read & (ispr_addr == IsprMaiIn1S1);
+-
+-  assign ispr_read[IsprMaiCtrl]   = any_ispr_read & (ispr_addr == IsprMaiCtrl);
+-  assign ispr_read[IsprMaiStatus] = any_ispr_read & (ispr_addr == IsprMaiStatus);
+-
+-  for (genvar i_word = 0; i_word < BaseWordsPerWLEN; i_word++) begin : gen_mai_ispr_read_words
+-    assign ispr_read_data[IsprMaiResS0][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_res_s0_q[i_word].word;
+-    assign ispr_read_data[IsprMaiResS1][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_res_s1_q[i_word].word;
+-    assign ispr_read_data[IsprMaiIn0S0][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_in0_s0_q[i_word].word;
+-    assign ispr_read_data[IsprMaiIn0S1][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_in0_s1_q[i_word].word;
+-    assign ispr_read_data[IsprMaiIn1S0][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_in1_s0_q[i_word].word;
+-    assign ispr_read_data[IsprMaiIn1S1][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_in1_s1_q[i_word].word;
+-  end
+-
+-
+-  assign ispr_read_data[IsprMaiCtrl]   = {{(WLEN - 32){1'b0}}, gen_mai.u_otbn_mai.ispr_mai_ctrl_r};
+-  assign ispr_read_data[IsprMaiStatus] = {{(WLEN - 32){1'b0}}, gen_mai.u_otbn_mai.ispr_mai_status};
+-
+-  assign ispr_write[IsprMaiResS0]  = gen_mai.u_otbn_mai.ispr_mai_res_s0_wr_i |
+-                                     gen_mai.u_otbn_mai.sec_wipe_ispr_mai_res_s0_i;
+-  assign ispr_write[IsprMaiResS1]  = gen_mai.u_otbn_mai.ispr_mai_res_s1_wr_i |
+-                                     gen_mai.u_otbn_mai.sec_wipe_ispr_mai_res_s1_i;
+-  assign ispr_write[IsprMaiIn0S0]  = gen_mai.u_otbn_mai.ispr_mai_in0_s0_wr_i |
+-                                     gen_mai.u_otbn_mai.sec_wipe_ispr_mai_in0_s0_i;
+-  assign ispr_write[IsprMaiIn0S1]  = gen_mai.u_otbn_mai.ispr_mai_in0_s1_wr_i |
+-                                     gen_mai.u_otbn_mai.sec_wipe_ispr_mai_in0_s1_i;
+-  assign ispr_write[IsprMaiIn1S0]  = gen_mai.u_otbn_mai.ispr_mai_in1_s0_wr_i |
+-                                     gen_mai.u_otbn_mai.sec_wipe_ispr_mai_in1_s0_i;
+-  assign ispr_write[IsprMaiIn1S1]  = gen_mai.u_otbn_mai.ispr_mai_in1_s1_wr_i |
+-                                     gen_mai.u_otbn_mai.sec_wipe_ispr_mai_in1_s1_i;
+-
+-  assign ispr_write[IsprMaiCtrl]   = gen_mai.u_otbn_mai.ispr_mai_ctrl_wr_i;
+-  assign ispr_write[IsprMaiStatus] = 1'b0;
+-
+-  for (genvar i_word = 0; i_word < BaseWordsPerWLEN; i_word++) begin : gen_mai_ispr_write_words
+-    assign ispr_write_data[IsprMaiResS0][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_res_s0_d[i_word].word;
+-    assign ispr_write_data[IsprMaiResS1][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_res_s1_d[i_word].word;
+-    assign ispr_write_data[IsprMaiIn0S0][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_in0_s0_d[i_word].word;
+-    assign ispr_write_data[IsprMaiIn0S1][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_in0_s1_d[i_word].word;
+-    assign ispr_write_data[IsprMaiIn1S0][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_in1_s0_d[i_word].word;
+-    assign ispr_write_data[IsprMaiIn1S1][i_word*32+:32] =
+-        gen_mai.u_otbn_mai.ispr_mai_in1_s1_d[i_word].word;
+-  end
+-
+-  assign ispr_write_data[IsprMaiCtrl]   = {{(WLEN - 32'd32){1'b0}},
+-                                          gen_mai.u_otbn_mai.ispr_mai_ctrl_wdata_i};
+-  assign ispr_write_data[IsprMaiStatus] = '0;
+-
+-
+   // Separate per flag group tracking using the flags_t struct so tracer can cleanly present flag
+   // accesses.
+   logic [NFlagGroups-1:0] flags_write;
+@@ -521,8 +451,8 @@ interface otbn_trace_if
+   assign predec_err_i.rd_err = rd_predec_error;
+ 
+   assign start_stop_bad_int_i.state_err = u_otbn_start_stop_control.state_error_d;
+-  assign start_stop_bad_int_i.spr_urnd_acks = u_otbn_rnd.edn_urnd_i.edn_ack &&
+-    (!u_otbn_rnd.edn_urnd_o.edn_req);
++  assign start_stop_bad_int_i.spr_urnd_acks = u_otbn_rnd.edn_urnd_ack_i &&
++    (!u_otbn_rnd.edn_urnd_req_o);
+   assign start_stop_bad_int_i.spr_rnd_acks = u_otbn_rnd.edn_rnd_ack_i &&
+     (!u_otbn_rnd.edn_rnd_req_o);
+   assign start_stop_bad_int_i.spr_secwipe_reqs = u_otbn_start_stop_control.secure_wipe_error_q;
+diff --git b/hw/ip/otbn/dv/tracer/rtl/otbn_tracer.sv a/hw/ip/otbn/dv/tracer/rtl/otbn_tracer.sv
+index 4d6a4143..65de71c2 100644
+--- b/hw/ip/otbn/dv/tracer/rtl/otbn_tracer.sv
++++ a/hw/ip/otbn/dv/tracer/rtl/otbn_tracer.sv
+@@ -50,15 +50,6 @@ module otbn_tracer (
+     return data_str;
+   endfunction
+ 
+-  function automatic string otbn_ispr_access_str(ispr_e ispr, logic [WLEN-1:0] data);
+-    string data_str;
+-
+-    data_str = (otbn_ispr_size(ispr) == WLEN) ? otbn_wlen_data_str(data) :
+-                                                $sformatf("0x%08x", data[31:0]);
+-
+-    return $sformatf("%s: %s", otbn_ispr_name_str(ispr), data_str);
+-  endfunction
+-
+   // Produce trace output string for dmem writes. For a 256-bit write, the address and full data is
+   // output. For 32-bit writes (determined by looking at the mask) only the relevant 32-bit chunk is
+   // output along with the address modified so it refers to that chunk.
+@@ -99,42 +90,7 @@ module otbn_tracer (
+       IsprRnd: return "RND";
+       IsprFlags: return "FLAGS";
+       IsprUrnd: return "URND";
+-      IsprKeyS0L: return "KEYS0L";
+-      IsprKeyS0H: return "KEYS0H";
+-      IsprKeyS1L: return "KEYS1L";
+-      IsprKeyS1H: return "KEYS1H";
+-      IsprMaiResS0: return "MAI_RES_S0";
+-      IsprMaiResS1: return "MAI_RES_S1";
+-      IsprMaiIn0S0: return "MAI_IN0_S0";
+-      IsprMaiIn0S1: return "MAI_IN0_S1";
+-      IsprMaiIn1S0: return "MAI_IN1_S0";
+-      IsprMaiIn1S1: return "MAI_IN1_S1";
+-      IsprMaiCtrl: return "MAI_CTRL";
+-      IsprMaiStatus: return "MAI_STATUS";
+-      default: return $sformatf("UNKNOWN_ISPR: (%d)", ispr);
+-    endcase
+-  endfunction
+-
+-  function automatic int otbn_ispr_size(ispr_e ispr);
+-    unique case (ispr)
+-      IsprMod,
+-      IsprAcc,
+-      IsprUrnd,
+-      IsprRnd,
+-      IsprKeyS0L,
+-      IsprKeyS0H,
+-      IsprKeyS1L,
+-      IsprKeyS1H,
+-      IsprMaiResS0,
+-      IsprMaiResS1,
+-      IsprMaiIn0S0,
+-      IsprMaiIn0S1,
+-      IsprMaiIn1S0,
+-      IsprMaiIn1S1: return WLEN;
+-      IsprFlags,
+-      IsprMaiCtrl,
+-      IsprMaiStatus: return 32;
+-      default: return -1;
++      default: return "UNKNOWN_ISPR";
+     endcase
+   endfunction
+ 
+@@ -234,18 +190,17 @@ module otbn_tracer (
+           end
+         end
+       end else begin
+-        // For all other ISPRs just dump out the full 256-bits or 32-bits of data being
+-        // read/written
++        // For all other ISPRs just dump out the full 256-bits of data being read/written
+         if (otbn_trace.ispr_read[i_ispr]) begin
+           work = output_trace(work, RegReadPrefix,
+-                              otbn_ispr_access_str(ispr_e'(i_ispr),
+-                                                   otbn_trace.ispr_read_data[i_ispr]));
++                              $sformatf("%s: %s", otbn_ispr_name_str(ispr_e'(i_ispr)),
++                                        otbn_wlen_data_str(otbn_trace.ispr_read_data[i_ispr])));
+         end
+ 
+         if (otbn_trace.ispr_write[i_ispr]) begin
+           work = output_trace(work, RegWritePrefix,
+-                              otbn_ispr_access_str(ispr_e'(i_ispr),
+-                                                   otbn_trace.ispr_write_data[i_ispr]));
++                              $sformatf("%s: %s", otbn_ispr_name_str(ispr_e'(i_ispr)),
++                                        otbn_wlen_data_str(otbn_trace.ispr_write_data[i_ispr])));
+         end
+       end
+     end

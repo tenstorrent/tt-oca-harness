@@ -24,7 +24,7 @@ default — see `flows/synth/yosys/README.md`.
 
 ## Quick start (`docker-run.sh`)
 
-From `tt-oca/` (or anywhere — the script resolves the repo root). Build the
+From the `tt-oca-harness` repo root (or anywhere — the script resolves the repo root). Build the
 firmware image once before `run` / `shell` / `verify`:
 
 ```bash
@@ -77,13 +77,14 @@ container as its image's own default user instead:
 OCAH_DOCKER_UIDGID= ./scripts/docker-run.sh shell
 ```
 
-Lint and format Make targets (`make lint-slang-all` / `make format-sv[-check]` /
-`make lint-sv-verible`) require `slang` / `verible-*` on `PATH`. If a tool is
-missing, Make prints an install hint and the matching container command, e.g.
-`./scripts/docker-run.sh eda-run make lint-slang`. Synthesis (`make synth-all`)
-still runs through Docker by default via `./scripts/docker-run.sh eda-run`
-internally. The subcommand is also available directly, e.g. for ad-hoc
-debugging:
+SystemVerilog lint and format Make targets (`make lint-slang-all`,
+`make lint-verilator-all`, `make format-sv[-check]`, and
+`make lint-sv-verible`) require the corresponding native tool on `PATH`. If a
+tool is missing, Make prints an install hint and the matching container
+command, e.g. `./scripts/docker-run.sh eda-run make lint-slang`. Synthesis
+(`make synth-all`) still runs through Docker by default via
+`./scripts/docker-run.sh eda-run` internally. The subcommand is also available
+directly, e.g. for ad-hoc debugging:
 
 ```bash
 ./scripts/docker-run.sh eda-run yosys --version
@@ -104,7 +105,7 @@ container. The DV `cgen` flow uses it to build firmware, e.g.
 
 ## Manual docker commands
 
-Equivalent commands without the helper (run from `tt-oca/`):
+Equivalent commands without the helper (run from the `tt-oca-harness` repo root):
 
 ```bash
 PDF_IMAGE=docker.io/asciidoctor/docker-asciidoctor:1.106.0@sha256:6266e05784c2d8ece9d9fe5e593b12c3beebebbc467135fd6f4a56269c93cea3

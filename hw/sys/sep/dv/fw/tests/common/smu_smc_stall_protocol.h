@@ -1,11 +1,10 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_004  smu_smc_stall_sep  --  shared protocol contract (single source of truth).
+ * smu_smc_stall_sep  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SMC hold/release + SEP GO-poll) and parsed by the
- * cocotb checker (dv/smu/tb/tb_uvm/cocotb_tests/smu_smc_stall_sep_test.py) so the
- * DUT stimulus and the DV expectations can never drift (AGENTS.md one-source rule).
+ * Included by both firmwares (SMC hold/release + SEP GO-poll) and parsed by the
+ * cocotb checker so DUT stimulus and DV expectations share one contract.
  * Keep every value a plain integer/hex #define so the Python parser can read it.
  *
  * Channels (SMC CPU_CTRL scratch array, 8-byte stride, base 0xC0039080):
@@ -96,7 +95,6 @@
  *             RUNNING core. NOTE: action [3] i_cpu_halt_req does NOT halt a live
  *             core (sim-proven: core kept retiring, o_cpu_halt_status stayed 0),
  *             so 004 halts via action [0] and resumes via the release actions [1]/[4]. */
-#define SMU_STALL_CLA_CDFDCSR_EXPECT 0x8000000000000000ULL
 #define SMU_STALL_CLA_CTRLSTATUS_EXPECT 0x60
 #define SMU_STALL_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define SMU_STALL_CLA_EAP1_RELEASE 0x144FBFC000ULL

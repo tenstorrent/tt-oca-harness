@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC firmware smoke under the production SMU wrapper with SEP disabled."""
 
 from __future__ import annotations
 
 import pyuvm
-
 from env.smu_boot_scoreboard import SmuSmcBootScoreboard
 from seq_lib.smu_smc_smoke_seq import SmuSmcSmokeSeq
 from smu_base_test import smu_base_test

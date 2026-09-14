@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM canonical reset recovery matrix test."""
 
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_reset_recovery_matrix_test_seq import (
     smc_reset_recovery_matrix_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

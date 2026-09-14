@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """One bounded SEP_IN read used by the macro AXI-Lite routing test.
 
 Issues a single real CSR read to a peripheral-xbar macro window and captures
@@ -30,8 +31,8 @@ class smc_macro_axil_read_seq(smc_base_test_seq):
         item.addr = self.addr
         item.length = 4
         # Tolerate DECERR and timeout; the test asserts the exact outcome.
-        # allow_timeout: macro AXIL may hang when TB leaves resp idle (deferred
-        # needs_dtp_csr_sub / rtl_placeholder); second evidence = resp_code/rdata assert.
+        # allow_timeout: macro AXIL may hang when TB leaves resp idle
+        # (needs_dtp_csr_sub / rtl_placeholder); second evidence = resp_code/rdata assert.
         item.allow_error = True
         item.allow_timeout = True
         item.timeout_ns = self.timeout_ns

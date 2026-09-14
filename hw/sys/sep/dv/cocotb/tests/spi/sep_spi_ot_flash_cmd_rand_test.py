@@ -1,19 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI flash command-breadth test (PyUVM, cpu-firmware, randomized).
 
 SPI-subsystem Phase-2 rep SPI flash command breadth (lead of the dedicated OpenTitan-SPI sweep). A
-cpu-firmware port of the OCAH spi_ot_flash_write_read_test +
+cpu-firmware port of the reference spi_ot_flash_write_read_test +
 spi_ot_flash_sector_erase_test, upgraded to a randomized representative
-([RAND-REP], stronger than the directed OCAH source). Boots the VeeR EL2 core
+([RAND-REP], stronger than the directed reference suite source). Boots the VeeR EL2 core
 and runs the spi_ot_flash_cmd firmware, which drives the OT SPI host (@
 0x10B0_0000) against the OcahSpiFlash BFM:
 
     WREN -> PAGE PROGRAM -> READ + verify == pattern ->
-    WREN -> SECTOR ERASE -> READ + verify == 0xFF, ERROR_STATUS == 0 throughout.
+    WREN -> SECTOR ERASE -> READ + verify == 0xFF, ERROR_STATUS == 0 throughout,
+    then the write-protect / RDSR2 breadth and the ERROR_STATUS injections.
 
-cpu-firmware mode (not no_cpu): every OCAH spi_ot flash test + the Phase-1
+cpu-firmware mode (not no_cpu): every reference spi_ot flash test + the Phase-1
 sep_spi_ot_dma_rx run the multi-command SPI flash sequence from firmware.
-Distinct from #3 sep_spi_ot_dma_rx (RX+DMA) and the JEDEC smoke.
+Distinct from `sep_spi_ot_dma_rx_test` (RX+DMA) and the JEDEC smoke.
 
 Randomization (this test is the SINGLE source of randomness; AGENTS.md s9/s11):
   The scenario -- flash address (page-aligned), word count (1..16), and the data
@@ -27,13 +29,31 @@ Checks:
   firmware self-check (each logs a positive PASS line):
     CHK-PROGRAM/CHK-READ : WREN+PP writes the words; READ returns them.
     CHK-ERASE            : sector ERASE -> READ returns all 0xFF.
-    CHK-NO-ERROR         : OT SPI ERROR_STATUS == 0 throughout.
+    CHK-WEL-AUTOCLR      : the erase CONSUMED the write-enable latch (WEL clear).
+    CHK-WP-PP            : a PAGE PROGRAM issued with WEL clear does not land --
+                           the sector still reads 0xFF.
+    CHK-RDSR2            : opcode 0x35 returns the seeded SR2 while SR1 reads
+                           0x02, so a 0x35 folded onto 0x05 fails, and so does a
+                           receive path that returns an all-zero byte.
+    CHK-NO-ERROR         : OT SPI ERROR_STATUS == 0 across all of the above.
+    CHK-ERR-UNDERFLOW    : reading RXDATA with RXQD==0 latches exactly
+                           ERROR_STATUS.UNDERFLOW; SW_RST + W1C releases it.
+    CHK-ERR-CMDINVAL     : a COMMAND with the reserved SPEED encoding latches
+                           exactly ERROR_STATUS.CMDINVAL; recovery clears it.
+    CHK-ERR-CSIDINVAL    : a segment with CSID beyond NUM_CS latches exactly
+                           ERROR_STATUS.CSIDINVAL; recovery clears it.
+    CHK-ERR-RECOVER      : JEDEC works again afterwards, so the host was really
+                           released rather than left disabled by a stuck latch.
   cocotb golden cross-check (independent of the firmware readback):
-    - exactly 6 BFM transactions in the expected opcode order;
+    - exactly the BFM-visible opcode sequence (JEDEC, WRDI, RDSR, WREN, primary
+      program/read, FAST_READ, neighbour program/read, erase, primary read,
+      neighbour read, post-erase RDSR, the ignored WEL-clear PP and its read,
+      WREN, RDSR2, WRDI, recovery JEDEC);
     - the PAGE PROGRAM (0x02) landed at the random addr with the random data;
-    - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards).
-  CHK-WIP / CHK-DUAL-QUAD: DEFERRED (instant-ready BFM; single-bit DQ, no
-    0x3B/0x6B) -- infra-gated.
+    - the SECTOR ERASE wiped the page (BFM memory == 0xFF at addr afterwards)
+      and left the neighbour 4 KiB sector intact;
+    - CHK-WP-PP/BFM: the WEL-clear PAGE PROGRAM took no payload at the device and
+      the page is still 0xFF after it.
 
 main() returns the error count; start.S emits PASS (0xCAFEBABE) / FAIL
 (0xDEADBEEF) magic, which the boot scoreboard gates on (+ banner + ICCM exec).
@@ -45,23 +65,24 @@ from __future__ import annotations
 
 import logging
 import os
-import random
 from dataclasses import dataclass
 from pathlib import Path
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_dtcm_param_patch import patch_param_block
+from env.sep_seeded_rng import SepSeededRng
 from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "spi_ot_flash_cmd_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "spi_ot_flash_cmd_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "spi_ot_flash_cmd_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -69,60 +90,14 @@ _BANNER = "SEP SPI OT flash cmd test"
 
 # Mirror of the firmware g_spi1_params block (spi_ot_flash_cmd_test.c).
 _PARAM_MAGIC = 0x5A11C0DE
+# Status register 2 the device model is built with. Deliberately non-zero and
+# distinct from the 0x02 SR1 reads with the write-enable latch set, so a decode
+# that folds 0x35 onto 0x05 and an all-zero receive path both fail CHK-RDSR2.
+# Must equal FLASH_SR2_SEEDED in fw/tests/spi_ot_flash_cmd_test.
+_SR2_SEED = 0x5A
 _MAX_WORDS = 16
 _PAGE_SIZE = 256
 _SECTOR_SIZE = 4096
-
-
-def _parse_hex_cells(path: str) -> dict:
-    """Parse a Verilog $readmemh-style byte image into {byte_addr: value}."""
-    cells: dict = {}
-    addr = 0
-    with open(path) as fh:
-        for line in fh:
-            tok = line.strip()
-            if not tok:
-                continue
-            if tok.startswith("@"):
-                addr = int(tok[1:], 16)
-                continue
-            for byte in tok.split():
-                cells[addr] = int(byte, 16)
-                addr += 1
-    return cells
-
-
-def _find_magic(cells: dict, magic_le: bytes) -> int:
-    """Return the byte address where the little-endian magic bytes start."""
-    for base in sorted(cells):
-        if all(cells.get(base + i) == magic_le[i] for i in range(len(magic_le))):
-            return base
-    raise RuntimeError("SPI1_PARAM_MAGIC not found in DTCM image")
-
-
-def _patch_hex(src: str, dst: str, patches: dict) -> None:
-    """Rewrite ``src`` to ``dst`` replacing bytes at the addresses in ``patches``,
-    preserving the original @addr / 16-byte-per-line layout exactly."""
-    out = []
-    addr = 0
-    with open(src) as fh:
-        for raw in fh:
-            line = raw.rstrip("\n")
-            tok = line.strip()
-            if tok.startswith("@"):
-                addr = int(tok[1:], 16)
-                out.append(line)
-                continue
-            if not tok:
-                out.append(line)
-                continue
-            new_toks = []
-            for byte in tok.split():
-                new_toks.append(f"{patches[addr]:02X}" if addr in patches else byte)
-                addr += 1
-            out.append(" ".join(new_toks))
-    with open(dst, "w") as fh:
-        fh.write("\n".join(out) + "\n")
 
 
 @dataclass(frozen=True)
@@ -139,17 +114,61 @@ class SepSpiFlashCmdCfg:
     addr: int
     data: list[int]
 
-    # BFM opcode order the firmware must drive: WREN, PAGE PROGRAM, READ, WREN,
-    # SECTOR ERASE, READ. (Bare class attr, not a dataclass field -- no annotation.)
-    EXPECTED_OPS = [0x06, 0x02, 0x03, 0x06, 0x20, 0x03]
+    # BFM opcode order the firmware must drive (bare class attr, not a field):
+    # JEDEC, WRDI, RDSR, WREN, RDSR, then WREN/PP/READ (primary), FAST_READ,
+    # WREN/PP/READ (neighbour), WREN/ERASE/READ (primary), READ (neighbour),
+    # then the protect/status breadth -- RDSR (post-erase WIP+WEL), the PAGE
+    # PROGRAM the device must IGNORE because WEL is clear, its READ, WREN,
+    # RDSR2, WRDI -- and finally the JEDEC that proves the host recovered from
+    # the three ERROR_STATUS injections. The injections themselves put nothing on
+    # the bus: the host disables its core the cycle the error latches, and the
+    # firmware flushes the offending segment with CTRL.SW_RST before clearing.
+    EXPECTED_OPS = [
+        0x9F,
+        0x06,
+        0x05,
+        0x04,
+        0x05,
+        0x06,
+        0x02,
+        0x03,
+        0x0B,
+        0x06,
+        0x02,
+        0x03,
+        0x06,
+        0x20,
+        0x03,
+        0x03,
+        0x05,
+        0x02,
+        0x03,
+        0x06,
+        0x35,
+        0x04,
+        0x9F,
+    ]
+
+    # Which PAGE PROGRAM in device order is the one issued with WEL clear: the
+    # functional program is first, the neighbour second, this one third.
+    WP_PP_NTH = 3
+
+    @property
+    def neigh_addr(self) -> int:
+        """Adjacent 4 KiB sector; matches firmware ``addr ^ 0x1000``."""
+        return self.addr ^ 0x1000
+
+    def neigh_bytes(self) -> bytes:
+        """PAGE PROGRAM payload the firmware writes to the neighbour sector."""
+        return b"".join((w ^ 0xFFFFFFFF).to_bytes(4, "little") for w in self.data)
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepSpiFlashCmdCfg":
-        rng = random.Random(seed)
-        sector = rng.randint(0, 31)
-        page = rng.randint(0, _SECTOR_SIZE // _PAGE_SIZE - 1)
+        rng = SepSeededRng(seed)
+        sector = rng.randrange(0, 32)
+        page = rng.randrange(0, _SECTOR_SIZE // _PAGE_SIZE)
         addr = sector * _SECTOR_SIZE + page * _PAGE_SIZE
-        nwords = rng.randint(1, _MAX_WORDS)
+        nwords = rng.randrange(1, _MAX_WORDS + 1)
         data = [rng.getrandbits(32) for _ in range(nwords)]
         return cls(seed=seed, addr=addr, data=list(data))
 
@@ -180,21 +199,20 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         """Patch the scenario into a per-run DTCM image; return (path, cfg). With
         +spi1_directed, skip patching and use the firmware's defaults (cfg=None)."""
         if "spi1_directed" in cocotb.plusargs:
-            self.logger.info("SPI flash command breadth directed mode (+spi1_directed): firmware defaults")
+            self.logger.info(
+                "SPI flash command breadth directed mode (+spi1_directed): firmware defaults"
+            )
             return _DTCM_HEX, None
 
         cfg = SepSpiFlashCmdCfg.from_seed(self.random_seed())
-        cells = _parse_hex_cells(_DTCM_HEX)
-        base = _find_magic(cells, _PARAM_MAGIC.to_bytes(4, "little"))
-        patches = {}
-        for k, word in enumerate(cfg.param_words()):
-            for b in range(4):
-                patches[base + 4 * k + b] = (word >> (8 * b)) & 0xFF
         patched = os.path.join(os.getcwd(), "sep_dtcm_spi1.hex")
-        _patch_hex(_DTCM_HEX, patched, patches)
+        patch_param_block(_DTCM_HEX, patched, _PARAM_MAGIC, cfg.param_words())
         self.logger.info(
             "SPI flash command breadth scenario (seed=%d): addr=0x%06x nwords=%d data=%s",
-            cfg.seed, cfg.addr, cfg.nwords, [f"0x{w:08x}" for w in cfg.data],
+            cfg.seed,
+            cfg.addr,
+            cfg.nwords,
+            [f"0x{w:08x}" for w in cfg.data],
         )
         return patched, cfg
 
@@ -207,6 +225,11 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
             mosi=dut.spi_mosi_o,
             miso=dut.spi_miso_i,
             name="sep_spi1_flash",
+            # Deliberately non-zero, and distinct from the 0x02 that SR1 reads
+            # with WEL set. CHK-RDSR2 in the firmware compares against this exact
+            # value (FLASH_SR2_SEEDED), so a stuck-low MISO returning 0x00 fails
+            # the check instead of passing it.
+            status_reg2=_SR2_SEED,
             verbose=True,
         )
         # BFM memory inits to 0xFF (erased); the firmware programs + verifies.
@@ -215,7 +238,9 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         try:
             self.sb.expected_line = _BANNER
             await self.boot_firmware(
-                self.sb, _ITCM_HEX, dtcm_hex,
+                self.sb,
+                _ITCM_HEX,
+                dtcm_hex,
                 rst_vec=_ICCM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
@@ -232,32 +257,125 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
         txns = flash.get_transactions()
         for t in txns:
             din = t.get("data_in") or b""
-            self.logger.info("SPI flash command breadth diag txn: opcode=0x%02x addr=0x%06x data_in=%s",
-                             t.get("opcode", -1), t.get("addr", 0),
-                             bytes(din).hex() if din else "")
+            self.logger.info(
+                "SPI flash command breadth diag txn: opcode=0x%02x addr=0x%06x data_in=%s",
+                t.get("opcode", -1),
+                t.get("addr", 0),
+                bytes(din).hex() if din else "",
+            )
         if cfg is None:  # +spi1_directed: firmware-self-checked only
             return
 
         opcodes = [t.get("opcode") for t in txns]
         if opcodes != cfg.EXPECTED_OPS:
-            self.logger.error("SPI flash command breadth GOLDEN FAIL: opcode order %s != %s",
-                              [f"0x{o:02x}" for o in opcodes],
-                              [f"0x{o:02x}" for o in cfg.EXPECTED_OPS])
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: opcode order %s != %s",
+                [f"0x{o:02x}" for o in opcodes],
+                [f"0x{o:02x}" for o in cfg.EXPECTED_OPS],
+            )
             raise AssertionError("SPI flash command breadth golden: unexpected BFM opcode sequence")
 
-        pp = txns[1]
+        pp = txns[6]
         exp_bytes = cfg.pp_bytes()
         if pp.get("addr") != cfg.addr or bytes(pp.get("data_in") or b"") != exp_bytes:
             self.logger.error(
                 "SPI flash command breadth GOLDEN FAIL: PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
-                pp.get("addr", 0), bytes(pp.get("data_in") or b"").hex(),
-                cfg.addr, exp_bytes.hex())
-            raise AssertionError("SPI flash command breadth golden: PAGE PROGRAM addr/data mismatch")
+                pp.get("addr", 0),
+                bytes(pp.get("data_in") or b"").hex(),
+                cfg.addr,
+                exp_bytes.hex(),
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: PAGE PROGRAM addr/data mismatch"
+            )
 
+        neigh_pp = txns[10]
+        neigh_bytes = cfg.neigh_bytes()
+        if (
+            neigh_pp.get("addr") != cfg.neigh_addr
+            or bytes(neigh_pp.get("data_in") or b"") != neigh_bytes
+        ):
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: neighbour PP addr=0x%06x data_in=%s vs exp addr=0x%06x data=%s",
+                neigh_pp.get("addr", 0),
+                bytes(neigh_pp.get("data_in") or b"").hex(),
+                cfg.neigh_addr,
+                neigh_bytes.hex(),
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: neighbour PAGE PROGRAM mismatch"
+            )
+
+        # The write-protect PAGE PROGRAM. Locate it by position among the PAGE
+        # PROGRAMs rather than by a fixed index into every transaction: an added
+        # or reordered command elsewhere in the walk would silently move a raw
+        # index onto a different opcode.
+        pp_txns = [t for t in txns if t.get("opcode") == 0x02]
+        if len(pp_txns) < cfg.WP_PP_NTH:
+            raise AssertionError(
+                f"SPI flash command breadth golden: expected at least "
+                f"{cfg.WP_PP_NTH} PAGE PROGRAM transaction(s) at the device, "
+                f"saw {len(pp_txns)}"
+            )
+        wp_pp = pp_txns[cfg.WP_PP_NTH - 1]
+        # The device must have taken NO payload from it. Note what this can and
+        # cannot show: on WEL=0 the model drains to CS-high without decoding the
+        # address phase, so a refused program records addr=0 and "the controller
+        # truncated the command" is NOT distinguishable here. The memory compare
+        # below carries the real weight.
+        wp_taken = bytes(wp_pp.get("data_in") or b"")
+        if wp_taken:
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: the WEL-clear PAGE PROGRAM was "
+                "accepted, device took %d payload byte(s): %s",
+                len(wp_taken),
+                wp_taken.hex(),
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: PAGE PROGRAM landed with WEL clear"
+            )
+
+        # Read back after BOTH the sector erase and the WEL-clear PAGE PROGRAM
+        # that followed it. This reads the device model's stored array DIRECTLY,
+        # not over SPI, so it is independent of the read datapath the firmware
+        # CHK-WP-PP used: a program that landed while the read path returned a
+        # stuck 0xFF passes the firmware check and fails here.
         erased = flash.read_memory(cfg.addr, cfg.nwords * 4)
         if erased != b"\xff" * (cfg.nwords * 4):
-            self.logger.error("SPI flash command breadth GOLDEN FAIL: post-erase mem not 0xFF: %s",
-                              erased.hex())
-            raise AssertionError("SPI flash command breadth golden: sector erase did not wipe the page")
-        self.logger.info("SPI flash command breadth GOLDEN PASS: PP@0x%06x %dB landed + erase wiped it",
-                         cfg.addr, cfg.nwords * 4)
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: page not 0xFF after erase + "
+                "WEL-clear PAGE PROGRAM: %s",
+                erased.hex(),
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: sector erase did not wipe the page, "
+                "or the WEL-clear PAGE PROGRAM re-wrote it"
+            )
+        neigh_left = flash.read_memory(cfg.neigh_addr, cfg.nwords * 4)
+        if neigh_left != neigh_bytes:
+            self.logger.error(
+                "SPI flash command breadth GOLDEN FAIL: neighbour 0x%06x wiped or corrupted: %s vs %s",
+                cfg.neigh_addr,
+                neigh_left.hex(),
+                neigh_bytes.hex(),
+            )
+            raise AssertionError(
+                "SPI flash command breadth golden: sector erase wiped the neighbour"
+            )
+        self.logger.info(
+            "CHK-WP-PP/BFM PASS: the WEL-clear PAGE PROGRAM took no payload and the "
+            "device array at 0x%06x is still erased (checked off the SPI read path)",
+            cfg.addr,
+        )
+        self.logger.info(
+            "SPI flash command breadth GOLDEN PASS: PP@0x%06x %dB landed, erase wiped it, "
+            "neighbour 0x%06x intact, opcodes=%s",
+            cfg.addr,
+            cfg.nwords * 4,
+            cfg.neigh_addr,
+            [f"0x{o:02x}" for o in cfg.EXPECTED_OPS],
+        )
+        self.logger.info(
+            "CHK-RAND-REP PASS: walked BFM-visible opcodes "
+            "JEDEC/WREN/RDSR/RDSR2/WRDI/PP/READ/FAST/ERASE (dual/quad infra-gated)"
+        )

@@ -1,16 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Simultaneous multi-source interrupt fan-in + anti-alias.
 
 With the CPU held off, the host asserts SEVERAL IP interrupts at once (HMAC done,
 KMAC done, CSRNG cmd_req_done, EDN cmd_req_done -> sep_internal_interrupts bits
-15/18/21/25) via each IP's real INTR_TEST register, then reads the aggregate
-vector (tb_top sep_internal_interrupts_probe_o, the observation-only mirror)
-and proves the OR-packing assembled EXACTLY those bits -- a 1:1 source->bit map
-with NO non-driven neighbor in [8:31] aliasing. This is the same packing/aliasing
-bug class that caught the mailbox 8->1 truncation, re-run for the crypto/KM region.
+17/20/23/27, per the map in hw/sys/sep/rtl/sep.sv) via each IP's real INTR_TEST
+register, then reads the aggregate vector (tb_top sep_internal_interrupts_probe_o,
+the observation-only mirror) and proves the OR-packing assembled EXACTLY those bits
+-- a 1:1 source->bit map with NO non-driven neighbor in [8:33] aliasing, and no
+unresolved bit in that region. This is the same packing/aliasing bug class that
+caught the mailbox 8->1 truncation, re-run for the crypto/KM region.
 
-OCAH ref: uvm_tests/system/sep_irq_extended_connectivity_test @ 9ec8f9f4b.
-Mapping: COVERED_STRONGER -- OCAH asserts connectivity one source at a time; this
+reference ref: sep_irq_extended_connectivity_test.
+Mapping: COVERED_STRONGER -- the reference suite asserts connectivity one source at a time; this
 test asserts a cross-IP set SIMULTANEOUSLY and proves no aggregator smear. Distinct
 from the single-source-at-a-time aggregator check (sep_irq_ip_to_aggregator_test)
 and from the CPU PIC/ISR delivery path. CPU-ISR delivery of the simultaneous set and
@@ -23,9 +25,8 @@ state, so no entropy/fuse bring-up is needed.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ReadOnly, RisingEdge
 import pyuvm
-
+from cocotb.triggers import ReadOnly, RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_irq_aggregator_seq import SepIrqIp
 from seq_lib.sep_irq_fanin_seq import (
@@ -44,17 +45,48 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
 
     RANDOMIZED: which subset (>=2) of the cross-IP sources is asserted simultaneously,
     and the non-vacuity baseline source, vary per seed (SepIrqFaninCfg). The full
-    [8:31] anti-alias contract is identical for every subset.
+    [8:33] anti-alias contract is identical for every subset.
     """
 
     async def _sample_agg(self) -> int:
-        """Sample the whole aggregate vector once (one clock edge + ReadOnly)."""
+        """Sample the whole aggregate vector once (one clock edge + ReadOnly).
+
+        Goes through self.rd(), which resolves unknown bits to zero per bit, so a
+        zero here means "zero or unresolved". _assert_region_resolved is what
+        separates the two.
+        """
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
         return self.rd(cocotb.top.sep_internal_interrupts_probe_o)
 
+    async def _assert_region_resolved(self, where: str) -> int:
+        """Sample the probe RAW and require every [8:33] bit to be 0 or 1.
+
+        The polls in this test read through self.rd(), which maps X to 0, so a
+        floating aggregator leg is indistinguishable from a quiet source there.
+        This reads the signal without that mapping and returns the resolved
+        region value.
+        """
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        bits = str(cocotb.top.sep_internal_interrupts_probe_o.value)  # MSB first
+        region = 0
+        bad = []
+        for i in range(REGION_LO, REGION_HI + 1):
+            ch = bits[len(bits) - 1 - i].lower()
+            if ch == "1":
+                region |= 1 << i
+            elif ch != "0":
+                bad.append(i)
+        if bad:
+            raise AssertionError(
+                f"[{where}] sep_internal_interrupts bits {bad} are X/Z inside "
+                f"[{REGION_LO}:{REGION_HI}] (aggregator leg not driven)"
+            )
+        return region
+
     async def _poll_region(self, expect_bits: int, *, timeout: int = 400) -> tuple[bool, int]:
-        """Poll until the [8:31] region of the aggregate equals exactly expect_bits."""
+        """Poll until the [8:33] region of the aggregate equals exactly expect_bits."""
         sample = 0
         for _ in range(timeout):
             sample = await self._sample_agg()
@@ -81,9 +113,9 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
         for src in FANIN_SOURCES:
             await self._drive(src, on=False)
         clear_ok, vec = await self._poll_region(0)
-        assert clear_ok, f"[8:31] not clear at baseline (vec=0x{vec:08x})"
+        assert clear_ok, f"[8:33] not clear at baseline (vec=0x{vec:010x})"
 
-        # CHK-NONVAC: a single source lights EXACTLY its one known bit in [8:31]
+        # CHK-NONVAC: a single source lights EXACTLY its one known bit in [8:33]
         # (proves the per-bit index and that the simultaneous map below is not
         # trivially/stuck passing). Then clear it.
         base = self.cfg_irq.baseline
@@ -91,16 +123,18 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
         one_bit = 1 << base.agg_idx
         ok, vec = await self._poll_region(one_bit)
         assert ok, (
-            f"baseline {base.name}: [8:31]=0x{vec & REGION_MASK:08x}, "
+            f"baseline {base.name}: [8:33]=0x{vec & REGION_MASK:010x}, "
             f"expected only bit[{base.agg_idx}]"
         )
         self.logger.info(
-            "CHK-NONVAC PASS: single source %s lights exactly bit[%d]", base.name, base.agg_idx,
+            "CHK-NONVAC PASS: single source %s lights exactly bit[%d]",
+            base.name,
+            base.agg_idx,
         )
         await self._drive(base, on=False)
         assert (await self._poll_region(0))[0], "baseline source did not clear"
 
-        # CHK-FANIN-MAP: assert the seeded subset simultaneously; the [8:31] region
+        # CHK-FANIN-MAP: assert the seeded subset simultaneously; the [8:33] region
         # must equal EXACTLY the driven bits (1:1 source->bit packing).
         sources = self.cfg_irq.sources
         for src in sources:
@@ -108,45 +142,53 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
         want = driven_mask(sources)
         ok, vec = await self._poll_region(want)
         assert ok, (
-            f"simultaneous fan-in: [8:31]=0x{vec & REGION_MASK:08x}, expected "
-            f"0x{want:08x} (bits {[s.agg_idx for s in sources]})"
+            f"simultaneous fan-in: [8:33]=0x{vec & REGION_MASK:010x}, expected "
+            f"0x{want:010x} (bits {[s.agg_idx for s in sources]})"
         )
-        # Confirm each driven bit individually (named evidence per source).
+        # Per-source evidence. No `(vec >> agg_idx) & 1` test: the poll above already
+        # established vec & REGION_MASK == want & REGION_MASK, and agg_idx is a member
+        # of want, so that bit is set by entailment. The INTR_STATE read below is
+        # independent -- it addresses the IP's own register rather than the aggregate --
+        # so it is what carries per-source evidence.
         for src in sources:
-            assert (vec >> src.agg_idx) & 1, (
-                f"{src.name}: bit[{src.agg_idx}] not set in the simultaneous vector"
-            )
-            assert await self.irq.read_state_bit(src) == 1, (
-                f"{src.name}: INTR_STATE bit not set"
-            )
+            assert await self.irq.read_state_bit(src) == 1, f"{src.name}: INTR_STATE bit not set"
         self.logger.info(
             "CHK-FANIN-MAP PASS: %d sources asserted together -> exactly bits %s "
-            "(vec[8:31]=0x%08x)",
-            len(sources), [s.agg_idx for s in sources], vec & REGION_MASK,
+            "(vec[8:33]=0x%010x)",
+            len(sources),
+            [s.agg_idx for s in sources],
+            vec & REGION_MASK,
         )
 
-        # CHK-ANTI-ALIAS: every NON-driven bit in [8:31] stays 0 (the mailbox-bug
-        # class check -- an OR-network smear would light a neighbor).
-        alias = (vec & REGION_MASK) & ~want
-        assert alias == 0, (
-            f"anti-alias: non-driven bits set in [8:31] = 0x{alias:08x} "
-            f"(vec=0x{vec:08x}); aggregator smear"
+        # CHK-ANTI-ALIAS: the set of driven bits is already pinned by the
+        # exact-equality poll above, which a smear onto a neighbour breaks. What
+        # that poll cannot see is an UNDRIVEN leg: it reads through self.rd(),
+        # which maps X to 0, so a floating aggregator input reads as a quiet
+        # source. Re-sample the probe raw and require the whole region to be
+        # resolved, then require the resolved value to be exactly the driven set.
+        raw_region = await self._assert_region_resolved("simultaneous fan-in")
+        assert raw_region == (want & REGION_MASK), (
+            f"raw [{REGION_LO}:{REGION_HI}]=0x{raw_region:010x}, expected "
+            f"0x{want & REGION_MASK:010x} -- a non-driven bit is aliasing"
         )
         self.logger.info(
-            "CHK-ANTI-ALIAS PASS: no non-driven bit in [%d:%d] is set (mask=0x%08x)",
-            REGION_LO, REGION_HI, REGION_MASK,
+            "CHK-ANTI-ALIAS PASS: [%d:%d] fully resolved (no floating leg) and "
+            "equal to the driven set 0x%010x",
+            REGION_LO,
+            REGION_HI,
+            raw_region,
         )
 
         # CHK-CLEAR: W1C every driven source's INTR_STATE -> the region returns to 0
-        # and each IP's INTR_STATE bit reads 0 (RW1C deassert path, AGENTS.md §7).
+        # and each IP's INTR_STATE bit reads 0 (RW1C deassert path).
         for src in sources:
             await self._drive(src, on=False)
         ok, vec = await self._poll_region(0)
-        assert ok, f"[8:31] not clear after W1C (vec=0x{vec:08x})"
+        assert ok, f"[8:33] not clear after W1C (vec=0x{vec:010x})"
         for src in sources:
             assert await self.irq.read_state_bit(src) == 0, (
                 f"{src.name}: INTR_STATE bit not cleared by W1C"
             )
         self.logger.info(
-            "CHK-CLEAR PASS: all %d driven sources W1C-cleared -> [8:31]=0", len(sources)
+            "CHK-CLEAR PASS: all %d driven sources W1C-cleared -> [8:33]=0", len(sources)
         )

@@ -2,13 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * TC_HMAC_009 (P1) - Key length configuration test
+ * Key length configuration test
  *
  * Steps:
- *   1) For key_length values 0x01(128b), 0x02(256b), 0x04(384b), 0x08(512b):
- *      write CFG.key_length, readback verify
- *   2) Write a test key and HMAC-hash "test" with key_length=128 and key_length=256
- *   3) Verify the two digests differ (different effective key length => different HMAC)
+ * 1) For key_length values 0x01(128b), 0x02(256b), 0x04(384b), 0x08(512b):
+ * write CFG.key_length, readback verify
+ * 2) Write a test key and HMAC-hash "test" with key_length=128 and key_length=256
+ * 3) Verify the two digests differ (different effective key length => different HMAC)
  */
 
 #include <stdint.h>
@@ -18,6 +18,7 @@
 #include "sep.h"
 #include "och_sep_common.h"
 #include "sep_outbound_filter.h"
+#include "sep_hmac.h"
 
 static inline uint32_t bswap32(uint32_t x) {
     return ((x & 0x000000FFu) << 24) | ((x & 0x0000FF00u) << 8) | ((x & 0x00FF0000u) >> 8) |
@@ -71,7 +72,7 @@ static int hmac_hash_with_key_length(uint32_t klen_val, uint32_t digest_out[8]) 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.hmac_en = 1;
     cfg.f.sha_en = 1;
-    cfg.f.digest_size = 1; /* SHA2_256 */
+    cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; /* SHA2_256 */
     cfg.f.key_length = klen_val;
     WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
@@ -104,17 +105,18 @@ static int hmac_hash_with_key_length(uint32_t klen_val, uint32_t digest_out[8]) 
 int main(void) {
     sep_outbound_filter_init();
 
-    printf("=== TC_HMAC_009: Key length configuration test ===\n");
+    printf("=== Key length configuration test ===\n");
     int pass = 1;
 
     /* Part 1: Readback verify key_length field for multiple values */
-    uint32_t klen_vals[] = {0x01, 0x02, 0x04, 0x08};
+    uint32_t klen_vals[] = {SEP_HMAC_KEY_LENGTH_128, SEP_HMAC_KEY_LENGTH_256,
+                            SEP_HMAC_KEY_LENGTH_384, SEP_HMAC_KEY_LENGTH_512};
     const char *klen_names[] = {"128b", "256b", "384b", "512b"};
 
     for (int t = 0; t < 4; t++) {
         hmac__CFG_t cfg = {.w = 0};
         cfg.f.sha_en = 1;
-        cfg.f.digest_size = 1;
+        cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
         cfg.f.key_length = klen_vals[t];
         WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
@@ -126,12 +128,17 @@ int main(void) {
         }
     }
 
-    /* Part 2: HMAC with key_length=128 vs key_length=256 must produce different digests */
+    /* Independent HMAC-SHA256 KATs (KEY_0.. = 0xDEADBEEF+i, msg="test", digest_swap=0). */
+    static const uint32_t expected_128[8] = {0x859a820cu, 0xb0ccb95cu, 0x868b0d3au, 0xe8aeb54du,
+                                             0x2c98d27fu, 0xbc132c00u, 0x3d78e0ddu, 0x3c6073c1u};
+    static const uint32_t expected_256[8] = {0xb6a707a7u, 0xd6666b3eu, 0x9304e1e5u, 0x1138ddddu,
+                                             0x3c4c6511u, 0x80b862eeu, 0x9b21d05cu, 0x07683a05u};
+
     uint32_t digest_128[8];
     uint32_t digest_256[8];
 
     printf("HMAC with key_length=128b...\n");
-    if (hmac_hash_with_key_length(0x01, digest_128) != 0) {
+    if (hmac_hash_with_key_length(SEP_HMAC_KEY_LENGTH_128, digest_128) != 0) {
         printf("FAIL: HMAC with key_length=128 failed\n");
         test_fail(1);
         while (1) {
@@ -140,7 +147,7 @@ int main(void) {
     }
 
     printf("HMAC with key_length=256b...\n");
-    if (hmac_hash_with_key_length(0x02, digest_256) != 0) {
+    if (hmac_hash_with_key_length(SEP_HMAC_KEY_LENGTH_256, digest_256) != 0) {
         printf("FAIL: HMAC with key_length=256 failed\n");
         test_fail(1);
         while (1) {
@@ -156,6 +163,19 @@ int main(void) {
     for (int i = 0; i < 8; i++) printf(" 0x%08x", digest_256[i]);
     printf("\n");
 
+    for (int i = 0; i < 8; i++) {
+        if (digest_128[i] != expected_128[i]) {
+            printf("FAIL: 128b DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_128[i],
+                   expected_128[i]);
+            pass = 0;
+        }
+        if (digest_256[i] != expected_256[i]) {
+            printf("FAIL: 256b DIGEST_%d=0x%08x expected=0x%08x\n", i, digest_256[i],
+                   expected_256[i]);
+            pass = 0;
+        }
+    }
+
     int differ = 0;
     for (int i = 0; i < 8; i++) {
         if (digest_128[i] != digest_256[i]) differ = 1;
@@ -168,10 +188,10 @@ int main(void) {
     }
 
     if (pass) {
-        printf("=== TC_HMAC_009 PASSED ===\n");
+        printf("=== PASSED ===\n");
         test_pass(0);
     } else {
-        printf("FAIL: TC_HMAC_009 key length test\n");
+        printf("FAIL: key length test\n");
         test_fail(1);
     }
 

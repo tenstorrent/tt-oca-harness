@@ -179,21 +179,6 @@ addrmap reset_unit {
         } isolate_req_flr_reset_counter_value [31:0] = 0x0;
     };
 
-    reg STRAPS_LO {
-        field {
-            sw = r;
-            hw = w;
-            desc = "Strap value from GPIOs 0 - 31";
-        } straps[31:0] = 0x0;
-    };
-
-    reg STRAPS_HI {
-        field {
-            sw = r;
-            hw = w;
-            desc = "Strap value from GPIOs 32 - 63";
-        } straps[31:0] = 0x0;
-    };
 
     // --------------------------------------------------
 
@@ -213,9 +198,6 @@ addrmap reset_unit {
     SS_COLD_RESET_LOCK              SS_COLD_RESET_LOCK  @ 0x70;
 
     SS_FORCE_TO_REF_CLK             SS_FORCE_TO_REF_CLK @ 0x80;
-
-    STRAPS_LO                       STRAPS_LO               @ 0x90;
-    STRAPS_HI                       STRAPS_HI               @ 0x94;
 
     SYNC_REG                        SYNC_REG                @ 0xA8;
 

@@ -29,7 +29,14 @@ standard
 Region Access Control Register (mrac)
 ** Precisely trapped exception on usage violation
 * PIC (Programmable Interrupt Controller) is integrated supporting up to
-255 external interrupts
+255 external interrupts; see
+ifdef::backend-html5[]
+xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<sep-cpu-interrupt-vector-map>>
+endif::backend-pdf[]
+for the complete source-by-source mapping
 * Two independent or linked internal timers with standard RV _mip_
 interrupts
 * Debug unit with JTAG interface and internal AXI4 Debug Master
@@ -64,6 +71,15 @@ A debugger may redirect the first instruction fetch by shifting an alternate
 address into the TDR through JTAG while the SEP CPU is held in reset. The
 programmed value persists until the TAP is reset. This supports bring-up and
 failure analysis flows that execute from a memory other than the Boot ROM.
+
+[[debug-module]]
+==== Debug Module
+
+The VeeR EL2 debug module is reached from the DTP SEP debug STAP through the
+core's JTAG TAP. TAP access is already gated by lifecycle state, so the DMI
+core aperture is left enabled at the SMU and does not take a second lifecycle
+check. The DMI uncore aperture is unused: the debug module's AXI master already
+reaches the rest of the SEP fabric.
 
 [[boot-rom]]
 ==== Boot ROM
@@ -162,13 +178,18 @@ Scratch register set 1 has *additional warm reset* behavior. It can be
 reset by a signal from the Watchdog Timer (WDT).
 
 [[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
-==== Direct Memory Access Controller (DMA)
+==== Direct Memory Access (DMA)
 
 The module is based on the
 https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA
 Controller] design. Its primary purpose is to offload the SEP CPU from
 the overhead of large or slow data copying operations. The DMA has a
 built-in SHA2 engine for inline hashing.
+
+Consult the
+https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller
+documentation] for the authoritative core functionality of the IP. The
+register map is reported in <<sep-detailed-register-map>>.
 
 Transfers operate on a word by word basis. This is because the TL-UL
 bus, used in the OpenTitan implementation, does not support burst
@@ -200,7 +221,7 @@ SPI
 available to DMA for automatic flow control
 
 [[och-modifications]]
-===== OCH Modifications
+===== OCAH Modifications
 
 * 64-bit AXI4-lite slave interface (replaces or translates the 32-bit
 TL-UL bus protocol)

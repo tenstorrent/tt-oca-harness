@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""P2-A #3 sideband AVSBus+OCTS — DEFERRED (no fake BFM / no pad VIP).
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""# deferred: fake_bfm
+P2-A #3 sideband AVSBus+OCTS — DEFERRED (no fake BFM / no pad VIP).
 
 Policy: do not use Python fake BFMs that never drive DUT pads. Re-enable when
 a real pad-level VIP exists.
@@ -7,9 +9,7 @@ a real pad-level VIP exists.
 
 from __future__ import annotations
 
-import cocotb
 import pyuvm
-
 from smc_base_test import smc_base_test
 
 

@@ -284,6 +284,16 @@ The concrete implementation is
 `OcahJtagChecker.finalize()` first rejects retained IEEE 1149.1 item findings,
 then finalizes named evidence.
 
+A second concrete composition reference is the AXI package:
+`ocah_axi_vip/cocotb/ocah_axi_checker.py` (item rules + evidence),
+`ocah_axi_ref_model.py` (stateful shadow memory + expected-response policy),
+and `ocah_axi_scoreboard.py` (expected-vs-unexpected non-OKAY credits,
+blocked windows, per-stream minimums, memory audits). Its simulator-free
+positive/negative proof is
+`ocah_axi_vip/cocotb/examples/example_axi_scoreboard_selftest.py`, and the
+SV-UVM mirror of the evidence grammar is
+`ocah_axi_vip/uvm/ocah_axi_checker.svh`.
+
 [[shared-jtag-checker-reference]]
 === `OcahJtagChecker` Adapter Reference
 

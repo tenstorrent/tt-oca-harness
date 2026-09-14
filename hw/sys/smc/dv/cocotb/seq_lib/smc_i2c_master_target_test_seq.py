@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_i2c_master_target_test / smc_i2c_p1_rdwr_protocol_test.
 
 U4-2: DUT OpenTitan I2C0 host writes a byte into a cocotb EEPROM slave on
@@ -31,89 +32,217 @@ _I2C_WRITE_OFFSET = 0x10
 _SMBUS_PEC_OFFSET = 0x20
 _SMBUS_PEC_DATA = 0xA5
 _SMBUS_ARA_ADDR = 0x0C
-_SMBUS_ARA_REPLY = (_I2C_EEPROM_ADDR << 1)  # 0xA0 — alerting slave addr<<1
+_SMBUS_ARA_REPLY = _I2C_EEPROM_ADDR << 1  # 0xA0 — alerting slave addr<<1
 
-CLOCK_GATE_CONTROL = 0xC001_0018
-I2C_CG_EN = 1 << 11
-I2C0_WRAP_CTRL = 0xC000_9E00
-I2C0_OVRD = 0xC000_9034
-I2C0_CTRL = 0xC000_9010
-I2C0_STATUS = 0xC000_9014
-I2C0_RDATA = 0xC000_9018
-I2C0_FDATA = 0xC000_901C
-I2C0_FIFO_CTRL = 0xC000_9020
-I2C0_TIMING0 = 0xC000_903C
-I2C0_TIMING1 = 0xC000_9040
-I2C0_TIMING2 = 0xC000_9044
-I2C0_TIMING3 = 0xC000_9048
-I2C0_TIMING4 = 0xC000_904C
+from .smc_addr_map import (
+    _REPO,
+    I2C_CG_EN,
+    _field_mask,
+    smc_addr,
+    smc_indexed_addr,
+)
 
-I2C_WRAP_ENABLE_CONTROLLER = 0x11
-I2C_CTRL_ENABLEHOST = 0x1
-I2C_OVRD_RELEASE = 0x7
-I2C_OVRD_PULL_SCL_LOW = 0x5
-I2C_OVRD_PULL_SDA_LOW = 0x3
-I2C_OVRD_PULL_BOTH_LOW = 0x1
+# Generated PeakRDL C headers for the OpenTitan-derived I2C core and for the SMC
+# I2C wrapper's control block. Field masks and bit positions below are imported
+# by symbol from these, exactly as the register addresses already are, so a
+# regenerated map moves this sequence with it instead of leaving hand-copied bit
+# encodings behind ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+_I2C_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
+_I2C_CTRL_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c_ctrl.h"
+
+
+def _i2c_u32(symbol: str) -> int:
+    """Field mask / bit position from generated ``i2c.h``."""
+    return _field_mask(_I2C_H, symbol)
+
+
+def _i2c_ctrl_u32(symbol: str) -> int:
+    """Field mask / bit position from generated ``i2c_ctrl.h``."""
+    return _field_mask(_I2C_CTRL_H, symbol)
+
+
+def _i2c_field(reg: str, field: str, value: int) -> int:
+    """Place ``value`` in ``reg.field`` using the generated mask/position."""
+    mask = _i2c_u32(f"I2C__{reg}__{field}_bm")
+    pos = _i2c_u32(f"I2C__{reg}__{field}_bp")
+    packed = (value << pos) & mask
+    assert packed >> pos == value, (
+        f"{value:#x} does not fit I2C.{reg}.{field} (mask {mask:#x} at bit {pos})"
+    )
+    return packed
+
+
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
+I2C0_WRAP_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0)
+I2C0_OVRD = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_OVRD_BASE_ADDR", 0)
+I2C0_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR", 0)
+I2C0_STATUS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", 0)
+I2C0_RDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR", 0)
+I2C0_FDATA = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR", 0)
+I2C0_FIFO_CTRL = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_FIFO_CTRL_BASE_ADDR", 0)
+I2C0_TIMING0 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR", 0)
+I2C0_TIMING1 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING1_BASE_ADDR", 0)
+I2C0_TIMING2 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING2_BASE_ADDR", 0)
+I2C0_TIMING3 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING3_BASE_ADDR", 0)
+I2C0_TIMING4 = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TIMING4_BASE_ADDR", 0)
+I2C0_CONTROLLER_EVENTS = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CONTROLLER_EVENTS_BASE_ADDR", 0)
+
+# I2C_CTRL (SMC wrapper): enable the instance and put it in controller mode.
+I2C_WRAP_ENABLE_CONTROLLER = _i2c_ctrl_u32("I2C_CTRL__I2C_CTRL__I2C_EN_bm") | _i2c_ctrl_u32(
+    "I2C_CTRL__I2C_CTRL__I2C_CONTROLLER_MODE_EN_bm"
+)
+I2C_CTRL_ENABLEHOST = _i2c_u32("I2C__CTRL__ENABLEHOST_bm")
+
+# OVRD: TXOVRDEN enables the pin override; SCLVAL / SDAVAL are the driven
+# levels, so "pull low" = override on with that value bit cleared.
+_I2C_OVRD_TXOVRDEN = _i2c_u32("I2C__OVRD__TXOVRDEN_bm")
+_I2C_OVRD_SCLVAL = _i2c_u32("I2C__OVRD__SCLVAL_bm")
+_I2C_OVRD_SDAVAL = _i2c_u32("I2C__OVRD__SDAVAL_bm")
+I2C_OVRD_RELEASE = _I2C_OVRD_TXOVRDEN | _I2C_OVRD_SCLVAL | _I2C_OVRD_SDAVAL
+I2C_OVRD_PULL_SCL_LOW = _I2C_OVRD_TXOVRDEN | _I2C_OVRD_SDAVAL
+I2C_OVRD_PULL_SDA_LOW = _I2C_OVRD_TXOVRDEN | _I2C_OVRD_SCLVAL
+I2C_OVRD_PULL_BOTH_LOW = _I2C_OVRD_TXOVRDEN
 I2C_OVRD_OFF = 0x0
-I2C_FIFO_CTRL_RXRST_FMTRST = 0x3
-I2C_STATUS_HOSTIDLE = 1 << 3
-I2C_STATUS_RXEMPTY = 1 << 5
-I2C_FDATA_START = 1 << 8
-I2C_FDATA_STOP = 1 << 9
-I2C_FDATA_READB = 1 << 10
+
+I2C_FIFO_CTRL_RXRST_FMTRST = _i2c_u32("I2C__FIFO_CTRL__RXRST_bm") | _i2c_u32(
+    "I2C__FIFO_CTRL__FMTRST_bm"
+)
+I2C_STATUS_HOSTIDLE = _i2c_u32("I2C__STATUS__HOSTIDLE_bm")
+I2C_STATUS_RXEMPTY = _i2c_u32("I2C__STATUS__RXEMPTY_bm")
+I2C_FDATA_START = _i2c_u32("I2C__FDATA__START_bm")
+I2C_FDATA_STOP = _i2c_u32("I2C__FDATA__STOP_bm")
+I2C_FDATA_READB = _i2c_u32("I2C__FDATA__READB_bm")
+
+# W1C of every controller event (sticky NACK / timeouts / arbitration loss), so a
+# prior attempt cannot leave the host halted in Idle with SCL held.
+I2C_CONTROLLER_EVENTS_ALL = (
+    _i2c_u32("I2C__CONTROLLER_EVENTS__NACK_bm")
+    | _i2c_u32("I2C__CONTROLLER_EVENTS__UNHANDLED_NACK_TIMEOUT_bm")
+    | _i2c_u32("I2C__CONTROLLER_EVENTS__BUS_TIMEOUT_bm")
+    | _i2c_u32("I2C__CONTROLLER_EVENTS__ARBITRATION_LOST_bm")
+)
 
 I2C_READABLE_REGS = [
-    ("I2C0_INTR_STATE", 0xC000_9000, 0x0),
+    ("I2C0_INTR_STATE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 0), 0x0),
     ("I2C0_STATUS", I2C0_STATUS, None),
-    ("I2C1_INTR_STATE", 0xC000_9200, 0x0),
-    ("I2C2_INTR_STATE", 0xC000_9400, 0x0),
+    ("I2C1_INTR_STATE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1), 0x0),
+    ("I2C2_INTR_STATE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 2), 0x0),
 ]
 
 
+def _fdata(byte: int, flags: int = 0) -> int:
+    """One FMT-FIFO word: the FBYTE payload plus START/STOP/READB control bits."""
+    return _i2c_field("FDATA", "FBYTE", byte) | flags
+
+
 def _pack_timing0(thigh: int, tlow: int) -> int:
-    return (thigh & 0x1FFF) | ((tlow & 0x1FFF) << 16)
+    return _i2c_field("TIMING0", "THIGH", thigh) | _i2c_field("TIMING0", "TLOW", tlow)
 
 
 def _pack_timing1(t_r: int, t_f: int) -> int:
-    return (t_r & 0x3FF) | ((t_f & 0x1FF) << 16)
+    return _i2c_field("TIMING1", "T_R", t_r) | _i2c_field("TIMING1", "T_F", t_f)
 
 
 def _pack_timing2(tsu_sta: int, thd_sta: int) -> int:
-    return (tsu_sta & 0x1FFF) | ((thd_sta & 0x1FFF) << 16)
+    return _i2c_field("TIMING2", "TSU_STA", tsu_sta) | _i2c_field("TIMING2", "THD_STA", thd_sta)
 
 
 def _pack_timing3(tsu_dat: int, thd_dat: int) -> int:
-    return (tsu_dat & 0x1FF) | ((thd_dat & 0x1FFF) << 16)
+    return _i2c_field("TIMING3", "TSU_DAT", tsu_dat) | _i2c_field("TIMING3", "THD_DAT", thd_dat)
 
 
 def _pack_timing4(tsu_sto: int, t_buf: int) -> int:
-    return (tsu_sto & 0x1FFF) | ((t_buf & 0x1FFF) << 16)
+    return _i2c_field("TIMING4", "TSU_STO", tsu_sto) | _i2c_field("TIMING4", "T_BUF", t_buf)
 
 
 class smc_i2c_master_target_test_seq(SmcCsrSeq):
+    # Bounded poll budget for the OVRD register -> LSIO pad path, and the
+    # number of consecutive matching samples required before the pad level is
+    # accepted (a settled level, not a mid-transition glitch).
+    OVRD_PAD_TIMEOUT_CYCLES = 400
+    OVRD_PAD_STABLE_CYCLES = 8
+    # Bounded poll budget for the pad-level EEPROM VIP to frame the STOP of a
+    # DUT host transfer after the DUT host controller reports hostidle.
+    SLAVE_STOP_TIMEOUT_US = 200
+
     def __init__(self, name: str = "smc_i2c_master_target_test_seq") -> None:
         super().__init__(name)
         self.clock_gate_value: int = 0
         self.dut_host_write_ok: bool = False
         self.dut_smbus_pec_ok: bool = False
         self.dut_smbus_ara_ok: bool = False
+        # Bytes MEASURED on the DUT side of the bus (EEPROM VIP memory and
+        # I2C0_RDATA). Consumers use these as protocol-VIP observed_bytes;
+        # they are never copied from an expectation or from an OK flag.
+        self.obs_host_write: bytes = b""
+        self.obs_smbus_pec: bytes = b""
+        self.obs_smbus_ara: bytes = b""
 
-    @staticmethod
-    async def _check_line(name: str, expected_scl: int, expected_sda: int) -> None:
+    @classmethod
+    async def _check_line(cls, name: str, expected_scl: int, expected_sda: int) -> None:
+        """Poll tb_i2c0_scl/sda until the OVRD-driven levels settle, or fail.
+
+        Bounded poll on a real observable (the resolved pad nets) instead of a
+        fixed settling delay: expiry raises with the last sampled state.
+        """
         dut = cocotb.top
-        await ClockCycles(dut.clk_smc_i, 100)
-        scl = int(dut.tb_i2c0_scl.value)
-        sda = int(dut.tb_i2c0_sda.value)
-        cocotb.log.info(
-            "%s: scl=%d sda=%d dut_low=(%d,%d)",
-            name,
-            scl,
-            sda,
-            int(dut.tb_i2c0_scl_dut_low.value),
-            int(dut.tb_i2c0_sda_dut_low.value),
+        last_scl: int | str = "?"
+        last_sda: int | str = "?"
+        stable = 0
+        for _ in range(cls.OVRD_PAD_TIMEOUT_CYCLES):
+            await ClockCycles(dut.clk_smc_i, 1)
+            try:
+                last_scl = int(dut.tb_i2c0_scl.value)
+                last_sda = int(dut.tb_i2c0_sda.value)
+            except ValueError:  # X/Z while the pad is still resolving
+                last_scl = str(dut.tb_i2c0_scl.value)
+                last_sda = str(dut.tb_i2c0_sda.value)
+                stable = 0
+                continue
+            if last_scl == expected_scl and last_sda == expected_sda:
+                stable += 1
+                if stable >= cls.OVRD_PAD_STABLE_CYCLES:
+                    cocotb.log.info(
+                        "CHK-I2C0-OVRD-PAD: %s scl=%d sda=%d held for %d "
+                        "clk_smc_i cycles, expected (%d,%d) dut_low=(%d,%d)",
+                        name,
+                        last_scl,
+                        last_sda,
+                        stable,
+                        expected_scl,
+                        expected_sda,
+                        int(dut.tb_i2c0_scl_dut_low.value),
+                        int(dut.tb_i2c0_sda_dut_low.value),
+                    )
+                    return
+            else:
+                stable = 0
+        raise AssertionError(
+            f"{name}: tb_i2c0 pads never held SCL={expected_scl} "
+            f"SDA={expected_sda} for {cls.OVRD_PAD_STABLE_CYCLES} cycles "
+            f"within {cls.OVRD_PAD_TIMEOUT_CYCLES} clk_smc_i cycles "
+            f"(last scl={last_scl} sda={last_sda})"
         )
-        assert scl == expected_scl, f"{name}: SCL={scl}, expected {expected_scl}"
-        assert sda == expected_sda, f"{name}: SDA={sda}, expected {expected_sda}"
+
+    async def _wait_slave_stop(self, label: str, base_stops: int) -> None:
+        """Poll the EEPROM VIP until it frames a new STOP on ``tb_i2c0_*``.
+
+        The VIP commits a received byte to ``mem`` on the ACK that precedes
+        STOP, so a newly observed STOP is the completion handshake for the
+        slave-side update. Expiry fails with the VIP's framing counters.
+        """
+        slave = self._i2c_slave
+        assert slave is not None
+        for _ in range(self.SLAVE_STOP_TIMEOUT_US):
+            if slave.stops > base_stops:
+                return
+            await Timer(1, units="us")
+        raise AssertionError(
+            f"{label}: EEPROM VIP framed no STOP on tb_i2c0_* within "
+            f"{self.SLAVE_STOP_TIMEOUT_US} us of hostidle "
+            f"(stops={slave.stops} base={base_stops} starts={slave.starts} "
+            f"acks={slave.acks} bytes={slave.bytes})"
+        )
 
     async def _program_i2c0_timing(self) -> None:
         """Load OpenTitan host timing (FW standard-mode defaults)."""
@@ -136,7 +265,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 break
             await Timer(1, units="us")
         if not left_idle:
-            cevents = await self.csr_read(f"{label}_CEVENTS_STUCK", 0xC000_9078)
+            cevents = await self.csr_read(f"{label}_CEVENTS_STUCK", I2C0_CONTROLLER_EVENTS)
             raise AssertionError(
                 f"{label}: DUT I2C0 host never left hostidle after FMT push "
                 f"(STATUS=0x{status:08x} CONTROLLER_EVENTS=0x{cevents:08x})"
@@ -147,7 +276,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             if status & I2C_STATUS_HOSTIDLE:
                 return
             await Timer(10, units="us")
-        cevents = await self.csr_read(f"{label}_CEVENTS", 0xC000_9078)
+        cevents = await self.csr_read(f"{label}_CEVENTS", I2C0_CONTROLLER_EVENTS)
         raise AssertionError(
             f"{label}: DUT I2C0 host did not reach hostidle "
             f"(STATUS=0x{status:08x} CONTROLLER_EVENTS=0x{cevents:08x})"
@@ -159,32 +288,34 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
 
         await self.csr_write("I2C0_OVRD_OFF", I2C0_OVRD, I2C_OVRD_OFF)
         await self._program_i2c0_timing()
-        await self.csr_write(
-            "I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST
-        )
+        await self.csr_write("I2C0_FIFO_RST", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
         # W1C: clear sticky NACK/halt so a prior attempt cannot freeze Idle+SCL.
-        await self.csr_write("I2C0_CONTROLLER_EVENTS_CLR", 0xC000_9078, 0xF)
+        await self.csr_write(
+            "I2C0_CONTROLLER_EVENTS_CLR",
+            I2C0_CONTROLLER_EVENTS,
+            I2C_CONTROLLER_EVENTS_ALL,
+        )
         await self.csr_write("I2C0_ENABLEHOST", I2C0_CTRL, I2C_CTRL_ENABLEHOST)
 
+        base_stops = self._i2c_slave.stops
         addr_byte = (_I2C_EEPROM_ADDR << 1) | 0  # write
         await self.csr_write(
             "I2C0_FDATA_START_ADDR",
             I2C0_FDATA,
-            I2C_FDATA_START | addr_byte,
+            _fdata(addr_byte, I2C_FDATA_START),
         )
-        await self.csr_write(
-            "I2C0_FDATA_OFFSET", I2C0_FDATA, _I2C_WRITE_OFFSET
-        )
+        await self.csr_write("I2C0_FDATA_OFFSET", I2C0_FDATA, _fdata(_I2C_WRITE_OFFSET))
         await self.csr_write(
             "I2C0_FDATA_DATA_STOP",
             I2C0_FDATA,
-            I2C_FDATA_STOP | _I2C_WRITE_BYTE,
+            _fdata(_I2C_WRITE_BYTE, I2C_FDATA_STOP),
         )
 
         await self._wait_hostidle("DUT_HOST_WRITE")
-        cevents = await self.csr_read("DUT_HOST_WRITE_CEVENTS", 0xC000_9078)
-        await Timer(50, units="us")
+        cevents = await self.csr_read("DUT_HOST_WRITE_CEVENTS", I2C0_CONTROLLER_EVENTS)
+        await self._wait_slave_stop("DUT_HOST_WRITE", base_stops)
         got = self._i2c_slave.read_mem(_I2C_WRITE_OFFSET, 1)
+        self.obs_host_write = got
         cocotb.log.info(
             "DUT I2C0 host write: slave.mem[0x%02X]=%s expected 0x%02X "
             "CONTROLLER_EVENTS=0x%08x VIP(starts=%s acks=%s stops=%s bytes=%s)",
@@ -203,6 +334,13 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             f"(CONTROLLER_EVENTS=0x{cevents:08x})"
         )
         self.dut_host_write_ok = True
+        cocotb.log.info(
+            "CHK-I2C0-HOST-WRITE: EEPROM VIP mem[0x%02X]=0x%s matches the "
+            "0x%02X byte the DUT I2C0 host framed on tb_i2c0_*",
+            _I2C_WRITE_OFFSET,
+            got.hex(),
+            _I2C_WRITE_BYTE,
+        )
 
     async def _dut_i2c0_smbus_pec_write_proof(self) -> None:
         """DUT host SMBus write-with-PEC (SW CRC-8) into EEPROM on pads."""
@@ -213,21 +351,17 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         pec = SmcI2cMasterVip.smbus_pec(_I2C_EEPROM_ADDR, 0, payload)
         addr_byte = (_I2C_EEPROM_ADDR << 1) | 0
 
-        await self.csr_write(
-            "I2C0_FIFO_RST_PEC", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST
-        )
-        await self.csr_write(
-            "I2C0_FDATA_PEC_START", I2C0_FDATA, I2C_FDATA_START | addr_byte
-        )
-        await self.csr_write("I2C0_FDATA_PEC_OFFSET", I2C0_FDATA, _SMBUS_PEC_OFFSET)
-        await self.csr_write("I2C0_FDATA_PEC_DATA", I2C0_FDATA, _SMBUS_PEC_DATA)
-        await self.csr_write(
-            "I2C0_FDATA_PEC_STOP", I2C0_FDATA, I2C_FDATA_STOP | pec
-        )
+        await self.csr_write("I2C0_FIFO_RST_PEC", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
+        base_stops = self._i2c_slave.stops
+        await self.csr_write("I2C0_FDATA_PEC_START", I2C0_FDATA, _fdata(addr_byte, I2C_FDATA_START))
+        await self.csr_write("I2C0_FDATA_PEC_OFFSET", I2C0_FDATA, _fdata(_SMBUS_PEC_OFFSET))
+        await self.csr_write("I2C0_FDATA_PEC_DATA", I2C0_FDATA, _fdata(_SMBUS_PEC_DATA))
+        await self.csr_write("I2C0_FDATA_PEC_STOP", I2C0_FDATA, _fdata(pec, I2C_FDATA_STOP))
 
         await self._wait_hostidle("DUT_SMBUS_PEC")
-        await Timer(50, units="us")
+        await self._wait_slave_stop("DUT_SMBUS_PEC", base_stops)
         stored = self._i2c_slave.read_mem(_SMBUS_PEC_OFFSET, 2)
+        self.obs_smbus_pec = stored
         cocotb.log.info(
             "DUT SMBus PEC write: slave.mem[0x%02X]=%s expected data=0x%02X pec=0x%02X",
             _SMBUS_PEC_OFFSET,
@@ -240,6 +374,14 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             f"expected {_SMBUS_PEC_DATA:02x}{pec:02x}"
         )
         self.dut_smbus_pec_ok = True
+        cocotb.log.info(
+            "CHK-I2C0-SMBUS-PEC: EEPROM VIP mem[0x%02X]=0x%s matches data "
+            "0x%02X + CRC-8 PEC 0x%02X framed by the DUT host",
+            _SMBUS_PEC_OFFSET,
+            stored.hex(),
+            _SMBUS_PEC_DATA,
+            pec,
+        )
 
     async def _dut_i2c0_smbus_ara_read_proof(self) -> None:
         """DUT host ARA query: read 1 byte from VIP @ 0x0C on tb_i2c0_*."""
@@ -248,18 +390,14 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         ara_slave = SmcI2cEepromSlave(addr=_SMBUS_ARA_ADDR, name="smc_i2c0_ara")
         ara_slave.write_mem(0, bytes([_SMBUS_ARA_REPLY]))
 
-        await self.csr_write(
-            "I2C0_FIFO_RST_ARA", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST
-        )
+        await self.csr_write("I2C0_FIFO_RST_ARA", I2C0_FIFO_CTRL, I2C_FIFO_CTRL_RXRST_FMTRST)
         addr_r = (_SMBUS_ARA_ADDR << 1) | 1
-        await self.csr_write(
-            "I2C0_FDATA_ARA_START", I2C0_FDATA, I2C_FDATA_START | addr_r
-        )
+        await self.csr_write("I2C0_FDATA_ARA_START", I2C0_FDATA, _fdata(addr_r, I2C_FDATA_START))
         # READB + STOP + FBYTE=1: read one byte then NACK/STOP (OT host pattern).
         await self.csr_write(
             "I2C0_FDATA_ARA_READ",
             I2C0_FDATA,
-            I2C_FDATA_READB | I2C_FDATA_STOP | 1,
+            _fdata(1, I2C_FDATA_READB | I2C_FDATA_STOP),
         )
 
         rdata = 0
@@ -270,24 +408,28 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 saw_busy = True
             if not (status & I2C_STATUS_RXEMPTY):
                 rdata = await self.csr_read("I2C0_RDATA_ARA", I2C0_RDATA) & 0xFF
+                self.obs_smbus_ara = bytes([rdata])
                 break
             await Timer(10, units="us")
         else:
-            raise AssertionError(
-                f"DUT SMBus ARA: RX FIFO stayed empty (STATUS=0x{status:08x})"
-            )
+            raise AssertionError(f"DUT SMBus ARA: RX FIFO stayed empty (STATUS=0x{status:08x})")
 
-        # Transfer may already be back in hostidle by the time RX is readable;
-        # only require that we observed busy if still mid-transaction.
+        # Transfer may already be back in hostidle by the time RX is readable, so
+        # busy is not always sampled. Either way the FMT entries must be proven
+        # to have run on the bus: `saw_busy` (the host left Idle) or the ARA
+        # responder framing a START addressed to it. Both are DUT observations,
+        # and the CSR poll alone is not accepted as proof.
+        ara_starts = ara_slave.starts
+        assert saw_busy or ara_starts > 0, (
+            "DUT_SMBUS_ARA: the host never left HOSTIDLE in any poll and the ARA "
+            f"responder @0x{_SMBUS_ARA_ADDR:02X} framed no START on tb_i2c0_* "
+            f"(starts={ara_starts} acks={ara_slave.acks} stops={ara_slave.stops} "
+            f"bytes={ara_slave.bytes}, STATUS=0x{status:08x}): the FMT entries "
+            "were never executed on the bus, so a readable RX FIFO is not "
+            "evidence of an ARA transfer"
+        )
         if not (status & I2C_STATUS_HOSTIDLE):
             await self._wait_hostidle("DUT_SMBUS_ARA")
-        elif not saw_busy:
-            # RX filled while we only sampled idle — still prove FMT ran.
-            cocotb.log.warning(
-                "DUT_SMBUS_ARA: RX ready while HOSTIDLE stayed set "
-                "(STATUS=0x%08x); accepting completed read",
-                status,
-            )
 
         cocotb.log.info(
             "DUT SMBus ARA: RDATA=0x%02X expected 0x%02X (slave_addr=0x%02X)",
@@ -296,10 +438,19 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             (rdata >> 1) & 0x7F,
         )
         assert rdata == _SMBUS_ARA_REPLY, (
-            f"DUT SMBus ARA mismatch: got 0x{rdata:02X}, "
-            f"expected 0x{_SMBUS_ARA_REPLY:02X}"
+            f"DUT SMBus ARA mismatch: got 0x{rdata:02X}, expected 0x{_SMBUS_ARA_REPLY:02X}"
         )
         self.dut_smbus_ara_ok = True
+        cocotb.log.info(
+            "CHK-I2C0-SMBUS-ARA: I2C0_RDATA=0x%02X matches the alerting-slave "
+            "address byte 0x%02X returned by the ARA responder @0x%02X "
+            "(FMT execution proven by host_left_idle=%s / responder starts=%d)",
+            rdata,
+            _SMBUS_ARA_REPLY,
+            _SMBUS_ARA_ADDR,
+            saw_busy,
+            ara_starts,
+        )
 
     async def body(self) -> None:
         # Bind EEPROM slave only — DUT is the I2C master for U4-2.
@@ -314,20 +465,14 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             except Exception as exc:  # noqa: BLE001 - defensive
                 cocotb.log.warning("I2C EEPROM slave bind skipped: %s", exc)
 
-        self.clock_gate_value = await self.csr_read(
-            "CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL
-        )
+        self.clock_gate_value = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL)
 
         for name, addr, expected in I2C_READABLE_REGS:
             await self.csr_read(name, addr, expected)
 
         ungated = self.clock_gate_value & ~I2C_CG_EN
-        await self.csr_write(
-            "CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, ungated
-        )
-        await self.csr_read(
-            "CLOCK_GATE_CONTROL_UNGATED", CLOCK_GATE_CONTROL, expected=ungated
-        )
+        await self.csr_write("CLOCK_GATE_CONTROL_UNGATE_I2C", CLOCK_GATE_CONTROL, ungated)
+        await self.csr_read("CLOCK_GATE_CONTROL_UNGATED", CLOCK_GATE_CONTROL, expected=ungated)
 
         await self.csr_write(
             "I2C0_WRAP_ENABLE_CONTROLLER",
@@ -345,30 +490,18 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
         # OVRD pin-level gate (register -> pad).
         await self.csr_write("I2C0_OVRD_RELEASE", I2C0_OVRD, I2C_OVRD_RELEASE)
         await self._check_line("i2c_release", expected_scl=1, expected_sda=1)
-        await self.csr_write(
-            "I2C0_OVRD_PULL_SCL_LOW", I2C0_OVRD, I2C_OVRD_PULL_SCL_LOW
-        )
+        await self.csr_write("I2C0_OVRD_PULL_SCL_LOW", I2C0_OVRD, I2C_OVRD_PULL_SCL_LOW)
         await self._check_line("i2c_scl_low", expected_scl=0, expected_sda=1)
-        await self.csr_write(
-            "I2C0_OVRD_PULL_SDA_LOW", I2C0_OVRD, I2C_OVRD_PULL_SDA_LOW
-        )
+        await self.csr_write("I2C0_OVRD_PULL_SDA_LOW", I2C0_OVRD, I2C_OVRD_PULL_SDA_LOW)
         await self._check_line("i2c_sda_low", expected_scl=1, expected_sda=0)
-        await self.csr_write(
-            "I2C0_OVRD_PULL_BOTH_LOW", I2C0_OVRD, I2C_OVRD_PULL_BOTH_LOW
-        )
+        await self.csr_write("I2C0_OVRD_PULL_BOTH_LOW", I2C0_OVRD, I2C_OVRD_PULL_BOTH_LOW)
         await self._check_line("i2c_both_low", expected_scl=0, expected_sda=0)
-        await self.csr_write(
-            "I2C0_OVRD_RELEASE_RESTORE", I2C0_OVRD, I2C_OVRD_RELEASE
-        )
-        await self._check_line(
-            "i2c_release_restore", expected_scl=1, expected_sda=1
-        )
+        await self.csr_write("I2C0_OVRD_RELEASE_RESTORE", I2C0_OVRD, I2C_OVRD_RELEASE)
+        await self._check_line("i2c_release_restore", expected_scl=1, expected_sda=1)
 
         # U4-2 hard gate: DUT controller must own the bus (VCS and Verilator).
         if self._i2c_slave is None:
-            raise AssertionError(
-                "I2C EEPROM slave VIP unavailable; cannot prove DUT host path"
-            )
+            raise AssertionError("I2C EEPROM slave VIP unavailable; cannot prove DUT host path")
         await self._dut_i2c0_host_write_proof()
         await self._dut_i2c0_smbus_pec_write_proof()
         await self._dut_i2c0_smbus_ara_read_proof()
@@ -384,11 +517,16 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
             CLOCK_GATE_CONTROL,
             expected=self.clock_gate_value,
         )
+        assert self.dut_host_write_ok and self.dut_smbus_pec_ok and self.dut_smbus_ara_ok, (
+            "I2C U4-2/SMBus incomplete: "
+            f"write={self.dut_host_write_ok} pec={self.dut_smbus_pec_ok} "
+            f"ara={self.dut_smbus_ara_ok}"
+        )
         cocotb.log.info(
-            "I2C U4-2/SMBus complete: host write + PEC + ARA OK "
-            "(write=0x%02X@0x%02X pec_ok=%s ara_ok=%s)",
+            "CHK-I2C0-U4-2-SMBUS: host write 0x%02X@0x%02X + PEC store %s + "
+            "ARA reply %s all matched (measured on tb_i2c0_* / I2C0_RDATA)",
             _I2C_WRITE_BYTE,
             _I2C_WRITE_OFFSET,
-            self.dut_smbus_pec_ok,
-            self.dut_smbus_ara_ok,
+            self.obs_smbus_pec.hex(),
+            self.obs_smbus_ara.hex(),
         )

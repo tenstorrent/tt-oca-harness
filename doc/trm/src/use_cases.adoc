@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[use-cases]]
@@ -63,8 +63,9 @@ makes it easier to combine chiplets from different teams or vendors
 within a consistent system architecture.
 
 Inter-chiplet coordination relies on standard protocols and transport
-mechanisms mandated by OCA, including I3C for early-stage boot image and
-configuration delivery.
+mechanisms mandated by OCA, including OCCP as the protocol for
+early-stage boot image and configuration delivery, over I3C/I2C as
+the auxiliary transport.
 
 === Firmware Distribution and Control-Plane Coordination
 

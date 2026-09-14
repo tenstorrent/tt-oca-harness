@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ic_reset_dual_domain_illegal_test - P3-H5a dual IC_RESET in one DR.
 
 P2-I5a proves one-domain-at-a-time mutual exclusion. This corner packs two
@@ -18,7 +19,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
     SMU_IC_RESET_SMC_COLD_PORT,
@@ -30,10 +30,6 @@ from seq_lib.smu_jtag_helpers import (
     read_smc_reset_ctrl_bit,
 )
 from smu_base_test import smu_base_test
-
-from env import cocotb_compat as _cocotb_compat
-
-_cocotb_compat.apply()
 
 _ALL = (
     (SMU_IC_RESET_SMC_FUSE_PORT, "fuse_reset_n_ovrd", "fuse_reset_n_val"),
@@ -73,7 +69,7 @@ class smu_ic_reset_dual_domain_illegal_test(smu_base_test):
                 f"idle {ovrd_name}",
                 read_smc_reset_ctrl_bit(dut, ovrd_name),
                 0,
-            evidence="IC_RESET_DUAL_PACK")
+            )
 
         for label, ports in _PAIRS:
             enable = {p: 0 for p in ports}
@@ -115,8 +111,7 @@ class smu_ic_reset_dual_domain_illegal_test(smu_base_test):
                     f"{label} {ovrd_name} cleared after DEFAULT",
                     read_smc_reset_ctrl_bit(dut, ovrd_name),
                     0,
+                    evidence="IC_RESET_DUAL_PACK",
                 )
 
-        self.logger.info(
-            "smu_ic_reset_dual_domain_illegal_test: dual pairs OK (no bleed/sticky)"
-        )
+        self.logger.info("smu_ic_reset_dual_domain_illegal_test: dual pairs OK (no bleed/sticky)")

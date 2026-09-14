@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[axi-over-ucie-bridge]]
 AXI-Over-UCIe Bridge
 --------------------
 
-The AoU components are described in this document.
+AoU is specified outside this document:
 
-[WARNING]
-====
-This section is currently under development. More content will be added
-as the project matures.
-====
+* https://cdn.sanity.io/files/jpb4ed5r/production/25de1707769f21e4a3916103371d1fb419cadac0.pdf[AoU architecture specification]
+* https://github.com/tenstorrent/tt-oca-harness-aou/tree/main/DOC/MAS[AoU microarchitecture specifications]
+
+OCAH instantiates the vendored `aou` bridge; it does not maintain a
+local AoU chapter.

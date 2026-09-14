@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP outbound-mailbox -> PIC -> CPU interrupt-delivery test (PyUVM).
 
-OSS port of the OCAH ``sep_mailbox_plic_test``. Boots the VeeR EL2 core and runs
+OSS port of the reference suite ``sep_mailbox_plic_test``. Boots the VeeR EL2 core and runs
 the mailbox_plic firmware, which arms outbound mailbox 0 (axil_mailbox @
 0x10A0_0000), self-triggers its threshold interrupt by pushing a word into the
 FIFO, and proves the interrupt reaches the CPU through the VeeR PIC (WFI + ISR):
@@ -26,16 +27,16 @@ import os
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "mailbox_plic_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "mailbox_plic_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "mailbox_plic_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # Arm + trigger + ISR + a 256-iteration quiet window; the run loop early-exits on
 # fw_done, so this is an upper bound.
 _MAX_RUN_CYCLES = 2_000_000
@@ -59,7 +60,9 @@ class sep_mailbox_plic_test(sep_base_test):
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,

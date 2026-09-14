@@ -36,6 +36,14 @@ module prim_jtag_scan_reg
     assign shift_selected   = scan_ctrl_i.select && scan_ctrl_i.shift_en;
     assign update_selected  = scan_ctrl_i.select && scan_ctrl_i.update_en;
 
+    // Tie off unused signals to satisfy lint
+    logic unused_scan_ctrl;
+    assign unused_scan_ctrl = ^{scan_ctrl_i.runbist,
+                                scan_ctrl_i.test_logic_reset,
+                                scan_ctrl_i.run_test_idle,
+                                scan_ctrl_i.chrst_n,
+                                scan_ctrl_i.rst_n};
+
     // Compute the next shift value outside always_ff to avoid width issues when WIDTH=1.
     // When WIDTH=1: scan_data_shifted = scan_in_i (trivial passthrough).
     // When WIDTH>1: scan_data_shifted = {scan_in_i, scan_data[WIDTH-1:1]} (right-shift with serial-in).
@@ -59,9 +67,10 @@ module prim_jtag_scan_reg
     if (USE_CHRST) begin : gen_chrst_n_reset
         prim_flop #(
             .Width(WIDTH),
-            .ResetValue(RESET_VAL)
+            .ResetValue(RESET_VAL),
+            .Negedge(1'b1)
         ) u_update_flop (
-            .clk_i  (~scan_ctrl_i.tck),
+            .clk_i  (scan_ctrl_i.tck),
             .rst_ni (scan_ctrl_i.chrst_n),
             .d_i    (update_selected ? scan_data : update_data),
             .q_o    (update_data)
@@ -69,9 +78,10 @@ module prim_jtag_scan_reg
     end else begin : gen_rst_n_reset
         prim_flop #(
             .Width(WIDTH),
-            .ResetValue(RESET_VAL)
+            .ResetValue(RESET_VAL),
+            .Negedge(1'b1)
         ) u_update_flop (
-            .clk_i  (~scan_ctrl_i.tck),
+            .clk_i  (scan_ctrl_i.tck),
             .rst_ni (scan_ctrl_i.rst_n),
             .d_i    (update_selected ? scan_data : update_data),
             .q_o    (update_data)

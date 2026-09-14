@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP JTAG types and helpers shared by the OSS cocotb tests.
 
 Only the pieces needed by the public smoke/functional tests are defined here.
@@ -87,8 +88,7 @@ class DtpJtagInstr(IntEnum):
 
 
 UNDEFINED_BYPASS_INSTRS = tuple(
-    DtpJtagInstr(value)
-    for value in [0x0F, *range(0x10, 0x18), *range(0x2D, 0x3D)]
+    DtpJtagInstr(value) for value in [0x0F, *range(0x10, 0x18), *range(0x2D, 0x3D)]
 )
 
 
@@ -263,7 +263,7 @@ class DtpJtag2AxiTargetCfg:
     beat_bytes: int
     memory_attr: str
     activity_prefix: str
-    security_disable_bits: tuple[str, ...]
+    dbg_disable_bit: str
 
     @property
     def single_op_len(self) -> int:
@@ -273,18 +273,13 @@ class DtpJtag2AxiTargetCfg:
     def series_ctrl_len(self) -> int:
         return 2 + self.size_bits + 2 + self.addr_width + 1
 
-    @property
-    def required_enable_bits(self) -> tuple[str, ...]:
-        """Lifecycle feat_ctrl enables that must all be high for this bridge."""
-        return self.security_disable_bits
-
 
 # SMC fabric debug AXI geometry (dtp_pkg: ADDR=56, DATA=64).
 SMC_DBG_ADDR_WIDTH = 56
 SMC_DBG_DATA_WIDTH = 64
-SMC_DBG_SIZE_BITS = 2          # SCAN_CHAIN_SIZE_FIELD_WIDTH for 64-bit data
-SMC_DBG_WSTRB_BITS = 8         # DATA_WIDTH/8
-SMC_DBG_AXSIZE_8B = 3          # AXI awsize/arsize for a full 8-byte beat
+SMC_DBG_SIZE_BITS = 2  # SCAN_CHAIN_SIZE_FIELD_WIDTH for 64-bit data
+SMC_DBG_WSTRB_BITS = 8  # DATA_WIDTH/8
+SMC_DBG_AXSIZE_8B = 3  # AXI awsize/arsize for a full 8-byte beat
 
 # SINGLE_OP DR layout (LSB-first): OP[2] | SIZE | WSTRB | DATA | ADDR
 _OP_OFF = 0
@@ -318,7 +313,7 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         beat_bytes=8,
         memory_attr="axi_ram",
         activity_prefix="smc_axi",
-        security_disable_bits=("soc_debug", "ap_debug"),
+        dbg_disable_bit="smc_jtag2axi",
     ),
     "smc_otp": DtpJtag2AxiTargetCfg(
         name="smc_otp",
@@ -335,7 +330,7 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         beat_bytes=4,
         memory_attr="smc_otp_axil_ram",
         activity_prefix="smc_otp_axil",
-        security_disable_bits=("fuse_test", "soc_debug", "ap_debug"),
+        dbg_disable_bit="smc_otp_jtag2axi",
     ),
     "sep_otp": DtpJtag2AxiTargetCfg(
         name="sep_otp",
@@ -352,7 +347,7 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
         beat_bytes=4,
         memory_attr="sep_otp_axil_ram",
         activity_prefix="sep_otp_axil",
-        security_disable_bits=("fuse_test", "sep_debug", "soc_debug", "ap_debug"),
+        dbg_disable_bit="sep_otp_jtag2axi",
     ),
 }
 
@@ -423,7 +418,7 @@ def pack_series_ctrl(
 ) -> int:
     """Pack a target-specific *_AXI_SERIES_CTRL DR value.
 
-    Bit ordering matches the legacy DTP cocotb helper and RTL scan direction:
+    Bit ordering follows the RTL scan direction:
     OP in the low bits, then SIZE, pipeline depth, ADDR, and RESET as the MSB.
     """
     cfg = get_jtag2axi_target(target)

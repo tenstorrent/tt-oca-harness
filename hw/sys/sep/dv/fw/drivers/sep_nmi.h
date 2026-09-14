@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // VeeR EL2 NMI (non-maskable interrupt) firmware driver for the SEP OSS tests.
-// Header-only, self-contained (register addresses are SEP fabric facts, matching
-// och_sep_top_reg / sep_cpu_ctrl).
+// Header-only. Addresses and the vector reset come from generated sep_addr.h /
+// sep_cpu_ctrl.h (via sep.h).
 //
 // VeeR EL2 NMI mechanism (bare `sep`): nmi_int = intr_wdog_timer_bark drives the
 // NMI; nmi_vec[31:1] (the jump address) is driven by the SEP_NMI_VEC CSR. The
@@ -11,21 +12,21 @@
 //   1. nmi_register_handler(my_handler);   // set the C handler
 //   2. nmi_set_vector_reg();               // SEP_NMI_VEC = &_nmi_handler
 //   3. enable an NMI source (e.g. the WDT bark, sep_wdt.h)
-//
-// This is the OSS analog of the OCAH fw/sep/tests/common/nmi.h, using the
-// SEP_NMI_VEC register path (the OCAH testbench-mailbox LOAD_NMI_ADDR path is not
-// used in the OSS env).
 
 #ifndef SEP_NMI_H
 #define SEP_NMI_H
 
 #include <stdint.h>
 
-// sep_cpu_ctrl CSRs (och_sep_top_reg). SEP_NMI_VEC holds the NMI jump address;
-// the LOCK is write-once-set and, once set, freezes SEP_NMI_VEC until reset.
-#define SEP_NMI_VEC_ADDR 0x10A30180u
-#define SEP_NMI_VEC_LOCK_ADDR 0x10A30188u
-#define SEP_NMI_VEC_DEFAULT 0xC0000100u // reset value (256-byte aligned)
+#include "sep.h"
+
+#define SEP_NMI_VEC_ADDR OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR
+#define SEP_NMI_VEC_LOCK_ADDR OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR
+// Reset value only. It is a placeholder, not a valid handler -- nothing guarantees
+// the image even covers that address, and an uninitialized ICCM fetch there is an
+// uncorrectable ECC error that re-raises NMI. Steps 1-2 above must complete before
+// any NMI source is enabled.
+#define SEP_NMI_VEC_DEFAULT SEP_CPU_CTRL__SEP_NMI_VEC_reset
 
 typedef void (*sep_nmi_handler_t)(void);
 
@@ -61,7 +62,7 @@ static inline void nmi_set_vector_reg(void) {
 
 // Lock SEP_NMI_VEC (write-once-set; sticky until reset).
 static inline void nmi_lock_vector_reg(void) {
-    _sep_nmi_wr(SEP_NMI_VEC_LOCK_ADDR, 0x1u);
+    _sep_nmi_wr(SEP_NMI_VEC_LOCK_ADDR, SEP_CPU_CTRL__SEP_NMI_VEC_LOCK__LOCK_bm);
 }
 
 static inline uint32_t nmi_read_vector_reg(void) {

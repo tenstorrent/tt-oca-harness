@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMU OSS scoreboard - requires positive evidence; never vacuous PASS."""
 
 from __future__ import annotations
@@ -44,18 +45,19 @@ class SmuScoreboard(uvm_component):
     def _resolve_token(self, name: str, evidence: Optional[str]) -> str:
         if evidence:
             return _normalize_token(evidence)
-        # Prefer unused canonical FEATURE_LIST tokens when the check name
-        # fuzzy-matches TOKEN / CHK id / EXPECT keywords. Never invent a
-        # mapped TOKEN without a name match (aidv: no invent-after-green).
+        # Auto-attach mapped FEATURE tokens only when the check name contains
+        # the TOKEN or CHK id itself; matching expect-string keywords (e.g.
+        # "ovrd"/"stall"/"reset") would log FEATURE tokens on idle/bring-up
+        # compares (EVIDENCE-TOKEN-CONDITIONAL).
         rows = TEST_EVIDENCE.get(self.testcase_name or "", [])
         name_u = str(name).upper().replace("-", "_")
-        for chk_id, token, expect in rows:
+        for chk_id, token, _expect in rows:
             if token in self._feature_tokens_used:
                 continue
             keys = [
-                token,
-                chk_id.replace("CHK-", "").replace("-", "_"),
-                *(w for w in re.split(r"[^A-Za-z0-9]+", expect.upper()) if len(w) > 3),
+                token.upper().replace("-", "_"),
+                chk_id.upper().replace("-", "_"),
+                chk_id.replace("CHK-", "").upper().replace("-", "_"),
             ]
             if any(k and k in name_u for k in keys):
                 return token
@@ -86,9 +88,7 @@ class SmuScoreboard(uvm_component):
         self.checks += 1
         if observed != expected:
             self.errors += 1
-            self.logger.error(
-                "CHECK FAIL %s: expected %s, got %s", name, expected, observed
-            )
+            self.logger.error("CHECK FAIL %s: expected %s, got %s", name, expected, observed)
             raise AssertionError(f"{name}: expected {expected}, got {observed}")
         token = self._resolve_token(name, evidence)
         self.logger.info("CHECK PASS %s: %s", name, observed)
@@ -148,24 +148,18 @@ class SmuScoreboard(uvm_component):
                 f"or align check names to FEATURE_LIST TOKENs."
             )
         for chk_id, token, expect in rows:
-            self.logger.info(
-                "FEATURE PROVEN %s -> %s (%s)", chk_id, token, expect
-            )
+            self.logger.info("FEATURE PROVEN %s -> %s (%s)", chk_id, token, expect)
 
     def check_phase(self) -> None:
         if self.checks == 0:
-            raise AssertionError(
-                "SmuScoreboard: zero checks executed - refusing vacuous PASS"
-            )
+            raise AssertionError("SmuScoreboard: zero checks executed - refusing vacuous PASS")
         if self.errors != 0:
             raise AssertionError(
                 f"SmuScoreboard: {self.errors} check(s) failed out of {self.checks}"
             )
         # Non-vacuity evidence token required by leaf contracts
         self._log_evidence("CHK-NONVAC")
-        self.logger.info(
-            "SmuScoreboard: %d check(s) passed with zero errors", self.checks
-        )
+        self.logger.info("SmuScoreboard: %d check(s) passed with zero errors", self.checks)
         if self._evidence_tokens:
             self.logger.info(
                 "EVIDENCE_SUMMARY: %d token(s) - %s",

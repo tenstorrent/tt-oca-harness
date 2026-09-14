@@ -15,29 +15,24 @@ that:
 
 1. Tests do not break when the underlying VIP is updated.
 2. New test authors have one place to look for UART-access primitives.
-3. Upstream API changes (`cocotbext-uart`) are absorbed at the wrapper
-   boundary, not scattered across test files.
+3. Backend changes are absorbed at the wrapper boundary, not scattered
+   across test files.
 
 ---
 
-## Pinned Dependency
+## Backend
 
-```
-cocotbext-uart == 0.1.1   (MIT)
-```
+The backend is native to this package — no external UART library:
 
-Repository: <https://github.com/alexforencich/cocotbext-uart>
+- `OcahUartMasterDriver` (`ocah_uart_master_driver.py`) — active host-side
+  8-N-1 line driver.  The console host is the master side: it initiates
+  traffic into the DUT's RX pad.
+- `OcahUartLineMonitor` (`ocah_uart_monitor.py`) — passive wire-level 8-N-1
+  byte sampler over one line.  Side-neutral: a UART line is a symmetric
+  point-to-point wire and the sampler reconstructs whatever traffic appears
+  on it (VIP-driven or DUT-driven).
 
-Install with:
-
-```bash
-pip install cocotbext-uart==0.1.1
-```
-
-When `cocotbext-uart` is **not** installed, constructing `OcahUartConsole` or
-`OcahUartMonitor` raises `OcahUartImportError` with an actionable install
-message.  No other import-time side-effects occur.  This mirrors the
-`ocah_axi_vip` migration-plan pattern.
+`OcahUartImportError` is exported but never raised by the native backend.
 
 ---
 
@@ -45,11 +40,13 @@ message.  No other import-time side-effects occur.  This mirrors the
 
 ```
 ocah_uart_vip/
-  __init__.py                  — exports OcahUartConsole, OcahUartMonitor
-  cocotb/ocah_uart_console.py         — OcahUartConsole (active host)
-  cocotb/ocah_uart_monitor.py         — OcahUartMonitor (passive tap)
-  examples/
-    example_loopback.py        — annotated usage snippets
+  __init__.py                          — re-exports the cocotb public API
+  cocotb/ocah_uart_console.py          — OcahUartConsole (active host)
+  cocotb/ocah_uart_master_driver.py    — OcahUartMasterDriver (native TX engine)
+  cocotb/ocah_uart_monitor.py          — OcahUartLineMonitor (native RX engine),
+                                         OcahUartMonitor (passive tap)
+  cocotb/examples/
+    example_loopback.py                — annotated usage snippets
 ```
 
 ---
@@ -185,7 +182,7 @@ from ocah_uart_vip import OcahUartError, OcahUartImportError
 | Exception | When raised |
 |---|---|
 | `OcahUartError` | Timeout, framing error, or unexpected data |
-| `OcahUartImportError` | `cocotbext-uart` not installed |
+| `OcahUartImportError` | never raised by the native backend |
 
 To receive `None` on timeout instead of raising:
 
@@ -204,8 +201,8 @@ By default the wrapper is deterministic:
 
 - Baud rate is a fixed integer; no jitter.
 - No random delays or random data generation.
-- The `cocotbext-uart` library drives and samples bits at exact baud-period
-  boundaries.
+- The line engines drive and sample bits at exact baud-period boundaries,
+  resynchronising on every start-bit edge.
 
 To stress-test framing or timing, adjust the DUT-side clock or use a
 non-standard baud rate; do not add randomness in the wrapper layer.
@@ -228,8 +225,7 @@ This package follows the OCAH hierarchical VIP convention (see
 code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_uart_vip import <Class>`, never from the subfolders.
-`interface/` (shared SV interfaces) and `uvm/`
-(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+This package has no `interface/` or `uvm/` realization. The SV-UVM
 template and the commercial-VIP plug-in contract (env-level factory
 override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`

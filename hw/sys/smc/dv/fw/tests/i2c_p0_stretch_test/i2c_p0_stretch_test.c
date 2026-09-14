@@ -372,15 +372,15 @@ int main(void) {
 
     // CRITICAL: Controller sends read BEFORE Target prepares TX FIFO
     // This ensures TX FIFO is empty when read command arrives, triggering clock stretch
-    // Reference: User requirement - "I2C controller 立即發送I2C read給I2C target
-    // 這時應該會進入clock stretch"
+    // Reference: User requirement - "I2C controller immediately sends I2C read to I2C target
+    // this should enter clock stretch"
     simputs("    [Controller] Sending read transaction IMMEDIATELY (no STOP, should trigger clock "
             "stretch)...\n");
     write_scratch(0, 0xDEB02002);
 
     // CRITICAL: Enter delay loop IMMEDIATELY after receiving write
     // This ensures TX FIFO is empty when Controller sends read, triggering clock stretch
-    // Reference: User requirement - "I2C target收到write command 進入for() _nop"
+    // Reference: User requirement - "I2C target receives write command and enters for() _nop"
     // Clock stretch must last at least 100us
     // Calculation: clock_period_nanos = 10ns (100MHz), target = 100us = 100,000ns
     // Required clock cycles = 100,000ns / 10ns = 10,000 cycles
@@ -480,7 +480,7 @@ int main(void) {
     // ==================================================================
 
     // CRITICAL: Target ends delay loop and prepares TX FIFO for read response
-    // Reference: User requirement - "I2c target結束迴圈傳送data給I2C controller"
+    // Reference: User requirement - "I2C target finishes loop and sends data to I2C controller"
     // Step 1: Prepare TX FIFO for read response
     // CRITICAL: Pre-loading TX FIFO may generate TARGET_EVENTS.TX_PENDING
     simputs("    [Target] Ending delay loop, preparing TX FIFO for read response...\n");
@@ -541,8 +541,8 @@ int main(void) {
     }
 
     // Wait for and receive data from Target
-    // Reference: User requirement - "I2C controller 立即發送I2C read給I2C target
-    // 這時應該會進入clock stretch" In Automatic Mode (tx_stretch_ctrl = false):
+    // Reference: User requirement - "I2C controller immediately sends I2C read to I2C target
+    // this should enter clock stretch" In Automatic Mode (tx_stretch_ctrl = false):
     //   - Initially TX FIFO was empty (during delay), causing clock stretch (StretchTx state)
     //   - Now TX FIFO has data (tx_fifo_rvalid_i = 1), so stretch_tx = 0
     //   - ACQ FIFO empty (acq_fifo_depth_i <= 1)
@@ -874,12 +874,12 @@ int main(void) {
     write_scratch(0, 0xDEB02005);
 
     // Test complete - all steps according to user requirements:
-    // 1. I2C controller 發送I2C write 給I2C target ✓
-    // 2. I2C target收到write command 進入for() _nop ✓
-    // 3. I2C controller 立即發送I2C read給I2C target 這時應該會進入clock stretch ✓
-    // 4. I2c target結束迴圈傳送data給I2C controller ✓
-    // 5. I2c controller收完data後不傳送stop bit重新發出I2C write指令給target ✓
-    // 6. 確認I2c target可以收完data 測試結束 ✓
+    // 1. I2C controller sends I2C write to I2C target ✓
+    // 2. I2C target receives write command and enters for() _nop ✓
+    // 3. I2C controller immediately sends I2C read to I2C target this should enter clock stretch ✓
+    // 4. I2C target finishes loop and sends data to I2C controller ✓
+    // 5. After receiving data, I2C controller omits STOP and issues another I2C write to target ✓
+    // 6. Confirm I2C target received all data; test ends ✓
     simputs("\n  All test steps completed successfully\n");
     write_scratch(1, 0x00000041);
 

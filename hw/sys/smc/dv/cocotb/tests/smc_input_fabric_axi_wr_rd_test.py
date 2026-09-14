@@ -1,18 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
-"""GitHub Project P0 alias for input/output fabric CSR precheck.
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""GitHub Project P0 leaf for the input/output fabric CSR precheck sequence.
 
 DV-CARD:          SMC_004   ANCHOR: smc_input_fabric_axi_wr_rd_test
-DV-CARD-REVISION: 2   RECORD-SHA256: db0ca22b2fd47e6f6b8ce64003001ecabb325df82663f8bd54e76c4f02f28e7b
-DV-CARD-SOURCE:   hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1   ENV: cocotb
+
+This is not an alias of ``smc_input_output_fabric_wr_rd_test``. That sibling
+programs the filters and then issues JTAG-AXI traffic into the output-fabric
+window. This leaf is the only enrolled owner of
+``smc_input_output_fabric_wr_rd_test_seq`` (SEP_IN CSR precheck of the same
+filter/remap windows).
 """
 
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_input_output_fabric_wr_rd_test_seq import (
     smc_input_output_fabric_wr_rd_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()

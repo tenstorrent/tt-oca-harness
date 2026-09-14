@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 OcahSepSpiFlash — SEP-specific SPI/xSPI flash BFM.
 
@@ -23,10 +23,8 @@ reset), matching typical NOR-flash power-on semantics.
 
 DDR support
 -----------
-DDR (Double Data Rate) for octal mode is documented as out-of-scope for
-this initial implementation.  The class accepts ``mode="octal"`` but uses
-SDR (single data rate) operation.  A ``_DDR_TODO`` note marks the code path
-where DDR sampling would be introduced.
+DDR (Double Data Rate) octal is out of scope: the class accepts
+``mode="octal"`` but operates SDR (single data rate).
 
 Pin naming in tests
 -------------------
@@ -35,9 +33,7 @@ list exactly.  For a padring-wrapped DUT the signal names may differ; pass
 the correct cocotb handles for each pin.
 """
 
-import logging
-import os
-from typing import Optional, Any
+from typing import Any, Optional
 
 import cocotb
 from cocotb.triggers import FallingEdge, RisingEdge
@@ -90,7 +86,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
         Instance label.
     mode : str
         ``"single"``, ``"quad"``, or ``"octal"``.  Single-bit I/O is used in
-        all modes for now; see OCTAL_TODO in ``ocah_spi_flash.py``.
+        all modes.
     jedec_id : int
         3-byte JEDEC ID.  Default 0x20BA18.
     flash_size : int
@@ -154,9 +150,9 @@ class OcahSepSpiFlash(OcahSpiFlash):
                 verbose=verbose,
             )
 
-        self._dq_oe_n  = dq_oe_n
-        self._rebar_o  = rebar_o
-        self._rebar_i  = rebar_i
+        self._dq_oe_n = dq_oe_n
+        self._rebar_o = rebar_o
+        self._rebar_i = rebar_i
 
         self._rebar_task: Optional[Any] = None
 
@@ -172,7 +168,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
         """
         super().init_signals()
         if self._rebar_i is not None:
-            self._rebar_i.value = 1   # not in reset
+            self._rebar_i.value = 1  # not in reset
 
     # ------------------------------------------------------------------
     # Lifecycle (override to add REBAR monitor)
@@ -206,8 +202,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
             await FallingEdge(self._rebar_o)
             if not self._running:
                 break
-            self.log.info("%s: REBAR asserted — resetting flash state machine",
-                          self.name)
+            self.log.info("%s: REBAR asserted — resetting flash state machine", self.name)
             self._on_rebar_assert()
 
             # Wait for REBAR to deassert before re-arming.
@@ -218,8 +213,8 @@ class OcahSepSpiFlash(OcahSpiFlash):
 
     def _on_rebar_assert(self) -> None:
         """Reset internal state machine (not flash contents) on REBAR."""
-        self._wel  = False
-        self._sr1  = self._sr1 & ~0x02   # clear WEL bit in SR1
+        self._wel = False
+        self._sr1 = self._sr1 & ~0x02  # clear WEL bit in SR1
         # Note: flash memory contents are preserved across REBAR (NOR semantics)
         if self._rebar_i is not None:
             self._rebar_i.value = 0
@@ -237,10 +232,6 @@ class OcahSepSpiFlash(OcahSpiFlash):
 
         If ``dq_oe_n`` is not connected, DQ is driven unconditionally
         (same as base class behaviour).
-
-        DDR_TODO: For octal DDR mode, data should be sampled/driven on both
-        rising and falling SCLK edges with appropriate setup/hold.  This
-        is currently deferred pending SEP xSPI PHY timing confirmation.
         """
         from cocotb.triggers import FallingEdge as _FallingEdge  # noqa: PLC0415
 
@@ -262,7 +253,6 @@ class OcahSepSpiFlash(OcahSpiFlash):
 
             bit = (byte_val >> bit_idx) & 0x1
             # Drive DQ0 only; DQ[7:1] are not modified.
-            # For quad/octal the full-width drive is a OCTAL_TODO.
             dq_in = self._dq_in if self._dq_in is not None else self._miso
             if dq_in is not None:
                 dq_in.value = bit

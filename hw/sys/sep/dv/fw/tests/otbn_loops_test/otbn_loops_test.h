@@ -1,10 +1,7 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
-
 /* Copyright lowRISC contributors (OpenTitan project). */
 /* Licensed under the Apache License, Version 2.0, see LICENSE for details. */
 /* SPDX-License-Identifier: Apache-2.0 */
-/* Adapted for OCH platform */
+/* Adapted for OCAH platform */
 
 /**
  * @file otbn_loops_test.h
@@ -16,7 +13,7 @@
  * - Mathematical verification: result = 4×(10+3×1) = 52
  * - Instruction count verification: exactly 28 instructions
  *
- * Test vectors derived from OpenTitan's loops.s test, adapted for OCH.
+ * Test vectors derived from OpenTitan's loops.s test, adapted for OCAH.
  */
 
 #ifndef OTBN_LOOPS_TEST_H

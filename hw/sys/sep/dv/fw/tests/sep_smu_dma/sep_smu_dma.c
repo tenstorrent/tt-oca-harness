@@ -1,7 +1,9 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+
 /*
  * sep_smu_dma - SMU-level SEP DMA register sanity test.
  *
- * Goal:
  *   Boot SEP in SMU wrapper and verify basic secure DMA programming path
  *   (range/src/dst/size/start bits) through stable CSR readback checks.
  */

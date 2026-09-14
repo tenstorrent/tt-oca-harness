@@ -1,18 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """JTAG-adjacent reset recovery proxy sequence."""
 
 from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from env.smc_reset_item import SmcResetItem, SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_addr
 from .smc_base_test_seq import smc_base_test_seq
 
-CHIP_CONFIG_VERSION_LO = 0xC000_2900
-SCRATCH_COLD_2 = 0xC000_2808
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
+SCRATCH_COLD_2 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR") + 0x8
 SCRATCH_PATTERN = 0x1A7A_0002
 
 
@@ -51,8 +52,7 @@ class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
         await self.dispatch_reset(item)
 
     async def body(self) -> None:
-        await self._read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO,
-                         expected=0x0001_00A0)
+        await self._read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0)
         await self._write("SCRATCH_COLD_2", SCRATCH_COLD_2, SCRATCH_PATTERN)
         await self._read("SCRATCH_COLD_2", SCRATCH_COLD_2, expected=SCRATCH_PATTERN)
 
@@ -61,8 +61,9 @@ class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
         await self._reset_op("cool_rst_hi", SmcResetOp.COOL_RST_HI)
         await ClockCycles(cocotb.top.clk_ref_i, 200)
 
-        await self._read("CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO,
-                         expected=0x0001_00A0)
+        await self._read(
+            "CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0
+        )
         await self._write("SCRATCH_COLD_2_RESTORE", SCRATCH_COLD_2, 0)
         await self._read("SCRATCH_COLD_2_RESTORE", SCRATCH_COLD_2, expected=0)
         assert self.accesses == 6, "JTAG reset proxy access mismatch"

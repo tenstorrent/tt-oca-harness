@@ -2,38 +2,38 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI OT Flash Quad Fast Read Test - TC_SPIOT_024 (P1)
+ * SPI OT Flash Quad Fast Read Test
  *
  * Verifies Flash Fast Read Quad Output (0x6B) using the OpenTitan SPI controller.
  * Requires a Quad SPI flash model (+spi_device_sel=winbond, W25Q512JV).
  *
  * Flash commands used:
- *   0x06 - WREN  (Write Enable)
- *   0x05 - RDSR  (Read Status Register-1)
- *   0x02 - PP    (Page Program, Standard SPI write)
- *   0x6B - QOFR  (Quad Output Fast Read: cmd+addr Standard, 8 dummy clocks, data Quad)
+ * 0x06 - WREN  (Write Enable)
+ * 0x05 - RDSR  (Read Status Register-1)
+ * 0x02 - PP    (Page Program, Standard SPI write)
+ * 0x6B - QOFR  (Quad Output Fast Read: cmd+addr Standard, 8 dummy clocks, data Quad)
  *
  * Quad Output Fast Read (0x6B) segment breakdown:
- *   Seg1: TX 4 bytes (cmd=0x6B + addr[23:0]), SPEED=Standard, CSAAT=1
- *   Seg2: Dummy 1 byte (8 SCK clocks), SPEED=Standard, CSAAT=1
- *   Seg3: RX 16 bytes, SPEED=Quad (IO0-IO3 all active), CSAAT=0
+ * Seg1: TX 4 bytes (cmd=0x6B + addr[23:0]), SPEED=Standard, CSAAT=1
+ * Seg2: Dummy 1 byte (8 SCK clocks), SPEED=Standard, CSAAT=1
+ * Seg3: RX 16 bytes, SPEED=Quad (IO0-IO3 all active), CSAAT=0
  *
  * TX byte packing (LITTLE_ENDIAN=1): TXDATA[7:0] sent first.
- *   cmd+addr: byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
+ * cmd+addr: byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
  *
  * Note: W25Q512JV 0x6B requires QE (Quad Enable) bit set in Status Register-2
  * for quad output. The flash model may handle this internally. If QE is not set,
  * the flash will not drive SD[2:3] and reads will return 0xFF.
  *
  * Test Flow:
- *   1. PP 16 bytes at 0x003000 with pattern 0xF4xxxxxx
- *   2. WIP poll until page program complete
- *   3. QOFR 16 bytes from 0x003000 using 3-segment quad read
- *   4. Compare RX data against written pattern
+ * 1. PP 16 bytes at 0x003000 with pattern 0xF4xxxxxx
+ * 2. WIP poll until page program complete
+ * 3. QOFR 16 bytes from 0x003000 using 3-segment quad read
+ * 4. Compare RX data against written pattern
  *
  * Execution:
- *   make test-sep TEST_NAME=sep_spi_ot_flash_quad_read_test STACK=sim \
- *       EXTRA_SIM_ARGS=+spi_device_sel=winbond
+ * make test-sep TEST_NAME=sep_spi_ot_flash_quad_read_test STACK=sim \
+ * EXTRA_SIM_ARGS=+spi_device_sel=winbond
  *
  */
 
@@ -44,7 +44,6 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "spi_clk.h"
-#include "spi_mux.h"
 
 #define SPI_CLKDIV spi_clkdiv()
 #define TIMEOUT_LIMIT 200000
@@ -145,7 +144,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("SPI OT Flash Quad Fast Read Test (TC_SPIOT_024)\n");
+    printf("SPI OT Flash Quad Fast Read Test\n");
     printf("Requires: +spi_device_sel=winbond (W25Q512JV)\n");
     printf("Target address: 0x%06x (sector 3)\n", FLASH_TARGET_ADDR);
     printf("========================================\n\n");
@@ -154,7 +153,6 @@ int main(void) {
     uint32_t i;
     spi_controller__CMD_t cmd;
 
-    spi_mux_select_ot();
     init_spi_controller();
     printf("SPI controller enabled (CLKDIV=%d)\n\n", SPI_CLKDIV);
 
@@ -223,8 +221,9 @@ int main(void) {
         uint8_t sr = flash_read_status();
         poll_count++;
         if (sr == 0xFF) {
-            printf("  WARN: SR=0xFF (no flash model?), skipping WIP poll\n");
-            break;
+            printf("  FAIL: SR=0xFF while polling WIP (no flash model)\n");
+            pass = 0;
+            goto done;
         }
         if (!(sr & FLASH_SR_WIP)) {
             printf("  WIP=0 after %d polls (page program complete)\n", poll_count);
@@ -239,9 +238,9 @@ int main(void) {
 
     /* ---------------------------------------------------------------
      * Phase 2: Quad Output Fast Read (0x6B)
-     *   Seg1: TX 4 bytes (0x6B + addr), Standard, CSAAT=1
-     *   Seg2: Dummy 1 byte (8 clocks), Standard, CSAAT=1
-     *   Seg3: RX 16 bytes, Quad (SPEED=2), CSAAT=0
+     * Seg1: TX 4 bytes (0x6B + addr), Standard, CSAAT=1
+     * Seg2: Dummy 1 byte (8 clocks), Standard, CSAAT=1
+     * Seg3: RX 16 bytes, Quad (SPEED=2), CSAAT=0
      * --------------------------------------------------------------- */
     printf("\nPhase 2: Quad Output Fast Read (0x6B) from 0x%06x\n", FLASH_TARGET_ADDR);
 

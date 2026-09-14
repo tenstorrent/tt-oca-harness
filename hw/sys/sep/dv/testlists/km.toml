@@ -17,7 +17,8 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]
 
 [[tests]]
-# Dual-CPU eFuse AXI-lite mux coexistence (OCAH TEST 10.3 / #2936): the EL2 host
+# Dual-CPU eFuse AXI-lite mux coexistence (reference suite
+# sep_efuse_km_axil_cpu_mux_coexist_test): the EL2 host
 # and the KM PicoRV32 both contend at u_km_efuse_axi_lite_mux. run_mode "cpu"
 # boots the EL2 (+cpu_boot); real fuse-sense is on (no +skip_fuse_sense) so the
 # host CHIPLET_UID read path is live, with the OTP image staged to the responder
@@ -32,19 +33,20 @@ run_modes = ["cpu"]
 args = ["+km_rom_hex=km_rom_coexist.parhex"]
 
 [[tests]]
-# KM -> OTBN sideload consume-proof KAT (OCAH ): real DRBG entropy boots the
+# KM -> OTBN sideload consume-proof KAT (reference suite): real DRBG entropy boots the
 # real KM firmware (rom_main). The host loads a KNOWN 384b key via CMD_KEY_LOAD and
 # CMD_KEY_TRANSFERs it to OTBN; the real OTBN core reads the sideload KEY WSRs and
 # writes key=share0^share1 to DMEM, which the host compares against the exact known
-# key. This is fully FRONTDOOR (no backdoor) and stronger than the OCAH reference,
+# key. This is fully FRONTDOOR (no backdoor) and stronger than the reference suite,
 # which generates a random key and reconstructs it by a read-only wrapper backdoor.
 # no_cpu mode (host drives the bus over AXI); +esrc_noise_force makes the ring
 # oscillators alive under Verilator. REAL fuse-sense (no +skip_fuse_sense): the KM
 # firmware reads OTP/lifecycle at boot and faults on an all-zero shadow, so the test
-# stages a valid PROD OTP image and senses it. The rom_main.rom.parhex artifact is
-# built from tracked source (make -C cocotb/tests/km_fw rom_main).
+# stages a valid PROD OTP image and senses it. c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_otbn_sideload_kat_test"
 module = "km.sep_km_otbn_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "otbn", "subsystem", "entropy"]
@@ -53,19 +55,19 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
-# KM -> AES sideload consume-proof KAT (OCAH  AES leaf): real DRBG entropy
+# KM -> AES sideload consume-proof KAT (reference suite AES leaf): real DRBG entropy
 # boots the real KM firmware (rom_main). The host loads a KNOWN 256b key via
 # CMD_KEY_LOAD and CMD_KEY_TRANSFERs it to the OpenTitan AES core, then runs
-# ECB-256 encryptions and proves AES consumed the exact key: ct_side equals an
-# independent AES-256-ECB golden (env/sep_aes_golden.py, self-tested vs FIPS-197)
-# AND the SW-key reference encryption, and differs from a dummy-key encryption.
-# Frontdoor (no backdoor) and stronger than the value-agnostic OCAH cross-check.
+# ECB-256 encryptions and proves AES consumed the exact key: dummy, sideload,
+# and SW-key ciphertexts are each checked against an independent AES-256-ECB
+# golden (env/sep_aes_golden.py, self-tested vs FIPS-197). Frontdoor (no backdoor).
 # no_cpu mode; +esrc_noise_force makes the ring oscillators alive under Verilator.
 # REAL fuse-sense (no +skip_fuse_sense): the KM firmware reads OTP/lifecycle at
-# boot, so the test stages a valid PROD OTP image and senses it. rom_main.rom.parhex
-# is built from tracked source (make -C cocotb/tests/km_fw rom_main).
+# boot, so the test stages a valid PROD OTP image and senses it. c_compile builds
+# rom_main.rom.parhex (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_aes_sideload_kat_test"
 module = "km.sep_km_aes_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "aes", "subsystem", "entropy"]
@@ -74,18 +76,20 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
-# KM -> HMAC sideload consume-proof KAT (OCAH ): real DRBG entropy boots the
+# KM -> HMAC sideload consume-proof KAT (reference suite): real DRBG entropy boots the
 # real KM firmware (rom_main). The host loads a KNOWN 256b key via CMD_KEY_LOAD and
 # CMD_KEY_TRANSFERs it to the OpenTitan HMAC engine, then runs keyed HMAC-SHA256
-# over a fixed message and proves HMAC consumed the exact key: the digest equals an
-# independent HMAC-SHA256 golden (env/sep_hmac_golden.py, stdlib hmac/hashlib, RFC
-# 4231 self-tested) of the known key under the RTL-pinned convention, and differs
-# from the dummy-key golden. Frontdoor (no backdoor); HMAC has no CFG sideload bit,
-# so the digest-vs-golden compare IS the consume-proof (as in OCAH). no_cpu;
+# over a fixed message and proves HMAC consumed the exact key: the digest equals
+# an independent HMAC-SHA256 golden (env/sep_hmac_golden.py, stdlib hmac/hashlib,
+# RFC 4231 self-tested) of the known key under the RTL-pinned convention.
+# Frontdoor (no backdoor); HMAC has no CFG sideload bit, so the digest-vs-golden
+# compare is the consume-proof. no_cpu;
 # +esrc_noise_force for the ring oscillators under Verilator. REAL fuse-sense
-# (KM rom_main reads OTP at boot). rom_main.rom.parhex from tracked source.
+# (KM rom_main reads OTP at boot). c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_hmac_sideload_kat_test"
 module = "km.sep_km_hmac_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "hmac", "subsystem", "entropy"]
@@ -94,20 +98,111 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
-# KM -> KMAC sideload consume-proof KAT (OCAH ): real DRBG entropy boots the
+# KM -> KMAC sideload consume-proof KAT (reference suite): real DRBG entropy boots the
 # real KM firmware (rom_main). The host loads a KNOWN 256b key via CMD_KEY_LOAD and
 # CMD_KEY_TRANSFERs it to the OpenTitan KMAC engine, then runs keyed KMAC-256
 # (cSHAKE, PREFIX="KMAC") and proves consume by the sideload-vs-SW-key cross-check
 # (KMAC has a CFG sideload bit): sideload digest == SW-key(KNOWN) digest and !=
-# dummy-key digest. No KMAC golden (as in OCAH, no KMAC DPI). KMAC pulls real EDN
+# dummy-key digest. No KMAC golden (as in the reference suite, no KMAC DPI). KMAC pulls real EDN
 # masking entropy during the keyed ops (proven via the CHK5_kmac sink). Frontdoor;
 # no_cpu; +esrc_noise_force for the ring oscillators under Verilator. REAL fuse-sense
-# (KM rom_main reads OTP at boot). rom_main.rom.parhex from tracked source.
+# (KM rom_main reads OTP at boot). c_compile builds rom_main.rom.parhex
+# (firmware mode km_rom_main; wipe defines off).
 name = "sep_km_kmac_sideload_kat_test"
 module = "km.sep_km_kmac_sideload_kat_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 timeout_sec = 7200
 tags = ["km", "kmac", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM key/policy vault: slot extent, SRAM write-lock and the KPV seal.
+# RANDCFG: slot, lock region and the seal/free slot pair from the run seed.
+# Dedicated KM ROM (not rom_main): the vault is on the KM CPU bus, and no
+# mailbox command seals a slot, so the sealed-erase-retires contract has no
+# vehicle on the command set. no_cpu; +skip_fuse_sense.
+name = "sep_km_key_policy_vault_test"
+module = "km.sep_km_key_policy_vault_test"
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "kpv", "sram_lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]
+
+[[tests]]
+# KM mailbox command set: generate, transfer, revoke-or-shred, illegal-to-error.
+# RANDCFG: generated key size, the out-of-policy destination and the undefined
+# command IDs come from the run seed. Boots the real KM firmware (rom_main) and
+# uses the AES engine as the consume witness, so a transfer is proven by an
+# independent AES-256-ECB golden rather than by a return code alone. Frontdoor
+# throughout. REAL fuse-sense (rom_main reads OTP at boot); +esrc_noise_force
+# makes the ring oscillators alive under Verilator.
+name = "sep_km_command_set_rand_test"
+module = "km.sep_km_command_set_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 7200
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM mailbox as a SEP-side register surface. RANDCFG: the 16 inbound fill
+# words come from the run seed. KM stays in software reset so firmware
+# cannot drain or fault the FIFOs; the SEP-facing mailbox lives on cold
+# reset and stays reachable. no_cpu; +skip_fuse_sense. No +km_rom_hex:
+# this leaf grades the registers, not a command stream.
+name = "sep_km_mailbox_protocol_rand_test"
+module = "km.sep_km_mailbox_protocol_rand_test"
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "mailbox", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# KM CRC co-processor KAT, all three modes (CRC-32C word, CRC-32C byte,
+# CRC-8/ROHC). RANDCFG: the operand set comes from the run seed. The engine has
+# no register interface -- it is a PicoRV32 PCPI co-processor reached by a
+# custom-0 instruction -- so a dedicated service ROM issues the instructions and
+# every golden and cross-check lives in the host test. no_cpu; +skip_fuse_sense.
+name = "sep_km_crc_pcpi_kat_test"
+module = "km.sep_km_crc_pcpi_kat_test"
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "crc", "pcpi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_crc.parhex"]
+
+[[tests]]
+# KPV scrambler: the stored word and the address mapping are both transformed
+# while enabled, and the vault passes through while disabled. RANDCFG: two
+# scrambler keys and three logical key-entry indices from the run seed.
+# Dedicated KM ROM (not rom_main, which locks the scrambler during boot); the
+# ROM reports raw observations and the host holds every verdict. no_cpu;
+# +skip_fuse_sense.
+name = "sep_km_kpv_scrambler_test"
+module = "km.sep_km_kpv_scrambler_test"
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "kpv", "scrambler", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_kpv_scrambler.parhex"]

@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for dtp_sanity_test.
 
 Implements the DTP VPLAN sanity scenario: exercise the IEEE 1149.1 TAP finite
@@ -26,15 +27,13 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
         random_walks: int = 16,
     ) -> None:
         super().__init__(name, scenario_seed=scenario_seed, random_count=random_count)
-        self.scenario_seed = scenario_seed
         self.random_walks = random_walks
 
     def check_all_tap_states_visited(self) -> None:
         """Assert that this sanity scenario observed every TAP state."""
         missing = set(DtpTapState) - self.visited_tap_states
-        assert not missing, (
-            "Not all IEEE 1149.1 TAP states were visited: "
-            + ", ".join(sorted(state.name for state in missing))
+        assert not missing, "Not all IEEE 1149.1 TAP states were visited: " + ", ".join(
+            sorted(state.name for state in missing)
         )
         self.log.info("All %d IEEE 1149.1 TAP states visited", len(DtpTapState))
 
@@ -135,7 +134,7 @@ class dtp_sanity_test_seq(dtp_jtag_base_test_seq):
             await self.random_tms_walk(rng.randint(1, 8), rng=rng)
 
     async def body(self) -> None:
-        seed = self.scenario_seed if self.scenario_seed is not None else self.random_seed()
+        seed = self.scenario_seed
         self.log.info("Using TAP FSM random seed %d", seed)
         rng = random.Random(seed)
 

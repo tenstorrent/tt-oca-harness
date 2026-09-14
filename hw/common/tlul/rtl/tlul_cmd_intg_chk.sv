@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
@@ -10,7 +7,9 @@
  * Tile-Link UL command integrity check
  */
 
-module tlul_cmd_intg_chk import tlul_pkg::*; (
+module tlul_cmd_intg_chk
+  import tlul_pkg::*;
+(
   // TL-UL interface
   input  tl_h2d_t tl_i,
 
@@ -54,4 +53,4 @@ module tlul_cmd_intg_chk import tlul_pkg::*; (
 
   `OCAH_OT_ASSERT_INIT(PayLoadWidthCheck, $bits(tl_h2d_cmd_intg_t) <= H2DCmdMaxWidth)
 
-endmodule // tlul_payload_chk
+endmodule  // tlul_payload_chk

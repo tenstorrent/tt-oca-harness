@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2025 Tenstorrent Inc.
+# SPDX-FileCopyrightText: 2025 Tenstorrent USA, Inc.
 """
 OcahUartConsole — OCAH-stable active UART console wrapper.
 
 Provides a single, versioned API for driving UART serial traffic (8N1) in
-OCAH cocotb tests.  Internally delegates to ``cocotbext-uart`` when that
-library is available in the environment.  When it is not installed the class
-raises ``OcahUartImportError`` at construction time with an actionable install
-message so that CI errors are self-explanatory.
+OCAH cocotb tests.  The backend is native to this package:
+``OcahUartMasterDriver`` transmits on TXD and ``OcahUartLineMonitor``
+samples RXD.  No external UART library is required.
 
 Public API
 ----------
@@ -25,21 +24,7 @@ OcahUartConsole(txd, rxd, clock, *, name, baud, timeout_us)
     .reset_statistics()
 
 All data crossing the API boundary is plain Python ``str``, ``bytes``, or
-``int``.  No ``cocotbext-uart`` types are exposed.
-
-Dependency
-----------
-Pinned release::
-
-    cocotbext-uart == 0.1.1
-
-Install with::
-
-    pip install cocotbext-uart==0.1.1
-
-The wrapper follows the ``ocah_axi_vip`` migration-plan pattern: when the
-library is absent the constructor raises ``OcahUartImportError``; when it
-becomes available in the environment, no test code changes are required.
+``int``; backend engine objects are not part of the console contract.
 
 Protocol
 --------
@@ -49,75 +34,56 @@ plusarg.  High-speed modes (e.g. 4 Mbaud) are accepted but not validated
 against DUT clock constraints — the caller is responsible.
 """
 
-import asyncio
 import logging
 import os
 import re
-from typing import Callable, Dict, Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
-import cocotb
-from cocotb.triggers import Timer, RisingEdge, with_timeout, SimTimeoutError
+from cocotb.triggers import SimTimeoutError, Timer, with_timeout
+
+from .ocah_uart_master_driver import OcahUartMasterDriver
+from .ocah_uart_monitor import OcahUartLineMonitor
 
 __all__ = ["OcahUartConsole", "OcahUartError", "OcahUartImportError"]
-
-# ---------------------------------------------------------------------------
-# Dependency probe
-# ---------------------------------------------------------------------------
-
-_COCOTBEXT_UART_AVAILABLE = False
-_UartSource = None
-_UartSink   = None
-
-try:
-    from cocotbext.uart import UartSource, UartSink  # type: ignore[import]
-    _UartSource = UartSource
-    _UartSink   = UartSink
-    _COCOTBEXT_UART_AVAILABLE = True
-except ImportError:
-    pass
 
 
 # ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
 
+
 class OcahUartError(RuntimeError):
     """Raised on UART framing errors, timeouts, or unexpected data."""
 
 
 class OcahUartImportError(ImportError):
-    """Raised when cocotbext-uart is not installed in the environment."""
-    def __str__(self) -> str:
-        return (
-            "cocotbext-uart is required by OcahUartConsole but is not installed.\n"
-            "  Install it with:  pip install cocotbext-uart==0.1.1\n"
-            "  Pinned version:   cocotbext-uart == 0.1.1 (MIT)\n"
-            "  Repository:       https://github.com/alexforencich/cocotbext-uart\n"
-        )
+    """Exported but never raised: the native backend has no import that can fail."""
 
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-_DEFAULT_BAUD       = 115200
-_DEFAULT_TIMEOUT_US = 1_000   # 1 ms default per-operation timeout
-_LINE_TERMINATOR    = "\n"
-_LOG_ENV_KEY        = "COCOTB_PLUSARG_uart_log"
-_BAUD_ENV_KEY       = "COCOTB_PLUSARG_uart_baud"
+_DEFAULT_BAUD = 115200
+_DEFAULT_TIMEOUT_US = 1_000  # 1 ms default per-operation timeout
+_LINE_TERMINATOR = "\n"
+_LOG_ENV_KEY = "COCOTB_PLUSARG_uart_log"
+_BAUD_ENV_KEY = "COCOTB_PLUSARG_uart_baud"
 
 
 # ---------------------------------------------------------------------------
 # OcahUartConsole
 # ---------------------------------------------------------------------------
 
+
 class OcahUartConsole:
     """
     OCAH-stable UART console host (8N1, configurable baud).
 
-    Wraps ``cocotbext-uart`` ``UartSource`` and ``UartSink`` with a fixed API
-    so OCAH tests are insulated from library changes.  Accepts and returns
-    plain Python ``str``, ``bytes``, and ``int``.
+    Wraps the native ``OcahUartMasterDriver`` (TX) and ``OcahUartLineMonitor``
+    (RX) line engines with a fixed API so OCAH tests are insulated from
+    backend changes.  Accepts and returns plain Python ``str``, ``bytes``,
+    and ``int``.
 
     Parameters
     ----------
@@ -126,8 +92,8 @@ class OcahUartConsole:
     rxd :
         Cocotb signal handle for the UART RX line (console host reads this).
     clock :
-        Cocotb clock handle.  Used for internal timing (not directly passed to
-        cocotbext-uart, which uses real-time triggers internally).
+        Cocotb clock handle.  Informational; the line engines time frames
+        from the baud rate, not from this clock.
     name :
         Instance label used in log messages.
     baud :
@@ -158,14 +124,11 @@ class OcahUartConsole:
         log_file: Optional[str] = None,
         raise_on_timeout: bool = True,
     ):
-        if not _COCOTBEXT_UART_AVAILABLE:
-            raise OcahUartImportError()
-
-        self.name             = name
-        self._clock           = clock
+        self.name = name
+        self._clock = clock
         self._default_timeout = timeout_us
         self._raise_on_timeout = raise_on_timeout
-        self.log              = logging.getLogger(name)
+        self.log = logging.getLogger(name)
 
         # Resolve plusargs: baud rate.
         env_baud = os.environ.get(_BAUD_ENV_KEY)
@@ -174,9 +137,7 @@ class OcahUartConsole:
                 baud = int(env_baud)
                 self.log.info("%s: baud overridden by plusarg to %d", name, baud)
             except ValueError:
-                self.log.warning(
-                    "%s: invalid +uart_baud value %r; using %d", name, env_baud, baud
-                )
+                self.log.warning("%s: invalid +uart_baud value %r; using %d", name, env_baud, baud)
         self._baud = baud
 
         # Resolve plusargs: log file.
@@ -192,20 +153,20 @@ class OcahUartConsole:
             except OSError as exc:
                 self.log.warning("%s: cannot open log file %s: %s", name, log_file, exc)
 
-        # cocotbext-uart drivers / monitors.
-        # UartSource drives TXD; UartSink listens on RXD.
-        self._source = _UartSource(txd, baud=baud)
-        self._sink   = _UartSink(rxd, baud=baud)
+        # Native line engines: the master driver transmits on TXD; the line
+        # monitor samples RXD.
+        self._source = OcahUartMasterDriver(txd, name=f"{name}.tx", baud=baud)
+        self._sink = OcahUartLineMonitor(rxd, name=f"{name}.rx", baud=baud)
 
         # Line buffer: bytes accumulated since last read_line / expect call.
         self._rx_buf: bytes = b""
 
         # Statistics.
         self._stats: Dict[str, int] = {
-            "bytes_sent":     0,
+            "bytes_sent": 0,
             "bytes_received": 0,
             "lines_received": 0,
-            "timeouts":       0,
+            "timeouts": 0,
         }
 
     # ------------------------------------------------------------------
@@ -216,13 +177,11 @@ class OcahUartConsole:
         """Drive TXD to idle (mark / logic-1) before the first clock edge.
 
         Call this immediately after construction to avoid X-propagation on
-        the UART TX pin.  The cocotbext-uart UartSource holds the line at
-        logic-1 (MARK state) by default; this method makes the intent
+        the UART TX pin.  ``OcahUartMasterDriver`` already holds the line at
+        logic-1 (MARK state) from construction; this method makes the intent
         explicit and logs the initial baud setting.
         """
-        self.log.info(
-            "%s: UART initialised — baud=%d, 8N1", self.name, self._baud
-        )
+        self.log.info("%s: UART initialised — baud=%d, 8N1", self.name, self._baud)
 
     async def set_baud(self, rate: int) -> None:
         """Change the baud rate.
@@ -240,10 +199,10 @@ class OcahUartConsole:
             raise ValueError(f"{self.name}: baud rate must be positive, got {rate}")
         self._baud = rate
         self._source.baud = rate
-        self._sink.baud   = rate
+        self._sink.baud = rate
         self.log.info("%s: baud changed to %d", self.name, rate)
         # Yield one delta cycle so signals settle.
-        await Timer(1, units="step")
+        await Timer(1, "step")
 
     # ------------------------------------------------------------------
     # Transmit
@@ -300,9 +259,7 @@ class OcahUartConsole:
     # Receive
     # ------------------------------------------------------------------
 
-    async def read_byte(
-        self, timeout_us: Optional[int] = None
-    ) -> Optional[int]:
+    async def read_byte(self, timeout_us: Optional[int] = None) -> Optional[int]:
         """Wait for and return the next received byte.
 
         Parameters
@@ -331,9 +288,7 @@ class OcahUartConsole:
         except SimTimeoutError:
             self._stats["timeouts"] += 1
             if self._raise_on_timeout:
-                raise OcahUartError(
-                    f"{self.name}: read_byte timed out after {t_us} µs"
-                )
+                raise OcahUartError(f"{self.name}: read_byte timed out after {t_us} µs")
             return None
 
         self._stats["bytes_received"] += 1
@@ -341,9 +296,7 @@ class OcahUartConsole:
         self.log.debug("%s: received byte 0x%02X", self.name, b)
         return b
 
-    async def read_bytes(
-        self, n: int, timeout_us: Optional[int] = None
-    ) -> Optional[bytes]:
+    async def read_bytes(self, n: int, timeout_us: Optional[int] = None) -> Optional[bytes]:
         """Wait for and return exactly ``n`` bytes.
 
         Parameters
@@ -457,19 +410,15 @@ class OcahUartConsole:
         OcahUartError
             If no matching line arrives within budget.
         """
-        t_us   = timeout_us if timeout_us is not None else self._default_timeout
+        t_us = timeout_us if timeout_us is not None else self._default_timeout
         regexp = re.compile(pattern)
 
         while True:
             line = await self.read_line(timeout_us=t_us, encoding=encoding)
             if line is None:
-                raise OcahUartError(
-                    f"{self.name}: expect({pattern!r}) timed out"
-                )
+                raise OcahUartError(f"{self.name}: expect({pattern!r}) timed out")
             if regexp.search(line):
-                self.log.info(
-                    "%s: expect(%r) matched line: %r", self.name, pattern, line
-                )
+                self.log.info("%s: expect(%r) matched line: %r", self.name, pattern, line)
                 return line
 
     # ------------------------------------------------------------------

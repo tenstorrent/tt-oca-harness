@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP LCC sep_debug -> inbound-filter gating test (OSS).
 
-OSS port of the OCAH UVM ``sep_lcc_uvm_inbound_filter_gating_test`` (TEST 3.7,
-issue #2868). Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
+OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test``.
+Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
 PROD_DBG_1 (sep_debug=1, filter skipped). Datapath
-(``sep.sv``: ``inbound_filter_skip_i = feat_ctrl_o.sep_debug``):
+(``sep.sv``: ``inbound_filter_skip_i = feat_ctrl.sep_debug``):
 
     eFuse OTP (LC_STATE=PROD) --sense--> LCC --feat_ctrl[0]=sep_debug-->
         u_inbound_filter.filter_skip_i --gates--> smn_inbound external AXI
@@ -20,7 +21,7 @@ Two masters (both real DUT ports, no backdoor):
   * CONTROL = CPU-LSU (``s_axi``, no inbound filter): reads FEAT_CTRL (exact 64-bit
     golden value-check via the scoreboard) and writes DEMOTE_1.
   * EXTERNAL = SMN-inbound (``m_axi``): the filtered path; the probe at FEAT_CTRL
-    is blocked (PROD) / allowed (PROD_DBG_1). The OSS analog of OCAH's
+    is blocked (PROD) / allowed (PROD_DBG_1). The OSS analog of the reference suite's
     ``ext_axi_sqr`` (``axi_system[0].master[0]``).
 
 Checkers (each logs positive evidence):
@@ -30,42 +31,45 @@ Checkers (each logs positive evidence):
   * CHK-DEMOTE     DEMOTE_1.demote write -> read-back == 1.
   * CHK-DBG-FEAT   FEAT_CTRL == golden(PROD_DBG_1), sep_debug==1 (scoreboard).
   * CHK-DBG-ALLOW  external probe reads BOTH FEAT_CTRL halves OKAY and returns
-    the distinctive golden value 0xf0f00000_ffffffff (proves the external path
+    the distinctive golden value 0xf0000000_f000f003 (proves the external path
     actually reached the LCC, not merely returned OKAY/all-ones).
-  * CHK-IDENTITY   filter_skip_i tracks sep_debug: blocked@0, allowed@1 -- the
-    frontdoor (FEAT_CTRL[0]) replacement for OCAH's backdoor filter_skip read.
+  * CHK-IDENTITY   external access follows sep_debug: blocked@0, allowed@1 -- the
+    frontdoor (FEAT_CTRL[0]) identity with the filter skip.
   * CHK-NONVAC     both block and allow outcomes observed (the A->B transition is
     real, not a single stuck state).
 
-Stronger than OCAH: OCAH reads ``filter_skip_i`` by backdoor ``uvm_hdl_read`` and
-checks only ``feat_ctrl[0]``; the OSS port reads FEAT_CTRL frontdoor with an exact
-64-bit golden value-check, requires the blocked external read to return DECERR,
-and proves the allowed external read returns the LCC's distinctive FEAT_CTRL high
-word. Scope delta: none functional. The OCAH async-flip ambiguity guard (firmware
-advances LC mid-probe) is unnecessary here -- sep_debug is driven deterministically
-between probes in the no_cpu flow.
+FEAT_CTRL is read frontdoor against the 64-bit lifecycle golden. A blocked
+external read must return DECERR; an allowed external read must return the
+LCC's distinctive FEAT_CTRL value. sep_debug is driven deterministically
+between probes.
 """
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
+from sep_base_test import sep_base_test
 from seq_lib.sep_lcc_inbound_filter_gating_seq import (
     LCC_FEAT_CTRL,
     RESP_DECERR,
-    SepLccDemote1Seq,
-    SepLccFeatCtrlCheckSeq,
     SepExtAxiProbeSeq,
+    SepLccDemoteSeq,
+    SepLccFeatCtrlCheckSeq,
 )
 
 _MAX_SENSE_CYCLES = 20_000
 
 # Distinct non-zero disable vectors so the decoded FEAT_CTRL is a non-trivial
 # value in BOTH states (guards the golden checks against a vacuous all-zero pass).
-_SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
-_SYS_DIS = 0x00FF_00FF_00FF_00FF
+# DBG_1 bits 0 (sep_debug) and 1 (chiplet_dbg) are deliberately LEFT ENABLED in both
+# vectors. Under the per-group decode a PROD demotion only relaxes its debug group to
+# honour SIP_DIS|SYS_DIS; it does not force the group open. A vector that
+# disables sep_debug would make this test's own property unreachable: DEMOTE_1 would
+# be honoured correctly and sep_debug would still read 0. Every other DIS bit stays
+# set, so the value remains distinctive rather than all-ones.
+_SIP_DIS = 0x0F0F_0F0F_0F0F_0F0C
+_SYS_DIS = 0x00FF_00FF_00FF_00FC
 
 
 @pyuvm.test()
@@ -82,15 +86,17 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         self.logger.info(
             "sensed OTP LC_STATE=%s; SIP_DIS=0x%016x SYS_DIS=0x%016x",
-            lc_state_name(image.lc_raw()), _SIP_DIS, _SYS_DIS,
+            lc_state_name(image.lc_raw()),
+            _SIP_DIS,
+            _SYS_DIS,
         )
 
-        # security_disable (the LCC SEC_DIS override that forces feat_ctrl all-1s)
-        # is 0 by construction: it asserts only after a SEC_DIS token match, which
-        # this no-token PROD flow never performs. The exact 64-bit golden compare
-        # below is the safety net -- if it were actually 1, FEAT_CTRL would read
-        # all-1s and the PROD check (expecting sep_debug=0) would fail.
-        sec_dis = 0
+        # security_disable read from the DUT, not assumed. It asserts only after a
+        # SEC_DIS token match, which this no-token PROD flow never performs, so the
+        # expected value is 0 -- but "expected 0" and "observed 0" are different
+        # claims, and the probe makes it the second one. The exact 64-bit golden
+        # compare below remains the safety net either way.
+        sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
 
         # ---- PROD: sep_debug=0, inbound filter active -> external blocked ----
         feat_prod = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
@@ -120,17 +126,70 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         )
         self.logger.info(
             "CHK-PROD-BLOCK PASS: external AXI @0x%08x blocked with DECERR (resp=%d)",
-            LCC_FEAT_CTRL, probe_prod.resp_code,
+            LCC_FEAT_CTRL,
+            probe_prod.resp_code,
+        )
+
+        # ---- CHK-DEMOTE-INDEP: DEMOTE_2 alone must open DBG_2 and NOT DBG_1 ----
+        #
+        # DEMOTE_1 and DEMOTE_2 are independent and act only on their own debug
+        # group: DEMOTE_1 on DBG_1 [15:0], DEMOTE_2 on DBG_2 [31:16].
+        # DEMOTE_2 is driven FIRST: the demote field is `onwrite=woset`
+        # (sep_lifecycle_ctrl.rdl:27), so it cannot be cleared once set. Driving
+        # DEMOTE_2 while DEMOTE_1 is still 0 is the only order in which this DUT
+        # can show one group opening without the other. sep_debug is bit 0, inside
+        # DBG_1, so it must still read 0 here -- and the external port must still
+        # be blocked, which is a second, independent consequence of the same
+        # property.
+        demote2 = SepLccDemoteSeq(group=2)
+        await self.start_seq(demote2)
+        assert demote2.demote == 1, f"DEMOTE_2.demote read back {demote2.demote}, expected 1"
+
+        feat_d2 = feat_ctrl_expected(
+            LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, demote_2=1, sec_dis=sec_dis
+        )
+        ctl_d2 = SepLccFeatCtrlCheckSeq(feat_d2)
+        await self.start_seq(ctl_d2)
+        assert ctl_d2.sep_debug == 0, (
+            f"DEMOTE_2 alone must NOT open sep_debug (a DBG_1 bit), got "
+            f"{ctl_d2.sep_debug} (FEAT_CTRL=0x{ctl_d2.feat_ctrl:016x}) -- the two demote "
+            f"registers are not independent"
+        )
+        assert (ctl_d2.feat_ctrl & 0xFFFF) == 0, (
+            f"DEMOTE_2 alone opened DBG_1 bits [15:0]=0x{ctl_d2.feat_ctrl & 0xFFFF:04x}, "
+            f"expected 0 -- demotion is not per-group"
+        )
+        assert (ctl_d2.feat_ctrl >> 16) & 0xFFFF, (
+            f"DEMOTE_2 did not open any DBG_2 bit [31:16]=0x"
+            f"{(ctl_d2.feat_ctrl >> 16) & 0xFFFF:04x} -- the write had no effect"
+        )
+        self.logger.info(
+            "CHK-DEMOTE-INDEP PASS: DEMOTE_2 alone opened DBG_2 and left DBG_1 closed "
+            "(sep_debug=0), so the two demote registers act per-group"
+        )
+
+        probe_d2 = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
+        await self.start_ext_seq(probe_d2)
+        assert probe_d2.resp_code == RESP_DECERR, (
+            f"DEMOTE_2 alone must leave the inbound filter active (sep_debug=0), but the "
+            f"external probe returned resp={probe_d2.resp_code}"
+        )
+        self.logger.info(
+            "CHK-DEMOTE-INDEP PASS: external AXI still DECERR under DEMOTE_2 alone "
+            "(filter follows DBG_1, not DBG_2)"
         )
 
         # ---- flip PROD -> PROD_DBG_1 via DEMOTE_1 ----
-        demote = SepLccDemote1Seq()
+        demote = SepLccDemoteSeq(group=1)
         await self.start_seq(demote)
         assert demote.demote == 1, f"DEMOTE_1.demote read back {demote.demote}, expected 1"
         self.logger.info("CHK-DEMOTE PASS: DEMOTE_1.demote write -> read-back == 1")
 
         # ---- PROD_DBG_1: sep_debug=1, inbound filter skipped -> external allowed ----
-        feat_dbg = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=1, sec_dis=sec_dis)
+        # demote_2 stays 1: the field is write-once-set, so the golden must carry both.
+        feat_dbg = feat_ctrl_expected(
+            LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=1, demote_2=1, sec_dis=sec_dis
+        )
         ctl_dbg = SepLccFeatCtrlCheckSeq(feat_dbg)
         await self.start_seq(ctl_dbg)
         assert ctl_dbg.sep_debug == 1, (
@@ -142,12 +201,13 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             ctl_dbg.feat_ctrl,
         )
 
-        # Read BOTH FEAT_CTRL halves over the external master. The lo word is
-        # 0xffffffff (all debug bits) -- proves OKAY but is not distinctive. The
-        # hi word (~SIP_DIS & FUNC_MASK = 0xf0f00000 here) is a DISTINCTIVE value:
-        # a dummy responder returning all-ones (or any unrelated OKAY slave) would
-        # fail it, so matching it proves the external read actually reached the
-        # LCC FEAT_CTRL register.
+        # Read BOTH FEAT_CTRL halves over the external master. The DISTINCTIVE half is
+        # now the LO word: demotion acts only on DBG_1, so the hi (Function) word is
+        # identical in PROD and PROD_DBG_1 and cannot distinguish them. The lo word
+        # is ~(SIP_DIS|SYS_DIS) over both debug groups = 0xf000f003 -- neither all-ones
+        # nor zero, so a
+        # dummy responder or any unrelated OKAY slave fails it, and matching it proves
+        # the external read actually reached the LCC FEAT_CTRL register.
         exp_lo = feat_dbg & 0xFFFF_FFFF
         exp_hi = (feat_dbg >> 32) & 0xFFFF_FFFF
         probe_lo = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
@@ -165,8 +225,10 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         )
         self.logger.info(
             "CHK-DBG-ALLOW PASS: external AXI OKAY, FEAT_CTRL=0x%08x_%08x == golden "
-            "(hi word 0x%08x is distinctive -> external read reached the LCC)",
-            probe_hi.rdata, probe_lo.rdata, exp_hi,
+            "(lo word 0x%08x is distinctive -> external read reached the LCC)",
+            probe_hi.rdata,
+            probe_lo.rdata,
+            exp_lo,
         )
 
         # ---- filter_skip_i identity + non-vacuity ----
@@ -175,10 +237,11 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             "allowed (PROD_DBG_1, OKAY) external access"
         )
         self.logger.info(
-            "CHK-IDENTITY PASS: filter_skip_i tracks feat_ctrl.sep_debug "
+            # Do not name filter_skip_i here: nothing in this test samples that
+            # signal. The evidence is the external access flipping from DECERR to
+            # OKAY across the sep_debug change, which is a behavioural claim.
+            "CHK-IDENTITY PASS: external inbound access follows feat_ctrl.sep_debug "
             "(blocked@sep_debug=0 -> allowed@sep_debug=1)"
         )
-        self.logger.info(
-            "CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed"
-        )
-        self.logger.info("SEP LCC inbound-filter-gating test PASS (TEST 3.7 / #2868)")
+        self.logger.info("CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed")
+        self.logger.info("SEP LCC inbound-filter-gating test PASS")
