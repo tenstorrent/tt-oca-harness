@@ -22,7 +22,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib import results, stages  # noqa: E402
+from runlib import results, site, stages  # noqa: E402
 from runlib.config import (  # noqa: E402
     load_simulators,
     validate_formal_evidence_hook,
@@ -41,8 +41,36 @@ from runlib.logparse import (  # noqa: E402
     validate_parser_registry,
 )
 from runlib.models import ConfigError, Dut, StageResult, TestCatalog, TestEntry  # noqa: E402
+from runlib.site import load_site_layer, merged_simulators  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+
+# A licensed formal backend reaches the runner as a complete tool table in the site layer; this
+# one carries the generic launch template a Tcl-driven tool uses.
+LICENSED_SITE = """
+schema_version = 1
+[simulators.fvtool]
+kind = "formal"
+binary = "fvtool"
+frameworks = ["formal"]
+license_env = ["FVTOOL_LICENSE_FILE"]
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+argv = ["{binary}", "{args}", "{script}", "{formal_args}"]
+"""
+
+
+def registry_with_site_backend() -> dict:
+    """The checked-in registry with the site-added licensed backend `fvtool` merged in."""
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "site.toml"
+        path.write_text(LICENSED_SITE)
+        layer = load_site_layer(REPO_ROOT, {site.SITE_ENV: str(path)})
+    assert layer is not None
+    return merged_simulators(load_simulators(REPO_ROOT), layer)
+
+
 DTP_DV_ROOT = REPO_ROOT / "hw/sys/dtp/dv"
 
 SIM_STAGE_KEYS = {
@@ -517,7 +545,7 @@ class EvidenceHookTest(GradingBase):
                 (stage_dir / "results" / "summary.txt").write_text("\n".join(lines) + "\n")
             return self.grade(
                 stage_dir,
-                tool="jasper",
+                tool="fvtool",
                 app_table={"evidence": dict(self.HOOK)},
                 return_code=return_code,
             )
@@ -657,13 +685,9 @@ class EvidenceHookValidationTest(unittest.TestCase):
 class GradingSourceValidationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.simulators = load_simulators(REPO_ROOT)
+        cls.simulators = registry_with_site_backend()
         cls.policies = validate_parser_registry(REPO_ROOT)
-        cls.licensed = next(
-            name
-            for name, cfg in sorted(cls.simulators.items())
-            if cfg.get("kind") == "formal" and cfg["license_env"]
-        )
+        cls.licensed = "fvtool"
 
     def test_sby_app_is_graded_by_the_registry_policy(self) -> None:
         raw = {"formal": {"apps": {"fpv": {"sby": {"script": "dtp.sby"}}}}}

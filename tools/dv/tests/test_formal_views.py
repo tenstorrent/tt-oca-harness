@@ -279,7 +279,7 @@ class ListingTest(TempRepo):
         fv = widget_rows[1]
         self.assertRegex(fv, r"^widget\s+fv\s+.*formal")
         self.assertIn("sby", fv)
-        self.assertIn("(licensed)", fv)
+        self.assertNotIn("(licensed)", fv)
         self.assertTrue(fv.endswith("widget TAP formal"), fv)
         gizmo_fv = next(line for line in lines if line.startswith("gizmo") and " fv " in line)
         self.assertIn("unavailable: formal config not found", gizmo_fv)
