@@ -59,10 +59,10 @@ point at it. SMU's record of the tests that stage SMC images is
 |`smc_fw_octs_p0_primary_test` (`testlists/fw.toml`, `[c_build.default]`); the bench reads COUNT advancing and counts PRIMARY credit pulses on pad 56.
 |i2c_sanity
 |enrolled
-|`smc_fw_i2c_sanity_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); carries the `SMC_I2C_001` c-fw contract; the bench decodes the write and the NACKed probe on the pad bus.
+|`smc_fw_i2c_sanity_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); the `i2c_sanity` image's controller bring-up (TIMING read-back, FMT reset, a 3-byte write with STOP, CMD_COMPLETE through the PLIC, CONTROLLER_HALT on a NACK); the bench decodes the write and the NACKed probe on the pad bus.
 |i2c_target_sanity
 |enrolled
-|`smc_fw_i2c_target_sanity_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); carries the `SMC_I2C_005` c-fw contract; the bench plays the S6 host from the `SCRATCH_1` marker and decodes the pad bus.
+|`smc_fw_i2c_target_sanity_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); the `i2c_target_sanity` image's target bring-up (ADDR0 match and mismatch, dual address, ACQ write, TX read, TX stretch control, UNEXP_STOP); the bench plays the S6 host from the `SCRATCH_1` marker and decodes the pad bus.
 |i2c_acq_fifo_stretch_reset
 |enrolled
 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (`testlists/fw.toml`, `[c_build.default]`, `+smc_i2c_shared_bus`); the bench samples the target's SCL pull in both `tb_sync` windows and acknowledges through `SCRATCH_4`.

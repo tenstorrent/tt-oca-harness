@@ -6345,7 +6345,7 @@ For each of the two (target, lock) pairs:
 *Test Coverage*:
 
 * A 64-byte payload -- the FIFO depth -- moved one byte per controller write from I2C_0 to I2C_1 while the target drains its ACQ FIFO concurrently; the length and every byte compared, entries classified by ACQ signal so a NACKed byte cannot pass as payload. Those compares are the firmware's.
-* The wire, graded by the bench as on card 168: acknowledged write frames to 0x10 carrying at least 64 data bytes in total. Floors, not exact counts, since the driver may split the transfer.
+* The wire, graded by the bench as on card 169: acknowledged write frames to 0x10 carrying at least 64 data bytes in total. Floors, not exact counts, since the driver may split the transfer.
 
 *Test Procedure*:
 
@@ -6380,7 +6380,7 @@ For each of the two (target, lock) pairs:
 *Test Coverage*:
 
 * I2C_1 reads from I2C_0 while the target TX FIFO is empty, so the target stretches SCL until the controller stretch timeout fires; the firmware then disables the target to release SCL, disables the controller to exercise the automatic STOP recovery, re-initialises both and checks a 16-byte write. Those compares are the firmware's.
-* The wire, graded by the bench as on card 168. For a read the bytes counted are those the target clocked out, since the controller NACKs the last one by design.
+* The wire, graded by the bench as on card 169. For a read the bytes counted are those the target clocked out, since the controller NACKs the last one by design.
 
 *Test Procedure*:
 
@@ -6416,7 +6416,7 @@ For each of the two (target, lock) pairs:
 
 * FMT and TX filled by software stores to the depth the RTL declares and reset; RX and ACQ filled by a real 8-byte read and a real 8-byte write between I2C_0 and I2C_1, their levels proven non-zero before the reset and zero after, with the driver's software-drain repair flag read back so a FIFO the driver emptied for it fails instead of passing. Those compares are the firmware's.
 * The cocotb `smc_i2c_fifo_full_test` covers the CSR-level full/empty flags only; this leaf is the one that fills RX and ACQ by transfers.
-* The wire, graded by the bench as on card 168.
+* The wire, graded by the bench as on card 169.
 
 *Test Procedure*:
 

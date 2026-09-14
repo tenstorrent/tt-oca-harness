@@ -108,7 +108,7 @@ args = [
 # A passive decoder on tb_i2c0_scl/sda grades the wire against floors each
 # image implies; the firmware grades its own CSR-side checks.
 #
-# DV-TESTCASE-CONTRACT SMC_I2C_001, ENV c-fw.
+# i2c_sanity: controller bring-up, a 3-byte write with STOP and a NACKed probe.
 name = "smc_fw_i2c_sanity_test"
 module = "smc_fw_i2c_sanity_test"
 seed = 1
@@ -123,7 +123,7 @@ args = [
 ]
 
 [[tests]]
-# DV-TESTCASE-CONTRACT SMC_I2C_005, ENV c-fw. Step S6 needs a host that STOPs
+# i2c_target_sanity: target bring-up whose step S6 needs a host that STOPs
 # inside the acknowledge clock; the bench plays it from a SCRATCH_1 marker.
 name = "smc_fw_i2c_target_sanity_test"
 module = "smc_fw_i2c_target_sanity_test"

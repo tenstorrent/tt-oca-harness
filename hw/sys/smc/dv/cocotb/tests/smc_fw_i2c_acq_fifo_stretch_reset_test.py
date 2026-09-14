@@ -12,8 +12,10 @@ compare are the firmware's.
 Bench observation: the stretch is a duration on SCL that no register reports.
 The image parks at two markers and waits for a SCRATCH_4 acknowledge each time;
 the bench samples the target's own open-drain pull (tb_i2c0_scl_dut_low) across
-a window of ~20 SCL periods at each -- asserted throughout while ACQ is full,
-released throughout with SCL high after the reset -- and reads the ACQ levels
+a window of ~20 SCL periods at each -- held for a contiguous span longer than
+any clock-low phase and through the window's final quarter while ACQ is full,
+absent throughout after the reset (the resolved SCL is reported, not required
+idle, since the controller may still be clocking) -- and reads the ACQ levels
 the image published (non-zero, then zero). The wire decoder must also have seen
 the 4-byte verify write acknowledged by the target.
 

@@ -118,9 +118,10 @@ jobs:
             runner: ubuntu-latest
             timeout: 90
           - dut: smc
-            # SMC `all` is 156 leaves; five of them need a RISC-V toolchain
-            # or an SMC_DUAL elaboration. `hosted` is that group minus those
-            # five, so the scheduled tier keeps the former smoke leaves.
+            # SMC `all` is 168 leaves; the 14 in testlists/fw.toml need a
+            # RISC-V toolchain and three need an SMC_DUAL elaboration.
+            # `hosted` is `all` minus those 17, so the scheduled tier keeps
+            # the former smoke leaves.
             items: hosted
             reseed: 3
             coverage: false
