@@ -894,9 +894,9 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 
 *Test Coverage*:
 
-* 8-bit beats and the assembly into packets -- `doc/interface.adoc:59,69` ("8-bit data beats", "Data Width: 8 bits per beat") and `doc/architecture.adoc:56`; `NUM_BEATS_PER_PACKET` is the RTL localparam `TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH` (`rtl/telemetry_receiver_pkg.sv:51`), used at `rtl/telemetry_receiver.sv:134`.
-* `probe_id` at bits `[60:56]` -- `rtl/telemetry_receiver.sv:77-81`, `get_telemetry_probe_id` returns `telemetry_packets[0][60:56]`.
-* `last_packet` at bit 63 -- it is the most significant field of the 64-bit packed `telemetry_packet_t` (`rtl/telemetry_receiver_pkg.sv:60-63`), read at `rtl/telemetry_receiver.sv:139`.
+* The ATB framing the sequence drives is a DV-owned table. 8-bit beats assembled LSB-first into 64-bit packets, 9-bit blocks, the 5-bit probe ID and the last-packet flag are cited to `hw/ip/telemetry_receiver/doc/interface.adoc`, `doc/architecture.adoc` and `regs/telemetry_receiver.rdl` (`TELEMETRY_PROBE_ID.PROBE_ID[4:0]`, `INTR_STATUS.MISSING_LAST`).
+* The bit positions of the probe-ID header, the last-packet flag and the first block of each packet are fixed by no document and are declared as DV-owned framing assumptions in the sequence.
+* What is scored is the CSR-visible consequence of a message framed per that table (STATUS.EMPTY clearing, PROBE_ID reading back the framed value), not that the table is the specified telemetry format.
 
 *Test Procedure*:
 
@@ -3406,7 +3406,8 @@ Drive `smc_efuse_jtag_lc_negative_test_seq`. Each checker below is a named compa
 * `CHIPLET_ID` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `CHIPLET_ID_READ_LOCK` set, and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/depth.toml`).
 * The read-lock leg therefore proves that the DUT ENFORCES a lock it found already set; it does not prove a lock can be established through the fuse-programming path.
 * The write-lock leg does establish its own lock, through the real `LOCKS` CSR write path.
-* Everything asserted below -- lock enforcement, the blocked-read data, the non-disclosure property and the interrupt itself -- is produced by RTL under `hw/ip/efuse/rtl/` and `hw/sys/smc/rtl/`.
+* Everything asserted below -- lock enforcement, the non-disclosure property and the interrupt itself -- is produced by the design under test.
+* The read-locked read is not value-compared: `hw/ip/efuse/doc/architecture.adoc` fixes `0xbadcab1e` only for the JTAG lifecycle-demux error slave and does not state what a read-locked shadow register returns over the CSR path, so that leg claims the interrupt pulse and non-disclosure (`lock[0] = 1` is read-locked) and nothing about the substituted word.
 * The model contributes the fuse CONTENT only, and every expectation that depends on that content is derived from the asset at run time rather than hand-transcribed.
 
 *Test Procedure*:
@@ -5658,7 +5659,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 * Front-door AXI write and readback into the CPU scratch banks, which is how the OCCP boot flow stages its payload.
 * Six distinct patterns, placed one per field of the scratch decode: the two stripe bits (`address[7:6]`), the wrap of the four-bank cycle at +0x100, the entry low bits (`address[5:3]`), and the next 128 KB group (`address[19:17]`).
-* `smc_scratch_map_pkg`, the decode the `+smc_scratch_ram_hex` image loader in `smc_cpu_mem_dv.sv` uses to scatter firmware across the 32 banks. It is read out of the cluster's own decode -- `OCAH4CORECluster_TLXbar_mbus_i1_o33_a32d64s11k1z3u.sv:700-755` for the bank and `OCAH4CORECluster_TLRAM.sv:308` for the entry -- and this testcase is where that reading is measured rather than assumed.
+* `smc_scratch_map_pkg`, the decode the `+smc_scratch_ram_hex` image loader in `smc_cpu_mem_dv.sv` uses to scatter firmware across the 32 banks. Its geometry comes from `spm_memory.rdl` and `cpu.adoc`; the bank interleave is a DV-owned table declared in the package header, and this testcase is where that table is measured against the design rather than assumed.
 
 *Test Procedure*:
 

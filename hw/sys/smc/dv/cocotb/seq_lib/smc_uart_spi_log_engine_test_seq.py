@@ -172,11 +172,19 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
 
         ``expected`` is compared against the masked word, so the pass asserts
         nothing about DSR / RI / DCD or their delta bits. The unmasked word is
-        kept in the failure message so a stray modem bit is still visible.
+        logged on every read, so those bits stay visible without being asserted.
         """
         rdata = await self.csr_read(name, UART_MSR)
         self.msr_reads += 1
         live = rdata & MSR_LIVE_MASK
+        cocotb.log.info(
+            "%s: UART_MSR full word 0x%08x, CTS/DCTS bits 0x%02x, bits outside the "
+            "compare 0x%08x (DSR/RI/DCD and their delta bits, logged only)",
+            name,
+            rdata,
+            live,
+            rdata & ~MSR_LIVE_MASK,
+        )
         if expected is not None:
             assert live == expected, (
                 f"{name}: UART_MSR CTS/DCTS bits 0x{live:02x} != expected "

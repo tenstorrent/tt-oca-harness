@@ -79,7 +79,9 @@ class SmcCsrSeq(smc_base_test_seq):
     # (``hw/ip/efuse/doc/architecture.adoc``, JTAG access control: "When a
     # request is blocked, the error slave returns an error response with data
     # value 0xbadcab1e"); ``EFUSE_BLOCKED_READ_DATA`` is the DV-owned copy of
-    # that sentence, and the error-slave sweeps use the same constant here.
+    # that sentence. The document states the word for the eFuse error slave
+    # only; expecting it from the other error-terminated windows the sweeps
+    # probe is a DV-owned assumption, declared here rather than cited.
     ERR_SLAVE_SIGNATURE = EFUSE_BLOCKED_READ_DATA
 
     async def csr_read_err_signature(
@@ -120,8 +122,14 @@ class SmcCsrSeq(smc_base_test_seq):
             await self.csr_read_err_signature(name, addr)
 
     async def csr_read_decerr_zero(self, name: str, addr: int, length: int = 4) -> int:
-        """Read a window terminated by DECERR + zero data (smc_ip_integration
-        gpio_ctrl / axil_extension err_slv with RESP_DATA='0)."""
+        """Read a window that must complete with an AXI error response
+        (SLVERR/DECERR) and an all-zero data word.
+
+        The zero is a DV-owned expectation, not a document-cited value: an
+        error response carries no payload, so a terminator that hands back a
+        neighbouring register's contents or a stale bus word fails here. Where
+        a document does fix the zero (memmap.adoc for AVS_READBACK on an empty
+        FIFO) the caller cites it."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ

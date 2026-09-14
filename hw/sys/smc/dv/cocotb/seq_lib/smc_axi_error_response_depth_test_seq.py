@@ -58,14 +58,17 @@ assert local_fabric_masked_addr(_UNIMPL_XVISOR_VIA_MASK) == _XVISOR_TOP_PAGE, (
     f"xvisor_region top page 0x{_XVISOR_TOP_PAGE:08x}"
 )
 
-# EXTERNAL_MANDATORY GPIO_CTRL is terminated with DECERR on the OSS DUT path
-# (smc_ip_integration err_slv). OCA_I3C_WRAP is a real core and answers OKAY,
-# so it is not a DECERR probe.
+# EXTERNAL_MANDATORY GPIO_CTRL is a DECERR probe: the OSS tree carries no GPIO
+# pad block behind that window (memmap.adoc lists it as technology-specific).
+# OCA_I3C_WRAP is a real core and answers OKAY, so it is not a DECERR probe.
 _GPIO_CTRL0 = external_gpio_ctrl_addr(0)
 
-# Data an AXI error slave returns alongside the error response. The two
-# remap-region terminators are `prim_axi_lite_err_slv` instances at their
-# default RESP_DATA; the smc_ip_integration GPIO_CTRL terminator drives zero.
+# Data expected alongside the error response. ``ERR_SLAVE_SIGNATURE`` is the
+# word the eFuse architecture document states for a blocked request, applied to
+# the two remap-region probes under the DV-owned assumption ``SmcCsrSeq``
+# declares; the GPIO_CTRL probe expects the all-zero word
+# ``csr_read_decerr_zero`` also expects, a DV-owned expectation that the
+# terminator returns no payload.
 ERR_SLAVE_SIGNATURE = SmcCsrSeq.ERR_SLAVE_SIGNATURE
 _GPIO_CTRL_ERR_DATA = 0x0
 
