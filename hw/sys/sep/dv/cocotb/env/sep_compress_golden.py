@@ -19,7 +19,7 @@
 # re-derives the digest with a fully manual FIPS-180-4 transform.
 # ----------------------------------------------------------------------------
 
-from env.sep_spec_tables import BIW_OUT_SHIFTS, BIW_TRIPLES
+from sep_spec_tables import BIW_OUT_SHIFTS, BIW_TRIPLES
 
 GF_POLY = 0x1B  # AES reduction polynomial
 N_LANES = 12
@@ -67,8 +67,13 @@ class SepBiwCompress:
             raise ValueError(
                 "BIW compress requires exactly %d lane bytes, got %d" % (N_LANES, len(lanes))
             )
+        if len(BIW_TRIPLES) != len(BIW_OUT_SHIFTS):
+            raise ValueError(
+                "BIW_TRIPLES and BIW_OUT_SHIFTS length mismatch "
+                f"({len(BIW_TRIPLES)} vs {len(BIW_OUT_SHIFTS)})"
+            )
         word = 0
-        for (a, b, c), shift in zip(BIW_TRIPLES, BIW_OUT_SHIFTS, strict=True):
+        for (a, b, c), shift in zip(BIW_TRIPLES, BIW_OUT_SHIFTS):
             word |= SepBiwCompress.gf256_muladd(lanes[a], lanes[b], lanes[c]) << shift
         return word & 0xFFFFFFFF
 
