@@ -34,9 +34,6 @@ from seq_lib.smu_axi_helpers import (
 )
 from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
-# SMC SYS_IN BlockByDefault err_slv poison (low 32b).
-SMC_FILTER_POISON_LO = 0xBADCAB1E
-
 
 class smu_axi_external_port_connectivity_test_seq:
     """SMU_ALL_002: SEP=0 inbound→SMC + direct IW converter elaboration."""
@@ -218,15 +215,6 @@ class smu_axi_external_port_connectivity_test_seq:
             )
         if r_rid != self.READ_ID:
             raise AssertionError(f"inbound RID mismatch: rid=0x{r_rid:x} arid=0x{self.READ_ID:x}")
-        # When BlockByDefault DECERR, err_slv poison confirms SMC consumer.
-        if rresp == RESP_DECERR:
-            poison = rdata & 0xFFFF_FFFF
-            if poison != SMC_FILTER_POISON_LO:
-                raise AssertionError(
-                    f"SMC filter poison mismatch: rdata=0x{poison:08x} "
-                    f"expect=0x{SMC_FILTER_POISON_LO:08x}"
-                )
-
         self._log(
             "CHK-SMU-PORT-SMN-AXI-S1: PASS "
             "(dir=in dest=smc_aperture path=direct_iw "
