@@ -67,7 +67,6 @@ default, and the runner sets the first three):
 | `RANDOM_SEED` | seeds every randomized scenario and the eFuse image regeneration; a run is reproducible from it |
 | `OCH_ROOT` | repo root override for asset and register-map lookup |
 | `OCAH_SIM_BUILD_DIR` | exported sim build directory, used to locate the elaborated model |
-| `SMC_DV_ALLOW_DIRTY` | `1` lets a run proceed with uncommitted changes on the paths that feed the model or the bench (compile sources and include directories, Bender manifests, the shared DV configs, the runner, `hw/sys/smc/dv`), which otherwise fail the run at 0 ns; the `CHK-BUILD-MODEL-IDENTITY` line then carries `dirty=true dirty_allowed=true dirty_paths=...` and such a log is not evidence |
 | `SMC_DV_RUN_LOGDIR` | where a sequence writes its coverage artefact |
 | `COCOTB_RESULTS_FILE` | cocotb `results.xml` path; PASS/FAIL classification reads it |
 
@@ -265,15 +264,13 @@ python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 
 The scheduled nightly and weekly (`.github/workflows/regress.yml`) run the
 `hosted` group on Verilator with three seeds per leaf. `hosted` is `all`
-without the seventeen leaves that need a RISC-V toolchain, which the hosted GitHub
-runners do not have: the fourteen `fw` leaves and the three dual-target leaves,
+without the five leaves that need a RISC-V toolchain, which the hosted GitHub
+runners do not have: the two `fw` leaves and the three dual-target leaves,
 which run a ROM or firmware image on top of the `SMC_DUAL` elaboration;
-`testlists/all.toml` defines the set. The weekly tier also runs `rtl_issue`
-on its own row: its leaves carry `expect_fail` and are graded green while the
-filed defects stand. The `fw`, `occp_boot`, `dual_smoke`, `dual_all` and
-`occp_dual` groups need the RISC-V toolchain and no tier schedules them;
-`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` records each held-out leaf
-with the reason, its owner and its closing condition.
+`testlists/all.toml` defines the set. The `fw`, `occp_boot`, `dual_smoke`,
+`dual_all` and `occp_dual` groups need the RISC-V toolchain and no tier
+schedules them; `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` records each
+held-out leaf with the reason, its owner and its closing condition.
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
