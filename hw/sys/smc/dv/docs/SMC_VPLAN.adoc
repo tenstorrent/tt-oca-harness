@@ -10,12 +10,10 @@ This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
 that carry one. The enrolled testcases and the membership of the `all`
-sign-off group are defined in `testlists/all.toml`. Enrolled leaves held
-out of `all`: `smc_deadspace_decode_test` and `smc_remap_cla_test` run on
-demand and each measures a decode defect recorded under Known
-Limitations; two dual / production-ROM leaves are held on runtime; the
-`rtl_issue` reproducers fail on RTL that carries the defect they
-reproduce. Three other dual bring-up scenarios ride in `all`.
+sign-off group are defined in `testlists/all.toml`. The nine enrolled
+leaves held out of `all`, and why, are named in the `all` row under
+Regression Groups; where the reason is a defect or a stimulus the sign-off
+rule excludes, Known Limitations records the hole.
 
 Every entry below names a testcase that exists and runs. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is
@@ -2329,6 +2327,9 @@ Drive `smc_cg_zeroer_activity_bringup_test_seq`. Each checker below is a named c
 *Test Coverage*:
 
 * DV-CARD: SMC_CLK_MULTI_WINDOW_TEST ANCHOR: smc_clk_multi_window_test
+* Hysteresis encodings are drawn from `HYST_LEGAL_LO..HYST_LEGAL_HI` in
+  `smc_clk_multi_window_test_seq.py`; the 0..8 band is never programmed, so the
+  card claims nothing about it.
 
 *Test Procedure*:
 
@@ -3351,6 +3352,23 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 * the access table, :289-295 -- JTAG Write *Blocked* / JTAG Read *Blocked* except Chiplet ID / JTAG Read Chiplet ID Allowed, in both columns;
 * the Chiplet ID exception, :301-305 -- "Even in PROD or RMA_SOP states, JTAG read access to the chiplet ID and package ID registers is permitted";
 * the blocked response, :297-299 -- "the error slave returns an error response with data value `0xbadcab1e`".
+
+The outcome the checkers compare against, per raw `lc_state_i` encoding.
+`smc_efuse_wrapper` gates JTAG-to-eFuse access on `lc_state_i`; a blocked
+transaction returns DECERR with data `0xBADCAB1E`. `smc_efuse_jtag_lc_negative_test`
+covers the CSR-observable subset (`CHIP_CONFIG_LC_STATE` plus the always-allowed
+CHIPLET_ID / PACKAGE_ID reads).
+
+[cols="2,2,2,3",options="header",]
+|===
+|SMC LC state (raw) |JTAG eFuse write |JTAG eFuse read (non-ID) |JTAG read CHIPLET_ID / PACKAGE_ID
+|TEST_DEV `0x0` |allow |allow |allow
+|PROD `0x1` |BLOCK (DECERR/`0xBADCAB1E`) |BLOCK |allow
+|RMA_SIP `0x2`,`0x3` |BLOCK |BLOCK |allow
+|RMA_CHIPLET `0x6`,`0x7` |allow |allow |allow
+|PROD_END `0x8` |allow |allow |allow
+|differential-decode integrity error |BLOCK |BLOCK |BLOCK (no ID exception)
+|===
 
 *Test Procedure*:
 
@@ -6137,7 +6155,7 @@ For each of the two (target, lock) pairs:
 [cols=",",options="header",]
 |===
 |Group |Purpose
-|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Enrolled leaves outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the `rtl_issue` reproducers whose job is to fail
+|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Nine enrolled leaves are outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_state_fault_inject_test` (its stimulus is a testbench force on state flops, which the frontdoor-only sign-off rule excludes; it runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the four `rtl_issue` reproducers whose job is to fail
 |`avsbus_depth` |avsbus depth coverage
 |`axil` |axil coverage
 |`per_ip` |One-per-IP breadth run used for routine regression
@@ -6171,52 +6189,6 @@ For each of the two (target, lock) pairs:
 |`depth` |cross-feature depth testcases
 |===
 
-[[coverage-matrix]]
-=== Coverage Matrix
-
-Block coverage across the live groups (`smoke`, `per_ip`, `all`).
-Group names are the ones `testlists/all.toml` resolves. This table is the
-design-side claim; the per-leaf cards below are the detail.
-
-[cols="2,3,3",options="header",]
-|===
-|Block / edge |`smoke` / `per_ip` |`all` (sign-off)
-|Reset / powergood / cool / FLR |`smc_cold_reset_test`, `smc_canonical_smoke_test`, `smc_flr_sanity_test` |same plus the reset cluster
-|CSR / scratch / chip-config |`smc_register_sanity_test`, `smc_default_reg_rd_test` |same plus `smc_register_boundary_depth_test`
-|SEP_IN / local fabric |`smc_i3c_to_fabric_test`, `smc_local_fabric_csr_depth_test` |same plus fabric depth
-|Mailbox / IRQ |`smc_mailbox_irq_test` |same plus mailbox depth
-|I2C protocol |`smc_i2c_master_target_test` |same plus the I2C cluster
-|JTAG / iJTAG |`smc_ijtag_basic_test` |same plus DMI / DFX
-|eFuse / OTP / LC-gated JTAG |`smc_efuse_otp_clock_test` |same plus <<lifecycle-gated-efuse-jtag-access-control-coverage-gap>>
-|GPIO / ext IRQ |`smc_gpio_irq_active_test` |same plus the GPIO cluster
-|UART / log / sideband |`smc_sideband_protocol_smoke_test` |same plus UART / AVSBus / OCTS
-|ECC / DFD / DBS |`smc_ecc_dfd_dbs_sanity_test` |same plus diagnostic depth
-|Deadspace aliasing |`smc_deadspace_decode_test` (on demand) |held out of `all`
-|CLA / ALIAS_REMAP |`smc_remap_cla_test` (on demand) |held out of `all`
-|===
-
-[[lifecycle-gated-efuse-jtag-access-control-coverage-gap]]
-=== Lifecycle-Gated eFuse JTAG Access Control
-
-`smc_efuse_wrapper` gates JTAG-to-eFuse access on `lc_state_i`. A blocked
-transaction returns DECERR with data `0xBADCAB1E`. This matrix is the
-checker ground truth for `smc_efuse_jtag_lc_access_matrix_test`.
-`smc_efuse_jtag_lc_negative_test` covers the CSR-observable subset
-(`CHIP_CONFIG_LC_STATE` plus the always-allowed CHIPLET_ID / PACKAGE_ID
-reads). Residual: `feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by
-SMC; that connection stays a negative item.
-
-[cols="2,2,2,3",options="header",]
-|===
-|SMC LC state (raw) |JTAG eFuse write |JTAG eFuse read (non-ID) |JTAG read CHIPLET_ID / PACKAGE_ID
-|TEST_DEV `0x0` |allow |allow |allow
-|PROD `0x1` |BLOCK (DECERR/`0xBADCAB1E`) |BLOCK |allow
-|RMA_SIP `0x2`,`0x3` |BLOCK |BLOCK |allow
-|RMA_CHIPLET `0x6`,`0x7` |allow |allow |allow
-|PROD_END `0x8` |allow |allow |allow
-|differential-decode integrity error |BLOCK |BLOCK |BLOCK (no ID exception)
-|===
-
 === Known Limitations
 
 [cols=",,",options="header",]
@@ -6231,4 +6203,6 @@ SMC; that connection stays a negative item.
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |`smc_deadspace_decode_test` measures wrap-to-live aliasing |Held out of `all`; the card does not claim sign-off PASS |Resolve the wrap-to-live aliasing decode contract
 |`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 |Held out of `all`; the card does not claim sign-off PASS |Fix the CLA deny-leg hang
+|`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |Held out of `all`: the sign-off sweep is frontdoor-only, so the fail-closed recovery it scores is proven in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`, not in the sign-off sweep |Enroll it once the sign-off policy admits fault injection, or once an illegal encoding is reachable from a product port
+|`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |===
