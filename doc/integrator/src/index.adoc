@@ -882,7 +882,7 @@ asynchronous to `clk_i` and typically runs between 100 and 400 MHz.
 For adopters providing an external TRNG, the `ext_trng_axil` AXI-Lite interface
 connects to the external TRNG's control registers, while the `ext_trng_axis`
 AXI-Stream interfaces carry entropy data. The `ext_trng_irq_i` input is routed
-to the PIC; `ext_trng_alarm_i` is reserved for RAS.
+to the PIC.
 
 SEP decodes the 4 kB TRNG aperture (`0x1091_7000` - `0x1091_7FFF`) as a single
 window and forwards every access on `ext_trng_axil`. It does not decode offsets
