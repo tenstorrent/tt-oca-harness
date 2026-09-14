@@ -7,8 +7,7 @@ no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 Warm-reset first: park and release the KM ``SW_RESET_N`` bit, wait for
 ``RESP_KM_READY``, and prove a key load still succeeds. Wipe last: write
 ``KM_WIPE_CTRL.wipe_state``. The KM posts ``RESP_UNRECOVERABLE_FAULT``.
-The halt after that frame is not observed. KPV-zero is not claimed --
-those arrays have no SEP frontdoor.
+KPV-zero is not claimed -- those arrays have no SEP frontdoor.
 """
 
 from __future__ import annotations

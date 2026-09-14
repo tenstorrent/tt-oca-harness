@@ -88,8 +88,8 @@ Scope deltas:
     bus and answers DECERR from the SEP fabric, and the reference suite
     provokes the fault with testbench knobs that have no open equivalent. At
     SEP level a DRBG fault is unrecoverable: the KM emits an unsolicited
-    RESP_UNRECOVERABLE_FAULT and halts, so it also cannot be a return-code
-    check. Building it would need a backdoor.
+    RESP_UNRECOVERABLE_FAULT, so it also cannot be a return-code check.
+    Building it would need a backdoor.
   * CHK-SHRED does not observe the shredded key material. The engine KEY_SHARE
     CSRs are write-only and read as zero, so the overwritten value has no
     frontdoor. The shred is proven by its return code plus the engine
