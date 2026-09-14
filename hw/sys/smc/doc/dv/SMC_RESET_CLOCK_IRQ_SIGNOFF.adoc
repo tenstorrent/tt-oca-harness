@@ -21,7 +21,7 @@ stay in `smoke` and are not requirement rows.
 |GPIO IRQ active |`smc_gpio_irq_active_test` |`hosted`, `per_ip` |YES
 |Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |`hosted`, `per_ip` |YES
 |Cold reset / clk running / IRQ observe |`smc_cold_reset_test`, `smc_clk_running_test`, `smc_irq_observe_test` |`functional` (`smc_cold_reset_test` also `smoke`) |NO (SAMPLE-only)
-|PLL/PVT clock config |`smc_pll_*` |unenrolled `rtl_placeholder` |NO
+|PLL/PVT clock config |none; `smc_pll_*` are dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |OKAY+0 placeholder wraps |NO
 |===
 
 `allow_timeout=True` stays a reviewed exception: helpers in

@@ -64,8 +64,8 @@ name = "all"
 #                                  in per_ip, coverage_closure, depth and
 #                                  depth_efuse.
 #
-# The test modules under cocotb/tests/ that are in no testlist are dispositioned
-# in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc.
+# Test names that are catalogued but have no module under cocotb/tests/ are
+# dispositioned in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc.
 #
 # The `rtl_issue` group is also out, and being red is its whole purpose -- it is
 # the runnable evidence for filed RTL defects. rtl_issue.toml is included above

@@ -95,8 +95,8 @@ the whole gate.
 |ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |depth |dbs_dfd_ecam_ecc |CSR sanity; fault-inject is deferred |YES
 |Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |depth |reset |Scratch persist across reset classes |YES
 |I3C window decode |`smc_i3c_to_fabric_test` |i3c_depth, depth; not in smoke or functional |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
-|PLL/PVT clock config |`smc_pll_pvt_clock_config_test` |none — in no testlist |macro handshake |OKAY+0 wrap |NO
-|I3C CCC/IBI |`smc_i3c_ccc_ibi_full_test` |none — in no testlist |— |child I3C TB |NO
+|PLL/PVT clock config |none; `smc_pll_pvt_clock_config_test` is dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |none |macro handshake |OKAY+0 wrap |NO
+|I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |none |— |child I3C TB |NO
 |DTP CSR on smc_wrapper |idle port; no terminator |none — no terminator |— |do not add a placeholder slave for credit |NO
 |UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |protocol / firmware |UART/ROM intake |NO
 |===
