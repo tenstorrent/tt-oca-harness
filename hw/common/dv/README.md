@@ -141,8 +141,10 @@ directory. Add or extend shared protocol behavior only under
 
 `vip/ocah_checker/` owns protocol-neutral checker evidence: stable `CHK-*`
 identifiers, exact expected/observed/context formatting, required-ID tracking,
-timeout checks, retained findings, and strict finalization. It is checker
-infrastructure, not a protocol VIP.
+timeout checks, reset/interrupt/status helpers, retained findings, and strict
+finalization (one summary per checker; zero checks fail unless the owner
+declares the stream idle). It is checker infrastructure, not a protocol VIP;
+its SV-UVM twin `ocah_checker_uvm_pkg::ocah_checker` follows the same contract.
 
 Checker ownership follows these boundaries:
 

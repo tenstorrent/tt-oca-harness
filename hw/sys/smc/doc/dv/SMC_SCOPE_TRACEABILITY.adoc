@@ -5,17 +5,20 @@
 == SMC scope and traceability
 
 This chapter is the requirement-to-test-to-coverage matrix. Live group
-membership is `testlists/all.toml` and the lists it includes; `SMC_VPLAN.adoc`
-states what each testcase verifies. This file is the reconciliation between
-the two — which of those testcases count as feature credit, and which are
-bring-up or decode-only names that must not be counted twice.
+membership is `hw/sys/smc/dv/testlists/all.toml` and the lists it includes;
+`hw/sys/smc/dv/docs/SMC_VPLAN.adoc` states what each testcase verifies. This
+file is the reconciliation between the two — which of those testcases count as
+feature credit, and which are bring-up or decode-only names that must not be
+counted twice.
 
 [cols=",",options="header",]
 |===
 |Field |Value
 |DUT |`--dut smc` → `smc_wrapper` under `smc_uvm_top`
-|Spec / plan |`SMC_VPLAN.adoc` plus the groups `testlists/all.toml` resolves
-|Coverage intent |`SMC_FCOV.adoc` (Python counters; no Verilator covergroup)
+|Spec / plan |`hw/sys/smc/dv/docs/SMC_VPLAN.adoc` plus the groups
+`hw/sys/smc/dv/testlists/all.toml` resolves
+|Coverage intent |`hw/sys/smc/dv/docs/SMC_FCOV.adoc` (Python counters; no
+Verilator covergroup)
 |Checker |`SmcScoreboard` non-vacuous SAMPLE/AXI/VIP counts + `results.xml`
 |CI |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly `hosted`
 |===
@@ -24,15 +27,16 @@ bring-up or decode-only names that must not be counted twice.
 === Live groups versus credit
 
 Executable membership is resolved from the testlists; the groups and their
-`expected_count` guards are in `testlists/all.toml`:
+`expected_count` guards are in `hw/sys/smc/dv/testlists/all.toml`:
 
 [cols="2,3",options="header",]
 |===
 |Group |Role
 |`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
-|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the firmware / `SMC_DUAL` leaves
+|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the five leaves that need the RISC-V toolchain (two `fw` leaves, three dual-target leaves that run a ROM or firmware image)
+|`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
 |`per_ip` |One pass across every IP the bench drives
-|`all` |The package regression; `all.toml` names the held-out testcases and why
+|`all` |The package regression; `all.toml` names the leaves outside it and why, and `SMC_DEFERRED_DISPOSITION.adoc` records the leaves no scheduled tier runs
 |`functional` |One name per functional bucket; mixes SAMPLE bring-up with feature rows
 |===
 
@@ -63,8 +67,8 @@ is in neither `smoke` nor `functional` and receives no feature credit.
 === Matrix (feature-credit subset)
 
 Requirement IDs are the VPLAN TC rows or the canonical scenario those
-tests actually run. Coverage bins are the `SMC_FCOV.adoc` families the
-scoreboard can hit; Verilator does not close SV covergroups.
+tests actually run. Coverage bins are the `hw/sys/smc/dv/docs/SMC_FCOV.adoc`
+families the scoreboard can hit; Verilator does not close SV covergroups.
 
 The Groups column is resolved membership, not intent. Every feature-credit row
 below is reachable through both `smoke` and `per_ip`; the column names the

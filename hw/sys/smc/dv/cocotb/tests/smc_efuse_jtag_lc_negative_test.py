@@ -58,6 +58,13 @@ def pack_lc_state(raw: int) -> int:
 class smc_efuse_jtag_lc_negative_test(smc_base_test):
     """PROD JTAG eFuse deny paths + identity-read exception."""
 
+    required_evidence = (
+        "CHK-CPU-JTAG-DTMCS",
+        "CHK-CPU-JTAG-IDCODE",
+        "CHK-CPU-JTAG-SCAN-ACTIVITY",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

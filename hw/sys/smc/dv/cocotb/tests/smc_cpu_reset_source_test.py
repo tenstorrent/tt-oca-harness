@@ -17,6 +17,14 @@ from smc_base_test import smc_base_test
 class smc_cpu_reset_source_test(smc_base_test):
     """SW core0 level reset; no Force drain / no FLR isolate_req_o."""
 
+    required_evidence = (
+        "CHK-CPU-RST-BASIC",
+        "CHK-CPU-RST-IDLE",
+        "CHK-CPU-RST-REL",
+        "CHK-CPU-RST-SW",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

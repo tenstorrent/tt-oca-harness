@@ -14,6 +14,12 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_stretch_test(smc_base_test):
     """TX stretch recover + RSTART read/write on shared I2C pads."""
 
+    required_evidence = (
+        "CHK-I2C-P0-HOST-SETTLED",
+        "CHK-I2C-P0-STRETCH",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

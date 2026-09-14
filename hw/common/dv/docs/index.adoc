@@ -40,7 +40,7 @@ This detailed guide complements:
 
 * `hw/common/dv/README.md` -- installation and concise policy summary;
 * each `hw/common/dv/vip/ocah_*_vip/README.md` -- protocol-specific API;
-* `tools/dv/doc/run-dv.adoc` -- simulation runner and result contract;
+* `tools/dv/doc/run-dv.adoc` -- simulation and formal runner and result contract; its Formal verification chapter is the contributor's route through formal mode;
 * DUT documentation under `hw/<category>/<dut>/dv/docs/` -- local integration.
 
 include::vip-architecture.adoc[leveloffset=0]
