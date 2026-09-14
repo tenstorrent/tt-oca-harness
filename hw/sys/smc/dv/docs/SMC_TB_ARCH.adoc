@@ -613,15 +613,20 @@ assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
 === Canonical RTL Selection
 
 Bender supplies the product SMC RTL to the simulator flows. Verilator and the
-commercial simulators therefore compile the same subsystem source graph.
-`tb/verilator_stubs/` may contain tooling shims only (`prim_sync2` /
-`prim_sync3` for OSS prim port remap and X-init). Product-module overrides
-(`smc_reset_*`, `smc_dfx_*`, …) are forbidden.
+commercial simulators therefore compile the same subsystem source graph, with
+one difference: `tb/verilator_stubs/` replaces the `och_prim` `prim_sync2` /
+`prim_sync3` cells with behavioural stand-ins on Verilator and Xcelium, and the
+runner drops those stubs on VCS only, where the product cells elaborate. What
+that directory may hold is stated in its own `tb/verilator_stubs/README.md`.
 
 PeakRDL nested hwif structs stay compilable with `disable_public_flat_rw` plus
 `smc_public_scope.vlt`. PLL and PVT windows compile the adopter `pll_wrap` /
 `pvt_wrap` placeholders inside `smc_ip_integration`; those are handshake
 responders, not substitute macro RTL.
+
+Both stand-ins, the leaves whose verdict reads a signal behind one, and the
+control that keeps each claim honest are recorded in the *Bench stand-ins*
+section of `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 
 [[house-rules]]
 === House rules
