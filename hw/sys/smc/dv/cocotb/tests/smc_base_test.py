@@ -875,9 +875,10 @@ def log_build_model_identity(
 
     # The commit is the checkout's: the tree the compile sources come from
     # (the generated filelist itself may sit in a build tree on scratch).
-    # Whether the model was built from that tree is settled by the mtime
-    # comparison below. The bench must come from the same checkout, or the
-    # one line would name two trees.
+    # Whether the model was built from that tree is settled by the model
+    # binding below: the content hashes the build record keeps, or the mtimes
+    # for a tool that records none. The bench must come from the same
+    # checkout, or the one line would name two trees.
     in_repo = sorted(p for p in sources if _repo_relative(root, p) is not None)
     if not in_repo:
         _fail(
