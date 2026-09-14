@@ -18,13 +18,19 @@ reads a log line, up to the first character outside `[A-Za-z0-9_-]`, so
 inside the name makes it a template (`CHK-NDM-REQ-<bit>`) that concrete required
 names instantiate.
 
+A plain cocotb leaf over `SmcDualHarness` is gated only by the
+`finalize_evidence()` call it makes itself, so each one must hand its
+`REQUIRED_EVIDENCE` to the harness and end on that call.
+
 Importing the leaves needs the `dv` dependency group (cocotb, pyuvm). Run from
 the repository root:
 
     python3 -m unittest discover tools/dv/tests
 """
 
+import ast
 import importlib
+import inspect
 import re
 import sys
 import tomllib
@@ -240,6 +246,39 @@ class SmcRequiredEvidenceTest(unittest.TestCase):
                 else:
                     self.assertEqual(concrete, set(), "the card declares tokens: require them")
                     self.assertGreater(min_evidence, 0, "no required evidence and no floor")
+
+    def test_dual_leaf_hands_its_tokens_to_the_gate(self) -> None:
+        for name, (required, min_evidence) in self.leaves.items():
+            if min_evidence is not None:
+                continue
+            module = importlib.import_module(self.members[name])
+            tree = ast.parse(inspect.getsource(module))
+            leaf = next(
+                node
+                for node in tree.body
+                if isinstance(node, ast.AsyncFunctionDef) and node.name == name
+            )
+            harness_calls = [
+                node
+                for node in ast.walk(leaf)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "SmcDualHarness"
+            ]
+            with self.subTest(leaf=name):
+                self.assertNotEqual(required, (), "a dual leaf requires nothing")
+                self.assertEqual(len(harness_calls), 1, "one SmcDualHarness per leaf")
+                keywords = {kw.arg: ast.unparse(kw.value) for kw in harness_calls[0].keywords}
+                self.assertEqual(
+                    keywords,
+                    {"test_name": repr(name), "required_evidence": "REQUIRED_EVIDENCE"},
+                    "the harness must receive the leaf's name and REQUIRED_EVIDENCE",
+                )
+                self.assertEqual(
+                    ast.unparse(leaf.body[-1]),
+                    "harness.finalize_evidence()",
+                    "finalize_evidence() must be the leaf's last statement",
+                )
 
 
 if __name__ == "__main__":
