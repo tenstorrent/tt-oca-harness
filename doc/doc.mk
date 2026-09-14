@@ -16,6 +16,11 @@ OCAH_DOC_DIR ?= $(OCAH_ROOT)/doc
 # is the Antora 3-compatible release and renders inline diagrams during builds.
 OCAH_ANTORA ?= npx -y -p @antora/cli@3.1 -p @antora/site-generator@3.1 -p @antora/lunr-extension@1.0.0-alpha.13 -p asciidoctor-kroki@0.18.1 antora
 OCAH_ASCIIDOCTOR_PDF ?= asciidoctor-pdf
+# asciidoctor-diagram renders PlantUML locally with the bundled jar: no
+# network call, so PDF builds never depend on kroki.io being reachable.
+# (The Antora HTML builds still go through asciidoctor-kroki -- see
+# antora-*-playbook.yml -- since Antora has no equivalent local renderer.)
+OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS ?= -r asciidoctor-diagram
 OCAH_DOC_PDF_THEME ?= $(OCAH_DOC_DIR)/theme.yml
 OCAH_DOC_PDF_THEMESDIR ?= $(OCAH_DOC_DIR)
 OCAH_CSV_TO_ADOC := python3 $(OCAH_ROOT)/tools/doc/csvadoc.py

@@ -11,7 +11,7 @@ schema_version = 1
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_wr_test"
-module = "dtp_jtag2axi_smc_axi_wr_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_wr_test", uvm = false }
 seed = 1
 timeout_sec = 1800
 tags = ["legacy"]
@@ -19,7 +19,7 @@ run_modes = ["functional", "jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_rd_test"
-module = "dtp_jtag2axi_smc_axi_rd_test"
+module = { cocotb = "dtp_jtag2axi_smc_axi_rd_test", uvm = false }
 seed = 1
 timeout_sec = 1800
 tags = ["legacy"]

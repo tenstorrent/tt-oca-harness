@@ -283,9 +283,11 @@ Give each implemented scenario its UVM binding:
 module = { cocotb = "<dut>_sanity_test", uvm = "<dut>_sanity_test" }
 ----
 
-A scenario without a `uvm` binding errors when selected under
-`--framework uvm`; during bring-up, group selections can ride
-`--skip-unimplemented` until the port is complete.
+A scenario that is cocotb-only by design declares it in the same map
+(`module = { cocotb = "<dut>_x_test", uvm = false }`); group selections skip
+it under `--framework uvm` with no flag. A scenario without any `uvm` entry
+errors when selected under `--framework uvm`; during bring-up, group
+selections can ride `--skip-unimplemented` until the port is complete.
 
 ==== Step 8: Run and verify
 

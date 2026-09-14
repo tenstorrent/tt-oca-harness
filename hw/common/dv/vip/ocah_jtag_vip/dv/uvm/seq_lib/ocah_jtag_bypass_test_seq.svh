@@ -3,15 +3,18 @@
 //
 // Scenario sequence for ocah_jtag_bypass_test (the SV-UVM twin of the cocotb
 // selftest): random patterns at random widths (the one-bit and 64-bit corners
-// pinned) scan through BYPASS and the reference-model prediction emits
-// CHK-BYPASS-LATENCY; an unimplemented instruction behaves as BYPASS; every
-// IR load and DR scan reconstructs at its driven width.
+// pinned) and one scan wider than 64 bits pass through BYPASS and the
+// reference-model prediction emits CHK-BYPASS-LATENCY; every instruction
+// outside the device's map behaves as BYPASS; every IR load and DR scan
+// reconstructs at its driven width.
 
 class ocah_jtag_bypass_test_seq extends ocah_jtag_vip_base_test_seq;
   `uvm_object_utils(ocah_jtag_bypass_test_seq)
 
   int unsigned n_scans = 8;
   localparam int unsigned MaxWidth = 64;
+  localparam int unsigned WideWidth = 96;
+  localparam int unsigned UndefinedWidth = 8;
 
   function new(string name = "ocah_jtag_bypass_test_seq");
     super.new(name);
@@ -42,12 +45,39 @@ class ocah_jtag_bypass_test_seq extends ocah_jtag_vip_base_test_seq;
       check_last_scan(1'b0, width, ctx);
     end
 
-    ir_scan(UnusedOpcode, IrWidth, captured);
-    pattern = {$urandom(), $urandom()};
-    dr_scan(pattern, MaxWidth, observed);
-    expected = ocah_jtag_checker::predict_bypass_tdo(pattern, MaxWidth);
-    void'(evidence.expect_equal(
-        "CHK-JTAG-UNDEF-AS-BYPASS", observed, expected, $sformatf("ir=0x%02h", UnusedOpcode)
+    wide_scan();
+    undefined_instructions();
+  endtask
+
+  // A scan wider than 64 bits through BYPASS: bit 0 is the captured 0, every
+  // later bit is the previous TDI bit.
+  protected task wide_scan();
+    bit [63:0] captured;
+    bit pattern[], observed[];
+    bit match = 1'b1;
+    pattern = new[WideWidth];
+    foreach (pattern[i]) pattern[i] = bit'($urandom_range(1));
+    ir_scan(BypassOpcode, IrWidth, captured);
+    dr_scan_wide(pattern, observed);
+    foreach (observed[i]) match &= (observed[i] == ((i == 0) ? 1'b0 : pattern[i-1]));
+    void'(evidence.expect_true(
+        "CHK-BYPASS-LATENCY", match, $sformatf("wide scan width=%0d", WideWidth)
     ));
+    check_last_scan(1'b0, WideWidth, "wide scan");
+  endtask
+
+  // Every 5-bit instruction the device does not implement decodes as BYPASS.
+  protected task undefined_instructions();
+    bit [63:0] captured, pattern, observed, expected;
+    for (bit [63:0] opcode = 0; opcode < (64'h1 << IrWidth); opcode++) begin
+      if (opcode inside {IdcodeOpcode, CtrlOpcode, StatusOpcode, BypassOpcode}) continue;
+      ir_scan(opcode, IrWidth, captured);
+      pattern = 64'($urandom()) & 64'hFF;
+      dr_scan(pattern, UndefinedWidth, observed);
+      expected = ocah_jtag_checker::predict_bypass_tdo(pattern, UndefinedWidth);
+      void'(evidence.expect_equal(
+          "CHK-JTAG-UNDEF-AS-BYPASS", observed, expected, $sformatf("ir=0x%02h", opcode)
+      ));
+    end
   endtask
 endclass : ocah_jtag_bypass_test_seq
