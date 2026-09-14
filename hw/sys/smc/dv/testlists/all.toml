@@ -59,12 +59,10 @@ name = "all"
 #                                  defect: the DUT aliases deadspace onto live
 #                                  registers (wrap_to_live=7 read_alias=6).
 #                                  Also listed in depth.toml.
-#   smc_state_fault_inject_test -- reaches the illegal eFuse and Zeroer state
-#                                  encodings by forcing the state flops through
-#                                  tb_top's *_state_inject hooks. The sign-off
-#                                  sweep is frontdoor-only, so it runs in
-#                                  per_ip, coverage_closure, depth and
-#                                  depth_efuse instead.
+#   smc_state_fault_inject_test -- forces the eFuse and Zeroer state flops
+#                                  through tb_top's *_state_inject hooks; runs
+#                                  in per_ip, coverage_closure, depth and
+#                                  depth_efuse.
 #
 # The test modules under cocotb/tests/ that are in no testlist are dispositioned
 # in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc.

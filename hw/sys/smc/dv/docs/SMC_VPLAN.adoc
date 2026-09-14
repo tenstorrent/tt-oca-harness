@@ -22,12 +22,19 @@ is verified rather than what was once intended.
 
 === Verification Strategy
 
-* *Frontdoor only.* Stimulus is driven through product ports -- SEP_IN AXI,
-  AXI-Lite, JTAG, and the pad-level protocol VIPs. Force and backdoor writes
-  are not used to create the condition a testcase claims to verify, and the
-  `all` sign-off sweep admits no testcase that does; the one enrolled
-  testcase that does is named, with its groups, in the `all` row under
-  Regression Groups.
+* *Frontdoor stimulus, frontdoor proof.* Stimulus is driven through product
+  ports -- SEP_IN AXI, AXI-Lite, JTAG, and the pad-level protocol VIPs -- and
+  every claim is proven by what the DUT returns or drives at those ports and
+  on its own outputs. Where the DUT offers no frontdoor way to create the
+  condition a testcase verifies -- a corrupted ECC codeword in a scratch
+  macro, an unused encoding in a state flop, an error from the eFuse bank
+  model -- the testcase may create it with a testbench hook: a backdoor write
+  into the macro array, a force on the flop, or an inject pin on the bound DV
+  memory collateral. Such a card names the hook on its *BFM / Model* line and
+  in its Test Procedure, and the DUT's reaction is still observed frontdoor,
+  on the DUT's outputs and registers, never on the poked or forced signal
+  itself. Passive hierarchical taps read state and never write it. The rule
+  holds for every group, the `all` sign-off sweep included.
 * *Checked, not observed.* A read that is printed but not compared is not
   evidence. Expectations come from the generated RDL reset values, the
   preloaded assets, or the specification -- never from a value the DUT
@@ -2824,7 +2831,8 @@ Drive `smc_cpu_sanity_test_seq`. Each checker below is a named compare the DUT c
 
 *Source Module*: `smc_ecc_codeword_ded_test`
 
-*BFM / Model*: ocah_axi_vip (AXI)
+*BFM / Model*: ocah_axi_vip (AXI); the codeword corruption is a backdoor write
+through the `tb_cpu_ecc_poke_*` pins of the bound `smc_cpu_mem_dv` collateral
 
 *Objective*: Two flipped codeword bits: the CPU raises cluster_ded_o.
 
@@ -2833,6 +2841,15 @@ Drive `smc_cpu_sanity_test_seq`. Each checker below is a named compare the DUT c
 * U7-1 / P2-7 scratch ECC codeword corrupted in the macro array: two flipped bits raise DED.
 
 *Test Procedure*:
+
+The DUT offers no frontdoor way to corrupt a stored codeword, so the sequence
+XORs two bits into scratch bank0 entry 0 through `tb_cpu_ecc_poke_en` /
+`tb_cpu_ecc_poke_entry` / `tb_cpu_ecc_poke_mask` before the CPU boot release;
+that pulse is the only write this leaf makes into DUT state. The reaction is
+observed frontdoor: `smc_cluster_ded_o` on the wrapper (held sticky in
+`tb_cluster_ded_seen`) must assert after the reset-vector fetch, and the bound
+module's scratch read counter must have advanced, so the DED came from a read
+of the poked word and not from a bench that never fetched.
 
 Drive `smc_ecc_codeword_ded_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
@@ -2854,7 +2871,8 @@ Drive `smc_ecc_codeword_ded_test_seq`. Each checker below is a named compare the
 
 *Source Module*: `smc_ecc_codeword_sec_test`
 
-*BFM / Model*: ocah_axi_vip (AXI)
+*BFM / Model*: ocah_axi_vip (AXI); the codeword corruption is a backdoor write
+through the `tb_cpu_ecc_poke_*` pins of the bound `smc_cpu_mem_dv` collateral
 
 *Objective*: One flipped codeword bit: the CPU reads the bank and DED stays low.
 
@@ -2863,6 +2881,16 @@ Drive `smc_ecc_codeword_ded_test_seq`. Each checker below is a named compare the
 * U7-1 / P2-7 scratch ECC codeword corrupted in the macro array: one flipped bit is benign.
 
 *Test Procedure*:
+
+The DUT offers no frontdoor way to corrupt a stored codeword, so the sequence
+XORs one bit into scratch bank0 entry 0 through `tb_cpu_ecc_poke_en` /
+`tb_cpu_ecc_poke_entry` / `tb_cpu_ecc_poke_mask` before the CPU boot release;
+that pulse is the only write this leaf makes into DUT state. The reaction is
+observed frontdoor: the bound module's scratch read counter must advance (the
+CPU fetched the poked word) and `smc_cluster_ded_o` on the wrapper, held sticky
+in `tb_cluster_ded_seen`, must stay 0 for 20 000 further cycles. The paired
+`smc_ecc_codeword_ded_test` is the positive control that the same tap does
+assert on a two-bit fault.
 
 Drive `smc_ecc_codeword_sec_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
@@ -2923,7 +2951,8 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 
 *Source Module*: `smc_ecc_fault_inject_test`
 
-*BFM / Model*: ocah_axi_vip (AXI)
+*BFM / Model*: ocah_axi_vip (AXI); `tb_cpu_ecc_inject_sbe` / `tb_cpu_ecc_inject_dbe`
+are testbench pins into the bound `smc_cpu_mem_dv` collateral, not product ports
 
 *Objective*: The scratch bank0 ECC inject hook is reached during FW boot and is gated by its enable pins.
 
@@ -2934,6 +2963,13 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 * DOES NOT DEFEND: Rocket ECC syndrome CSR / precise RAS recovery FW policy. Nor any DUT SECDED behaviour: the hook counts qualifying reads and corrupts no data -- there is no force on the macro response in this bench.
 
 *Test Procedure*:
+
+The inject pins arm a hook in the bound DV memory collateral that counts
+qualifying bank0 reads; the hook writes nothing into DUT state and forces no
+DUT signal. The claim is scored on the hook's own fire counter against the
+CPU's real scratch reads, so no DUT SECDED behaviour is claimed here -- the
+stored-codeword vehicles `smc_ecc_codeword_sec_test` and
+`smc_ecc_codeword_ded_test` carry that.
 
 Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
@@ -3350,6 +3386,7 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 
 * `tb_lc_state` drives `lc_state_i` = {diff_n, diff_p} directly, and
 * the `ej_axi` AXI-Lite master drives `axil_smc_otp_jtag_req_i`.
+* The expected matrix is taken from the specification, not the RTL: `hw/ip/efuse/doc/architecture.adoc`, section "Lifecycle State (LC_STATE) Effects", cited below by line.
 * lifecycle encodings, :265-282 -- `TEST_DEV 0x0 | PROD 0x1 | RMA_SOP 0x2, 0x3 | RMA_CHIPLET 0x6-0x7 | PROD_END 0x8 | INVALID all others`;
 * the restricted set, :286 -- "When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access to eFuse registers is restricted";
 * the access table, :289-295 -- JTAG Write *Blocked* / JTAG Read *Blocked* except Chiplet ID / JTAG Read Chiplet ID Allowed, in both columns;
@@ -3357,7 +3394,8 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 * the blocked response, :297-299 -- "the error slave returns an error response with data value `0xbadcab1e`".
 
 The matrix below is the outcome the checkers compare against, per raw
-`lc_state_i` encoding.
+`lc_state_i` encoding; the encodings and state names are the specification's
+(`hw/ip/efuse/doc/architecture.adoc:265-282`).
 `smc_efuse_wrapper` gates JTAG-to-eFuse access on `lc_state_i`; a blocked
 transaction returns DECERR with data `0xBADCAB1E`. `smc_efuse_jtag_lc_negative_test`
 covers the CSR-observable subset (`CHIP_CONFIG_LC_STATE` plus the always-allowed
@@ -3368,7 +3406,7 @@ CHIPLET_ID / PACKAGE_ID reads).
 |SMC LC state (raw) |JTAG eFuse write |JTAG eFuse read (non-ID) |JTAG read CHIPLET_ID / PACKAGE_ID
 |TEST_DEV `0x0` |allow |allow |allow
 |PROD `0x1` |BLOCK (DECERR/`0xBADCAB1E`) |BLOCK |allow
-|RMA_SOP `0x2`,`0x3` (`LC_RMA_SIP_*` in `efuse_pkg.sv`) |BLOCK |BLOCK |allow
+|RMA_SOP `0x2`,`0x3` |BLOCK |BLOCK |allow
 |RMA_CHIPLET `0x6`,`0x7` |allow |allow |allow
 |PROD_END `0x8` |allow |allow |allow
 |differential-decode integrity error |BLOCK |BLOCK |BLOCK (no ID exception)
@@ -6159,7 +6197,7 @@ For each of the two (target, lock) pairs:
 [cols=",",options="header",]
 |===
 |Group |Purpose
-|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Nine enrolled leaves are outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_state_fault_inject_test` (its stimulus is a testbench force on state flops, which the frontdoor-only sign-off rule excludes; it runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the four `rtl_issue` reproducers whose job is to fail
+|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Nine enrolled leaves are outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_state_fault_inject_test` (its condition is a testbench force on the eFuse and Zeroer state flops, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers; it runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the four `rtl_issue` reproducers whose job is to fail
 |`avsbus_depth` |avsbus depth coverage
 |`axil` |axil coverage
 |`per_ip` |One-per-IP breadth run used for routine regression
@@ -6207,6 +6245,6 @@ For each of the two (target, lock) pairs:
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |`smc_deadspace_decode_test` measures wrap-to-live aliasing |Held out of `all`; the card does not claim sign-off PASS |Resolve the wrap-to-live aliasing decode contract
 |`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 |Held out of `all`; the card does not claim sign-off PASS |Fix the CLA deny-leg hang
-|`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |Held out of `all`: the sign-off sweep is frontdoor-only, so the fail-closed recovery it scores is proven in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`, not in the sign-off sweep |Enroll it once the sign-off policy admits fault injection, or once an illegal encoding is reachable from a product port
+|`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top`, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers |Held out of `all`; the fail-closed recovery it scores runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse` |Enroll it once the checks score the reaction on `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL` and the Zeroer `CTRL_STATUS`
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |===

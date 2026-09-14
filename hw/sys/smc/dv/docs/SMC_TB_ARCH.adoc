@@ -628,9 +628,11 @@ responders, not substitute macro RTL.
 * *PASS/FAIL needs positive evidence from `results.xml`* (parser registry
 `hw/common/dv/configs/parsers.toml`) — a clean exit alone is not enough.
 The scoreboard also asserts non-vacuity (`total > 0`).
-* *No DUT backdoor writes*: the only `.value=` writes in `seq_lib` target
-TB external-pad stimulus (`dut.tb_*`), never internal DUT registers. The
-memory-model golden is TB-local, not a DUT-hierarchy read.
+* *No hierarchical writes*: every `.value=` write in `seq_lib` targets a
+`tb_*` pin of `smc_uvm_top` -- pad stimulus, or one of the inject / poke hooks
+the VPLAN's Verification Strategy admits -- never a DUT register by
+hierarchical path. The memory-model golden is TB-local, not a DUT-hierarchy
+read.
 * *OSS hygiene*: the public filelist must be vendor-clean — verify with
 `check_no_vendor_paths.py --filelist build/smc_bender.f --target smc`. Never
 commit simulator artifacts (waves/logs/xrun tmpdirs); the local `.gitignore`
