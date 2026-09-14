@@ -6222,7 +6222,7 @@ SMC; that connection stays a negative item.
 [cols=",,",options="header",]
 |===
 |Limitation |Impact |Resolution Path
-|The SEP_IN local-fabric mask keeps only `addr[24:0]`, so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
+|The SEP_IN local-fabric fold keeps only the address bits below `SMC_BASE_CONFIG.REGION_SIZE` (`addr[23:0]` at the 16 MiB reset) under `LOCAL_BASE`, so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
 |Verilator is a 2-state simulator |Resolvability predicates (`is_resolvable`) cannot fail on a Verilator run, so X-propagation claims are not closed there |Retain a VCS or Xcelium run for the scenarios whose evidence depends on 4-state behaviour
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Needs the adopter's PLL/PVT blocks integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
