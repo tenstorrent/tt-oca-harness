@@ -269,10 +269,10 @@ runners do not have: the two `fw` leaves and the three dual-target leaves,
 which run a ROM or firmware image on top of the `SMC_DUAL` elaboration;
 `testlists/all.toml` defines the set. The weekly tier also runs `rtl_issue`
 on its own row: its leaves carry `expect_fail` and are graded green while the
-filed defects stand. `fw`, `occp_boot` and the `dual` groups need the RISC-V
-toolchain and run on demand (`scripts/docker-run.sh` builds the images) until
-CI has a toolchain; `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` records
-each held-out leaf with its owner and closing condition.
+filed defects stand. The `fw`, `occp_boot`, `dual_smoke`, `dual_all` and
+`occp_dual` groups need the RISC-V toolchain and no tier schedules them;
+`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` records each held-out leaf
+with the reason, its owner and its closing condition.
 
 ```bash
 python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3

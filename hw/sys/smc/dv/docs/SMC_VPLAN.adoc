@@ -1677,7 +1677,7 @@ Drive `smc_cold_reset_test_seq`. Each checker below is a named compare the DUT c
 |`CHK-COOL-PRIMARY` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-INT-COOL-SEQ` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-INT-POR-COLD` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
-|`CHK-MID-ASSERT-HOLD` |The cold-reset levels hold at every `clk_ref_i` sample of the `MID_ASSERT_HOLD_REF_CYCLES` window while `powergood_i` is low (`_hold_raw` in `smc_reset_seq_base.py`); the scoreboard fails the run at the first sample that leaves them
+|`CHK-MID-ASSERT-HOLD` |The cold-reset levels hold at every `clk_ref_i` sample of the `POR_HOLD_REF_CYCLES` window while `powergood_i` is low (`_hold_raw` in `smc_reset_seq_base.py`); the scoreboard fails the run at the first sample that leaves them
 |`CHK-NONVAC` |Non-vacuity count in `smc_cold_reset_test_seq.py`
 |`CHK-POWERGOOD-GATES` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-TIMEOUT-PATHS` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches

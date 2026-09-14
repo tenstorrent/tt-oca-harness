@@ -275,14 +275,16 @@ images) until CI has a toolchain.
 |`smc_fw_hello_world_test` |`fw`, `all` |`firmware = "hello_world"`: `[c_build.default]` builds the DV C image with RISC-V GCC and picolibc |SMC DV owner |2026-12-15 |A toolchain image CI can pull is published to a registry, or `.github/actions/dv-run` installs `gcc-riscv64-unknown-elf` and `picolibc-riscv64-unknown-elf` on the runner and exports `RISCV_TOOLCHAIN`; the weekly tier then gains a `dut: smc, items: all` row (one seed, ~240 min budget) and this row closes
 |`smc_fw_plic_claim_test` |`fw`, `all` |`firmware = "plic_sanity"`, same build path |SMC DV owner |2026-12-15 |As above
 |`smc_prod_rom_occp_ready_test` |`occp_boot` |`firmware = { name = "prod_rom", mode = "bootrom" }` builds `hw/sys/smc/bootrom/prod` with RISC-V GCC; `run_modes = ["prod_rom"]`, 3600 s |SMC DV owner |2026-12-15 |As above, plus a weekly `items: occp_boot` row (one seed, about one hour)
-|`smc_dual_elaboration_test` |`dual_smoke`, `dual_all`, `dual`, `all` |`target = "dual"` and `firmware = prod_rom`: the `SMC_DUAL` elaboration alone `$error`s at time zero without a ROM image (`dual.toml` header), so the leaf is not toolchain-free. It also TIMEOUTs on `dut_fuse_sense_done` until #1802 (undeclared nets in the dual harness) lands |SMC DV owner |2026-12-15 |Toolchain as above and #1802 merged; then covered by the weekly `all` row. Its checkers read boot-sequencer and AXI signals only, so pointing `+rom_hex` at `assets/smc_rom_default.hex` and `+smc_efuse_hex` at `assets/smc_efuse_default.hex` and dropping `firmware` would make it toolchain-free; that is a test-behaviour change for the SMC owner, not this record
-|`smc_dual_axi_sram_probe_test` |`dual_smoke`, `dual_all`, `dual`, `all` |`target = "dual"` and `firmware = prod_rom` |SMC DV owner |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
-|`smc_occp_sanity_test` |`dual_all`, `dual`, `all` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |SMC DV owner |2026-12-15 |Toolchain as above
-|`smc_occp_dual_unsecure_boot_test` |`dual_all`, `occp_dual`, `dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |SMC DV owner |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
+|`smc_dual_elaboration_test` |`dual_smoke`, `dual_all`, `all` |`target = "dual"` and `firmware = prod_rom`: the `SMC_DUAL` elaboration alone `$error`s at time zero without a ROM image (`dual.toml` header), so the leaf is not toolchain-free. It also TIMEOUTs on `dut_fuse_sense_done` until #1802 (undeclared nets in the dual harness) lands |SMC DV owner |2026-12-15 |Toolchain as above and #1802 merged; then covered by the weekly `all` row. Its checkers read boot-sequencer and AXI signals only, so pointing `+rom_hex` at `assets/smc_rom_default.hex` and `+smc_efuse_hex` at `assets/smc_efuse_default.hex` and dropping `firmware` would make it toolchain-free; that is a test-behaviour change for the SMC owner, not this record
+|`smc_dual_axi_sram_probe_test` |`dual_smoke`, `dual_all`, `all` |`target = "dual"` and `firmware = prod_rom` |SMC DV owner |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
+|`smc_occp_sanity_test` |`dual_all`, `all` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |SMC DV owner |2026-12-15 |Toolchain as above
+|`smc_occp_dual_unsecure_boot_test` |`dual_all`, `occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |SMC DV owner |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
 |===
 
-The `dual` group is therefore in the toolchain bucket, not an
-"elaboration only" bucket: all four dual leaves declare `firmware`.
+`dual.toml` is therefore in the toolchain bucket, not an "elaboration only"
+bucket: all four of its leaves declare `firmware`. `dual` is a tag on those
+entries, not a group; `--items` selects the `dual_smoke`, `dual_all` and
+`occp_dual` groups.
 
 The `rtl_issue` reproducers are not hold-outs. Every entry carries
 `expect_fail` and `expect_fail_match` (`hw/sys/smc/dv/testlists/rtl_issue.toml`),
@@ -295,9 +297,9 @@ Members: `smc_gpio_irq_mask_deassert_test` (#1602),
 `smc_deadspace_decode_test` (#585) and `smc_remap_cla_test` (the CLA
 unmapped in-window offset `+0x38` completes with OKAY; no issue filed yet, the
 `expect_fail` prose is the record until one is). `smc_efuse_read_timeout_status_test`
-left the group when its first graded run flagged `expected_fail_passed`: the
-timeout arm sets `read_err_d` on `main` since ad4ae87ec (#1553), so the leaf
-proves `READ_STATUS` 0 -> 1 and runs in `efuse.toml`, `all` and `hosted`.
+is not a member: the timeout arm sets `read_err_d` (ad4ae87ec, #1553), so the
+leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in `all`
+and `hosted`.
 
 [[smc-bench-standins]]
 === Bench stand-ins
