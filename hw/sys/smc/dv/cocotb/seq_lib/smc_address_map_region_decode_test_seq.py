@@ -174,9 +174,17 @@ EXPECTED_DECERR_CHECKS = 3
 
 
 def _rom_word0() -> int:
-    """First 64-bit word of the ROM image the run mode preloads at the ROM base."""
-    first = _ROM_IMAGE.read_text(encoding="utf-8").splitlines()[0].strip()
-    return int(first, 16)
+    """First 64-bit word of the ROM image the run mode preloads at the ROM base.
+
+    The image carries an SPDX header, so the first data word is the first line
+    that is neither blank nor a `//` comment -- the same lines the Verilog
+    `$readmemh` that loads it skips.
+    """
+    for line in _ROM_IMAGE.read_text(encoding="utf-8").splitlines():
+        word = line.strip()
+        if word and not word.startswith("//"):
+            return int(word, 16)
+    raise AssertionError(f"{_ROM_IMAGE} carries no data word")
 
 
 class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):

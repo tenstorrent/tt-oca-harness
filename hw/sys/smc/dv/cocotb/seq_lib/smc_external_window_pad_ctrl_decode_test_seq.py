@@ -72,10 +72,17 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
+        idxs = external_gpio_ctrl_indices()
+        # The SEP_IN monitor flags any DECERR it was not told to expect. Every
+        # address this leaf touches is answered by the adopter window's
+        # terminator, so all of them are intended error-slave probes.
+        self.env.axi_monitor.expected_decerr_addrs.update(
+            {_ext(symbol) for _cell, symbol in _CONTROL_BLOCKS}
+            | {external_gpio_ctrl_addr(i) for i in (idxs[0], idxs[1], idxs[-1])}
+        )
         for cell, symbol in _CONTROL_BLOCKS:
             await self._probe(cell, symbol, _ext(symbol))
 
-        idxs = external_gpio_ctrl_indices()
         assert len(idxs) == SPEC_PER_PAD_INSTANCES and idxs == tuple(
             range(SPEC_PER_PAD_INSTANCES)
         ), (
@@ -89,19 +96,13 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
         )
         last = idxs[-1]
         assert external_gpio_ctrl_addr(last) == external_gpio_ctrl_addr(0) + last * stride
+        # One cell per probed address: the first and last per-pad instances are
+        # the same two measurements as the first and last per-pad block, so a
+        # second name on either would inflate the printed cell count.
         await self._probe("per-pad-instance-0", "GPIO_CTRL_0_CONTROL", external_gpio_ctrl_addr(0))
         await self._probe("per-pad-stride-0x20", "GPIO_CTRL_1_CONTROL", external_gpio_ctrl_addr(1))
         await self._probe(
             f"per-pad-instance-{last}", f"GPIO_CTRL_{last}_CONTROL", external_gpio_ctrl_addr(last)
-        )
-        self.close_cell(
-            "per-pad-block-first",
-            f"instance 0 @0x{external_gpio_ctrl_addr(0):08x} routed to the external port",
-        )
-        self.close_cell(
-            "per-pad-block-last",
-            f"instance {last} @0x{external_gpio_ctrl_addr(last):08x} (= base + {last} x "
-            f"0x{stride:x}) routed to the external port",
         )
 
         self.assert_all_reachable(EXPECTED_ACCESSES, "EXTERNAL_WINDOW_PAD_CTRL_DECODE")
