@@ -295,7 +295,7 @@ Kinds used in the leaf tables:
 |===
 |Stand-in |Control that keeps the claims honest |Owner |Review |Closes when
 |`prim_sync2/3`
-|Height-3 control: the `reset`, `clock` and `irq` groups run on VCS with the product cells, `python3 tools/dv/run_dv.py --dut smc --items reset clock irq --tool vcs --regress`, VCS X-2025.06_Full64, 35 leaves; the VCS compile list carries the product `prim_sync2.sv` / `prim_sync3.sv` from `smc_bender.f` and no stub. Run `20260914_022740__vcs__reset`, before the waiver: cocotb verdict 35 of 35 PASS with every `CHK-*` token of each card present; runner grade 35 of 35 FAIL, all on one message class -- the PeakRDL immediate assertions `assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg` (six sites) each report once `at time 0 fs`, before any reset, while `arst_n` and the ack strobes are still X; no leaf reports them at a later time. That class is waived in `smc_sim_cfg.toml` `[pass_fail]` in the form SEP uses for `abr_reg`: an ignore pattern naming exactly these six assertions together with the `at time 0 fs` text, paired with a hard-fail pattern that turns a later firing of the same assertions into an error. Run `20260914_010856__vcs__reset`, with the waiver: cocotb 35 of 35 PASS, runner 35 of 35 PASS, the six time-0 lines recorded as `IGNORED` evidence in every leaf. One product assertion fires at a non-zero time and is not waived: `prim_ag_clk_mux.sv` `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux` at 4688 ns in `smc_cg_dft_reset_bringup_test`, the DFT `test_en_i` bypass leaf, on seed 1611842931 (the control run's seed). The waived regression drew seed 1038592316 and did not reach it; a replay of the leaf on seed 1611842931 with the waiver in place (`20260914_011532__vcs__dft_seed1611842931`) fires it again and is graded FAIL on that line, so the firing is seed-dependent and the waiver does not cover it. Verilator compiles assertions out, so only a commercial run can see it. Neither observation depends on the synchroniser cells.
+|Height-3 control: the `reset`, `clock` and `irq` groups run on VCS with the product cells, `python3 tools/dv/run_dv.py --dut smc --items reset clock irq --tool vcs --regress`, VCS X-2025.06_Full64, 35 leaves; the VCS compile list carries the product `prim_sync2.sv` / `prim_sync3.sv` from `smc_bender.f` and no stub. Run `20260914_022740__vcs__reset`, before the waiver: cocotb verdict 35 of 35 PASS with every `CHK-*` token of each card present; runner grade 35 of 35 FAIL, all on one message class -- the PeakRDL immediate assertions `assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in `cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg` (six sites) each report once `at time 0 fs`, before any reset, while `arst_n` and the ack strobes are still X; no leaf reports them at a later time. That class is waived in `smc_sim_cfg.toml` `[pass_fail]` in the form SEP uses for `abr_reg`: an ignore pattern naming exactly these six assertions together with the `at time 0 fs` text, paired with a hard-fail pattern that turns a later firing of the same assertions into an error. Run `20260914_010856__vcs__reset`, with the waiver: cocotb 35 of 35 PASS, runner 35 of 35 PASS, the six time-0 lines recorded as `IGNORED` evidence in every leaf. One product assertion fires at a non-zero time and is not waived: `prim_ag_clk_mux.sv` `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux` at 4688 ns in `smc_cg_dft_reset_bringup_test`, the DFT `test_en_i` bypass leaf, on seed 1611842931 (the control run's seed). The waived regression drew seed 1038592316 and did not reach it; a replay of the leaf on seed 1611842931 with the waiver in place (`20260914_011532__vcs__dft_seed1611842931`) fires it again and is graded FAIL on that line, so the firing is seed-dependent and the waiver does not cover it. Verilator compiles assertions out, so only a commercial run can see it. Neither observation depends on the synchroniser cells. The group selection excludes five entries of the three testlist files (named above the reset-group leaf table); run `20260914_031352__vcs__standin_files_minus_groups` covered those five on the same VCS build: cocotb 5 of 5 PASS, runner 5 of 5 PASS, no assertion after time 0.
 |SMC DV owner
 |2026-12-15
 |Either the stand-ins leave the build (the removal plan is tracked with the shared `prim_*` shims), or the `CheckMutualExclusionClk1` firing is resolved and a repeat of this control on seed 1611842931 is graded green by the runner. #1854 tracks that firing (defect under DFT bypass, or an assertion that must be disabled while `test_en_i` is high); it is the one open runner FAIL of this control.
@@ -337,8 +337,23 @@ No eFuse leaf crosses one: the eFuse reset synchroniser is the vendored
 ==== Leaves: reset group
 
 Control column: cocotb verdict on VCS with the product cells, then the
-runner grade. Every runner FAIL below is the time-0 external-ack class of the
-control row; none is a checker of the leaf.
+runner grade, then the run that measured it. Rows of leaves in the `reset`,
+`clock` or `irq` group report the group control run
+`20260914_022740__vcs__reset`, before the waiver: every runner FAIL below is
+its time-0 external-ack class, none a checker of the leaf, and the waived
+re-run `20260914_010856__vcs__reset` grades the same 35 leaves PASS. The three
+files also hold five entries that belong to none of the three groups --
+`smc_jtag_reset_proxy_test`, `smc_flr_sanity_test` and
+`smc_multi_reset_csr_persistence_test` in `reset.toml`,
+`smc_zeroer_dma_timeout_test` in `clock.toml`, `smc_mailbox_irq_test` in
+`irq.toml` -- so a group selection never ran them. Their rows report the
+separate run `20260914_031352__vcs__standin_files_minus_groups`: `--items` naming the five,
+`--tool vcs --regress`, the waiver in place, VCS X-2025.06_Full64, the same
+compile list (product cells from `smc_bender.f`, no stub). Cocotb 5 of 5 PASS,
+runner 5 of 5 PASS, the six time-0 lines `IGNORED` in every leaf, no assertion
+reported at a non-zero time. The reverse case is
+`smc_irq_during_powergood_glitch_test`: an `irq` group member, so in the
+control run, but defined in `combined.toml`.
 
 [cols="3,3,4,2",options="header"]
 |===
@@ -358,9 +373,9 @@ control row; none is a checker of the leaf.
 |`smc_jtag_reset_ctrl_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref`, `u_rst_cool_ni_sync_smc`, `u_rst_cool_no_sync_smc` |downstream: pin-mux outcome on `tb_rst_cool_from_flr`; the card excludes the FLR and `rst_cool_ni` proxy claims |PASS; runner FAIL (time-0 class)
 |`smc_cool_reset_x_cold_reset_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` |downstream: FLR and cold-reset interaction on `isolate_req_o`, `rst_cool_no` |PASS; runner FAIL (time-0 class)
 |`smc_reset_unit_lock_test` |none |CSR lock semantics |PASS; runner FAIL (time-0 class)
-|`smc_jtag_reset_proxy_test` |none |CSR health across a cool reset, CPU JTAG pins |PASS; runner FAIL (time-0 class)
-|`smc_flr_sanity_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` |downstream: post-FLR CSR health |PASS; runner FAIL (time-0 class)
-|`smc_multi_reset_csr_persistence_test` |none |CSR persistence across cool-reset pulses |PASS; runner FAIL (time-0 class)
+|`smc_jtag_reset_proxy_test` |none |CSR health across a cool reset, CPU JTAG pins |PASS; runner PASS -- outside the `reset` group; run `20260914_031352__vcs__standin_files_minus_groups`, seed 1842879679
+|`smc_flr_sanity_test` |`u_cfg_flr_pf_active_sync_smc` / `_ref` |downstream: post-FLR CSR health |PASS; runner PASS -- outside the `reset` group; run `20260914_031352__vcs__standin_files_minus_groups`, seed 452186548
+|`smc_multi_reset_csr_persistence_test` |none |CSR persistence across cool-reset pulses |PASS; runner PASS -- outside the `reset` group; run `20260914_031352__vcs__standin_files_minus_groups`, seed 627959476
 |===
 
 ==== Leaves: clock group
@@ -378,7 +393,7 @@ control row; none is a checker of the leaf.
 |`smc_cg_test_mode_bypass_test` |none |`test_en_i` bypass on the `clk_smc` gates |PASS; runner FAIL (time-0 class)
 |`smc_cg_dft_reset_bringup_test` |none |`test_en_i` bypass and Zeroer reset override |PASS; runner FAIL (time-0 class); `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux` fired at 4688 ns, see the control row
 |`smc_cg_zeroer_activity_bringup_test` |none |Zeroer activity gate in `clk_smc` |PASS; runner FAIL (time-0 class)
-|`smc_zeroer_dma_timeout_test` |none |Zeroer over output-fabric payload, model compare |PASS; runner FAIL (time-0 class)
+|`smc_zeroer_dma_timeout_test` |none |Zeroer over output-fabric payload, model compare |PASS; runner PASS -- outside the `clock` group; run `20260914_031352__vcs__standin_files_minus_groups`, seed 990919425
 |===
 
 ==== Leaves: irq group
@@ -396,7 +411,7 @@ control row; none is a checker of the leaf.
 |`smc_hang_detector_plic_route_test` |none |`peripheral_interrupts[30]` into `cpu_interrupts`, both `clk_smc` |PASS; runner FAIL (time-0 class)
 |`smc_temp_interrupt_test` |`u_ext_interrupts_sync3` bit 1 |reads the crossing: `tb_temp_interrupt_irq` is `ext_interrupts_smc_clk[1]`; the card claims the pin after CDC |PASS; runner FAIL (time-0 class)
 |`smc_ext_interrupts_pin_test` |`u_ext_interrupts_sync3` bit 0 |reads the crossing: `tb_ext_interrupt_0_sync`; the card's objective is "after prim_sync3" |PASS; runner FAIL (time-0 class)
-|`smc_mailbox_irq_test` |none |`sep_mailbox_interrupts_i` enters `peripheral_interrupts[7:0]` directly |PASS; runner FAIL (time-0 class)
+|`smc_mailbox_irq_test` |none |`sep_mailbox_interrupts_i` enters `peripheral_interrupts[7:0]` directly |PASS; runner PASS -- outside the `irq` group; run `20260914_031352__vcs__standin_files_minus_groups`, seed 1914204999
 |===
 
 ==== Leaves outside those groups whose verdict is behind a crossing
