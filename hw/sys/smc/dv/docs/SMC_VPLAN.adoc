@@ -3727,22 +3727,29 @@ testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
 . Wait for fuse-sense-done.
 . Run a legal program command, confirm completion, and record a read-back that is
   not the illegal-state sentinel.
-. Inject eFuse program state `0b00` with no request outstanding; confirm the state
-  is held, the request stays low, recovery reaches `IDLE` with done and error set,
-  and the read-back is the sentinel.
+. Inject eFuse program state `0b00` with no request outstanding; confirm the
+  request stays low in the corrupted cycle, recovery reaches `IDLE` with done and
+  error set, `EFUSE_PROGRAM_CTRL` reads done with status set and busy clear, and
+  the read-back is the sentinel. Run a legal program and confirm it completes
+  without error and its read-back is no longer the sentinel.
 . Arm the `0b11` injection concurrently with a legal program `GO`, confirm the
-  request is suppressed in the same cycle, then confirm the same recovery.
-. Repeat both encodings on the read path; inject a read error and confirm the
-  status sets and the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
-. Inject each of the four illegal Zeroer encodings, confirm the absorbing `ERROR`
-  state holds, then assert cold reset and confirm the escape to `IDLE`.
+  request is suppressed in the same cycle, then confirm the same recovery and the
+  same legal program afterwards.
+. Repeat both encodings on the read path, each followed by a legal read that
+  completes without error; inject a read error and confirm the status sets and
+  the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
+. For each of the four illegal Zeroer encodings: start from `IDLE` with
+  `CTRL_STATUS` not reporting busy, inject, confirm the absorbing `ERROR` state
+  holds with `CTRL_STATUS` reporting busy, write `CTRL_STATUS` and confirm the
+  start is ignored, then assert cold reset and confirm the escape to `IDLE` with
+  `CTRL_STATUS` clear.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state and only a cold reset escapes it
+|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path, with done and status set in `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL`, and a legal operation completes without error afterwards; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state from `IDLE`, report busy in `CTRL_STATUS`, ignore a `CTRL_STATUS` start write, and only a cold reset escapes it
 |===
 
 
@@ -5999,16 +6006,17 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 . Hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, so a residual verdict from an earlier test cannot be counted.
 . Program the reset vector, release all four cores, then release `boot_stall`.
 . Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+. Compare the per-bank scratch read counters (`tb_cpu_scratch_bank_read_count`) snapshotted before step 2 and after step 4: every bank whose counter advanced is one of banks 0-3, and at least one did.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start, and every scratch bank the CPU read between the two counter snapshots is one of banks 0-3
 |===
 
-*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is part of the evidence: it is what the `smc_scratch_map_pkg` decode predicts for a 9 KB image, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
+*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is asserted from the per-bank scratch read counters: the `hello_world` link map ends at offset `0x8730` (code, data, four 4 KB stacks and the 2 KB heap), inside the first 128 KB group, which the `smc_scratch_map_pkg` decode places in banks 0-3, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
 
 '''''
 
