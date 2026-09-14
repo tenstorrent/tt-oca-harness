@@ -1287,11 +1287,12 @@ check.
 
 *BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
 
-*Objective*: Illegal CTM: abort + double-req on product pins; SMC[1:0] clean.
+*Objective*: Illegal CTM: abort + double-req on product pins with a live ack control; SMC[1:0] clean.
 
 *Test Coverage*:
 
-* req drop without ack: assert then clear dst_req -> TB ack stays 0; SMC[1:0] idle (no phantom handshake)
+* live control: lane 7 is the one lane both TB tops configure in req/ack mode (`XTRIG_INT_CT_MODE = 8'h80`; per the Integrator Guide cross-trigger port section a mode bit of 1 uses the ack, 0 is pulse-synchronisation with no ack). A request on lane 7 must raise `xtrig_ctm_dst_ack[7]` within the settle window and hold it, and releasing the request must clear it, so the "ack stays 0" legs below measure a path shown alive in the same run.
+* req drop without ack: assert then clear dst_req on pulse-sync lanes -> TB ack stays 0; SMC[1:0] idle (no phantom handshake)
 * double-req: change pattern mid-req without completing four-phase -> new pattern visible on DTP[9:2]; SMC[1:0] never polluted
 
 *Test Procedure*:
@@ -1306,7 +1307,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-XT-ILLEGAL` |Evidence token `XT_ILLEGAL_PHASE`: DTP[9:2] follows abort/double-req pin patterns
+|`CHK-XT-ILLEGAL` |Evidence token `XT_ILLEGAL_PHASE`: lane-7 ack rises and falls with its request, then DTP[9:2] follows abort/double-req pin patterns with the ack held at 0
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
