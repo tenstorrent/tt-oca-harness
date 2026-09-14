@@ -1191,6 +1191,8 @@ module smc_uvm_top
         .smc_fuse_reset_n_delayed_o (tb_fuse_reset_n),
         .skip_mem_repair_o          (tb_skip_mem_repair_o),
         .ext_boot_seq_done_i        (~tb_hold_ext_boot),
+        // Tied low: the eFuse sense bypass (shadow regs exposed and auto-sense
+        // skipped) is unreachable here; SMC_DEFERRED_DISPOSITION.adoc carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (),
@@ -2828,6 +2830,8 @@ module smc_dual_inst
         .smc_fuse_reset_n_delayed_o (),
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
+        // Tied low: the eFuse sense bypass is unreachable here;
+        // SMC_DEFERRED_DISPOSITION.adoc carries the row.
         .sep_security_disable_i     (1'b0),
         .lc_state_i                 (lc_state_idle),
         .lc_sigint_err_o            (),
