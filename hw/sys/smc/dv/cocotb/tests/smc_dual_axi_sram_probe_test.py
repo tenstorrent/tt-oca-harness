@@ -38,6 +38,7 @@ from cocotb.triggers import ClockCycles
 from smc_dual_base_test import DualCsr, SmcDualHarness
 
 REQUIRED_EVIDENCE = (
+    "CHK-AXI-INIT-MEM-DONE",
     "CHK-AXI-SCRATCH-REACHABLE",
     "CHK-SCRATCH-BACKDOOR-DECODE",
 )
