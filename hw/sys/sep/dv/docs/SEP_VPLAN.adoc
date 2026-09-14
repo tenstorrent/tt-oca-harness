@@ -5553,7 +5553,7 @@ slot, so over this surface an erase always frees.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_122249` seed 1. Named `CHK-* PASS`
+*Evidence*: Verilator `20260914_125823` seed 1. Named `CHK-* PASS`
 including CHK-HW-VER, CHK-ROM-VER, CHK-SRAM-VER, CHK-SAMPLER, CHK-ABR-DEST,
 CHK-OTP, CHK-RECOV, CHK-XFER-DEST. VCS `20260914_071841` seed 1 PASS.
 
@@ -5629,7 +5629,7 @@ frontdoor.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_121102`. Named `CHK-PRE`, `CHK-RESET`,
+*Evidence*: Verilator `20260914_125516`. Named `CHK-PRE`, `CHK-RESET`,
 `CHK-WIPE` PASS (`RESP_UNRECOVERABLE_FAULT`). VCS `20260914_080219` PASS.
 
 *Anti-vacuity*: the post-reset load is a value-bearing command, not only the
@@ -5699,7 +5699,7 @@ ROM posts `CMD_SRAM_EXEC` success before it jumps.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_121409`. Named `CHK-EMPTY`, `CHK-ARG`,
+*Evidence*: Verilator `20260914_124629`. Named `CHK-EMPTY`, `CHK-ARG`,
 `CHK-INHIBIT`, `CHK-INHIBIT-RST`, `CHK-LOAD`, `CHK-EXEC` PASS. VCS
 `20260914_081429` PASS.
 
@@ -5766,8 +5766,8 @@ capture are not claimed.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_121908`. Named `CHK-DIRECT`, `CHK-XFER`,
-`CHK-PK` PASS (648-word public-key match).
+*Evidence*: Verilator `20260914_125125`. Named `CHK-RANDCFG`, `CHK-DIRECT`,
+`CHK-XFER`, `CHK-PK` PASS (648-word public-key match).
 
 *Anti-vacuity*: both public keys must be non-zero. The palindrome absorbs the
 KV dword reversal, so a mismatch is a sideload failure, not an ordering
