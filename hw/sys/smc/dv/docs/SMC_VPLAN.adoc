@@ -3694,7 +3694,10 @@ Drive `smc_efuse_shim_ctrl_test_seq`. Each checker below is a named compare the 
 *Source Module*: `smc_state_fault_inject_test`
 
 *BFM / Model*: ocah_axi_vip (AXI) for the CSR path; state corruption driven on the
-testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
+testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks; the
+SYS_OUT responder's observability counters (`tb_output_axi_write_count`,
+`tb_output_axi_last_addr`, `tb_output_axi_last_wdata`) for the Zeroer's fabric
+traffic
 
 *Objective*: Every unused state encoding in the eFuse interface controller and in the Zeroer fails closed, and the block recovers.
 
@@ -3718,7 +3721,18 @@ testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
 * Zeroer: all four illegal encodings (`0b011`, `0b101`, `0b110`, `0b111`) must
   enter the absorbing `ERROR` state, hold it for at least two further cycles with
   busy high, `intp` low and both AXI valids low, and only a cold reset escapes it.
-* Every wait is bounded (10 000 cycles) and reports the last observed value on
+* The "start write is ignored in `ERROR`" leg has a live control: before the
+  first injection the same `CTRL_STATUS` write (`INT_EN`, packed from the
+  generated `ZEROER_CTRL_CTRL_STATUS_reg_t` layout), with `DEST_ADDR`/`SIZE`
+  programmed to one 8-byte beat at the output fabric, starts the Zeroer from
+  `IDLE`: busy is sampled high with the FSM out of `IDLE` and never in `ERROR`,
+  the SYS_OUT responder counts exactly one write beat of zero at that address,
+  and the FSM returns to `IDLE` with `CTRL_STATUS` busy clear. Every `ERROR`-leg
+  deny then programs the same `DEST_ADDR`/`SIZE` and also asserts the responder
+  write count did not move, so the deny differs from the control in the FSM
+  state alone.
+* Every wait is bounded (10 000 cycles on the FSM and CSR waits, 200 cycles on
+  the output-responder observation) and reports the last observed value on
   expiry, so a signal that never moves fails rather than hanging.
 
 *Test Procedure*:
@@ -3738,22 +3752,31 @@ testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
 . Repeat both encodings on the read path, each followed by a legal read that
   completes without error; inject a read error and confirm the status sets and
   the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
+. Zeroer start control: program the inbound/outbound output-fabric filters to
+  pass all, confirm the Zeroer is in `IDLE` with `CTRL_STATUS` not reporting busy,
+  program `DEST_ADDR` to the output-fabric address and `SIZE` to 8, then write
+  `CTRL_STATUS` with `INT_EN` while sampling busy every cycle; confirm busy rose
+  with the FSM out of `IDLE` and never in `ERROR`, the SYS_OUT responder saw
+  exactly one write of zero at that address, and the FSM is back in `IDLE` with
+  `CTRL_STATUS` busy clear.
 . For each of the four illegal Zeroer encodings: start from `IDLE` with
-  `CTRL_STATUS` not reporting busy, inject, confirm the absorbing `ERROR` state
-  holds with `CTRL_STATUS` reporting busy, write `CTRL_STATUS` and confirm the
-  start is ignored, then assert cold reset and confirm the escape to `IDLE` with
-  `CTRL_STATUS` clear.
+  `CTRL_STATUS` not reporting busy, program the same `DEST_ADDR`/`SIZE`, inject,
+  confirm the absorbing `ERROR` state holds with `CTRL_STATUS` reporting busy,
+  write `CTRL_STATUS` as in the control and confirm the start is ignored for 200
+  cycles with the responder write count unchanged, then assert cold reset and
+  confirm the escape to `IDLE` with `CTRL_STATUS` clear.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path, with done and status set in `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL`, and a legal operation completes without error afterwards; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state from `IDLE`, report busy in `CTRL_STATUS`, ignore a `CTRL_STATUS` start write, and only a cold reset escapes it
+|`CHK-ZEROER-START-CONTROL` |From `IDLE`, with `DEST_ADDR`/`SIZE` programmed, the `CTRL_STATUS` start write raises busy with the FSM out of `IDLE` and never in `ERROR`, the SYS_OUT responder counts exactly one write beat of zero at `DEST_ADDR`, and the FSM returns to `IDLE` with `CTRL_STATUS` busy clear
+|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path, with done and status set in `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL`, and a legal operation completes without error afterwards; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state from `IDLE`, report busy in `CTRL_STATUS`, ignore the `CTRL_STATUS` start write that the control ran from `IDLE` (state, busy, `intp`, AXI valids and the responder write count all unchanged), and only a cold reset escapes it
 |===
 
 
-*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
+*Pass Criteria*: `CHK-ZEROER-START-CONTROL` and `CHK-STATE-FAULT` hold after their compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
 
 '''''
 
