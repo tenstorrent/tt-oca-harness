@@ -5698,6 +5698,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 [arabic]
 . Bring both instances up with `boot_stall` released, so the CPU cluster front port answers.
+. Require `init_mem_done_o` to reach 1 on both instances within the watch bound.
 . Read each probe address before its write; the banks are not auto-initialised, so the pre-write value is reported and not asserted on.
 . Write each of the six patterns over `bfm_axi` and read the address back.
 . Require every readback to equal exactly the pattern written.
@@ -5708,11 +5709,12 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-AXI-INIT-MEM-DONE` |`init_mem_done_o` is 1 on both instances within the watch bound after `boot_stall` release; a flag still 0 at the bound raises
 |`CHK-AXI-SCRATCH-REACHABLE` |Every pattern read back exactly as written, including the ones crossing a bank stripe and a group boundary, so neither a stuck default subordinate nor a single-bank decode can satisfy it
 |`CHK-SCRATCH-BACKDOOR-DECODE` |For every offset, the macro word `smc_scratch_map_pkg` resolves to holds what AXI wrote. Checked only where the AXI readback already matched, so a decode complaint cannot be raised about a write that never took
 |===
 
-*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` is reported and gates nothing. Enrolled in: `dual_all`, `dual_smoke`.
+*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` must be 1 on both instances within the watch bound before the first probe access; the watcher raises otherwise. Enrolled in: `dual_all`, `dual_smoke`.
 
 '''''
 
