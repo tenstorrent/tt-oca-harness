@@ -175,12 +175,6 @@ int main(void) {
     simputs("###################################################\n");
     simputs("\n");
 
-    /* The former "Step 1: System Initialization" was two progress markers and a
-     * simputs around no work at all, and its markers were indistinguishable in
-     * the console transcript from those of the steps that do something -- the
-     * log reported four executed steps where three existed. The real
-     * initialization is the two steps below, which now carry the numbering. */
-
     write_scratch(1, 0x00000010);
     simputs("Step 1: Wrapper Control Enable\n");
     i2c_wrapper_enable(CONTROLLER_IDX, true);
@@ -361,12 +355,9 @@ int main(void) {
 
     /* Nothing may be left behind in the target's ACQ FIFO.
      *
-     * The other half of the zero-activity gap: the audited run passed while
-     * ACQLVL read 0x3e -- 62 entries the test never looked at -- because the
-     * receive step reported success after one byte and no one reconciled what
-     * remained. A residual entry after the expected payload has been drained
-     * means the target accepted traffic this test has not accounted for, so it
-     * fails here instead of being discarded as leftover state.
+     * A residual entry after the expected payload has been drained means the
+     * target accepted traffic this test has not accounted for, so it fails here
+     * instead of being discarded as leftover state.
      *
      * CTRL.ACQ_START_STOP_EN is left at its reset value of 0 (i2c.rdl:580) and
      * i2c_target_init never sets it, so the target writes no START/RESTART/STOP
