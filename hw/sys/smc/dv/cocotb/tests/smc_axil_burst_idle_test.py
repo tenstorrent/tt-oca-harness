@@ -23,10 +23,11 @@ class smc_axil_burst_idle_test(smc_base_test):
 
     required_evidence = (
         "CHK-DIAG-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
         "CHK-NONVAC",
         "CHK-PROBE-AXIL-EXTERNAL-ALIVE",
     )
-    min_evidence = 2
+    min_evidence = 3
 
     # Positive control for `tb_axil_external_active`, the one AXI-Lite activity
     # probe on this burst's proof path without one elsewhere (the eFuse-bank and
