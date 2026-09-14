@@ -374,7 +374,7 @@ resolves that without weakening the checker:
 name = "smc_gpio_irq_mask_deassert_test"
 module = "smc_gpio_irq_mask_deassert_test"
 run_modes = ["smoke"]
-expect_fail = "#1602: clearing INTERRUPT_ENABLE does not de-assert interrupt_o"
+expect_fail = "#1602: clearing DATA_CTRL.interrupt_enable while a GPIO interrupt is asserted does not de-assert interrupt_o"
 ----
 
 The value is the recorded reason and must be a non-empty string; `true` is
