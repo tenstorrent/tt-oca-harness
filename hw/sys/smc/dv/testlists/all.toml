@@ -84,11 +84,14 @@ name = "all"
 # `hosted`. rtl_issue.toml is included above so the names resolve; see that
 # file for the conventions and the members.
 #
-# `smc_ref_clock_timer_rate_test` is held out for a different reason: clk_rst.adoc
-# places the OCTS system timer in the reference clock domain, while
-# smc_peripherals.sv clocks system_timer_octs from clk_smc_i, so TIMER_COUNT
-# advances at the SMC clock rate. It keeps its [[tests]] entry and runs from
-# cpu.toml.
+# `smc_ref_clock_timer_rate_test` is held out for a different reason: it fails
+# on the rate comparison it was written to make. clk_rst.adoc:37-39 places the
+# OCTS system timer in the reference clock domain; smc_peripherals.sv:945-947
+# clocks system_timer_octs from clk_smc_i. On seed 608337836 (ref 12 ns, smc
+# 5 ns) TIMER_COUNT advanced 992 counts while 428 clk_ref_i edges and 1026
+# clk_smc_i edges elapsed over the same window, against a tolerance of 14, so
+# the count tracks clk_smc_i and not clk_ref_i. It keeps its [[tests]] entry
+# and runs from cpu.toml.
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
