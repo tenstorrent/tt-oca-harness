@@ -78,11 +78,12 @@ shape batches R1 and R2 established, applied to the digest instead of to a
 revocation bit.
 
 Revocation must not be what refuses this image, or the digest comparison is never
-reached: the revocation check runs and
-the key-authorization check only. So ``CHIPLET_PUBK_REVOKE`` bits 16 and 17
-are CLEAR, ``PUBK_REVOKE=0x00000001`` is required exactly twice (the fuse word
-the ROM read, once per slot, proving the revocation check ran and PERMITTED the
-key), and ``KEY_REVOKED`` is forbidden outright.
+reached. Under OCA the two are SEPARATE callbacks and authorization runs first, so
+a digest mismatch returns before revocation is consulted at all. That inverts the
+evidence: ``PUBK_REVOKE=`` is required to be ABSENT, because printing it would mean
+a slot got past the digest bind. ``CHIPLET_PUBK_REVOKE`` bits 16 and 17 are CLEAR
+so revocation could not refuse the image even had it run, and ``KEY_REVOKED`` is
+forbidden outright.
 
 Bit 0 -- ROM development key 0 -- is blown, as in every member of this family.
 It is the ROM-key-arm counterfactual: inert on a correct ROM, but a ROM that
@@ -133,7 +134,6 @@ _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"  #
 # Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl:727) are
 # deliberately clear -- see the docstring.
 _REVOKE_BITMAP = 1 << 0
-_REVOKE_ECHO = f"PUBK_REVOKE=0x{_REVOKE_BITMAP:08x}"  #
 _HASH_MISMATCH = "PUBK_UNAUTHORIZED"  #
 
 
@@ -286,17 +286,29 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
 
         i_backup = next((i for i, line in enumerate(console) if _BACKUP_SRC in line), -1)
 
-        # The selector and the fuse WORD the ROM read, once per slot. Without these
-        # the mismatch verdicts could belong to some other key or some other bitmap.
-        # PUBK_REVOKE= is load-bearing in the positive direction here: it proves the
-        # revocation check RAN and PERMITTED the key, so the rejection below is
-        # attributable to the digest and not to a revoke bit.
-        for marker in (_PUBK_SEL_ECHO, _REVOKE_ECHO):
-            n = sum(1 for line in console if marker in line)
-            assert n == 2, (
-                f"{marker} appeared {n} times, expected exactly 2 (one per manifest "
-                f"slot). Console: {console}"
-            )
+        # The selector the ROM read, once per slot. Without it the mismatch
+        # verdicts could belong to some other key or some other bitmap.
+        n_sel = sum(1 for line in console if _PUBK_SEL_ECHO in line)
+        assert n_sel == 2, (
+            f"{_PUBK_SEL_ECHO} appeared {n_sel} times, expected exactly 2 (one per "
+            f"manifest slot). Console: {console}"
+        )
+
+        # PUBK_REVOKE= must be ABSENT, and its absence is what attributes the
+        # refusal to the digest. Authorization and revocation are SEPARATE OCA
+        # callbacks: plat_is_key_authorized() returns
+        # OCA_FAIL_ROOT_KEY_UNAUTHORIZED at the constant-time digest compare, so
+        # the library never reaches the callback that echoes PUBK_REVOKE=
+        # (oca_platform.c). A run that printed it would mean a slot got PAST the
+        # digest bind, which is the one thing this testcase exists to disprove.
+        # That revocation was not the cause is established by check_efuse()
+        # instead, which requires bits 16 and 17 clear before the run starts.
+        n_rev = sum(1 for line in console if "PUBK_REVOKE=" in line)
+        assert n_rev == 0, (
+            f"PUBK_REVOKE= appeared {n_rev} times, expected none: the revocation "
+            f"callback runs only after authorization succeeds, so reaching it means "
+            f"a slot passed the digest bind. Console: {console}"
+        )
 
         crypto_fail = f"MANIFEST_ERR=0x{self.expected_error:08x}"
         hits = [i for i, line in enumerate(console) if crypto_fail in line]
@@ -315,16 +327,14 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             f"loop did not exhaust. Console: {console}"
         )
         self.logger.info(
-            "CHK-BOTH-SLOTS-REFUSED: %s and %s each twice, %s at lines %s straddling "
-            "the backup read@%d, then MANIFEST_ALL_FAILED -- and PUBK_REVOKE=0x%08x "
-            "says the revocation check ran and PERMITTED the key, so the digest is "
+            "CHK-BOTH-SLOTS-REFUSED PASS: %s twice, %s at lines %s straddling "
+            "the backup read@%d, then MANIFEST_ALL_FAILED -- and no PUBK_REVOKE= at "
+            "all, so neither slot got past the digest bind and the fuse digest is "
             "the sole cause",
             _PUBK_SEL_ECHO,
-            _REVOKE_ECHO,
             crypto_fail,
             hits,
             i_backup,
-            _REVOKE_BITMAP,
         )
 
         # Device-side: the console says which address the ROM intended to read; the
