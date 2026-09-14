@@ -4,8 +4,10 @@
 [[smu-deferred-disposition]]
 == SMU deferred and OUT disposition
 
-This table is the catalog of every SMU test name outside the SEP=0 credit
-set `sep0_all`. Two kinds of name are in it. Eleven have a test body and are
+This chapter has two parts. The table below is the catalog of every SMU test
+name outside the SEP=0 credit set `sep0_all`; <<smu-bench-standins>> is the
+record of every stand-in, force, skip and waiver on a proof path of an
+enrolled test. The table first. Two kinds of name are in it. Eleven have a test body and are
 enrolled in `testlists/wrapper.toml`; their bucket says which group holds
 them and why that group is not credit. The rest have no test body in this
 tree and are not reportable as PASS.
@@ -397,3 +399,137 @@ Enrolled names outside this catalog:
 |No product pin or frontdoor stimulus exists for CLA feedback injection.
 |===
 
+[[smu-bench-standins]]
+=== Bench stand-ins and exceptions
+
+A stand-in is anything that answers in place of the mechanism a claim is
+about: a testbench force, a simulation-only path selected by a plusarg, a
+configuration waiver, a loopback where a chain would be, a compiled-in
+substitute for a product cell, or a model inside the product composition.
+Six sit on proof paths of enrolled SMU tests. Each has one entry of six
+fields. The first three -- the claim that is accepted with the stand-in in
+place, why the real path cannot be used, and the exact scope -- are filled
+from the tree. The last three -- approver, approval date against a revision,
+and review or expiry date -- are filled by a person; until they are, the entry
+is a declaration and clears nothing, and every test on its scope is graded as
+if the stand-in were undeclared. `pending` in those fields means exactly that.
+The revision each entry describes is `cdd2b68`.
+
+[cols="2,3,3",options="header"]
+|===
+|Stand-in |Where it is |Tests on its scope
+|`+esrc_noise_force` |`tb/tb_wrapper_top.sv` (the `force` block under `ifndef SMU_NO_SEP`), driver `common/seq_lib/esrc_noise.py` |`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test`
+|`+skip_fuse_sense` with the shadow preload |every `[run_modes.*]` of `smu_sim_cfg.toml` and `smu_block_sim_cfg.toml`; live only under the `SIMULATION` define |every leaf; load-bearing for the five boot-stall leaves and the reset, boot-gate and OTP leaves named below
+|`abr_reg.sv` pass/fail waiver |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` |every `--dut smu` leaf
+|Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (`bsr_scan_loop`), `tb/tb_top.sv` (five host scan chains) |`smu_dtp_bsr_extest_loopback_test`
+|`prim_sync2` / `prim_sync3` stand-ins |`[build].stubs` of both sim configs, from `hw/sys/smc/dv/tb/verilator_stubs/` |every leaf on Verilator; reset and boot-gate observes downstream
+|eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves
+|===
+
+==== `+esrc_noise_force`
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The decorrelator, health tests, CSRNG and EDN run end to end on testbench-driven noise, and the SEP firmware brings that stack up and consumes its output. The ring-oscillator noise source itself is not proven: `esrc_noise_active_o` is the forced node and tracks the driven bit by construction, so the first checkpoint of `smu_sep_entropy_test` is a check of the force having taken, not of the source.
+|Why the real path cannot be used
+|The ESRC ring oscillators rely on `#delay` feedback, which Verilator ignores, so the twelve noise lanes never toggle and no entropy is produced. The SEP DV bench takes the same exception at the same node.
+|Scope
+|Only under `+esrc_noise_force`; only the twelve `dcor.noise_i` lanes (`gen_ecmplx[0..11].u_generator.u_decorrelator.noise_i`), re-forced every `clk_smu_i` edge from `esrc_noise_ext_i`, which `SmuEsrcNoiseDriver` drives with twelve 16-bit LFSRs from the fixed seed `0xACE1`; every downstream tap is observe-only. The plusarg is carried by three `testlists/wrapper.toml` entries: `smu_sep_entropy_test` (its verdict requires `esrc_noise_took_o`), `smu_sep_modules_test` (its `entropy` stage), and `smu_sep_aes_test` (a prerequisite outside its AES-128 known-answer claim). The SEP bench's `+sep_crypto_edn_force` has no counterpart here.
+|Approver
+|pending
+|Date, revision
+|pending; describes `cdd2b68`
+|Review or expiry
+|pending
+|===
+
+==== `+skip_fuse_sense` with the shadow preload
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The SMC eFuse shadow registers -- and on the `sep_rtl` profile the SEP ones -- hold the image the preload file supplies, and the sense FSM that would have earned that image from the eFuse macro is skipped. The consumers of the sensed image are under test: the reset unit's fuse-reset release, the boot-stall gate on it, the lifecycle controller, `lc_state` at the SMC and `dbg_disable` at the DTP, the OTP word the JTAG2AXI leaves read. The sense FSM is not. For the five boot-stall leaves (`smu_boot_stall_jtag_cold_reset_matrix_test`, `smu_boot_stall_vs_ic_reset_priority_test`, `smu_clock_stop_coordination_test` S1/S2, `smu_dft_dtp_boot_stall_test`, `smu_dft_gpio_boot_stall_test`) the `smc_fuse_reset_n_delayed_o` release they credit is the release the skip path issues; whether the skip path and the sense path share the gate they exercise is the design question the approver settles. `smu_smc_reset_ctrl_test`, `smu_ext_boot_seq_gate_test` and `smu_smc_smoke_test` read the reset and boot state downstream of the same release; the OTP leaves (`smu_dtp_otp_smc_map_rw_test`, `smu_dtp_otp_smc_complete_rw_test`, `smu_dtp_otp_smc_series_error_test`, `smu_otp_vs_fabric_map_race_test`) compare against a shadow word that was preloaded. The lifecycle leaves (`sep_lifecycle`, `sep_chain`) declare their per-test `+sep_shadow_reg_preload` image as the stimulus, so for them the preload is setup, not a stand-in.
+|Why the real path cannot be used
+|On the block bench `tb/tb_top.sv` ties the eFuse shim command and bank-controller responses to zero, so no sense can complete and primary reset would never release. On the wrapper that reason does not hold: `hw/top/smc_ip_integration.sv` instantiates `efuse_interface_shim` and `efuse_bank_model`, and `testlists/wrapper.toml` records that the model answers in tens of `clk_smu`. A wrapper run of the boot-stall, reset-control and boot-gate leaves without the plusarg has not been made; making one, or deciding it is not needed, is part of the approval.
+|Scope
+|Every run mode: `smu_sim_cfg.toml` `[run_modes.smoke]`, `[no_sep]`, `[sep_rtl]`, `[sep_rtl_no_shadow]` and `smu_block_sim_cfg.toml` `[run_modes.smoke]`, `[smc]`, `[dtp]`, `[fabric]` all pass `+skip_fuse_sense` and `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload`; `sep_rtl` adds `+sep_shadow_reg_preload=` `assets/default_sep_efuse_shadow_reg.preload`, which the lifecycle leaves replace with their own image. The plusarg is live only when the `SIMULATION` define is set (`hw/common/dv/configs/profiles/native.toml` sets it on every target); a build without it senses. `tb/tb_wrapper_top.sv` exports the SEP shadow registers' `sim_skip_fuse_sense` flag as `sep_fuse_sense_skipped_o`, so a log can tell which path ran.
+|Approver
+|pending
+|Date, revision
+|pending; describes `cdd2b68`
+|Review or expiry
+|pending
+|===
+
+==== `abr_reg.sv` pass/fail waiver
+
+[cols="1,4"]
+|===
+|Claim accepted
+|A `$error` raised from `abr_reg.sv` -- the PeakRDL external write/read acknowledge assertions of the SEP ABR register block -- is not a verdict on any enrolled SMU claim, so a log line naming that file does not fail the run.
+|Why the real path cannot be used
+|No enrolled test exercises the ABR datapath; the assertion fires at time zero and again after reset release, before and independent of any stimulus, on the `sep_rtl` profile. Fixing the acknowledge timing is an RTL matter outside this package.
+|Scope
+|`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns = ['abr_reg\.sv']`: every `--dut smu` run on every profile, the whole file, not only the time-zero report. The block config carries no such waiver. It sits beside a broader configuration fact that is not a waiver but belongs in the same review: every Verilator target of both sim configs compiles with `+define+ASSERTS_OFF`, so no DUT SystemVerilog assertion is a checker on any run this package records; every enrolled verdict is a Python compare, and the immediate `$error` this pattern silences is the one assertion class that survives the define. In the logs of the CI nightly `sep0_all` run the pattern matches nothing, so there the waiver is inert; the `sep_rtl` profile it was written for has no run at a clean revision (the `all` group is unscheduled), so there it is unmeasured. It stays in force for any future line.
+|Approver
+|pending
+|Date, revision
+|pending; describes `cdd2b68`
+|Review or expiry
+|pending
+|===
+
+==== Scan-chain loopbacks
+
+[cols="1,4"]
+|===
+|Claim accepted
+|A bit shifted out of the DTP's BSR host scan port returns on its scan input one TCK later, so `smu_dtp_bsr_extest_loopback_test` proves the DTP's EXTEST decode, its scan-control gating and the IEEE 1149.1 TDO retimer against a zero-length testbench chain. It does not prove a boundary-scan register, pad cells, or the STAP and DFD host chains.
+|Why the real path cannot be used
+|The wrapper has no boundary-scan cells and no adopter DFD or DFT scan chains; those host ports terminate at pads the open-source tree does not model.
+|Scope
+|`tb/tb_wrapper_top.sv` wires `jtag_bsr_host_scan_out_o` to `jtag_bsr_host_scan_in_i` through `bsr_scan_loop` and ties the STAP, DFD, DFT and DFT-secure host `scan_in` ports to `1'b0`. `tb/tb_top.sv` loops all five host chains (`bsr_out`, `stap_scan_out`, `dfd_out`, `dft_sec_out`, `dft_out`) the same way. One enrolled test reads the loop: `smu_dtp_bsr_extest_loopback_test` (`BSR_EXTEST_TDO_MATCH`), whose plan entry declares `STUB:DECLARED BSR_TB_SCAN_LOOPBACK` with the same limits; `smu_dtp_bsr_ijtag_scan_test` reads the `.select` gate only and compares no TDO bit.
+|Approver
+|pending
+|Date, revision
+|pending; describes `cdd2b68`
+|Review or expiry
+|pending
+|===
+
+==== `prim_sync2` / `prim_sync3` stand-ins
+
+[cols="1,4"]
+|===
+|Claim accepted
+|Every synchroniser output the bench observes on Verilator is produced by a two- or three-stage flop pipe that starts at a defined `0` with no reset, not by the `och_prim` cells the product elaborates; the product cells are on no Verilator proof path. The claims downstream -- power-good stability, primary and cold reset release, the boot-stall gate, `i2c_enable` into the LSIO mux -- are accepted as proven over the stand-in's behaviour.
+|Why the real path cannot be used
+|The product `prim_sync2` / `prim_sync3` start with X on the first stage and the wrapper port exposes no `rst_ni` to clear it, so on a four-state view the X persists into every consumer; the stand-ins add `initial '0` on each stage and change nothing else about the pipe.
+|Scope
+|`smu_sim_cfg.toml` and `smu_block_sim_cfg.toml` `[build].stubs` list `hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv` and `prim_sync3.sv`; the runner emits them ahead of the Bender filelist so Verilator's first-definition-wins picks them, and drops them on VCS. Every leaf of both benches compiles them in. Downstream observes on this bench: `obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the reset-release observes of `smu_smc_reset_ctrl_test` and `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five boot-stall leaves. No control run with the product cells has been made on this composition; issues #1164 and #1165 hold the shared shim inventory and the removal plan the closing of this entry depends on.
+|Approver
+|pending
+|Date, revision
+|pending; describes `cdd2b68`
+|Review or expiry
+|pending
+|===
+
+==== eFuse models in the product composition
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The OTP word the JTAG2AXI OTP leaves read and write, and the eFuse image the SEP lifecycle controller consumes, are answered by `efuse_bank_model` behind `efuse_interface_shim` inside the wrapper's IP integration, not by eFuse macros. Command decode, series and single-op sequencing, error responses and the shadow-register path through the shim are DUT logic and are proven; the macro's storage, sense timing and programming are not.
+|Why the real path cannot be used
+|The eFuse macro is a technology cell outside the open-source tree; the composition instantiates the model in its place for every simulator.
+|Scope
+|`hw/top/smc_ip_integration.sv` instantiates `u_efuse_interface_shim` (`efuse_interface_shim`) and `u_efuse_bank_model` (`efuse_bank_model`); `hw/top/sep_ip_integration.sv` instantiates the same pair for the SEP. Both are part of the DUT compile on every profile, so every wrapper leaf elaborates them; they are load-bearing for `smu_dtp_otp_smc_map_rw_test`, `smu_dtp_otp_smc_complete_rw_test`, `smu_dtp_otp_smc_series_error_test`, `smu_dtp_ptap_otp_instr_scan_test`, `smu_otp_vs_fabric_map_race_test`, `smu_sep_efuse_test`, and the `sep_lifecycle` and `sep_chain` leaves. On the block bench `tb/tb_top.sv` ties the shim responses to zero instead, which is what makes `smu_dtp_jtag2axi_abort_mid_op_test`'s hung SINGLE_OP observable there. The BFM table in `hw/sys/smu/dv/docs/SMU_TB_ARCH.adoc` names both models.
+|Approver
+|pending
+|Date, revision
+|pending; describes `cdd2b68`
+|Review or expiry
+|pending
+|===

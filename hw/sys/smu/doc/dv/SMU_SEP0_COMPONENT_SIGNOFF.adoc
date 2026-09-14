@@ -63,11 +63,17 @@ A green atomic test is not ATOP non-support credit.
 
 Release-group (`sep0_all`) SMC-under-SMU names:
 
-`smu_smc_smoke_test`, `smu_no_sep_configuration_test`,
+`smu_no_sep_configuration_test`,
 `smu_smc_reset_ctrl_test`, `smu_smc_security_demote_pm_test`,
 `smu_system_timer_octs_test`, `smu_i3c_mem_port_connectivity_test`,
 `smu_smc_wdt_sanity_test`, `smu_smc_wdt_timeout_irq_test`,
 `smu_smc_mailbox_sanity_test`.
+
+`smu_smc_smoke_test` -- the SMC ROM boot to PASS on the wrapper -- is not in
+`sep0_all`. It is enrolled in `smoke`, `all` and `all_with_sep_exec`, which
+need the SMC firmware compile; neither `sim.yml` nor `regress.yml` runs any
+of those groups, so it carries no release credit until one of them is
+scheduled.
 
 `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are in
 `sep0_all` (the former also in `smoke_sep0`).

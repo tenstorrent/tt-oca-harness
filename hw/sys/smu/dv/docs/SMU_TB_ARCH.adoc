@@ -87,9 +87,15 @@ of every run.
 
 === Stimulus Strategy
 
-Sequences drive the DUT through its real pins and buses. No enrolled test uses
-Force or deposit: a scenario that needs one is not reportable as PASS and is
-classified OUT in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+Sequences drive the DUT through its real pins and buses. One enrolled force
+exists, `+esrc_noise_force` on the twelve ESRC raw-noise lanes of three
+SEP=1 leaves; it and every other stand-in on a proof path (the fuse-sense
+skip, the `abr_reg.sv` waiver, the scan-chain loopbacks, the `prim_sync`
+stand-ins, the eFuse models) have a six-field entry in the *Bench stand-ins
+and exceptions* section of
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`. A scenario that needs a
+force or deposit outside that record is not reportable as PASS and is
+classified OUT in the same document.
 
 [[smu-checking-strategy]]
 === Checking Strategy
@@ -227,7 +233,20 @@ inbound pins
 |SMC OTP AXI-Lite over JTAG2AXI |`ocah_axi_vip` AXI-Lite wrappers
 |SMC scratch / mailbox |Backdoor read plus cocotb polling
 |Cross-trigger / iJTAG |product-pin stimulus from the sequences; no dedicated VIP
+|SMC and SEP eFuse / OTP |`efuse_interface_shim` + `efuse_bank_model`, instantiated by
+`hw/top/smc_ip_integration.sv` and `hw/top/sep_ip_integration.sv` inside the DUT
+compile (a model in the product composition, not a testbench component); on the
+block bench `tb/tb_top.sv` ties the shim responses to zero. Shadow registers are
+preloaded under `+skip_fuse_sense`
+|BSR / STAP / DFD host scan chains |testbench loopback of `scan_out` to `scan_in`
+(`tb/tb_wrapper_top.sv` BSR only, other chains tied low; `tb/tb_top.sv` all five)
+|CDC synchronisers on Verilator |`prim_sync2` / `prim_sync3` stand-ins from
+`hw/sys/smc/dv/tb/verilator_stubs/`, listed in `[build].stubs`
 |===
+
+The last three rows are stand-ins on a proof path; their scope and approval
+fields are the *Bench stand-ins and exceptions* entries in
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
 
 === Testlists
 
