@@ -3657,17 +3657,16 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: PROXY -- run eFuse-derived chip-config reads; raw OTP permission paths have no responder in this bench.
+*Objective*: Read the four eFuse-derived chip-config registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
 
 *Test Coverage*:
 
 * DEFENDS: the four eFuse-derived chip-config registers decode; `VERSION_LO`, `VERSION_HI` and `CHIP_ID` read their generated reset values, `LC_STATE` is decode-only because its value is simulator-divergent in the OSS bench; and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
-* DOES NOT DEFEND: eFuse permission or boundary semantics of any kind. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition, attempts no denied access, and touches no raw OTP window, because the SMC CSR boundary exposes none of that in the OSS bench.
-* GAP: raw OTP permission-path coverage needs either a responder at the raw OTP window on `smc_wrapper` or an explicit OUT disposition; without one this testcase is a named placeholder, not evidence.
+* DOES NOT DEFEND: eFuse permission semantics. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition and attempts no denied access, because the SMC CSR boundary exposes none of that. Lifecycle-gated access control is proven by `smc_efuse_jtag_lc_access_matrix_test` and locked-shadow access by `smc_efuse_locked_access_interrupt_test`; the raw OTP window has no responder on `smc_wrapper` and is recorded under Known Limitations.
 
 *Test Procedure*:
 
-Drive `smc_efuse_permission_boundary_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 *Checkers*:
 
@@ -6266,5 +6265,6 @@ For each of the two (target, lock) pairs:
 |`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 |Held out of `all`; the card does not claim sign-off PASS |Fix the CLA deny-leg hang
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top`, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers |Held out of `all`; the fail-closed recovery it scores runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse` |Enroll it once the checks score the reaction on `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL` and the Zeroer `CTRL_STATUS`
 |Thirteen catalogued test names have no module under `cocotb/tests/` |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` names the blocker per row |Clear the blocker named in the row; the module is restored from git history
+|The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |===
