@@ -45,11 +45,9 @@ THIS ROW SHARES ONE ERROR CODE WITH EVERY OTHER LENGTH ROW
 Both length arms return ``MANIFEST_ERR_BAD_LENGTH`` and ``validate_manifest_header``
 prints no token for either, so on the console this row is indistinguishable from
 ``..._minor_0_length_incorrect_test`` and ``..._minor_nonzero_length_large_test``.
-The reference separates them -- ``ERROR: INVALID_MANIFEST_LENGTH`` against
-``ERROR: MANIFEST_TOO_LONG`` -- and this ROM cannot:
 ``SEP_MSG_INVALID_MANIFEST_LENGTH`` and ``SEP_MSG_MANIFEST_TOO_LONG`` are both
 DEFINED in ``bootrom/prod/include/status_values.h`` and emitted by nothing under
-``bootrom/prod/src``.
+``bootrom/prod/src``, so the console cannot separate the two arms at all.
 
 **THERE IS NO ROM-SIDE DISCRIMINATOR BETWEEN THESE ROWS, AND THIS IS SAID PLAINLY.**
 What separates them at run time is

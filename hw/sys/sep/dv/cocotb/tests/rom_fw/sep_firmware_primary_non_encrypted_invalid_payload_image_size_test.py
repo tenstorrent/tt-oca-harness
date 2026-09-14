@@ -14,30 +14,20 @@ SILENT ``end > p_len`` bounds arm sits immediately above the alignment arm in th
 same entry and returns exactly the same ``MANIFEST_ERR_IMAGE_OOB``. Only
 ``IMAGE_LEN_ALIGN idx=`` distinguishes them, and only this arm prints it.
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME, AND IT IS NOT THE REFERENCE'S.
-The reference plants ``primary.payload_images[0].length = 0x1001``
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:626``), which is 1 modulo
-4. That exact value cannot be planted on the shipped OSS payload: its single image
-sits at 0x1000 in a 5936-byte payload, so 0x1000 + 0x1001 lands outside it and the
-SILENT bounds arm would produce this row's error code by a different check. 0x72D is
-the largest value with the reference's own residue that still ends inside the
-payload, on both shipped images. Residues 2 and 3 are unexercised batch-wide; the
-full reasoning is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
+THE PLANTED VALUE. 0x72D, which is 1 modulo 4 and so violates ``(len & 3u) != 0``.
+It is the largest such value that still ends inside the payload on both shipped
+images: the single image sits at 0x1000 in 5936 plaintext bytes, and a length that
+overruns would be refused by the SILENT bounds arm, which returns this row's error
+code from a different check. Residues 2 and 3 are unexercised; the full reasoning
+is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
 
-THE PAYLOAD IS NOT ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its scenario
-sets ``primary.manifest.encrypted_payload: "0"`` (``:627``), overriding the packer's
-primary default of 1 (``firmware/utils/pack_images/configs/default_test.yaml:46``);
-the backup inherits 0 (``:145``) and is plaintext in the reference too. This port
-loads ``secure_boot.bin``, whose slots both carry ``encrypted_payload = 0``, and the
-base asserts that flag on the loaded image.
+THE PAYLOAD IS NOT ENCRYPTED. This row loads ``secure_boot.bin``, whose slots both
+carry ``encrypted_payload = 0``, and the base asserts that flag on the loaded
+image.
 
-SECURE BOOT STAYS ON HERE. The reference also sets
-``primary.manifest.boot_arguments.secure_boot: 0`` (``:628``), the convention its
-``*_NON_ENCRYPTED_*`` scenarios follow because the packer refuses
-``encrypted_payload: 1`` together with ``secure_boot: 0``. This port runs under
-LC=PROD, where ``secure_boot_enabled()`` (``manifest_load.c``) enforces the chain
-regardless of the manifest flag. The feature under test is unchanged and the result
-is stronger: the base requires the primary's ``RSA_VERIFY_START`` and ``SIG_VALID``
+SECURE BOOT STAYS ON. Under LC=PROD, ``secure_boot_enabled()``
+(``manifest_load.c``) enforces the chain regardless of the manifest flag: the base
+requires the primary's ``RSA_VERIFY_START`` and ``SIG_VALID``
 inside its own attempt before the rejection. Reproducing ``secure_boot: 0`` would
 change NOTHING at PROD, so reaching the ``SBOOT_OFF`` branch at all would need a
 TEST_DEV/RMA fuse image or the ``SBOOT_DIS`` chicken bit, and no row in this batch

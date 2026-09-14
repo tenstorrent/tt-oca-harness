@@ -9,27 +9,18 @@ declaring an offset below that region trips it, printing
 (0x0003000f). With the primary already refused, the backup's rejection exhausts the
 retry loop and the run ends terminal on ``MANIFEST_ALL_FAILED``.
 
-THE REFERENCE'S RULE IS THIS ROM'S RULE; ITS VALUE IS NOT REACHABLE HERE. The
-scenario (``tb/cocotb_tests/sep_firmware_payload_validation_test.py:642-647``)
-writes ``backup.payload_images[0].offset = 0x100``, and the reference ROM returns
-``SEP_MSG_IMAGE_EXCEEDS_BOUND`` for exactly ``image->offset < prev_end_offset``
-(``firmware/bootcode/src/manifest.c:455-459``). 0x100 works there because the
-reference payload declares TWO images, making its TOC region 464 bytes; the shipped
-OSS payload declares ONE, so its region is 248 bytes and 0x100 = 256 is ABOVE the
-bound and would be ACCEPTED. 240 is planted instead -- the largest 8-byte-aligned
-offset still inside the region. See ``sep_toc_bound_defect.BOUND_IMAGE_OFFSET``.
+THE PLANTED VALUE. ``backup.payload_images[0].offset = 240``. The bound is the TOC
+region, whose size follows the image count: the shipped payload declares ONE image,
+so the region is 248 bytes. 240 is the largest 8-byte-aligned offset still inside
+it. Any offset at or above 248 is ACCEPTED. See
+``sep_toc_bound_defect.BOUND_IMAGE_OFFSET``.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario sets ``backup.manifest.encrypted_payload: "1"`` (``:645``), overriding the
-packer's backup block, which supplies 0
-(``firmware/utils/pack_images/configs/default_test.yaml:145``). This port loads
-``encrypted_boot.bin``, whose slots both carry ``encrypted_payload = 1``, and the
-base asserts that flag on the loaded image. The reference's PRIMARY inherits
-``encrypted_payload: 1`` (``:46``), as this port's does, so the slot pairing matches.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
+loaded image before planting anything.
 
-THE FAILOVER TRIGGER IS THE REFERENCE'S OWN:
-``primary.manifest.manifest_identifier: "99"`` (``:646``), planted here by
-``sep_backup_manifest_fail_base.corrupt_primary`` and producing
+THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
+``sep_backup_manifest_fail_base.corrupt_primary``, producing
 ``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work, so it cannot interact
 with the arm under test.
 

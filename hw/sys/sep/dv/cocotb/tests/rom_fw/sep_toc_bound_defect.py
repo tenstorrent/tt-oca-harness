@@ -84,13 +84,12 @@ ENCRYPTED_IMAGE = td.ENCRYPTED_IMAGE
 PLAINTEXT_EFUSE = td.PLAINTEXT_EFUSE
 ENCRYPTED_EFUSE = td.ENCRYPTED_EFUSE
 
-# BOTH SLOTS SHARE ONE ENCRYPTION STATE HERE, AND THE REFERENCE'S DO NOT. The
-# consequences are identical to the other TOC families' and are set out in full in
-# ``sep_toc_defect``'s module docstring: a BACKUP cell is unaffected because its
-# primary is refused on the manifest magic upstream of the first read of the
-# encryption flag, while a PRIMARY ENCRYPTED cell recovers onto an encrypted backup
-# where the reference recovers onto a plaintext one -- more work for the DUT, and
-# the reason those cells require the decryption markers twice.
+# BOTH SLOTS OF EACH IMAGE SHARE ONE ENCRYPTION STATE, as for the other TOC
+# families; ``sep_toc_defect``'s module docstring sets out the consequences. A
+# BACKUP cell is unaffected because its primary is refused on the manifest magic
+# upstream of the first read of the encryption flag; a PRIMARY ENCRYPTED cell
+# recovers onto a backup that is also encrypted, which is why those cells require
+# the decryption markers twice.
 
 # manifest.h
 ERR_BAD_LENGTH = td.ERR_BAD_LENGTH
@@ -104,45 +103,32 @@ BOUND = "payload_image_exceeds_bound"
 PLEN = "toc_payload_size_mismatch"
 
 # ── The two stimuli ──────────────────────────────────────────────────────────
-# IMAGE BOUND. The reference
-# (``tb/cocotb_tests/sep_firmware_payload_validation_test.py``, the four
-# ``*_PAYLOAD_IMAGE_EXCEEDS_BOUND`` branches at ``:637-659``) writes
-# ``payload_images[0].offset = 0x100``. Its ROM
-# (``firmware/bootcode/src/manifest.c:455-459``) returns ``SEP_MSG_IMAGE_EXCEEDS_BOUND``
-# for ``image->offset < prev_end_offset`` -- the SAME rule this ROM enforces as
-# ``off < prev_end``. The reference's separate ``SEP_MSG_IMAGE_EXCEEDS_PAYLOAD_LENGTH``
-# (``:462-465``) covers the payload-length bound, so this family's name is about the
-# TOC-region bound and not about running off the end of the payload.
+# IMAGE BOUND. This family is about the TOC-region bound -- an image body that
+# starts inside the TOC that describes it -- and not about running off the end of
+# the payload, which is a separate arm. ``off < prev_end`` enforces it, with
+# ``prev_end`` seeded at the TOC region size.
 #
-# 0x100 CANNOT BE PLANTED HERE, AND PLANTING IT WOULD NOT VIOLATE ANYTHING. The
-# bound is the TOC region, whose size follows the image count: the reference's
-# payload declares TWO images, so its region is 32 + 2*216 = 464 bytes and 0x100=256
-# falls inside it. The shipped OSS payload declares ONE image, so its region is
-# 32 + 216 = 248 bytes and 256 is ABOVE the bound -- the ROM would ACCEPT the
-# ordering of that entry and the row would prove nothing.
-# ``pm.set_toc_entry_offset`` refuses such a value rather than planting it.
+# The bound follows the image count: the shipped payload declares ONE image, so
+# the region is 32 + 216 = 248 bytes. An offset at or above 248 is ACCEPTED by the
+# ordering arm and proves nothing, so ``pm.set_toc_entry_offset`` refuses one
+# rather than planting it.
 #
-# 240 is the largest 8-byte-aligned offset still inside the 248-byte region, so it
-# is the TIGHTEST possible violation: it pins the comparison to exactly the TOC
-# region size rather than to some looser bound a mistake might have used. The
-# 8-byte alignment is the reference's own property -- its ROM refuses an unaligned
-# offset before reaching the bound, and 0x100 satisfies it. THIS ROM HAS NO SUCH
-# CHECK, recorded as ``FINDINGS[0918rtl] R03``; keeping the planted offset aligned
-# is what stops these rows from straying onto that missing arm in either direction.
+# 240 is the largest 8-byte-aligned offset still inside that region, so it is the
+# TIGHTEST possible violation: it pins the comparison to exactly the TOC region
+# size rather than to some looser bound a mistake might have used. Keeping the
+# offset 8-byte aligned also keeps these rows clear of the alignment arm, which
+# precedes the bound and returns a different code.
 BOUND_IMAGE_OFFSET = 240
 BOUND_ENTRY_INDEX = 0
 
-# TOC PAYLOAD LENGTH. The reference plants ``toc.payload_length = 0x2000``
-# (``sep_firmware_payload_validation_test.py:661-684``, all four branches). THIS
-# VALUE IS PLANTED VERBATIM: 8192 exceeds the shipped payload's 5936 plaintext
-# bytes, so it violates the plaintext rule (``!=``) and the encrypted rule
-# (``toc_p_len > m->payload_length``, where the manifest declares 5952) alike.
+# TOC PAYLOAD LENGTH. 0x2000 = 8192 exceeds the shipped payload's 5936 plaintext
+# bytes, so it disagrees with the manifest's declared length on a plaintext slot
+# and on an encrypted one alike, where the manifest declares 5952 -- the 5936
+# plaintext plus the PKCS#7 block the packer appended.
 #
-# THE OTHER DIRECTION IS UNCOVERED, BATCH-WIDE. The encrypted arm is an ``||`` of
-# two sub-conditions, and 0x2000 only ever reaches the first. A TOC claiming LESS
-# than the manifest by more than one AES block -- the sub-condition that bounds the
-# PKCS#7 slack -- is caught only by a row planting a value below the manifest's, and
-# all four PLEN cells plant the same above-manifest value.
+# A TOC DECLARING LESS THAN THE MANIFEST IS UNCOVERED. All four PLEN cells plant
+# the same above-manifest value, so a TOC whose length falls short of the padded
+# length the manifest declares is reached by no row.
 BAD_TOC_PAYLOAD_LENGTH = 0x2000
 
 # ── Per-family descriptors ───────────────────────────────────────────────────

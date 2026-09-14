@@ -9,28 +9,15 @@ declaring an offset below entry 0's end trips it, printing
 (0x0003000f). With the primary already refused, the backup's rejection exhausts the
 retry loop and the run ends terminal on ``MANIFEST_ALL_FAILED``.
 
-THE PLANTED VALUES ARE THE REFERENCE'S OWN. Its scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:591-597``) writes
-``backup.payload_images[0].offset = 0x1000`` and
-``backup.payload_images[1].offset = 0x500``. The first is a no-op against the packer
-default, which already places image 0 at 0x1000
-(``firmware/utils/pack_images/configs/default_test.yaml:163``), and the shipped OSS
-payload places its SEP_BL1 at 0x1000 as well, so both offsets are reproduced exactly.
-The reference's image 1 is a SEPBL2 (``default_test.yaml:169-177``); the OSS payload
-declares only one image, so the second is created with that type. See
+THE PLANTED VALUES. Image 0 keeps the 0x1000 the shipped payload already gives its
+SEP_BL1, and image 1 declares 0x500 -- below image 0's start. The shipped payload
+declares only one image, so entry 1 is created, typed SEPBL2. See
 ``sep_toc_entry_defect.SECOND_IMAGE_OFFSET``.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario sets ``backup.manifest.encrypted_payload: "1"`` (``:595``), overriding the
-packer's backup default of 0 (``default_test.yaml:145``) -- the very field whose
-omission in the neighbouring TOC-version row is recorded as ``FINDINGS[0918rtl] R02``.
-This row's reference branch sets it, so no such defect applies here. Neither slot's
-``boot_arguments.secure_boot`` is touched, so both inherit 1 (``:15`` and ``:117``),
-and the reference's PRIMARY inherits ``encrypted_payload: 1`` (``:46``). This port
-loads ``encrypted_boot.bin``, whose both slots are encrypted, which matches the
-reference on both counts -- and the primary's encryption state is unobservable
-anyway, because it is refused on its manifest magic upstream of the first read of
-that flag.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
+loaded image. The primary's encryption state is unobservable in this run: it is
+refused on its manifest magic upstream of the first read of that flag.
 
 WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
 

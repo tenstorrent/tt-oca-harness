@@ -7,19 +7,13 @@
 otherwise. The primary's rejection returns into ``rom_manifest_boot``'s retry
 loop, so the required outcome is a completed boot from the untouched backup.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario (``tb/cocotb_tests/sep_firmware_payload_validation_test.py:561-565``)
-sets ``primary.manifest.encrypted_payload: "1"`` alongside the count -- which
-matches what the packer's primary block would have supplied anyway
-(``firmware/utils/pack_images/configs/default_test.yaml:46``). This port loads
-``encrypted_boot.bin``, decrypts the payload, writes the field, re-encrypts and
-re-seals. The ROM parses the TOC only after ``decrypt_payload``, so this is the
-only form of the stimulus that reaches the count check.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``; the mutator decrypts the payload,
+writes the field, re-encrypts and re-seals. The ROM parses the TOC only after
+``decrypt_payload``, so this is the only form of the stimulus that reaches the
+count check.
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME. The reference draws
-``random.choice([0, 257])``
-(``sep_firmware_payload_validation_test.py:564``); both draws land on the same
-``MANIFEST_ERR_TOC_COUNT`` arm. This port plants 257. THE ``image_count == 0`` HALF
+THE PLANTED VALUE. 257 -- one past the ``n > 256`` bound. THE ``image_count == 0`` HALF
 OF THAT ARM IS THEREFORE NOT EXERCISED BY THIS ROW -- the reasoning is in
 ``sep_toc_defect.BAD_IMAGE_COUNT``.
 

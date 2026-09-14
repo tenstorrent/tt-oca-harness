@@ -14,25 +14,17 @@ SILENT ``end > p_len`` bounds arm sits immediately above the alignment arm in th
 same entry and returns exactly the same ``MANIFEST_ERR_IMAGE_OOB``. Only
 ``IMAGE_LEN_ALIGN idx=`` distinguishes them, and only this arm prints it.
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME, AND IT IS NOT THE REFERENCE'S.
-The reference plants ``primary.payload_images[0].length = 0x1001``
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:615``), which is 1 modulo
-4. That exact value cannot be planted on the shipped OSS payload: its single image
-sits at 0x1000 in a 5936-byte payload, so 0x1000 + 0x1001 lands outside it and the
-SILENT bounds arm would produce this row's error code by a different check. 0x72D is
-the largest value with the reference's own residue that still ends inside the
-payload, on both shipped images. Residues 2 and 3 are unexercised batch-wide; the
-full reasoning is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
+THE PLANTED VALUE. 0x72D, which is 1 modulo 4 and so violates ``(len & 3u) != 0``.
+It is the largest such value that still ends inside the payload on both shipped
+images: the single image sits at 0x1000 in 5936 plaintext bytes, and a length that
+overruns would be refused by the SILENT bounds arm, which returns this row's error
+code from a different check. Residues 2 and 3 are unexercised; the full reasoning
+is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario sets ``primary.manifest.encrypted_payload: "1"`` (``:616``), matching what
-the packer's primary block would have supplied anyway
-(``firmware/utils/pack_images/configs/default_test.yaml:46``). Neither slot's
-``boot_arguments.secure_boot`` is touched, so both inherit 1 (``:15``, ``:117``). The
-reference's BACKUP inherits ``encrypted_payload: 0`` (``:145``) and is plaintext;
-this port loads ``encrypted_boot.bin``, whose both slots are encrypted, so the
-recovering backup decrypts too -- more work for the DUT, and why this row requires
-the decryption markers twice.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
+loaded image. The recovering backup is encrypted too and decrypts in turn, which is
+why this row requires the decryption markers twice.
 
 THE IMAGE STILL HASHES CORRECTLY. ``pm.set_toc_entry_length`` recomputes the entry's
 digest over the newly declared range, so alignment is the ONLY rule this payload

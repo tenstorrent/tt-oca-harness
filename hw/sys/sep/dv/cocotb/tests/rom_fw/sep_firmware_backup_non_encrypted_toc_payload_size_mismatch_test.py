@@ -10,45 +10,31 @@ the same bytes and must agree EXACTLY, so any difference is refused. With the pr
 already refused, the backup's rejection exhausts the retry loop and the run ends
 terminal on ``MANIFEST_ALL_FAILED``.
 
-THE PLANTED VALUE IS THE REFERENCE'S OWN, VERBATIM. Its scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:678-684``) writes
-``backup.toc.payload_length = 0x2000``, and the reference ROM enforces the same
-equality for a plaintext payload (``firmware/bootcode/src/manifest.c:399-411``). 8192
-differs from this artefact's 5936, so it violates the rule here exactly as it does
-there. No substitution was needed.
+THE PLANTED VALUE. ``backup.toc.payload_length = 0x2000``. 8192 differs from this
+artefact's 5936 plaintext bytes, so the equality the plaintext arm enforces is
+violated.
 
-THE PAYLOAD IS NOT ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its scenario
-sets ``backup.manifest.encrypted_payload: "0"`` (``:681``), which agrees with the
-packer's backup block
-(``firmware/utils/pack_images/configs/default_test.yaml:145``). This port loads
-``secure_boot.bin``, whose slots both carry ``encrypted_payload = 0``, and the base
-asserts that flag on the loaded image. The reference's PRIMARY inherits
-``encrypted_payload: 1`` (``:46``) where this port's is plaintext, which is
-unobservable: the primary is refused on its manifest magic upstream of the first
-read of that flag.
+THE PAYLOAD IS NOT ENCRYPTED. This row loads ``secure_boot.bin``, whose slots both
+carry ``encrypted_payload = 0``, and the base asserts that flag on the loaded image
+before planting anything.
 
-THE FAILOVER TRIGGER IS THE REFERENCE'S OWN:
-``primary.manifest.manifest_identifier: "99"`` (``:683``), planted here by
-``sep_backup_manifest_fail_base.corrupt_primary`` and producing
+THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
+``sep_backup_manifest_fail_base.corrupt_primary``, producing
 ``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work. That also keeps this
 row's own code attributable: the primary's verdict is BAD_MAGIC, not BAD_LENGTH, so
 the single BAD_LENGTH in the run is the backup's.
 
-SECURE BOOT STAYS ON HERE. The reference sets
-``backup.manifest.boot_arguments.secure_boot: 0`` (``:682``) -- the ``backup.`` key,
-correctly paired with the slot it mutates. This port runs under LC=PROD, where
-``secure_boot_enabled()`` (``manifest_load.c``) enforces the chain regardless of the
-manifest flag. The feature under test is unchanged and the result is stronger, and it
-is what proves this row's BAD_LENGTH is the TOC's rather than
+SECURE BOOT STAYS ON. Under LC=PROD, ``secure_boot_enabled()``
+(``manifest_load.c``) enforces the chain regardless of the manifest flag. That is
+what proves this row's BAD_LENGTH is the TOC's rather than
 ``validate_manifest_header``'s, which can return the same code: the base asserts the
 backup's ``manifest_length`` is still ``MANIFEST_SIZE`` before planting anything, and
 requires ``RSA_VERIFY_START``, ``SIG_VALID``, ``PLD_HASH_OK`` and
 ``CRYPTO_VALIDATE_OK`` exactly once each and in order before the token -- an ordering
-only a slot that cleared the header check in full can produce. Reproducing
-``secure_boot: 0`` would change NOTHING at PROD, so reaching the ``SBOOT_OFF`` branch
-would need a TEST_DEV/RMA fuse image or the ``SBOOT_DIS`` chicken bit, and no row in
-this batch uses either. That arm is not covered here; ``SBOOT_OFF`` and
-``CRYPTO_FAIL=`` are both forbidden, so this row can never drift onto it.
+only a slot that cleared the header check in full can produce. Reaching the
+``SBOOT_OFF`` branch would need a TEST_DEV/RMA fuse image or the ``SBOOT_DIS``
+chicken bit, and no row here uses either. That arm is not covered; ``SBOOT_OFF`` and
+``CRYPTO_FAIL=`` are both forbidden, so this row cannot drift onto it.
 
 WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
 

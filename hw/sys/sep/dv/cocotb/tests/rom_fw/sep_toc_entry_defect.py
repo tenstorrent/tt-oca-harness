@@ -58,13 +58,12 @@ ENCRYPTED_IMAGE = td.ENCRYPTED_IMAGE
 PLAINTEXT_EFUSE = td.PLAINTEXT_EFUSE
 ENCRYPTED_EFUSE = td.ENCRYPTED_EFUSE
 
-# BOTH SLOTS SHARE ONE ENCRYPTION STATE HERE, AND THE REFERENCE'S DO NOT. The
-# consequences are identical to the header family's and are set out in
-# ``sep_toc_defect``'s module docstring: a BACKUP cell is unaffected because its
-# primary is refused on the manifest magic upstream of the first read of the
-# encryption flag, while a PRIMARY ENCRYPTED cell recovers onto an encrypted backup
-# where the reference recovers onto a plaintext one -- more work for the DUT, and
-# the reason those cells require the decryption markers twice.
+# BOTH SLOTS OF EACH IMAGE SHARE ONE ENCRYPTION STATE, as for the header family;
+# ``sep_toc_defect``'s module docstring sets out the consequences. A BACKUP cell
+# is unaffected because its primary is refused on the manifest magic upstream of
+# the first read of the encryption flag; a PRIMARY ENCRYPTED cell recovers onto a
+# backup that is also encrypted, which is why those cells require the decryption
+# markers twice.
 
 # manifest.h
 ERR_BAD_IMAGE_TYPE = 0x0003_000D
@@ -79,56 +78,39 @@ ORDER = "images_out_of_order"
 SIZE = "invalid_payload_image_size"
 
 # ── The two stimuli ──────────────────────────────────────────────────────────
-# IMAGE ORDER. The reference
-# (``tb/cocotb_tests/sep_firmware_payload_validation_test.py``, the four
-# ``*_PAYLOAD_IMAGES_OUT_OF_ORDER`` branches at ``:585-612``) writes
-# ``payload_images[0].offset = 0x1000`` and ``payload_images[1].offset = 0x500``
-# into the packer config. The FIRST of those two is a no-op: the packer's own
-# default already places image 0 at 0x1000
-# (``firmware/utils/pack_images/configs/default_test.yaml:72`` for the primary and
-# ``:163`` for the backup), so the only value the scenario actually changes is
-# image 1's, from 0x3000 down to 0x500. The shipped OSS payload likewise places its
-# SEP_BL1 at 0x1000, so BOTH of the reference's planted offsets are reproduced
-# here exactly.
+# IMAGE ORDER. Image 0 keeps the 0x1000 the shipped payload already gives its
+# SEP_BL1, and image 1 declares 0x500 -- below image 0's start, so the ordering
+# comparison against the previous image's end refuses it.
 SECOND_IMAGE_OFFSET = 0x500
-# The reference's image 1 is a SEPBL2 built from ``firmware/hello_world/out/app.bin``
-# (``default_test.yaml:80-88``, ``:169-177``) with a packer-calculated length. The
-# shipped OSS payload declares ONE image, so the second has to be created; its body
-# is a 256-byte slice of the BL1, which is 4-byte aligned and non-zero so that
-# neither IMAGE_LEN_ZERO nor IMAGE_LEN_ALIGN can pre-empt the ordering check. The
-# TYPE is the reference's SEPBL2. Entry 1's length is never read by the arm under
-# test -- the ordering comparison precedes it -- so its value carries no verdict.
+# The shipped payload declares ONE image, so entry 1 has to be created. Its body
+# is a 256-byte slice of the BL1: 4-byte aligned and non-zero, so neither
+# IMAGE_LEN_ZERO nor IMAGE_LEN_ALIGN can pre-empt the ordering check. Its type is
+# SEPBL2. Entry 1's length is never read by the arm under test -- the ordering
+# comparison precedes it -- so its value carries no verdict.
 SECOND_IMAGE_LENGTH = 256
 SECOND_IMAGE_TYPE = pm.IMAGE_TYPE_SEP_BL2
-# The violating entry is index 1, as in the reference: entry 0 stays valid and
-# ascending, and entry 1 declares an offset below entry 0's end.
+# The violating entry is index 1: entry 0 stays valid and ascending, and entry 1
+# declares an offset below entry 0's end.
 ORDER_ENTRY_INDEX = 1
 
-# IMAGE LENGTH. The reference plants ``payload_images[0].length = 0x1001``
-# (``sep_firmware_payload_validation_test.py:615``, ``:620``, ``:626``, ``:632``),
-# overriding the packer's calculated length. 0x1001 is 1 modulo 4, so the rule it
-# violates is ``(len & 3u) != 0``.
+# IMAGE LENGTH. Any length that is not a multiple of 4 violates ``(len & 3u) != 0``,
+# but the declared image must still end inside the payload. The SILENT
+# ``end > p_len`` arm runs BEFORE the alignment arm and returns the SAME
+# ``MANIFEST_ERR_IMAGE_OOB``, so a length that overruns reports this family's error
+# code while exercising the bounds check instead. ``pm.set_toc_entry_length``
+# refuses such a value rather than planting it.
 #
-# 0x1001 CANNOT BE PLANTED HERE, AND PLANTING IT WOULD CHANGE THE CHECK UNDER TEST.
-# The reference's payload runs past 0x3000 because it carries a second image there;
-# the shipped OSS payload is 5936 bytes with its single image at 0x1000, so
-# ``0x1000 + 0x1001`` lands at 0x2001, outside it. The SILENT ``end > p_len`` arm
-# runs BEFORE the alignment arm and returns the SAME ``MANIFEST_ERR_IMAGE_OOB``, so
-# the row would report this family's error code while exercising the bounds check
-# instead -- the exact substitution the token requirement exists to catch.
-# ``pm.set_toc_entry_length`` refuses such a value rather than planting it.
+# 0x72D is the largest value that is 1 modulo 4 and still ends inside the payload
+# on BOTH shipped images, so all four SIZE rows plant one identical value. The room
+# is 1840 bytes on both, measured from image 0 at 0x1000. On the encrypted image
+# the manifest's ``payload_length`` is 5952, but that counts the PKCS#7 block the
+# packer appended; the plaintext the ROM parses after decryption is 5936, and
+# ``set_toc_entry_length`` bounds against the smaller of the two so the declared
+# image cannot run past the bytes that exist.
 #
-# 0x72D is the largest value that is 1 modulo 4 -- the reference's own residue --
-# and still ends inside the payload on BOTH shipped images, so all four SIZE rows
-# plant one identical value. The room is 1840 bytes on both, measured from image 0
-# at 0x1000. On the encrypted image the manifest's ``payload_length`` is 5952, but
-# that counts the PKCS#7 block the packer appended; the plaintext the ROM parses
-# after decryption is 5936, and ``set_toc_entry_length`` bounds against the
-# smaller of the two so the declared image cannot run past the bytes that exist.
-#
-# RESIDUES 2 AND 3 ARE UNCOVERED, BATCH-WIDE. All four SIZE rows plant residue 1,
-# following the reference. A ROM that had written ``len & 1`` in place of ``len & 3``
-# would accept a length of 2 modulo 4 and is caught only by a row planting one.
+# RESIDUES 2 AND 3 ARE UNCOVERED. All four SIZE rows plant residue 1. A ROM that
+# had written ``len & 1`` in place of ``len & 3`` would accept a length of 2 modulo
+# 4 and is caught only by a row planting one.
 BAD_IMAGE_LENGTH = 0x72D
 SIZE_ENTRY_INDEX = 0
 

@@ -9,28 +9,18 @@ declaring an offset below that region trips it, printing
 (0x0003000f). The primary's rejection returns into ``rom_manifest_boot``'s retry
 loop, so the required outcome is a completed boot from the untouched backup.
 
-THE REFERENCE'S RULE IS THIS ROM'S RULE; ITS VALUE IS NOT REACHABLE HERE. The
-scenario (``tb/cocotb_tests/sep_firmware_payload_validation_test.py:637-641``)
-writes ``primary.payload_images[0].offset = 0x100``, and the reference ROM returns
-``SEP_MSG_IMAGE_EXCEEDS_BOUND`` for exactly ``image->offset < prev_end_offset``
-(``firmware/bootcode/src/manifest.c:455-459``) -- the same comparison. 0x100 works
-there because the reference payload declares TWO images, making its TOC region
-32 + 2*216 = 464 bytes. The shipped OSS payload declares ONE, so its region is 248
-bytes and 0x100 = 256 sits ABOVE the bound: the ROM would ACCEPT that entry's
-ordering. 240 is planted instead -- the largest 8-byte-aligned offset still inside
-the 248-byte region, preserving the reference's alignment property and pinning the
-comparison to the region size exactly. ``pm.set_toc_entry_offset`` refuses 0x100
-rather than planting it. See ``sep_toc_bound_defect.BOUND_IMAGE_OFFSET``.
+THE PLANTED VALUE. ``primary.payload_images[0].offset = 240``. The bound is the TOC
+region, whose size follows the image count: the shipped payload declares ONE image,
+so the region is 32 + 216 = 248 bytes. 240 is the largest 8-byte-aligned offset
+still inside it, which makes it the tightest possible violation and pins the
+comparison to the region size exactly. Any offset at or above 248 is ACCEPTED;
+``pm.set_toc_entry_offset`` refuses one rather than planting it. See
+``sep_toc_bound_defect.BOUND_IMAGE_OFFSET``.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario sets ``primary.manifest.encrypted_payload: "1"`` (``:640``), matching what
-the packer's primary block supplies anyway
-(``firmware/utils/pack_images/configs/default_test.yaml:46``). Neither slot's
-``boot_arguments.secure_boot`` is touched, so both inherit 1 (``:15``, ``:117``). The
-reference's BACKUP inherits ``encrypted_payload: 0`` (``:145``) and is therefore
-plaintext; this port loads ``encrypted_boot.bin``, whose BOTH slots are encrypted, so
-the recovering backup decrypts too. That is more work for the DUT, not less, and it
-is why this row requires the decryption markers twice rather than once.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
+loaded image. The recovering backup is encrypted too and decrypts in turn, which is
+why this row requires the decryption markers twice rather than once.
 
 WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
 

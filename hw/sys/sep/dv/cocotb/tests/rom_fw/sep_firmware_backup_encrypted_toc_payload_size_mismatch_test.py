@@ -12,29 +12,21 @@ never claim MORE than was loaded. With the primary already refused, the backup's
 rejection exhausts the retry loop and the run ends terminal on
 ``MANIFEST_ALL_FAILED``.
 
-THE PLANTED VALUE IS THE REFERENCE'S OWN, VERBATIM. Its scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:666-671``) writes
-``backup.toc.payload_length = 0x2000``, and the reference ROM enforces the same
-agreement with the same PKCS#7 allowance
-(``firmware/bootcode/src/manifest.c:399-411``). 8192 exceeds this artefact's declared
-ciphertext length of 5952, so it violates ``toc_p_len > m->payload_length`` here
-exactly as it violates the reference's equality. No substitution was needed.
+THE PLANTED VALUE. ``backup.toc.payload_length = 0x2000``. The encrypted arm
+requires the manifest's length to equal the TOC's rounded up to the next AES block,
+which for this artefact's 5936 plaintext bytes is 5952. 8192 is neither, so the
+agreement is violated.
 
-THE OTHER DIRECTION IS NOT COVERED. The encrypted arm is an ``||`` of two
-sub-conditions and 0x2000 only ever reaches the first. See
+A TOC DECLARING LESS THAN THE MANIFEST IS NOT COVERED. 0x2000 is above the
+manifest's length; no row plants one below it. See
 ``sep_toc_bound_defect.BAD_TOC_PAYLOAD_LENGTH``.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario sets ``backup.manifest.encrypted_payload: "1"`` (``:669``), overriding the
-packer's backup block, which supplies 0
-(``firmware/utils/pack_images/configs/default_test.yaml:145``). This port loads
-``encrypted_boot.bin``, whose slots both carry ``encrypted_payload = 1``, and the
-base asserts that flag on the loaded image. The reference's PRIMARY inherits
-``encrypted_payload: 1`` (``:46``), as this port's does, so the slot pairing matches.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
+loaded image.
 
-THE FAILOVER TRIGGER IS THE REFERENCE'S OWN:
-``primary.manifest.manifest_identifier: "99"`` (``:670``), planted here by
-``sep_backup_manifest_fail_base.corrupt_primary`` and producing
+THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
+``sep_backup_manifest_fail_base.corrupt_primary``, producing
 ``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work. That also keeps this
 row's own code attributable: the primary's verdict is BAD_MAGIC, not BAD_LENGTH, so
 the single BAD_LENGTH in the run is the backup's -- and the base requires it after
@@ -49,9 +41,9 @@ WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
     this arm sits ABOVE the per-image loop, so on this row the loop is never entered
     and no image bound can be evaluated;
   * from the NON-ENCRYPTED cell -- ``DECRYPT_START`` and ``DECRYPT_OK`` must each
-    appear exactly ONCE, the backup's, and before the rejection. The two cells also
-    exercise DIFFERENT sub-conditions of the same ``if``: the plaintext row violates
-    a strict equality, this one violates the ciphertext bound;
+    appear exactly ONCE, the backup's, and before the rejection. The two compare
+    against different lengths: the plaintext row against the manifest's own, this
+    one against the PKCS#7-padded length derived from the TOC's;
   * from the PRIMARY cell -- the run is terminal: ``MANIFEST_ALL_FAILED``, no
     boot-progress marker, and the served bytes are required at the BACKUP slot's
     address (0x042008, not 0x002008). That address is the only discriminator

@@ -8,60 +8,21 @@
 refused, the backup's rejection exhausts the retry loop and the run ends terminal
 on ``MANIFEST_ALL_FAILED``.
 
-THE FAILOVER TRIGGER IS THE REFERENCE'S OWN. Its scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:503-507``) pairs the
-backup mutation with ``primary.manifest.manifest_identifier: "99"``;
-``sep_backup_manifest_fail_base.corrupt_primary`` plants that same defect and the
-primary is refused with ``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC
-work, so the trigger cannot interact with the arm under test.
+THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
+``sep_backup_manifest_fail_base.corrupt_primary``, so the primary is refused with
+``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work and the trigger
+cannot interact with the arm under test.
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME. The reference draws it from
-``[v for v in range(0, 11) if v != TOC_MAJOR_VERSION]``
-(``sep_firmware_payload_validation_test.py:486-492``); this port plants
-``TOC_MAJOR_VERSION + 1 = 2``, argued in ``sep_toc_defect.BAD_TOC_VERSION``.
+THE PLANTED VALUE. ``TOC_MAJOR_VERSION + 1 = 2``. Any value other than
+``TOC_MAJOR_VERSION`` reaches this arm; the choice of the adjacent one is argued in
+``sep_toc_defect.BAD_TOC_VERSION``.
 
-============================================================================
-THE REFERENCE'S BACKUP PAYLOAD IS NOT ENCRYPTED HERE, AND THIS PORT'S IS
-============================================================================
-
-This is the one deliberate stimulus difference in this batch, and it is recorded
-rather than quietly corrected.
-
-The reference scenario at ``:503-507`` mutates ``backup.toc.version_major`` and
-``primary.manifest.manifest_identifier`` and says nothing about encryption, so the
-backup slot INHERITS ``encrypted_payload: 0`` from the packer's backup block
-(``firmware/utils/pack_images/configs/default_test.yaml:145``). Its
-``BACKUP_NON_ENCRYPTED`` sibling at ``:514-520`` sets the same flag to 0
-explicitly. The two scenarios therefore pack byte-identical payload encryption,
-and the only difference between them is
-``primary.manifest.boot_arguments.secure_boot``, on a primary that is rejected on
-its magic word before that flag is ever consulted.
-
-The omission is specific to this one pair. The file holds SIX ``BACKUP_ENCRYPTED_*``
-scenarios and five of them set the flag explicitly:
-
-  * image count, ``:566-571`` (sets at ``:568``);
-  * images out of order, ``:591-597`` (``:595``);
-  * image size, ``:618-623`` (``:621``);
-  * image exceeds bound, ``:642-647`` (``:645``);
-  * TOC payload size mismatch, ``:666-671`` (``:669``).
-
-Their ``BACKUP_NON_ENCRYPTED`` counterparts set it to 0 at ``:578-584``,
-``:605-612``, ``:630-636``, ``:654-660`` and ``:678-684``. Only ``:503-507``
-omits it. Read against its own siblings it is a missing line, not a design choice.
-
-A second copy-paste slip sits in the same cell pair: the ``BACKUP_NON_ENCRYPTED``
-half writes ``primary.manifest.boot_arguments.secure_boot`` at ``:519`` where all
-five of its siblings write the ``backup.`` key (``:583``, ``:610``, ``:634``,
-``:658``, ``:682``).
-
-This port runs the backup GENUINELY ENCRYPTED, from ``encrypted_boot.bin``. Three
-reasons, in order of weight: the row's own requirement is a TOC defect reached
-through decryption; leaving it plaintext would make this testcase and its
-non-encrypted sibling indistinguishable, so one of the two would be verifying
-nothing; and the encrypted form is strictly the longer path, since the slot must
-pass its signature, its ciphertext payload hash and its decryption before the TOC
-is parsed at all.
+THE BACKUP IS GENUINELY ENCRYPTED, from ``encrypted_boot.bin``, and the base
+asserts that flag on the loaded image. The row's requirement is a TOC defect
+reached through decryption, so a plaintext backup would make this testcase and its
+non-encrypted sibling indistinguishable and one of the two would verify nothing.
+The encrypted form is also the longer path: the slot must pass its signature, its
+ciphertext payload hash and its decryption before the TOC is parsed at all.
 
 WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
 

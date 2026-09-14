@@ -48,27 +48,22 @@ PLAINTEXT_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "secure_boot.bi
 # The signed AND encrypted image: BOTH slots carry encrypted_payload = 1.
 ENCRYPTED_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "encrypted_boot.bin")
 
-# BOTH SLOTS SHARE ONE ENCRYPTION STATE HERE, AND THE REFERENCE'S DO NOT. Each
-# of these images is packed from one config with a single setting applied to both
-# slots, while a reference scenario sets the flag per slot and lets the other
-# inherit the packer default -- primary 1, backup 0
-# (``firmware/utils/pack_images/configs/default_test.yaml:46`` and ``:145``). So
-# in every cell of this batch the slot NOT under test carries this image's
-# encryption state rather than the reference's. Where that matters, and where it
-# does not:
+# BOTH SLOTS OF EACH IMAGE SHARE ONE ENCRYPTION STATE. Each image is packed from
+# one config with a single setting applied to both slots, so the slot NOT under
+# test always carries the same state as the slot under test. Where that matters,
+# and where it does not:
 #
 #   * a BACKUP cell is unaffected. Its primary is refused on the manifest magic
 #     inside ``validate_manifest_header``, upstream of the point where
 #     ``try_manifest_slot`` first reads the encryption flag, so the primary's
 #     encryption state is unobservable in the run;
-#   * a PRIMARY ENCRYPTED cell genuinely differs. The reference recovers onto a
-#     PLAINTEXT backup; here the recovering backup is encrypted and decrypts too.
-#     That is more work for the DUT, not less, and it is why those cells require
-#     the decryption markers TWICE rather than once -- but the reference's
-#     encrypted-primary / plaintext-backup mix is not reproduced.
+#   * a PRIMARY ENCRYPTED cell recovers onto a backup that is also encrypted and
+#     decrypts in turn, which is why those cells require the decryption markers
+#     TWICE rather than once. A mixed pair -- encrypted primary recovering onto a
+#     plaintext backup -- is not exercised by any cell here.
 #
-# Closing the gap would need a third packed image with per-slot encryption. That
-# is a packer-config change outside this batch.
+# Closing that gap needs a packed image with per-slot encryption, which is a
+# packer-config change.
 
 _EFUSE_DIR = _DV_ROOT / "tb" / "efuse_preloads" / "efuse_configurations"
 # LC=PROD, SBOOT_DIS=0, no class key: all a plaintext payload needs.
@@ -89,30 +84,23 @@ ERR_NO_BL1_IMAGE = 0x0003_0008
 ERR_TOC_COUNT = 0x0003_0010
 
 # ── The two stimuli ──────────────────────────────────────────────────────────
-# TOC major version. The reference draws uniformly from every value in 0..10 that
-# is not TOC_MAJOR_VERSION
-# (``tb/cocotb_tests/sep_firmware_payload_validation_test.py``
-# ``_generate_invalid_toc_version_major``), so any member of that set is a
-# faithful reduction of the draw. TOC_MAJOR_VERSION + 1 is chosen because it is
-# the ADJACENT value: a ROM that had written ``<`` instead of ``!=`` -- accepting
-# any newer TOC -- would pass a draw of 0 and is caught only by a draw above the
-# valid version. A single run can pin one side of the comparison, and this is the
-# side a forward-compatible-looking mistake lands on.
+# TOC major version. Any value other than TOC_MAJOR_VERSION reaches this arm;
+# TOC_MAJOR_VERSION + 1 is chosen because it is the ADJACENT value. A ROM that
+# had written ``<`` instead of ``!=`` -- accepting any newer TOC -- passes a
+# below-valid value and is caught only from above, so one run pins the side a
+# forward-compatible-looking mistake lands on.
 #
-# THE OTHER SIDE IS UNCOVERED, BATCH-WIDE. The symmetric mistake -- ``>`` in
-# place of ``!=``, accepting any OLDER TOC -- is caught only by a draw BELOW the
-# valid version, and all four TOC-version cells plant the same above-valid value.
-# A row planting 0 would close it; ``set_toc_version_major`` already accepts one.
+# THE OTHER SIDE IS UNCOVERED. The symmetric mistake -- ``>`` in place of ``!=``,
+# accepting any OLDER TOC -- is caught only from below the valid version, and all
+# four TOC-version cells plant the same above-valid value. A row planting 0 would
+# close it; ``set_toc_version_major`` already accepts one.
 BAD_TOC_VERSION = pm.TOC_MAJOR_VERSION + 1
 
-# TOC image count. The reference draws from ``[0, 257]``
-# (``sep_firmware_payload_validation_test.py``, the four
-# ``*_INVALID_PAYLOAD_IMAGE_COUNT`` branches); both land on the same
+# TOC image count. Both halves of ``n == 0 || n > 256`` land on the same
 # ``MANIFEST_ERR_TOC_COUNT`` arm. 257 is chosen for the same boundary reason as
 # above: it is exactly one past ``n > 256``, so it pins the constant, whereas 0
-# only distinguishes itself from 1. THE ``n == 0`` HALF OF THIS CHECK IS
-# THEREFORE NOT EXERCISED BY THIS BATCH -- it is the other arm of the same ``if``
-# and would need its own row.
+# only distinguishes itself from 1. THE ``n == 0`` HALF IS THEREFORE NOT
+# EXERCISED -- it is the other arm of the same ``if`` and needs its own row.
 BAD_IMAGE_COUNT = pm.TOC_MAX_IMAGE_COUNT + 1
 
 # ── Field descriptors ────────────────────────────────────────────────────────

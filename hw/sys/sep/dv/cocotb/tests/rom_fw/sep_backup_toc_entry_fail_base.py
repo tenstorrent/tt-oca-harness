@@ -6,17 +6,14 @@ The terminal mirror of :mod:`sep_primary_toc_entry_fail_base`, and four members 
 the same shape: ``{images_out_of_order, invalid_payload_image_size} x {plaintext,
 encrypted}``.
 
-THE FAILOVER TRIGGER IS THE REFERENCE'S OWN. Every backup scenario in
-``tb/cocotb_tests/sep_firmware_payload_validation_test.py`` pairs its backup
-mutation with ``primary.manifest.manifest_identifier = 99`` (``:596``, ``:611``,
-``:622``, ``:635`` for the four rows ported here), which makes the primary fail on
-its magic word. ``sep_backup_manifest_fail_base.corrupt_primary`` plants the same
-defect by default (``mm.set_identifier``) and it produces ``MANIFEST_ERR_BAD_MAGIC``,
-refused by ``validate_manifest_header`` before any hash, crypto or TOC work -- so the
-trigger cannot interact with the arm under test, and the primary's error code stays
-distinct from the backup's. The planted word differs in VALUE from the reference's --
-``0x99999999`` rather than decimal 99 -- because the mutator writes the whole 32-bit
-identifier. Both are "not TBL1", which is the only property the check reads.
+THE FAILOVER TRIGGER CANNOT INTERACT WITH THE ARM UNDER TEST. Reaching the
+backup at all needs the primary refused first, and
+``sep_backup_manifest_fail_base.corrupt_primary`` does it by overwriting the
+primary's manifest identifier (``mm.set_identifier``). That produces
+``MANIFEST_ERR_BAD_MAGIC``, which ``validate_manifest_header`` returns before any
+hash, crypto or TOC work, so the trigger runs nowhere near the arm under test and
+the primary's error code stays distinct from the backup's. The planted word is
+``0x99999999``; the check reads only whether the identifier is TBL1.
 
 WHY THIS FAMILY NEEDS ITS OWN BASE. :mod:`sep_backup_payload_fail_base` already
 grades the right stage and already supports an arm that prints a token, so this base

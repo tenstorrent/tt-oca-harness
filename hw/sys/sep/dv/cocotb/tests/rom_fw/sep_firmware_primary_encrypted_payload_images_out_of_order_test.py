@@ -9,26 +9,15 @@ declaring an offset below entry 0's end trips it, printing
 (0x0003000f). The primary's rejection returns into ``rom_manifest_boot``'s retry
 loop, so the required outcome is a completed boot from the untouched backup.
 
-THE PLANTED VALUES ARE THE REFERENCE'S OWN. Its scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:585-590``) writes
-``primary.payload_images[0].offset = 0x1000`` and
-``primary.payload_images[1].offset = 0x500``. The first is a no-op against the
-packer default, which already places image 0 at 0x1000
-(``firmware/utils/pack_images/configs/default_test.yaml:72``), and the shipped OSS
-payload places its SEP_BL1 at 0x1000 as well -- so both offsets are reproduced here
-exactly. The reference's image 1 is a SEPBL2
-(``default_test.yaml:80-88``); the OSS payload declares only one image, so the
-second is created with that type. See ``sep_toc_entry_defect.SECOND_IMAGE_OFFSET``.
+THE PLANTED VALUES. Image 0 keeps the 0x1000 the shipped payload already gives its
+SEP_BL1, and image 1 declares 0x500 -- below image 0's start. The shipped payload
+declares only one image, so entry 1 is created, typed SEPBL2. See
+``sep_toc_entry_defect.SECOND_IMAGE_OFFSET``.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario sets ``primary.manifest.encrypted_payload: "1"`` (``:589``), which matches
-what the packer's primary block would have supplied anyway (``default_test.yaml:46``).
-Neither slot's ``boot_arguments.secure_boot`` is touched, so both inherit 1
-(``default_test.yaml:15`` and ``:117``). The reference's BACKUP inherits
-``encrypted_payload: 0`` (``:145``) and is therefore plaintext; this port loads
-``encrypted_boot.bin``, whose BOTH slots are encrypted, so the recovering backup
-decrypts too. That is more work for the DUT, not less, and it is why this row
-requires the decryption markers twice rather than once.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
+loaded image. The recovering backup is encrypted too and decrypts in turn, which is
+why this row requires the decryption markers twice rather than once.
 
 WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
 

@@ -12,35 +12,19 @@ returns ``MANIFEST_ERR_BAD_LENGTH``. The primary was already refused on its
 identifier, so both slots fail and the expected outcome is terminal rather than a
 boot.
 
-WHY THE STIMULUS IS ZERO. The reference draws this row's
-``payload_hashed_length`` from ``[0, randint(1, 9999), 465, 464, 463]``, and grades
-the outcome on which of two verdicts the draw produces: below the minimum TOC size
-it expects ``INVALID_PAYLOAD_HASH_LENGTH``, at or above it
-``INVALID_ENCRYPTED_PAYLOAD_LENGTH`` with encryption switched on. **Zero is the only
-draw that reaches the verdict this row is NAMED for, and the only one that reaches
-this ROM's bound without changing the feature under test.** The other four map onto
-this ROM as follows:
+WHY THE STIMULUS IS ZERO. ``validate_manifest_header`` refuses
+``payload_hashed_length`` outside ``0 < value <= payload_length``, and zero is the
+only value that reaches that bound without also reaching a different check.
 
-  * ``randint(1, 9999)`` is out of this ROM's bound only when it happens to exceed
-    ``payload_length``, so the stimulus would be a draw rather than a property of
-    the row -- and where it does exceed it, the reference's own expectation is the
-    ENCRYPTED verdict, not this one;
-  * 463, 464 and 465 all satisfy ``0 < value <= payload_length`` on this ROM, so
-    ``validate_manifest_header`` ACCEPTS them. The slot would be refused later as
-    ``PLD_HASH_MISMATCH``, which is a different check with a different error code;
-  * reaching the reference's ENCRYPTED verdict at all would mean setting
-    ``encrypted_payload``, which on this ROM brings in the decryption path and the
-    ``ENC_HASHED_LEN_PARTIAL`` arm, and would change what this row tests.
+A non-zero value below ``payload_length`` is ACCEPTED here and the slot is refused
+later as ``PLD_HASH_MISMATCH``, a different check with a different error code.
 
 Zero is also the security-meaningful half of the bound: ``verify_payload_hash``
 returns OK for a zero length, so ``payload_hashed_length == 0`` is a manifest opting
 out of its own payload hash entirely, which is the hole this bound exists to close.
-The payload is deliberately left NON-encrypted, unlike the reference's BACKUP
-scenario, which sets ``encrypted_payload = 1``. The reference's own comment gives
-its reason -- the 464 draw would otherwise be a legitimate length -- and that
-reasoning does not apply to zero. Enabling encryption here would instead bring in
+THE SLOT RUNS NON-ENCRYPTED. Enabling encryption would bring in
 ``ENC_HASHED_LEN_PARTIAL``, the arm immediately after this bound, which returns the
-SAME error code -- so the exclusion would rest on check ordering rather than on an
+SAME error code -- the exclusion would then rest on check ordering rather than on an
 unreachable path. It would also force ``sep_payload_mutate.verify_sealed`` to drop
 its TOC anchor, since an encrypted payload's TOC is ciphertext until the ROM
 decrypts it. Recorded in this row's ``flow_deviation``.
@@ -111,8 +95,8 @@ _MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
 
 _TOKEN = "PAYLOAD_HASHED_LEN_BAD="
 
-# The reference's own zero draw: the only one of its five that reaches this ROM's
-# bound with the verdict this row is named for. See the module docstring.
+# Zero is the only value that reaches this bound with the verdict this row is named
+# for. See the module docstring.
 _BAD_HASHED_LEN = 0
 
 

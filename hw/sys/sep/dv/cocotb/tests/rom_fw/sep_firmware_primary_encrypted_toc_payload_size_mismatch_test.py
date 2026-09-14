@@ -12,29 +12,19 @@ never claim MORE than was loaded. The primary's rejection returns into
 ``rom_manifest_boot``'s retry loop, so the required outcome is a completed boot from
 the untouched backup.
 
-THE PLANTED VALUE IS THE REFERENCE'S OWN, VERBATIM. Its scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:661-665``) writes
-``primary.toc.payload_length = 0x2000``, and the reference ROM enforces the same
-agreement with the same PKCS#7 allowance
-(``firmware/bootcode/src/manifest.c:399-411``). 8192 exceeds this artefact's declared
-ciphertext length of 5952, so it violates ``toc_p_len > m->payload_length`` here
-exactly as it violates the reference's equality. No substitution was needed.
+THE PLANTED VALUE. ``primary.toc.payload_length = 0x2000``. The encrypted arm
+requires the manifest's length to equal the TOC's rounded up to the next AES block,
+which for this artefact's 5936 plaintext bytes is 5952. 8192 is neither, so the
+agreement is violated.
 
-THE OTHER DIRECTION IS NOT COVERED. The encrypted arm is an ``||`` of two
-sub-conditions and 0x2000 only ever reaches the first. A TOC claiming LESS than the
-manifest by more than one AES block -- the sub-condition that bounds the padding
-slack -- has no row in this batch. See
+A TOC DECLARING LESS THAN THE MANIFEST IS NOT COVERED. 0x2000 is above the
+manifest's length; no row plants one below it. See
 ``sep_toc_bound_defect.BAD_TOC_PAYLOAD_LENGTH``.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario sets ``primary.manifest.encrypted_payload: "1"`` (``:664``), matching what
-the packer's primary block supplies anyway
-(``firmware/utils/pack_images/configs/default_test.yaml:46``). Neither slot's
-``boot_arguments.secure_boot`` is touched, so both inherit 1 (``:15``, ``:117``). The
-reference's BACKUP inherits ``encrypted_payload: 0`` (``:145``) and is therefore
-plaintext; this port loads ``encrypted_boot.bin``, whose BOTH slots are encrypted, so
-the recovering backup decrypts too. That is more work for the DUT, not less, and it
-is why this row requires the decryption markers twice rather than once.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
+loaded image. The recovering backup is encrypted too and decrypts in turn, which is
+why this row requires the decryption markers twice rather than once.
 
 WHY THIS ROW'S BAD_LENGTH IS THE TOC'S AND NOT THE MANIFEST'S.
 ``validate_manifest_header`` can return the same 0x00030004 from far upstream. Two
@@ -53,8 +43,8 @@ WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
     this row the loop is never entered and no image bound can be evaluated;
   * from the NON-ENCRYPTED cell -- ``DECRYPT_START`` and ``DECRYPT_OK`` must each
     appear exactly TWICE, with the primary's pair inside its own attempt. The two
-    cells also exercise DIFFERENT sub-conditions of the same ``if``: the plaintext
-    row violates a strict equality, this one violates the ciphertext bound;
+    compare against different lengths: the plaintext row against the manifest's
+    own, this one against the PKCS#7-padded length derived from the TOC's;
   * from the BACKUP cell -- the rejection sits between the primary read and the
     backup read, the run ends in a completed boot, and the served bytes are required
     at the PRIMARY slot's address (0x002008, not 0x042008). That address is the only

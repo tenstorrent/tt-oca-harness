@@ -14,43 +14,29 @@ SILENT ``end > p_len`` bounds arm sits immediately above the alignment arm in th
 same entry and returns exactly the same ``MANIFEST_ERR_IMAGE_OOB``. Only
 ``IMAGE_LEN_ALIGN idx=`` distinguishes them, and only this arm prints it.
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME, AND IT IS NOT THE REFERENCE'S.
-The reference plants ``backup.payload_images[0].length = 0x1001``
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:632``), which is 1 modulo
-4. That exact value cannot be planted on the shipped OSS payload: its single image
-sits at 0x1000 in a 5936-byte payload, so 0x1000 + 0x1001 lands outside it and the
-SILENT bounds arm would produce this row's error code by a different check. 0x72D is
-the largest value with the reference's own residue that still ends inside the
-payload, on both shipped images. Residues 2 and 3 are unexercised batch-wide; the
-full reasoning is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
+THE PLANTED VALUE. 0x72D, which is 1 modulo 4 and so violates ``(len & 3u) != 0``.
+It is the largest such value that still ends inside the payload on both shipped
+images: the single image sits at 0x1000 in 5936 plaintext bytes, and a length that
+overruns would be refused by the SILENT bounds arm, which returns this row's error
+code from a different check. Residues 2 and 3 are unexercised; the full reasoning
+is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
 
-THE PAYLOAD IS NOT ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its scenario
-sets ``backup.manifest.encrypted_payload: "0"`` (``:633``), which agrees with the
-packer's backup block (``firmware/utils/pack_images/configs/default_test.yaml:145``).
-This port loads ``secure_boot.bin``, whose slots both carry ``encrypted_payload = 0``,
-and the base asserts that flag on the loaded image. The reference's PRIMARY inherits
-``encrypted_payload: 1`` (``:46``) where this port's is plaintext, which is
-unobservable: the primary is refused on its manifest magic upstream of the first
-read of that flag.
+THE PAYLOAD IS NOT ENCRYPTED. This row loads ``secure_boot.bin``, whose slots both
+carry ``encrypted_payload = 0``, and the base asserts that flag on the loaded
+image.
 
-THE FAILOVER TRIGGER IS THE REFERENCE'S OWN:
-``primary.manifest.manifest_identifier: "99"`` (``:635``), planted here by
-``sep_backup_manifest_fail_base.corrupt_primary`` and producing
+THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
+``sep_backup_manifest_fail_base.corrupt_primary``, producing
 ``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work.
 
-SECURE BOOT STAYS ON HERE. The reference sets
-``backup.manifest.boot_arguments.secure_boot: 0`` (``:634``) -- the ``backup.`` key,
-unlike the copy-paste slip recorded as ``FINDINGS[0918rtl] R02`` in a neighbouring
-row. This port runs under LC=PROD, where ``secure_boot_enabled()``
-(``manifest_load.c``) enforces the chain regardless of the manifest flag. The
-feature under test is unchanged and the result is stronger: the base requires the
-backup's ``RSA_VERIFY_START``, ``SIG_VALID``, ``PLD_HASH_OK`` and
+SECURE BOOT STAYS ON. Under LC=PROD, ``secure_boot_enabled()``
+(``manifest_load.c``) enforces the chain regardless of the manifest flag: the base
+requires the backup's ``RSA_VERIFY_START``, ``SIG_VALID``, ``PLD_HASH_OK`` and
 ``CRYPTO_VALIDATE_OK`` exactly once each and in order before the rejection.
-Reproducing ``secure_boot: 0`` here would change NOTHING -- at PROD the manifest flag
-is never consulted -- so reaching the ``SBOOT_OFF`` branch at all would need a
-TEST_DEV/RMA fuse image or the ``SBOOT_DIS`` chicken bit, and no row in this batch
-uses either. That arm is therefore not covered here; ``SBOOT_OFF`` and
-``CRYPTO_FAIL=`` are both forbidden, so this row can never drift onto it.
+Reaching the ``SBOOT_OFF`` branch would need a TEST_DEV/RMA fuse image or the
+``SBOOT_DIS`` chicken bit, and no row here uses either. That arm is not covered;
+``SBOOT_OFF`` and ``CRYPTO_FAIL=`` are both forbidden, so this row cannot drift
+onto it.
 
 THE IMAGE STILL HASHES CORRECTLY. ``pm.set_toc_entry_length`` recomputes the entry's
 digest over the newly declared range, so alignment is the ONLY rule this payload

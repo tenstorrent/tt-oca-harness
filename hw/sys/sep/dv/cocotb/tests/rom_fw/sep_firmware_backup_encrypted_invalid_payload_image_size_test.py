@@ -14,30 +14,19 @@ SILENT ``end > p_len`` bounds arm sits immediately above the alignment arm in th
 same entry and returns exactly the same ``MANIFEST_ERR_IMAGE_OOB``. Only
 ``IMAGE_LEN_ALIGN idx=`` distinguishes them, and only this arm prints it.
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME, AND IT IS NOT THE REFERENCE'S.
-The reference plants ``backup.payload_images[0].length = 0x1001``
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:620``), which is 1 modulo
-4. That exact value cannot be planted on the shipped OSS payload: its single image
-sits at 0x1000 in a 5936-byte payload, so 0x1000 + 0x1001 lands outside it and the
-SILENT bounds arm would produce this row's error code by a different check. 0x72D is
-the largest value with the reference's own residue that still ends inside the
-payload, on both shipped images. Residues 2 and 3 are unexercised batch-wide; the
-full reasoning is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
+THE PLANTED VALUE. 0x72D, which is 1 modulo 4 and so violates ``(len & 3u) != 0``.
+It is the largest such value that still ends inside the payload on both shipped
+images: the single image sits at 0x1000 in 5936 plaintext bytes, and a length that
+overruns would be refused by the SILENT bounds arm, which returns this row's error
+code from a different check. Residues 2 and 3 are unexercised; the full reasoning
+is in ``sep_toc_entry_defect.BAD_IMAGE_LENGTH``.
 
-THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its
-scenario sets ``backup.manifest.encrypted_payload: "1"`` (``:621``), overriding the
-packer's backup default of 0
-(``firmware/utils/pack_images/configs/default_test.yaml:145``) -- the very field
-whose omission in a neighbouring TOC-version row is recorded as
-``FINDINGS[0918rtl] R02``. This row's reference branch sets it, so no such defect
-applies here. Neither slot's ``boot_arguments.secure_boot`` is touched, so both
-inherit 1 (``:15``, ``:117``), and the reference's PRIMARY inherits
-``encrypted_payload: 1`` (``:46``). This port loads ``encrypted_boot.bin``, whose
-both slots are encrypted, which matches the reference on both counts.
+THE PAYLOAD IS GENUINELY ENCRYPTED. This row loads ``encrypted_boot.bin``, whose
+slots both carry ``encrypted_payload = 1``, and the base asserts that flag on the
+loaded image.
 
-THE FAILOVER TRIGGER IS THE REFERENCE'S OWN:
-``primary.manifest.manifest_identifier: "99"`` (``:622``), planted here by
-``sep_backup_manifest_fail_base.corrupt_primary`` and producing
+THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
+``sep_backup_manifest_fail_base.corrupt_primary``, producing
 ``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work.
 
 THE IMAGE STILL HASHES CORRECTLY. ``pm.set_toc_entry_length`` recomputes the entry's

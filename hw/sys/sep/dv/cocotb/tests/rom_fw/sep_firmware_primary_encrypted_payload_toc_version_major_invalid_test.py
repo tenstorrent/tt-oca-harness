@@ -9,23 +9,16 @@ returns into ``rom_manifest_boot``'s retry loop, so the required outcome is a
 completed boot from the untouched backup rather than a halt.
 
 THE PAYLOAD IS GENUINELY ENCRYPTED, AND THE DEFECT IS PLANTED IN THE PLAINTEXT.
-The reference scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:499-502``) mutates
-``primary.toc.version_major`` alone and INHERITS ``encrypted_payload: 1`` from the
-packer's primary block
-(``firmware/utils/pack_images/configs/default_test.yaml:46``), so its primary
-payload is encrypted. This port loads ``encrypted_boot.bin``, whose primary slot
-carries the same flag, decrypts the payload, writes the field, re-encrypts and
-re-seals (``env/sep_payload_mutate.set_toc_version_major``). Planting it in the
-ciphertext directly would not reach this check at all -- the ROM validates the TOC
-only after ``decrypt_payload``, so a corrupted ciphertext produces
+This row loads ``encrypted_boot.bin``, whose slots both carry
+``encrypted_payload = 1``; the mutator decrypts the payload, writes the field,
+re-encrypts and re-seals (``env/sep_payload_mutate.set_toc_version_major``).
+Planting it in the ciphertext directly would not reach this check at all -- the ROM
+validates the TOC only after ``decrypt_payload``, so a corrupted ciphertext produces
 ``MANIFEST_ERR_BAD_TOC_ID`` one arm earlier, which is a different testcase
 (``sep_decryption_failure_terminal_test``).
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME. The reference draws it
-uniformly from ``[v for v in range(0, 11) if v != TOC_MAJOR_VERSION]``
-(``sep_firmware_payload_validation_test.py:486-492``). This port plants
-``TOC_MAJOR_VERSION + 1 = 2``, a member of that set; the choice is argued in
+THE PLANTED VALUE. ``TOC_MAJOR_VERSION + 1 = 2``. Any value other than
+``TOC_MAJOR_VERSION`` reaches this arm; the choice of the adjacent one is argued in
 ``sep_toc_defect.BAD_TOC_VERSION``.
 
 WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR. The arm prints no console token, so

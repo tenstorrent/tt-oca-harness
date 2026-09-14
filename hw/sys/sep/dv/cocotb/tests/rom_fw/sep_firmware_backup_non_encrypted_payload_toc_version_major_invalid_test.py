@@ -7,29 +7,20 @@
 ``MANIFEST_ERR_BAD_TOC_VERSION`` (0x00030006) otherwise. With the primary already
 refused, the backup's rejection exhausts the retry loop and the run ends terminal.
 
-THE PAYLOAD IS NOT ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:514-520``) sets
-``backup.manifest.encrypted_payload: "0"`` -- which is also what the packer's
-backup block supplies by default
-(``firmware/utils/pack_images/configs/default_test.yaml:145``), so the two agree.
-This port loads ``secure_boot.bin``, whose slots both carry
-``encrypted_payload = 0``, and the base asserts that flag on the loaded image
+THE PAYLOAD IS NOT ENCRYPTED. This row loads ``secure_boot.bin``, whose slots both
+carry ``encrypted_payload = 0``, and the base asserts that flag on the loaded image
 rather than trusting the filename.
 
-THE FAILOVER TRIGGER IS THE REFERENCE'S OWN: ``primary.manifest.manifest_identifier:
-"99"`` (``:518``), planted here by ``sep_backup_manifest_fail_base.corrupt_primary``
-and producing ``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work.
+THE FAILOVER TRIGGER: the primary's manifest identifier is overwritten by
+``sep_backup_manifest_fail_base.corrupt_primary``, producing
+``MANIFEST_ERR_BAD_MAGIC`` before any hash, crypto or TOC work.
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME. The reference draws it from
-``[v for v in range(0, 11) if v != TOC_MAJOR_VERSION]``
-(``sep_firmware_payload_validation_test.py:486-492``); this port plants
-``TOC_MAJOR_VERSION + 1 = 2``, argued in ``sep_toc_defect.BAD_TOC_VERSION``.
+THE PLANTED VALUE. ``TOC_MAJOR_VERSION + 1 = 2``. Any value other than
+``TOC_MAJOR_VERSION`` reaches this arm; the choice of the adjacent one is argued in
+``sep_toc_defect.BAD_TOC_VERSION``.
 
-SECURE BOOT STAYS ON HERE. The reference's scenario sets
-``primary.manifest.boot_arguments.secure_boot: 0`` (``:519``) -- note that it is
-the PRIMARY's flag, on a slot already refused for its magic word, so it changes
-nothing about the backup either way. This port runs under LC=PROD, where
-``secure_boot_enabled()`` (``manifest_load.c``) enforces the chain regardless, and
+SECURE BOOT STAYS ON. Under LC=PROD, ``secure_boot_enabled()``
+(``manifest_load.c``) enforces the chain regardless of the manifest flag, and
 the base then requires the backup's ``RSA_VERIFY_START``, ``SIG_VALID``,
 ``PLD_HASH_OK`` and ``CRYPTO_VALIDATE_OK`` exactly once each and in order before
 the rejection. That ordering is what places the verdict in the payload arm rather

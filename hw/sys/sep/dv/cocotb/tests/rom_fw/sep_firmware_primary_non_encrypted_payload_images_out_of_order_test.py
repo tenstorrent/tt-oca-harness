@@ -9,34 +9,22 @@ declaring an offset below entry 0's end trips it, printing
 (0x0003000f). The primary's rejection returns into ``rom_manifest_boot``'s retry
 loop, so the required outcome is a completed boot from the untouched backup.
 
-THE PLANTED VALUES ARE THE REFERENCE'S OWN. Its scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:598-604``) writes
-``primary.payload_images[0].offset = 0x1000`` and
-``primary.payload_images[1].offset = 0x500``. The first is a no-op against the
-packer default (``firmware/utils/pack_images/configs/default_test.yaml:72``), and
-the shipped OSS payload places its SEP_BL1 at 0x1000 as well, so both offsets are
-reproduced exactly. See ``sep_toc_entry_defect.SECOND_IMAGE_OFFSET``.
+THE PLANTED VALUES. Image 0 keeps the 0x1000 the shipped payload already gives its
+SEP_BL1, and image 1 declares 0x500 -- below image 0's start. See
+``sep_toc_entry_defect.SECOND_IMAGE_OFFSET``.
 
-THE PAYLOAD IS NOT ENCRYPTED, AND THE REFERENCE SAYS SO EXPLICITLY. Its scenario
-sets ``primary.manifest.encrypted_payload: "0"`` (``:602``), overriding the packer's
-primary default of 1 (``default_test.yaml:46``); the backup inherits 0 (``:145``)
-and is plaintext in the reference too. This port loads ``secure_boot.bin``, whose
-slots both carry ``encrypted_payload = 0``, and the base asserts that flag on the
-loaded image.
+THE PAYLOAD IS NOT ENCRYPTED. This row loads ``secure_boot.bin``, whose slots both
+carry ``encrypted_payload = 0``, and the base asserts that flag on the loaded image
+before planting anything.
 
-SECURE BOOT STAYS ON HERE. The reference also sets
-``primary.manifest.boot_arguments.secure_boot: 0`` (``:603``), the convention its
-``*_NON_ENCRYPTED_*`` scenarios follow because the packer refuses
-``encrypted_payload: 1`` together with ``secure_boot: 0``. This port runs under
-LC=PROD, where ``secure_boot_enabled()`` (``manifest_load.c``) enforces the chain
-regardless of the manifest flag. The feature under test is unchanged and the result
-is stronger: the base requires the primary's ``RSA_VERIFY_START`` and ``SIG_VALID``
-inside its own attempt before the rejection, which is what places the verdict in
-the payload arm rather than in the crypto chain. Reproducing ``secure_boot: 0``
-would change NOTHING at PROD, so reaching the ``SBOOT_OFF`` branch at all would need
-a TEST_DEV/RMA fuse image or the ``SBOOT_DIS`` chicken bit, and no row in this batch
-uses either. That arm is therefore not covered here; ``SBOOT_OFF`` and
-``CRYPTO_FAIL=`` are both forbidden, so this row can never drift onto it.
+SECURE BOOT STAYS ON. Under LC=PROD, ``secure_boot_enabled()``
+(``manifest_load.c``) enforces the chain regardless of the manifest flag: the base
+requires the primary's ``RSA_VERIFY_START`` and ``SIG_VALID`` inside its own attempt
+before the rejection, which is what places the verdict in the payload arm rather
+than in the crypto chain. Reaching the ``SBOOT_OFF`` branch would need a
+TEST_DEV/RMA fuse image or the ``SBOOT_DIS`` chicken bit, and no row here uses
+either. That arm is not covered; ``SBOOT_OFF`` and ``CRYPTO_FAIL=`` are both
+forbidden, so this row cannot drift onto it.
 
 WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
 

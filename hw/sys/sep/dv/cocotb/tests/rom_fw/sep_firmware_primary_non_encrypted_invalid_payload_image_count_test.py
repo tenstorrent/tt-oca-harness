@@ -7,29 +7,20 @@
 otherwise. The primary's rejection returns into ``rom_manifest_boot``'s retry
 loop, so the required outcome is a completed boot from the untouched backup.
 
-THE PAYLOAD IS NOT ENCRYPTED, EXPLICITLY. The reference scenario
-(``tb/cocotb_tests/sep_firmware_payload_validation_test.py:572-577``) sets
-``primary.manifest.encrypted_payload: "0"``, overriding the packer's primary block
-which supplies 1 (``firmware/utils/pack_images/configs/default_test.yaml:46``).
-This port loads ``secure_boot.bin``, whose slots both carry
-``encrypted_payload = 0``, and the base asserts the flag on the loaded image.
+THE PAYLOAD IS NOT ENCRYPTED. This row loads ``secure_boot.bin``, whose slots both
+carry ``encrypted_payload = 0``, and the base asserts the flag on the loaded
+image.
 
-THE PLANTED VALUE IS NOT INFERRED FROM THE ROW NAME. The reference draws
-``random.choice([0, 257])`` (``sep_firmware_payload_validation_test.py:574``);
-this port plants 257, and the ``image_count == 0`` half of the same arm is
-therefore not exercised by this row. See ``sep_toc_defect.BAD_IMAGE_COUNT``.
+THE PLANTED VALUE. 257 -- one past the ``n > 256`` bound. The ``image_count == 0``
+half of the same arm is therefore not exercised by this row. See
+``sep_toc_defect.BAD_IMAGE_COUNT``.
 ``TOC_REGION_OOB=`` -- the arm immediately after the count -- is forbidden, which
 asserts rather than assumes that the count bound ran first.
 
-SECURE BOOT STAYS ON HERE, AND THE REFERENCE TURNS IT OFF. Its scenario also sets
-``primary.manifest.boot_arguments.secure_boot: 0``
-(``sep_firmware_payload_validation_test.py:576``), the convention every
-``*_NON_ENCRYPTED_*`` scenario in that file follows because its packer refuses
-``encrypted_payload: 1`` together with ``secure_boot: 0``. This port runs under
-LC=PROD, where ``secure_boot_enabled()`` (``manifest_load.c``) enforces the chain
-regardless of the manifest flag. The feature under test is unchanged and the
-result is stronger: the base requires the primary's own ``RSA_VERIFY_START`` and
-``SIG_VALID`` inside its attempt and ahead of its error, so the count rejection is
+SECURE BOOT STAYS ON. Under LC=PROD, ``secure_boot_enabled()``
+(``manifest_load.c``) enforces the chain regardless of the manifest flag: the base
+requires the primary's own ``RSA_VERIFY_START`` and ``SIG_VALID`` inside its
+attempt and ahead of its error, so the count rejection is
 provably downstream of a verified signature. ``SBOOT_OFF`` is forbidden.
 
 WHAT SEPARATES THIS ROW FROM EACH NEIGHBOUR:
