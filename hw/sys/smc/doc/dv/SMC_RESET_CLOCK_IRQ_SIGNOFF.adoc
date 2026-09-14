@@ -32,8 +32,9 @@ paths receive no credit.
 Depth groups `reset` / `clock` / `irq` remain debug breadth. They are
 not an extra feature-credit set.
 
-On Verilator the `och_prim` `prim_sync2` / `prim_sync3` cells are replaced by
-the behavioural stand-ins in `tb/verilator_stubs/`. Every leaf of
+On Verilator and Xcelium the `och_prim` `prim_sync2` / `prim_sync3` cells are
+replaced by the behavioural stand-ins in `tb/verilator_stubs/`; VCS drops them.
+Every leaf of
 `reset.toml`, `clock.toml` and `irq.toml` has a row in the *Bench stand-ins*
 section of `SMC_DEFERRED_DISPOSITION.adoc` stating which crossing sits on its
 proof path, what its verdict reads, and the result of a VCS run on the product

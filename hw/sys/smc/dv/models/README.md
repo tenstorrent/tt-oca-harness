@@ -15,9 +15,9 @@ listed here.
 `axil_okay_slv` is a stand-in that can answer a checker: which retired tests
 would sit behind it, the one live consumer, and what that consumer does and
 does not prove are recorded in the *Bench stand-ins* section of
-`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`. The Verilator-only
-synchroniser stand-ins live in `tb/verilator_stubs/` and are recorded in the
-same section.
+`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`. The synchroniser
+stand-ins that Verilator and Xcelium compile (VCS drops them) live in
+`tb/verilator_stubs/` and are recorded in the same section.
 
 The SYS_OUT AXI responder is the shared `ocah_axi_vip` slave agent, bound to the
 `ocah_axi_if` instance that `ocah_axi_struct_bridge` feeds in `tb/tb_top.sv`.
