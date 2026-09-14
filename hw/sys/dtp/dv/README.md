@@ -111,7 +111,10 @@ IEEE 1149.1 TAP controller in the boolean subset that the open-source frontend
 and the licensed backends both elaborate, with `bmc`, `cover` and `prove` tasks
 run against `dtp` as the formal top. `dtp_formal_cfg.toml` and
 `testlists/formal.toml` launch it through the runner; the plan section is
-"Formal Verification Plan" in `docs/DTP_VPLAN.adoc`.
+"Formal Verification Plan" in `docs/DTP_VPLAN.adoc`, which scopes nine
+targets over the `dtp`, `jtag2axi` and `cross_trigger_network` formal tops
+and names the item, depth and path of each. `testlists/formal.toml` lists the
+items in the `smoke` and `fpv` groups.
 
 ```bash
 python3 tools/dv/run_dv.py --dut dtp --mode formal            # flist, then sby bmc/cover/prove

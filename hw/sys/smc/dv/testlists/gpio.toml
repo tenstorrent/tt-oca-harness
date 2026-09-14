@@ -34,7 +34,7 @@ timeout_sec = 1800
 tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
 run_modes = ["smoke"]
 
-# BFM rebuild of FW gpio_p0_int_test (edge types; level is irq_type_matrix).
+# Edge-type GPIO interrupts; level is irq_type_matrix.
 [[tests]]
 name = "smc_gpio_p0_int_test"
 module = "smc_gpio_p0_int_test"
@@ -43,7 +43,7 @@ timeout_sec = 1800
 tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
 run_modes = ["smoke"]
 
-# BFM rebuild of FW gpio_p0_mux_test (interface_enable vs lsio_select).
+# GPIO mux: interface_enable vs lsio_select.
 [[tests]]
 name = "smc_gpio_p0_mux_test"
 module = "smc_gpio_p0_mux_test"
