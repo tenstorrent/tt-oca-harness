@@ -68,8 +68,9 @@ _EFUSE_PRELOAD = (
 
 _PRIMARY_SRC = "MANIFEST_SRC=0x00001000"
 _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
-_PAYLOAD_OK = "PAYLOAD_OK"
-_DECRYPT_START = "DECRYPT_START"
+# The one console token that proves decryption ran: printed only after the
+# ciphertext hash verified, the AES engine drained and the PKCS#7 pad stripped.
+# PAYLOAD_OK and DECRYPTION_START are deliberately NOT used -- see check_console.
 _DECRYPT_OK = "DECRYPT_OK"
 _SBOOT_OFF = "SBOOT_OFF"
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
@@ -180,39 +181,31 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
 
         # CHK-DECRYPT-RAN: the whole point. The ciphertext was authenticated, the
         # AES engine ran to completion, and only THEN did the boot fail. Without
-        # the ordering, the terminal error alone is satisfied by a run in which
-        # decryption never happened.
-        i_hash = index_of(_PAYLOAD_OK)
-        i_start = index_of(_DECRYPT_START)
+        # it, the terminal error alone is satisfied by a run in which decryption
+        # never happened.
+        #
+        # DECRYPT_OK is the ONLY console token that carries this, and it carries
+        # all of it: plat_decrypt_payload() reaches that simputs only after the
+        # library has verified payload_hash over the CIPHERTEXT -- it calls this
+        # callback only once that passes -- and after aes_cbc_decrypt() and
+        # aes_pkcs7_strip() have both returned 0 (oca_platform.c).
+        #
+        # The two markers this once looked for cannot appear. DECRYPTION_START is
+        # a status-ring entry (SEP_MSG_DECRYPTION_START), never a simputs, so it
+        # is not on the console at all. PAYLOAD_OK is printed only after the
+        # ENTIRE payload validates (oca_boot.c), which by construction cannot
+        # happen here -- the plaintext is deliberately not a TOC. Requiring it
+        # made the testcase unsatisfiable by its own stimulus.
         i_ok = index_of(_DECRYPT_OK)
-        assert i_hash >= 0, (
-            f"ROM never printed {_PAYLOAD_OK}: the ciphertext was not verified, so "
-            f"the re-sealed image is wrong. Console: {console}"
-        )
-        assert i_start >= 0, (
-            f"ROM never printed {_DECRYPT_START}: decrypt_payload() was not called, "
-            f"so nothing about decryption is being tested. Console: {console}"
-        )
         assert i_ok >= 0, (
-            f"ROM never printed {_DECRYPT_OK}: the AES engine did not complete. A "
-            f"corrupted ciphertext must still decrypt without error -- CBC is a "
-            f"permutation -- so this means the engine failed for another reason. "
-            f"Console: {console}"
+            f"ROM never printed {_DECRYPT_OK}: decryption did not run to "
+            f"completion, so nothing about the post-decrypt verdict is being "
+            f"tested. A corrupted block 0 must still decrypt and strip padding "
+            f"cleanly -- CBC is a permutation and the pad lives in the LAST block "
+            f"-- so this means the engine or the class key is wrong rather than "
+            f"the plaintext. Console: {console}"
         )
-        assert i_hash < i_start < i_ok, (
-            f"expected {_PAYLOAD_OK}({i_hash}) -> {_DECRYPT_START}({i_start}) -> "
-            f"{_DECRYPT_OK}({i_ok}); the payload hash covers ciphertext and must be "
-            f"checked before decryption. Console: {console}"
-        )
-        log.info(
-            "CHK-DECRYPT-RAN: %s@%d -> %s@%d -> %s@%d",
-            _PAYLOAD_OK,
-            i_hash,
-            _DECRYPT_START,
-            i_start,
-            _DECRYPT_OK,
-            i_ok,
-        )
+        log.info("CHK-DECRYPT-RAN PASS: %s@%d, before the terminal verdict", _DECRYPT_OK, i_ok)
 
         # CHK-DECRYPT-FAILED: the rejection, and that it came AFTER the engine ran.
         err_marker = f"MANIFEST_ERR=0x{self.expected_error:08x}"
