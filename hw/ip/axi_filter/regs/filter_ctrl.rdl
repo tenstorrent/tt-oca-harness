@@ -76,9 +76,7 @@ addrmap filter_ctrl {
             sw = rw;
             onwrite=woset;
             hw = r;
-            desc = "Lock filter configurations. Write-once: after it is set, a
-                    write to this entry completes SLVERR and does not change
-                    the stored configuration.";
+            desc = "Lock filter configurations. Write once register";
         } locked[63:63] = 0x0;
     };
 

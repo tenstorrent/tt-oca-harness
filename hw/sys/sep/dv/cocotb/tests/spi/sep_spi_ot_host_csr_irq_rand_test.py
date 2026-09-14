@@ -217,8 +217,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
     # ---- CHK-INTR ---------------------------------------------------------
     async def _chk_intr(self) -> None:
-        # spi_controller.rdl INTR_STATUS: each bit is
-        #   (source | INTR_TEST) & INTR_ENABLE
+        # INTR_STATUS is a live mirror:
+        #   INTR_STATUS.X = (source_X | INTR_TEST.X) & INTR_ENABLE.X
         # so INTR_ENABLE gates the status bit itself (not just the irq line), and
         # clearing the source/test deasserts it (no W1C). Prove the INTR_TEST path
         # AND the INTR_ENABLE mask for both bits. EVENT_ENABLE/ERROR_STATUS are

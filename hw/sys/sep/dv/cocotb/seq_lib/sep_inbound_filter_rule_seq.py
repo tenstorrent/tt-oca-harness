@@ -383,8 +383,8 @@ class SepInboundFilter(SepAxiRegDriver):
     async def write_tolerant(self, addr: int, data: int) -> int:
         """Write tolerating a non-OKAY response; return the AXI resp_code.
 
-        A locked entry's further writes complete SLVERR (`filter_ctrl.rdl`
-        locked), so the proof is the resp code plus the read-back.
+        A locked entry's further writes complete SLVERR, so the proof is
+        the resp code plus the read-back.
         """
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",

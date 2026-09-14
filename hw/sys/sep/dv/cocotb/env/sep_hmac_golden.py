@@ -9,9 +9,8 @@ against RFC 4231 Test
 Case 1, so a transcription error fails loudly rather than silently agreeing with
 a broken DUT.
 
-Register byte/word/endian convention
-(``hw/ip/key_manager/regs/hmac_wrapper_key.rdl`` addrmap desc; defaults
-key_word_rev=1, key_be=1, msg_be=0):
+Register byte/word/endian convention (defaults key_word_rev=1, key_be=1,
+msg_be=0):
   * KEY: KEY_SHARE0[7] is the most-significant 32-bit word of the 256-bit
     sideload key and KEY_SHARE0[0] is the least-significant; each word is
     big-endian on the byte lane.
@@ -53,7 +52,7 @@ def hmac_sha256_words(
     ``key_words`` = the 8 KM-delivered 256-bit key words (KEY_SHARE order).
     ``msg_words`` = the message as MSG_FIFO 32-bit words. Returns the 8 DIGEST
     words (DIGEST_0 = most-significant), directly comparable to the engine's
-    DIGEST_0..7 read-back. Defaults follow hmac_wrapper_key.rdl word order.
+    DIGEST_0..7 read-back. Defaults: key_word_rev=1, key_be=1, msg_be=0.
     """
     assert len(key_words) == 8, "256-bit key = 8 words"
     key = _words_to_bytes(key_words, word_rev=key_word_rev, big_endian=key_be)
