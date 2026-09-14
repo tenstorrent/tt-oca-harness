@@ -6,7 +6,7 @@ MODEL-BACKED, DECLARED. `tb_efuse_otp_word0` / `tb_efuse_programmed_word0` tap
 the adopter-supplied simulation stand-in for the foundry OTP macro,
 `hw/ip/efuse/dv/models/efuse_bank_model.sv`, instantiated at
 `hw/top/smc_ip_integration.sv:102-115`. Its set-once behaviour is `onwrite =
-woset` in `hw/ip/efuse/regs/efuse_bank.rdl`, a register file no other module in
+woset` in `hw/ip/efuse/dv/models/regs/efuse_bank.rdl`, a register file no other module in
 `hw/` instantiates, and its program-failure injection
 (`efuse_bank_model.sv:122`) is a `+smc_efuse_prog_fail_count` plusarg with no
 silicon counterpart. Nothing observed on those two probes is evidence that a

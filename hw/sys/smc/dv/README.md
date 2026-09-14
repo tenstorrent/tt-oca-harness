@@ -77,9 +77,8 @@ not environment variables — see the `--framework uvm` section.
 
 Test modules under `cocotb/tests/` that are in no testlist are not in `all`.
 `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` is the disposition of record
-for every one of the thirteen. Twelve of them restate their blocker on a
-leading `# deferred: <tag>` docstring line; `smc_clint_csr_test` does not, and
-the record, not the tag, owns the reason. SMU's matching catalog is
+for every one of them, and states which restate their blocker on a
+`# deferred: <tag>` docstring line. SMU's matching catalog is
 `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 ## Single DUT

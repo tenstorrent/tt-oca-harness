@@ -5,9 +5,12 @@
 == SMC deferred and OUT disposition
 
 This table is the disposition of record for every test name that is
-catalogued but not enrolled. Nothing here is enrolled PASS. A name that
-still has a body under `hw/sys/smc/dv/cocotb/tests/` restates its blocker on
-a leading `# deferred: <tag>` docstring line where a tag applies.
+catalogued but not enrolled. Nothing here is enrolled PASS. Thirteen names
+still have a body under `hw/sys/smc/dv/cocotb/tests/`; twelve of them restate
+their blocker on a leading `# deferred: <tag>` docstring line, with the tags
+`no_dut_port`, `no_sep_in_write_path`, `needs_i3c_dat_dct`,
+`needs_dtp_csr_sub`, `rtl_placeholder`, `fake_bfm` and `tb_glue`;
+`smc_clint_csr_test` carries none. This table, not the tag, owns the reason.
 
 Buckets:
 

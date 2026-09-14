@@ -34,7 +34,9 @@ is verified rather than what was once intended.
   in its Test Procedure, and the DUT's reaction is still observed frontdoor,
   on the DUT's outputs and registers, never on the poked or forced signal
   itself. Passive hierarchical taps read state and never write it. The rule
-  holds for every group, the `all` sign-off sweep included.
+  holds for the `all` sign-off sweep and for every card that claims sign-off
+  PASS; a leaf whose checks still read the forced signal is held out of `all`
+  and recorded under Known Limitations until its checks move to the registers.
 * *Checked, not observed.* A read that is printed but not compared is not
   evidence. Expectations come from the generated RDL reset values, the
   preloaded assets, or the specification -- never from a value the DUT
@@ -3393,9 +3395,14 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 * the Chiplet ID exception, :301-305 -- "Even in PROD or RMA_SOP states, JTAG read access to the chiplet ID and package ID registers is permitted";
 * the blocked response, :297-299 -- "the error slave returns an error response with data value `0xbadcab1e`".
 
-The matrix below is the outcome the checkers compare against, per raw
-`lc_state_i` encoding; the encodings and state names are the specification's
-(`hw/ip/efuse/doc/architecture.adoc:265-282`).
+The matrix below is the specification's outcome per raw `lc_state_i`
+encoding; the encodings and state names are the specification's
+(`hw/ip/efuse/doc/architecture.adoc:265-282`). The checkers drive one
+encoding per state -- `0x0`, `0x1`, `0x2`, `0x6`, `0x8` -- plus the
+integrity-error case; `0x3` and `0x7`, the specification's second encodings
+of RMA_SOP and RMA_CHIPLET, are not driven. The integrity-error row is not a
+specification table row: it is the `INVALID ... (error fallback)` class
+(`:281`) applied fail-closed, with no identity exception.
 `smc_efuse_wrapper` gates JTAG-to-eFuse access on `lc_state_i`; a blocked
 transaction returns DECERR with data `0xBADCAB1E`. `smc_efuse_jtag_lc_negative_test`
 covers the CSR-observable subset (`CHIP_CONFIG_LC_STATE` plus the always-allowed
@@ -3753,8 +3760,11 @@ Drive `smc_efuse_shim_ctrl_test_seq`. Each checker below is a named compare the 
 
 *Source Module*: `smc_state_fault_inject_test`
 
-*BFM / Model*: ocah_axi_vip (AXI) for the CSR path; state corruption driven on the
-testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
+*BFM / Model*: ocah_axi_vip (AXI) for the CSR path; state corruption is a force
+on the state flops through the testbench's `tb_efuse_program_state_inject`,
+`tb_efuse_read_state_inject` and `tb_zeroer_state_inject` hooks (each with its
+`_en`), and the read errors are forces through `tb_efuse_read_error_inject` on
+the eFuse interface response status, `efuse_req_err_i` and `secure_tm_blocked_i`
 
 *Objective*: Every unused state encoding in the eFuse interface controller and in the Zeroer fails closed, and the block recovers.
 
@@ -3782,6 +3792,15 @@ testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
   expiry, so a signal that never moves fails rather than hanging.
 
 *Test Procedure*:
+
+The DUT offers no frontdoor way to reach an unused state encoding, so each
+encoding is forced through the `tb_*_state_inject` hook named above and each
+read error through `tb_efuse_read_error_inject`. The checks read the state flop
+back through the `tb_efuse_program_state` / `tb_efuse_read_state` /
+`tb_zeroer_state` taps and the blocks' internal outputs (`tb_efuse_*_busy`,
+`tb_efuse_*_done`, `tb_efuse_*_error`, `tb_efuse_*_readback`, `tb_zeroer_*`),
+not the control registers; that is why the leaf is held out of `all` and
+recorded under Known Limitations.
 
 [arabic]
 . Wait for fuse-sense-done.
@@ -6197,7 +6216,7 @@ For each of the two (target, lock) pairs:
 [cols=",",options="header",]
 |===
 |Group |Purpose
-|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Nine enrolled leaves are outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_state_fault_inject_test` (its condition is a testbench force on the eFuse and Zeroer state flops, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers; it runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the four `rtl_issue` reproducers whose job is to fail
+|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Nine enrolled leaves are outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_state_fault_inject_test` (its condition is a testbench force on the eFuse and Zeroer state flops, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers; it runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the four `rtl_issue` reproducers whose job is to fail (`smc_gpio_irq_mask_deassert_test`, `smc_efuse_read_timeout_status_test`, `smc_log_engine_intr_mask_test`, `smc_i2c_intr_mask_test`)
 |`avsbus_depth` |avsbus depth coverage
 |`axil` |axil coverage
 |`per_ip` |One-per-IP breadth run used for routine regression

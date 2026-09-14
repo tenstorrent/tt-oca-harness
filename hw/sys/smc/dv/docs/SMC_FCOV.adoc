@@ -249,8 +249,8 @@ detail is the card in `SMC_VPLAN.adoc`.
 |GPIO / ext IRQ |`smc_gpio_irq_active_test` |same plus the GPIO cluster
 |UART / log / sideband |`smc_sideband_protocol_smoke_test` |same plus UART / AVSBus / OCTS
 |ECC / DFD / DBS |`smc_ecc_dfd_dbs_sanity_test` |same plus diagnostic depth
-|Deadspace aliasing |`smc_deadspace_decode_test` (on demand) |held out of `all`
-|CLA / ALIAS_REMAP |`smc_remap_cla_test` (on demand) |held out of `all`
+|Deadspace aliasing |`smc_deadspace_decode_test` (fails on the decode defect under Known Limitations) |held out of `all`
+|CLA / ALIAS_REMAP |`smc_remap_cla_test` (fails on the decode defect under Known Limitations) |held out of `all`
 |===
 
 === Collection Strategy
