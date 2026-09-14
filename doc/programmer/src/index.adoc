@@ -291,3 +291,17 @@ Manager must be idle before the SEP host asserts the TRNG reset.
 
 Do not try to recover only ESRC with `CTRL[0]`. A shared TRNG reset invalidates
 the entire internal chain.
+
+[[aou-software-operation]]
+== AXI-over-UCIe Bridge (AoU) Software Operation
+
+:sectnums!:
+ifdef::backend-pdf[]
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/MAS/software-operation.adoc[leveloffset=+1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+:aou-architecture-xref: ocah-docs:ROOT:architecture.adoc
+include::aou:partial$software-operation.adoc[leveloffset=+1]
+endif::backend-html5[]
+:sectnums:
