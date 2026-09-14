@@ -265,7 +265,8 @@ shows it as a `fv` row and `--validate-configs` validates it as
 `<name> (formal)`. A site-named file that is absent leaves the view
 unavailable in both listings and is an error only when selected; a registry
 `formal_cfg` that is absent fails validation. A DV root that carries a formal
-config and no sim config is not a DUT.
+config and no sim config is not a DUT. <<runner-formal>> is the contributor's
+route through formal mode.
 
 `--tool TOOL` overrides the DUT's `default_tool`, but the selected tool must be
 present in the flow's `tools` allowlist and in `simulators.toml`.
@@ -853,6 +854,313 @@ The container sees the checkout and the run directory at the same paths as
 the host, so the rendered command, the replay script under `scripts/`, and
 the paths the tool prints hold on both sides. `--doctor --tool vcs` then
 checks `podman`, not `vcs`.
+
+[[runner-formal]]
+== Formal verification
+
+Formal mode runs a property set through the same runner as a simulation:
+`--mode formal` selects a DUT's formal view, an item names an app, the app
+names the backend's script, and the runner renders one command, runs it, and
+grades the evidence the backend wrote into `result.json`. This chapter is the
+contributor's route through the pieces the reference sections define: the
+toolchain, a local run and a container run, the property style, the
+configuration a formal view needs, how a result is read, and where
+licensed-backend collateral lives. `hw/sys/dtp/dv/` is the reference
+implementation, the DTP TAP controller proven with SymbiYosys; its plan
+section is "Formal Verification Plan" in `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`.
+Hosted CI runs no formal job and no formal result reaches the dashboard:
+formal mode is a developer-host flow (<<runner-ci-support-matrix>>).
+
+[[runner-formal-toolchain]]
+=== Toolchain
+
+The open path is SymbiYosys (`sby`) driving Yosys with the yosys-slang
+frontend, `yosys-smtbmc`, `yosys-abc`, and an SMT solver, with `bender` for
+the filelist. The frontend must be a yosys-slang build that carries the
+concurrent-assertion lowering (releases from 2026-05 on); the `cover` task
+needs the SMT solver the task file names (`yices` in the DTP task file), and
+`abc pdr` needs none. `--doctor` probes `sby` alone, so the other tools must
+share its `PATH`:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut dtp --mode formal
+----
+
+The Open-path toolchain section of the Formal Property Style and Layout
+chapter (`hw/common/dv/docs/index.adoc`) is the authority for the frontend
+and solver requirements; a pip-only `sby` without a solver runs `bmc` and
+`prove` on the abc engines and no `cover` task.
+
+[[runner-formal-local-run]]
+=== A local run
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --list                              # the `dtp fv` row: the formal view and its tools
+python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run   # the planned stages and the rendered sby command
+python3 tools/dv/run_dv.py --dut dtp --mode formal             # the `smoke` group: dtp_tap_fpv
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items dtp_tap_fpv --app fpv
+----
+
+The `flist` stage writes the Bender filelist the task file reads through its
+`[files]` entry, then the `formal` stage runs every task of the item's app in
+one `sby` invocation from the app's `cwd`, the directory holding the task
+file. Under `<run>/stages/formal/` the run leaves `logs/<item>.log`, the
+replay script `scripts/formal.<item>.sh`, the `env/` snapshot, and one work
+directory per task, `<item>_<task>/`, holding the model, the engine log, the
+`status` file, the JUnit report, and on a counterexample
+`engine_0/trace.vcd`; a reached cover writes its trace the same way inside
+the `cover` task's directory. The console ends with the item status and the
+run-level `result.json`, whose `formal` object carries the proven and covered
+counts and the task totals (<<runner-formal-grading>>).
+
+The FAIL path is checked by inverting one assertion body and running the same
+command: the `bmc` task reports `FAIL` with the trace, the `prove` task
+reports `FAIL`, the item is `FAIL` in the `formal_fail` bucket, and the exit
+code is non-zero. Restore the property afterwards; the DTP plan section names
+the assertion it uses for this check.
+
+[[runner-formal-container-run]]
+=== A container run
+
+When the tools live in a container image, the site layer's `launcher` puts
+the container command in front of every `sby` invocation while `run_dv.py`
+and `bender` stay on the host (<<runner-site-layer>>). Three constraints hold:
+
+* The container sees the checkout and the run directory at the same paths as
+  the host, because the generated filelist and the rendered command carry
+  host-absolute paths.
+* The launcher's first token is an absolute path or a bare name found on
+  `PATH`. The command starts from the app's `cwd`, so a checkout-relative
+  path does not resolve there.
+* The image carries a yosys-slang build with the concurrent-assertion
+  lowering and an SMT solver beside `sby` (<<runner-formal-toolchain>>).
+
+The repository's container helper meets the first constraint: `eda-run`
+mounts the checkout at its own host path and runs the command inside the EDA
+image (`tools/docker/README.md`). `OCAH_EDA_IMAGE` selects the image, and a
+launcher inherits the tool's `extra_env`, so one site file describes the
+whole arrangement:
+
+[source,toml]
+----
+schema_version = 1
+
+[simulators.sby]
+launcher = ["/path/to/checkout/scripts/docker-run.sh", "eda-run"]
+extra_env = { OCAH_EDA_IMAGE = "hpretl/iic-osic-tools:2026.08" }
+----
+
+`--doctor --dut dtp --mode formal` then reports `launcher found:` with the
+helper's path on the `sby` row, `--dry-run` prints the prefixed command, and
+`result.json` records the site file under `site`. The cocotb path cannot take
+a launcher; formal mode has no such restriction because every formal command
+is rendered from argv.
+
+[[runner-formal-properties]]
+=== Writing properties
+
+The Formal Property Style and Layout chapter of `hw/common/dv/docs/index.adoc`
+fixes how a property file is written so that it elaborates on the open path
+and on licensed backends alike. The rules a contributor meets first:
+
+* *Subset.* Every property body is a boolean over current and `$past` values.
+  The open frontend reads no sequences, implication operators, or the
+  `$stable`, `$rose`, `$fell` family; the concurrent SVA checkers under
+  `hw/common/dv/vip/*/sva/` and the `OCAH_ASSERT` macros elaborate on
+  licensed backends only (Accepted constructs).
+* *Macros and guards.* `hw/common/assert/ocah_fv_macros.svh` supplies
+  `OCAH_FV_ASSERT`, `OCAH_FV_ASSUME`, `OCAH_FV_COVER`, and
+  `OCAH_FV_INITIAL_RESET`, all gated on `FORMAL`, which every backend script
+  defines; a property file never tests `YOSYS` (Property macros, Preprocessor
+  guards).
+* *Attachment and labels.* A property module binds to the described block
+  with downward hierarchical references, and every label starts with `ast_`,
+  `asm_`, or `cov_` (Attaching a property module, Labels).
+* *Reset and clocks.* An `asm_initial_reset` holds the reset in the first
+  cycle; a DUT clocked on both edges of one clock models its clocks explicitly
+  under `multiclock on` with an environment module for the free asynchronous
+  resets (Reset and history, Clock modelling).
+* *Layout.* `<dut-dv-root>/formal/props/` holds the property and bind files,
+  `formal/<app>/sby/` the task file and the reset environment,
+  `formal/build/` the generated filelist and work directories (Layout under
+  the DUT DV root).
+* *Reachability.* Every `cov_` label stays reachable after any assumption
+  change, checked by the `cover` task of the same run; an unreached cover
+  fails the item (Cover reachability after assumption changes).
+
+A formal target starts with a plan section in the DUT's verification plan
+that scopes the described block, tabulates the labels against the plan rows,
+and justifies every bounded depth against the block's structural latency,
+as the DTP section does.
+
+[[runner-formal-config]]
+=== Configuring a formal view
+
+A DUT gains a formal view from `<name>_formal_cfg.toml` beside its sim
+config, or from a `formal_cfg` pointer in the registry or the site layer
+(Selection model). `hw/sys/dtp/dv/dtp_formal_cfg.toml` shows every key a
+view on the CLI run path needs:
+
+[cols="<3,<5",options="header"]
+|===
+|Key |Purpose
+
+|`name`, `profile = "native-formal"`, `description`
+|The DUT name, the shared formal profile (stage graph, `sby` as the default
+tool), and the `--list` description.
+
+|`[testlist]` `path`, `format = "toml_list"`
+|The formal testlist, DUT-DV-root-relative. Each item's `module` names the
+app it launches; groups collect items (`smoke` for the DTP item).
+
+|`[native.stages.flist]` `kind = "filelist"`
+|Regenerates the Bender filelist before every proof; the task file reads it
+through `[files]`. `[native.stages.clean]` names what `--stage clean`
+removes.
+
+|`[build]` `top_module`, `filelist`, `bender_filelist`, `work_dir`,
+`incdirs`, `common_bender_targets`, `bender_targets`
+|The design closure and include order. `hw/common/assert/yosys` precedes
+`hw/common/assert` so the frontend picks the assertion shim over the vendored
+header; the targets name the design only, never the simulation testbench.
+
+|`[targets.default]` `build_dir`
+|The one target a formal view carries.
+
+|`[formal.apps.<app>.<tool>]` `cwd`, `script`, `args`
+|One table per backend and app: the directory the tool starts from, the
+script it runs, and the tokens spliced at the template's `{args}` (the
+`sby` task names). An `argv` key overrides the tool's registry template and
+an `evidence` table grades a backend without a parser policy
+(<<runner-formal-templates>>, <<runner-formal-grading>>).
+|===
+
+`--validate-configs` validates the view as `<name> (formal)` and `--list`
+shows it as a `fv` row; `--list --json` entries carry `mode = "formal"` and
+`available`. The `tools` list comes from the profile unless the config sets
+its own, which a config that adds a site-supplied backend does
+(<<runner-formal-licensed>>).
+
+[[runner-formal-results]]
+=== Reading a result
+
+The runner grades an item from what the backend wrote, never from its exit
+code; <<runner-formal-grading>> carries the rules and the `formal` object.
+What each status means for the contributor:
+
+[cols="<1,<4",options="header"]
+|===
+|Status |Meaning and next step
+
+|`PASS`
+|Every task passed and every cover was reached. A passed `bmc` task is
+bounded evidence to its depth; the `prove` task is the unbounded proof.
+
+|`FAIL`
+|A counterexample, an induction failure, or an unreached cover. Open the
+task's `engine_0/trace.vcd`; for an unreached cover revisit the assumptions
+and the depth against the plan section's distance table before touching the
+cover.
+
+|`UNKNOWN`
+|No task evidence, an inconclusive task, or a non-zero exit beside passing
+evidence. "no formal task evidence" points at the launch template's
+`--prefix` or the app's `cwd`; an inconclusive `prove` (an induction
+counterexample) is an open proof that needs a stronger invariant or another
+engine. `sby` takes depths and timeouts from the task file, so a changed
+bound is a task-file edit; `--formal-arg` values reach the command only where
+the template has a `{formal_args}` placeholder.
+
+|`TIMEOUT`, `ERROR`
+|The task file's `timeout` fired, or the tool failed before writing
+evidence; the stage log carries the tool's diagnostic.
+|===
+
+The recorded status is the disposition. Formal results have no waiver
+mechanism: coverage waivers (<<runner-waive>>) apply to coverage bins only,
+and a property that is out of scope is removed from the property module with
+the reason recorded in the plan section rather than waived.
+
+[[runner-formal-licensed]]
+=== Licensed backends and the companion boundary
+
+The open tree carries the open path and nothing that names a licensed tool:
+the property and bind files, the `sby` task files and reset environments, the
+formal config with the `sby` app, and the plan section. The registry and the
+formal profile list `sby` alone. A licensed backend reaches the runner
+through the site layer (<<runner-site-layer>>), and its collateral lives in
+the companion repository or in an adopter's own tree:
+
+* *The site file* adds a complete tool table with `kind = "formal"`,
+  `frameworks = ["formal"]`, the binary, the license variables, an `argv`
+  launch template, and a `setup_hook` or `launcher` where the tool needs an
+  environment or a wrapper. The runner validates it with the registry schema
+  and treats it exactly like a checked-in table; `--list` marks it
+  `(licensed)` from its `license_env`.
+* *A companion-owned formal config*, named by the site file's
+  `[duts.<dut>] formal_cfg`, lists `tools = ["sby", "<tool>"]` and carries
+  the licensed app tables with their scripts and `evidence` hooks. Its `sby`
+  app reuses the open collateral by pointing `cwd` at the open tree's task
+  directory, so one view serves both backends.
+* *Activation* is explicit: the file at `hw/common/dv/configs/site.local.toml`
+  or the one `OCAH_DV_SITE` names. The presence of a companion checkout
+  changes nothing.
+
+[source,toml]
+----
+schema_version = 1
+
+[simulators.fvtool]
+kind = "formal"
+binary = "fvtool"
+frameworks = ["formal"]
+license_env = ["FVTOOL_LICENSE_FILE"]
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
+setup_hook = "eda/fvtool.env"
+
+[duts.dtp]
+formal_cfg = "/path/to/companion/hw/sys/dtp/dv/dtp_formal_cfg.toml"
+----
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --doctor --dut dtp --mode formal --tool fvtool
+python3 tools/dv/run_dv.py --dut dtp --mode formal --tool fvtool
+python3 tools/dv/run_dv.py --dut dtp --mode formal --tool sby
+----
+
+Both commands run the same item; the tool choice is the only difference, and
+each run records the site file under `site` in its `result.json`.
+`hw/common/dv/configs/site.local.example.toml` is the template for the site
+file.
+
+[[runner-formal-readme]]
+=== The DUT README's formal section
+
+A DUT that carries a formal view states it in its DV `README.md` with one
+section in this shape, which `hw/sys/dtp/dv/README.md` instantiates:
+
+[source,markdown]
+----
+## Formal
+
+`formal/` holds <the described block and the formal top>; the properties
+follow `hw/common/dv/docs/formal-property-style.adoc`. `<dut>_formal_cfg.toml`
+and `testlists/formal.toml` launch it through the runner; the plan section is
+"<section title>" in `docs/<DUT>_VPLAN.adoc`.
+
+    python3 tools/dv/run_dv.py --dut <dut> --mode formal            # <group>: <items>
+    python3 tools/dv/run_dv.py --dut <dut> --mode formal --dry-run  # the rendered command
+
+<One sentence on the toolchain the item needs, and one on how a site with a
+licensed backend selects it, pointing at the Formal verification chapter of
+`tools/dv/doc/run-dv.adoc`.>
+----
 
 == Stage planning
 
@@ -1600,6 +1908,7 @@ are excluded after merge while the merged coverage report and normalized
 summary remain. Explicit run directories never create or update the `latest`
 symlink.
 
+[[runner-ci-support-matrix]]
 === CI support matrix
 
 [cols="<3,<4,<5",options="header"]
@@ -1627,10 +1936,11 @@ tools. A pair joins the workflow matrix only with a qualifying run at head.
 |Unsupported in hosted CI
 |VCS/Xcelium anywhere; formal mode; `smu_wrapper` real-SEP group
 (`all_with_sep_exec`); non-local executors
-|VCS and Xcelium need licensed self-hosted runners. Formal mode needs a
-yosys-slang build with the concurrent-assertion lowering, which the pinned
-EDA container lacks. The real-SEP `smu_wrapper` items stay out of the default
-`all` group. Non-local executor dispatch is not implemented.
+|VCS and Xcelium need licensed self-hosted runners. Formal mode is a
+developer-host flow: hosted CI runs no formal job and no formal result
+reaches the dashboard (<<runner-formal>>). The real-SEP `smu_wrapper` items stay
+out of the default `all` group. Non-local executor dispatch is not
+implemented.
 |===
 
 === Framework-aware CI matrices
@@ -1735,7 +2045,8 @@ code (<<runner-formal-grading>>). Inspect the stage record's `reason`,
 `parser.evidence`, and `formal.tasks`. `UNKNOWN` with "no formal task
 evidence" means the log carried no task status line and the stage directory
 held no task work directory: check the launch template's `--prefix` and the
-app's `cwd`.
+app's `cwd`. <<runner-formal-results>> lists the next step for every
+status.
 
 === An explicit sim-only run cannot find build or firmware output
 
@@ -1782,3 +2093,7 @@ The following behaviors are not part of the runner contract:
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
 * A DV root that carries a formal config and no sim config is not a DUT;
   formal views attach to selectable DUTs.
+* Hosted CI runs no formal job and no formal result reaches the dashboard;
+  formal mode is a developer-host flow (<<runner-formal>>).
+* Formal results have no waiver mechanism; coverage waivers apply to
+  coverage bins only.
