@@ -132,8 +132,12 @@ _PROTOCOL_VIP_TESTS = {
 #
 # So every run records, from the cocotb side, into its kept log, at
 # start-of-simulation:
-#   * the commit the model was built from, and whether any source that feeds
-#     the model or the bench was uncommitted at run time (`dirty=`);
+#   * the commit the model was built from, and whether anything that feeds
+#     the model or the bench was uncommitted at run time (`dirty=`): the
+#     compile sources and include directories, every Bender manifest and
+#     lockfile (they choose the sources), the shared DV configuration and the
+#     runner (they choose the defines and flags), the SMC DV package and the
+#     in-repo PYTHONPATH entries;
 #   * the smc_sim_cfg.toml target the exported build directory belongs to, and
 #     the sha256 of the model artifact, of the resolved elaboration-dependency
 #     list, and of the compile filelist the simulator was invoked with;
@@ -174,6 +178,20 @@ _SIM_NAME_ALIASES: dict[str, str] = {
 
 # `sN(<stamp>):  xrun ...` -- one entry per invocation in xrun's history file.
 _XRUN_HISTORY_ENTRY = re.compile(r"^s\d+\([^)]*\):\s+(xrun\b.*)$")
+
+# Beyond the filelist's own sources, what decides the model's contents:
+# Bender manifests and lockfiles anywhere in the tree choose the sources of
+# every target the generated filelist draws from; the shared DV configuration
+# (profiles, simulators, DUT registry) and the runner choose the defines,
+# flags and stage commands the simulator was invoked with. All are in the
+# dirty scope, or an edit to one of them would build a different model from
+# clean, committed sources and the line would still say dirty=false.
+_MANIFEST_NAMES = frozenset({"Bender.yml", "Bender.lock"})
+_FLOW_SCOPE_DIRS = (
+    Path("hw") / "common" / "dv" / "configs",
+    Path("tools") / "dv" / "runlib",
+)
+_FLOW_SCOPE_FILES = (Path("tools") / "dv" / "run_dv.py",)
 
 # How many dirty paths the identity line names before abbreviating.
 _DIRTY_PATHS_SHOWN = 8
@@ -477,11 +495,14 @@ def _display(root: Path, path: Path) -> str:
     return str(rel) if rel is not None else str(path)
 
 
-def _dirty_paths(toplevel: Path, files: set[str], dirs: set[str]) -> list[str]:
+def _dirty_paths(
+    toplevel: Path, files: set[str], dirs: set[str], names: frozenset[str]
+) -> list[str]:
     """``<XY>:<path>`` for every uncommitted change git reports inside the scope.
 
-    The scope is the set of repo-relative ``files`` plus everything under
-    ``dirs``. One whole-tree status is filtered here rather than handed to git
+    The scope is the set of repo-relative ``files``, everything under ``dirs``,
+    and every path whose basename is in ``names`` wherever it sits. One
+    whole-tree status is filtered here rather than handed to git
     as pathspecs, so a filelist of any length fits. Untracked files count (an
     unversioned bench file feeds the run as much as an edited one); ignored
     ones do not, which is what keeps the build outputs the runner writes under
@@ -501,9 +522,41 @@ def _dirty_paths(toplevel: Path, files: set[str], dirs: set[str]) -> list[str]:
         if status[0] in "RC":
             # A rename or copy carries the original path as a second field.
             index += 1
-        if path in files or path.startswith(prefixes):
+        if path in files or path.startswith(prefixes) or path.rsplit("/", 1)[-1] in names:
             dirty.append(f"{status.strip() or '?'}:{path}")
     return sorted(dirty)
+
+
+def _reject_sources_from_other_checkouts(root: Path, model_top: Path, sources: set[Path]) -> None:
+    """Fail when any compile source lies in a git checkout other than the model's.
+
+    A filelist can mix trees -- a Bender filelist generated in one checkout and
+    a top-level one in another -- and the sources under ``root`` alone would
+    then name a commit that supplied only part of the model. Sources outside
+    any git checkout (a site library) are allowed and counted in the line as
+    ``flist_sources_outside_repo``.
+    """
+    by_dir: dict[Path, Path] = {}
+    for source in sources:
+        if _repo_relative(root, source) is None and source.parent.is_dir():
+            by_dir.setdefault(source.parent, source)
+    for directory, example in sorted(by_dir.items()):
+        proc = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=directory,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        if proc.returncode != 0:
+            continue
+        other = Path(proc.stdout.strip()).resolve()
+        if other != model_top:
+            _fail(
+                f"compile source {example} lies in the git checkout {other}, not in "
+                f"the model's checkout {model_top}: one identity cannot name two trees"
+            )
 
 
 def _bench_digest(root: Path) -> tuple[str, int]:
@@ -588,12 +641,15 @@ def log_build_model_identity(
             f"{root} differ: one identity cannot name three trees"
         )
     rev = _git(["rev-parse", "HEAD"], model_top).strip()
+    _reject_sources_from_other_checkouts(root, model_top, sources)
 
     # Dirty scope: everything that feeds the model or the bench -- the compile
-    # sources and include directories, the whole SMC DV package, and every
-    # in-repo PYTHONPATH entry the cocotb process imports from.
-    scope_files: set[str] = set()
-    scope_dirs: set[str] = {str(_DV_REL)}
+    # sources and include directories, the manifests, configuration and runner
+    # code that chose them (see _MANIFEST_NAMES / _FLOW_SCOPE_*), the whole SMC
+    # DV package, and every in-repo PYTHONPATH entry the cocotb process imports
+    # from.
+    scope_files: set[str] = {str(f) for f in _FLOW_SCOPE_FILES}
+    scope_dirs: set[str] = {str(_DV_REL), *(str(d) for d in _FLOW_SCOPE_DIRS)}
     outside_repo = 0
     for path in sources:
         rel = _repo_relative(model_top, path)
@@ -611,7 +667,7 @@ def log_build_model_identity(
         rel = _repo_relative(model_top, Path(entry)) if entry else None
         if rel is not None:
             scope_dirs.add(str(rel))
-    dirty = _dirty_paths(model_top, scope_files, scope_dirs)
+    dirty = _dirty_paths(model_top, scope_files, scope_dirs, _MANIFEST_NAMES)
     dirty_allowed = os.environ.get(_ALLOW_DIRTY_ENV) == "1" or not require_clean_tree
     shown = ",".join(dirty[:_DIRTY_PATHS_SHOWN])
     if len(dirty) > _DIRTY_PATHS_SHOWN:

@@ -76,7 +76,7 @@ class smc_cpu_firmware_boot_test(smc_base_test):
         # ([BUILD-MODEL-IDENTITY]). The base `smc_base_test.run_phase` emits it
         # by calling `log_build_model_identity`; this override must too, or the
         # SMC_002 ROM-boot evidence cannot be bound to an elaborated model.
-        log_build_model_identity()
+        log_build_model_identity(require_clean_tree=self.require_clean_tree)
         seq = smc_cpu_firmware_boot_test_seq("cpu_fw_boot_seq")
         # Watch fuse sense across cold-reset release / settle.
         watcher = cocotb.start_soon(self._fuse_sense_watcher(seq))
