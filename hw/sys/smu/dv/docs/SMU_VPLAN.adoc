@@ -2057,7 +2057,7 @@ check.
 
 *BFM / Model*: TB pin drive only (no external VIP); `sep_smoke` firmware mode -- the SMC runs the `smu_sep_smoke` arm image from ROM and the real SEP RTL boots under it; verdict through `SmuSepBootScoreboard` on the SEP trace probes
 
-*Objective*: The real SEP RTL comes out of reset under the SMU wrapper, fetches from boot ROM, executes from ICCM and stores to DCCM, after the SMC arm firmware releases it.
+*Objective*: The real SEP RTL comes out of reset under the SMU wrapper, fetches from boot ROM, executes from ICCM and stores to DCCM, in the same run in which the SMC arm firmware boots from ROM and signals `TEST_PASS`. The SEP runs on its default run gate; the arm image (`fw/tests/smu_sep_arm/main.c`) writes its marker and does not release the SEP, so no arm-before-boot ordering is claimed.
 
 *Test Coverage*:
 
@@ -2087,7 +2087,7 @@ check.
 |`sep_boot_rom_iccm` |boot-ROM fetch seen and ICCM execution seen
 |`sep_retire_floor` |>= 256 retired instructions over >= 16 distinct PCs
 |`sep_dccm_write` |`sep_dccm_write_count_o` advanced above 0
-|`post_arm_idle` |released SEP retired something within 100 000 cycles of the SMC arm
+|`post_arm_idle` |a SEP out of reset retired something within 100 000 cycles of the SMC arm marker being seen
 |`CHK-NONVAC` |emitted by the scoreboard only after every term above held
 |===
 
