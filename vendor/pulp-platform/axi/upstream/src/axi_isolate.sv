@@ -72,10 +72,7 @@ module axi_isolate #(
   input  axi_resp_t mst_resp_i,
   /// Isolate master port from slave port
   input  logic      isolate_i,
-  /// Recovery flush, for a forced reset of a master/slave of this module while it has
-  /// transactions in flight (the drain can then never complete).  Forces the
-  /// channel FSMs to `Isolate`, resets the pending counters, and absorbs stale
-  /// responses until `isolate_i` deasserts.  Only legal while `isolate_i`.
+  /// Force recovery while isolated; valid only while `isolate_i` is asserted
   input  logic      flush_i,
   /// Master port is isolated from slave port
   output logic      isolated_o
@@ -93,8 +90,7 @@ module axi_isolate #(
   `AXI_TYPEDEF_AR_CHAN_T(ar_chan_t, addr_t, id_t, user_t)
   `AXI_TYPEDEF_R_CHAN_T(r_chan_t, data_t, id_t, user_t)
 
-  // Capacity of `axi_isolate_inner`, derived from the maximum number of transactions the demux
-  // admits (`2**AxiLookBits` ID buckets, each counting up to `2**IdCounterWidth - 1`).
+  // Match the inner counter capacity to the terminating demux.
   localparam int unsigned DemuxLookBits   = 32'd1;
   localparam int unsigned DemuxCntWidth   = cf_math_pkg::idx_width(NumPending);
   localparam int unsigned DemuxMaxPending =
@@ -105,8 +101,7 @@ module axi_isolate #(
   axi_req_t [1:0]   demux_req;
   axi_resp_t [1:0]  demux_rsp;
 
-  // Recovery-flush window: opens on `flush_i`, closes when the isolation
-  // sequence ends.  Latched, so the pulse width of `flush_i` is not critical.
+  // Latch a flush pulse until de-isolation.
   logic flush_active_q, flush_active;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -121,10 +116,7 @@ module axi_isolate #(
 
   assign flush_active = flush_i | flush_active_q;
 
-  // Slave port as seen by the demux.  A plain feedthrough in normal operation;
-  // during a flush it absorbs stale responses on behalf of the force-reset
-  // master (accept them, hide them), sitting above the demux so the draining
-  // responses pop the demux ID counters on the way out.
+  // During flush, accept and hide late responses above the demux.
   axi_req_t  demux_slv_req;
   axi_resp_t demux_slv_rsp;
 
@@ -255,7 +247,7 @@ module axi_isolate_inner #(
   output axi_req_t  mst_req_o,
   input  axi_resp_t mst_resp_i,
   input  logic      isolate_i,
-  // Recovery flush; held for the whole flush window by `axi_isolate`
+  // Held until de-isolation by axi_isolate.
   input  logic      flush_i,
   output logic      isolated_o
 );
@@ -288,9 +280,7 @@ module axi_isolate_inner #(
   `FFLARN(state_aw_q, state_aw_d, update_aw_state, Isolate, clk_i, rst_ni)
   `FFLARN(state_ar_q, state_ar_d, update_ar_state, Isolate, clk_i, rst_ni)
 
-  // A flush must not retract a beat presented-unaccepted downstream, as
-  // downstream arbiters/FIFOs have already committed to it.  Such a channel
-  // keeps operating and takes the flush once the beat is accepted.
+  // Delay a channel's flush while VALID is held without READY.
   logic flush_aw_ok, flush_w_ok, flush_ar_ok;
   assign flush_aw_ok = ~(mst_req_o.aw_valid & ~mst_resp_i.aw_ready);
   assign flush_w_ok  = ~(mst_req_o.w_valid  & ~mst_resp_i.w_ready);
@@ -317,7 +307,7 @@ module axi_isolate_inner #(
         update_ar_cnt = 1'b1;
       end
     end
-    // Pops saturate at zero so beats arriving after a flush cannot underflow.
+    // Ignore late-response pops after a counter is cleared.
     if (mst_req_o.w_valid  && mst_resp_i.w_ready && mst_req_o.w.last) begin
       if (pending_w_d != '0) begin
         pending_w_d--;
@@ -341,7 +331,7 @@ module axi_isolate_inner #(
         update_ar_cnt = 1'b1;
       end
     end
-    // Flush: clear the pending counters, gated on the no-retraction checks.
+    // Clear counters for channels that can flush safely.
     if (flush_i && flush_aw_ok) begin
       pending_aw_d  = '0;
       update_aw_cnt = 1'b1;
@@ -417,7 +407,7 @@ module axi_isolate_inner #(
         mst_req_o.aw        = '0;
         mst_req_o.aw_valid  = 1'b0;
         slv_resp_o.aw_ready = 1'b0;
-        // Keep B connected during a flush so stale responses can drain
+        // Pass late B responses during flush.
         if (!flush_i) begin
           slv_resp_o.b        = '0;
           slv_resp_o.b_valid  = 1'b0;
@@ -432,8 +422,7 @@ module axi_isolate_inner #(
     endcase
 
     // W channel is cut as long the counter is zero and not explicitly unlocked through an AW.
-    // During a flush the cut channel absorbs stranded W beats instead, so
-    // upstream W routing can unwind on their `last`.
+    // Absorb late W beats during flush.
     if ((pending_w_q == '0) && !connect_w ) begin
       mst_req_o.w         = '0;
       mst_req_o.w_valid   = 1'b0;
@@ -487,7 +476,7 @@ module axi_isolate_inner #(
         mst_req_o.ar        = '0;
         mst_req_o.ar_valid  = 1'b0;
         slv_resp_o.ar_ready = 1'b0;
-        // Keep R connected during a flush so stale responses can drain
+        // Pass late R responses during flush.
         if (!flush_i) begin
           slv_resp_o.r        = '0;
           slv_resp_o.r_valid  = 1'b0;
@@ -501,8 +490,7 @@ module axi_isolate_inner #(
       default: /*do nothing*/;
     endcase
 
-    // Flush: force each channel FSM to Isolate, gated on the no-retraction
-    // checks.  The normal exit applies once `isolate_i` deasserts.
+    // Move each safe channel directly to Isolate.
     if (flush_i) begin
       if (flush_aw_ok) begin
         state_aw_d      = Isolate;

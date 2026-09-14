@@ -55,7 +55,6 @@ STATUS_PHASE2_DONE = 0x1501_0003
 FW_PASS = 0xACAF_ACA1
 FW_FAIL = 0xFFFF_FFFF
 
-STATE_DRAIN = 2
 STATE_BOUND = 4_000
 BOOT_BOUND = 200_000
 FW_POLL_COUNT = 4_000
@@ -274,17 +273,17 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
         dut.tb_gpio_ext_drive_en.value = enable
         dut.tb_gpio_ext_drive_value.value = value
 
-    async def _request_forced_reset(
-        self, reset_ctrl: int, *, state_name: str, pending_name: str
-    ) -> None:
+    async def _request_forced_reset(self, reset_ctrl: int, *, pending_name: str) -> None:
         request = reset_ctrl & ~(CORE0_RESET_N | UNCORE_RESET_N)
         await self.csr_write("RESET_CTRL_CORE0_UNCORE_ASSERT", RESET_CTRL, request, length=8)
         await self._wait_eq("tb_cpu_isolate_req", 1, STATE_BOUND, "CPU isolate request")
-        await self._wait_eq(state_name, STATE_DRAIN, STATE_BOUND, f"{state_name} Drain state")
         pending = self._value(getattr(cocotb.top, pending_name), pending_name)
         assert pending != 0, (
             f"{pending_name} cleared before RESET_TIMEOUT fired; the intended "
             f"drain wedge was not present"
+        )
+        assert self._value(cocotb.top.tb_cpu_drained, "tb_cpu_drained") == 0, (
+            "CPU boundary reported drained while the wedged transaction was still pending"
         )
         await self._wait_eq("tb_cpu_reset_timeout", 1, STATE_BOUND, "RESET_TIMEOUT fired")
         await self._wait_eq("tb_cpu_reset_applied", 1, STATE_BOUND, "forced reset applied")
@@ -295,11 +294,18 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
         await self._wait_eq("tb_cpu_drained", 1, STATE_BOUND, "CPU boundary drained")
         await self._wait_eq(isolate_name, 1, STATE_BOUND, f"{isolate_name} isolated")
         await self._wait_eq(flush_name, 1, STATE_BOUND, f"{flush_name} open")
+        await self._hold_value(
+            "tb_cpu_reset_timeout",
+            1,
+            STABLE_WINDOW_CYCLES,
+            "RESET_TIMEOUT held through the active reset request",
+        )
         self.contracts.add("drained_while_blocked")
 
     async def _release_reset(self, reset_ctrl: int) -> None:
         await self.csr_write("RESET_CTRL_RELEASE", RESET_CTRL, reset_ctrl, length=8)
         await self._wait_eq("tb_cpu_isolate_req", 0, STATE_BOUND, "CPU isolate request released")
+        await self._wait_eq("tb_cpu_reset_timeout", 0, STATE_BOUND, "RESET_TIMEOUT cleared")
         await self._wait_eq("tb_cpu_uncore_reset_n", 1, STATE_BOUND, "uncore reset released")
         await self._wait_eq(
             "tb_cpu_cluster_isolate", 0, BOOT_BOUND, "CPU cluster boundary de-isolated"
@@ -343,7 +349,6 @@ class smc_cpu_l2_read_wedge_test_seq(_CpuIsolateFlushSeq):
 
             await self._request_forced_reset(
                 reset_ctrl,
-                state_name="tb_cpu_l2_state_ar",
                 pending_name="tb_cpu_l2_pending_ar",
             )
             await self._wait_forced_drain("tb_cpu_l2_isolated", "tb_cpu_l2_flush_active")
@@ -424,7 +429,9 @@ class smc_cpu_l2_write_wedge_test_seq(_CpuIsolateFlushSeq):
                 )
             )
             await self._wait_eq("tb_cpu_isolate_req", 1, STATE_BOUND, "CPU isolate request")
-            await self._wait_eq("tb_cpu_l2_state_aw", STATE_DRAIN, STATE_BOUND, "L2 AW state")
+            assert self._value(dut.tb_cpu_drained, "tb_cpu_drained") == 0, (
+                "CPU boundary reported drained while L2 write responses were still pending"
+            )
             await self._wait_eq("tb_cpu_reset_timeout", 1, STATE_BOUND, "RESET_TIMEOUT fired")
             await self._wait_eq("tb_cpu_reset_applied", 1, STATE_BOUND, "forced reset applied")
             await self._wait_eq("tb_cpu_uncore_reset_n", 0, STATE_BOUND, "uncore reset asserted")
@@ -459,7 +466,6 @@ class _CpuMmioWedgeSeq(_CpuIsolateFlushSeq):
     go_magic = 0
     pending_name = ""
     other_pending_name = ""
-    state_name = ""
     output_valid_name = ""
     output_ready_name = ""
     output_addr_name = ""
@@ -549,7 +555,6 @@ class _CpuMmioWedgeSeq(_CpuIsolateFlushSeq):
 
             await self._request_forced_reset(
                 reset_ctrl,
-                state_name=self.state_name,
                 pending_name=self.pending_name,
             )
             await self._wait_forced_drain("tb_cpu_mmio_isolated", "tb_cpu_mmio_flush_active")
@@ -595,7 +600,6 @@ class smc_cpu_mmio_read_wedge_test_seq(_CpuMmioWedgeSeq):
     go_magic = GO_READ_MAGIC
     pending_name = "tb_cpu_mmio_pending_ar"
     other_pending_name = "tb_cpu_mmio_pending_aw"
-    state_name = "tb_cpu_mmio_state_ar"
     output_valid_name = "tb_output_axi_arvalid"
     output_ready_name = "tb_output_axi_arready"
     output_addr_name = "tb_output_axi_araddr"
@@ -609,7 +613,6 @@ class smc_cpu_mmio_write_wedge_test_seq(_CpuMmioWedgeSeq):
     go_magic = GO_WRITE_MAGIC
     pending_name = "tb_cpu_mmio_pending_aw"
     other_pending_name = "tb_cpu_mmio_pending_ar"
-    state_name = "tb_cpu_mmio_state_aw"
     output_valid_name = "tb_output_axi_awvalid"
     output_ready_name = "tb_output_axi_awready"
     output_addr_name = "tb_output_axi_awaddr"

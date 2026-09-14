@@ -18,39 +18,9 @@ added as the project matures.
 [[smc]]
 == SMC
 
-[[smc-cpu-reset]]
-=== CPU Cluster Reset
-
-A software-requested core or uncore reset waits for the CPU cluster's AXI
-traffic to finish. Configure `CPU_CTRL.RESET_TIMEOUT` before writing
-`CPU_CTRL.RESET_CTRL`:
-
-. Set `timeout_value` to the allowed wait in `clk_smc` cycles. Zero disables
-  the timeout.
-. Select `timeout_mode`:
-** `0`: report a timeout and keep the reset on hold.
-** `1`: apply the reset on timeout and discard orphaned AXI traffic that
-   reaches the cluster boundary.
-. Request the core or uncore reset through `RESET_CTRL`.
-. For a held reset, wait for `reset_applied` before relying on the reset. In
-  mode 0, `reset_timeout=1` means the reset is still on hold. Cancel the
-  request or correct the blocked transaction before retrying.
-. Release a held reset by restoring its active-low `RESET_CTRL` bit. For a
-  reset pulse, use `CORE_RESET_PULSE_COUNT.core_resets_done` to detect
-  completion.
-
-`reset_applied` and `reset_timeout` are live status fields, not saved event
-flags. In force mode, `reset_timeout` can clear as soon as the recovery flush
-finishes. Use `reset_applied` to confirm a held reset.
-
-[WARNING]
+[NOTE]
 ====
-Use force mode only to recover an unresponsive CPU cluster when the surrounding
-fabric is expected to work. It cannot withdraw a request that a fabric endpoint
-has not accepted, clear a response already buffered beyond the cluster
-boundary, or make a dead endpoint respond. Such a fault can leave traffic on
-the affected route or AXI ID blocked until the endpoint responds or a
-primary/cold reset clears the fabric path.
+SMC programming guidance will be added as the product matures.
 ====
 
 [[sep]]

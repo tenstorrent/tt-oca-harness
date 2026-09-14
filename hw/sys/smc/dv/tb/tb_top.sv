@@ -1413,15 +1413,11 @@ module smc_uvm_top
     assign tb_cpu_l2_pending_aw    = `SMC_L2_ISO.i_axi_isolate.pending_aw_q;
     assign tb_cpu_l2_pending_w     = `SMC_L2_ISO.i_axi_isolate.pending_w_q;
     assign tb_cpu_l2_pending_ar    = `SMC_L2_ISO.i_axi_isolate.pending_ar_q;
-    assign tb_cpu_l2_state_aw      = `SMC_L2_ISO.i_axi_isolate.state_aw_q;
-    assign tb_cpu_l2_state_ar      = `SMC_L2_ISO.i_axi_isolate.state_ar_q;
     assign tb_cpu_l2_flush_active  = `SMC_L2_ISO.flush_active_q;
     assign tb_cpu_mmio_isolated    = `SMC_CPU.mmio_isolated;
     assign tb_cpu_mmio_pending_aw  = `SMC_MMIO_ISO.i_axi_isolate.pending_aw_q;
     assign tb_cpu_mmio_pending_w   = `SMC_MMIO_ISO.i_axi_isolate.pending_w_q;
     assign tb_cpu_mmio_pending_ar  = `SMC_MMIO_ISO.i_axi_isolate.pending_ar_q;
-    assign tb_cpu_mmio_state_aw    = `SMC_MMIO_ISO.i_axi_isolate.state_aw_q;
-    assign tb_cpu_mmio_state_ar    = `SMC_MMIO_ISO.i_axi_isolate.state_ar_q;
     assign tb_cpu_mmio_flush_active = `SMC_MMIO_ISO.flush_active_q;
 `undef SMC_MMIO_ISO
 `undef SMC_L2_ISO
@@ -2574,15 +2570,11 @@ module smc_uvm_top
     assign tb_cpu_l2_pending_aw     = '0;
     assign tb_cpu_l2_pending_w      = '0;
     assign tb_cpu_l2_pending_ar     = '0;
-    assign tb_cpu_l2_state_aw       = '0;
-    assign tb_cpu_l2_state_ar       = '0;
     assign tb_cpu_l2_flush_active   = 1'b0;
     assign tb_cpu_mmio_isolated     = 1'b0;
     assign tb_cpu_mmio_pending_aw   = '0;
     assign tb_cpu_mmio_pending_w    = '0;
     assign tb_cpu_mmio_pending_ar   = '0;
-    assign tb_cpu_mmio_state_aw     = '0;
-    assign tb_cpu_mmio_state_ar     = '0;
     assign tb_cpu_mmio_flush_active = 1'b0;
 
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP

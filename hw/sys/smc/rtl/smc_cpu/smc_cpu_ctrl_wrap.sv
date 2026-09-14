@@ -401,10 +401,10 @@ module smc_cpu_ctrl_wrap #(
   assign timeout_value = hwif_out.RESET_TIMEOUT.timeout_value.value;
   assign timeout_mode  = hwif_out.RESET_TIMEOUT.timeout_mode.value;
   assign pending       = sw_reset_req & ~drained_i;
-  assign force_apply   = timeout_fired_q & timeout_mode;   // mode 1 -> force the reset
+  assign force_apply   = sw_reset_req & timeout_fired_q & timeout_mode;
   assign withhold      = pending & ~force_apply;
   assign reset_applied = sw_reset_req & ~withhold;         // live status
-  assign reset_timeout = timeout_fired_q;                  // live status
+  assign reset_timeout = sw_reset_req & timeout_fired_q;   // status for the active request
 
   // Flush the cluster AXI isolates when the timeout forces the reset; the
   // isolates latch it and self-clear at de-isolation.
@@ -443,9 +443,11 @@ module smc_cpu_ctrl_wrap #(
     if (~rst_primary_ni) begin
       timeout_cnt     <= 16'd0;
       timeout_fired_q <= 1'b0;
-    end else if (~pending) begin
+    end else if (~sw_reset_req) begin
       timeout_cnt     <= 16'd0;
       timeout_fired_q <= 1'b0;
+    end else if (~pending) begin
+      timeout_cnt <= 16'd0;
     end else if ((timeout_value != 16'd0) && ~timeout_fired_q) begin
       if (timeout_cnt >= timeout_value) begin
         timeout_fired_q <= 1'b1;

@@ -116,11 +116,11 @@ This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override
 |===
 | Bits | Field | Access | Reset | Description
 | 63:37 | `Reserved` | - | - a| Reserved
-| 36 | `reset_timeout` | R | 0x0 a| Live status: high while a pending software reset has exceeded
-timeout_value (timeout/error flag; set in both modes).
+| 36 | `reset_timeout` | R | 0x0 a| Status for the active software reset request: high after the request exceeds
+timeout_value and remains high until the request is deasserted. Set in both modes.
 | 35:33 | `Reserved` | - | - a| Reserved
-| 32 | `reset_applied` | R | 0x0 a| Live status: high while a requested software reset is actually applied
-at the cluster (drain complete and reset asserted).
+| 32 | `reset_applied` | R | 0x0 a| Live status: high while a requested software reset is applied at the cluster,
+either after drain completes or after a force-mode timeout.
 | 31:17 | `Reserved` | - | - a| Reserved
 | 16 | `timeout_mode` | RW | 0x0 a| Timeout mode: 0 = give up and report error (stay withheld, do not apply);
 1 = force the reset on timeout.
