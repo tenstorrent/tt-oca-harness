@@ -244,7 +244,51 @@ do not count a wrapper terminator as that proof.</p>
 </table>
 </div>
 <div class="sect2">
-<h3 id="named-deferred-tests"><a class="anchor" href="#named-deferred-tests"></a><a class="link" href="#named-deferred-tests">1.2. Named deferred tests</a></h3>
+<h3 id="smc-bench-tie-offs"><a class="anchor" href="#smc-bench-tie-offs"></a><a class="link" href="#smc-bench-tie-offs">1.2. Bench tie-offs</a></h3>
+<div class="paragraph">
+<p>A tie-off is a constant on an <code>smc_wrapper</code> input port in <code>tb_top.sv</code> (the
+single-instance <code>u_dut</code> and the <code>smc_dual_inst</code> wrapper instance). Every
+<code>--dut smc</code> / <code>smc_wrapper</code> and SMC_DUAL leaf runs under it, on every tool.
+Each row states the behaviour the constant keeps out of reach, the enrolled
+claims that would change if the pin were driven, and the control that closes
+the row.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 11.7647%;">
+<col style="width: 5.8823%;">
+<col style="width: 29.4117%;">
+<col style="width: 17.647%;">
+<col style="width: 23.5294%;">
+<col style="width: 5.8823%;">
+<col style="width: 5.8826%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Tie-off</th>
+<th class="tableblock halign-left valign-top">Value</th>
+<th class="tableblock halign-left valign-top">Behaviour made unreachable</th>
+<th class="tableblock halign-left valign-top">Tests whose claims would change</th>
+<th class="tableblock halign-left valign-top">Control / closes when</th>
+<th class="tableblock halign-left valign-top">Owner</th>
+<th class="tableblock halign-left valign-top">Review date</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_security_disable_i</code> (<code>tb_top.sv</code>, both <code>smc_wrapper</code> instances)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1&#8217;b0</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The eFuse sense bypass (<code>hw/ip/efuse/doc/architecture.adoc</code>, "Security Disable Bypass Mechanism"). On the product the pin is the SEP <code>security_disable_o</code> token-match result (<code>sep.sv</code>, wired through <code>smu.sv</code>); inside SMC it reaches only <code>smc_efuse_wrapper</code> &#8594; <code>efuse_interface_controller.security_disable_i</code>. SMC builds the controller with <code>HAS_LC_STATE=0</code> (<code>smc_efuse_wrapper.sv</code>), so the bypass takes the non-LC branch: the controller drives <code>shadow_regs_o</code> from the shadow registers whenever fuse sensing has finished or the pin is high, and drives all zeros otherwise (<code>efuse_interface_controller.sv:449</code>); its command mux routes the shadow-register sense FSM to the bank only while sensing is not done and the pin is low (<code>efuse_interface_controller.sv:759</code>). With the pin at 1 the FSM&#8217;s reads are never routed, so <code>fuse_sense_done</code> never rises, the shadow registers keep their all-zero reset value and are exposed unsensed, and <code>fuse_reset_n</code>&#8201;&#8212;&#8201;and with it <code>rst_warm</code> (<code>smc_reset_ctrl.sv:135</code>)&#8201;&#8212;&#8201;never release: the warm domain never leaves reset. With the pin at 0 every run senses the bank, which is what the product does on a chip whose SEC_DIS token did not match.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">None of the enrolled claims: no leaf claims the bypass, and every eFuse leaf proves the sensed path, which is the path a 0 selects. Were the pin driven to 1 for a run, every sequence that calls <code>wait_fuse_sense_done</code> (40 sequence files under <code>cocotb/seq_lib/</code>; <code>smc_base_test_seq.py</code> defines the method and each leaf that needs the warm domain calls it itself) would time out on <code>tb_fuse_sense_done</code>, and every warm-domain CSR access would hang with no ready.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Positive control: a leaf that drives the pin to 1 and requires <code>fuse_sense_done</code> to stay 0 while the shadow-register window still answers. It must stay in the cold domain: the eFuse controller sits under <code>rst_primary</code>, ahead of <code>rst_warm</code>, so its shadow reads through the eFuse CSR window&#8201;&#8212;&#8201;over the OTP JTAG AXI-Lite port or the fabric path&#8201;&#8212;&#8201;are the only thing that answers under bypass; nothing in the warm domain does. It needs a driven pin (a bench input in <code>smc_tb_signal_list.svh</code>, idle 0) in place of the constant. Closes when that leaf is enrolled, or when SEP-integrated signoff (SMU with SEP=1) is accepted as the only place the token-match path is exercised and that acceptance is recorded here.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC DV owner</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-15</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="named-deferred-tests"><a class="anchor" href="#named-deferred-tests"></a><a class="link" href="#named-deferred-tests">1.3. Named deferred tests</a></h3>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -578,7 +622,7 @@ do not count a wrapper terminator as that proof.</p>
 </table>
 </div>
 <div class="sect2">
-<h3 id="smc-scheduled-holdouts"><a class="anchor" href="#smc-scheduled-holdouts"></a><a class="link" href="#smc-scheduled-holdouts">1.3. Leaves no scheduled tier runs</a></h3>
+<h3 id="smc-scheduled-holdouts"><a class="anchor" href="#smc-scheduled-holdouts"></a><a class="link" href="#smc-scheduled-holdouts">1.4. Leaves no scheduled tier runs</a></h3>
 <div class="paragraph">
 <p>Every SMC leaf either runs on a scheduled tier&#8201;&#8212;&#8201;<code>smoke</code> per PR (<code>sim.yml</code>),
 <code>hosted</code> nightly and weekly, <code>rtl_issue</code> weekly on its own row
