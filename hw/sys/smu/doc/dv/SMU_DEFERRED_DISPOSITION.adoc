@@ -4,15 +4,17 @@
 [[smu-deferred-disposition]]
 == SMU deferred and OUT disposition
 
-This table is the catalog of every SMU test name classified deferred or
-OUT. None of these names is in `sep0_all`. The `OUT-until-SEP1` names that
-are also enrolled in `testlists/wrapper.toml` (`smu_sep_smoke_test` and the
-`sep_real_fw` images) run on the SEP=1 track; the other names have no test
-body in this tree, and no name here is reportable as PASS without one.
+This table is the catalog of every SMU test name outside the SEP=0 credit
+set `sep0_all`. Two kinds of name are in it. Eleven have a test body and are
+enrolled in `testlists/wrapper.toml`; their bucket says which group holds
+them and why that group is not credit. The rest have no test body in this
+tree and are not reportable as PASS.
 
 Buckets:
 
-* `OUT-until-SEP1` — needs real SEP instruction retirement under SMU and SEP=1 TB ports.
+* `SEP1-enrolled` — has a body and runs in the wrapper `all` group on the `sep_rtl` profile with real SEP instruction retirement (`sep_real_fw`, or `smoke` for the SEP smoke). Not `sep0_all` credit, and no CI workflow schedules those groups.
+* `SEP1-blocked` — has a body, enrolled in `sep_smc_sram_blocked` outside `all`: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction.
+* `OUT-until-SEP1` — no body; needs real SEP instruction retirement under SMU and SEP=1 TB ports.
 * `child-TB-owned` — protocol or CPU depth belongs to the SMC, SEP, or DTP TB.
 * `waived` — superseded, toggle-as-pass, stimulus-pin gap, or leftover catalog name.
 
@@ -25,32 +27,32 @@ Enrolled names outside this catalog:
 |===
 |Name |Bucket |Constraint
 |smu_sep_smoke_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `smoke`, `sep_rtl_only`, `all_with_sep_exec`.
 |smu_sep_sanity_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
 |smu_sep_spi_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
 |smu_sep_modules_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
 |smu_sep_dma_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
 |smu_sep_efuse_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
 |smu_sep_wdt_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
 |smu_sep_aes_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
 |smu_sep_otbn_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
 |smu_sep_wdt_strict_test
 |OUT-until-SEP1
 |Needs real SEP instruction retirement and SEP=1 TB ports.
@@ -64,8 +66,8 @@ Enrolled names outside this catalog:
 |OUT-until-SEP1
 |Needs real SEP instruction retirement and SEP=1 TB ports.
 |smu_sep_wdt_reset_to_smc_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-blocked
+|Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
 |smu_sep_spi_bridge_test
 |OUT-until-SEP1
 |Needs real SEP instruction retirement and SEP=1 TB ports.
@@ -85,8 +87,8 @@ Enrolled names outside this catalog:
 |OUT-until-SEP1
 |Needs real SEP instruction retirement and SEP=1 TB ports.
 |smu_sep_debug_bus_test
-|OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|SEP1-blocked
+|Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
 |smu_fuse_sense_handshake_test
 |OUT-until-SEP1
 |Needs real SEP instruction retirement and SEP=1 TB ports.

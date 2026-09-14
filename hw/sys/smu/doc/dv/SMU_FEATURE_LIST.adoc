@@ -19,7 +19,7 @@ and SEP=1 work are OUT.
 |Feature-credit group |`sep0_all` (`--dut smu`)
 |PR smoke |`smoke_sep0` (`smu_wrapper_elaboration_no_sep_test`, `smu_dtp_jtag_smoke_test`, `smu_no_sep_configuration_test`, `smu_ext_boot_seq_gate_test`)
 |Evidence map |`common/smu_dv_env/smu_evidence_map.py` `TEST_EVIDENCE`
-|OUT catalog |`docs/SMU_DEFERRED_DISPOSITION.adoc`
+|OUT catalog |`SMU_DEFERRED_DISPOSITION.adoc`
 |===
 
 [[smu-feature-subset]]
@@ -104,15 +104,16 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_ic_reset_dual_domain_illegal_test` |F3 |dtp_under_smu, sep0_all |`IC_RESET_DUAL_PACK`
 |`smu_boot_stall_vs_ic_reset_priority_test` |F3 |dtp_under_smu, sep0_all |`STALL_VS_IC_RESET`
 |`smu_xtrig_ctm_illegal_phase_test` |F6 |dtp_under_smu, sep0_all |`XT_ILLEGAL_PHASE`
-|`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, sep0_all |`IC_RESET_SS_COLD_OVRD`
+|`smu_ic_reset_ss_domain_matrix_test` |F3 |smc_under_smu, sep0_all |`IC_RESET_SS_COLD_OVRD`, `IC_RESET_SS_WARM_OVRD`, `IC_RESET_SS_EXCL`
 |`smu_dtp_bsr_extest_loopback_test` |F3 |smc_under_smu, sep0_all |`BSR_EXTEST_TDO_MATCH`
 |===
 
 [[smu-out-and-wrapper]]
 === OUT, wrapper, and missing commercial names
 
-* Every name in `docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset;
-  a `TEST_EVIDENCE` row for such a name is a catalog entry, not evidence.
+* Every name in `SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset,
+  and none of them has a `TEST_EVIDENCE` row: the map holds rows only for
+  names with a test body in this tree.
 * `--dut smu` is the wrapper bench and carries `sep0_all` itself; PASSes are
   labelled `DUT_TAG=WRAPPER`. The bare block bench is `--dut smu_block`
   (`SMU_VPLAN.adoc`).
