@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Open Chiplet Atlas Harness (OCAH): Integrator Guide :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>SoC Integration Checklist :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../_/css/site.css">
     <link rel="stylesheet" href="../../_/css/extra.css">
@@ -85,11 +85,11 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
-  <li class="nav-item is-current-page" data-depth="1">
+  <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>
     <a class="nav-link" href="index.html">Integrator Guide</a>
 <ul class="nav-list">
-  <li class="nav-item" data-depth="2">
+  <li class="nav-item is-current-page" data-depth="2">
     <a class="nav-link" href="checklist.html">SoC Integration Checklist</a>
   </li>
   <li class="nav-item" data-depth="2">
@@ -184,6 +184,7 @@
   <ul>
     <li><a href="index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></li>
     <li><a href="index.html">Integrator Guide</a></li>
+    <li><a href="checklist.html">SoC Integration Checklist</a></li>
   </ul>
 </nav>
 </div>
@@ -192,48 +193,85 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Open Chiplet Atlas Harness (OCAH): Integrator Guide</h1>
+<h1 class="page">SoC Integration Checklist</h1>
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>This guide provides instructions and best practices for integrating OCAH
-subsystems into your chiplet design.</p>
-</div>
-<div class="paragraph">
-<p>The integrator guide is split into multiple chapters. Each of these chapters
-covers integration considerations, interfaces, and configuration requirements
-for the respective subsystem.</p>
+<p>Use this checklist as a quick route through the integration work; each item
+links to its detailed requirements elsewhere in this guide. Record minimum
+evidence against each gate before sign-off.</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="documentation-overview"><a class="anchor" href="#documentation-overview"></a><a class="link" href="#documentation-overview">1. Documentation Overview</a></h2>
+<h2 id="integration-gates"><a class="anchor" href="#integration-gates"></a><a class="link" href="#integration-gates">1. Integration gates</a></h2>
 <div class="sectionbody">
-<div class="ulist">
-<ul>
-<li>
-<p><a href="checklist.html" class="xref page">SoC Integration Checklist</a> - Review the top-level integration gates</p>
-</li>
-<li>
-<p><a href="smu.html" class="xref page">SMU Top-Level Integration</a> - Guidelines for integrating the SMU subsystems</p>
-</li>
-<li>
-<p><a href="smn.html" class="xref page">SMN Integration</a> - Guidelines for integrating the System Management Network</p>
-</li>
-<li>
-<p><a href="defines.html" class="xref page">Project Defines</a> - Compile-time defines that apply OCAH-wide</p>
-</li>
-<li>
-<p><a href="prim.html" class="xref page">Prim Cell Replacement</a> - Guidelines for how to define prim cells</p>
-</li>
-<li>
-<p><a href="cdc.html" class="xref page">CDC Timing Constraints</a> - Timing constraints that ship with OCAH</p>
-</li>
-<li>
-<p><a href="revision.html" class="xref page">Revision History</a> - Major revisions and updates to the OCAH Integrator Guide</p>
-</li>
-</ul>
-</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 5%;">
+<col style="width: 35%;">
+<col style="width: 35%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Done</th>
+<th class="tableblock halign-left valign-top">Integration gate</th>
+<th class="tableblock halign-left valign-top">Minimum evidence</th>
+<th class="tableblock halign-left valign-top">Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[ ]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Select the delivered hierarchy, enabled subsystems, and required configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Selected hierarchy and configuration record reviewed</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="smu.html#smu-top-level-integration" class="xref page">SMU Top-Level Integration</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[ ]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Assign the chiplet address envelope and program the SEP and SMC apertures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Approved non-overlapping address map; aperture CSRs verified in simulation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="smu.html#address-map-integration" class="xref page">Address Map Integration</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[ ]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Connect clocks, resets, power-good, and configuration straps; follow the power-up sequence</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock/reset/power review and sequencing test pass</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="smu.html#smc-integration" class="xref page">SMC Integration</a>,
+<a href="smu.html#sep-integration" class="xref page">SEP Integration</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[ ]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Connect external pin, bus, memory, eFuse, peripheral, and debug interfaces</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Interface connectivity and tie-off audit complete</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="smu.html#smc-integration" class="xref page">SMC Integration</a>,
+<a href="smu.html#dtp-integration" class="xref page">DTP Integration</a>,
+<a href="smu.html#sep-integration" class="xref page">SEP Integration</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[ ]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Verify boot and reset progression, including fuse sensing, memory repair or bypass, ROM execution, and SEP release when enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Successful boot and reset log including failure paths</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="smu.html#smc-integration" class="xref page">SMC Integration</a>,
+<a href="smu.html#sep-integration" class="xref page">SEP Integration</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[ ]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Apply technology-mapping and CDC constraints; run integration-level verification</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lint, CDC/RDC, constraint, and integration-test reports archived</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="prim.html#prim-cell-replacement" class="xref page">Prim Cell Replacement</a>,
+<a href="cdc.html#cdc-timing-constraints" class="xref page">CDC Timing Constraints</a>,
+<a href="../../ocah-docs/latest/oca.html#oca-standard-compliance" class="xref page">OCA Standard Compliance</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">[ ]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">For each adopter-owned IP, select its trust and attachment class and complete the User IP integration checklist</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User IP integration checklist completed per IP block</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">User IP integration checklist (see the <em>User IP Integration</em> chapter)</p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </article>
