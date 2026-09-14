@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Life Cycle Controller (LCC)
+:description: SEP lifecycle states, demotion, feature control, and asset protection.
+ifdef::backend-html5[]
+:class-2-asset-manifest-link: xref:sep:attack_countermeasures.adoc#class-2-asset-manifest[Class 2 Asset Manifest and Naming]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:class-2-asset-manifest-link: <<class-2-asset-manifest,Class 2 Asset Manifest and Naming>>
+endif::backend-pdf[]
+
 [[life-cycle-controller-lcc-life-cycle-controller-lcc]]
-==== Life Cycle Controller (LCC)
 
 The Life Cycle Controller (LCC) supports multiple security domains in
 chiplet-based systems. It manages the device life cycle: it decodes the
@@ -32,7 +40,7 @@ components.
 image::SEP_LC_Block.png[SEP_LC_Block,scaledwidth=100.0%]
 
 [[demote-1-2-in-field-debug-demotion]]
-===== Demotion 1 and Demotion 2 -- In-Field Debug Demotion
+== Demotion 1 and Demotion 2 -- In-Field Debug Demotion
 
 In addition to the LC state stored in OTP, SEP implements two volatile
 demotion CSRs (DEMOTE_1, DEMOTE_2) and two companion lock CSRs
@@ -56,7 +64,7 @@ feature-control profile (see <<feature-control-table>>), and its authorization
 is governed by the <<demote-signing-model>>.
 
 [[secure-boot-enforcement]]
-====== Secure-Boot Enforcement
+=== Secure-Boot Enforcement
 
 Whether SEP enforces secure boot -- that is, whether a manifest must be verified
 before its image is allowed to run -- is decided by the lifecycle state and two
@@ -78,7 +86,7 @@ enforcement in PROD and PROD_END. An owner that relies on secure boot must
 therefore leave SBOOT_DIS unburned and write-lock it via the LOCK field.
 
 [[demote-signing-model]]
-====== Secure-Boot Signing Model
+=== Secure-Boot Signing Model
 
 NOTE: Implementation status -- *deferred to a later release, not abandoned.*
 This release verifies a single classical RSA-3072 signature; everything beyond
@@ -185,7 +193,7 @@ digests in SEP ROM. Every such key entry can be revoked individually through
 chapter).
 
 [[signing-model-examples]]
-====== Signing-Model Examples
+=== Signing-Model Examples
 
 These examples show which signers are required *when secure boot is enforced for
 a manifest*. Whether it is enforced at all is a separate decision, governed by
@@ -209,7 +217,7 @@ In every case the shadow register reloads from the `REQUIRED_SIGNERS` fuse at th
 next cold reset, so the chain restarts from the fuse-provided requirement.
 
 [[demote-lock-behavior]]
-====== Lock Behavior
+=== Lock Behavior
 
 * When DEMOTE_LOCK_1/2 = 0, firmware can assert DEMOTE_1/2 = 1.
 * Once DEMOTE_LOCK_1/2 = 1, DEMOTE_1/2 can no longer be changed until SEP
@@ -227,14 +235,14 @@ across boot stages (selector / value / deferral hint) is described in the
 OCAH SEP boot specification.
 
 [[demote-reset-behavior]]
-====== Reset Behavior
+=== Reset Behavior
 
 SEP cold reset clears all four demote registers (DEMOTE_1, DEMOTE_2,
 DEMOTE_LOCK_1, DEMOTE_LOCK_2), restoring the device to its
 OTP-stored LC state.
 
 [[multiple-security-domains]]
-===== Multiple Security Domains
+== Multiple Security Domains
 
 OCAH defines two *types* of security domain, distinguished by which owner
 controls debug/test access to the assets in that domain:
@@ -294,7 +302,7 @@ controls the debug path to every chiplet (the SiP-owner domain), and each
 chiplet owner controls its own chiplet-owner domain.
 
 [[lc-state-machine]]
-===== LC State Machine
+== LC State Machine
 
 The LC controller is a stateless decoder of the `LC_STATE` shadow
 register provided by the OTP/Fuse controller. The OTP controller
@@ -396,7 +404,7 @@ end-of-life state: the chip is permanently inoperable.
 |=======================================================================
 
 [[debug-test-and-functional-feature-control-vectors-debug-test-and-functional-feature-control-vectors]]
-===== Debug and Functional Feature Control
+== Debug and Functional Feature Control
 
 Debug and functional features are gated at runtime by the feature
 control vector `feat_ctrl_o`. This vector is not stored directly: it is
@@ -410,7 +418,7 @@ overridden by SEC_DIS:
 In other words, each feature's enable is the inverse of its disable bits.
 
 [[feature-control-vector-definition]]
-====== Disable Vector Format (SIP_DIS / SYS_DIS)
+=== Disable Vector Format (SIP_DIS / SYS_DIS)
 
 The table below defines the *disable* vector format -- the bit layout shared by
 both SIP_DIS and SYS_DIS (each is 64 bits). Each defined bit gates a specific
@@ -454,7 +462,7 @@ forwarded downstream. See <<adopter-extension>>.
 |=======================================================================
 
 [[dis-vector-ownership]]
-====== DIS Vector Ownership: Predecessor-Programs-Disables
+=== DIS Vector Ownership: Predecessor-Programs-Disables
 
 OCAH uses a *predecessor-programs-disables* convention. Each X_DIS
 vector specifies restrictions imposed by an earlier owner that should
@@ -481,7 +489,7 @@ TEST_DEV to PROD. See the _OTP fuse controller_ section in this
 chapter for the full multi-owner provisioning sequence.
 
 [[dis-vector-or-rationale]]
-====== Combining Rule: OR then Invert
+=== Combining Rule: OR then Invert
 
 The per-LC-state formulas combine SIP_DIS and SYS_DIS with bitwise
 OR, then invert (`~(SIP_DIS | SYS_DIS)`) to produce the
@@ -500,7 +508,7 @@ owner's restriction once fused.
 enabled"), so the combined disable is inverted: `~(SIP_DIS | SYS_DIS)`.
 
 [[dis-vector-applicability]]
-====== When Each DIS Vector Applies
+=== When Each DIS Vector Applies
 
 Both SIP_DIS and SYS_DIS apply at TEST_DEV, PROD, and PROD_END -- including
 under demotion in PROD, where a demoted debug group still honors the DIS
@@ -538,7 +546,7 @@ restriction remains in force.
 |=======================================================================
 
 [[feat-ctrl-overrides-and-gates]]
-====== Overrides and Final Gates (SEC_DIS)
+=== Overrides and Final Gates (SEC_DIS)
 
 Two controls sit *on top of* the per-LC-state / DIS-vector computation, applied in
 this order (a later step overrides an earlier one):
@@ -559,7 +567,7 @@ override. `secure_tm` acts on the scan path and on the fuse controller rather
 than on feature control -- see <<secure-tm-vs-scandump>>.
 
 [[per-lc-state-feature-control-profile-section]]
-====== Per-LC-state Feature Control Profile
+=== Per-LC-state Feature Control Profile
 
 Each LC state has a feature control profile that determines which features are
 enabled on the chiplet. The table below gives, for each combination of LC state,
@@ -619,7 +627,7 @@ honor the DIS vectors (one level down). The two demotions are independent --
 DEMOTE_1 gates DBG_1 and DEMOTE_2 gates DBG_2 -- and neither affects Function.
 
 [[asset-and-scan-chain-protection]]
-===== Asset and Scan-Chain Protection
+== Asset and Scan-Chain Protection
 
 Two distinct DFT operations use the scan chains, and the protection model
 treats them differently:
@@ -633,7 +641,7 @@ chain as possible) while ensuring secrets can never be *dumped*. This section
 maps SEP asset classes to scan chains and to the gates that control each.
 
 [[asset-classes]]
-====== Asset Classes
+=== Asset Classes
 
 SEP assets are partitioned into three classes. Class 1 (non-scannable) and
 Class 2 (scannable for test coverage but *never* scan-dumpable) are each split by
@@ -666,7 +674,7 @@ everything else.
 (secret-bearing; confidentiality)
 |The complete Key Manager; AES, HMAC-SHA2, KMAC-SHA3, OTBN, entropy,
 DRBG/EDN, Adams Bridge, and TRNG sequential state; KM/OTBN companion SRAMs
-(see <<class-2-asset-manifest>>)
+(see {class-2-asset-manifest-link})
 |Yes
 |*Never*
 |*Dedicated secure scan chain.* Reachable when its SIB is opened by the
@@ -702,7 +710,7 @@ array.
 |=======================================================================
 
 [[secure-tm-vs-scandump]]
-====== `secure_tm` and the Secure Scan Chain
+=== `secure_tm` and the Secure Scan Chain
 
 `secure_tm` is the secure-test-mode indicator: the `TEST_EN` strap latched into
 the internal `SECURE_TM` signal. It is latched when SEP fuse sensing completes
@@ -783,7 +791,7 @@ rule still applies, so the secure chain stays undumpable whatever the `*_DBG`
 bits say.
 
 [[feature-bit-to-scan-chain-mapping]]
-====== Feature-Bit to Scan-Chain Mapping
+=== Feature-Bit to Scan-Chain Mapping
 
 Each *general* (Class 3) scan chain is gated by a per-scope `*_DBG`
 feature control bit in `feat_ctrl_o`; the bit's owner -- which predecessor DIS
@@ -818,7 +826,7 @@ Reserved-bit ranges available for adopter-defined scan chains (see
 * Function group: bits 48-63 (16 reserved bits)
 
 [[dtp-path-gating]]
-====== Debug and Test Port Path Gating
+=== Debug and Test Port Path Gating
 
 This section is *authoritative* for which feature control bits gate which Debug
 and Test Ports (DTP) path. It formalizes the layered model of
@@ -919,7 +927,7 @@ The SEP debug S-TAP host path shall be gated on the full Case 3 conjunction,
 layered model deliberately does not map a path to the like-named bit.
 
 [[non-primary-chiplets]]
-===== Non-Primary Chiplets
+== Non-Primary Chiplets
 
 Primary chiplets always include a local SEP and LCC; the asset
 partitioning described in <<asset-and-scan-chain-protection>> applies
@@ -946,7 +954,7 @@ chiplet. The primary LCC therefore governs debug access to a non-primary
 chiplet by controlling whether DFT traffic is forwarded to it.
 
 [[adopter-extension]]
-===== Adopter Extension
+== Adopter Extension
 
 If an adopter integrates SEP into a chiplet with assets that require
 their own scan-chain protection -- assets not covered by the

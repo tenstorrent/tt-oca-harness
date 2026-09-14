@@ -64,8 +64,24 @@ include::../../../hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[levelo
 include::../../../hw/sys/dtp/doc/clock_stop.adoc[leveloffset=+2]
 include::../../../hw/sys/dtp/doc/reference.adoc[leveloffset=+2]
 
-// SEP: existing index starts with == (no = Title); offset 0 keeps == as chapter.
-include::../../../hw/sys/sep/doc/index.adoc[leveloffset=0]
+// SEP landing page at chapter level, followed by its topic pages. The topic
+// offsets preserve the HTML navigation hierarchy in the single-book PDF.
+include::../../../hw/sys/sep/doc/index.adoc[leveloffset=+1]
+include::../../../hw/sys/sep/doc/introduction.adoc[leveloffset=+2]
+include::../../../hw/sys/sep/doc/threat_model.adoc[leveloffset=+3]
+include::../../../hw/sys/sep/doc/attack_countermeasures.adoc[leveloffset=+3]
+include::../../../hw/sys/sep/doc/overview.adoc[leveloffset=+2]
+include::../../../hw/sys/sep/doc/fabric.adoc[leveloffset=+2]
+include::../../../hw/common/axi/axi_filter/doc/index.adoc[leveloffset=0]
+include::../../../hw/sys/sep/doc/memory_map.adoc[leveloffset=+2]
+include::../../../hw/sys/sep/doc/cpu.adoc[leveloffset=+2]
+include::../../../hw/sys/sep/doc/interrupts.adoc[leveloffset=+2]
+include::../../../hw/sys/sep/doc/crypto.adoc[leveloffset=+2]
+include::../../../hw/sys/sep/doc/periphs.adoc[leveloffset=+2]
+include::../../../hw/sys/sep/doc/token_processing.adoc[leveloffset=+3]
+include::../../../hw/sys/sep/doc/security_disable.adoc[leveloffset=+3]
+include::../../../hw/sys/sep/doc/lifecycle_controller.adoc[leveloffset=+3]
+include::../../../hw/sys/sep/doc/test_mode.adoc[leveloffset=+2]
 
 // SMC: existing index starts with == (no = Title); offset 0 keeps == as chapter.
 include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]

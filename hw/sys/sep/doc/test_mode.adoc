@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Test Mode Entry
+:description: SEP secure test-mode qualification and control.
+
 [[test-mode-entry]]
-=== Test Mode Entry
 
 Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
 latched when SEP fuse sensing is done if SEC_DIS is not asserted.

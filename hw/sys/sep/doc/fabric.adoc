@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= SEP Interconnect
+:description: SEP internal fabric, external interfaces, address remapping, and mailboxes.
+
 [[sep-interconnect]]
-=== SEP Interconnect
 
 The interconnect of SEP components and subsystems is done with a
 hierarchical AXI4 crossbar fabric. Masters drive traffic onto the
@@ -22,7 +24,7 @@ handle
 * Transaction IDs (AxID) handling
 
 [[top-level-axi4]]
-==== Top Level AXI4
+== Top Level AXI4
 
 *C* = Connected, *N/C* = Not Connected.
 
@@ -74,7 +76,7 @@ h|CPU TCM h|Scratch SRAM h|DMA CSR h|WDT h|Reset Ctrl h|Crypto Periph h|System P
 |===
 
 [[subsystem-external-interfaces]]
-==== Subsystem External Interfaces
+== Subsystem External Interfaces
 
 * Memory interfaces: BL0 ROM, DCCM, ICCM, Scratch SRAM, KM SRAM, KM ROM,
 OTBN IMEM, OTBN DMEM
@@ -84,7 +86,7 @@ OTBN IMEM, OTBN DMEM
 * _RAS Interface - Alarm Processor is deferred to next generation_
 
 [[local-and-external-axi4-traffic-remapping]]
-==== Local and External AXI4 Traffic Remapping
+== Local and External AXI4 Traffic Remapping
 
 The figure below illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of
@@ -95,7 +97,7 @@ the chiplet or remote chiplets will bridge to the system NOC also known
 as the SMN.
 
 [[transaction-routing]]
-===== Transaction Routing
+=== Transaction Routing
 
 Local resources can be addressed by SEP CPU direct internal addresses
 or by the SEP CPU local-alias view. Local resources include CSRs in SEP
@@ -154,7 +156,7 @@ filters. Again, these filters enable filtering based on address, NS and
 source ID.
 
 [[sep-traffic-filter-decode]]
-===== Traffic Filter Decode
+=== Traffic Filter Decode
 
 Both SEP filters are instances of the common `axi_filter_wrap` block. The
 inbound filter has 16 entries and the outbound filter has 32; each entry
@@ -174,7 +176,7 @@ returned to a blocked initiator -- is common to SEP and SMC. It is
 documented once with the IP in <<axi-traffic-filter>>.
 
 [[address-remapping]]
-===== Address Remapping
+=== Address Remapping
 
 Sixteen remap regions are available, each supported by an address
 remapper. Remappers define the following attributes:
@@ -227,7 +229,7 @@ STEE-controlled remap logic.
 mapped IO, SEP’s traffic directly goes to the system fabric.
 
 [[mailboxes]]
-===== Mailboxes
+=== Mailboxes
 
 SEP uses mailboxes to communicate with the rest of the system such as AP
 cores for example. Each different agent has its own private mailbox in

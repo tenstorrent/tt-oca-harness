@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Cryptographic Subsystem
+:description: SEP cryptographic accelerators, entropy sources, and key management.
+ifdef::backend-html5[]
+:sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
+endif::backend-pdf[]
+
 [[cryptographic-subsystem]]
-=== Cryptographic Subsystem
 
 The cryptographic subsystem is composed of hardware and software. The
 hardware subsystem has a number of accelerators interconnected by two
@@ -19,7 +27,7 @@ of the OpenTitan components, and the firmware is also based on the
 https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan
 cryptographic library]. Generated PeakRDL maps for the Key Manager,
 entropy source, and the other crypto CSRs are included in
-<<sep-detailed-register-map>>.
+the {sep-register-map}.
 
 The primary modifications to the hardware is the separation of the key
 and data bus interfaces and the switch from TL-UL interface protocol to
@@ -51,7 +59,7 @@ entropy source, CSRNG, and EDN share one coordinated reset. See
 <<sep-reset-controller>> and <<sep-trng-reset>>.
 
 [[sep-crypto-alert-policy]]
-==== OpenTitan Alert Termination
+== OpenTitan Alert Termination
 
 SEP does not instantiate OpenTitan's `alert_handler`. Each OpenTitan crypto
 alert channel is terminated locally by a `prim_alert_receiver` in `sep_crypto`.
@@ -99,7 +107,7 @@ is covered without per-register marking. The marked roots in `sep_crypto` are
 infrastructure, and combinational entropy muxes are not Class 2 roots.
 
 [[crypto-single-beat-only]]
-==== Single-Beat Access Only
+== Single-Beat Access Only
 
 The `sep_crypto` demux accepts single-beat transactions only. Any access whose
 `AxLEN` is non-zero is routed to the internal error slave and answered with
@@ -107,13 +115,13 @@ DECERR on every beat, whatever its address; no beat reaches an accelerator.
 Software must access the whole crypto region with single-beat transactions.
 
 [[hmac-sha2]]
-==== HMAC-SHA2
+== HMAC-SHA2
 
 The HMAC component is based on the
 https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC] design.
 
 [[och-modifications-4]]
-===== OCAH Modifications
+=== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
@@ -132,10 +140,10 @@ crypto wrappers, HMAC has no EDN connection.
 Consult the
 https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC
 documentation] for the authoritative core functionality of the IP. The
-register map is reported in <<sep-detailed-register-map>>.
+register map is reported in the {sep-register-map}.
 
 [[otbn-pka-public-key-accelerator]]
-==== OTBN PKA Public Key Accelerator
+== OTBN PKA Public Key Accelerator
 
 The module is based on the
 https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan
@@ -168,7 +176,7 @@ at a later time. The microcode is loaded into SRAM based instruction
 memory allowing firmware updates to be made in the field.
 
 [[och-modifications-1]]
-===== OCAH Modifications
+=== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
@@ -199,10 +207,10 @@ in <<sep-crypto-alert-policy>> and exports a single `intr_done_o` interrupt.
 Consult the
 https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN
 documentation] for the authoritative core functionality of the IP. The
-register map is reported in <<sep-detailed-register-map>>.
+register map is reported in the {sep-register-map}.
 
 [[aes-cipher]]
-==== AES Cipher
+== AES Cipher
 
 The module is based on the
 https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES] design.
@@ -219,7 +227,7 @@ _round_ value depends on the key size used.
 * 256 bit key: 14 rounds
 
 [[och-modifications-2]]
-===== OCAH Modifications
+=== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
@@ -242,16 +250,16 @@ interrupt.
 Consult the
 https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES
 documentation] for the authoritative core functionality of the IP. The
-register map is reported in <<sep-detailed-register-map>>.
+register map is reported in the {sep-register-map}.
 
 [[kmac-sha3]]
-==== KMAC-SHA3
+== KMAC-SHA3
 
 The module is based on the
 https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC] design.
 
 [[och-modifications-3]]
-===== OCAH Modifications
+=== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
@@ -272,10 +280,10 @@ interrupts: `done`, `fifo_empty`, and `err`.
 Consult the
 https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC
 documentation] for the authoritative core functionality of the IP. The
-register map is reported in <<sep-detailed-register-map>>.
+register map is reported in the {sep-register-map}.
 
 [[adams-bridge-abr]]
-==== Adams Bridge (ABR)
+== Adams Bridge (ABR)
 
 The module is a post-quantum accelerator based on the
 https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge] design.
@@ -294,7 +302,7 @@ this path today -- it verifies a single classical RSA-3072 signature, and
 combined classical + PQC signing is deferred to a later release.
 
 [[och-modifications-5]]
-===== OCAH Modifications
+=== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces the Caliptra Key Vault
 * AXI4 control/status bus slave interface, bridged to the core's native AHB-lite
@@ -345,7 +353,7 @@ source, so unlike the other accelerators they do not appear in
 <<sep-detailed-register-map>>.
 
 [[true-random-number-generator-trng-true-random-number-generator-trng]]
-==== True Random Number Generator (TRNG)
+== True Random Number Generator (TRNG)
 
 Entropy bits are fundamental data for key generation as well as for
 attack countermeasure implementations. The entropy source must be high

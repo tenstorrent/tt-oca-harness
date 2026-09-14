@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Interrupts
+:description: SEP PIC assignments and non-PIC interrupt paths.
+
 [[sep-interrupts]]
-=== Interrupts
 
 The SEP integrates a VeeR EL2 core with a built-in
 **Programmable Interrupt Controller (PIC)**. All maskable external interrupt
@@ -36,7 +38,7 @@ so a read-write check on them fails.
 // Canonical SEP interrupt documentation: maintain this section with RTL changes.
 // Other guides should xref <<sep-cpu-interrupt-vector-map>>.
 [[sep-cpu-interrupt-vector-map]]
-==== SEP CPU Interrupt Vector Map
+== SEP CPU Interrupt Vector Map
 
 The PIC supports 255 external sources. Slots 1–43 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
@@ -251,13 +253,13 @@ fault. See <<sep-crypto-bridge-faults>>.
 |=======================================================================
 
 [[sep-non-pic-paths]]
-==== Non-PIC Interrupt Paths
+== Non-PIC Interrupt Paths
 
 Three CPU interrupt pins bypass the EL2 PIC entirely. The core also reports its
 own memory errors through a path that is neither a pin nor a PIC source; see
 <<sep-memory-error-reporting>>.
 
-===== NMI — Watchdog Timer Bark
+=== NMI — Watchdog Timer Bark
 
 The VeeR EL2 `nmi_int` pin is wired to the watchdog timer bark signal from
 `sep_wdt_wrap`. When the bark fires, the CPU jumps to the NMI vector address
@@ -267,7 +269,7 @@ runtime modification of the vector once locked.
 The NMI is non-maskable: it cannot be suppressed by `mstatus.MIE` or any PIC
 configuration register.
 
-===== Timer and Software Interrupts
+=== Timer and Software Interrupts
 
 The `timer_int` and `soft_int` pins of the VeeR EL2 core are tied to zero at
 the SMU integration boundary. There is no external CLINT-style delivery path.
@@ -275,7 +277,7 @@ The VeeR core contains independent internal timers that generate standard RISC-V
 `mip.MTIP` and `mip.MSIP` interrupts without requiring an external signal.
 
 [[sep-memory-error-reporting]]
-===== Memory ECC Errors
+=== Memory ECC Errors
 
 The ICCM and DCCM are SECDED-protected. Neither reaches the PIC: the core
 reports these errors itself, correctable ones as a local interrupt and
@@ -286,7 +288,7 @@ The SEP core is configured without an I-cache, so the I-cache parity counter
 `MICECT` (`0x7F0`) never increments. Only the two tightly-coupled-memory
 counters below are live.
 
-====== Correctable (single-bit) errors
+==== Correctable (single-bit) errors
 
 Hardware corrects the data and the access is retried, so no data is lost and no
 trap is taken. Each protected memory has a counter CSR:
@@ -329,7 +331,7 @@ The threshold trades interrupt rate against detection latency. A low threshold
 reports a degrading SRAM early at the cost of an interrupt per error; a high one
 lets transient flips accumulate before firmware is told.
 
-====== Uncorrectable (double-bit) errors
+==== Uncorrectable (double-bit) errors
 
 These cannot be masked and have no enable bit. The access returned no valid
 data, so the core traps on the instruction that hit the error:
@@ -370,7 +372,7 @@ An uncorrectable error on an externally initiated (DMA) access to either memory
 is not a CPU trap at all. It is returned as an error response on that
 transaction, and the initiator is responsible for reporting it.
 
-====== Debug bus mirror
+==== Debug bus mirror
 
 The ICCM and DCCM single- and double-bit error signals are also mirrored onto
 `ext_debug_bus_o[367:364]`, most significant first: ICCM single, ICCM double,
@@ -380,7 +382,7 @@ a delivery path, so software must not rely on sampling them; use the CSRs above.
 
 
 [[sep-pic-registers]]
-==== Register Interfaces
+== Register Interfaces
 
 The EL2 PIC register block (`meipl`, `meie`, `meigwctrl`, `meigwclr`, and
 related registers) is documented with the full SEP address map in
