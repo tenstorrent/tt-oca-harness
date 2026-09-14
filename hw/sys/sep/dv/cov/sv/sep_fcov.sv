@@ -454,8 +454,12 @@ module sep_fcov (
       (km_rsp_cmd_q == KmCmdGenerate) && (km_rsp_rc_q == 8'h00) && (rd_data[7:0] != 8'h00);
   // Score dest/cmd on a RESP_CMD payload, not on inbound WRITE_DATA.
   // Transfer dest is RETURN_ARG dest_engine[15:8] of a success frame.
+  // Host-cmd sample is word 4 so rc is already latched. Success only,
+  // except CMD_SRAM_VER whose defined result is not success.
   wire km_host_cmd_seen = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
-      (km_rsp_idx_q == 9'd2);
+      (km_rsp_idx_q == 9'd4) &&
+      ((km_rsp_cmd_q == KmCmdSramVer) ? (km_rsp_rc_q != 8'h00)
+                                      : (km_rsp_rc_q == 8'h00));
   wire km_xfer_scored = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
       (km_rsp_idx_q == 9'd4) && (km_rsp_cmd_q == KmCmdTransfer) &&
       (km_rsp_rc_q == 8'h00);
@@ -1475,7 +1479,7 @@ module sep_fcov (
         u_sep_kmac_mode_cg.sample(kmac_en_q, kmac_mode_q, kmac_str_q,
                                   kmac_keylen_valid_q ? kmac_keylen_q : 3'd7, kmac_sideload_q);
       if (km_xfer_scored) u_sep_km_command_sideload_cg.sample(rd_data[15:8]);
-      if (km_host_cmd_seen) u_sep_km_host_cmd_cg.sample(rd_data[7:0]);
+      if (km_host_cmd_seen) u_sep_km_host_cmd_cg.sample(km_rsp_cmd_q);
       if (efuse_rd_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_read_state_i, 1'b0);
       if (efuse_pg_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_program_state_i, 1'b1);
       if (lc_diff_ok) u_sep_lc_state_cg.sample(lc_raw);

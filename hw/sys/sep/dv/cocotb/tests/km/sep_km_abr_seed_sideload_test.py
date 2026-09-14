@@ -27,7 +27,6 @@ from seq_lib.sep_abr_keygen_seq import (
     ABR_STATUS,
     CMD_KEYGEN,
     CTRL_ZEROIZE,
-    ENTROPY_WORDS,
     PK_WORDS,
     ST_ERROR,
     ST_READY,
@@ -69,10 +68,22 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
             f"{what}: STATUS mask 0x{mask:x} never 0x{expect:x} in {_POLL_ITERS} polls"
         )
 
+    async def _keygen(
+        self, abr: SepAbr, seed_words: list[int] | None, entropy: list[int], *, what: str
+    ) -> list[int]:
+        if seed_words is not None:
+            await abr.write_words(ABR_SEED, seed_words)
+        await abr.write_words(ABR_ENTROPY, entropy)
+        await abr.wr32(ABR_CTRL, CMD_KEYGEN)
+        st = await self._wait_status(abr, ST_VALID, ST_VALID, what=f"{what} VALID")
+        assert (st & ST_ERROR) == 0, f"{what} VALID with ERROR (0x{st:08x})"
+        pk = await abr.read_words(ABR_PUBKEY, PK_WORDS)
+        assert any(w != 0 for w in pk), f"{what} FAIL: PK is all zero"
+        return pk
+
     async def run_scenario(self) -> None:
         cfg = SepAbrKeygenCfg(self.random_seed())
-        assert len(cfg.entropy) == ENTROPY_WORDS
-        self.logger.info("CHK-RANDCFG PASS: %s", cfg.summary())
+        self.logger.info("RANDCFG: %s", cfg.summary())
 
         image = self.select_efuse_image(lc_raw=0x1)
         self.write_efuse_image(image)
@@ -89,19 +100,25 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         self.logger.info("CHK0 PASS: rom_main booted, RESP_KM_READY over the mailbox")
 
         await self._wait_status(abr, ST_READY, ST_READY, what="direct READY")
-        await abr.write_words(ABR_SEED, _ABR_SEED_PAL)
-        await abr.write_words(ABR_ENTROPY, cfg.entropy)
-        await abr.wr32(ABR_CTRL, CMD_KEYGEN)
-        st = await self._wait_status(abr, ST_VALID, ST_VALID, what="direct VALID")
-        assert (st & ST_ERROR) == 0, f"direct KEYGEN VALID with ERROR (0x{st:08x})"
-        pk_direct = await abr.read_words(ABR_PUBKEY, PK_WORDS)
-        assert any(w != 0 for w in pk_direct), "CHK-DIRECT FAIL: direct PK is all zero"
+        pk_direct = await self._keygen(abr, _ABR_SEED_PAL, cfg.entropy, what="CHK-DIRECT")
         self.logger.info(
             "CHK-DIRECT PASS: direct-seed PK[0..3]=0x%08x 0x%08x 0x%08x 0x%08x",
             pk_direct[0],
             pk_direct[1],
             pk_direct[2],
             pk_direct[3],
+        )
+
+        contrast = [(~w) & 0xFFFF_FFFF for w in cfg.entropy]
+        await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
+        await self._wait_status(abr, ST_READY, ST_READY, what="contrast READY")
+        pk_contrast = await self._keygen(abr, _ABR_SEED_PAL, contrast, what="CHK-RANDCFG")
+        assert pk_contrast != pk_direct, (
+            "CHK-RANDCFG FAIL: inverted entropy produced the same PK -- "
+            "masking entropy did not reach the engine"
+        )
+        self.logger.info(
+            "CHK-RANDCFG PASS: cfg.entropy KEYGEN PK differs from inverted-entropy KEYGEN"
         )
 
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
@@ -115,13 +132,8 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
         )
         self.logger.info("CHK-XFER PASS: dest=0x10 (abr_mldsa_seed) rc=0 handle=0x%02x", handle)
 
-        await abr.write_words(ABR_ENTROPY, cfg.entropy)
         await abr.wr32(ABR_MLDSA_KV_RD_SEED_CTRL, ABR_KV_RD_SEED_READ_EN)
-        await abr.wr32(ABR_CTRL, CMD_KEYGEN)
-        st = await self._wait_status(abr, ST_VALID, ST_VALID, what="km VALID")
-        assert (st & ST_ERROR) == 0, f"KM KEYGEN VALID with ERROR (0x{st:08x})"
-        pk_km = await abr.read_words(ABR_PUBKEY, PK_WORDS)
-        assert any(w != 0 for w in pk_km), "CHK-PK FAIL: KM-sideloaded PK is all zero"
+        pk_km = await self._keygen(abr, None, cfg.entropy, what="CHK-PK")
         assert pk_km == pk_direct, (
             "CHK-PK FAIL: KM-sideloaded PK != direct-seed PK:\n"
             f"  direct[0..3]={[hex(w) for w in pk_direct[:4]]}\n"

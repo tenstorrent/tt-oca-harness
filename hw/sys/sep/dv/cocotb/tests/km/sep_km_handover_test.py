@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM mailbox handover: inhibit contract, then a full SRAM load and persist.
+"""KM mailbox handover: inhibit contract, then a SRAM load and warm-reset exec.
 
 no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
 The 14-word blob is the KM IP ``mutable_fw_blob_small`` image. After a
-successful ``CMD_SRAM_LOAD_EXEC`` the image is in KM SRAM. A warm reset
-brings ROM back; ``CMD_SRAM_EXEC`` then returns success: the image
-persisted. KMCSR ``TEST_SIGNATURE`` is not SEP-visible.
+successful ``CMD_SRAM_LOAD_EXEC`` stream and a warm reset, ``CMD_SRAM_EXEC``
+returns success. KMCSR ``TEST_SIGNATURE`` is not SEP-visible.
 """
 
 from __future__ import annotations
@@ -55,7 +54,7 @@ def _blob_crc() -> int:
 
 @pyuvm.test()
 class sep_km_handover_test(sep_base_test):
-    """Inhibit handover, then load and persist a 14-word SRAM image."""
+    """Inhibit handover, then load an image and accept CMD_SRAM_EXEC after warm reset."""
 
     async def run_scenario(self) -> None:
         image = self.select_efuse_image(lc_raw=0x1)
@@ -130,12 +129,12 @@ class sep_km_handover_test(sep_base_test):
             _FW_WORDS,
         )
 
-        # --- CHK-EXEC: warm reset, then persist the image ---------------------
+        # --- CHK-EXEC: warm reset, then CMD_SRAM_EXEC -------------------------
         await self._warm_reset_km()
         seq = await self.km.send_command(KM_CMD_SRAM_EXEC, [])
         rc, _ = await self.km.recv_resp_cmd(KM_CMD_SRAM_EXEC, seq)
-        assert rc == KM_RC_SUCCESS, f"CHK-EXEC FAIL: CMD_SRAM_EXEC rc={rc} -- image did not persist"
-        self.logger.info("CHK-EXEC PASS: CMD_SRAM_EXEC rc=0 -- image persisted")
+        assert rc == KM_RC_SUCCESS, f"CHK-EXEC FAIL: CMD_SRAM_EXEC rc={rc} after warm reset"
+        self.logger.info("CHK-EXEC PASS: CMD_SRAM_EXEC rc=0 after warm reset")
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()

@@ -589,7 +589,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_handover_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|Handover mailbox contract: empty/reserved `CMD_SRAM_*` refusals, `CMD_EXEC_ROM` inhibit, then a 14-word `CMD_SRAM_LOAD_EXEC` stream and a warm-reset `CMD_SRAM_EXEC` persist.
+|Handover mailbox contract: empty/reserved `CMD_SRAM_*` refusals, `CMD_EXEC_ROM` inhibit, then a 14-word `CMD_SRAM_LOAD_EXEC` stream and a warm-reset `CMD_SRAM_EXEC`.
 |`sep_km_abr_seed_sideload_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
@@ -685,7 +685,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_wipe_reset_test`. `SW_RESET_N` park/release re-announces `RESP_KM_READY` and a key load succeeds. `KM_WIPE_CTRL` then posts `RESP_UNRECOVERABLE_FAULT`. KPV-zero is not claimed.
 
 |KM handover
-|`sep_km_handover_test`. Inhibit after `CMD_EXEC_ROM`, then a 14-word `CMD_SRAM_LOAD_EXEC` and a warm-reset `CMD_SRAM_EXEC` persist.
+|`sep_km_handover_test`. Inhibit after `CMD_EXEC_ROM`, then a 14-word `CMD_SRAM_LOAD_EXEC` and a warm-reset `CMD_SRAM_EXEC`.
 
 |KM to ABR seed
 |`sep_km_abr_seed_sideload_test`. Mailbox dest ABR ML-DSA seed plus KEYGEN public-key equality against a direct-seed KEYGEN. The command-set leaf hits the dest cell every seed; this leaf is the consume proof.
@@ -5553,7 +5553,7 @@ slot, so over this surface an erase always frees.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_125823` seed 1. Named `CHK-* PASS`
+*Evidence*: Verilator `20260914_140142` seed 1. Named `CHK-* PASS`
 including CHK-HW-VER, CHK-ROM-VER, CHK-SRAM-VER, CHK-SAMPLER, CHK-ABR-DEST,
 CHK-OTP, CHK-RECOV, CHK-XFER-DEST.
 
@@ -5629,7 +5629,7 @@ frontdoor.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_125516`. Named `CHK-PRE`, `CHK-RESET`,
+*Evidence*: Verilator `20260914_135457`. Named `CHK-PRE`, `CHK-RESET`,
 `CHK-WIPE` PASS (`RESP_UNRECOVERABLE_FAULT`).
 
 *Anti-vacuity*: the post-reset load is a value-bearing command, not only the
@@ -5652,7 +5652,7 @@ another mailbox command.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: the handover mailbox contract and a full SRAM load / persist.
+*Objective*: the handover mailbox contract, a SRAM load, and `CMD_SRAM_EXEC` after warm reset.
 
 *Test Coverage*: `CMD_EXEC_ROM` inhibit; `CMD_SRAM_LOAD_EXEC` 14-word stream; `CMD_SRAM_EXEC` after warm reset.
 
@@ -5668,7 +5668,7 @@ and `CMD_EXEC_ROM` each return the failure code. A warm reset clears the
 inhibit.
 . On a fresh epoch, send `CMD_SRAM_LOAD_EXEC` with `FW_WORDS=14`, receive
 success, then stream the 14-word blob plus CRC-32C.
-. Warm-reset the KM. `CMD_SRAM_EXEC` returns success: the image persisted.
+. Warm-reset the KM. `CMD_SRAM_EXEC` returns success.
 
 *Randomization*: RAND-NONE.
 
@@ -5692,12 +5692,12 @@ success, then stream the 14-word blob plus CRC-32C.
 |CHK-LOAD
 |`CMD_SRAM_LOAD_EXEC` returns success before the stream; the 14-word image plus CRC-32C is posted.
 |CHK-EXEC
-|After a warm reset `CMD_SRAM_EXEC` returns success: the image persisted.
+|After a warm reset `CMD_SRAM_EXEC` returns success.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Evidence*: Verilator `20260914_124629`. Named `CHK-EMPTY`, `CHK-ARG`,
+*Evidence*: Verilator `20260914_134717`. Named `CHK-EMPTY`, `CHK-ARG`,
 `CHK-INHIBIT`, `CHK-INHIBIT-RST`, `CHK-LOAD`, `CHK-EXEC` PASS.
 
 *Anti-vacuity*: inhibit cells assert the failure code, not "not success". The
@@ -5731,8 +5731,10 @@ a direct software-seed KEYGEN.
 [arabic]
 . Stage a valid PROD OTP image, bring entropy up, release the KM, wait for
 `RESP_KM_READY`.
-. Run a direct-seed ML-DSA-87 KEYGEN on the palindromic seed and capture the
-public key.
+. Run a direct-seed ML-DSA-87 KEYGEN on the palindromic seed with
+`cfg.entropy` and capture the public key.
+. `ZEROIZE`. Repeat KEYGEN with the inverted entropy vector. The two public
+keys must differ.
 . `ZEROIZE`, then `CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` dest ABR ML-DSA seed.
 . Write the same masking entropy, set the KV seed-read enable, KEYGEN, and
 compare the public key word-for-word.
@@ -5752,7 +5754,7 @@ capture are not claimed.
 |CHK0
 |`rom_main` boots on real entropy and announces `RESP_KM_READY`.
 |CHK-RANDCFG
-|`SepAbrKeygenCfg` from the run seed supplies the masking entropy written to both KEYGENs.
+|A KEYGEN that writes `cfg.entropy` and a KEYGEN that writes the inverted vector produce different public keys. Both compare KEYGENs write `cfg.entropy`.
 |CHK-DIRECT
 |The direct-seed KEYGEN produces a non-zero public key.
 |CHK-XFER
@@ -5766,9 +5768,10 @@ capture are not claimed.
 *Evidence*: Verilator `20260914_125125`. Named `CHK-RANDCFG`, `CHK-DIRECT`,
 `CHK-XFER`, `CHK-PK` PASS (648-word public-key match).
 
-*Anti-vacuity*: both public keys must be non-zero. The palindrome absorbs the
-KV dword reversal, so a mismatch is a sideload failure, not an ordering
-artifact.
+*Anti-vacuity*: both compare public keys must be non-zero. The palindrome
+absorbs the KV dword reversal, so a mismatch is a sideload failure, not an
+ordering artifact. If ABR ignored masking entropy the inverted-entropy KEYGEN
+would match the `cfg.entropy` KEYGEN and CHK-RANDCFG would fail.
 
 '''''
 

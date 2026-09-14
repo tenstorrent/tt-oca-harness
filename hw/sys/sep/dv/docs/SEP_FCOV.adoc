@@ -373,8 +373,9 @@ reseed accumulates.
 |`cp_cmd` |`CMD_HW_VER`, `CMD_ROM_VER`, `CMD_SRAM_VER`, `CMD_RECOV_ACK`, `CMD_EXEC_ROM`, `CMD_SRAM_LOAD_EXEC`, `CMD_SRAM_EXEC`, `CMD_OTP_READ_LOCK_COLD`
 |===
 
-Sampled on the `RESP_CMD` echoed command ID. A raw inbound `WRITE_DATA` fill
-cannot score.
+Sampled on the `RESP_CMD` echoed command ID when the latched return code is 0.
+`CMD_SRAM_VER` scores its defined failure code. A refused command cannot fill
+a success bin. A raw inbound `WRITE_DATA` fill cannot score.
 
 ==== `sep_km_wipe_cg`
 
