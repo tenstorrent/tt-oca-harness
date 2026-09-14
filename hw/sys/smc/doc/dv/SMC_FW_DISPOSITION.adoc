@@ -24,10 +24,10 @@ Buckets:
 * `deferred` -- kept for a stated blocker. The row is the blocker and the
   condition that closes it; a closed row moves to `enrolled` with its leaf,
   or to `superseded`.
-* `superseded` -- the property is proven by a live enrolled name or by another
-  image, or the image has no DUT property. There is no directory in the tree;
-  the code is in git history under the image name, and the row is what a
-  reader searching for that name finds.
+* `superseded` -- the property is proven by a live enrolled name, or the image
+  duplicates another image that has its own row, or the image has no DUT
+  property. There is no directory in the tree; the code is in git history under
+  the image name, and the row is what a reader searching for that name finds.
 
 The cocotb test names of this package have their own record,
 `SMC_DEFERRED_DISPOSITION.adoc`; rows below that cite a waived cocotb alias
@@ -41,7 +41,7 @@ point at it. SMU's record of the tests that stage SMC images is
 |Image |Bucket |Consumer
 |hello_world
 |enrolled
-|`smc_fw_hello_world_test` (`testlists/fw.toml`, `[c_build.default]`); OCCP payload of `smc_occp_dual_unsecure_boot_test` (`testlists/dual.toml`, `[c_build.dual_occp]`).
+|`smc_fw_hello_world_test` (`testlists/fw.toml`, `[c_build.default]`, in `all`); OCCP payload of `smc_occp_dual_unsecure_boot_test` (`testlists/dual.toml`, `[c_build.dual_occp]`; held out of `all` on runtime, runs as `dual_all` / `occp_dual`).
 |plic_sanity
 |enrolled
 |`smc_fw_plic_claim_test` (`testlists/fw.toml`, `[c_build.default]`).
@@ -50,7 +50,7 @@ point at it. SMU's record of the tests that stage SMC images is
 |`smc_occp_sanity_test` (`testlists/dual.toml`, `[c_build.occp_sanity]`).
 |occp_unsecure_boot_test
 |enrolled
-|`smc_occp_dual_unsecure_boot_test` (`testlists/dual.toml`, `[c_build.dual_occp]`).
+|`smc_occp_dual_unsecure_boot_test` (`testlists/dual.toml`, `[c_build.dual_occp]`; held out of `all` on runtime, runs as `dual_all` / `occp_dual`).
 |===
 
 === External-consumer images
@@ -96,7 +96,7 @@ point at it. SMU's record of the tests that stage SMC images is
 |Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image); not counted toward this tree's coverage. This tree's coverage of the objective: `smc_telemetry_receiver_csr_test` (`testlists/power.toml`); a subset of `atb_p1_func_test`. Closes when the companion regression drops the image or it gains a consumer in this repository.
 |cla_sanity
 |external-consumer
-|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_remap_cla_test` (`testlists/fabric.toml`) for the CLA CSRs; the image is a self-declared placeholder and the alias `smc_cla_sanity_test` is waived. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's leaf for the objective: `smc_remap_cla_test` (`testlists/fabric.toml`) for the CLA CSRs, held out of `all` because its deny leg hangs on the CLA aperture (`testlists/all.toml`), so the CLA objective is open in this tree; the image is a self-declared placeholder and the alias `smc_cla_sanity_test` is waived. Closes when the companion regression drops the image or it gains a consumer in this repository.
 |coremark
 |external-consumer
 |Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. No DUT property. Closes when the companion regression drops the image or it gains a consumer in this repository.
@@ -150,7 +150,7 @@ point at it. SMU's record of the tests that stage SMC images is
 |Consumed by the companion SV-UVM chiplet regression outside this repository (rom-mode master-BFM image staged through `+MASTER_BFM_ROM`); not counted toward this tree's coverage. This tree's coverage of the objective: `occp_unsecure_boot_test` (enrolled), which performs the transfer and the JUMP. Closes when the companion regression drops the image or it gains a consumer in this repository.
 |occp_master
 |external-consumer
-|Consumed by the companion SV-UVM chiplet regression outside this repository (rom-mode master-BFM image staged through `+MASTER_BFM_ROM`); not counted toward this tree's coverage. This tree's coverage of the objective: The single-purpose `occp_*` images (`occp_sanity`, `occp_register_access_test`, `occp_mem_boundary_access_test`, `occp_zero_length_test`, `occp_max_size_transfer_test`, `occp_min_size_transfer_test`, `occp_ring_buffer_*`). Closes when the companion regression drops the image or it gains a consumer in this repository.
+|Consumed by the companion SV-UVM chiplet regression outside this repository (rom-mode master-BFM image staged through `+MASTER_BFM_ROM`); not counted toward this tree's coverage. This tree's coverage of the objective: `occp_sanity` (enrolled); the other single-purpose `occp_*` images it bundles (`occp_register_access_test`, `occp_mem_boundary_access_test`, `occp_zero_length_test`, `occp_max_size_transfer_test`, `occp_min_size_transfer_test`, `occp_ring_buffer_*`) are `deferred` rows below and prove nothing yet. Closes when the companion regression drops the image or it gains a consumer in this repository.
 |quicksort
 |external-consumer
 |Consumed by the companion SV-UVM chiplet regression outside this repository (testlist entry staging the image) and the companion cocotb wrapper regression; not counted toward this tree's coverage. No DUT property. Closes when the companion regression drops the image or it gains a consumer in this repository.
@@ -216,7 +216,7 @@ point at it. SMU's record of the tests that stage SMC images is
 |Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_spi_log_engine_test` and `smc_default_reg_rd_test`; CSR-only, reachable over SEP_IN. Closes when the companion regression drops the image or it gains a consumer in this repository.
 |uart_log_engine_decode_err
 |external-consumer
-|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_deadspace_decode_test`; CSR-only decode guard. Closes when the companion regression drops the image or it gains a consumer in this repository.
+|Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository; not counted toward this tree's coverage. This tree's leaf for the objective: `smc_deadspace_decode_test` (`testlists/depth.toml`), held out of `all` because the DUT aliases deadspace onto live registers (`testlists/all.toml`), so the decode-guard objective is open in this tree; CSR-only. Closes when the companion regression drops the image or it gains a consumer in this repository.
 |uart_sanity
 |external-consumer
 |Consumed by a cocotb test of the companion SV-UVM chiplet regression outside this repository and the companion cocotb wrapper regression; not counted toward this tree's coverage. This tree's coverage of the objective: `smc_uart_sanity_test` (`testlists/uart.toml`). Closes when the companion regression drops the image or it gains a consumer in this repository.
@@ -266,7 +266,7 @@ the first image that consumes it, not ahead of it.
 |Four-hart check-in; `hello_world` proves only hart 0's store. Closes when the tier-1 intake enrols it as `smc_fw_hello_world_multicore_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "hello_world_multicore"`, `+smc_scratch_ram_hex=hello_world_multicore.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
 |octs_p0_primary_test
 |deferred
-|OCTS PRIMARY preset sweep on a single DUT, no BFM chiplet. Closes when the tier-1 intake enrols it as `smc_fw_octs_p0_primary_test_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "octs_p0_primary_test"`, `+smc_scratch_ram_hex=octs_p0_primary_test.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
+|OCTS PRIMARY preset sweep on a single DUT, no BFM chiplet. Closes when the tier-1 intake enrols it as `smc_fw_octs_p0_primary_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "octs_p0_primary_test"`, `+smc_scratch_ram_hex=octs_p0_primary_test.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
 |i2c_sanity
 |deferred
 |Internal I2C_0 -> I2C_1 loopback; carries the `SMC_I2C_001` c-fw testcase contract. Closes when the tier-1 intake enrols it as `smc_fw_i2c_sanity_test` with a `smc_fw_hello_world_test`-pattern leaf (`firmware = "i2c_sanity"`, `+smc_scratch_ram_hex=i2c_sanity.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
@@ -434,13 +434,13 @@ the first image that consumes it, not ahead of it.
 |BFM-side SECONDARY image for P2 recovery. DUT PRIMARY plus BFM SECONDARY firmware pair; `smc_octs_dual_sync_test` (`testlists/power.toml`) covers PRIMARY/SECONDARY sync on the dual bench. Closes when a dual sram-mode `[c_build.*]` stages two SMC images, or is superseded if none is added.
 |sep_interop
 |deferred
-|SEP_SMU_002 two-sided mailbox handshake. SMC half of a two-sided SEP/SMU pair: the SEP half is in the SEP firmware tree and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_002 two-sided mailbox handshake. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_interop` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |sep_mbox_irq
 |deferred
-|SEP_SMU_015 mailbox source IRQ consumer; SMC is the sole functional consumer of the eight SEP mailbox IRQs. SMC half of a two-sided SEP/SMU pair: the SEP half is in the SEP firmware tree and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_015 mailbox source IRQ consumer; SMC is the sole functional consumer of the eight SEP mailbox IRQs. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/sep_smc_mbox_irq` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |smu_smc_stall_sep
 |deferred
-|SEP_SMU_004 CLA halt/run of a live SEP. SMC half of a two-sided SEP/SMU pair: the SEP half is in the SEP firmware tree and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
+|SEP_SMU_004 CLA halt/run of a live SEP. SMC half of a two-sided SEP/SMU pair: the SEP half is `hw/sys/sep/dv/fw/tests/smu_smc_stall_sep` and the pair is in no testlist, because SMC SRAM is CPU-private and a SEP-driven SMC bring-up cannot load it (SMU group `sep_smc_sram_blocked`). Closes by SMU-owner agreement: enrolment of the pair in SMU DV, or removal of both halves.
 |smu_sep_axi_extension_decode
 |deferred
 |SMC pad-arm for the xSPI GPIO override on the SMU external AXI path; SMU's `smu_sep_ext_axi_test` stages `smu_sep_ext_axi` instead. Closes by SMU-owner agreement: an SMU test that stages this image, or removal.
@@ -493,7 +493,7 @@ the first image that consumes it, not ahead of it.
 |dma_sanity
 |`smc_dma_sanity_test` (`testlists/depth.toml`), same objective. `drivers/smc_dma.c` and `include/smc_dma.h` belong to this image alone.
 |dual_octs_test
-|`octs_p1_credit_test` (deferred); eight-line diff duplicate.
+|`octs_p1_credit_test` (deferred); duplicate differing in two lines.
 |efuse_reg_sanity
 |`smc_efuse_map_read_test` and `smc_efuse_shim_ctrl_test` (`testlists/efuse.toml`); the alias `smc_efuse_test` is waived.
 |gpio_p0_int_test
@@ -501,7 +501,7 @@ the first image that consumes it, not ahead of it.
 |gpio_p0_mux_test
 |`smc_gpio_p0_mux_test` (`testlists/gpio.toml`), same objective.
 |i2c_internal_smbus
-|`smbus_alert_suspend_test` (same scenario, itself superseded by `smc_smbus_alert_suspend_test`, `testlists/i2c.toml`).
+|`smbus_alert_suspend_test` (same scenario; an external-consumer row above, whose objective `smc_smbus_alert_suspend_test` in `testlists/i2c.toml` covers).
 |i2c_nack_test
 |`smc_i2c_p0_nack_test` (`testlists/i2c.toml`); older variant of `i2c_p0_nack_test`.
 |i2c_p0_multictrl
@@ -517,7 +517,7 @@ the first image that consumes it, not ahead of it.
 |octs_p1_test
 |`octs_p12_test` (deferred); byte-identical.
 |octs_p2_test
-|`octs_p2_sync_recovery_test` (deferred); sixteen-line diff duplicate.
+|`octs_p2_sync_recovery_test` (deferred); duplicate differing in four lines.
 |sep_rtl_boot
 |`smu_sep_boot` (external-consumer row above), the SMC image SMU's `smu_sep_wdt_reset_to_smc_test` loads; `smu_sep_smc_notify_test` boots the SMC from SMU's own `smu_sep_arm` ROM and references no SMC DV image. This image passes immediately and no SMU test references it.
 |uart_log_engine_reg_rw

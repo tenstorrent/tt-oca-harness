@@ -50,8 +50,15 @@ declared outputs into the per-test simulator directory by basename
 
 ## Adding a test
 
-A firmware image exists for a consumer. A new `tests/<name>/` is added in the
-same change as:
+A new `tests/<name>/` is added in the same change as its consumer and its row.
+Nothing in the build enforces this: `compile.mk` discovers and builds every
+`tests/<name>/` directory whether or not a testlist names it, so a clean
+`ocah-dv-fw-tests` run says nothing about consumers; most directories have no
+consumer in this tree, and the record says which. The check is the record,
+applied at review: every directory under `tests/` has exactly one row that is
+not `superseded`, and every such row has a directory.
+
+The change that adds an image carries:
 
 1. Its consumer: a `[[tests]]` entry with `firmware = "<name>"` (or
    `firmware = { name, mode }` for a rom-mode OCCP image) in a testlist, and
@@ -71,9 +78,11 @@ The image itself: `tests/<name>/<name>.c` with `int main(void)` that ends in
 half waits for go on other scratch registers. `compile.mk` discovers the
 directory; `fw.mk` needs a line only for `FW_TEST_MODE_<name> := rom`.
 
-An image with no consumer is not added, and an image whose consumer goes away
-is superseded: its directory leaves the tree and its row in the disposition
-record names what proves the property now. An image whose only consumer is a
+A new image with no consumer in the tree is added only as a `deferred` row
+that names the blocker and the consumer that closes it; an image with neither a
+consumer nor such a row is not added. An image whose consumer goes away is
+superseded: its directory leaves the tree and its row in the disposition record
+names what proves the property now. An image whose only consumer is a
 regression outside this repository stays as an `external-consumer` row that
 names that consumer; the same holds for a shared header under `tests/` or
 `include/` that such a regression's firmware includes.
