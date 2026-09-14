@@ -835,7 +835,7 @@ package i2c_reg_pkg;
     } i2c__TXDATA__external__out_t;
 
     typedef struct {
-        logic [19:0] value;
+        logic [30:0] value;
     } i2c__HOST_TIMEOUT_CTRL__VAL__out_t;
 
     typedef struct {

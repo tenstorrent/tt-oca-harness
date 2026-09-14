@@ -659,7 +659,6 @@ int main(void) {
     uint32_t uart_base = get_uart_reg_base(uart_idx);
     int ret;
 
-
     // Enable the UART under test.
     uart_enable_single(uart_idx);
 

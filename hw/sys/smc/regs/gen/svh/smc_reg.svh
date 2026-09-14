@@ -11292,7 +11292,7 @@ localparam int unsigned I2C_ACQDATA_SIGNAL_SHIFT                                
 localparam int unsigned I2C_TXDATA_DATA_MASK                                                                      = 32'hFF;
 localparam int unsigned I2C_TXDATA_DATA_SHIFT                                                                     = 0;
 
-localparam int unsigned I2C_HOST_TIMEOUT_CTRL_VAL_MASK                                                            = 32'hFFFFF;
+localparam int unsigned I2C_HOST_TIMEOUT_CTRL_VAL_MASK                                                            = 32'h7FFFFFFF;
 localparam int unsigned I2C_HOST_TIMEOUT_CTRL_VAL_SHIFT                                                           = 0;
 
 localparam int unsigned I2C_TARGET_TIMEOUT_CTRL_VAL_MASK                                                          = 32'h7FFFFFFF;
@@ -16776,7 +16776,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [19:0]   val ;
+    logic [30:0]   val ;
 } i2c_host_timeout_ctrl_reg_t;
 
 

@@ -1095,7 +1095,7 @@ addrmap i2c {
                      * Monitor Mode - this field is required to be nonzero for the Bus Monitor to
                        transition out of the initial Busy state. Set this field to `0x0` to disable
                        this behavior.";
-        } VAL[19:0] = 0x0;
+        } VAL[30:0] = 0x0;
     };
 
     reg TARGET_TIMEOUT_CTRL {

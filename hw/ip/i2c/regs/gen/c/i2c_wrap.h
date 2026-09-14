@@ -838,14 +838,14 @@ typedef union {
 } i2c__TXDATA_t;
 
 // reg - i2c::HOST_TIMEOUT_CTRL
-#define I2C__HOST_TIMEOUT_CTRL__VAL_bm 0xfffff
+#define I2C__HOST_TIMEOUT_CTRL__VAL_bm 0x7fffffff
 #define I2C__HOST_TIMEOUT_CTRL__VAL_bp 0
-#define I2C__HOST_TIMEOUT_CTRL__VAL_bw 20
+#define I2C__HOST_TIMEOUT_CTRL__VAL_bw 31
 #define I2C__HOST_TIMEOUT_CTRL__VAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t VAL :20;
-        uint32_t :12;
+        uint32_t VAL :31;
+        uint32_t :1;
     } f;
     uint32_t w;
 } i2c__HOST_TIMEOUT_CTRL_t;

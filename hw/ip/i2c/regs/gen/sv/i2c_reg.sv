@@ -747,7 +747,7 @@ module i2c_reg (
         } TARGET_ID;
         struct {
             struct {
-                logic [19:0] next;
+                logic [30:0] next;
                 logic load_next;
             } VAL;
         } HOST_TIMEOUT_CTRL;
@@ -1142,7 +1142,7 @@ module i2c_reg (
         } TARGET_ID;
         struct {
             struct {
-                logic [19:0] value;
+                logic [30:0] value;
             } VAL;
         } HOST_TIMEOUT_CTRL;
         struct {
@@ -3417,12 +3417,12 @@ module i2c_reg (
     assign hwif_out.TXDATA.wr_biten = decoded_wr_biten;
     // Field: i2c.HOST_TIMEOUT_CTRL.VAL
     always_comb begin
-        automatic logic [19:0] next_c;
+        automatic logic [30:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.HOST_TIMEOUT_CTRL.VAL.value;
         load_next_c = '0;
         if(decoded_reg_strb.HOST_TIMEOUT_CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.HOST_TIMEOUT_CTRL.VAL.value & ~decoded_wr_biten[19:0]) | (decoded_wr_data[19:0] & decoded_wr_biten[19:0]);
+            next_c = (field_storage.HOST_TIMEOUT_CTRL.VAL.value & ~decoded_wr_biten[30:0]) | (decoded_wr_data[30:0] & decoded_wr_biten[30:0]);
             load_next_c = '1;
         end
         field_combo.HOST_TIMEOUT_CTRL.VAL.next = next_c;
@@ -3430,7 +3430,7 @@ module i2c_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.HOST_TIMEOUT_CTRL.VAL.value <= 20'h0;
+            field_storage.HOST_TIMEOUT_CTRL.VAL.value <= 31'h0;
         end else begin
             if(field_combo.HOST_TIMEOUT_CTRL.VAL.load_next) begin
                 field_storage.HOST_TIMEOUT_CTRL.VAL.value <= field_combo.HOST_TIMEOUT_CTRL.VAL.next;
@@ -4060,7 +4060,7 @@ module i2c_reg (
             readback_data_var = hwif_in.ACQDATA.rd_data;
         end
         if(rd_mux_addr == 8'h60) begin
-            readback_data_var[19:0] = field_storage.HOST_TIMEOUT_CTRL.VAL.value;
+            readback_data_var[30:0] = field_storage.HOST_TIMEOUT_CTRL.VAL.value;
         end
         if(rd_mux_addr == 8'h64) begin
             readback_data_var[30:0] = field_storage.TARGET_TIMEOUT_CTRL.VAL.value;
