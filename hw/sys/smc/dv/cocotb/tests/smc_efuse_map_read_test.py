@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_efuse_map_read_test(smc_base_test):
     """P1 coverage-gap depth: SMC_EFUSE_MAP direct read."""
 
+    required_evidence = ("CHK-EFUSE-MAP-READ",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -30,7 +33,7 @@ class smc_efuse_map_read_test(smc_base_test):
             min_csr_accesses=4,
             csr_accesses=seq.accesses,
             proxy=False,
-            # Narrowed to what the four compared words actually establish: a
+            # The claim is what the four compared words establish: a
             # transport/decode claim over four named SMC_EFUSE_MAP fields, not
             # the map window as a whole and not fuse programming.
             details=(

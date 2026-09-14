@@ -11,21 +11,20 @@
  *                                                +-> dbg_disable -> DTP
  *                                                +-> feat_ctrl
  *
- * Before this image the SMU-level tests only sampled lc_state once, statically,
- * at the SMU boundary. That proves the wire exists; it does not prove the LCC
- * responds to anything or that the posture reaches its consumers.
+ * A single static sample of lc_state at the SMU boundary proves the wire
+ * exists; it does not prove the LCC responds to anything or that the posture
+ * reaches its consumers.
  *
  * This firmware drives the one input software owns -- the DEMOTE registers --
  * and records what it observes into SEP-local cold scratch.
  *
- * What it does NOT assert, deliberately: that a demote changes FEAT_CTRL. Per
- * sep_lifecycle_ctrl.sv the demotes force feat_ctrl[15:0] and feat_ctrl[31:16]
- * to all-ones, but in TEST_DEV the baseline is already ~(sip_dis | sys_dis),
- * so with a permissive eFuse image those bits are set before any demote and the
- * write is a no-op on FEAT_CTRL. Requiring a change there would fail against a
- * correct design. FEAT_CTRL is still captured at each step for the testbench to
- * report, and the demote's real effect is checked where it is unambiguous:
- * the register readback here, and lcc_demote_state_*_o at the SMU boundary.
+ * A demote is not required to change FEAT_CTRL. Per sep_lifecycle_ctrl.sv the
+ * demotes force feat_ctrl[15:0] and feat_ctrl[31:16] to all-ones, but in
+ * TEST_DEV the baseline is already ~(sip_dis | sys_dis), so with a permissive
+ * eFuse image those bits are set before any demote and the write is a no-op on
+ * FEAT_CTRL. FEAT_CTRL is captured at each step for the testbench to report, and
+ * the demote's effect is checked where it is unambiguous: the register readback
+ * here, and lcc_demote_state_*_o at the SMU boundary.
  *
  * Stages, each with its own fail loop so a failure names the step:
  *   1. FEAT_CTRL is readable and both DEMOTE registers start clear.

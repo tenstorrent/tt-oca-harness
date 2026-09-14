@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut ocah_spi_vip` (registered in
+# hw/common/dv/configs/duts.toml — non-conventional root under the shared VIP).
+#
+# DUT is the wire harness tb/tb_top.sv: no RTL, just the single-SPI nets the
+# shared controller engine and the shared flash device attach to from cocotb,
+# with the passive monitor listening. The selftests prove the VIP's own
+# contracts on real signals (JEDEC and status, write-enable ordering, program,
+# erase, readback, memory golden, non-vacuity, out-of-scope opcodes), each with
+# a must-fail probe, independent of any block DUT.
+name = "ocah_spi_vip"
+profile = "native"
+default_framework = "cocotb"
+description = "Shared SPI VIP wire-harness selftests (controller <-> flash device)"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/common/dv/vip/ocah_spi_vip/dv/build"]
+
+[build]
+top_module = "ocah_spi_vip_tb_top"
+top_file = "hw/common/dv/vip/ocah_spi_vip/dv/tb/tb_top.sv"
+filelist = "hw/common/dv/vip/ocah_spi_vip/dv/build/ocah_spi_vip_dut_compile.f"
+bender_filelist = "hw/common/dv/vip/ocah_spi_vip/dv/build/ocah_spi_vip_bender.f"
+work_dir = "hw/common/dv/vip/ocah_spi_vip/dv/build"
+# The harness compiles no DUT RTL: the target name matches nothing in the
+# Bender graph, so the generated filelist carries only the base package
+# closure. The package ships no SV collateral.
+common_bender_targets = []
+bender_targets = ["ocah_spi_vip_harness"]
+sources = []
+
+[frameworks.cocotb]
+python_root = "hw/common/dv/vip/ocah_spi_vip/dv/cocotb"
+test_dir = "hw/common/dv/vip/ocah_spi_vip/dv/cocotb/tests"
+python_paths = [
+  "hw/common/dv/vip",
+]
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Shared SPI VIP flash-contract selftests"
+timeout_sec = 600
+args = []
+
+[targets.default]
+description = "SPI VIP wire harness (no DUT RTL)"
+build_dir = "hw/common/dv/vip/ocah_spi_vip/dv/build/cocotb"

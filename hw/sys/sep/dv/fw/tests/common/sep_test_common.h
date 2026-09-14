@@ -47,12 +47,10 @@ static inline void test_log(const char *msg) {
 // Test completion helpers
 static inline void test_pass(const char *test_name) {
     printf("✅ PASS: %s\n", test_name);
-    // tb_pass_signal();  // Comment out to avoid compilation issues
 }
 
 static inline void test_fail(const char *test_name) {
     printf("❌ FAIL: %s\n", test_name);
-    // tb_fail_signal();  // Comment out to avoid compilation issues
 }
 
 #endif // SEP_TEST_COMMON_H

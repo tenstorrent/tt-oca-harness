@@ -82,7 +82,7 @@ FIFO_TEST_CONFIG = TestConfig(
     ),
 )
 
-# Configuration for tests that intentionally trigger FIFO overflow/underflow
+# Configuration for tests that expect FIFO overflow/underflow
 # Used by: test_2_3_1_overflow_detection, test_2_3_2_underflow_detection, and other tests
 # Key difference from FIFO_TEST_CONFIG: fifo_error_monitor_enable=False
 FIFO_ERROR_TEST_CONFIG = TestConfig(
@@ -333,7 +333,7 @@ async def test_2_1_4_fill_and_drain_sequence(dut):
         prev_level = level
         drained += 1
 
-        if drained > 200:  # Increased safety limit
+        if drained > 200:  # Safety limit above FIFO (64) plus in-flight pipeline entries
             dut._log.error(f"Safety limit reached at {drained} entries, level still={level}")
             dut._log.error("This suggests FIFO is refilling during drain!")
             break
@@ -457,8 +457,7 @@ async def test_2_2_1_pointer_wraparound(dut):
     level, wptr, rptr = await read_fifo_status(apb)
     dut._log.info(f"Final: level={level}, wptr={wptr}, rptr={rptr}")
 
-    # If we've run long enough, at least one pointer should have wrapped
-    # This is a soft check since we can't guarantee exact wraparound timing
+    # Wraparound timing is not deterministic; this test only logs the final pointers.
     dut._log.info("[PASS] Test 2.2.1: Pointer wraparound test completed")
 
 
@@ -1106,7 +1105,7 @@ SECURITY_TEST_CONFIG = TestConfig(
     compressor=CompressorConfig(
         checker_enable=False,
     ),
-    fifo_error_monitor_enable=False,  # We're intentionally injecting errors
+    fifo_error_monitor_enable=False,  # DISABLE monitor - tests inject FIFO errors
 )
 
 
@@ -1290,7 +1289,7 @@ async def test_2_7_2_parity_error_detection(dut):
     # Phase 3: Select corruption target (not at rptr - make it more realistic)
     dut._log.info("\n--- Phase 3: Select and corrupt entry in middle of FIFO ---")
 
-    # Corrupt entry at position rptr+3 (will need to pop 3 good entries first)
+    # Corrupt an entry 2-5 positions past rptr; the clean entries before it are popped first
     import random
 
     offset = random.randint(2, min(5, level_before - 1))  # Random offset between 2-5

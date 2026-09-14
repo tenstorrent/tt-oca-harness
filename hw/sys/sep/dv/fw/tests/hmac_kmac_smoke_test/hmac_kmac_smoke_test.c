@@ -14,7 +14,7 @@
 // KMAC (KMAC128/cSHAKE, 0x1091_3000): run a masked hash of "test" with a zero
 // key using SOFTWARE entropy (no EDN), then check it reached done, ERR_CODE == 0,
 // and the unmasked digest (share0 ^ share1) is non-zero.
-//   Scope delta (documented, matches reference suite + the OSS VPLAN allowance): the KMAC
+//   Scope delta (matches the reference suite and the OSS VPLAN allowance): the KMAC
 //   result is checked for completion / no-error / non-degenerate masking, NOT
 //   against an exact KMAC/Keccak software reference (no bare-metal Keccak model
 //   is ported). The HMAC side carries the exact-digest rigor. This is a "smoke".

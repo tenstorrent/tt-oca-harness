@@ -98,8 +98,6 @@ static void run_test_suite(test_context_t *ctx) {
 #endif
 }
 
-// External function declaration for OCCP commands
-
 static void finalize_test_results(test_context_t *ctx) {
     uint32_t result_code;
 

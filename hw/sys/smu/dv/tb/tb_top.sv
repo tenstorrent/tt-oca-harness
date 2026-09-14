@@ -3,9 +3,9 @@
 //
 // SMU OSS TB top — Phase-1 SEP=0, shared by the native cocotb / PyUVM flow
 // and the SystemVerilog UVM flow. ONE module, two shapes:
-//   * default (cocotb, `--dut smu`): the pin-level ANSI port list cocotb
+//   * default (cocotb, `--dut smu_block`): the pin-level ANSI port list cocotb
 //     drives and samples;
-//   * `UVM` (SV-UVM, `--dut smu --framework uvm`): the port list is replaced
+//   * `UVM` (SV-UVM, `--dut smu_block --framework uvm`): the port list is replaced
 //     by internal TB signals and the harness block at the end of the module
 //     adds the clocks, the shared JTAG VIP interface, the SMU-local and
 //     embedded-DTP TB interfaces, quiescent tie-offs, uvm_config_db
@@ -440,46 +440,43 @@ module smu_uvm_top
     .telemetry_atvalid_i         (tel_valid),
     .telemetry_afvalid_o         (tel_afvalid),
     .telemetry_afready_i         (tel_afready),
-    .cluster_ded_o               (),
-    .wdt_first_timeout_o         (tb_wdt_first_timeout),
-    .wdt_second_timeout_o        (),
+    .smc_cluster_ded_o           (),
+    .smc_wdt_first_timeout_o     (tb_wdt_first_timeout),
+    .smc_wdt_second_timeout_o    (),
     .smc_global_base_o           (smc_base_w),
     .smc_region_size_o           (smc_size_w),
     .sep_global_base_o           (sep_base_w),
     .sep_region_size_o           (sep_size_w),
-    .ext_interrupts_i            ('0),
-    .fuse_sense_done_o,
-    .fuse_reset_n_delayed_o,
+    .smc_ext_interrupts_i        ('0),
+    .smc_fuse_sense_done_o,
+    .smc_fuse_reset_n_delayed_o,
     .skip_mem_repair_o           (),
     .ext_boot_seq_done_i         (ext_boot_seq_done_i),
-    .temp_interrupt_i            (1'b0),
     .lc_state_o                  (lc_state_o),
     .lc_sigint_err_o             (lc_sigint_err_o),
-    .ras_bank_chip_o             (),
-    .ras_bank_instance_o         (),
-    .ndmreset_request_i          ('0),
-    .ndmreset_process_o          (),
-    .ext_mailbox_interrupts_o    (mbx_irqs),
+    .smc_ndmreset_request_i      ('0),
+    .smc_ndmreset_process_o      (),
+    .smc_ext_mailbox_interrupts_o (mbx_irqs),
     .cfg_flr_pf_active_i         (1'b0),
     .isolate_req_o               (),
     .ss_reset_complete_i         ('0),
     .ss_config_o                 (),
     .ss_reset_ctrl_o             (),
     .sync_irq_o                  (),
-    .rom_intf_req_o              (smc_rom_req),
-    .rom_intf_rsp_i              (smc_rom_rsp),
-    .scratch_ram_intf_req_o      (smc_scratch_ram_req),
-    .scratch_ram_intf_rsp_i      (smc_scratch_ram_rsp),
-    .l1_icache_tag_intf_req_o    (smc_l1_icache_tag_req),
-    .l1_icache_tag_intf_rsp_i    (smc_l1_icache_tag_rsp),
-    .l1_icache_data_intf_req_o   (smc_l1_icache_data_req),
-    .l1_icache_data_intf_rsp_i   (smc_l1_icache_data_rsp),
-    .l1_dcache_tag_intf_req_o    (smc_l1_dcache_tag_req),
-    .l1_dcache_tag_intf_rsp_i    (smc_l1_dcache_tag_rsp),
-    .l1_dcache_data_intf_req_o   (smc_l1_dcache_data_req),
-    .l1_dcache_data_intf_rsp_i   (smc_l1_dcache_data_rsp),
-    .disable_sram_auto_init_i    (1'b0),
-    .init_mem_done_o,
+    .smc_rom_intf_req_o          (smc_rom_req),
+    .smc_rom_intf_rsp_i          (smc_rom_rsp),
+    .smc_scratch_ram_intf_req_o  (smc_scratch_ram_req),
+    .smc_scratch_ram_intf_rsp_i  (smc_scratch_ram_rsp),
+    .smc_l1_icache_tag_intf_req_o (smc_l1_icache_tag_req),
+    .smc_l1_icache_tag_intf_rsp_i (smc_l1_icache_tag_rsp),
+    .smc_l1_icache_data_intf_req_o (smc_l1_icache_data_req),
+    .smc_l1_icache_data_intf_rsp_i (smc_l1_icache_data_rsp),
+    .smc_l1_dcache_tag_intf_req_o (smc_l1_dcache_tag_req),
+    .smc_l1_dcache_tag_intf_rsp_i (smc_l1_dcache_tag_rsp),
+    .smc_l1_dcache_data_intf_req_o (smc_l1_dcache_data_req),
+    .smc_l1_dcache_data_intf_rsp_i (smc_l1_dcache_data_rsp),
+    .smc_disable_sram_auto_init_i (1'b0),
+    .smc_init_mem_done_o,
     .chiplet_is_primary_i        (1'b1),
     .timer_count_o               (tb_timer_count),
     .trace_mem_req_o             (trc_req),
@@ -511,11 +508,10 @@ module smu_uvm_top
     .sep_km_rom_mem_rsp_i        ('0),
     .sep_km_sram_mem_req_o       (),
     .sep_km_sram_mem_rsp_i       ('0),
-    .spi_irq_i                   (1'b0),
     .sep_external_req_o     (),
     .sep_external_resp_i    ('0),
     .sep_cpu_trace_o             (),
-    .sep_extintsrc_req_i         ('0),
+    .sep_ext_interrupts_i        ('0),
     .lcc_demote_state_1_o        (lcc_demote_state_1_o),
     .lcc_demote_state_2_o        (lcc_demote_state_2_o),
     .sep_fuse_dft_disable_o      (),
@@ -567,8 +563,8 @@ module smu_uvm_top
   // Functional coverage (cov/sv/): shared by both tb shapes. The modules
   // carry cover-property points, which land in the `user` metric family
   // under --coverage-user, plus commercial-only covergroups internally.
-  // Every port below is a smu_tb_signal_list.svh signal, so no
-  // hierarchical reference and no public-scope change is needed.
+  // Every port below is a smu_tb_signal_list.svh signal; the modules read
+  // no DUT hierarchy.
   // ------------------------------------------------------------------
   smu_boot_fcov u_smu_boot_fcov (
     .clk_ref_i                   (clk_ref_i),
@@ -580,9 +576,9 @@ module smu_uvm_top
     .rst_primary_ref_clk_ni      (rst_primary_ref_clk_no),
     .rst_primary_smc_clk_ni      (rst_primary_smc_clk_no),
     .rst_primary_periph_clk_ni   (rst_primary_periph_clk_no),
-    .init_mem_done_i             (init_mem_done_o),
-    .fuse_sense_done_i           (fuse_sense_done_o),
-    .fuse_reset_n_delayed_i      (fuse_reset_n_delayed_o),
+    .init_mem_done_i             (smc_init_mem_done_o),
+    .fuse_sense_done_i           (smc_fuse_sense_done_o),
+    .fuse_reset_n_delayed_i      (smc_fuse_reset_n_delayed_o),
     .jtag_boot_stall_ovrd_i      (jtag_boot_stall_ovrd),
     .jtag_boot_stall_i           (jtag_boot_stall),
     .gpio_boot_stall_drive_i     (gpio_boot_stall_drive_i),
@@ -620,7 +616,7 @@ module smu_uvm_top
 
 `ifdef UVM
   // ------------------------------------------------------------------
-  // SV-UVM harness (`--dut smu --framework uvm`): clocks, the shared JTAG
+  // SV-UVM harness (`--dut smu_block --framework uvm`): clocks, the shared JTAG
   // VIP interface on the primary TAP pins, the SMU-local TB interface, the
   // embedded DTP's TB interface (so the DTP bench's reference models and
   // checkers attach unchanged), the JTAG protocol SVA, quiescent tie-offs
@@ -657,8 +653,8 @@ module smu_uvm_top
   assign u_tb_if.rst_primary_ref_clk_n     = rst_primary_ref_clk_no;
   assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
   assign u_tb_if.rst_primary_periph_clk_n  = rst_primary_periph_clk_no;
-  assign u_tb_if.fuse_sense_done           = fuse_sense_done_o;
-  assign u_tb_if.fuse_reset_n_delayed      = fuse_reset_n_delayed_o;
+  assign u_tb_if.fuse_sense_done           = smc_fuse_sense_done_o;
+  assign u_tb_if.fuse_reset_n_delayed      = smc_fuse_reset_n_delayed_o;
   assign u_tb_if.lc_state                  = lc_state_o;
 
   // Cold-reset assertion counter (reference models re-baseline on it).

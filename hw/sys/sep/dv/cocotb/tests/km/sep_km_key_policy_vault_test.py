@@ -12,7 +12,7 @@ region and seal/free slot pair through the mailbox; the ROM walks slot
 the selected SRAM region and W1C-clears the violation / IRQ, then runs
 the seal contrast: the same erase retires a sealed slot and frees an
 unsealed one.
-Result flags in KM SRAM word0 (the signed-off ``km_sram_word0_o`` probe).
+Result flags in KM SRAM word0 (the ``km_sram_word0_o`` probe).
 """
 
 from __future__ import annotations

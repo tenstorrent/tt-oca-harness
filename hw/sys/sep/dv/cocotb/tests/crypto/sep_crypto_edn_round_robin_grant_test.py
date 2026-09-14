@@ -16,8 +16,8 @@ on that bring-up. Two crypto sinks are live (AES + OTBN URND), so CHK5 is
 dual-sink ROUTING: each post-adapter beat equals the AXIS1 word the adapter
 granted that cycle.
 
-Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (signed-off
-observation ports).
+Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
+ports).
 """
 
 from __future__ import annotations

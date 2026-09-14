@@ -623,6 +623,7 @@ module efuse_interface_controller #(
 
   efuse_read_interface #(
     .efuse_addr_t(efuse_addr_t),
+    .efuse_word_counter_t(efuse_word_counter_t),
     .fuse_command_req_t(fuse_command_req_t),
     .fuse_command_resp_t(fuse_command_resp_t),
     .efuse_data_t(efuse_data_t)

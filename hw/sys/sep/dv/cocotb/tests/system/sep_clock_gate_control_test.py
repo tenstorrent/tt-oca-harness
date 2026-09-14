@@ -79,10 +79,8 @@ class sep_clock_gate_control_test(sep_base_test):
         )
 
         # The claim is that pka_cg_enable gates nothing, so each witness must
-        # read the SAME value with the bit set and clear. Reading it once per
-        # cell and logging the value asserts nothing: a witness that did change
-        # with the enable would still print PASS. Keep the first read per
-        # witness and compare the second against it.
+        # read the SAME value with the bit set and clear: the second read of a
+        # witness is compared against its first.
         seen: dict[str, int] = {}
         for enable, name, addr in cfg.cells():
             await gate.write_enable(enable)

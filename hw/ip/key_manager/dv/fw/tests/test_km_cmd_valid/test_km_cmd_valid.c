@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_cmd_valid.c
- * @brief T037 - Valid command transport test
+ * @brief Valid command transport test
  *
  * Sends CMD_HW_VER (command ID 0x00, no payload) via the SEP mailbox,
  * verifies that RESP_CMD is received with correct seq_num echo, cmd_id

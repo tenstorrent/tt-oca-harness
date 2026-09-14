@@ -3,15 +3,8 @@
 """The chiplet fuse holds the WRONG digest -> both slots refused, terminally.
 
 **THIS TESTCASE CLOSES THE DIGEST-SOURCE CLASS THAT
-``rom_fw/sep_chiplet_pubkey_base.py`` DISCLOSES AND LEAVES OPEN**, and it does so
-without a second private key. It is
-``batch_runs_0904_rtl/FINDINGS.md`` **R07** implemented.
-
-**IT HAS NO TRACKER ROW AND NO STATUS IS CLAIMED FOR IT.** It is not one of batch
-R4's six assigned items; it is the remedy R07 assigns to R4 or to a follow-up.
-The Coordinator owns ``testcase_tracker.csv`` and this batch does not write there,
-so the testcase exists, runs and is reported in the run journal, and its result
-appears in no status CSV row.
+``rom_fw/sep_chiplet_pubkey_base.py`` DISCLOSES**, and it does so without a second
+private key.
 
 ============================================================================
 THE GAP, AND WHY IT DOES NOT NEED A SECOND SIGNING KEY
@@ -30,9 +23,8 @@ of the fuse it had just read would boot in
 ``sep_firmware_chiplet_pubkey_0_revoke_test``, exactly as expected, and nothing
 in that family could see it.
 
-Batch R3 judged that closing this needed a second committed private KEY. It does
-not. It needs the FUSE to differ from ``public_key_digests[0]``, plus a NEGATIVE
-assertion:
+Closing this needs no second committed private KEY. It needs the FUSE to differ
+from ``public_key_digests[0]``, plus a NEGATIVE assertion:
 
   * **correct ROM:** ``read_fuse_key`` returns the decoy, ``check_pubkey_hash``
     fails on it (``manifest_crypto.c``), both slots are refused,
@@ -45,10 +37,10 @@ HOLDS THE REAL DIGEST.** ``sep_efuse_lc_prod_chiplet_key0_wrong_digest.toml``
 puts the decoy in ``CHIPLET_PUBK_HASH0`` -- the fuse ``PUBK_SEL_FUSE_KEY_0``
 selects -- and leaves the REAL dev0 digest in ``CHIPLET_PUBK_HASH1``. A ROM that
 read the wrong chiplet fuse would therefore find a digest that matches, verify,
-and boot, so this testcase fails on that defect too. An earlier draft used two
-different decoys and was corrected: two decoys catch only the compiled-in-table
-class, and leaving the real digest in the unselected fuse is strictly more
-sensitive. The cost is attribution, not detection -- a failure here does not by
+and boot, so this testcase fails on that defect too. Two different decoys would
+catch only the compiled-in-table class; leaving the real digest in the unselected
+fuse is strictly more sensitive. The cost is attribution, not detection -- a
+failure here does not by
 itself say which wrong source was used, and the sibling
 ``sep_firmware_chiplet_pubkey_0_test`` (HASH0 real, HASH1 decoy) is what
 separates them.
@@ -57,20 +49,18 @@ Those three fuse values are byte-identical to
 ``sep_efuse_lc_prod_chiplet_key1.toml``'s, which makes this testcase and
 ``sep_firmware_chiplet_pubkey_1_test`` a MATCHED PAIR on the FUSE side: one fuse
 image, two manifests differing only in ``public_key_sel``, opposite verdicts.
-That is the mirror of the matched-pair-on-one-image shape batches R1 and R2 used.
+That mirrors the matched-pair-on-one-image shape of the ROM-slot families.
 
-**WHAT IT DOES NOT CATCH, stated because R07 overstates this and the
-overstatement was inherited.** R07 cites ``manifest_crypto.c`` -- which
-records that the fuse-key digest addresses were once derived as
-``CHIPLET_PUBK_REVOKE + 0x100/0x120`` instead of ``+0x110/0x130`` -- as "exactly
-the shape a digest-source test discriminates". It is not. That base lands
-``0x10`` BELOW ``CHIPLET_PUBK_HASH0``, so ``read_fuse_key`` returns four
-unrelated non-zero words followed by HASH0's first four: a digest that matches
+**WHAT IT DOES NOT CATCH.** A ROM deriving the fuse-key digest addresses as
+``CHIPLET_PUBK_REVOKE + 0x100/0x120`` instead of ``+0x110/0x130`` (the derivation
+``manifest_crypto.c`` warns against) is not discriminated by a digest-source test.
+That base lands ``0x10`` BELOW ``CHIPLET_PUBK_HASH0``, so ``read_fuse_key`` returns
+four unrelated non-zero words followed by HASH0's first four: a digest that matches
 nothing, producing ``PUBK_HASH_MISMATCH`` and ``0x00030016`` -- the outcome this
-testcase REQUIRES. **A revival of that specific historical bug would pass here.**
-The class this testcase closes is "the ROM compared against the wrong SOURCE",
-not "the ROM read a malformed address"; the second is covered by the positive
-members, which would fail on it.
+testcase REQUIRES. **A ROM with that derivation passes here.** The class this
+testcase closes is "the ROM compared against the wrong SOURCE", not "the ROM read a
+malformed address"; the second is covered by the positive members, which would fail
+on it.
 
 ============================================================================
 WHAT MAKES THE REJECTION ATTRIBUTABLE
@@ -81,7 +71,7 @@ Both slots select ``PUBK_SEL_FUSE_KEY_0`` and are re-signed with dev0 by
 that the positive member ``sep_firmware_chiplet_pubkey_0_test`` makes**, so the
 flash images of the two testcases are byte-identical and the ONLY difference
 between "boots" and "refused" is the two fuse words. That is the matched-pair
-shape batches R1 and R2 established, applied to the digest instead of to a
+shape the ROM-slot families use, applied to the digest instead of to a
 revocation bit.
 
 Revocation must not be what refuses this image, or the digest comparison is never
@@ -139,7 +129,7 @@ _CHIPLET_KEY = 0
 _PUBK_SEL_VALUE = (mm.PUBK_SEL_FUSE_KEY_0 & 0x7) << 4
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"  # manifest_crypto.c
 # Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl:727) are
-# deliberately clear -- see the docstring.
+# clear -- see the docstring.
 _REVOKE_BITMAP = 1 << 0
 _REVOKE_ECHO = f"PUBK_REVOKE=0x{_REVOKE_BITMAP:08x}"  # manifest_crypto.c
 _HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c

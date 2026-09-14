@@ -133,7 +133,6 @@ module tb_scrambler_512x32;
     $display("\n--- Read Phase ---");
 
     for (i = 0; i < MEM_DEPTH; i = i + 1) begin
-      // Set address and wait for memory read
       logical_addr = i[ADDR_WIDTH-1:0];
       @(posedge clk);
       #1;
@@ -187,7 +186,7 @@ module tb_scrambler_512x32;
     j = 0;
     for (i = MEM_DEPTH - 1; i >= 0; i = i - 1) begin
       logical_addr = i[ADDR_WIDTH-1:0];
-      write_data = j;  // Data increments from 0 to 511
+      write_data = j;
       expected_data[i] = write_data;
 
       #1;

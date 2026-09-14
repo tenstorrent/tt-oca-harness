@@ -13,9 +13,8 @@ Public interface:
 * :func:`await_gpio_irq_level` -- the bounded assert-and-hold poll the three-leg
   proof is built from, published for callers that need the pad left *held* while
   they sample something else inside the asserted window (the IRQ positive
-  control in ``smc_5agent_observability_test_seq``). Published so that poll is a
-  supported seam rather than a leading-underscore name two modules depend on
-  (`[REUSE-AND-LAYERING]`); the caller owns pad drive and release.
+  control in ``smc_5agent_observability_test_seq``); the caller owns pad drive
+  and release (`[REUSE-AND-LAYERING]`).
 """
 
 from __future__ import annotations

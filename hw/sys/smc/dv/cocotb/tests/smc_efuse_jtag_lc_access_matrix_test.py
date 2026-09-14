@@ -165,6 +165,16 @@ _LC_PROBE_VARS = ("lc_state_smc_raw", "lc_sigint_err", "is_prod_or_rma_sip")
 class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
     """Drive lc_state_i + JTAG eFuse accesses; assert the block/allow matrix."""
 
+    required_evidence = (
+        "CHK-EFUSE-JTAG-LC-PROD",
+        "CHK-EFUSE-JTAG-LC-PROD_END",
+        "CHK-EFUSE-JTAG-LC-RMA_CHIPLET",
+        "CHK-EFUSE-JTAG-LC-RMA_SOP",
+        "CHK-EFUSE-JTAG-LC-SIGINT",
+        "CHK-EFUSE-JTAG-LC-TEST_DEV",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -431,11 +441,11 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
             )
         elif expect_block and rdata != BLOCK_SIGNATURE:
-            # architecture.adoc:297-299. Note this compare cannot discriminate
-            # on the current bench (every access returns the signature); it is
-            # retained because it is the SPEC'd blocked-read data and would fire
-            # if the error slave's RESP_DATA override were ever changed. It is
-            # NOT presented as a verified property in `details=`.
+            # architecture.adoc:297-299. This compare cannot discriminate on
+            # this bench (every access returns the signature); it holds the
+            # SPEC'd blocked-read data and fires if the error slave's RESP_DATA
+            # override changes. It is NOT presented as a verified property in
+            # `details=`.
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} blocked but data "
                 f"0x{rdata:08x} != SPEC err-slv signature "

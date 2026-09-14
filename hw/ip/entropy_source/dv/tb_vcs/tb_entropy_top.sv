@@ -74,7 +74,7 @@ module tb_entropy_top;
   // Decorrelator Reference Model (Golden Data Generator)
   // NOTE: This is a simulation-only model for generating golden entropy data.
   //       It is NOT the actual RTL design.
-  // Synchronized with RTL clock dividers (uses lane 0, verified all lanes match)
+  // Synchronized with RTL clock dividers (lane 0; gen_clk_divider_check warns on divergence)
   // Sampling timing determined entirely by probing RTL divider, no fixed period parameter
   Serial_Decorrelator_RefModel #(
     .N(N_RO),
@@ -87,7 +87,7 @@ module tb_entropy_top;
     .mode_i(decor_cfg.mode),  // Configurable from Python via decor_cfg interface
     .shift_dir_i(decor_cfg.shift_dir),  // Shift direction from config interface
     .bypass_mask_i(decor_cfg.bypass_mask),  // Per-lane bypass control for mixed modes
-    .rtl_clk_divider_i(rtl_clk_dividers[0]),  // Use lane 0 (all lanes verified to match)
+    .rtl_clk_divider_i(rtl_clk_dividers[0]),  // Lane 0; gen_clk_divider_check warns on divergence
     .sample_vld_o(entropy_bytes_vld),
     .bytes_o(entropy_bytes)
   );
@@ -190,8 +190,8 @@ module tb_entropy_top;
   // RTL Clock Divider Probes (for synchronization and debug)
   // ============================================================================
   // Note: debug_clk_divider[12] is declared and assigned in debug_signals.svh above
-  // We create rtl_clk_dividers as an alias for use in decorrelator reference model
-  // (line 71) and verification checks below.
+  // rtl_clk_dividers aliases it for the decorrelator reference model and the
+  // verification checks below.
 
   generate
     for (gi = 0; gi < N_RO; gi++) begin : gen_clk_divider_alias

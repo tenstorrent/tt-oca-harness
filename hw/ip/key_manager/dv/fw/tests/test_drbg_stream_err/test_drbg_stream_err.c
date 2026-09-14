@@ -6,9 +6,6 @@
  * @file test_drbg_stream_err.c
  * @brief DRBG Sampler AXI-Stream protocol-violation (STREAM_ERR) test
  *
- * This test exposes the stub at km_drbg_sampler.sv line 345:
- *   assign stream_err_pulse = 1'b0;  // Can be extended if DRBG protocol defines error
- *
  * When the DRBG source asserts TVALID and then deasserts it before TREADY (an
  * AXI-Stream protocol violation), the sampler MUST:
  *   1. Set STATUS.STREAM_ERR (W1C sticky bit, bit 3)
@@ -18,16 +15,8 @@
  * Subtests:
  *   1. Out-of-band glitch (no active CPU DATA read): verifies the above three
  *      effects and W1C clear of STREAM_ERR.
- *   2. Glitch during active DATA read: verifies the sampler responds with SLVERR
- *      (via data_read_rresp=2'b10) and that COUNT_BAD increments again.
- *   3. IRQ disabled: glitch fires, STREAM_ERR and DRBG_ERR set, but km_irq_o
- *      should NOT pulse (verified via KMCSR IRQ_ENABLE mask, not directly
- *      observable from firmware -- we check DRBG_ERR is set and km_irq_o is
- *      not checked here as it's a TB-level signal; just verify status bits).
- *
- * Pre-fix (stream_err_pulse = 1'b0): subtests 1 and 2 will fail at the
- * STREAM_ERR / COUNT_BAD / DRBG_ERR checks.
- * Post-fix: all subtests pass.
+ *   2. IRQ disabled: glitch fires, STREAM_ERR and DRBG_ERR are set; km_irq_o
+ *      is a testbench-level signal and is not checked here.
  *
  * Run with:
  *   make run_fw FW_TEST=test_drbg_stream_err
@@ -138,10 +127,9 @@ int main(void) {
     /* Allow the hwset signal and IRQ pulse to propagate through km_csr registers */
     test_delay(SETTLE_CYCLES);
 
-    /* -- STREAM_ERR must be set (this check FAILS on pre-fix RTL) -- */
+    /* STREAM_ERR must be set */
     if (DRBG_STATUS_REG.f.stream_err == 0u) {
-        TEST_FAIL("STATUS.STREAM_ERR not set after TVALID drop before TREADY "
-                  "(stream_err_pulse is hardwired 0 in current RTL)");
+        TEST_FAIL("STATUS.STREAM_ERR not set after TVALID drop before TREADY");
     }
 
     /* COUNT_BAD must have incremented */

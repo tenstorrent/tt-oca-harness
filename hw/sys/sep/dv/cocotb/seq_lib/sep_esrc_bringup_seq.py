@@ -37,10 +37,10 @@ from sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, SEP_CPU_CTRL, SEP_RESET_CTR
 # clocked. The write below is CSR write-path coverage only; it releases nothing.
 #
 # It writes the register's RESET value, NOT `mask32()`. `mask32()` is the union of
-# implemented field bits, i.e. "set every field to all-ones" -- inert today (0x1
-# into a placeholder) but it tracks the RDL, so the day this placeholder gains real
-# clock-gate enables this bring-up write would silently assert every one of them.
-# The reset value stays inert by construction no matter how the register grows.
+# implemented field bits, i.e. "set every field to all-ones" -- inert against a
+# placeholder (0x1) but tracking the RDL, so real clock-gate enables added there
+# would be silently asserted by this bring-up write. The reset value stays inert
+# by construction no matter how the register grows.
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_CTRL_RESET = SEP_CPU_CTRL.reset("CLOCK_GATE_CTRL")
 EXT_TRNG_SRC_SEL = SEP_CPU_CTRL.addr("EXT_TRNG_SRC_SEL")
@@ -127,11 +127,11 @@ DECOR_CTRL_DEFAULT = DECOR_CTRL_DIV64
 # rep/apt/markov enabled; repetition limit 50 (reset is 25).
 HEALTH_CTRL_DEFAULT = ENTROPY_SOURCE.value("HEALTH_TEST_CTRL", ENABLE=0x7, REPETITION_LIMIT=50)
 
-# HEALTH_TEST_WINDOW_SIZE is deliberately LEFT AT ITS 2048-SAMPLE RESET.
+# HEALTH_TEST_WINDOW_SIZE is LEFT AT ITS 2048-SAMPLE RESET.
 #
 # Do not "speed up" the bring-up by shrinking it. The APT and Markov thresholds are
-# SP 800-90B values sized for a full window, so a short window (a 0x40 window was
-# tried) fails them by construction. entropy_source gates the whole stream on
+# SP 800-90B values sized for a full window, so a short window (0x40, for example)
+# fails them by construction. entropy_source gates the whole stream on
 # entropy_src_main_sm's boot_phase_done, ALERT_THRESHOLD resets to 4, and four
 # failing windows park the FSM permanently in AlertHang -- after which the
 # decorrelator keeps sampling but the SHA whitener never accepts a word and no seed
@@ -156,9 +156,9 @@ class SepEntropyCfg:
 
     ONE object derives BOTH the DUT register writes (via SepEsrcConfigSeq) AND the
     golden-model configuration (via golden_kwargs() for SepEntropyGolden) -- never
-    two hand-kept copies. This closes the latent trap where the sequence default
-    (DECORRELATOR_CTRL /64) and the golden default (sample_clk_div=7 => /8)
-    disagreed unless a test happened to override both consistently.
+    two hand-kept copies, which can disagree (a sequence default of
+    DECORRELATOR_CTRL /64 against a golden default of sample_clk_div=7 => /8)
+    unless every test overrides both consistently.
 
     Defaults = the fast alive-smoke policy (/8 raw sampling, small health window,
     SHA-256 whitening on, internal DRBG). The conditioning math is identical to
@@ -171,19 +171,18 @@ class SepEntropyCfg:
     sha_whitening: bool = True  # ESRC_CTRL.SHA256_WHITENING_ENABLE
     glen: int = 32  # EDN/CSRNG Generate length (128b genbits blocks)
     # EDN_CTRL_AUTO also sets BOOT_REQ. The boot Generate uses BOOT_GEN_CMD, which
-    # resets to glen=4095 (0xfff003), not GENERATE_CMD. Leave False so existing
-    # tests keep one open command for the whole run; set True when the test needs
-    # completed Generates (the segmentation contract).
+    # resets to glen=4095 (0xfff003), not GENERATE_CMD. False leaves one open
+    # command for the whole run; True is for a test that needs completed
+    # Generates (the segmentation contract).
     program_boot_generate: bool = False
     reseed_interval: int = 8  # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
     # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
     # before the CSRNG seed packer starts. ZERO for this DRBG -- drbg.sv wires the
     # packer straight to the stream (`.csrng_word_valid_i (entropy_stream_vld_i)`,
     # drbg.sv:150) with no distribution FIFO in between, so nothing is absorbed and
-    # the golden must not skip. The old default of 12 modelled a distribution FIFO
-    # that this repository's drbg.sv does not instantiate, which shifted the golden
-    # by 12 words and mismatched CHK3_seed (and hence CHK4/CHK5) while CHK1/CHK2
-    # still matched exactly.
+    # the golden must not skip. A skip of 12 would model a distribution FIFO that
+    # this repository's drbg.sv does not instantiate and shift the golden by 12
+    # words: CHK3_seed (and so CHK4/CHK5) mismatch while CHK1/CHK2 match exactly.
     ingress_skip: int = 0
     internal_drbg: bool = True  # EXT_TRNG_SRC_SEL = 0 (internal) vs 0x7 (ext_trng)
     health_ctrl: int = HEALTH_CTRL_DEFAULT
@@ -213,9 +212,9 @@ class SepEntropyCfg:
 
         Assembling this from named fields (rather than a literal) is what keeps
         ``MODULE_ENABLE`` — which RESETS TO 1 — set. A hand-built
-        "just the whitening bit" value (0x1000_0000) silently cleared it, which
-        disables the whole entropy source: the decorrelator keeps sampling but the
-        SHA whitener never accepts a word, so no seed ever reaches CSRNG.
+        "just the whitening bit" value (0x1000_0000) clears it, which disables the
+        whole entropy source: the decorrelator keeps sampling but the SHA whitener
+        never accepts a word, so no seed ever reaches CSRNG.
         """
         return ENTROPY_SOURCE.value("CTRL", SHA256_WHITENING_ENABLE=1 if self.sha_whitening else 0)
 

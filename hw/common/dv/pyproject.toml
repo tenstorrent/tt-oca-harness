@@ -16,8 +16,7 @@ dependencies = [
   "cocotb>=2.0.0,<2.1",
   "pyuvm>=4.0.0,<5",
   # Open-source protocol backends used by the OSS testbenches (e.g. DTP):
-  # cocotbext-jtag (MIT license per package metadata) behind ocah_jtag_vip and
-  # cocotbext-axi behind ocah_axi_vip.
+  # cocotbext-jtag behind ocah_jtag_vip and cocotbext-axi behind ocah_axi_vip.
   "cocotbext-axi>=0.1.24,<0.2",
   "cocotbext-jtag>=0.4.0,<0.5",
   # No cocotbext-i2c: the SMC I2C/SMBus/PMBus protocol VIP (SmcI2cMasterVip /
@@ -27,7 +26,7 @@ dependencies = [
   # No cocotbext-uart: the UART backend (line driver and sampler behind
   # OcahUartConsole / OcahUartMonitor) is implemented natively in
   # hw/common/dv/vip/ocah_uart_vip; the PyPI releases predate cocotb 2.0
-  # (SimHandleBase._path) and their license metadata is not machine-verifiable.
+  # (SimHandleBase._path).
 ]
 
 [tool.setuptools.packages.find]

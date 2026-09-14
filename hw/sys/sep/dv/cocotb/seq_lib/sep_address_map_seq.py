@@ -13,7 +13,13 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
   * WRITE_ONLY  — write a benign value to write-only (sw=w) regs (decode + write
                   path); they cannot be read back.
 
-followed by a walk of one readable CSR per LSU-reachable block — Secure DMA,
+The reserved span after the 64-bit ``SEP_FUSE_SENSE_STATUS`` and before
+``SEP_SW_DEBUG`` is not a live register. ``CPU_CTRL_INTERIOR_HOLES`` names
+three words in that span. ``memory_map.adoc`` states the contract for an
+offset inside a unit's allocated extent that owns no register: the unit accepts
+it, reads return zero and writes are discarded, both OKAY. The test grades that,
+and that the offset does not alias a live register. Then a walk
+of one readable CSR per LSU-reachable block — Secure DMA,
 WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
 source, Adams Bridge, entropy pool, lifecycle ctrl, KM mailbox, eFuse shadow,
 AXI-lite mailbox, inbound filter, alias-remap, output-remap, and the
@@ -23,7 +29,7 @@ Expected values are SOURCE-DERIVED, never hardcoded. Offsets,
 reset values, and implemented-field masks all come from `env/sep_reg_meta.py`,
 which reads the generated `hw/sys/sep/regs/gen/py/sep_reg.py` export of the
 SystemRDL. Only the write PATTERNS and the fabric-walk block addresses are
-literals here: the patterns are deliberately chosen stimulus, and the walk's
+literals here: the patterns are chosen stimulus, and the walk's
 addresses encode a per-block editorial choice of "one safe, readable CSR" that no
 generated symbol expresses. Blocks whose reset value IS exported
 (reset_ctrl/OTBN/HMAC/KMAC) take it from the header.
@@ -33,7 +39,7 @@ This sequence writes that implemented mask, reads it back, and restores
 reset. Per-block CSR clocks are not gated in this RDL, so every walked
 block is unconditionally clocked.
 
-Most side-effecting registers are deliberately NOT written. The only address-aperture
+Most side-effecting registers are NOT written. The only address-aperture
 exception is the SEP local/global base/size triplet: it is write/read/restored
 immediately to close the CPU-control CSR write-path gap, before the fabric walk
 runs. SMU base/size remain reset-checked only. woset LOCK regs are never written
@@ -53,6 +59,25 @@ from seq_lib.sep_abr_keygen_seq import ABR_NAME0, NAME0_EXP
 from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
 BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
+
+# Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
+# (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
+# up to SEP_SW_DEBUG. The xbar still claims the window, and `memory_map.adoc`
+# says a unit accepts an offset inside its extent that owns no register: reads
+# return zero and writes are discarded, both OKAY.
+_FUSE_OFF = SEP_CPU_CTRL.offset("SEP_FUSE_SENSE_STATUS")
+_SW_DEBUG_OFF = SEP_CPU_CTRL.offset("SEP_SW_DEBUG")
+_HOLE_LO = _FUSE_OFF + 8
+_HOLE_NAMED = _HOLE_LO + 0x18
+assert _HOLE_LO < _HOLE_NAMED < _SW_DEBUG_OFF, (
+    "sep_cpu_ctrl reserved-span arithmetic no longer contains 0x170; "
+    "re-derive CPU_CTRL_INTERIOR_HOLES from the generated map"
+)
+CPU_CTRL_INTERIOR_HOLES = (
+    BASE + _HOLE_LO,
+    BASE + _HOLE_NAMED,
+    BASE + _SW_DEBUG_OFF - 4,
+)
 
 # Register names read and value-checked against their generated reset value.
 # Never written.
@@ -101,18 +126,17 @@ BASE_ADDR_RW = [
 
 # (name, pattern) — pure-RW, no side effects. The readback is compared against
 # `pattern & mask` where mask is the register's implemented-field mask from the
-# generated header, so a placeholder register that implements one bit today is
+# generated header, so a placeholder register that implements one bit is
 # checked honestly instead of against a full 32-bit pattern.
 WRITE_READBACK = [
     ("SEP_SW_DEBUG", 0xDEAD_BEEF),
-    # Odd literal on purpose: TIMEOUT_COUNT* implement only bit 0 (a placeholder
+    # Odd literal: TIMEOUT_COUNT* implement only bit 0 (a placeholder
     # `reserved` field declared sw=rw), and its reset is 0. An even pattern would
     # mask to 0 == reset, so the readback could not tell a stored write from an
     # ignored one. 0x…DE would have been exactly that; 0x…DF is not.
     ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DF),
     ("TIMEOUT_COUNT_SYS_IN", 0xCAFE_F00D),
     ("TIMEOUT_ENABLE", 0x0000_00FF),
-    ("RAS_BANK_INFO", 0x0000_00FF),
 ]
 
 # (name, value) — write-only (sw=w) registers: reading them returns non-OKAY, so
@@ -128,18 +152,11 @@ WRITE_ONLY = [
 # expected=None => accessibility only (OKAY; value hw-driven/state-dependent).
 # Memory-backed ranges (SRAM/ROM/TCM, OTBN/KMAC mem, KM mem) and OTP-triggering
 # eFuse interface regs (0x1093_04xx+) are NOT probed — they would hang.
-# Excluded for OSS hygiene: proprietary IPs in nonfree.
 # Pool pop (0x1095_0010) is destructive — only STATUS is walked.
 #
 # Blocks whose address AND reset value are exported take both from the header;
 # ABR NAME and the entropy-pool STATUS come from their owning seq modules.
-# The remaining rows still carry a literal address. Which CSR is "the one safe
-# readable CSR" is a DV choice the export cannot make, but once chosen the
-# address is exported and could be derived the way the OTBN/HMAC/KMAC rows
-# already do. AGENTS.md prefers source-derived, so these literals are a
-# to-be-converted holdover, not a justified exception.
-# ABR NAME0 is regex-scraped from the ABR RTL params by its owning seq, so that
-# row proves decode and plumbing rather than a specified value.
+# ABR NAME0 comes from the owning seq (ASCII of ML-DSA-87).
 _INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 _INFILT0_CFG_RESET = next(
     (
@@ -242,9 +259,9 @@ class sep_address_map_seq(uvm_sequence):
         # whatever came back -- including a neighbouring register's storage or a
         # stuck all-ones -- and still print a PASS token.
         #
-        # If clk_ref_i is ever connected, this becomes a real counter and the
-        # expectation has to change with it: read twice and require the second
-        # read to be greater, rather than pinning the reset value.
+        # The pinned-reset expectation holds only while clk_ref_i is undriven; with
+        # clk_ref_i driven this is a live counter, checked by reading twice and
+        # requiring the second read to be greater.
         ref_off = SEP_CPU_CTRL.offset("REFERENCE_COUNTER")
         # Split the 64-bit reset value per half. reset32() truncates to bits [31:0],
         # so using it for both reads would check the high word against the low

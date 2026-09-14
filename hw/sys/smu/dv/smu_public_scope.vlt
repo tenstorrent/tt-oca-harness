@@ -7,8 +7,8 @@
 //
 // Pair with [build.verilator].public_scope so cocotb drops global --public-flat-rw.
 // Expose TB top + DUT modules that P1/P2 tests hierarchically probe (observe).
-// Policy 2026-07-29d: no forceable — DUT Force / VPI Force inject deferred
-// (needs_real_lcc / needs_real_stimulus). Keep public_flat_rw for observe XMRs.
+// No forceable signals: tests never DUT-Force or VPI-Force through this scope;
+// public_flat_rw exists for observe XMRs.
 
 public_flat_rw -module "smu_uvm_top" -var "*"
 // The shared AXI VIP interface on the outbound SMN boundary: cocotb binds the
@@ -32,4 +32,3 @@ public_flat_rw -module "smc_efuse_wrapper" -var "*"
 public_flat_rw -module "efuse_interface_controller" -var "*"
 public_flat_rw -module "smc_cpu_wrapper" -var "*"
 public_flat_rw -module "smc_4core_cpu" -var "*"
-public_flat_rw -module "smc_1core_cpu" -var "*"

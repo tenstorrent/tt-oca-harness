@@ -5,7 +5,7 @@
 
 The firmware reports its final outcome by writing one word to cold_scratch[0]:
 ``TEST_PASS_CODE`` or ``TEST_FAIL_CODE``. Those constants and that register are
-the reference firmware's convention (``sep_common.h``); see
+the reference firmware's convention; see
 ``bootrom/prod/include/errors.h`` (``VERDICT_OUT``, ``rom_test_fail``),
 ``bootrom/prod/src/vector.S:663-665``, and
 ``dv/fw/tests/bl1_pass_test/bl1_pass_test.c``.

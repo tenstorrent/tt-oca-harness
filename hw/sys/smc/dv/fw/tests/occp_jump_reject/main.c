@@ -2,12 +2,10 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Master Sanity Test - Simple Write and Readback
+ * OCCP Jump Rejection Test
  *
- * This test performs a basic OCCP write to a known address,
- * then reads back the data and checks for correctness.
- *
- * The goal is to verify basic OCCP communication and memory access.
+ * Issues JUMP commands to random in-range addresses, expects each to be rejected,
+ * and checks the SMC status buffer for JUMP_SECURITY errors.
  */
 
 #include "occp_test_common.h"
@@ -99,7 +97,7 @@ static void run_test_suite(test_context_t *ctx) {
     // Validate that SMC status buffer logged the jump rejection
     validate_smc_status_buffer_for_jump_reject(ctx);
 
-    // Execute 10 random OCCP commands after jump to ensure ROM still responding
+    // Random OCCP commands after the rejected jumps confirm the ROM keeps responding
     simputs("=== Random OCCP Commands Test (10 commands after jump rejection) ===\n");
     execute_random_commands(ctx, 5);
 

@@ -37,12 +37,6 @@ I2C_CG_EN_RESET = 0
 class smc_i2c_cg_sanity_test_seq(smc_base_test_seq):
     """Run the SMC OSS I2C clock-gate sanity scenario."""
 
-    # No retained `self.sample` handle: nothing read it (the test's
-    # `run_scenario` starts this sequence and returns), and an unread sample
-    # handle reads as sequence-side verification that is not there. The three
-    # gates in `body()` are the verification and they use the local `item`
-    # ([NO-DUMMY-DEAD-CODE]).
-
     async def body(self) -> None:
         sb = self.env.scoreboard
         seen_before = sb.i2c_samples_seen

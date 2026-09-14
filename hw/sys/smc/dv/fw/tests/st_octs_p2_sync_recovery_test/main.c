@@ -185,18 +185,16 @@ int main(void) {
     simputs("Phase B: Timeout - Monitoring for timeout condition\n");
     write_scratch(0, 0x03);
 
-    /* Poll for timeout flag for ~200ms (200k cycles)
-     * Timeout should occur at 100us (100k cycles) after SYNC stops
+    /* Poll STATUS over a 2000-poll * 100-cycle window (~200us); the SECONDARY timeout
+     * fires 100k cycles after SYNC stops and is measured on the cocotb side.
      */
     uint32_t timeout_poll_count = 0;
-    uint32_t max_timeout_polls = 2000; /* 2000 * 100ns = 200us */
+    uint32_t max_timeout_polls = 2000;
 
     for (timeout_poll_count = 0; timeout_poll_count < max_timeout_polls; timeout_poll_count++) {
         wait_cycles(100);
 
-        /* In real scenario, would read timeout flag from STATUS register
-         * For now, we just wait and let Cocotb observe the condition
-         */
+        /* The timeout flag is observed on the cocotb side; this loop only logs STATUS. */
         if ((timeout_poll_count % 500) == 0) {
             uint32_t status = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR);
             simputshex32("  Status at poll ", timeout_poll_count);
@@ -223,7 +221,7 @@ int main(void) {
      */
 
     /* Wait for reset to complete and propagate */
-    wait_cycles(10000); /* Increased wait time for reset propagation */
+    wait_cycles(10000); /* reset propagation */
 
     /* After hardware reset, timer registers are reset:
      * - CTRL register resets to default (0x0000020A)

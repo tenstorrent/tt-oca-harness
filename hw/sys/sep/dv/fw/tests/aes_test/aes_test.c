@@ -50,7 +50,7 @@ static const uint32_t test_iv[4] = {0x03020100, // IV bytes 0-3 (little-endian)
 static const uint32_t test_plaintext[3][4] = {
     {0xe2bec16b, 0x969f402e, 0x117e3de9, 0x2a179373}, // Block 0
     {0x578a2dae, 0x9cac031e, 0xac6fb79e, 0x518eaf45}, // Block 1
-    {0x461cc830, 0x11e45ca3, 0x19c1fbe5, 0xef520a1a}  // Block 2 - fixed typo: 0x11e45ca3 not 0x41
+    {0x461cc830, 0x11e45ca3, 0x19c1fbe5, 0xef520a1a}  // Block 2
 };
 
 // 3 blocks of expected ciphertext

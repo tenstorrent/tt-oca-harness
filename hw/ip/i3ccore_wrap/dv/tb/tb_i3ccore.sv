@@ -72,7 +72,7 @@ module tb_i3ccore;
   logic        axi_rready;
 
   //--------------------------------------------------------------------------
-  // I3C bus signals - directly connected (no struct unpacking needed)
+  // I3C bus signals (flat per-instance vectors)
   //--------------------------------------------------------------------------
   logic [NUM_I3C-1:0] scl_i;
   logic [NUM_I3C-1:0] sda_i;
@@ -157,10 +157,9 @@ module tb_i3ccore;
     .NUM_I3C(NUM_I3C),
     .I3C_REG_ADDR_WIDTH(I3C_REG_ADDR_WIDTH),
     .BASE_ADDR(BASE_ADDR),
-    // Instance window must match the per-instance register map (DAT@0x400,
-    // DCT@0x800-0xBFF) and the cocotb API's TGT_BASE=0x1000. The wrapper
-    // default (0x500) is too small, so target accesses (0x1xxx) miss the
-    // decode and fall through to instance 0, clobbering the controller.
+    // Instance window must cover the per-instance register map (DAT@0x400,
+    // DCT@0x800-0xBFF) and match the cocotb API's TGT_BASE=0x1000; the wrapper
+    // default (0x500) is too small for both.
     .INSTANCE_SPACING(32'h1000)
   ) u_dut (
     .clk_i(clk),

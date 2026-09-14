@@ -139,12 +139,12 @@ class smc_cg_test_mode_bypass_test_seq(SmcCsrSeq):
             "Zeroer reg path would gate; with test_en_i reg_clk stays enabled",
         )
         # test_en already 1; confirm both Zeroer clocks continuous while CG
-        # enabled and idle. The otherwise-gating precondition is NOT deferred
-        # to another testcase: `zaxi_off_at` / `zreg_off_at` above are this
-        # run's bounded observation of these same two clocks actually gated
-        # off by the same gater with test_en_i=0, so a gater that never gates
-        # fails there instead of passing here. No settle delay is needed: the
-        # DMA window above already ran IDLE_OBSERVE cycles under test_en_i=1.
+        # enabled and idle. `zaxi_off_at` / `zreg_off_at` above are this run's
+        # bounded observation of these same two clocks gated off by the same
+        # gater with test_en_i=0, so a gater that never gates fails there
+        # instead of passing here. The DMA window above already ran
+        # IDLE_OBSERVE cycles under test_en_i=1, which is the settle these two
+        # samples need.
         zaxi = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_axi_clk", IDLE_OBSERVE)
         zreg = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert zaxi == IDLE_OBSERVE, (

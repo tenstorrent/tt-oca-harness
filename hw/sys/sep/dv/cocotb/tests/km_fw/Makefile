@@ -41,9 +41,8 @@ KM_ROM_BUILT := $(KM_FW_DIR)/build/tests/rom_main/rom_main.rom.parhex
 # Makefile maps PROD_BOOT_WIPE/PROD_UNREC_WIPE onto them, but the shared DV
 # firmware engine has no such mapping -- passing PROD_* here is silently ignored
 # and drivers/rom_boot.c falls back to its `#ifndef` defaults of 1 (wipe ENABLED).
-# A rom_main built that way runs ~24k instructions, performs the production boot
-# wipe and HALTS before posting RESP_KM_READY, which reads exactly like a dead KM
-# (km_rom_req_count stops at a fixed value; the mailbox never produces a word).
+# A rom_main built that way performs the production boot wipe and HALTS before
+# posting RESP_KM_READY.
 #
 # rom_boot.c is a DRIVER, not a test source, so the define must ride
 # FW_EXTRA_CFLAGS (compile.mk applies it to the driver rule);
@@ -64,8 +63,8 @@ ROM_MAIN_WIPE_DEFINES := -DROM_KM_BOOT_WIPE_DEFAULT=0 -DROM_KM_UNREC_WIPE_DEFAUL
 # which are SIBLINGS of build/tests/rom_main -- wiping only the test directory
 # leaves them untouched and they get re-linked verbatim. Wipe the whole build
 # tree instead; it only happens when the defines actually change.
-# Outside $(KM_FW_DIR)/build on purpose: the guard below wipes that whole
-# tree, which would delete the stamp it is about to compare against.
+# The stamp lives outside $(KM_FW_DIR)/build: the guard below wipes that whole
+# tree and would delete a stamp stored there.
 ROM_MAIN_STAMP := $(OUT_DIR)/.km_rom_wipe_defines
 .PHONY: rom_main_stamp
 rom_main_stamp:

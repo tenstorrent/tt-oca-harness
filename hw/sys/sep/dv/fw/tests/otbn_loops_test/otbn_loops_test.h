@@ -10,7 +10,6 @@
  * This test validates OTBN's nested loop functionality by executing:
  * - Outer loop with loopi instruction (4 iterations)
  * - Inner loop with loop instruction (3 iterations each)
- * - Mathematical verification: result = 4×(10+3×1) = 52
  * - Instruction count verification: exactly 28 instructions
  *
  * Test vectors derived from OpenTitan's loops.s test, adapted for OCAH.

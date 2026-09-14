@@ -17,8 +17,8 @@ Three proof obligations shape the body:
   ``expect_gpio_irq_any = 1`` is sampled inside that window
   (`[NEGATIVE-NEEDS-POSITIVE-CONTROL]`).
 * A single SAMPLE gated only on ``item.resolvable`` gives ``CHK-5AGENT-GPIO``
-  no FAIL-ON path, because ``resolvable`` cannot be False under the 2-state
-  simulator every retained run uses. The GPIO leg is therefore a *pair* of
+  no FAIL-ON path, because ``resolvable`` cannot be False on a 2-state
+  simulator (Verilator). The GPIO leg is therefore a *pair* of
   SAMPLEs whose expectation is stated on the **raw pad-bus vectors**
   (``tb_core2pad_o`` / ``tb_core2pad_en_o``), backed in the same run by
   ``ensure_gpio_pad_bus_control``. The three ``tb_gpio_*_any`` aggregates are
@@ -60,14 +60,14 @@ from .smc_probe_positive_control import ensure_gpio_pad_bus_control
 
 # Of the two backable pad-bus vectors, only the output-ENABLE vector is a
 # defensible cross-sample expectation here. `tb_core2pad_o` (the pad *value*
-# bus) carries live LSIO traffic -- UART TX toggles inside the sampling window
-# in some runs (observed: bit 49 flipping between two samples 40 clk_ref_i
-# apart) -- so a "did not move" claim on it is a flaky claim about traffic this
-# scenario does not own. `tb_core2pad_en_o` only changes when a GPIO wrap's
-# direction is programmed, which this scenario does not do after the pad-bus
-# control restores it, so its persistence is a real property. Its liveness
-# credit comes from the same control (exactly one new enable bit appears and is
-# then released), so a stuck / undriven / mis-bound enable vector cannot pass.
+# bus) carries live DUT outputs -- the AVSBus clock on pad 49 can toggle inside
+# the sampling window -- so a "did not move" claim on it is a flaky claim about
+# traffic this scenario does not own. `tb_core2pad_en_o` only changes when a
+# GPIO wrap's direction is programmed, which this scenario does not do after
+# the pad-bus control restores it, so its persistence is a real property. Its
+# liveness credit comes from the same control (exactly one new enable bit
+# appears and is then released), so a stuck / undriven / mis-bound enable
+# vector cannot pass.
 GPIO_STABLE_VECTOR_FIELDS = ("core2pad_en_vec",)
 
 
@@ -221,8 +221,8 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
         # read 1 from reset onward and no frontdoor stimulus can drive them to 0,
         # so they are declared in `env.smc_probe_liveness.UNBACKABLE_PROBES` and
         # `SmcScoreboard._check_gpio` REFUSES a stated `expect_` on them. And
-        # `assert g.resolvable` alone is not a check either: every retained run
-        # is Verilator (2-state), where `value.is_resolvable` cannot be False.
+        # `assert g.resolvable` alone is not a check either: on a 2-state
+        # simulator (Verilator) `value.is_resolvable` cannot be False.
         #
         # `tb_core2pad_o` / `tb_core2pad_en_o` DO move under real frontdoor GPIO
         # CSR programming, which is what makes an expectation on them backable.

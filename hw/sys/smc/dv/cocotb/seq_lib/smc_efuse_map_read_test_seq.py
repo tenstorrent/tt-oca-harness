@@ -30,10 +30,10 @@
 #   All _BIRA_, _CHIPLET_ID_, _PACKAGE_ID_ symbol references below will fail
 #   at import time once smc_addr.h is regenerated.  Replace them with the new
 #   symbols above before re-enabling this test.
-"""P1 coverage-gap: SMC_EFUSE_MAP direct read (TC_SMC_P1CG_04).
+"""SMC_EFUSE_MAP direct read (TC_SMC_P1CG_04).
 
-Existing tests only touch ``CHIP_CONFIG_*`` (mirrored eFuse fields). This test
-reads the structured SMC_EFUSE_MAP window (PeakRDL map) over real SEP_IN AXI.
+``CHIP_CONFIG_*`` mirrors eFuse fields; this test reads the structured
+SMC_EFUSE_MAP window (PeakRDL map) itself over real SEP_IN AXI.
 
 **Proof class: transport.** Every expectation below is the word the bench-wide
 ``+smc_efuse_hex`` preload (``smc_sim_cfg.toml:132-134``) deposited into the
@@ -59,18 +59,14 @@ literal and none is locked to an observed read:
   with data value `0xbadcab1e`" (``architecture.adoc:297-299``), and
   ``lock[0] = 1`` is "read-locked" (``architecture.adoc:198``).
 
-Every row carries an expectation. A "map read" with ``expected=None`` compares
-nothing while still counting toward the stimulus floor, and would let a region
-returning the ``0xBADCAB1E`` blocked signature pass unnoticed
-([NO-ALWAYS-PASS-CHECKER]). ``BIRA`` carries its asset-derived expectation.
-``RESERVED_0`` is not read at all; ``CHIPLET_ID`` is read in its place, because
-its
-blocked outcome *is* derivable from the sources above: the RESERVED region's
-observed block comes from the hardware field-map lock (``rule_t.lock[0]``,
+Every row carries an exact, independently sourced expectation: a "map read"
+with ``expected=None`` compares nothing while counting toward the stimulus
+floor, and would let a region returning the ``0xBADCAB1E`` blocked signature
+pass unnoticed ([NO-ALWAYS-PASS-CHECKER]). ``RESERVED_0`` is not read: its
+block comes from the hardware field-map lock (``rule_t.lock[0]``,
 ``architecture.adoc:179-201``), which is fused into the array rather than
-published in any artifact this testbench can read, so an expectation for it
-could only have been copied off the DUT. All four reads carry an exact,
-independently sourced expectation.
+published in any artifact this testbench can read, so no expectation for it can
+be derived independently of the DUT.
 """
 
 from __future__ import annotations
@@ -101,8 +97,7 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
     fused hardware field map (``architecture.adoc:203-226``), so a set LOCKS bit
     always blocks, while a clear one still leaves the fused lock free to block.
     A region that is clear here and nevertheless answers with the blocked
-    signature therefore FAILS this compare -- correctly, because the retained
-    evidence would otherwise record a fuse value that was never read.
+    signature fails this compare.
     """
     if lock_field is not None and efuse_map_read_locked(lock_field):
         return EFUSE_BLOCKED_READ_DATA
@@ -212,8 +207,8 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
         # cannot see a mis-bound analysis path ([NO-ZERO-ACTIVITY-PASS]).
         self.assert_all_reachable(len(EFUSE_MAP_READS), "EFUSE_MAP_READ")
 
-        # Non-vacuity of the sweep: the four expectations must not all be the
-        # same word, or a window stuck at one value would satisfy every row.
+        # Non-vacuity of the sweep: the expectations must not all be the same
+        # word, or a window stuck at one value would satisfy every row.
         distinct = {exp for _n, _a, exp in EFUSE_MAP_READS}
         assert len(distinct) >= 3, (
             "EFUSE_MAP_READ: the preload asset makes "

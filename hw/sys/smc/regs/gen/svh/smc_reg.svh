@@ -247,7 +247,7 @@ localparam int unsigned SMC_MISC_WRAP_SCRATCH_COLD_WARM_SCRATCH_7__REG_ADDR     
 
 
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_BASE_ADDR                                               = 32'hC0002900;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_SIZE                                                    = 32'h00000014;
+localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_REG_MAP_SIZE                                                    = 32'h00000010;
 
 
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_REG_OFFSET                                           = 32'h00000000;
@@ -258,8 +258,6 @@ localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_OFFSET            
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_REG_ADDR                                                = 32'hC0002908;
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_OFFSET                                             = 32'h0000000C;
 localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR                                               = 32'hC000290C;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_REG_OFFSET                                        = 32'h00000010;
-localparam int unsigned SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_REG_ADDR                                          = 32'hC0002910;
 
 
 //==============================================================================
@@ -7573,7 +7571,6 @@ localparam longint unsigned CHIP_CONFIG_VERSION_LO_REG_DEFAULT                  
 localparam longint unsigned CHIP_CONFIG_VERSION_HI_REG_DEFAULT                                                    = 32'h00000000;
 localparam longint unsigned CHIP_CONFIG_CHIP_ID_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned CHIP_CONFIG_LC_STATE_REG_DEFAULT                                                      = 32'h0000000F;
-localparam longint unsigned CHIP_CONFIG_RAS_BANK_INFO_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned NDM_RESET_NDMRESET_CLUSTER_COUNT_REG_DEFAULT                                          = 32'h00000000;
@@ -7994,12 +7991,6 @@ localparam int unsigned CHIP_CONFIG_CHIP_ID_CHIP_ID_SHIFT                       
 
 localparam int unsigned CHIP_CONFIG_LC_STATE_LC_STATE_MASK                                                        = 32'hFF;
 localparam int unsigned CHIP_CONFIG_LC_STATE_LC_STATE_SHIFT                                                       = 0;
-
-localparam int unsigned CHIP_CONFIG_RAS_BANK_INFO_BANK_CHIP_MASK                                                  = 32'hF;
-localparam int unsigned CHIP_CONFIG_RAS_BANK_INFO_BANK_CHIP_SHIFT                                                 = 0;
-
-localparam int unsigned CHIP_CONFIG_RAS_BANK_INFO_BANK_INSTANCE_MASK                                              = 32'hF0;
-localparam int unsigned CHIP_CONFIG_RAS_BANK_INFO_BANK_INSTANCE_SHIFT                                             = 4;
 
 localparam int unsigned NDM_RESET_NDMRESET_REQUEST_NDMRESET_REQUEST_MASK                                          = 32'hFFFFFFFF;
 localparam int unsigned NDM_RESET_NDMRESET_REQUEST_NDMRESET_REQUEST_SHIFT                                         = 0;
@@ -12161,13 +12152,6 @@ typedef struct packed {
 typedef struct packed {
     logic [7:0]   lc_state ;
 } chip_config_lc_state_reg_t;
-
-
-
-typedef struct packed {
-    logic [3:0]   bank_instance ;
-    logic [3:0]   bank_chip ;
-} chip_config_ras_bank_info_reg_t;
 
 
 

@@ -64,7 +64,6 @@ class sep_rom_non_secure_boot_test(sep_base_test):
 
     # Gate on the ROM/BL1 verdict word in cold_scratch[0] rather than the
     # outbound mailbox. Inherited by every subclass in this directory.
-    # See dv/docs/rom_verdict_scratch0_migration.md.
     verdict_source = "scratch0"
 
     def build_phase(self) -> None:
@@ -90,9 +89,9 @@ class sep_rom_non_secure_boot_test(sep_base_test):
         try:
             # No TCM staging: the ROM runs from Boot ROM (+sep_boot_rom_hex) and
             # pulls BL1 off SPI into ICCM itself, so there is no firmware image for
-            # the tcm_load_i backdoor to place. That backdoor also gave every
-            # ICCM/DCCM row valid ECC; DCCM now gets it from the vector.S scrub and
-            # ICCM from the DMA that loads BL1, within the loaded image only.
+            # the tcm_load_i backdoor to place. Valid ECC comes from the vector.S
+            # scrub for DCCM and from the DMA that loads BL1 for ICCM, within the
+            # loaded image only.
             await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
             await self.poll_boot(
                 self.sb,

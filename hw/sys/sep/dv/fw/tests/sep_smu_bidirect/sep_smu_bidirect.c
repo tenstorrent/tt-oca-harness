@@ -24,12 +24,8 @@
 
 /*
  * SEP->SMC address translation for the sep_ext_to_smc dedicated port (see
- * fw/sep/tests/sep_smc_xbar/sep_smc_xbar.c for the derivation): SMC
- * CPU_CTRL scratch[0] is at SMC-local 0xC0039080, so SEP must target
- * 0x40039080 to reach scratch[0]. The previous 0x40010140 constant assumed
- * scratch lived at 0xC0010140 (wrong address entirely), which caused every
- * scratch_rw_check readback to mismatch and dropped SEP into
- * `smu_bidirect_fail_loop`.
+ * sep_smc_xbar.c for the derivation): SMC CPU_CTRL scratch[0] is at SMC-local
+ * 0xC0039080, so SEP must target 0x40039080 to reach scratch[0].
  */
 #define SMC_XBAR_CPU_CTRL_SCRATCH8_ADDR 0x400390C0u
 #define SMC_XBAR_SCRATCH_STRIDE 0x8u

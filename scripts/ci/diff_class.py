@@ -390,7 +390,7 @@ def self_test() -> None:
     renamed = parse_name_status("R100\0hw/sys/smc/rtl/old.sv\0README.md\0")
     assert renamed == ["hw/sys/smc/rtl/old.sv", "README.md"]
     assert not is_documentation_only(renamed)
-    assert is_documentation_only(["README.md", "doc/contributing/src/index.adoc"])
+    assert is_documentation_only(["README.md", "doc/starting/src/index.adoc"])
     assert not is_documentation_only([])
     assert not is_documentation_only([UNCLASSIFIED])
 
