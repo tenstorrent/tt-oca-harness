@@ -67,7 +67,7 @@ subsystem. The SMU provides chiplet functions such as clock, voltage and reset
 management in addition to Root of Trust (RoT) services in a physically isolated
 environment.
 
-The composed subsystems are the Debug and Test Port (DTP), which provides
+The composed subsystems include the debug and test ports (DTP), which provide
 standardized debug and test access across heterogeneous chiplets; the System
 Management Controller (SMC), responsible for clock, reset, voltage, and power
 management plus platform bootstrap and initialization; and the optional Security
