@@ -742,9 +742,9 @@ class ResolveDutTest(SiteCase):
         self.assertEqual((flow.kind, flow.default_tool, flow.framework), ("fv", "sby", "formal"))
         sim = resolve_dut(REPO_ROOT, "dtp", site=layer)
         self.assertEqual(sim.path.name, "dtp_sim_cfg.toml")
-        with self.assertRaises(ConfigError) as ctx:
-            resolve_dut(REPO_ROOT, "dtp", mode="formal")
-        self.assertIn("formal config not found", str(ctx.exception))
+        # Without the site pointer the DUT's own formal config is the one loaded.
+        own = resolve_dut(REPO_ROOT, "dtp", mode="formal")
+        self.assertEqual(own.path, REPO_ROOT / "hw/sys/dtp/dv/dtp_formal_cfg.toml")
 
     def test_site_entry_for_the_canonical_dut_serves_its_alias(self) -> None:
         cfg = self.formal_cfg("smu")

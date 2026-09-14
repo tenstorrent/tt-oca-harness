@@ -108,9 +108,18 @@ TAP controller's effective reset. A new rule with two-state-safe operands goes o
 `formal/` is the reference implementation of the property style in
 `hw/common/dv/docs/formal-property-style.adoc`: a bound property module on the
 IEEE 1149.1 TAP controller in the boolean subset that the open-source frontend
-and the licensed backends both elaborate, with `bmc` and `cover` tasks run
-against `dtp` as the formal top. That chapter carries the filelist generation
-and the `sby` invocation.
+and the licensed backends both elaborate, with `bmc`, `cover` and `prove` tasks
+run against `dtp` as the formal top. `dtp_formal_cfg.toml` and
+`testlists/formal.toml` launch it through the runner; the plan section is
+"Formal Verification Plan" in `docs/DTP_VPLAN.adoc`.
+
+```bash
+python3 tools/dv/run_dv.py --dut dtp --mode formal            # flist, then sby bmc/cover/prove
+python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run  # the rendered command
+```
+
+That chapter also carries the filelist generation and the `sby` invocation by
+hand.
 
 ## Running
 
