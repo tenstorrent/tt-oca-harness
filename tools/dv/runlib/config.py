@@ -315,6 +315,8 @@ TEST_KEYS = {
     "tags",
     "run_modes",
     "firmware",
+    "expect_fail",
+    "expect_fail_match",
     "args",
     "overrides",
 }
@@ -1934,19 +1936,44 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         where = f"{source}: " if source else ""
         raise ConfigError(f"{where}{name}.target must be a non-empty string")
     where = f"{source}: " if source else ""
+    expect_fail = entry.get("expect_fail")
+    if expect_fail is not None and (not isinstance(expect_fail, str) or not expect_fail.strip()):
+        raise ConfigError(
+            f"{where}{name}.expect_fail must be a non-empty string recording why the leaf "
+            "fails on the current DUT (the defect it reproduces)"
+        )
+    expect_fail_match = entry.get("expect_fail_match")
+    if expect_fail_match is not None:
+        if not isinstance(expect_fail_match, str) or not expect_fail_match.strip():
+            raise ConfigError(f"{where}{name}.expect_fail_match must be a non-empty regex string")
+        if expect_fail is None:
+            raise ConfigError(f"{where}{name}.expect_fail_match requires expect_fail")
+        try:
+            re.compile(expect_fail_match)
+        except re.error as exc:
+            raise ConfigError(
+                f"{where}{name}.expect_fail_match is not a valid regex: {exc}"
+            ) from exc
 
     # `module` is either a bare string (bound to the DUT's default framework) or a per-framework
-    # binding map `{ cocotb = "...", uvm = "..." }`. Resolution against the selected framework
+    # binding map `{ cocotb = "...", uvm = "..." }`. A map value of `false` declares the
+    # framework out of scope for the scenario. Resolution against the selected framework
     # happens at catalog load, where the flow is known.
     raw_module = entry.get("module", name)
     bindings: dict[str, str] = {}
+    excluded: set[str] = set()
     if isinstance(raw_module, dict):
         for fw, value in raw_module.items():
             if not isinstance(fw, str) or not FRAMEWORK_NAME_RE.match(fw):
                 raise ConfigError(f"{where}{name}.module has an invalid framework key `{fw}`")
-            if not isinstance(value, str) or not value:
-                raise ConfigError(f"{where}{name}.module.{fw} must be a non-empty string")
-            bindings[fw] = value
+            if value is False:
+                excluded.add(fw)
+            elif isinstance(value, str) and value:
+                bindings[fw] = value
+            else:
+                raise ConfigError(
+                    f"{where}{name}.module.{fw} must be a non-empty string or `false`"
+                )
         if not bindings:
             raise ConfigError(f"{where}{name}.module must declare at least one framework binding")
         module = ""
@@ -1976,6 +2003,7 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         name=name,
         module=module,
         bindings=bindings,
+        excluded=frozenset(excluded),
         overrides=overrides,
         target=target,
         seed=as_int(entry.get("seed"), f"{name}.seed"),
@@ -1985,6 +2013,8 @@ def _test_from_dict(entry: dict[str, Any], source: Path | None) -> TestEntry:
         run_modes=as_str_list(entry.get("run_modes"), f"{name}.run_modes"),
         args=as_str_list(entry.get("args"), f"{name}.args"),
         firmware=firmware,
+        expect_fail=expect_fail,
+        expect_fail_match=expect_fail_match,
         source=source,
     )
 
@@ -1994,8 +2024,9 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
 
     A bare-string `module` is normalized to a binding for the DUT's default framework; a binding
     map is looked up by the selected framework. A scenario with no binding for the selected
-    framework keeps `module = ""` — the catalog legitimately holds it, and selection fails
-    loudly (or skips under --skip-unimplemented) before it can run.
+    framework keeps `module = ""`; selection decides before it can run: a framework the map
+    declares `false` is skipped from group and tag selections, a framework the map omits is an
+    error unless --skip-unimplemented is given.
     """
     if not flow.framework:
         for test in tests.values():
@@ -2007,7 +2038,11 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
         return
     implemented = set(flow.frameworks)
     for test in tests.values():
-        for label, keys in (("module binding(s)", test.bindings), ("override(s)", test.overrides)):
+        for label, keys in (
+            ("module binding(s)", test.bindings),
+            ("exclusion(s)", test.excluded),
+            ("override(s)", test.overrides),
+        ):
             unknown = sorted(set(keys) - implemented)
             if unknown:
                 raise ConfigError(

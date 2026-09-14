@@ -12,6 +12,11 @@ name = "dtp_tap_fpv"
 module = "fpv"
 tags = ["formal", "smoke", "ci"]
 
+# `smoke` is the fast gate; `fpv` is every formal item of the plan section.
 [[groups]]
 name = "smoke"
+tests = ["dtp_tap_fpv"]
+
+[[groups]]
+name = "fpv"
 tests = ["dtp_tap_fpv"]

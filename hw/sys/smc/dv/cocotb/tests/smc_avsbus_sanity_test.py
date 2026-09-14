@@ -17,6 +17,16 @@ from smc_base_test import smc_base_test
 class smc_avsbus_sanity_test(smc_base_test):
     """Run the AVSBus sideband proxy scenario."""
 
+    required_evidence = (
+        "CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE",
+        "CHK-AVS-INTERRUPT-MASK",
+        "CHK-AVS-INTERRUPT-W1C",
+        "CHK-AVS-READBACK-EMPTY-FIFO-READ",
+        "CHK-AVS-READBACK-POINTER-ADVANCE",
+        "CHK-SIDEBAND-OBSERVABILITY",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

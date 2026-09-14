@@ -24,6 +24,9 @@ CPU_TO_SEP_MIN_CSR_ACCESSES = 9
 class smc_cpu_to_sep_axi_test(smc_base_test):
     """Run the CPU-control to SEP-facing CSR reachability precheck."""
 
+    required_evidence = ("CHK-CPU-BFM-OBSERVABILITY",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

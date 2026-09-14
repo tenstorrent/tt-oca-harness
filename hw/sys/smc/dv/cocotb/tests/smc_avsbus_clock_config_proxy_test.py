@@ -19,6 +19,12 @@ from smc_base_test import smc_base_test
 class smc_avsbus_clock_config_proxy_test(smc_base_test):
     """AVS_CFG answers with AVS_CG_EN cleared and stops answering when set."""
 
+    required_evidence = (
+        "CHK-AVSBUS-CG",
+        "CHK-SIDEBAND-OBSERVABILITY",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

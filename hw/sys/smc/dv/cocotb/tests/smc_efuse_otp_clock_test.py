@@ -25,6 +25,13 @@ EFUSE_OTP_CLOCK_MIN_CSR_ACCESSES = 6
 class smc_efuse_otp_clock_test(smc_base_test):
     """Run the eFuse/OTP and clock-control CSR precheck."""
 
+    required_evidence = (
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-IDLE",
+        "CHK-EFUSE-OTP-CSR",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

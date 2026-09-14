@@ -24,7 +24,9 @@
 // the lint waivers cover the undriven cocotb-owned nets. In the SV-UVM shape
 // (+define+UVM from the native profile's [frameworks.uvm] overlay) the same
 // module holds one ocah_jtag_if that the VIP master and the VIP device drive
-// from opposite sides, publishes it as `jtag_vif`, and calls run_test().
+// from opposite sides, publishes it as `jtag_vif` together with the
+// covergroup sampler ocah_jtag_cov_if (cov/ocah_jtag_cov.sv) as
+// `jtag_cov_vif`, and calls run_test().
 
 `timescale 1ns / 1ps
 
@@ -76,10 +78,16 @@ module ocah_jtag_vip_tb_top;
     .tap_state_i('0)
   );
 
+  ocah_jtag_cov_if u_jtag_cov_if (
+    .tck_i  (u_jtag_if.tck),
+    .trst_ni(u_jtag_if.trst_n)
+  );
+
   `include "ocah_jtag_vip_tests.sv"
 
   initial begin
     uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
+    uvm_config_db#(virtual ocah_jtag_cov_if)::set(null, "*", "jtag_cov_vif", u_jtag_cov_if);
     run_test();
   end
 `endif

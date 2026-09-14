@@ -11,18 +11,22 @@ master.
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import subprocess
 import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
+from cocotb.regression import Test
 from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
 from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE
 from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiSlaveSequence
+from smc_base_test import _EvidenceRecorder, log_build_model_identity
 
 # This file lives at hw/sys/smc/dv/cocotb/tests/<this>.py, so the DV root is six
 # levels up from the file and one below the repo root. Anchored on the DV root
@@ -50,6 +54,11 @@ AXI_TIMEOUT_NS = 20_000
 # enough that the AXI-to-TileLink bridge into the CPU cluster carries it; see
 # DualCsr.write_bytes for the burst length that does not.
 BULK_CHUNK_BYTES = 64
+
+# The smc_sim_cfg.toml target whose model every dual leaf must run on. The
+# identity stamp fails a run whose exported build directory belongs to any
+# other target, so a dual log can never be backed by a single-instance model.
+DUAL_TARGET = "dual"
 
 
 def random_seed() -> int:
@@ -214,9 +223,27 @@ class DualCsr:
 class SmcDualHarness:
     """Clock/reset bring-up, per-instance idle pin defaults, and CPU trace state."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        test_name: str = "",
+        required_evidence: tuple[str, ...] = (),
+        require_clean_tree: bool = True,
+    ) -> None:
         self.dut = cocotb.top
         self.log = cocotb.log
+        # Same provenance gate as smc_base_test.require_clean_tree: the identity
+        # line names the commit the model was built from, and uncommitted
+        # changes on the model or bench sources fail the run unless allowed.
+        self.require_clean_tree = require_clean_tree
+        # The CHK-* lines this run emits are read off the log records the way
+        # smc_base_test._finalize_evidence reads them; finalize_evidence()
+        # grades them against the IDs the test owes, with no min_evidence
+        # floor and no NO_OWN_EVIDENCE exemption.
+        self.test_name = test_name
+        self.required_evidence = tuple(required_evidence)
+        self._evidence = _EvidenceRecorder()
+        self._evidence.install()
         # One hart-0 processor-state reconstruction per instance, sampled from
         # bring_up onward; failure messages embed cpu_trace_report().
         self.cpu_trace = {
@@ -287,6 +314,12 @@ class SmcDualHarness:
         dut.bfm_gpio_ext_drive_value.value = 0
 
     async def bring_up(self, *, hold_dut_boot: bool = True, hold_bfm_boot: bool = True) -> None:
+        # First line of every dual log: which model this run simulated, and
+        # that it is the dual target's ([BUILD-MODEL-IDENTITY]). Raises rather
+        # than logging a placeholder.
+        log_build_model_identity(
+            require_clean_tree=self.require_clean_tree, expect_target=DUAL_TARGET
+        )
         dut = self.dut
         self.log.info(
             "dual bring-up: ref=%dns smc=%dns periph=%dns (seed=%d)",
@@ -372,6 +405,28 @@ class SmcDualHarness:
         await ClockCycles(dut.clk_smc_i, 256)
         self.log.info("%s: released boot_stall with reset_vector=%#010x", instance, reset_vector)
 
+    def assert_no_fault_latched(self, label: str) -> None:
+        """Require both instances' sticky fault latches to still read 0.
+
+        ``dut_/bfm_{cluster_ded,wdt_first_timeout,wdt_second_timeout}_seen_o``
+        latch the wrapper's fault outputs until cold reset, so a DED or a
+        watchdog timeout at any point of the run is visible here even after
+        the warm reset a second timeout causes has cleared the live pins.
+        """
+        dut = self.dut
+        latched = [
+            f"{inst}_{name}_seen_o"
+            for inst in ("dut", "bfm")
+            for name in ("cluster_ded", "wdt_first_timeout", "wdt_second_timeout")
+            if int(getattr(dut, f"{inst}_{name}_seen_o").value) != 0
+        ]
+        assert not latched, f"{label}: fault outputs latched during the run: {latched}"
+        self.log.info(
+            "%s: no cluster DED or WDT timeout latched on either instance "
+            "(dut/bfm cluster_ded, wdt_first_timeout, wdt_second_timeout all 0)",
+            label,
+        )
+
     def set_gpio_override(self, instance: str, pad: int, value: int | None) -> None:
         """Drive (or release) one pad on one instance.
 
@@ -394,3 +449,59 @@ class SmcDualHarness:
                 val &= ~mask
         en_sig.value = en
         val_sig.value = val
+
+    def finalize_evidence(self) -> None:
+        """Report the evidence this run produced, and grade it.
+
+        ``dual_test`` runs it once the leaf has returned, after every compare
+        has held: a leaf that already failed raised, and this must not turn
+        that into a different complaint.
+        """
+        seen = sorted(self._evidence.seen)
+        own = [check_id for check_id in seen if not _EvidenceRecorder.is_base(check_id)]
+        missing = [check_id for check_id in self.required_evidence if check_id not in seen]
+        self.log.info(
+            "EVIDENCE_SUMMARY test=%s observed=%d own=%d required=%d missing=%d ids=%s",
+            self.test_name,
+            len(seen),
+            len(own),
+            len(self.required_evidence),
+            len(missing),
+            ",".join(seen) or "-",
+        )
+        problems: list[str] = []
+        if not own:
+            problems.append(
+                "no CHK-* line of its own -- a run that grades nothing cannot be a pass"
+            )
+        if missing:
+            problems.append("never emitted: " + ", ".join(missing))
+        if problems:
+            raise AssertionError(
+                f"EVIDENCE FAIL {self.test_name}: "
+                + "; ".join(problems)
+                + " -- the run exited cleanly without grading what it claims to grade"
+            )
+
+
+def dual_test(
+    required_evidence: tuple[str, ...],
+) -> Callable[[Callable[[SmcDualHarness], Awaitable[None]]], Test]:
+    """Register a plain cocotb leaf that runs over ``SmcDualHarness``.
+
+    The leaf receives, in place of the DUT handle, a harness named after it
+    and carrying ``required_evidence``. The evidence gate runs once the leaf
+    returns, so no leaf has to remember it; a leaf that raised keeps its own
+    failure.
+    """
+
+    def register(leaf: Callable[[SmcDualHarness], Awaitable[None]]) -> Test:
+        @functools.wraps(leaf)
+        async def run(_dut: object) -> None:
+            harness = SmcDualHarness(test_name=leaf.__name__, required_evidence=required_evidence)
+            await leaf(harness)
+            harness.finalize_evidence()
+
+        return cocotb.test()(run)
+
+    return register

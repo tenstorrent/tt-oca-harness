@@ -18,6 +18,19 @@ from smc_base_test import smc_base_test
 class smc_zeroer_regclk_cg_test(smc_base_test):
     """LIVE Zeroer reg_clk gating."""
 
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-NONVAC-P2",
+        "CHK-TIMEOUT-PATHS",
+        "CHK-ZEROER-REGCLK-ACCESS-COMPLETE",
+        "CHK-ZEROER-REGCLK-UNGATE",
+        "CHK-ZREG-ACTIVITY-ENABLE",
+        "CHK-ZREG-DISABLE-CG",
+        "CHK-ZREG-GATE-OFF-IDLE",
+        "CHK-ZREG-RESET-OVERRIDE",
+    )
+    min_evidence = 9
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

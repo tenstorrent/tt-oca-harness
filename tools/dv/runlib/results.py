@@ -163,6 +163,12 @@ def _has_formal(flow: Flow, stages: list[StageResult]) -> bool:
     return flow.framework == "formal" or any(stage.formal is not None for stage in stages)
 
 
+def _is_expected_failure(metadata: dict[str, Any] | None, status: Any) -> bool:
+    """A leaf graded PASS because it FAILED for its recorded `expect_fail` reason."""
+    record = (metadata or {}).get("expected_fail")
+    return isinstance(record, dict) and record.get("observed_status") == "FAIL" and status == "PASS"
+
+
 def run_completion(
     leaves_run: int,
     planned_leaves: int | None,
@@ -227,11 +233,15 @@ def _tests_summary(
     passing = sum(1 for stage in runs if stage.status == "PASS")
     failing = sum(1 for stage in runs if stage.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"})
     skipped = sum(1 for stage in runs if stage.status == "SKIP")
+    expected_failing = sum(
+        1 for stage in runs if _is_expected_failure(stage.metadata, stage.status)
+    )
     summary = {
         "total": total,
         "passing": passing,
         "failing": failing,
         "skipped": skipped,
+        "expected_failing": expected_failing,
         "pass_rate": _pass_rate(passing, total, completion),
     }
     if completion is not None:
@@ -547,6 +557,7 @@ def _failed_test_record(
         "failure_buckets": _buckets_for_failed_job(final),
         "parser": final.get("parser"),
         "result_json": final.get("result_json"),
+        "expected_fail": (final.get("metadata") or {}).get("expected_fail"),
         "rerun": _rerun_command(flow, tool, final, args),
     }
     wave_debug = final.get("wave_debug")
@@ -644,12 +655,16 @@ def _tests_summary_from_jobs(
         if final.get("status") == "PASS"
         and any(job.get("status") in NON_PASS_STATUSES for job in attempts[:-1])
     )
+    expected_failing = sum(
+        1 for job in final_jobs if _is_expected_failure(job.get("metadata"), job.get("status"))
+    )
     summary = {
         "total": total,
         "passing": passing,
         "failing": failing,
         "skipped": skipped,
         "flaky": flaky,
+        "expected_failing": expected_failing,
         "pass_rate": _pass_rate(passing, total, completion),
     }
     if completion is not None:
@@ -911,9 +926,12 @@ def result_payload(
     site = _site_layer_label(args)
     if site:
         payload["site"] = site
-    skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
-    if skipped:
-        payload["selection"] = {"skipped_unimplemented": skipped}
+    selection = {
+        key: list(getattr(args, f"_{key}", []) or []) if args is not None else []
+        for key in ("skipped_unimplemented", "skipped_excluded")
+    }
+    if any(selection.values()):
+        payload["selection"] = selection
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:

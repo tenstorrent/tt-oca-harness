@@ -14,6 +14,15 @@ from smc_base_test import smc_base_test
 class smc_i2c_master_target_test(smc_base_test):
     """U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads."""
 
+    required_evidence = (
+        "CHK-I2C0-HOST-WRITE",
+        "CHK-I2C0-OVRD-PAD",
+        "CHK-I2C0-SMBUS-ARA",
+        "CHK-I2C0-SMBUS-PEC",
+        "CHK-I2C0-U4-2-SMBUS",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
