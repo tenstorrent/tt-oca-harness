@@ -15,13 +15,6 @@ static void run_test_suite(test_context_t *ctx) {
 
     ctx->overall_result = true;
 
-    int retval;
-    uint32_t status_data = 0;
-
-    // TODO: audit these values OCCP spec
-    int exp_interface_status = 0x1;
-    int exp_boot_status = 0x5;
-
     // Min-size read/write commands through the shared helper
     simputs("=== Min Size Read/Write OCCP Commands Test (25 commands) ===\n");
     execute_min_size_rw_commands(ctx, 25);

@@ -12,6 +12,11 @@ vector and releases `boot_stall`, crt0
 runs picolibc init and `__metal_synchronize_harts` across all four harts, and
 `test_pass(0)` writes CPU_CTRL SCRATCH_0 over MMIO.
 
+The bank residency in the plan's pass criteria is checked on the CPU's own
+fetches: the per-bank scratch read counters of `smc_cpu_mem_dv` are snapshotted
+before the cores are released and after the verdict, and every bank that moved
+must be one of banks 0-3.
+
 The verdict comes from `check_cpu_firmware_boot_contract`, which clears
 SCRATCH_0 and reads the clear back before releasing the CPU, so a residual value
 from an earlier test cannot be mistaken for this run's. It fails on
@@ -26,6 +31,11 @@ import cocotb
 
 from .smc_cpu_vip_utils import check_cpu_firmware_boot_contract
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_scratch_residency_utils import (
+    HELLO_WORLD_RESIDENT_BANKS,
+    check_scratch_residency,
+    snapshot_scratch_bank_reads,
+)
 
 
 class smc_fw_hello_world_test_seq(SmcCsrSeq):
@@ -39,7 +49,16 @@ class smc_fw_hello_world_test_seq(SmcCsrSeq):
         # require_image=True: without the staged image there is nothing to
         # boot, and reporting that as a skip would leave a green run that
         # proved nothing.
+        bank_reads_before = snapshot_scratch_bank_reads()
         self.boot = await check_cpu_firmware_boot_contract(self, require_image=True)
+        # Residency is scored on the CPU's own fetches: every scratch bank read
+        # between the pre-release snapshot and the verdict must be one of the
+        # banks the plan places the image in.
+        bank_reads = check_scratch_residency(
+            bank_reads_before, snapshot_scratch_bank_reads(), HELLO_WORLD_RESIDENT_BANKS
+        )
+        self.boot["scratch_banks_read"] = sorted(bank_reads)
+        self.boot["scratch_reads_per_bank"] = bank_reads
         cocotb.log.info(
             "CHK-FW-HELLO-WORLD-BOOT: %s",
             ", ".join(f"{k}={v}" for k, v in sorted(self.boot.items())),

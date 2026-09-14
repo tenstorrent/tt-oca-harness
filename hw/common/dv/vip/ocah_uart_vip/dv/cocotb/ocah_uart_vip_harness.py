@@ -120,9 +120,24 @@ class UartHarness:
         )
 
     async def stop(self) -> None:
-        """Stop the tap and the device sampler; their histories survive."""
+        """Stop the tap and the device sampler; their histories survive.
+
+        The swallowed-callback counts of the tap and both samplers are
+        recorded on the test's checker, so a subscriber exception a monitor
+        logged cannot pass.
+        """
         await self.tap.stop()
         self.device_rx.stop()
+        self.checker.expect_equal(
+            "CHK-UART-MON-CALLBACKS",
+            (
+                self.tap.get_statistics()["callback_errors"],
+                self.device_rx.get_statistics()["callback_errors"],
+                self.host.sink.get_statistics()["callback_errors"],
+            ),
+            (0, 0, 0),
+            context="subscriber exceptions the tap, the device sampler, and the host sampler swallowed",
+        )
 
 
 def frame_us(
