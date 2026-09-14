@@ -12,9 +12,13 @@ import hashlib
 import logging
 import os
 import re
+import shlex
+import subprocess
 import sys
+import tomllib
 from datetime import date, datetime, timezone
 from pathlib import Path
+from typing import NoReturn
 
 import cocotb
 from cocotb.clock import Clock
@@ -118,31 +122,45 @@ _PROTOCOL_VIP_TESTS = {
 
 # ==================================================== build-model identity ====
 # `[BUILD-MODEL-IDENTITY]`. The SMC sim stage runs with `do_build: False` and
-# reuses a prebuilt model out of the SHARED path hw/sys/smc/dv/build/cocotb/<tool>
-# (`<tool>/<target>/coverage` for a `--cov` VCS run; run_dv.py exports that leaf
-# as OCAH_SIM_BUILD_DIR), so the run's own hdl_compile log records only
-# "Nothing to be done for 'default'"
-# and the kept log cannot say what RTL it simulated. The build directory is
-# overwritten in place by the next `--rebuild`, so an identity recovered by hand
-# afterwards is unverifiable.
+# reuses a prebuilt model out of the directory run_dv.py exports as
+# OCAH_SIM_BUILD_DIR: `<target build_dir>/<tool>`, `<tool>-coverage` for a
+# `--cov` run, `<tool>/<target>` for VCS, and a fingerprint leaf below any of
+# those when the build cache is on. The run's own hdl_compile log records only
+# "Nothing to be done for 'default'", and the build directory is overwritten in
+# place by the next `--rebuild`, so an identity recovered by hand afterwards is
+# unverifiable.
 #
-# So the identity is recorded from the cocotb side, into the kept log, at
-# start-of-simulation: the sha256 of the simulated model artifact, of the resolved
-# elaboration-dependency list, and of the compile filelist the build consumed. If
-# any of it cannot be determined the test FAILS -- a placeholder would be worse
-# than nothing, because it would make an un-attributable run look attributed.
-_MODEL_ROOT_REL = Path("hw") / "sys" / "smc" / "dv" / "build" / "cocotb"
-_COMPILE_FLIST_REL = Path("hw") / "sys" / "smc" / "dv" / "build" / "smc_dut_compile.f"
+# So every run records, from the cocotb side, into its kept log, at
+# start-of-simulation:
+#   * the commit the model was built from, and whether any source that feeds
+#     the model or the bench was uncommitted at run time (`dirty=`);
+#   * the smc_sim_cfg.toml target the exported build directory belongs to, and
+#     the sha256 of the model artifact, of the resolved elaboration-dependency
+#     list, and of the compile filelist the simulator was invoked with;
+#   * the sha256 of the bench code under hw/sys/smc/dv/cocotb.
+# If any of it cannot be determined the test FAILS -- a placeholder would be
+# worse than nothing, because it would make an un-attributable run look
+# attributed. A dirty tree fails too, unless SMC_DV_ALLOW_DIRTY=1 is exported
+# or the test sets `require_clean_tree = False`; the line then carries
+# `dirty_allowed=true`, so such a log can never pass as evidence unnoticed.
+_SIM_CFG_REL = Path("hw") / "sys" / "smc" / "dv" / "smc_sim_cfg.toml"
+_DV_REL = Path("hw") / "sys" / "smc" / "dv"
+_BENCH_REL = _DV_REL / "cocotb"
+_BUILD_DIR_ENV = "OCAH_SIM_BUILD_DIR"
+_ALLOW_DIRTY_ENV = "SMC_DV_ALLOW_DIRTY"
 
-# tool -> (model artifact, resolved-compile-input list) relative to the leaf
-# elaboration directory `_model_build_dir` returns. The model artifact is the
-# thing the simulator actually ran. VCS writes `simv` in that leaf
-# (`<tool>/<target>` or `<tool>/<target>/coverage`); the `default/` segment
-# belongs in the directory, not in this relative path.
-_MODEL_ARTIFACTS: dict[str, tuple[str, str | None]] = {
-    "verilator": ("smc_uvm_top", "Vtop__ver.d"),
-    "vcs": ("simv", None),
-    "xcelium": ("xrun_snapshot", "xrun_build.log"),
+# tool -> (model artifact, resolved-compile-input list, simulator build record),
+# all relative to OCAH_SIM_BUILD_DIR. The model artifact is the thing the
+# simulator actually ran. The build record is the simulator's own note of the
+# command line that produced the model; the compile filelist is read from its
+# `-f` arguments, so the digest is of the filelist that built the model and not
+# of whichever generated filelist happens to be lying in the work directory.
+# VCS keeps no such record, so its filelist comes from the target's
+# configuration instead (see `_compile_filelists`).
+_MODEL_ARTIFACTS: dict[str, tuple[str, str | None, str | None]] = {
+    "verilator": ("smc_uvm_top", "Vtop__ver.d", "Vtop__verFiles.dat"),
+    "vcs": ("simv", None, None),
+    "xcelium": ("xrun_snapshot", "xrun_build.log", "xrun_build.history"),
 }
 
 # A simulator reports the name of its executable, which is not always the tool
@@ -154,34 +172,45 @@ _SIM_NAME_ALIASES: dict[str, str] = {
     "ncsim": "xcelium",
 }
 
+# `sN(<stamp>):  xrun ...` -- one entry per invocation in xrun's history file.
+_XRUN_HISTORY_ENTRY = re.compile(r"^s\d+\([^)]*\):\s+(xrun\b.*)$")
+
+# How many dirty paths the identity line names before abbreviating.
+_DIRTY_PATHS_SHOWN = 8
+
 _MODEL_IDENTITY_DONE: list[str] = []
+
+
+def _fail(message: str) -> NoReturn:
+    raise AssertionError(f"[BUILD-MODEL-IDENTITY] {message}")
 
 
 def _repo_root() -> Path:
     root = os.environ.get("OCH_ROOT")
     if root:
-        return Path(root)
+        return Path(root).resolve()
     return Path(__file__).resolve().parents[6]
 
 
 def _sim_tool() -> str:
     """Simulator key for :data:`_MODEL_ARTIFACTS`, from the live simulator."""
     name = (getattr(cocotb, "SIM_NAME", "") or "").strip().lower()
-    assert name, (
-        "[BUILD-MODEL-IDENTITY] cocotb.SIM_NAME is empty: the run cannot name "
-        "the simulator it is executing in, so it cannot name the model either"
-    )
+    if not name:
+        _fail(
+            "cocotb.SIM_NAME is empty: the run cannot name the simulator it is "
+            "executing in, so it cannot name the model either"
+        )
     for alias, tool in _SIM_NAME_ALIASES.items():
         if alias in name:
             return tool
     for tool in _MODEL_ARTIFACTS:
         if tool in name:
             return tool
-    raise AssertionError(
-        f"[BUILD-MODEL-IDENTITY] simulator {name!r} has no entry in "
-        f"_MODEL_ARTIFACTS ({sorted(_MODEL_ARTIFACTS)}), so this run cannot "
-        f"state which elaborated model it simulated. Add the tool's model "
-        f"artifact rather than letting the kept log stay silent."
+    _fail(
+        f"simulator {name!r} has no entry in _MODEL_ARTIFACTS "
+        f"({sorted(_MODEL_ARTIFACTS)}), so this run cannot state which elaborated "
+        f"model it simulated. Add the tool's model artifact rather than letting "
+        f"the kept log stay silent."
     )
 
 
@@ -197,10 +226,8 @@ def _digest(path: Path) -> tuple[str, int]:
     if path.is_dir():
         total = 0
         entries = sorted(p for p in path.rglob("*") if p.is_file())
-        assert entries, (
-            f"[BUILD-MODEL-IDENTITY] {path} is an empty directory: there is no "
-            f"model artifact to fingerprint"
-        )
+        if not entries:
+            _fail(f"{path} is an empty directory: there is no model artifact to fingerprint")
         for entry in entries:
             size = entry.stat().st_size
             total += size
@@ -221,72 +248,417 @@ def _mtime_utc(path: Path) -> str:
     )
 
 
-def _model_build_dir(root: Path, tool: str) -> Path:
-    """Return the leaf directory the simulated model was elaborated into.
-
-    run_dv.py exports that leaf as OCAH_SIM_BUILD_DIR, including
-    `<tool>/<target>/coverage` on a `--cov` VCS run. Without it, VCS falls
-    back to the non-coverage default leaf under the shared cocotb build tree;
-    other tools use the tool directory itself.
-    """
-    exported = os.environ.get("OCAH_SIM_BUILD_DIR")
-    if exported:
-        return Path(exported)
-    base = root / _MODEL_ROOT_REL / tool
-    if tool == "vcs":
-        return base / "default"
-    return base
-
-
 def _require(path: Path, what: str) -> Path:
-    assert path.exists(), (
-        f"[BUILD-MODEL-IDENTITY] {what} not found at {path}: this run cannot "
-        f"state which elaborated model it simulated. Failing loudly instead of "
-        f"logging a placeholder -- a kept log that names no model cannot support "
-        f"any claim about the RTL that was in the DUT."
-    )
+    if not path.exists():
+        _fail(
+            f"{what} not found at {path}: this run cannot state which elaborated "
+            f"model it simulated. Failing loudly instead of logging a placeholder "
+            f"-- a kept log that names no model cannot support any claim about "
+            f"the RTL that was in the DUT."
+        )
     return path
 
 
-def log_build_model_identity() -> str:
+def _git(args: list[str], cwd: Path, stdin: str | None = None) -> str:
+    argv = ["git", *args]
+    try:
+        proc = subprocess.run(
+            argv,
+            cwd=cwd,
+            input=stdin,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        _fail(
+            f"`{' '.join(argv[:3])}` could not run in {cwd} ({exc}): without git "
+            f"this run cannot name the commit it simulated"
+        )
+    if proc.returncode != 0:
+        _fail(
+            f"`{' '.join(argv[:3])}` failed in {cwd} (rc={proc.returncode}): "
+            f"{proc.stderr.strip()} -- this run cannot name the commit it simulated"
+        )
+    return proc.stdout
+
+
+def _model_build_dir() -> Path:
+    """The leaf directory the simulated model was elaborated into.
+
+    run_dv.py exports it as OCAH_SIM_BUILD_DIR for every cocotb sim stage. There
+    is no fixed-path fallback: a run that does not know where its model was
+    built cannot say which model it simulated. The path is kept as exported --
+    a build tree that lives on scratch behind a symlink stays addressable
+    under the repo root that way.
+    """
+    exported = os.environ.get(_BUILD_DIR_ENV)
+    if not exported:
+        _fail(
+            f"{_BUILD_DIR_ENV} is not set. run_dv.py exports the directory the "
+            f"model was elaborated into; without it this run cannot state which "
+            f"model it simulated."
+        )
+    return _require(Path(exported).absolute(), "elaborated model directory")
+
+
+def _sim_cfg(root: Path) -> dict:
+    path = _require(root / _SIM_CFG_REL, "SMC sim configuration")
+    with path.open("rb") as handle:
+        return tomllib.load(handle)
+
+
+def _target_for_build_dir(root: Path, cfg: dict, build_dir: Path) -> tuple[str, dict]:
+    """Name and table of the ``[targets.<name>]`` whose ``build_dir`` holds ``build_dir``.
+
+    The runner builds each target under its own ``build_dir`` (``build/cocotb``
+    for ``default``, ``build_dual/cocotb`` for ``dual``), so the exported leaf
+    identifies the target. The longest matching prefix wins.
+    """
+    targets = cfg.get("targets")
+    if not isinstance(targets, dict) or not targets:
+        _fail(f"{_SIM_CFG_REL} declares no [targets.*] table")
+    matches: list[tuple[int, str, dict]] = []
+    build_dirs = {build_dir, build_dir.resolve()}
+    for name, target in targets.items():
+        base = str(target.get("build_dir", "")) if isinstance(target, dict) else ""
+        if not base:
+            continue
+        base_path = root / base
+        for candidate in {base_path, base_path.resolve()}:
+            if any(leaf == candidate or candidate in leaf.parents for leaf in build_dirs):
+                matches.append((len(base_path.parts), name, target))
+                break
+    if not matches:
+        _fail(
+            f"{build_dir} lies under no [targets.*].build_dir of {_SIM_CFG_REL}: "
+            f"this run cannot name the target whose model it simulated"
+        )
+    matches.sort(key=lambda item: item[0], reverse=True)
+    _, name, target = matches[0]
+    return name, target
+
+
+def _record_command(tool: str, record: Path) -> list[str]:
+    """Tokens of the simulator invocation its build record keeps."""
+    text = record.read_text(encoding="utf-8", errors="replace")
+    command = ""
+    if tool == "verilator":
+        # `C "<argv>"`: the command line Verilator compares for --skip-identical.
+        for line in text.splitlines():
+            if line.startswith('C "'):
+                command = line[3:].rstrip().rstrip('"')
+                break
+    elif tool == "xcelium":
+        for line in text.splitlines():
+            match = _XRUN_HISTORY_ENTRY.match(line.rstrip())
+            if match:
+                command = match.group(1)
+    if not command:
+        _fail(
+            f"{record} holds no {tool} command line: the filelist that built "
+            f"this model cannot be recovered from the build"
+        )
+    return shlex.split(command)
+
+
+def _compile_filelists(
+    root: Path,
+    tool: str,
+    build_dir: Path,
+    record_rel: str | None,
+    cfg: dict,
+    target_name: str,
+    target: dict,
+) -> tuple[list[Path], str, set[str] | None]:
+    """(compile filelists, where they were resolved from, defines the build used).
+
+    With a simulator build record the filelists are the ``-f`` arguments of the
+    recorded command and the defines its ``+define+`` / ``-D`` tokens, so both
+    describe the model that was actually built. Without one (VCS) the filelist
+    is the one the runner hands the tool for this target; if the target
+    declares none and both the shared filelist and a runner-derived per-target
+    one exist, the run fails rather than guess which of the two built the model.
+    """
+    if record_rel is not None:
+        tokens = _record_command(tool, _require(build_dir / record_rel, f"{tool} build record"))
+        flists: list[Path] = []
+        defines: set[str] = set()
+        for index, token in enumerate(tokens):
+            if token in ("-f", "-F") and index + 1 < len(tokens):
+                flists.append(Path(tokens[index + 1]))
+            elif token.startswith("+define+"):
+                defines.update(part.split("=", 1)[0] for part in token[8:].split("+") if part)
+            elif token.startswith("-D") and len(token) > 2:
+                defines.add(token[2:].split("=", 1)[0])
+        if not flists:
+            _fail(
+                f"the {tool} build record in {build_dir} names no -f filelist: "
+                f"the compile inputs of this model cannot be identified"
+            )
+        return (
+            [_require(path, "compile filelist the simulator was invoked with") for path in flists],
+            f"{tool}-build-record",
+            defines,
+        )
+    declared = target.get("filelist")
+    if declared:
+        candidates = [root / str(declared)]
+    else:
+        candidates = []
+        shared = (cfg.get("build") or {}).get("filelist")
+        if shared:
+            candidates.append(root / str(shared))
+        candidates.append(root / str(target["build_dir"]) / "filelists" / target_name / "files.f")
+    existing = [path for path in candidates if path.is_file()]
+    if len(existing) != 1:
+        _fail(
+            f"{len(existing)} of the candidate compile filelists for target "
+            f"{target_name!r} exist ({', '.join(str(c) for c in candidates)}); "
+            f"the {tool} build keeps no record of its own, so the run cannot tell "
+            f"which filelist built the model"
+        )
+    return existing, "smc_sim_cfg.toml", None
+
+
+def _filelist_closure(flists: list[Path]) -> tuple[set[Path], set[Path]]:
+    """(source files, include directories) the filelists name, following nested -f/-F."""
+    files: set[Path] = set()
+    dirs: set[Path] = set()
+    pending = list(flists)
+    seen: set[Path] = set()
+    while pending:
+        flist = pending.pop()
+        if flist in seen:
+            continue
+        seen.add(flist)
+        for raw in flist.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw.strip()
+            if not line or line.startswith(("//", "#")):
+                continue
+            tokens = line.split()
+            index = 0
+            while index < len(tokens):
+                token = tokens[index]
+                if token in ("-f", "-F", "-v", "-y") and index + 1 < len(tokens):
+                    target = Path(tokens[index + 1])
+                    if not target.is_absolute():
+                        target = flist.parent / target
+                    if token in ("-f", "-F"):
+                        pending.append(target)
+                    elif token == "-v":
+                        files.add(target)
+                    else:
+                        dirs.add(target)
+                    index += 2
+                    continue
+                if token.startswith("+incdir+"):
+                    dirs.update(Path(part) for part in token[8:].split("+") if part)
+                elif not token.startswith(("+", "-")):
+                    files.add(Path(token))
+                index += 1
+    return files, dirs
+
+
+def _repo_relative(root: Path, path: Path) -> Path | None:
+    """``path`` relative to ``root``, or None when it lies outside the checkout."""
+    for candidate in (path, path.resolve()):
+        try:
+            return candidate.relative_to(root)
+        except ValueError:
+            continue
+    return None
+
+
+def _display(root: Path, path: Path) -> str:
+    """Repo-relative form of ``path`` for the log line, absolute when outside."""
+    rel = _repo_relative(root, path)
+    return str(rel) if rel is not None else str(path)
+
+
+def _dirty_paths(toplevel: Path, files: set[str], dirs: set[str]) -> list[str]:
+    """``<XY>:<path>`` for every uncommitted change git reports inside the scope.
+
+    The scope is the set of repo-relative ``files`` plus everything under
+    ``dirs``. One whole-tree status is filtered here rather than handed to git
+    as pathspecs, so a filelist of any length fits. Untracked files count (an
+    unversioned bench file feeds the run as much as an edited one); ignored
+    ones do not, which is what keeps the build outputs the runner writes under
+    ``build/`` out of the verdict.
+    """
+    out = _git(["status", "--porcelain=v1", "-z", "--untracked-files=all"], toplevel)
+    prefixes = tuple(d.rstrip("/") + "/" for d in dirs)
+    entries = out.split("\0")
+    dirty: list[str] = []
+    index = 0
+    while index < len(entries):
+        entry = entries[index]
+        index += 1
+        if len(entry) < 4:
+            continue
+        status, path = entry[:2], entry[3:]
+        if status[0] in "RC":
+            # A rename or copy carries the original path as a second field.
+            index += 1
+        if path in files or path.startswith(prefixes):
+            dirty.append(f"{status.strip() or '?'}:{path}")
+    return sorted(dirty)
+
+
+def _bench_digest(root: Path) -> tuple[str, int]:
+    """sha256 over the bench sources (path + content of every .py under cocotb/)."""
+    bench = _require(root / _BENCH_REL, "bench source tree")
+    sources = sorted(p for p in bench.rglob("*.py") if "__pycache__" not in p.parts)
+    if not sources:
+        _fail(f"{bench} holds no Python source: the bench cannot be fingerprinted")
+    digest = hashlib.sha256()
+    for source in sources:
+        digest.update(str(source.relative_to(root)).encode())
+        digest.update(b"\0")
+        digest.update(source.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest(), len(sources)
+
+
+def log_build_model_identity(
+    *, require_clean_tree: bool = True, expect_target: str | None = None
+) -> str:
     """Log (once per process) the identity of the model this run simulated.
 
     Returns the emitted line. Raises with a diagnostic if the identity cannot be
-    determined; there is no placeholder branch.
+    determined, if ``expect_target`` names a target other than the one the
+    exported build directory belongs to, or if sources feeding the model or the
+    bench are uncommitted and neither ``require_clean_tree=False`` nor
+    ``SMC_DV_ALLOW_DIRTY=1`` allows that; there is no placeholder branch.
     """
     if _MODEL_IDENTITY_DONE:
         return _MODEL_IDENTITY_DONE[0]
     root = _repo_root()
     tool = _sim_tool()
-    model_rel, deps_rel = _MODEL_ARTIFACTS[tool]
-    build_dir = _require(_model_build_dir(root, tool), f"{tool} build directory")
+    model_rel, deps_rel, record_rel = _MODEL_ARTIFACTS[tool]
+    build_dir = _model_build_dir()
+    cfg = _sim_cfg(root)
+    target_name, target = _target_for_build_dir(root, cfg, build_dir)
+    if expect_target is not None and target_name != expect_target:
+        _fail(
+            f"this test needs the {expect_target!r} model but {build_dir} is the "
+            f"{target_name!r} target's build: a log from another target's model "
+            f"is not evidence about this one"
+        )
     model = _require(build_dir / model_rel, f"{tool} elaborated model artifact")
     model_sha, model_size = _digest(model)
-    flist = _require(root / _COMPILE_FLIST_REL, "resolved compile filelist")
-    flist_sha, _flist_size = _digest(flist)
-    # Line count only, as a coarse change tell. The authoritative resolved-input
-    # identity is `deps_sha256` (the elaboration dependency list): this filelist
-    # is mostly `-f` includes, so its own line count says little.
-    flist_lines = len(flist.read_text(encoding="utf-8", errors="replace").splitlines())
+
+    flists, flist_source, build_defines = _compile_filelists(
+        root, tool, build_dir, record_rel, cfg, target_name, target
+    )
+    if build_defines is not None:
+        declared = [str(d).split("=", 1)[0] for d in (target.get("defines") or [])]
+        missing = [d for d in declared if d not in build_defines]
+        if missing:
+            _fail(
+                f"the model in {build_dir} was built without {'/'.join(missing)}, "
+                f"which target {target_name!r} declares: it is not that target's model"
+            )
+    flist_digest = hashlib.sha256()
+    flist_lines = 0
+    for flist in flists:
+        sha, _size = _digest(flist)
+        flist_digest.update(sha.encode())
+        flist_lines += len(flist.read_text(encoding="utf-8", errors="replace").splitlines())
+    sources, incdirs = _filelist_closure(flists)
+
+    # The commit is the model's: the checkout its compile sources come from
+    # (the generated filelist itself may sit in a build tree on scratch). The
+    # bench must come from the same checkout, or the one line would name two
+    # trees.
+    in_repo = sorted(p for p in sources if _repo_relative(root, p) is not None)
+    if not in_repo:
+        _fail(
+            f"none of the {len(sources)} compile sources of {flists[0]} lies under "
+            f"{root}: the checkout the model was built from cannot be named"
+        )
+    model_top = Path(_git(["rev-parse", "--show-toplevel"], in_repo[0].parent).strip()).resolve()
+    bench_top = Path(
+        _git(["rev-parse", "--show-toplevel"], Path(__file__).resolve().parent).strip()
+    ).resolve()
+    if not (model_top == bench_top == root):
+        _fail(
+            f"model checkout {model_top}, bench checkout {bench_top} and repo root "
+            f"{root} differ: one identity cannot name three trees"
+        )
+    rev = _git(["rev-parse", "HEAD"], model_top).strip()
+
+    # Dirty scope: everything that feeds the model or the bench -- the compile
+    # sources and include directories, the whole SMC DV package, and every
+    # in-repo PYTHONPATH entry the cocotb process imports from.
+    scope_files: set[str] = set()
+    scope_dirs: set[str] = {str(_DV_REL)}
+    outside_repo = 0
+    for path in sources:
+        rel = _repo_relative(model_top, path)
+        if rel is None:
+            outside_repo += 1
+        else:
+            scope_files.add(str(rel))
+    for path in incdirs:
+        rel = _repo_relative(model_top, path)
+        if rel is None:
+            outside_repo += 1
+        else:
+            scope_dirs.add(str(rel))
+    for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+        rel = _repo_relative(model_top, Path(entry)) if entry else None
+        if rel is not None:
+            scope_dirs.add(str(rel))
+    dirty = _dirty_paths(model_top, scope_files, scope_dirs)
+    dirty_allowed = os.environ.get(_ALLOW_DIRTY_ENV) == "1" or not require_clean_tree
+    shown = ",".join(dirty[:_DIRTY_PATHS_SHOWN])
+    if len(dirty) > _DIRTY_PATHS_SHOWN:
+        shown += f",(+{len(dirty) - _DIRTY_PATHS_SHOWN} more)"
+
+    bench_sha, bench_files = _bench_digest(root)
+
     deps_part = "deps=none"
     if deps_rel is not None:
         deps = _require(build_dir / deps_rel, f"{tool} elaboration input list")
         deps_sha, _deps_size = _digest(deps)
         deps_part = (
-            f"deps={deps.relative_to(root)} deps_sha256={deps_sha} deps_mtime={_mtime_utc(deps)}"
+            f"deps={_display(root, deps)} deps_sha256={deps_sha} deps_mtime={_mtime_utc(deps)}"
         )
     line = (
         "CHK-BUILD-MODEL-IDENTITY: this run simulated "
         f"tool={tool} sim={getattr(cocotb, 'SIM_NAME', '?')} "
         f"version={getattr(cocotb, 'SIM_VERSION', '?')} "
-        f"model={model.relative_to(root)} model_sha256={model_sha} "
+        f"rev={rev} dirty={'true' if dirty else 'false'} "
+        f"dirty_allowed={'true' if dirty_allowed else 'false'} "
+        f"dirty_paths={shown or '-'} "
+        f"target={target_name} model={_display(root, model)} model_sha256={model_sha} "
         f"model_bytes={model_size} model_mtime={_mtime_utc(model)} "
         f"{deps_part} "
-        f"flist={flist.relative_to(root)} flist_sha256={flist_sha} "
-        f"flist_lines={flist_lines} flist_mtime={_mtime_utc(flist)} "
+        f"flist={','.join(_display(root, f) for f in flists)} "
+        f"flist_source={flist_source} flist_sha256={flist_digest.hexdigest()} "
+        f"flist_lines={flist_lines} flist_mtime={_mtime_utc(flists[0])} "
+        f"flist_sources={len(sources)} flist_sources_outside_repo={outside_repo} "
+        f"bench={_BENCH_REL} bench_py_files={bench_files} bench_sha256={bench_sha} "
         f"seed={os.environ.get('RANDOM_SEED', 'unset')}"
     )
     cocotb.log.info(line)
+    if dirty:
+        if not dirty_allowed:
+            _fail(
+                f"the working tree at {rev[:12]} has {len(dirty)} uncommitted change(s) "
+                f"on paths that feed this model or bench ({shown}). A log whose "
+                f"sources cannot be named is no evidence. Commit or stash them; "
+                f"to run anyway export {_ALLOW_DIRTY_ENV}=1, which stamps "
+                f"dirty_allowed=true into the log."
+            )
+        cocotb.log.warning(
+            "[BUILD-MODEL-IDENTITY] dirty tree allowed: %d uncommitted change(s) on "
+            "the model or bench sources (%s); this log cannot serve as evidence",
+            len(dirty),
+            shown,
+        )
     _MODEL_IDENTITY_DONE.append(line)
     return line
 
@@ -453,6 +825,13 @@ class smc_base_test(uvm_test):
     #                        base class emits do not count). 0 disables it.
     required_evidence: tuple[str, ...] = ()
     min_evidence = 0
+
+    # Provenance gate. The identity line names the commit the model was built
+    # from; with uncommitted changes on the sources that feed the model or the
+    # bench that commit does not describe what ran, so the run fails. A test
+    # may set this False; the operator may export SMC_DV_ALLOW_DIRTY=1. Either
+    # way the line then carries ``dirty_allowed=true``.
+    require_clean_tree = True
 
     @staticmethod
     def random_seed() -> int:
@@ -834,7 +1213,7 @@ class smc_base_test(uvm_test):
         self.raise_objection()
         # First line of every kept log's run phase: what RTL this run simulated
         # ([BUILD-MODEL-IDENTITY]). Raises rather than logging a placeholder.
-        log_build_model_identity()
+        log_build_model_identity(require_clean_tree=self.require_clean_tree)
         await self._bring_up()
         try:
             await self.run_probe_positive_controls()
