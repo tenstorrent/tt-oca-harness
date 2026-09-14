@@ -10,8 +10,9 @@ LOG_CTRL[0] = 16 and reads the 16 bytes back from RBR in order, then requires
 LOG_CTRL[0] to have hwclr'd and INTR_STATUS to be 0. MCR.LOOP keeps the bytes
 inside the UART, so the byte compare is the firmware's.
 
-Bench observation: UART0's interrupt line (tb_uart_irq_any) rose while the
-image ran, so a looped-back byte did land in the RX FIFO; after the PASS word
+Bench observation: the UART interrupt line (tb_uart_irq_any, the OR over the
+UART wraps; only UART0 is programmed by the image) rose while the image ran, so
+a looped-back byte did land in the RX FIFO; after the PASS word
 the SPM source region still holds 0xA0..0xAF, and the engine reads back
 programmed at that region with CTRL.EN and MCR.LOOP cleared by the cleanup.
 

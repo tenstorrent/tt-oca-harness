@@ -15,11 +15,14 @@ SCRATCH_1 is not asserted: hart 0 rewrites it in its wait loop while hart 1 is
 storing to it, so its final value is a race the image does not define. SCRATCH_2
 is cleared before release because it doubles as the console/error word and
 could hold a residue from an earlier test; SCRATCH_3 is the seed word, which the
-boot contract writes before release, so a 3 read back afterwards can only have
-come from hart 3 (the testlist seed is 1).
+boot contract overwrites before release with this run's RANDOM_SEED, so a 3 read
+back afterwards can only have come from hart 3. A run whose seed is itself 3
+could not tell the two apart, so the sequence refuses it before release.
 """
 
 from __future__ import annotations
+
+import os
 
 import cocotb
 
@@ -45,6 +48,12 @@ class smc_fw_hello_world_multicore_test_seq(smc_fw_image_boot_seq):
         self.hart_markers_ok = False
 
     async def before_boot(self) -> None:
+        # The same value check_cpu_firmware_boot_contract publishes in SCRATCH_3.
+        seed = int(os.environ.get("RANDOM_SEED", "1"), 0) & 0xFFFF_FFFF
+        assert seed != HART_MARKERS[3], (
+            f"RANDOM_SEED={seed} equals hart 3's marker: the seed word published in "
+            f"SCRATCH_3 before release would be indistinguishable from hart 3's write"
+        )
         await self.csr_write("MULTICORE_SCRATCH2_CLEAR", scratch_addr(2), 0)
         await self.csr_read("MULTICORE_SCRATCH2_CLEAR_RB", scratch_addr(2), expected=0)
 

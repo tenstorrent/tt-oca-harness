@@ -21,8 +21,9 @@ What the bench observes on its own, after the PASS word:
   the image's final scenario programmed them, and CTRL.EN and UART MCR read
   back cleared as the image's cleanup left them;
 * when the image enables the UART received-data interrupt (single_entry),
-  UART0's interrupt line rose while the run was live: a looped-back byte did
-  land in the RX FIFO;
+  the UART interrupt line rose while the run was live: a looped-back byte did
+  land in the RX FIFO. tb_uart_irq_any is the OR over the UART wraps'
+  interrupt outputs, and UART0 is the only one the image programs;
 * when the image fetches from an unmapped address (fetch_err), a SEP_IN read of
   that address returns an AXI error: the fabric really answers it with DECERR,
   which is the cause the firmware's LOG_FETCH_ERR check rests on.
