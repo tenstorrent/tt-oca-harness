@@ -6,7 +6,8 @@ S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` is 0 (gen_no_sep ties
     ``sep_feat_ctrl='1`` including fuse_test). ``lc_state_o`` is the no-LCC
     word of ``seq_lib.smu_lifecycle_table`` (not PROD), so the eFuse JTAG
     demux stays off err_slv.
-S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the RTL 14-bit packing.
+S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the 14-bit packing of
+    ``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``.
 S3: Write PATTERN_A to MAP BIRA, readback OKAY + data match.
 S4: Write PATTERN_C (distinct) and readback — proves the write path is live.
 
