@@ -32,7 +32,9 @@ name is not protocol proof. OUT rows live in `SMC_DEFERRED_DISPOSITION.adoc`.
 |===
 
 I3C block-depth stays on the I3C intake. The wrapper leaf is decode
-only and is not a substitute for CCC/IBI. The `# deferred:` tags in the
-module docstrings name the same blockers as the deferred disposition:
-`needs_i3c_dat_dct`, `needs_dtp_csr_sub`, `rtl_placeholder`, `fake_bfm`,
-`tb_glue`.
+only and is not a substitute for CCC/IBI. Twelve of the thirteen
+not-enrolled modules restate their blocker on a `# deferred:` docstring
+line, with the tags `no_dut_port`, `no_sep_in_write_path`,
+`needs_i3c_dat_dct`, `needs_dtp_csr_sub`, `rtl_placeholder`, `fake_bfm` and
+`tb_glue`; `smc_clint_csr_test` carries none. The deferred disposition owns
+the reason for all thirteen.

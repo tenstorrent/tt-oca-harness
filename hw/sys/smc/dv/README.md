@@ -55,6 +55,10 @@ it, and why that is still a real DUT path). The helpers that set it live in
 | RISC-V GCC with picolibc, or a container engine | firmware images for `all` (`fw/`) | `docker` or `podman` for `scripts/docker-run.sh`, which builds the images in the `ocah-toolchain` container; not needed for `smoke` or `hosted` |
 | VCS | `--framework uvm`, and `--cov` coverage | Verilator has no SV-UVM support; see `frameworks` in `hw/common/dv/configs/simulators.toml` |
 
+`python3 tools/dv/run_dv.py --doctor --dut smc --tool verilator` reports which
+of these tools the machine can see and whether the DV configs are consistent,
+before anything is built.
+
 Environment variables the DV code itself reads (all optional — every one has a
 default, and the runner sets the first three):
 
@@ -73,9 +77,10 @@ not environment variables — see the `--framework uvm` section.
 
 Test modules under `cocotb/tests/` that are in no testlist are not in `all`.
 `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` is the disposition of record
-for every one of them, and a module restates its blocker on a leading
-`# deferred: <tag>` docstring line where a tag applies. SMU's matching catalog
-is `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
+for every one of the thirteen. Twelve of them restate their blocker on a
+leading `# deferred: <tag>` docstring line; `smc_clint_csr_test` does not, and
+the record, not the tag, owns the reason. SMU's matching catalog is
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 ## Single DUT
 
