@@ -55,6 +55,8 @@ from smc_occp_dual_defs import (
     required_plusarg,
 )
 
+REQUIRED_EVIDENCE = ("CHK-OCCP-SANITY",)
+
 # The transaction is GET_VERSION plus one 4-byte WRITE, against the boot test's
 # 15 chunks of 1024 B. The pass lands at roughly 939 us of sim time, about 235
 # poll intervals; the bound below is ~17x that, which is headroom for a stalled
@@ -66,7 +68,7 @@ PROGRESS_EVERY = 200
 
 @cocotb.test()
 async def smc_occp_sanity_test(_dut) -> None:
-    harness = SmcDualHarness()
+    harness = SmcDualHarness(test_name="smc_occp_sanity_test", required_evidence=REQUIRED_EVIDENCE)
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_occp_sanity_test")
@@ -197,3 +199,4 @@ async def smc_occp_sanity_test(_dut) -> None:
         describe_post_code(post),
     )
     cocotb.log.info("smc_occp_sanity_test PASS")
+    harness.finalize_evidence()

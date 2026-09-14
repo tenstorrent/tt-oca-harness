@@ -24,6 +24,12 @@ from smc_base_test import smc_base_test
 class smc_input_fabric_axi_wr_rd_test(smc_base_test):
     """Run the SEP_IN CSR precheck of the filter/remap windows."""
 
+    required_evidence = (
+        "CHK-ALIAS-REMAP-RESET-DEFAULT",
+        "CHK-NONVAC",
+    )
+    min_evidence = 2
+
     async def run_scenario(self) -> None:
         seq = smc_input_output_fabric_wr_rd_test_seq("input_fabric_axi_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)

@@ -14,6 +14,14 @@ from smc_base_test import smc_base_test
 class smc_i2c_target_smbus_test(smc_base_test):
     """VIP ARA + external SMBSUS# into DUT I2C0 SMBus target."""
 
+    required_evidence = (
+        "CHK-I2C-TGT-SMBUS-ALERT",
+        "CHK-I2C-TGT-SMBUS-ARA",
+        "CHK-I2C-TGT-SMBUS-SUS-ASSERT",
+        "CHK-I2C-TGT-SMBUS-SUS-CLR",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

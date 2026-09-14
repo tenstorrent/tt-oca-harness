@@ -37,6 +37,11 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from smc_dual_base_test import DualCsr, SmcDualHarness
 
+REQUIRED_EVIDENCE = (
+    "CHK-AXI-SCRATCH-REACHABLE",
+    "CHK-SCRATCH-BACKDOOR-DECODE",
+)
+
 # Start of the OCCP-writable SRAM window (SMC_ROM_STACK_END): the address the
 # real flow stages a payload at, so the probe asks about the address that
 # matters rather than a convenient one.
@@ -111,7 +116,9 @@ async def smc_dual_axi_sram_probe_test(_dut) -> None:
     dut = cocotb.top
     log = cocotb.log
 
-    harness = SmcDualHarness()
+    harness = SmcDualHarness(
+        test_name="smc_dual_axi_sram_probe_test", required_evidence=REQUIRED_EVIDENCE
+    )
     # boot_stall released on both: holding it keeps fuse_reset_n asserted and
     # the whole warm domain -- including the CPU cluster the scratch banks hang
     # off -- in reset. See the module docstring.
@@ -231,3 +238,4 @@ async def smc_dual_axi_sram_probe_test(_dut) -> None:
         "smc_scratch_map_pkg gives the +smc_scratch_ram_hex loader agrees with "
         "the cluster's own."
     )
+    harness.finalize_evidence()

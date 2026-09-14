@@ -22,6 +22,16 @@ from cocotb.triggers import ClockCycles
 from smc_dual_base_test import SmcDualHarness
 from smc_occp_dual_defs import SHARED_I3C_CHANNELS
 
+REQUIRED_EVIDENCE = (
+    "CHK-DUAL-BOOT-STALL",
+    "CHK-DUAL-ELAB",
+    "CHK-DUAL-FUSE-SENSE",
+    "CHK-DUAL-I3C-IDLE",
+    "CHK-DUAL-I3C-INDEXING",
+    "CHK-DUAL-MEM-INIT",
+    "CHK-DUAL-RESET",
+)
+
 # Both instances must clear fuse sense within this many clk_smc cycles. The
 # single-instance smc_cpu_firmware_boot_test uses a 200k-cycle bound for the
 # same eFuse responder; keep it.
@@ -68,7 +78,9 @@ def _check_i3c_counter_indexing(dut) -> None:
 
 @cocotb.test()
 async def smc_dual_elaboration_test(_dut) -> None:
-    harness = SmcDualHarness()
+    harness = SmcDualHarness(
+        test_name="smc_dual_elaboration_test", required_evidence=REQUIRED_EVIDENCE
+    )
     _check_i3c_counter_indexing(cocotb.top)
     dut = harness.dut
 
@@ -189,3 +201,4 @@ async def smc_dual_elaboration_test(_dut) -> None:
     )
 
     cocotb.log.info("smc_dual_elaboration_test PASS")
+    harness.finalize_evidence()

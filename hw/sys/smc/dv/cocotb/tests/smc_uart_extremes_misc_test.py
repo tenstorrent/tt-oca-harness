@@ -14,6 +14,14 @@ from smc_base_test import smc_base_test
 class smc_uart_extremes_misc_test(smc_base_test):
     """UART0 SCR R/W + idle LSR quiet check."""
 
+    required_evidence = (
+        "CHK-UART-EXT-BASIC",
+        "CHK-UART-EXT-DR-POS",
+        "CHK-UART-EXT-IDLE",
+        "CHK-UART-EXT-SCR",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

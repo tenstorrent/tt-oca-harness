@@ -20,6 +20,13 @@ from smc_base_test import smc_base_test
 class smc_reset_unit_lock_test(smc_base_test):
     """Each woset lock sets once and gates the register it guards."""
 
+    required_evidence = (
+        "CHK-RESET-LOCK-ARM",
+        "CHK-RESET-LOCK-MASKS-WRITE",
+        "CHK-RESET-LOCK-WOSET",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
