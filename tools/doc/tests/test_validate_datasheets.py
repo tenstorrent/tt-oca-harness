@@ -73,9 +73,7 @@ class PdfValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             for page_count in (1, 2, 3, 4):
                 pdf = Path(directory) / f"datasheet-{page_count}.pdf"
-                pdf.write_bytes(
-                    b"%PDF-1.4\n" + b"/Type /Page\n" * page_count + b"%%EOF"
-                )
+                pdf.write_bytes(b"%PDF-1.4\n" + b"/Type /Page\n" * page_count + b"%%EOF")
 
                 self.assertEqual(validate_pdf(pdf), [])
 
