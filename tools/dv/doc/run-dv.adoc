@@ -113,6 +113,11 @@ inventory (for example a VPLAN test-case count) honest.
 Tag::
 A label carried by tests, used by `--tag` as an OR filter.
 
+Expected failure::
+A test whose entry carries `expect_fail = "<reason>"`: it reproduces a filed
+defect and FAILS on a DUT that still carries it. The runner grades that FAIL
+as PASS and an observed PASS as FAIL (<<runner-expected-failures>>).
+
 Item::
 Any name accepted by `--items`: a test name or a group name.
 
@@ -334,12 +339,17 @@ name that maps to a concrete implementation per framework. Error messages and
 takes the same names it always has. A scenario binds its per-framework entry
 points through `module` — a bare string binds the DUT's default framework
 only, a map (`module = { cocotb = "...", uvm = "..." }`) binds each framework
-explicitly. Selecting a scenario not implemented in the chosen framework is
-an error;
-`--skip-unimplemented` skips group/tag-derived unimplemented scenarios instead
-(the skipped names are printed and recorded in `result.json` under
-`selection.skipped_unimplemented`), while an explicitly named `--items` test
-always errors.
+explicitly. A map value of `false` (`module = { cocotb = "...", uvm = false }`)
+declares the scenario out of scope for that framework: group and tag
+selection skips it with no flag, and the skipped names are printed and
+recorded in `result.json` under `selection.skipped_excluded`. Selecting a
+scenario whose map has no entry at all for the chosen framework is an error;
+`--skip-unimplemented` skips group/tag-derived scenarios of that kind instead
+(printed, and recorded under `selection.skipped_unimplemented`), which is the
+bring-up aid while a framework port is incomplete. An explicitly named
+`--items` test errors in both cases. `--list` reports the three counts per
+framework (`uvm 151/153 (2 excluded)`); a nonzero `missing` count names
+scenarios that have neither a binding nor a `false` for that framework.
 
 === Tests, groups, and tags
 
@@ -363,6 +373,65 @@ python3 tools/dv/run_dv.py --dut dtp --items smoke --tag ci
 
 With `--items`, tags filter the expanded selection. Without `--items`, tags
 search the complete catalog.
+
+[[runner-expected-failures]]
+=== Expected failures
+
+A reproducer for a filed RTL defect is only evidence while someone runs it, and
+a regression that carries it is red every day it does its job. `expect_fail`
+resolves that without weakening the checker:
+
+[source,toml]
+----
+[[tests]]
+name = "smc_gpio_irq_mask_deassert_test"
+module = "smc_gpio_irq_mask_deassert_test"
+run_modes = ["smoke"]
+expect_fail = "#1602: clearing DATA_CTRL.interrupt_enable while a GPIO interrupt is asserted does not de-assert interrupt_o"
+----
+
+The value is the recorded reason and must be a non-empty string; `true` is
+rejected, because a flag with no reason cannot say when the entry should go.
+Grading applies per leaf on the `sim` and `regress` stages, after the parser
+policy has classified the log:
+
+* an observed `FAIL` is the recorded outcome and grades `PASS`, with `reason`
+  `expected_fail: <reason>`;
+* an observed `PASS` means the defect is gone and grades `FAIL`, in the
+  `expected_fail_passed` failure bucket -- move the test into its owning
+  feature testlist and drop the key;
+* `ERROR`, `TIMEOUT`, and `UNKNOWN` are not the recorded failure and keep
+  their status.
+
+The parser's `FAIL` says only that the leaf failed, not why. The leaf record
+therefore carries `observed_failures`: the message of every failure/error node
+in the leaf's `results/results.xml` (cocotb's `error_msg`, JUnit's `message`,
+or the node text), so a reader can compare what failed with the recorded
+reason. To make that comparison part of the grade, add `expect_fail_match`:
+
+[source,toml]
+----
+expect_fail = "#585: dead offsets wrap onto live registers with an OKAY response"
+expect_fail_match = "wrap_to_live=[1-9]"
+----
+
+With it, an observed `FAIL` grades `PASS` only when some observed failure
+message matches the regex (`re.search`); otherwise the leaf failed for a
+different reason than the one recorded and grades `FAIL` in the
+`expected_fail_mismatch` bucket, naming the first observed message. A leaf
+that recorded no failure message is a mismatch too. The key requires
+`expect_fail` and must compile as a Python regex.
+
+The leaf record carries `expected_fail` (`reason`, `observed_status`,
+`observed_reason`, `observed_failures`, `observed_buckets` -- the parser's
+failure bucket kinds and signatures -- and `match` when set) in its metadata
+and in the regression leaf summary, and the run-level `tests` summary counts
+graded leaves under `expected_failing`.
+The framework's own `results/results.xml` still records the observed
+failure; `result.json` is the graded, authoritative result. Keep such tests
+in a group of their own (for example `rtl_issue`) so they never feed a
+coverage regression as passes, and so the flip is visible as that group
+going red.
 
 === Targets and run modes
 
@@ -429,7 +498,8 @@ targets, modes, and DUT-specific overrides.
 
 |`<dut-dv-root>/testlists/*.toml`
 |Tests, groups, tags, targets, seeds, reseed counts, timeouts, runtime
-arguments, and optional firmware metadata.
+arguments, optional firmware metadata, and `expect_fail` /
+`expect_fail_match` entries.
 
 |`<dut-dv-root>/cov/config/<tool>/coverage_policy.toml`
 |Optional detailed coverage thresholds, exclusions, and hole dispositions;
@@ -1863,6 +1933,8 @@ For simulation, return code zero is not sufficient for `PASS`. The selected
 parser policy examines structured XML, hard-failure markers, required and
 failure patterns, framework summaries, and positive pass evidence. Missing or
 ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
+A leaf with `expect_fail` is graded after that classification: its `FAIL`
+becomes `PASS` and its `PASS` becomes `FAIL` (<<runner-expected-failures>>).
 
 For formal mode, the exit code is never the status source: task status lines,
 status files, and JUnit reports, or the app's summary file, are
@@ -1890,7 +1962,7 @@ contexts.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `smoke` and the three
+DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `hosted` and the three
 `cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
 budgets are sized for the standard runner. Nightly is not a merge gate; a red
 nightly run is a triage signal.
@@ -1902,9 +1974,13 @@ with `tier=weekly`
 reference-only Verilator coverage; SEP `cpu_stub` and SMU `sep0_all` add
 `--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
 runner, because their coverage-instrumented model builds exceed the standard
-runner's memory, and DTP reseeds three times on that runner. SMC `smoke` and
+runner's memory, and DTP reseeds three times on that runner. SMC `hosted` and
 the three `cross_trigger` benches' `all` groups run at three seeds with
-coverage. `--sim-jobs` follows the runner core count. The score is published
+coverage. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
+reproducers at one seed without coverage: every leaf carries `expect_fail`
+(<<runner-expected-failures>>), so the row is green while the filed defects
+stand and red the week one is fixed. `--sim-jobs` follows the runner core
+count. The score is published
 but does not determine test pass/fail. SEP, SMU, and DTP instrument
 line/branch/expression/user and SMC line/branch/user, none with toggle, and
 every coverage block compiles the generated model per file
@@ -1931,8 +2007,8 @@ recorded run identity unique for downstream trend history), gates on the
 native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
 `status` `PASS`). Coverage-enabled jobs additionally require a numeric score
 and recorded report/summary paths, but do not enforce a score threshold. The
-action uploads `dv-run-<dut>-<tool>-<tier>` (14-day retention, 30 for the
-weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
+action uploads `dv-run-<dut>-<tool>-<tier>` (`-<label>` appended for a
+labelled row; 14-day retention, 30 for the weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
 are excluded after merge while the merged coverage report and normalized
 summary remain. Explicit run directories never create or update the `latest`
 symlink.
@@ -1977,15 +2053,18 @@ implemented.
 Hosted invocations omit `--framework`, so every DUT runs its default
 framework (cocotb) — adding a second framework to a DUT changes
 nothing for existing jobs. The canonical invocation for a licensed SV-UVM
-job maps a group to its UVM-implemented subset:
+job selects a group under the UVM view. A group whose cocotb-only members
+declare `uvm = false` runs its UVM-implemented subset with no flag; a DUT
+whose scenarios lack a `uvm` entry rides `--skip-unimplemented`:
 
 [source,bash]
 ----
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi
+python3 tools/dv/run_dv.py --dut ocah_axi_vip --framework uvm --items smoke
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT

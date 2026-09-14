@@ -11,10 +11,11 @@
 // surfaces: m_*master_env.m_sequencer, m_*slave_agent.seq, the passive cfgs,
 // and m_checker.
 //
-// `en_passive` gates every wire-level observation stack: the ID-mismatch test
-// clears it (uvm_config_db bit "en_passive") because a corrupted response ID
-// is an orphan completion to a passive observer — the corruption evidence
-// rides the env-owned scenario checker instead.
+// `en_passive` gates every wire-level observation stack, the covergroup
+// subscriber included: the ID-mismatch test clears it (uvm_config_db bit
+// "en_passive") because a corrupted response ID is an orphan completion to a
+// passive observer — the corruption evidence rides the env-owned scenario
+// checker instead.
 
 class ocah_axi_vip_env extends uvm_env;
   `uvm_component_utils(ocah_axi_vip_env)
@@ -127,6 +128,7 @@ class ocah_axi_vip_env extends uvm_env;
     cfg.en_monitor    = en_passive;
     cfg.en_ref_model  = en_passive;
     cfg.en_scoreboard = en_passive;
+    cfg.en_cov        = en_passive;
     return cfg;
   endfunction
 

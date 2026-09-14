@@ -352,7 +352,6 @@ module smu_wrapper
   ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
-  logic ext_trng_alarm;
 
   sep_crypto_pkg::abr_mem_req_t abr_mem_req;
   sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp;
@@ -399,8 +398,7 @@ module smu_wrapper
     .ext_trng_axis_req_i (ext_trng_axis_req),
     .ext_trng_axis_rsp_o (ext_trng_axis_rsp),
 
-    .ext_trng_irq_i   (ext_trng_irq),
-    .ext_trng_alarm_i (ext_trng_alarm),
+    .ext_trng_irq_i (ext_trng_irq),
 
     .smc_external_req_o  (smc_external_req),
     .smc_external_resp_i (smc_external_resp),
@@ -562,8 +560,7 @@ module smu_wrapper
     .ext_trng_axis_req_o (ext_trng_axis_req),
     .ext_trng_axis_rsp_i (ext_trng_axis_rsp),
 
-    .ext_trng_irq_o   (ext_trng_irq),
-    .ext_trng_alarm_o (ext_trng_alarm),
+    .ext_trng_irq_o (ext_trng_irq),
 
     .abr_mem_req_i (abr_mem_req),
     .abr_mem_rsp_o (abr_mem_rsp),
