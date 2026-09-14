@@ -75,6 +75,9 @@ class smc_cpu_firmware_boot_test(smc_base_test):
         await self.run_scenario_with(seq)
         if not watcher.done():
             watcher.kill()
+        # The base run_phase grades the log here. This override must too, or a
+        # silent ROM-boot scenario would pass without an EVIDENCE_SUMMARY.
+        self._finalize_evidence()
         self.drop_objection()
 
     async def run_scenario_with(self, seq: smc_cpu_firmware_boot_test_seq) -> None:

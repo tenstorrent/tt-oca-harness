@@ -322,9 +322,11 @@ class _EvidenceRecorder:
     # and none is a clean exit that checks nothing. Naming them is what lets the
     # gate below be unconditional for every other leaf.
     #
-    # This list may only shrink. To remove an entry, make the check that already
-    # runs log a ``CHK-<ID>:`` line where it happens -- in the sequence, not
-    # here.
+    # Owner: SMC DV. Opened 2026-09-13 from the zero-token set at 73f89fb31.
+    # Closes when empty. Keys must stay inside NO_OWN_EVIDENCE_CEILING (the
+    # set at introduction); a new name fails the run. To remove an entry, make
+    # the check that already runs log a ``CHK-<ID>:`` line where it happens --
+    # in the sequence, not here.
     NO_OWN_EVIDENCE = {
         # Scoreboard protocol-VIP record with a stimulus floor, plus expected=
         # compares on every CSR read the sequence issues.
@@ -353,6 +355,32 @@ class _EvidenceRecorder:
         # stamp (csr_accesses=0, auto_evidence=True) and is not evidence.
         "smc_octs_dual_sync_test": "sequence asserts, unlabelled",
     }
+
+    # Set at introduction. ``NO_OWN_EVIDENCE`` may lose keys, never gain them.
+    NO_OWN_EVIDENCE_CEILING = frozenset(
+        {
+            "smc_dma_sanity_test",
+            "smc_filter_field_sweep_test",
+            "smc_flr_sanity_test",
+            "smc_gpio_ctrl_full_sweep_test",
+            "smc_gpio_intf_full_sweep_test",
+            "smc_gpio_irq_type_matrix_test",
+            "smc_gpio_output_driveback_test",
+            "smc_i2c_multi_instance_test",
+            "smc_mailbox_inbound_test",
+            "smc_mailbox_multi_instance_test",
+            "smc_occp_sanity_secure_error_test",
+            "smc_octs_dual_sync_test",
+            "smc_output_fabric_slverr_inject_test",
+            "smc_output_fabric_wr_rd_responder_test",
+            "smc_register_boundary_depth_test",
+            "smc_register_sanity_test",
+            "smc_smbus_alert_ara_test",
+            "smc_spi_pad_bfm_test",
+            "smc_uart_loopback_test",
+            "smc_xvisor_remap_test",
+        }
+    )
 
     def __init__(self) -> None:
         self.seen: set[str] = set()
@@ -856,6 +884,13 @@ class smc_base_test(uvm_test):
         required = tuple(self.required_evidence)
         missing = [check_id for check_id in required if check_id not in seen]
         test_name = type(self).__name__
+        extra = set(_EvidenceRecorder.NO_OWN_EVIDENCE) - _EvidenceRecorder.NO_OWN_EVIDENCE_CEILING
+        if extra:
+            raise AssertionError(
+                "NO_OWN_EVIDENCE grew: "
+                + ", ".join(sorted(extra))
+                + " -- this list may only shrink"
+            )
 
         self.logger.info(
             "EVIDENCE_SUMMARY test=%s observed=%d own=%d required=%d missing=%d ids=%s",
