@@ -397,8 +397,7 @@ module smu_wrapper_uvm_top (
                 u_dut.u_smu.dtp_axi_smc_dbg_resp.ar_ready) begin
         dtp_smc_dbg_ar_count_o <= dtp_smc_dbg_ar_count_o + 32'd1;
       end
-      if (u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid &&
-                u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready) begin
+      if (u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid && u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready) begin
         dtp_smc_dbg_b_count_o <= dtp_smc_dbg_b_count_o + 32'd1;
       end
     end
