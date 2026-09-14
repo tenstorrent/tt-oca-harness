@@ -10,11 +10,6 @@
 
 // For PDF backend, we include inline every subsection of a subsystem's documentation through its index.adoc. For HTML backend (webpage), we let the user use the navigation sidebar. Navigation sidebar is defined in `doc/trm/modules/ROOT/nav.adoc`
 
-This section provides an overview of the OCAH architecture including its
-subsystem composition, power and clock domains, reset hierarchy, and memory
-map. Subsequent chapters provide detailed microarchitectural documentation
-for each subsystem.
-
 [[ocah-architecture]]
 == OCAH Architecture
 
