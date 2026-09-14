@@ -6,17 +6,19 @@
 
 This is the disposition of record for every test name the package catalogues
 without a module under `hw/sys/smc/dv/cocotb/tests/`. Nothing here is
-enrolled PASS. Every module that does exist under `cocotb/tests/` is in at
-least one testlist; a name that is not is one of two kinds:
+enrolled PASS. Every `@pyuvm.test()` module under `cocotb/tests/` is in at
+least one testlist (`smc_base_test` and `smc_dual_base_test` are base classes,
+not tests); a catalogued name without a module is one of two kinds:
 
 * A *retired test module* was written against this bench and its blocker is
   outside the test: adopter placeholder RTL, a wrapper pin that does not
-  exist, an idle boundary, TB glue, or a VIP the bench lacks. Its code, and
+  exist, an idle boundary, an aperture or window SEP_IN cannot write or
+  reach, TB glue, or a VIP the bench lacks. Its code, and
   the `seq_lib/<name>_seq.py` sequence where it had one, is in git history
   and is restored when the blocker named in its row clears.
 * A *catalog-only name* never had a module here: a commercial alias whose
-  intent a live enrolled name already proves, or a body that needs stimulus
-  this bench does not have.
+  intent a live enrolled name already proves, or a body that needs stimulus,
+  RTL or a firmware image this bench does not have.
 
 Buckets:
 

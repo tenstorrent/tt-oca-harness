@@ -75,7 +75,7 @@ not environment variables — see the `--framework uvm` section.
 
 ## Retired and catalog-only names
 
-Every test module under `cocotb/tests/` is in at least one testlist. The names
+Every `@pyuvm.test()` module under `cocotb/tests/` is in at least one testlist. The names
 the package catalogues without a module -- retired modules whose blocker is
 outside the test, and commercial aliases a live enrolled name already proves --
 are dispositioned in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`. A
