@@ -5711,14 +5711,15 @@ a direct software-seed KEYGEN.
 . Run a direct-seed ML-DSA-87 KEYGEN on the palindromic seed with
 `cfg.entropy` and capture the public key.
 . `ZEROIZE`. Repeat KEYGEN with the inverted entropy vector. The two public
-keys must differ.
+keys must match -- `ABR_ENTROPY` is SCA masking and must not change the
+outputs.
 . `ZEROIZE`, then `CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` dest ABR ML-DSA seed.
 . Write the same masking entropy, set the KV seed-read enable, KEYGEN, and
 compare the public key word-for-word.
 
 *Randomization*: RANDCFG. `SepAbrKeygenCfg` is the single source of truth for
-masking entropy on both KEYGENs. The seed words are directed so the two
-KEYGENs stay comparable.
+masking entropy on both compare KEYGENs. The seed words are directed so the
+two KEYGENs stay comparable.
 
 *Scope*: ML-KEM dest bits and `CMD_ABR_SK_TRANSFER` consume after a live ABR
 capture are not claimed.
@@ -5731,7 +5732,7 @@ capture are not claimed.
 |CHK0
 |`rom_main` boots on real entropy and announces `RESP_KM_READY`.
 |CHK-RANDCFG
-|A KEYGEN that writes `cfg.entropy` and a KEYGEN that writes the inverted vector produce different public keys. Both compare KEYGENs write `cfg.entropy`.
+|A KEYGEN that writes `cfg.entropy` and a KEYGEN that writes the inverted vector produce the same public key. Both compare KEYGENs write `cfg.entropy`.
 |CHK-DIRECT
 |The direct-seed KEYGEN produces a non-zero public key.
 |CHK-XFER
@@ -5742,10 +5743,11 @@ capture are not claimed.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Anti-vacuity*: both compare public keys must be non-zero. The palindrome
-absorbs the KV dword reversal, so a mismatch is a sideload failure, not an
-ordering artifact. If ABR ignored masking entropy the inverted-entropy KEYGEN
-would match the `cfg.entropy` KEYGEN and CHK-RANDCFG would fail.
+*Anti-vacuity*: both compare public keys must be non-zero. The inverted
+vector is not equal to `cfg.entropy`. The palindrome absorbs the KV dword
+reversal, so a CHK-PK mismatch is a sideload failure, not an ordering
+artifact. `ABR_ENTROPY` is write-only; this row grades the RDL "no change on
+the outputs" rule, not a consume probe.
 
 '''''
 

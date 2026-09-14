@@ -109,16 +109,18 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
             pk_direct[3],
         )
 
+        # ABR_ENTROPY is SCA masking: write-only, and the RDL requires no change
+        # on the outputs. Invert the vector and the public key must stay the same.
         contrast = [(~w) & 0xFFFF_FFFF for w in cfg.entropy]
+        assert contrast != cfg.entropy, "CHK-RANDCFG FAIL: invert collapsed to cfg.entropy"
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         await self._wait_status(abr, ST_READY, ST_READY, what="contrast READY")
         pk_contrast = await self._keygen(abr, _ABR_SEED_PAL, contrast, what="CHK-RANDCFG")
-        assert pk_contrast != pk_direct, (
-            "CHK-RANDCFG FAIL: inverted entropy produced the same PK -- "
-            "masking entropy did not reach the engine"
+        assert pk_contrast == pk_direct, (
+            "CHK-RANDCFG FAIL: inverted masking entropy changed the public key"
         )
         self.logger.info(
-            "CHK-RANDCFG PASS: cfg.entropy KEYGEN PK differs from inverted-entropy KEYGEN"
+            "CHK-RANDCFG PASS: inverted masking entropy left the public key unchanged"
         )
 
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
