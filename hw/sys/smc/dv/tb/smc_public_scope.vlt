@@ -5,15 +5,34 @@
 // Scope cocotb public access to the TB top only. Global --public-flat-rw
 // explodes gpio hierarchy under Verilator 5.046.
 public_flat_rw -module "smc_uvm_top" -var "*"
+// The shared AXI VIP interface on the SYS_OUT boundary: cocotb binds the slave
+// agent to its members.
+public_flat_rw -module "ocah_axi_if" -var "*"
 // SEP-aligned CPU / output / I3C mem: backdoor $readmemh into prim_* arrays.
 // prim_ram_2p is the I3C RLT memory, instantiated in smc_ip_integration.
 public_flat_rw -module "prim_rom" -var "mem"
 public_flat_rw -module "prim_ram_1p" -var "mem"
 public_flat_rw -module "prim_ram_2p" -var "mem"
 // Lifecycle decode observation for smc_efuse_jtag_lc_access_matrix_test's
-// white-box cross-check. READ-ONLY on purpose: the test only samples these,
+// white-box cross-check. READ-ONLY: the test only samples these,
 // and publishing them read-only keeps `[NO-FORCED-INTERNAL-STATE]` structurally
 // true (cocotb cannot write them even by accident).
 public_flat_rd -module "smc_efuse_wrapper" -var "lc_state_smc_raw"
 public_flat_rd -module "smc_efuse_wrapper" -var "lc_sigint_err"
 public_flat_rd -module "smc_efuse_wrapper" -var "is_prod_or_rma_sip"
+// Trap cause and trapped PC, per core. The cluster exposes only the retired PC
+// (smc_4core_cpu.sv:259 `o_wb_reg_pc`), so a firmware image that traps and one
+// that simply stopped fetching are indistinguishable from outside. READ-ONLY
+// for the same reason as the lifecycle signals above: the firmware boot tests
+// only sample these, and publishing them read-only keeps
+// `[NO-FORCED-INTERNAL-STATE]` structurally true.
+public_flat_rd -module "OCAH4CORECluster_CSRFile" -var "reg_mcause"
+public_flat_rd -module "OCAH4CORECluster_CSRFile" -var "reg_mepc"
+
+// The dual target makes IMPLICIT an error so an undeclared net in this harness
+// stops the build instead of becoming a constant-0 wire. Vendored OpenTitan
+// RTL declares two buffer outputs implicitly (prim_diff_encode.sv) and is not
+// ours to edit, so the rule is switched off for that path. This file is on
+// every SMC cocotb Verilator build, so the default target drops those two
+// warnings as well; nothing under hw/ matches the glob.
+lint_off -rule IMPLICIT -file "*/vendor/lowRISC/opentitan/*"

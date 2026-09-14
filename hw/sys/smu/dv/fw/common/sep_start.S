@@ -2,8 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SEP smoke startup. Completion markers go to the DCCM mailbox (top of
-// DCCM, below the stack guard) so the smoke has no external-bus dependency;
-// the external console path is tracked separately (issue #3939).
+// DCCM, below the stack guard) so the smoke has no external-bus dependency.
 
 .section .text.start
 .global _start

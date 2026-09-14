@@ -34,7 +34,6 @@ int reset_ctrl_sequence(int hartid) {
     // Bit bang all the registers in the reset unit
     reset_unit__SS_CONFIG_t reset_unit_ss_config = {.w = get_random_int()};
     reset_unit__SS_CONFIG_LOCK_t reset_unit_ss_config_lock = {.w = get_random_int()};
-    // SMC_WRAP_RESET_UNIT_MASTER_NDM_RESET_reg_u reset_unit_ndm_reset =  { .w = get_random_int() };
     reset_unit__SS_COLD_RESET_N_t reset_unit_ss_cold_reset_n = {.w = get_random_int()};
     reset_unit__SS_WARM_RESET_N_t reset_unit_ss_warm_reset_n = {.w = get_random_int()};
     reset_unit__SS_CONFIG_HOLD_t reset_unit_ss_config_hold = {.w = get_random_int()};
@@ -43,11 +42,8 @@ int reset_ctrl_sequence(int hartid) {
     reset_unit__SS_DEBUG_HOLD_t reset_unit_ss_debug_hold = {.w = get_random_int()};
     reset_unit__SS_FORCE_TO_REF_CLK_t reset_unit_ss_force_to_ref_clk = {.w = get_random_int()};
     reset_unit__SS_COLD_RESET_LOCK_t reset_unit_ss_cold_reset_lock = {.w = get_random_int()};
-    // SMC_WRAP_RESET_UNIT_MASTER_D2D_FORCE_STALL_reg_u reset_unit_d2d_force_stall = { .w =
-    // get_random_int() };
 
     // The expected values to later check against
-    // SMC_WRAP_RESET_UNIT_MASTER_NDM_RESET_reg_u exp_reset_unit_ndm_reset = reset_unit_ndm_reset;
     reset_unit__SS_WARM_RESET_N_t exp_reset_unit_ss_warm_reset_n = reset_unit_ss_warm_reset_n;
     reset_unit__SS_CONFIG_HOLD_t exp_reset_unit_ss_config_hold = reset_unit_ss_config_hold;
     reset_unit__SS_SRAM_HOLD_t exp_reset_unit_ss_sram_hold = reset_unit_ss_sram_hold;
@@ -55,10 +51,6 @@ int reset_ctrl_sequence(int hartid) {
     reset_unit__SS_DEBUG_HOLD_t exp_reset_unit_ss_debug_hold = reset_unit_ss_debug_hold;
     reset_unit__SS_FORCE_TO_REF_CLK_t exp_reset_unit_ss_force_to_ref_clk =
         reset_unit_ss_force_to_ref_clk;
-    // TODO
-    // reset_unit__SS_COLD_RESET_LOCK_t exp_reset_unit_ss_cold_reset_lock =
-    // reset_unit_ss_cold_reset_lock; SMC_WRAP_RESET_UNIT_MASTER_D2D_FORCE_STALL_reg_u
-    // exp_reset_unit_d2d_force_stall = { .w = (reset_unit_d2d_force_stall.w & 0x1) };
 
     // SS Config and SS Config Lock are special cases.
     reset_unit__SS_CONFIG_t exp_reset_unit_ss_config = {.w = 0};
@@ -90,7 +82,6 @@ int reset_ctrl_sequence(int hartid) {
     // Write to the scratch registers.  These can be used to check
     // against the top-level signals in the testbench
     write_scratch(7, exp_reset_unit_ss_config.w);
-    // write_scratch(8, exp_reset_unit_ndm_reset.w);
     write_scratch(9, exp_reset_unit_ss_cold_reset_n.w);
     write_scratch(10, exp_reset_unit_ss_warm_reset_n.w);
     write_scratch(11, exp_reset_unit_ss_config_hold.w);
@@ -98,12 +89,10 @@ int reset_ctrl_sequence(int hartid) {
     write_scratch(13, exp_reset_unit_ss_critical_hold.w);
     write_scratch(14, exp_reset_unit_ss_debug_hold.w);
     write_scratch(15, exp_reset_unit_ss_force_to_ref_clk.w);
-    // write_scratch( 6, exp_reset_unit_d2d_force_stall.w);
 
     // Drive the signals at the top-level
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR, reset_unit_ss_config.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_LOCK_BASE_ADDR, reset_unit_ss_config_lock.w);
-    // write_reg(SMC_RESET_UNIT_NDM_RESET_REG_ADDR, reset_unit_ndm_reset.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, reset_unit_ss_cold_reset_n.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, reset_unit_ss_warm_reset_n.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_HOLD_BASE_ADDR, reset_unit_ss_config_hold.w);
@@ -113,11 +102,9 @@ int reset_ctrl_sequence(int hartid) {
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_FORCE_TO_REF_CLK_BASE_ADDR,
               reset_unit_ss_force_to_ref_clk.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, reset_unit_ss_cold_reset_lock.w);
-    // write_reg(SMC_RESET_UNIT_D2D_FORCE_STALL_REG_ADDR, reset_unit_d2d_force_stall.w);
 
     reset_unit__SS_CONFIG_t read_back_reset_unit_ss_config = {.w = 0};
     reset_unit__SS_CONFIG_LOCK_t read_back_reset_unit_ss_config_lock = {.w = 0};
-    // SMC_WRAP_RESET_UNIT_MASTER_NDM_RESET_reg_u read_back_reset_unit_ndm_reset =  { .w = 0 };
     reset_unit__SS_COLD_RESET_N_t read_back_reset_unit_ss_cold_reset_n = {.w = 0};
     reset_unit__SS_WARM_RESET_N_t read_back_reset_unit_ss_warm_reset_n = {.w = 0};
     reset_unit__SS_CONFIG_HOLD_t read_back_reset_unit_ss_config_hold = {.w = 0};
@@ -126,8 +113,6 @@ int reset_ctrl_sequence(int hartid) {
     reset_unit__SS_DEBUG_HOLD_t read_back_reset_unit_ss_debug_hold = {.w = 0};
     reset_unit__SS_FORCE_TO_REF_CLK_t read_back_reset_unit_ss_force_to_ref_clk = {.w = 0};
     reset_unit__SS_COLD_RESET_LOCK_t read_back_reset_unit_ss_cold_reset_lock = {.w = 0};
-    // SMC_WRAP_RESET_UNIT_MASTER_D2D_FORCE_STALL_reg_u read_back_reset_unit_d2d_force_stall = { .w
-    // = 0 };
 
     read_back_reset_unit_ss_config.w = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR);
     if (read_back_reset_unit_ss_config.w != exp_reset_unit_ss_config.w) {

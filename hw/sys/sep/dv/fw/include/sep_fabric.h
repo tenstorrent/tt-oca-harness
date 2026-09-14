@@ -9,8 +9,8 @@
  * Consolidates fabric inline stubs, cache-attribute encodings, and alias/remap
  * setup placeholders. The non-inline setup_* helpers are open no-op
  * placeholders for adopter-specific fabric programming, defined in
- * common/sep_fabric.c and linked from libsep.a. Function names/signatures are
- * unchanged so the fabric tests keep their existing call sites. */
+ * drivers/sep_fabric.c and linked from libsep.a; the fabric tests call them by
+ * these names. */
 
 #include <stdint.h>
 
@@ -102,7 +102,7 @@ static inline uint32_t get_system_frequency(void) {
     return 100000000; // 100 MHz
 }
 
-/* Alias/remap setup placeholders (no-op; defined in common/sep_fabric.c). */
+/* Alias/remap setup placeholders (no-op; defined in drivers/sep_fabric.c). */
 int write_alias_csr_register();
 int read_alias_csr_register();
 int perform_alias_csr_soft_reset();

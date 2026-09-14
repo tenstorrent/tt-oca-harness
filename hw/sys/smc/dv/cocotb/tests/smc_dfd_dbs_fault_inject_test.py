@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """# deferred: tb_glue
-TB-glue: DBS capture latch demo (NOT DUT DFD RTL).
-
-Deferred: tb_dfd_fault_inject only latches a
-hardcoded token 0xDB5C_AFE1. Real DFD lives under smc_dfd_wrap / hw/ip/dfd.
+TB-glue only: `tb_dfd_fault_inject` latches the hardcoded token 0xDB5C_AFE1;
+the DUT DFD RTL (smc_dfd_wrap / hw/ip/dfd) is not exercised.
 """
 
 from __future__ import annotations
@@ -29,7 +27,7 @@ class smc_dfd_dbs_fault_inject_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
-            # Directed stimulus floor: the single RAS_BANK_INFO CSR read this
+            # Directed stimulus floor: the single VERSION_LO CSR read this
             # TB-glue scenario issues. Literal here, not read from
             # `seq.accesses`.
             min_csr_accesses=1,

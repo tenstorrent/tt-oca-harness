@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+
 # eFuse preload configurations
 
 Each `.toml` here declares one OTP image by named register and field. A test
@@ -57,28 +60,12 @@ rather than a silently-zero field.
 ## Not generated from TOML
 
 `../sep_efuse_default.hex` is a seeded-random vector snapshot, not a declarative
-image: every field including the reserved bits carries random data (and its
-`SBOOT_DIS.disable_secure_boot` happens to be 1). Expressing it as TOML would be
-40 lines of magic numbers with nothing gained, and regenerating it as a "sane"
-default would change what every test loading the bare `+sep_efuse_preload` sees.
-It stays a committed image.
+image: every field including the reserved bits carries random data (its
+`SBOOT_DIS.disable_secure_boot` is 1). It is a committed image, and every test
+loading the bare `+sep_efuse_preload` depends on its exact contents.
 
 ## Why placement is derived, not declared
 
 Register offsets, field bit ranges and lock bit positions are all read from the
 generated register header (itself generated from `sep_efuse_map.rdl`), and a name
 the map does not have is an error. No file here restates the fuse map.
-
-That is a deliberate departure from the reference implementation this replaces,
-which carried a hand-maintained `efuse_schema.toml` copy of the map, placed
-registers by concatenating them in config-file iteration order, and assigned lock
-bits by ordinal position. Omitting or reordering one entry in a config therefore
-relocated every register and lock after it, silently.
-
-The reference's own artifacts show the failure: its committed
-`lc_corrupt.preload` puts LC_STATE at word 2, so it predates `LOCKS_SPARE` being
-inserted at `0x008` and was never regenerated, and its config still declares
-`RESERVED_0..8` where the map now has `REQUIRED_SIGNERS`, `REQUIRED_ALGS`, the
-PQC hashes, `SEP_*_ID` and `SPARE0..7` — names the reference generator would now
-reject outright, meaning that preload can no longer be reproduced from its own
-source.

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Register -I flags for a sys subsystem (umbrella + generated headers + shim/ip
-# trees). Split out of compile.mk because the SEP boot ROM drives its own build
+# trees). Separate from compile.mk because the SEP boot ROM drives its own build
 # but has to see exactly the same headers.
 
 ifndef ocah_fw_reg_includes_mk

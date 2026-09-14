@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag_trst_test — asynchronous TRST reset and recovery
-// (`--items dtp_jtag_trst_test`): runs dtp_jtag_trst_test_seq at the looped
+// dtp_jtag_trst_test — asynchronous TRST reset and recovery: runs
+// dtp_jtag_trst_test_seq at the looped
 // floor, each pass proving TRST forces Test-Logic-Reset from distinct start
 // states and that IDCODE reads back after every recovery. The aggregate
 // per-cycle TAP-state legality (CHK-TAP-STATE, the cocotb checker's

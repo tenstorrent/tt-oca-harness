@@ -128,6 +128,7 @@ class _BaseMonitor:
             "items": len(self._history),
             "write_transactions": writes,
             "read_transactions": reads,
+            "callback_errors": self.callback_errors,
         }
 
     def get_request_activity(self) -> dict[str, int]:

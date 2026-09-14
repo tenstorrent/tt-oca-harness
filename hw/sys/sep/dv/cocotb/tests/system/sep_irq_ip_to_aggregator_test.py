@@ -11,8 +11,8 @@ the IP raised its own status bit.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 (unreachable with the CPU held off), so the test observes it through the tb_top
-`sep_internal_interrupts_probe_o` (observation-only XMR mirror, signed off; the
-OSS analog of the reference suite's sep_irq_probe_if wire-tap of sep_interrupts[idx]). The IP-
+`sep_internal_interrupts_probe_o` (observation-only XMR mirror; the OSS analog of
+the reference suite's sep_irq_probe_if wire-tap of sep_interrupts[idx]). The IP-
 local INTR_STATE RW1C contract is checked frontdoor over AXI.
 
 Per source (CSRNG cmd_req_done/entropy_req/hw_inst_exc/fatal_err -> bits 23..26;

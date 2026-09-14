@@ -24,7 +24,7 @@
  * FILTER_CONFIG open window: read|write|entry_enabled|allow_burst.
  * Compose from generated FILTER_CTRL__FILTER_CONFIG__*_bm (filter_ctrl.h).
  * Do NOT set ALLOW_NS: EnNsFilter=1 and SEP CPU traffic is secure (ns=0).
- * Bit32 reserved: keep reference suite/XBAR golden (XBAR_SEP_OUTBOUND_CFG) until RTL/docs clarify.
+ * Bit 32 is set to match the XBAR golden value XBAR_SEP_OUTBOUND_CFG (smc_sep_xbar_protocol.h).
  */
 #define SEP_OUTBOUND_FILTER_CFG_OPEN \
     ((uint64_t)(FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | \

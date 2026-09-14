@@ -17,7 +17,7 @@ RTL, register descriptions, generated collateral, and documentation.
 For detailed documentation, please refer to the GitHub pages site generated as a
 deployment of this repository: [tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
 
-The Getting Started Guide, in particular, can be found [here](https://tenstorrent.github.io/tt-oca-harness/ocah-contributing/latest/index.html).
+The Getting Started Guide, in particular, can be found [here](https://tenstorrent.github.io/tt-oca-harness/ocah-starting/latest/index.html).
 
 Integrator-facing register and timing collateral is indexed under
 [`integration/`](integration/).

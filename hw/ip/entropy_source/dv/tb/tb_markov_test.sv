@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //------------------------------------------------------------------------------
-// Markov Test SystemVerilog-2005 Testbench
+// Markov Test Testbench
 //
 // Description:
-// Comprehensive SystemVerilog-2005 testbench for entropy_markov_test module
+// Comprehensive testbench for entropy_markov_test module
 // Tests transition probability calculation and threshold comparison
 // Verifies enable/disable functionality and pattern detection
 // Includes comprehensive error cases and edge condition testing
@@ -15,7 +15,7 @@
 
 module tb_markov_test ();
 
-  // Test parameters - SystemVerilog-2005 style
+  // Test parameters
   parameter int CLOCK_PERIOD = 10;
   parameter int RESET_CYCLES = 10;
   parameter int SETTLE_CYCLES = 50;
@@ -28,7 +28,7 @@ module tb_markov_test ();
   parameter logic [7:0] LOW_THRESHOLD = 8'd20;  // Failure threshold
   parameter logic [7:0] MAX_THRESHOLD = 8'd250;  // Very high threshold
 
-  // Test signals - SystemVerilog-2005 interface
+  // Test signals
   logic clk_i;
   logic rst_ni;
   logic [31:0] entropy_i;
@@ -53,11 +53,11 @@ module tb_markov_test ();
   int unsigned false_negatives;
   int unsigned error_count;
 
-  // LFSR for pseudorandom data generation - SystemVerilog-2005
+  // LFSR for pseudorandom data generation
   logic [31:0] lfsr;
   logic [31:0] prng_data;
 
-  // Test pattern control - SystemVerilog-2005 enumerated types
+  // Test pattern control
   typedef enum logic [2:0] {
     PATTERN_RANDOM = 3'b000,
     PATTERN_ALTERNATING = 3'b001,
@@ -72,7 +72,7 @@ module tb_markov_test ();
   logic [31:0] test_pattern;
   logic [15:0] error_pattern;
 
-  // Test status tracking - SystemVerilog-2005 packed struct
+  // Test status tracking
   typedef struct packed {
     logic basic_functionality_pass;
     logic enable_disable_pass;
@@ -106,13 +106,13 @@ module tb_markov_test ();
     .status_o(status_o)
   );
 
-  // Clock generation - SystemVerilog-2005 style
+  // Clock generation
   initial begin : clock_gen
     clk_i = 1'b0;
     forever #(CLOCK_PERIOD / 2) clk_i = ~clk_i;
   end : clock_gen
 
-  // LFSR for pseudorandom data generation - SystemVerilog-2005 always_ff
+  // LFSR for pseudorandom data generation
   always_ff @(posedge clk_i or negedge rst_ni) begin : lfsr_gen
     if (~rst_ni) begin
       lfsr <= 32'hACE1FACE;
@@ -122,7 +122,7 @@ module tb_markov_test ();
     end
   end : lfsr_gen
 
-  // Data generation with pattern injection - SystemVerilog-2005 always_comb
+  // Data generation with pattern injection
   always_comb begin : data_gen
     prng_data = lfsr;
 
@@ -152,7 +152,7 @@ module tb_markov_test ();
     end
   end : data_gen
 
-  // Main test sequence - SystemVerilog-2005 initial block
+  // Main test sequence
   initial begin : main_test
     $display("=== Markov Test SystemVerilog-2005 Comprehensive Testbench ===");
     $display("Time=%0t: Starting Markov test with comprehensive error cases", $time);
@@ -192,7 +192,7 @@ module tb_markov_test ();
     $finish;
   end : main_test
 
-  // Initialize test environment - SystemVerilog-2005 task
+  // Initialize test environment
   task automatic initialize_test_environment();
     begin
       test_phase = 0;
@@ -220,7 +220,7 @@ module tb_markov_test ();
     end
   endtask : initialize_test_environment
 
-  // Reset DUT - SystemVerilog-2005 task
+  // Reset DUT
   task automatic reset_dut();
     begin
       $display("Time=%0t: Applying reset", $time);
@@ -232,7 +232,7 @@ module tb_markov_test ();
     end
   endtask : reset_dut
 
-  // Basic functionality test - SystemVerilog-2005 task
+  // Basic functionality test
   task automatic run_basic_functionality_test();
     begin
       $display("");
@@ -266,7 +266,7 @@ module tb_markov_test ();
     end
   endtask : run_basic_functionality_test
 
-  // Enable/disable functionality test - SystemVerilog-2005 task
+  // Enable/disable functionality test
   task automatic run_enable_disable_test();
     begin
       $display("");
@@ -301,7 +301,7 @@ module tb_markov_test ();
     end
   endtask : run_enable_disable_test
 
-  // Pattern detection tests - SystemVerilog-2005 task
+  // Pattern detection tests
   task automatic run_pattern_detection_tests();
     begin
       $display("");
@@ -318,7 +318,7 @@ module tb_markov_test ();
     end
   endtask : run_pattern_detection_tests
 
-  // Test alternating pattern - SystemVerilog-2005 task
+  // Test alternating pattern
   task automatic test_alternating_pattern();
     begin
       $display("");
@@ -363,7 +363,7 @@ module tb_markov_test ();
     end
   endtask : test_alternating_pattern
 
-  // Test correlated pattern - SystemVerilog-2005 task
+  // Test correlated pattern
   task automatic test_correlated_pattern();
     begin
       $display("");
@@ -379,9 +379,9 @@ module tb_markov_test ();
 
       display_probabilities("Correlated Pattern");
 
-      // For FF00 pattern, we should see more 00 and 11 transitions than 01 and 10
-      // This pattern has blocks of 1s and 0s, so same-state transitions are more likely
-      // However, due to accumulated history, let's be more lenient in the check
+      // The FF00 pattern has blocks of 1s and 0s, so same-state (00/11) transitions
+      // outnumber cross-state (01/10) ones; the counters carry history from the
+      // preceding tests, so the check requires only an 80% ratio.
       $display("  Same-state transitions (00+11): %0d", prob_00_o + prob_11_o);
       $display("  Cross-state transitions (01+10): %0d", prob_01_o + prob_10_o);
 
@@ -403,7 +403,7 @@ module tb_markov_test ();
     end
   endtask : test_correlated_pattern
 
-  // Test stuck-at patterns - SystemVerilog-2005 task
+  // Test stuck-at patterns
   task automatic test_stuck_at_patterns();
     begin
       // Test stuck-at-zero
@@ -414,7 +414,7 @@ module tb_markov_test ();
     end
   endtask : test_stuck_at_patterns
 
-  // Test stuck-at-zero pattern - SystemVerilog-2005 task
+  // Test stuck-at-zero pattern
   task automatic test_stuck_at_zero();
     begin
       $display("");
@@ -450,7 +450,7 @@ module tb_markov_test ();
     end
   endtask : test_stuck_at_zero
 
-  // Test stuck-at-one pattern - SystemVerilog-2005 task
+  // Test stuck-at-one pattern
   task automatic test_stuck_at_one();
     begin
       $display("");
@@ -489,7 +489,7 @@ module tb_markov_test ();
     end
   endtask : test_stuck_at_one
 
-  // Threshold boundary tests - SystemVerilog-2005 task
+  // Threshold boundary tests
   task automatic run_threshold_boundary_tests();
     begin
       $display("");
@@ -539,7 +539,7 @@ module tb_markov_test ();
     end
   endtask : run_threshold_boundary_tests
 
-  // Error injection tests - SystemVerilog-2005 task
+  // Error injection tests
   task automatic run_error_injection_tests();
     begin
       $display("");
@@ -559,7 +559,7 @@ module tb_markov_test ();
     end
   endtask : run_error_injection_tests
 
-  // Test rapid enable/disable - SystemVerilog-2005 task
+  // Test rapid enable/disable
   task automatic test_rapid_enable_disable();
     begin
       $display("");
@@ -590,7 +590,7 @@ module tb_markov_test ();
     end
   endtask : test_rapid_enable_disable
 
-  // Test mid-cycle reset - SystemVerilog-2005 task
+  // Test mid-cycle reset
   task automatic test_mid_cycle_reset();
     begin
       $display("");
@@ -634,7 +634,7 @@ module tb_markov_test ();
     end
   endtask : test_mid_cycle_reset
 
-  // Test dynamic threshold changes - SystemVerilog-2005 task
+  // Test dynamic threshold changes
   task automatic test_dynamic_threshold_changes();
     begin
       $display("");
@@ -673,7 +673,7 @@ module tb_markov_test ();
     end
   endtask : test_dynamic_threshold_changes
 
-  // Test boundary conditions - SystemVerilog-2005 task
+  // Test boundary conditions
   task automatic test_boundary_conditions();
     begin
       $display("");
@@ -714,7 +714,7 @@ module tb_markov_test ();
     end
   endtask : test_boundary_conditions
 
-  // Overflow protection tests - SystemVerilog-2005 task
+  // Overflow protection tests
   task automatic run_overflow_protection_tests();
     begin
       $display("");
@@ -743,7 +743,7 @@ module tb_markov_test ();
     end
   endtask : run_overflow_protection_tests
 
-  // Probability accuracy tests - SystemVerilog-2005 task
+  // Probability accuracy tests
   task automatic run_probability_accuracy_tests();
     begin
       $display("");
@@ -784,7 +784,7 @@ module tb_markov_test ();
     end
   endtask : run_probability_accuracy_tests
 
-  // Analyze final results - SystemVerilog-2005 task
+  // Analyze final results
   task automatic analyze_final_results();
     begin
       $display("");
@@ -832,7 +832,7 @@ module tb_markov_test ();
     end
   endtask : analyze_final_results
 
-  // Helper function: Check balanced probabilities - SystemVerilog-2005 function
+  // Helper function: Check balanced probabilities
   function automatic logic check_balanced_probabilities();
     return ((prob_01_o >= IDEAL_PROB - TOLERANCE) && (prob_01_o <= IDEAL_PROB + TOLERANCE) &&
                 (prob_10_o >= IDEAL_PROB - TOLERANCE) && (prob_10_o <= IDEAL_PROB + TOLERANCE) &&
@@ -840,13 +840,13 @@ module tb_markov_test ();
                 (prob_11_o >= IDEAL_PROB - TOLERANCE) && (prob_11_o <= IDEAL_PROB + TOLERANCE));
   endfunction : check_balanced_probabilities
 
-  // Helper function: Check disabled state - SystemVerilog-2005 function
+  // Helper function: Check disabled state
   function automatic logic check_disabled_state();
     return ((prob_01_o == 8'd0) && (prob_10_o == 8'd0) &&
                 (prob_00_o == 8'd0) && (prob_11_o == 8'd0) && (status_o == 4'b0000));
   endfunction : check_disabled_state
 
-  // Helper task: Display probabilities - SystemVerilog-2005 task
+  // Helper task: Display probabilities
   task automatic display_probabilities(input string test_name);
     begin
       $display("%s probabilities:", test_name);
@@ -858,7 +858,7 @@ module tb_markov_test ();
     end
   endtask : display_probabilities
 
-  // Helper task: Restore default thresholds - SystemVerilog-2005 task
+  // Helper task: Restore default thresholds
   task automatic restore_default_thresholds();
     begin
       prob_01_threshold_i = HIGH_THRESHOLD;
@@ -868,7 +868,7 @@ module tb_markov_test ();
     end
   endtask : restore_default_thresholds
 
-  // Status change monitors - SystemVerilog-2005 always blocks
+  // Status change monitors
   always @(posedge status_o[0]) begin : monitor_01_status
     if (enable_i && rst_ni) begin
       $display("Time=%0t: MARKOV FAILURE - 0→1 threshold exceeded (prob=%0d)", $time, prob_01_o);
@@ -893,7 +893,7 @@ module tb_markov_test ();
     end
   end : monitor_11_status
 
-  // VCD dump for waveform analysis - SystemVerilog-2005 style
+  // VCD dump for waveform analysis
   initial begin : vcd_dump
     $dumpfile("markov_test.vcd");
     $dumpvars(0, tb_markov_test);

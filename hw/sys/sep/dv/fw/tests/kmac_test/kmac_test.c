@@ -2,14 +2,14 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * KMAC-128 Test (Based on AES test structure)
+ * KMAC-128 Test
  *
  * This test demonstrates KMAC-128 operation with a simple message.
  * KMAC (Keccak Message Authentication Code) is a PRF and keyed hash function
  * based on Keccak, standardized in NIST SP 800-185.
  *
- * Test Vector: KMAC128("", "", 256, "KMAC") - empty key, empty message
- * Expected: First test to get hardware working, then add proper test vectors
+ * Test Vector: KMAC128(zero Key128, "test", 256, "KMAC"), compared against the
+ * expected digest below.
  */
 
 #include <stdint.h>

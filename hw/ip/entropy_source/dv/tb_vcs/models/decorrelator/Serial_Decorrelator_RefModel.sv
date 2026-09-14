@@ -7,12 +7,12 @@
 // DECORRELATOR REFERENCE MODEL (TESTBENCH ONLY - NOT FOR SYNTHESIS)
 //==============================================================================
 // PURPOSE:     Generate golden entropy data for verification and comparison
-// STATUS:      Simulation-only behavioral model
+// SCOPE:       Simulation-only behavioral model
 // LOCATION:    Testbench infrastructure (models/decorrelator/)
 //
 // IMPORTANT:   This is NOT the synthesizable RTL design!
-//              The actual entropy decorrelator will be implemented in:
-//              hw/ip/entropy/rtl/ (when integrated with real design)
+//              The synthesizable decorrelator is
+//              hw/ip/entropy_source/rtl/entropy_decorrelator.sv.
 //
 // DESCRIPTION:
 //   - For each lane, maintains a 29-bit shift register (DEPTH bits wide)
@@ -112,10 +112,8 @@ module Serial_Decorrelator_RefModel #(
             // shift_dir_q == 0: SHIFT_RIGHT - Input at [28], output [7:0], shift right
             // shift_dir_q == 1: SHIFT_LEFT  - Input at [0], output [28:21], shift left
             //
-            // Effective mode for this lane (bypass_mask overrides mode_i,
-            // 1=BYPASS, 0=use mode_q) is inlined at each case selector below
-            // rather than latched into a local, so this always_ff never
-            // needs a blocking assignment.
+            // Per-lane effective mode: bypass_mask_i[i] = 1 forces BYPASS,
+            // 0 uses mode_q.
             if (shift_dir_q == 1'b0) begin
               // SHIFT_RIGHT: sr[i][DEPTH-1] is newest, sr[i][0] is oldest
               unique case (bypass_mask_i[i] ? 3'd2 : mode_q)

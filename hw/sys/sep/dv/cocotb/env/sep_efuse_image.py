@@ -5,10 +5,8 @@
 Builds the 256-word (8192-bit) SEP fuse array as a ``$readmemh`` image the
 generic efuse bank model (``hw/ip/efuse/dv/models/efuse_bank_model.sv``)
 loads at t=0 via ``+sep_efuse_hex`` (staged pre-sim by dv_sim_prestage.py). The
-field schema, offsets and widths mirror ``sep_efuse_pkg::EfuseFieldMap``
-(``hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv``, generated from
-``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``); the constraints
-mirror the reference UVM ``sep_efuse_item`` golden model.
+Write-policy and used-bit membership come from ``env/sep_efuse_field_map``.
+Offsets and widths come from the generated RDL header.
 
 The same object is the golden reference for the shadow-readout checker:
 ``expected_shadow(field)`` returns the value software should read back from the
@@ -20,6 +18,7 @@ readable field reads back verbatim).
 from __future__ import annotations
 
 from sep_reg_meta import SEP_CPU_CTRL, sym
+import sep_efuse_field_map
 
 # The generated map itself, for enumerating the eFuse register set rather than
 # naming each entry. Import order matters: sep_reg_meta puts regs/gen/py on
@@ -29,8 +28,8 @@ import sep_reg  # noqa: E402
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-# Stimulus randomness is deliberately the seeded, NON-cryptographic SepSeededRng, and
-# must stay that way. This generator is run TWICE per simulation from two different
+# Stimulus randomness is the seeded, NON-cryptographic SepSeededRng. This generator
+# is run TWICE per simulation from two different
 # processes -- once by dv_sim_prestage.py to stage the t=0 OTP image the RTL $readmemh
 # reads, and once inside the cocotb test to build the golden that the post-sense
 # backdoor compare checks that image against. The two runs agree only because
@@ -46,9 +45,9 @@ from typing import Dict, List, Optional, Tuple
 # ``python_paths``) and in the prestage hook, which inserts it explicitly.
 from sep_seeded_rng import SepSeededRng  # noqa: E402
 
-# Array geometry (sep_efuse_pkg: NumEfuseBits=8192, NumFuseWordWidth=32).
-NUM_FUSE_WORDS = 256
+# Array geometry from periphs.adoc ("exactly 8192 bits" / 256 x 32-bit words).
 WORD_BITS = 32
+NUM_FUSE_WORDS = sep_efuse_field_map.spec_num_fuse_bits() // WORD_BITS
 WORD_MASK = (1 << WORD_BITS) - 1
 
 # Software-visible shadow-register block base.
@@ -56,15 +55,17 @@ SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 # SEP CPU-ctrl fuse-sense-done status (separate block).
 SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 
-# LC_STATE's shadow word (efuse_pkg::SHADOW_IDX_LC_STATE). The OTP word carries the
-# 4-bit raw code in [3:0] and the FSM differential-encodes it.
+# LC_STATE's shadow word. The OTP word carries the 4-bit raw code in [3:0]
+# and the FSM differential-encodes it.
 #
 # Derived, never written down. Read the index out of the generated map so a
 # hardcoded word offset cannot silently point at a neighbour field (a wrong but
 # self-consistent differential pair still looks healthy to a shadow checker).
 LC_WORD_IDX = sym("SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
 LC_RAW_WIDTH = 4
-# efuse_pkg::lc_state_raw_e — only these 7 codes are legal.
+# Legal raw LC_STATE codes from hw/sys/sep/doc/lifecycle_controller.adoc
+# (encoding table and the per-LC-state feature-control profile).
+# Only these seven are legal.
 LC_TEST_DEV = 0x0
 LC_PROD = 0x1
 LC_RMA_SIP_0 = 0x2
@@ -90,20 +91,16 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 #   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.
 # Kinds, keyed by generated register name. Everything not named here is "data":
 # freely randomizable. Only the semantics live here -- offsets and lengths are read
-# out of the generated map below, because a hand-written copy of the map is exactly
-# what went stale when LOCKS_SPARE was inserted at 0x008 and shifted every field
-# after it by one word.
+# out of the generated map below. A hand-written copy of the map drifts when
+# the generated layout changes.
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
-# Class-1a device secrets. sep_efuse_pkg.sv:563 SecretShadowRanges disconnects these
-# from the shadow-register hardware output while secure_tm is asserted, so no real
-# secret reaches a scannable consumer. Named, not derived: which fields are secret is
-# a security decision in the package, not a property of the map's shape, so a new
-# field must be classified deliberately rather than inherited by position.
-_SECRET_REGS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
+# KM-secret fields named in periphs.adoc (Key Manager subset).
+_SECRET_REGS = sep_efuse_field_map.spec_secret_regs()
 
-# Lock-field geometry, from sep_efuse_pkg. LOCKS (64-bit, OTP words 0-1) plus
+# Lock-field geometry, from the periphs.adoc LOCK field (96 bits, two bits per
+# protected slot). LOCKS (64-bit, OTP words 0-1) plus
 # LOCKS_SPARE (32-bit, word 2) form one 96-bit field holding two bits per protected
 # field -- a write lock and a read lock -- across 40 slots (idx 0-39). locks[79:0] are
 # the meaningful pair bits; [95:80] are unassigned slots 40-47. Index 6'h3F is the
@@ -119,13 +116,12 @@ _PROB_BITS = 32
 
 # Spec-stated anchors, asserted against the generated map below.
 #
-# Deriving the field table from the map is what stopped a hand-written copy going stale,
-# but it introduced a subtler failure: DV takes each field's length from the gap to the
-# next base, and efuse_guard derives its end address the same way, both reading the same
-# generated map. A wrong RDL therefore moves the expectation and the DUT together and
-# nothing disagrees. Pinning the handful of offsets and widths the specification states
-# outright gives the derivation an independent anchor -- the same reason
-# sep_reg_meta._selftest() exists in this environment.
+# The field table is derived from the generated map: DV takes each field's length from
+# the gap to the next base, and efuse_guard derives its end address the same way, both
+# reading the same map. A wrong RDL therefore moves the expectation and the DUT
+# together and nothing disagrees. Pinning the handful of offsets and widths the
+# specification states outright gives the derivation an independent anchor -- the
+# same reason sep_reg_meta._selftest() exists.
 _SPEC_ANCHORS = {
     # name:          (byte offset, width in bits)
     "LOCKS": (0x000, 64),
@@ -189,8 +185,8 @@ def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
     lock_bits = sum(by_name[n][2] for n in _LOCK_REGS) * WORD_BITS
     if lock_bits != LOCK_FIELD_BITS:
         raise RuntimeError(
-            f"LOCKS + LOCKS_SPARE span {lock_bits} bits, but sep_efuse_pkg states "
-            f"LockFieldBits = {LOCK_FIELD_BITS}"
+            f"LOCKS + LOCKS_SPARE span {lock_bits} bits, but the specification "
+            f"LOCK field is {LOCK_FIELD_BITS} bits"
         )
     return tuple(out)
 
@@ -224,9 +220,9 @@ class SepEfuseImage:
 
     Golden assumptions (must match the tb wiring): the DUT runs with
     ``secure_tm`` tied 0 and LOCKS unlocked, so every field reads back verbatim
-    except LC_STATE (differential-encoded). If a read-lock or secure_tm test is
-    added, ``expected_shadow`` must model the gated readback (read-lock ->
-    0xbadcab1e, secure_tm -> token digests zeroed) for those cases.
+    except LC_STATE (differential-encoded). KM-secret disconnect under
+    ``secure_tm`` is graded by the stitch leaf against the staged value, not
+    by forcing those words to a constant here.
     """
 
     fields: Tuple[SepEfuseField, ...] = tuple(
@@ -263,13 +259,11 @@ class SepEfuseImage:
         fuse configuration, a per-bit reference suite ``*.preload`` (one 0/1 per
         line), or a 256-word hex image.
 
-        Dispatching here rather than in the callers is what keeps the two
-        execution points honest. This method is the single entry both of them
-        use -- ``dv_sim_prestage.stage()`` to write the array the RTL
-        ``$readmemh`` reads at t=0, and ``sep_base_test.select_efuse_image()`` to
-        build the golden the post-sense shadow compare checks that array
-        against -- so a format taught to one is a format the other already
-        speaks. Teaching only the prestage about TOML would silently give the
+        This method is the single entry both execution points use --
+        ``dv_sim_prestage.stage()`` to write the array the RTL ``$readmemh`` reads
+        at t=0, and ``sep_base_test.select_efuse_image()`` to build the golden the
+        post-sense shadow compare checks that array against -- so every format is
+        available to both. A format known to only one of them would give the
         golden a zero-filled image and turn every field into a mismatch.
         """
         path = Path(path)
@@ -322,7 +316,7 @@ class SepEfuseImage:
         ``{~raw, raw}`` into the shadow itself, so a staged image carrying a bare nibble
         still senses as a valid
         pair. That is also why no staged image can present a BROKEN pair to the DUT.
-        The stitch test injects that fault at the LCC decoder input (signed-off force).
+        The stitch test injects that fault by forcing the LCC decoder input.
         """
         if raw not in LEGAL_LC_RAW:
             raise ValueError(f"illegal LC raw code 0x{raw:x}")
@@ -368,16 +362,15 @@ class SepEfuseImage:
         # fields. Build it once, then slice each register by its bit offset
         # from the LOCKS base: LOCKS <- [63:0], LOCKS_SPARE <- [95:64]
         # (slots 32-39 in [79:64]; [95:80] are unassigned and stay 0).
-        # Drawing per kind=="locks" field would write a fresh 80-bit vector
-        # into each, so LOCKS_SPARE received bits [31:0] of a second draw
-        # instead of [95:64] of the first.
+        # Drawing per kind=="locks" field would write a fresh vector into each,
+        # so LOCKS_SPARE would receive bits [31:0] of a second draw instead of
+        # [95:64] of the first.
         #
         # The vector holds TWO bits per protected field -- a write lock and a
         # read lock -- so 40 slots cover 80 bits. Index 6'h3F is the no-lock
-        # sentinel. Lock ENFORCEMENT (read-lock -> 0xbadcab1e, write-lock
-        # rejecting a program) is still not checked by the shadow checkers, so
-        # expected_shadow() assumes fields stay readable. Extend both
-        # together, and add a plan row, before relying on this.
+        # sentinel. The shadow checkers do not check lock ENFORCEMENT (read-lock ->
+        # 0xbadcab1e, write-lock rejecting a program); expected_shadow() assumes
+        # fields stay readable.
         lock_bits = 0
         if lock_prob > 0.0:
             # Bernoulli draw as an integer comparison rather than a float one:
@@ -424,7 +417,7 @@ class SepEfuseImage:
     # -- golden model ------------------------------------------------------
 
     def secret_words(self) -> frozenset:
-        """Word indices the DUT blanks while secure_tm is asserted."""
+        """Word indices of the four KM-secret fields (periphs.adoc)."""
         idx: set[int] = set()
         for name in _SECRET_REGS:
             fld = self.field(name)
@@ -434,18 +427,12 @@ class SepEfuseImage:
     def shadow_word(self, word_idx: int, *, secure_tm: int = 0) -> int:
         """Expected software-readback value for shadow word ``word_idx``.
 
-        LC_STATE is transformed by the sense FSM. With ``secure_tm`` asserted the
-        Class-1a secrets read back as zero -- the DUT disconnects them from the shadow
-        output (sep_efuse_pkg.sv SecretShadowRanges), so a golden that returned the
-        staged value would report 32 mismatches on a TEST_EN run. Everything else
-        reads back verbatim (LOCKS unlocked).
-
-        The blanking is conditional ON PURPOSE. Zeroing these words unconditionally
-        would stop the compare proving they sensed correctly at all, which is the
-        whole point of the post-sense check.
+        LC_STATE is transformed by the sense FSM. Everything else reads back
+        verbatim (LOCKS unlocked). ``secure_tm`` does not change this golden:
+        KM-secret disconnect is a not-equal check against the staged value,
+        not an expected constant.
         """
-        if secure_tm and word_idx in self.secret_words():
-            return 0
+        _ = secure_tm
         if word_idx == LC_WORD_IDX:
             upper = self.words[LC_WORD_IDX] & 0xFFFF_FF00
             return upper | lc_encode(self.lc_raw())
@@ -469,8 +456,8 @@ def _selftest_lock_pack() -> None:
 
     lock_prob=1.0 forces every assigned slot. 40 slots x 2 bits = 80 ones;
     LOCKS is [63:0], LOCKS_SPARE is [95:64] with [95:80] unassigned and 0.
-    A per-field redraw writes [31:0] of a second vector into LOCKS_SPARE
-    (0xffffffff) and is the packing bug this pins.
+    A per-field redraw would write [31:0] of a second vector into LOCKS_SPARE
+    (0xffffffff); this pins the single-vector packing.
     """
     ones = SepEfuseImage().randomize(7, lock_prob=1.0)
     locks = ones.field_int("LOCKS")

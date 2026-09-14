@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap Round 4: XVISOR_REMAP full sweep."""
+"""SMC OSS XVISOR_REMAP full sweep."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_xvisor_remap_test(smc_base_test):
-    """P1 coverage-gap depth: hypervisor remap table (0xC001_4000) sweep."""
+    """Hypervisor remap table (0xC001_4000) sweep."""
 
     auto_protocol_vip = False
 
@@ -28,5 +28,5 @@ class smc_xvisor_remap_test(smc_base_test):
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,
-            details="P1 coverage-gap R4: XVISOR_REMAP 0..7 bounded sweep",
+            details="XVISOR_REMAP 0..7 bounded sweep",
         )

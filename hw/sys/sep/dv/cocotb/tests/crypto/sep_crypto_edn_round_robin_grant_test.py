@@ -16,8 +16,8 @@ on that bring-up. Two crypto sinks are live (AES + OTBN URND), so CHK5 is
 dual-sink ROUTING: each post-adapter beat equals the AXIS1 word the adapter
 granted that cycle.
 
-Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (signed-off
-observation ports).
+Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
+ports).
 """
 
 from __future__ import annotations
@@ -171,16 +171,34 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             grants.count(_URND_BIT),
         )
 
-        # AES masking reseeds pulse edn_req per beat, so a same-cycle dual-req
-        # sample at ack often sees only AES. Consecutive post-adapter grants
-        # still alternate 0,3,0,3 -- that is the round-robin decision.
-        assert any(a != b for a, b in zip(grants, grants[1:])), (
-            "CHK-GRANT-ALT FAIL: consecutive grants did not go to different "
-            f"clients (grants={grants} dual_grants={dual_grants})"
+        # Round-robin while both clients are in the fight: the grant stream
+        # must strictly alternate until the first same-client pair. A repeat
+        # after both clients have already been served is the legal tail (one
+        # client dropped req). `any(a != b)` would be a tautology once
+        # CHK-NO-STARVE has both values in the list.
+        pairs = list(zip(grants, grants[1:]))
+        alt_pairs = 0
+        for a, b in pairs:
+            if a == b:
+                break
+            alt_pairs += 1
+        min_alt = _GRANT_MIN_SAMPLES - 1
+        assert alt_pairs >= min_alt, (
+            "CHK-GRANT-ALT FAIL: alternating prefix too short "
+            f"(alt_pairs={alt_pairs} need>={min_alt} grants={grants} "
+            f"dual_grants={dual_grants})"
+        )
+        prefix = grants[: alt_pairs + 1]
+        assert _AES_BIT in prefix and _URND_BIT in prefix, (
+            "CHK-GRANT-ALT FAIL: alternating prefix did not grant both "
+            f"clients (prefix={prefix} grants={grants})"
         )
         self.logger.info(
-            "CHK-GRANT-ALT PASS: consecutive grants alternate (grants=%s dual_grants=%s)",
-            grants[:12],
+            "CHK-GRANT-ALT PASS: %d consecutive pairs alternate and both "
+            "clients appear before any same-client repeat (grants=%s "
+            "dual_grants=%s)",
+            alt_pairs,
+            grants[:16],
             dual_grants[:12],
         )
 

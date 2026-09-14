@@ -261,7 +261,7 @@ class sep_warm_dispatch_base(sep_base_test):
             f"inside {QUIESCE_PC_SPAN_MAX} bytes"
         )
         self.logger.info(
-            "CHK-HANG: cold_scratch[1] held 0x%08x while the PC spun across %d "
+            "CHK-HANG PASS: cold_scratch[1] held 0x%08x while the PC spun across %d "
             "byte(s) at %s for %d cycles",
             resting_status,
             quiesce["span"],

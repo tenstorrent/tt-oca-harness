@@ -14,6 +14,14 @@ from smc_base_test import smc_base_test
 class smc_uart_extremes_misc_test(smc_base_test):
     """UART0 SCR R/W + idle LSR quiet check."""
 
+    required_evidence = (
+        "CHK-UART-EXT-BASIC",
+        "CHK-UART-EXT-DR-POS",
+        "CHK-UART-EXT-IDLE",
+        "CHK-UART-EXT-SCR",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -25,10 +33,8 @@ class smc_uart_extremes_misc_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
-            # Conservative stimulus floor: 304 accesses observed in the retained
-            # regression runs; the SCR/idle status polls are a timing-dependent
-            # remainder, so the floor is set below it. Literal here, not read
-            # from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the SCR/idle status polls are timing-dependent.
             min_csr_accesses=240,
             csr_accesses=seq.accesses,
             proxy=False,

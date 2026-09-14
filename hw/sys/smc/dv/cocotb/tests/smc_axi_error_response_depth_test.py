@@ -19,6 +19,9 @@ from smc_base_test import smc_base_test
 class smc_axi_error_response_depth_test(smc_base_test):
     """Run bounded invalid-address probes plus recovery read."""
 
+    required_evidence = ("CHK-AXI-ERR-DEPTH",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

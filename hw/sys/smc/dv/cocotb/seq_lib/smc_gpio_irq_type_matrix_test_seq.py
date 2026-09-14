@@ -2,12 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO interrupt-type (polarity) matrix verification.
 
-Existing GPIO IRQ coverage only exercised the active-low level type. This
-sequence programs GPIO wrap 0 for both level polarities and drives the pad
-externally to prove the GPIO interrupt aggregate follows the configured
-polarity.
+Programs GPIO wrap 0 for both level polarities and drives the pad externally to
+prove the GPIO interrupt aggregate follows the configured polarity.
 
-DATA_CTRL field encoding (hw/periph/gpio/data/registers/rdl/gpio_intf.rdl):
+DATA_CTRL field encoding (hw/ip/gpio/regs/gpio_intf.rdl):
   * bit[5:4]   enable_rx_tx     2'b10 = RX enabled (sample pad)
   * bit16      interface_enable select register control of the pad
   * bit18      interrupt_enable

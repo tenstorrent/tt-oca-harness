@@ -19,11 +19,10 @@ WHY THE FOUR MEMBERS SHARE A BASE AND WHAT IS *NOT* SHARED
 
 Every one of the four drives the same three-line stimulus preamble and boots the
 same way, so writing it four times would be four chances to get one of them
-subtly wrong. What is deliberately NOT derived is the expected OUTCOME: each
-member writes its own ``demotion_required``, ``demotion_values``,
-``expect_demote_1`` and ``expect_demote_2`` explicitly, with citations, because
-"parameterise the scenario, never parameterise the evidence" is the rule three
-earlier batches of this run were graded against.
+subtly wrong. The expected OUTCOME is NOT derived: each member writes its own
+``demotion_required``, ``demotion_values``, ``expect_demote_1`` and
+``expect_demote_2`` explicitly, with citations -- parameterise the scenario, never
+parameterise the evidence.
 
 :meth:`_demotion_prod_mixin.__init_subclass__` then cross-checks those four
 written declarations against :func:`outcome_for` applied to the member's own
@@ -38,9 +37,7 @@ transcriptions of one table having to match.
 ``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES, AND THEY ARE COUPLED
 ============================================================================
 
-This is the single most expensive thing the VP half of this run learned, and it
-is inherited here rather than rediscovered (``batch_runs_0904_vp/FINDINGS.md``
-F11 item 1, which RETRACTS an earlier instruction). The reference's plusarg:
+The reference's plusarg:
 
   * sets ``primary.manifest.boot_arguments.secure_boot = 0``, which the packer
     turns into TWO packed-field changes, not one -- see below;
@@ -62,8 +59,8 @@ fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
 
 **The coupling is what makes the port non-vacuous.** With ``signature_type = 0``
 the primary can boot only because the fuse is burned: ``secure_boot_enabled``
-short-circuits on ``sboot_dis`` at ``manifest_load.c`` BEFORE the PROD rule at
-. Drop the fuse and PROD enforces secure boot, the unsigned primary is
+short-circuits on ``sboot_dis`` at ``manifest_load.c`` BEFORE the PROD rule.
+Drop the fuse and PROD enforces secure boot, the unsigned primary is
 refused at ``BAD_SIG_TYPE=0x00000000`` (``manifest_crypto.c``), and the ROM
 fails over to the signed backup -- which carries no demotion stimulus and would
 produce outcome **O5** under whichever name the testcase happened to have. That
@@ -74,8 +71,8 @@ the base's :meth:`~sep_demotion_decision_base._check_primary_served` additionall
 proves from the DEVICE side that no read touched the backup span.
 
 The primary keeps its stale dev0 signature bytes rather than a blank field. That
-is a deliberate, disclosed difference from the reference, whose packer emits an
-empty signature: it is inert here because ``validate_signature`` is never called
+differs from the reference, whose packer emits an empty signature: it is inert
+here because ``validate_signature`` is never called
 at all on this path, and a syntactically complete signature is the harder case
 for anything that might later examine the field.
 
@@ -87,17 +84,12 @@ trivially satisfied by an unusable backup.
 WHAT THE SHARED SKELETON DOES NOT COVER
 ============================================================================
 
-``sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test`` (batch R3's
-O2a member) predates this module and performs the same three ``mm`` calls inline.
-It is deliberately NOT refactored onto :func:`apply_secure_boot_dis`: it is an
-approved, passing row whose docstring is its own evidence record, and rewriting
-it would put that row's provenance at risk to remove three duplicated lines. **The
-duplication is named HERE ONLY -- that member carries no reference back to this
-module, because editing it is exactly what was declined** -- so a future packer
-change must be applied in both places and this paragraph is the only thing that
-says so. Both copies are anchored by the same two assertions
-(``signature_type == NO_SIGNATURE`` and ``flag_args`` bit 30 clear), so a change
-that broke one would fail the other loudly rather than silently.
+``sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test`` (the O2a
+member) performs the same three ``mm`` calls inline rather than through
+:func:`apply_secure_boot_dis`, and carries no reference back to this module, so a
+packer change must be applied in both places. Both copies are anchored by the same
+two assertions (``signature_type == NO_SIGNATURE`` and ``flag_args`` bit 30 clear),
+so a change that broke one would fail the other loudly rather than silently.
 """
 
 from __future__ import annotations
@@ -110,8 +102,8 @@ from rom_fw.sep_demotion_decision_base import (
 )
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# Console tokens, each verified to occur exactly once in bootrom/prod/src/ so no
-# forbid below is inert (the inert-forbid trap is vp FINDINGS F10 item 5).
+# Console tokens, each occurring exactly once in bootrom/prod/src/, so no forbid
+# below is inert.
 _LC_PROD = "LC=PROD"  # lifecycle.c
 _LC_PROD_END = "LC=PROD_END"  # lifecycle.c
 _SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # rom_main.c
@@ -135,7 +127,7 @@ def apply_secure_boot_dis(test, buf: bytearray, slot: str = "primary") -> None:
     asserted separately by
     :meth:`sep_demotion_decision_base.build_efuse_image` through
     ``expected_sboot_dis``. All three are needed; see this module's docstring for
-    why reading only one of them produced the VP half's worst error.
+    why the three are coupled.
 
     Both writes land inside the packer's own semantics rather than approximating
     them: ``flag_args`` bit 30 is what ``secure_boot_enabled`` reads
@@ -164,19 +156,19 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
     Transcribed from the ROM's own control flow, not from any run:
 
       * ``rom_main.c`` ``if (sel & (1 << SELECTOR_BIT_BL1_DEMOTION))`` ->
-        ``demotion_reg = flags[0]``  and ``BL1_DEMOTE=``;
-        ``lock_demotion`` keeps its initialiser, so writes
+        ``demotion_reg = flags[0]`` and ``BL1_DEMOTE=``;
+        ``lock_demotion`` keeps its initialiser, so ``lc_write_demotion`` writes
         DEMOTE_1 ``(demote = auth, lock = 1)``;
       * ``else if (bl2_demote)`` -> ``lock_demotion = false``
-        and ``DEMOTE: BL2 deferred, unlocked``. is then false,
+        and ``DEMOTE: BL2 deferred, unlocked``. ``lock_demotion`` is then false,
         so ``lc_write_demotion`` is never called and DEMOTE_1 is left at its reset
         value -- the ONLY outcome of the seven with that property;
       * ``else`` -> ``DEMOTE: BL2 deferred, lock non-demoted``,
-        ``demotion_reg`` still false, ``lock_demotion`` still true, so
-        writes ``(0, 1)``;
+        ``demotion_reg`` remains false and ``lock_demotion`` remains true, so
+        ``lc_write_demotion`` writes ``(0, 1)``;
       * prints ``BL2_DEMOTE_DEC=`` on all three of those arms, carrying
-        ``flag_args[0]`` unconditionally (, stored);
-      * ``lc_write_demotion_2`` is called only, i.e. only at PROD_END,
+        ``flag_args[0]`` unconditionally;
+      * ``lc_write_demotion_2`` is called only at PROD_END,
         so DEMOTE_2 is never written on any arm here.
 
     Returns the four things a member must declare, so that a member's own
@@ -348,7 +340,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         if self._BL2:
             mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_BL2_DEMOTION, True)
         apply_secure_boot_dis(self, buf)
-        # The PRIMARY is deliberately NOT re-sealed: it is unsigned by
+        # The PRIMARY is not re-sealed: it is unsigned by
         # construction and re-signing it would undo the surface just set.
         narrow_life_cycle_states(self, buf, LC_STATES_PROD_ONLY, reseal_slots=("backup",))
 
@@ -359,10 +351,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         selector bit is set and never echoes the selector bit itself, so on three
         of the four members at least one input is invisible in the log and a
         stimulus that silently failed to land would produce exactly the log a
-        correct run produces. The lesson is
-        ``batch_runs_0904_rtl/RUN_JOURNAL.md:181-185``, "Assert your stimulus, not
-        only your outcome"; vp ``FINDINGS.md`` F11 item 4 is the HALF-PORT
-        disclosure and is cited for that separately below.
+        correct run produces: assert the stimulus, not only the outcome.
         """
         sel_bits = mm.selector_bits(buf, "primary")
         sel = (sel_bits >> mm.SELECTOR_BIT_BL1_DEMOTION) & 1

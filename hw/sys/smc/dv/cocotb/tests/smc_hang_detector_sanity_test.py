@@ -16,6 +16,15 @@ _EXPECTED_IRQ_LEGS = 13
 class smc_hang_detector_sanity_test(smc_base_test):
     """irq_test fire/clear on sys/sep/data hang detectors + OR."""
 
+    required_evidence = (
+        "CHK-HANG-BASIC",
+        "CHK-HANG-OR-ALL",
+        "CHK-HANG-OR-CLR",
+        "CHK-HANG-OR-HOLD",
+        "CHK-HANG-POISON",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

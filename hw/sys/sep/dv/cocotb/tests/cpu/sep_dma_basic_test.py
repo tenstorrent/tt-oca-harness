@@ -8,7 +8,7 @@ cfg_regwen / range_regwen / addr_fixed / addr_wrap / addr_combo / mem_copy
 dma_basic firmware, which drives the Secure DMA over the CPU LSU and proves the
 DMA CSR + copy-datapath basic contracts on bare sep (SRAM->SRAM transfers).
 
-Distinct from the Phase-1 DMA trio (sep_dma_hash inline SHA-256 + SRAM->DCCM +
+Distinct from the DMA trio (sep_dma_hash inline SHA-256 + SRAM->DCCM +
 IRQ; sep_dma_cpu_contention mid-flight BUSY + dual-master; sep_spi_ot_dma_rx
 lsio handshake): DMA basic breadth adds the CSR/REGWEN breadth, the FIXED/INCR/WRAP address-
 mode matrix, the 1B/2B/4B transfer-width sweep, and one opcode-error path.
@@ -83,10 +83,8 @@ class SepDmaBasicCfg:
 
     @classmethod
     def from_seed(cls, seed: int) -> "SepDmaBasicCfg":
-        # Seed-reproducible by requirement: a failing leaf is replayed with
-        # `--stage sim --seed N`, so the stimulus is a pure function of the
-        # seed. These pick DMA offsets for a simulated DUT -- never a key,
-        # token, or access decision.
+        # The stimulus is a pure function of the seed, so a failing leaf replays
+        # with `--stage sim --seed N`.
         rng = SepSeededRng(seed)
         nbytes = rng.choice((16, 32))
         src_off = rng.randrange(0, 0x10000, 16)
@@ -112,10 +110,8 @@ class sep_dma_basic_test(sep_base_test):
         cfg = SepDmaBasicCfg.from_seed(self.random_seed())
         # The source and destination windows must not overlap, or a copy would
         # read bytes it has already written and the golden compare would pass on
-        # a DMA that did nothing. The ranges the config draws from are disjoint
-        # today; this fails if either is widened into the other. Bounding each
-        # offset against the SRAM size would restate the randrange that produced
-        # it and could not fail.
+        # a DMA that did nothing. The ranges the config draws from are disjoint;
+        # this fails if either is widened into the other.
         src_hi = cfg.src_off + _BUSY_LEN
         dst_hi = cfg.dst_off + _BUSY_LEN
         assert src_hi <= cfg.dst_off or dst_hi <= cfg.src_off, (

@@ -49,13 +49,11 @@ static int test_all_16_alias_entries_comprehensive(void) {
                 return -1;
             }
 
-            // Read back each field
             uint32_t readback;
             if (read_output_remap_reg(entry, OUTPUT_REMAP_SRC_ADDR_LOW_OFFSET, &readback) != 0) {
                 return -1;
             }
 
-            // Toggle enable/disable for this entry
             if (toggle_output_remap_region_enable(entry) != 0) {
                 return -1;
             }
@@ -77,7 +75,6 @@ static int test_enable_disable_state_transitions(void) {
         for (int entry = 0; entry < 16; entry++) {
             uint32_t addr_offset = cycle * 0x10000 + entry * 0x1000;
 
-            // Set base configuration
             if (setup_output_remap_region(entry, ALIAS_SRC_BASE + addr_offset,
                                           ALIAS_DEST_BASE + addr_offset + 0x100000,
                                           0, // start disabled
@@ -91,7 +88,6 @@ static int test_enable_disable_state_transitions(void) {
             if (toggle_output_remap_region_enable(entry) != 0) return -1; // enable
             if (toggle_output_remap_region_enable(entry) != 0) return -1; // disable
 
-            // Check final state
             uint32_t status;
             if (read_output_remap_reg(entry, OUTPUT_REMAP_STATUS_OFFSET, &status) != 0) {
                 return -1;
@@ -209,7 +205,6 @@ int main(void) {
     printf("Alias Reg Intensive Toggle Test\n");
     printf("Strategy: Deep CSR-field toggle stress across all 16 alias entries\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_alias_reg_intensive_toggle_test");
         return TEST_FAIL;

@@ -2,29 +2,25 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared scenario body for the DRBG lane-adapter concurrent-channel leaves.
 
-No `@pyuvm.test()` here on purpose: the runner discovers tests by scanning the
+No `@pyuvm.test()` here: the runner discovers tests by scanning the
 module it was given, so a registered class in a shared module would run under
 every leaf name. Each leaf module subclasses this and registers itself.
 
-One (lane x ordering) per leaf. A stalled adapter cannot be recovered inside a
-simulation -- AXI forbids either side deasserting VALID, so the port stays
-held and the master stays stuck on it until reset -- so a second scenario
-after a wedge would measure the wedge rather than itself. Two fabric leaves
-is what makes two independent verdicts -- one per DUT lane on the one
-ordering the fabric can present.
+One (lane x ordering) per leaf so a wedge cannot contaminate a later cell.
+Two fabric leaves give two independent verdicts -- one per DUT lane on the
+one ordering the fabric can present.
 
 CHK-CONCURRENT-CAL: a lone write and a lone read measure when AW, W and AR
-actually reach the adapter port through the crossbar and axi_to_axi_lite. On
-broken RTL the first overlap is terminal, so the placement cannot be retried
-and is not guessed.
+actually reach the adapter port through the crossbar and axi_to_axi_lite.
+Placement is from those measurements, not guessed.
 
 CHK-CONCURRENT-STIM: the ordering the ADAPTER PORT presented must be the
 named ordering. A different overlap, or a cell that missed its overlap, is
 reported unreachable and does not count as this leaf.
 
-CHK-CONCURRENT-LAND: both accesses retire and the write lands. A stall is a
-stable, legal 1'b0 on all three readys, which no X-check or protocol assertion
-sees, so the check is a bounded timeout plus a data compare.
+CHK-CONCURRENT-LAND: both accesses retire and the write lands. The check is
+a bounded timeout plus a data compare, so a hang that `ASSERT_KNOWN` would
+miss still fails the leaf.
 """
 
 from __future__ import annotations

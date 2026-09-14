@@ -13,10 +13,8 @@
 
 /* Bound on the scratch[6] handshake.
  *
- * The TB half that answers this is not part of the open package, so a run
- * without it is a normal outcome and has to be reported rather than waited on.
- * Expiry raises so the verdict separates "partner answered" from "partner
- * never did".
+ * The TB half that answers this handshake may be absent from a run, so the
+ * wait is bounded and expiry is a failure.
  */
 #define PROCEED_BOUND 200000u
 
@@ -33,8 +31,7 @@ static void fail_cg(uint32_t code, const char *msg) {
 }
 
 /* CLOCK_GATE_CONTROL is sw=rw storage, so a written word must read back bit for
- * bit. Without this the test wrote two register values and passed regardless of
- * what the DUT did with them.
+ * bit.
  */
 static void check_gate_ctrl(uint32_t wrote, uint32_t code, const char *msg) {
     uint32_t got = read_reg(SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR);
@@ -101,9 +98,8 @@ int main(void) {
 }
 
 int secondary_main(void) {
-    /* Only hart 0 drives the sequence. Every hart used to enter main(), so all
-     * four raced on the same CLOCK_GATE_CONTROL word and all four polled the
-     * same scratch handshake. */
+    /* Only hart 0 drives the sequence: four harts in main() would race on the
+     * same CLOCK_GATE_CONTROL word and poll the same scratch handshake. */
     if (metal_cpu_get_current_hartid() != 0) {
         while (1) {
             __asm__("wfi");

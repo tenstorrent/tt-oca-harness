@@ -14,6 +14,12 @@ from smc_base_test import smc_base_test
 class smc_uart_log_engine_error_boundary_test(smc_base_test):
     """Run log-engine CSR R/W depth as the error/boundary checker."""
 
+    required_evidence = (
+        "CHK-UART-LOG-ENGINE-REG-RESTORE",
+        "CHK-UART-LOG-ENGINE-REG-RW",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

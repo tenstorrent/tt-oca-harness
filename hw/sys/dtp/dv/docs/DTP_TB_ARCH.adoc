@@ -30,8 +30,8 @@ the evidence grammar, and the functional-coverage modules are common to both.
 . Import unified OCAH BFM wrappers from `hw/common/dv/vip` for standard
 protocol access.
 . Wrap those BFMs in PyUVM agents so tests remain sequence-based and reusable.
-. Use OCAH-local BFMs/models for custom OCAH protocols and standards without a
-shared wrapper yet.
+. Use OCAH-local BFMs/models for custom OCAH protocols and for standards that
+have no shared wrapper.
 . Keep every BFM behind the same transaction-level agent boundary so backend
 changes do not affect sequences or scoreboards.
 
@@ -51,12 +51,12 @@ changes do not affect sequences or scoreboards.
 === DUT-Local Model Ownership
 
 The shared promotion checklist is defined in `hw/common/dv/README.md`. The DTP
-models below intentionally remain local because they encode this DUT's
-topology, lifecycle rules, signal binding, or testbench fixtures:
+models below are DUT-local because they encode this DUT's topology, lifecycle
+rules, signal binding, or testbench fixtures:
 
 [cols=",,,",options="header",]
 |===
-|Model / Helper |Current Scope |Why It Stays DUT-Local |Promotion Trigger
+|Model / Helper |Scope |Why It Is DUT-Local |Promotion Trigger
 |`DtpScanModel` |8-bit BSR identity-loopback stimulus and checking |Models the compact DTP TB fixture, not generic IEEE 1149.1 boundary cells |A parameterized boundary-cell model with an independent DUT consumer
 |`DtpIjtagSibModel` |Three DTP SIBs, per-SIB debug-disable gates, looped instruments |Hard-coded DTP scan topology and security policy |Topology/instrument-neutral IEEE 1687 transactions plus a second consumer
 |`DtpStap3dcrModel` |Composed TAP_3DCR chain state (PTAP 3DCR, per-STAP SIB and 3DCR), network-wide IR-scan composition, capture prediction, per-STAP debug-disable update blocking, and the downstream TAP segments (IR, IDCODE, BYPASS, or a latched register) of the `ocah_jtag_vip` devices attached behind the STAP host ports |The chain hierarchy, the splice flops, and the downstream parking rules are DTP-specific |A parameterized IEEE 1838/STAP model with an independent DUT consumer
@@ -89,7 +89,7 @@ The frozen suite config is the single source for opcode, width, pattern,
 capture bit, seed, and evidence context. The pure model has no simulator
 handles or DUT reads. Aggregate checker mode lets every configured case run;
 finalization then reports total checks/errors/missing IDs before failing.
-Passing `results.xml` and native `result.json` remain the run authority.
+Passing `results.xml` and native `result.json` are the run authority.
 
 === Testbench Hierarchy
 
@@ -298,7 +298,7 @@ from the observation under check.
 [cols=",,,,",options="header",]
 |===
 |Feature |Reference model (model it holds) |Observed stream |Contract |Required by
-|`ir_decode` |`dtp_ir_decode_ref_model` (`dtp_jtag_ir_model`) on the JTAG event stream and the reconstructed IR scans |`dtp_tb_if.inst_decoded`, sampled when the expected item arrives |Once a plain 6-bit instruction becomes active (the cycle leaving Update-IR), the decoded one-hot equals `1 << instruction` |every JTAG-driving test (default)
+|`ir_decode` |`dtp_ir_decode_ref_model` (`dtp_jtag_ir_model`) on the JTAG event stream and the reconstructed IR scans |`dtp_tb_if.inst_decoded`, sampled when the expected item arrives |Once an instruction becomes active (the cycle leaving Update-IR), the decoded one-hot equals `1 << instruction`; the active instruction is the plain 6-bit scan's opcode, or the Capture-IR pattern (the IDCODE opcode) when the scan reaches Update-IR without a Shift-IR cycle |every JTAG-driving test (default)
 |`idcode` |`dtp_idcode_ref_model` (`dtp_jtag_ir_model`) on the scan and event streams |Reconstructed DR scans (TDO bits) |While IDCODE is active (after TAP reset or an explicit load), the shifted-out low 32 bits equal the DTP device identification |IDCODE, sanity, reset-family tests
 |`bypass` |`dtp_bypass_ref_model` (`dtp_jtag_ir_model`) on the scan and event streams |Reconstructed DR scans (TDO bits) |Under a bypass-class instruction the TDO is TDI delayed by one TCK; INV_BYPASS the inverted delayed image behind a captured 1; ZERO_LENGTH_BYPASS TDI itself |bypass, inverted bypass, zero-length bypass, undefined-instruction, sanity tests
 |`xtrig_csr` |`dtp_xtrig_csr_ref_model` (`dtp_xtrig_csr_model`) on the XTRIG monitor stream |Passive XTRIG AXI-Lite monitor items (read data) |Every OKAY read of a CSR with a readback contract (CTM selects, CTP CONFIG, STRETCH_MULT) equals the shadow rebuilt from the observed writes and cleared on every reset (`dtp_tb_if` reset counters) |every cross-trigger test but the decode-error scenario
@@ -310,10 +310,13 @@ from the observation under check.
 Composed scans (a wider instruction scan spanning the STAP chain, or a DR
 scan after one) make the primary-TAP instruction unrecoverable at this level,
 so the JTAG reference models stand down until the next plain instruction load
-or TAP reset. STATUS reads carry no data contract. A reference model on a
-one-to-one stream publishes one expected item per observed item, marking the
-ones outside its contract as carrying none, so the two streams stay in
-lockstep; the bridge request model publishes one item per launched
+or TAP reset. An instruction scan that reaches Update-IR without a Shift-IR
+cycle latches the Capture-IR pattern, 01 in the two LSBs and zeros above
+(IEEE 1149.1 7.1.1, `jtag_inst_reg`), which is the IDCODE opcode; the models
+track it as an IDCODE load. STATUS reads carry no data contract. A reference
+model on a one-to-one stream publishes one expected item per observed item,
+marking the ones outside its contract as carrying none, so the two streams
+stay in lockstep; the bridge request model publishes one item per launched
 transaction on the lane of its port. The bridge model follows the jtag2axi
 update, capture, and completion rules (single-operation rejection while
 pending, the series address and read budget per CTRL programming, the
@@ -325,11 +328,10 @@ FIFO is not predicted. Each feature ends the run as one `CHK-SB-<FEATURE>`
 record through the shared evidence recorder; a required feature with zero
 comparisons fails, and so does any item left unpaired.
 
-The cocotb `DtpScoreboard` still checks inline on the JTAG agent's
-completed-item stream (IDCODE reads, JTAG2AXI write and read data against the
-responder memory) and every cocotb JTAG2AXI test also enables the shared
-`ocah_axi_vip` scoreboard with required evidence IDs and per-stream minimum
-counts; its move onto the reference-model shape is on the migration list.
+The cocotb `DtpScoreboard` checks inline on the JTAG agent's completed-item
+stream (IDCODE reads, JTAG2AXI write and read data against the responder
+memory), and every cocotb JTAG2AXI test also enables the shared `ocah_axi_vip`
+scoreboard with required evidence IDs and per-stream minimum counts.
 
 ==== `dtp_tap_fsm_checker` and `dtp_scan_window_monitor`
 
@@ -355,8 +357,8 @@ requested, gated, and effective state under a disable mask),
 configuration chain with the downstream TAP segments, composed-scan values
 and capture prediction; held by the scan scenarios), `dtp_xtrig_ctm_model`
 (OR-of-selected-destinations routing; held by the cross-trigger scenarios and
-cross-checked against their route intent, a scenario-level check until the
-route contract joins the scoreboard). The cocotb twins live in
+cross-checked against their route intent as a scenario-level check). The
+cocotb twins live in
 `env/dtp_scan_ref_model.py` and `env/dtp_xtrig_types.py`.
 
 ==== Sequence Library
@@ -455,10 +457,12 @@ knob names are environment variables in cocotb and plusargs in SV-UVM.
 
 === Coverage Strategy
 
-Verilator does not support SV covergroups. The OCAH open-source path should collect
-Python-side functional observations in the PyUVM environment and rely on
-commercial simulators for SV covergroups, assertion coverage, and full code
-coverage. See `DTP_FCOV.adoc`.
+Verilator does not compile SV covergroups. The `cov/sv/` coverage modules,
+instantiated once in the shared `tb_top`, carry labeled `cover property`
+points that Verilator records as user coverage and the same bins as
+covergroups for the commercial simulators; the debug-disable 22-cell
+contract keeps its checker-gated Python ledger. Assertion coverage and full
+code coverage come from the commercial simulators. See `DTP_FCOV.adoc`.
 
 === Canonical RTL Selection
 
@@ -555,8 +559,8 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --items scan
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items xtrig
 ----
 
-The `smoke` group remains a fast two-test TAP/IDCODE gate. The `basic_jtag`
-group runs all 19 Smoke and Basic JTAG scenarios. The `debug_tdr` group runs 12
-TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS scenarios. The `functional` group
-runs the legacy four public DTP smoke/JTAG2AXI tests, while `all` collects the
-included public DTP testlists.
+The `smoke` group is a fast TAP/IDCODE gate. The `basic_jtag` group runs the
+Smoke and Basic JTAG scenarios. The `debug_tdr` group runs the TMP_STATUS,
+IC_RESET, DEBUG_CONTROL, and CAPS scenarios. The `functional` group runs the
+smoke tests plus the single-operation JTAG2AXI write/read tests, while `all`
+collects every included DTP testlist.

@@ -70,12 +70,10 @@ static int test_csr_field_exhaustive_toggle(void) {
                 test_pattern |= ALIAS_REG_LOCK_MASK;
             }
 
-            // Write register
             if (write_alias_csr_register(reg_idx, test_pattern) != 0) {
                 continue; // Skip if write fails
             }
 
-            // Read back and verify
             uint32_t readback = 0;
             if (read_alias_csr_register(reg_idx, &readback) == 0) {
                 // Verify specific field toggles
@@ -159,7 +157,6 @@ static int test_register_state_transition_matrix(void) {
             }
             write_alias_csr_register(reg_idx, state5);
 
-            // Read back final state
             uint32_t final_state = 0;
             read_alias_csr_register(reg_idx, &final_state);
 
@@ -310,7 +307,7 @@ static int test_register_reset_and_default_values(void) {
                 read_alias_csr_register(reg_idx, &before_second_reset);
             }
         } else {
-            // no SWreset when,testindividualregister resetbehavior
+            // No soft reset: exercise each register's write protection individually
             for (int reg_idx = 0; reg_idx < 16; reg_idx++) {
                 // Try invalid writes to test HW protection
                 write_alias_csr_register(reg_idx, 0xFFFFFFFF); // Invalid
@@ -344,12 +341,10 @@ static int test_register_field_interaction_matrix(void) {
             // Test 1: Enable and its field interaction
             uint32_t base_config = (interaction_test & 0x7) << 1; // Priority
 
-            // Program other fields while disabled
             write_alias_csr_register(reg_idx, base_config); // Enable = 0
             uint32_t disabled_read = 0;
             read_alias_csr_register(reg_idx, &disabled_read);
 
-            // With enable set, program the other fields the same
             write_alias_csr_register(reg_idx, base_config | ALIAS_REG_ENABLE_MASK);
             uint32_t enabled_read = 0;
             read_alias_csr_register(reg_idx, &enabled_read);
@@ -458,7 +453,6 @@ int main(void) {
     printf("Alias CSR Toggle Test\n");
     printf("Strategy: Precise Alias CSR field toggles; full register coverage\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_alias_csr_toggle_p3_test");
         return TEST_FAIL;

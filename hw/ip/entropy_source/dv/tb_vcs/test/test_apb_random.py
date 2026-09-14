@@ -16,7 +16,6 @@ async def test_apb_random(dut):
     Perform random APB write/read transactions with configurable parameters.
 
     Address constraints:
-      - 8-bit APB address space used by the temporary BB
       - avoid page register and keep word-aligned
       - range from config: addr_min..addr_max step addr_step
 

@@ -2,12 +2,11 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Master Sanity Test - Simple Write and Readback
+ * OCCP Jump Test
  *
- * This test performs a basic OCCP write to a known address,
- * then reads back the data and checks for correctness.
- *
- * The goal is to verify basic OCCP communication and memory access.
+ * Reads the payload base (scratch 4) and the entry offset of main() (scratch 5)
+ * that the loader publishes, issues an OCCP JUMP to base + offset, and waits for
+ * the ROM to report completion.
  */
 
 #include "occp_test_common.h"
@@ -20,10 +19,6 @@ static void run_test_suite(test_context_t *ctx) {
 
     ctx->overall_result = true;
     int retval;
-
-    // Execute 10 random OCCP commands before jump
-    // simputs("=== Random OCCP Commands Test (10 commands) ===\n");
-    // execute_random_commands(ctx, 10);
 
     simputs("=== Jump Command Test ===\n");
 
@@ -38,9 +33,8 @@ static void run_test_suite(test_context_t *ctx) {
         simputshex32("Test address: ", test_addr);
     }
 
-    // The loader publishes where main() sits inside the payload (scratch 5, written
-    // before the base in scratch 4). Deriving it there keeps this jump correct when
-    // the toolchain moves main() within the image.
+    // The loader publishes the offset of main() within the payload in scratch 5,
+    // written before the base address in scratch 4.
     uint32_t entry_offset = 0;
     retval = occp_send_read_command(ctx, ctx->slave_addr, SMC_CPU_CTRL_SCRATCH_5__REG_ADDR,
                                     (uint8_t *)&entry_offset, sizeof(entry_offset));
@@ -65,7 +59,6 @@ static void finalize_test_results(test_context_t *ctx) {
     // do nothing if pass since we are polling on ROM to complete program, end test if fail
     if (ctx->overall_result) {
         simputs("Completed bfm test, waiting for ROM to complete!\n");
-        // result_code = SMC_SCRATCHPAD_SIM_PASS_CODE;
     } else {
         simputs("BFM failed to jump to test address!\n");
         test_fail(0);

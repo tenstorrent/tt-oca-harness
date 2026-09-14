@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap: I2C multi-instance CSR precheck (TC_SMC_P1CG_02).
+"""I2C multi-instance CSR precheck (TC_SMC_P1CG_02).
 
-Existing tests only touch I2C_0. RTL exposes 3 controllers (I2C_0/1/2)
+RTL exposes 3 controllers (I2C_0/1/2)
 plus a top-level I2C_CTRL block. Sweeps a compact set of representative
 CSR reads at each instance base to prove per-instance address decode +
 reset defaults.

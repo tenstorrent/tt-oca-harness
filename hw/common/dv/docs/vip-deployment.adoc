@@ -99,7 +99,7 @@ await monitor.stop()
 checker.assert_clean()
 ----
 
-Monitor callbacks deliberately catch and log subscriber exceptions so one
+Monitor callbacks catch and log subscriber exceptions so one
 subscriber cannot terminate observation. A checker attached to a monitor must
 retain findings before raising, and the owning test or scoreboard must finalize
 after traffic. Named evidence should be finalized through the per-protocol
@@ -182,14 +182,15 @@ A missing operation is added to the VIP API, never inlined as raw driver or
 virtual-interface manipulation in DUT code. DUT scoreboards consume OCAH
 events or monitor items; nothing reaches into driver internals.
 
-*Reactive responders.* The shared AXI slave agent answers DUT-mastered
-traffic: the testbench wires the DUT-driven signals into the slave
-interface instance, the agent's driver drives the responder-side signals
-back, and error injection is programmed by sequences through
-`ocah_axi_slave_sequence` rather than testbench error ports. Where a plain
-memory model suffices, the behavioral RAM responders
-(`sv/ocah_axi*_ram_responder.sv`) are module collateral wired directly in
-the testbench top.
+*Reactive responders.* The shared AXI slave agent answers every
+DUT-mastered AXI boundary: the testbench wires the DUT-driven signals into
+the slave interface instance, the agent's driver drives the responder-side
+signals back, and memory preloads and error injection are programmed by
+sequences through `ocah_axi_slave_sequence` rather than through testbench
+ports or hierarchical writes. A port the bench flattens to pins is wired
+directly; a port that stays a request/response struct inside the testbench
+top is placed on an `ocah_axi_if` instance through
+`interface/ocah_axi_struct_bridge.sv` and answered the same way.
 
 *Passive checking.* The passive stack (monitor, reference model,
 scoreboard) attaches per bus behind cfg gating; every checker extends the
@@ -251,7 +252,10 @@ checker.expect_not_timed_out(
 
 `allow_timeout=True` makes a timeout observable; it does not make the operation
 successful. An expected timeout requires explicit VPLAN intent, a declared
-bound, and `expect_timeout()` evidence.
+bound, and `expect_timeout()` evidence. Every blocking master operation is
+bounded even without a `timeout_ns` argument: the instance bound applies, else
+the package default (`DEFAULT_TIMEOUT_NS`, 500 µs, or the
+`+OCAH_AXI_TIMEOUT_NS` plusarg).
 
 [[shared-vip-deployment-validation]]
 === Deployment Validation
@@ -270,7 +274,8 @@ python3 tools/dv/run_dv.py \
 ----
 
 Retain the run-level `result.json`, structured test result, relevant log, tool
-versions, seed, and commit SHA as qualification evidence.
+versions, seed, and commit SHA as qualification evidence in the tracker and the
+CI artifact store.
 
 [[shared-vip-deployment-troubleshooting]]
 === Troubleshooting

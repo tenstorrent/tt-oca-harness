@@ -18,10 +18,7 @@
 // Usage:
 //   compressor_cfg_if cfg();
 //   Entropy_Compressor_RefModel #(.N_LANES(12)) model (
-//       .clk_i(clk), .rstn_i(rst), .cfg(cfg.slave), ...);
-//
-// Author: Reference Model Generator
-// Date: 2025-11-18
+//       .bytes_i(bytes), .vld_i(vld), .cfg(cfg.slave), .word_o(word), .vld_o(word_vld));
 //------------------------------------------------------------------------------
 
 `timescale 1ns / 1ps

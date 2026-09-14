@@ -46,9 +46,9 @@
 `SMU_TB_OUT(logic [55:0], sep_region_size_o)
 `SMU_TB_OUT(logic [55:0], smc_global_base_o)
 `SMU_TB_OUT(logic [31:0], smc_region_size_o)
-`SMU_TB_OUT(logic, init_mem_done_o)
-`SMU_TB_OUT(logic, fuse_sense_done_o)
-`SMU_TB_OUT(logic, fuse_reset_n_delayed_o)
+`SMU_TB_OUT(logic, smc_init_mem_done_o)
+`SMU_TB_OUT(logic, smc_fuse_sense_done_o)
+`SMU_TB_OUT(logic, smc_fuse_reset_n_delayed_o)
 // DTP DEBUG_CONTROL -> SMC boot-stall (hierarchical observe)
 `SMU_TB_OUT(logic, jtag_boot_stall_ovrd)
 `SMU_TB_OUT(logic, jtag_boot_stall)
@@ -73,7 +73,8 @@
 `SMU_TB_OUT(logic [1:0], lcc_demote_state_2_o)
 // GPIO boot-stall pad bit[57] drive (OR'd into pad2core; Verilator-safe)
 `SMU_TB_IN(logic, gpio_boot_stall_drive_i)
-`SMU_TB_OUT(logic [31:0], ext_mailbox_interrupts)
+// Width tracks the DUT port (smu.sv smc_ext_mailbox_interrupts_o) and mbx_irqs.
+`SMU_TB_OUT(logic [smc_pkg::NUM_MAILBOXES-1:0], ext_mailbox_interrupts)
 `SMU_TB_OUT(logic [31:0], jtag_ptap_state)
 `SMU_TB_OUT(logic [31:0], jtag_ptap_inst_decoded)
 

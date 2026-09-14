@@ -89,7 +89,7 @@ interface i3c_coverage_if (
   always @(posedge clk) begin
     resp_sample <= 1'b0;
     if (rvalid && rready && (port_off(last_araddr) == RESPONSE_PORT_OFF)) begin
-      resp_err    <= rdata[27:26];   // err_status (encoding per RDL; see GAP Q-002)
+      resp_err    <= rdata[27:26];   // err_status (encoding per RDL)
       resp_sample <= 1'b1;
     end
   end
@@ -112,7 +112,7 @@ interface i3c_coverage_if (
   // Covergroups
   //***********************************************************************
 
-  // Command-descriptor coverage (CMD_DESC_CG / CCC_CODE_CG)
+  // Command-descriptor coverage
   covergroup i3c_cmd_cg @(posedge cmd_sample);
     cp_attr: coverpoint cmd_attr {
       bins regular = {3'h0}; bins immediate = {3'h1}; bins addr_assign = {3'h2};
@@ -136,14 +136,14 @@ interface i3c_coverage_if (
     cx_attr_rnw: cross cp_attr, cp_rnw;
   endgroup
 
-  // Response coverage (RESP_DESC_CG / ERR_TYPE_CG)
+  // Response coverage
   covergroup i3c_resp_cg @(posedge resp_sample);
     cp_err: coverpoint resp_err {
       bins success = {2'h0}; bins crc = {2'h1}; bins parity = {2'h2}; bins frame = {2'h3};
     }
   endgroup
 
-  // Bus mode + protocol coverage (TIMING_BANK_CG, protocol events)
+  // Bus mode + protocol coverage (START/STOP events)
   covergroup i3c_bus_cg @(posedge start_evt or posedge stop_evt);
     cp_mode: coverpoint sel_od_pp {bins od = {1'b0}; bins pp = {1'b1};}
     cp_start: coverpoint start_evt {bins start = {1'b1};}

@@ -9,7 +9,7 @@
 
 module smu_wrapper_uvm_top (
   input  wire logic clk_smu_i,
-  // Primary JTAG TAP, driven from cocotb exactly as the bare `--dut smu`
+  // Primary JTAG TAP, driven from cocotb exactly as the bare `--dut smu_block`
   // harness drives it (tb/tb_top.sv), so OcahJtagMasterDriver works against
   // either DUT; the base test's TAP reset walk runs in every wrapper test.
   input  wire logic jtag_tck,
@@ -69,11 +69,16 @@ module smu_wrapper_uvm_top (
   output logic        sep_enabled_o,
   output logic        rst_cold_n_o,
   output logic        powergood_o,
-  output logic        fuse_sense_done_o,
-  output logic        fuse_reset_n_delayed_o,
+  output logic        smc_fuse_sense_done_o,
+  output logic        smc_fuse_reset_n_delayed_o,
   output logic        rst_primary_smc_clk_n_o,
-  output logic        init_mem_done_o,
+  output logic        smc_init_mem_done_o,
   output logic        sep_fuse_sense_done_o,
+  // State of the SEP efuse shadow-register sim_skip_fuse_sense flag, i.e.
+  // whether the SEP fuse-sense sequence is replaced by the shadow preload in
+  // this run. A checker that reads fuse-sense completion needs this to know
+  // whether the completion is DUT-earned.
+  output logic        sep_fuse_sense_skipped_o,
   output logic        sep_reset_n_o,
   output logic [31:0] smc_scratch_0_o,
   output logic        smc_test_pass_o,
@@ -161,6 +166,15 @@ module smu_wrapper_uvm_top (
   input  wire logic [2:0]  ext_in_awsize,
   input  wire logic [1:0]  ext_in_awburst,
   input  wire logic [11:0] ext_in_awuser,
+  // AXI4 qualifiers. axi_56_64_aw_chan_t carries all of these; they are real
+  // ports so the wrapper can verify AxPROT and the other qualifiers.
+  input  wire logic        ext_in_awlock,
+  input  wire logic [3:0]  ext_in_awcache,
+  input  wire logic [2:0]  ext_in_awprot,
+  input  wire logic [3:0]  ext_in_awqos,
+  input  wire logic [3:0]  ext_in_awregion,
+  input  wire logic [11:0] ext_in_wuser,
+  output logic [11:0]      ext_in_buser,
   input  wire logic        ext_in_wvalid,
   output logic             ext_in_wready,
   input  wire logic [63:0] ext_in_wdata,
@@ -178,6 +192,60 @@ module smu_wrapper_uvm_top (
   input  wire logic [2:0]  ext_in_arsize,
   input  wire logic [1:0]  ext_in_arburst,
   input  wire logic [11:0] ext_in_aruser,
+  input  wire logic        ext_in_arlock,
+  input  wire logic [3:0]  ext_in_arcache,
+  input  wire logic [2:0]  ext_in_arprot,
+  input  wire logic [3:0]  ext_in_arqos,
+  input  wire logic [3:0]  ext_in_arregion,
+  output logic [11:0]      ext_in_ruser,
+  // Observables the shared seq_lib reads by name, matching tb/tb_top.sv.
+  output jtag_tap_pkg::tap_state_e                      jtag_ptap_state,
+  output jtag_inst_reg_pkg::jtag_instruction_decoded_e  jtag_ptap_inst_decoded,
+  output logic [55:0]                                   sep_global_base_o,
+  output logic [55:0]                                   sep_region_size_o,
+  output logic [55:0]                                   smc_global_base_o,
+  output logic [31:0]                                   smc_region_size_o,
+  output logic                                          rst_primary_ref_clk_no,
+  output logic                                          rst_primary_periph_clk_no,
+  output logic                                          rst_cold_stable_ref_clk_no,
+  output logic                                          lc_sigint_err_o,
+  // PTAP security-disable taps, reached hierarchically exactly as the bare TB
+  // does -- one level deeper here, since u_dut is the wrapper.
+  output logic                                          tb_smc_jtag2axi_security_disable,
+  output logic                                          tb_otp_jtag2axi_security_disable,
+  input  wire logic                                     ext_boot_seq_done_i,
+  output logic [63:0]                                   tb_timer_count,
+  output logic                                          tb_bsr_select,
+  // DTP boot-stall / IC-reset / cross-trigger surface, matching tb_top.sv.
+  output logic                                          jtag_boot_stall,
+  output logic                                          jtag_boot_stall_ovrd,
+  output logic                                          jtag_ic_reset_ext_ovrd,
+  output logic                                          jtag_ic_reset_ext_ctrl_n,
+  output logic                                          jtag_ic_reset_smc_ovrd,
+  output logic                                          jtag_ic_reset_smc_ctrl_n,
+  input  wire logic                                     gpio_boot_stall_drive_i,
+  input  wire logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]   xtrig_ctm_dst_req,
+  input  wire logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]   xtrig_ctm_src_ack,
+  input  wire logic                                     xtrig_clk_stop_req,
+  output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_dst_ack,
+  output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_src_req,
+  // DTP clock-stop grant, as tb/tb_top.sv exposes it. Sampled by
+  // smu_clock_stop_coordination_test.
+  output logic                                          dtp_stop_clks_o,
+  // The CLA's own clock-stop enable, one level inside smu. Paired with
+  // dtp_stop_clks_o above: the test proves the aggregate grant follows the
+  // per-source enable, so both have to be visible.
+  output logic                                          dtp_cla_clock_stop_en,
+  // SMC eFuse shadow map. seq_lib.smu_jtag_helpers.shadow_map_word32 reads
+  // this by name to cross-check an OTP write against the shadow copy the SMC
+  // actually sees; the OTP leaves cannot score without it.
+  output smc_efuse_pkg::efuse_map_t                     smc_shadow_regs,
+  output logic                                          tb_stap_io_tck,
+  output logic                                          tb_stap_smc_tck,
+  output logic                                          tb_stap_smc_tms,
+  output logic                                          tb_stap_smc_trst_n,
+  output logic                                          tb_stap_smc_tdi,
+  output logic                                          tb_stap_smc_tdo_oen,
   output logic             ext_in_rvalid,
   input  wire logic        ext_in_rready,
   output logic [7:0]       ext_in_rid,
@@ -241,6 +309,11 @@ module smu_wrapper_uvm_top (
   output logic        obs_xbar_rst_n_o,
   output logic        obs_smc_tel_clk_o,
   output logic        obs_sep_wdt_clk_o,
+  // SMC reset-controller power-good synchronizer output, and a sticky record of
+  // it having been observed deasserted. Both come from inside u_dut; powergood_o
+  // below is the input pin echoed back.
+  output logic        obs_powergood_stable_o,
+  output logic        obs_powergood_stable_low_seen_o,
   output logic        obs_jtag_tdo_o,
   output logic        obs_smu_axi_awready_o,
   output logic        obs_xtrig_src_req0_o
@@ -248,11 +321,23 @@ module smu_wrapper_uvm_top (
 
 `ifdef SMU_NO_SEP
   localparam int unsigned SEP_ENABLED = 0;
-  localparam smu_pkg::smu_cfg_t SMU_CFG = smu_pkg::NoSepCfg;
+  localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::NoSepCfg;
 `else
   localparam int unsigned SEP_ENABLED = 1;
-  localparam smu_pkg::smu_cfg_t SMU_CFG = smu_pkg::DefaultCfg;
+  localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::DefaultCfg;
 `endif
+
+  // Same override tb_top.sv applies: exercise the most-significant configured
+  // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
+  // is wire-OR here and point-to-point there, so the CTM leaves would score a
+  // different design on the two DUTs.
+  function automatic smu_pkg::smu_cfg_t make_tb_cfg();
+    smu_pkg::smu_cfg_t cfg = SMU_BASE_CFG;
+    cfg.XTRIG_INT_CT_MODE = 8'h80;
+    return cfg;
+  endfunction
+
+  localparam smu_pkg::smu_cfg_t SMU_CFG = make_tb_cfg();
 
   localparam logic [31:0] SMC_TEST_PASS = 32'hACAF_ACA1;
   localparam logic [31:0] SMC_TEST_FAIL = 32'hFFFF_FFFF;
@@ -420,12 +505,21 @@ module smu_wrapper_uvm_top (
   smu_axi_xbar_pkg::axi_out_req_t     smu_axi_out_req;
   smu_axi_xbar_pkg::axi_out_resp_t    smu_axi_out_resp;
   logic [7:0] lc_state;
-  // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
+
+  // smc_4core_cpu zeroes the whole scratch RAM at boot to establish valid ECC
+  // (its MEM_ZERO FSM, gated by this input). That runs after the time-zero
+  // +smc_scratch_ram_hex load, so an image placed there does not survive to
+  // first fetch. Hold the FSM off whenever a test supplies such an image;
+  // hw/sys/smc/dv holds it off unconditionally.
+  logic smc_disable_sram_auto_init = 1'b0;
+  initial begin : smc_scratch_preload_gates_auto_init
+    string scratch_hex_path;
+    smc_disable_sram_auto_init = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
+  end
 
   // CPU memory macros live inside smc_ip_integration, so the ROM request is
   // observed hierarchically.
-  chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
+  chipyard_4core_mem_pkg::rom_req_t rom_intf_req;
   assign rom_intf_req = u_dut.u_smc_ip_integration.rom_intf_req;
   assign smc_scratch_read_count_o =
         u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv.scratch_ram_read_count_q;
@@ -454,6 +548,13 @@ module smu_wrapper_uvm_top (
   logic [31:0] ext_mailbox_interrupts;
   logic [31:0] smc_scratch_0_q;
   logic        rst_cold_stable_ref_clk_n;
+  prim_jtag_pkg::jtag_scan_ctrl_t bsr_ctrl_w;
+  // BSR scan out folded back to scan in, as tb_top.sv does: the EXTEST
+  // loopback test compares TDO against what it shifted in.
+  logic bsr_scan_loop;
+  logic smu_scope_boot_stall_val, smu_scope_boot_stall_ovrd;
+  jtag_tap_pkg::jtag_ic_reset_default_t ic_reset_ext_w;
+  prim_jtag_pkg::jtag_tap_ctrl_t        stap_io_ctrl_w;
   logic        rst_primary_smc_clk_n;
   logic        sep_reset_n;
   sep_pkg::sep_cpu_trace_t sep_cpu_trace;
@@ -478,11 +579,11 @@ module smu_wrapper_uvm_top (
   assign smu_axi_in_req.aw.len    = ext_in_awlen;
   assign smu_axi_in_req.aw.size   = ext_in_awsize;
   assign smu_axi_in_req.aw.burst  = ext_in_awburst;
-  assign smu_axi_in_req.aw.lock   = 1'b0;
-  assign smu_axi_in_req.aw.cache  = '0;
-  assign smu_axi_in_req.aw.prot   = '0;
-  assign smu_axi_in_req.aw.qos    = '0;
-  assign smu_axi_in_req.aw.region = '0;
+  assign smu_axi_in_req.aw.lock   = ext_in_awlock;
+  assign smu_axi_in_req.aw.cache  = ext_in_awcache;
+  assign smu_axi_in_req.aw.prot   = ext_in_awprot;
+  assign smu_axi_in_req.aw.qos    = ext_in_awqos;
+  assign smu_axi_in_req.aw.region = ext_in_awregion;
   assign smu_axi_in_req.aw.atop   = '0;
   assign smu_axi_in_req.aw.user   = ext_in_awuser;
   assign smu_axi_in_req.aw_valid  = ext_in_awvalid;
@@ -490,7 +591,7 @@ module smu_wrapper_uvm_top (
   assign smu_axi_in_req.w.data    = ext_in_wdata;
   assign smu_axi_in_req.w.strb    = ext_in_wstrb;
   assign smu_axi_in_req.w.last    = ext_in_wlast;
-  assign smu_axi_in_req.w.user    = '0;
+  assign smu_axi_in_req.w.user    = ext_in_wuser;
   assign smu_axi_in_req.w_valid   = ext_in_wvalid;
 
   assign smu_axi_in_req.b_ready   = ext_in_bready;
@@ -500,11 +601,11 @@ module smu_wrapper_uvm_top (
   assign smu_axi_in_req.ar.len    = ext_in_arlen;
   assign smu_axi_in_req.ar.size   = ext_in_arsize;
   assign smu_axi_in_req.ar.burst  = ext_in_arburst;
-  assign smu_axi_in_req.ar.lock   = 1'b0;
-  assign smu_axi_in_req.ar.cache  = '0;
-  assign smu_axi_in_req.ar.prot   = '0;
-  assign smu_axi_in_req.ar.qos    = '0;
-  assign smu_axi_in_req.ar.region = '0;
+  assign smu_axi_in_req.ar.lock   = ext_in_arlock;
+  assign smu_axi_in_req.ar.cache  = ext_in_arcache;
+  assign smu_axi_in_req.ar.prot   = ext_in_arprot;
+  assign smu_axi_in_req.ar.qos    = ext_in_arqos;
+  assign smu_axi_in_req.ar.region = ext_in_arregion;
   assign smu_axi_in_req.ar.user   = ext_in_aruser;
   assign smu_axi_in_req.ar_valid  = ext_in_arvalid;
 
@@ -514,12 +615,14 @@ module smu_wrapper_uvm_top (
   assign ext_in_wready  = smu_axi_in_resp.w_ready;
   assign ext_in_bid     = smu_axi_in_resp.b.id;
   assign ext_in_bresp   = smu_axi_in_resp.b.resp;
+  assign ext_in_buser   = smu_axi_in_resp.b.user;
   assign ext_in_bvalid  = smu_axi_in_resp.b_valid;
   assign ext_in_arready = smu_axi_in_resp.ar_ready;
   assign ext_in_rid     = smu_axi_in_resp.r.id;
   assign ext_in_rdata   = smu_axi_in_resp.r.data;
   assign ext_in_rresp   = smu_axi_in_resp.r.resp;
   assign ext_in_rlast   = smu_axi_in_resp.r.last;
+  assign ext_in_ruser   = smu_axi_in_resp.r.user;
   assign ext_in_rvalid  = smu_axi_in_resp.r_valid;
 
   // Cocotb observe ports that hw/top/smu_wrapper does not expose directly.
@@ -528,6 +631,22 @@ module smu_wrapper_uvm_top (
   assign powergood_o   = powergood_i;
   assign rst_cold_n_o  = rst_cold_stable_ref_clk_n;
   assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
+
+  // powergood_stable is the SMC reset controller's stretched and synchronized
+  // view of powergood_i (smc_reset_ctrl.sv), so it rises only once the DUT's own
+  // synchronizer chain has clocked it through. The sticky low record carries no
+  // reset: it must survive the cold-reset window in which it is set, so its
+  // declaration initialiser is the only zeroing, and a variable with an
+  // initialiser may not be an always_ff target (IEEE 1800-2017 9.2.2.4, an
+  // error on VCS).
+  assign obs_powergood_stable_o = u_dut.u_smu.powergood_stable;
+  logic obs_powergood_stable_low_seen_q = 1'b0;
+  always @(posedge clk_ref_i) begin
+    if (!obs_powergood_stable_o) begin
+      obs_powergood_stable_low_seen_q <= 1'b1;
+    end
+  end
+  assign obs_powergood_stable_low_seen_o = obs_powergood_stable_low_seen_q;
 `ifndef SMU_NO_SEP
   assign sep_reset_n = u_dut.u_smu.gen_sep.u_sep.sep_reset_n;
 `else
@@ -560,6 +679,13 @@ module smu_wrapper_uvm_top (
   assign obs_sep_wdt_clk_o = u_dut.u_smu.gen_sep.u_sep.clk_wdt_i;
   // Live SEP LCC export — must match lc_state_o for lc_state=from_sep.
   assign obs_sep_lc_state_o = u_dut.u_smu.gen_sep.u_sep.lc_state_o;
+  // The SEP efuse shadow registers' own sim_skip_fuse_sense flag: 1 when
+  // +skip_fuse_sense replaces the fuse-sense sequence with the shadow preload,
+  // 0 whenever the sense runs -- including a build without the SIMULATION
+  // define, where the plusarg has no effect at all.
+  assign sep_fuse_sense_skipped_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
+        .u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
+        .sim_skip_fuse_sense;
 `else
   assign obs_compose_sep_present_o = 1'b0;
   assign obs_compose_xbar_present_o = 1'b0;
@@ -569,6 +695,7 @@ module smu_wrapper_uvm_top (
   assign obs_xbar_rst_n_o = 1'b0;
   assign obs_sep_wdt_clk_o = 1'b0;
   assign obs_sep_lc_state_o = 8'h00;
+  assign sep_fuse_sense_skipped_o = 1'b0;
 `endif
 
   assign smc_scratch_0_o =
@@ -969,21 +1096,61 @@ module smu_wrapper_uvm_top (
 `endif
 
   // ------------------------------------------------------------------
-  // External SMN AXI slave — SEP rom_boot / SMC SYS_OUT posture. Firmware
-  // console / PASS magic is a TB observe snoop on the same wires (SEP
-  // sep_outbound_mbx decode), not a second bus terminator.
+  // DTP / JTAG observation taps -- SEP-independent, so outside the
+  // `ifndef SMU_NO_SEP` block above: that block's `else` re-drives only the
+  // sep_* observables, and a pin left inside it reads a constant 0 under
+  // +define+SMU_NO_SEP.
+  // ------------------------------------------------------------------
+  assign rst_cold_stable_ref_clk_no = rst_cold_stable_ref_clk_n;
+  assign jtag_boot_stall          = smu_scope_boot_stall_val;
+  assign jtag_boot_stall_ovrd     = smu_scope_boot_stall_ovrd;
+  assign jtag_ic_reset_ext_ovrd   = ic_reset_ext_w.ovrd;
+  assign jtag_ic_reset_ext_ctrl_n = ic_reset_ext_w.val;
+  assign jtag_ic_reset_smc_ovrd   = u_dut.u_smu.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
+  assign jtag_ic_reset_smc_ctrl_n = u_dut.u_smu.jtag_smc_reset_ctrl.val.cold_reset_n_val;
+  // The DTP output port, not smu's internal wire between the two instances.
+  // That wire is collapsed here, so the XMR reads a constant 0 while the
+  // register behind it holds the right value.
+  assign smu_scope_boot_stall_val  = u_dut.u_smu.boot_stall_jtag_val;
+  assign smu_scope_boot_stall_ovrd = u_dut.u_smu.boot_stall_jtag_ovrd;
+  assign tb_stap_io_tck      = stap_io_ctrl_w.tck;
+  assign tb_stap_smc_tck     = u_dut.u_smu.dtp_smc_stap_tap_ctrl.tck;
+  assign tb_stap_smc_tms     = u_dut.u_smu.dtp_smc_stap_tap_ctrl.tms;
+  assign tb_stap_smc_trst_n  = u_dut.u_smu.dtp_smc_stap_tap_ctrl.trst_n;
+  assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
+  assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
+  // Boot-stall GPIO pad (smc_padring: boot_stall_o = lsio_pad2core_data[57]).
+  // Unlike tb_top.sv, which ORs the TB value into a pad2core vector at the
+  // smu boundary, smu_wrapper brings out a real bidirectional pad bus --
+  // smc_ip_integration puts a prim_pad_shim on every pin -- so the drive goes
+  // onto the wire itself, weak (pull) elsewhere so a core output still wins.
+  assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
+
+  // smu.sv does not forward the peripheral-domain primary reset to its own
+  // boundary, so read it off the SMC the way tb_top.sv does.
+  assign rst_primary_periph_clk_no = u_dut.u_smu.u_smc.rst_primary_periph_clk_no;
+
+  assign dtp_cla_clock_stop_en = u_dut.u_smu.dtp_cla_clock_stop_en;
+  assign tb_bsr_select = bsr_ctrl_w.select;
+  assign tb_smc_jtag2axi_security_disable =
+        u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable;
+  assign tb_otp_jtag2axi_security_disable =
+        u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_otp_jtag2axi_security_disable;
+
+  // ------------------------------------------------------------------
+  // External SMN AXI4 egress: the shared slave agent answers on u_axi_out_if
+  // (cocotb binds the instance); the bridge places the cut's struct port on
+  // it. Firmware console / PASS magic is a TB observe snoop on the same
+  // wires (SEP sep_outbound_mbx decode), not a second responder.
   // ------------------------------------------------------------------
   localparam logic [31:0] FW_STDOUT_ADDR = 32'h8000_0000;
   localparam logic [31:0] FW_MAGIC0 = 32'hA5A5_5A5A;
   localparam logic [31:0] FW_MAGIC_PASS = 32'hCAFE_BABE;
   localparam logic [31:0] FW_MAGIC_FAIL = 32'hDEAD_BEEF;
 
-  smu_axi_xbar_pkg::axi_out_req_t  [0:0] axi_out_mem_req;
-  smu_axi_xbar_pkg::axi_out_resp_t [0:0] axi_out_mem_resp;
-
-  // Register the boundary channels so the terminator sees edge-aligned
+  // Register the boundary channels so the responder sees edge-aligned
   // request signals: the crossbar's ext_out aw_valid settles late in the
-  // cycle. The cut also keeps the terminator's ready out of the crossbar's
+  // cycle. The cut also keeps the responder's ready out of the crossbar's
   // combinational cone.
   smu_axi_xbar_pkg::axi_out_req_t  axi_out_cut_req;
   smu_axi_xbar_pkg::axi_out_resp_t axi_out_cut_resp;
@@ -1005,18 +1172,18 @@ module smu_wrapper_uvm_top (
     .mst_resp_i (axi_out_cut_resp)
   );
 
-  assign axi_out_mem_req[0] = axi_out_cut_req;
-  assign axi_out_cut_resp   = axi_out_mem_resp[0];
+  ocah_axi_if u_axi_out_if (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_cold_n_o)
+  );
 
-  smu_axi_out_sim_slave #(
+  ocah_axi_struct_bridge #(
     .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
-    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t),
-    .AddrWidth  (56)
-  ) u_axi_out_mem (
-    .clk_i      (clk_smu_i),
-    .rst_ni     (rst_cold_n_o),
-    .axi_req_i  (axi_out_mem_req[0]),
-    .axi_resp_o (axi_out_mem_resp[0])
+    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t)
+  ) u_axi_out_bridge (
+    .axi_req_i  (axi_out_cut_req),
+    .axi_resp_o (axi_out_cut_resp),
+    .axi_if     (u_axi_out_if)
   );
 
   logic [55:0] axi_out_aw_addr_q;
@@ -1116,7 +1283,7 @@ module smu_wrapper_uvm_top (
       end
 
       // Firmware console / PASS magic (SEP sep_outbound_mbx decode) — observe
-      // only; the terminator owns resp.
+      // only; the slave agent owns resp.
       if (axi_out_w_fire && axi_out_to_stdout) begin
         if (smu_axi_out_req.w.strb == 8'h01) begin
           fw_char_o       <= smu_axi_out_req.w.data[7:0];
@@ -1148,8 +1315,6 @@ module smu_wrapper_uvm_top (
     end
   end
 
-  // CPU ROM/scratch/L1$ macros (same module smc_wrapper embeds).
-
   // ------------------------------------------------------------------
   // DUT: hw/top/smu_wrapper (logical ports)
   // ------------------------------------------------------------------
@@ -1175,11 +1340,11 @@ module smu_wrapper_uvm_top (
     .jtag_ptap_client_tdo_o      (jtag_ptap_tdo),
     .jtag_ptap_client_tdo_oen_o  (jtag_ptap_tdo_oen),
 
-    .jtag_bsr_host_scan_ctrl_o (),
-    .jtag_bsr_host_scan_in_i   (1'b0),
-    .jtag_bsr_host_scan_out_o  (),
+    .jtag_bsr_host_scan_ctrl_o (bsr_ctrl_w),
+    .jtag_bsr_host_scan_in_i   (bsr_scan_loop),
+    .jtag_bsr_host_scan_out_o  (bsr_scan_loop),
 
-    .jtag_stap_io_host_tap_ctrl_o (),
+    .jtag_stap_io_host_tap_ctrl_o (stap_io_ctrl_w),
     .jtag_stap_io_host_tdi_i      (1'b0),
     .jtag_stap_io_host_tdo_o      (),
     .jtag_stap_io_host_tdo_oen_o  (),
@@ -1205,16 +1370,16 @@ module smu_wrapper_uvm_top (
     .jtag_dft_host_scan_in_i   (1'b0),
     .jtag_dft_host_scan_out_o  (),
 
-    .dtp_stop_clks_o (),
-    .jtag_ptap_state_o (),
-    .jtag_ptap_inst_decoded_o (),
-    .jtag_ic_reset_ext_o (),
+    .dtp_stop_clks_o (dtp_stop_clks_o),
+    .jtag_ptap_state_o (jtag_ptap_state),
+    .jtag_ptap_inst_decoded_o (jtag_ptap_inst_decoded),
+    .jtag_ic_reset_ext_o (ic_reset_ext_w),
 
     .xtrig_ctm_src_req_o (xtrig_ctm_src_req),
-    .xtrig_ctm_src_ack_i ('0),
-    .xtrig_ctm_dst_req_i ('0),
-    .xtrig_ctm_dst_ack_o (),
-    .xtrig_clk_stop_req_i ('0),
+    .xtrig_ctm_src_ack_i (xtrig_ctm_src_ack),
+    .xtrig_ctm_dst_req_i (xtrig_ctm_dst_req),
+    .xtrig_ctm_dst_ack_o (xtrig_ctm_dst_ack),
+    .xtrig_clk_stop_req_i (xtrig_clk_stop_req),
 
     .xtrig_ctp_req_out_dout_o (),
     .xtrig_ctp_req_out_dout_en_o (),
@@ -1233,7 +1398,7 @@ module smu_wrapper_uvm_top (
     .xtrig_ctp_ack_out_din_i ('0),
     .xtrig_ctp_ack_out_din_en_o (),
 
-    .rst_primary_ref_clk_no (),
+    .rst_primary_ref_clk_no (rst_primary_ref_clk_no),
     .rst_primary_smc_clk_no (rst_primary_smc_clk_n),
 
     .smu_axi_in_req_i  (smu_axi_in_req),
@@ -1241,7 +1406,7 @@ module smu_wrapper_uvm_top (
     .smu_axi_out_req_o (smu_axi_out_req),
     .smu_axi_out_resp_i (smu_axi_out_resp),
 
-    .smc_shadow_regs_o (),
+    .smc_shadow_regs_o (smc_shadow_regs),
     .lsio_interface_select_o (),
     .gpio_pad_io (gpio_pad_io),
     .rst_cool_n_from_pin_i (1'b1),
@@ -1255,28 +1420,25 @@ module smu_wrapper_uvm_top (
     .telemetry_afvalid_o (),
     .telemetry_afready_i ('0),
 
-    .cluster_ded_o (),
-    .wdt_first_timeout_o (),
-    .wdt_second_timeout_o (),
+    .smc_cluster_ded_o (),
+    .smc_wdt_first_timeout_o (),
+    .smc_wdt_second_timeout_o (),
 
-    .smc_global_base_o (),
-    .smc_region_size_o (),
-    .sep_global_base_o (),
-    .sep_region_size_o (),
+    .smc_global_base_o (smc_global_base_o),
+    .smc_region_size_o (smc_region_size_o),
+    .sep_global_base_o (sep_global_base_o),
+    .sep_region_size_o (sep_region_size_o),
 
-    .ext_interrupts_i ('0),
-    .fuse_sense_done_o,
-    .fuse_reset_n_delayed_o,
+    .smc_ext_interrupts_i ('0),
+    .smc_fuse_sense_done_o,
+    .smc_fuse_reset_n_delayed_o,
     .skip_mem_repair_o (),
-    .ext_boot_seq_done_i (1'b1),
-    .temp_interrupt_i (1'b0),
+    .ext_boot_seq_done_i (ext_boot_seq_done_i),
     .lc_state_o (lc_state),
-    .lc_sigint_err_o (),
-    .ras_bank_chip_o (),
-    .ras_bank_instance_o (),
-    .ndmreset_request_i ('0),
-    .ndmreset_process_o (),
-    .ext_mailbox_interrupts_o (ext_mailbox_interrupts),
+    .lc_sigint_err_o (lc_sigint_err_o),
+    .smc_ndmreset_request_i ('0),
+    .smc_ndmreset_process_o (),
+    .smc_ext_mailbox_interrupts_o (ext_mailbox_interrupts),
 
     .cfg_flr_pf_active_i (1'b0),
     .isolate_req_o (),
@@ -1285,10 +1447,10 @@ module smu_wrapper_uvm_top (
     .ss_reset_ctrl_o (),
     .sync_irq_o (),
 
-    .disable_sram_auto_init_i (1'b0),
-    .init_mem_done_o,
+    .smc_disable_sram_auto_init_i (smc_disable_sram_auto_init),
+    .smc_init_mem_done_o,
     .chiplet_is_primary_i (1'b1),
-    .timer_count_o (),
+    .timer_count_o (tb_timer_count),
 
     .test_en_i (1'b0),
     .scan_rst_ni (1'b1),
@@ -1302,11 +1464,12 @@ module smu_wrapper_uvm_top (
     .mbist_pass_i (1'b1),
     .mbist_abort_i (1'b0),
 
-    .spi_irq_i (1'b0),
     .sep_cpu_trace_o (sep_cpu_trace),
-    .sep_extintsrc_req_i ('0),
+    .sep_ext_interrupts_i ('0),
     .lcc_demote_state_1_o (),
     .lcc_demote_state_2_o (),
+    .sep_fuse_dft_disable_o (),
+    .smc_fuse_dft_disable_o (),
     .sep_fuse_sense_done_o,
     .clk_sep_wdt_i,
     .secure_tm_req_i (secure_tm_req),
