@@ -36,7 +36,7 @@ module sep_wrapper
   input  logic jtag_tck,
   input  logic jtag_tms,
   input  logic jtag_tdi,
-  input  logic jtag_trst_n,
+  input  logic jtag_trst_ni,
   output logic jtag_tdo,
   output logic jtag_tdoEn,
 
@@ -45,9 +45,9 @@ module sep_wrapper
   input  sep_efuse_pkg::efuse_axil_req_t  axil_sep_otp_jtag_req_i,
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
 
-  input  logic mpc_debug_halt_req,
-  input  logic mpc_debug_run_req,
-  input  logic mpc_reset_run_req,
+  input  logic mpc_debug_halt_req_i,
+  input  logic mpc_debug_run_req_i,
+  input  logic mpc_reset_run_req_i,
 
   input  logic cpu_halt_req_i,
   input  logic cpu_run_req_i,

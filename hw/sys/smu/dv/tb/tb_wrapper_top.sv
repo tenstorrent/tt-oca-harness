@@ -875,9 +875,9 @@ module smu_wrapper_uvm_top (
   assign sep_cla_custom_o =
         16'(u_dut.u_smu.cla_ext_action_custom);
   assign sep_mpc_reset_run_o =
-        u_dut.u_smu.gen_sep.u_sep.mpc_reset_run_req;
+        u_dut.u_smu.gen_sep.u_sep.mpc_reset_run_req_i;
   assign sep_mpc_debug_run_o =
-        u_dut.u_smu.gen_sep.u_sep.mpc_debug_run_req;
+        u_dut.u_smu.gen_sep.u_sep.mpc_debug_run_req_i;
   assign sep_cpu_run_req_o =
         u_dut.u_smu.gen_sep.u_sep.cpu_run_req_i;
   assign sep_halt_status_o =

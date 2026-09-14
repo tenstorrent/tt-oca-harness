@@ -426,9 +426,9 @@ module smu #(
   sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl;
 
   // CLA custom actions map to SEP CPU debug controls
-  // cla_ext_action_custom[0] - mpc_debug_halt_req
-  // cla_ext_action_custom[1] - mpc_debug_run_req
-  // cla_ext_action_custom[2] - mpc_reset_run_req (inverted: action asserted = Debug Mode)
+  // cla_ext_action_custom[0] - mpc_debug_halt_req_i
+  // cla_ext_action_custom[1] - mpc_debug_run_req_i
+  // cla_ext_action_custom[2] - mpc_reset_run_req_i (inverted: action asserted = Debug Mode)
   // cla_ext_action_custom[3] - cpu_halt_req_i
   // cla_ext_action_custom[4] - cpu_run_req_i
   logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
@@ -848,7 +848,7 @@ module smu #(
       .jtag_tck                      (dtp_sep_stap_tap_ctrl.tck),
       .jtag_tms                      (dtp_sep_stap_tap_ctrl.tms),
       .jtag_tdi                      (dtp_sep_stap_tdo),
-      .jtag_trst_n                   (dtp_sep_stap_tap_ctrl.trst_n),
+      .jtag_trst_ni                  (dtp_sep_stap_tap_ctrl.trst_n),
       .jtag_tdo                      (sep_stap_tdo_to_dtp),
       .jtag_tdoEn                    (/* unused at smu level */),
 
@@ -858,9 +858,9 @@ module smu #(
       .axil_sep_otp_jtag_req_i       (dtp_axil_sep_otp_jtag_req),
       .axil_sep_otp_jtag_resp_o      (dtp_axil_sep_otp_jtag_resp),
 
-      .mpc_debug_halt_req            (cla_ext_action_custom[0]),
-      .mpc_debug_run_req             (cla_ext_action_custom[1]),
-      .mpc_reset_run_req             (~cla_ext_action_custom[2]), // inverted: default 0 = Normal Mode; CLA action = Debug Mode
+      .mpc_debug_halt_req_i          (cla_ext_action_custom[0]),
+      .mpc_debug_run_req_i           (cla_ext_action_custom[1]),
+      .mpc_reset_run_req_i           (~cla_ext_action_custom[2]), // inverted: default 0 = Normal Mode; CLA action = Debug Mode
 
       .cpu_halt_req_i                (cla_ext_action_custom[3]),
       .cpu_run_req_i                 (cla_ext_action_custom[4]),

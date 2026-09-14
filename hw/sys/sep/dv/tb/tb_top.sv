@@ -415,7 +415,7 @@ module sep_uvm_top
         .jtag_tck                     (jtag_tck),
         .jtag_tms                     (jtag_tms),
         .jtag_tdi                     (jtag_tdi),
-        .jtag_trst_n                  (jtag_trst_n),
+        .jtag_trst_ni                 (jtag_trst_n),
         .jtag_tdo                     (),
         .jtag_tdoEn                   (),
         .jtag_sep_reset_ctrl_i        (jtag_sep_reset_ctrl_drive),
@@ -428,9 +428,9 @@ module sep_uvm_top
         .axil_sep_otp_jtag_resp_o     (j_axil_resp_w),
 
         // MPC halt/run + CPU run (CPU held off; LSU master driven by the stub)
-        .mpc_debug_halt_req           (1'b0),
-        .mpc_debug_run_req            (1'b0),
-        .mpc_reset_run_req            (mpc_reset_run_req),
+        .mpc_debug_halt_req_i         (1'b0),
+        .mpc_debug_run_req_i          (1'b0),
+        .mpc_reset_run_req_i          (mpc_reset_run_req),
         .cpu_halt_req_i               (1'b0),
         .cpu_run_req_i                (i_cpu_run_req_i),
 

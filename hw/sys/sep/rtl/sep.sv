@@ -25,12 +25,12 @@ module sep #(
 
   output logic wdt_timer_rst_req_o, // SEP WDT bite reset request (active-high) to SMC reset unit
 
-  input  logic jtag_tck,    // JTAG clk
-  input  logic jtag_tms,    // JTAG TMS
-  input  logic jtag_tdi,    // JTAG tdi
-  input  logic jtag_trst_n, // JTAG Reset
-  output logic jtag_tdo,    // JTAG TDO
-  output logic jtag_tdoEn,  // JTAG Test Data Output enable
+  input  logic jtag_tck,     // JTAG clk
+  input  logic jtag_tms,     // JTAG TMS
+  input  logic jtag_tdi,     // JTAG tdi
+  input  logic jtag_trst_ni, // JTAG Reset
+  output logic jtag_tdo,     // JTAG TDO
+  output logic jtag_tdoEn,   // JTAG Test Data Output enable
 
   // JTAG SEP Reset Control
   input  sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
@@ -40,9 +40,9 @@ module sep #(
   output sep_efuse_pkg::efuse_axil_resp_t axil_sep_otp_jtag_resp_o,
 
   // external MPC halt/run interface
-  input  logic mpc_debug_halt_req, // Async halt request
-  input  logic mpc_debug_run_req,  // Async run request
-  input  logic mpc_reset_run_req,  // Run/halt after reset
+  input  logic mpc_debug_halt_req_i, // Async halt request
+  input  logic mpc_debug_run_req_i,  // Async run request
+  input  logic mpc_reset_run_req_i,  // Run/halt after reset
 
   input  logic cpu_halt_req_i,      // Async halt req to CPU
   input  logic cpu_run_req_i, // Async restart req to CPU
@@ -592,20 +592,20 @@ NUM_EXT_DEMUX_PORTS
     .rst_ni                         (sep_cpu_reset_n),
     .dbg_rstb_i                     (dbg_rstb_i),
 
-    .jtag_tck                       (jtag_tck),    // JTAG clk
-    .jtag_tms                       (jtag_tms),    // JTAG TMS
-    .jtag_tdi                       (jtag_tdi),    // JTAG tdi
-    .jtag_trst_n                    (jtag_trst_n), // JTAG Reset
-    .jtag_tdo                       (jtag_tdo),    // JTAG TDO
-    .jtag_tdoEn                     (jtag_tdoEn),  // JTAG Test Data Output enable
+    .jtag_tck                       (jtag_tck),     // JTAG clk
+    .jtag_tms                       (jtag_tms),     // JTAG TMS
+    .jtag_tdi                       (jtag_tdi),     // JTAG tdi
+    .jtag_trst_ni                   (jtag_trst_ni), // JTAG Reset
+    .jtag_tdo                       (jtag_tdo),     // JTAG TDO
+    .jtag_tdoEn                     (jtag_tdoEn),   // JTAG Test Data Output enable
 
     // external MPC halt/run interface
-    .mpc_debug_halt_req             (mpc_debug_halt_req), // Async halt request
-    .mpc_debug_run_req              (mpc_debug_run_req),  // Async run request
-    .mpc_reset_run_req              (mpc_reset_run_req),  // Run/halt after reset
-    .mpc_debug_halt_ack             (mpc_debug_halt_ack), // Halt ack
-    .mpc_debug_run_ack              (mpc_debug_run_ack),  // Run ack
-    .debug_brkpt_status             (debug_brkpt_status), // debug breakpoint
+    .mpc_debug_halt_req_i           (mpc_debug_halt_req_i), // Async halt request
+    .mpc_debug_run_req_i            (mpc_debug_run_req_i),  // Async run request
+    .mpc_reset_run_req_i            (mpc_reset_run_req_i),  // Run/halt after reset
+    .mpc_debug_halt_ack_o           (mpc_debug_halt_ack),   // Halt ack
+    .mpc_debug_run_ack_o            (mpc_debug_run_ack),    // Run ack
+    .debug_brkpt_status_o           (debug_brkpt_status),   // debug breakpoint
 
     .cpu_halt_req_i                 (cpu_halt_req_i),      // Async halt req to CPU
     .cpu_halt_ack_o                 (cpu_halt_ack_o),      // core response to halt

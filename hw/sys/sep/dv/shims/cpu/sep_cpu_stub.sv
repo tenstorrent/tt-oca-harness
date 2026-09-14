@@ -39,20 +39,20 @@ module sep_cpu
   input logic rst_ni,
   input logic dbg_rstb_i,  // EL2 debugger reset
 
-  input  logic jtag_tck,    // JTAG clk
-  input  logic jtag_tms,    // JTAG TMS
-  input  logic jtag_tdi,    // JTAG tdi
-  input  logic jtag_trst_n, // JTAG Reset
-  output logic jtag_tdo,    // JTAG TDO
-  output logic jtag_tdoEn,  // JTAG Test Data Output enable
+  input  logic jtag_tck,     // JTAG clk
+  input  logic jtag_tms,     // JTAG TMS
+  input  logic jtag_tdi,     // JTAG tdi
+  input  logic jtag_trst_ni, // JTAG Reset
+  output logic jtag_tdo,     // JTAG TDO
+  output logic jtag_tdoEn,   // JTAG Test Data Output enable
 
   // external MPC halt/run interface
-  input  logic mpc_debug_halt_req, // Async halt request
-  input  logic mpc_debug_run_req,  // Async run request
-  input  logic mpc_reset_run_req,  // Run/halt after reset
-  output logic mpc_debug_halt_ack, // Halt ack
-  output logic mpc_debug_run_ack,  // Run ack
-  output logic debug_brkpt_status, // debug breakpoint
+  input  logic mpc_debug_halt_req_i, // Async halt request
+  input  logic mpc_debug_run_req_i,  // Async run request
+  input  logic mpc_reset_run_req_i,  // Run/halt after reset
+  output logic mpc_debug_halt_ack_o, // Halt ack
+  output logic mpc_debug_run_ack_o,  // Run ack
+  output logic debug_brkpt_status_o, // debug breakpoint
 
   input  logic cpu_halt_req_i,      // Async halt req to CPU
   output logic cpu_halt_ack_o,      // core response to halt
@@ -213,9 +213,9 @@ module sep_cpu
   assign jtag_tdoEn          = 1'b0;
 
   // MPC halt/run + debug status
-  assign mpc_debug_halt_ack  = 1'b0;
-  assign mpc_debug_run_ack   = 1'b0;
-  assign debug_brkpt_status  = 1'b0;
+  assign mpc_debug_halt_ack_o = 1'b0;
+  assign mpc_debug_run_ack_o  = 1'b0;
+  assign debug_brkpt_status_o = 1'b0;
 
   // CPU halt/run handshake + debug mode
   assign cpu_halt_ack_o      = 1'b0;
