@@ -477,44 +477,30 @@ outputs = [
   "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
 ]
 
+# Run modes carry no eFuse plusargs. `+skip_fuse_sense` and the shadow-register
+# preloads are declared per test in testlists/wrapper.toml, next to the reason
+# each claim tolerates the skip; the boot-stall leaves carry none and sense
+# their OTP image through the wrapper's SMC eFuse model. $value$plusargs
+# returns the first match, so a preload named here would override a test's own.
 [run_modes.smoke]
 description = "Production-wrapper baseline for no-SEP and real-SEP targets"
 timeout_sec = 1800
-args = [
-  "+skip_fuse_sense",
-  # Needed with +skip_fuse_sense: the SMC shadow registers load from this file.
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-]
+args = []
 
 [run_modes.no_sep]
 description = "SMC firmware boot in the OSS smu_wrapper with SEP=0"
 timeout_sec = 1800
-args = [
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-]
+args = []
 
 [run_modes.sep_rtl]
 description = "SMC-assisted real SEP RTL boot in the OSS smu_wrapper"
 timeout_sec = 3600
-args = [
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-  # SEP shadow array is 256×32b (8Kb); do not reuse the 768-word SMC preload.
-  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
-]
+args = []
 
-# Same as sep_rtl but WITHOUT a SEP shadow-register preload, so a test can
-# supply its own. Verilator's $value$plusargs returns the first match, so a
-# per-test +sep_shadow_reg_preload appended after the run-mode one would lose;
-# the run mode has to leave the plusarg unset instead.
 [run_modes.sep_rtl_no_shadow]
-description = "Real-SEP wrapper with the SEP shadow preload left to the test"
+description = "Real-SEP wrapper for the lifecycle leaves, whose SEP shadow image is their own"
 timeout_sec = 3600
-args = [
-  "+skip_fuse_sense",
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-]
+args = []
 
 [targets.default]
 description = "Fallback: OSS wrapper no-SEP profile"

@@ -794,7 +794,15 @@ check.
 *Test Procedure*:
 
 [arabic]
+. Run without `+skip_fuse_sense` (the `testlists/wrapper.toml` entry carries none): the SMC eFuse
+  controller senses the `+smc_efuse_hex` image through the wrapper's eFuse model, and
+  `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
+  carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_boot_stall_jtag_cold_reset_matrix_test_seq` over the wrapper's product interfaces.
+. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
+  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
+  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
+  not within the sense latency.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -803,8 +811,8 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold
-|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 with `smc_fuse_sense_done_o` high
+|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; the sensed release follows the clear
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert sticky
 |===
 
@@ -830,7 +838,15 @@ check.
 *Test Procedure*:
 
 [arabic]
+. Run without `+skip_fuse_sense` (the `testlists/wrapper.toml` entry carries none): the SMC eFuse
+  controller senses the `+smc_efuse_hex` image through the wrapper's eFuse model, and
+  `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
+  carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_boot_stall_vs_ic_reset_priority_test_seq` over the wrapper's product interfaces.
+. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
+  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
+  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
+  not within the sense latency.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -839,7 +855,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STALL-VS-IC` |Evidence token `STALL_VS_IC_RESET`: IC_RESET does not clear stall
+|`CHK-STALL-VS-IC` |Evidence token `STALL_VS_IC_RESET`: IC_RESET does not clear stall; the sensed `smc_fuse_reset_n_delayed_o` stays gated through the IC_RESET legs and releases after TRST
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
@@ -865,7 +881,15 @@ check.
 *Test Procedure*:
 
 [arabic]
+. Run without `+skip_fuse_sense` (the `testlists/wrapper.toml` entry carries none): the SMC eFuse
+  controller senses the `+smc_efuse_hex` image through the wrapper's eFuse model, and
+  `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
+  carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_dft_dtp_boot_stall_test_seq` over the wrapper's product interfaces.
+. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
+  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
+  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
+  not within the sense latency.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -874,7 +898,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 with `smc_fuse_sense_done_o` high and rises after the stall clears
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert does not re-gate
 |===
 
@@ -900,7 +924,15 @@ check.
 *Test Procedure*:
 
 [arabic]
+. Run without `+skip_fuse_sense` (the `testlists/wrapper.toml` entry carries none): the SMC eFuse
+  controller senses the `+smc_efuse_hex` image through the wrapper's eFuse model, and
+  `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
+  carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_dft_gpio_boot_stall_test_seq` over the wrapper's product interfaces.
+. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
+  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
+  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
+  not within the sense latency.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -909,7 +941,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: GPIO stall sticky across cold
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: GPIO stall sticky across cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 with `smc_fuse_sense_done_o` high and rises after the pad clears
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert does not re-gate
 |===
 
@@ -1149,7 +1181,15 @@ check.
 *Test Procedure*:
 
 [arabic]
+. Run without `+skip_fuse_sense` (the `testlists/wrapper.toml` entry carries none): the SMC eFuse
+  controller senses the `+smc_efuse_hex` image through the wrapper's eFuse model, and
+  `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
+  carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_clock_stop_coordination_test_seq` over the wrapper's product interfaces.
+. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
+  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
+  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
+  not within the sense latency.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -1158,8 +1198,8 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DTP-BOOT-STALL-S1` |Evidence token, emitted only after the compares it names have held
-|`CHK-DTP-BOOT-STALL-S2` |Evidence token, emitted only after the compares it names have held
+|`CHK-DTP-BOOT-STALL-S1` |`ovrd=1 stall=1` across cold reset holds the sensed `smc_fuse_reset_n_delayed_o` at 0 with `smc_fuse_sense_done_o` high
+|`CHK-DTP-BOOT-STALL-S2` |clearing stall and override lets the sensed release through within the reset unit's delay pipe
 |`CHK-DTP-IC-RESET-S1` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-IC-RESET-S3` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S1` |Evidence token, emitted only after the compares it names have held
@@ -3087,22 +3127,22 @@ Two things are worth reading before the entries:
 
 *BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; consumer-side observables at the SMC (`lc_state`), the DTP (`dbg_disable`) and `feat_ctrl`
 
-*Objective*: The SEP lifecycle posture is driven by firmware and traced to every consumer, as a delta off the pre-sense baseline.
+*Objective*: The SEP lifecycle posture is driven by firmware and traced to every consumer, as a delta off the reset posture the consumers hold before the shadow image is applied.
 
 *Test Coverage*:
 
 * The SEP LCC decides the chiplet posture and three consumers act on it: `lc_state` -> SMC, `dbg_disable` -> DTP, and `feat_ctrl`.
 * A single static sample of `lc_state_o` proves the wire exists; it does not prove the LCC responds to anything and says nothing about the other two legs. This anchor adds the hardware half for each firmware stage.
 * The lock stage is what makes the rest non-vacuous: a register that simply stored whatever software wrote would satisfy every demote check. Only a *refused* write after lock shows the block implements the policy.
-* The consumer contract is the profile of the eFuse shadow image the `sep_rtl` run mode supplies (`assets/default_sep_efuse_shadow_reg.preload`, LC word clear, so raw `0x0` and therefore TEST_DEV), and the sequence asserts that image is the one in play before applying the contract.
-* Before the posture is sampled `lc_state` reads `0x0f`, which is not a state, and `dbg_disable` is asserted whatever the image says. Each consumer leg is therefore both a delta off that pre-sense baseline and a compare against the contracted value -- `lc_state` `0xf0` at the SMC, `dbg_disable` clear at the DTP.
+* The consumer contract is the profile of the eFuse shadow image the testlist entry supplies (`+sep_shadow_reg_preload=assets/default_sep_efuse_shadow_reg.preload` under `+skip_fuse_sense`; LC word clear, so raw `0x0` and therefore TEST_DEV), and the sequence asserts that image is the one in play before applying the contract. The SEP eFuse sense FSM is replaced by that preload and is outside this entry's claim: what is proven is the LCC decode of a supplied image and its fan-out, not the sense.
+* Before the image is applied `lc_state` reads `0x0f`, which is not a state, and `dbg_disable` is asserted whatever the image says. Each consumer leg is therefore both a delta off that reset posture and a compare against the contracted value -- `lc_state` `0xf0` at the SMC, `dbg_disable` clear at the DTP.
 * *Not claimed*: a demote is not required to move `feat_ctrl`. In TEST_DEV the baseline is already `~(sip_dis | sys_dis)`, so the bits a demote forces high are high already and the write is a no-op. `feat_ctrl` is reported, not asserted on; the demote's effect is checked at `lcc_demote_state_*_o`, where it is unambiguous.
 
 *Test Procedure*:
 
 [arabic]
 . Assert the eFuse shadow image in play is the one whose contract this entry applies.
-. Sample the pre-sense baseline at all three consumers.
+. Sample the reset posture at all three consumers before the shadow image is applied.
 . Run the firmware through its four stages -- FEAT_CTRL readable, DEMOTE_1 accepted and read back, DEMOTE_2 accepted and read back, and a later clear refused by the DEMOTE_1 lock.
 . Re-read each consumer and compare it both as a delta off the baseline and against this image's contracted value.
 . Require the firmware to have reached its pass loop, then emit the tokens.
@@ -3114,7 +3154,7 @@ Two things are worth reading before the entries:
 |Checker |Description
 |`CHK-SEP-LCC-FW-STAGES` |the firmware cleared all four stages on-chip: FEAT_CTRL readable, DEMOTE_1 and DEMOTE_2 each accepted and read back, and the DEMOTE_1 lock refused a later clear
 |`CHK-SEP-LCC-FANOUT` |demote1 and demote2 both moved at `lcc_demote_state_*_o`; SMC `lc_state` moved off `0x0f` to the contracted value and DTP `dbg_disable` to its contracted value; `feat_ctrl` is reported, not asserted on
-|`CHK-SEP-LCC-NONVAC` |every consumer claim is a delta against the pre-sense reset posture *and* a compare against this eFuse image's contracted value, and the write-once lock rules out plain storage
+|`CHK-SEP-LCC-NONVAC` |every consumer claim is a delta against the reset posture held before the shadow image is applied *and* a compare against this eFuse image's contracted value, and the write-once lock rules out plain storage
 |===
 
 *Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_LCC_FW_FLOW_OK`, `SEP_LCC_FANOUT_TO_SMC_DTP_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.

@@ -32,6 +32,9 @@ args = [
   "+expected_sep=0",
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: elaboration claim; no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -51,6 +54,10 @@ args = [
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: elaboration claim; no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -65,6 +72,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smu_smc_smoke.rom.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: SMC firmware boot to TEST_PASS; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # Real SEP RTL boot readiness.
@@ -87,6 +97,10 @@ args = [
   "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
   "+sep_itcm_hex=smu_sep_smoke.itcm.hex",
   "+sep_dtcm_hex=smu_sep_smoke.dtcm.hex",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Real SEP DV firmware (hw/sys/sep/dv/fw/tests/sep_smu_boot_health), built by
@@ -110,6 +124,10 @@ args = [
   "+sep_itcm_hex=sep_smu_boot_health.itcm.hex",
   "+sep_dtcm_hex=sep_smu_boot_health.dtcm.hex",
   "+sep_sym=sep_smu_boot_health.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP-side HMAC (SHA-256) and KMAC (SHA3-256) known-answer tests. The digests
@@ -135,6 +153,10 @@ args = [
   "+sep_itcm_hex=sep_smu_sanity.itcm.hex",
   "+sep_dtcm_hex=sep_smu_sanity.dtcm.hex",
   "+sep_sym=sep_smu_sanity.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP module touch-point matrix: AES, HMAC and KMAC stages run on-chip and the
@@ -166,6 +188,10 @@ args = [
   "+sep_dtcm_hex=sep_smu_modules.dtcm.hex",
   "+sep_sym=sep_smu_modules.tcm.sym",
   "+esrc_noise_force",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Dedicated AES known-answer image: a second, independent AES-128 ECB vector
@@ -190,6 +216,10 @@ args = [
   "+sep_dtcm_hex=sep_smu_aes.dtcm.hex",
   "+sep_sym=sep_smu_aes.tcm.sym",
   "+esrc_noise_force",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # OTBN CSR reachability, a narrow claim: the image writes five OTBN
@@ -216,6 +246,10 @@ args = [
   "+sep_itcm_hex=sep_smu_otbn.itcm.hex",
   "+sep_dtcm_hex=sep_smu_otbn.dtcm.hex",
   "+sep_sym=sep_smu_otbn.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # ext_in-driven SEP + SMC routing: the three-party test the sys-inbound path
@@ -260,6 +294,10 @@ args = [
   "+sep_sym=sep_smu_ext_axi.tcm.sym",
   "+smc_scratch_ram_hex=smu_sep_ext_axi.ecc.hex",
   "+smc_sym=smu_sep_ext_axi.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP eFuse control + external-shim CSR read/write path. The shim block
@@ -283,6 +321,10 @@ args = [
   "+sep_itcm_hex=sep_smu_efuse.itcm.hex",
   "+sep_dtcm_hex=sep_smu_efuse.dtcm.hex",
   "+sep_sym=sep_smu_efuse.tcm.sym",
+  # +skip_fuse_sense: firmware drives the SEP eFuse CSR/shim path; the sense FSM is not the claim.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP watchdog control and bark/bite threshold register path.
@@ -303,6 +345,10 @@ args = [
   "+sep_itcm_hex=sep_smu_wdt.itcm.hex",
   "+sep_dtcm_hex=sep_smu_wdt.dtcm.hex",
   "+sep_sym=sep_smu_wdt.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP DMA engine register path.
@@ -323,6 +369,10 @@ args = [
   "+sep_itcm_hex=sep_smu_dma.itcm.hex",
   "+sep_dtcm_hex=sep_smu_dma.dtcm.hex",
   "+sep_sym=sep_smu_dma.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP<->SMC bidirectional handshake. Needs BOTH halves: the SEP image from the
@@ -345,6 +395,10 @@ args = [
   "+sep_itcm_hex=sep_smu_bidirect.itcm.hex",
   "+sep_dtcm_hex=sep_smu_bidirect.dtcm.hex",
   "+sep_sym=sep_smu_bidirect.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP AP/STEE output-remap programming. The firmware is a stimulus generator,
@@ -372,6 +426,10 @@ args = [
   "+sep_itcm_hex=sep_smu_remap.itcm.hex",
   "+sep_dtcm_hex=sep_smu_remap.dtcm.hex",
   "+sep_sym=sep_smu_remap.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # The SEP loads its own TCM: no testbench preload at all. This is the one image
@@ -395,6 +453,10 @@ args = [
   "+sep_boot_rom_hex=rom_no_tcm_preload_mem_init.vmem",
   "+sep_no_tcm_preload",
   "+sep_sym=rom_no_tcm_preload_mem_init.rom_only.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP OpenTitan spi_controller command sequence. The licensed SPI controller
@@ -419,6 +481,10 @@ args = [
   "+sep_itcm_hex=sep_smu_spi.itcm.hex",
   "+sep_dtcm_hex=sep_smu_spi.dtcm.hex",
   "+sep_sym=sep_smu_spi.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP-driven SMC bring-up plus the SEP<->SMC crossbar handshake. The SMC does
@@ -454,6 +520,10 @@ args = [
   "+sep_sym=sep_smc_xbar.tcm.sym",
   "+smc_scratch_ram_hex=smc_sep_xbar.ecc.hex",
   "+smc_sym=smc_sep_xbar.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Dual-firmware leaves that share sep_smc_bringup_from_sram with the xbar
@@ -479,6 +549,10 @@ args = [
   "+sep_sym=sep_smu_debug_bus.tcm.sym",
   "+smc_scratch_ram_hex=smu_sep_debug_bus.ecc.hex",
   "+smc_sym=smu_sep_debug_bus.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -500,6 +574,10 @@ args = [
   "+sep_sym=sep_smu_wdt_reset_to_smc.tcm.sym",
   "+smc_scratch_ram_hex=smu_sep_boot.ecc.hex",
   "+smc_sym=smu_sep_boot.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -521,6 +599,10 @@ args = [
   "+sep_sym=sep_smu_lc_handoff.tcm.sym",
   "+smc_scratch_ram_hex=smu_sep_lc_handoff.ecc.hex",
   "+smc_sym=smu_sep_lc_handoff.sram.sym",
+  # +skip_fuse_sense: the shadow image's lifecycle word is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -542,6 +624,10 @@ args = [
   "+sep_sym=smu_cla_sep_cpu_debug.tcm.sym",
   "+smc_scratch_ram_hex=smu_cla_sep_cpu_debug.ecc.hex",
   "+smc_sym=smu_cla_sep_cpu_debug.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP outbound egress path, walked segment by segment: SEP issues an outbound
@@ -567,6 +653,10 @@ args = [
   "+sep_itcm_hex=sep_smc_notify.itcm.hex",
   "+sep_dtcm_hex=sep_smc_notify.dtcm.hex",
   "+sep_sym=sep_smc_notify.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Primary TAP driven from cocotb, with the SEP running. The TAP must answer
@@ -588,6 +678,10 @@ args = [
   "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
   "+sep_itcm_hex=hello_world.itcm.hex",
   "+sep_dtcm_hex=hello_world.dtcm.hex",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Firmware-driven SEP lifecycle flow. The SEP LCC is the source of the
@@ -613,6 +707,10 @@ args = [
   "+sep_itcm_hex=sep_smu_lcc_flow.itcm.hex",
   "+sep_dtcm_hex=sep_smu_lcc_flow.dtcm.hex",
   "+sep_sym=sep_smu_lcc_flow.tcm.sym",
+  # +skip_fuse_sense: the default SEP shadow image is the declared stimulus (asserted in play).
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # TEST_DEV (raw 0x0): baseline feat_ctrl[31:0] already open (~(sip_dis|sys_dis));
@@ -639,6 +737,9 @@ args = [
   "+lcc_expect_lc_state=0xf0",
   "+lcc_expect_demote_effective=1",
   "+lcc_expect_dbg_disabled=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD (raw 0x1): baseline feat_ctrl[31:0] is closed; demote must open it
@@ -664,6 +765,9 @@ args = [
   "+lcc_expect_lc_state=0xe1",
   "+lcc_expect_demote_effective=1",
   "+lcc_expect_dbg_disabled=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD_END (raw 0x8): Table 50 has no demote entry, so feat_ctrl[31:0] must stay closed and debug must be disabled -- the discriminating case
@@ -688,6 +792,9 @@ args = [
   "+lcc_expect_lc_state=0x78",
   "+lcc_expect_demote_effective=0",
   "+lcc_expect_dbg_disabled=1",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # RMA_CHIPLET (raw 0x6): feat_ctrl is all-ones by state, independent of the
@@ -714,6 +821,9 @@ args = [
   "+lcc_expect_lc_state=0x96",
   "+lcc_expect_demote_effective=1",
   "+lcc_expect_dbg_disabled=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
@@ -741,6 +851,9 @@ args = [
   "+sep_dtcm_hex=hello_world.dtcm.hex",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
   "+dbg_expect_gated=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD_END: dbg_disable asserts, so the bridge must launch nothing at all. jtag2axi.sv gates its update on !security_disable_i, which jtag_intf_unit.sv drives from dbg_disable.smc_jtag2axi.
@@ -762,6 +875,9 @@ args = [
   "+sep_dtcm_hex=hello_world.dtcm.hex",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload",
   "+dbg_expect_gated=1",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD: Table 50 lets the SEP's demote open feat_ctrl[15:0], so debug opens and the DTP read must complete and return the SMC's live scratch value. All three subsystems active in one run.
@@ -784,6 +900,9 @@ args = [
   "+sep_sym=sep_smu_lcc_flow.tcm.sym",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload",
   "+chain_expect_served=1",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD_END: identical firmware and identical JTAG operation, but Table 50 has no demote entry here -- the SEP's demote changes nothing, debug stays disabled and the bridge must launch nothing. This is what makes the PROD case attributable to the SEP rather than to the JTAG access alone.
@@ -806,6 +925,9 @@ args = [
   "+sep_sym=sep_smu_lcc_flow.tcm.sym",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload",
   "+chain_expect_served=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # SEP entropy stack brought up by firmware, with entropy proven to reach the
@@ -831,6 +953,10 @@ args = [
   "+sep_dtcm_hex=sep_smu_entropy_bringup.dtcm.hex",
   "+sep_sym=sep_smu_entropy_bringup.tcm.sym",
   "+esrc_noise_force",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Merge-gate smoke: both profiles, including real SEP CPU execution.
@@ -864,6 +990,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # Fabric leaves. seq_lib resolves its pins by role, so the same sequences run
@@ -880,6 +1009,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -894,6 +1026,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -908,6 +1043,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -922,6 +1060,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -936,6 +1077,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -950,6 +1094,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -964,6 +1111,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -978,6 +1128,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -992,6 +1145,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1006,6 +1162,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1020,6 +1179,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1034,6 +1196,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1048,6 +1213,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # The fabric leaves as one group; every one is also in `sep0_all` and `all`.
@@ -1083,6 +1251,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1097,6 +1268,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1111,6 +1285,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1125,6 +1302,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1139,6 +1319,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1153,6 +1336,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1167,6 +1353,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1181,6 +1370,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1195,6 +1387,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1209,6 +1404,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1223,6 +1421,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1237,6 +1438,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[groups]]
@@ -1269,6 +1473,8 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1283,6 +1489,8 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1297,6 +1505,8 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1311,6 +1521,8 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1325,6 +1537,8 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1339,6 +1553,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1353,6 +1570,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1367,6 +1587,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the sequence declares the skip as its precondition.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1381,6 +1604,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1395,6 +1621,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1409,6 +1638,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1423,6 +1655,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1437,6 +1672,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1451,6 +1689,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1465,6 +1706,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1479,6 +1723,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1493,6 +1740,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1507,6 +1757,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1521,6 +1774,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1535,6 +1791,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1549,6 +1808,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1563,6 +1825,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1577,6 +1842,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1591,6 +1859,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1605,6 +1876,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1619,6 +1893,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1633,6 +1910,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1647,6 +1927,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # The DTP leaves as one group.

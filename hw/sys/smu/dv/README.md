@@ -211,6 +211,15 @@ leaves. What that force does and does not prove is recorded in the disposition
 record's stand-ins section, together with `+skip_fuse_sense`, the `prim_sync`
 stand-ins and the eFuse models.
 
+`+skip_fuse_sense` replaces the SMC (and, on `sep_rtl`, the SEP) eFuse sense
+with the shadow-register preload named beside it. It is declared per test in
+`testlists/wrapper.toml`, each entry carrying the reason its claim tolerates
+the skip; no `[run_modes.*]` table passes it. The five boot-stall leaves
+(`smu_boot_stall_*`, `smu_dft_*_boot_stall_test`, `smu_clock_stop_coordination_test`)
+carry no skip: the SMC eFuse controller senses the `+smc_efuse_hex` image
+through the wrapper's eFuse model, so the `smc_fuse_reset_n_delayed_o` release
+they gate is the controller's own, and their log reads `Not skipping fuse sense`.
+
 ### Readiness gates
 
 ```bash
