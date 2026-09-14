@@ -1442,11 +1442,12 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: IR+TRST abort of hung OTP SINGLE_OP; fabric VERSION_LO recovers.
+*Objective*: IR+TRST abort of hung OTP SINGLE_OP, observed on that op's status; fabric VERSION_LO recovers.
 
 *Test Coverage*:
 
-* OTP J2A mid-BUSY abort then fabric VERSION_LO recovery.
+* OTP J2A mid-BUSY abort: after the TAP reset the OTP SINGLE_OP DR is captured again and must no longer report BUSY.
+* Fabric VERSION_LO recovery after the abort.
 * Requires +skip_fuse_sense.
 
 *Test Procedure*:
@@ -1465,7 +1466,7 @@ check.
 |`CHK-ABORT-GATE-OPEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-ABORT-BUSY` |Evidence token, emitted only after the compares it names have held
 |`CHK-ABORT-IR-TRST` |Evidence token, emitted only after the compares it names have held
-|`CHK-J2A-ABORT` |Evidence token, emitted only after the compares it names have held
+|`CHK-J2A-ABORT` |OTP SINGLE_OP status after the TAP reset is not BUSY, and two fabric VERSION_LO reads return the reset value
 |assertion |jtag2axi_abort incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
