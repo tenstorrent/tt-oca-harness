@@ -9,6 +9,10 @@ Allocated (SEP=0 bare tb_top):
   DTP-IC-RESET.S1 / S3
   DTP-CLKSTOP-AGG.S1 / S2 / S3
 No Force/deposit. DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are out of scope for this card.
+
+The SMC eFuse sense runs for real on the wrapper. BOOT-STALL.S1 samples the
+held fuse_reset only after smc_fuse_sense_done_o has risen for the cold reset,
+and BOOT-STALL.S2 bounds the release by the gate path, not the sense latency.
 """
 
 from __future__ import annotations
@@ -18,6 +22,11 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from ocah_jtag_vip import OcahJtagState
 
+from seq_lib.smu_fuse_gate_helpers import (
+    FUSE_GATE_HOLD_CYCLES,
+    FUSE_GATE_RELEASE_BOUND_CYCLES,
+    FUSE_SENSE_BOUND_CYCLES,
+)
 from seq_lib.smu_jtag_helpers import (
     DBG_CLA_CLOCK_STOP_BIT,
     SMU_IC_RESET_DEFAULT,
@@ -117,6 +126,30 @@ class smu_clock_stop_coordination_test_seq:
             f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect} name={name}"
         )
 
+    async def _wait_rise(
+        self,
+        signal,
+        *,
+        clk,
+        bound: int,
+        label: str,
+        name: str,
+    ) -> int:
+        """0 -> 1 within ``bound``; a signal already 1 is a failure (no transition seen)."""
+        first = self._sample(signal, name)
+        if first != 0:
+            self._timeout_paths.append(f"{label}: bound={bound} NOT-OBSERVED first=0x{first:x}")
+            raise AssertionError(
+                f"{label}: {name} already {first} before the wait: no 0->1 observed"
+            )
+        for cycle in range(1, bound + 1):
+            await RisingEdge(clk)
+            if self._sample(signal, name) == 1:
+                self._timeout_paths.append(f"{label}: bound={bound} ok cycles={cycle}")
+                return cycle
+        self._timeout_paths.append(f"{label}: bound={bound} EXPIRED last=0x0")
+        raise AssertionError(f"TIMEOUT {label}: bound={bound} last_state=0 expect=1 name={name}")
+
     async def _wait_eq_hold(
         self,
         signal,
@@ -177,12 +210,34 @@ class smu_clock_stop_coordination_test_seq:
             name="rst_primary_smc_clk_no",
         )
         dut.xtrig_clk_stop_req.value = 0
+        # No stall at bring-up: the sense completes, then the release follows
+        # it within the gate path.
+        sense_cycles = await self._wait_rise(
+            dut.smc_fuse_sense_done_o,
+            clk=dut.clk_smu_i,
+            bound=FUSE_SENSE_BOUND_CYCLES,
+            label="s1_fuse_sense_done",
+            name="smc_fuse_sense_done_o",
+        )
+        release_cycles = await self._wait_rise(
+            dut.smc_fuse_reset_n_delayed_o,
+            clk=dut.clk_smu_i,
+            bound=FUSE_GATE_RELEASE_BOUND_CYCLES,
+            label="s1_fuse_release_after_sense",
+            name="smc_fuse_reset_n_delayed_o",
+        )
+        self._log(
+            f"FUSE-SENSE bring-up: smc_fuse_sense_done_o rose after {sense_cycles} clk_smu, "
+            f"smc_fuse_reset_n_delayed_o {release_cycles} clk_smu later @{self._sim_ns():.3f}ns"
+        )
         baseline_stop = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
         baseline_stall_ovrd = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         baseline_stall = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
         baseline_fuse = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         if baseline_stop != 0:
             raise AssertionError(f"baseline dtp_stop_clks_o={baseline_stop} expect 0")
+        if baseline_fuse != 1:
+            raise AssertionError(f"baseline fuse_reset={baseline_fuse} expect 1 after sense-done")
         self._log(
             f"BASELINE: stop_clks={baseline_stop} stall_ovrd={baseline_stall_ovrd} "
             f"stall={baseline_stall} fuse_reset={baseline_fuse} "
@@ -224,21 +279,35 @@ class smu_clock_stop_coordination_test_seq:
             label="s2_primary_after_cold",
             name="rst_primary_smc_clk_no",
         )
-        # Held fuse_reset across sticky stall (must stay 0).
+        # The cold reset restarted the sense. Only once it has completed is a
+        # low fuse_reset the stall gate: hold it at 0 for the whole window
+        # (bound == hold, so a single 1 expires the wait).
+        sense_cycles = await self._wait_rise(
+            dut.smc_fuse_sense_done_o,
+            clk=dut.clk_smu_i,
+            bound=FUSE_SENSE_BOUND_CYCLES,
+            label="s2_fuse_sense_done_after_cold",
+            name="smc_fuse_sense_done_o",
+        )
+        self._log(
+            f"FUSE-SENSE cold+stall: smc_fuse_sense_done_o rose after {sense_cycles} clk_smu "
+            f"@{self._sim_ns():.3f}ns fuse_reset="
+            f"{self._sample(dut.smc_fuse_reset_n_delayed_o, 'smc_fuse_reset_n_delayed_o')}"
+        )
         await self._wait_eq_hold(
             dut.smc_fuse_reset_n_delayed_o,
             0,
             clk=dut.clk_smu_i,
-            bound=self.BOUND_CYCLES,
-            label="s2_fuse_held_stable",
+            bound=FUSE_GATE_HOLD_CYCLES,
+            label="s2_fuse_held_after_sense",
             name="smc_fuse_reset_n_delayed_o",
-            hold=16,
+            hold=FUSE_GATE_HOLD_CYCLES,
         )
         fuse_held = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S1",
             "observed",
-            f"consumer samples boot=held fuse_reset={fuse_held} "
+            f"consumer samples boot=held fuse_reset={fuse_held} sense_done=1 "
             f"ovrd={self._sample(dut.jtag_boot_stall_ovrd, 'jtag_boot_stall_ovrd')} "
             f"stall={self._sample(dut.jtag_boot_stall, 'jtag_boot_stall')}",
         )
@@ -285,15 +354,38 @@ class smu_clock_stop_coordination_test_seq:
             "set",
             "assert observation DEBUG_CONTROL=0 (clear stall/ovrd)",
         )
+        sense_before_clear = self._sample(dut.smc_fuse_sense_done_o, "smc_fuse_sense_done_o")
+        fuse_before_clear = self._sample(
+            dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o"
+        )
+        if sense_before_clear != 1 or fuse_before_clear != 0:
+            raise AssertionError(
+                f"BOOT-STALL.S2 precondition: sense_done={sense_before_clear} "
+                f"fuse_reset={fuse_before_clear} before the clear (expect 1 / 0)"
+            )
         await jtag.write("DEBUG_CONTROL", 0)
-        await ClockCycles(dut.clk_smu_i, self.SETTLE)
-        await self._wait_eq(
+        # The sense is already done, so the rise below is the gate opening:
+        # bound it by the gate path, then require it to stay open.
+        release_cycles = await self._wait_rise(
+            dut.smc_fuse_reset_n_delayed_o,
+            clk=dut.clk_smu_i,
+            bound=FUSE_GATE_RELEASE_BOUND_CYCLES,
+            label="s3_fuse_release_after_clear",
+            name="smc_fuse_reset_n_delayed_o",
+        )
+        await self._wait_eq_hold(
             dut.smc_fuse_reset_n_delayed_o,
             1,
             clk=dut.clk_smu_i,
-            bound=self.BOUND_CYCLES,
-            label="s3_fuse_release",
+            bound=FUSE_GATE_HOLD_CYCLES,
+            label="s3_fuse_release_stable",
             name="smc_fuse_reset_n_delayed_o",
+            hold=FUSE_GATE_HOLD_CYCLES,
+        )
+        self._log(
+            f"FUSE-GATE stall clear: smc_fuse_reset_n_delayed_o released {release_cycles} clk_smu "
+            f"after the clear (bound {FUSE_GATE_RELEASE_BOUND_CYCLES}) and held 1 for "
+            f"{FUSE_GATE_HOLD_CYCLES} clk_smu @{self._sim_ns():.3f}ns"
         )
         fuse_rel = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         self._mark_lifecycle(

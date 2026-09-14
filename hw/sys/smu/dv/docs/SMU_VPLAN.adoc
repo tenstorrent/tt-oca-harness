@@ -805,10 +805,13 @@ check.
   `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
   carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_boot_stall_jtag_cold_reset_matrix_test_seq` over the wrapper's product interfaces.
-. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
-  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
-  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
-  not within the sense latency.
+. Watch `smc_fuse_sense_done_o` 0 -> 1 after every primary reset (bounded at 5000 `clk_smu`; a
+  flag already high, or an expiry, fails) before any `smc_fuse_reset_n_delayed_o` compare. At
+  bring-up the release must then follow within 256 `clk_smu`. With the stall held across the cold
+  reset the gate must read `0` on every one of the 64 `clk_smu` after that rise, so the `0` is the
+  gate and not a sense still in progress. After the stall clears, with the sense already done, the
+  release must arrive within 256 `clk_smu` (the `prim_sync3` + sticky flop + 16-stage pipe path,
+  not the sense latency) and stay released for 64 `clk_smu`.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -817,8 +820,8 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 with `smc_fuse_sense_done_o` high
-|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; the sensed release follows the clear
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 for 64 `clk_smu` with `smc_fuse_sense_done_o` high
+|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; with the sense already done, the release follows the clear within the gate path and stays released
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert sticky
 |===
 
@@ -837,8 +840,8 @@ check.
 
 *Test Coverage*:
 
-* IC_RESET warm then cold while stall sticky: ovrd asserts; stall survives
-* IC_RESET DEFAULT: domain ovrd clears; stall still sticky; fuse still gated
+* IC_RESET warm then cold while stall sticky: ovrd asserts; stall survives; the cold override asserts the SMC primary reset
+* IC_RESET DEFAULT: domain ovrd clears; the primary reset releases again and the still-sticky stall gates fuse_reset across that reset too
 * TRST clears stall AND IC_RESET; fuse_reset releases
 
 *Test Procedure*:
@@ -849,10 +852,13 @@ check.
   `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
   carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_boot_stall_vs_ic_reset_priority_test_seq` over the wrapper's product interfaces.
-. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
-  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
-  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
-  not within the sense latency.
+. Watch `smc_fuse_sense_done_o` 0 -> 1 after every primary reset (bounded at 5000 `clk_smu`; a
+  flag already high, or an expiry, fails) before any `smc_fuse_reset_n_delayed_o` compare. At
+  bring-up the release must then follow within 256 `clk_smu`. With the stall held across the cold
+  reset the gate must read `0` on every one of the 64 `clk_smu` after that rise, so the `0` is the
+  gate and not a sense still in progress. After the stall clears, with the sense already done, the
+  release must arrive within 256 `clk_smu` (the `prim_sync3` + sticky flop + 16-stage pipe path,
+  not the sense latency) and stay released for 64 `clk_smu`.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -861,7 +867,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STALL-VS-IC` |Evidence token `STALL_VS_IC_RESET`: IC_RESET does not clear stall; the sensed `smc_fuse_reset_n_delayed_o` stays gated through the IC_RESET legs and releases after TRST
+|`CHK-STALL-VS-IC` |Evidence token `STALL_VS_IC_RESET`: IC_RESET does not clear stall; the sensed `smc_fuse_reset_n_delayed_o` stays gated through the IC_RESET legs (sampled after `smc_fuse_sense_done_o`) and releases within the gate path after TRST
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `sep0_all`.
@@ -892,10 +898,13 @@ check.
   `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
   carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_dft_dtp_boot_stall_test_seq` over the wrapper's product interfaces.
-. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
-  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
-  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
-  not within the sense latency.
+. Watch `smc_fuse_sense_done_o` 0 -> 1 after every primary reset (bounded at 5000 `clk_smu`; a
+  flag already high, or an expiry, fails) before any `smc_fuse_reset_n_delayed_o` compare. At
+  bring-up the release must then follow within 256 `clk_smu`. With the stall held across the cold
+  reset the gate must read `0` on every one of the 64 `clk_smu` after that rise, so the `0` is the
+  gate and not a sense still in progress. After the stall clears, with the sense already done, the
+  release must arrive within 256 `clk_smu` (the `prim_sync3` + sticky flop + 16-stage pipe path,
+  not the sense latency) and stay released for 64 `clk_smu`.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -904,7 +913,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 with `smc_fuse_sense_done_o` high and rises after the stall clears
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 for 64 `clk_smu` with `smc_fuse_sense_done_o` high and rises within the gate path after the stall clears
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert does not re-gate
 |===
 
@@ -935,10 +944,13 @@ check.
   `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
   carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_dft_gpio_boot_stall_test_seq` over the wrapper's product interfaces.
-. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
-  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
-  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
-  not within the sense latency.
+. Watch `smc_fuse_sense_done_o` 0 -> 1 after every primary reset (bounded at 5000 `clk_smu`; a
+  flag already high, or an expiry, fails) before any `smc_fuse_reset_n_delayed_o` compare. At
+  bring-up the release must then follow within 256 `clk_smu`. With the stall held across the cold
+  reset the gate must read `0` on every one of the 64 `clk_smu` after that rise, so the `0` is the
+  gate and not a sense still in progress. After the stall clears, with the sense already done, the
+  release must arrive within 256 `clk_smu` (the `prim_sync3` + sticky flop + 16-stage pipe path,
+  not the sense latency) and stay released for 64 `clk_smu`.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -947,7 +959,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: GPIO stall sticky across cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 with `smc_fuse_sense_done_o` high and rises after the pad clears
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: GPIO stall sticky across cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 for 64 `clk_smu` with `smc_fuse_sense_done_o` high and rises within the gate path after the pad clears
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert does not re-gate
 |===
 
@@ -1192,10 +1204,13 @@ check.
   `smc_fuse_reset_n_delayed_o` is that controller's own sense-complete release. The run log
   carries `Not skipping fuse sense` and no shadow-preload load.
 . Drive `smu_clock_stop_coordination_test_seq` over the wrapper's product interfaces.
-. Sample `smc_fuse_reset_n_delayed_o` low while the stall is held only after
-  `smc_fuse_sense_done_o` has risen for that cold reset, so a `0` is the gate and not a sense still
-  in progress; after the stall clears, the release must follow within the reset unit's delay pipe,
-  not within the sense latency.
+. Watch `smc_fuse_sense_done_o` 0 -> 1 after every primary reset (bounded at 5000 `clk_smu`; a
+  flag already high, or an expiry, fails) before any `smc_fuse_reset_n_delayed_o` compare. At
+  bring-up the release must then follow within 256 `clk_smu`. With the stall held across the cold
+  reset the gate must read `0` on every one of the 64 `clk_smu` after that rise, so the `0` is the
+  gate and not a sense still in progress. After the stall clears, with the sense already done, the
+  release must arrive within 256 `clk_smu` (the `prim_sync3` + sticky flop + 16-stage pipe path,
+  not the sense latency) and stay released for 64 `clk_smu`.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -1204,8 +1219,8 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DTP-BOOT-STALL-S1` |`ovrd=1 stall=1` across cold reset holds the sensed `smc_fuse_reset_n_delayed_o` at 0 with `smc_fuse_sense_done_o` high
-|`CHK-DTP-BOOT-STALL-S2` |clearing stall and override lets the sensed release through within the reset unit's delay pipe
+|`CHK-DTP-BOOT-STALL-S1` |`ovrd=1 stall=1` across cold reset holds the sensed `smc_fuse_reset_n_delayed_o` at 0 for 64 `clk_smu` after `smc_fuse_sense_done_o` rises for that cold reset
+|`CHK-DTP-BOOT-STALL-S2` |clearing stall and override, with the sense already done, opens the gate within 256 `clk_smu` and it stays open for 64 `clk_smu`
 |`CHK-DTP-IC-RESET-S1` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-IC-RESET-S3` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S1` |Evidence token, emitted only after the compares it names have held
