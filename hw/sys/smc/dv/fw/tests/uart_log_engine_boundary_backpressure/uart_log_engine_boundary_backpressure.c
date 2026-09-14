@@ -226,16 +226,15 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO C — real log_write_err while interrupt reporting is enabled.
+    // SCENARIO C — log_write completion with both interrupt enables set.
     // The log_write master feeds the LOCAL uart_16550 AXI-lite slave (via
-    // log_write_axi_lite_mux), NOT the SMC fabric. Writing to an UNDEFINED
-    // offset inside the uart_16550 decode window (real regs 0x00-0x1C, window
-    // 0x00-0x3F) → uart_16550_main_reg PeakRDL decode-error → SLVERR →
-    // log_write_err. The write FSM advances on mem_rsp_valid regardless of
-    // error, so the transfer COMPLETES (no hang) — poll normally.
-    // Good fetch from SRAM; bad write addr = UART_BASE + 0x20.
+    // log_write_axi_lite_mux), NOT the SMC fabric, and that register block
+    // answers every write OKAY (see the UART_ECR_OFF note above), so no
+    // log_write_err is raised and INTR_STATUS.LOG_WRITE_ERR is not checked.
+    // The write FSM advances on mem_rsp_valid, so the transfer COMPLETES —
+    // poll normally. Good fetch from SRAM; write addr = UART_BASE + 0x20.
     //--------------------------------------------------------------------------
-    info_msg_s(0, "scenario C: log_write_err stimulus (BLOCKED, no error path - see [G3])");
+    info_msg_s(0, "scenario C: log_write completion only (no reachable error path)");
     {
         volatile uint8_t *buf = (volatile uint8_t *)(uintptr_t)LOG_BUFFER_BASE;
         for (int i = 0; i < 8; i++) buf[i] = (uint8_t)(0xC0u + i);
@@ -250,11 +249,8 @@ int main(void) {
         write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
         write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 8u);
 
-        // Each of the 8 byte-writes to the undefined offset SLVERRs, pulsing
-        // log_write_err during the burst. INTR_STATUS.LOG_WRITE_ERR follows
-        // .next and is not sticky once the burst completes, so polling status
-        // races with the fast burst. Poll LOG_CTRL hwclr instead: the write FSM
-        // advances on each SLVERR response and asserts log_write_done.
+        // The 8 byte-writes are answered OKAY. Poll LOG_CTRL hwclr: the write
+        // FSM advances on each response and asserts log_write_done.
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
             info_msg_s(0, "FAIL: scenario C: write did not complete");
             test_fail(0);
