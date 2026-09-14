@@ -63,16 +63,16 @@ def _check_i3c_counter_indexing(dut) -> None:
         int(getattr(dut, f"tb_i3c_channel_id_{pos}").value)
         for pos in range(len(SHARED_I3C_CHANNELS))
     ]
+    assert seen == list(SHARED_I3C_CHANNELS), (
+        f"cocotb sees the I3C counter positions as {seen} but the testbench "
+        f"assigned {list(SHARED_I3C_CHANNELS)}. Every per-channel count and "
+        "every 'transfer seen on I3Cn' label is mis-attributed by this amount."
+    )
     cocotb.log.info(
         "CHK-DUAL-I3C-INDEXING: cocotb reads tb_i3c_channel_id as %s; the TB "
         "assigns SharedI3cIdx = %s",
         seen,
         list(SHARED_I3C_CHANNELS),
-    )
-    assert seen == list(SHARED_I3C_CHANNELS), (
-        f"cocotb sees the I3C counter positions as {seen} but the testbench "
-        f"assigned {list(SHARED_I3C_CHANNELS)}. Every per-channel count and "
-        "every 'transfer seen on I3Cn' label is mis-attributed by this amount."
     )
 
 

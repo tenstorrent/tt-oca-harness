@@ -8,7 +8,8 @@ plan's list, so this test reads every "Test Procedures" card in SMC_VPLAN.adoc,
 imports every leaf the `all` group runs, and compares the two in both
 directions: nothing required that the plan does not declare, and nothing the
 plan declares that the leaf does not require, except the entries listed in
-`PLAN_CODE_MISMATCH` with the reason each one is still open.
+`PLAN_CODE_MISMATCH` with the reason each one is still open. That list is held
+to `PLAN_CODE_MISMATCH_CEILING`, so it can only shrink.
 
 Rows the plan marks "SV-UVM shape only" are the UVM shape's checkers and are
 not expected from cocotb. A declared name is read the way the run's recorder
@@ -55,6 +56,14 @@ PLAN_CODE_MISMATCH: dict[str, dict[str, str]] = {
         ),
     },
 }
+
+# Set when the list was introduced. `PLAN_CODE_MISMATCH` may lose entries,
+# never gain them: a new mismatch is fixed on the card or in the leaf.
+PLAN_CODE_MISMATCH_CEILING = frozenset(
+    {
+        ("smc_input_output_fabric_wr_rd_test", "CHK-ALIAS-REMAP-RESET-DEFAULT"),
+    }
+)
 
 try:
     import cocotb  # noqa: F401
@@ -138,6 +147,16 @@ def declared_for(
 
 def is_declared(token: str, concrete: set[str], templates: list[re.Pattern[str]]) -> bool:
     return token in concrete or any(pattern.match(token) for pattern in templates)
+
+
+class PlanCodeMismatchListTest(unittest.TestCase):
+    def test_plan_code_mismatch_only_shrinks(self) -> None:
+        listed = {(leaf, token) for leaf, tokens in PLAN_CODE_MISMATCH.items() for token in tokens}
+        self.assertEqual(
+            sorted(listed - PLAN_CODE_MISMATCH_CEILING),
+            [],
+            "PLAN_CODE_MISMATCH grew: correct the card or the leaf instead of listing it",
+        )
 
 
 @unittest.skipUnless(DV_DEPS, "importing the SMC leaves needs the dv dependency group")
