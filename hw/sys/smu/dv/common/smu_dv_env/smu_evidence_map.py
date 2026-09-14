@@ -58,7 +58,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-PORT-SMN-AXI-S1",
             "CHK-SMU-PORT-SMN-AXI-S1",
-            "SEP=0 inbound smu_axi_in reaches SMC via direct IW",
+            "SEP=0 inbound smu_axi_in reaches SMC via direct IW: BlockByDefault "
+            "DECERR with matching BID/RID, paired with the S1-CONTROL row",
+        ),
+        (
+            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL",
+            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL",
+            "same master, same probe: inbound0 window opened by JTAG2AXI, read "
+            "returns OKAY and the VERSION_LO RDL reset value; window cleared "
+            "afterwards and the DECERR returns",
         ),
         (
             "CHK-SMU-SEP-PARAM-S2",

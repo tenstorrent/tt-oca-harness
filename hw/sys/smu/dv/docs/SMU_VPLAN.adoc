@@ -286,22 +286,27 @@ check.
 
 *Source Module*: `smu_axi_external_port_connectivity_test`
 
-*BFM / Model*: `ocah_axi_vip`
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
 *Objective*: SMU_ALL_002: SEP=0 inbound SMN→SMC + direct IW converters.
 
 *Test Coverage*:
 
 * Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002).
-* SMU_ALL_002 owns SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via direct IW converters (bare tb_top SEP=0; required_cells dir=in + dest=smc_aperture only).
+* SMU_ALL_002 owns SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via direct IW converters (wrapper bench, SEP=0; required_cells dir=in + dest=smc_aperture only).
 * SMU-SEP-PARAM.S2 — SEP=0 elaboration of direct SMC↔external ID converters (non-OTP-error).
+* The S1 probe (`CHIP_CONFIG.VERSION_LO`) lands on SMC BlockByDefault, so the write and the read answer DECERR. A DECERR alone is also what a dead bus or a stuck converter returns, so the same run carries a positive control on the same master and path: JTAG2AXI opens inbound filter 0 over the probe, the external read must return OKAY with the RDL reset value of `VERSION_LO`, and the window is cleared so the DECERR returns.
 * SEP aperture inbound (dest=sep_aperture) is owned by SMU-PORT-SMN-AXI.S4 on SMU_ALL_008 — out of scope for this card.
 
 *Test Procedure*:
 
 [arabic]
 . Drive `smu_axi_external_port_connectivity_test_seq` over the wrapper's product interfaces.
-. Compare every access against its stated expectation in the scoreboard.
+. Write and read `VERSION_LO` from `smu_axi_in` with distinct AWID/ARID before any inbound window is programmed; the response class must be OKAY or DECERR and BID/RID must equal the issued IDs.
+. Bring the PTAP out of TLR, require the SMC JTAG2AXI gate open, and program inbound filter 0 over the probe's 4 KB granule.
+. Read `VERSION_LO` again from `smu_axi_in` with a third ARID: OKAY, RID match, data equal to the RDL reset value.
+. Clear inbound filter 0 and require the DECERR to return on the same probe.
+. Observe the SEP=0 direct IW converters and the tied-off SEP aperture, then the bounded-wait inventory.
 . Emit the evidence tokens listed under Checkers.
 
 *Checkers*:
@@ -309,13 +314,14 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMU-PORT-SMN-AXI-S1` |Evidence token, emitted only after the compares it names have held
-|`CHK-SMU-SEP-PARAM-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-TIMEOUT-PATHS` |Evidence token, emitted only after the compares it names have held
-|`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
+|`CHK-SMU-PORT-SMN-AXI-S1` |Inbound write and read on `VERSION_LO` complete within the bound with BRESP/RRESP in {OKAY, DECERR} and BID/RID equal to the issued AWID/ARID. The response class is the deny of BlockByDefault; its liveness is `CHK-SMU-PORT-SMN-AXI-S1-CONTROL` in the same run
+|`CHK-SMU-PORT-SMN-AXI-S1-CONTROL` |Positive control for the S1 deny: with inbound filter 0 opened over the probe by JTAG2AXI, the same external master reads `VERSION_LO` and gets OKAY, its own RID, and the RDL reset value (`CHIP_CONFIG__VERSION_LO__VERSION_LO_reset`); after the window is cleared the same read returns DECERR again
+|`CHK-SMU-SEP-PARAM-S2` |`gen_no_sep` IW converters present and clocked from `clk_smu_i`, no `u_smu_axi_xbar`, SEP aperture outputs tied to zero
+|`CHK-TIMEOUT-PATHS` |Every bounded AXI wait (inbound write, inbound read, control read) names its finite bound and last state
+|`CHK-NONVAC` |Ordered fence S1<S2<S3<S4<PASS
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. The S1 deny counts only together with its control: a run in which `CHK-SMU-PORT-SMN-AXI-S1-CONTROL` did not see OKAY with the reset value fails. Enrolled in: `all`, `fabric`, `sep0_all`.
 
 '''''
 
