@@ -2293,11 +2293,11 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: CORE0 WDT first timeout sets sticky WDOGIP0.
+*Objective*: CORE0 WDT first timeout sets WDOGIP0 and holds it with no software clear.
 
 *Test Coverage*:
 
-* CORE0 WDT first timeout sticky WDOGIP0 via J2A.
+* CORE0 WDT timeout via J2A: WDOGIP0 is clear before the enable, set once the counter has passed CMP, and then re-read four more times 512 cycles apart with no software clear in between; every sample must still show it set.
 
 *Test Procedure*:
 
@@ -2315,7 +2315,7 @@ check.
 |`CHK-WDT-TO-CMP` |Evidence token, emitted only after the compares it names have held
 |`CHK-WDT-TO-IP0-PRE` |Evidence token, emitted only after the compares it names have held
 |`CHK-WDT-TO-EN` |Evidence token, emitted only after the compares it names have held
-|`CHK-WDT-IP0` |Evidence token, emitted only after the compares it names have held
+|`CHK-WDT-IP0` |WDOGIP0 set after enable+CMP and still set at every sample of the hold window
 |assertion |wdt_timeout incomplete s1=<value> s2=<value> s3=<value>
 |===
 
