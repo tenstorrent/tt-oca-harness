@@ -8,6 +8,7 @@ work to `run_scenario()`.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import logging
 import os
@@ -144,13 +145,17 @@ _PROTOCOL_VIP_TESTS = {
 #     itself -- and the in-repo PYTHONPATH entries. docs/ and the signoff
 #     records under hw/sys/smc/doc are read by people, not by the flow, and
 #     are outside the scope;
-#   * whether the model is newer than every in-repo compile source and
-#     include-directory file (`model_newer_than_sources=`). A prebuilt binary
-#     carries nothing that names the tree it came from, so the checkout's
-#     commit describes the model only if no source has changed since the
-#     model was built; a source newer than the model fails the run. `git
-#     checkout` sets the mtime of every file it writes to now, so a model
-#     built before a checkout of an identical tree fails the same way, and
+#   * whether the model was built from the sources now in the tree. A
+#     prebuilt binary carries nothing that names the tree it came from, so
+#     the checkout's commit describes the model only if no source has changed
+#     since the model was built. Verilator's build record keeps a content
+#     hash of every file it read; the run recomputes them
+#     (`model_sources_match=`, `model_sources_checked=`) and fails on any
+#     difference. Every run also stamps `model_newer_than_sources=` from the
+#     mtimes of the in-repo compile sources and include-directory files; for
+#     a tool whose record keeps no hashes that comparison is the verdict, and
+#     since `git checkout` sets the mtime of every file it writes to now, a
+#     model built before a checkout of an identical tree fails there too --
 #     rebuilding answers both cases;
 #   * the smc_sim_cfg.toml target the exported build directory belongs to, and
 #     the sha256 of the model artifact, of the resolved elaboration-dependency
@@ -195,8 +200,9 @@ _DV_PATH_IN_CONFIG = re.compile(r"hw/sys/smc/dv/[A-Za-z0-9_./-]+")
 # command line that produced the model; the compile filelist is read from its
 # `-f` arguments, so the digest is of the filelist that built the model and not
 # of whichever generated filelist happens to be lying in the work directory.
-# VCS keeps no such record, so its filelist comes from the target's
-# configuration instead (see `_compile_filelists`).
+# Verilator's record also carries a content hash of every file it read (see
+# `_record_source_hashes`). VCS keeps no such record, so its filelist comes
+# from the target's configuration instead (see `_compile_filelists`).
 _MODEL_ARTIFACTS: dict[str, tuple[str, str | None, str | None]] = {
     "verilator": ("smc_uvm_top", "Vtop__ver.d", "Vtop__verFiles.dat"),
     "vcs": ("simv", None, None),
@@ -220,6 +226,11 @@ _SIM_NAME_ALIASES: dict[str, str] = {
 
 # `sN(<stamp>):  xrun ...` -- one entry per invocation in xrun's history file.
 _XRUN_HISTORY_ENTRY = re.compile(r"^s\d+\([^)]*\):\s+(xrun\b.*)$")
+
+# Verilator writes each input's SHA-256 into its build record as the first 40
+# characters of the base64 digest with `+` and `/` replaced by `A` and `B`.
+_VERILATOR_HASH_ALPHABET = str.maketrans("+/", "AB")
+_VERILATOR_HASH_LENGTH = 40
 
 # Beyond the filelist's own sources, what decides the model's contents:
 # Bender manifests and lockfiles anywhere in the tree choose the sources of
@@ -690,6 +701,55 @@ def _dirty_scope(
     return files, dirs, outside_repo
 
 
+def _record_source_hashes(tool: str, record: Path) -> dict[Path, str]:
+    """path -> content hash the build record keeps for every input the simulator read.
+
+    Verilator writes one ``S`` line per input with the hash it compared for
+    ``--skip-identical`` (``"unhashed"`` for a file it did not hash); its
+    ``T`` lines are outputs. Empty for a tool whose record keeps no hashes.
+    """
+    if tool != "verilator":
+        return {}
+    hashes: dict[Path, str] = {}
+    for line in record.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.startswith("S "):
+            continue
+        fields = line.split('"')
+        if len(fields) < 4:
+            continue
+        digest, path = fields[1], fields[3]
+        if digest and digest != "unhashed" and path:
+            hashes[Path(path)] = digest
+    return hashes
+
+
+def _verilator_source_digest(path: Path) -> str:
+    digest = hashlib.sha256(path.read_bytes()).digest()
+    return (
+        base64.b64encode(digest)
+        .decode()
+        .translate(_VERILATOR_HASH_ALPHABET)[:_VERILATOR_HASH_LENGTH]
+    )
+
+
+def _sources_differing_from_record(root: Path, hashes: dict[Path, str]) -> tuple[list[Path], int]:
+    """(in-repo inputs whose contents differ from the record, in-repo inputs compared)."""
+    changed: list[Path] = []
+    checked = 0
+    for path, recorded in hashes.items():
+        if _repo_relative(root, path) is None:
+            continue
+        checked += 1
+        try:
+            current = _verilator_source_digest(path)
+        except OSError:
+            changed.append(path)
+            continue
+        if current != recorded:
+            changed.append(path)
+    return sorted(changed), checked
+
+
 def _sources_newer_than(
     root: Path, model_mtime: float, sources: set[Path], incdirs: set[Path]
 ) -> list[tuple[float, Path]]:
@@ -773,9 +833,9 @@ def log_build_model_identity(
     determined, if ``expect_target`` names a target other than the one the
     exported build directory belongs to, if sources feeding the model or the
     bench are uncommitted and neither ``require_clean_tree=False`` nor
-    ``SMC_DV_ALLOW_DIRTY=1`` allows that, or if a compile input is newer than
-    the model and ``SMC_DV_ALLOW_STALE_MODEL=1`` does not allow that; there is
-    no placeholder branch.
+    ``SMC_DV_ALLOW_DIRTY=1`` allows that, or if the model was not built from the
+    compile inputs now in the tree and ``SMC_DV_ALLOW_STALE_MODEL=1`` does not
+    allow that; there is no placeholder branch.
     """
     if _MODEL_IDENTITY_DONE:
         return _MODEL_IDENTITY_DONE[0]
@@ -843,8 +903,19 @@ def log_build_model_identity(
     if len(dirty) > _DIRTY_PATHS_SHOWN:
         shown += f",(+{len(dirty) - _DIRTY_PATHS_SHOWN} more)"
 
+    # Model binding. With a content record the verdict is the recomputed
+    # hashes; without one it is the mtimes, which a `git checkout` of an
+    # identical tree also moves. Both are stamped either way.
     model_mtime = _model_mtime(model)
     newer = _sources_newer_than(root, model_mtime, sources, incdirs)
+    recorded = _record_source_hashes(tool, build_dir / record_rel) if record_rel else {}
+    changed, checked = _sources_differing_from_record(root, recorded)
+    if checked:
+        sources_match = "false" if changed else "true"
+        stale = bool(changed)
+    else:
+        sources_match = "unchecked"
+        stale = bool(newer)
     stale_allowed = os.environ.get(_ALLOW_STALE_ENV) == "1"
 
     bench_sha, bench_files = _bench_digest(root)
@@ -866,6 +937,7 @@ def log_build_model_identity(
         f"target={target_name} model={_display(root, model)} model_sha256={model_sha} "
         f"model_bytes={model_size} model_mtime={_utc(model_mtime)} "
         f"model_newer_than_sources={'false' if newer else 'true'} "
+        f"model_sources_match={sources_match} model_sources_checked={checked} "
         f"model_stale_allowed={'true' if stale_allowed else 'false'} "
         f"{deps_part} "
         f"flist={','.join(_display(root, f) for f in flists)} "
@@ -893,24 +965,30 @@ def log_build_model_identity(
             len(dirty),
             shown,
         )
-    if newer:
-        newest_mtime, newest = newer[0]
+    if stale:
+        if changed:
+            reason = (
+                f"was built from other contents of {len(changed)} of its {checked} "
+                f"recorded compile source(s), e.g. {_display(root, changed[0])}"
+            )
+        else:
+            newest_mtime, newest = newer[0]
+            reason = (
+                f"is older than {len(newer)} compile source(s), newest "
+                f"{_display(root, newest)} {_utc(newest_mtime)}, and the {tool} build keeps "
+                f"no content record to compare against; a `git checkout` after the build "
+                f"rewrites source mtimes and counts the same way"
+            )
         if not stale_allowed:
             _fail(
-                f"model {_display(root, model)} (built {_utc(model_mtime)}) is older than "
-                f"{len(newer)} compile source(s), newest {_display(root, newest)} "
-                f"{_utc(newest_mtime)}: rebuild (run_dv.py --rebuild / drop --stage sim). "
-                f"A `git checkout` after the build rewrites source mtimes and counts the "
-                f"same way. To run anyway export {_ALLOW_STALE_ENV}=1, which stamps "
-                f"model_stale_allowed=true into the log."
+                f"model {_display(root, model)} (built {_utc(model_mtime)}) {reason}: "
+                f"rebuild (run_dv.py --rebuild / drop --stage sim). To run anyway export "
+                f"{_ALLOW_STALE_ENV}=1, which stamps model_stale_allowed=true into the log."
             )
         cocotb.log.warning(
-            "[BUILD-MODEL-IDENTITY] stale model allowed: %d compile source(s) newer than "
-            "%s (newest %s %s); this log cannot serve as evidence",
-            len(newer),
+            "[BUILD-MODEL-IDENTITY] stale model allowed: %s %s; this log cannot serve as evidence",
             _display(root, model),
-            _display(root, newest),
-            _utc(newest_mtime),
+            reason,
         )
     _MODEL_IDENTITY_DONE.append(line)
     return line
