@@ -57,10 +57,12 @@ single-bit data timing; DDR, vendor timing, and vendor commands are out of
 scope and earn no checker credit. SEP and SMC are consumers.
 
 |`ocah_uart_vip`
-|Experimental
+|Promoted for asynchronous serial console links
 |OCAH-native cocotb model
-|Console wrapper, native 8-N-1 line driver/sampler, and passive monitor. No
-external UART library. SMC is the consumer.
+|Console host, line driver with fault injection, classifying frame sampler,
+passive two-line tap, and frame checker. 5..9 data bits, none/even/odd
+parity, 1, 1.5, or 2 stop bits; flow control is out of scope. No external
+UART library. SMC is the consumer.
 
 |`ocah_checker`
 |Shared infrastructure
@@ -193,10 +195,27 @@ a gating DUT smoke test.
 
 Package: `hw/common/dv/vip/ocah_uart_vip/`
 
-`OcahUartConsole` provides source/sink console traffic and `OcahUartMonitor`
-provides passive byte observation. The backend is native to the package (no
-external UART library); `OcahUartImportError` is exported but never raised by
-it.
+`OcahUartConsole` provides console traffic with deterministic per-operation
+timeouts: a read on a silent line ends exactly `timeout_us` microseconds of
+simulation time after it started, and frames a timed-out read had taken stay
+readable. `OcahUartMasterDriver` and `OcahUartLineMonitor` are the engines
+behind it: the driver frames 5..9 data bits with none, even, or odd parity and
+1, 1.5, or 2 stop bits, and injects a bad stop bit, an inverted parity bit, a
+break, or a sub-half-bit glitch at a deterministic place in the byte stream;
+the sampler resynchronizes on every start edge and classifies every frame
+(`OcahUartFrame`: framing error, parity error, break) with the time of its
+start edge and first rising edge, so the wire's bit period is measurable.
+`OcahUartMonitor` taps both lines passively. `OcahUartChecker` judges driven
+frames against sampled frames and records `CHK-UART-*` evidence for data,
+cleanliness, wire bit period, idle level, non-vacuity, fault classification,
+error counters, exact timeouts, and statistics. The backend is native to the
+package (no external UART library); `OcahUartImportError` is exported but
+never raised by it.
+
+The `--dut ocah_uart_vip` wire-harness selftests prove the components against
+each other, each with an in-band must-fail probe; `smc_uart_loopback_test` is
+the gating SMC consumer. Flow control (RTS/CTS, XON/XOFF), sticky parity, and
+SV collateral are out of scope.
 
 [[shared-vip-entropy]]
 === Entropy Stream
