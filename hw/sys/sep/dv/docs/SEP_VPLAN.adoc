@@ -825,14 +825,14 @@ The checker table is the fail-able contract.
 
 *Objective*: Proves the SEP register fabric decodes and responds on the CPU LSU bus with no CPU booted.
 
-*Test Coverage*: LSU-splice reset-value decode of `SEP_LOCAL_BASE_ADDR` plus masked write/readback of three CSRs.
+*Test Coverage*: LSU-splice reset-value decode of `SEP_LOCAL_BASE_ADDR` plus masked write/readback of four CSRs.
 
 *Test Procedure*:
 
 [arabic]
 . Bring up in `no_cpu` mode; the cocotb AXI driver owns the CPU LSU splice.
 . Read `SEP_LOCAL_BASE_ADDR` and require its reset value.
-. For each of three read/write registers, write a distinct pattern and read it back, masking the comparison to the implemented field bits.
+. For each of four read/write registers, write a distinct pattern and read it back, masking the comparison to the implemented field bits.
 
 *Checkers*:
 
@@ -2819,7 +2819,7 @@ one word and parks, which is enough for the legality check to execute.
 |CHK-ISOLATE-RESET-DEFAULT
 |After release `DIGEST_0` reads its reset value 0.
 |CHK-TRNG-NEIGHBORS
-|Parking the shared TRNG reset leaves the held HMAC DIGEST and AES DATA_OUT readable, so the TRNG domain is reset-independent of those two accelerators.
+|Parking the shared TRNG reset leaves the four accelerator domains released and their held results readable, so the TRNG domain is reset-independent of them.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -3138,7 +3138,7 @@ stall-duration / recovery stress are not exercised here.
 |CHK-PAGE-BOUND
 |The 4 KB grant stops at both page edges. Under a scratch-page grant an access one page below is refused; with that page granted instead it answers OKAY while the scratch address turns DECERR. Both probes are proven reachable first, so neither refusal can be a decode hole rather than a filter decision. This is the security contract: 4 KB is the block pitch for the DMA CSR, watchdog and scratch-bank blocks, so a page-crossing grant would reach a neighbouring block.
 |CHK-CONFIG-LOCK
-|`FILTER_CONFIG.locked` freezes `allow_burst`. Once locked, clearing `allow_burst` and clearing `locked` both answer SLVERR, the field keeps its value, and the frozen granule still grants the widened page. `filter_ctrl.rdl` states the write-once lock. Asserting the response alone would not prove the field held, so the readback and the still-granted access are checked with it.
+|`FILTER_CONFIG.locked` freezes `allow_burst`. Once locked, clearing `allow_burst` and clearing `locked` both answer SLVERR, the field keeps its value, and the frozen granule still grants the widened page. The freeze is not in the register block -- `locked` is a W1S bit with no write-enable over other fields -- but in `sep_system_csr.sv`, where a per-entry demux routes a locked entry's writes to an error slave while reads pass through. Asserting the response alone would not prove the field held, so the readback and the still-granted access are checked with it.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -3732,7 +3732,7 @@ the register description — are unproven here.
 |CHK-WARM-RST
 |A warm reset source drops the CPU reset observable (assert then release). Isolation of the system-reset observable is not this row: `wdt_rst_ni_i` has no fan-out to it.
 |CHK-WARM-RECOVER
-|`SCRATCH_WARM[0]` is writable again after the reset releases.
+|Both banks are writable again after the reset releases.
 |CHK-COLD-REINIT
 |A cold reset clears the cold bank too.
 |CHK-WARM-CLEAR / CHK-WARM-RETAIN
@@ -5903,7 +5903,7 @@ constraint is not an open defect.
 |AP/STEE output-remap attributes and pass-through (spec)
 |`hw/sys/sep/doc/fabric.adoc` gives the AP/STEE remappers a cacheable attribute and says unprogrammed regions are transparent pass-throughs. `hw/ip/output_remap/rtl/output_remap.sv` has neither a valid bit nor a cacheable bit and rewrites the address unconditionally, so an unprogrammed region zeroes the upper address bits instead of passing through. The vehicle on this bank is `sep_fabric_output_remap_datapath_proxy_test`, which proves a programmed window translates and that a beat outside it is refused; the pass-through behaviour of an unprogrammed region has no checker, so this row is the record of the gap and not a claimed contract. Do not XFAIL.
 
-This row is about the AP/STEE bank only. The local-master aliaser is a different block (`hw/ip/axi_alias_remap/regs/alias_remap.rdl`): `REGION_ATTRS.valid` per region, `REGION_ATTRS.cacheable` on a hit, and an address that misses every region passes through unchanged. `sep_fabric_local_alias_datapath_test` covers the enable with `CHK-VALID-GATE`.
+This row is about the AP/STEE bank only. The local-master aliaser is a different block: `hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv` carries `region_valid` per region, drives the outbound cache bits from the region on a hit, and passes an address through unchanged when no region hits. `sep_fabric_local_alias_datapath_test` covers the enable with `CHK-VALID-GATE`.
 
 |Class 2 scan-root count (spec)
 |`hw/sys/sep/doc/attack_countermeasures.adoc` states "exactly 10" Class 2 scan roots. The RTL instantiates an eleventh on the entropy-pool EDN leg that is absent from the list, and nothing lints the manifest against the RTL. That manifest is the sole input deciding what is never scan-dumpable.
