@@ -871,6 +871,9 @@ def _collect_native_result(
         duration_sec=timing["duration_sec"],
         tests_total=int(tests.get("total") or 0),
         tests_passing=int(tests.get("passing") or 0),
+        tests_completed=tests.get("completed")
+        if isinstance(tests.get("completed"), bool)
+        else None,
         coverage_percent=coverage.get("total_percent"),
         coverage_breakdown={
             k.removesuffix("_percent"): v for k, v in (coverage.get("metrics") or {}).items()

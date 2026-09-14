@@ -1275,7 +1275,10 @@ Non-dry-run coverage-only replay requires an existing `result.json`. The runner
 recovers the original tool, rejects a mismatched `--tool`, preserves
 non-coverage stage history, and replaces the replayed coverage records. A dry
 run can render a placeholder plan without that file, but cannot restore the
-original tool or history.
+original tool or history. A run that did not finish (`tests.completed` is
+`false`, or the record carries an `interruption`) is refused with exit code
+`2`: coverage is graded over a complete regression only, so the leaves that
+happen to have run cannot produce a threshold verdict.
 
 Coverage merge/report accepts at most one known target and one known build
 fingerprint. A multi-target run cannot be merged as one coverage database;
@@ -1331,7 +1334,9 @@ relative `FILE` resolves against the repository root, like `--run-dir`.
 No simulator or report tool runs: the run tree is the only input, so the
 command works on a copied or downloaded run tree and on a host without the
 tool. `--dut` must equal the run's `flow`; `--tool` and `--framework` are
-recovered from `result.json` and must match when given. The only other
+recovered from `result.json` and must match when given. The run must have
+finished: an interrupted or truncated run (`tests.completed` is `false`) is
+refused with exit code `2`. The only other
 options accepted are `--overlay`, `--fail-under`, `--verbose`, and `--quiet`.
 
 The re-grade rewrites values only: `cov/report/coverage-details.json`,
@@ -1770,6 +1775,18 @@ keys, or authentication data.
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
+
+The `tests` summary counts the recorded leaves (`total`, `passing`,
+`failing`, `skipped`) and records whether the run finished: `leaves_planned`
+is the number of (test, seed) leaves the selection planned, `leaves_run` the
+number that executed (a leaf skipped after `--max-failures` did not), and
+`completed` is `true` only when the two are equal and the record is not a
+checkpoint. `pass_rate` is `passing / total` for a completed run and `null`
+otherwise: an interrupted or truncated run has no denominator, so it
+publishes no figure that reads as a grade. `regression.json` carries the same
+fields, with one difference in `total`: `result.json` counts a skipped leaf in
+`total` and in `skipped`, `regression.json` counts only leaves with a final
+status in `total` and reports skipped leaves in `skipped` alone.
 A formal run adds a `formal` object with proof totals
 (<<runner-formal-grading>>).
 When an adopter overlay was applied, its path is recorded under `overlay`
@@ -1800,6 +1817,18 @@ the signal rather than guessing which policy sent it. If termination prevents
 the final handler from running, the most recent atomic `UNKNOWN` checkpoint
 still preserves all completed leaves. Normal completion replaces all
 checkpoint-only fields with the ordinary final aggregate.
+
+Every checkpoint, running or interrupted, carries `tests.completed = false`
+and `tests.pass_rate = null`. A handled interruption also prints
+`incomplete run: N of M planned leaves ran, no pass rate` on the console
+instead of a pass count and writes one run-level `results/results.xml` with a
+single errored testcase (`type="interruption"`) naming the interruption, so a
+JUnit consumer does not read the finished leaves as the whole run. A run that
+stops early for any other reason (`--max-failures`, a failing leaf in a flat
+run, a build failure before the leaves) records `tests.completed = false` and
+`tests.pass_rate = null` and prints the same console note, but carries no
+`interruption` object and gets no run-level interruption testcase; its JUnit
+evidence is the leaf files it wrote.
 
 === Status and exit codes
 
@@ -2089,7 +2118,8 @@ The following behaviors are not part of the runner contract:
   documented coverage replay.
 * `--max-failures 0` satisfies the stop condition immediately and therefore
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
-  despite running no tests; use a positive threshold.
+  despite running no tests; the record says so (`tests.completed = false`,
+  `leaves_run = 0`, `pass_rate = null`). Use a positive threshold.
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
 * A DV root that carries a formal config and no sim config is not a DUT;
   formal views attach to selectable DUTs.
