@@ -28,17 +28,23 @@ from typing import Any
 from .buildcache import (
     apply_option_env,
     build_fingerprint,
+    build_identity,
     build_options_cfg,
+    build_provenance,
     build_vcs_cfg,
     build_verilator_cfg,
     build_xcelium_cfg,
     cache_key_extra,
+    clean_build_dir,
     effective_build_jobs,
+    git_head,
     option_build_args,
+    read_build_stamp,
     resolve_build_dir,
     vcs_build_args,
     vcs_version,
     verilator_version,
+    write_build_stamp,
     xcelium_build_args,
     xcelium_version,
 )
@@ -385,7 +391,15 @@ def _target_build_metadata(
     fingerprint: str | None = None,
     status: str | None = None,
     executor: str = "local",
+    artifact_digest: str | None = None,
 ) -> dict[str, Any]:
+    """Describe one target's build for the result record.
+
+    With `artifact_digest` the record also carries the build stamp read back from `build_dir`:
+    which commit and tool version compiled the artifact the tests actually ran against, and
+    whether this run compiled it (`fresh`) or inherited it (`reused`). Flows that do not stamp
+    their build directory omit those fields rather than guessing them.
+    """
     metadata: dict[str, Any] = {
         "target": target_name,
         "tool": tool,
@@ -395,6 +409,8 @@ def _target_build_metadata(
     }
     if fingerprint:
         metadata["fingerprint"] = fingerprint
+    if artifact_digest:
+        metadata.update(build_provenance(read_build_stamp(build_dir), artifact_digest))
     if status:
         metadata["status"] = status
     return metadata
@@ -409,6 +425,44 @@ def _cocotb_target_build_metadata(
         build_dir=info["sim_build"],
         fingerprint=str(info.get("fingerprint", "")) or None,
         status=status,
+        artifact_digest=str(info.get("artifact_digest", "")) or None,
+    )
+
+
+def _cocotb_log_provenance(info: dict[str, Any], root: Path, tool: str) -> list[str]:
+    """The identity header every simulation log opens with.
+
+    The log is the artifact a reader reaches first and the one that outlives the run directory,
+    so it carries the same identity as the result record: what was compiled, at which commit,
+    and at which commit this run was launched.
+    """
+    provenance = build_provenance(read_build_stamp(info["sim_build"]), str(info["artifact_digest"]))
+    head = git_head(root)
+    fields = {
+        "target": info["target_name"],
+        "tool": tool,
+        "build_fingerprint": info["fingerprint"],
+        "build_artifact_digest": provenance["artifact_digest"],
+        "build_identity": provenance["build_identity"],
+        "build_commit": provenance["build_commit"] or "unrecorded",
+        "build_dirty": provenance["build_dirty"] or "unrecorded",
+        "built_at": provenance["built_at"] or "unrecorded",
+        "run_commit": head["commit"] or "unknown",
+        "run_dirty": head["dirty"],
+    }
+    return [f"# ocah_dv {name}={value}" for name, value in fields.items()]
+
+
+def _cocotb_write_build_stamp(info: dict[str, Any], root: Path, tool: str) -> None:
+    """Stamp the build directory with what just compiled into it."""
+    write_build_stamp(
+        info["sim_build"],
+        root=root,
+        artifact_digest=str(info["artifact_digest"]),
+        fingerprint=str(info["fingerprint"]),
+        target=str(info["target_name"]),
+        tool=tool,
+        tool_version=str(info.get("tool_version") or ""),
     )
 
 
@@ -1732,6 +1786,18 @@ def _cocotb_build_info(
     public_scope_extra = (
         _verilator_public_scope_fingerprint(root, build) if tool == "verilator" else []
     )
+    # Everything that decides what the compiler emits, and nothing that does not: two targets
+    # sharing a build directory with the same compile inputs (a `default` alias and the named
+    # target it duplicates) must agree on this digest or they would invalidate each other's
+    # artifact in turn. The target name and the raw target table stay in `fingerprint`, which
+    # is what partitions the build directory when the cache is enabled.
+    compile_extra = [
+        *cache_key_extra(options),
+        *public_scope_extra,
+        *_compile_sources_fingerprint(root, build),
+        f"waves={wave_format}",
+        f"cov={bool(args.cov)}",
+    ]
     fingerprint = build_fingerprint(
         build_args=build_args,
         top_module=top_module,
@@ -1746,7 +1812,17 @@ def _cocotb_build_info(
             f"cov={bool(args.cov)}",
         ],
     )
+    artifact_digest = build_fingerprint(
+        build_args=build_args,
+        top_module=top_module,
+        tool_version=tool_ver,
+        filelist_text=filelist_text,
+        extra=compile_extra,
+    )
     sim_build = resolve_build_dir(base_build, options, fingerprint)
+    stamp = read_build_stamp(sim_build)
+    identity = build_identity(stamp, artifact_digest)
+    rebuild_requested = bool(args.rebuild) or bool(options.get("rebuild", False))
     return {
         "build": build,
         "target_name": target_name,
@@ -1758,9 +1834,15 @@ def _cocotb_build_info(
         "base_build": base_build,
         "sim_build": sim_build,
         "fingerprint": fingerprint,
+        "artifact_digest": artifact_digest,
         "build_args": build_args,
         "wave_format": wave_format,
-        "rebuild": bool(args.rebuild) or bool(options.get("rebuild", False)),
+        "build_identity": identity,
+        "rebuild": rebuild_requested or identity in {"stale", "unrecorded"},
+        "rebuild_reason": (
+            "--rebuild" if rebuild_requested else identity if identity != "reused" else ""
+        ),
+        "tool_version": tool_ver,
     }
 
 
@@ -1811,6 +1893,7 @@ def cocotb_build(
             public_scope_vlt = str(repo_path(root, _scope_rel))
             console.artifact("public_scope", public_scope_vlt)
     console.artifact("build", f"{info['sim_build']} (rebuild={info['rebuild']})")
+    console.artifact("build_identity", str(info["build_identity"]))
     write_script(
         script_path,
         root,
@@ -1821,6 +1904,9 @@ def cocotb_build(
     if args.dry_run:
         _mark_cocotb_prebuilt(args, target_name)
         return 0
+
+    if info["rebuild"] and clean_build_dir(info["sim_build"], root):
+        console.event("build", f"cleaned {info['sim_build']} ({info['rebuild_reason']})")
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("w", encoding="utf-8") as log:
@@ -1848,6 +1934,10 @@ def cocotb_build(
                         waves=bool(_wave_format(args, tool)),
                         always=info["rebuild"],
                     )
+    # Only a compile that actually ran may claim the stamp. A reused artifact keeps the stamp of
+    # the run that compiled it, which is the whole point of recording one.
+    if info["rebuild"]:
+        _cocotb_write_build_stamp(info, root, tool)
     _mark_cocotb_prebuilt(args, target_name)
     return 0
 
@@ -2078,6 +2168,7 @@ def cocotb_sim(
         "binary": launch.binary,
         "default_binary": COCOTB_DEFAULT_BINARY.get(tool, tool),
         "runner_class": COCOTB_RUNNER_CLASS.get(tool, ""),
+        "provenance": _cocotb_log_provenance(info, root, tool),
     }
     runner_body = f"""#!/usr/bin/env python3
 import os
@@ -2237,6 +2328,8 @@ def scoped_tool_binary(tool, runner_class, default, binary):
         for name, original in saved.items():
             setattr(cls, name, original)
 
+for _line in payload["provenance"]:
+    print(_line, flush=True)
 print(f"# cocotb {{payload['tool']}} runner", flush=True)
 runner = get_runner(payload["tool"])
 with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]), scoped_tool_binary(payload["tool"], payload["runner_class"], payload["default_binary"], payload["binary"]):
@@ -2280,7 +2373,17 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
 """
     write_text_file(runner_py, runner_body, args.dry_run)
     timeout_sec = resolve_timeout_sec(sim_cfg, test, run_mode, args)
-    return run_subprocess(
+    # Flows without a separate compile stage build inside the first sim leaf, so the clean and
+    # the stamp belong here too. An artifact that already answers for these inputs is left alone,
+    # which is what keeps the remaining leaves of the same run from recompiling one by one.
+    compiles_here = (
+        bool(payload["do_build"])
+        and not args.dry_run
+        and info["build_identity"] in {"stale", "unrecorded"}
+    )
+    if compiles_here and clean_build_dir(sim_build, root):
+        console.event("build", f"cleaned {sim_build} ({info['rebuild_reason']})")
+    rc = run_subprocess(
         [sys.executable, str(runner_py)],
         root,
         log_path,
@@ -2292,6 +2395,9 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
         verbose=args.verbose,
         timeout_sec=timeout_sec,
     )
+    if compiles_here and rc == 0:
+        _cocotb_write_build_stamp(info, root, tool)
+    return rc
 
 
 # --- VCS (Synopsys) stages ----------------------------------------------------------------------

@@ -10,12 +10,11 @@ import os
 import platform
 import shlex
 import shutil
-import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .buildcache import binary_version
+from .buildcache import binary_version, command_text, git_head
 from .compat import UTC
 from .formal import formal_summary
 from .models import Flow, StageResult
@@ -49,27 +48,12 @@ COVERAGE_BACKEND_BY_TOOL = {
 SIGNOFF_COVERAGE_TOOLS = {"vcs", "xcelium"}
 
 
-def command_text(argv: list[str], root: Path) -> str:
-    try:
-        proc = subprocess.run(
-            argv,
-            cwd=root,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=5,
-        )
-    except (FileNotFoundError, subprocess.SubprocessError):
-        return ""
-    return proc.stdout.strip()
-
-
 def git_info(root: Path) -> dict[str, str]:
+    head = git_head(root)
     return {
-        "commit": command_text(["git", "rev-parse", "HEAD"], root),
+        "commit": head["commit"],
         "branch": command_text(["git", "rev-parse", "--abbrev-ref", "HEAD"], root),
-        "dirty": "true" if command_text(["git", "status", "--porcelain"], root) else "false",
+        "dirty": head["dirty"],
     }
 
 
@@ -948,8 +932,13 @@ def fragment_payload(
     item: str,
     seed: int,
     result: StageResult,
+    git_metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Leaf result for one (test, seed, attempt) run."""
+    """Leaf result for one (test, seed, attempt) run.
+
+    `git` is the commit the run was launched at; the commit the simulator model was compiled at
+    is `target_build.build_commit`, and the two differ whenever a run reuses an earlier build.
+    """
     payload = {
         "schema_version": 1,
         "flow": flow.name,
@@ -958,6 +947,7 @@ def fragment_payload(
         "tool": tool,
         "item": item,
         "seed": seed,
+        "git": git_metadata if git_metadata is not None else git_info(root),
         "status": result.status,
         "exit_code": exit_code_for_status(result.status),
         "return_code": result.return_code,
@@ -993,6 +983,7 @@ def rollup_payload(
     run_dir: Path,
     item: str,
     runs: list[tuple[int, StageResult]],
+    git_metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Per-test rollup across that test's seeds/attempts."""
     leaves = [result for _, result in runs]
@@ -1005,6 +996,7 @@ def rollup_payload(
         "status": status,
         "exit_code": exit_code_for_status(status),
         "run_dir": repo_rel(root, run_dir),
+        "git": git_metadata if git_metadata is not None else git_info(root),
         "tests": _tests_summary(leaves),
         "runs": [
             {
@@ -1020,6 +1012,16 @@ def rollup_payload(
     target = next((result.target for _, result in runs if result.target), None)
     if target:
         payload["target"] = target
+    target_build = next(
+        (
+            (result.metadata or {}).get("target_build")
+            for _, result in runs
+            if isinstance((result.metadata or {}).get("target_build"), dict)
+        ),
+        None,
+    )
+    if target_build:
+        payload["target_build"] = target_build
     if any(result.formal is not None for result in leaves):
         payload["formal"] = formal_summary(leaves)
     return payload

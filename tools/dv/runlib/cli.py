@@ -2960,6 +2960,7 @@ def run_flow(
                     item=item,
                     seed=seed,
                     result=debug_result,
+                    git_metadata=run_git,
                 ),
             )
         return debug_result, result_json
@@ -3006,6 +3007,7 @@ def run_flow(
                         item=item,
                         seed=seed,
                         result=result,
+                        git_metadata=run_git,
                     ),
                 )
             if result.status == "PASS" or not scheduler:
@@ -3372,7 +3374,13 @@ def run_flow(
                 write_result(
                     run_dir / item / "result.json",
                     rollup_payload(
-                        flow=flow, root=root, tool=tool, run_dir=run_dir, item=item, runs=runs
+                        flow=flow,
+                        root=root,
+                        tool=tool,
+                        run_dir=run_dir,
+                        item=item,
+                        runs=runs,
+                        git_metadata=run_git,
                     ),
                 )
             write_regression_summary(

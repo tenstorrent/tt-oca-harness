@@ -17,20 +17,42 @@ the full stack:
   fingerprint. The fingerprint covers the build arguments, the filelist text and a content
   digest over the sources the bender filelist names, so an RTL or testbench edit moves the
   build into a fresh directory; `rebuild` (``--rebuild``) forces a clean build of the current
-  one through the cocotb runner's ``always`` flag on every simulator.
+  one.
+
+The build stamp is not opt-in. Every compile that succeeds writes ``ocah_build.json`` into the
+build directory it produced, recording the artifact digest, the commit and the tool version the
+artifact was compiled from. Before a compile the runner reads that stamp back: a digest that
+matches means the artifact on disk was built from exactly these inputs and may be reused, and any
+other answer -- a different digest, or no stamp at all -- is a stale or unattributable artifact
+that gets cleaned and rebuilt. The stamp travels into every per-test result as the
+`build_identity` / `build_commit` pair, so a reader can tell a fresh compile from a reused one
+without reconstructing it from file timestamps.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
+import os
 import shutil
 import subprocess
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .compat import UTC
 from .config import as_int, as_str_list, config_section
+from .models import ConfigError
 
 _BINARY_VERSION: dict[str, str] = {}
+_GIT_HEAD: dict[str, dict[str, str]] = {}
+
+BUILD_STAMP_NAME = "ocah_build.json"
+BUILD_STAMP_SCHEMA = 1
+
+# One id per `run_dv.py` process, so a stamp says whether this run compiled the artifact.
+BUILD_SESSION = uuid.uuid4().hex[:12]
 
 
 def build_options_cfg(build: dict[str, Any]) -> dict[str, Any]:
@@ -220,3 +242,132 @@ def resolve_build_dir(base: Path, options: dict[str, Any], fingerprint: str) -> 
 
 def cache_key_extra(options: dict[str, Any]) -> list[str]:
     return as_str_list(options.get("cache_key_extra"), "build.options.cache_key_extra")
+
+
+def command_text(argv: list[str], root: Path) -> str:
+    try:
+        proc = subprocess.run(
+            argv,
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return ""
+    return proc.stdout.strip()
+
+
+def git_head(root: Path) -> dict[str, str]:
+    """The checkout's commit and dirty flag, sampled once per process per root."""
+    key = str(root)
+    cached = _GIT_HEAD.get(key)
+    if cached is None:
+        cached = {
+            "commit": command_text(["git", "rev-parse", "HEAD"], root),
+            "dirty": "true" if command_text(["git", "status", "--porcelain"], root) else "false",
+        }
+        _GIT_HEAD[key] = cached
+    return dict(cached)
+
+
+def build_stamp_path(build_dir: Path) -> Path:
+    return Path(build_dir) / BUILD_STAMP_NAME
+
+
+def read_build_stamp(build_dir: Path) -> dict[str, Any] | None:
+    path = build_stamp_path(build_dir)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def write_build_stamp(
+    build_dir: Path,
+    *,
+    root: Path,
+    artifact_digest: str,
+    fingerprint: str,
+    target: str,
+    tool: str,
+    tool_version: str,
+) -> dict[str, Any]:
+    """Record what produced the artifact now sitting in `build_dir`."""
+    head = git_head(root)
+    stamp: dict[str, Any] = {
+        "schema_version": BUILD_STAMP_SCHEMA,
+        "artifact_digest": artifact_digest,
+        "fingerprint": fingerprint,
+        "target": target,
+        "tool": tool,
+        "tool_version": tool_version,
+        "commit": head["commit"],
+        "dirty": head["dirty"],
+        "built_at": datetime.now(UTC).isoformat(),
+        "session": BUILD_SESSION,
+    }
+    path = build_stamp_path(build_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.parent / f".{path.name}.tmp"
+    try:
+        temporary.write_text(json.dumps(stamp, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    return stamp
+
+
+def build_identity(stamp: dict[str, Any] | None, artifact_digest: str) -> str:
+    """Whether the artifact in the stamped directory answers for `artifact_digest`.
+
+    - ``unrecorded``: nothing in the directory says what produced it.
+    - ``stale``: it was produced from different inputs than the ones being built now.
+    - ``fresh``: this process compiled it.
+    - ``reused``: an earlier run compiled it from these exact inputs.
+    """
+    if not stamp or not str(stamp.get("artifact_digest") or ""):
+        return "unrecorded"
+    if str(stamp.get("artifact_digest")) != artifact_digest:
+        return "stale"
+    return "fresh" if str(stamp.get("session") or "") == BUILD_SESSION else "reused"
+
+
+def build_provenance(stamp: dict[str, Any] | None, artifact_digest: str) -> dict[str, Any]:
+    """The identity fields a result record carries so a reader need not reconstruct them."""
+    identity = build_identity(stamp, artifact_digest)
+    provenance: dict[str, Any] = {
+        "artifact_digest": artifact_digest,
+        "build_identity": identity,
+        "build_commit": None,
+        "build_dirty": None,
+        "built_at": None,
+        "build_tool_version": None,
+    }
+    if stamp:
+        provenance["build_commit"] = str(stamp.get("commit") or "") or None
+        provenance["build_dirty"] = str(stamp.get("dirty") or "") or None
+        provenance["built_at"] = str(stamp.get("built_at") or "") or None
+        provenance["build_tool_version"] = str(stamp.get("tool_version") or "") or None
+    return provenance
+
+
+def clean_build_dir(build_dir: Path, root: Path) -> bool:
+    """Delete a build directory so no part of the previous artifact can survive into the next one.
+
+    Verilator's `--skip-identical` and `make`'s timestamp check both decide reuse from the state
+    of this directory, and cocotb's Verilator runner drops the `always` flag, so emptying the
+    directory is the only tool-neutral way to make a forced rebuild actually compile.
+    """
+    target = Path(build_dir).resolve()
+    repo = Path(root).resolve()
+    refused = {repo, Path(target.anchor), Path.home().resolve()}
+    if target in refused or target in repo.parents:
+        raise ConfigError(f"[build] build_dir is not a directory the runner may clean: {target}")
+    if not target.is_dir():
+        return False
+    shutil.rmtree(target)
+    return True

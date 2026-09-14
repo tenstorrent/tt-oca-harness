@@ -1513,6 +1513,67 @@ A leaf that passes after a failed attempt is recorded as flaky.
 and records the remainder as `SKIP`. Supplying this option disables the
 parallel worker path so the threshold can be enforced deterministically.
 
+[[runner-build-identity]]
+=== Build identity
+
+Every compile that succeeds writes `ocah_build.json` into the build directory it
+produced. The stamp records the artifact digest, the commit and dirty flag of
+the checkout that compiled it, the tool version, and an id for the `run_dv.py`
+process that ran the compile.
+
+The artifact digest is a content digest, not a path digest. It covers the
+combined filelist text, the build arguments (so a changed define, flag, or
+optimization level moves it), the top module, the tool version, the Verilator
+public-scope file, the bytes of every source the bender filelist names, and the
+bytes of every `.svh`/`.vh`/`.h` header under the include directories the
+filelist and `[build].incdirs` declare. It deliberately excludes the target
+name and the raw target table, so a `default` alias and the named target it
+duplicates share one artifact instead of invalidating each other's; those stay
+in the `fingerprint` that partitions the build directory when
+`[build.options].cache_enabled` is set.
+
+Before a compile the runner reads the stamp back and acts on the answer:
+
+[cols="<2,<3,<5",options="header"]
+|===
+|Identity |Meaning |What the runner does
+
+|`fresh`
+|This process compiled the artifact.
+|Reuses it.
+
+|`reused`
+|An earlier run compiled it from these exact inputs.
+|Reuses it, and records the commit that earlier run compiled at.
+
+|`stale`
+|It was compiled from different inputs.
+|Deletes the build directory and compiles again.
+
+|`unrecorded`
+|Nothing in the directory says what produced it.
+|Deletes the build directory and compiles again.
+|===
+
+Deleting the directory is what makes a forced rebuild real. Verilator's
+`--skip-identical` and `make`'s timestamp check both decide reuse from the
+state of that directory, and cocotb's Verilator runner drops the `always` flag
+its other backends honour, so a request to rebuild that leaves the directory in
+place is answered by a no-op compile.
+
+The identity travels into the results. `target_build` in the run-level
+`targets` table, in each `<test>/result.json` rollup, and in each leaf
+`result.json` carries `artifact_digest`, `build_identity`, `build_commit`,
+`build_dirty`, `built_at`, and `build_tool_version`; the surrounding `git`
+object is the commit the *run* was launched at, and the two differ whenever a
+run reuses an earlier build. Every cocotb simulation log opens with the same
+facts as `# ocah_dv <name>=<value>` lines, so a log that outlives its run
+directory still says which model it exercised.
+
+Flows that do not stamp their build directory -- the native VCS and Xcelium
+compile/elaborate stages -- omit the `build_*` fields rather than guessing
+them, and are not force-rebuilt on a digest change.
+
 == Waveform debug
 
 Use `--waves [FMT]` to capture every selected simulation. Omitting `FMT` uses
@@ -1655,8 +1716,9 @@ result files.
 Firmware/model preparation may still occur.
 
 |`--rebuild`
-|Request a fresh cocotb model build (Verilator, Xcelium, and VCS all go through
-cocotb's Python runner, so `--rebuild` behaves the same on each).
+|Delete the resolved cocotb build directory and compile it again (Verilator,
+Xcelium, and VCS all go through cocotb's Python runner, so `--rebuild` behaves
+the same on each). See <<runner-build-identity>>.
 
 |`--timeout SEC`
 |Bound supported subprocess stages and override the configured simulation-leaf
@@ -1845,6 +1907,8 @@ keys, or authentication data.
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
+Leaf and rollup results carry the launching commit under `git` and the build
+they ran against under `target_build` (<<runner-build-identity>>).
 
 The `tests` summary counts the recorded leaves (`total`, `passing`,
 `failing`, `skipped`) and records whether the run finished: `leaves_planned`
