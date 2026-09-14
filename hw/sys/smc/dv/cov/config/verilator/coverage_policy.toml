@@ -840,24 +840,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_int_fcov.c_delivery_after_full_initialization"
 
 [[holes]]
-id = "fcov-smc-c_warm_from_internal_wdt"
-title = "c warm from internal wdt"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocation optimistic: no internal watchdog expiry driven (SMC-RST-WARM.S2:warm-from-internal-wdt)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_iso_fcov.c_warm_from_internal_wdt"
-
-[[holes]]
 id = "fcov-smc-c_cla_top_decodes"
 title = "c cla top decodes"
 category = "needs_review"
