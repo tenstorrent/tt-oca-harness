@@ -111,10 +111,6 @@ Two pieces of DV-owned RTL answer in place of something else on this bench:
 | `tb/verilator_stubs/prim_sync2.sv`, `prim_sync3.sv` | `smc_sim_cfg.toml` `[build].stubs`, emitted ahead of the Bender filelist | Verilator only; the runner drops a stub whose basename the Bender graph supplies, so VCS elaborates the product `och_prim` cells |
 | `models/axil_okay_slv.sv` behind `models/pll_wrap.sv` / `pvt_wrap.sv` | Bender `smc_wrapper` target, inside `smc_ip_integration` | every tool |
 
-Nothing under `tb/verilator_stubs/` may replace an SMC module (`smc_*`).
-PeakRDL nested hwif structs are kept compilable by `disable_public_flat_rw`
-plus `smc_public_scope.vlt`, never by a module stub.
-
 Which product cell each stand-in replaces, which enrolled leaves read a signal
 behind one, what each verdict reads, and the control that keeps each claim
 honest are the *Bench stand-ins* section of

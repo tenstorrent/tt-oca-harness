@@ -282,7 +282,7 @@ Kinds used in the leaf tables:
 |===
 |Stand-in |Replaces |Enrolled by |Tools it reaches
 |`tb/verilator_stubs/prim_sync2.sv`, `prim_sync3.sv`
-|`hw/common/och_prim/rtl/prim_sync2.sv` / `prim_sync3.sv`: `prim_flop_2sync` (plus a third stage) behind `prim_sync_randomized_delay`. `SYNTHESIS` is defined on every DV build, so the product cells are also a plain flop pipe there; the one behaviour the stand-in adds is `initial '0` on every stage, a defined `0` on the far side before the pipe has filled where the product cell shows X on a four-state simulator.
+|`hw/common/och_prim/rtl/prim_sync2.sv` / `prim_sync3.sv`: `prim_flop_2sync` (plus a third stage) behind `prim_sync_randomized_delay`. `RANDOM_DELAY_ENABLE` is not defined on any DV build (`SYNTHESIS` is defined only on `[targets.dual]`), so `prim_sync_randomized_delay` passes its input through and the product cells are also a plain flop pipe; the one behaviour the stand-in adds is `initial '0` on every stage, a defined `0` on the far side before the pipe has filled where the product cell shows X on a four-state simulator.
 |`smc_sim_cfg.toml` `[build].stubs`, emitted ahead of the Bender filelist so Verilator's `-Wno-MODDUP` first-definition-wins picks them. The product cells stay in the same compile (`smc_bender.f`).
 |Verilator only. The runner (`tools/dv/runlib/stages.py`, VCS branch) drops any stub whose basename the Bender graph supplies, so the VCS compile list carries no `prim_sync2/3` stub and the product cells elaborate.
 |`models/axil_okay_slv.sv` (behind `models/pll_wrap.sv` and `pvt_wrap.sv`)
@@ -324,12 +324,15 @@ its crossings are `prim_sync3`. Under `smc_wrapper` the stand-ins replace:
 |`smc_peripherals_cdc.u_ndmreset_request_sync` |`ndmreset_request_i` into `clk_smc`; NDM handshake and `peripheral_interrupts[11]` |`tb_ndmreset_irq`, `tb_ndmreset_process`, `NDMRESET_*` CSRs
 |`smc_peripherals_cdc.u_i2c_enable_sync`, `u_i2c_irq_sync`, `u_i2c_debug_sync`, `u_uart_enable_sync`, `u_uart_combined_irq_sync`, `u_i3c_irq_sync`, `u_avsbus_irq_sync` |peripheral enables and interrupts from the peripheral clock into `clk_smc` |`tb_i2c0_enable`, `tb_i2c_irq`, `tb_avsbus_irq`, `peripheral_interrupts`. `tb_uart_irq_any` reads `uart_interrupt_o`, the peripheral-clock side, not the crossing.
 |`smc_peripherals_cdc.u_i2c_cg_en_sync`, `u_uart_cg_en_sync`, `u_avs_cg_en_periph_sync`, `u_i3c_cg_en_sync`, `u_avs_cg_en_ref_sync`, `u_tel_cg_en_sync` |clock-gate enables out of `clk_smc` |not read: every `tb_*_cg_en` tap is the `clk_smc` side
-|`avsbus_controller.u_gate_refclk_en_sync`, `u_idle_clk_reg_resync`, `u_slave_resync_pending_resync` |AVSBus internal resynchronisation |AVSBus state and CSRs
+|`avsbus_controller.u_gate_refclk_en_sync`, `u_idle_clk_reg_resync`, `u_slave_resync_pending_resync`, `u_readback_fifo_full_resync`, `u_slave_unresponsive_resync`, `u_slave_interrupt_resync`, `u_avs_readback_en_resync`, `u_max_retries_attempted_resync`; the gray-pointer `prim_sync3` arrays of `cmd_async_fifo_inst` and `readasync_back_fifo_inst` (`avsbus_async_fifo`) |AVSBus internal resynchronisation and the command / read-back FIFO pointers |AVSBus state and CSRs
 |`smc_cpu_ctrl_wrap` `prim_refclk_count_w_cdc` (two `prim_sync3`) |`REFERENCE_COUNTER` handshake across `clk_ref_i` / `clk_smc` |`REFERENCE_COUNTER` CSR
 |===
 
 No eFuse leaf crosses one: the eFuse reset synchroniser is the vendored
-`prim_rst_sync`, compiled from source on every tool.
+`prim_rst_sync`, compiled from source on every tool. The pulp `sync` shim
+(`hw/common/sync.sv`, Bender `common_cell_sync_shim`) reaches `prim_sync2r` /
+`prim_sync3r` for every caller in this build, so the `axi_cdc` FIFOs in
+`smc_peripherals_cdc` are not behind a stand-in.
 
 ==== Leaves: reset group
 
@@ -412,7 +415,7 @@ Not in the control run; they take the next VCS control.
 |`smc_telemetry_receiver_csr_test` |`u_tel_cg_en_sync` |upstream
 |every leaf of `i2c.toml` |`u_i2c_enable_sync` (the LSIO mux enable, awaited on `tb_i2c0_enable` by `smc_csr_seq_utils.py`), `u_i2c_cg_en_sync` |downstream: I2C protocol traffic through the enabled mux
 |every leaf of `uart.toml` |`u_uart_enable_sync`, `u_uart_combined_irq_sync`, `u_uart_cg_en_sync` |downstream: UART protocol traffic and `peripheral_interrupts[21:18]`
-|`smc_sideband_protocol_smoke_test`, `smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `smc_octs_dual_sync_test` |`u_avsbus_irq_sync`, `u_avs_cg_en_periph_sync`, `u_avs_cg_en_ref_sync`, the three `avsbus_controller` `prim_sync3` |`tb_avsbus_irq` reads the crossing; the AVS state and CSR compares are downstream
+|`smc_sideband_protocol_smoke_test`, `smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `smc_octs_dual_sync_test` |`u_avsbus_irq_sync`, `u_avs_cg_en_periph_sync`, `u_avs_cg_en_ref_sync`, the `avsbus_controller` and `avsbus_async_fifo` `prim_sync3` |`tb_avsbus_irq` reads the crossing; the AVS state and CSR compares are downstream
 |`smc_i3c_to_fabric_test` |`u_i3c_irq_sync`, `u_i3c_cg_en_sync` |neither is read: the leaf is decode only
 |===
 
@@ -436,5 +439,5 @@ any RTL behind it, including none. The catalog-only PLL names
 |`prove_axil_external_active_probe` (`cocotb/seq_lib/smc_probe_positive_control.py`), the same-run positive control declared by `smc_canonical_smoke_test`, `smc_axil_idle_test`, `smc_axil_burst_idle_test` and `smc_6agent_observability_test` (`probe_positive_controls`)
 |Reachability: a frontdoor SEP_IN read of the PLL window drives `u_smc.smc_external_req_o.ar_valid` high, `tb_axil_external_active` samples 1 during it and returns to 0 after, so the idle `== 0` compares the scoreboard books on that probe are fail-capable. Both levels are DUT-driven.
 |Any register value. The `rdata == 0` the control reads back is the stand-in's `RESP_DATA` constant, not a DUT reset value, and no card cites it. `smc_axi_monitor.py` keeps PLL and PVT out of its DECERR window list for the same reason: the windows answer OKAY by construction.
-|The probe itself: `hits > 0` and the return to idle are the only asserted properties, and the run fails if the pulse is never seen.
+|The probe itself: `hits > 0` and the return to idle are asserted, and the run fails if the pulse is never seen. `smc_scoreboard.py` also asserts the read-back against `expected = 0`, the stand-in's constant; that compare holds on any RTL behind the window, including none.
 |===

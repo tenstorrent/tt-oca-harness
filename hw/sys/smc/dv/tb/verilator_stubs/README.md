@@ -10,8 +10,9 @@ Verilator flow only.
 | `prim_sync3.sv` | `hw/common/och_prim/rtl/prim_sync3.sv` | same three-flop pipe, every stage `initial '0` |
 
 The port lists (`i_clk` / `i_d` / `o_q`) and parameters are identical to the
-product cells, which are in the same compile. Under `SYNTHESIS`, defined on
-every DV build, the product cells also reduce to a plain flop pipe, so the one
+product cells, which are in the same compile. `RANDOM_DELAY_ENABLE` is not
+defined on any DV build, so the product cells' `prim_sync_randomized_delay`
+stage passes its input through and they too are a plain flop pipe; the one
 behaviour these files add is a defined `0` on the far side of the crossing
 before the pipe has filled; the product cell shows X there on a four-state
 simulator.
