@@ -345,8 +345,9 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
             f"0x{PVT_WRAP_BASE:08x} drove smc_external_req_o for {hits} clk_smc_i cycle(s) and the "
             f"bench PVT model answered OKAY 0x{rdata:08x}"
         )
+        # One cell for one measurement: closing a second name on the same
+        # routed read would inflate the printed cell count.
         self.close_cell("pvt-wrapper-decodes", evidence)
-        self.close_cell("pvt-wrapper-decode", evidence)
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()

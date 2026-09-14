@@ -12,10 +12,15 @@ observed held for a whole window rather than at one instant:
 * cores -- fetching from ROM (``tb_cpu_rom_read_count`` advancing) before the
   reset; during the held window ``tb_cpu_core_reset_n`` reads 0 at every
   sample and the ROM read counter stops advancing.
-* fabric -- an outbound filter register carries a pattern before the reset;
-  during the window the SEP_IN response channels (``s_axi_rvalid`` /
-  ``s_axi_bvalid``) stay low at every sample, and after release the register
-  reads its generated reset.
+* fabric -- an outbound filter register carries a pattern before the reset.
+  The SEP_IN request channels are read ready (``s_axi_arready`` and
+  ``s_axi_awready`` both 1) immediately before the cool pin drops, which is the
+  positive control; during the held window both read 0 at every sample, so the
+  port that was accepting requests is no longer accepting them; and after
+  release the register both answers a read again and reads its generated reset.
+  Response-channel silence (``s_axi_rvalid`` / ``s_axi_bvalid``) is recorded
+  alongside but carries nothing on its own: the window issues no traffic, so
+  those two read 0 on any RTL.
 * peripherals -- UART0 is enabled and mid-frame (its TX pad driven low in the
   start bit, with the pad's output enable asserted) when the reset lands;
   during the window the pad's output enable is released at every sample, so
@@ -105,6 +110,9 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
         self.core_reset_low_samples = 0
         self.rvalid_high_samples = 0
         self.bvalid_high_samples = 0
+        self.pre_reset_ready: tuple[int, int] | None = None
+        self.arready_high_samples = 0
+        self.awready_high_samples = 0
         self.tx_oe_high_after_settle = 0
         self.rom_count_frozen_from: int | None = None
 
@@ -196,6 +204,10 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
                 self.rvalid_high_samples += 1
             if self._bit(dut.s_axi_bvalid, "s_axi_bvalid"):
                 self.bvalid_high_samples += 1
+            if self._bit(dut.s_axi_arready, "s_axi_arready"):
+                self.arready_high_samples += 1
+            if self._bit(dut.s_axi_awready, "s_axi_awready"):
+                self.awready_high_samples += 1
             oe = (_pad_vec(dut, "tb_core2pad_en_o") >> UART0_TX_PAD) & 1
             if ref_cycles >= PAD_SETTLE_REF_CYCLES and oe == 1:
                 self.tx_oe_high_after_settle += 1
@@ -207,6 +219,17 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"tb_cpu_core_reset_n read 1 at {self.hold_samples - self.core_reset_low_samples} of "
             f"{self.hold_samples} samples while rst_primary_smc_clk_no was asserted"
         )
+        # The carrying leg: the request channels were ready before the reset
+        # (asserted in body()) and must not be ready anywhere inside it. A
+        # fabric that was not held keeps ready asserted and fails here.
+        assert self.arready_high_samples == 0 and self.awready_high_samples == 0, (
+            f"SEP_IN request channel still ready while the fabric was in primary reset: "
+            f"arready high {self.arready_high_samples}, awready high "
+            f"{self.awready_high_samples} of {self.hold_samples} samples (both read "
+            f"{self.pre_reset_ready} immediately before the cool pin dropped)"
+        )
+        # Recorded, not carrying: no traffic is issued inside the window, so
+        # these read 0 on any RTL.
         assert self.rvalid_high_samples == 0 and self.bvalid_high_samples == 0, (
             f"SEP_IN response channel valid while the fabric was in primary reset: "
             f"rvalid high {self.rvalid_high_samples}, bvalid high {self.bvalid_high_samples} of "
@@ -242,6 +265,16 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
             "OUTBOUND0_END_PATTERN_RB", OUTBOUND0_END, expected=FILTER_END_PATTERN, length=8
         )
         await self._arm_uart_mid_frame()
+
+        self.pre_reset_ready = (
+            self._bit(dut.s_axi_arready, "s_axi_arready"),
+            self._bit(dut.s_axi_awready, "s_axi_awready"),
+        )
+        assert self.pre_reset_ready == (1, 1), (
+            f"SEP_IN arready/awready read {self.pre_reset_ready} with the fabric out of reset and "
+            f"the CSR master idle; the held-window check below needs a port that was ready, or "
+            f"'not ready' cannot be told from 'never ready'"
+        )
 
         await self._send(SmcResetOp.COOL_RST_LO)
         asserted = await self._wait_state(
@@ -291,9 +324,17 @@ class smc_primary_reset_scope_test_seq(SmcResetSeqBase, SmcCsrSeq):
             asserted.wait_ref_cycles,
         )
         cocotb.log.info(
-            "CHK-PRIMARY-RESET-FABRIC-HELD: s_axi_rvalid/bvalid never rose during the held window "
-            "(%d samples); OUTBOUND_FILTER_CTRL[0].END_ADDR went 0x%x -> reset 0x%x across the reset",
+            "CHK-PRIMARY-RESET-FABRIC-HELD: SEP_IN arready/awready read %s immediately before the "
+            "cool pin dropped and 0 at all %d clk_smc_i samples of the held window (arready high "
+            "%d, awready high %d), so the port stopped accepting requests; rvalid/bvalid also "
+            "stayed low (%d/%d), which the idle window would give on any RTL; after release "
+            "OUTBOUND_FILTER_CTRL[0].END_ADDR answered a read again and went 0x%x -> reset 0x%x",
+            self.pre_reset_ready,
             self.hold_samples,
+            self.arready_high_samples,
+            self.awready_high_samples,
+            self.rvalid_high_samples,
+            self.bvalid_high_samples,
             FILTER_END_PATTERN,
             FILTER_CTRL_END_ADDR_REG_DEFAULT,
         )

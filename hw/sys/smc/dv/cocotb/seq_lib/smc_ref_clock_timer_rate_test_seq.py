@@ -66,7 +66,10 @@ REF_WAIT = 400
 # periods of latency on top of the credit granularity.
 CDC_SKEW_REF = 4
 START_BOUND_READS = 32
-EXPECTED_ACCESSES = 8
+# Accesses the body issues outside the STATUS poll: the CTRL reset read, the
+# TIMER_START write, and two TIMER_COUNT reads of a LO and a HI register each.
+# The poll count is only known at run time and is added at the call site.
+EXPECTED_ACCESSES = 6
 
 
 class smc_ref_clock_timer_rate_test_seq(SmcCsrSeq):
@@ -151,7 +154,7 @@ class smc_ref_clock_timer_rate_test_seq(SmcCsrSeq):
             f"clk_smc_i ({self.smc_edges_hi} edges) is not distinguishable from clk_ref_i "
             f"({self.ref_edges_hi} edges) within the tolerance on this seed"
         )
-        self.assert_all_reachable(EXPECTED_ACCESSES + status_reads - 1 + 1, "OCTS_REF_RATE")
+        self.assert_all_reachable(EXPECTED_ACCESSES + status_reads, "OCTS_REF_RATE")
         cocotb.log.info(
             "CHK-OCTS-TICK-ON-CLK-REF: TIMER_COUNT 0x%x -> 0x%x delta=%d; clk_ref_i edges "
             "between the reads %d, over the whole window %d (clk_smc_i would have given %d); "

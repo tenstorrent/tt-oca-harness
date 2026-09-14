@@ -133,16 +133,15 @@ class smc_address_window_top_decode_test_seq(SmcDecodeProbeSeq):
             ],
             length=_WORD,
         )
+        # One cell, not two: the scratchpad window top and the Memory Regions
+        # row top are the same address, closed by this one co-resident readback.
         self.close_cell(
             "spm-region-top",
             f"scratchpad first (0x{SPM_SPEC_BASE:08x}) and last (0x{SPM_SPEC_TOP:08x}) 64-bit words "
             f"held distinct co-resident patterns and read back exactly, so the 128 KiB window "
-            f"memmap.adoc pins reaches its last word without aliasing",
-        )
-        self.close_cell(
-            "region-top-decodes",
-            f"0x{SPM_SPEC_TOP:08x}, the last word of the Memory Regions row of the Address Space "
-            f"Layout table, answered with its co-resident pattern 0x{_SPM_PATTERN_LAST:x}",
+            f"memmap.adoc pins reaches its last word without aliasing; 0x{SPM_SPEC_TOP:08x} is "
+            f"also the last word of the Memory Regions row of the Address Space Layout table and "
+            f"answered with its co-resident pattern 0x{_SPM_PATTERN_LAST:x}",
         )
 
     async def _rom_top(self) -> None:
