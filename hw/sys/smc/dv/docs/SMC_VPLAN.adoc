@@ -10,10 +10,10 @@ This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
 that carry one. The enrolled testcases and the membership of the `all`
-sign-off group are defined in `testlists/all.toml`. The nine enrolled
-leaves held out of `all`, and why, are named in the `all` row under
-Regression Groups; where the reason is a defect or a stimulus the sign-off
-rule excludes, Known Limitations records the hole.
+sign-off group are defined in `testlists/all.toml`. The seven enrolled
+leaves outside `all`, and why, are named in the `all` row under
+Regression Groups; where the reason is a defect, Known Limitations records
+the hole.
 
 Every entry below names a testcase that exists and runs. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is
@@ -217,6 +217,7 @@ verifying the block behind the port.
 |`smc_efuse_permission_boundary_test` |Read the four eFuse-derived chip-config registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
 |`smc_efuse_read_program_timeout_test` |timeout_enable\|0 aborts; default timeout recovers OTP bit0.
 |`smc_efuse_shim_ctrl_test` |EFUSE_INTERFACE + SHIM_CTRL probe.
+|`smc_efuse_read_timeout_status_test` |A read that hits `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, after a successful read shows it clear.
 |`smc_state_fault_inject_test` |Every unused state encoding in the eFuse interface controller and in the Zeroer fails closed, and the block recovers.
 |===
 
@@ -346,8 +347,15 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 
 Tests whose job is to fail. Each holds the runnable evidence for one RTL
 defect, so the defect has a measurement rather than a description alone. All
-are enrolled through `rtl_issue` alone -- no `ci` tag, not in `smoke`, held
-out of `all`.
+are enrolled through `rtl_issue` -- no `ci` tag, not in `smoke`, `hosted` or
+`all`. Every `[[tests]]` entry carries `expect_fail` with the issue (or, for
+the CLA OKAY completion, the reason until an issue is filed) and
+`expect_fail_match` pinned to the assertion it raises; the weekly tier runs
+the group on its own `regress.yml` row and grades the recorded failure as
+PASS, so the row goes red (`expected_fail_passed`) the week a defect is
+fixed and the leaf moves to its feature testlist. `smc_deadspace_decode_test`
+(#585) and `smc_remap_cla_test` are members too; their cards are under
+FABRIC.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -357,7 +365,6 @@ the wrong reason.
 |===
 |Testcase |Objective
 |`smc_gpio_irq_mask_deassert_test` |Clearing DATA_CTRL.interrupt_enable must de-assert interrupt_o.
-|`smc_efuse_read_timeout_status_test` |A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
 |`smc_log_engine_intr_mask_test` |INTR_ENABLE must mask the log-engine interrupt output, not its set path.
 |`smc_i2c_intr_mask_test` |INTR_ENABLE must mask the I2C interrupt output, not its set path.
 |===
@@ -731,15 +738,18 @@ Drive `smc_avsbus_sanity_test_seq`. Each checker below is a named compare the DU
 |===
 |Checker |Description
 |`CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-AVS-FIFOS-STATUS` |`AVS_FIFOS_STATUS` reads OKAY over SEP_IN with rdata equal to the empty-FIFO word from the generated `avsbus_controller.h` (`smc_sideband_protocol_smoke_test_seq.py`); the scoreboard fails the run on a mismatch
 |`CHK-AVS-INTERRUPT-MASK` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
 |`CHK-AVS-INTERRUPT-W1C` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-AVS-NORMAL-STATUS` |`AVS_NORMAL_STATUS` reads OKAY with rdata equal to the generated idle word (`smc_sideband_protocol_smoke_test_seq.py`); the scoreboard fails the run on a mismatch
 |`CHK-AVS-READBACK-EMPTY-FIFO-READ` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
 |`CHK-AVS-READBACK-POINTER-ADVANCE` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-AVS-SLAVE-STATUS` |`AVS_SLAVE_STATUS` reads OKAY with rdata equal to the generated reset word (`smc_sideband_protocol_smoke_test_seq.py`); the scoreboard fails the run on a mismatch
 |`CHK-SIDEBAND-OBSERVABILITY` |Named compare in `smc_sideband_vip_utils.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-READBACK-EMPTY-FIFO-READ`, `CHK-AVS-READBACK-POINTER-ADVANCE`, `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`, `depth`.
+*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-FIFOS-STATUS`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-NORMAL-STATUS`, `CHK-AVS-READBACK-EMPTY-FIFO-READ` (and 3 more) hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`, `depth`.
 '''''
 
 [[sec-011-smc_avsbus_status_depth_test]]
@@ -888,14 +898,17 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 |===
 |Checker |Description
 |`CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-AVS-FIFOS-STATUS` |`AVS_FIFOS_STATUS` reads OKAY over SEP_IN with rdata equal to the empty-FIFO word from the generated `avsbus_controller.h` (`smc_sideband_protocol_smoke_test_seq.py`); the scoreboard fails the run on a mismatch
 |`CHK-AVS-INTERRUPT-MASK` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
 |`CHK-AVS-INTERRUPT-W1C` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-AVS-NORMAL-STATUS` |`AVS_NORMAL_STATUS` reads OKAY with rdata equal to the generated idle word (`smc_sideband_protocol_smoke_test_seq.py`); the scoreboard fails the run on a mismatch
 |`CHK-AVS-READBACK-EMPTY-FIFO-READ` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
 |`CHK-AVS-READBACK-POINTER-ADVANCE` |Named compare in `smc_sideband_protocol_smoke_test_seq.py`; the run fails if it mismatches
+|`CHK-AVS-SLAVE-STATUS` |`AVS_SLAVE_STATUS` reads OKAY with rdata equal to the generated reset word (`smc_sideband_protocol_smoke_test_seq.py`); the scoreboard fails the run on a mismatch
 |===
 
 
-*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-READBACK-EMPTY-FIFO-READ`, `CHK-AVS-READBACK-POINTER-ADVANCE` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-FIFOS-STATUS`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-NORMAL-STATUS`, `CHK-AVS-READBACK-EMPTY-FIFO-READ` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-016-smc_telemetry_receiver_csr_test]]
@@ -909,9 +922,9 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 
 *Test Coverage*:
 
-* 8-bit beats and the assembly into packets -- `doc/interface.adoc:59,69` ("8-bit data beats", "Data Width: 8 bits per beat") and `doc/architecture.adoc:56`; `NUM_BEATS_PER_PACKET` is the RTL localparam `TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH` (`rtl/telemetry_receiver_pkg.sv:51`), used at `rtl/telemetry_receiver.sv:134`.
-* `probe_id` at bits `[60:56]` -- `rtl/telemetry_receiver.sv:77-81`, `get_telemetry_probe_id` returns `telemetry_packets[0][60:56]`.
-* `last_packet` at bit 63 -- it is the most significant field of the 64-bit packed `telemetry_packet_t` (`rtl/telemetry_receiver_pkg.sv:60-63`), read at `rtl/telemetry_receiver.sv:139`.
+* The ATB framing the sequence drives is a DV-owned table. 8-bit beats assembled LSB-first into 64-bit packets, 9-bit blocks, the 5-bit probe ID and the last-packet flag are cited to `hw/ip/telemetry_receiver/doc/interface.adoc`, `doc/architecture.adoc` and `regs/telemetry_receiver.rdl` (`TELEMETRY_PROBE_ID.PROBE_ID[4:0]`, `INTR_STATUS.MISSING_LAST`).
+* The bit positions of the probe-ID header, the last-packet flag and the first block of each packet are fixed by no document and are declared as DV-owned framing assumptions in the sequence.
+* What is scored is the CSR-visible consequence of a message framed per that table (STATUS.EMPTY clearing, PROBE_ID reading back the framed value), not that the table is the specified telemetry format.
 
 *Test Procedure*:
 
@@ -1091,13 +1104,14 @@ Drive `smc_axil_burst_idle_test_seq`. Each checker below is a named compare the 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DIAG-AXIL-ACTIVE` |Named compare in `smc_axil_burst_idle_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-AXIL-ACTIVE` |Positive control in `smc_diagnostic_vip_utils.py`: `tb_axil_any_master_active` samples 1 under the same eFuse-bank AXI-Lite request; the run fails if the OR never rises
+|`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_probe_alive`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |`CHK-NONVAC` |Non-vacuity count in `smc_axil_burst_idle_test_seq.py`
 |`CHK-PROBE-AXIL-EXTERNAL-ALIVE` |Named compare in `smc_axil_burst_idle_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-NONVAC`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-NONVAC`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-022-smc_axil_idle_test]]
@@ -1125,10 +1139,12 @@ Drive `smc_axil_idle_test_seq`. Each checker below is a named compare the DUT ca
 |===
 |Checker |Description
 |`CHK-AXIL-IDLE` |Named compare in `smc_axil_idle_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-AXIL-ACTIVE` |Positive control in `smc_diagnostic_vip_utils.py`, reached through `prove_axil_probe_alive`: `tb_axil_any_master_active` samples 1 under a real eFuse-bank AXI-Lite request; the run fails if the OR never rises
+|`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_probe_alive`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===
 
 
-*Pass Criteria*: `CHK-AXIL-IDLE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-AXIL-IDLE`, `CHK-DIAG-AXIL-ACTIVE`, `CHK-EFUSE-BANK-AXIL-ACTIVE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-023-smc_cpu_to_sep_axi_test]]
@@ -1193,7 +1209,7 @@ Drive `smc_deadspace_decode_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing and is held out of `all`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `per_ip`.
+*Pass Criteria*: not a sign-off PASS. The leaf measures wrap-to-live aliasing and runs weekly in `rtl_issue` under `expect_fail` (#585: dead offsets in seven register windows wrap onto live registers with an OKAY response), with `expect_fail_match` pinned to the `wrap_to_live` / `read_alias` assertion; the observed failure grades PASS and an observed PASS grades `expected_fail_passed`. Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `rtl_issue`, `per_ip`.
 '''''
 
 [[sec-025-smc_filter_field_sweep_test]]
@@ -1283,7 +1299,7 @@ Drive `smc_filter_multi_entry_test_seq`. Each checker below is a named compare t
 
 *Test Procedure*:
 
-Drive `smc_input_fabric_axi_wr_rd_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_input_output_fabric_wr_rd_test_seq` over SEP_IN AXI. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -1310,11 +1326,12 @@ Drive `smc_input_fabric_axi_wr_rd_test_seq`. Each checker below is a named compa
 
 *Test Coverage*:
 
-* Input/output fabric CSR precheck over real SEP_IN AXI.
+* Output-fabric filter programming over SEP_IN AXI (`output_fabric_pass_all_cfg_seq`), then one JTAG-AXI write and read through the output-fabric window checked against the SYS_OUT responder and the scoreboard's `SmcMemoryModel` golden.
+* The alias-remap reset-default compare is not on this path: `smc_input_output_fabric_wr_rd_test_seq` is driven by `smc_input_fabric_axi_wr_rd_test`, which declares `CHK-ALIAS-REMAP-RESET-DEFAULT`.
 
 *Test Procedure*:
 
-Drive `smc_input_output_fabric_wr_rd_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `output_fabric_pass_all_cfg_seq` over SEP_IN AXI, then a JTAG-AXI write and read at the alternate output-fabric address. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -1322,13 +1339,12 @@ Drive `smc_input_output_fabric_wr_rd_test_seq`. Each checker below is a named co
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ALIAS-REMAP-RESET-DEFAULT` |Named compare in `smc_input_output_fabric_wr_rd_test_seq.py`; the run fails if it mismatches
-|`CHK-INPUT-OUTPUT-FABRIC-WR-RD` |Named compare in `smc_input_output_fabric_wr_rd_test.py`; the run fails if it mismatches
-|`CHK-NONVAC` |Non-vacuity count in `smc_input_output_fabric_wr_rd_test_seq.py`
+|`CHK-INPUT-OUTPUT-FABRIC-WR-RD` |The JTAG-AXI write then read at the alternate output-fabric address complete OKAY, the SYS_OUT responder's `last_addr` / `last_wdata` match that address and data, its write and read counters each advanced by one, and the scoreboard's memory-model golden records at least one update and one check (`smc_input_output_fabric_wr_rd_test.py`)
+|`CHK-NONVAC` |Protocol-VIP record accepted with the measured SEP_IN CSR and JTAG-AXI access counts against their floors (`smc_input_output_fabric_wr_rd_test.py`); the scoreboard rejects the record, and the run fails, below either floor
 |===
 
 
-*Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-029-smc_local_fabric_csr_depth_test]]
@@ -1490,7 +1506,7 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. Named checkers hold when the leaf is run on demand; it is held out of `all` because the CLA deny leg hangs at 0xC016_0038. Known Limitations records the hole. Enrolled in: `per_ip`.
+*Pass Criteria*: not a sign-off PASS. The ALIAS_REMAP translation, the remap-table reset sweep and the CLA allow leg hold; the CLA deny leg fails because the first unmapped in-window offset, `+0x38` (0xC016_0038), completes with OKAY instead of SLVERR/DECERR (#1510 fixed the #1488 hang; the OKAY completion has no filed issue yet). The leaf runs weekly in `rtl_issue` under `expect_fail` with `expect_fail_match` pinned to that `resp=0` assertion, so the recorded failure grades PASS and any other failure grades FAIL. Known Limitations records the hole. Enrolled in: `rtl_issue`, `per_ip`.
 '''''
 
 [[sec-034-smc_sys_out_aw_w_split_test]]
@@ -1623,11 +1639,11 @@ Drive `smc_cold_reset_repeated_test_seq`. Each checker below is a named compare 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-MID-ASSERT-HOLD` |Every `clk_ref_i` sample across the `MID_ASSERT_HOLD_REF_CYCLES` window after the assert handshake matched carries the asserted levels (`_hold_raw` in `smc_reset_seq_base.py`); each sample carries the expectation, so the scoreboard fails the run at the first sample that leaves them, one token per held window
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `pyuvm`, `reset`, `smoke`.
+*Pass Criteria*: `CHK-MID-ASSERT-HOLD` holds after its hold window and every sequence assert holds. Enrolled in: `all`, `pyuvm`, `reset`, `smoke`.
 
 '''''
 
@@ -1661,13 +1677,14 @@ Drive `smc_cold_reset_test_seq`. Each checker below is a named compare the DUT c
 |`CHK-COOL-PRIMARY` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-INT-COOL-SEQ` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-INT-POR-COLD` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
+|`CHK-MID-ASSERT-HOLD` |The cold-reset levels hold at every `clk_ref_i` sample of the `MID_ASSERT_HOLD_REF_CYCLES` window while `powergood_i` is low (`_hold_raw` in `smc_reset_seq_base.py`); the scoreboard fails the run at the first sample that leaves them
 |`CHK-NONVAC` |Non-vacuity count in `smc_cold_reset_test_seq.py`
 |`CHK-POWERGOOD-GATES` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
 |`CHK-TIMEOUT-PATHS` |Named compare in `smc_cold_reset_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-BRINGUP-LEVELS`, `CHK-COLD-ASSERT-PRIMARY`, `CHK-COOL-PRIMARY`, `CHK-INT-COOL-SEQ`, `CHK-INT-POR-COLD`, `CHK-NONVAC` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `reset`, `smoke`.
+*Pass Criteria*: `CHK-BRINGUP-LEVELS`, `CHK-COLD-ASSERT-PRIMARY`, `CHK-COOL-PRIMARY`, `CHK-INT-COOL-SEQ`, `CHK-INT-POR-COLD`, `CHK-MID-ASSERT-HOLD` (and 3 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `reset`, `smoke`.
 '''''
 
 [[sec-039-smc_cool_reset_from_pcie_test]]
@@ -2117,11 +2134,11 @@ Drive `smc_powergood_glitch_test_seq`. Each checker below is a named compare the
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-MID-ASSERT-HOLD` |Every `clk_ref_i` sample across the `MID_ASSERT_HOLD_REF_CYCLES` window after the assert handshake matched carries the asserted levels (`_hold_raw` in `smc_reset_seq_base.py`); each sample carries the expectation, so the scoreboard fails the run at the first sample that leaves them, one token for the glitch window
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `pyuvm`, `reset`, `smoke`.
+*Pass Criteria*: `CHK-MID-ASSERT-HOLD` holds after its hold window and every sequence assert holds. Enrolled in: `all`, `pyuvm`, `reset`, `smoke`.
 
 '''''
 
@@ -2150,11 +2167,11 @@ Drive `smc_reset_recovery_matrix_test_seq`. Each checker below is a named compar
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-MID-ASSERT-HOLD` |Every `clk_ref_i` sample across the `MID_ASSERT_HOLD_REF_CYCLES` window after the assert handshake matched carries the asserted levels (`_hold_raw` in `smc_reset_seq_base.py`); each sample carries the expectation, so the scoreboard fails the run at the first sample that leaves them, one token per leg of the matrix
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `reset`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-MID-ASSERT-HOLD` holds after its hold window and every sequence assert holds. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `reset`, `smoke`, `depth`.
 '''''
 
 [[sec-053-smc_reset_unit_sanity_test]]
@@ -2753,12 +2770,13 @@ Drive `smc_cpu_ecc_lint_pint_depth_test_seq`. Each checker below is a named comp
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |`NDMRESET_CLUSTER_COUNT` reads a nonzero count of at most 32 inside the generated `misc_wrap.h` field with the reserved bits at 0, the bounds `ndm_reset.rdl` declares; no document fixes the value, so the observed count is carried in the token and not asserted (`smc_ecc_dfd_dbs_sanity_test_seq.py`)
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |A software write of the inverted field pattern to `NDMRESET_CLUSTER_COUNT` is dropped and the readback is unchanged, as the RDL `sw=r` / `hw=w` access declares (`smc_ecc_dfd_dbs_sanity_test_seq.py`)
+|`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_any_master_activity`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 3 more) hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-070-smc_cpu_firmware_boot_test]]
@@ -2786,6 +2804,7 @@ Drive `smc_cpu_firmware_boot_test_seq`. Each checker below is a named compare th
 |===
 |Checker |Description
 |`CHK-CLK-SMC-LIVE` |Named compare in `smc_cpu_firmware_boot_test_seq.py`; the run fails if it mismatches
+|`CHK-CPU-BFM-OBSERVABILITY` |Bounded poll in `smc_cpu_vip_utils.py` until `powergood_stable_o`, `rst_primary_smc_clk_no` and `rst_wdt_smc_clk_no` all read their exact post-bring-up level 1; expiry fails with the last observed values
 |`CHK-EFUSE-SENSE-DONE` |Named compare in `smc_cpu_firmware_boot_test_seq.py`; the run fails if it mismatches
 |`CHK-NONVAC` |Non-vacuity count in `smc_cpu_firmware_boot_test_seq.py`
 |`CHK-RESET-VECTOR-FETCH` |Named compare in `smc_cpu_firmware_boot_test_seq.py`; the run fails if it mismatches
@@ -2793,7 +2812,7 @@ Drive `smc_cpu_firmware_boot_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-CLK-SMC-LIVE`, `CHK-EFUSE-SENSE-DONE`, `CHK-NONVAC`, `CHK-RESET-VECTOR-FETCH`, `CHK-ROM-IS-TARGET` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`.
+*Pass Criteria*: `CHK-CLK-SMC-LIVE`, `CHK-CPU-BFM-OBSERVABILITY`, `CHK-EFUSE-SENSE-DONE`, `CHK-NONVAC`, `CHK-RESET-VECTOR-FETCH`, `CHK-ROM-IS-TARGET` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`.
 '''''
 
 [[sec-071-smc_cpu_sanity_test]]
@@ -2940,12 +2959,13 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |`NDMRESET_CLUSTER_COUNT` reads a nonzero count of at most 32 inside the generated `misc_wrap.h` field with the reserved bits at 0, the bounds `ndm_reset.rdl` declares; no document fixes the value, so the observed count is carried in the token and not asserted (`smc_ecc_dfd_dbs_sanity_test_seq.py`)
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |A software write of the inverted field pattern to `NDMRESET_CLUSTER_COUNT` is dropped and the readback is unchanged, as the RDL `sw=r` / `hw=w` access declares (`smc_ecc_dfd_dbs_sanity_test_seq.py`)
+|`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_any_master_activity`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 3 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-075-smc_ecc_fault_inject_test]]
@@ -3160,12 +3180,13 @@ Drive `smc_dbs_idle_test_seq`. Each checker below is a named compare the DUT can
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |`NDMRESET_CLUSTER_COUNT` reads a nonzero count of at most 32 inside the generated `misc_wrap.h` field with the reserved bits at 0, the bounds `ndm_reset.rdl` declares; no document fixes the value, so the observed count is carried in the token and not asserted (`smc_ecc_dfd_dbs_sanity_test_seq.py`)
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |A software write of the inverted field pattern to `NDMRESET_CLUSTER_COUNT` is dropped and the readback is unchanged, as the RDL `sw=r` / `hw=w` access declares (`smc_ecc_dfd_dbs_sanity_test_seq.py`)
+|`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_any_master_activity`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 3 more) hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
 '''''
 
 [[sec-081-smc_dfd_sanity_test]]
@@ -3197,12 +3218,13 @@ Drive `smc_dfd_sanity_test_seq`. Each checker below is a named compare the DUT c
 |`CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-DFX_DEBUG_CTRL` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-DIAG-CSR-NDMRESET_PROCESS` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
-|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |Named compare in `smc_ecc_dfd_dbs_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION` |`NDMRESET_CLUSTER_COUNT` reads a nonzero count of at most 32 inside the generated `misc_wrap.h` field with the reserved bits at 0, the bounds `ndm_reset.rdl` declares; no document fixes the value, so the observed count is carried in the token and not asserted (`smc_ecc_dfd_dbs_sanity_test_seq.py`)
+|`CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` |A software write of the inverted field pattern to `NDMRESET_CLUSTER_COUNT` is dropped and the readback is unchanged, as the RDL `sw=r` / `hw=w` access declares (`smc_ecc_dfd_dbs_sanity_test_seq.py`)
+|`CHK-EFUSE-BANK-AXIL-ACTIVE` |Positive control in `smc_efuse_vip_utils.py`, reached through `prove_axil_any_master_activity`: `tb_axil_efuse_bank_active` samples 1 while a strict SEP_IN read of the eFuse-shim window (expected its generated reset) is in flight; the run fails if the probe never rises
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 2 more) hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-NDMRESET_PROCESS` (and 3 more) hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-082-smc_dfx_status_abort_test]]
@@ -3491,7 +3513,8 @@ Drive `smc_efuse_jtag_lc_negative_test_seq`. Each checker below is a named compa
 * `CHIPLET_ID` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `CHIPLET_ID_READ_LOCK` set, and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/depth.toml`).
 * The read-lock leg therefore proves that the DUT ENFORCES a lock it found already set; it does not prove a lock can be established through the fuse-programming path.
 * The write-lock leg does establish its own lock, through the real `LOCKS` CSR write path.
-* Everything asserted below -- lock enforcement, the blocked-read data, the non-disclosure property and the interrupt itself -- is produced by RTL under `hw/ip/efuse/rtl/` and `hw/sys/smc/rtl/`.
+* Everything asserted below -- lock enforcement, the non-disclosure property and the interrupt itself -- is produced by the design under test.
+* The read-locked read is not value-compared: `hw/ip/efuse/doc/architecture.adoc` fixes `0xbadcab1e` only for the JTAG lifecycle-demux error slave and does not state what a read-locked shadow register returns over the CSR path, so that leg claims the interrupt pulse and non-disclosure (`lock[0] = 1` is read-locked) and nothing about the substituted word.
 * The model contributes the fuse CONTENT only, and every expectation that depends on that content is derived from the asset at run time rather than hand-transcribed.
 
 *Test Procedure*:
@@ -3504,7 +3527,7 @@ Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a name
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-LOCK-IRQ-RD` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
+|`CHK-EFUSE-LOCK-IRQ-RD` |The read of the read-locked `CHIPLET_ID` pulses `tb_efuse_locked_access_irq` exactly once and returns a word that is neither the fuse content nor the pattern the unlocked write attempted; the substituted word itself is not compared (`smc_efuse_locked_access_interrupt_test_seq.py`)
 |`CHK-EFUSE-LOCK-IRQ-UNLOCK` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-LOCK-IRQ-WR` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-LOCK-PRE` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
@@ -3663,6 +3686,7 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 
 * DEFENDS: the four eFuse-derived chip-config registers decode; `VERSION_LO`, `VERSION_HI` and `CHIP_ID` read their generated reset values, `LC_STATE` is decode-only because its value is simulator-divergent in the OSS bench; and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
 * DOES NOT DEFEND: eFuse permission semantics. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition and attempts no denied access, because the SMC CSR boundary exposes none of that. Lifecycle-gated access control is proven by `smc_efuse_jtag_lc_access_matrix_test` and locked-shadow access by `smc_efuse_locked_access_interrupt_test`; the raw OTP window has no responder on `smc_wrapper` and is recorded under Known Limitations.
+* PROXY: the protocol-VIP record this leaf files carries `proxy=True` and names what it stands in for -- the raw OTP permission paths -- and what it did not do (no lock programmed, no lifecycle transition, no denied access, no raw OTP window touched). The record is not feature credit for that path.
 
 *Test Procedure*:
 
@@ -3711,6 +3735,7 @@ Drive `smc_efuse_read_program_timeout_test_seq`. Each checker below is a named c
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE` |Positive control for the `READ_STATUS == 0` compares: with `STATUS.EFUSE_REQ_ERROR` read clear first, the recovery read's command word minus `READ_ENABLE` sets `READ_STATUS` in `EFUSE_READ_CTRL`, the cause `efuse_interface_ctrl.rdl` names for the field; `READ_DATA` is logged, not asserted (`smc_efuse_read_program_timeout_test_seq.py`)
 |`CHK-EFUSE-TMO-BASIC` |Named compare in `smc_efuse_read_program_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-TMO-PROG` |Named compare in `smc_efuse_read_program_timeout_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-TMO-PROG-REC` |Named compare in `smc_efuse_read_program_timeout_test_seq.py`; the run fails if it mismatches
@@ -3720,7 +3745,7 @@ Drive `smc_efuse_read_program_timeout_test_seq`. Each checker below is a named c
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-TMO-BASIC`, `CHK-EFUSE-TMO-PROG`, `CHK-EFUSE-TMO-PROG-REC`, `CHK-EFUSE-TMO-PROG-SET`, `CHK-EFUSE-TMO-RD`, `CHK-EFUSE-TMO-RD-REC` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_efuse`, `coverage_closure`, `depth`.
+*Pass Criteria*: `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE`, `CHK-EFUSE-TMO-BASIC`, `CHK-EFUSE-TMO-PROG`, `CHK-EFUSE-TMO-PROG-REC`, `CHK-EFUSE-TMO-PROG-SET`, `CHK-EFUSE-TMO-RD` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `depth_efuse`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-096-smc_efuse_shim_ctrl_test]]
@@ -3746,11 +3771,11 @@ Drive `smc_efuse_shim_ctrl_test_seq`. Each checker below is a named compare the 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-EFUSE-SHIM-CTRL` |`EFUSE_INTERFACE_CTRL_STATUS` answers OKAY and `EFUSE_SHIM_CTRL` `EFUSE_BANK_INIT_TIME` reads its generated reset value over SEP_IN AXI; both are strict `csr_read`s, so the scoreboard fails the run on a non-OKAY response or a data mismatch (`smc_efuse_shim_ctrl_test_seq.py`)
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`.
+*Pass Criteria*: `CHK-EFUSE-SHIM-CTRL` holds after its compares, and the test requires at least one SEP_IN value compare to have reached the scoreboard. Enrolled in: `all`.
 
 '''''
 
@@ -3778,15 +3803,23 @@ the eFuse interface response status, `efuse_req_err_i` and `secure_tm_blocked_i`
   is suppressed in that same cycle rather than one cycle later.
 * Recovery is scored, not just entry: after injection the FSM must return to
   `IDLE` with request low, busy low, done high and error high, and the program
-  read-back must read the `0xBADCAB1E` illegal-state sentinel.
+  read-back must read the `0xBADCAB1E` illegal-state sentinel. The same
+  fail-closed completion is read over the CSR path -- `EFUSE_PROGRAM_CTRL` /
+  `EFUSE_READ_CTRL` with done and status set and busy clear -- and a legal
+  command then completes without error with a read-back that is no longer the
+  sentinel, so the block is back in service.
 * Non-vacuity is a real baseline: a legal program runs first and the sequence
   asserts its read-back does *not* already equal the sentinel, so the
   post-injection compare could have failed.
 * Read-error sourcing: a new legal request must clear a prior read error, and an
   injected read error must set the status and zero the read-back.
-* Zeroer: all four illegal encodings (`0b011`, `0b101`, `0b110`, `0b111`) must
-  enter the absorbing `ERROR` state, hold it for at least two further cycles with
-  busy high, `intp` low and both AXI valids low, and only a cold reset escapes it.
+* Zeroer: each of the four illegal encodings (`0b011`, `0b101`, `0b110`, `0b111`)
+  starts from a quiescent `IDLE` with `CTRL_STATUS` reporting not busy, must
+  enter the absorbing `ERROR` state with busy high, `intp` low and both AXI
+  valids low, hold it for two further cycles, report busy through
+  `CTRL_STATUS`, ignore a `CTRL_STATUS` start write while there, and is
+  followed by its own cold reset that returns it to `IDLE` with `CTRL_STATUS`
+  reporting not busy.
 * Every wait is bounded (10 000 cycles) and reports the last observed value on
   expiry, so a signal that never moves fails rather than hanging.
 
@@ -3805,26 +3838,37 @@ recorded under Known Limitations.
 . Wait for fuse-sense-done.
 . Run a legal program command, confirm completion, and record a read-back that is
   not the illegal-state sentinel.
-. Inject eFuse program state `0b00` with no request outstanding; confirm the state
-  is held, the request stays low, recovery reaches `IDLE` with done and error set,
-  and the read-back is the sentinel.
+. Inject eFuse program state `0b00` with no request outstanding; confirm the
+  request stays low, recovery reaches `IDLE` with done and error set and the
+  read-back is the sentinel, and that `EFUSE_PROGRAM_CTRL` reports done with
+  status set and busy clear; then run a legal program and confirm it completes
+  without error and its read-back is no longer the sentinel.
 . Arm the `0b11` injection concurrently with a legal program `GO`, confirm the
-  request is suppressed in the same cycle, then confirm the same recovery.
-. Repeat both encodings on the read path; inject a read error and confirm the
-  status sets and the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
-. Inject each of the four illegal Zeroer encodings, confirm the absorbing `ERROR`
-  state holds, then assert cold reset and confirm the escape to `IDLE`.
+  request is suppressed in the same cycle, confirm the same recovery through
+  the control register, then run a legal program and confirm it completes
+  without error and its read-back is no longer the sentinel.
+. Repeat both encodings on the read path with the same `EFUSE_READ_CTRL`
+  checks, following each corruption -- the idle `0b00` and the in-flight
+  `0b11` -- with a legal read that completes and clears the error; then inject
+  each read-error source and confirm the error output asserts and the read-back
+  zeroes, clearing it through `REQ_ERROR_CLEAR` each time.
+. For each of the four illegal Zeroer encodings: confirm `IDLE` with
+  `CTRL_STATUS` not busy, inject, confirm busy high with `intp` and both AXI
+  valids low, confirm the absorbing `ERROR` state holds and `CTRL_STATUS`
+  reports busy, write a `CTRL_STATUS` start and confirm it is ignored, then
+  assert cold reset and confirm the return to `IDLE`; after the last encoding
+  confirm `CTRL_STATUS` reads not busy.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state and only a cold reset escapes it
+|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path, with the completion visible as done and status set and busy clear in `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL` and a legal command completing without error afterwards; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state from `IDLE`, which is visible as `CTRL_STATUS` busy, ignore a `CTRL_STATUS` start write there, and a cold reset clears it
 |===
 
 
-*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
+*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `all`, `hosted`, `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
 
 '''''
 
@@ -4272,14 +4316,20 @@ Drive `smc_hang_detector_sanity_test_seq`. Each checker below is a named compare
 |===
 |Checker |Description
 |`CHK-HANG-BASIC` |Named compare in `smc_hang_detector_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-HANG-DATA-CLR` |Clearing `HANG_DET_DATA_ACCEL_CTRL` drops `tb_axi_hang_irq_data` and the OR to 0 inside the bounded handshake (`smc_hang_detector_sanity_test_seq.py`)
+|`CHK-HANG-DATA-FIRE` |A fire write to `HANG_DET_DATA_ACCEL_CTRL` raises `tb_axi_hang_irq_data` and the OR `tb_axi_hang_irq` while the other two detector pins stay 0, inside the bounded `_await_irqs` handshake (`smc_hang_detector_sanity_test_seq.py`)
 |`CHK-HANG-OR-ALL` |Named compare in `smc_hang_detector_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-OR-CLR` |Named compare in `smc_hang_detector_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-OR-HOLD` |Named compare in `smc_hang_detector_sanity_test_seq.py`; the run fails if it mismatches
 |`CHK-HANG-POISON` |Named compare in `smc_hang_detector_sanity_test_seq.py`; the run fails if it mismatches
+|`CHK-HANG-SEP-CLR` |Clearing `HANG_DET_SEP_AXI_CTRL` drops `tb_axi_hang_irq_sep` and the OR to 0 inside the bounded handshake (`smc_hang_detector_sanity_test_seq.py`)
+|`CHK-HANG-SEP-FIRE` |A fire write to `HANG_DET_SEP_AXI_CTRL` raises `tb_axi_hang_irq_sep` and the OR `tb_axi_hang_irq` while the other two detector pins stay 0, inside the bounded `_await_irqs` handshake (`smc_hang_detector_sanity_test_seq.py`)
+|`CHK-HANG-SYS-CLR` |Clearing `HANG_DET_SYS_AXI_CTRL` drops `tb_axi_hang_irq_sys` and the OR to 0 inside the bounded handshake (`smc_hang_detector_sanity_test_seq.py`)
+|`CHK-HANG-SYS-FIRE` |A fire write to `HANG_DET_SYS_AXI_CTRL` raises `tb_axi_hang_irq_sys` and the OR `tb_axi_hang_irq` while the other two detector pins stay 0, inside the bounded `_await_irqs` handshake (`smc_hang_detector_sanity_test_seq.py`)
 |===
 
 
-*Pass Criteria*: `CHK-HANG-BASIC`, `CHK-HANG-OR-ALL`, `CHK-HANG-OR-CLR`, `CHK-HANG-OR-HOLD`, `CHK-HANG-POISON` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`.
+*Pass Criteria*: `CHK-HANG-BASIC`, `CHK-HANG-DATA-CLR`, `CHK-HANG-DATA-FIRE`, `CHK-HANG-OR-ALL`, `CHK-HANG-OR-CLR`, `CHK-HANG-OR-HOLD` (and 5 more) hold after their compares. Enrolled in: `all`, `per_ip`, `irq`.
 '''''
 
 [[sec-111-smc_hang_detector_sys_timeout_test]]
@@ -4685,10 +4735,13 @@ Drive `smc_i2c_p0_conti_test_seq`. Each checker below is a named compare the DUT
 |===
 |Checker |Description
 |`CHK-I2C-P0-CONTI` |Named compare in `smc_i2c_p0_conti_test_seq.py`; the run fails if it mismatches
+|`CHK-I2C-P0-CONTI-P0` |Pair 0 of the I2C1 -> I2C0 write/read pairs: the target's ACQ words carry the START, both data bytes and the STOP the controller sent, and the read leg returns the byte preloaded in the target's TX FIFO (`smc_i2c_p0_conti_test_seq.py`); a mismatch raises
+|`CHK-I2C-P0-CONTI-P1` |Pair 1 of the I2C1 -> I2C0 write/read pairs: the target's ACQ words carry the START, both data bytes and the STOP the controller sent, and the read leg returns the byte preloaded in the target's TX FIFO (`smc_i2c_p0_conti_test_seq.py`); a mismatch raises
+|`CHK-I2C-P0-CONTI-P2` |Pair 2 of the I2C1 -> I2C0 write/read pairs: the target's ACQ words carry the START, both data bytes and the STOP the controller sent, and the read leg returns the byte preloaded in the target's TX FIFO (`smc_i2c_p0_conti_test_seq.py`); a mismatch raises
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-CONTI` hold after their compares. Enrolled in: `all`, `i2c`.
+*Pass Criteria*: `CHK-I2C-P0-CONTI`, `CHK-I2C-P0-CONTI-P0`, `CHK-I2C-P0-CONTI-P1`, `CHK-I2C-P0-CONTI-P2` hold after their compares. Enrolled in: `all`, `i2c`.
 
 '''''
 
@@ -5081,11 +5134,12 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-SMBUS-ARA` |The ARA read to 0x0C puts at least one START on the wire that the slave monitor sees, collects no ACK, and returns the unclaimed-address default 0xFF, on a bus the PEC write in the same run proved alive (slave ACKs > 0) (`smc_smbus_pmbus_test_seq.py`)
+|`CHK-SMBUS-PEC-REF` |The VIP's SMBus PEC for the frame `[0xA0, 0x10, 0xA5]` equals the CRC-8/0x07 reference 0x6D computed independently, so the bus compare that follows does not grade its own arithmetic (`smc_smbus_pmbus_test_seq.py`)
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`.
+*Pass Criteria*: `CHK-SMBUS-ARA`, `CHK-SMBUS-PEC-REF` hold after their compares and every sequence assert holds (the PEC byte landing in the slave's memory, the Linear11/Linear16 round trips). Enrolled in: `all`.
 
 '''''
 
@@ -5118,10 +5172,11 @@ Drive `smc_i3c_to_fabric_test_seq`. Each checker below is a named compare the DU
 |`CHK-I3C-CLOCK-GATE-RW` |Named compare in `smc_i3c_to_fabric_test_seq.py`; the run fails if it mismatches
 |`CHK-I3C0-HC-CONTROL-BUS-ENABLE` |Named compare in `smc_i3c_to_fabric_test_seq.py`; the run fails if it mismatches
 |`CHK-I3C0-HCI-VERSION` |Named compare in `smc_i3c_to_fabric_test_seq.py`; the run fails if it mismatches
+|`CHK-I3C0-PADS-RESOLVABLE` |Every I3C0 net is resolvable (no X/Z) at each sample point of the four external pull-low steps in `smc_i3c_vip_utils.py`; the levels are recorded, not compared, and on Verilator (2-state) this compare cannot fail -- see Known Limitations
 |===
 
 
-*Pass Criteria*: `CHK-I3C-CLOCK-GATE-RW`, `CHK-I3C0-HC-CONTROL-BUS-ENABLE`, `CHK-I3C0-HCI-VERSION` hold after their compares. Enrolled in: `all`, `per_ip`, `i3c_depth`, `functional_depth`, `depth`.
+*Pass Criteria*: `CHK-I3C-CLOCK-GATE-RW`, `CHK-I3C0-HC-CONTROL-BUS-ENABLE`, `CHK-I3C0-HCI-VERSION`, `CHK-I3C0-PADS-RESOLVABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `i3c_depth`, `functional_depth`, `depth`.
 '''''
 
 ==== MAILBOX
@@ -5700,12 +5755,12 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-UART-LOG-UART_IIR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-LOG-UART_LOG_ENGINE_CTRL` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
 |`CHK-UART-LOG-UART_LSR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-CTS-PAD0` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-CTS-PAD1` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-DELTA-CLEAR` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-DELTA-CLEAR-PAD0` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-DELTA-CLEAR-PAD1` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
-|`CHK-UART-MSR-FIRST` |Named compare in `smc_uart_spi_log_engine_test_seq.py`; the run fails if it mismatches
+|`CHK-UART-MSR-CTS-PAD0` |After this test drives UART0 CTS pad 14 to 0, `UART_MSR` masked to CTS/DCTS reads CTS=1 (the inverse of `cts_ni`) with DCTS=1 for the change since the last read, within the bounded poll (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-CTS-PAD1` |After this test drives UART0 CTS pad 14 to 1, `UART_MSR` masked to CTS/DCTS reads CTS=0 with DCTS=1, within the bounded poll (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-DELTA-CLEAR` |The second back-to-back `UART_MSR` read, masked to CTS/DCTS, reads CTS still asserted with DCTS cleared by the preceding read, as the delta-since-last-read contract in `uart_16550_main.rdl` requires (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-DELTA-CLEAR-PAD0` |The read after the pad-0 transition read, masked to CTS/DCTS, shows DCTS cleared while CTS stays 1 (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-DELTA-CLEAR-PAD1` |The read after the pad-1 transition read, masked to CTS/DCTS, shows DCTS cleared while CTS stays 0 (`smc_uart_spi_log_engine_test_seq.py`)
+|`CHK-UART-MSR-FIRST` |The first `UART_MSR` read of the run, masked to CTS/DCTS, equals DCTS OR CTS (0x11): CTS=1 because this test drives pad 14 low, DCTS=1 because it is the first read; DSR/RI/DCD and their delta bits have no bench-side driver and are logged, not compared (`smc_uart_spi_log_engine_test_seq.py`)
 |===
 
 
@@ -5770,7 +5825,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 * Front-door AXI write and readback into the CPU scratch banks, which is how the OCCP boot flow stages its payload.
 * Six distinct patterns, placed one per field of the scratch decode: the two stripe bits (`address[7:6]`), the wrap of the four-bank cycle at +0x100, the entry low bits (`address[5:3]`), and the next 128 KB group (`address[19:17]`).
-* `smc_scratch_map_pkg`, the decode the `+smc_scratch_ram_hex` image loader in `smc_cpu_mem_dv.sv` uses to scatter firmware across the 32 banks. It is read out of the cluster's own decode -- `OCAH4CORECluster_TLXbar_mbus_i1_o33_a32d64s11k1z3u.sv:700-755` for the bank and `OCAH4CORECluster_TLRAM.sv:308` for the entry -- and this testcase is where that reading is measured rather than assumed.
+* `smc_scratch_map_pkg`, the decode the `+smc_scratch_ram_hex` image loader in `smc_cpu_mem_dv.sv` uses to scatter firmware across the 32 banks. Its geometry comes from `spm_memory.rdl` and `cpu.adoc`; the bank interleave is a DV-owned table declared in the package header, and this testcase is where that table is measured against the design rather than assumed.
 
 *Test Procedure*:
 
@@ -5954,11 +6009,12 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 
 *BFM / Model*: ocah_axi_vip (AXI) against the eFuse bank model
 
-*Objective*: A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
+*Objective*: A read that hits `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, after a successful read shows it clear.
 
 *Test Coverage*:
 
-* The timeout arm of `efuse_read_interface.sv`'s ST_WAIT_RESP, which never assigns `read_err_d` while `efuse_program_interface.sv` sets `program_err_d` on the identical arm.
+* `hw/ip/efuse/regs/efuse_interface_ctrl.rdl` defines `EFUSE_READ_CTRL.READ_STATUS` as the read interface's error report (`read_done` says the read completed, `read_status` says how) and `EFUSE_READ_REQ_TIMEOUT` as a bound on the cycles the interface waits for a SHIM response; `hw/ip/efuse/doc/programming.adoc` has software check `read_status` after every completion. A read that hits the bound is a completed read with an error: `read_done=1` and `read_status=1`.
+* The arming leg makes the check real: `READ_STATUS` holds until the next completion, so a stale 1 would satisfy the timeout leg on its own. A successful read at the RDL-default cycle count comes first and must show `READ_STATUS` 0; `STATUS.EFUSE_REQ_ERROR` is required clear beforehand because a sticky request error also reports through `READ_STATUS`.
 
 *Test Procedure*:
 
@@ -5973,11 +6029,11 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-TMO-RD-STATUS-ARM` |A successful read gives READ_CTRL=0x12000000 with READ_STATUS clear, arming the leg below. Depends on `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE` in smc_efuse_read_program_timeout_test having proven the bit can read 1 at all
-|`CHK-EFUSE-TMO-RD-STATUS-SET` |A timed-out read sets READ_STATUS. **Expected to fail**: READ_CTRL reads 0x12000000 on both the successful and the timed-out read, so the register carries nothing that separates them
+|`CHK-EFUSE-TMO-RD-STATUS-ARM` |A successful read at the RDL-default timeout completes with `READ_DONE` set and `READ_STATUS` clear, with `STATUS.EFUSE_REQ_ERROR` clear, arming the leg below (`smc_efuse_read_timeout_status_test_seq.py`)
+|`CHK-EFUSE-TMO-RD-STATUS-SET` |The read that hits the programmed timeout completes with `READ_DONE` set and `READ_STATUS` set (`smc_efuse_read_timeout_status_test_seq.py`)
 |===
 
-*Pass Criteria*: both legs hold. The second leg fails on RTL that carries the defect. Enrolled in: `rtl_issue`.
+*Pass Criteria*: `CHK-EFUSE-TMO-RD-STATUS-ARM`, `CHK-EFUSE-TMO-RD-STATUS-SET` hold after their compares. Enrolled in: `all`, `hosted`, `depth_efuse`.
 
 '''''
 
@@ -6074,19 +6130,21 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 
 [arabic]
 . Build `hello_world` through `[c_build.default]` and stage `hello_world.ecc.hex` beside the simulator.
+. Snapshot the per-bank scratch read counters (`tb_cpu_scratch_bank_read_count`, counted by `smc_cpu_mem_dv` on the ports the CPU cluster drives) before the cores are released.
 . Hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, so a residual verdict from an earlier test cannot be counted.
 . Program the reset vector, release all four cores, then release `boot_stall`.
 . Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+. Snapshot the counters again after the verdict and require every bank whose counter moved to be one of banks 0-3, with at least one of those banks read.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start, and every scratch bank read between the two counter snapshots is one of banks 0-3; the per-bank read distribution is carried on the line
 |===
 
-*Pass Criteria*: the PASS magic is read back. The image is resident in scratch banks 0-3 only, and that bank distribution is part of the evidence: it is what the `smc_scratch_map_pkg` decode predicts for a 9 KB image, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
+*Pass Criteria*: the PASS magic is read back and the bank-0-3 residency holds, asserted from the per-bank scratch read counters through `smc_scratch_residency_utils` rather than inferred from the total. The `hello_world` link map places code, data, the four 4 KB stacks and the heap in the first 0x8730 bytes of the region, inside the first 128 KB bank group, which the `smc_scratch_map_pkg` interleave places in banks 0-3; an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
 
 '''''
 
@@ -6215,7 +6273,7 @@ For each of the two (target, lock) pairs:
 [cols=",",options="header",]
 |===
 |Group |Purpose
-|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Nine enrolled leaves are outside it: `smc_deadspace_decode_test` and `smc_remap_cla_test` (held on the decode defects recorded under Known Limitations), `smc_state_fault_inject_test` (its condition is a testbench force on the eFuse and Zeroer state flops, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers; it runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse`), `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime), and the four `rtl_issue` reproducers whose job is to fail (`smc_gpio_irq_mask_deassert_test`, `smc_efuse_read_timeout_status_test`, `smc_log_engine_intr_mask_test`, `smc_i2c_intr_mask_test`)
+|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Seven enrolled leaves are outside it: `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime; each runs in its own group), and the five `rtl_issue` reproducers, whose job is to fail and which the weekly tier runs on their own row. `all` needs the RISC-V toolchain: the two `fw` leaves build a C image and the three dual-target leaves run the production ROM or a DV ROM image on the `SMC_DUAL` elaboration, so none of the five is toolchain-free
 |`avsbus_depth` |avsbus depth coverage
 |`axil` |axil coverage
 |`per_ip` |One-per-IP breadth run used for routine regression
@@ -6241,9 +6299,9 @@ For each of the two (target, lock) pairs:
 |`functional_depth` |core functional gate plus its depth companions
 |`pyuvm` |Scenarios with a PyUVM implementation
 |`reset` |reset coverage
-|`rtl_issue` |Reproducers for RTL defects; they fail on RTL that carries the defect and are held out of `all`
+|`rtl_issue` |Reproducers for RTL defects, each carrying `expect_fail` and `expect_fail_match`; the weekly tier runs the group on its own `regress.yml` row and grades the recorded failure as PASS, so the row goes red (`expected_fail_passed`) when a defect is fixed and the leaf moves to its feature testlist. Not in `all` or `hosted`
 |`smoke` |PR gate (`sim.yml`)
-|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the firmware and `SMC_DUAL` leaves
+|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the five leaves that need the RISC-V toolchain (the two `fw` leaves and the three dual-target leaves, which all declare a firmware or ROM image)
 |`uart` |uart coverage
 |`coverage_closure` |Leaves that close a feature no other testcase reaches
 |`depth` |cross-feature depth testcases
@@ -6254,16 +6312,16 @@ For each of the two (target, lock) pairs:
 [cols=",,",options="header",]
 |===
 |Limitation |Impact |Resolution Path
-|The SEP_IN local-fabric mask keeps only `addr[24:0]`, so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
+|The SEP_IN local fabric folds every request into the `LOCAL_BASE`-aligned, `REGION_SIZE`-byte alias aperture (`SMC_BASE_CONFIG.REGION_SIZE`, reset `0x0100_0000`, so `addr[23:0]` survive and `LOCAL_BASE` is prefixed above them), so the cluster-local window `0xC800_xxxx` answers from `0xC000_xxxx` |No access from this testbench reaches a Bus Error Unit; `smc_cluster_beu_test` locks the address fold instead |By design: the SEP and SMU fabric decodes prevent such an address reaching the port. BEU behaviour needs a path that bypasses the mask
 |Verilator is a 2-state simulator |Resolvability predicates (`is_resolvable`) cannot fail on a Verilator run, so X-propagation claims are not closed there |Retain a VCS or Xcelium run for the scenarios whose evidence depends on 4-state behaviour
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Needs the adopter's PLL/PVT blocks integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
-|`smc_deadspace_decode_test` measures wrap-to-live aliasing |Held out of `all`; the card does not claim sign-off PASS |Resolve the wrap-to-live aliasing decode contract
-|`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 |Held out of `all`; the card does not claim sign-off PASS |Fix the CLA deny-leg hang
-|`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top`, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers |Held out of `all`; the fail-closed recovery it scores runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse` |Enroll it once the checks score the reaction on `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL` and the Zeroer `CTRL_STATUS`
+|`smc_deadspace_decode_test` measures wrap-to-live aliasing (#585: dead offsets in seven register windows wrap onto live registers with an OKAY response) |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail`, so the defect has a graded measurement and the row goes red when the decode changes |Resolve the wrap-to-live aliasing decode contract; the leaf then moves to its feature testlist with the `ci` tag
+|`smc_remap_cla_test` CLA deny leg: the unmapped in-window offset `+0x38` (0xC016_0038) completes with OKAY instead of SLVERR/DECERR |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail`; the reason is prose until an owner files the OKAY-completion issue and puts its number there |File the CLA OKAY-completion issue and decide the aperture's decode contract; the leaf then moves to its feature testlist with the `ci` tag
+|`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |Thirteen test modules written against this bench are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
