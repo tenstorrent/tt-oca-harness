@@ -680,10 +680,10 @@ class _EvidenceRecorder:
 
     _CHK = re.compile(r"^\s*(CHK-[A-Za-z0-9][A-Za-z0-9_-]*)\b")
 
-    # Emitted by smc_base_test on every run, before the scenario: the model
-    # identity line and the probe positive controls ``run_phase`` executes.
-    # Counted in ``observed`` but excluded from ``own``, so a leaf cannot satisfy
-    # the gate on bring-up alone.
+    # Emitted by every run's bring-up (smc_base_test and SmcDualHarness), before
+    # the scenario: the model identity line and the probe positive controls
+    # ``run_phase`` executes. Counted in ``observed`` but excluded from ``own``,
+    # so a leaf cannot satisfy the gate on bring-up alone.
     BASE_IDS = frozenset({"CHK-BUILD-MODEL-IDENTITY"})
     BASE_PREFIXES = ("CHK-PROBE-",)
 
