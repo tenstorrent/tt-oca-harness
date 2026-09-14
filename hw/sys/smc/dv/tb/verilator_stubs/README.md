@@ -11,7 +11,7 @@ Also reused by `smu_wrapper` / bare `smu`.
 |------|----------|----------|
 | Tooling shim (allowed here) | `prim_sync2/3` port remap + X-init | Compile-only; not a feature PASS |
 | Product stub in DUT RTL | `pll_wrap`/`pvt_wrap` OKAY+0 | Green only as *signature/reachability* when labeled; protocol not covered |
-| TB glue | `tb_dfd_fault_inject` token `0xDB5C_AFE1` | `tb_glue` — never green feature PASS |
+| TB glue | `tb_dfd_fault_inject` token `0xDB5C_AFE1` | Never green feature PASS |
 
 **Only tooling shims are allowed in this directory** — never override a
 product module (`smc_reset_*`, `smc_dfx_*`, etc.).

@@ -4,13 +4,21 @@
 [[smc-deferred-disposition]]
 == SMC deferred and OUT disposition
 
-This table is the disposition of record for every test name that is
-catalogued but not enrolled. Nothing here is enrolled PASS. Thirteen names
-still have a body under `hw/sys/smc/dv/cocotb/tests/`; twelve of them restate
-their blocker on a leading `# deferred: <tag>` docstring line, with the tags
-`no_dut_port`, `no_sep_in_write_path`, `needs_i3c_dat_dct`,
-`needs_dtp_csr_sub`, `rtl_placeholder`, `fake_bfm` and `tb_glue`;
-`smc_clint_csr_test` carries none. This table, not the tag, owns the reason.
+This is the disposition of record for every test name the package catalogues
+without a module under `hw/sys/smc/dv/cocotb/tests/`. Nothing here is
+enrolled PASS. Every `@pyuvm.test()` module under `cocotb/tests/` is in at
+least one testlist (`smc_base_test` and `smc_dual_base_test` are base classes,
+not tests); a catalogued name without a module is one of two kinds:
+
+* A *retired test module* was written against this bench and its blocker is
+  outside the test: adopter placeholder RTL, a wrapper pin that does not
+  exist, an idle boundary, an aperture or window SEP_IN cannot write or
+  reach, TB glue, or a VIP the bench lacks. Its code, and
+  the `seq_lib/<name>_seq.py` sequence where it had one, is in git history
+  and is restored when the blocker named in its row clears.
+* A *catalog-only name* never had a module here: a commercial alias whose
+  intent a live enrolled name already proves, or a body that needs stimulus,
+  RTL or a firmware image this bench does not have.
 
 Buckets:
 
@@ -33,50 +41,59 @@ do not count a wrapper terminator as that proof.
 |DTP CSR AXI-Lite |adopter-pending OUT |A real DTP CSR slave on `smc_wrapper`, or accept SMU-level DTP tests as the only wrapper-adjacent surface. SMU already wires DTP internally.
 |===
 
-=== Named deferred tests
+=== Retired test modules
+
+Each row names the blocker whose clearing restores the module, and its sequence, from git history.
+
+[cols="3,2,5",options="header"]
+|===
+|Name |Bucket |Blocker and what restores the module
+|smc_dfd_dbs_fault_inject_test
+|waived
+|TB-glue / not DUT RTL: the TB latches a hardcoded capture token, and the real DFD is `smc_dfd_wrap`. Must not be reported as feature PASS. Restore only with a DUT-side DFD fault-injection observable.
+|smc_i3c_ccc_ibi_full_test
+|child-TB-owned
+|I3C CCC/IBI protocol is block-level I3C DV. Wrapper DAT/DCT macros are absent; see the idle-boundary table. Restore when real DAT/DCT macros reach `smc_wrapper`.
+|smc_macro_axil_routing_test
+|adopter-pending OUT
+|DTP CSR port is idle on smc_wrapper (no TB terminator) and the PLL/PVT windows answer from OKAY+0 placeholder wraps. SMU already wires DTP; do not double-count DTP TB signoff. Restore when a DTP CSR subordinate and real PLL/PVT IP are on the wrapper.
+|smc_captured_straps_test
+|adopter-pending OUT
+|`smc_wrapper` declares no `captured_straps_i`, so there is no tap to drive. Restore when the product pin reaches the wrapper.
+|smc_clint_csr_test
+|adopter-pending OUT
+|The `0xC8xx_xxxx` cluster-local window folds onto `0xC0xx_xxxx` on SEP_IN, so its reads never reach the CLINT and the MTIME-monotonic leg cannot pass. Restore from the CPU side, with a firmware image that reads the CLINT.
+|smc_cluster_plic_csr_test
+|adopter-pending OUT
+|The `0xC400_0000` PLIC aperture accepts SEP_IN writes with OKAY and stores nothing, and its `+2 MB` context pages return non-OKAY. Restore with a write path from SEP_IN or a firmware image that reads back what it programmed; `smc_fw_plic_claim_test` covers the PLIC's function.
+|smc_pll_pvt_clock_config_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Restore when real PLL/PVT IP lands.
+|smc_pll_dvfs_depth_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Restore when real PLL/PVT IP lands.
+|smc_sideband_avsbus_octs_bfm_test
+|waived
+|Needs a real pad-level AVSBus/OCTS VIP; no Python stand-in is accepted. Restore only with that VIP.
+|smc_pll_cgm_awm_config_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Restore when real PLL/PVT IP lands.
+|smc_pvt_analog_sensor_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Restore when real PLL/PVT IP lands.
+|smc_pll_awm_freq_sweep_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Restore when real PLL/PVT IP lands.
+|smc_pvt_droop_test
+|adopter-pending OUT
+|pll_wrap / pvt_wrap OKAY+0 handshake only. Restore when real PLL/PVT IP lands.
+|===
+
+=== Catalog-only names
 
 [cols="3,2,5",options="header"]
 |===
 |Name |Bucket |Reintroduction
-|smc_dfd_dbs_fault_inject_test
-|waived
-|TB-glue / not DUT RTL: the TB latches a hardcoded capture token, and the real DFD is `smc_dfd_wrap`. Must not be reported as feature PASS.
-|smc_i3c_ccc_ibi_full_test
-|child-TB-owned
-|I3C CCC/IBI protocol is block-level I3C DV. Wrapper DAT/DCT macros are absent; see the idle-boundary table.
-|smc_macro_axil_routing_test
-|adopter-pending OUT
-|DTP CSR port is idle on smc_wrapper (no TB terminator) and the PLL/PVT windows answer from OKAY+0 placeholder wraps. SMU already wires DTP; do not double-count DTP TB signoff.
-|smc_captured_straps_test
-|adopter-pending OUT
-|`smc_wrapper` declares no `captured_straps_i`, so there is no tap to drive. Reintroduce when the product pin reaches the wrapper.
-|smc_clint_csr_test
-|adopter-pending OUT
-|The `0xC8xx_xxxx` cluster-local window folds onto `0xC0xx_xxxx` on SEP_IN, so its reads never reach the CLINT and the MTIME-monotonic leg cannot pass. Reintroduce from the CPU side, with a firmware image that reads the CLINT.
-|smc_cluster_plic_csr_test
-|adopter-pending OUT
-|The `0xC400_0000` PLIC aperture accepts SEP_IN writes with OKAY and stores nothing, and its `+2 MB` context pages return non-OKAY. Its register-level properties need a write path from SEP_IN or a firmware image that reads back what it programmed; `smc_fw_plic_claim_test` covers the PLIC's function.
-|smc_pll_pvt_clock_config_test
-|adopter-pending OUT
-|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
-|smc_pll_dvfs_depth_test
-|adopter-pending OUT
-|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
-|smc_sideband_avsbus_octs_bfm_test
-|waived
-|Needs a real pad-level AVSBus/OCTS VIP; no Python stand-in is accepted.
-|smc_pll_cgm_awm_config_test
-|adopter-pending OUT
-|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
-|smc_pvt_analog_sensor_test
-|adopter-pending OUT
-|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
-|smc_pll_awm_freq_sweep_test
-|adopter-pending OUT
-|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
-|smc_pvt_droop_test
-|adopter-pending OUT
-|pll_wrap / pvt_wrap OKAY+0 handshake only. Reintroduce when real PLL/PVT IP lands.
 |smc_i2c_p0_nack_test_tc1
 |waived
 |Intent already proven under a live enrolled name. Keep this commercial alias catalog-only.

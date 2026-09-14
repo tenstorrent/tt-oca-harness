@@ -214,7 +214,7 @@ verifying the block behind the port.
 |`smc_efuse_otp_burn_shadow_test` |Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
 |`smc_efuse_otp_clock_config_depth_test` |Run eFuse OTP clock/timing register programming depth checks.
 |`smc_efuse_otp_clock_test` |Run the eFuse/OTP and clock-control CSR precheck.
-|`smc_efuse_permission_boundary_test` |PROXY -- run eFuse-derived chip-config reads; raw OTP permission paths have no responder in this bench.
+|`smc_efuse_permission_boundary_test` |Read the four eFuse-derived chip-config registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
 |`smc_efuse_read_program_timeout_test` |timeout_enable\|0 aborts; default timeout recovers OTP bit0.
 |`smc_efuse_shim_ctrl_test` |EFUSE_INTERFACE + SHIM_CTRL probe.
 |`smc_state_fault_inject_test` |Every unused state encoding in the eFuse interface controller and in the Zeroer fails closed, and the block recovers.
@@ -3657,17 +3657,16 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: PROXY -- run eFuse-derived chip-config reads; raw OTP permission paths have no responder in this bench.
+*Objective*: Read the four eFuse-derived chip-config registers over SEP_IN AXI on the CSR side of the eFuse boundary, with the eFuse-bank AXI-Lite positive control and idle leg.
 
 *Test Coverage*:
 
 * DEFENDS: the four eFuse-derived chip-config registers decode; `VERSION_LO`, `VERSION_HI` and `CHIP_ID` read their generated reset values, `LC_STATE` is decode-only because its value is simulator-divergent in the OSS bench; and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
-* DOES NOT DEFEND: eFuse permission or boundary semantics of any kind. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition, attempts no denied access, and touches no raw OTP window, because the SMC CSR boundary exposes none of that in the OSS bench.
-* GAP: raw OTP permission-path coverage needs either a responder at the raw OTP window on `smc_wrapper` or an explicit OUT disposition; without one this testcase is a named placeholder, not evidence.
+* DOES NOT DEFEND: eFuse permission semantics. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition and attempts no denied access, because the SMC CSR boundary exposes none of that. Lifecycle-gated access control is proven by `smc_efuse_jtag_lc_access_matrix_test` and locked-shadow access by `smc_efuse_locked_access_interrupt_test`; the raw OTP window has no responder on `smc_wrapper` and is recorded under Known Limitations.
 
 *Test Procedure*:
 
-Drive `smc_efuse_permission_boundary_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 *Checkers*:
 
@@ -6145,7 +6144,7 @@ For each of the two (target, lock) pairs:
 
 *Test Coverage*:
 
-* The cluster PLIC's enable, priority, threshold and claim-complete path, which **no cocotb sequence in this package can reach**. The 0xC400_0000 aperture answers SEP_IN AXI reads but takes no writes from it -- `smc_cluster_plic_csr_test` (unenrolled) holds that evidence. The CPU is the only master that can program it.
+* The cluster PLIC's enable, priority, threshold and claim-complete path, which **no cocotb sequence in this package can reach**. The 0xC400_0000 aperture answers SEP_IN AXI reads but takes no writes from it -- Known Limitations records that measurement. The CPU is the only master that can program it.
 * The loop `smc_ext_interrupts_pin_test` states in its own docstring that it leaves open: that testcase follows `ext_interrupts_i[0]` through `prim_sync3` and "does not claim PLIC". `smc_hang_detector_plic_route_test` checks a route with testbench probes and reads no PLIC register either. This closes it end to end: pin -> synchroniser -> gateway -> enable and priority against threshold -> MEIP -> trap -> claim -> the ID the CPU reads back -> complete.
 * PLIC source 1, which is `cpu_interrupts[0]` and therefore `ext_interrupts_i[0]`: source IDs are the line index plus one because ID 0 is reserved, and `smc_base.sv:251` puts `ext_interrupts` at the bottom of the vector. It is source 1 and not another because `tb_top.sv:1181` ties `ext_interrupts_i[255:1]` to zero and exposes only bit 0 -- any other external source is a line nothing can raise, so the handler would never run and the testcase would time out instead of measuring anything.
 * No forced internal state: the stimulus is a DUT input pin and everything between it and the verdict is the DUT ([NO-FORCED-INTERNAL-STATE]).
@@ -6260,10 +6259,12 @@ For each of the two (target, lock) pairs:
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Needs the adopter's PLL/PVT blocks integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
-|The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. `smc_cluster_plic_csr_test` holds that evidence and is not enrolled; its four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
+|The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |`smc_deadspace_decode_test` measures wrap-to-live aliasing |Held out of `all`; the card does not claim sign-off PASS |Resolve the wrap-to-live aliasing decode contract
 |`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 |Held out of `all`; the card does not claim sign-off PASS |Fix the CLA deny-leg hang
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top`, and its checks read the forced flop and the blocks' internal outputs through `tb_top` taps rather than the control registers |Held out of `all`; the fail-closed recovery it scores runs in `per_ip`, `coverage_closure`, `depth` and `depth_efuse` |Enroll it once the checks score the reaction on `EFUSE_PROGRAM_CTRL` / `EFUSE_READ_CTRL` and the Zeroer `CTRL_STATUS`
+|Thirteen test modules written against this bench are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` names the blocker per row |Clear the blocker named in the row; the module is restored from git history
+|The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |===

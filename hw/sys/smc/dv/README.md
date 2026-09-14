@@ -30,14 +30,14 @@ signoff), `SMC_FABRIC_PERIPH_SIGNOFF.adoc` (fabric / peripheral honesty
 signoff), `SMC_RELEASE_MATRIX.adoc` (release regression matrix),
 `SMC_COVERAGE_POLICY.adoc` (coverage-target and waiver-field policy),
 `SMC_RESET_CLOCK_IRQ_SIGNOFF.adoc` (reset / clock / IRQ signoff) and
-`SMC_DEFERRED_DISPOSITION.adoc` (disposition of the tests that are present but
-not enrolled).
+`SMC_DEFERRED_DISPOSITION.adoc` (disposition of the retired test modules and
+the catalog-only test names).
 
 **Green / signoff policy:** only claim **real DUT RTL paths**. A test that
 reaches a placeholder, a TB-glue stand-in, or a decode-only window is not
 reportable as feature PASS; `docs/SMC_VPLAN.adoc` states what each enrolled
 test proves, and `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` states why
-the rest is not enrolled.
+every catalogued name without a module is out.
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
 call sites need a one-line rationale comment at the call (what hangs without
@@ -73,12 +73,14 @@ default, and the runner sets the first three):
 The SV-UVM loop knobs (`SMC_TEST_LOOPS`, `SMC_<TEST>_LOOPS`) are **plusargs**,
 not environment variables — see the `--framework uvm` section.
 
-## Present but not enrolled
+## Retired and catalog-only names
 
-Test modules under `cocotb/tests/` that are in no testlist are not in `all`.
-`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` is the disposition of record
-for every one of them, and states which restate their blocker on a
-`# deferred: <tag>` docstring line. SMU's matching catalog is
+Every `@pyuvm.test()` module under `cocotb/tests/` is in at least one testlist. The names
+the package catalogues without a module -- retired modules whose blocker is
+outside the test, and commercial aliases a live enrolled name already proves --
+are dispositioned in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`. A
+retired module's code is in git history and is restored when the blocker in
+its row clears. SMU's matching catalog is
 `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 ## Single DUT
