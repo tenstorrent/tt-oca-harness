@@ -570,7 +570,7 @@ tests = [
     "smc_clk_multi_window_test",
     "smc_dma_cg_activity_test",
     "smc_static_cg_sanity_test",
-    # --- efuse (9) ---
+    # --- efuse (10) ---
     "smc_efuse_boundary_signals_test",
     "smc_efuse_jtag_lc_access_matrix_test",
     # PROD/RMA JTAG-OTP access control: non-identity read and write return
@@ -669,7 +669,8 @@ tests = [
     "smc_wdt_key_csr_test",
     # Arms core 0 and reads smc_wdt_first_timeout_o / smc_wdt_second_timeout_o
     # at the wrapper boundary, then the warm reset they cause; the only leaf
-    # that observes either timeout pin.
+    # that expects either timeout pin to rise (smc_dual_axi_sram_probe_test
+    # requires the dual instances' timeout latches to stay clear).
     "smc_wdt_timeout_pin_test",
     # --- uart_log (8) ---
     "smc_uart_baud_word_parity_format_test",
