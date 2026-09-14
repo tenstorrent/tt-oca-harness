@@ -344,6 +344,12 @@ The gate proves a check ran. It does not prove the check was right. The
 scoreboard's `check_phase` is the second gate: it fails a run whose sequence
 produced no compared item at all.
 
+The gate lives in `smc_base_test`, so it grades every leaf built on that
+class. The three `target = "dual"` leaves in `all`
+(`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`,
+`smc_occp_sanity_test`) are plain cocotb tests on the `SMC_DUAL` harness: they
+print no `EVIDENCE_SUMMARY`, and their checks are the asserts in the test body.
+
 ### SystemVerilog UVM framework (`--framework uvm`)
 
 The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
