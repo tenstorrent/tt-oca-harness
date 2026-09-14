@@ -8,7 +8,7 @@ schema_version = 1
 #
 # A `firmware = "<name>"` key is the whole opt-in. The runner inserts the
 # c_compile stage for any run whose selection contains such a test
-# (tools/dv/runlib/cli.py:1982), builds `<name>` through [c_build.default] in
+# (tools/dv/runlib/cli.py:2663-2673), builds `<name>` through [c_build.default] in
 # smc_sim_cfg.toml, and copies the declared outputs into the per-test simulator
 # directory by basename (tools/dv/runlib/stages.py:_stage_firmware_outputs),
 # hard-failing when one is missing.
