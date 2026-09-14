@@ -196,7 +196,7 @@ module telemetry_receiver_wrap #(
     ) afready_sync2r (
       .clk_i                  (clk_telemetry_i),
       .d_i                    (afready_i[i]),
-      .rst_ni              (rst_telemetry_ni),
+      .rst_ni                 (rst_telemetry_ni),
       .q_o                    (afready)
     );
 
@@ -206,7 +206,7 @@ module telemetry_receiver_wrap #(
     ) afvalid_sync2r (
       .clk_i                  (clk_i),
       .d_i                    (afvalid),
-      .rst_ni              (rst_ni),
+      .rst_ni                 (rst_ni),
       .q_o                    (afvalid_o[i])
     );
 

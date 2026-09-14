@@ -165,7 +165,7 @@ module prim_apb_arb #(
     .FairArb(1'b1)
   ) apb_arb (
     .clk_i        (clk_i),
-    .rst_ni    (rst_ni),
+    .rst_ni       (rst_ni),
     .flush_i      (1'b0),
     .rr_priority_i({$clog2(MASTER_SUM_NUM){1'b0}}),
     .request_i    (mst_req_r),

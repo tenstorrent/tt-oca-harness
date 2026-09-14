@@ -28,16 +28,16 @@ module prim_ag_clk_mux #(
     if (SelectOnReset == 1'b0) begin : gen_sync_clk0_selected
       prim_flop_4sync_s sync_clk0 (
         .clk_i(clk0_i),
-        .d_i (~sel_i & !sel_clk1),
+        .d_i(~sel_i & !sel_clk1),
         .set_ni(rst_clk0_ni),
-        .q_o (sel_sync_clk0)
+        .q_o(sel_sync_clk0)
       );
     end else begin : gen_sync_clk0_not_selected
       prim_flop_4sync_r sync_clk0 (
         .clk_i(clk0_i),
-        .d_i (~sel_i & !sel_clk1),
+        .d_i(~sel_i & !sel_clk1),
         .rst_ni(rst_clk0_ni),
-        .q_o (sel_sync_clk0)
+        .q_o(sel_sync_clk0)
       );
     end
   endgenerate
@@ -47,16 +47,16 @@ module prim_ag_clk_mux #(
     if (SelectOnReset == 1'b1) begin : gen_sync_clk1_selected
       prim_flop_4sync_s sync_clk1 (
         .clk_i(clk1_i),
-        .d_i (sel_i & !sel_clk0),
+        .d_i(sel_i & !sel_clk0),
         .set_ni(rst_clk1_ni),
-        .q_o (sel_sync_clk1)
+        .q_o(sel_sync_clk1)
       );
     end else begin : gen_sync_clk1_not_selected
       prim_flop_4sync_r sync_clk1 (
         .clk_i(clk1_i),
-        .d_i (sel_i & !sel_clk0),
+        .d_i(sel_i & !sel_clk0),
         .rst_ni(rst_clk1_ni),
-        .q_o (sel_sync_clk1)
+        .q_o(sel_sync_clk1)
       );
     end
   endgenerate
@@ -67,27 +67,27 @@ module prim_ag_clk_mux #(
       prim_dffsxq clk0_sel (
         .clk_i(clk0_i),
         .set_ni(rst_clk0_ni),
-        .d_i (sel_sync_clk0),
-        .q_o (sel_clk0)
+        .d_i(sel_sync_clk0),
+        .q_o(sel_clk0)
       );
       prim_dffrxq clk1_sel (
         .clk_i(clk1_i),
         .rst_ni(rst_clk1_ni),
-        .d_i (sel_sync_clk1),
-        .q_o (sel_clk1)
+        .d_i(sel_sync_clk1),
+        .q_o(sel_clk1)
       );
     end else begin : gen_sel_clk1_selected
       prim_dffrxq clk0_sel (
         .clk_i(clk0_i),
         .rst_ni(rst_clk0_ni),
-        .d_i (sel_sync_clk0),
-        .q_o (sel_clk0)
+        .d_i(sel_sync_clk0),
+        .q_o(sel_clk0)
       );
       prim_dffsxq clk1_sel (
         .clk_i(clk1_i),
         .set_ni(rst_clk1_ni),
-        .d_i (sel_sync_clk1),
-        .q_o (sel_clk1)
+        .d_i(sel_sync_clk1),
+        .q_o(sel_clk1)
       );
     end
   endgenerate
