@@ -55,7 +55,7 @@ assertion class (`assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in
 before reset, while the ack strobes are still X, and that the cocotb verdicts
 do not depend on. That class is waived at time 0 only, in `smc_sim_cfg.toml`
 `[pass_fail]` in the form SEP uses for `abr_reg`, and the waived re-run
-`20260914_010856__vcs__reset` grades 35 of 35 PASS. The second stays open:
+`20260914_035111__vcs__reset` grades 35 of 35 PASS. The second stays open:
 `smc_cg_dft_reset_bringup_test` fires the product assertion
 `CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux`
 (`prim_ag_clk_mux.sv`) at 4688 ns on seed 1611842931. The waiver does not
