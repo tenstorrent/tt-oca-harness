@@ -37,13 +37,20 @@ the behavioural stand-ins in `tb/verilator_stubs/`. Every leaf of
 `reset.toml`, `clock.toml` and `irq.toml` has a row in the *Bench stand-ins*
 section of `SMC_DEFERRED_DISPOSITION.adoc` stating which crossing sits on its
 proof path, what its verdict reads, and the result of the VCS control run on
-the product cells. Two findings of that run belong to this signoff: the VCS
-flow grades every leaf FAIL on a time-0 PeakRDL external-ack assertion class
-that the cocotb verdicts do not depend on, and `smc_cg_dft_reset_bringup_test`
-fires the product assertion `CheckMutualExclusionClk1` in
-`avsbus_controller.u_refclk_apbclk_mux` (`prim_ag_clk_mux.sv`) at 4688 ns,
-which no Verilator run can observe because assertions are compiled out there.
-Both are open items of this signoff until dispositioned in that record.
+the product cells. Two findings of that run belong to this signoff. The first
+is closed: the VCS flow graded every leaf FAIL on a time-0 PeakRDL external-ack
+assertion class (`assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in
+`cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg`) that fires once
+before reset, while the ack strobes are still X, and that the cocotb verdicts
+do not depend on. That class is waived at time 0 only, in `smc_sim_cfg.toml`
+`[pass_fail]` in the form SEP uses for `abr_reg`, and the waived re-run
+`20260914_010856__vcs__reset` grades 35 of 35 PASS. The second stays open:
+`smc_cg_dft_reset_bringup_test` fires the product assertion
+`CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux`
+(`prim_ag_clk_mux.sv`) at 4688 ns on seed 1611842931. The waiver does not
+cover it -- a replay of the leaf on that seed grades FAIL on that line -- and
+no Verilator run can observe it because assertions are compiled out there. It
+is tracked as an RTL issue and remains an open item of this signoff.
 
 The cool-reset OUT names (`smc_cool_reset_from_primary_chiplet_test`,
 `smc_cool_reset_from_bmc_test`, `smc_cool_reset_x_cool_reset_test`) have rows
