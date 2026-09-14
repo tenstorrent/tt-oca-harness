@@ -106,9 +106,6 @@ AT A GLANCE
 
 <<<
 
-[cols="52,48",frame=none,grid=none,stripes=none]
-|===
-a|
 // datasheet-section: capabilities
 [.datasheet-section]
 CAPABILITIES
@@ -150,24 +147,23 @@ CAPABILITIES
 INTERFACES AND CONFIGURATION
 
 [cols="37,63",options="header"]
-!===
-!Feature !Integration options
-!Clocks and resets !SMU, reference, peripheral, telemetry, SEP watchdog, and
+|===
+|Feature |Integration options
+|Clocks and resets |SMU, reference, peripheral, telemetry, SEP watchdog, and
 entropy-sample clocks; cold reset, power-good, boot/repair, DFT, and reset outputs
-!System fabric !Inbound and outbound 56-address/64-data AXI4; programmable SMC
+|System fabric |Inbound and outbound 56-address/64-data AXI4; programmable SMC
 and SEP aperture status; adopter AXI/AXI4-Lite extensions
-!Debug and triggers !Primary JTAG, boundary/iJTAG/secondary scan chains, external
+|Debug and triggers |Primary JTAG, boundary/iJTAG/secondary scan chains, external
 reset-control slice, 16 CTPs, 8 local trigger paths, and 8 clock-stop requests
-!Management !256 external interrupts, 32 reset/isolation controls of chiplet
+|Management |256 external interrupts, 32 reset/isolation controls of chiplet
 resources, 32 SMC mailbox interrupts, GPIO/UART events, telemetry, timer,
 straps, and RAS status
-!Technology interfaces !SMC/SEP ROM and SRAM, eFuse/OTP, I3C table memory,
+|Technology interfaces |SMC/SEP ROM and SRAM, eFuse/OTP, I3C table memory,
 trace memory, GPIO pads, PLL/PVT, entropy, and SEP crypto-memory boundaries
-!Build-time !SEP configuration, external entropy sources,
+|Build-time |SEP configuration, external entropy sources,
 JTAG functions/identity, SMC CPU selection, and SEP memory/Adams Bridge options
-!===
+|===
 
-a|
 // datasheet-section: integration-dependencies
 [.datasheet-section]
 INTEGRATION DEPENDENCIES
@@ -244,8 +240,7 @@ OTP: one-time programmable. RAS: reliability, availability, and serviceability.
 DOCUMENT CONTROL
 
 [cols="18,20,30,32",options="header"]
-!===
-!Version !Date !Author !Change
-! ! ! !
-!===
+|===
+|Version |Date |Author |Change
+| | | |
 |===

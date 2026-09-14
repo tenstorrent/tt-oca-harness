@@ -87,8 +87,7 @@
   <text class="small" x="751" y="464" text-anchor="middle">AXI fabric · mailboxes · DMA</text>
   <text class="small" x="751" y="479" text-anchor="middle">GPIO · I2C · UART · AVSBus</text>
 
-  <!-- Technology macros (bottom of chiplet, outside SMU) -->
-  <rect class="core" x="190" y="530" width="710" height="0" rx="6"/>
+  <!-- Technology macros note: adopter-supplied, below chiplet boundary -->
 
   <!-- External / left side -->
   <rect class="external" x="8" y="105" width="148" height="220" rx="8"/>
