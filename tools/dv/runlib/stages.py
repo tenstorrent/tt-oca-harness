@@ -274,7 +274,7 @@ def grade_expected_fail(
     no longer there, and grades FAIL so the entry cannot outlive its reason. ERROR, TIMEOUT
     and UNKNOWN are not the recorded failure -- the leaf proved nothing either way -- and
     keep their status. The returned record goes into the leaf metadata under `expected_fail`
-    with the observed status, reason and failure messages.
+    with the observed status, reason, failure messages and the parser's failure buckets.
     """
     failures = list(observed_failures or [])
     record: dict[str, Any] = {
@@ -282,6 +282,10 @@ def grade_expected_fail(
         "observed_status": status,
         "observed_reason": reason,
         "observed_failures": failures,
+        "observed_buckets": [
+            {"kind": bucket.get("kind"), "signature": bucket.get("signature")}
+            for bucket in buckets or []
+        ],
     }
     if expect_fail_match is not None:
         record["match"] = expect_fail_match

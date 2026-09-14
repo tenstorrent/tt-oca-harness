@@ -163,6 +163,7 @@ class ExpectFailGrading(unittest.TestCase):
         self.assertEqual(reason, f"expected_fail: {self.REASON}")
         self.assertIsNone(buckets)
         self.assertEqual(record["observed_failures"], failures)
+        self.assertEqual(record["observed_buckets"], [])
         self.assertEqual(record["match"], r"wrap_to_live=[1-9]")
 
     def test_a_different_failure_than_recorded_grades_fail(self):
@@ -179,6 +180,7 @@ class ExpectFailGrading(unittest.TestCase):
         self.assertIn("TIMEOUT waiting for pready", reason)
         self.assertEqual([bucket["kind"] for bucket in buckets], ["expected_fail_mismatch"])
         self.assertEqual(record["observed_status"], "FAIL")
+        self.assertEqual(record["observed_buckets"], [{"kind": "test_fail", "signature": None}])
 
     def test_a_match_with_no_failure_message_grades_fail(self):
         status, reason, buckets, _ = grade_expected_fail(

@@ -410,7 +410,8 @@ that recorded no failure message is a mismatch too. The key requires
 `expect_fail` and must compile as a Python regex.
 
 The leaf record carries `expected_fail` (`reason`, `observed_status`,
-`observed_reason`, `observed_failures`, and `match` when set) in its metadata
+`observed_reason`, `observed_failures`, `observed_buckets` -- the parser's
+failure bucket kinds and signatures -- and `match` when set) in its metadata
 and in the regression leaf summary, and the run-level `tests` summary counts
 graded leaves under `expected_failing`.
 The framework's own `results/results.xml` still records the observed
