@@ -1324,7 +1324,7 @@ check.
 * S1: SMC_ATTRIBUTES.chiplet_is_primary vs tb_top hardwire.
 * S2: PRESET + TIMER_START → STATUS.RUNNING; tb_timer_count advances.
 * S3: Larger PRESET + START; pin reloads to the new PRESET then advances.
-* COUNT CSR via J2A hangs under Verilator after free-run starts; product pin `tb_timer_count` (`timer_count_o`) is the authoritative observe path.
+* TIMER_COUNT_{HI,LO} is read over J2A and required to land between two samples of the product pin `tb_timer_count` (`timer_count_o`) taken either side of that read, so the CSR view and the pin view of the same counter are compared. The bracket is as tight as the J2A read latency allows; a COUNT CSR left at its reset value, or one aliasing another register, falls below the lower sample.
 * 32-bit CSRs at addr[2]=1 use the upper 64b J2A lane (wstrb=0xF0), matching `wdt_unlock`.
 
 *Test Procedure*:
@@ -2744,14 +2744,14 @@ Two things are worth reading before the entries:
 
 *BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_otbn`, classified through the SEP trace probes
 
-*Objective*: The five OTBN CSRs are reachable through the SEP outbound fabric -- a reachability claim, not an OTBN functional one.
+*Objective*: The OTBN register aperture is reachable over the SEP-internal fabric -- a reachability claim, not an OTBN functional one.
 
 *Test Coverage*:
 
-* The image writes INTR_ENABLE, INTR_STATE, ERR_BITS, INSN_CNT and LOAD_CHECKSUM and parks.
-* *What this proves*: reaching the pass loop means those five writes completed without a store access fault. The SEP outbound fabric is `BlockByDefault=1`, so a write that missed every filter window would be isolated and answered with an error, the EL2 would trap, and the image would spin in its trap handler instead of parking.
-* *What it does not prove*: the firmware's own pass/fail branch is vacuous -- it keys off `g_otbn_status`, a file-scope `volatile int` that nothing ever assigns, so the fail branch is unreachable object code. A PASS here carries no OTBN functional content. There is no IMEM/DMEM load and no EXECUTE.
-* The fail-loop symbol is watched anyway: it costs nothing and stops being dead the day the firmware sets that variable.
+* The image writes INTR_ENABLE, INTR_STATE, ERR_BITS, INSN_CNT and LOAD_CHECKSUM, reads INTR_ENABLE back, and parks in its pass loop only when the readback equals the value written.
+* OTBN is at `0x1090_0000`, inside the SEP's own peripheral region, so these accesses travel the SEP-internal fabric. The outbound filter is not on this path: its only open window is the 256-byte STDOUT mailbox, and a write behind it would have been blocked rather than completed.
+* *What this proves*: reaching the pass loop means no access took a store fault -- `crt0` installs a trap handler that parks in `_finish` instead -- and that the INTR_ENABLE write arrived and stuck, because the image compares its own readback and branches to the fail loop on a mismatch. That closes the default-slave case, where a write is answered without reaching the register.
+* *What it does not prove*: nothing about OTBN functionality and nothing about the SEP outbound fabric. There is no IMEM/DMEM load and no EXECUTE; the other four writes are covered only by the absence of a fault; no transaction is counted at the OTBN aperture itself.
 * This image needs no entropy -- it touches neither AES masking nor the Key Manager.
 
 *Test Procedure*:
@@ -2767,7 +2767,7 @@ Two things are worth reading before the entries:
 |===
 |Checker |Description
 |`+CHK-SEP_OTBN-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, boot-ROM and ICCM execution both seen
-|`+CHK-SEP_OTBN-VERDICT+` |the pass loop was reached -- i.e. the five CSR writes did not fault -- and no fail loop was entered
+|`+CHK-SEP_OTBN-VERDICT+` |the pass loop was reached -- i.e. no CSR access faulted and the firmware's own INTR_ENABLE readback matched -- and no fail loop was entered
 |`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
 |===
 
