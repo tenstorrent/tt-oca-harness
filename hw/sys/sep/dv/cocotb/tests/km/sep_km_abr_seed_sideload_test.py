@@ -80,7 +80,7 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
 
         abr = SepAbr(self)
         self.km = SepKmMailbox(self)
-        await self.bring_up_entropy(strict=True, score_km="observe", score_sinks={"aes": "observe"})
+        await self.bring_up_entropy(strict=True, score_km="observe")
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
 
@@ -134,4 +134,5 @@ class sep_km_abr_seed_sideload_test(sep_base_test):
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.logger.info("entropy alerts clear after ABR sideload")
+        assert self.drbg_sb.report()
+        self.logger.info("entropy alerts clear and DRBG scoreboard reports PASS")

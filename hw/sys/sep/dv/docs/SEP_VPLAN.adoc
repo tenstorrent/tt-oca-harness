@@ -585,7 +585,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_wipe_reset_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|KM `SW_RESET_N` park/release returns `RESP_KM_READY` and a later `CMD_KEY_LOAD` succeeds. Then `KM_WIPE_CTRL.wipe_state` posts `RESP_UNRECOVERABLE_FAULT` and the KM halts.
+|KM `SW_RESET_N` park/release returns `RESP_KM_READY` and a later `CMD_KEY_LOAD` succeeds. Then `KM_WIPE_CTRL.wipe_state` posts `RESP_UNRECOVERABLE_FAULT`.
 |`sep_km_handover_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
@@ -5555,7 +5555,7 @@ slot, so over this surface an erase always frees.
 
 *Evidence*: Verilator `20260914_125823` seed 1. Named `CHK-* PASS`
 including CHK-HW-VER, CHK-ROM-VER, CHK-SRAM-VER, CHK-SAMPLER, CHK-ABR-DEST,
-CHK-OTP, CHK-RECOV, CHK-XFER-DEST. VCS `20260914_071841` seed 1 PASS.
+CHK-OTP, CHK-RECOV, CHK-XFER-DEST.
 
 *Anti-vacuity*: every frame is built with a correct header CRC-8, a correct
 declared length and a correct payload CRC-32C, so a refusal is a verdict on the
@@ -5596,7 +5596,7 @@ response modes and flush -- is owned by `sep_km_mailbox_protocol_rand_test`.
 *Objective*: recover the KM after a `SW_RESET_N` warm pulse, then close it
 with the SEP emergency wipe.
 
-*Test Coverage*: KM warm-reset + `RESP_KM_READY`; `KM_WIPE_CTRL` unrecoverable halt.
+*Test Coverage*: KM warm-reset + `RESP_KM_READY`; `KM_WIPE_CTRL` unrecoverable fault.
 
 *Test Procedure*:
 
@@ -5630,10 +5630,11 @@ frontdoor.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Evidence*: Verilator `20260914_125516`. Named `CHK-PRE`, `CHK-RESET`,
-`CHK-WIPE` PASS (`RESP_UNRECOVERABLE_FAULT`). VCS `20260914_080219` PASS.
+`CHK-WIPE` PASS (`RESP_UNRECOVERABLE_FAULT`).
 
 *Anti-vacuity*: the post-reset load is a value-bearing command, not only the
-ready banner. Wipe is last because the KM then halts.
+ready banner. Wipe is last: after the fault frame the test does not issue
+another mailbox command.
 
 '''''
 
@@ -5667,14 +5668,13 @@ and `CMD_EXEC_ROM` each return the failure code. A warm reset clears the
 inhibit.
 . On a fresh epoch, send `CMD_SRAM_LOAD_EXEC` with `FW_WORDS=14`, receive
 success, then stream the 14-word blob plus CRC-32C.
-. Warm-reset the KM. `CMD_SRAM_EXEC` returns success and KM SRAM reads rise
-after the scramble: the persisted image is fetched.
+. Warm-reset the KM. `CMD_SRAM_EXEC` returns success: the image persisted.
 
 *Randomization*: RAND-NONE.
 
-*Scope*: KMCSR `TEST_SIGNATURE` is not SEP-reachable. The mailbox return codes
-and the signed-off KM SRAM req-minus-write counters are the frontdoor proof.
-ROM posts `CMD_SRAM_EXEC` success before it jumps.
+*Scope*: KMCSR `TEST_SIGNATURE` is not SEP-reachable. The jump after
+`CMD_SRAM_EXEC` is not claimed -- the KM SRAM counters cannot name the
+image. CHK-EXEC is the persist return code only.
 
 *Checkers*:
 
@@ -5694,19 +5694,17 @@ ROM posts `CMD_SRAM_EXEC` success before it jumps.
 |CHK-LOAD
 |`CMD_SRAM_LOAD_EXEC` returns success before the stream; the 14-word image plus CRC-32C is posted.
 |CHK-EXEC
-|After a warm reset `CMD_SRAM_EXEC` returns success and KM SRAM reads (`req` minus `write` on the signed-off counters) rise: the persisted image is fetched. ROM posts the success word before it jumps. KMCSR `TEST_SIGNATURE` is not SEP-reachable.
+|After a warm reset `CMD_SRAM_EXEC` returns success: the image persisted. ROM posts the success word before it jumps. The jump is not observed. KMCSR `TEST_SIGNATURE` is not SEP-reachable.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Evidence*: Verilator `20260914_124629`. Named `CHK-EMPTY`, `CHK-ARG`,
-`CHK-INHIBIT`, `CHK-INHIBIT-RST`, `CHK-LOAD`, `CHK-EXEC` PASS. VCS
-`20260914_081429` PASS.
+`CHK-INHIBIT`, `CHK-INHIBIT-RST`, `CHK-LOAD`, `CHK-EXEC` PASS.
 
 *Anti-vacuity*: inhibit cells assert the failure code, not "not success". The
 load response is taken before the stream, matching the ROM handler. CHK-EXEC
-requires extra SRAM reads after success, so a hang in `rom_handover_finish`
-before the jump cannot pass.
+is the persist return code; the jump after that word is not claimed.
 
 '''''
 

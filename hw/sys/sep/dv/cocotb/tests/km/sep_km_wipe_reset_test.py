@@ -6,8 +6,9 @@ no_cpu / real fuse-sense / +km_rom_hex=rom_main.rom.parhex.
 
 Warm-reset first: park and release the KM ``SW_RESET_N`` bit, wait for
 ``RESP_KM_READY``, and prove a key load still succeeds. Wipe last: write
-``KM_WIPE_CTRL.wipe_state``. The KM posts ``RESP_UNRECOVERABLE_FAULT`` and
-halts. KPV-zero is not claimed -- those arrays have no SEP frontdoor.
+``KM_WIPE_CTRL.wipe_state``. The KM posts ``RESP_UNRECOVERABLE_FAULT``.
+The halt after that frame is not observed. KPV-zero is not claimed --
+those arrays have no SEP frontdoor.
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ class sep_km_wipe_reset_test(sep_base_test):
         await self.bring_up_no_cpu(park=("otbn", "kmac", "hmac"))
 
         self.km = SepKmMailbox(self)
-        await self.bring_up_entropy(strict=True, score_km="observe", score_sinks={"aes": "observe"})
+        await self.bring_up_entropy(strict=True, score_km="observe")
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
 
@@ -93,4 +94,5 @@ class sep_km_wipe_reset_test(sep_base_test):
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        self.logger.info("entropy alerts clear after wipe")
+        assert self.drbg_sb.report()
+        self.logger.info("entropy alerts clear and DRBG scoreboard reports PASS")
