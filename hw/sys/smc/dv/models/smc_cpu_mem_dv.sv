@@ -55,8 +55,9 @@ module smc_cpu_mem_dv
   localparam logic [31:0] FW_MAGIC = 32'hACAF_ACA1;
 
   localparam int unsigned SCRATCH_WORDS = 1 << SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH;
-  // Bank/entry decode: smc_scratch_map_pkg, which cites the cluster RTL it was
-  // read out of. Imported rather than restated so the loader and the tb_top
+  // Bank/entry decode: smc_scratch_map_pkg, whose header names the RDL and
+  // architecture-document sources of the geometry and the DV-owned interleave
+  // assumptions. Imported rather than restated so the loader and the tb_top
   // peeks cannot drift apart.
   localparam int unsigned BANK_STRIPE_BYTES = smc_scratch_map_pkg::SCRATCH_BANK_STRIPE_BYTES;
   localparam int unsigned BYTES_PER_ENTRY = smc_scratch_map_pkg::SCRATCH_BYTES_PER_ENTRY;
