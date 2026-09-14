@@ -1132,6 +1132,7 @@ check.
 * Sequence for smu_clock_stop_coordination_test (SMU_ALL_006).
 * DV-CARD: SMU_ALL_006 ANCHOR: smu_clock_stop_coordination_test Allocated (narrowed Option B; SEP=0 bare tb_top): DTP-BOOT-STALL.S1 / S2 DTP-IC-RESET.S1 / S3 DTP-CLKSTOP-AGG.S1 / S2 / S3 No Force/deposit.
 * No DTP-FEAT-GATE.* / INT-FEAT-CTRL-DTP-GATE (re-homed to 008).
+* DTP-CLKSTOP-AGG.S3 attests only the reserved-port property: with `cla_clock_stop_en` set, the TB clock-stop request pins land on DTP[8:1] and leave DTP[0] unchanged. DTP[0] is the SMC's `clocks_stopped_by_cla`, which this bench cannot provoke (default SMC ROM, no CSR path to the CLA event), so its level is logged and no SMC-to-DTP connectivity is claimed for it.
 
 *Test Procedure*:
 
@@ -1151,7 +1152,7 @@ check.
 |`CHK-DTP-IC-RESET-S3` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S1` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-DTP-CLKSTOP-AGG-S3` |Evidence token, emitted only after the compares it names have held
+|`CHK-DTP-CLKSTOP-AGG-S3` |DTP[0] unchanged by the TB clock-stop pins, DTP[8:1] follows them, `dtp_cla_clock_stop_en` set and cleared as programmed
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
