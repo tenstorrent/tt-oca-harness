@@ -52,13 +52,19 @@ FILTER_READY_POLLS = 64
 FILTER_READY_STEP = 4
 
 
+# hw/common/axi/axi_filter/doc/index.adoc, "Address Range Granule": with
+# allow_burst=1 the granule is 4 KB and address bits [11:0] are ignored;
+# START_ADDR widens down and END_ADDR widens up to the granule, and the
+# widened values are written back into START_ADDR/END_ADDR when both land in
+# the same granule.
+FILTER_BURST_GRANULE_BITS = 12
+_FILTER_BURST_GRANULE_MASK = (1 << FILTER_BURST_GRANULE_BITS) - 1
+
+
 def page_align_window(start: int, end: int) -> tuple[int, int]:
-    """Match axi_filter_wrap page expansion when start/end share [55:12]."""
-    start_a = int(start) & ~0xFFF
-    # Same-page programming expands to full page in HW.
-    if (int(start) & ~0xFFF) == (int(end) & ~0xFFF):
-        return start_a, start_a | 0xFFF
-    return start_a, int(end) | 0xFFF
+    """Effective allow_burst=1 range [granule base of start, granule top of end]."""
+    start_a = int(start) & ~_FILTER_BURST_GRANULE_MASK
+    return start_a, int(end) | _FILTER_BURST_GRANULE_MASK
 
 
 async def program_inbound0_window(
