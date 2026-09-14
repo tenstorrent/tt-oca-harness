@@ -103,16 +103,23 @@ class sep_rom_oca_tamper_test(sep_rom_ot_secure_boot_test):
             buf[idx] ^= 0xFF
         return bytes(buf)
 
-    async def run_scenario(self) -> None:
-        with open(self.flash_image, "rb") as fh:
-            original = fh.read()
+    def mutate_flash_image(self, buf: bytearray) -> bytearray:
+        """Inject the tamper through the base's own hook.
+
+        The base reads ``flash_image`` as a PATH and routes the bytes through
+        this method, which is the seam a negative testcase is meant to use.
+        Rebinding ``self.flash_image`` to bytes instead -- as this test did --
+        left the base's own ``open()`` holding a bytes object and failed the run
+        at 0.00 ns with ``ValueError: embedded null byte``. The comment defending
+        it described an older base that passed the attribute straight to
+        ``preload()``.
+        """
+        original = bytes(buf)
         tampered = self._tamper(original)
         assert tampered != original, "tamper produced an identical image"
-        # Hand the mutated bytes to the flash BFM instead of the path. The parent
-        # scenario calls flash.preload(self.flash_image), and preload() takes a
-        # path OR a bytes-like object -- so rebinding the attribute to bytes is
-        # enough, with no copy of the scenario.
-        self.flash_image = tampered
+        return bytearray(tampered)
+
+    async def run_scenario(self) -> None:
         # This boot must NOT reach BL1. Without this the scoreboard would fail the
         # test for the very outcome it exists to require.
         self.sb.expect_fw_pass = False
