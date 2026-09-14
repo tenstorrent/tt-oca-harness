@@ -244,6 +244,8 @@ external-consumer image above includes it.
 |Included by `ecc_lint` and `ecc_pint`.
 |`tests/coremark.h`, `tests/core_portme.h`, `tests/core_portme.c` and `FW_TEST_EXTRA_SRCS_coremark` in `fw.mk`
 |The `coremark` image.
+|`tests/cpu_perf.h`
+|Included by `tests/core_portme.c` and the `coremark`, `matrix_mult`, `mergesort` and `quicksort` images. Closes with the last includer.
 |===
 
 
