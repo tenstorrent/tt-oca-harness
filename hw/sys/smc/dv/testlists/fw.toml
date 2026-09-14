@@ -102,12 +102,114 @@ args = [
     "+smc_scratch_ram_hex=octs_p0_primary_test.ecc.hex",
 ]
 
+[[tests]]
+# I2C images: I2C_0 and I2C_1 talk to each other under firmware, so both need
+# the shared pad bus (+smc_i2c_shared_bus, as the cocotb I2C0<->I2C1 leaves do).
+# A passive decoder on tb_i2c0_scl/sda grades the wire against floors each
+# image implies; the firmware grades its own CSR-side checks.
+#
+# DV-TESTCASE-CONTRACT SMC_I2C_001, ENV c-fw.
+name = "smc_fw_i2c_sanity_test"
+module = "smc_fw_i2c_sanity_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_sanity"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_sanity.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+# DV-TESTCASE-CONTRACT SMC_I2C_005, ENV c-fw. Step S6 needs a host that STOPs
+# inside the acknowledge clock; the bench plays it from a SCRATCH_1 marker.
+name = "smc_fw_i2c_target_sanity_test"
+module = "smc_fw_i2c_target_sanity_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_target_sanity"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_target_sanity.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+# ACQ-full auto-stretch and its release by ACQ reset. The stretch is a duration
+# on SCL no register reports; the image parks at two markers and the bench
+# samples the target's own SCL pull in each window before acknowledging.
+name = "smc_fw_i2c_acq_fifo_stretch_reset_test"
+module = "smc_fw_i2c_acq_fifo_stretch_reset_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_acq_fifo_stretch_reset"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_acq_fifo_stretch_reset.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+name = "smc_fw_i2c_p1_fifo_depth_xfer_test"
+module = "smc_fw_i2c_p1_fifo_depth_xfer_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_p1_fifo_depth_xfer"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_p1_fifo_depth_xfer.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+name = "smc_fw_i2c_tx_stretch_timeout_recovery_test"
+module = "smc_fw_i2c_tx_stretch_timeout_recovery_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_tx_stretch_timeout_recovery"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_tx_stretch_timeout_recovery.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+# Transfer-driven FIFO fill; the cocotb smc_i2c_fifo_full_test is CSR-only.
+name = "smc_fw_i2c_fifo_full_test"
+module = "smc_fw_i2c_fifo_full_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_fifo_full"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_fifo_full.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
 [[groups]]
 name = "fw"
 tests = [
     "smc_fw_hello_world_multicore_test",
     "smc_fw_hello_world_test",
+    "smc_fw_i2c_acq_fifo_stretch_reset_test",
+    "smc_fw_i2c_fifo_full_test",
+    "smc_fw_i2c_p1_fifo_depth_xfer_test",
+    "smc_fw_i2c_sanity_test",
+    "smc_fw_i2c_target_sanity_test",
+    "smc_fw_i2c_tx_stretch_timeout_recovery_test",
     "smc_fw_octs_p0_primary_test",
     "smc_fw_plic_claim_test",
 ]
-expected_count = 4
+expected_count = 10
