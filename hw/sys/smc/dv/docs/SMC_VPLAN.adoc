@@ -6110,7 +6110,7 @@ For each of the two (target, lock) pairs:
 * core-0 WDT armed over SEP_IN with the magic-key protocol of `wdt.rdl` (`KEY` before each of `CMP`, `COUNT`, `CTRL`; `CTRL.wdogrsten | wdogenalways`);
 * `smc_wdt_first_timeout_o` latched within a bound of arming, with `smc_wdt_second_timeout_o` still 0 on that cycle;
 * `smc_wdt_second_timeout_o` latched `WDT_TIMEOUT` (`cpu_ctrl.rdl` reset `0x4000`) cycles after the first, within a stated slack;
-* `rst_warm` asserts after the second timeout and releases; both live pins read 0 afterwards while both sticky latches still read 1.
+* `rst_warm` still released on the cycle the first timeout latches, asserted after the second timeout, then released; both live pins read 0 afterwards while both sticky latches still read 1.
 
 *Test Procedure*:
 
@@ -6123,7 +6123,7 @@ Drive `smc_wdt_timeout_pin_test_seq`. Each checker below is a bounded observatio
 |Checker |Description
 |`CHK-WDT-TIMEOUT-FIRST` |`tb_wdt_first_timeout_seen` reaches 1 within `FIRST_TIMEOUT_BOUND_CYCLES` of the arming readback, `tb_wdt_second_timeout_seen` still 0 on that cycle
 |`CHK-WDT-TIMEOUT-SECOND` |`tb_wdt_second_timeout_seen` reaches 1 between `WDT_TIMEOUT` and `WDT_TIMEOUT + SECOND_TIMEOUT_SLACK_CYCLES` cycles after the first
-|`CHK-WDT-TIMEOUT-RESET` |`tb_rst_warm_smc_clk_n` falls within `WARM_RESET_BOUND_CYCLES` of the second timeout and rises again; live pins then 0, sticky latches 1
+|`CHK-WDT-TIMEOUT-RESET` |`tb_rst_warm_smc_clk_n` reads 1 on the cycle the first timeout latches, falls within `WARM_RESET_BOUND_CYCLES` of the second timeout and rises again; live pins then 0, sticky latches 1
 |===
 
 *Pass Criteria*: `CHK-WDT-TIMEOUT-FIRST`, `CHK-WDT-TIMEOUT-SECOND`, `CHK-WDT-TIMEOUT-RESET` hold after their observations. Enrolled in: `all`, `per_ip`.

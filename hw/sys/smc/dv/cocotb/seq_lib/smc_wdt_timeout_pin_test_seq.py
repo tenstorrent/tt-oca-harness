@@ -218,9 +218,9 @@ class smc_wdt_timeout_pin_test_seq(SmcCsrSeq):
         assert int(dut.tb_wdt_first_timeout_seen.value) == 1
         assert int(dut.tb_wdt_second_timeout_seen.value) == 1
         cocotb.log.info(
-            "CHK-WDT-TIMEOUT-RESET: rst_warm asserted %d cycles after the second "
-            "timeout and released again; live pins back to %s, sticky latches "
-            "still set",
+            "CHK-WDT-TIMEOUT-RESET: rst_warm released on the first-timeout cycle, "
+            "asserted %d cycles after the second timeout and released again; live "
+            "pins back to %s, sticky latches still set",
             warm,
             live,
         )
