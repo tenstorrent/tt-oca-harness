@@ -12,7 +12,7 @@ test assert the exact ``PUBK_SEL=`` the ROM echoed.
 THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference
 between this testcase and its backup-side sibling. The reference modifies ONLY
 ``primary.manifest.public_key_sel.selection``
-and deliberately does NOT corrupt the primary's ``manifest_identifier`` the way
+and does NOT corrupt the primary's ``manifest_identifier`` the way
 its backup-side scenarios do, because the primary has to REACH the check under
 test. So there is no BAD_MAGIC failover trigger here: the primary is structurally
 perfect and is rejected by key selection alone.
@@ -20,8 +20,8 @@ perfect and is rejected by key selection alone.
 THE EXPECTED OUTCOME IS A COMPLETED BOOT, NOT A TERMINAL FAILURE. The reference's
 ``expected_patterns`` (``sep_firmware_secure_boot_test.py``) end in
 ``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and grade the primary's
-rejection ``WARNING:`` rather than ``ERROR:``. Copying the backup-side base class
-here would have inverted the requirement.
+rejection ``WARNING:`` rather than ``ERROR:``, so the backup-side base class does
+not apply.
 
 PLATFORM ADAPTATION -- MARKER. The reference expects
 ``WARNING: INVALID_KEY_INDEX`` because its ``default:`` arm returns

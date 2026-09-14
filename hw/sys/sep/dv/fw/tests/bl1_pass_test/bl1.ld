@@ -7,7 +7,7 @@
  *   ICCM: 0xC0000000 - 0xC003FFFF (256 KiB)  — .text, and the load image
  *   DCCM: 0xC0040000 - 0xC005FF7F (128 KiB minus the ROM's bl0_state reserve)
  *
- * The split is not a preference, it is what the hardware allows.  The IFU
+ * The split is what the hardware allows.  The IFU
  * fetches from ICCM directly, but the LSU cannot reach ICCM at all: ICCM and
  * DCCM share VeeR region 0xC, so el2_lsu_addrcheck faults every 0xCxxxxxxx
  * address that falls outside DCCM's own offset range, and the access never even

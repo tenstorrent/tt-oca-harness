@@ -11,16 +11,14 @@ substantive lines are ``_CHIPLET_KEY = N`` and the base class it picks.
 
 **THE FUSED-KEY PATH IS GENUINELY DISTINCT CODE, NOT THE ROM-KEY PATH REACHED BY A
 DIFFERENT SELECTOR.** ``validate_signature`` branches on
-``m->public_key_sel.selection`` at ``manifest_crypto.c``: the ROM-key arm is
- and the fused-key arm is. The fused arm has its own
-``switch``  choosing BOTH the digest fuse address AND a different
+``m->public_key_sel.selection`` at ``manifest_crypto.c``. The fused arm has its
+own ``switch`` choosing BOTH the digest fuse address AND a different
 revocation bit, its own ``read_fuse_key`` / ``FUSE_KEY_EMPTY``, and
 it hashes the manifest modulus against the FUSE rather than against the compiled-in
 table. It is also the only arm that does NOT report
-``SEP_MSG_VALIDATE_CHECK`` before the revocation check (is inside the
-ROM-key arm). So these four items are new coverage; they are not a rewrite of the
-``pubkey_rom_*_revoked`` families of batches R1 and R2. Verified here on the RTL
-tree rather than inherited.
+``SEP_MSG_VALIDATE_CHECK`` before the revocation check (that call is inside the
+ROM-key arm). So these four testcases are coverage distinct from the
+``pubkey_rom_*_revoked`` families.
 
 **THE REVOCATION BITS ARE 16 AND 17, AND THE AUTHORITY IS THE REGISTER MAP.**
 ``regs/blocks/sep_efuse_map/sep_efuse_map.rdl:727`` gives the bit map of
@@ -38,22 +36,21 @@ matched its own ROM exactly.
 
 **WHAT THE REFERENCE ASSERTS, WHICH IS LESS THAN IT LOOKS, AND IT IS WHY THIS PORT IS
 STRICTER.** Its cocotb test awaits ``sep_binary_preloader(dut, cold_scratch_check=False)``,
-and with that flag ``monitor_test`` returns True even on a ROM ``TEST_FAIL``
-. So the
-two POSITIVE reference members assert **nothing** about boot success -- their
+and with that flag ``monitor_test`` returns True even on a ROM ``TEST_FAIL``. So
+the two POSITIVE reference members assert **nothing** about boot success -- their
 ``[PASS] SEP BOOT SUCCESS`` line (``sep_firmware_pub_key_test.py``) is an
 unconditional ``log.info`` that prints on a failed boot too -- and the two REVOKE
-members' entire result is one substring search for ``REVOKED_KEY``
-. The terminal strictness this port demands is therefore a documented
+members' entire result is one substring search for ``REVOKED_KEY``. The terminal
+strictness this port demands is therefore a documented
 STRENGTHENING over the reference's gate, not an unexplained divergence.
 
 WHAT THE REFERENCE DOES, AND THE ONE THING THIS PORT DOES NOT REPRODUCE. The
 reference generates a fresh RSA-3072 keypair per run
-(``tt_sep/tb/scripts/generate_rsa3072_key.sh:10-25``), programs SHA-256 of ITS
+(``generate_rsa3072_key.sh``), programs SHA-256 of ITS
 modulus into ``PUBLIC_KEY_0``/``_1``
-(``sep_firmware_pubkey_test.sv`` reads the digest,
- place it) and signs BOTH manifest slots with that key
-(``tt_sep/tb/cocotb_tests/sep_firmware_pub_key_test.py:227-241, 273-281``). Its
+(``sep_firmware_pubkey_test.sv`` reads the digest and places it) and signs BOTH
+manifest slots with that key
+(``sep_firmware_pub_key_test.py``). Its
 fused digest therefore DIFFERS from its ROM slot-0 digest, and a ROM that ignored
 ``selection`` would fail. This tree ships exactly one usable RSA-3072 private key,
 ``rsa_private_key.dev0.pem``
@@ -61,21 +58,15 @@ fused digest therefore DIFFERS from its ROM slot-0 digest, and a ROM that ignore
 ``ec_private_key.pem`` the ROM cannot use because it implements RSA-3072 only), so
 the fused digest here MUST equal ROM slot 0's compiled-in digest
 (``key_digests.c``) or the image could not verify at all. That collapse is
-real and is this port's narrowing; the VP half recorded the same limit as
-``batch_runs_0904_vp/FINDINGS.md`` F10 item 4.
+this family's narrowing.
 
-**THE CLOSURE THAT WAS AVAILABLE AND WAS NOT TAKEN, STATED SO IT IS A CHOICE RATHER
-THAN A LIMIT.** F10 item 4 (``batch_runs_0904_vp/FINDINGS.md:588-591``) recommended
-to this batch: sign the chiplet image with a SECOND RSA-3072 key and program ITS
-digest into the chiplet fuse, leaving ``key_digests.c`` slot 0 at dev0, so a ROM
-taking the wrong arm fails on ``PUBK_HASH_MISMATCH`` instead of booting. Nothing
-prevents that here -- ``env/sep_payload_mutate.py`` already has a PEM reader
-(``load_rsa_private_key``) and a PKCS#1 v1.5 signer, and the reference simply
-generates a key with ``openssl genrsa``. It was NOT taken because it means committing
-a new private-key file to this repository, which is a change to the tree's key
-inventory rather than to a testcase, and this batch chose not to make that decision
-on its own. The two discriminators below were built instead. **If a later batch wants
-the residual in the next paragraph closed, committing that second key is the way.**
+**THE CLOSURE A SECOND KEY WOULD GIVE.** Signing the chiplet image with a SECOND
+RSA-3072 key and programming ITS digest into the chiplet fuse, leaving
+``key_digests.c`` slot 0 at dev0, would make a ROM taking the wrong arm fail on
+``PUBK_HASH_MISMATCH`` instead of booting; ``env/sep_payload_mutate.py`` has the PEM
+reader (``load_rsa_private_key``) and the PKCS#1 v1.5 signer for it. Committing that
+key changes the tree's key inventory rather than a testcase, so this family uses the
+two fuse-only discriminators below instead.
 
 **TWO FUSE-ONLY DISCRIMINATORS, AND WHAT THEY DO AND DO NOT COVER.** Between them
 they close the WRONG-ARM class and the WRONG-FUSE-ADDRESS class completely, and
@@ -84,8 +75,8 @@ that took the fused arm, tested the right revocation bit, read the right fuse ad
 and then compared the modulus against ``public_key_digests[0]`` instead of the fuse it
 had just read would boot in both positive members and be refused in both revoke
 members, exactly as expected, and nothing in this family could see it -- because the
-two digests are byte-identical. That is the one property the collapse genuinely costs,
-and it is what the second key would restore.
+two digests are byte-identical. ``sep_firmware_chiplet_pubkey_0_wrong_digest_test``
+closes that class with a decoy in the SELECTED fuse and no second key.
 
   * **ROM development key 0 is REVOKED in every member's preload**
     (``CHIPLET_PUBK_REVOKE`` bit 0). On the correct ROM this is inert: the manifest
@@ -112,28 +103,27 @@ re-signs both slots with dev0 (``env/sep_payload_mutate.reseal``), so each slot 
 fully valid, provably bootable manifest bound to the fused key -- ``verify_sealed``
 is re-run after the re-seal to prove it. Revocation is therefore the SOLE cause of
 the rejection, which is the strict form of the property. Note this is stronger than
-the ROM-slot revoke families of R1/R2, where only slot 0 could be strict
-(``FINDINGS.md`` R01): there, slots 1-5 have no populated digest and their stale
-dev0 signature is never re-signed, so they prove only that revocation preempts the
-empty-digest arm. Here every member is the strict case.
+the ROM-slot revoke families, where only slot 0 is strict: there, slots 1-5 have no
+populated digest and their stale dev0 signature is never re-signed, so they prove
+only that revocation preempts the empty-digest arm. Here every member is the strict
+case.
 
 PLATFORM ADAPTATION -- MARKERS. The reference asserts the fused-key path positively
 with ``STATUS: USING_FUSE_KEY_0`` / ``USING_FUSE_KEY_1``
-(``tt_sep/firmware/bootcode/src/manifest.c:210-220``) and the revoke case with
+(the reference ROM's ``manifest.c``) and the revoke case with
 ``WARNING:``/``ERROR: REVOKED_KEY``. This ROM has NO ``SEP_MSG_USING_FUSE_KEY*``
 code at all -- ``grep -rn 'USING_FUSE_KEY' bootrom/prod/include/`` is empty -- and
 ``SEP_MSG_REVOKED_KEY`` (``bootrom/prod/include/status_values.h:13``, 0x0c) is
 defined and never emitted. The substitutions are the console echoes
 ``PUBK_SEL=0x000000{10,20}`` (``manifest_crypto.c``), which carry the selection
-in a form the ROM-key arm cannot produce, and ``KEY_REVOKED idx=0x0000001{0,1}``
-, whose index value is reachable only from the fused arm because the
-ROM-key arm's index is bounded below 6. The wider version of this gap
-is ``batch_runs_0904_rtl/FINDINGS.md`` R04.
+in a form the ROM-key arm cannot produce, and ``KEY_REVOKED idx=0x0000001{0,1}``,
+whose index value is reachable only from the fused arm because the ROM-key arm's
+index is bounded below 6.
 
 ``+sep_crypto_edn_force`` is needed by the two POSITIVE members only: their
 manifest verifies, so a real RSA-3072 modexp runs on OTBN. The revoke members must
-NOT have it -- revocation precedes ``rsa_3072_verify`` (``manifest_crypto.c``
-then), no slot reaches the verifier, and both members forbid
+NOT have it -- revocation precedes ``rsa_3072_verify`` (``manifest_crypto.c``),
+no slot reaches the verifier, and both members forbid
 ``RSA_VERIFY_START`` to say so.
 """
 
@@ -173,7 +163,7 @@ def select_chiplet_fuse_key(buf: bytearray, key_index: int) -> tuple[int, int]:
 
     ``public_key_sel`` is ``{index:4, selection:3}`` (``manifest.h``) and lives
     inside the TBS, so the write invalidates ``manifest_hash`` and the shipped dev0
-    signature. Unlike the ROM-slot families of R1/R2 this family must leave a
+    signature. Unlike the ROM-slot families this family must leave a
     manifest that would BOOT -- a revocation test whose image was independently
     unbootable would prove nothing about revocation -- so each slot is re-sealed
     (``env/sep_payload_mutate.reseal``: payload_hash -> manifest_hash -> signature)
@@ -243,8 +233,7 @@ class _chiplet_key_mixin:
             f"{cls.__name__}: _CHIPLET_KEY {key} is not a CHIPLET fused key. Only "
             f"PUBK_SEL_FUSE_KEY_0 and _1 are covered here; PUBK_SEL_FUSE_SOP_KEY (4) "
             f"and PUBK_SEL_FUSE_SYS_KEY (5) are two more arms of the same switch "
-            f"(manifest_crypto.c:214-221) with revoke bits 20 and 22, and have no "
-            f"testcase yet"
+            f"(manifest_crypto.c:214-221) with revoke bits 20 and 22, and have no testcase"
         )
         selection = (mm.PUBK_SEL_FUSE_KEY_0, mm.PUBK_SEL_FUSE_KEY_1)[key]
         cls._PUBK_SEL_VALUE = (selection & 0x7) << 4
@@ -360,7 +349,7 @@ class sep_chiplet_pubkey_valid_base(_chiplet_key_mixin, sep_rom_ot_dma_boot_test
       * ``RSA_VERIFY_START`` then ``SIG_VALID`` then ``CRYPTO_VALIDATE_OK``, in that
         order and after the selector echo: the modulus reached the verifier, which
         happens only once the revocation check and the FUSE digest bind have both
-        passed (``manifest_crypto.c`` then);
+        passed (``manifest_crypto.c``);
       * the DEVICE side: not one read inside the backup slot's span. A silent
         failover also reaches ``MANIFEST_OK``, and only the BFM's transaction record
         can say the PRIMARY served this boot.
@@ -472,7 +461,7 @@ class sep_chiplet_pubkey_valid_base(_chiplet_key_mixin, sep_rom_ot_dma_boot_test
                 f"Console: {console}"
             )
         self.logger.info(
-            "CHK-FUSEKEY-RAN: primary@%d -> %s@%d -> %s@%d -> RSA_VERIFY_START@%d -> "
+            "CHK-FUSEKEY-RAN PASS: primary@%d -> %s@%d -> %s@%d -> RSA_VERIFY_START@%d -> "
             "SIG_VALID@%d -> CRYPTO_VALIDATE_OK@%d, each exactly once; the ROM read "
             "CHIPLET fused key %d, found it unrevoked, and the manifest modulus bound "
             "to that fuse's digest",
@@ -534,7 +523,7 @@ class sep_chiplet_pubkey_revoked_base(_chiplet_key_mixin, sep_backup_manifest_fa
     bootable, so one fuse bit refuses two valid images and the retry loop exhausts
     (``MANIFEST_ALL_FAILED``, ``manifest_load.c``). That is the strict form of
     the revocation property, and it is available here for BOTH members -- unlike the
-    ROM-slot families, where only slot 0 could be strict (``FINDINGS.md`` R01).
+    ROM-slot families, where only slot 0 is strict.
     """
 
     _REVOKED = True

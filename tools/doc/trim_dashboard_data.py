@@ -15,6 +15,16 @@ only the following:
       "results":      [{"flow": str,
                         "coverage": {"effective_metrics": {...}}}]
     }
+
+With ``--tests-out``, a second file for the block pages:
+
+    {
+      "generated_at": str,
+      "flows": {
+        "<flow>": [{"name": str, "status": str, "category": str,
+                    "seed": int, "duration_sec": float, "stage": str}]
+      }
+    }
 """
 
 from __future__ import annotations
@@ -34,6 +44,23 @@ DUT_KEYS: tuple[str, ...] = ("flow", "tests_total", "pass_rate")
 # breakdown (line/toggle/assertion/functional) only exists on results[].
 RESULT_KEYS: tuple[str, ...] = ("flow",)
 COVERAGE_KEYS: tuple[str, ...] = ("effective_metrics",)
+
+# Per-test fields for the block pages, written to a separate file.
+TEST_KEYS: tuple[str, ...] = ("name", "status", "category", "seed", "duration_sec", "stage")
+
+
+def trim_test(test: dict[str, Any]) -> dict[str, Any]:
+    """
+    Reduce one tests_detail[] entry to the columns a block page shows.
+
+    Args:
+        test: A single entry from a result's tests_detail list
+
+    Returns:
+        The entry with only TEST_KEYS. Absent fields are left out rather than
+        filled in, so the page decides how to render them
+    """
+    return {key: test[key] for key in TEST_KEYS if key in test}
 
 
 def trim_result(result: dict[str, Any]) -> dict[str, Any]:
@@ -56,7 +83,8 @@ def trim_result(result: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     """
-    Read the published summary and write the trimmed file.
+    Read the published summary and write the trimmed file, plus the per-flow
+    test detail when --tests-out is given.
 
     Returns:
         0 on success, 1 when the source is unreadable or is not a JSON object
@@ -67,6 +95,11 @@ def main() -> int:
     )
     parser.add_argument("source", type=Path, help="published summary.json")
     parser.add_argument("output", type=Path, help="trimmed file to write")
+    parser.add_argument(
+        "--tests-out",
+        type=Path,
+        help="optional per-flow test detail for the block pages",
+    )
     args = parser.parse_args()
 
     try:
@@ -98,6 +131,25 @@ def main() -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(trimmed, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    if args.tests_out:
+        by_flow: dict[str, list[dict[str, Any]]] = {}
+        for result in summary.get("results") or []:
+            if not isinstance(result, dict) or not result.get("flow"):
+                continue
+            tests = result.get("tests_detail")
+            if isinstance(tests, list):
+                by_flow[result["flow"]] = [
+                    trim_test(test) for test in tests if isinstance(test, dict)
+                ]
+        detail: dict[str, Any] = {
+            "generated_at": summary.get("generated_at"),
+            "flows": by_flow,
+        }
+        args.tests_out.parent.mkdir(parents=True, exist_ok=True)
+        args.tests_out.write_text(
+            json.dumps(detail, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
 
     return 0
 

@@ -71,8 +71,7 @@ class _TckEdgeCounter:
 
     Pin-level and passive: it samples a top-level TB pin and drives nothing.
     (Twin of ``smc_efuse_vip_utils.count_probe_high_cycles`` / ``stop_sampler``
-    for the probe-sampling case; kept local so the JTAG helpers do not depend on
-    the eFuse module for a generic cocotb task idiom.)
+    for the probe-sampling case.)
     """
 
     def __init__(self, sig) -> None:
@@ -123,19 +122,15 @@ async def check_cpu_jtag_pin_vip() -> int:
     Returns the number of ``tb_cpu_jtag_tck`` rising edges measured while the
     scans ran, and asserts it against :data:`MIN_CPU_JTAG_TCK_EDGES` so the scan
     activity itself is floored rather than only the caller's CSR traffic.
-
-    Confirmed 2026-06-30 on Xcelium 25.03.001 for ``smc_ijtag_basic_test``.
     """
     dut = cocotb.top
     tap = _get_tap()
     # Count TCK at the pin across BOTH scans (see MIN_CPU_JTAG_TCK_EDGES).
     tck_counter = _TckEdgeCounter(dut.tb_cpu_jtag_tck).start()
     await tap.reset_tap()
-    # ``check=False``: read_idcode() still enforces the IEEE 1149.1
-    # plausibility rules (not 0/all-ones, bit[0] == 1), but the exact 32-bit
-    # comparison against EXPECTED_CPU_TAP_IDCODE happens exactly once, here, so
-    # this is the single fail-capable comparison site rather than a duplicate of
-    # a compare the callee already made ([NO-DUMMY-DEAD-CODE]).
+    # ``check=False``: read_idcode() enforces the IEEE 1149.1 plausibility rules
+    # (not 0/all-ones, bit[0] == 1); the exact 32-bit comparison against
+    # EXPECTED_CPU_TAP_IDCODE is made once, here ([NO-DUMMY-DEAD-CODE]).
     idcode = await tap.read_idcode(check=False)
     assert dut.tb_cpu_jtag_tdo.value.is_resolvable, "CPU JTAG TDO is not resolvable"
     assert idcode == EXPECTED_CPU_TAP_IDCODE, (

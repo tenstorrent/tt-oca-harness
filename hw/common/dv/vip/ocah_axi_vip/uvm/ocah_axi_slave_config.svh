@@ -68,7 +68,7 @@ class ocah_axi_slave_config extends uvm_object;
   endfunction
 
   // Beat-align, then wrap into the memory footprint (mem_bytes is a power
-  // of two, matching the SV RAM responder's address masking).
+  // of two).
   function bit [63:0] beat_align(bit [63:0] addr);
     return ((addr / 64'(beat_bytes())) * 64'(beat_bytes())) % 64'(mem_bytes);
   endfunction

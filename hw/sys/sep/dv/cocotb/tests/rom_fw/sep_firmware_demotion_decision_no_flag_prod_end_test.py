@@ -9,8 +9,8 @@ sibling is in ``rom_fw/sep_demotion_prod_end_base.py``.
 **COVERED-BY-O1, AND THIS ROW ADDS NO ROM COVERAGE. Stated first because it is the
 honest claim and burying it would be the whole problem.** ``rom_main.c``
 returns before any of the three manifest demotion inputs is read, so at PROD_END
-every combination of them produces this same outcome. Batch R3 already covered O1
-with ``sep_firmware_demotion_decision_auth_flag_0_prod_end_test``. This row drives
+every combination of them produces this same outcome, which
+``sep_firmware_demotion_decision_auth_flag_0_prod_end_test`` covers. This row drives
 the *baseline* combination -- all three inputs clear -- which is the one
 combination for which the PROD_END short-circuit is not even load-bearing: a ROM
 that evaluated ``selector_bits[17]`` first would take the ``else`` at
@@ -24,7 +24,7 @@ What it does still assert, per run and on both channels:
     locked down -- ``DEMOTE: PROD_END lock`` (``rom_main.c``) and
     ``DEMOTE_LOCKED``, each exactly once and after ``MANIFEST_OK``,
     with **every other [C15] string forbidden**. ``BL1_DEMOTE=`` and
-    ``BL2_DEMOTE_DEC=`` absent is the direct observable that the ``else`` arm at
+    ``BL2_DEMOTE_DEC=`` absent is the direct observable that the ``else`` arm
     never ran;
   * DEMOTE_1 = (demote 0, lock 1) **and DEMOTE_2 = (demote 0, lock 1)** read from
     the lifecycle controller. DEMOTE_2 locked is producible by no other row of the
@@ -43,9 +43,8 @@ The reference expects only ``STATUS: DEMOTION_NOT_SELECTED`` for the PROD_END ro
 and appends no lock expectation at all (``sep_demotion_uid_checker.py``).
 There is no architected demotion status code on this ROM, so the console tokens
 plus the register channel are the substitution -- and the DEMOTE_1/DEMOTE_2 lock
-requirements are an ADDITION derived from this ROM (``rom_main.c``,),
-not a port of anything the reference checks. Disclosed here and in the row's
-``flow_deviation``.
+requirements are an ADDITION derived from this ROM (``rom_main.c``), not a port of
+anything the reference checks.
 
 Needs ``+sep_crypto_edn_force``: PROD_END enforces secure boot
 (``lifecycle.c``), so a full RSA-3072 modexp runs on OTBN. The RSA

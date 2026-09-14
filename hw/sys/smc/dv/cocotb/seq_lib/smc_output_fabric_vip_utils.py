@@ -37,7 +37,7 @@ OUTBOUND0_FILTER_CONFIG = SMC_OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR
 OUTBOUND0_START = SMC_OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR
 OUTBOUND0_END = SMC_OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR
 
-# SYS_OUT fabric window (TB axi_sim_mem base; not an SMC CSR address).
+# SYS_OUT fabric window (served by the TB SYS_OUT responder; not an SMC CSR address).
 OUTPUT_FABRIC_ADDR = 0x0200_0000
 OUTPUT_FABRIC_ALT_ADDR = 0x0200_0008
 OUTPUT_FABRIC_DATA = 0x1122_3344_5566_7788
@@ -103,8 +103,7 @@ _FILTER_CONFIG_STRUCT = "FILTER_CTRL_FILTER_CONFIG_reg_t"
 # every fabric access in these tests).
 _FILTER_DATA_BUS_WIDTH_8B = 3
 
-# Pass single-beat and burst read/write traffic (0x0100_3013 with the current
-# RDL revision).
+# Pass single-beat and burst read/write traffic.
 PASS_ALL_CONFIG = reg_field_pack(
     _FILTER_CONFIG_STRUCT,
     read_allowed=1,
@@ -113,7 +112,7 @@ PASS_ALL_CONFIG = reg_field_pack(
     data_bus_width=_FILTER_DATA_BUS_WIDTH_8B,
     allow_burst=1,
 )
-# Reads only: write_allowed / allow_burst cleared (0x0000_3011).
+# Reads only: write_allowed / allow_burst cleared.
 READ_ONLY_CONFIG = reg_field_pack(
     _FILTER_CONFIG_STRUCT,
     read_allowed=1,
@@ -271,10 +270,9 @@ def output_responder_counts(dut=None) -> tuple[int, int]:
 
 
 # Hold window for the "a blocked write produced no output-fabric beat" leg, in
-# clk_smc_i cycles. This is NOT a settle delay: the counter is sampled every
-# cycle of the window and any advance fails immediately, so the window only bounds
-# how long the absence is required to persist. It is generous relative to the
-# ~10-cycle responder pipeline the pass-phase legs are observed to take.
+# clk_smc_i cycles. The counter is sampled every cycle of the window and any
+# advance fails immediately, so the window only bounds how long the absence is
+# required to persist; it is generous relative to the responder pipeline depth.
 BLOCKED_WRITE_HOLD_CYCLES = 64
 
 
@@ -348,7 +346,7 @@ async def check_output_responder_delta(
     call site.
 
     The read counter keeps ``>=``: timing-seed / fabric side traffic can add
-    extra read beats on the output responder (observed read_delta 3 vs 1).
+    extra read beats on the output responder.
     """
     dut = cocotb.top
     want_writes = start_writes + write_delta

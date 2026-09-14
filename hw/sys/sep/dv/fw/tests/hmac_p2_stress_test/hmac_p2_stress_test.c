@@ -7,9 +7,6 @@
  * Verifies repeated hash_start/hash_process cycles can run back-to-back while
  * sha_en remains asserted. Each iteration clears hmac_done and checks that the
  * next operation retriggers completion and produces an independent digest.
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_hmac_p2_stress_test STACK=cgen,sim
  */
 
 #include <stdint.h>

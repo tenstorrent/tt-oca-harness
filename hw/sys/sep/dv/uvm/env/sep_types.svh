@@ -44,8 +44,6 @@ typedef struct {
 
 // Implemented-field masks of the multi-field registers, folded from the
 // generated per-field masks.
-localparam bit [31:0] SepRasBankInfoMask =
-    32'(SEP_CPU_CTRL_RAS_BANK_INFO_BANK_CHIP_MASK | SEP_CPU_CTRL_RAS_BANK_INFO_BANK_INSTANCE_MASK);
 localparam bit [31:0] SepPkaCtrlMask = 32'(
     SEP_CPU_CTRL_PKA_CTRL_PKA_DPA_DISABLE_MASK | SEP_CPU_CTRL_PKA_CTRL_PKA_NOISE_SRC_MASK |
     SEP_CPU_CTRL_PKA_CTRL_PKA_NOISE_SRC_VALID_MASK
@@ -68,8 +66,6 @@ function automatic void sep_cpu_ctrl_csr_regs(ref sep_csr_desc_t regs[$]);
   regs.push_back('{"SEP_NMI_VEC", 64'(SEP_CPU_CTRL_SEP_NMI_VEC_REG_ADDR),
                  32'(SEP_CPU_CTRL_SEP_NMI_VEC_REG_DEFAULT),
                  32'(SEP_CPU_CTRL_SEP_NMI_VEC_NMI_VEC_MASK)});
-  regs.push_back('{"RAS_BANK_INFO", 64'(SEP_CPU_CTRL_RAS_BANK_INFO_REG_ADDR),
-                 32'(SEP_CPU_CTRL_RAS_BANK_INFO_REG_DEFAULT), SepRasBankInfoMask});
   regs.push_back('{"PKA_CTRL", 64'(SEP_CPU_CTRL_PKA_CTRL_REG_ADDR),
                  32'(SEP_CPU_CTRL_PKA_CTRL_REG_DEFAULT), SepPkaCtrlMask});
 endfunction

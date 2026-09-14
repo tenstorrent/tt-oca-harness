@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""U4-2 remainder: SMBus Host Notify with DUT I2C0 as target @ 0x08.
+"""U4-2: SMBus Host Notify with DUT I2C0 as target @ 0x08.
 
 VIP master drives SMBus 2.0 Host Notify onto ``tb_i2c0_*``; DUT OpenTitan
 target captures the frame in ACQDATA (not VIP EEPROM listener).
 
-Honest scope: no SMBALERT# path; Host Notify is VIP-master -> DUT-target.
+Scope: Host Notify only, VIP master -> DUT target; the SMBALERT# path is
+covered by smc_smbus_alert_ara_test_seq.
 """
 
 from __future__ import annotations

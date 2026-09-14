@@ -52,6 +52,13 @@
 `SMC_TB_OUT(logic, tb_zeroer_busy)
 // Zeroer AXI-Lite snoop bus_active — T0 for reg_clk resume / access window.
 `SMC_TB_OUT(logic, tb_zeroer_bus_active)
+// State-corruption fault injection and fail-closed observability.
+`SMC_TB_IN(logic, tb_zeroer_state_inject_en)
+`SMC_TB_IN(logic [2:0], tb_zeroer_state_inject)
+`SMC_TB_OUT(logic [2:0], tb_zeroer_state)
+`SMC_TB_OUT(logic, tb_zeroer_intp)
+`SMC_TB_OUT(logic, tb_zeroer_awvalid)
+`SMC_TB_OUT(logic, tb_zeroer_wvalid)
 `SMC_TB_IN(logic, tb_test_en_i)
 `SMC_TB_IN(logic, tb_i2c0_scl_ext_low)
 `SMC_TB_IN(logic, tb_i2c0_sda_ext_low)
@@ -122,10 +129,10 @@
 `SMC_TB_OUT(logic, tb_axi_hang_irq_sys)
 `SMC_TB_OUT(logic, tb_axi_hang_irq_sep)
 `SMC_TB_OUT(logic, tb_axi_hang_irq_data)
-// Hang IRQ on its way to the PLIC: the peripheral_interrupts[31] slot in
+// Hang IRQ on its way to the PLIC: the peripheral_interrupts[30] slot in
 // smc_peripherals, and the cpu_interrupts bit that is the PLIC source pin
 // on u_smc_cpu_wrapper.interrupts_i. PLIC source ID is that bit index + 1.
-`SMC_TB_OUT(logic, tb_axi_hang_irq_periph31)
+`SMC_TB_OUT(logic, tb_axi_hang_irq_periph30)
 `SMC_TB_OUT(logic, tb_axi_hang_irq_plic_src)
 // Boot-stall product pins: pad vs JTAG override mux, sticky processed out.
 `SMC_TB_OUT(logic, tb_boot_stall_combined_o)
@@ -149,16 +156,25 @@
 `SMC_TB_OUT(logic [3:0], tb_ndmreset_process)
 `SMC_TB_OUT(logic, tb_ndmreset_irq)
 `SMC_TB_OUT(logic, tb_uart_irq_any)
+// The UART line the PLIC actually sees: smc_peripherals_cdc.sv:309 ORs the
+// 16550 IRQ, the UART error line and the log-engine IRQ into one bit per
+// instance, and smc_peripherals.sv:1159 routes them to
+// peripheral_interrupts[21:18]. `tb_uart_irq_any` above is the 16550 half
+// only, so the log engine is not observable through it.
+`SMC_TB_OUT(logic [3:0], tb_uart_irq_combined)
+// The three I2C instances' PLIC lines (smc_peripherals.sv:1161,
+// peripheral_interrupts[25:23]). tb_i2c_cg_en is the clock gate, not the IRQ.
+`SMC_TB_OUT(logic [2:0], tb_i2c_irq)
 `SMC_TB_OUT(logic, tb_mailbox_irq_any)
 `SMC_TB_OUT(logic, tb_avsbus_irq)
 `SMC_TB_OUT(logic, tb_telemetry_irq_any)
-// eFuse locked-shadow access (smc_peripherals peripheral_interrupts[28]).
+// eFuse locked-shadow access (smc_peripherals peripheral_interrupts[27]).
 `SMC_TB_OUT(logic, tb_efuse_locked_access_irq)
-// PVT temperature interrupt pin (smc_wrapper.temp_interrupt_i).
-// Routes to peripheral_interrupts[27]. Idle 0.
+// PVT temperature interrupt. Enters through smc_ext_interrupts_i bus (TB uses bit 1).
+// Synced observe is smc_base.ext_interrupts_smc_clk[1]. Idle 0.
 `SMC_TB_IN(logic, tb_temp_interrupt_i)
 `SMC_TB_OUT(logic, tb_temp_interrupt_irq)
-// One bit of product ext_interrupts_i (wrapper width 256). Idle 0.
+// One bit of product smc_ext_interrupts_i (wrapper width 256). Idle 0.
 // Synced observe is smc_base.ext_interrupts_smc_clk[0], not GPIO.
 `SMC_TB_IN(logic, tb_ext_interrupt_0_i)
 `SMC_TB_OUT(logic, tb_ext_interrupt_0_sync)
@@ -258,8 +274,7 @@
 // Hang detector snoops the gated handshake (not irq_test). Idle 0.
 `SMC_TB_IN(logic, tb_sep_axi_r_hold)
 
-// Flat SYS-input AXI manager. SYS_IN reaches the filtered local-fabric path;
-// it is kept as a public active bus for SYS_IN/local-fabric VIP promotion.
+// Flat SYS-input AXI manager: SYS_IN reaches the filtered local-fabric path.
 `SMC_TB_IN(logic [5:0], sys_axi_awid)
 `SMC_TB_IN(logic [55:0], sys_axi_awaddr)
 `SMC_TB_IN(logic [7:0], sys_axi_awlen)
@@ -369,16 +384,12 @@
 `SMC_TB_OUT(logic, tb_axil_efuse_bank_active)
 `SMC_TB_OUT(logic, tb_axil_any_master_active)
 
-// Output-fabric observability (U6-2). SLVERR uses axi_sim_mem werr/rerr
-// (pulp API), not a DUT Force / starve knob.
+// Output-fabric observability (U6-2). SLVERR on this boundary comes from
+// the SYS_OUT slave agent's fault programming, not a DUT Force / starve knob.
 `SMC_TB_OUT(logic [31:0], tb_output_axi_write_count)
 `SMC_TB_OUT(logic [31:0], tb_output_axi_read_count)
 `SMC_TB_OUT(logic [55:0], tb_output_axi_last_addr)
 `SMC_TB_OUT(logic [63:0], tb_output_axi_last_wdata)
-// Program TB-owned axi_sim_mem.werr/rerr (byte addr); not a DUT Force.
-`SMC_TB_IN(logic, tb_output_err_we)
-`SMC_TB_IN(logic [55:0], tb_output_err_addr)
-`SMC_TB_IN(logic [1:0], tb_output_err_resp)
 // U6-2: SYS_OUT AXI slave response handshake for SmcOutputAxiMonitor.
 `SMC_TB_OUT(logic, tb_output_axi_bvalid)
 `SMC_TB_OUT(logic, tb_output_axi_bready)
@@ -396,7 +407,7 @@
 `SMC_TB_OUT(logic, tb_output_axi_wvalid)
 `SMC_TB_OUT(logic, tb_output_axi_wready)
 // TB-owned SYS_OUT R/B hold. After AW/AR accept, hides r_valid/b_valid
-// from the DUT and hides r_ready/b_ready from axi_sim_mem so the beat
+// from the DUT and hides r_ready/b_ready from the responder so the beat
 // stays outstanding. DATA hang detector snoops data_accel (DMA/zeroer
 // master), which stalls when SYS_OUT never completes. Idle 0.
 `SMC_TB_IN(logic, tb_output_axi_resp_hold)
@@ -404,11 +415,30 @@
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
+`SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NUM_SRAM_BANKS*32-1:0], tb_cpu_scratch_bank_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_write_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_fw_mailbox)
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)
 `SMC_TB_OUT(logic [31:0], tb_cpu_dcache_write_count)
 `SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc0)
+// The other three harts' retired PCs. crt0 calls __metal_synchronize_harts
+// before main() on every sram image, so hart 0 stalling in that barrier and
+// hart 0 never being released look identical through tb_cpu_wb_pc0 alone.
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc1)
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc2)
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc3)
+// Per-core trap cause and trapped PC, straight off each Rocket CSR file. The
+// retired PC alone cannot tell a trap from a stall: a firmware image parked in
+// crt0's fault loop and one that simply stopped fetching look the same.
+// mcause[63] is the interrupt bit, the low bits the exception code.
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause0)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause1)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause2)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause3)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc0)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc1)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc2)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc3)
 `SMC_TB_OUT(logic, tb_cpu_cluster_isolate)
 // U7-3: Rocket DM active + ack after dmcontrol.dmactive write.
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive)
@@ -443,6 +473,11 @@
 // CPU cluster double-error detect (live + sticky).
 `SMC_TB_OUT(logic, tb_cluster_ded)
 `SMC_TB_OUT(logic, tb_cluster_ded_seen)
+// Cluster WDT first / second timeout pins (live + sticky).
+`SMC_TB_OUT(logic, tb_wdt_first_timeout)
+`SMC_TB_OUT(logic, tb_wdt_first_timeout_seen)
+`SMC_TB_OUT(logic, tb_wdt_second_timeout)
+`SMC_TB_OUT(logic, tb_wdt_second_timeout_seen)
 `SMC_TB_OUT(logic [31:0], tb_cpu_ecc_inject_fire_count)
 `SMC_TB_OUT(logic, tb_cpu_scratch0_inject_fire)
 
@@ -459,6 +494,23 @@
 `SMC_TB_OUT(logic, tb_rst_warm_smc_clk_n)
 `SMC_TB_OUT(logic [31:0], tb_efuse_otp_word0)
 `SMC_TB_OUT(logic [31:0], tb_efuse_programmed_word0)
+`SMC_TB_IN(logic, tb_efuse_program_state_inject_en)
+`SMC_TB_IN(logic [1:0], tb_efuse_program_state_inject)
+`SMC_TB_OUT(logic [1:0], tb_efuse_program_state)
+`SMC_TB_OUT(logic, tb_efuse_program_req_valid)
+`SMC_TB_OUT(logic, tb_efuse_program_busy)
+`SMC_TB_OUT(logic, tb_efuse_program_done)
+`SMC_TB_OUT(logic, tb_efuse_program_error)
+`SMC_TB_OUT(logic [31:0], tb_efuse_program_readback)
+`SMC_TB_IN(logic, tb_efuse_read_state_inject_en)
+`SMC_TB_IN(logic [1:0], tb_efuse_read_state_inject)
+`SMC_TB_IN(logic [1:0], tb_efuse_read_error_inject)
+`SMC_TB_OUT(logic [1:0], tb_efuse_read_state)
+`SMC_TB_OUT(logic, tb_efuse_read_req_valid)
+`SMC_TB_OUT(logic, tb_efuse_read_busy)
+`SMC_TB_OUT(logic, tb_efuse_read_done)
+`SMC_TB_OUT(logic, tb_efuse_read_error)
+`SMC_TB_OUT(logic [31:0], tb_efuse_readback)
 `SMC_TB_OUT(logic [smc_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
 
 // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /
@@ -488,15 +540,15 @@
 `SMC_TB_IN(logic, ej_axi_rready)
 
 // ------------------------------------------------------------------
-// Elaboration aliases (additive; optional observe ports for bring-up)
-// SmcWrapperElaborationSeq). Bare SmcEnv tests never touch these.
+// Elaboration aliases: optional observe ports for the bring-up smoke
+// (SmcWrapperElaborationSeq). Bare SmcEnv tests never touch these.
 // ------------------------------------------------------------------
 `SMC_TB_OUT(logic, dut_present_o)
 `SMC_TB_OUT(logic, powergood_o)
 `SMC_TB_OUT(logic, rst_cold_n_o)
 `SMC_TB_OUT(logic, smc_reset_n_o)
-`SMC_TB_OUT(logic, fuse_sense_done_o)
-`SMC_TB_OUT(logic, init_mem_done_o)
+`SMC_TB_OUT(logic, smc_fuse_sense_done_o)
+`SMC_TB_OUT(logic, smc_init_mem_done_o)
 `SMC_TB_OUT(logic [31:0], smc_scratch_0_o)
 `SMC_TB_OUT(logic, smc_test_pass_o)
 `SMC_TB_OUT(logic, smc_test_fail_o)

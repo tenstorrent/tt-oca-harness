@@ -4,19 +4,19 @@
 
 With the CPU held off, the host asserts SEVERAL IP interrupts at once (HMAC done,
 KMAC done, CSRNG cmd_req_done, EDN cmd_req_done -> sep_internal_interrupts bits
-17/20/23/27, per the map in hw/sys/sep/rtl/sep.sv) via each IP's real INTR_TEST
+17/20/23/27, per hw/sys/sep/doc/interrupts.adoc) via each IP's real INTR_TEST
 register, then reads the aggregate vector (tb_top sep_internal_interrupts_probe_o,
 the observation-only mirror) and proves the OR-packing assembled EXACTLY those bits
 -- a 1:1 source->bit map with NO non-driven neighbor in [8:33] aliasing, and no
-unresolved bit in that region. This is the same packing/aliasing bug class that
-caught the mailbox 8->1 truncation, re-run for the crypto/KM region.
+unresolved bit in that region. A packing that truncates a multi-bit source or
+aliases a neighbour is the defect class this leaf targets in the crypto/KM region.
 
 reference ref: sep_irq_extended_connectivity_test.
-Mapping: COVERED_STRONGER -- the reference suite asserts connectivity one source at a time; this
+The reference suite asserts connectivity one source at a time; this
 test asserts a cross-IP set SIMULTANEOUSLY and proves no aggregator smear. Distinct
 from the single-source-at-a-time aggregator check (sep_irq_ip_to_aggregator_test)
 and from the CPU PIC/ISR delivery path. CPU-ISR delivery of the simultaneous set and
-the full 32-source cross-product are deferred (GAP).
+the full 32-source cross-product are not covered here.
 
 no_cpu + +skip_fuse_sense: INTR_TEST sets INTR_STATE regardless of IP functional
 state, so no entropy/fuse bring-up is needed.
@@ -145,11 +145,9 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             f"simultaneous fan-in: [8:33]=0x{vec & REGION_MASK:010x}, expected "
             f"0x{want:010x} (bits {[s.agg_idx for s in sources]})"
         )
-        # Per-source evidence. No `(vec >> agg_idx) & 1` test: the poll above already
-        # established vec & REGION_MASK == want & REGION_MASK, and agg_idx is a member
-        # of want, so that bit is set by entailment. The INTR_STATE read below is
-        # independent -- it addresses the IP's own register rather than the aggregate --
-        # so it is what carries per-source evidence.
+        # Per-source evidence is the INTR_STATE read: it addresses the IP's own
+        # register rather than the aggregate, whose driven bits the exact-equality
+        # poll above already pins.
         for src in sources:
             assert await self.irq.read_state_bit(src) == 1, f"{src.name}: INTR_STATE bit not set"
         self.logger.info(

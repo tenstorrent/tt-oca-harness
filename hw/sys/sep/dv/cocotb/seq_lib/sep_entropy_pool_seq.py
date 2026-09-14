@@ -2,58 +2,37 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Entropy-pool aperture driver (sep_entropy_pool_aperture_test).
 
-64-bit AXI-Lite drain of ``sep_entropy_fifo`` at the local-xbar
-``entropy_fifo.main`` window. Offsets from ``hw/sys/sep/rtl/sep_entropy_fifo.sv``:
-status ``0x00``, irq-cause ``0x08``, pop ``0x10``; every other in-window offset
-and every write is SLVERR. Depth=32, LowWatermark=8, StallThresh=4096.
+64-bit AXI-Lite drain of the fabric Entropy Pool target
+(``memory_map.adoc`` EPOOL). Live offsets: status ``0x00``, irq-cause
+``0x08``, pop ``0x10``; every other in-window offset and every write is
+SLVERR (``fabric.adoc``).
 """
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import agg_from_pic, window
 from sep_reg_meta import ENTROPY_SOURCE
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-_XBAR = Path(__file__).resolve().parents[3] / "rtl" / "sep_local_axi_xbar.sv"
-_FIFO = Path(__file__).resolve().parents[3] / "rtl" / "sep_entropy_fifo.sv"
-
-
-def _xbar_entropy_fifo_base() -> int:
-    text = _XBAR.read_text(encoding="utf-8")
-    m = re.search(r"entropy_fifo\.main:\s*0x([0-9A-Fa-f]+)", text)
-    if not m:
-        raise RuntimeError(f"entropy_fifo.main base not found in {_XBAR}")
-    return int(m.group(1), 16)
-
-
-def _fifo_param(name: str) -> int:
-    text = _FIFO.read_text(encoding="utf-8")
-    m = re.search(rf"parameter int unsigned {name}\s*=\s*(\d+)", text)
-    if not m:
-        raise RuntimeError(f"{name} not found in {_FIFO}")
-    return int(m.group(1))
-
-
-POOL_BASE = _xbar_entropy_fifo_base()
+# Aperture from memory_map.adoc EPOOL. Occupancy and pool_low are graded
+# from the live status / aggregator flags, not from a FIFO watermark.
+POOL_BASE = window("EPOOL").base
 POOL_STATUS = POOL_BASE + 0x00
 POOL_IRQ_CAUSE = POOL_BASE + 0x08
 POOL_POP = POOL_BASE + 0x10
-FIFO_DEPTH = _fifo_param("FifoDepth")
-LOW_WATERMARK = _fifo_param("LowWatermark")
-STALL_THRESH = _fifo_param("StallThresh")
+FIFO_DEPTH = 32
+STALL_THRESH = 4096
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
-IRQ_POOL_LOW = 36
-IRQ_FILL_STALL = 37
+IRQ_POOL_LOW = agg_from_pic("Entropy pool low")
+IRQ_FILL_STALL = agg_from_pic("Entropy pool fill stall")
 
 # Offsets that alias a live register if the decode drops high address bits
 # (the defect the 16-bit unique-case exists to catch). A seed that only
@@ -157,7 +136,6 @@ class SepEntropyPool(SepAxiRegDriver):
 def _selftest() -> None:
     assert POOL_BASE == 0x1095_0000
     assert FIFO_DEPTH == 32
-    assert LOW_WATERMARK == 8
     assert STALL_THRESH == 4096
     cfg = SepEntropyPoolCfg(1)
     assert cfg.alias_offs == _ALIAS_UNMAPPED

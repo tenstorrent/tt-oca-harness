@@ -6,7 +6,7 @@
 // The mailbox at 0x8000_0000 is the firmware's console + test-completion port:
 //   * a BYTE store is decoded by the testbench as a console character;
 //   * a WORD store of the magic sequence (0xA5A5_5A5A then 0xCAFE_BABE /
-//     0xDEAD_BEEF) is decoded as PASS / FAIL (emitted by start.S on exit).
+//     0xDEAD_BEEF) is decoded as PASS / FAIL (emitted by crt0.s on exit).
 // Reaching the mailbox requires the outbound filter to be opened first
 // (see sep_outbound_filter.h).
 

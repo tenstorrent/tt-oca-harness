@@ -13,10 +13,6 @@
  * - Signature Algorithm: RSA-3072 with PKCS#1 v1.5 padding
  * - Public Exponent: e = 65537 (F4)
  *
- * Setup:
- *  Use generate_test_vectors.py to create test vectors for this test when evaluating
- *  different keys, messages, or padding schemes
- *
  * Test:
  * 1. Loads RSA modulus, signature, and operation mode into OTBN DMEM
  * 2. Executes RSA modular exponentiation (signature^e mod n) in OTBN
@@ -490,8 +486,6 @@ int main(void) {
     printf("Public Exponent:   e = 65537 (F4)\n");
     printf("======================================================================\n\n");
 
-    // Skip manual DMEM zero init - let OTBN CRC compute naturally
-    // The CRC is based on IMEM + DMEM loads, not manual writes
     if (otbn_dmem_zero_init() != 0) {
         fail_and_halt(1, "OTBN DMEM zero initialization failed");
     }

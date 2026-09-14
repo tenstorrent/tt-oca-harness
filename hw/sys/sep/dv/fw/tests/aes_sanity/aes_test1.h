@@ -107,8 +107,8 @@ WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, aes_ctrl.w);
 // Step 3: Wait for idle before writing key
 if (wait_for_idle() != 0) return -1;
 
-/// NOTE: OpenTitan AES implementation apparently expects keys to be reloaded whenever the
-/// control register is updated. If you don't do this, then the following decryption hangs.
+/// NOTE: The OpenTitan AES expects the key to be reloaded whenever the control register is
+/// updated; without the reload the following decryption hangs.
 
 // Step 4: Write key shares (deprecated SW path for DV)
 printf("\n[Step 3] Writing key (256-bit in two shares)\n");

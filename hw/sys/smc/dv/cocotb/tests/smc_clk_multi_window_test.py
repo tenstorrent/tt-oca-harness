@@ -18,16 +18,23 @@ from smc_base_test import smc_base_test
 # CSR writes + 2 JTAG-AXI payload write groups + 8 measured hysteresis windows
 # (3 required + 5 seeded extras), each programming CLOCK_GATE_CONTROL and the
 # DMA descriptor and then polling DMA_CTRL_DONE. The DONE poll length scales with
-# the programmed hysteresis, so the floor is set BELOW the count observed in the
-# retained regression runs (166) rather than at it: a floor at the observed count
-# could false-fail on a seed that draws smaller windows, while this floor still
-# fails a scenario that stops measuring windows.
+# the programmed hysteresis, so the floor sits BELOW the run-to-run minimum: a
+# floor at any one observed count could false-fail on a seed that draws smaller
+# windows, while this floor still fails a scenario that stops measuring windows.
 CLK_MULTI_WINDOW_MIN_CSR_ACCESSES = 130
 
 
 @pyuvm.test()
 class smc_clk_multi_window_test(smc_base_test):
-    """LIVE hysteresis-window scaling (Skill 1.5)."""
+    """LIVE hysteresis-window scaling."""
+
+    required_evidence = (
+        "CHK-DMA-PAYLOAD-GOLDEN",
+        "CHK-HYST-WINDOW",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 4
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA

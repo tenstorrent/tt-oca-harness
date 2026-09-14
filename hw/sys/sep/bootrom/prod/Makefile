@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-SHELL := /bin/bash
+SHELL := /usr/bin/env
+.SHELLFLAGS := bash -c
 #
 # SEP Boot ROM.
 #
@@ -17,11 +18,12 @@ SHELL := /bin/bash
 #   boot_rom.dtcm.hex - .data/.bss as DCCM-relative byte hex
 #   smc_mem.hex       - manifest+BL1 image at the SMC-SRAM base
 #
-# Prereqs: riscv toolchain in PATH (default riscv64-unknown-elf-*).  The packer's
-# Python dependencies come from its submodule's pyproject.toml, installed on
-# demand by uv.
-
-GCC_PREFIX ?= riscv64-unknown-elf
+# Prereqs: RISCV_TOOLCHAIN pointing at a picolibc-enabled toolchain bin dir, or
+# scripts/docker-run.sh. The packer's Python dependencies come from its
+# submodule's pyproject.toml, installed on demand by uv, and stay on the host.
+RISCV_TOOLCHAIN ?=
+RISCV_PREFIX ?= $(if $(wildcard $(RISCV_TOOLCHAIN)/riscv64-unknown-elf-gcc),riscv64-unknown-elf-,riscv-none-elf-)
+GCC_PREFIX ?= $(if $(strip $(RISCV_TOOLCHAIN)),$(patsubst %/,%,$(RISCV_TOOLCHAIN))/$(patsubst %-,%,$(RISCV_PREFIX)),riscv64-unknown-elf)
 
 # hw/sys/sep -- this ROM lives at <sep>/bootrom/prod, the DV tree is its sibling.
 SEP_ROOT := $(abspath $(CURDIR)/../..)
@@ -142,9 +144,11 @@ ROM_ELF_SECTIONS := --only-section=.text --only-section=.text.* --only-section=.
 DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=.sdata --only-section=.sdata.* \
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
 
-.PHONY: all clean bl1_test ensure-pack-deps toolchain-images pack-images \
-        ot-toolchain-images ot-pio-toolchain-images
-all: toolchain-images pack-images
+.PHONY: all clean bl1_test ensure-pack-deps toolchain-images toolchain-images-build \
+        pack-images ot-toolchain-images ot-pio-toolchain-images
+all:
+	$(MAKE) toolchain-images
+	$(MAKE) pack-images
 
 # OT SPI-host ROM variants, each into its own BUILD_DIR so they coexist. The
 # packed flash image is transport-agnostic, so `pack-images` builds it once.
@@ -159,7 +163,36 @@ ot-pio-toolchain-images:
 # container), while pack-images is pure Python and needs cryptography +
 # ruamel.yaml, which the container image does not carry. The companion's SEP
 # firmware build script drives the two halves this way.
-toolchain-images: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) bl1_test
+#
+# Direct `make toolchain-images` uses only an explicit RISCV_TOOLCHAIN on the
+# host. Otherwise it runs the compiler-dependent half in the OCAH container.
+OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
+
+toolchain-images:
+	@if [ -n "$(RISCV_TOOLCHAIN)" ]; then \
+	  $(MAKE) toolchain-images-build; \
+	elif [ -x "$(OCAH_DOCKER_RUN)" ]; then \
+	  echo "[bootrom] RISCV_TOOLCHAIN is unset; building in the OCAH toolchain container"; \
+	  env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS \
+	    "$(OCAH_DOCKER_RUN)" run-here \
+	    $(MAKE) -C "$(CURDIR)" \
+	    BUILD_DIR="$(BUILD_DIR)" ROM_BASE="$(ROM_BASE)" DCCM_BASE="$(DCCM_BASE)" \
+	    DCCM_SCRUB_BYTES="$(DCCM_SCRUB_BYTES)" SRAM_SCRUB_BYTES="$(SRAM_SCRUB_BYTES)" \
+	    ROM_ICCM_CLEAR_ENABLE="$(ROM_ICCM_CLEAR_ENABLE)" PMP_ENABLE="$(PMP_ENABLE)" \
+	    PMP_LOCK="$(PMP_LOCK)" BUILD_TYPE="$(BUILD_TYPE)" \
+	    BOOT_SPI_CONTROLLER_OT="$(BOOT_SPI_CONTROLLER_OT)" \
+	    BOOT_OT_SPI_USE_PIO="$(BOOT_OT_SPI_USE_PIO)" \
+	    BOOT_OT_SPI_PROFILE="$(BOOT_OT_SPI_PROFILE)" \
+	    NONFREE_ROOT="$(NONFREE_ROOT)" \
+	    NONFREE_BOOTCODE_SOURCES="$(NONFREE_BOOTCODE_SOURCES)" \
+	    RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf \
+	    toolchain-images-build; \
+	else \
+	  echo "error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset" >&2; \
+	  exit 1; \
+	fi
+
+toolchain-images-build: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) bl1_test
 pack-images: $(SMC_MEM_HEX)
 
 $(BUILD_DIR):
@@ -247,6 +280,10 @@ $(DTCM_HEX): $(ELF)
 bl1_test:
 	$(MAKE) -C "$(BL1_TEST_DIR)" GCC_PREFIX=$(GCC_PREFIX)
 
+$(BL1_TEST_BIN):
+	@echo "error: BL1 image is missing; run 'make toolchain-images' first" >&2
+	@exit 1
+
 # The packer is the tt-boot-manifest repo, checked out as a submodule here rather
 # than copied in, so it tracks the upstream repo as that grows.
 TT_BOOT_MANIFEST_DIR := $(TOOLS_DIR)/tt-boot-manifest
@@ -274,7 +311,7 @@ ensure-pack-deps:
 # manifest+BL1 -> raw image -> Verilog hex -> rebased to the SMC-SRAM base.
 # OCH_ROOT resolves the config's payload file_path; ROOT (signing keys) is unused
 # for the non-secure config (signature_type 0) so it points at a harmless dir.
-$(SMC_MEM_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
+$(SMC_MEM_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
 	OCH_ROOT="$(DV_ROOT)" ROOT="$(TOOLS_DIR)" \
 		$(PACK_RUN) --config "$(PACK_CONFIG)" --out "$(NS_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(NS_BOOT_BIN)" "$(NS_SPI_HEX)"
@@ -293,7 +330,7 @@ secure_boot_spi: $(SECURE_SPI_HEX)
 
 # Fail here with the reason rather than letting the packer die on a missing file
 # or, worse, letting the test start and stall waiting for an image nobody built.
-$(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
+$(SECURE_SPI_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
 	@test -f "$(SEP_SIGNING_KEY)" || { \
 	  echo "ERROR: secure boot image needs the dev0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
@@ -315,7 +352,7 @@ ENCRYPTED_SPI_HEX     := $(BUILD_DIR)/encrypted_boot.spi_preload
 .PHONY: encrypted_boot_spi
 encrypted_boot_spi: $(ENCRYPTED_SPI_HEX)
 
-$(ENCRYPTED_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
+$(ENCRYPTED_SPI_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
 	@test -f "$(SEP_SIGNING_KEY)" || { \
 	  echo "ERROR: encrypted boot image needs the dev0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \

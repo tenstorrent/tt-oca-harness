@@ -16,6 +16,18 @@ from smc_base_test import smc_base_test
 class smc_multi_reset_csr_persistence_test(smc_base_test):
     """Run CSR access/persistence checks around a public cool reset pulse."""
 
+    required_evidence = (
+        "CHK-COOL-RESET-ASSERTED",
+        "CHK-COOL-RESET-CLEARS-WARM-SCRATCH",
+        "CHK-COOL-RESET-RELEASED",
+        "CHK-CSR-BASELINE-RO",
+        "CHK-CSR-POST-COOL-RECOVERY",
+        "CHK-CSR-PRE-COOL-READBACK",
+        "CHK-CSR-WRITABLE-AFTER-COOL",
+        "CHK-MULTI-RESET-CSR-SWEEP",
+    )
+    min_evidence = 8
+
     async def run_scenario(self) -> None:
         seq = smc_multi_reset_csr_persistence_test_seq("multi_reset_csr_seq")
 

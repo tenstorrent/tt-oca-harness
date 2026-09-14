@@ -13,6 +13,12 @@ from smc_base_test import smc_base_test
 class smc_reference_counter_test(smc_base_test):
     """64-bit refclk counter rate check; not the OCTS timer."""
 
+    required_evidence = (
+        "CHK-REF-COUNT",
+        "CHK-REF-COUNT-BASIC",
+    )
+    min_evidence = 2
+
     async def run_scenario(self) -> None:
         seq = smc_reference_counter_test_seq("ref_count_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)

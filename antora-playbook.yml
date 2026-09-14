@@ -34,7 +34,7 @@ content:
       edit_url: false
     - url: .
       branches: HEAD
-      start_path: doc/contributing
+      start_path: doc/starting
       edit_url: false
 asciidoc:
   attributes:

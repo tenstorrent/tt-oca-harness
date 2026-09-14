@@ -9,7 +9,7 @@ all comparison and evidence mechanics; this component owns only lifecycle,
 stream routing, and DTP policy.
 
 Opt-in: tests set ``use_axi_scoreboard = True`` (see ``dtp_base_test``); the
-component stays inert otherwise so existing jtag2axi tests are unaffected.
+component stays inert otherwise.
 """
 
 from __future__ import annotations

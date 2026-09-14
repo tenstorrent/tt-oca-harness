@@ -17,10 +17,6 @@
  * - No CMDINVAL or CSIDINVAL error throughout the chain
  * - Controller returns READY between segments (CMDQD drains)
  * - Final CSAAT=0 command completes cleanly
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_multi_segment_test STACK=sim
- *
  */
 
 #include <stdint.h>

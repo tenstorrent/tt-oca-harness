@@ -9,7 +9,7 @@ recovers cleanly: after re-init + SETDASA, a fresh transfer succeeds.
 
 Constrained-random: a random number of pre-reset transfers (random length/data)
 run first, then reset is asserted after a *random* cycle delay so it lands at a
-random bus phase (far stronger than always resetting at the same point). After
+random bus phase. After
 re-bring-up, a random post-reset transfer is self-checked. Seed from
 +seed/SEED/default.
 """

@@ -14,18 +14,12 @@ partner of ``sep_scratch_7_test``, which covers the accept arm::
     sw   0x0f010069, (SEP_COLD_SCRATCH_1)
     wfi, then spin
 
-The accept arm leaves the slot INTACT -- it used to poison it to 0, which the
-spec and the reference both do not do (FINDINGS F29). Line numbers are omitted
-deliberately: they went stale once already.
+The accept arm leaves the slot INTACT, as the spec and the reference do.
 
-HOW THIS ROM DIFFERS FROM THE PROCEDURE, WHICH CHANGES THE STIMULUS. Three of
-TP006's statements do not hold against the OSS ROM, and building the test on them
-would have produced a run that proves nothing:
+HOW THIS ROM DIFFERS FROM THE PROCEDURE, WHICH CHANGES THE STIMULUS. Two of
+TP006's statements do not hold against the OSS ROM, and a test built on them
+would prove nothing:
 
-  * *"Drive SEP COLD scratch 7"*. The ROM now does exactly this. It previously
-    read ``WARM_SCRATCH_0`` and range-checked against SEP SRAM, which is what
-    this bullet used to record as a divergence; the ROM was corrected to the spec
-    (FINDINGS F28), so the procedure and the implementation now agree.
   * *"a value clearly outside the valid ICCM range (e.g. 0x0, ...)"*. **Zero does
     not reach the hang.** The ``beqz`` immediately after the slot read sends it to
     ``cold_boot``, which is a silent normal boot. 0xFFFFFFFF does hang, but it is
@@ -50,21 +44,13 @@ own storage and left writable so the ROM can still poison it. It is not a force
 and it does not skip any ROM step. A real warm reset is not needed to reach this
 path: the ROM's only evidence that a warm reset occurred is a non-zero in-range
 value in the slot, so depositing one is exactly how the ROM is told a warm reset
-happened. (The earlier version of this note argued a real warm reset was
-IMPOSSIBLE because the warm bank is cleared by the very event it should survive.
-That was true of the warm bank and was why BLK-003 was filed -- but the ROM now
-uses the COLD bank, which does retain, so the obstacle is gone. Driving a real
-watchdog reset is now merely unnecessary here, and would be a stronger test if
-anyone wants it.)
+happened.
 
 THE CHECK THAT MAKES THIS NON-VACUOUS IS CHK-SEED. A deposit that does not survive
 to the ROM's read leaves the slot at 0, which is the ``beqz`` early-out to a silent
 cold boot -- and every "it did not jump anywhere" check below would then hold for
-the wrong reason. This failed repeatedly in practice while the slot was still
-``warm_scratch[0]``: that bank's async reset wiped the deposit before the ROM
-looked. The move to the cold bank removed that particular race, which is exactly
-why the seed must still be OBSERVED rather than assumed. It is asserted first and
-separately.
+the wrong reason. The seed is therefore OBSERVED rather than assumed, and it is
+asserted first and separately.
 """
 
 from __future__ import annotations
@@ -89,19 +75,16 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # WARM_HANDLER_RANGE_BASE / _END in vector.S, named by symbol rather than line.
-# Independently confirmed in build/boot_rom.sym, which resolves
-# WARM_HANDLER_RANGE_BASE to 0xC0000000 (SEP ICCM base) and
-# WARM_HANDLER_RANGE_END to 0xC0040000 (ICCM base + size). The ROM was
-# re-pointed from the SRAM range to ICCM to match sep-boot-flow.puml:45; see
-# FINDINGS F28. The boundary-value idea is unchanged, only the boundary moved.
+# build/boot_rom.sym resolves WARM_HANDLER_RANGE_BASE to 0xC0000000 (SEP ICCM
+# base) and WARM_HANDLER_RANGE_END to 0xC0040000 (ICCM base + size), the range
+# sep-boot-flow.puml:45 specifies.
 _RANGE_BASE = 0xC000_0000
 _RANGE_END = 0xC004_0000
 # The seeded handler: the smallest address the upper bound rejects. Must match
 # +sep_cold_scratch7 in the testlist.
 _INVALID_HANDLER = _RANGE_END
 
-# cold_scratch[1] words, all from vector.S (by symbol; the line numbers went stale
-# once already).
+# cold_scratch[1] words, all from vector.S (by symbol).
 _STATUS_WARM_HANG = 0x0F01_0069  # ERROR + SEP_MSG_WARM_RESET_HANG, warm_reset_hang
 _STATUS_WARM_JUMP = 0x0101_0068  # INFO  + SEP_MSG_WARM_RESET_JUMP, accept arm
 _STATUS_BOOTROM_START = 0x8001_0044
@@ -242,20 +225,12 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
             for _ in range(_QUIESCE_CYCLES):
                 await RisingEdge(dut.clk_i)
                 if self.rd(dut.cpu_trace_valid_o):
-                    # No `<< 1` here. cpu_trace_addr_o is already a byte PC
-                    # (tb_top.sv drives it from trace_rv_i_address_ip), which the
-                    # disassembly settles: the spin is the `wfi; j` pair under the
-                    # `warm_reset_hang` label in build_ot/boot_rom.dis -- currently
-                    # 0x1004006c and 0x10040070 -- and an earlier version of this
-                    # loop shifted those into addresses matching no instruction in
-                    # the ROM. The span check below survived either way (doubling
-                    # only makes the bound stricter) but the ADDRESSES are the
-                    # useful evidence.
-                    #
-                    # Note how tight the margin is: 0x10040074 is `cold_boot`. An
-                    # off-by-one-instruction reading of this spin would name the
-                    # very label whose absence the test exists to prove, so check
-                    # the addresses against the label in the .dis, not by eye.
+                    # cpu_trace_addr_o is already a byte PC (tb_top.sv drives it
+                    # from trace_rv_i_address_ip); do not shift it. The spin is the
+                    # `wfi; j` pair under the `warm_reset_hang` label in
+                    # build_ot/boot_rom.dis, and `cold_boot` is the very next
+                    # instruction, so check the addresses against the label in the
+                    # .dis, not by eye.
                     post_pcs.add(self.rd(dut.cpu_trace_addr_o))
                 if ((self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF) != _STATUS_WARM_HANG:
                     post_status_moved = True
@@ -274,7 +249,7 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
 
         # CHK-SEED: the deposit reached the register the ROM reads. Everything
         # below is vacuous without it -- a wiped deposit means the ROM read 0 and
-        # cold booted, which is what has been happening to sep_scratch_7_test.
+        # cold booted, which satisfies every absence check for the wrong reason.
         assert _INVALID_HANDLER in cold7_seq, (
             f"cold_scratch[7] never held the seeded handler address "
             f"0x{_INVALID_HANDLER:08x}; observed {cold7_hex}. The tb deposit did "
@@ -292,7 +267,7 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
             f"cold_scratch[1] never reached 0x{_STATUS_WARM_HANG:08x} within "
             f"{_MAX_RUN_CYCLES} cycles; observed {status_hex}"
         )
-        self.logger.info("CHK-WARM-REJECT: cold_scratch[1] = 0x%08x", _STATUS_WARM_HANG)
+        self.logger.info("CHK-WARM-REJECT PASS: cold_scratch[1] = 0x%08x", _STATUS_WARM_HANG)
 
         # CHK-NO-JUMP: the accept arm did not run. Two independent witnesses,
         # because either alone is weak: the ROM announces the jump in

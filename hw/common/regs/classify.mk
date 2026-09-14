@@ -73,9 +73,9 @@ OCAH_REG_RAL_SUB_BLOCKS ?= \
   sep_efuse_map spi_controller \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
 OCAH_REG_RAL_LEAF_BLOCKS ?= \
-  hw/common/axi/axi_alias_remap/regs/alias_remap \
-  hw/common/axi/axi_filter/regs/filter_ctrl \
-  hw/common/axi/output_remap \
+  hw/ip/axi_alias_remap/regs/alias_remap \
+  hw/ip/axi_filter/regs/filter_ctrl \
+  hw/ip/output_remap \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap \
   hw/ip/efuse/regs/efuse_interface_ctrl \
   hw/ip/efuse/regs/efuse_mmr \

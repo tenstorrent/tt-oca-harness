@@ -4,8 +4,8 @@
 // (PyUVM) and SystemVerilog UVM flows as ONE framework-neutral core: the
 // module has no ports. It instantiates the TB interfaces, the DUT, the
 // struct <-> flat-signal adapters, the request-activity and reset counters,
-// and the functional-coverage modules; both frameworks consume the same
-// interface instances.
+// the functional-coverage modules, and the protocol SVA checkers; both
+// frameworks consume the same interface instances.
 //
 //   * dtp_tb_if     control domain: system clock and resets, lifecycle
 //                   dbg_disable, TAP-state and debug-TDR observables,
@@ -24,8 +24,8 @@
 // cocotb (`--dut dtp`) drives the clock, resets, and stimulus members by
 // hierarchical handle and attaches its BFMs to the interface scopes. The
 // `UVM` define (`--framework uvm`) adds the harness block at the end of the
-// module: the clock generator, the protocol SVA, the test classes, the
-// uvm_config_db publication of every instance, and run_test().
+// module: the clock generator, the test classes, the uvm_config_db
+// publication of every instance, and run_test().
 //
 // Exposes the DTP DUT's primary JTAG TAP at pin level so the shared JTAG
 // master can drive it, plus system clock/reset. The JTAG TAP FSM lives
@@ -1063,7 +1063,7 @@ module dtp_uvm_top
   // interface carries the connection: the TB wires only the master-driven
   // signals in, and the responder drives the responder-side signals,
   // routed back to the DUT below. Error injection is programmed by
-  // sequences via the responder's slave sequence, not TB error ports.
+  // sequences via the responder's slave sequence.
   assign u_smc_otp_slave_if.awaddr   = 64'(smc_otp_axil_awaddr);
   assign u_smc_otp_slave_if.awprot   = smc_otp_axil_awprot;
   assign u_smc_otp_slave_if.awvalid  = smc_otp_axil_awvalid;
@@ -1106,7 +1106,7 @@ module dtp_uvm_top
   assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
   assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
-  // SEP OTP AXI-Lite responder: a third shared ocah_axi_vip responder
+  // SEP OTP AXI-Lite responder: the shared ocah_axi_vip responder
   // (same pattern as the SMC OTP port) answers JTAG2AXI SEP OTP traffic.
   assign u_sep_otp_slave_if.awaddr   = 64'(sep_otp_axil_awaddr);
   assign u_sep_otp_slave_if.awprot   = sep_otp_axil_awprot;
@@ -1156,7 +1156,7 @@ module dtp_uvm_top
   // master-driven signals in, and the responder drives the responder-side
   // signals, routed back to the DUT below. Error injection and backdoor
   // memory access are programmed by sequences via the responder's slave
-  // sequence, not TB error ports.
+  // sequence.
   assign u_smc_axi_slave_if.awid     = 16'(m_axi_awid);
   assign u_smc_axi_slave_if.awaddr   = 64'(m_axi_awaddr);
   assign u_smc_axi_slave_if.awlen    = m_axi_awlen;
@@ -1461,36 +1461,32 @@ module dtp_uvm_top
   assign u_xtrig_if.xtrig_ctp_ack_out_dout_en = xtrig_ctp_ack_out_dout_en;
   assign u_xtrig_if.xtrig_ctp_ack_out_din_en  = xtrig_ctp_ack_out_din_en;
 
-`ifdef UVM
   // ------------------------------------------------------------------
-  // SV-UVM harness (`--framework uvm`): the system clock generator, the
-  // protocol SVA checkers, the test classes, uvm_config_db publication of
-  // every interface instance, and run_test().
+  // Protocol SVA checkers (ocah_jtag_vip/sva, ocah_axi_vip/sva), shared by
+  // both frameworks. The two-state rules run on every simulator (Verilator
+  // evaluates them under --assert); the X-hygiene rules run only on a
+  // four-state simulator. dtp_tb_if.jtag_sva_en / axi_sva_en are the
+  // runtime suppress knobs.
   // ------------------------------------------------------------------
-  import uvm_pkg::*;
+  // Primary TAP pins plus the exported one-hot TAP state. The TAP controller
+  // resets on TRST and on power-on reset (jtag_ptap ANDs them), so the
+  // checker's reset is the same AND.
+  logic jtag_tap_rst_n;
+  assign jtag_tap_rst_n = jtag_trst & pwr_on_rst_ni;
 
-  // System clock with the period the env publishes on dtp_tb_if from the
-  // seeded test cfg (10..100 ns); TCK is bit-banged by the VIP driver.
-  always #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;
-
-  // Clean-room JTAG protocol SVA checker (ocah_jtag_vip/sva) on the
-  // primary TAP pins + the exported one-hot TAP state, enabled via
-  // dtp_tb_if.jtag_sva_en.
   ocah_jtag_sva #(
     .EN_STATE_RULES(1'b1)
   ) u_jtag_ptap_sva (
     .tck         (jtag_tck),
     .tms         (jtag_tms),
     .tdi         (jtag_tdi),
-    .trst_n      (jtag_trst),
+    .trst_n      (jtag_tap_rst_n),
     .tdo         (jtag_tdo),
     .tdo_oen     (jtag_tdo_oen),
     .en_i        (u_tb_if.jtag_sva_en),
     .tap_state_i (jtag_ptap_state)
   );
 
-  // Clean-room AXI protocol SVA checkers (ocah_axi_vip/sva), enabled via
-  // dtp_tb_if.axi_sva_en.
   ocah_axi_sva #(
     .IS_LITE    (1'b1),
     .ADDR_WIDTH (32),
@@ -1623,7 +1619,6 @@ module dtp_uvm_top
     .rready  (m_axi_rready)
   );
 
-
   ocah_axi_sva #(
     .IS_LITE    (1'b1),
     .ADDR_WIDTH (32),
@@ -1667,6 +1662,18 @@ module dtp_uvm_top
     .rvalid  (xtrig_axil_rvalid),
     .rready  (xtrig_axil_rready)
   );
+
+`ifdef UVM
+  // ------------------------------------------------------------------
+  // SV-UVM harness (`--framework uvm`): the system clock generator, the
+  // test classes, uvm_config_db publication of every interface instance,
+  // and run_test().
+  // ------------------------------------------------------------------
+  import uvm_pkg::*;
+
+  // System clock with the period the env publishes on dtp_tb_if from the
+  // seeded test cfg (10..100 ns); TCK is bit-banged by the VIP driver.
+  always #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;
 
   // Non-reusable test classes compile as part of this top (module scope).
   `include "dtp_tests.sv"

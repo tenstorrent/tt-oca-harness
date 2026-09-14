@@ -1,13 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD_END lifecycle, everything else at zero.
 #
-# The first preload in this tree to select PROD_END, and it exists for one ROM
+# The only preload here that selects PROD_END; it exists for one ROM
 # path: rom_main.c, where the demotion decision short-circuits before the
 # manifest's selector bit or either demotion flag is read, and BL0 writes DEMOTE_2
 # -- the only case in which it touches that register at all (rom_main.c).
 # Used by all three PROD_END members of the [C15] demotion group:
-# sep_firmware_demotion_decision_auth_flag_0_prod_end_test (batch R3), and
+# sep_firmware_demotion_decision_auth_flag_0_prod_end_test, and
 # sep_firmware_demotion_decision_no_flag_prod_end_test plus
-# sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test (batch R4).
+# sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test.
 # All three produce the SAME outcome, because rom_main.c returns before any
 # manifest demotion input is read; they differ only in the stimulus they plant
 # and therefore in what a failure would mean. See rom_fw/sep_demotion_prod_end_base.py.

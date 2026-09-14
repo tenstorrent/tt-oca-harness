@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Register -I flags for a sys subsystem (umbrella + generated headers + shim/ip
-# trees). Split out of compile.mk because the SEP boot ROM drives its own build
+# trees). Separate from compile.mk because the SEP boot ROM drives its own build
 # but has to see exactly the same headers.
 
 ifndef ocah_fw_reg_includes_mk
@@ -18,7 +18,6 @@ ocah_fw_reg_includes = $(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_$(1)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/dv/models/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/ip/*/*/regs/gen/c)) \
-  $(addprefix -I,$(wildcard $(OCAH_ROOT)/hw/common/axi/*/regs/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/rdl/gen/c)) \
   $(addprefix -I,$(wildcard $(OCAH_ROOT)/vendor/*/*/overlay/regs/*/regs/gen/c))
 

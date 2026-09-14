@@ -4,7 +4,7 @@
 
 WHAT THIS PROVES, AND WHAT IT DOES NOT. Read this before citing a green run.
 
-The procedure (``procedure_manifest.md`` Test 24 / TP080) asks for TWO clears in
+The procedure (TP080) asks for TWO clears in
 the window between "primary-fail status published" and "SPI re-init for backup":
 EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
 
@@ -61,8 +61,7 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     Second, independent reason the window does not exist there: the only path whose
     manifest comes from SMC SRAM runs ``num_retries = 0``
     (``manifest_load.c``), so it has no backup retry at all.
-    See FINDINGS F19 and its correction F21. This test asserts nothing about SMC
-    SRAM and must not be booked as covering that half of F038.
+    This test asserts nothing about SMC SRAM.
 
 DO NOT confuse this clear with ``rom_clear_ext_sram()``. That is a DIFFERENT,
 one-time, pre-manifest scrub (``rom_main.c`` -> ``rom_mem_clear.c``) gated
@@ -91,21 +90,19 @@ clear covered the whole 256 KiB rather than the 148 words the ROM happened to
 write) and the evidence that the clear had not already started when the primary
 landed.
 
-OBSERVATION CHANNEL. ``sep_public_scope.vlt:38`` marks ``prim_ram_1p.mem``
-``public_flat_rw``, and the built model registers the scope and the variable:
-``Vtop__Syms__ctor__1__Slow.cpp`` carries
-``VerilatedScope{..., "sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram.gen_ram_inst[0].u_mem", ...}``
-and ``varInsert("mem", ..., VLVT_UINT64, VLVD_NODIR|VLVF_PUB_RW, 1, 1, 0,32767, 63,0)``.
-So the whole array is reachable by VPI from cocotb, and no testbench change is
-needed. The two pre-existing port probes (``sram_word0_probe_o``,
-``sram_payload_probe_o``, ``tb_top.sv``) expose only 7 of the 32768
-words, which cannot support a claim about a 256 KiB clear.
+OBSERVATION CHANNEL. ``sep_public_scope.vlt`` marks ``prim_ram_1p.mem``
+``public_flat_rw``, so the built model registers
+``sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram.gen_ram_inst[0].u_mem`` and its
+``mem`` array (32768 x 64 bits) for VPI. The whole array is reachable from cocotb,
+with no dedicated testbench port. The two port probes (``sram_word0_probe_o``,
+``sram_payload_probe_o``, ``tb_top.sv``) expose only 7 of the 32768 words, which
+cannot support a claim about a 256 KiB clear.
 
 STIMULUS. Inherited whole from ``sep_spi_primary_fail_backup_test`` -- the primary
 slot span erased, so the primary is rejected with ``MANIFEST_ERR_BAD_MAGIC`` and
 the ROM fails over to the backup. TP080 step 1 says to reuse any existing
-primary-fault test; this is the tree's proven one, and every failover assertion it
-already makes (console order, device-side address order, blank-primary evidence,
+primary-fault test, and every failover assertion that test makes (console order,
+device-side address order, blank-primary evidence,
 the ``SPI init failed`` forbid) is inherited and still enforced. TP080 adds the
 SRAM scoreboard on top; it changes nothing about the failover under test.
 """
@@ -139,8 +136,8 @@ _SRAM_LEAF = ("u_mem", "mem")
 
 # Scoreboard sampling period, in clocks. The two windows this has to resolve are
 # ~30k cycles (primary DMA -> clear start) and >=1.4k cycles (clear end -> backup
-# fetch), both measured from the reference run 20260826_091216. 100 is well inside
-# the smaller of the two and costs two VPI reads per sample.
+# fetch) on a passing boot. 100 is well inside the smaller of the two and costs two
+# VPI reads per sample.
 _SAMPLE_EVERY = 100
 
 # An erased primary slot: what the flash device returns, and therefore what the
@@ -224,9 +221,9 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
     def _word(self, idx: int) -> int:
         """Read one 64-bit SRAM word.
 
-        Deliberately NOT ``sep_base_test.rd()``: that helper swallows the
-        exception and returns 0, which for this test would turn a broken probe
-        into a passing "the memory is cleared" claim.
+        Not ``sep_base_test.rd()``: that helper resolves an unreadable value to 0,
+        which for this test would turn a broken probe into a passing "the memory is
+        cleared" claim.
         """
         return int(self._mem[idx].value)
 
@@ -306,21 +303,17 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         word changes only after every other one has.
 
         WHY "residue" TRIGGERS ON THE VALUE AND NOT ON "IT CHANGED". The macro is
-        64 bits wide with a per-bit write mask (``hw/top/sep_ip_integration.sv:150-195``:
+        64 bits wide with a per-bit write mask (``hw/top/sep_ip_integration.sv``:
         ``SRAM_DATA_WIDTH = 64``, ``wmask_i``), and the manifest DMA fills it in
         narrower beats, so one macro word is legitimately half-written for a
-        while. The first version of this test triggered on "word[0] != poison" and
-        sampled ``0xa5a5_0000_ffff_ffff`` -- the low half already carrying the
-        erased slot's 0xFF bytes, the high half still poison -- and failed against
-        an expected ``0xFFFF_FFFF_FFFF_FFFF``
-        (run 20260829_090953, t=1521584 ns). The expected value was right and the
-        trigger was wrong. Triggering on the settled value removes the race
-        without weakening anything: if the DMA never puts exactly
-        ``0xFFFF_FFFF_FFFF_FFFF`` there, this event never fires and
-        CHK-SRAM-RESIDUE fails. The word settles 1600 ns after it is first
-        touched and then stands until the clear starts -- 631 us, i.e. from the
-        settled value at 1523184 ns to ``MANIFEST_ERR`` at 2154352 ns, which is
-        ~39400 clocks of a 16 ns period against a 100-clock sampling interval.
+        while: a trigger on "word[0] != poison" can sample the low half already
+        carrying the erased slot's 0xFF bytes and the high half its poison value.
+        Triggering on the settled value avoids that race without weakening
+        anything: if the DMA never puts exactly ``0xFFFF_FFFF_FFFF_FFFF`` there,
+        this event never fires and CHK-SRAM-RESIDUE fails. The word settles within
+        a few hundred clocks of being first touched and then stands until the clear
+        starts, tens of thousands of clocks later, against a 100-clock sampling
+        interval.
         """
         clk = cocotb.top.clk_i
         try:
@@ -533,8 +526,8 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "SMC clear has nothing to "
             "assert against. Consistently, boot_rom.dis has no store loop over "
             "sep_get_smc_sram_base() (0x40060000) -- which is also where this ROM's "
-            "own status ring lives. See FINDINGS F19 and F21. A green run here does "
-            "NOT cover the SMC SRAM half of F038."
+            "own status ring lives. A green run here does NOT cover the SMC SRAM half "
+            "of TP080."
         )
 
 

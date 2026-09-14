@@ -63,7 +63,7 @@ from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 FILTER_START_ADDR = 0x08
 FILTER_END_ADDR = 0x10
 # Same-page allow_burst=1 rewrites START down and END up to the 4 KB page
-# (hw/common/axi/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
+# (hw/ip/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
 # readback model is sep_reg_bit_bash_seq.inbound_addr_expected().
 
 # Allowed target: a pure-RW scratch CSR (SEP_SW_DEBUG @ sep_cpu_ctrl+0x178) in the
@@ -330,8 +330,8 @@ class SepInboundFilterMatrixCfg:
     def ownership_targets(self, inbound_cfg_addr: int) -> list[tuple[str, int]]:
         """CSRs that must stay outside every programmed allow window.
 
-        Inbound CFG is the original ownership probe. The rest sit in the same
-        reachable system-CSR window and were previously uncovered. Window 0 is
+        Inbound CFG is the primary ownership probe. The rest sit in the same
+        reachable system-CSR window. Window 0 is
         ``SEP_SW_DEBUG``; ``SEP_GLOBAL_BASE_ADDR`` and ``SEP_REGION_SIZE`` share
         that 4 KB page, so they prove START/END (not the page) under
         ``allow_burst=0``.
@@ -439,7 +439,7 @@ class SepInboundFilter(SepAxiRegDriver):
         START and END inside one 4 KB page. Hardware then widens the range to
         the whole page: ``START_ADDR`` rounds down, ``END_ADDR`` rounds up,
         and ``allow_burst=1`` selects the 4 KB granule
-        (``hw/common/axi/axi_filter/doc/index.adoc``). The entry grants every
+        (``hw/ip/axi_filter/doc/index.adoc``). The entry grants every
         address in that page -- in the SEP CSR region a page is a whole
         block. A caller that wants a narrow window and sets ``allow_burst``
         by habit gets the page, and the CSR readback shows the widened

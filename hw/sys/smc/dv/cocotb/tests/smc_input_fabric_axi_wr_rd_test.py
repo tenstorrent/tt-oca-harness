@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GitHub Project P0 leaf for the input/output fabric CSR precheck sequence.
+"""P0 leaf for the input/output fabric CSR precheck sequence.
 
 DV-CARD:          SMC_004   ANCHOR: smc_input_fabric_axi_wr_rd_test
 
@@ -22,7 +22,13 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_input_fabric_axi_wr_rd_test(smc_base_test):
-    """Run the fabric proxy scenario tracked by the P0 project issue."""
+    """Run the SEP_IN CSR precheck of the filter/remap windows."""
+
+    required_evidence = (
+        "CHK-ALIAS-REMAP-RESET-DEFAULT",
+        "CHK-NONVAC",
+    )
+    min_evidence = 2
 
     async def run_scenario(self) -> None:
         seq = smc_input_output_fabric_wr_rd_test_seq("input_fabric_axi_seq")

@@ -20,9 +20,10 @@ OpenTitan interrupt-register layout (per IP base):
   INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
   INTR_ENABLE @ +0x04  RW    -- gates the IP intr_o = INTR_STATE & INTR_ENABLE
   INTR_TEST   @ +0x08  WO    -- write 1 to a bit to set the matching INTR_STATE bit
-CSRNG/EDN bases (hw/sys/sep/rtl/sep_crypto_pkg.sv) and the per-source aggregator-bit map
-(hw/sys/sep/rtl/sep.sv sep_internal_interrupts assembly). 32-bit AXI beats
-(size=2) via the sep_crypto TL-UL bridge, like the AES/OTBN drivers.
+CSRNG/EDN bases from the generated register map. Aggregator bit =
+documented PIC source ID minus 1 (`hw/sys/sep/doc/interrupts.adoc`; PIC
+IDs are 1-based). 32-bit AXI beats (size=2) via the sep_crypto TL-UL
+bridge, like the AES/OTBN drivers.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_spec_tables import pic
 from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -44,10 +46,29 @@ INTR_TEST = sym("CSRNG_INTR_TEST_REG_ADDR") - CSRNG_BASE
 
 RESP_SLVERR = 2
 
-# sep.sv sep_internal_interrupts: [40] DMA register-path, [42] periph OR.
-IRQ_DMA_REG_PATH = 40
-IRQ_DMA_HOST_PATH = 41
-IRQ_PERIPH_OR = 42
+# PIC source IDs from hw/sys/sep/doc/interrupts.adoc (1-based).
+# sep_internal_interrupts[N] feeds PIC source N+1.
+PIC_HMAC_DONE = pic("HMAC done")
+PIC_KMAC_DONE = pic("KMAC done")
+PIC_CSRNG_CMD_REQ_DONE = pic("CSRNG command request done")
+PIC_CSRNG_ENTROPY_REQ = pic("CSRNG entropy request")
+PIC_CSRNG_HW_INST_EXC = pic("CSRNG HW instance exception")
+PIC_CSRNG_FATAL_ERR = pic("CSRNG fatal error")
+PIC_EDN_CMD_REQ_DONE = pic("EDN command request done")
+PIC_EDN_FATAL_ERR = pic("EDN fatal error")
+PIC_DMA_REG_PATH = pic("DMA register-path bus error")
+PIC_DMA_HOST_PATH = pic("DMA host-path integrity/bus fault")
+PIC_PERIPH_OR = pic("Peripheral register-bridge fault")
+
+
+def agg_from_pic(pic_source: int) -> int:
+    """Aggregator bit for a documented 1-based PIC source."""
+    return pic_source - 1
+
+
+IRQ_DMA_REG_PATH = agg_from_pic(PIC_DMA_REG_PATH)
+IRQ_DMA_HOST_PATH = agg_from_pic(PIC_DMA_HOST_PATH)
+IRQ_PERIPH_OR = agg_from_pic(PIC_PERIPH_OR)
 
 DMA_STATUS_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_STATUS")
 DMA_CLEAR_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_CLEAR")
@@ -151,14 +172,14 @@ class IrqSrc:
     agg_idx: int
 
 
-# reference sep_irq_ip_to_aggregator_test_seq sources -> sep.sv aggregator bits.
+# CSRNG/EDN sources. agg_idx is PIC source − 1 from interrupts.adoc.
 IRQ_TABLE = (
-    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, 23),
-    IrqSrc("csrng_entropy_req", CSRNG_BASE, 1, 24),
-    IrqSrc("csrng_hw_inst_exc", CSRNG_BASE, 2, 25),
-    IrqSrc("csrng_fatal_err", CSRNG_BASE, 3, 26),
-    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, 27),
-    IrqSrc("edn_fatal_err", EDN_BASE, 1, 28),
+    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, agg_from_pic(PIC_CSRNG_CMD_REQ_DONE)),
+    IrqSrc("csrng_entropy_req", CSRNG_BASE, 1, agg_from_pic(PIC_CSRNG_ENTROPY_REQ)),
+    IrqSrc("csrng_hw_inst_exc", CSRNG_BASE, 2, agg_from_pic(PIC_CSRNG_HW_INST_EXC)),
+    IrqSrc("csrng_fatal_err", CSRNG_BASE, 3, agg_from_pic(PIC_CSRNG_FATAL_ERR)),
+    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, agg_from_pic(PIC_EDN_CMD_REQ_DONE)),
+    IrqSrc("edn_fatal_err", EDN_BASE, 1, agg_from_pic(PIC_EDN_FATAL_ERR)),
 )
 
 

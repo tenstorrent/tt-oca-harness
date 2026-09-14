@@ -17,10 +17,6 @@
  * 3. Write-readback for all RW registers
  * 4. Verify SW_RST singlepulse auto-clears to 0
  * 5. Verify STATUS.BYTEORDER=1 (LITTLE_ENDIAN parameter)
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_reg_test STACK=cgen,sim
- *
  */
 
 #include <stdint.h>

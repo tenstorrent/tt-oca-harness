@@ -6,24 +6,23 @@
 
 #include "och_sep_common.h"
 #include "sep.h"
-#include "sep_outbound_filter.h" /* common: sep_outbound_filter_init() (proven 0x80000000 egress) */
+#include "sep_outbound_filter.h" /* common: sep_outbound_filter_init() (0x80000000 egress) */
 #include "sep_smc_bringup.h"     /* common: sep_smc_open_window / _bringup_from_sram */
 #include "smu_sep_ext_axi_protocol.h"
 
 /*
  * smu_sep_ext_axi_combined_probe_test  --  SEP external-egress firmware.
  *
- * Cloned from fw/sep/tests/sep_smc_notify (the existing real SEP firmware that opens
- * its outbound filter and writes 0xA5A55A5A/0xCAFEBABE to 0x80000000) so that test is
- * left undisturbed.  The SEP is BOTH the primary that releases the SMC and the outbound
- * producer for the SEP->ext_out leg.  It:
+ * The SEP is BOTH the primary that releases the SMC and the outbound producer for the
+ * SEP->ext_out leg.  It:
  *   S1  (SEP is the PRIMARY, runs FIRST) releases the four SMC cores over the SEP->SMC alias
  *       -- identical to the smc_sep_xbar SEP fw: sep_smc_open_window() opens the outbound egress
  *       window over the SEP->SMC region, then sep_smc_bringup_from_sram() waits (bounded, same
  *       poll-limit idiom) for the SMC image cookie in SRAM and, once present, re-vectors +
  *       pulses reset on all four SMC cores.  Without this the SMC never boots, SMC_READY never
  *       appears, and the whole SMC side of the dual-firmware test fails.  The ENTRY/cookie are
- *       derived from THIS test's SMC image (fw/smc/tests/smu_sep_ext_axi/out/test.{dis,bin}).
+ *       derived from THIS test's SMC image (hw/sys/smc/dv/fw/tests/smu_sep_ext_axi;
+ *       EXTAXI_SMC_ENTRY / EXTAXI_SMC_IMAGE_FIRST_WORD in smu_sep_ext_axi_protocol.h).
  *   S2  programs + READS BACK its own aperture (sep_global_base/sep_region_size),
  *       opens its inbound windows (so tb.ext_in can reach SEP cold scratch for the
  *       GO/ROUTE_DONE barrier + the ext_in->SEP route leg), and opens its outbound
@@ -37,7 +36,7 @@
  *       SMU016_SEP_PASS=0x160A0001 to LOCAL cold scratch6 and parks in
  *       smu_sep_ext_axi_sep_pass_loop.
  *
- * The egress store to 0x80000000 is kept (it is the CHK-SEP-OUT stimulus).  Every wait
+ * The egress store to 0x80000000 is the CHK-SEP-OUT stimulus.  Every wait
  * after it is bounded so the firmware never hangs -- if ROUTE_DONE/PASS cannot be reached
  * the SEP parks at a defined, named PC (the fail loop); if the store itself does not
  * complete, the SEP sits at the (also defined) store PC.  DV reports the observed PC and
@@ -143,7 +142,7 @@ static int run_sep_ext_axi_sequence(void) {
     }
 
     /* S2 (setup): inbound windows for ext_in -> SEP; outbound egress for 0x80000000.
-     * sep_outbound_filter_init() is the proven all-pass egress over 0x80000000..0x800000FF
+     * sep_outbound_filter_init() opens the all-pass egress over 0x80000000..0x800000FF
      * (identical to sep_smc_notify). Filters are write-only -> no CPU readback. */
     open_sep_inbound_window();
     sep_outbound_filter_init();

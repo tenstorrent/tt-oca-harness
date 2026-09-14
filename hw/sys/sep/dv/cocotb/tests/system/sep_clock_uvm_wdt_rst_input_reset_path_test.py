@@ -25,7 +25,7 @@ Checks (each asserts a specific value, so a stuck/X reset net fails):
 
 The A->B->C toggle is non-vacuous: a tied/stuck sep_cpu_reset_n cannot satisfy
 both the ==1 and ==0 checks. Scope is SEP-internal reset-input behavior only; the
-WDT-bite -> SMC -> wdt_rst_ni closure is SMC DV scope (per the reference suite header).
+WDT-bite -> SMC -> wdt_rst_ni closure is SMC DV scope.
 
 Reg-only / no AXI traffic, so this is a no_cpu run with ``+skip_fuse_sense``.
 """

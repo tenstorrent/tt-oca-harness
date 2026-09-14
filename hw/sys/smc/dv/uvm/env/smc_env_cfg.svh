@@ -3,8 +3,9 @@
 //
 // SMC environment configuration, derived from smc_test_cfg and read by
 // smc_env: the chosen clock periods, the SEP_IN master watchdog, the
-// scoreboard features that must compare, and the negative-validation
-// switch the scoreboard predictor honors. The env fills the VIP configs from
+// scoreboard features that must compare, the negative-validation switch
+// the scoreboard predictor honors, and the memory footprint of the SYS_OUT
+// responder. The env fills the VIP configs from
 // this object and publishes the clock periods on smc_tb_if. Never
 // randomized. The cocotb twin is env/smc_env_cfg.py.
 
@@ -18,6 +19,8 @@ class smc_env_cfg extends ocah_env_cfg;
   int unsigned axi_timeout_cycles = 10_000;
   // Scoreboard negative hook: corrupt the predicted scratch readback.
   bit csr_scoreboard_negative;
+  // Backing memory of the SYS_OUT responder, in bytes (addresses wrap).
+  int unsigned sys_out_mem_bytes = 32'h8000_0000;
 
   function new(string name = "smc_env_cfg");
     super.new(name);

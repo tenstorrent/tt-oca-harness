@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD lifecycle, CHIPLET fused key 0 programmed, ROM development key 0 revoked.
 #
 # Stimulus for sep_firmware_chiplet_pubkey_0_test.
@@ -9,8 +12,8 @@
 #    only RSA-3072 private key this tree ships
 #    (bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/, whose other file
 #    ec_private_key.pem the ROM cannot use). The reference generates a DEDICATED
-#    key per fused slot (tt_sep/tb/scripts/generate_rsa3072_key.sh:10-25) and signs
-#    with it, so its fused digest differs from its ROM-slot digest. Here they are
+#    key per fused slot and signs with it, so its fused digest differs from its
+#    ROM-slot digest. Here they are
 #    equal, and the consequence is stated in the testcase docstring: the digest
 #    comparison alone cannot prove which arm of validate_signature ran. Items 2 and
 #    3 are what close that.
@@ -23,9 +26,9 @@
 # 2. CHIPLET_PUBK_HASH1 holds a DECOY: the same digest with bit 0 of byte 0
 #    flipped. It is non-zero, so a ROM that addressed the WRONG chiplet fuse would
 #    pass read_fuse_key()'s non-zero test and fail check_pubkey_hash() with
-#    PUBK_HASH_MISMATCH instead of booting. That is a live regression guard, not a
-#    hypothetical: manifest_crypto.c records that this ROM once derived the
-#    digest addresses as CHIPLET_PUBK_REVOKE + 0x100/0x120 and read the wrong words.
+#    PUBK_HASH_MISMATCH instead of booting. A ROM that derives the digest
+#    addresses as CHIPLET_PUBK_REVOKE + 0x100/0x120 reads the wrong words and is
+#    refused here.
 #
 # 3. CHIPLET_PUBK_REVOKE bit 0 revokes ROM key slot 0. On the correct ROM this is
 #    INERT -- the manifest selects a fused key, so the ROM-key arm
@@ -39,9 +42,8 @@
 #
 # Bits 16 and 17 revoke CHIPLET_PUBK_HASH0 and HASH1 (sep_efuse_map.rdl:727). They
 # are disjoint from the ROM-slot bits [7:0]; nothing here is derived by counting
-# past ROM slot 5. The reference uses bits 6 and 7
-# (tt_sep/tb/uvm_tests/sep_firmware_pubkey_test.sv:124-129), which are unused
-# ROM-slot bits in THIS map -- do not copy them.
+# past ROM slot 5. The reference uses bits 6 and 7, which are unused ROM-slot
+# bits in THIS map -- do not copy them.
 #
 # BL1_VERSION and SBOOT_DIS stay 0: the rollback check runs before key selection
 # (manifest_crypto.c) and SBOOT_DIS would skip the crypto chain
@@ -58,7 +60,8 @@
 
 [CHIPLET_PUBK_HASH1]
   [CHIPLET_PUBK_HASH1.fields.key_hash]
-  # Decoy: the same digest with byte 0 bit 0 flipped. Non-zero on purpose.
+  # Decoy: the same digest with byte 0 bit 0 flipped. Non-zero: a zero fuse
+  # reads as FUSE_KEY_EMPTY, a different rejection.
   value = 0xe3c304ff1f0c9beeb572c8800e79e19a5e352a065bf73151bd5e6b7323d07647
 
 [CHIPLET_PUBK_REVOKE]

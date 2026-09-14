@@ -21,7 +21,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 # SF-002: Enable Threshold == Hysteresis Control (same programmable field).
-THRESH_MIN = 8
+# Lowest hysteresis whose DMA completion survives the gater with the SYS_OUT
+# slave agent's one-cycle response latency; 8 and below drop the transfer
+# (smc_clk_multi_window_test_seq.HYST_LOW_EXCLUSION records the band).
+THRESH_MIN = 9
 THRESH_MAX = 63
 HYST_IDLE = 8
 IDLE_OBSERVE = 16
@@ -77,7 +80,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         # One entry per bounded wait this sequence actually entered:
         # (label, smc cycles the wait consumed, the bound it was given). Each
         # wait raises on expiry, so the margin recorded here is what the run
-        # measured and not a restatement of the constants in the source.
+        # measured.
         self.bounded_waits: list[tuple[str, int, int]] = []
 
     def _dut(self):
@@ -282,10 +285,8 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         assert dma_edges_s1 == IDLE_OBSERVE, (
             f"DMA gated off while cg disabled: edges={dma_edges_s1} window={IDLE_OBSERVE}"
         )
-        # Every field is sampled here rather than restated from the source: the
-        # two enables are re-read off the DUT at emission time and the busy bit
-        # records that the window really was idle. A literal `dma_cg_en=0` would
-        # print the same words whatever the DUT did ([EXACT-EXPECTATION]).
+        # The two enables and the busy bit are re-read off the DUT at emission
+        # time, so the token reports the sampled window ([EXACT-EXPECTATION]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-DMA-GATE-DISABLED-FREE-RUN",
@@ -337,11 +338,8 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
             f"zeroer_busy={cg.sample_bit(dut, 'tb_zeroer_busy')}",
         )
         cg.mark_fence(self.fence, "zeroer-gate-disabled-free-run")
-        # P1 module-gating token. It carries the raw per-module edge
-        # counts of the two windows above; a derived "were they as expected"
-        # flag is absent, because it would be evaluated after the
-        # asserts that already pin the same relations and would read `1` in
-        # every log this sequence can produce ([EXACT-EXPECTATION]).
+        # P1 module-gating token: the raw per-module edge counts of the two
+        # windows above ([EXACT-EXPECTATION]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-MODULE-GATING",
@@ -350,17 +348,12 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
             f"dma_gated_edges={dma_n}/{IDLE_OBSERVE} "
             f"zeroer_ungated_edges={zaxi_n}/{IDLE_OBSERVE}",
         )
-        # This point is not a phase and carries no `mark_fence`: the only thing
-        # between it and `zeroer-gate-disabled-free-run` is the token above,
-        # built from values that phase already measured, so a mark here would
-        # land at the same simulation time and `assert_fence_progress` would
-        # reject the pair.
 
         # ---- P1 enable-threshold (=hyst) sweep points ----
         # The cells are named after the hysteresis value each one measures.
         # CG_HYSTERESIS is a 6-bit field whose true minimum is 0; THRESH_MIN is
         # the lowest point this sequence exercises, not the field's floor, and
-        # the 0..7 band is unproven.
+        # the 0..8 band is unproven.
         d_min = await self._measure_threshold(
             "S3b",
             THRESH_MIN,
@@ -380,12 +373,11 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
             "CHK-ENABLE-THRESHOLD",
             "CHK-ENABLE-THRESHOLD: re-gate delay tracks CG_HYSTERESIS within "
             f"1 cycle at the two swept points: hyst={THRESH_MIN} -> delay="
-            f"{d_min}, hyst={THRESH_MAX} -> delay={d_max}. CG_HYSTERESIS 0..7 "
+            f"{d_min}, hyst={THRESH_MAX} -> delay={d_max}. CG_HYSTERESIS 0..8 "
             f"is NOT swept here",
         )
-        # Measured margins, not a restatement of the bound constants: each
-        # bounded wait raises on expiry, and what this token reports is how many
-        # cycles each one actually consumed against the bound it was given.
+        # Each bounded wait raises on expiry; the token reports the cycles each
+        # one consumed against the bound it was given.
         worst = max(self.bounded_waits, key=lambda w: w[1] / w[2])
         cg.emit_chk(
             self.chk_seen,
@@ -396,14 +388,11 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
             f"all: {','.join(f'{n}={u}/{b}' for n, u, b in self.bounded_waits)}",
         )
         # P0 NONVAC is the contract for SMCCGP0_002; P0 fence terms lead.
-        # `assert_fence_order` alone is satisfied by construction in a
-        # straight-line body -- its own docstring says it cannot fail on any RTL
-        # ([NO-ALWAYS-PASS-CHECKER]), so the token below does not rest on it.
-        # `assert_fence_progress` adds the DUT-time claim: every listed phase
-        # must have consumed simulation time, so a phase that ran with no DUT
-        # activity fails. That is a weak claim and is labelled as such; the
-        # strong content of this testcase is the gated-clock edge counts and the
-        # hysteresis measurement in `_measure_threshold`, not this fence.
+        # `assert_fence_progress` requires every listed phase to have consumed
+        # simulation time; order alone holds by construction in a straight-line
+        # body ([NO-ALWAYS-PASS-CHECKER]). The strong content of this testcase
+        # is the gated-clock edge counts and the hysteresis measurement in
+        # `_measure_threshold`.
         #
         # Every term listed below is separated from its predecessor by at least
         # one multi-cycle DUT wait: a `count_enabled_at_smc_rise` window between

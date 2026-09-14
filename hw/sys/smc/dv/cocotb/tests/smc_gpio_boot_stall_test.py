@@ -13,6 +13,15 @@ from smc_base_test import smc_base_test
 class smc_gpio_boot_stall_test(smc_base_test):
     """Pad-57 boot stall hold/release/sticky lockout."""
 
+    required_evidence = (
+        "CHK-GPIO-BOOT-STALL-BASIC",
+        "CHK-GPIO-BOOT-STALL-HOLD",
+        "CHK-GPIO-BOOT-STALL-LOCK",
+        "CHK-GPIO-BOOT-STALL-REL",
+        "CHK-GPIO-BOOT-STALL-WARM",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

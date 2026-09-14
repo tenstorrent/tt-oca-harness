@@ -8,7 +8,7 @@ name: dashboard
 # triggering event or on the tier), but only scheduled runs that carry a
 # weekly artifact publish; label the rest so they are not read as failed
 # publications.
-run-name: ${{ github.event_name == 'workflow_dispatch' && format('dashboard data publish (regress run {0})', inputs.run_id) || github.event.workflow_run.event == 'schedule' && 'dashboard data publish (scheduled regress run)' || format('dashboard skipped ({0} regress run; only scheduled weekly data is published)', github.event.workflow_run.event) }}
+run-name: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && format('dashboard dry run (regress run {0})', inputs.run_id) || github.event_name == 'workflow_dispatch' && format('dashboard data publish (regress run {0})', inputs.run_id) || github.event.workflow_run.event == 'schedule' && 'dashboard data publish (scheduled regress run)' || format('dashboard skipped ({0} regress run; only scheduled weekly data is published)', github.event.workflow_run.event) }}
 
 # Data-only publication: this workflow collects the weekly regression run
 # into the normalized dashboard data contracts and publishes them for
@@ -30,6 +30,10 @@ on:
       run_id:
         description: "regress workflow run id to collect and publish (manual weeklies, backfill)"
         required: true
+      dry_run:
+        description: "collect and aggregate only; skip the data-branch push, the bundle upload and the digest email"
+        type: boolean
+        default: false
 
 permissions:
   contents: write  # push the dv-dashboard-data branch
@@ -72,7 +76,8 @@ jobs:
 
       # A dispatch can name any regress run; publish only runs that carry a
       # weekly run tree. DUT and tool come from the artifact name
-      # (dv-run-<dut>-<tool>-weekly; dut/tool never contain hyphens).
+      # (dv-run-<dut>-<tool>-weekly; dut/tool never contain hyphens). A labelled
+      # row's artifact ends in -<label>, so the -weekly$ anchor leaves it out.
       #
       # Everything downstream of here is single-DUT: the classification file is
       # keyed by day alone, and ghdata/latest holds one result. The regress matrix
@@ -124,6 +129,28 @@ jobs:
           run-id: ${{ env.REGRESS_RUN_ID }}
           github-token: ${{ github.token }}
           path: weekly-run
+
+      # A dispatch re-grades the weekly against this checkout's coverage
+      # policy (not the regression commit's) before it is collected, so a
+      # waiver merged after the weekly ran reaches the published numbers.
+      # run_dv.py --waive rewrites only coverage values inside the run tree:
+      # exit 0 and 1 are applied grades (1 = thresholds not met, visible as the
+      # collected coverage status); exit 2 is the one error outcome and leaves
+      # the tree as recorded. A weekly whose report command crashed, or whose
+      # run did not finish (result.json tests.completed false), is refused
+      # and publishes as recorded; a weekly whose policy failed at grade time
+      # publishes its repaired grade once the policy is corrected. Every
+      # dispatch adds a trend point. The scheduled path does not run this step.
+      - name: Re-apply the checkout's coverage policy
+        if: steps.art.outputs.found == 'true' && github.event_name == 'workflow_dispatch'
+        run: |
+          rc=0
+          OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut "$DUT" --run-dir weekly-run --waive || rc=$?
+          case "$rc" in
+            0) ;;
+            1) echo "coverage policy applied; coverage thresholds not met" >> "$GITHUB_STEP_SUMMARY" ;;
+            *) echo "coverage policy not applied (exit $rc); publishing the recorded grade" >> "$GITHUB_STEP_SUMMARY" ;;
+          esac
 
       # Fail closed on a malformed artifact: the run-level result.json must
       # exist. A FAIL/UNKNOWN status still publishes -- a red weekly must
@@ -212,8 +239,13 @@ jobs:
 
       # The data branch is canonical: normalized results, summary, bounded
       # trend history, per-week gzipped archives, and classification.
+      #
+      # A dispatch with dry_run stops before this step and the three that
+      # follow: nothing is pushed, uploaded or mailed, so a workflow change is
+      # verifiable against a published weekly. On workflow_run the inputs
+      # context is empty and the event term short-circuits.
       - name: Publish to the data branch
-        if: steps.art.outputs.found == 'true'
+        if: steps.art.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
         run: |
           rm -rf ghdata/latest
           mkdir -p ghdata/latest ghdata/data/runs
@@ -239,7 +271,7 @@ jobs:
 
       # The per-run consumable bundle for the external website pipeline.
       - name: Stage consumption bundle
-        if: steps.art.outputs.found == 'true'
+        if: steps.art.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
         run: |
           mkdir -p consumption
           cp "bundle/$DUT.result.json" bundle/summary.json consumption/
@@ -247,7 +279,7 @@ jobs:
           cp "ghdata/data/classification/$DAY.json" consumption/classification.json
 
       - name: Upload consumption bundle
-        if: steps.art.outputs.found == 'true'
+        if: steps.art.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
         uses: actions/upload-artifact@v4
         with:
           name: dv-dashboard-data
@@ -257,7 +289,7 @@ jobs:
 
       # Self-disables until the mail secrets exist (see run-dashboard.adoc).
       - name: Email digest
-        if: steps.art.outputs.found == 'true' && env.OCAH_MAIL_TO != ''
+        if: steps.art.outputs.found == 'true' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run) && env.OCAH_MAIL_TO != ''
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com

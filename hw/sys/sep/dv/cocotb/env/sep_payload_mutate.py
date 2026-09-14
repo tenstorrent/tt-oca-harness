@@ -2,14 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Payload/TOC mutation for boot testcases whose defect lives PAST the crypto chain.
 
-WHY THIS IS A SEPARATE MODULE FROM ``sep_manifest_mutate``. That module states its
-own operating rule in its docstring: every mutation it performs is rejected before
-the RSA step, so the stale signature is never reached and re-signing is
-"deliberately not done". The defects here are the opposite case. BL1 size, BL1
+WHY THIS IS A SEPARATE MODULE FROM ``sep_manifest_mutate``. Every mutation that
+module performs is rejected before the RSA step, so the stale signature is never
+reached and it does not re-sign. The defects here are the opposite case. BL1 size, BL1
 entry point and post-decrypt TOC content are all validated by
 ``validate_manifest_payload()`` / ``check_bl1_image()``, which run AFTER
 ``manifest_crypto_validate()`` has verified the signature
-(``manifest_load.c`` then). A payload mutation that is not
+(``manifest_load.c``). A payload mutation that is not
 re-sealed therefore never reaches the check it is aimed at: it dies at
 ``PLD_HASH_MISMATCH`` (``manifest_crypto.c``), or at ``SIG_FAILED`` once
 ``payload_hash`` -- which sits INSIDE the TBS at offset 552 -- is corrected.
@@ -18,20 +17,17 @@ So these mutations must re-seal the slot, in this order:
 
     per-image hash  ->  payload_hash  ->  manifest_hash  ->  RSA signature
 
-RE-SIGNING IS POSSIBLE HERE, and that is not a shortcut. The images under test are
-signed with the dev0 test key, whose private half ships in the tree at
+RE-SIGNING. The images under test are signed with the dev0 test key, whose private
+half is in the ``tt-boot-manifest`` submodule at
 ``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem``
 and whose modulus digest is the ROM's own key slot 0
 (``bootrom/prod/src/key_digests.c:19-21``). Re-signing keeps the ROM's signature
-check ENABLED and passing on a legitimately signed image; it does not bypass,
-weaken or stub anything. The alternative -- running these testcases with secure
-boot off -- would be the weaker test, because the ROM would then skip the whole
-crypto chain and the BL1 verdict would be reached by a different path than the one
-production uses.
+check enabled and satisfied by a correctly signed image, so the BL1 verdict is
+reached by the same crypto path production uses.
 
-SIGNING USES ONLY THE STANDARD LIBRARY. The DV virtualenv has no ``cryptography``
-module, so :func:`sign_pkcs1v15_sha256` implements EMSA-PKCS1-v1_5 directly (the
-packer's scheme: ``manifest_signing.py``, ``PKCS1v15()`` + ``SHA256``).
+SIGNING USES ONLY THE STANDARD LIBRARY. :func:`sign_pkcs1v15_sha256` implements
+EMSA-PKCS1-v1_5 directly (the packer's scheme: ``manifest_signing.py``,
+``PKCS1v15()`` + ``SHA256``), so no third-party crypto module is required.
 :func:`verify_signing_key` is what makes that trustworthy: it re-derives the
 signature of the UNMUTATED slot and requires it to equal the shipped bytes
 exactly. A wrong padding, a wrong digest prefix or a wrong TBS boundary cannot
@@ -433,10 +429,10 @@ def set_bl1_entry_point(buf: bytearray, slot: str, value: int | None = None) -> 
 def set_bl1_zero_length(buf: bytearray, slot: str) -> int:
     """Give BL1 a zero image size -- the "zero" size class of TP053-S.
 
-    WHICH SIZE CLASS THIS ROM CAN ACTUALLY BE SHOWN. The procedure names three
-    (zero, larger than IRAM, larger than the spec's max BL1 size), and only the
-    first is reachable at a sane simulation cost. The reason is check ordering
-    inside ``validate_manifest_payload``:
+    SIZE CLASS. The procedure names three (zero, larger than IRAM, larger than the
+    spec's max BL1 size); only the first is reachable without growing the payload
+    past 256 KiB on both slots. The reason is check ordering inside
+    ``validate_manifest_payload``:
 
       * ``manifest_load.c`` rejects ``offset + length > payload_length`` as
         ``MANIFEST_ERR_IMAGE_OOB`` before anything BL1-specific runs, so an
@@ -444,15 +440,15 @@ def set_bl1_zero_length(buf: bytearray, slot: str) -> int:
       * ``check_bl1_image``'s containment arm (``manifest.h``,
         ``BL1_ADDR_RANGE``) only fires once ``load_addr + length`` leaves the
         256 KiB ICCM window. With the shipped ``load_addr`` of 0xC0000000 that
-        needs length > 0x40000, i.e. a >256 KiB payload -- roughly 160 ms of extra
-        simulated SPI time per slot at this TB's ~610 ns/byte, on both slots.
+        needs length > 0x40000, i.e. a >256 KiB payload fetched over SPI on both
+        slots.
       * The explicit ``length == 0 || length > SEP_SRAM_SIZE`` gate at
         ``rom_handoff.c`` (``BL1_SIZE`` / ``MANIFEST_ERR_BL1_TOO_LARGE``)
         is downstream of manifest validation, and ``manifest_load.c``
         says so in as many words: by the time handoff runs the slot has already
         been accepted. Both of its arms are therefore already rejected upstream.
 
-    So zero is the class this ROM demonstrates cheaply and unambiguously, at
+    So zero is the class this ROM demonstrates unambiguously, at
     ``manifest_load.c``: ``IMAGE_LEN_ZERO idx=<i>`` then
     ``MANIFEST_ERR_IMAGE_OOB``. The index in the marker is what makes the verdict
     attributable -- this payload's TOC holds exactly one image and it is the BL1,
@@ -490,7 +486,7 @@ def corrupt_ciphertext(
     exactly what the procedure asks for: "corrupt the encrypted payload so the
     decrypted plaintext does not match the TOC magic".
 
-    Corrupting block 0 is deliberate: in CBC, ``P0 = D(C0) XOR IV``, so altering
+    Block 0 is the target: in CBC, ``P0 = D(C0) XOR IV``, so altering
     ``C0`` randomises the whole of plaintext block 0 -- the 16 bytes that begin with
     the ``PTOC`` identifier. The manifest is re-sealed afterwards because
     ``payload_hash`` covers the CIPHERTEXT and is verified before decryption

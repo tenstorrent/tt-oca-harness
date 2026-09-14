@@ -126,7 +126,7 @@ class dtp_base_test extends ocah_test;
     m_env.m_scan_builder.clear_history();
   endfunction
 
-  // Clock/reset bring-up (cocotb _bring_up parity): route the downstream
+  // Clock/reset bring-up (cocotb bring_up parity): route the downstream
   // STAP TAPs, then sequence POR and system reset through dtp_tb_if with
   // the startup dbg_disable vector cleared while POR is still asserted, so
   // scenario passes begin with full debug access and assert the disables

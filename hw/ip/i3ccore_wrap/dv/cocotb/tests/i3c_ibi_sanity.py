@@ -138,7 +138,7 @@ async def i3c_ibi_sanity(dut):
     # Initialize controller and target
     tb.log.info("Initializing controller...")
     await ctrl.initialize()
-    await ctrl.configure_timing_od_i3c()  # Now includes T_AVAL, T_IDLE
+    await ctrl.configure_timing_od_i3c()
     await ctrl.configure_timing_pp()
 
     tb.log.info("Configuring controller thresholds...")
