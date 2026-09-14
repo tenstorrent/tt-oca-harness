@@ -114,23 +114,23 @@ endif::backend-pdf[]
 |=======================================================================
 
 ifdef::backend-pdf[]
-include::../../../ip/axi_lite_mailbox_unit/doc/index.adoc[]
+include::../../../ip/axi_lite_mailbox_unit/doc/index.adoc[leveloffset=+1]
 
-include::../../../ip/system_timer_octs/doc/index.adoc[]
+include::../../../ip/system_timer_octs/doc/index.adoc[leveloffset=+1]
 
-include::../../../ip/efuse/doc/index.adoc[]
+include::../../../ip/efuse/doc/index.adoc[leveloffset=+1]
 
-include::../../../ip/uart/uart_16550/doc/index.adoc[]
+include::../../../ip/uart/uart_16550/doc/index.adoc[leveloffset=+1]
 
-include::../../../ip/uart/log_engine/doc/index.adoc[]
+include::../../../ip/uart/log_engine/doc/index.adoc[leveloffset=+1]
 
-include::../../../ip/i2c/doc/index.adoc[]
+include::../../../ip/i2c/doc/index.adoc[leveloffset=+1]
 
-include::../../../ip/avsbus_controller/doc/index.adoc[]
+include::../../../ip/avsbus_controller/doc/index.adoc[leveloffset=+1]
 
-include::../../../ip/gpio/doc/index.adoc[]
+include::../../../ip/gpio/doc/index.adoc[leveloffset=+1]
 
-include::../../../ip/telemetry_receiver/doc/index.adoc[]
+include::../../../ip/telemetry_receiver/doc/index.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
 == Peripheral Parameter Settings

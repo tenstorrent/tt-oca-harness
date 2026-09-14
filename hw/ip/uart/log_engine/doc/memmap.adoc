@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[log-engine-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 The Log Engine provides a comprehensive register interface for
 configuration, control, and status monitoring. All registers are
@@ -12,7 +12,7 @@ accessible via a 32-bit AXI4-Lite interface and follow standard
 read/write access patterns. The register map is organized into logical
 groups for ease of use and programming.
 
-====== Register Address Map
+=== Register Address Map
 
 .Register Address Map
 [width="100%",cols="10%,20%,10%,60%",options="header",]
@@ -51,7 +51,7 @@ testing
 control
 |=====================================================================================
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

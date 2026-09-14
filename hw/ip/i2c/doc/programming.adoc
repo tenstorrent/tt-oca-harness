@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i2c-programming]]
-===== Programming
+== Programming
 
-====== Initialization Sequence
+=== Initialization Sequence
 
 After reset, the initialization of the I2C HWIP primarily consists of four steps:
 
@@ -13,14 +13,14 @@ After reset, the initialization of the I2C HWIP primarily consists of four steps
 3. Interrupt configuration
 4. Enable I2C Controller or Target functionality
 
-===== Timing Parameter Initialization
+== Timing Parameter Initialization
 
 Of the four initialization steps, the timing parameter initialization is the most involved.
 With so many timing parameters, it is essential to have dedicated device interface functions (DIFs) to determine appropriate values for the 10 timing parameters.
 
 See <<timing-parameter-tuning-algorithm>> for a detailed algorithm for determining these parameters.
 
-===== FIFO Reset and Configuration
+== FIFO Reset and Configuration
 
 Reset all FIFOs and configure thresholds:
 
@@ -36,7 +36,7 @@ write32(base + 0x24, 0x00080010); // HOST_FIFO_CONFIG: RX_THRESH=8, FMT_THRESH=1
 write32(base + 0x28, 0x00080010); // TARGET_FIFO_CONFIG: ACQ_THRESH=8, TX_THRESH=16
 ----
 
-===== Interrupt Configuration
+== Interrupt Configuration
 
 Enable desired interrupts:
 
@@ -49,7 +49,7 @@ write32(base + 0x00, 0xFFFF); // INTR_STATE: Clear all interrupts
 write32(base + 0x04, 0x0203); // INTR_ENABLE: Enable common interrupts
 ----
 
-===== Enable Operation Mode
+== Enable Operation Mode
 
 Enable controller or target functionality:
 
@@ -63,7 +63,7 @@ write32(base + 0x10, 0x01); // CTRL: ENABLEHOST=1
 ----
 
 [[timing-parameter-tuning-algorithm]]
-====== Timing Parameter Tuning Algorithm
+=== Timing Parameter Tuning Algorithm
 
 The values of these parameters will depend primarily on three bus details:
 
@@ -230,7 +230,7 @@ Note that the actual frequency will generally be lower, due to the need to round
 In addition, clock stretching can delay transitions.
 To achieve nominal rates within 5% or so, we recommend that the internal clock is driven at least 24x higher than the desired line speed.
 
-===== Timing Parameter Examples
+== Timing Parameter Examples
 
 The following tables show a couple of examples for calculating timing register parameters for Fast-mode Plus devices.
 Both examples assume a desired datarate of 1 Mbaud (the bus maximum) for an SCL period of 1 us, and an internal device clock period of 3 ns.
@@ -267,9 +267,9 @@ All other parameters in registers `TIMING2`, `TIMING3`, `TIMING4` are unchanged 
 |SCL Period |1000 |N/A |1185 |Forced longer than minimum by long T_R
 |=====================================================================================
 
-====== Controller Module Operations
+=== Controller Module Operations
 
-===== Writing n bytes to a device
+== Writing n bytes to a device
 
 1. Address the device for writing by writing to:
 ** `FDATA.START` = 1;
@@ -315,7 +315,7 @@ if (read32(base + 0x00) & 0x40) { // CONTROLLER_HALT
 write32(base + 0x00, 0x200); // Clear CMD_COMPLETE
 ----
 
-===== Reading n bytes from a device
+== Reading n bytes from a device
 
 1. Address the device for reading by writing to the FMT FIFO:
 ** `FDATA.START` = 1;
@@ -364,7 +364,7 @@ if (read32(base + 0x00) & 0x40) { // CONTROLLER_HALT
 write32(base + 0x00, 0x200); // Clear CMD_COMPLETE
 ----
 
-====== Target Mode Configuration Sequence
+=== Target Mode Configuration Sequence
 
 1.  *Configure Target Address*:
 +
@@ -397,7 +397,7 @@ if (read32(base + 0x00) & 0x04) { // ACQ_THRESHOLD interrupt
 }
 ----
 
-====== Error Handling Sequences
+=== Error Handling Sequences
 
 1.  *Bus Error Recovery*:
 +
@@ -430,9 +430,9 @@ if (read32(base + 0x00) & 0x08) { // RX_OVERFLOW
 }
 ----
 
-====== Usage Examples and Best Practices
+=== Usage Examples and Best Practices
 
-====== High-Performance Controller Operation
+=== High-Performance Controller Operation
 
 [source,sourceCode,c]
 ----
@@ -458,7 +458,7 @@ void i2c_controller_write_burst(uint8_t addr, uint8_t* data, int len) {
 }
 ----
 
-====== Multi-Address Target Configuration
+=== Multi-Address Target Configuration
 
 [source,sourceCode,c]
 ----
@@ -475,7 +475,7 @@ void configure_multi_address_target() {
 }
 ----
 
-====== Error Recovery and Diagnostics
+=== Error Recovery and Diagnostics
 
 [source,sourceCode,c]
 ----
@@ -507,7 +507,7 @@ void handle_i2c_errors() {
 }
 ----
 
-====== Performance Monitoring
+=== Performance Monitoring
 
 [source,sourceCode,c]
 ----
@@ -528,7 +528,7 @@ void monitor_fifo_performance() {
 }
 ----
 
-====== Device Interface Functions (DIFs)
+=== Device Interface Functions (DIFs)
 
 For convenience, OpenTitan provides Device Interface Functions (DIFs) that abstract the low-level register programming details.
 These DIFs handle timing parameter calculation, FIFO management, and transaction sequencing automatically.

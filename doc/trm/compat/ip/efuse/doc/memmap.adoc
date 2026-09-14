@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= eFuse Memory Map (moved)
+
+This page has moved.
+See xref:ip:efuse/doc/index.adoc#efuse-memory-map[eFuse Memory Map].

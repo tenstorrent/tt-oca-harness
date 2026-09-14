@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AVSBus Controller Architecture (moved)
+
+This page has moved.
+See xref:ip:avsbus_controller/doc/index.adoc#avsbus-controller-architecture[AVSBus Controller Architecture].

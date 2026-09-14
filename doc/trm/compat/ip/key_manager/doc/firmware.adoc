@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Key Manager (KM) Firmware (moved)
+
+This page has moved.
+See xref:ip:key_manager/doc/index.adoc#key-manager-km-firmware[Key Manager (KM) Firmware].

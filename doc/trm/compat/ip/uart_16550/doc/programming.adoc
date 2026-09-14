@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= UART 16550 Programming (moved)
+
+This page has moved.
+See xref:ip:uart_16550/doc/index.adoc#uart-16550-programming[UART 16550 Programming].

@@ -186,15 +186,21 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/; do
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
 
-# --- ip: move architecture/interface/memmap fragments out of pages/ and into
+# --- ip: every IP in IP_PAGE_OWNERS publishes exactly one page (doc/index.adoc);
+#     the topic fragments listed in IP_FRAGMENTS move out of pages/ and into
 #     partials/ so they are private (no standalone URL). The owning index page
 #     includes them via the partial$ prefix for HTML or a relative path for PDF.
 #     CTN memmap.adoc also moves to partials/; it owns CTM and CTP register maps.
-for ip in jtag_intf_unit jtag_ptap jtag_stap \
-           cross_trigger_network cross_trigger_port cross_trigger_matrix; do
+IP_PAGE_OWNERS="jtag_intf_unit jtag_ptap jtag_stap
+cross_trigger_network cross_trigger_port cross_trigger_matrix
+avsbus_controller axi_lite_mailbox_unit efuse gpio i2c system_timer_octs
+telemetry_receiver uart_16550 log_engine i3ccore_wrap
+drbg entropy_source key_manager scrambler"
+IP_FRAGMENTS="architecture.adoc interface.adoc memmap.adoc programming.adoc firmware.adoc"
+for ip in $IP_PAGE_OWNERS; do
   src="$MOD/ip/pages/$ip/doc"
   dst="$MOD/ip/partials/$ip/doc"
-  for frag in architecture.adoc interface.adoc memmap.adoc; do
+  for frag in $IP_FRAGMENTS; do
     if [ -f "$src/$frag" ]; then
       mkdir -p "$dst"
       mv "$src/$frag" "$dst/$frag"
@@ -205,8 +211,7 @@ done
 # --- compat pages: HTML-only redirects for old fragment URLs. Staged into
 #     ip/pages/ so the old URL path still resolves; absent from PDF assembly. ---
 COMPAT="$DOC/trm/compat"
-for ip in jtag_intf_unit jtag_ptap jtag_stap \
-           cross_trigger_network cross_trigger_port cross_trigger_matrix; do
+for ip in $IP_PAGE_OWNERS; do
   src="$COMPAT/ip/$ip/doc"
   dst="$MOD/ip/pages/$ip/doc"
   [ -d "$src" ] && stage_adoc_tree "$src" "$dst"

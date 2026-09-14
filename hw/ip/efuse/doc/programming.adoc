@@ -2,11 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smc-dv-efuse-programming]]
-===== Programming
+== Programming
 
-====== Usage Examples
+=== Usage Examples
 
-====== Example 1: Programming a Single Bit
+=== Example 1: Programming a Single Bit
 
 [source,sourceCode,c]
 ----
@@ -25,7 +25,7 @@ if ((EFUSE_PROGRAM_CTRL >> 26) & 0x3) {
 }
 ----
 
-====== Example 2: Reading Multiple Words
+=== Example 2: Reading Multiple Words
 
 [source,sourceCode,c]
 ----
@@ -42,7 +42,7 @@ while (EFUSE_READ_CTRL & (1 << 24)); // Wait for busy to clear
 uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
 ----
 
-====== Program Operation Sequence
+=== Program Operation Sequence
 
 1.  *Setup Phase*:
 * Set `program_enable` = 1 in `EFUSE_PROGRAM_CTRL`
@@ -60,7 +60,7 @@ uint32_t data = EFUSE_READ_INTERFACE_READ_DATA;
 ** 2: Bad enables (program_enable not set or lock active)
 ** 3: Programming failure (verification failed)
 
-====== Read Operation Sequence
+=== Read Operation Sequence
 
 1.  *Setup Phase*:
 * Set `read_enable` = 1 in `EFUSE_READ_CTRL`

@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver]]
-==== Telemetry Receiver
+= Telemetry Receiver
 
-===== Overview
+== Overview
 
 The Telemetry Receiver is a high-performance hardware component designed
 to decode, buffer, and process telemetry data from telemetry
@@ -13,7 +13,7 @@ specialized receiver for Tenstorrent-specific telemetry message formats
 while maintaining modularity for adaptation to other telemetry protocols
 and message structures.
 
-===== Description and Features
+== Description and Features
 
 * *32-bit APB4 or AXI4-Lite Register Interface*: Standard bus interfaces
 for system integration and configuration access
@@ -28,6 +28,21 @@ different telemetry message formats
 * *Comprehensive Interrupt System*: Event-driven notifications for
 buffer thresholds and error conditions
 
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$telemetry_receiver/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]

@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= System Timer OCTS Memory Map (moved)
+
+This page has moved.
+See xref:ip:system_timer_octs/doc/index.adoc#system-timer-octs-memory-map[System Timer OCTS Memory Map].

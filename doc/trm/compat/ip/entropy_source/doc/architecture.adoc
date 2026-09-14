@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Entropy Source (moved)
+
+This page has moved.
+See xref:ip:entropy_source/doc/index.adoc[Entropy Source].

@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[efuse-interface]]
-===== Interface
+== Interface
 
-====== Configuration Parameters
+=== Configuration Parameters
 
 [width="100%",cols="30%,20%,50%",options="header",]
 |===================================================
@@ -14,9 +14,9 @@
 |NUM_WORDS |768 |Total number of OTP words
 |===================================================
 
-====== Signal Interfaces
+=== Signal Interfaces
 
-====== Clock and Reset
+=== Clock and Reset
 
 [width="100%",cols="20%,15%,15%,50%",options="header",]
 |==========================================================
@@ -25,12 +25,12 @@
 |`rst_ni` |Input |1 |Active-low asynchronous reset
 |==========================================================
 
-====== Main AXI4-Lite Interfaces
+=== Main AXI4-Lite Interfaces
 
 The eFuse controller provides two AXI4-Lite interfaces for register
 access:
 
-====== SMC Interface (Functional Access)
+=== SMC Interface (Functional Access)
 
 [width="100%",cols="20%,15%,15%,50%",options="header",]
 |==================================================================================
@@ -39,7 +39,7 @@ access:
 |`axil_resp_o` |Output |`efuse_axil_resp_t` |AXI4-Lite response to SMC
 |==================================================================================
 
-====== JTAG Interface (Debug Access)
+=== JTAG Interface (Debug Access)
 
 [width="100%",cols="20%,15%,15%,50%",options="header",]
 |=====================================================================================
@@ -51,7 +51,7 @@ JTAG
 JTAG
 |=====================================================================================
 
-====== Fuse Bank Control Interface
+=== Fuse Bank Control Interface
 
 APB interface for communicating with the eFuse bank model:
 
@@ -65,7 +65,7 @@ bank
 eFuse bank
 |=====================================================================================
 
-====== Fuse Command Interface
+=== Fuse Command Interface
 
 Custom interface for SHIM state machine communication:
 
@@ -79,7 +79,7 @@ SHIM
 from SHIM
 |=====================================================================================
 
-====== Security and Control Signals
+=== Security and Control Signals
 
 [width="100%",cols="20%,15%,15%,50%",options="header",]
 |=====================================================================================
@@ -102,7 +102,7 @@ control rules
 |`shadow_regs_o` |Output |`efuse_map_t` |Shadow register contents
 |=====================================================================================
 
-====== Debug and Status Signals
+=== Debug and Status Signals
 
 [width="100%",cols="30%,12%,13%,45%",options="header",]
 |=====================================================================================
@@ -134,7 +134,7 @@ control rules
 |`sec_disable_token_o` |Output |256 |Security disable token value (8 x 32-bit words)
 |=====================================================================================
 
-====== Fuse Command Protocol
+=== Fuse Command Protocol
 
 Custom command interface between controller and SHIM:
 

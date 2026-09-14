@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver-interface]]
-===== Interface
+== Interface
 
 The Telemetry Receiver component provides AXI4-Lite register access and
 Advanced Trace Bus (ATB) telemetry data reception interfaces.
 
-====== Configuration Parameters
+=== Configuration Parameters
 
 [width="100%",cols="30%,20%,50%",options="header",]
 |====================================================================================
@@ -20,9 +20,9 @@ Advanced Trace Bus (ATB) telemetry data reception interfaces.
 |DATA_WIDTH |32 |Data bus width (bits)
 |====================================================================================
 
-====== Signal Interfaces
+=== Signal Interfaces
 
-====== Global Interface
+=== Global Interface
 
 The global interface provides fundamental clock and reset signals
 required for basic operation.
@@ -38,7 +38,7 @@ operations are performed on the rising edge.
 synchronous deassertion.
 |=====================================================================================
 
-====== Clock and Reset Specifications
+=== Clock and Reset Specifications
 
 * *Clock Frequency*: The component can operate at frequencies up to 200
 MHz
@@ -47,7 +47,7 @@ MHz
 * *Reset Recovery*: Component ready for operation 2 clock cycles after
 reset deassertion
 
-====== ATB Telemetry Interface
+=== ATB Telemetry Interface
 
 The ATB (Advanced Trace Bus) interface receives telemetry data using standard
 ATB protocol.
@@ -64,7 +64,7 @@ ATB protocol.
 |`afready_i` |1 |Input |ATB flush ready (flush acknowledgment)
 |=================================================================================
 
-====== ATB Protocol Specifications
+=== ATB Protocol Specifications
 
 * *Data Width*: 8 bits per beat
 * *ID Width*: 7 bits (128 unique trace sources)
@@ -75,7 +75,7 @@ back-pressure
 * *Latency*: Zero-cycle latency when ready, immediate acceptance when
 `atready_o` is high
 
-====== Interrupt Interface
+=== Interrupt Interface
 
 The interrupt interface provides a single interrupt output for event
 notification.
@@ -87,7 +87,7 @@ notification.
 |`irq_o` |1 |Output |Interrupt request output (active high)
 |=====================================================================
 
-====== Interrupt Specifications
+=== Interrupt Specifications
 
 * *Polarity*: Active high (asserted when high)
 * *Duration*: Level-sensitive, remains asserted until cleared

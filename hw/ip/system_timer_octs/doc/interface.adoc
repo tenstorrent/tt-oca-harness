@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs-interface]]
-===== Interface
+== Interface
 
 The System Timer OCTS IP provides interfaces supporting both PRIMARY and
 SECONDARY timer modes, with flexible support for either AXI4-Lite or
 APB4 bus protocols. All interface signals operate synchronously to the
 system clock.
 
-====== Configuration Parameters
+=== Configuration Parameters
 
 [width="100%",cols="30%,20%,50%",options="header",]
 |=======================================================================
@@ -25,7 +25,7 @@ APB4)
 NOTE: Timer mode selection (PRIMARY vs SECONDARY) is controlled at runtime
 via the `is_primary_i` input signal, not through a compile-time parameter.
 
-====== Global Interface
+=== Global Interface
 
 .Global Interface Signals
 [width="100%",cols="15%,10%,10%,10%,55%",options="header",]
@@ -45,7 +45,7 @@ timer that receives synchronization pulses). This signal determines timer
 behavior, register visibility, and synchronization signal direction.
 |=======================================================================
 
-====== Test Interface
+=== Test Interface
 
 .Test Interface Signals
 [width="100%",cols="15%,10%,10%,10%,55%",options="header",]
@@ -59,7 +59,7 @@ Provides independent reset control for scan chain operation and ATPG
 support.
 |=======================================================================
 
-====== OCTS Synchronization Interface
+=== OCTS Synchronization Interface
 
 .OCTS Synchronization Interface Signals
 [width="100%",cols="20%,10%,10%,10%,50%",options="header",]
@@ -89,7 +89,7 @@ using a preset value, and `timer_cnt_credit_i` delivers credit pulses
 that allow continuous synchronization. In this mode, the outputs remain
 inactive.
 
-====== Timer Counter Interface
+=== Timer Counter Interface
 
 .Timer Counter Interface Signals
 [width="100%",cols="20%,10%,10%,60%",options="header",]
@@ -114,7 +114,7 @@ cycle while the timer is running. This value is useful for timestamping,
 monitoring, or debugging, and can also be read from the COUNT_LO and
 COUNT_HI registers.
 
-====== Timing Specifications
+=== Timing Specifications
 
 All input signals are required to meet setup and hold times with respect
 to the rising edge of clk_i.
@@ -151,7 +151,7 @@ clock cycles and provides robust protection against metastability (using
 a 2FF synchronizer with closure on all relevant timing), with internal
 logic maintaining the width of each transmitted pulse.
 
-====== Reset Behavior and Initialization
+=== Reset Behavior and Initialization
 
 When reset is asserted asynchronously (`rst_ni`), all outputs
 immediately transition to safe, inactive states. The timer count is
@@ -178,7 +178,7 @@ must continue to arrive at intervals to guarantee ongoing
 synchronization. Clock domain crossing will add 2–3 cycles of latency to
 these signals.
 
-====== Integration Guidelines
+=== Integration Guidelines
 
 For multi-chiplet integration, the PRIMARY timer should be placed
 centrally to achieve the most efficient signal distribution and minimize

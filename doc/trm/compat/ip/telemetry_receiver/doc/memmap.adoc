@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Telemetry Receiver Memory Map (moved)
+
+This page has moved.
+See xref:ip:telemetry_receiver/doc/index.adoc#telemetry-receiver-memory-map[Telemetry Receiver Memory Map].

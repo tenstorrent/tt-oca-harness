@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Mailbox Unit Architecture (moved)
+
+This page has moved.
+See xref:ip:axi_lite_mailbox_unit/doc/index.adoc#mailbox-unit-architecture[Mailbox Unit Architecture].
