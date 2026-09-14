@@ -1412,7 +1412,7 @@ Drive `smc_input_output_fabric_wr_rd_test_seq` over SEP_IN AXI. Each checker bel
 
 * Output-fabric filter programming over SEP_IN AXI (`output_fabric_pass_all_cfg_seq`), then one JTAG-AXI write and read through the output-fabric window checked against the SYS_OUT responder and the scoreboard's `SmcMemoryModel` golden.
 * The alias-remap reset-default compare is not on this path: `smc_input_output_fabric_wr_rd_test_seq` is driven by `smc_input_fabric_axi_wr_rd_test`, which declares `CHK-ALIAS-REMAP-RESET-DEFAULT`.
-* The leaf files a protocol-VIP record with the measured SEP_IN CSR and JTAG-AXI access counts against literal floors (`smc_input_output_fabric_wr_rd_test.py`); the scoreboard rejects the record, and the run fails, below either floor. No `CHK-NONVAC` line is logged for that gate.
+* The leaf files a protocol-VIP record with the measured SEP_IN CSR and JTAG-AXI access counts against literal floors (`smc_input_output_fabric_wr_rd_test.py`); the scoreboard rejects the record, and the run fails, below either floor.
 
 *Test Procedure*:
 
@@ -1425,10 +1425,11 @@ Drive `output_fabric_pass_all_cfg_seq` over SEP_IN AXI, then a JTAG-AXI write an
 |===
 |Checker |Description
 |`CHK-INPUT-OUTPUT-FABRIC-WR-RD` |The JTAG-AXI write then read at the alternate output-fabric address complete OKAY, the SYS_OUT responder's `last_addr` / `last_wdata` match that address and data, its write and read counters each advanced by one, and the scoreboard's memory-model golden records at least one update and one check (`smc_input_output_fabric_wr_rd_test.py`)
+|`CHK-NONVAC` |The protocol-VIP record is accepted with the measured SEP_IN CSR access count against its literal floor and the measured JTAG-AXI access count against its own (`smc_input_output_fabric_wr_rd_test.py`)
 |===
 
 
-*Pass Criteria*: `CHK-INPUT-OUTPUT-FABRIC-WR-RD` holds after its compares and the protocol-VIP record is accepted against its floors. Enrolled in: `all`, `hosted`, `per_ip`, `pyuvm`, `depth`.
+*Pass Criteria*: `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `hosted`, `per_ip`, `pyuvm`, `depth`.
 '''''
 
 [[sec-031-smc_local_fabric_csr_depth_test]]
