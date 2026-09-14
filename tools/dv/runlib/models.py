@@ -68,6 +68,13 @@ class TestEntry:
     run_modes: list[str] | None = None
     args: list[str] | None = None
     firmware: str | dict[str, Any] | None = None
+    # `expect_fail = "<reason>"`: the leaf reproduces a filed defect and FAILS on a DUT that still
+    # carries it. The runner grades that FAIL as PASS and an observed PASS as FAIL, so the
+    # reproducer runs inside a green regression and turns red the day the defect is gone.
+    expect_fail: str | None = None
+    # `expect_fail_match = "<regex>"`: the observed failure message must match it, so a leaf
+    # that fails for a different reason than the recorded one is graded FAIL, not PASS.
+    expect_fail_match: str | None = None
     # Per-framework entry points from a `module = { cocotb = "...", uvm = "..." }` binding map.
     # A bare-string `module` is normalized to a single binding for the DUT's default framework.
     bindings: dict[str, str] = field(default_factory=dict)
