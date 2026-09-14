@@ -188,14 +188,14 @@ fabric remains operational.
 
 [WARNING]
 ====
-The flush cannot withdraw a request that the receiving side has seen but not
-accepted. Such a request can still prevent isolation if that side never becomes
-ready.
+The flush cannot cancel an address request or write-data beat while `VALID` is
+high and `READY` is low. It waits for that transfer before flushing the channel.
+If `READY` never goes high, isolation cannot complete.
 
-The flush also cannot make an unresponsive fabric endpoint return a response
-or remove a response buffered beyond the cluster boundary. The cluster reset
-can complete, but the affected fabric route or AXI ID may remain blocked until
-the endpoint responds or its reset is asserted.
+The flush clears only the CPU isolation blocks. It does not clear state
+elsewhere in the SMC fabric. The cluster reset may complete while another block
+remains unresponsive or holds a response, leaving that route or AXI ID blocked,
+so that block must be reset or recovered separately or through a cold reset.
 ====
 
 ===== Reset-Domain Crossing
