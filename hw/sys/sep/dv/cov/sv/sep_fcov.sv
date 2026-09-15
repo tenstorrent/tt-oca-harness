@@ -454,21 +454,34 @@ module sep_fcov (
   // outstanding, and a leaf that issued one command cannot fill the other bin.
   wire abr_sign = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdSign[3:0]);
   wire abr_verify = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdVerify[3:0]);
+  // MLDSA_STATUS.VALID is sticky, so a pending flag plus a VALID read is not
+  // enough on its own: a command written to a busy engine is dropped, and the
+  // previous operation's VALID would then be credited to it. Arming on an
+  // observed VALID==0 read is the anchor -- the same problem OTBN solves by
+  // requiring an observed busy status between EXECUTE and IDLE.
+  wire abr_status_clear = rd_ev && (ar_addr_q == AbrStatus) &&
+      ((rd_data & AbrStValid) == 32'h0);
   logic abr_sign_q, abr_verify_q;
-  wire  abr_sign_done = abr_status_valid && abr_sign_q;
-  wire  abr_verify_done = abr_status_valid && abr_verify_q;
+  logic abr_sign_armed_q, abr_verify_armed_q;
+  wire  abr_sign_done = abr_status_valid && abr_sign_q && abr_sign_armed_q;
+  wire  abr_verify_done = abr_status_valid && abr_verify_q && abr_verify_armed_q;
 
-  // ML-KEM. Same one-pending-flag-per-command shape as the ML-DSA pair above,
-  // so a VALID read only scores the command that is actually outstanding.
+  // ML-KEM. Same pending-plus-armed shape as the ML-DSA pair above, and for the
+  // same reason: MLKEM_CTRL is writable only while STATUS.READY is set, so a
+  // command issued to a busy engine is dropped silently and the stale VALID
+  // would be read as its completion.
   wire kem_status_valid = rd_ev && (ar_addr_q == KemStatus) &&
       ((rd_data & KemStValid) != 32'h0);
+  wire kem_status_clear = rd_ev && (ar_addr_q == KemStatus) &&
+      ((rd_data & KemStValid) == 32'h0);
   wire kem_keygen = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdKeygen[2:0]);
   wire kem_encaps = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdEncaps[2:0]);
   wire kem_decaps = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdDecaps[2:0]);
   logic kem_keygen_q, kem_encaps_q, kem_decaps_q;
-  wire  kem_keygen_done = kem_status_valid && kem_keygen_q;
-  wire  kem_encaps_done = kem_status_valid && kem_encaps_q;
-  wire  kem_decaps_done = kem_status_valid && kem_decaps_q;
+  logic kem_keygen_armed_q, kem_encaps_armed_q, kem_decaps_armed_q;
+  wire  kem_keygen_done = kem_status_valid && kem_keygen_q && kem_keygen_armed_q;
+  wire  kem_encaps_done = kem_status_valid && kem_encaps_q && kem_encaps_armed_q;
+  wire  kem_decaps_done = kem_status_valid && kem_decaps_q && kem_decaps_armed_q;
 
   // --- ESRC / DRBG / EDN -------------------------------------------------
   logic esrc_seed_q;
@@ -833,9 +846,14 @@ module sep_fcov (
       abr_keygen_q      <= 1'b0;
       abr_sign_q        <= 1'b0;
       abr_verify_q      <= 1'b0;
+      abr_sign_armed_q  <= 1'b0;
+      abr_verify_armed_q <= 1'b0;
       kem_keygen_q      <= 1'b0;
       kem_encaps_q      <= 1'b0;
       kem_decaps_q      <= 1'b0;
+      kem_keygen_armed_q <= 1'b0;
+      kem_encaps_armed_q <= 1'b0;
+      kem_decaps_armed_q <= 1'b0;
       km_cmd_hdr_next_q <= 1'b1;
       km_cmd_idx_q      <= '0;
       km_rsp_idx_q      <= '0;
@@ -949,17 +967,56 @@ module sep_fcov (
       if (abr_keygen) abr_keygen_q <= 1'b1;
       if (abr_done) abr_keygen_q <= 1'b0;
 
-      if (abr_sign) abr_sign_q <= 1'b1;
-      if (abr_sign_done) abr_sign_q <= 1'b0;
-      if (abr_verify) abr_verify_q <= 1'b1;
-      if (abr_verify_done) abr_verify_q <= 1'b0;
+      // Each command pends on its CTRL write, arms on a subsequent VALID==0
+      // read, and retires with its own completion. The arm is what stops a
+      // dropped command from being credited by the previous operation's sticky
+      // VALID: that stale VALID is non-zero, so it can never arm anything.
+      if (abr_sign) begin
+        abr_sign_q       <= 1'b1;
+        abr_sign_armed_q <= 1'b0;
+      end
+      if (abr_sign_q && abr_status_clear) abr_sign_armed_q <= 1'b1;
+      if (abr_sign_done) begin
+        abr_sign_q       <= 1'b0;
+        abr_sign_armed_q <= 1'b0;
+      end
+      if (abr_verify) begin
+        abr_verify_q       <= 1'b1;
+        abr_verify_armed_q <= 1'b0;
+      end
+      if (abr_verify_q && abr_status_clear) abr_verify_armed_q <= 1'b1;
+      if (abr_verify_done) begin
+        abr_verify_q       <= 1'b0;
+        abr_verify_armed_q <= 1'b0;
+      end
 
-      if (kem_keygen) kem_keygen_q <= 1'b1;
-      if (kem_keygen_done) kem_keygen_q <= 1'b0;
-      if (kem_encaps) kem_encaps_q <= 1'b1;
-      if (kem_encaps_done) kem_encaps_q <= 1'b0;
-      if (kem_decaps) kem_decaps_q <= 1'b1;
-      if (kem_decaps_done) kem_decaps_q <= 1'b0;
+      if (kem_keygen) begin
+        kem_keygen_q       <= 1'b1;
+        kem_keygen_armed_q <= 1'b0;
+      end
+      if (kem_keygen_q && kem_status_clear) kem_keygen_armed_q <= 1'b1;
+      if (kem_keygen_done) begin
+        kem_keygen_q       <= 1'b0;
+        kem_keygen_armed_q <= 1'b0;
+      end
+      if (kem_encaps) begin
+        kem_encaps_q       <= 1'b1;
+        kem_encaps_armed_q <= 1'b0;
+      end
+      if (kem_encaps_q && kem_status_clear) kem_encaps_armed_q <= 1'b1;
+      if (kem_encaps_done) begin
+        kem_encaps_q       <= 1'b0;
+        kem_encaps_armed_q <= 1'b0;
+      end
+      if (kem_decaps) begin
+        kem_decaps_q       <= 1'b1;
+        kem_decaps_armed_q <= 1'b0;
+      end
+      if (kem_decaps_q && kem_status_clear) kem_decaps_armed_q <= 1'b1;
+      if (kem_decaps_done) begin
+        kem_decaps_q       <= 1'b0;
+        kem_decaps_armed_q <= 1'b0;
+      end
 
       // KM command frame: header, payload_len words, then the payload CRC word
       // when payload_len > 0.
@@ -1245,10 +1302,14 @@ module sep_fcov (
       bins mldsa_sign = {2'b01};
       bins mldsa_verify = {2'b10};
     }
-    cp_done: coverpoint {abr_verify_done, abr_sign_done} {
-      bins sign_status_valid = {2'b01};
-      bins verify_status_valid = {2'b10};
-    }
+    // One coverpoint per command, not a concatenation. The two pending flags
+    // are independent and each is cleared only by its own completion, so a
+    // signature that never reaches VALID leaves its flag set; a later verify
+    // that does complete would then present both _done bits at once and a
+    // concatenated coverpoint would land in no bin, losing a completion that
+    // really happened.
+    cp_sign_done: coverpoint abr_sign_done {bins sign_status_valid = {1'b1};}
+    cp_verify_done: coverpoint abr_verify_done {bins verify_status_valid = {1'b1};}
   endgroup
 
   covergroup sep_abr_mlkem_cg @(posedge clk_i);
@@ -1259,11 +1320,12 @@ module sep_fcov (
       bins mlkem_encaps = {3'b010};
       bins mlkem_decaps = {3'b100};
     }
-    cp_done: coverpoint {kem_decaps_done, kem_encaps_done, kem_keygen_done} {
-      bins keygen_status_valid = {3'b001};
-      bins encaps_status_valid = {3'b010};
-      bins decaps_status_valid = {3'b100};
-    }
+    // Independent coverpoints for the same reason as sep_abr_sign_cg: a command
+    // that never completes holds its pending flag, and a concatenation would
+    // then drop a later command's genuine completion into no bin.
+    cp_keygen_done: coverpoint kem_keygen_done {bins keygen_status_valid = {1'b1};}
+    cp_encaps_done: coverpoint kem_encaps_done {bins encaps_status_valid = {1'b1};}
+    cp_decaps_done: coverpoint kem_decaps_done {bins decaps_status_valid = {1'b1};}
   endgroup
   // verilog_format: on
 
@@ -1277,12 +1339,16 @@ module sep_fcov (
     // Which adapter client took the grant. cp_crypto above scores the shared
     // AXIS stream and is hit by any sink, so it cannot show that a given
     // client was ever served. All four clients have a producer.
-    cp_edn_client: coverpoint crypto_edn_ack_i iff (!in_reset) {
-      bins aes = {4'b0001};
-      bins kmac = {4'b0010};
-      bins otbn_rnd = {4'b0100};
-      bins otbn_urnd = {4'b1000};
-    }
+    // One coverpoint per client rather than one-hot bins on the 4-bit vector.
+    // The acks are per-endpoint state machines, not arbiter grants, so two can
+    // assert in the same cycle; a one-hot coverpoint would land in no bin and
+    // lose BOTH grants, which reads afterwards as a client the test never
+    // drove. This is the leaf that must fill all four, and simultaneous acks
+    // are likeliest exactly here.
+    cp_edn_aes: coverpoint crypto_edn_ack_i[0] iff (!in_reset) {bins aes = {1'b1};}
+    cp_edn_kmac: coverpoint crypto_edn_ack_i[1] iff (!in_reset) {bins kmac = {1'b1};}
+    cp_edn_otbn_rnd: coverpoint crypto_edn_ack_i[2] iff (!in_reset) {bins otbn_rnd = {1'b1};}
+    cp_edn_otbn_urnd: coverpoint crypto_edn_ack_i[3] iff (!in_reset) {bins otbn_urnd = {1'b1};}
   endgroup
 
   covergroup sep_km_command_sideload_cg with function sample (logic [7:0] dest);
@@ -1328,11 +1394,16 @@ module sep_fcov (
   // --- crypto isolate sequencing -----------------------------------------
   // Registered copies so an edge can be named. The reset is active-low, so a
   // fall is the domain going INTO reset.
+  // Tracks the live inputs during reset rather than holding constants. Cold
+  // reset already presents the isolated, domain-in-reset state -- the isolate
+  // FSMs reset to Isolate and the gated domain reset is low -- so seeding these
+  // to 1/0 would manufacture both edges below on the first clock of every run,
+  // in every test, whether or not anything sequenced an isolate.
   logic hmac_rst_n_q, hmac_km_iso_q;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-      hmac_rst_n_q  <= 1'b1;
-      hmac_km_iso_q <= 1'b0;
+      hmac_rst_n_q  <= hmac_gated_rst_n_i;
+      hmac_km_iso_q <= hmac_km_isolated_i;
     end else begin
       hmac_rst_n_q  <= hmac_gated_rst_n_i;
       hmac_km_iso_q <= hmac_km_isolated_i;
@@ -1342,10 +1413,12 @@ module sep_fcov (
   // The cycle the HMAC domain enters reset. Sampling the state instead would
   // bin a steady condition that holds for the whole window, and both isolate
   // bits are high throughout it -- so the ordering bin would fill whatever the
-  // sequencer did.
-  wire hmac_rst_fall   = hmac_rst_n_q && !hmac_gated_rst_n_i;
-  wire hmac_km_iso_rise = !hmac_km_iso_q && hmac_km_isolated_i;
-  wire hmac_km_iso_fall = hmac_km_iso_q && !hmac_km_isolated_i;
+  // sequencer did. Every edge is additionally qualified on being out of reset:
+  // the cold-reset window presents the same levels a real isolate does, and an
+  // edge derived from it says nothing about the sequencer.
+  wire hmac_rst_fall   = !in_reset && hmac_rst_n_q && !hmac_gated_rst_n_i;
+  wire hmac_km_iso_rise = !in_reset && !hmac_km_iso_q && hmac_km_isolated_i;
+  wire hmac_km_iso_fall = !in_reset && hmac_km_iso_q && !hmac_km_isolated_i;
   wire hmac_rst_ordered = hmac_rst_fall && hmac_host_isolated_i && hmac_km_isolated_i;
 
   covergroup sep_crypto_isolate_cg @(posedge clk_i);
