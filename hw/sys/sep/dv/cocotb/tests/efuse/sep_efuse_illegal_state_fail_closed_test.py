@@ -240,9 +240,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "test bug: TEST_EN raised and resensed but secure_tm_o is still 0, so the "
             "guard is not blocking and the refusal below would not be under test"
         )
-        await self._csr(
-            SepAxiOp.WRITE, _READ_CTRL, (self._control_word * 32) | _GO | _ENABLE
-        )
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, (self._control_word * 32) | _GO | _ENABLE)
         done, busy, err, data = await self._await_read_done()
         assert (done, busy, err) == (1, 0, 1), (
             f"CHK-READ-ERR-BLOCKED FAIL: a guard-blocked read reported done={done} "
