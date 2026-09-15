@@ -224,7 +224,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-OTP-MAP-RW", "OTP_MAP_RW_OK", "OTP+fabric+shadow match on RESERVED"),
     ],
     "smu_dtp_otp_smc_map_rw_test": [
-        ("CHK-OTP-SMC-MAP-RW", "CHK-OTP-SMC-MAP-RW", "SMC OTP MAP BIRA R/W"),
+        ("CHK-OTP-SMC-MAP-RW", "CHK-OTP-SMC-MAP-RW", "SMC OTP MAP SPARE[0] R/W"),
     ],
     "smu_dtp_otp_smc_series_error_test": [
         (

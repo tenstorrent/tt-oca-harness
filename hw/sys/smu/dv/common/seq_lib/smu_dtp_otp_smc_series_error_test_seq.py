@@ -6,13 +6,13 @@ S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
     J2A gate is open in this configuration. ``lc_state_o`` is the no-LCC word
     of ``seq_lib.smu_lifecycle_table``, so the eFuse JTAG demux is not
     err_slv.
-S2: Series NO_INCR write PATTERN_A to MAP BIRA, then series NO_INCR readback
+S2: Series NO_INCR write PATTERN_A to MAP SPARE[0], then series NO_INCR readback
     OKAY + data match.
-S3: SINGLE_OP read of BIRA (same IR as the hole) returns SUCCESS + PATTERN_A;
+S3: SINGLE_OP read of SPARE[0] (same IR as the hole) returns SUCCESS + PATTERN_A;
     SINGLE_OP read of MAP_BASE+MAP_SIZE (below CTRL) returns SLVERR +
-    ``0xbadcab1e``; SINGLE_OP re-read of BIRA still SUCCESS + PATTERN_A.
+    ``0xbadcab1e``; SINGLE_OP re-read of SPARE[0] still SUCCESS + PATTERN_A.
 
-BIRA from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR``.
+SPARE[0] from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``.
 Hole from ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + SMC_TOP_SMC_EFUSE_MAP_SIZE``.
 
 Not claimed: Force-closed gate; SEP OTP; INCR across MAP fields; SHIM-unmapped
@@ -24,7 +24,7 @@ from __future__ import annotations
 import cocotb
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SLVERR,
@@ -38,7 +38,7 @@ from seq_lib.smu_jtag_helpers import (
 )
 from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
-BIRA = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR")
+SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
 CTRL_BASE = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")
@@ -112,33 +112,33 @@ class smu_dtp_otp_smc_series_error_test_seq:
 
         mask = otp_series_data_mask()
         want = PATTERN_A & mask
-        wr_st = await otp_jtag2axi_series_no_incr_write(jtag, BIRA, want, poll_limit=OTP_POLL)
+        wr_st = await otp_jtag2axi_series_no_incr_write(jtag, SPARE0, want, poll_limit=OTP_POLL)
         if wr_st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"OTP series WR @0x{BIRA:08x} status={wr_st} want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"OTP series WR @0x{SPARE0:08x} status={wr_st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
-        rd_st, got = await otp_jtag2axi_series_no_incr_read(jtag, BIRA, poll_limit=OTP_POLL)
+        rd_st, got = await otp_jtag2axi_series_no_incr_read(jtag, SPARE0, poll_limit=OTP_POLL)
         got &= mask
         if rd_st != J2A_STATUS_SUCCESS:
             raise AssertionError(
-                f"OTP series RD @0x{BIRA:08x} status={rd_st} want SUCCESS={J2A_STATUS_SUCCESS}"
+                f"OTP series RD @0x{SPARE0:08x} status={rd_st} want SUCCESS={J2A_STATUS_SUCCESS}"
             )
         if got != want:
             raise AssertionError(
-                f"OTP series mismatch @0x{BIRA:08x}: want 0x{want:08x} got 0x{got:08x}"
+                f"OTP series mismatch @0x{SPARE0:08x}: want 0x{want:08x} got 0x{got:08x}"
             )
         self.s2_ok = True
-        self._log(f"CHK-OTP-SMC-SERIES-RW @0x{BIRA:08x} data=0x{got:08x} status=SUCCESS")
+        self._log(f"CHK-OTP-SMC-SERIES-RW @0x{SPARE0:08x} data=0x{got:08x} status=SUCCESS")
         sb.expect_eq("CHK-OTP-SMC-SERIES-RW", got, want)
 
-        allow_st, allow_data = await self._single_rd(jtag, BIRA, "BIRA-ALLOW")
+        allow_st, allow_data = await self._single_rd(jtag, SPARE0, "SPARE0-ALLOW")
         if allow_st != J2A_STATUS_SUCCESS or allow_data != want:
             raise AssertionError(
-                f"OTP SINGLE_OP BIRA allow @0x{BIRA:08x} status={allow_st} "
+                f"OTP SINGLE_OP SPARE0 allow @0x{SPARE0:08x} status={allow_st} "
                 f"data=0x{allow_data:08x} want SUCCESS+0x{want:08x}"
             )
         self._log(
-            f"CHK-OTP-SMC-SINGLE-OP-ALLOW @0x{BIRA:08x} data=0x{allow_data:08x} status=SUCCESS"
+            f"CHK-OTP-SMC-SINGLE-OP-ALLOW @0x{SPARE0:08x} data=0x{allow_data:08x} status=SUCCESS"
         )
         sb.expect_eq("CHK-OTP-SMC-SINGLE-OP-ALLOW", allow_data, want)
 
@@ -161,20 +161,20 @@ class smu_dtp_otp_smc_series_error_test_seq:
             (J2A_STATUS_SLVERR, SMC_OTP_ERR_DECODE_DATA),
         )
 
-        stab_st, stab_data = await self._single_rd(jtag, BIRA, "BIRA-STABLE")
+        stab_st, stab_data = await self._single_rd(jtag, SPARE0, "SPARE0-STABLE")
         if stab_st != J2A_STATUS_SUCCESS or stab_data != want:
             raise AssertionError(
-                f"OTP SINGLE_OP BIRA after hole @0x{BIRA:08x} status={stab_st} "
+                f"OTP SINGLE_OP SPARE0 after hole @0x{SPARE0:08x} status={stab_st} "
                 f"data=0x{stab_data:08x} want SUCCESS+0x{want:08x}"
             )
         self.s3_ok = True
         self._log(
-            f"CHK-OTP-SMC-BIRA-STABLE @0x{BIRA:08x} data=0x{stab_data:08x} "
+            f"CHK-OTP-SMC-SPARE-STABLE @0x{SPARE0:08x} data=0x{stab_data:08x} "
             f"status=SUCCESS hole=0x{HOLE:08x}"
         )
-        sb.expect_eq("CHK-OTP-SMC-BIRA-STABLE", stab_data, want)
+        sb.expect_eq("CHK-OTP-SMC-SPARE-STABLE", stab_data, want)
 
         self._log(
             f"PASS DTP-OTP-SMC-SERIES-ERROR s1={self.s1_ok} s2={self.s2_ok} "
-            f"s3={self.s3_ok} bira=0x{BIRA:08x} hole=0x{HOLE:08x}"
+            f"s3={self.s3_ok} spare0=0x{SPARE0:08x} hole=0x{HOLE:08x}"
         )
