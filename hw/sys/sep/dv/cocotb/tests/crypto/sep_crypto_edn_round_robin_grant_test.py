@@ -35,6 +35,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_drbg_scoreboard import SepDrbgScoreboard
+from env.sep_kmac_golden import kmac_family_words
 from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
 from seq_lib.sep_esrc_bringup_seq import (
@@ -43,7 +44,6 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
-from env.sep_kmac_golden import kmac_family_words
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 from seq_lib.sep_otbn_seq import (
     OTBN_DMEM_RND_BASE,
