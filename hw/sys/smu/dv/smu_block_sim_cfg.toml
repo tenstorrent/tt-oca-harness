@@ -70,10 +70,7 @@ common_bender_targets = [
 # (padring/pad/SPI/DLL-PHY sim models, OTBN tracer) are in the SMU SEP=0
 # `smu_uvm_top` hierarchy. Mirrors smu_sim_cfg.toml.
 bender_targets = ["smu", "smc", "dtp", "sep", "sep_el2"]
-# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
-# (upstream OT leaves ASSUME live under VERILATOR and breaks on sha3pad `##[1:$]`).
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
@@ -258,7 +255,6 @@ filelist = "hw/sys/smu/dv/build/uvm_block/smu_block_uvm_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/uvm_block/smu_block_uvm_bender.f"
 work_dir = "hw/sys/smu/dv/build/uvm_block"
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
   "hw/common/assert",
   "hw/sys/dtp/dv/uvm/env",

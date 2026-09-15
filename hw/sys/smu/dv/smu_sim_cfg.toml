@@ -73,10 +73,7 @@ bender_targets = [
   "sep_el2",
   "smu_wrapper",
 ]
-# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
-# (see smu_block_sim_cfg.toml).
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
