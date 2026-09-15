@@ -57,7 +57,7 @@ class SmuWrapperJtagPtapSeq:
         return got
 
     async def _bypass(self, jtag) -> None:
-        await jtag.shift_ir(ptap_ir_opcode("BYPASS_INSTR"), width=PTAP_IR_WIDTH, back_to_rti=False)
+        await jtag.shift_ir(ptap_ir_opcode("BYPASS_3F"), width=PTAP_IR_WIDTH, back_to_rti=False)
         captured = int(await jtag.shift_dr(BYPASS_PATTERN, BYPASS_WIDTH, back_to_rti=True))
         require_tdo_resolved("BYPASS")
         mask = (1 << BYPASS_WIDTH) - 1

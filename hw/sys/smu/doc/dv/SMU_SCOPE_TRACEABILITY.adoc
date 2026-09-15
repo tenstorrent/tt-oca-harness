@@ -4,9 +4,9 @@
 [[smu-scope-traceability]]
 == SMU scope and traceability
 
-This chapter is the requirement-to-test-to-coverage matrix for
-`SMU_SPEC.md` Features 1–7. `SMU_FEATURE_LIST.adoc` defines the SEP=0
-subset and the per-leaf `TEST_EVIDENCE` tokens;
+This chapter is the requirement-to-test-to-coverage matrix for features
+F1–F7, which `SMU_FEATURE_LIST.adoc` defines. `SMU_FEATURE_LIST.adoc`
+also defines the SEP=0 subset and the per-leaf `TEST_EVIDENCE` tokens;
 `SMU_DEFERRED_DISPOSITION.adoc` classifies the OUT names. Live group
 membership for `--dut smu` is `testlists/wrapper.toml`.
 
@@ -62,10 +62,10 @@ is `SMU_FEATURE_LIST.adoc`; this table is the credit decision.
 [cols="1,2,2,2,3,1",options="header",]
 |===
 |Requirement |Canonical tests |Groups |Coverage intent |Checker evidence |Credit
-|F1 SMC boot / firmware observe (SEP=0) |`smu_smc_smoke_test`, reset / mailbox / WDT / OCTS cluster |`sep0_all` |`smc_boot_cg` / `wdt_cg` |`CHK-SMC-FAB-DUAL-NET-S2`, `RST_PRIMARY_SMC_1`, `SMC_MBX_CSR_OK`, `WDT_UNLOCK_OK`, `CHK-OCTS-COUNT-MONOTONIC` |YES
+|F1 SMC boot / firmware observe (SEP=0) |reset / mailbox / WDT / OCTS cluster (`smu_smc_reset_ctrl_test`, `smu_smc_mailbox_sanity_test`, `smu_smc_wdt_sanity_test`, `smu_system_timer_octs_test`) |`sep0_all` |`smc_boot_cg` / `wdt_cg` |`RST_PRIMARY_SMC_1`, `SMC_MBX_CSR_OK`, `WDT_UNLOCK_OK`, `CHK-OCTS-COUNT-MONOTONIC` |YES for the cluster. `smu_smc_smoke_test` (`CHK-SMC-FAB-DUAL-NET-S2`) is in `smoke` / `all` only, which nothing schedules, and adds no credit here
 |F1 GPIO strap |`smu_smc_gpio_strap_sanity_test` |none |`smc_boot_cg` |`SMC_STRAP_OK` |NO
 |F1 boot-sequence gate |`smu_ext_boot_seq_gate_test` |`sep0_all`, `smoke_sep0` |`smc_boot_cg` |`CHK-BOOT-SEQ-GATE` |YES
-|F1 mailbox IRQ export |`smu_smc_mailbox_int_test` |`sep0_all`, `migrated_smc` |`smc_boot_cg` |`CHK-SMC-MBX-IRQ-EXT-S2` |YES
+|F1 mailbox IRQ export |`smu_smc_mailbox_int_test` |`sep0_all`, `smc_under_smu` |`smc_boot_cg` |`CHK-SMC-MBX-IRQ-EXT-S2` |YES
 |F2 Real SEP under SMU |— |wrapper `sep_rtl` only |— |wrapper `DUT_TAG=WRAPPER` boot tokens |NO
 |F3 DTP debug and test access |PTAP / STAP / BSR / JTAG2AXI / OTP / boot-stall / IC_RESET cluster |`sep0_all` |`dtp_debug_cg` / `reset_clock_cg` |`CHK-DTP-JTAG-PTAP-S1`, `STALL_COLD_STICKY`, `CHK-OTP-SMC-MAP-RW`, `J2A_*` |YES
 |F4 AXI fabric (SEP=0 shape) |ID convert, filters, alias remap, fabric BAR, xbar-absent |`sep0_all` |`xbar_route_cg` / `reg_access_cg` |`AXI_ID_WIDTH_OK`, `AXI_NON_ATOP_OK` (non-ATOP path completes), `AXI_FILTER_OKAY`, `CHK-XBAR-ABSENT-NO-SEP` |YES

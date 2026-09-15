@@ -339,6 +339,8 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 |`sanity_scan_path_chk` |IR/DR scan sequence completes and the TAP returns to Run-Test/Idle cleanly
 |===
 
+*Evidence*: SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO` required; `CHK-BYPASS-LATENCY`, the `CHK-IDCODE-*` records, and the `bypass` and `idcode` scoreboard features. cocotb: the state-visit, transition, and latency checks are plain assertions of the sequence (<<dtp-vplan-signoff-jtag-dispositions>>).
+
 *Pass Criteria*: The TAP sequences correctly through all targeted states with every IEEE 1149.1 state visited and BYPASS showing 1-bit latency, with zero scoreboard/reference-model errors.
 
 '''''
@@ -379,6 +381,8 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 |`bypass_capture_chk` |Capture-DR loads 0 into the bypass register
 |===
 
+*Evidence*: `CHK-BYPASS-00`, `CHK-BYPASS-3F`, `CHK-BYPASS-LATENCY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `bypass` scoreboard feature.
+
 *Pass Criteria*: Both BYPASS encodings produce a 1-bit register with one-cycle TDI-to-TDO delay and a 0 capture value, with zero scoreboard/reference-model errors.
 
 '''''
@@ -417,6 +421,8 @@ b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI del
 |`undef_no_tdr_select_chk` |No functional TDR is selected and no outputs change for any reserved opcode
 |`undef_no_error_chk` |No error/fault condition is raised by any undefined encoding
 |===
+
+*Evidence*: SV-UVM: the `bypass` and `ir_decode` scoreboard features (`CHK-SB-BYPASS`, `CHK-SB-IR-DECODE`). cocotb: the bypass-delay and pattern checks are plain assertions of the sequence (<<dtp-vplan-signoff-jtag-dispositions>>).
 
 *Pass Criteria*: Every tested reserved/undefined IR encoding falls back to 1-bit BYPASS with no spurious TDR selection, output change, or error, with zero scoreboard/reference-model errors.
 
@@ -457,6 +463,8 @@ b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI del
 |`idcode_marker_chk` |MARKER bit (bit 0) is always 1
 |`idcode_stable_chk` |IDCODE identical across power-up, explicit IR load, and post-TLR reads
 |===
+
+*Evidence*: `CHK-IDCODE-MARKER`, `CHK-IDCODE-MANUFACTURER`, `CHK-IDCODE-PART-NUMBER`, `CHK-IDCODE-VERSION`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`, `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-NONVAC`; SV-UVM adds the `idcode` scoreboard feature.
 
 *Pass Criteria*: IDCODE matches the parameter-defined value with the marker bit set and is stable across all three read paths, with zero scoreboard/reference-model errors.
 
@@ -502,6 +510,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`dft_sib_restored_chk` |After the disable clears, the DFT SIB is reachable and the write succeeds
 |===
 
+*Evidence*: `CHK-RUNBIST-RESPONSE`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`. The gating rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+
 *Pass Criteria*: RUNBIST is always accepted and executes BIST while the non-secure DFT SIB is open only when `dbg_disable_i.dft_nonsecure` is clear, with zero scoreboard/reference-model errors.
 
 '''''
@@ -541,6 +551,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`preload_no_drive_chk` |Functional outputs are unchanged after Update-DR (no pin drive)
 |`preload_retain_chk` |Preloaded pattern is retained in the BSR for subsequent EXTEST
 |===
+
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` scoreboard feature. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
 *Pass Criteria*: SAMPLE captures live pin state matching stimulus while PRELOAD leaves outputs undisturbed and retains the loaded pattern, with zero scoreboard/reference-model errors.
 
@@ -582,6 +594,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`extest_scan_ctrl_chk` |`jtag_bsr_host_scan_ctrl_o` fields assert correctly during Capture-DR, Shift-DR, Update-DR
 |===
 
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` and `bypass` scoreboard features. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+
 *Pass Criteria*: EXTEST drives outputs from the preloaded BSR and captures applied inputs correctly with proper scan-control assertion, with zero scoreboard/reference-model errors.
 
 '''''
@@ -621,6 +635,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`intest_capture_chk` |Internal logic outputs are captured into the BSR correctly
 |`intest_scan_ctrl_chk` |BSR scan-control signals assert appropriately during INTEST
 |===
+
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` and `bypass` scoreboard features. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
 *Pass Criteria*: INTEST applies the preloaded pattern to internal inputs and captures the internal outputs correctly, with zero scoreboard/reference-model errors.
 
@@ -662,6 +678,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`clamp_glitch_free_chk` |No glitches on boundary outputs during CLAMP entry/exit transitions
 |===
 
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` and `bypass` scoreboard features. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+
 *Pass Criteria*: CLAMP holds the boundary outputs at their last driven values glitch-free while DR acts as a 1-bit bypass, with zero scoreboard/reference-model errors.
 
 '''''
@@ -701,6 +719,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`highz_recover_chk` |Outputs resume normal drive after exiting HIGHZ
 |===
 
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` and `bypass` scoreboard features. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+
 *Pass Criteria*: HIGHZ tristates every boundary output via `+_oen_o+` deassertion with a 1-bit DR bypass, and outputs recover on exit, with zero scoreboard/reference-model errors.
 
 '''''
@@ -738,6 +758,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`zlbypass_passthrough_chk` |TDO reflects TDI with zero added latency
 |`zlbypass_chain_align_chk` |No extra scan bits inserted; downstream chain alignment preserved
 |===
+
+*Evidence*: `CHK-ZLB-PASSTHROUGH`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `bypass` scoreboard feature.
 
 *Pass Criteria*: ZERO_LENGTH_BYPASS yields a 0-bit DR with direct TDI-to-TDO pass-through and preserved chain alignment, with zero scoreboard/reference-model errors.
 
@@ -779,6 +801,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`inv_bypass_capture_chk` |Capture-DR loads the inverted default (1) into the bypass register
 |`inv_bypass_no_side_effect_chk` |No other TDRs are disturbed during inverted bypass
 |===
+
+*Evidence*: `CHK-INV-BYPASS`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `bypass` scoreboard feature. The side-effect row of the checker table is dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
 *Pass Criteria*: INV_BYPASS yields a 1-bit register producing the bitwise-inverted, one-cycle-delayed TDI with an inverted default capture and no TDR side effects, with zero scoreboard/reference-model errors.
 
@@ -824,6 +848,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`por_to_tlr_chk` |`pwr_on_rst_ni` forces TLR (IR=IDCODE) independent of TRST, per `jtag_trst_n = pwr_on_rst_ni AND trst_n`
 |===
 
+*Evidence*: `CHK-TAP-TRST-TLR`, `CHK-IDCODE-RAW`, `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-NONVAC`; SV-UVM adds the `idcode` scoreboard feature.
+
 *Pass Criteria*: Asserting TRST_N or `pwr_on_rst_ni` from any state drives the TAP to TLR with IR reset to IDCODE and clean recovery afterward, with zero scoreboard/reference-model errors.
 
 '''''
@@ -860,6 +886,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`por_idcode_reload_chk` |IDCODE is reloaded after POR
 |`por_recovery_scan_chk` |IDCODE scan succeeds after POR release
 |===
+
+*Evidence*: `CHK-IDCODE-RECOVERY`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-TAP-STATE` and the `idcode` scoreboard feature.
 
 *Pass Criteria*: POR alone resets the TAP to TLR, reloads IDCODE, and allows a clean IDCODE scan after release, with zero scoreboard/reference-model errors.
 
@@ -901,6 +929,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`tlr_resume_chk` |Normal IR/DR access resumes after TLR -++>++ RTI
 |===
 
+*Evidence*: `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-NONVAC`; SV-UVM adds the `idcode` scoreboard feature. The TDR-default row of the checker table is dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+
 *Pass Criteria*: Entering TLR resets IR to IDCODE and clears all non-hold-protected TDRs to defaults while normal access resumes, with zero scoreboard/reference-model errors.
 
 '''''
@@ -940,6 +970,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`clamp_hold_persist_chk` |BSR outputs stay clamped across subsequent IR changes
 |`clamp_hold_tmp_status_chk` |TMP_STATUS.TMP_STATUS reads 1 (Persistence-On)
 |===
+
+*Evidence*: `CHK-TMP-PERSIST`, `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` scoreboard feature.
 
 *Pass Criteria*: CLAMP_HOLD enters Persistence-On via a 2-bit DR and holds the clamped outputs across IR changes with TMP_STATUS=1, with zero scoreboard/reference-model errors.
 
@@ -981,6 +1013,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`clamp_release_output_chk` |BSR outputs return to normal functional control after release
 |===
 
+*Evidence*: `CHK-TMP-PERSIST`, `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` scoreboard feature.
+
 *Pass Criteria*: CLAMP_RELEASE clears persistence via a 2-bit DR, drives TMP_STATUS 1-++>++0, and returns outputs to functional control, with zero scoreboard/reference-model errors.
 
 '''''
@@ -1021,6 +1055,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`extest_train_no_disturb_chk` |No unintended functional output changes outside the training sequence
 |===
 
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` scoreboard feature. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+
 *Pass Criteria*: EXTEST_TRAIN continuously drives the training pattern on AC outputs each TCK with correct scan-control timing and no spurious functional changes, with zero scoreboard/reference-model errors.
 
 '''''
@@ -1060,6 +1096,8 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 |`extest_pulse_timing_chk` |BSR scan-control signals assert per EXTEST_PULSE protocol timing
 |`extest_pulse_capture_chk` |Captured response bits reflect the pulse stimulus
 |===
+
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` scoreboard feature. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
 *Pass Criteria*: EXTEST_PULSE emits exactly one boundary-output pulse per RTI entry with correct scan-control timing and captured response, with zero scoreboard/reference-model errors.
 
@@ -7009,6 +7047,112 @@ The simulation groups below come from `testlists/all.toml`;
 |`dbg_disable` |The two debug-disable matrix tests plus every resource-specific directed gating test |Per-field `dbg_disable_t` closure (22-cell coverage contract)
 |`xtrig` |XTRIG, CTP, and CTM scenarios |Cross-trigger and CSR coverage
 |===
+
+[[dtp-vplan-signoff]]
+=== Component Signoff
+
+One subsection per plan section. Each records the evidence contract its
+scenarios meet in both realizations, the negative-validation hooks that must
+fail a run, the disposition of every checker-table row whose realization
+differs from its plan text, and the functional-coverage points the group
+fires. Feature credit stays with `DTP_SCOPE_TRACEABILITY.adoc`; the group
+sizes are the `expected_count` guards in `testlists/all.toml`.
+
+[[dtp-vplan-signoff-jtag]]
+==== Primary JTAG and boundary scan (section 0)
+
+The section 0 scenarios are the `basic_jtag` group and realize the F1
+rows of the scope matrix: the IEEE 1149.1 state machine and its resets,
+instruction decode and the BYPASS family, IDCODE, the boundary-scan
+instructions against the bench's compact loopback, RUNBIST, and the two
+test-mode-persistence clamp instructions. `smoke` carries `dtp_sanity_test`
+and `dtp_jtag_idcode_test` as the PR gate; `all` carries the group into the
+nightly and weekly regressions. The formal item `dtp_tap_fpv`
+(`testlists/formal.toml`, target T1) proves the TAP controller's one-hot
+state, the five-TMS reset, and the legal transitions where SymbiYosys is
+installed (`run_dv.py --dut dtp --mode formal`); it corroborates F1.1 and
+F1.2 and is not regression credit.
+
+Every scenario runs at least sixteen seeded passes. A pass records named
+`CHK-*` evidence through the shared JTAG checker and finalizes it once; a
+pass with zero checks or a missing required ID fails. The passive pin-level
+scan monitor cross-checks every IR and DR scan the sequence issues
+(`CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`), and `CHK-NONVAC`
+records that the pass compared something. On SV-UVM the always-on
+`dtp_scoreboard` features `ir_decode`, `idcode`, and `bypass` end each run
+as `CHK-SB-IR-DECODE`, `CHK-SB-IDCODE`, and `CHK-SB-BYPASS`, and the
+`dtp_tap_fsm_checker` ends it as `CHK-TAP-STATE`. Each procedure's
+*Evidence* field names the records it lands.
+
+[cols="1,2,3,2,1",options="header",]
+|===
+|Row |Tests |Named evidence |Coverage points |Credit
+|F1.1 TAP state machine |`dtp_sanity_test` |SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO` required; `bypass` and `idcode` scoreboard features. cocotb: the state-visit and transition checks are plain assertions of the sequence (<<dtp-vplan-signoff-jtag-dispositions>>) |`c_state_*` (the sixteen states), `c_arc_*` (the thirty-two legal arcs) |YES
+|F1.2 TAP reset |`dtp_jtag_trst_test`, `dtp_jtag_trst_por_independence_test`, `dtp_jtag_tlr_reset_test` |`CHK-TAP-TRST-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-IDCODE-RAW`, `CHK-IDCODE-RECOVERY`, `CHK-TAP-RESET-TLR`, `CHK-TAP-STATE` |`c_smoke_reset_source_trst`, `c_smoke_reset_source_tms_to_tlr`, `c_reset_trst_from_active`, `c_reset_tms5_from_active` |YES
+|F1.3 IDCODE |`dtp_jtag_idcode_test` |`CHK-IDCODE-MARKER`, `CHK-IDCODE-MANUFACTURER`, `CHK-IDCODE-PART-NUMBER`, `CHK-IDCODE-VERSION`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`; `idcode` scoreboard feature |`c_smoke_idcode_default_after_reset`, `c_smoke_idcode_explicit_instruction`, `c_smoke_idcode_marker_1` |YES
+|F1.4 Instruction decode and BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |`CHK-BYPASS-00`, `CHK-BYPASS-3F`, `CHK-BYPASS-LATENCY`, `CHK-BYPASS-DELAY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-IR-DECODE`, `CHK-SCAN-DR-LEN` (the one-bit and zero-bit chain lengths); `ir_decode` and `bypass` scoreboard features. The undefined-instruction scenario records through the `bypass` feature on SV-UVM and through plain assertions on cocotb (<<dtp-vplan-signoff-jtag-dispositions>>) |`c_ir_opcode_*` (all sixty-four encodings), `c_ir_category_*`, `c_ir_behavior_enabled_instruction`, `c_ir_behavior_undefined_to_bypass` |YES
+|F1.5 Boundary-scan instructions |`dtp_jtag_sample_preload_test`, `dtp_jtag_extest_test`, `dtp_jtag_intest_test`, `dtp_jtag_clamp_test`, `dtp_jtag_highz_test`, `dtp_jtag_ac_extest_train_test`, `dtp_jtag_ac_extest_pulse_test` |`CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY` (the CLAMP and HIGHZ bypass path), `CHK-BSR-SELECT` (SV-UVM), the scan cross-check IDs |The seven instructions' `c_ir_opcode_*` points; `cg_scan_boundary` on the commercial simulators |YES against the compact identity loopback (<<dtp-vplan-signoff-jtag-dispositions>>)
+|F1.6 RUNBIST and the TMP clamps |`dtp_jtag_runbist_test`, `dtp_jtag_clamp_hold_test`, `dtp_jtag_clamp_release_test` |`CHK-RUNBIST-RESPONSE`, `CHK-TMP-PERSIST`, `CHK-IR-DECODE`, `CHK-BSR-LOOPBACK` |The three instructions' `c_ir_opcode_*` points; `c_tmp_persistence_*` in `dtp_debug_tdr_fcov` |YES
+|===
+
+The instruction encodings, TAP-state encodings, and IDCODE fields the checks
+compare against are transcriptions of the `jtag_intf_unit` and `jtag_ptap`
+documentation, each table naming the document and section it copies
+(`cocotb/env/dtp_types.py`). The responder memory and the design collateral
+are the only other sources of expected values; nothing is derived from the
+observation under check.
+
+Two hooks prove that the evidence path gates the verdict. Each is an
+environment variable on cocotb and a plusarg of the same name on SV-UVM, and
+a run with either set must fail:
+
+* `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` corrupts every family expectation
+  (loopback, bypass delay, decoded instruction, TMP persistence) in every
+  scenario that attaches the family checker.
+* `DTP_JTAG_TAP_CHECKER_NEGATIVE` arms a wrong IDCODE and a wrong TAP-state
+  prediction in the reset-family scenarios and, on SV-UVM, in the sanity
+  scenario's TAP checker.
+
+[source,bash]
+----
+DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_extest_test
+DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_tlr_reset_test
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
+----
+
+[[dtp-vplan-signoff-jtag-dispositions]]
+===== Plan-to-realization dispositions
+
+Each row is a section 0 checker whose realization differs from its plan
+text, with where the behavior is proven and the scope of any waiver.
+
+[cols="2,3,3",options="header",]
+|===
+|Checker |Realization |Disposition
+|`sanity_fsm_visit_chk`, `sanity_bypass_latency_chk`, `sanity_scan_path_chk` |cocotb: plain assertions of the sequence with no attached checker, so `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` does not reach them and any mismatch fails the pass directly. SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO`, `CHK-BYPASS-LATENCY`, and the `CHK-IDCODE-*` records through the env checker |Named evidence on the SV-UVM twin; the cocotb sequence records no named evidence
+|`undef_bypass_fallback_chk`, `undef_no_tdr_select_chk`, `undef_no_error_chk` |cocotb: the bypass-delay and pattern checks run as plain assertions. SV-UVM: the `bypass` scoreboard feature (`CHK-SB-BYPASS`) and checks tagged with the family IDs |Named evidence on the SV-UVM twin; the cocotb sequence records no named evidence
+|`runbist_instr_ungated_chk`, `dft_sib_gated_chk`, `dft_sib_restored_chk` |`dtp_jtag_runbist_test` proves acceptance (`CHK-IR-DECODE`) and a live response (`CHK-RUNBIST-RESPONSE`) and drives no disable; the `dft_nonsecure` gate is proven by `dtp_ijtag_dft_test` and the scan matrix |Credited under F3.2 and F3.6; the three rows are plan text without a realization in this test
+|`tlr_tdr_default_chk` |`dtp_jtag_tlr_reset_test` proves the IDCODE reload and the return to Run-Test/Idle; the IC_RESET hold behavior across Test-Logic-Reset is `dtp_jtag_ic_reset_test`, the DEBUG_CONTROL reset value is the debug-control scenarios, the 3DCR `config_hold` behavior is `dtp_3dcr_config_hold_test` |Credited under F2.2, F2.3, F2.4, and F3.5
+|`extest_output_drive_chk`, `extest_scan_ctrl_chk`, `intest_input_drive_chk`, `intest_scan_ctrl_chk`, `clamp_output_hold_chk`, `clamp_glitch_free_chk`, `highz_oen_deassert_chk`, `highz_recover_chk`, `preload_no_drive_chk`, `extest_train_pattern_chk`, `extest_train_timing_chk`, `extest_train_no_disturb_chk`, `extest_pulse_single_chk`, `extest_pulse_timing_chk` |The bench models no boundary cells: the BSR is the compact identity loopback of `DtpScanModel` (TB_ARCH, DUT-local model ownership). The scenarios prove instruction decode, chain length, and capture and shift through that loopback (`CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`) and the bypass path of CLAMP and HIGHZ; pin drive, output enables, and glitch-free transitions have no observable on this bench |Scoped waiver: boundary-cell pin behavior is outside this bench. The waiver covers exactly these fourteen rows and applies only while the bench has no boundary-cell model with pin observables
+|`inv_bypass_no_side_effect_chk` |No direct check; the `ir_decode` scoreboard feature and the bypass reference model bound what INV_BYPASS selects |Credited through the scoreboard features
+|===
+
+===== Coverage review
+
+The `basic_jtag` group under Verilator fires every `c_state_*` point, every
+`c_arc_*` point, both `c_reset_*` reachability points, all five `c_smoke_*`
+points, and the `c_ir_behavior_enabled_instruction` and
+`c_ir_behavior_undefined_to_bypass` points of `dtp_fcov`. Of the sixty-four
+`c_ir_opcode_*` points it fires the IEEE 1149.1 and IEEE 1838 instructions,
+RUNBIST, the two clamp instructions, TMP_STATUS, and every reserved and
+undefined encoding. The encodings it leaves unfired are IC_RESET, TAP_3DCR,
+DEBUG_CONTROL, JTAG_CAPS, SELECT_IJTAG, and the JTAG2AXI capability and
+transfer TDRs, together with `c_ir_category_ijtag`,
+`c_ir_category_jtag2axi`, and `c_ir_behavior_disabled_to_bypass`; those are
+the instructions of F2 through F5 and fire in the `debug_tdr`, `scan`,
+`jtag2axi`, and `dbg_disable` groups. On the commercial simulators the
+`cg_tap_state`, `cg_tap_arc`, and `cg_jtag_instruction` covergroups carry
+the same bins and `cg_scan_boundary` adds the loopback observations.
 
 === Known Limitations
 
