@@ -121,7 +121,7 @@ human. Other members may fill a group in passing.
 |`sep_dma_completion_route_cg` |`sep_dma_basic_test` (STATUS poll), `sep_dma_hash_test` (interrupt), `sep_spi_ot_dma_rx_test` / `_tx_test` (handshake mode)
 |`sep_feat_ctrl_cg` |`sep_efuse_lcc_lc_state_stitch_test` (also both `SECURE_TM` polarities), the six W1S leaves, `sep_sec_dis_override_test` (SEC_DIS)
 |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
-|`sep_mailbox_pic_cg` |SEP mailbox `sep_axil_mailbox_iface_rand_test`, `sep_mailbox_plic_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`
+|`sep_mailbox_pic_cg` |SEP mailbox `sep_axil_mailbox_iface_rand_test`, `sep_mailbox_plic_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`; `cp_peer_fill` `sep_mailbox_peer_rx_rirqt_test` (the only leaf that drives the peer aperture)
 |`sep_wdt_bark_cg` |threshold `sep_wdt_aon_timer_internals_test`; bark and NMI `sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`
 |`sep_scratch_reset_cg` |`sep_warm_cold_reset_scratch_test`
 |===
@@ -686,6 +686,7 @@ cells for a walk that exercises the PROD rows only
 |Coverpoint |Bins
 |`cp_raise` / `cp_clear` |Rising and falling edge of the SEP AXI mailbox sources, `sep_internal_interrupts[7:0]` (`sep.sv:534`)
 |`cp_km_raise` / `cp_km_clear` |Rising and falling edge of the KM mailbox, `sep_internal_interrupts[14]`
+|`cp_peer_fill` |A completed external-master write to the inbound mailbox `WRITE_DATA`, the only path into the host aperture's receive FIFO. Every other bin in this group is an IRQ edge the transmit path raises, so none of them shows the receive direction was driven. Both 4-byte halves alias to the register, so the address compare masks bit 2.
 |===
 
 The two domains are separate coverpoints because they are separate sources with

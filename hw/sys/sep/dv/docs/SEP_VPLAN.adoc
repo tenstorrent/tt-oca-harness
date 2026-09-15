@@ -319,7 +319,7 @@ appears.
 |`sep_crypto_edn_round_robin_grant_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|Holds AES and OTBN URND `edn_req` together, then grades that both clients are granted and that a prefix of post-adapter grants alternates. Same-cycle dual-request lockstep is not claimed. Then drives OTBN RND, the adapter's third scored client, with a program blocked on the RND CSR, and grades its routing and its consume. `hw/sys/sep/doc/crypto.adoc` names the adapter as a native-protocol EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
+|Holds AES and OTBN URND `edn_req` together, then grades that both clients are granted and that a prefix of post-adapter grants alternates. Same-cycle dual-request lockstep is not claimed. Then drives OTBN RND with a program blocked on the RND CSR and KMAC with a keyed digest, so all four adapter clients are live, value-checked consumers in one run, with the entropy pool scored alongside them as a fifth endpoint.
 |`sep_drbg_gen_segmentation_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -434,6 +434,10 @@ appears.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |64-bit TX FIFO, status, threshold IRQ, empty/full errors, and flush on the outbound mailbox aperture.
+|`sep_mailbox_peer_rx_rirqt_test`
+|no_cpu + external SMN master, +skip_fuse_sense
+|ocah_axi_vip
+|The receive half the TX rep cannot reach. The external master fills the FIFO through the peer aperture, which closes the data round-trip readback and the read threshold, and grades the specified behaviour that a 4-byte `READ_DATA` at either half pops a whole entry.
 |`sep_irq_simultaneous_fanin_no_alias_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -799,7 +803,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_kpv_scrambler_test`. Data transform, address tweak and keying, all frontdoor: the vault passes through while disabled, so the raw stored words are readable without a hierarchical peek.
 
 |Mailbox outbox FIFO, threshold interrupt and error flags
-|`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. `Mailbox -> PIC` grades delivery on `sep_mailbox_plic_test` and is not re-credited here. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side — see <<known-limitations>>.
+|`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. `Mailbox -> PIC` grades delivery on `sep_mailbox_plic_test` and is not re-credited here. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side and are graded by <<sep_mailbox_peer_rx_rirqt_test>>.
 
 |Interrupt aggregator packing under simultaneous fan-in
 |`sep_irq_simultaneous_fanin_no_alias_test`. Several cross-IP sources asserted at once must produce exactly their own bits in `sep_internal_interrupts[8:33]`, with every bit of that region resolved rather than floating. `PIC source map` grades the source-to-PIC-id map and CPU delivery on `sep_pic_irq_source_map_delivery_test`; this row is the aggregation itself — the place a one-hot map can smear onto a neighbour — and is a distinct contract from delivery.
@@ -3289,6 +3293,55 @@ claimed for the same reason. Both need the external inbound master — see
 <<known-limitations>>.
 
 '''''
+
+[[sep_mailbox_peer_rx_rirqt_test]]
+===== `sep_mailbox_peer_rx_rirqt_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and mailbox
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`) plus the external SMN-inbound master, `+skip_fuse_sense`
+
+*Source Module*: `sep_mailbox_peer_rx_rirqt_test`
+
+*BFM / Model*: ocah_axi_vip (CPU-LSU and external master)
+
+*Objective*: `fabric.adoc`: the mailbox registers sit on an 8-byte stride and a register's low and high halves alias to the same register, so "a read of `READ_DATA` at either half pops one FIFO entry. The mailbox drives the whole entry; the CPU keeps the half selected by address bit 2 and discards the other. Reading both halves consumes two entries." That, the data round-trip readback, and the read half of the threshold pair all need a value in the receive FIFO, which only the peer aperture can place there.
+
+*Test Coverage*: Peer-filled receive FIFO: round-trip readback, pop-per-read at either half with the discarded half lost, and the `RIRQT` read threshold with its interrupt.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode with fuse sense skipped and ungate the mailbox clock.
+. Program one inbound-filter entry to allow reads and writes over the peer aperture. The filter blocks by default, so without this the external master cannot reach the register and every check below would be vacuous.
+. Read `STATUS` and `READ_DATA` before the peer writes anything, and read `ERROR_FLAGS` twice.
+. Push two 64-bit entries whose four halves are all distinct, from the external master, at the peer aperture's `WRITE_DATA`. A non-OKAY response here fails immediately rather than being carried into the checks.
+. Read `READ_DATA` at the low half, then at the high half, and compare each against the entry halves.
+. Program `RIRQT`, enable `rtirq`, fill above the threshold, read `STATUS`, `IRQS` and `IRQP`, then drain back to exactly the threshold.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-RX-EMPTY
+|Before the peer writes, `STATUS.empty` is set, a read returns SLVERR with the documented empty sentinel, and `ERROR_FLAGS.read_error` is set and then read-clears. This is the control for everything below: if the receive FIFO answered the same way whether or not the peer had written, none of the following checkers could fail.
+|CHK-PEER-RX
+|The low-half read returns the low word of the first entry the peer pushed. This is the data round trip the host aperture alone cannot show, and because CHK-RX-EMPTY established the FIFO was empty first, a match cannot come from a stale or constant read.
+|CHK-POP-PER-READ
+|One 4-byte `READ_DATA` beat pops one whole entry. The second read, taken at the other half, returns the second entry rather than any part of the first, and `STATUS.empty` is set again after two reads of two entries.
+|CHK-HIGH-HALF-LOSS
+|The high-half read does not return the high word of the first entry. This is the specified behaviour and it is the opposite of the intuitive one: two 32-bit reads do not reassemble one 64-bit entry, they consume two entries and the discarded half is lost. A DUT that packed two reads into one entry fails here, and it is the reason the two entries are chosen with four distinct halves.
+|CHK-RIRQT
+|`RIRQT` reads back as written; `STATUS.read_level_above` is clear on an empty FIFO, set once the fill exceeds the threshold, and clear again at exactly the threshold, matching the strict greater-than the write half already uses. With `rtirq` enabled, `IRQS.rtirq` is raised and reaches `IRQP` through the enable gate.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
 
 [[sep_irq_simultaneous_fanin_no_alias_test]]
 ===== `sep_irq_simultaneous_fanin_no_alias_test`
@@ -6113,12 +6166,6 @@ constraint is not an open defect.
 
 |Dead-space per-beat refusal on writes (AXI)
 |Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves.
-
-|Mailbox 32-bit read of a 64-bit entry (specification, unproven)
-|`fabric.adoc` says each 64-bit input word is mapped to two 32-bit words the SEP host can access. That is the consume path: a 32-bit host reads the low word and the high word of an incoming message. This aperture cannot fill RX, so pop-per-read and high-half loss are not graded here. A 4-byte write-side push is not a documented contract and is not graded. Closing the spec claim needs a peer-path vehicle that places a known 64-bit value in RX and issues two 4-byte `READ_DATA` beats: occupancy must drop by one on the first, and the second must not return the high half of the same entry.
-
-|Mailbox read threshold and data round-trip (testbench reach)
-|`RIRQT` and `STATUS.read_level_above` are the read half of the mailbox threshold pair, and a data round-trip readback needs a value in the receive FIFO. Both require the peer side to write the inbound aperture, which the SEP-host aperture `sep_axil_mailbox_iface_rand_test` drives cannot do; the golden therefore predicts `read_level_above` as constant false. The hardware is not suspected — the gap is testbench reach. Closing it needs the external inbound master at the inbound aperture and belongs in its own peer-path vehicle, not in the TX-path rep.
 
 |Entropy pool pointer fault, PIC source 39 (hardware not built)
 |`sep_internal_interrupts[38]` is reserved for the entropy pool FIFO's pointer-integrity error. The check is not built in this configuration, so the source is tied to zero, can never assert, and no vehicle grades it. `interrupts.adoc` documents the same. A built check is level-sensitive with no write-one-to-clear, so firmware must mask the source or scrub the pool rather than acknowledge it.

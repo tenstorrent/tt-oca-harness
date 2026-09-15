@@ -52,7 +52,7 @@ tests = ["sep_axi_smoke_test"]
 # a coverage run grades. expected_count fails the run when membership drifts
 # from the class groups instead of silently shrinking the suite.
 name = "all"
-expected_count = 97
+expected_count = 98
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -100,6 +100,7 @@ tests = [
     "sep_fabric_remap_filter_csr_bank_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
+    "sep_mailbox_peer_rx_rirqt_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
@@ -217,6 +218,7 @@ tests = [
     "sep_fabric_remap_filter_csr_bank_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
+    "sep_mailbox_peer_rx_rirqt_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",

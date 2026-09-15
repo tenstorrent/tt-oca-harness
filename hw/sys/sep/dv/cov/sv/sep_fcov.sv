@@ -574,6 +574,15 @@ module sep_fcov (
   wire filt_allow_wr = m_b_ok && (m_aw_out_q == 4'd1) && in_allow_window(m_aw_addr_q);
   wire filt_allow_rd = m_r_ok && (m_ar_out_q == 4'd1) && in_allow_window(m_ar_addr_q);
 
+  // --- peer-side mailbox fill --------------------------------------------
+  // A completed external write to the inbound mailbox WRITE_DATA register: the
+  // only way anything reaches the host aperture's receive FIFO. The host-side
+  // mailbox bins below are all IRQ edges and are hit by the transmit path, so
+  // none of them shows the receive direction was ever driven. Both halves of
+  // the 8-byte register alias to it, so the compare masks bit 2.
+  wire m_mbox_peer_wr = m_b_ok && (m_aw_out_q == 4'd1) &&
+      ((m_aw_addr_q & ~32'h4) == AXIL_MAILBOX_INBOUND_MAILBOX_0_WRITE_DATA_REG_ADDR);
+
   // --- eFuse program x write-lock ----------------------------------------
   // Programming a write-locked field is a LEGAL software action with a
   // specified outcome (refused), not a fault injection -- the same class as a
@@ -1447,6 +1456,10 @@ module sep_fcov (
       bins km_raise = {1'b1};
     }
     cp_km_clear: coverpoint km_mbox_clear {bins km_clear = {1'b1};}
+    // The receive direction. Owner: sep_mailbox_peer_rx_rirqt_test, the only
+    // leaf that drives the peer aperture; every other mailbox leaf is transmit
+    // side and cannot fill this.
+    cp_peer_fill: coverpoint m_mbox_peer_wr {bins peer_write = {1'b1};}
   endgroup
 
   covergroup sep_wdt_bark_cg @(posedge clk_i);
