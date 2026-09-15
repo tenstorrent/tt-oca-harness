@@ -57,6 +57,7 @@ WINDOWS = {
 
 # From hw/sys/sep/doc/interrupts.adoc. 1-based PIC source.
 PIC = {
+    "KM mailbox IRQ": 15,
     "HMAC done": 18,
     "KMAC done": 21,
     "CSRNG command request done": 24,
@@ -81,6 +82,10 @@ MAILBOX_WRITE_DATA_RD_SENTINEL = 0xFEEDC0DE
 
 # From hw/sys/sep/doc/fabric.adoc ("Sixteen remap regions").
 OUTPUT_REMAP_REGIONS = 16
+
+# DV-owned BIW lane packing: out[i] = (b[i] * b[i+4]) + b[i+8]; out[0] is MSB.
+BIW_TRIPLES = ((0, 4, 8), (1, 5, 9), (2, 6, 10), (3, 7, 11))
+BIW_OUT_SHIFTS = (24, 16, 8, 0)
 
 # KMAC / SHA-3 walk set. SHA-3 strengths and digest sizes are FIPS 202.
 # SHAKE / cSHAKE accept 128 and 256 only (kmac.adoc / kmac.rdl kstrength).
@@ -201,8 +206,12 @@ def _selftest() -> None:
     assert window("ABR").base == 0x1094_0000
     assert window("EPOOL").base == 0x1095_0000
     assert pic("CSRNG command request done") == 24
+    assert pic("KM mailbox IRQ") == 15
+    assert agg_from_pic("KM mailbox IRQ") == 14
     assert agg_from_pic("Adams Bridge notification") == 35
     assert MAILBOX_DEPTH == 8
+    assert BIW_TRIPLES[0] == (0, 4, 8)
+    assert BIW_OUT_SHIFTS[0] == 24
     assert KMAC_SHA3_STRENGTHS == (224, 256, 384, 512)
     assert KMAC_XOF_STRENGTHS == (128, 256)
     assert abr_off("MLDSA_CTRL") == 0x10

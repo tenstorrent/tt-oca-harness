@@ -100,6 +100,7 @@ from __future__ import annotations
 
 import pyuvm
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from env.sep_crc_golden import crc8_rohc
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import SepAes
@@ -496,10 +497,17 @@ class sep_km_command_set_rand_test(sep_base_test):
         # command at all, and each carries a value worth checking: the CRC the KM
         # itself computed, or the sequence number it was expecting. The seq
         # counter side effects differ between them and are handled in the driver.
+        seq_used = self.km.seq_num
+        expected_crc = crc8_rohc(bytes([seq_used & 0xFF, KM_CMD_STAT & 0xFF, 0]))
         rc, arg = await self.km.send_bad_header_crc(KM_CMD_STAT)
         assert rc == KM_RC_HEADER_CRC, (
             f"CHK-FRAME FAIL: a corrupt header CRC-8 returned rc={rc}, expected "
             f"{KM_RC_HEADER_CRC} (RC_HEADER_CRC)"
+        )
+        assert (arg & 0xFF) == expected_crc, (
+            f"CHK-FRAME FAIL: RC_HEADER_CRC carried 0x{arg & 0xFF:02x}, expected "
+            f"CRC-8/ROHC 0x{expected_crc:02x} over [seq, cmd, len] "
+            "(hw/ip/key_manager/doc/firmware.adoc HEADER_CRC8 / CRC-8/ROHC table)"
         )
         self.logger.info(
             "CHK-FRAME PASS: corrupt header CRC-8 refused RC_HEADER_CRC, KM computed 0x%02x",
