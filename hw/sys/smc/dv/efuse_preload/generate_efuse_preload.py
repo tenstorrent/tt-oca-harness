@@ -7,7 +7,7 @@
 
 The layout comes from efuse_schema.toml next to this script, which transcribes
 hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl. Blocks are concatenated
-in schema order, LSB first within each block, to produce one 24576-bit image.
+in schema order, LSB first within each block, to produce one 8192-bit image.
 
 Two output notations, because two consumers want different things:
 
@@ -15,7 +15,7 @@ Two output notations, because two consumers want different things:
           hw/ip/efuse/dv/models/efuse_bank_model.sv reads through
           +smc_efuse_hex (it uses $readmemh), and what the shadow-register
           preload in hw/sys/smc/dv/assets/ uses.
-  binary  one bit per line, 24576 lines. Not consumed by anything in this
+  binary  one bit per line, 8192 lines. Not consumed by anything in this
           tree; a bit-level diff is sometimes the fastest way to see what a
           config changed.
 
@@ -37,7 +37,7 @@ except ModuleNotFoundError:  # pragma: no cover - older interpreters
 # smc_efuse_pkg::SHADOW_REG_BITS. Asserted against the schema below rather than
 # trusted, so a schema edit that changes the total fails here instead of
 # producing a silently short image.
-EFUSE_SIZE_BITS = 24576
+EFUSE_SIZE_BITS = 8192
 EFUSE_WORD_SIZE_BITS = 32
 
 SCHEMA_PATH = Path(__file__).resolve().parent / "efuse_schema.toml"
