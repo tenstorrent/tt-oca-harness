@@ -26,12 +26,13 @@ class smc_cpu_firmware_boot_test(smc_base_test):
 
     required_evidence = (
         "CHK-CLK-SMC-LIVE",
+        "CHK-CPU-BFM-OBSERVABILITY",
         "CHK-EFUSE-SENSE-DONE",
         "CHK-NONVAC",
         "CHK-RESET-VECTOR-FETCH",
         "CHK-ROM-IS-TARGET",
     )
-    min_evidence = 5
+    min_evidence = 6
 
     auto_protocol_vip = False
 

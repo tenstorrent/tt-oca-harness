@@ -95,27 +95,54 @@ surface is narrower and does not carry these observables. Every port is a
 `smc_tb_signal_list.svh` signal, so no hierarchical reference and no
 `smc_public_scope.vlt` change is required.
 
-[cols=",,",options="header",]
+[cols=",,,",options="header",]
 |===
-|Module |Area |Point families
-|`smc_reset_fcov.sv` |`reset_op`, `reset_state` |Per-source reset assertion,
-release edges, re-assertion after release, all-held / partial / all-released
-post-reset state
-|`smc_clk_fcov.sv` |`clk_bucket` |Domain-ratio windows (ref vs smc vs
+|Module |Points |Area |Point families
+|`smc_reset_fcov.sv` |22 |`reset_op`, `reset_state` |Per-source reset
+assertion, release edges, re-assertion after release, all-held / partial /
+all-released post-reset state
+|`smc_clk_fcov.sv` |40 |`clk_bucket` |Domain-ratio windows (ref vs smc vs
 periph), stalled-domain windows, per-gater cg_en at both values, gated clock
 running vs held, DMA frontend/backend busy states, gate-vs-busy agreement
-|`smc_periph_fcov.sv` |`i2c_state`, `gpio_state`, `irq_state` |I2C0
+|`smc_periph_fcov.sv` |64 |`i2c_state`, `gpio_state`, `irq_state` |I2C0
 START/STOP, per-side pulldown, contention, clock stretch, SMBALERT#, LSIO
 enable and sense tracking; I3C0 SMC-side activity; GPIO direction scalars and
 single- vs multi-pad enable; one point per interrupt source plus hang-leg
-independence and concurrency
-|`smc_axi_chan_fcov.sv` |Per-AXI-manager channels |Handshake accept/stall per
-channel, `wlast`/`rlast`, single vs multi beat, all four `bresp`/`rresp`
+independence and concurrency; per-instance peripheral decode, ATB receivers,
+mailbox levels and the peripheral-clock AXI-Lite CDC bridge
+|`smc_axi_chan_fcov.sv` |24 |Per-AXI-manager channels |Handshake accept/stall
+per channel, `wlast`/`rlast`, single vs multi beat, all four `bresp`/`rresp`
 encodings. Instantiated three times by `smc_fabric_fcov`
-|`smc_fabric_fcov.sv` |`axil_master` |Per-interface AXI-Lite activity and
+|`smc_fabric_fcov.sv` |44 |`axil_master` |Per-interface AXI-Lite activity and
 concurrency, SEP_IN size/burst/strobe shape, TB-owned response holds, eFuse
-JTAG AXI-Lite responses, SYS_OUT responses and counter advance
+JTAG AXI-Lite responses, SYS_OUT responses and counter advance, SYS_IN and
+JTAG manager paths
+|`smc_map_fcov.sv` |138 |Address map |Region decode across the address map,
+window tops, alias / remap and spare-block decode, region sizes for the
+PLIC, CLINT and BEU windows
+|`smc_rst_seq_fcov.sv` |20 |Reset sequencing |Cold-boot chain order,
+reset-synchroniser edges, primary-reset scope
+|`smc_clk_domain_fcov.sv` |4 |Clock domains |Clock-domain connectivity at the
+DUT boundary
+|`smc_cpu_fcov.sv` |19 |CPU control |PLIC context state, CLINT MTIME /
+MTIMECMP, per-core direct pins
+|`smc_gpio_fcov.sv` |7 |GPIO pads |Pad direction map, input readback,
+pad-control decode
+|`smc_efuse_fcov.sv` |18 |eFuse / OTP |Fuse sense, shadow-register load,
+bank-control AXI-Lite, SHIM command handshake
+|`smc_int_fcov.sv` |12 |Interrupts |Interrupt vectors as whole buses rather
+than hand-picked slices
+|`smc_dma_fcov.sv` |16 |DMA |Stream-0 command registers, frontend handshake,
+master port
+|`smc_zeroer_fcov.sv` |23 |Zeroer |Command registers, master port,
+outstanding counter, FSM encodings
+|`smc_iso_fcov.sv` |8 |Isolation / FLR |Isolation and function-level-reset
+sequencing state
+|`smc_filt_fcov.sv` |8 |Inbound filter |Filter hit / isolate decisions
 |===
+
+The sixteen modules carry 467 cover-property points in all. Point counts are
+the `OCAH_FCOV_COVER` invocations in each file.
 
 `protocol_vip` has no RTL signal to observe -- it is a DV-bookkeeping ledger
 of promoted tests -- so it has no `cov/sv/` module and stays on
@@ -225,6 +252,32 @@ promoted protocol-VIP test.
 |`smc_mailbox_irq_test` |`irq_state`, `protocol_vip`
 |`functional` / `per_ip` |union of the bins above plus
 `protocol_vip` for each promoted area
+|===
+
+[[block-coverage-by-group]]
+==== Block coverage by group
+
+One row per block or edge of the DUT: the leaves in `per_ip` that carry the
+block's routine claim (`smoke` is a subset of `per_ip`), and what the `all`
+sign-off sweep adds. Group membership is `testlists/all.toml`; the per-leaf
+detail is the card in `SMC_VPLAN.adoc`.
+
+[cols="2,3,3",options="header",]
+|===
+|Block / edge |`per_ip` |`all` (sign-off)
+|Reset / powergood / cool / FLR |`smc_cold_reset_test`, `smc_canonical_smoke_test`, `smc_flr_sanity_test` |same plus the reset cluster
+|CSR / scratch / chip-config |`smc_register_sanity_test`, `smc_default_reg_rd_test` |same plus `smc_register_boundary_depth_test`
+|SEP_IN / local fabric |`smc_i3c_to_fabric_test`, `smc_local_fabric_csr_depth_test` |same plus fabric depth
+|Mailbox / IRQ |`smc_mailbox_irq_test` |same plus mailbox depth
+|I2C protocol |`smc_i2c_master_target_test` |same plus the I2C cluster
+|JTAG / iJTAG |`smc_ijtag_basic_test` |same plus DMI / DFX
+|eFuse / OTP / LC-gated JTAG |`smc_efuse_otp_clock_test`, `smc_efuse_jtag_lc_access_matrix_test`, `smc_efuse_jtag_lc_negative_test` |same plus the eFuse depth cluster
+|eFuse / Zeroer illegal-state recovery |`smc_state_fault_inject_test` |same
+|GPIO / ext IRQ |`smc_gpio_irq_active_test` |same plus the GPIO cluster
+|UART / log / sideband |`smc_sideband_protocol_smoke_test` |same plus UART / AVSBus / OCTS
+|ECC / DFD / DBS |`smc_ecc_dfd_dbs_sanity_test` |same plus diagnostic depth
+|Deadspace aliasing |`smc_deadspace_decode_test` (fails on the decode defect under Known Limitations) |held out of `all`
+|CLA / ALIAS_REMAP |`smc_remap_cla_test` (fails on the decode defect under Known Limitations) |held out of `all`
 |===
 
 === Collection Strategy

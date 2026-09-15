@@ -14,12 +14,12 @@ here is imported by generated symbol from ``efuse_interface_ctrl.h``.
 
 *Model-backed (NOT silicon-path coverage).* ``tb_efuse_programmed_word0`` is a
 TB tap on ``u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg``
-(``tb/tb_top.sv:1324-1327``). SPEC declares that block a stand-in: "The eFuse
+(``tb/tb_top.sv:1274-1277``). SPEC declares that block a stand-in: "The eFuse
 bank model (`efuse_bank_model.sv`) is a reference, simulation-only stand-in for
 the real foundry OTP macro ... In a production integration it is replaced by the
 actual foundry macro driven by the SHIM"
 (``hw/ip/efuse/doc/architecture.adoc:163-170``), and its set-once semantics are
-``onwrite = woset`` in the DV RDL ``hw/ip/efuse/regs/efuse_bank.rdl:14``. The
+``onwrite = woset`` in the DV RDL ``hw/ip/efuse/dv/models/regs/efuse_bank.rdl:14``. The
 ``OTP=...`` observations below therefore show that the controller's command did
 or did not reach the bank model -- they are **not** proof that a fuse burns in
 silicon ([BEHAVIORAL-STUB-DECLARED]). Their log lines are prefixed

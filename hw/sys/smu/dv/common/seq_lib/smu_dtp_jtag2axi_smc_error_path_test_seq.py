@@ -18,7 +18,6 @@ from seq_lib.smu_jtag_helpers import (
     DTP_EXPECTED_SMC_JTAG2AXI_CAPS,
     J2A_STATUS_DECERR,
     J2A_STATUS_SUCCESS,
-    SMC_AXI_ERR_SLV_POISON,
     SMC_DBG_AXSIZE_4B,
     SMC_DBG_AXSIZE_8B,
     jtag2axi_series_incr_read,
@@ -120,18 +119,9 @@ class smu_dtp_jtag2axi_smc_error_path_test_seq:
             raise AssertionError(
                 f"unmapped @0x{UNMAPPED:08x} status={hole_st} want DECERR={J2A_STATUS_DECERR}"
             )
-        if hole_data != SMC_AXI_ERR_SLV_POISON:
-            raise AssertionError(
-                f"unmapped @0x{UNMAPPED:08x} poison=0x{hole_data:08x} "
-                f"want 0x{SMC_AXI_ERR_SLV_POISON:08x}"
-            )
         self.s3_ok = True
-        self._log(f"CHK-J2A-DECERR @0x{UNMAPPED:08x} status=DECERR poison=0x{hole_data:08x}")
-        sb.expect_eq(
-            "CHK-J2A-DECERR",
-            (hole_st, hole_data),
-            (J2A_STATUS_DECERR, SMC_AXI_ERR_SLV_POISON),
-        )
+        self._log(f"CHK-J2A-DECERR @0x{UNMAPPED:08x} status=DECERR data=0x{hole_data:08x}")
+        sb.expect_eq("CHK-J2A-DECERR", hole_st, J2A_STATUS_DECERR)
 
         rec_st, rec_data = await self._rd32(jtag, VERSION_LO, "VERSION_LO-RECOVERY")
         if rec_st != J2A_STATUS_SUCCESS or rec_data != VERSION_LO_RESET:

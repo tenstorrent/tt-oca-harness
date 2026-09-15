@@ -221,40 +221,29 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner("SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS Write Mode")
         await self.reset_tap()
         rng = self.rng("series_write_with_status")
-        size = 3
-        stride = self.size_bytes(size)
-        base = self.random_aligned_addr(rng, size) & ~0x3F
-        increments = [1, 0, 1, 1]
-        await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, back_to_rti=True)
-        expected_addr = base
-        for idx, inc in enumerate(increments, start=1):
-            data = rng.getrandbits(64) & self.data_mask(size)
-            self.log_iteration(
-                idx,
-                len(increments),
-                "with-status write addr=0x%08x inc=%d data=0x%x",
-                expected_addr,
-                inc,
-                data,
-            )
-            before = await self.axi_activity_counts()
-            await self.series_data_with_status(data, size=size, increment=inc, back_to_rti=True)
-            await self.wait_for_smc_axi_activity(
-                before=before,
-                read=False,
-                context=f"series_status.axi#{idx}",
-            )
-            self.assert_equal(
-                f"series_status.mem#{idx}",
-                self.read_mem_int(expected_addr, size),
-                data,
-            )
-            expected_addr += stride if inc else 0
-            self.operation_count += 1
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size)
-        self.assert_equal("series_status.status", status, DtpJtag2AxiStatus.SUCCESS)
-        self.assert_equal("series_status.addr_after", addr_after, expected_addr)
-        self.status = status
+        plan = self.arm_series_status_fault(
+            self.plan_series_status("smc_axi", rng), rng, read=False
+        )
+        words = [rng.getrandbits(64) & self.data_mask(plan.size) for _ in plan.increments]
+        self.log_step(
+            1,
+            "Write the with-status series; beat %d returns %s",
+            plan.fault_idx,
+            plan.expected.name,
+        )
+        await self.run_series_status_write(plan, words, context="series_status")
+        self.log_step(2, "Recover with a legal single write outside the stream")
+        self.status = await self.verify_target_recovery(
+            "smc_axi",
+            addr=self.series_status_recovery_addr(plan),
+            data=rng.getrandbits(64),
+            read=False,
+            context="series_status",
+        )
+        self.operation_count += plan.beats + 1
+        self.emit_series_status_nonvacuity(
+            "series_write_incr_with_error", plan, self.operation_count
+        )
 
     async def run_random_ops(self) -> None:
         self.log_banner("SMC_AXI_SINGLE_OP Randomized Writes")
