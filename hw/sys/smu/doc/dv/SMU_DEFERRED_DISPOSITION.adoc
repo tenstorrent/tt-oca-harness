@@ -401,6 +401,9 @@ Enrolled names outside this catalog:
 |smu_clock_stop_jtag_vs_cla_fb_race_test
 |waived
 |No product pin or frontdoor stimulus exists for CLA feedback injection.
+|OTP-vs-fabric concurrency on the MAP shadow word
+|waived
+|`smu_otp_vs_fabric_map_race_test` carries a `_race_` name it does not earn, and this row is the reason it keeps it. Both writers are JTAG2AXI bridges behind the one TAP, so their DR shifts are serialised by construction and the OTP op has completed before the fabric write can be issued; the enrolled test therefore claims back-to-back coherence, not overlap, and says so in its header and plan entry. Genuine overlap needs a second, independent master on the shadow-map word, which the wrapper's product interfaces do not provide. Not renamed here because the name is carried by the testlist, the evidence map, the feature list and the plan anchor, and the rename would ride inside a branch already this large; it belongs in a standalone change.
 |===
 
 [[smu-bench-standins]]
@@ -417,7 +420,13 @@ from the tree. The last three -- approver, approval date against a revision,
 and review or expiry date -- are filled by a person; until they are, the entry
 is a declaration and clears nothing, and every test on its scope is graded as
 if the stand-in were undeclared. `pending` in those fields means exactly that.
-The revision each entry describes is `cdd2b68`, except the `+skip_fuse_sense` entry, which describes the tree that declares the plusarg per test.
+Each entry describes the tree at this branch's head, not an older revision:
+the stand-ins and the entries that declare them move in the same commits, so a
+hash written into this file is stale the moment the file is edited. What makes
+an entry checkable instead is the command in <<smu-standin-recheck>> -- one per
+entry, each naming a string a reader can see for themselves. An approver fills
+the `Date, revision` field with the revision they checked and the command they
+ran.
 
 [cols="2,3,3",options="header"]
 |===
@@ -428,6 +437,44 @@ The revision each entry describes is `cdd2b68`, except the `+skip_fuse_sense` en
 |Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (`bsr_scan_loop`), `tb/tb_top.sv` (five host scan chains) |`smu_dtp_bsr_extest_loopback_test`
 |`prim_sync2` / `prim_sync3` stand-ins |`[build].stubs` of both sim configs, from `hw/sys/smc/dv/tb/verilator_stubs/` |every leaf on Verilator; reset and boot-gate observes downstream
 |eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves
+|===
+
+[[smu-standin-recheck]]
+==== Re-confirming a stand-in
+
+Each row names one command and the string it prints when the entry above is
+still true of the tree in front of you. None of them needs a stored run: the
+first four are static reads of the tree, the last two print at time zero of any
+run of the named group. A row that prints nothing is an entry that has gone
+stale, and the entry -- not the run -- is what needs the edit.
+
+[cols="2,3,3",options="header"]
+|===
+|Stand-in |Command |Expected
+
+|`+esrc_noise_force`
+|`grep -c '\"+esrc_noise_force\",' hw/sys/smu/dv/testlists/wrapper.toml`
+|`3` -- the three entries the *Scope* field names, and no fourth.
+
+|`+skip_fuse_sense` with the shadow preload
+|`grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/wrapper.toml`
+|`82` of the 88 entries, leaving the six the *Scope* field excludes.
+
+|`abr_reg.sv` pass/fail waiver
+|`grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml hw/sys/smu/dv/smu_block_sim_cfg.toml`
+|The `extra_ignore_patterns` line in the first file and no hit in the second.
+
+|Scan-chain loopbacks
+|`grep -n 'host_scan_in_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv hw/sys/smu/dv/tb/tb_top.sv`
+|The wrapper binds only `jtag_bsr_host_scan_in_i` to `bsr_scan_loop` and ties the other four to `1'b0`; the block bench binds all five to their own `*_out` net.
+
+|`prim_sync2` / `prim_sync3` stand-ins
+|`grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml hw/sys/smu/dv/smu_block_sim_cfg.toml`, then any run's `hdl_compile.log`
+|Both files list the two stubs, and the compile log names them ahead of the Bender filelist.
+
+|eFuse models in the product composition
+|`run_dv.py --dut smu --items smoke_sep0`, then `grep -n 'fuse sense'` in that run's test log
+|`Skipping fuse sense` or `Not skipping fuse sense` at time zero, which says which path the run took.
 |===
 
 ==== `+esrc_noise_force`
@@ -443,7 +490,7 @@ The revision each entry describes is `cdd2b68`, except the `+skip_fuse_sense` en
 |Approver
 |pending
 |Date, revision
-|pending; describes `cdd2b68`
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
 |Review or expiry
 |pending
 |===
@@ -479,7 +526,7 @@ The revision each entry describes is `cdd2b68`, except the `+skip_fuse_sense` en
 |Approver
 |pending
 |Date, revision
-|pending; describes `cdd2b68`
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
 |Review or expiry
 |pending
 |===
@@ -497,7 +544,7 @@ The revision each entry describes is `cdd2b68`, except the `+skip_fuse_sense` en
 |Approver
 |pending
 |Date, revision
-|pending; describes `cdd2b68`
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
 |Review or expiry
 |pending
 |===
@@ -515,7 +562,7 @@ The revision each entry describes is `cdd2b68`, except the `+skip_fuse_sense` en
 |Approver
 |pending
 |Date, revision
-|pending; describes `cdd2b68`
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
 |Review or expiry
 |pending
 |===
@@ -533,7 +580,7 @@ The revision each entry describes is `cdd2b68`, except the `+skip_fuse_sense` en
 |Approver
 |pending
 |Date, revision
-|pending; describes `cdd2b68`
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
 |Review or expiry
 |pending
 |===

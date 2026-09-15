@@ -594,7 +594,7 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: OTP then fabric JTAG2AXI writes to the same MAP BIRA word back to back: the later writer wins on both read paths and in the shadow register, with no torn value.
+*Objective*: OTP then fabric JTAG2AXI writes to the same MAP BIRA word back to back: the later writer wins on both read paths and in the shadow register, with no torn value. The `_race_` in the test name is historical and overstates this; the concurrency case it suggests is carried as a waived row in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`, with the reason no stimulus on this bench can produce it.
 
 *Test Coverage*:
 
@@ -1517,12 +1517,13 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: IR+TRST abort of hung OTP SINGLE_OP, observed on that op's status; fabric VERSION_LO recovers.
+*Objective*: An outstanding OTP SINGLE_OP does not wedge the DTP TAP or the SMC_DBG fabric bridge. The test name describes the stimulus, not the verdict: no abort is claimed.
 
 *Test Coverage*:
 
-* OTP J2A mid-BUSY abort: after the TAP reset the OTP SINGLE_OP DR is captured again and must no longer report BUSY.
-* Fabric VERSION_LO recovery after the abort.
+* An IR change taken while an OTP SINGLE_OP reads BUSY: IDCODE still shifts out correctly.
+* Two SMC_DBG fabric reads of VERSION_LO, taken after the IR+TRST while the OTP op is still unanswered, return its reset value. A mutation with the `reset_tap()` removed also passes, so this compare evidences the bridge being usable with an OTP op outstanding, not anything the reset did.
+* Whether the outstanding OTP op was aborted is *not* covered here, and no run on this bench can cover it. The SINGLE_OP `op` field's documented reset is 0, so the status captured after a TAP reset reads "not BUSY" whether the op was aborted or the TDR was merely cleared; a mutation run with the `reset_tap()` removed passes with the same `status=0`. That capture is logged as a diagnostic and carries no compare.
 * Requires +skip_fuse_sense.
 
 *Test Procedure*:
@@ -1541,7 +1542,7 @@ check.
 |`CHK-ABORT-GATE-OPEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-ABORT-BUSY` |Evidence token, emitted only after the compares it names have held
 |`CHK-ABORT-IR-TRST` |Evidence token, emitted only after the compares it names have held
-|`CHK-J2A-ABORT` |OTP SINGLE_OP status after the TAP reset is not BUSY, and two fabric VERSION_LO reads return the reset value
+|`CHK-J2A-FABRIC-ALIVE` |Two SMC_DBG fabric reads of VERSION_LO, taken with an OTP SINGLE_OP left outstanding, return its reset value with a SUCCESS status
 |assertion |jtag2axi_abort incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 

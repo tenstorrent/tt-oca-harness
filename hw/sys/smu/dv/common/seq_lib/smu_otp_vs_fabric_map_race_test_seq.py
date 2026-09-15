@@ -10,6 +10,11 @@ masters on the same shadow-map word: the later writer wins on both read paths
 and in the shadow register, with no torn value in between. The OTP status seen
 at that first capture is logged so a run in which the op was still BUSY is
 visible in the record.
+
+The `_race_` in the name is historical. The concurrency case it suggests needs
+a second master independent of this TAP, which the wrapper's product interfaces
+do not provide; it is carried as a waived row in
+``hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc``.
 """
 
 from __future__ import annotations
