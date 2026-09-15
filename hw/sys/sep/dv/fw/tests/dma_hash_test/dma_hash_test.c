@@ -69,6 +69,14 @@ static const char kFips1804Msg[] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmn
 static const char kFips1804Sha384Hex[] =
     "3391fdddfc8dc7393707a65b1b4709397cf8b1d162af05abfe8f450de5f36bc6"
     "b0455a8520bc4e6f5fe95b1fe3c8452b";
+// FIPS 180-4 SHA-256 of the same 56-byte message, for the multi-chunk pass.
+static const char kFips1804Sha256Hex[] =
+    "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1";
+#define SHA256_DIGEST_WORDS 8
+#define SHA256_DIGEST_BYTES 32
+// 56 bytes as two 28-byte chunks. Both are word multiples, which the 4-byte
+// transfer width requires, and 28 != 56 is what makes the transfer multi-chunk.
+#define FIPS_CHUNK_LEN 28
 
 // Test data size in bytes - must be a multiple of 4
 // 64 bytes = 1 SHA block + padding = ~8-10K cycles for SW hash
@@ -444,6 +452,154 @@ int main(void) {
         if (msg_mismatches == 0) {
             printf("  PASS: SHA-384 pass also copied the message to DCCM intact\n");
         }
+    }
+
+    //==========================================================================
+    // Step 7: Multi-chunk inline SHA-256 over the same FIPS message
+    //==========================================================================
+    // The passes above are single-chunk: CHUNK_DATA_SIZE == TOTAL_DATA_SIZE, so
+    // the hash engine sees the whole message in one go. Here the same 56 bytes
+    // are carried as two 28-byte chunks, and the digest must still be the
+    // published SHA-256 of the whole message -- a hash that restarted per chunk,
+    // or that dropped the tail, produces a different digest and fails.
+    //
+    // Interrupts are disabled for this pass: the ISR clears STATUS.chunk_done,
+    // and chunk pacing has to read that bit.
+    printf("\n=== Secure DMA multi-chunk SHA-256 (FIPS 180-4 vector) ===\n");
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, 0);
+
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_CHUNK_LEN);
+
+    uint32_t mc_status = 0;
+    uint32_t mc_chunks = 0;
+    uint32_t mc_initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
+    for (uint32_t guard = 0; guard < 16u; guard++) {
+        secure_dma__CONTROL_t mc_ctrl = {
+            .f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .GO = 1}};
+        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, mc_ctrl.w | mc_initial);
+
+        int t = 200000;
+        do {
+            mc_status = READ_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        } while (!(mc_status & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
+                                SECURE_DMA__STATUS__CHUNK_DONE_bm)) &&
+                 --t > 0);
+        if (mc_status & SECURE_DMA__STATUS__ERROR_bm) break;
+        mc_chunks++;
+        if (mc_status & SECURE_DMA__STATUS__DONE_bm) break;
+        // Clear chunk_done and continue the same transfer.
+        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__CHUNK_DONE_bm);
+        mc_initial = 0;
+    }
+
+    uint32_t mc_err = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    if (!(mc_status & SECURE_DMA__STATUS__DONE_bm) || mc_err != 0) {
+        printf("  ERROR: multi-chunk SHA-256 did not complete (status 0x%x err 0x%x "
+               "chunks %u)\n",
+               mc_status, mc_err, (unsigned)mc_chunks);
+        errors++;
+    } else if (mc_chunks < 2u) {
+        // Without this the pass could have been one chunk after all, and the
+        // digest compare below would say nothing about chunking.
+        printf("  ERROR: multi-chunk SHA-256 completed in %u chunk(s); 56 bytes at a "
+               "28-byte chunk size must take at least 2\n",
+               (unsigned)mc_chunks);
+        errors++;
+    } else {
+        uint32_t hw256[SHA256_DIGEST_WORDS];
+        for (int i = 0; i < SHA256_DIGEST_WORDS; i++) {
+            hw256[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+        }
+        char mc_hex[2 * SHA256_DIGEST_BYTES + 1];
+        digest_to_hex((const uint8_t *)hw256, SHA256_DIGEST_BYTES, mc_hex);
+        printf("  Chunks        = %u\n", (unsigned)mc_chunks);
+        printf("  Computed (HW) = %s\n", mc_hex);
+        printf("  Expected (NIST) = %s\n", kFips1804Sha256Hex);
+        if (strcmp(mc_hex, kFips1804Sha256Hex) != 0) {
+            printf("  ERROR: multi-chunk SHA-256 digest does not match the FIPS 180-4 "
+                   "vector!\n");
+            errors++;
+        } else {
+            printf("  PASS: multi-chunk SHA-256 digest matches the FIPS 180-4 vector "
+                   "over %u chunks\n",
+                   (unsigned)mc_chunks);
+        }
+    }
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
+              SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
+                  SECURE_DMA__STATUS__CHUNK_DONE_bm);
+
+    //==========================================================================
+    // Step 8: DIGEST_SWAP is the only thing that changes between these two runs
+    //==========================================================================
+    // Every pass above sets DIGEST_SWAP=1. Nothing so far shows the bit does
+    // anything: a DMA that ignored it would pass them all. Re-run the same
+    // single-chunk SHA-256 with DIGEST_SWAP=0 and require each digest word to be
+    // the byte-reverse of the swapped run. Equal words mean the bit is dead.
+    printf("\n=== Secure DMA DIGEST_SWAP ===\n");
+
+    uint32_t swapped[SHA256_DIGEST_WORDS];
+    uint32_t unswapped[SHA256_DIGEST_WORDS];
+
+    for (int pass = 0; pass < 2; pass++) {
+        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+        secure_dma__CONTROL_t sw_ctrl = {.f = {.OPCODE = OPCODE_SHA256,
+                                               .DIGEST_SWAP = (pass == 0) ? 1u : 0u,
+                                               .INITIAL_TRANSFER = 1,
+                                               .GO = 1}};
+        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, sw_ctrl.w);
+
+        uint32_t st = 0;
+        int t = 200000;
+        do {
+            st = READ_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        } while (!(st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) && --t > 0);
+
+        uint32_t err = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+        if (!(st & SECURE_DMA__STATUS__DONE_bm) || err != 0) {
+            printf("  ERROR: DIGEST_SWAP=%d run did not complete (status 0x%x err 0x%x)\n",
+                   (pass == 0) ? 1 : 0, st, err);
+            errors++;
+        } else {
+            uint32_t *dst = (pass == 0) ? swapped : unswapped;
+            for (int i = 0; i < SHA256_DIGEST_WORDS; i++) {
+                dst[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+            }
+        }
+        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
+                  SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
+                      SECURE_DMA__STATUS__CHUNK_DONE_bm);
+    }
+
+    int swap_mismatches = 0;
+    int swap_identical = 0;
+    for (int i = 0; i < SHA256_DIGEST_WORDS; i++) {
+        uint32_t w = unswapped[i];
+        uint32_t rev = ((w & 0x000000FFu) << 24) | ((w & 0x0000FF00u) << 8) |
+                       ((w & 0x00FF0000u) >> 8) | ((w & 0xFF000000u) >> 24);
+        if (rev != swapped[i]) {
+            printf("  ERROR: DIGEST_SWAP word %d: swapped 0x%08x, byte-reverse of "
+                   "unswapped 0x%08x = 0x%08x\n",
+                   i, swapped[i], w, rev);
+            swap_mismatches++;
+        }
+        if (w == swapped[i]) swap_identical++;
+    }
+    if (swap_mismatches) {
+        errors++;
+    } else if (swap_identical == SHA256_DIGEST_WORDS) {
+        // A palindromic digest would satisfy the reverse test without the bit
+        // doing anything. Vanishingly unlikely, but it is the one way this
+        // check could pass on a dead DIGEST_SWAP, so it is called out.
+        printf("  ERROR: every digest word is unchanged by DIGEST_SWAP -- the bit "
+               "appears to have no effect\n");
+        errors++;
+    } else {
+        printf("  PASS: all %d digest words under DIGEST_SWAP=0 are the byte-reverse "
+               "of the DIGEST_SWAP=1 run\n",
+               SHA256_DIGEST_WORDS);
     }
 
     printf("\n=== Test Summary ===\n");

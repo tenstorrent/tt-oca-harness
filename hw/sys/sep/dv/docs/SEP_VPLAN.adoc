@@ -222,7 +222,7 @@ appears.
 |`sep_dma_hash_test`
 |cpu
 |ocah_axi_vip, CPU FW
-|Drives the secure DMA engine from real firmware to copy a block from SRAM into the CPU's data tightly-coupled memory with the inline hash engine enabled, then proves two things independently: the copied data is identical to the source, and the hardware digest is correct. Walks both SHA-256, against a software digest over build-varying data, and SHA-384, against the published FIPS 180-4 vector for a fixed message.
+|Drives the secure DMA engine from real firmware to copy a block from SRAM into the CPU's data tightly-coupled memory with the inline hash engine enabled, then proves two things independently: the copied data is identical to the source, and the hardware digest is correct. Walks both SHA-256, against a software digest over build-varying data, and SHA-384, against the published FIPS 180-4 vector for a fixed message. Also carries the same message as two chunks and re-runs it with the digest byte-swap off.
 |`sep_spi_ot_dma_rx_test`
 |cpu
 |ocah_axi_vip, ocah_spi_vip, CPU FW
@@ -1393,6 +1393,8 @@ starved it to a handful of writes fails.
 . Read the hardware digest; compute the software digest; compare. Compare source against destination word for word.
 . Then stage the fixed FIPS 180-4 56-byte test message in the same SRAM region, reprogram only the length and the opcode, and start a second transfer with the SHA-384 opcode.
 . Wait on the interrupt again; read the twelve digest words; render them as hex and compare against the published vector. Compare the copied message against the source bytes.
+. Disable the DMA interrupt enables, then carry the same 56-byte message as two 28-byte chunks, pacing the chunks on `STATUS.chunk_done` and counting them. Compare the digest against the published SHA-256 vector for the whole message.
+. Finally run the same single-chunk SHA-256 twice, once with `DIGEST_SWAP` set and once clear, and compare the two digest word arrays against each other.
 
 *Checkers*:
 
@@ -1413,6 +1415,10 @@ starved it to a handful of writes fails.
 |The twelve hardware digest words, rendered big-endian as hex, equal the FIPS 180-4 digest for the 56-byte message the firmware staged. Unlike the SHA-256 pass this compares against a literal, so its non-vacuity argument is different and is stated rather than inherited: the message is the published input and the vector is the published output, neither is read back from the engine, and a DUT that returned a constant, a zero digest, or the SHA-256 of the same message fails. The 56-byte message is used in place of the one-block "abc" vector because the DMA transfers whole 4-byte words. `OPCODE_ERROR` on this transfer is reported as a failure, not skipped, so a build that does not implement `OpcSha384` fails here rather than passing quietly.
 |CHK-SHA384-COPY
 |The same SHA-384 transfer also copied the message to the destination, checked byte for byte. A digest engine fed correctly while the copy path is broken fails here.
+|CHK-MULTICHUNK
+|The same 56-byte message carried as two 28-byte chunks produces the published FIPS 180-4 SHA-256 digest for the whole message. A hash that restarted per chunk, or that dropped the tail, produces a different digest and fails. The observed chunk count is required to be at least two before the digest is compared, so a transfer that silently completed in one chunk fails rather than passing a single-chunk digest under a multi-chunk name. Interrupts are disabled for this pass because the service routine clears `STATUS.chunk_done`, which the pacing loop has to read.
+|CHK-DIGEST-SWAP
+|Every digest word produced with `DIGEST_SWAP` clear is the byte-reverse of the corresponding word produced with it set, over the same message. Every other pass in this entry sets the bit, so none of them can tell a working `DIGEST_SWAP` from a DMA that ignores it; this is the only entry that grades the bit. All-words-identical is failed explicitly, since a palindromic digest is the one way a byte-reverse comparison could be satisfied while the bit does nothing.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
