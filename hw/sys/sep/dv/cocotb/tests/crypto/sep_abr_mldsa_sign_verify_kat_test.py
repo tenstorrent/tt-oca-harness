@@ -59,12 +59,9 @@ from seq_lib.sep_abr_keygen_seq import (
     CTRL_EXTERNAL_MU,
     CTRL_ZEROIZE,
     IRQ_ABR_ERROR,
-    MU_WORDS,
     NAME0_EXP,
     NAME1_EXP,
-    PK_WORDS,
     SIG_WORDS,
-    SK_WORDS,
     ST_ERROR,
     ST_READY,
     ST_VALID,
@@ -156,8 +153,7 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
         # Length before value: zip() stops at the shorter list, so a short
         # readback would narrow the compare instead of failing it.
         assert len(sig) == len(NIST_SG_SIG), (
-            f"CHK-SIGN FAIL: read {len(sig)} signature words, vector has "
-            f"{len(NIST_SG_SIG)}"
+            f"CHK-SIGN FAIL: read {len(sig)} signature words, vector has {len(NIST_SG_SIG)}"
         )
         mismatch = next((i for i, (g, e) in enumerate(zip(sig, NIST_SG_SIG)) if g != e), None)
         assert mismatch is None, (

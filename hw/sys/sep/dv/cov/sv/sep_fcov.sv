@@ -1233,6 +1233,11 @@ module sep_fcov (
     cp_done: coverpoint abr_done {bins status_valid = {1'b1};}
   endgroup
 
+  // verilog_format: off  // verible splits the concatenated coverpoint
+  // expressions across lines and then packs the bins onto one line, which
+  // makes the per-operation bins harder to read than the one-bin-per-line
+  // form below. Formatting is off for the two covergroups that concatenate
+  // their operation strobes; everything else in this file is verible-formatted.
   covergroup sep_abr_sign_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_abr_sign_cg";
@@ -1260,6 +1265,7 @@ module sep_fcov (
       bins decaps_status_valid = {3'b100};
     }
   endgroup
+  // verilog_format: on
 
   covergroup sep_esrc_edn_flow_cg @(posedge clk_i);
     option.per_instance = 1;
@@ -1272,9 +1278,9 @@ module sep_fcov (
     // AXIS stream and is hit by any sink, so it cannot show that a given
     // client was ever served. All four clients have a producer.
     cp_edn_client: coverpoint crypto_edn_ack_i iff (!in_reset) {
-      bins aes       = {4'b0001};
-      bins kmac      = {4'b0010};
-      bins otbn_rnd  = {4'b0100};
+      bins aes = {4'b0001};
+      bins kmac = {4'b0010};
+      bins otbn_rnd = {4'b0100};
       bins otbn_urnd = {4'b1000};
     }
   endgroup
@@ -1345,9 +1351,9 @@ module sep_fcov (
   covergroup sep_crypto_isolate_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_crypto_isolate_cg";
-    cp_km_iso:      coverpoint hmac_km_iso_rise  {bins km_path_isolated = {1'b1};}
-    cp_rst_ordered: coverpoint hmac_rst_ordered  {bins reset_after_both_isolated = {1'b1};}
-    cp_reopen:      coverpoint hmac_km_iso_fall  {bins km_path_reopened = {1'b1};}
+    cp_km_iso: coverpoint hmac_km_iso_rise {bins km_path_isolated = {1'b1};}
+    cp_rst_ordered: coverpoint hmac_rst_ordered {bins reset_after_both_isolated = {1'b1};}
+    cp_reopen: coverpoint hmac_km_iso_fall {bins km_path_reopened = {1'b1};}
   endgroup
 
   covergroup sep_km_generate_cg @(posedge clk_i);
@@ -1376,10 +1382,12 @@ module sep_fcov (
     // a SHA-384 transfer scored nothing before this. SHA-512 is a legal opcode
     // with no leaf that commands it, so it has no bin rather than a permanent
     // hole.
+    // verilog_format: off  // verible packs these two bins onto one line.
     cp_hash_opcode: coverpoint dma_opcode_w iff (dma_hash_any_go) {
       bins sha256 = {DmaOpSha256};
       bins sha384 = {DmaOpSha384};
     }
+    // verilog_format: on
   endgroup
 
   covergroup sep_dma_completion_route_cg with function sample (logic irq_route, logic handshake);
@@ -1584,7 +1592,9 @@ module sep_fcov (
     // The receive direction. Owner: sep_mailbox_peer_rx_rirqt_test, the only
     // leaf that drives the peer aperture; every other mailbox leaf is transmit
     // side and cannot fill this.
-    cp_peer_fill: coverpoint m_mbox_peer_wr {bins peer_write = {1'b1};}
+    cp_peer_fill: coverpoint m_mbox_peer_wr {
+      bins peer_write = {1'b1};
+    }
   endgroup
 
   covergroup sep_wdt_bark_cg @(posedge clk_i);

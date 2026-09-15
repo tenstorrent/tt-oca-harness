@@ -121,9 +121,7 @@ class sep_abr_mlkem_kat_test(sep_base_test):
     async def _zeroize(self, kem, *, what: str) -> None:
         await kem.wr32(MLKEM_CTRL, KEM_CTRL_ZEROIZE)
         await self._wait_status(kem, KEM_ST_VALID, 0, what=f"{what} post-zeroize VALID clear")
-        await self._wait_status(
-            kem, KEM_ST_READY, KEM_ST_READY, what=f"{what} post-zeroize READY"
-        )
+        await self._wait_status(kem, KEM_ST_READY, KEM_ST_READY, what=f"{what} post-zeroize READY")
 
     @staticmethod
     def _first_mismatch(got: list[int], exp: list[int]) -> int | None:

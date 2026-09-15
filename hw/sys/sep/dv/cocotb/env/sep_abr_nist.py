@@ -106,8 +106,7 @@ for _name, _v in (
 
 # The two verdicts must differ, or the accept/reject pair proves nothing.
 assert NIST_SV_OK_VERDICT != NIST_SV_BAD_VERDICT, (
-    "sigVer accept and reject cases carry the same verdict; the pair would not "
-    "be able to fail"
+    "sigVer accept and reject cases carry the same verdict; the pair would not be able to fail"
 )
 # And the two cases must actually be different inputs.
 assert NIST_SV_OK_SIG != NIST_SV_BAD_SIG or NIST_SV_OK_PK != NIST_SV_BAD_PK, (
