@@ -26,8 +26,7 @@ int main(void) {
     // write to cold reset to index 1
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, 0x3);
 
-    uint32_t cold_reset_read =
-        read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR);
+    uint32_t cold_reset_read = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR);
 
     if (cold_reset_read != 0x1) {
         test_fail(hartid);
@@ -36,8 +35,7 @@ int main(void) {
     // write cold reset lock, try to unlock
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, 0x0);
 
-    uint32_t cold_reset_lock =
-        read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR);
+    uint32_t cold_reset_lock = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR);
 
     if (cold_reset_lock != 0x2) {
         test_fail(hartid);
