@@ -55,6 +55,8 @@ in
         OCAH_REG_PYTHON = PYTHON;
         OCAH_REG_PEAKRDL = "${uv_loaded.venv}/bin/peakrdl";
         OCAH_REG_SKIP_UV_SYNC = "1";
+        # OTBN
+        OTBN_PYTHON = PYTHON;
       }
     else { }
   );
