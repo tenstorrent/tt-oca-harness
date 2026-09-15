@@ -26,10 +26,8 @@ handle
 [[top-level-axi4]]
 == Top Level AXI4
 
-*C* = Connected, *N/C* = Not Connected.
-
-The table below reflects the generated crossbar connectivity defined in
-`meta/crossbars/configs/sep_local_axi_xbar.yaml`, along with the dedicated
+The diagram below shows the crossbar connectivity implemented in
+`hw/sys/sep/rtl/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
 and ten targets.
@@ -59,21 +57,12 @@ not attach to this crossbar directly; it enters SEP through the dedicated
 `smn_inbound` port and the inbound traffic filter (block-by-default), then
 through the `sep_system_peripherals` inner crossbar. That inner crossbar
 reaches the *mailboxes* and *system CSRs* directly, and loops everything
-else back into this crossbar's System Interface row. The inbound filter
+else back into this crossbar's System Interface initiator. The inbound filter
 controls which addresses the external master may reach; it is block-by-default
 after POR and configured by SEP firmware.
 
-[%autowidth,cols="<,^,^,^,^,^,^,^,^,^,^,^",frame=all,grid=all]
-|===
-.2+h|Masters 10+^h|Crossbar ^h|Dedicated Path
-h|CPU TCM h|Scratch SRAM h|DMA CSR h|WDT h|Reset Ctrl h|Crypto Periph h|System Periph h|IO Periph h|Entropy Pool h|AXI Extension h|Boot ROM
-
-|CPU IFI |N/C |C |N/C |N/C |N/C |N/C |N/C |N/C |N/C |N/C |C
-|CPU LSU |N/C |C |C |C |C |C |C |C |C |C |C
-|CPU DBG |N/C |C |C |C |C |C |C |C |C |C |N/C
-|DMA |C |C |N/C |C |C |C |C |C |N/C |C |N/C
-|System I/F |N/C |C |C |C |N/C |C |N/C |C |C |C |N/C
-|===
+.SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.
+image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720]
 
 [[subsystem-external-interfaces]]
 == Subsystem External Interfaces
