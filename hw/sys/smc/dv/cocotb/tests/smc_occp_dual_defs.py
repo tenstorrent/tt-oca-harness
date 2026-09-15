@@ -31,10 +31,17 @@ from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_1__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_3__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_4__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_5__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_6__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_7__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_8__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_9__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_10__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_11__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_12__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_13__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_15__REG_ADDR,
 )
 
 # --------------------------------------------------------------------------
@@ -63,6 +70,12 @@ CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
 # (same value smc_cpu_vip_utils.CPU_RESET_TIMEOUT_FORCE uses).
 CPU_RESET_TIMEOUT_FORCE = 0x0001_0020
 
+# RESET_CTRL.coreN_reset_pulse_start_n0_scan, bits 4..7. Writing them pulses the four
+# tiles' reset, which is the only event that makes the Rocket frontend latch RESET_VECTOR
+# again. Dropping boot_stall does it on the first boot; a later restart at a new vector
+# has to pulse here instead, because boot_stall is already low by then.
+CPU_RESET_CTRL_PULSE_CORES = 0x0000_00F0
+
 # --------------------------------------------------------------------------
 # Scratch registers
 # --------------------------------------------------------------------------
@@ -87,6 +100,47 @@ SCRATCH_BOOTCODE_ADDR = SMC_CPU_CTRL_SCRATCH_5__REG_ADDR
 SCRATCH_BOOTCODE_SIZE = SMC_CPU_CTRL_SCRATCH_6__REG_ADDR
 SCRATCH_TARGET_ADDR = SMC_CPU_CTRL_SCRATCH_7__REG_ADDR
 SCRATCH_ENTRY_OFFSET = SMC_CPU_CTRL_SCRATCH_8__REG_ADDR
+
+# Target side, the SMC-to-SEP handshake the production ROM raises once its SRAM
+# and status buffers exist (SMC_SCRATCH_SMC_STATUS_TO_SEP and
+# SMC_SCRATCH_STATUS_BUFFER_ADDR in smc_rom_defs.h). Scratch 11 carries an offset
+# from SMC_SRAM_BASE, not an absolute address.
+SCRATCH_STATUS_TO_SEP = SMC_CPU_CTRL_SCRATCH_9__REG_ADDR
+SCRATCH_STATUS_BUFFER_ADDR = SMC_CPU_CTRL_SCRATCH_11__REG_ADDR
+
+# Controller side, the SEP ring-buffer test protocol, read by the DV
+# sep_ring_buffer_test firmware. These two indices carry ROM meanings on the
+# target (MBIST failure, SEP-safe SRAM start) but the controller runs a DV image,
+# so they are free there.
+SCRATCH_SEP_RB_READY = SMC_CPU_CTRL_SCRATCH_10__REG_ADDR
+SCRATCH_SEP_RB_COUNT = SMC_CPU_CTRL_SCRATCH_12__REG_ADDR
+
+# Controller side, the guard the firmware raises around each GET_SEP_STATUS
+# (SEP_RING_BUFFER_GUARD_SCRATCH in fw/common/occp/sep_ring_buffer_model.h). The
+# testbench must leave the shadow buffer alone while it is set.
+SCRATCH_SEP_RB_GUARD = SMC_CPU_CTRL_SCRATCH_13__REG_ADDR
+
+# Controller side, the two OCCP I2C target addresses, one per byte in channel
+# order. Read by occp_interface_latch_test/main.c, which cannot derive them:
+# they come from the target's eFuse. Scratch 4 is the target's JUMP base in the
+# rom-only flow, but the controller runs a DV image, so the index is free there.
+SCRATCH_I2C_TARGET_IDS = SMC_CPU_CTRL_SCRATCH_4__REG_ADDR
+
+# Target side, the run-time JUMP target published by the testbench and read back
+# over OCCP by the occp_jump controller image. Scratch 4 is the gate: main.c
+# spins on it being non-zero, so scratch 5 has to be written first.
+SCRATCH_JUMP_BASE = SMC_CPU_CTRL_SCRATCH_4__REG_ADDR
+SCRATCH_JUMP_ENTRY_OFFSET = SMC_CPU_CTRL_SCRATCH_5__REG_ADDR
+
+# Target side, where the ROM echoes a VALIDATE_AND_BOOT manifest address (as an
+# offset from SMC_SRAM_BASE) and raises bit 1 of the SMC-to-SEP handshake.
+SCRATCH_MANIFEST_ADDR = SMC_CPU_CTRL_SCRATCH_8__REG_ADDR
+SEP_STATUS_MANIFEST_READY_BIT = 1
+
+# Target side, the early-boot BISR/MBIST outcome
+# (SMC_SCRATCH_MBIST_STATUS in smc_rom_defs.h). Written before the ROM has an
+# interface up, so it is the only record of why a DFT failure stopped the boot.
+SCRATCH_MBIST_STATUS = SMC_CPU_CTRL_SCRATCH_15__REG_ADDR
 
 # Proof that the transferred image ran rests on the target's scratch 0, which is
 # the same source the reference environment uses. Nothing else in this flow can
@@ -127,6 +181,30 @@ OCCP_SRAM_BASE = 0xC006_6400
 # resolves the undriven value low, so a target that never asserts readiness
 # leaves the controller waiting, as it would in silicon.
 CTRL_TARGET_READY_PAD = 58
+
+# BOOT_I2C, SmcStrapBit in fw/include/smc_strap.h. The strap index IS the GPIO
+# index: smc_strap_is_set() reads GPIO_CTRL_<n>.CONTROL and checks STRAP_VALID
+# and STRAP_VALUE.
+#
+# Both fields come from gpio_shim, which this tree never instantiates, so the
+# register does not answer: an AXI read of it returns DECERR. Where it is
+# implemented, STRAP_VALUE is held by a prim_latch_n that is transparent while
+# rst_cold_ni is low, so the pad must carry the wanted level before bring_up()
+# releases cold reset and may be released after.
+STRAP_BOOT_I2C_PAD = 18
+
+# GPIO_CTRL_<n>.CONTROL, the register smc_strap_is_set() reads. Base and stride
+# from the comment in fw/include/smc_strap.h; the two field masks from
+# hw/ip/gpio/regs/gen/c/gpio_ctrl.h.
+GPIO_CTRL_CONTROL_BASE = 0xC040_1100
+GPIO_CTRL_STRIDE = 0x20
+GPIO_CTRL_STRAP_VALID_BM = 0x10_0000
+GPIO_CTRL_STRAP_VALUE_BM = 0x20_0000
+
+
+def gpio_ctrl_control_addr(gpio: int) -> int:
+    return GPIO_CTRL_CONTROL_BASE + gpio * GPIO_CTRL_STRIDE
+
 
 # Upper bound of the standardised OCCP test window, from the firmware's own
 # occp_test_common.h.
@@ -236,6 +314,41 @@ SHARED_I3C_CHANNELS = (0, 1, 3)
 # --------------------------------------------------------------------------
 # Helpers shared by every dual-instance OCCP test.
 # --------------------------------------------------------------------------
+# entry_offset = &main - &_enter, resolved from the image's own symbol map.
+PAYLOAD_ENTRY_SYMBOL = "main"
+# The image's load base: the ELF entry point, hence byte 0 of the .bin.
+PAYLOAD_LOAD_SYMBOL = "_enter"
+
+
+def payload_entry_offset(sym_path: str) -> int:
+    """Offset of a payload's entry point within its own image.
+
+    The OCCP JUMP target is base + entry_offset, so this has to come from the
+    image rather than being assumed. Measured against the image's own load base
+    (`_enter`, the ELF entry point and therefore byte 0 of the .bin) rather than
+    against the destination, so it stays correct wherever the payload is placed.
+    `nm -B -n` output is "<addr> <type> <name>".
+    """
+    addrs: dict[str, int] = {}
+    for line in Path(sym_path).read_text().splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[2] in (PAYLOAD_ENTRY_SYMBOL, PAYLOAD_LOAD_SYMBOL):
+            addrs[parts[2]] = int(parts[0], 16)
+    for want in (PAYLOAD_LOAD_SYMBOL, PAYLOAD_ENTRY_SYMBOL):
+        if want not in addrs:
+            raise AssertionError(
+                f"no {want} symbol in {sym_path}; cannot derive the OCCP JUMP entry offset"
+            )
+    offset = addrs[PAYLOAD_ENTRY_SYMBOL] - addrs[PAYLOAD_LOAD_SYMBOL]
+    if offset < 0:
+        raise AssertionError(
+            f"{PAYLOAD_ENTRY_SYMBOL} ({addrs[PAYLOAD_ENTRY_SYMBOL]:#x}) is below "
+            f"{PAYLOAD_LOAD_SYMBOL} ({addrs[PAYLOAD_LOAD_SYMBOL]:#x}); the entry "
+            "point is not inside the image"
+        )
+    return offset
+
+
 def required_plusarg(name: str, test_name: str) -> str:
     """Fetch a mandatory plusarg, or fail with which test needed it."""
     value = cocotb.plusargs.get(name)
@@ -263,7 +376,29 @@ def bus_activity(dut) -> list[tuple[int, int, int]]:
     ]
 
 
-def format_activity(activity) -> str:
-    return ", ".join(
-        f"I3C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in activity
-    )
+# The I2C channels the dual top cross-wires, in the order their counters appear.
+SHARED_I2C_CHANNELS = (0, 1)
+
+
+def i2c_bus_activity(dut) -> list[tuple[int, int, int]]:
+    """(channel, scl_falls, starts) per cross-wired I2C channel.
+
+    One entry per channel, because each is its own point-to-point bus between the
+    two instances -- the target listens on all of them, the controller drives one
+    at a time.
+    """
+    return [
+        (
+            ch,
+            int(getattr(dut, f"tb_i2c_scl_fall_count_{pos}").value),
+            int(getattr(dut, f"tb_i2c_start_count_{pos}").value),
+        )
+        for pos, ch in enumerate(SHARED_I2C_CHANNELS)
+    ]
+
+
+def format_activity(activity, i2c=None) -> str:
+    parts = [f"I3C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in activity]
+    if i2c is not None:
+        parts += [f"I2C{ch}: scl_falls={falls} starts={starts}" for ch, falls, starts in i2c]
+    return ", ".join(parts)

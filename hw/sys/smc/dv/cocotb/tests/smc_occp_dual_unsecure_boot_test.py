@@ -81,7 +81,6 @@ from smc_occp_dual_defs import (
     SCRATCH_BOOTCODE_ADDR,
     SCRATCH_BOOTCODE_SIZE,
     SCRATCH_ENTRY_OFFSET,
-    SCRATCH_FW_SEED,
     SCRATCH_PASS_FAIL,
     SCRATCH_POST_CODE,
     SCRATCH_TARGET_ADDR,
@@ -91,6 +90,7 @@ from smc_occp_dual_defs import (
     bus_activity,
     describe_post_code,
     format_activity,
+    payload_entry_offset,
     pick_payload_addresses,
     post_code_boot_phase,
     post_code_error,
@@ -136,41 +136,6 @@ PROGRESS_EVERY = 100
 # sram-mode image is a leaf here -- see hello_world.sram.dis, nine instructions
 # that materialise the scratch address and the pass magic from immediates and
 # park in a relative branch -- so it runs correctly wherever it is transferred.
-# entry_offset = &main - &_enter, resolved from the image's own symbol map.
-PAYLOAD_ENTRY_SYMBOL = "main"
-# The image's load base: the ELF entry point, hence byte 0 of the .bin.
-PAYLOAD_LOAD_SYMBOL = "_enter"
-
-
-def _payload_entry_offset(sym_path: str) -> int:
-    """Offset of the payload's entry point within its own image.
-
-    The OCCP JUMP target is target_addr + entry_offset, so this has to come from
-    the image rather than being assumed. Measured against the image's own load
-    base (`_enter`, the ELF entry point and therefore byte 0 of the .bin) rather
-    than against the transfer destination, so it stays correct wherever the
-    payload is transferred to. `nm -B -n` output is "<addr> <type> <name>".
-    """
-    addrs: dict[str, int] = {}
-    for line in Path(sym_path).read_text().splitlines():
-        parts = line.split()
-        if len(parts) >= 3 and parts[2] in (PAYLOAD_ENTRY_SYMBOL, PAYLOAD_LOAD_SYMBOL):
-            addrs[parts[2]] = int(parts[0], 16)
-    for want in (PAYLOAD_LOAD_SYMBOL, PAYLOAD_ENTRY_SYMBOL):
-        if want not in addrs:
-            raise AssertionError(
-                f"no {want} symbol in {sym_path}; cannot derive the OCCP JUMP entry offset"
-            )
-    offset = addrs[PAYLOAD_ENTRY_SYMBOL] - addrs[PAYLOAD_LOAD_SYMBOL]
-    if offset < 0:
-        raise AssertionError(
-            f"{PAYLOAD_ENTRY_SYMBOL} ({addrs[PAYLOAD_ENTRY_SYMBOL]:#x}) is below "
-            f"{PAYLOAD_LOAD_SYMBOL} ({addrs[PAYLOAD_LOAD_SYMBOL]:#x}); the entry "
-            "point is not inside the transferred image"
-        )
-    return offset
-
-
 async def _peek_target_scratch(dut, offset: int) -> tuple[int, int]:
     """Read one 64-bit word of the target's scratch SRAM, plus its ECC bits.
 
@@ -281,7 +246,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     payload_sym = required_plusarg("occp_payload_sym", "smc_occp_dual_unsecure_boot_test")
     payload_bytes = Path(payload_bin).read_bytes()
     payload_size = len(payload_bytes)
-    entry_offset = _payload_entry_offset(payload_sym)
+    entry_offset = payload_entry_offset(payload_sym)
     # Staged by cocotb into the controller's own scratch SRAM over AXI, then
     # read back out of it by the controller firmware with ordinary 64-bit loads.
     payload_addr, target_addr = pick_payload_addresses(random_seed(), payload_size)
@@ -392,28 +357,12 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     #    The target-ready pad resolves it. The firmware spins on it inside
     #    initialize_interface(), well before it looks at scratch 5-8, so holding
     #    it low gives an unbounded window with the cores running. Released again
-    #    once staging and seeding are done.
+    #    once staging is done.
+    #
+    #    The RNG seed does not need this window: release_cpu() writes it in the
+    #    gap between the cores leaving reset and boot_stall dropping.
     # ------------------------------------------------------------------
     harness.set_gpio_override("bfm", CTRL_TARGET_READY_PAD, 0)
-
-    # Seed the controller firmware's RNG before its cores fetch, because
-    # init_test() latches it in the first instructions of main(). An unseeded 0
-    # is a fixed point of that LFSR, which silently pins two protocol choices for
-    # the whole run: whether a body CRC is present, and which I3C channel to use.
-    # Forced non-zero for the same reason.
-    fw_seed = (random_seed() * 2_654_435_761) & 0xFFFF_FFFF or 0x1234_5678
-    await bfm_csr.write("FW_SEED", SCRATCH_FW_SEED, fw_seed, length=8)
-    seed_rdbk = await bfm_csr.read("FW_SEED_RDBK", SCRATCH_FW_SEED, length=8)
-    assert seed_rdbk == fw_seed, (
-        f"controller RNG seed readback {seed_rdbk:#x} != {fw_seed:#x}; the "
-        "firmware would fall back to a frozen LFSR"
-    )
-    cocotb.log.info(
-        "CHK-OCCP-FW-SEED: controller RNG seeded %#010x (from RANDOM_SEED=%d); "
-        "body-CRC presence and I3C channel choice now vary per run",
-        fw_seed,
-        random_seed(),
-    )
 
     await harness.release_cpu(bfm_csr, "bfm", CPU_RESET_VECTOR_ROM)
 

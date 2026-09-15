@@ -1,0 +1,93 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+schema_version = 1
+
+# The SEP ring-buffer family, ported from the reference `Main_SMC_BL0_Regression_Small`.
+#
+# All three entries run one shared driver, `smc_sep_ring_buffer_test`, against one
+# controller image, `sep_ring_buffer_test`. They differ only in how many status entries
+# the testbench writes into the target ROM's SEP ring buffer, which is what selects the
+# boundary under test. The reference splits them across three cocotb drivers instead.
+#
+# This family needs the testbench to act, not just observe: there is no SEP instance in
+# the dual bench, so the driver writes the entries SEP would have written over the
+# target's inbound AXI port. See cocotb/env/smc_sep_ring_buffer_driver.py, whose layout
+# constants are all contracts with hw/sys/smc/bootrom/prod.
+#
+# They reuse [c_build.occp_rom_only]: the image pair is the same shape as the rom-only
+# family's -- the production ROM for the target, one rom-mode DV image for the controller.
+#
+# +FORCE_STATUS_REPORTING and +PLL_DISABLE_HACK are not carried: they set straps, and no
+# strap is readable in this bench. +BOOT_I3C is carried but selects nothing, for the same
+# reason -- the rom-only testlist records both in full. One plusarg is specific to this
+# family:
+#   +SEP_RING_BUFFER_RANDOM_DISABLE  turns OFF the reference's background random injection
+#                                    into this same buffer. This bench has no such
+#                                    injection to disable -- and no coverage of it either.
+
+[[tests]]
+name = "smc_sep_ring_buffer_test"
+module = "smc_sep_ring_buffer_test"
+target = "dual"
+seed = 1
+timeout_sec = 21600
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
+# No +sep_rb_entries: the count is randomised 1..512 from the run seed, as the reference
+# randomises its own NUM_ENTRIES. This is the only member that varies run to run.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
+    "+sep_rb_case=smc_sep_ring_buffer_test",
+    "+rom_test_timeout=500000000",
+]
+
+[[tests]]
+name = "smc_sep_ring_buffer_overflow_test"
+module = "smc_sep_ring_buffer_test"
+target = "dual"
+seed = 1
+timeout_sec = 21600
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
+# 600 into 512 slots, the reference's overflow count. The ring keeps one slot empty, so
+# the ROM must hand back the newest 511 and the oldest 89 writes must be gone.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
+    "+sep_rb_case=smc_sep_ring_buffer_overflow_test",
+    "+sep_rb_entries=600",
+    "+rom_test_timeout=500000000",
+]
+
+[[tests]]
+name = "smc_sep_ring_buffer_underflow_test"
+module = "smc_sep_ring_buffer_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "sep_ring_buffer_test", mode = "occp_rom_only" }
+# Nothing written. Every GET_SEP_STATUS must report an empty buffer rather than returning
+# stale contents or failing the command.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=sep_ring_buffer_test.rom.hex",
+    "+sep_rb_case=smc_sep_ring_buffer_underflow_test",
+    "+sep_rb_entries=0",
+    "+rom_test_timeout=500000000",
+]
+
+[[groups]]
+name = "sep_ring_buffer"
+tests = [
+    "smc_sep_ring_buffer_test",
+    "smc_sep_ring_buffer_overflow_test",
+    "smc_sep_ring_buffer_underflow_test",
+]

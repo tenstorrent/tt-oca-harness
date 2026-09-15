@@ -2,16 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared bring-up for the dual-SMC OCCP tests.
 
-Thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that
-harness builds the whole single-instance SmcEnv against tb_top.sv's ~400-port
-surface, none of which exists on tb_top.sv (SMC_DUAL half). Here both instances share one
-clock/reset bring-up and each gets its own inbound AXI master.
+Thinner than smc_base_test.py: that harness builds the whole single-instance
+SmcEnv against the port surface of tb_top.sv's single-instance half, none of
+which the SMC_DUAL half carries. Here both instances share one clock/reset
+bring-up and each gets its own inbound AXI master.
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -22,10 +23,9 @@ from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
 from ocah_axi_vip import OcahAxiMasterAgent
 
-# This file lives at hw/sys/smc/dv/cocotb/tests/<this>.py, so the DV root is six
-# levels up from the file and one below the repo root. Anchored on the DV root
-# rather than the repo root: it is the nearer landmark, so a future move of
-# hw/sys/ does not silently retarget this.
+# This file lives in the DV tree's cocotb/tests/, so the DV root is two
+# directories up. Anchored on the DV root rather than the repo root: it is the
+# nearer landmark, so a future move of hw/sys/ does not silently retarget this.
 _DV_ROOT = Path(__file__).resolve().parents[2]
 _EFUSE_DIR = _DV_ROOT / "efuse_preload"
 assert _EFUSE_DIR.is_dir(), f"eFuse tooling not found at {_EFUSE_DIR}"
@@ -41,8 +41,36 @@ PERIPH_CLK_PERIOD_NS = 10
 
 POST_RESET_SETTLE_CYCLES = 500
 
+# Bound on waiting for the strap-capture gate. smc_reset_ctrl needs a >=32-cycle
+# cold deglitch plus a 255-cycle extender on clk_ref, so ~300 is the real figure
+# and this is an order of magnitude of headroom rather than a target.
+STRAP_CAPTURE_TIMEOUT_CYCLES = 4000
+# Extra reference cycles held after the gate rises, matching the reference's own
+# margin before it releases its GPIO forces.
+STRAP_CAPTURE_SETTLE_CYCLES = 16
+
 
 AXI_TIMEOUT_NS = 20_000
+
+# Product lifecycle state, smc_pkg::LC_STATE_WIDTH. The port carries the
+# complementary pair {diff_n, diff_p}; a value whose halves are not complements
+# raises the wrapper's lc_sigint_err_o instead of being decoded.
+LC_STATE_WIDTH = 4
+
+# Lifecycle encodings the firmware names. is_secure_mode() in
+# fw/common/occp/occp_interfaces.c reads CHIP_CONFIG.LC_STATE and treats 1 and 8
+# as secure; the DV firmware and the production ROM agree on TEST_DEV = 0.
+LC_STATE_TEST_DEV_VALUE = 0
+LC_STATE_SECURE_VALUES = (1, 8)
+
+
+def encode_lc_state(value: int) -> int:
+    """Pack one lifecycle value into the {diff_n, diff_p} pair the port expects."""
+    value &= (1 << LC_STATE_WIDTH) - 1
+    return ((~value & ((1 << LC_STATE_WIDTH) - 1)) << LC_STATE_WIDTH) | value
+
+
+LC_STATE_TEST_DEV = encode_lc_state(LC_STATE_TEST_DEV_VALUE)
 
 # Bytes per bulk AXI transaction. One 64-byte scratch-bank stripe, and small
 # enough that the AXI-to-TileLink bridge into the CPU cluster carries it; see
@@ -54,8 +82,17 @@ def random_seed() -> int:
     return int(os.environ.get("RANDOM_SEED", "1"), 0)
 
 
-def regenerate_efuse_image(seed: int) -> None:
+# Lowest programmed OCCP transport timeout, TIMEOUT_MIN in
+# efuse_preload/randomize_efuse.py. The reference pins the fuse here with
+# +FORCE_MIN_TRANSPORT_TIMEOUT on the tests that should not pay for a longer one.
+FUSE_TRANSPORT_TIMEOUT_MIN = 400
+
+
+def regenerate_efuse_image(seed: int) -> dict[int, int]:
     """Rewrite this run's eFuse image, seeded, before reset is released.
+
+    Returns {slot: address} for the OCCP I2C target addresses it programmed,
+    empty unless +fuse_i2c_ids asked for them.
 
     +smc_efuse_hex carries a PATH, fixed when the simulator launched; the file
     at that path is not read until reset release, because the preload block in
@@ -72,15 +109,25 @@ def regenerate_efuse_image(seed: int) -> None:
     """
     img = cocotb.plusargs.get("smc_efuse_hex")
     if img is None:
-        return
+        return {}
     img_path = Path(str(img))
 
     # The generator needs tomllib (3.11+). The interpreter running cocotb is the
     # repo venv, which satisfies that; sys.executable keeps us on it rather than
     # whatever `python3` resolves to on PATH.
     randomized = img_path.parent / "efuse_config_randomized.toml"
+    # +fuse_transport_timeout pins the OCCP transport timeout fuse instead of
+    # letting it randomise, mapping the reference's +FORCE_MIN_TRANSPORT_TIMEOUT.
+    forced_timeout = cocotb.plusargs.get("fuse_transport_timeout")
+    timeout_args = (
+        [] if forced_timeout is None else ["--transport-timeout", str(int(str(forced_timeout), 0))]
+    )
+    # +fuse_i2c_ids programs the two OCCP I2C target addresses instead of leaving
+    # both channels on the ROM's 0x55 fallback, which a test needs when it puts
+    # them on one bus and has to tell them apart.
+    i2c_args = ["--i2c-ids"] if cocotb.plusargs.get("fuse_i2c_ids") is not None else []
     try:
-        subprocess.run(
+        randomize = subprocess.run(
             [
                 sys.executable,
                 str(_EFUSE_DIR / "randomize_efuse.py"),
@@ -89,6 +136,8 @@ def regenerate_efuse_image(seed: int) -> None:
                 str(randomized),
                 "--seed",
                 str(seed),
+                *timeout_args,
+                *i2c_args,
             ],
             check=True,
             capture_output=True,
@@ -121,6 +170,19 @@ def regenerate_efuse_image(seed: int) -> None:
         img_path,
         result.stdout.strip(),
     )
+    return _parse_i2c_ids(randomize.stdout)
+
+
+# The generator prints what it programmed; parsing that is what keeps the
+# testbench and the fuse image on one source of truth. Deriving the addresses
+# a second time here would let the two drift apart silently, and the failure
+# would look like a bus problem rather than a mismatch.
+_I2C_ID_RE = re.compile(r"I2C_I3C_ID\[(\d)\]=(0x[0-9a-fA-F]+)")
+
+
+def _parse_i2c_ids(stdout: str) -> dict[int, int]:
+    """{slot: address} for the I2C slots the generator programmed, if any."""
+    return {int(slot): int(addr, 0) for slot, addr in _I2C_ID_RE.findall(stdout)}
 
 
 class DualCsr:
@@ -147,26 +209,34 @@ class DualCsr:
     def _axi_size(length: int) -> int:
         return max(0, length.bit_length() - 1)
 
+    # The VIP's *_result APIs, not init_write/init_read: those return the raw
+    # driver event, whose payload carries RRESP/BRESP that nobody was reading. A
+    # DECERR then arrived as data 0x0 and every caller treated it as a real
+    # register value -- which is how an unmapped window looked like a cleared
+    # register. check_response=True turns that into a failure at the access.
     async def write(self, name: str, addr: int, data: int, length: int = 4) -> None:
-        event = self.seq.init_write(
-            address=addr,
-            data=data.to_bytes(length, "little"),
+        result = await self.seq.write_result(
+            addr,
+            data,
             size=self._axi_size(length),
             prot=0,
+            timeout_ns=AXI_TIMEOUT_NS,
         )
-        await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
-        cocotb.log.debug("%s write %s %#x <- %#x", self.prefix, name, addr, data)
+        cocotb.log.debug(
+            "%s write %s %#x <- %#x (resp=%d)", self.prefix, name, addr, data, result.resp
+        )
 
     async def read(self, name: str, addr: int, length: int = 4) -> int:
-        event = self.seq.init_read(
-            address=addr,
-            length=length,
+        result = await self.seq.read_result(
+            addr,
             size=self._axi_size(length),
             prot=0,
+            timeout_ns=AXI_TIMEOUT_NS,
         )
-        await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
-        value = int.from_bytes(event.data.data, "little")
-        cocotb.log.debug("%s read %s %#x -> %#x", self.prefix, name, addr, value)
+        value = int.from_bytes(result.data_bytes[:length], "little")
+        cocotb.log.debug(
+            "%s read %s %#x -> %#x (resp=%d)", self.prefix, name, addr, value, result.resp
+        )
         return value
 
     async def write_bytes(self, name: str, addr: int, data: bytes) -> None:
@@ -221,6 +291,10 @@ class SmcDualHarness:
         self.cpu_trace = {
             inst: SmcCpuTraceState(f"{inst}-hart0", cocotb.log) for inst in ("dut", "bfm")
         }
+        # {slot: address} the eFuse image was built with, filled in by bring_up.
+        self.fuse_i2c_ids: dict[int, int] = {}
+        # Which transport the controller was strapped to this run.
+        self.boot_i2c = False
 
     def _attach_cpu_symbols(self) -> None:
         """Attach the staged listings of each instance's image, when present.
@@ -255,7 +329,9 @@ class SmcDualHarness:
         for state in self.cpu_trace.values():
             state.dump(level)
 
-    def idle_pins(self, *, hold_dut_boot: bool, hold_bfm_boot: bool) -> None:
+    def idle_pins(
+        self, *, hold_dut_boot: bool, hold_bfm_boot: bool, dft_low: tuple[str, ...] = ()
+    ) -> None:
         dut = self.dut
         dut.powergood_i.value = 0
         dut.rst_cold_ni.value = 0
@@ -282,7 +358,39 @@ class SmcDualHarness:
         dut.bfm_gpio_ext_drive_en.value = 0
         dut.bfm_gpio_ext_drive_value.value = 0
 
-    async def bring_up(self, *, hold_dut_boot: bool = True, hold_bfm_boot: bool = True) -> None:
+        # Unsecure lifecycle on both instances, the same complementary TEST_DEV
+        # the single-instance TB drives onto tb_lc_state. Tests that need the
+        # secure branch or an illegal encoding call set_lc_state() before
+        # bring_up() releases cold reset.
+        dut.dut_lc_state.value = LC_STATE_TEST_DEV
+        dut.bfm_lc_state.value = LC_STATE_TEST_DEV
+
+        # BISR/MBIST reported complete and passing, which is the "no external DFT agent"
+        # posture every ordinary test needs.
+        #
+        # An instance named in `dft_low` gets all six lines at 0 instead. Every
+        # DFX_CTRL_STATUS.STATUS_SMU field is a stickybit that holds a 1 until reset, so an
+        # instance that is going to report a failure must never show the passing posture
+        # while cold reset is released -- the 1 would latch and no later drive could clear
+        # it.
+        for instance in ("dut", "bfm"):
+            passing = instance not in dft_low
+            getattr(dut, f"{instance}_mem_repair_done").value = 1 if passing else 0
+            getattr(dut, f"{instance}_mem_repair_success").value = 1 if passing else 0
+            getattr(dut, f"{instance}_mem_repair_abort").value = 0
+            getattr(dut, f"{instance}_mbist_done").value = 1 if passing else 0
+            getattr(dut, f"{instance}_mbist_pass").value = 1 if passing else 0
+            getattr(dut, f"{instance}_mbist_abort").value = 0
+
+    async def bring_up(
+        self,
+        *,
+        hold_dut_boot: bool = True,
+        hold_bfm_boot: bool = True,
+        dut_lc_state: int | None = None,
+        bfm_lc_state: int | None = None,
+        dft_low: tuple[str, ...] = (),
+    ) -> None:
         dut = self.dut
         self.log.info(
             "dual bring-up: ref=%dns smc=%dns periph=%dns (seed=%d)",
@@ -291,12 +399,24 @@ class SmcDualHarness:
             PERIPH_CLK_PERIOD_NS,
             random_seed(),
         )
-        self.idle_pins(hold_dut_boot=hold_dut_boot, hold_bfm_boot=hold_bfm_boot)
+        self.idle_pins(hold_dut_boot=hold_dut_boot, hold_bfm_boot=hold_bfm_boot, dft_low=dft_low)
+
+        # After idle_pins, which would otherwise put both back to TEST_DEV, and
+        # before cold reset is released below.
+        if dut_lc_state is not None:
+            self.set_lc_state("dut", dut_lc_state)
+        if bfm_lc_state is not None:
+            self.set_lc_state("bfm", bfm_lc_state)
+
+        self._apply_boot_interface_strap()
 
         # Before any reset is released -- the eFuse bank reads its image on
         # rst_ni, so this is the last point at which the contents can still be
         # chosen for this run.
-        regenerate_efuse_image(random_seed())
+        # Kept so release_cpu() can hand the controller the addresses the target
+        # will actually answer on. Both sides read the same source; deriving them
+        # twice would let the fuse image and the testbench drift apart.
+        self.fuse_i2c_ids = regenerate_efuse_image(random_seed())
 
         cocotb.start_soon(Clock(dut.clk_ref_i, REF_CLK_PERIOD_NS, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, SMC_CLK_PERIOD_NS, unit="ns").start())
@@ -319,9 +439,17 @@ class SmcDualHarness:
         await ClockCycles(dut.clk_ref_i, 10)
         self.log.info("releasing cold reset on both instances")
         dut.rst_cold_ni.value = 1
+        await self._await_strap_capture()
         await ClockCycles(dut.clk_ref_i, POST_RESET_SETTLE_CYCLES)
 
-    async def release_cpu(self, csr: DualCsr, instance: str, reset_vector: int) -> None:
+    async def release_cpu(
+        self,
+        csr: DualCsr,
+        instance: str,
+        reset_vector: int,
+        *,
+        seed_firmware_rng: bool = True,
+    ) -> None:
         """Program the reset vector, release RESET_CTRL, then drop boot_stall.
 
         Mirrors the held-boot first-boot path in
@@ -337,6 +465,7 @@ class SmcDualHarness:
             CPU_CTRL_RESET_VECTOR,
             CPU_RESET_CTRL_DEFAULT,
             CPU_RESET_TIMEOUT_FORCE,
+            SCRATCH_FW_SEED,
         )
 
         dut = self.dut
@@ -351,9 +480,168 @@ class SmcDualHarness:
         await csr.write("RESET_RELEASE", CPU_CTRL_RESET_CTRL, CPU_RESET_CTRL_DEFAULT, length=8)
         await ClockCycles(dut.clk_smc_i, 64)
 
+        # The one window where both conditions hold: the cores are out of reset, so the
+        # scratch bank answers AXI, and boot_stall is still up, so init_test() has not
+        # latched the seed yet. The reference does the same job from its shared
+        # init_and_reset(); doing it here means no test can forget to.
+        if seed_firmware_rng:
+            await self._seed_firmware_rng(csr, instance, SCRATCH_FW_SEED)
+            await self._publish_i2c_target_ids(csr, instance)
+            await self._check_boot_interface_strap(csr, instance)
+
         getattr(dut, f"{instance}_boot_stall_hold").value = 0
         await ClockCycles(dut.clk_smc_i, 256)
         self.log.info("%s: released boot_stall with reset_vector=%#010x", instance, reset_vector)
+
+    async def _await_strap_capture(self) -> None:
+        """Hold on until the padring has latched the straps on both instances.
+
+        The capture latch is gated by rst_cold_stable_ref_clk_no, not by
+        rst_cold_ni: smc_reset_ctrl deglitches cold reset and then extends it, so
+        the latch is still transparent for a long time after rst_cold_ni rises.
+        A strap released at rst_cold_ni is therefore never sampled.
+
+        The reference waits on the same signal in init_and_reset, then gives the
+        capture 16 more reference cycles before releasing its GPIO forces.
+        """
+        dut = self.dut
+        for _ in range(STRAP_CAPTURE_TIMEOUT_CYCLES):
+            if int(dut.dut_rst_cold_stable_ref_clk_no.value) and int(
+                dut.bfm_rst_cold_stable_ref_clk_no.value
+            ):
+                break
+            await ClockCycles(dut.clk_ref_i, 1)
+        else:
+            raise AssertionError(
+                "rst_cold_stable_ref_clk_no never deasserted on both instances within "
+                f"{STRAP_CAPTURE_TIMEOUT_CYCLES} clk_ref_i; the padring would never latch "
+                "the straps, so every smc_strap_is_set() would read false"
+            )
+        await ClockCycles(dut.clk_ref_i, STRAP_CAPTURE_SETTLE_CYCLES)
+        self.log.info("strap capture window closed on both instances")
+
+    def _apply_boot_interface_strap(self) -> None:
+        """Choose the controller's OCCP boot interface for this run, via its strap.
+
+        The strap belongs to the CONTROLLER -- it is what initialize_interface()
+        in fw/common/occp/occp_interfaces.c reads to pick its driver. The target
+        brings up every channel regardless, so it needs no strap.
+
+        Driven here rather than in idle_pins because the pad level only has to be
+        right when bring_up() releases cold reset, which is where the latch that
+        captures it closes.
+        """
+        from smc_occp_dual_defs import STRAP_BOOT_I2C_PAD
+
+        force_i3c = cocotb.plusargs.get("BOOT_I3C") is not None
+        force_i2c = cocotb.plusargs.get("BOOT_I2C") is not None
+        if force_i3c and force_i2c:
+            raise AssertionError("+BOOT_I3C and +BOOT_I2C both given; they select opposite paths")
+
+        # I3C is what the firmware takes when the strap does not read as set, so
+        # asking for it needs no pad driven and nothing read back. The BOOT_I2C
+        # strap is not readable in this tree, so driving the pad for I3C would
+        # claim a choice the firmware cannot see.
+        if not force_i2c:
+            self.boot_i2c = False
+            self.log.info(
+                "controller OCCP boot interface: I3C (%s); the BOOT_I2C strap is not "
+                "readable in this tree, so I3C is the only reachable choice",
+                "+BOOT_I3C" if force_i3c else "default",
+            )
+            return
+
+        self.set_gpio_override("bfm", STRAP_BOOT_I2C_PAD, 1)
+        self.boot_i2c = True
+        self.log.info("controller OCCP boot interface: I2C (+BOOT_I2C)")
+
+    async def _check_boot_interface_strap(self, csr: DualCsr, instance: str) -> None:
+        """Prove the BOOT_I2C strap the testbench drove is what the firmware will read.
+
+        smc_strap_is_set() reads GPIO_CTRL_<n>.CONTROL and requires STRAP_VALID and
+        STRAP_VALUE together, so reading the same register here is the firmware's own
+        view. Only +BOOT_I2C reaches this, because that is the only case where a pad
+        was driven; without the check the log could claim I2C while the firmware took
+        the I3C fallback.
+        """
+        from smc_occp_dual_defs import (
+            GPIO_CTRL_STRAP_VALID_BM,
+            GPIO_CTRL_STRAP_VALUE_BM,
+            STRAP_BOOT_I2C_PAD,
+            gpio_ctrl_control_addr,
+        )
+
+        if instance != "bfm" or not self.boot_i2c:
+            return
+        addr = gpio_ctrl_control_addr(STRAP_BOOT_I2C_PAD)
+        value = await csr.read("GPIO_CTRL_BOOT_I2C", addr)
+        valid = bool(value & GPIO_CTRL_STRAP_VALID_BM)
+        strapped = bool(value & GPIO_CTRL_STRAP_VALUE_BM)
+        self.log.info(
+            "controller BOOT_I2C strap readback: GPIO_CTRL_%d.CONTROL=%#010x (valid=%d value=%d)",
+            STRAP_BOOT_I2C_PAD,
+            value,
+            valid,
+            strapped,
+        )
+        assert valid and strapped, (
+            f"BOOT_I2C strap did not take: GPIO_CTRL_{STRAP_BOOT_I2C_PAD}.CONTROL="
+            f"{value:#010x} gives valid={valid} value={strapped}, but the testbench "
+            f"drove pad {STRAP_BOOT_I2C_PAD} high. The firmware reads this register, "
+            "so it would fall back to I3C."
+        )
+
+    async def _seed_firmware_rng(self, csr: DualCsr, instance: str, addr: int) -> None:
+        """Give this instance's DV firmware a usable RNG seed.
+
+        get_random_int() in fw/include/smc_test.h is an XOR-feedback LFSR, and
+        all-zero is its dead state: the feedback bit is 0, so the state stays 0
+        and every draw returns 0 forever. init_test() loads the seed from this
+        register in the first instructions of main(), so an unwritten register
+        leaves the firmware with frozen randomness -- which pins the I3C channel
+        and the body-CRC choice, and hangs outright in any caller that draws
+        distinct values, such as flip_n_random_bits() in occp_commands.c.
+
+        Derived from RANDOM_SEED so a failing run is reproducible, and forced
+        non-zero for the reason above.
+        """
+        seed = (random_seed() * 2_654_435_761) & 0xFFFF_FFFF or 0x1234_5678
+        await csr.write("FW_SEED", addr, seed, length=8)
+        readback = await csr.read("FW_SEED_RDBK", addr, length=8)
+        assert readback == seed, (
+            f"{instance}: RNG seed readback {readback:#x} != {seed:#x}; the firmware "
+            "would fall back to a frozen LFSR"
+        )
+        self.log.info("%s: firmware RNG seeded %#010x", instance, seed)
+
+    async def _publish_i2c_target_ids(self, csr: DualCsr, instance: str) -> None:
+        """Tell this instance's firmware which I2C addresses the target answers on.
+
+        occp_interface_latch_test/main.c reads them out of scratch 4, packed one
+        per byte in channel order, and has no other way to learn them: the
+        addresses live in the *target's* eFuse. Skipped when the image left the
+        slots unprogrammed, so scratch 4 stays 0 and any firmware that reads it
+        sees the same "not provided" it saw before.
+
+        Controller only. On the target that index is the JUMP base
+        (SCRATCH_JUMP_BASE), which smc_occp_random_jump_test publishes there;
+        writing addresses into it would collide. The reference writes the master
+        BFM's scratch 4 for the same reason.
+        """
+        from smc_occp_dual_defs import SCRATCH_I2C_TARGET_IDS
+
+        if instance != "bfm" or not self.fuse_i2c_ids:
+            return
+        packed = 0
+        for byte, slot in enumerate(sorted(self.fuse_i2c_ids)):
+            packed |= (self.fuse_i2c_ids[slot] & 0x7F) << (8 * byte)
+        await csr.write("I2C_TARGET_IDS", SCRATCH_I2C_TARGET_IDS, packed, length=8)
+        self.log.info(
+            "%s: OCCP I2C target addresses published %#06x (%s)",
+            instance,
+            packed,
+            ", ".join(f"slot{s}={self.fuse_i2c_ids[s]:#04x}" for s in sorted(self.fuse_i2c_ids)),
+        )
 
     def set_gpio_override(self, instance: str, pad: int, value: int | None) -> None:
         """Drive (or release) one pad on one instance.
@@ -377,3 +665,47 @@ class SmcDualHarness:
                 val &= ~mask
         en_sig.value = en
         val_sig.value = val
+
+    def set_lc_state(self, instance: str, value: int) -> None:
+        """Drive one instance's lifecycle state, by value not by encoded pair.
+
+        Call before bring_up() releases cold reset: the wrapper samples this
+        into CHIP_CONFIG.LC_STATE, and the ROM reads it during its own init.
+        """
+        encoded = encode_lc_state(value)
+        getattr(self.dut, f"{instance}_lc_state").value = encoded
+        self.log.info(
+            "%s lifecycle state = %#x (encoded {diff_n, diff_p} = %#04x)",
+            instance,
+            value,
+            encoded,
+        )
+
+    def set_dft_result(
+        self,
+        instance: str,
+        *,
+        mem_repair_done: int | None = None,
+        mem_repair_success: int | None = None,
+        mem_repair_abort: int | None = None,
+        mbist_done: int | None = None,
+        mbist_pass: int | None = None,
+        mbist_abort: int | None = None,
+    ) -> None:
+        """Drive one instance's BISR/MBIST reporting lines; None leaves a line alone.
+
+        Withholding `done` is how a timeout is expressed -- there is no separate
+        timeout input, the boot sequencer simply never sees completion.
+        """
+        for name, value in (
+            ("mem_repair_done", mem_repair_done),
+            ("mem_repair_success", mem_repair_success),
+            ("mem_repair_abort", mem_repair_abort),
+            ("mbist_done", mbist_done),
+            ("mbist_pass", mbist_pass),
+            ("mbist_abort", mbist_abort),
+        ):
+            if value is None:
+                continue
+            getattr(self.dut, f"{instance}_{name}").value = value
+            self.log.info("%s %s = %d", instance, name, value)

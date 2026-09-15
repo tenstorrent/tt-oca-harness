@@ -4,7 +4,7 @@
 """Derive a per-run SMC eFuse configuration from a base one.
 
     randomize_efuse.py <base.toml> --output_file <path> --seed <N>
-                       [--transport-timeout <cycles>]
+                       [--transport-timeout <cycles>] [--i2c-ids]
 
 Reads a configuration TOML, rewrites the fields listed below as a function of
 `--seed`, and writes a new configuration. Deterministic in the seed: the same
@@ -27,6 +27,24 @@ RESERVED[1] -- the OCCP transport timeout.
 
   --transport-timeout pins the value instead, which is what a test wants when
   it needs the shortest timeout deterministically rather than a random one.
+
+I2C_I3C_ID slots 6 and 7 -- the two OCCP I2C target addresses, under --i2c-ids.
+
+  The boot ROM brings up I2C channels 0 and 1 as OCCP targets, taking each
+  channel's address from its own eFuse slot and falling back to 0x55 when the
+  slot is unprogrammed or out of range (bootrom/prod/lib/src/occp.c). Both
+  channels falling back means both answer 0x55, which on a shared bus makes the
+  two interfaces indistinguishable. --i2c-ids draws two addresses that avoid
+  that: each inside the ROM's accepted range, and different from each other.
+
+  Off by default. A test that does not need to tell the two channels apart does
+  not care which addresses they hold, and leaving the slots at 0 keeps the ROM's
+  fallback path exercised.
+
+  The two addresses are always in range and always distinct. The reference draws
+  from the full 0..0x7F and zeroes each on an independent coin flip, so it can
+  hand both channels the same address; that would leave
+  smc_occp_interface_latch_test unable to tell the interfaces apart.
 
 NOT RANDOMIZED
 --------------
@@ -69,6 +87,28 @@ TRANSPORT_TIMEOUT_LO = TRANSPORT_TIMEOUT_WORD * RESERVED_WORD_BITS
 # the same thing on both sides.
 TIMEOUT_MIN = 400
 TIMEOUT_MAX = 1000
+
+# I2C_I3C_ID holds nine 64-bit slots in one flat field; the ROM reads slot n as
+# two 32-bit registers at SMC_EFUSE_MAP_I2C_I3C_ID_<n> (stride 8 bytes), so slot
+# n is bits [n*64 +: 64] (bootrom/prod/drivers/src/smc_efuse.c).
+I2C_I3C_ID_SLOT_BITS = 64
+I2C_ID_SLOTS = (6, 7)
+
+# The window the ROM accepts before falling back to 0x55: occp.c tests
+# `(addr > 0x7) && (addr < 0x78)`, so the usable addresses are 0x08..0x77.
+I2C_ADDR_MIN = 0x08
+I2C_ADDR_MAX = 0x77
+
+
+def _pick_i2c_ids(rng: random.Random) -> tuple[int, int]:
+    """Two distinct addresses the ROM will accept, one per I2C channel."""
+    first = rng.randint(I2C_ADDR_MIN, I2C_ADDR_MAX)
+    second = rng.randint(I2C_ADDR_MIN, I2C_ADDR_MAX - 1)
+    # Fold the drawn value past `first` rather than re-drawing, so the pair is
+    # uniform over distinct addresses and the loop cannot run twice.
+    if second >= first:
+        second += 1
+    return first, second
 
 
 def _pick_transport_timeout(rng: random.Random, forced: int | None) -> int:
@@ -114,6 +154,12 @@ def main() -> None:
         help=f"pin RESERVED[1] to this value instead of drawing it "
         f"(0, or {TIMEOUT_MIN}..{TIMEOUT_MAX})",
     )
+    parser.add_argument(
+        "--i2c-ids",
+        action="store_true",
+        help="program I2C_I3C_ID slots 6 and 7 with two distinct addresses the "
+        "ROM accepts, instead of leaving them unprogrammed",
+    )
     args = parser.parse_args()
 
     if args.transport_timeout is not None:
@@ -133,11 +179,24 @@ def main() -> None:
     # other reserved word stays 0, which is what the base configuration has.
     text = _rewrite(text, "RESERVED", "reserved_data", timeout << TRANSPORT_TIMEOUT_LO)
 
+    i2c_note = ""
+    if args.i2c_ids:
+        i2c_ids = _pick_i2c_ids(rng)
+        packed = 0
+        for slot, addr in zip(I2C_ID_SLOTS, i2c_ids):
+            packed |= addr << (slot * I2C_I3C_ID_SLOT_BITS)
+        text = _rewrite(text, "I2C_I3C_ID", "interface_id", packed)
+        i2c_note = (
+            f", I2C_I3C_ID[{I2C_ID_SLOTS[0]}]={i2c_ids[0]:#04x} "
+            f"I2C_I3C_ID[{I2C_ID_SLOTS[1]}]={i2c_ids[1]:#04x}"
+        )
+
     args.output_file.parent.mkdir(parents=True, exist_ok=True)
     args.output_file.write_text(text)
     print(
         f"seed={args.seed}: RESERVED[1] transport_timeout={timeout}"
-        f"{' (ROM default path)' if timeout == 0 else ''} -> {args.output_file}"
+        f"{' (ROM default path)' if timeout == 0 else ''}"
+        f"{i2c_note} -> {args.output_file}"
     )
 
 

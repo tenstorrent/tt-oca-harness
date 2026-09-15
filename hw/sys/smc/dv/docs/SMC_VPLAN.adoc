@@ -6299,7 +6299,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 [[sec-154-smc_occp_sanity_test]]
 ===== 154 `smc_occp_sanity_test`
 
-*Source Module*: `smc_occp_sanity_test`
+*Source Module*: `smc_occp_rom_only_test`, the shared driver for the rom-only OCCP family; this entry selects it with `+bfm_rom_hex=occp_sanity.rom.hex`
 
 *BFM / Model*: no model on either side -- `u_dut` runs the production boot ROM as OCCP target, `u_bfm` runs the `occp_sanity` DV ROM image as OCCP controller
 
@@ -6323,7 +6323,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-OCCP-SANITY` |Target and controller scratch 0, sampled together; `TEST_FAIL` from either fails the test
+|`CHK-OCCP-ROM-ONLY` |Target and controller scratch 0, sampled together; `TEST_FAIL` from either fails the test
 |===
 
 *Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are deliberately *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `dual_all`.
