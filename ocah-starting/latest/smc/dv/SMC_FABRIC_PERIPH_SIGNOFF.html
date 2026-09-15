@@ -209,8 +209,7 @@
 <div class="paragraph">
 <p>This chapter defines the fabric and peripheral honesty signoff. Feature credit
 is the SCOPE matrix in <code>SMC_SCOPE_TRACEABILITY.adoc</code>. A green fabric or I3C
-name is not protocol proof. OUT rows live in <code>SMC_DEFERRED_DISPOSITION.adoc</code>
-and the README "Present but not enrolled" table.</p>
+name is not protocol proof. OUT rows live in <code>SMC_DEFERRED_DISPOSITION.adoc</code>.</p>
 </div>
 <div class="sect2">
 <h3 id="smc-fabric-credit"><a class="anchor" href="#smc-fabric-credit"></a><a class="link" href="#smc-fabric-credit">1.1. Credited vs OUT</a></h3>
@@ -286,8 +285,8 @@ and the README "Present but not enrolled" table.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C CCC/IBI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_i3c_ccc_ibi_full_test</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">unenrolled <code>needs_i3c_dat_dct</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none; <code>smc_i3c_ccc_ibi_full_test</code> is dispositioned in <code>SMC_DEFERRED_DISPOSITION.adoc</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">no DAT/DCT macros on <code>smc_wrapper</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NO — child I3C TB</p></td>
 </tr>
 <tr>
@@ -298,14 +297,14 @@ and the README "Present but not enrolled" table.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PLL/PVT adopter wrap</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pll_*</code> / <code>smc_pvt_*</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">unenrolled <code>rtl_placeholder</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none; <code>smc_pll_*</code> / <code>smc_pvt_*</code> are dispositioned in <code>SMC_DEFERRED_DISPOSITION.adoc</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY+0 placeholder wraps</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NO</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO / I2C SAMPLE observe</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_gpio_observe_test</code>, <code>smc_i2c_cg_sanity_test</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">in <code>smoke</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">in <code>functional</code>, not <code>smoke</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NO (SAMPLE-only)</p></td>
 </tr>
 <tr>
@@ -324,9 +323,8 @@ and the README "Present but not enrolled" table.</p>
 </table>
 <div class="paragraph">
 <p>I3C block-depth stays on the I3C intake. The wrapper leaf is decode
-only and is not a substitute for CCC/IBI. Placeholder tags in the
-README match the deferred disposition: <code>needs_i3c_dat_dct</code>,
-<code>needs_dtp_csr_sub</code>, <code>rtl_placeholder</code>, <code>fake_bfm</code>, <code>tb_glue</code>.</p>
+only and is not a substitute for CCC/IBI. The blocker behind every OUT row
+above is named in <code>SMC_DEFERRED_DISPOSITION.adoc</code>.</p>
 </div>
 </div>
 </div>

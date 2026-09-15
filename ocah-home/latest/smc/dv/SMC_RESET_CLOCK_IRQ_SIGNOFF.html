@@ -186,7 +186,8 @@
 <p>This chapter defines the reset, clock and interrupt signoff. Feature credit is
 the SCOPE matrix in <code>SMC_SCOPE_TRACEABILITY.adoc</code>, not every name in
 <code>reset.toml</code> / <code>clock.toml</code> / <code>irq.toml</code>. SAMPLE-only observe tests
-stay in <code>smoke</code> and are not requirement rows.</p>
+stay in <code>functional</code> (only <code>smc_cold_reset_test</code> is also in <code>smoke</code>) and are
+not requirement rows.</p>
 </div>
 <div class="sect2">
 <h3 id="smc-rci-credit"><a class="anchor" href="#smc-rci-credit"></a><a class="link" href="#smc-rci-credit">Credited vs observe-only</a></h3>
@@ -244,8 +245,8 @@ stay in <code>smoke</code> and are not requirement rows.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PLL/PVT clock config</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pll_*</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">unenrolled <code>rtl_placeholder</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none; <code>smc_pll_*</code> are dispositioned in <code>SMC_DEFERRED_DISPOSITION.adoc</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY+0 placeholder wraps</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NO</p></td>
 </tr>
 </tbody>
@@ -259,6 +260,40 @@ paths receive no credit.</p>
 <div class="paragraph">
 <p>Depth groups <code>reset</code> / <code>clock</code> / <code>irq</code> remain debug breadth. They are
 not an extra feature-credit set.</p>
+</div>
+<div class="paragraph">
+<p>On Verilator and Xcelium the <code>och_prim</code> <code>prim_sync2</code> / <code>prim_sync3</code> cells are
+replaced by the behavioural stand-ins in <code>tb/verilator_stubs/</code>; VCS drops them.
+Every leaf of
+<code>reset.toml</code>, <code>clock.toml</code> and <code>irq.toml</code> has a row in the <strong>Bench stand-ins</strong>
+section of <code>SMC_DEFERRED_DISPOSITION.adoc</code> stating which crossing sits on its
+proof path, what its verdict reads, and the result of a VCS run on the product
+cells. Two runs supply those results. The group control run (<code>--items reset
+clock irq</code>) covered the 35 leaves of the <code>reset</code>, <code>clock</code> and <code>irq</code> groups: 34
+entries of the three files plus <code>smc_irq_during_powergood_glitch_test</code>, an
+<code>irq</code> group member defined in <code>combined.toml</code>. The five entries the three
+files hold outside those groups&#8201;&#8212;&#8201;<code>smc_jtag_reset_proxy_test</code>,
+<code>smc_flr_sanity_test</code>, <code>smc_multi_reset_csr_persistence_test</code>,
+<code>smc_zeroer_dma_timeout_test</code> and <code>smc_mailbox_irq_test</code>&#8201;&#8212;&#8201;were not in it;
+the separate run <code>20260914_031352<em>vcs</em>standin_files_minus_groups</code>, with the waiver
+below in place, grades them 5 of 5 PASS on both the cocotb verdict and the
+runner, with no assertion firing after time 0. Two findings of the group
+control run belong to this signoff. The first
+is closed: the VCS flow graded every leaf FAIL on a time-0 PeakRDL external-ack
+assertion class (<code>assert_bad_ext_wr_ack</code> / <code>assert_bad_ext_rd_ack</code> in
+<code>cpu_ctrl_reg</code>, <code>reset_unit_reg</code> and <code>system_timer_octs_reg</code>) that fires once
+before reset, while the ack strobes are still X, and that the cocotb verdicts
+do not depend on. That class is waived at time 0 only, in <code>smc_sim_cfg.toml</code>
+<code>[pass_fail]</code> in the form SEP uses for <code>abr_reg</code>, and the waived re-run
+<code>20260914_035111<em>vcs</em>reset</code> grades 35 of 35 PASS. The second stays open:
+<code>smc_cg_dft_reset_bringup_test</code> fires the product assertion
+<code>CheckMutualExclusionClk1</code> in <code>avsbus_controller.u_refclk_apbclk_mux</code>
+(<code>prim_ag_clk_mux.sv</code>) at 4688 ns on seed 1611842931. The waiver does not
+cover it&#8201;&#8212;&#8201;a replay of the leaf on that seed grades FAIL on that line&#8201;&#8212;&#8201;and
+no Verilator run can observe it because assertions are compiled out there.
+That firing remains an open item of this signoff; the condition that closes
+it, and the tracker for it, are the <strong>Closes when</strong> cell of the <code>prim_sync2/3</code>
+control row in <code>SMC_DEFERRED_DISPOSITION.adoc</code>.</p>
 </div>
 <div class="paragraph">
 <p>The cool-reset OUT names (<code>smc_cool_reset_from_primary_chiplet_test</code>,
