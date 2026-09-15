@@ -103,6 +103,12 @@ def find_kem_group(path, function=None):
 
 
 def emit(f, name, words, nbytes, comment):
+    # Eight words a line overruns the 100-column clang-format limit, so the
+    # emitted file is NOT final: run
+    #   make ocah-format-c FORMAT_C_PATH=hw/sys/sep/dv/fw/tests/common
+    # after regenerating, and commit the reflowed result. Both committed
+    # headers are 7-a-line because they went through that step; a raw
+    # regeneration that skips it fails the format-c CI job.
     f.write(f"/* {comment} ({nbytes} bytes, {len(words)} words) */\n")
     f.write(f"static const uint32_t {name}[{len(words)}] = {{\n")
     for i in range(0, len(words), 8):

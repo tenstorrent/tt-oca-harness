@@ -475,8 +475,7 @@ int main(void) {
     uint32_t mc_chunks = 0;
     uint32_t mc_initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
     for (uint32_t guard = 0; guard < 16u; guard++) {
-        secure_dma__CONTROL_t mc_ctrl = {
-            .f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .GO = 1}};
+        secure_dma__CONTROL_t mc_ctrl = {.f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .GO = 1}};
         WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, mc_ctrl.w | mc_initial);
 
         int t = 200000;
@@ -526,9 +525,9 @@ int main(void) {
                    (unsigned)mc_chunks);
         }
     }
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
-              SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
-                  SECURE_DMA__STATUS__CHUNK_DONE_bm);
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
+                                                           SECURE_DMA__STATUS__ERROR_bm |
+                                                           SECURE_DMA__STATUS__CHUNK_DONE_bm);
 
     //==========================================================================
     // Step 8: DIGEST_SWAP is the only thing that changes between these two runs
@@ -568,9 +567,9 @@ int main(void) {
                 dst[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
             }
         }
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
-                  SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
-                      SECURE_DMA__STATUS__CHUNK_DONE_bm);
+        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
+                                                               SECURE_DMA__STATUS__ERROR_bm |
+                                                               SECURE_DMA__STATUS__CHUNK_DONE_bm);
     }
 
     int swap_mismatches = 0;

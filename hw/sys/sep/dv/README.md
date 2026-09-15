@@ -13,8 +13,9 @@ its pads come out of the wrapper. There is no SPI pad mux in this build.
 **Stimulus** = a cocotbext-axi master on the CPU LSU splice (`s_axi_*`), a second
 master on the real SMN-inbound port (`m_axi_*`, inbound filter), and VeeR EL2
 firmware boot on the `cpu` / `rom_fw` paths.
-**Backend** = Verilator is the acceptance backend; VCS is the commercial
-develop, graded-coverage, and SV-UVM backend.
+**Backend** = Verilator is the acceptance backend; VCS and Xcelium are the
+commercial development backends (`sep_sim_cfg.toml` `tools`), and VCS is the
+one graded coverage and SV-UVM run on.
 Everything the environment needs lives under this tree.
 
 ## Prerequisites
