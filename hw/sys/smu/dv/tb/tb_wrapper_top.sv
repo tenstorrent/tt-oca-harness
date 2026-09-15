@@ -649,6 +649,25 @@ module smu_wrapper_uvm_top (
   assign rst_cold_n_o  = rst_cold_stable_ref_clk_n;
   assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
 
+  // prim_rom's noXOnCsI is never disabled (its reset argument is '0), so on a
+  // four-state simulator it fires on the X that req_i carries before reset.
+  // The wrapper elaborates sep_ip_integration on both profiles, so the two SEP
+  // ROMs are present even with SEP disabled. Hold the three checks off until
+  // the SMC primary reset has released and one SMC clock edge has sampled a
+  // known req_i, then re-arm them so a later X still fails.
+`ifndef VERILATOR
+  initial begin
+    $assertoff(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    $assertoff(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
+    $assertoff(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
+    wait (rst_primary_smc_clk_n === 1'b1);
+    @(posedge clk_smu_i);
+    $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    $asserton(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
+    $asserton(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
+  end
+`endif
+
   // powergood_stable is the SMC reset controller's stretched and synchronized
   // view of powergood_i (smc_reset_ctrl.sv), so it rises only once the DUT's own
   // synchronizer chain has clocked it through. The sticky low record carries no

@@ -183,10 +183,17 @@ class smu_base_test(uvm_test):
 
     #: TB inputs no leaf drives unless it exercises that interface. Verilator
     #: two-state reads an undriven input as 0, but this config also lists vcs
-    #: and xcelium, where it is X -- and an X on AxPROT or a cross-trigger
-    #: request reaches the DUT. Driven here so the idle value is the same on
-    #: every simulator; a leaf that wants them takes them over afterwards.
+    #: and xcelium, where it is X -- and an X on AxPROT, on an AXI handshake
+    #: valid or ready (the fabric's clock-gate snoop and hang detector fold
+    #: those into their known-value assertions), or on a cross-trigger request
+    #: reaches the DUT. Driven here so the idle value is the same on every
+    #: simulator; a leaf that wants them takes them over afterwards.
     IDLE_INPUTS = (
+        "ext_in_awvalid",
+        "ext_in_wvalid",
+        "ext_in_arvalid",
+        "ext_in_bready",
+        "ext_in_rready",
         "ext_in_awlock",
         "ext_in_awcache",
         "ext_in_awprot",

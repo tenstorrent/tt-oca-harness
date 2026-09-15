@@ -547,6 +547,19 @@ module smu_uvm_top
   // rst_primary_periph_clk_no output, so observe it hierarchically.
   assign rst_primary_periph_clk_no = u_dut.u_smc.rst_primary_periph_clk_no;
 
+  // prim_rom's noXOnCsI is never disabled (its reset argument is '0), so on a
+  // four-state simulator it fires on the X that req_i carries before reset.
+  // Hold it off until the SMC primary reset has released and one SMC clock
+  // edge has sampled a known req_i, then re-arm it so a later X still fails.
+`ifndef VERILATOR
+  initial begin
+    $assertoff(0, u_smc_cpu_mem.rom_mem.mem.noXOnCsI);
+    wait (rst_primary_smc_clk_no === 1'b1);
+    @(posedge clk_smu_i);
+    $asserton(0, u_smc_cpu_mem.rom_mem.mem.noXOnCsI);
+  end
+`endif
+
   // WDT isolate clamp: observe only.
   assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
         .wdt_reset_raw[0];
