@@ -57,12 +57,12 @@ JTAG2AXI_CAPS_BUS_AXI4_LITE = 1
 # and SMC_RD/WR_PL_DEPTH default to 2'h3; the SEP OTP depths are fixed at 3.
 SMU_JTAG2AXI_RD_PL_DEPTH = 3
 SMU_JTAG2AXI_WR_PL_DEPTH = 3
-# doc/integrator/src/smu.adoc, "Specifications": 56-bit address, 64-bit data
-# fabric.
+# doc/integrator/src/smu.adoc, "AXI Interface Configuration": "a 56-bit address
+# space with 64-bit data width".
 # The fabric bridge is the AXI4 instance and the OTP bridges the AXI-Lite
 # instances of the PTAP "Module Hierarchy" table; the OTP word is 32 bits
 # (hw/ip/efuse/doc/interface.adoc) and the eFuse AXI-Lite interface is
-# 32-bit (doc/integrator/src/index.adoc, "eFuse Interface").
+# 32-bit (doc/integrator/src/smu.adoc, "eFuse Interface").
 SMU_FABRIC_J2A_ADDR_BITS = 56
 SMU_OTP_J2A_ADDR_BITS = 32
 
@@ -175,7 +175,7 @@ DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
 # IC_RESET TDR. architecture.adoc "IC_RESET Support" gives the per-port
 # layout: bit 0 reset_hold, port n at {reset_enable: 2n+1, reset_control:
 # 2n+2}, every bit resetting to 1 (reset_enable=1 is "override disabled"),
-# length 2 * ports + 1. doc/integrator/src/index.adoc "IC_RESET TDR
+# length 2 * ports + 1. doc/integrator/src/smu.adoc "IC_RESET TDR
 # Structure" gives the SMU composition: TDI -> SMC slice (68 ports) -> SEP
 # slice (0 ports at SEP=0) -> external slice -> reset_hold -> TDO, so with
 # LSB-first shifting port 0 is the external port and the SMC slice follows.
@@ -450,7 +450,7 @@ def make_smu_jtag_tap(dut, period_ns: float) -> OcahJtagMasterDriver:
     return jtag
 
 
-# smc_pkg::jtag_smc_reset_ctrl_t as doc/integrator/src/index.adoc describes it
+# smc_pkg::jtag_smc_reset_ctrl_t as doc/integrator/src/smu.adoc describes it
 # ("IC_RESET TDR Structure", "SMC slice (TDI to TDO)"): a packed struct of an
 # `.ovrd` half above a `.val` half, each one bit per SMC port, whose fields
 # are declared in TDI-to-TDO order -- ss_warm_reset_n[31:0],

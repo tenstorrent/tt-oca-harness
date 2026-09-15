@@ -128,6 +128,11 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
         require_jtag_tdo_resolved("IDCODE mid-BUSY")
         if idc != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE mid-BUSY want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idc:08x}")
+        # MUTATION-ANCHOR abort-trst -- the TAP reset this test is about. The
+        # recheck recipe in the plan entry deletes the call on the next line and
+        # no other: run() opens with a bring-up reset_tap() whose four following
+        # lines are textually identical, and deleting that one runs a different
+        # experiment than the one documented. Grep this label, not the call.
         await jtag.reset_tap()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):

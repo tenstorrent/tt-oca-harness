@@ -27,8 +27,9 @@ from __future__ import annotations
 from cocotb.triggers import RisingEdge
 from cocotb.utils import get_sim_time
 
-# The 768-word sense of the default image completes about 2 350 clk_smu after
-# the primary reset release; the expiry is about twice that.
+# The 768-word sense of the default image completes 2280-2330 clk_smu after the
+# primary reset release, as measured on this bench; the expiry is about twice
+# the top of that range.
 FUSE_SENSE_BOUND_CYCLES = 5000
 # Expiry for a release that is expected to happen. The gate path once the stall
 # input clears is prim_sync3 (3) + sticky flop (1) + 16-stage pipe = 20 clk_smc,

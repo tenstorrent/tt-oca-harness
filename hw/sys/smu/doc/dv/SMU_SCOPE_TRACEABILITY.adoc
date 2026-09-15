@@ -4,9 +4,9 @@
 [[smu-scope-traceability]]
 == SMU scope and traceability
 
-This chapter is the requirement-to-test-to-coverage matrix for
-`SMU_SPEC.md` Features 1–7. `SMU_FEATURE_LIST.adoc` defines the SEP=0
-subset and the per-leaf `TEST_EVIDENCE` tokens;
+This chapter is the requirement-to-test-to-coverage matrix for features
+F1–F7, which `SMU_FEATURE_LIST.adoc` defines. `SMU_FEATURE_LIST.adoc`
+also defines the SEP=0 subset and the per-leaf `TEST_EVIDENCE` tokens;
 `SMU_DEFERRED_DISPOSITION.adoc` classifies the OUT names. Live group
 membership for `--dut smu` is `testlists/wrapper.toml`.
 

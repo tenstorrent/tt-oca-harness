@@ -58,8 +58,10 @@ what CI runs. VCS runs the SystemVerilog UVM view of `--dut smu_block`
 (`--framework uvm`; Verilator has no SV-UVM support). `smu_sim_cfg.toml`
 lists `vcs` and `xcelium` as selectable tools, but no enrolled cocotb group
 runs on them: the cocotb targets on VCS fail the runner on live RTL
-assertions while every test passes (issue #1755, open), and no Xcelium
-configuration exists in this tree.
+assertions while every test passes (issue #1755, open), and `smu_sim_cfg.toml`
+declares no Xcelium target of its own -- only the shared
+`hw/common/dv/configs/profiles/native.toml` defaults, which no SMU group
+selects.
 
 ## Tools
 

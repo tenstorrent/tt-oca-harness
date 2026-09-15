@@ -20,7 +20,7 @@ Sources, by value:
   ``hw/sys/dtp/doc/jtag.adoc``, section "Debug Disable"
   (``dbg_disable_i.smc_jtag2axi``).
 * The word the boundary carries when no SEP, and therefore no lifecycle
-  controller, is instantiated: ``doc/integrator/src/index.adoc``, SMU port
+  controller, is instantiated: ``doc/integrator/src/smu.adoc``, SMU port
   table section "Lifecycle State" -- ``lc_state_o`` is the "SEP lifecycle
   state when ``SEP=1``, else ``8'hf0``". ``hw/sys/smc/doc/port_table.adoc``
   states the same word for the receiving port ``lc_state_i`` ("tie to 8'hf0
