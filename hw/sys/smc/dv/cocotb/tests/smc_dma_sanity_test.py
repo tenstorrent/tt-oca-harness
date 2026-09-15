@@ -35,6 +35,8 @@ class smc_dma_sanity_test(smc_base_test):
             details=(
                 "DMA copied real output-fabric source bytes to destination and matched "
                 f"memory model (checked_bytes={seq.checked_bytes}, "
-                f"start_id={seq.start_id}, done_id={seq.done_id})"
+                f"start_id={seq.start_id}, done_id={seq.done_id}); a second "
+                f"LENGTH=1 descriptor moved exactly one byte "
+                f"(destination word 0x{seq.one_byte_dst:016x})"
             ),
         )
