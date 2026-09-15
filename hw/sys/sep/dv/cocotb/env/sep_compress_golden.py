@@ -31,8 +31,8 @@ class SepBiwCompress:
     GF(2^8) multiply-add over the AES field with reduction value 0x1B.
     Addition in GF(2^8) is XOR.
 
-    Lane -> word mapping from ``env.sep_spec_tables`` (transcribed from
-    ``hw/ip/entropy_source/doc/architecture.adoc`` BIW mixing):
+    Lane -> word mapping from the DV-owned ``BIW_TRIPLES`` / ``BIW_OUT_SHIFTS``
+    tables in ``sep_spec_tables``:
         out[i] = (b[i] * b[i+4]) + b[i+8], packed with out[0] as word MSB.
     """
 
