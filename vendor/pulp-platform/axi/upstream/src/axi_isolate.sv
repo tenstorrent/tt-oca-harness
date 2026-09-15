@@ -549,7 +549,8 @@ module axi_isolate_intf #(
   AXI_BUS.Slave  slv,
   AXI_BUS.Master mst,
   input  logic   isolate_i,
-  output logic   isolated_o
+  output logic   isolated_o,
+  input  logic   flush_i
 );
   typedef logic [AXI_ID_WIDTH-1:0]     id_t;
   typedef logic [AXI_ADDR_WIDTH-1:0]   addr_t;
@@ -594,7 +595,7 @@ module axi_isolate_intf #(
     .mst_req_o  ( mst_req  ),
     .mst_resp_i ( mst_resp ),
     .isolate_i,
-    .flush_i    ( 1'b0     ),
+    .flush_i,
     .isolated_o
   );
 
@@ -609,4 +610,3 @@ module axi_isolate_intf #(
   `endif
   // pragma translate_on
 endmodule
-

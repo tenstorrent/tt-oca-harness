@@ -195,7 +195,7 @@ If `READY` never goes high, isolation cannot complete.
 The flush clears only the CPU isolation blocks. It does not clear state
 elsewhere in the SMC fabric. The cluster reset may complete while another block
 remains unresponsive or holds a response, leaving that route or AXI ID blocked,
-so that block must be reset or recovered separately or through a cold reset.
+so that block must be recovered separately or through the eventual cold reset.
 ====
 
 ===== Reset-Domain Crossing

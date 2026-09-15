@@ -21,7 +21,7 @@ module smc_4core_cpu (
   // Reset-drain handshake (driven by smc_cpu_ctrl_wrap, always-on domain)
   input  logic                                            isolate_req_i,
   output logic                                            drained_o,
-  // Timeout-forced reset: flush the AXI isolates out of a deadlocked drain
+  // Flush requests to the AXI isolate modules
   input  logic                                            isolate_flush_i,
 
   // Reset vector inputs
