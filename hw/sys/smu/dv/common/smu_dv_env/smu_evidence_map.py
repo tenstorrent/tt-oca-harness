@@ -417,6 +417,150 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "samples taken either side of the read",
         ),
     ],
+    "smu_telemetry_atb_handshake_test": [
+        ("CHK-TEL-ATB", "TEL_ATREADY_HS", "ATB handshake"),
+    ],
+    # --- P0 composition and bring-up leaves on the production wrapper ---
+    # These set use_shared_env = True, so prove_mapped_features runs for them
+    # and every row below has to be logged by a passing compare.
+    # CHK-NONVAC is deliberately not a row here: SmuScoreboard.check_phase logs
+    # it after run_phase has already run the prover, and its own zero-check
+    # refusal covers the same ground.
+    "smu_boundary_port_composition_test": [
+        ("CHK-SMU-EXT-SMN-S4", "CHK-SMU-EXT-SMN-S4", "SMN in/out struct widths carry 8/10-bit IDs"),
+        (
+            "CHK-SMU-INT-AGG-S1",
+            "CHK-SMU-INT-AGG-S1",
+            "smc_ext_interrupts_i is Cfg.NUM_INT_TO_SMC wide",
+        ),
+        (
+            "CHK-SMU-XTRIG-CTP-S1",
+            "CHK-SMU-XTRIG-CTP-S1",
+            "all four CTP groups are XTRIG_NUM_CTP wide",
+        ),
+        ("CHK-SMU-XTRIG-CTP-S6", "CHK-SMU-XTRIG-CTP-S6", "zero-tied CTP data inputs stay static"),
+        ("CHK-SMU-LC-STATE-S1", "CHK-SMU-LC-STATE-S1", "lc_state_o is 2*LC_STATE_WIDTH wide"),
+        (
+            "CHK-SMU-LC-DEMOTE-S1",
+            "CHK-SMU-LC-DEMOTE-S1",
+            "both lcc_demote_state outputs are 2 bits",
+        ),
+        (
+            "CHK-SMU-EFUSE-SHIM-SMC-S3",
+            "CHK-SMU-EFUSE-SHIM-SMC-S3",
+            "smc_shadow_regs reaches the boundary at full width and value",
+        ),
+        (
+            "CHK-SMU-FUSE-SENSE-S4",
+            "CHK-SMU-FUSE-SENSE-S4",
+            "skip_mem_repair_o is one bit and driven",
+        ),
+        ("CHK-SMU-SSRESET-S2", "CHK-SMU-SSRESET-S2", "ss_reset_ctrl_o elements share one width"),
+        ("CHK-SMU-SSRESET-S4", "CHK-SMU-SSRESET-S4", "ss_config_o is 32 bits and driven"),
+    ],
+    "smu_clock_domain_composition_test": [
+        (
+            "CHK-SMU-CLK-DOMAINS-S2",
+            "CHK-SMU-CLK-DOMAINS-S2",
+            "secondary clocks toggle at their own rate",
+        ),
+        (
+            "CHK-SMU-CLK-DOMAINS-S3",
+            "CHK-SMU-CLK-DOMAINS-S3",
+            "each domain reset is released at its consumer",
+        ),
+        (
+            "CHK-SMU-CLK-DOMAINS-S4",
+            "CHK-SMU-CLK-DOMAINS-S4",
+            "telemetry stays released and clocked while primary/periph fall",
+        ),
+    ],
+    "smu_cold_reset_async_assert_test": [
+        (
+            "CHK-SMU-RST-COLD-S1",
+            "CHK-SMU-RST-COLD-S1",
+            "cold reset asserts with every clock static",
+        ),
+    ],
+    # Both testlist entries (SEP=1 and SEP=0) run this one body, and
+    # bind_testcase keys the map on the body name, so only the tokens both
+    # legs log can be rows here. CHK-SMU-SEC-TOKEN-S1 and CHK-SMU-LC-SECDIS-S1
+    # are emitted on the SEP=1 leg alone and are therefore not enforced.
+    "smu_composition_parameter_test": [
+        (
+            "CHK-SMU-SEC-TOKEN-S2",
+            "CHK-SMU-SEC-TOKEN-S2",
+            "SEP_SEC_DISABLE_TOKEN is 256 bits and zero",
+        ),
+        (
+            "CHK-SMU-OTPAXI-SEP-S3",
+            "CHK-SMU-OTPAXI-SEP-S3",
+            "DTP SEP OTP pipeline depths are the forced 3",
+        ),
+        (
+            "CHK-SMU-NOSEP-S4",
+            "CHK-SMU-NOSEP-S4",
+            "Cfg reaches smu unchanged and each decoded field matches the width or depth elaborated from it",
+        ),
+    ],
+    "smu_reset_release_sync_test": [
+        (
+            "CHK-SMU-RST-COLD-S2",
+            "CHK-SMU-RST-COLD-S2",
+            "cold-stable deassertion lands on a clk_ref_i edge",
+        ),
+        (
+            "CHK-SMU-RST-PRIMARY-S2",
+            "CHK-SMU-RST-PRIMARY-S2",
+            "primary reset deassertions land on their own domain's edge",
+        ),
+    ],
+    "smu_sep_fuse_sense_done_test": [
+        (
+            "CHK-SMU-FUSE-SENSE-S2",
+            "CHK-SMU-FUSE-SENSE-S2",
+            "sep_fuse_sense_done_o rises once, after reset release and after SEP eFuse traffic",
+        ),
+    ],
+    "smu_smc_fuse_sense_sequence_test": [
+        (
+            "CHK-SMU-FUSE-SENSE-S1",
+            "CHK-SMU-FUSE-SENSE-S1",
+            "smc_fuse_sense_done_o rises once, after reset release and after SMC eFuse traffic",
+        ),
+        (
+            "CHK-SMU-FUSE-SENSE-S3",
+            "CHK-SMU-FUSE-SENSE-S3",
+            "smc_fuse_reset_n_delayed_o releases after that rise, not with the cold reset",
+        ),
+    ],
+    "smu_sram_auto_init_done_test": [
+        (
+            "CHK-SMU-MEMINIT-S1",
+            "CHK-SMU-MEMINIT-S1",
+            "smc_init_mem_done_o rises after reset release",
+        ),
+    ],
+    "smu_xbar_connectivity_matrix_test": [
+        (
+            "CHK-SMU-XBAR-CONN-S7",
+            "CHK-SMU-XBAR-CONN-S7",
+            "unmatched ext_in read and write DECERR with the issued IDs and nothing reaches ext_out",
+        ),
+    ],
+    "smu_xtrig_mode_composition_test": [
+        (
+            "CHK-SMU-XTRIG-MODE-S1",
+            "CHK-SMU-XTRIG-MODE-S1",
+            "bits [1:0] into DTP are zero and a pulse-sync lane never acknowledges",
+        ),
+        (
+            "CHK-SMU-XTRIG-MODE-S2",
+            "CHK-SMU-XTRIG-MODE-S2",
+            "a handshake lane acknowledges and holds; the observed ack-lane count is the mode popcount",
+        ),
+    ],
+    # --- wrapper ---
     "smu_wrapper_elaboration_test": [
         ("CHK-WRAP-ELAB", "WRAP_ELAB_OK", "wrapper elab/reset contract"),
     ],
