@@ -1,0 +1,139 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-dv-functional-coverage-plan]]
+== SMU OCAH Open-Source Functional Coverage Plan
+
+=== Overview
+
+This chapter states what coverage the SMU open-source testbench collects,
+what the collected number measures, and what the verification plan is
+allowed to claim from it. The collection mechanics -- the scope file, the
+policy file and the Verilator knobs -- are under `cov/`; the release-group
+grading rules and the waiver fields are in
+`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc`.
+
+[cols=",",options="header",]
+|===
+|Field |Value
+|Reference VPLAN |`SMU_VPLAN.adoc`
+|Reference architecture |`SMU_TB_ARCH.adoc`
+|Framework |PyUVM on cocotb
+|Simulator that collects |Verilator (`--cov`); no other coverage configuration exists in this tree
+|What each DUT collects |`--dut smu_block`: toggle plus `user` over the scope file. `--dut smu` (the release group, weekly `--cov` in `regress.yml`): line, expression and `user`; toggle is off because the wrapper elaborates the real SEP, SMC and DTP and unscoped toggle is the 0.5 GB-per-leaf case
+|Scope file |`cov/config/verilator/smu_cov_scope.vlt`
+|Policy file |`cov/config/verilator/smu_block_coverage_policy.toml` (`--dut smu_block`); `--dut smu` has none
+|Cover-property modules |`cov/sv/smu_boot_fcov.sv`, `cov/sv/smu_xbar_fcov.sv`
+|===
+
+=== Metric Choice
+
+SMU is an integration level: `hw/sys/smu/rtl/smu.sv` wires SMC, DTP, SEP and
+the AXI crossbar together and carries almost no procedural logic. Verilator
+emits no line, branch or expression instrumentation site for anything under
+`hw/sys/smu/rtl/`. An unscoped line/branch/expression build produces on the
+order of 1.3 million sites, every one of them outside SMU: the vendored trees,
+the chipyard-generated CPU cluster, `hw/ip`, `hw/common`, `hw/sys/smc` and the
+testbench account for all of them.
+
+Those three families therefore cannot grade SMU. Toggle instruments nets,
+which is what an integration level owns -- whether the interconnect it wires
+up was exercised -- so the metric this package intends is *toggle*, with the
+`cov/sv` cover properties as *functional (`user`)* coverage beside it. Each
+subsystem grades its own internals in its own DV package.
+
+Toggle is measured only on `--dut smu_block`, whose `[coverage.verilator]`
+collects it over the scope file. The wrapper `--dut smu` collects line,
+expression and `user`, and as the paragraphs above explain those families
+have nothing of SMU's to instrument; `SMU_COVERAGE_POLICY.adoc` records that
+the release group's weekly database therefore does not carry the intended
+metric.
+
+Toggle over the whole elaborated model, SMC cluster and vendored fabric
+included, produces a database of about 0.5 GB per leaf.
+`smu_cov_scope.vlt` drops all of it at compile time so the toggle denominator
+is SMU's own RTL; enabling toggle without the scope reproduces that database.
+
+=== What the Toggle Number Measures
+
+The SMU integration RTL *plus two vendored trees the tool cannot exclude*, not
+"SMU coverage" alone. `vendor/pulp-platform/axi` (`axi_lite_demux.sv`) and
+`vendor/tenstorrent/tt-hw-debug` (`generic_dff*`) hold the large majority of
+the scoped toggle sites; `hw/sys/smu/rtl/smu.sv` and `cov/sv` hold the rest.
+
+Every vendored site sits under `.u_smc` or `.u_dtp` -- none is under SMU's
+own crossbar -- so the intent is unambiguous and only the mechanism falls
+short. `smu_block_coverage_policy.toml` records the two hierarchy selectors
+that close it and why their counts can only come from a coverage database.
+
+The `cov/sv` modules' own registers are toggle sites too. `coverage_off` is
+whole-file, so excluding them would delete the `user` points; they stay in
+the denominator, named here.
+
+==== Verilator glob matching
+
+`coverage_off -file` matches the path as Verilator *opened* the file, not the
+absolute path it records in the generated code, and `+incdir+`-resolved files
+are opened relative. A leading `*/` therefore scopes only half the tree:
+`*vendor/*` matches both forms, `*/vendor/*` matches only the absolute one.
+
+Two vendored trees are unreachable by any file pattern: `*vendor/*`,
+`*pulp-platform/*`, `*tt-hw-debug/*` and the bare `*axi_lite_demux.sv` /
+`*generic_dff.sv` forms all leave the site count unchanged, so none of them is
+in the scope file.
+
+Verify a scope change by counting `__vlCoverToggleInsert` sites per source
+bucket in the generated model, not by the build passing: a wrong scope
+changes nothing and warns about nothing.
+
+=== Functional Coverage Points
+
+`cov/sv/` carries two modules of labelled `cover property` points,
+instantiated in the shared `tb/tb_top.sv`. Under `--cov` they land in the
+`user` metric family of the native coverage database, so they reach
+`cov_merge`, `cov_report` and the coverage policy.
+
+[cols="2,4",options="header",]
+|===
+|Module |Intent it makes real
+|`cov/sv/smu_boot_fcov.sv` |`smc_boot_cg` bring-up: reset-release edges, boot-stall sources and release, lifecycle broadcast
+|`cov/sv/smu_xbar_fcov.sv` |`xbar_route_cg` filter and `reg_access_cg` outcome: window programming and reprogramming, inbound AXI handshake, all four response encodings, forwarded versus not-forwarded routing
+|===
+
+Points must need stimulus beyond power-up and reset release. A level that is
+true in the quiescent state is either absent or qualified by a sticky flag
+recording that its counterpart happened first, so "released" means "the stall
+lifted" rather than "no stall was ever applied".
+
+=== Scenario Intent Is Not Coverage
+
+`common/smu_dv_env/smu_fcov.py` is a static `TEST_FCOV_HITS` table mapping a
+test class name to the bins its scenario is *claimed* to reach. Running the
+test marks the bins; no signal is observed, and nothing under `tools/` or
+`.github/` reads its output. It records scenario intent and is neither the
+release metric nor a gate.
+
+=== What the Plan May Claim
+
+Three limits decide what `SMU_VPLAN.adoc` is allowed to say about coverage:
+
+. *No per-testcase coverage attribution.* The `cov/sv` points are
+  free-running cover properties on DUT signals, not per-scenario covergroups,
+  so which testcase lights which point is a property of a run, not of the
+  source. Naming bins per plan entry without a run would be a claim nobody
+  measured.
+. *`smu_fcov.py` sources no coverage claim.* It is scenario intent, as stated
+  above.
+. *No scored SMU coverage database is claimed.* Hit percentages, policy holes
+  and any threshold need a run that carries this configuration. No numeric
+  target is set; `SMU_COVERAGE_POLICY.adoc` says how one is set from a
+  measured database and which fields a waiver must carry.
+
+=== Two DUTs, One Policy File Name
+
+`smu` and `smu_block` share one `hw/sys/smu/dv` tree, so the canonical
+`cov/config/<tool>/coverage_policy.toml` discovery would resolve identically
+for both DUTs, and whichever DUT the file did not name would fail
+`--validate-configs`. `[coverage.verilator].policy_file` in
+`smu_block_sim_cfg.toml` names a DUT-qualified file instead; the wrapper
+config `smu_sim_cfg.toml` sets no policy file.
