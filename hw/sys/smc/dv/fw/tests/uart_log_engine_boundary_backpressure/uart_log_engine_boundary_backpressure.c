@@ -90,7 +90,7 @@
 // is not silently re-armed with another guessed one.
 // Scenario C cannot reach LOG_WRITE_ERR through any address, so it runs as a completion
 // check. Re-arming it as an error-path proof needs a TB fault hook on the log_write
-// B-channel, not a different offset; #1858 tracks that work.
+// B-channel, not a different offset.
 #define UART_ECR_OFF 0x20u
 
 static void setup_uart_8n1_fifo(void) {
