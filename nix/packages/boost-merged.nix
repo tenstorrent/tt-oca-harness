@@ -19,7 +19,7 @@ vp_version = config.env.BOOST_VERSION;
 
 version = if builtins.pathExists vp_mk then vp_version else "1.84.0";
 
-boost=boost182.overrideAttrs{
+boost=boost182.overrideAttrs(old: {
   inherit version;
   src = fetchurl {
     urls = [
@@ -30,7 +30,7 @@ boost=boost182.overrideAttrs{
     ];
     hash = "sha256-zEuJOs9kXJ1LaY6aDwjKiEaqXWxoJ1wUw+eUnCQQlFQ=";
   };
-};
+});
 
 in symlinkJoin {
   name = "boost-merged";

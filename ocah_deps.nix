@@ -15,11 +15,11 @@ in
     OCAH_MARKDOWNLINT = "${pkgs.markdownlint-cli}/bin/markdownlint";
     # Documentation Variables - bypass NPX
     OCAH_ANTORA = "${pkgs.ocah-antora}/bin/antora";
+    # Diagram generator paths
+    DIAGRAM_DITAA_CLASSPATH = "${pkgs.ocah-ditaa}/lib/ditaa.jar";
     OCAH_NO_INSTALL_NPM_DEPS = "1";
     # Run Synth Natively, rather than (nesting) container
     OCAH_EDA_SKIP_CONTAINERS = "1";
-    # Build KM FW natively, rather than in container
-    FW_DISPATCH_RUNNER = "";
     # VP Env Variables
     SYSTEMC_HOME = "${pkgs.systemc20}";
     CCI_HOME = "${pkgs.systemc-cci}";
@@ -66,6 +66,7 @@ in
       # Documentation Tools
       ocah-antora
       ocah-asciidoctor
+      ocah-ditaa
       # Build Tools
       gnumake
       bender
