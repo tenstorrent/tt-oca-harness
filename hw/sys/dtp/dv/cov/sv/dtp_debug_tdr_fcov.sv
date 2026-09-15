@@ -387,7 +387,9 @@ module dtp_debug_tdr_fcov (
     }
     // Stability is a property of a repeated read; the single bin closes
     // on the capture-time decision held in caps_reread_q.
-    cp_reread: coverpoint reread {bins repeated = {1'b1};}
+    cp_reread: coverpoint reread {
+      bins repeated = {1'b1};
+    }
     cp_after: coverpoint {
       after_idcode, after_bypass
     } {

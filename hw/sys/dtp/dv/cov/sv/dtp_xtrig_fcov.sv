@@ -285,19 +285,21 @@ module dtp_xtrig_fcov (
   endgroup
 
   covergroup cg_ctm with function sample (
-      logic src_event, logic src_is_ctp, logic [4:0] src_idx,
-      logic dst_event, logic dst_is_ctp, logic [4:0] dst_idx
+      logic src_event,
+      logic src_is_ctp,
+      logic [4:0] src_idx,
+      logic dst_event,
+      logic dst_is_ctp,
+      logic [4:0] dst_idx
   );
     option.per_instance = 1;
     cp_source_type: coverpoint src_is_ctp iff (src_event);
     cp_dest_type: coverpoint dst_is_ctp iff (dst_event);
     cp_source_index: coverpoint src_idx iff (src_event) {
-      bins ctp[] = {[0 : 15]};
-      bins internal[] = {[IntPortBase : IntPortBase + 9]};
+      bins ctp[] = {[0 : 15]}; bins internal[] = {[IntPortBase : IntPortBase + 9]};
     }
     cp_dest_index: coverpoint dst_idx iff (dst_event) {
-      bins ctp[] = {[0 : 15]};
-      bins internal[] = {[IntPortBase : IntPortBase + 9]};
+      bins ctp[] = {[0 : 15]}; bins internal[] = {[IntPortBase : IntPortBase + 9]};
     }
   endgroup
 

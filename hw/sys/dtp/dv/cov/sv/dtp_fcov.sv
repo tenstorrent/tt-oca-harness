@@ -389,7 +389,9 @@ module dtp_fcov (
     // below are the only (prev, tms, next) triples the controller produces;
     // a TRST pulse between two TCK edges lands in TEST_LOGIC_RESET from any
     // state and is collected by c_reset_trst_from_active instead.
-    cp_arc: coverpoint {prev, tms, nxt} {
+    cp_arc: coverpoint {
+      prev, tms, nxt
+    } {
       `DTP_FCOV_ARC_BIN(tlr_tms0_rti, TEST_LOGIC_RESET, 1'b0, RUN_TEST_IDLE)
       `DTP_FCOV_ARC_BIN(tlr_tms1_tlr, TEST_LOGIC_RESET, 1'b1, TEST_LOGIC_RESET)
       `DTP_FCOV_ARC_BIN(rti_tms0_rti, RUN_TEST_IDLE, 1'b0, RUN_TEST_IDLE)
