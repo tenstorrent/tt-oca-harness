@@ -251,11 +251,13 @@ module sep_uvm_top
     // otbn_rnd.sv:233 UrndNoReseedOnReset_A cannot pass on this instance. It arms
     // only while OTBN is in reset -- disable iff (rst_ni !== '0) -- and its guard
     // reads CURRENT rst_ni while the property body reads SAMPLED rst_ni. SEP
-    // asserts OTBN's reset ON a clk_i edge, because otbn_gated_rst_n is a flop
-    // output of hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv, so at that edge the
-    // guard sees reset active and arms an attempt whose body still sees the
-    // pre-reset value and therefore demands seed_en_q be high. It fires on every
-    // software reset whatever the DUT does.
+    // asserts OTBN's reset ON a clk_i edge: the reset is a posedge clk_i flop
+    // output (sep_isolate_rst_seq.sv gated_rst_n_q), routed through the JTAG
+    // override mux u_otbn_rst_ovrd_mux in sep_reset_ctrl.sv to
+    // gated_rst_ni.otbn at sep_crypto.sv. At that edge the guard sees reset
+    // active and arms an attempt whose body still sees the pre-reset value and
+    // therefore demands seed_en_q be high. It fires on every software reset
+    // whatever the DUT does.
     //
     // This holds the property off for the WHOLE RUN, not just that edge, so no
     // in-reset cycle is checked in any test. The flop at otbn_rnd.sv:205-213
@@ -1011,6 +1013,17 @@ module sep_uvm_top
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_csrng,
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
     };
+
+    // HMAC per-IP gated reset and the two isolate-completion bits that domain
+    // depends on. The reset sequencer holds the domain until every AXI-Lite
+    // path it depends on reports isolated, so the drain-before-reset checks
+    // read the reset and both paths.
+    assign hmac_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.hmac;
+    assign hmac_host_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
+    assign hmac_km_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are

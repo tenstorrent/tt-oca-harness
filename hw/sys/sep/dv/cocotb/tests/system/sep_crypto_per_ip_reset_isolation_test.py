@@ -45,7 +45,19 @@ Isolation proof (both directions, then the remaining isolated bits):
                     HMAC CFG also SLVERR; AES DATA_OUT_0
                     on the sibling port stays OKAY; SW_RESET_N readback shows
                     the HMAC bit low; after release DIGEST_0 is OKAY at its
-                    reset value. Drain-before-reset is not claimed.
+                    reset value.
+  * CHK-DRAIN-ORDER  the HMAC reset does not assert until BOTH AXI-Lite paths
+                    that domain depends on -- the SEP host path and the Key
+                    Manager path -- report isolated. #1253 makes each
+                    accelerator reset depend on both.
+  * CHK-HOST-DRAIN  host reads accepted before the reset request resolve OKAY
+                    or SLVERR, never DECERR and never a hang, and at least one
+                    drains OKAY -- so accepted traffic completed rather than
+                    being dropped.
+  * CHK-DRAIN-ARRIVAL  a further read issued WHILE isolation is draining also
+                    resolves (the #245 case); it may drain or terminate, but it
+                    may not hang. That the path is not left wedged is the
+                    existing CHK-ISOLATE-REOPEN beat after release.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
                     TRNG-only reset, so resetting the entropy complex does not
                     reach the accelerator domains.
@@ -71,9 +83,10 @@ import hashlib
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, with_timeout
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC
 from seq_lib.sep_aes_seq import AES_DATA_OUT_0, SepAes
@@ -289,8 +302,76 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "CHK-ISOLATE-PRE PASS: HMAC DIGEST_0 OKAY with live golden 0x%08x", h_digest[0]
         )
 
-        await self.rst.assert_reset(ENG_HMAC.rst_bit)
-        await ClockCycles(cocotb.top.clk_i, 8)
+        # ---- Drain-before-reset (#1464 / the #245 arrival case) ----------
+        # Queue host reads that the fabric can accept BEFORE the reset request,
+        # so the isolate coordinator has real traffic to drain. Accepted beats
+        # must complete; anything not yet accepted is terminated. None may hang.
+        axi_driver = self.env.axi_agent.driver
+        drain_reads = [
+            axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2) for _ in range(4)
+        ]
+        reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_HMAC.rst_bit))
+
+        # A further read that ARRIVES while isolation is draining (#245).
+        await ClockCycles(cocotb.top.clk_i, 2)
+        arrival_read = axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
+
+        # The HMAC reset may not assert until BOTH paths that domain depends on
+        # report isolated. Sampling every cycle catches the assert edge -- but
+        # only if the reset is still RELEASED here: entering the loop after the
+        # edge would grade a steady state in which both isolate bits are high
+        # anyway, and the check could not fail.
+        assert int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 1, (
+            "HMAC reset already asserted before the drain window opened, so the "
+            "ordering check would not witness the assert edge"
+        )
+        for _ in range(1_000):
+            if int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 0:
+                host_iso = int(cocotb.top.hmac_host_isolated_probe_o.value)
+                km_iso = int(cocotb.top.hmac_km_isolated_probe_o.value)
+                assert host_iso == 1 and km_iso == 1, (
+                    "HMAC reset asserted before its AXI-Lite paths isolated: "
+                    f"host_hmac={host_iso} km_hmac={km_iso}"
+                )
+                self.logger.info(
+                    "CHK-DRAIN-ORDER PASS: HMAC reset asserted only after the host "
+                    "and Key Manager paths both reported isolated"
+                )
+                break
+            await ClockCycles(cocotb.top.clk_i, 1)
+        else:
+            raise AssertionError("HMAC gated reset never asserted after the reset request")
+
+        await reset_task
+
+        drain_codes = []
+        for event in drain_reads:
+            await with_timeout(event.wait(), 10_000, "ns")
+            drain_codes.append(worst_resp(getattr(event.data, "resp", None)))
+        assert all(code in (RESP_OKAY, RESP_SLVERR) for code in drain_codes), (
+            f"in-flight HMAC host reads returned unexpected responses {drain_codes}"
+        )
+        assert RESP_OKAY in drain_codes, (
+            "no pre-reset HMAC host read drained successfully, so this run does "
+            "not show that accepted traffic completes rather than being dropped"
+        )
+        self.logger.info(
+            "CHK-HOST-DRAIN PASS: in-flight HMAC host reads resolved %s "
+            "(no hang, no DECERR); at least one drained OKAY",
+            drain_codes,
+        )
+
+        await with_timeout(arrival_read.wait(), 10_000, "ns")
+        arrival_code = worst_resp(getattr(arrival_read.data, "resp", None))
+        assert arrival_code in (RESP_OKAY, RESP_SLVERR), (
+            f"read arriving during the isolate drain returned resp={arrival_code}, "
+            "expected OKAY (drained) or SLVERR (terminated), never DECERR or a hang"
+        )
+        self.logger.info(
+            "CHK-DRAIN-ARRIVAL PASS: a read arriving mid-drain resolved resp=%d, no hang",
+            arrival_code,
+        )
+
         sw = await self.rst.read_back()
         assert (sw >> RST_HMAC) & 1 == 0, (
             f"SW_RESET_N HMAC bit still released after isolate request: 0x{sw:08x}"
