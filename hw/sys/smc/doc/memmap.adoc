@@ -87,6 +87,19 @@ remapped address regions
 Bus Error Units
 |=======================================================================
 
+Each row in the table above is the address aperture reserved for a unit, not the
+extent that decodes.
+
+The fabric refuses an address that falls between unit windows, or past
+the extent a unit allocates; such an access never reaches a unit.
+
+Inside a unit's allocated extent, an offset that owns no register is
+accepted by the unit: reads return zero and writes are discarded, both
+with an OKAY response. Software gets no indication that it addressed
+nothing. Such an offset cannot alias a live register, because register
+decode is an exact address match rather than a range -- not because the
+access is refused.
+
 ==== Detailed Address Map
 
 The following table provides specific address assignments for all SMC
