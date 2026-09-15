@@ -31,9 +31,10 @@ is then lowered; the rest of the walk runs at ``secure_tm=0`` so LC_STATE
 programming is not blocked by ``efuse_guard``.
 
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
-The test injects a broken pair at the LCC decoder input (signed-off force) after
-the walk. Observation is the DUT ``lc_sigint_err_o`` probe plus an AXI
-``FEAT_CTRL`` readback of 0 (fail-closed), then release and both restore.
+The test injects a broken pair at the LCC decoder input through the tb_top
+``lc_sigint_inject_i`` port after the walk. Observation is the DUT
+``lc_sigint_err_o`` probe plus an AXI ``FEAT_CTRL`` readback of 0 (fail-closed),
+then release and both restore.
 """
 
 from __future__ import annotations
@@ -507,7 +508,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 # Drop the strap before the walk resumes. LC_STATE carries
                 # SECURE_TM_LOCK and the guard blanks the command interface outright,
                 # so programming and secure_tm cannot both hold -- the strap phase is
-                # deliberately scoped to the DFT-column and secret-disconnect checks
+                # scoped to the DFT-column and secret-disconnect checks
                 # above. The same bit programs for real in the next iteration, which
                 # is what makes the refusal above a gate rather than a dead path.
                 cocotb.top.test_en_strap_i.value = 0

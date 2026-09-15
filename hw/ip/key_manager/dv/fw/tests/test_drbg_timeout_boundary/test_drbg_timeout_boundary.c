@@ -24,14 +24,13 @@
  *      identical in both measurements and cancels in the subtraction, so the
  *      difference is exact.
  *
- * Failure mode (off-by-one, the bug being regression-tested):
- *   With the original RTL (`timeout_cnt` loaded to N, fire on `cnt == 0`,
- *   non-saturating decrement) the FSM stayed in StRequest for N+1 active
- *   cycles AND `timeout_cnt` underflowed to 0xFFFF on the terminal cycle.
- *   The fix loads `cnt` with N-1, decrements saturatingly, and still fires
- *   on `cnt == 0`, giving exactly N active cycles with no underflow.  The
- *   observed difference is N - 1 with the fix and N with the bug, so this
- *   test fails the assertion by exactly one cycle if the bug is present.
+ * Defect guarded against (off-by-one):
+ *   A `timeout_cnt` loaded to N with a non-saturating decrement and firing on
+ *   `cnt == 0` keeps the FSM in StRequest for N+1 active cycles and
+ *   underflows to 0xFFFF on the terminal cycle.  The RTL loads `cnt` with
+ *   N-1, decrements saturatingly and fires on `cnt == 0`, giving exactly N
+ *   active cycles.  The observed difference is N - 1, or N under the defect,
+ *   so the assertion fails by exactly one cycle if the defect is present.
  *
  * Run with:
  *   make run_fw FW_TEST=test_drbg_timeout_boundary
@@ -95,8 +94,7 @@ int main(void) {
     }
 
     /* Deterministic DRBG payload so the successful read returns a stable
-     * value; not strictly required for cycle measurement, but keeps
-     * reproducibility comparable to the other DRBG tests. */
+     * value. */
     if (!tb_drbg_set_seed(1u, 1000u)) {
         TEST_FAIL("tb_drbg_set_seed failed");
     }
@@ -152,14 +150,14 @@ int main(void) {
     /*-----------------------------------------------------------------------
      * Subtest 3: precise-boundary check.
      *
-     * FSM cycle accounting (AR -> R-consume), holds for both fix and bug:
-     *   success:        StRequest(1) + StRespond(1) + slot_done(1) + AR_latch(1) = 4
-     *   timeout (fix):  StRequest(N) + StTimeout(1) + slot_done(1) + AR_latch(1) = N + 3
-     *   timeout (bug):  StRequest(N+1) + StTimeout(1) + slot_done(1) + AR_latch(1) = N + 4
+     * FSM cycle accounting (AR -> R-consume):
+     *   success:           StRequest(1) + StRespond(1) + slot_done(1) + AR_latch(1) = 4
+     *   timeout:           StRequest(N) + StTimeout(1) + slot_done(1) + AR_latch(1) = N + 3
+     *   timeout (defect):  StRequest(N+1) + StTimeout(1) + slot_done(1) + AR_latch(1) = N + 4
      *
-     * delta_timeout - delta_success therefore equals (N - 1) with the fix and
-     * (N) with the off-by-one bug, regardless of constant fabric/firmware
-     * overhead which cancels in the subtraction.
+     * delta_timeout - delta_success therefore equals (N - 1), or (N) under
+     * the off-by-one defect, regardless of constant fabric/firmware overhead
+     * which cancels in the subtraction.
      *-----------------------------------------------------------------------*/
     TEST_SUBTEST_START("DRBG StTimeout fires at programmed CFG.TIMEOUT boundary");
     if (delta_timeout < delta_success) {

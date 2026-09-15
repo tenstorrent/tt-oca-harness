@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_ic_reset_dual_domain_illegal_test - P3-H5a dual IC_RESET in one DR.
+"""smu_ic_reset_dual_domain_illegal_test - dual IC_RESET in one DR.
 
-P2-I5a proves one-domain-at-a-time mutual exclusion. This corner packs two
+smu_ic_reset_smc_multi_domain_test proves one-domain-at-a-time mutual
+exclusion. This corner packs two
 SMC ports in a single IC_RESET update (IEEE §17 allows independent ports)
 and checks:
 

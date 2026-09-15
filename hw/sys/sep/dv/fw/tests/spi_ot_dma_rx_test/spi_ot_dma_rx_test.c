@@ -14,7 +14,7 @@
 // (`hw/sys/sep/rtl/sep.sv`: `lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger`).
 // Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
-// PARITY-PLUS over reference suite: the reference test only checks "DMA done + no SPI error"
+// Beyond the reference suite: the reference test only checks "DMA done + no SPI error"
 // because it clocks idle MISO (no flash model) and leaves the received data
 // unchecked. Here the OSS flash BFM is preloaded with a known constant (0xA5),
 // the firmware issues a real flash READ (0x03), and then VALUE-CHECKS that every
@@ -22,7 +22,7 @@
 // SPI->DMA->SRAM data path, not just completion. It also proves the DMA STATUS
 // RW1C clear contract (write-1-clear -> reads back 0).
 //
-// main() returns the error count; start.S turns 0 -> PASS magic, non-zero ->
+// main() returns the error count; crt0.s turns 0 -> PASS magic, non-zero ->
 // FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard gates on.
 
 #include <stdint.h>

@@ -9,9 +9,6 @@
  * - Push MSG_FIFO when sha_en=0 -> SwPushMsgWhenDisallowed
  * - hash_start when sha_en=0 -> SwHashStartWhenShaDisabled
  * - second hash_start while active -> SwHashStartWhenActive
- *
- * Execution:
- * make test-sep TEST_NAME=sep_hmac_error_handling_test STACK=sim
  */
 
 #include <stdint.h>

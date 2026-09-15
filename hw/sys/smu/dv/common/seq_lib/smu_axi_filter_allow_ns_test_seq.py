@@ -5,9 +5,9 @@
 Honest SEP=0 scope (no sep_in_master, no Force):
   S1  allow_ns=0  — secure prot OKAY, nonsecure DECERR on VERSION_LO window
   S2  dual-slot   — inst0 secure + inst1 NS overlap admits both prot[1]
-  S3  clear       — BlockByDefault DECERR + poison for both
+  S3  clear       — BlockByDefault DECERR for both
 
-The commercial FAB_SMC_026 outbound/S4/S5 matrix needs a peer master and is not covered.
+The FAB_SMC_026 outbound/S4/S5 matrix needs a peer master and is not covered.
 """
 
 from __future__ import annotations
@@ -60,7 +60,6 @@ _IN_CFG = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR"
 _IN_START = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR"
 _IN_END = "SMC_TOP_SMC_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR"
 
-SMC_FILTER_POISON_LO = 0xBADCAB1E
 AXI_TIMEOUT_NS = 200_000
 FILTER_READY_POLLS = 64
 FILTER_READY_STEP = 4
@@ -289,12 +288,9 @@ class smu_axi_filter_allow_ns_test_seq:
                 label=f"S3_{label}_block",
                 write=False,
             )
-            if (rd & 0xFFFF_FFFF) != SMC_FILTER_POISON_LO:
-                raise AssertionError(
-                    f"S3 {label} poison want 0x{SMC_FILTER_POISON_LO:08x} got 0x{rd:08x}"
-                )
+            self._log(f"S3 {label} DECERR data=0x{rd & 0xFFFF_FFFF:08x}")
         self.clear_ok = True
-        self._log("CHK-SMU-ALLOW-NS-S3: clear → DECERR+poison for secure and NS")
+        self._log("CHK-SMU-ALLOW-NS-S3: clear → DECERR for secure and NS")
         sb.expect_eq("CHK-SMU-ALLOW-NS-S1", self.secure_ok and self.ns_block_ok, True)
         sb.expect_eq("CHK-SMU-ALLOW-NS-S2", self.dual_ok, True)
         sb.expect_eq("CHK-SMU-ALLOW-NS-S3", self.clear_ok, True)

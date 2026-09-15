@@ -518,7 +518,7 @@ module dtp_uvm_top
   always @(negedge rst_n_i) sys_rst_assert_count <= sys_rst_assert_count + 32'd1;
   always @(negedge pwr_on_rst_ni) por_assert_count <= por_assert_count + 32'd1;
 
-  // Flat slave inputs (from AxiRam) -> DUT resp struct
+  // Flat responder outputs -> DUT resp struct
   always_comb begin
     axi_smc_dbg_resp          = '{default: '0};
     axi_smc_dbg_resp.aw_ready = m_axi_awready;
@@ -646,7 +646,7 @@ module dtp_uvm_top
   end
 
   // ------------------------------------------------------------------
-  // DTP DUT (default parameters; type params use jtag_tap_pkg/dtp_pkg stubs)
+  // DTP DUT: default parameters; the type parameters come from jtag_tap_pkg and dtp_pkg
   // ------------------------------------------------------------------
   dtp u_dut (
     .clk_i                            (clk_i),
@@ -969,9 +969,10 @@ module dtp_uvm_top
   assign u_scan_if.jtag_bsr_update_en  = jtag_bsr_update_en;
 
   // Lifecycle debug disables and clock-stop requests: sequences drive the
-  // typed dbg_disable_t and the CLA clock-stop request vector through
-  // dtp_tb_if (dbg_disable init '1 = fail-closed; clk_stop_req init '0 =
-  // quiescent; the debug-TDR sequences drive the requests they need).
+  // named debug disables and the CLA clock-stop request vector through
+  // dtp_tb_if, which binds the disables into the typed dbg_disable_t
+  // (disables init 1 = fail-closed; clk_stop_req init '0 = quiescent; the
+  // debug-TDR sequences drive the requests they need).
   assign xtrig_clk_stop_req = u_tb_if.xtrig_clk_stop_req;
   assign dbg_disable        = u_tb_if.dbg_disable;
 
@@ -1063,7 +1064,7 @@ module dtp_uvm_top
   // interface carries the connection: the TB wires only the master-driven
   // signals in, and the responder drives the responder-side signals,
   // routed back to the DUT below. Error injection is programmed by
-  // sequences via the responder's slave sequence, not TB error ports.
+  // sequences via the responder's slave sequence.
   assign u_smc_otp_slave_if.awaddr   = 64'(smc_otp_axil_awaddr);
   assign u_smc_otp_slave_if.awprot   = smc_otp_axil_awprot;
   assign u_smc_otp_slave_if.awvalid  = smc_otp_axil_awvalid;
@@ -1106,7 +1107,7 @@ module dtp_uvm_top
   assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
   assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
-  // SEP OTP AXI-Lite responder: a third shared ocah_axi_vip responder
+  // SEP OTP AXI-Lite responder: the shared ocah_axi_vip responder
   // (same pattern as the SMC OTP port) answers JTAG2AXI SEP OTP traffic.
   assign u_sep_otp_slave_if.awaddr   = 64'(sep_otp_axil_awaddr);
   assign u_sep_otp_slave_if.awprot   = sep_otp_axil_awprot;
@@ -1156,7 +1157,7 @@ module dtp_uvm_top
   // master-driven signals in, and the responder drives the responder-side
   // signals, routed back to the DUT below. Error injection and backdoor
   // memory access are programmed by sequences via the responder's slave
-  // sequence, not TB error ports.
+  // sequence.
   assign u_smc_axi_slave_if.awid     = 16'(m_axi_awid);
   assign u_smc_axi_slave_if.awaddr   = 64'(m_axi_awaddr);
   assign u_smc_axi_slave_if.awlen    = m_axi_awlen;

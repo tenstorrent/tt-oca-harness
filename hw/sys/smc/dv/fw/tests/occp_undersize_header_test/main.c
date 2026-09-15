@@ -51,8 +51,6 @@ int main(void) {
     increment_cmd_count(&ctx);
     execute_random_commands(&ctx, 5);
 
-    // ctx.timeout = 1000; /* ensure expected timeout path progresses */
-
     uint32_t result_code =
         ctx.overall_result ? SMC_SCRATCHPAD_SIM_PASS_CODE : SMC_SCRATCHPAD_SIM_FAIL_CODE;
 

@@ -11,7 +11,7 @@
 // run modes: under `+cpu_boot` the EL2 owns the bus and the flat request ports
 // are idle, so a port-side sampler would see no firmware traffic at all. The
 // external inbound master is the real `m_axi_*` DUT port. Everything else is an
-// already-signed-off probe port of tb_top. No new hierarchy reach.
+// named probe port of tb_top. No new hierarchy reach.
 //
 // WHAT A BIN MEANS. A bin records an interface event: a completed AXI
 // handshake, a decoded CTRL/CFG write, a readback that matches what was
@@ -209,12 +209,22 @@ module sep_fcov (
   // KM mailbox frame (seq_lib/sep_km_mailbox_seq.py):
   //   header = {crc8[31:24], payload_len[23:16], cmd_id[15:8], seq_num[7:0]}
   //   RESP_CMD payload = [cmd_seq, cmd_id, rc, arg]
+  localparam logic [7:0] KmRespCmd = 8'h00;
+  localparam logic [7:0] KmCmdHwVer = 8'h00;
+  localparam logic [7:0] KmCmdRomVer = 8'h01;
+  localparam logic [7:0] KmCmdSramVer = 8'h02;
+  localparam logic [7:0] KmCmdRecovAck = 8'h04;
+  localparam logic [7:0] KmCmdExecRom = 8'h10;
+  localparam logic [7:0] KmCmdSramLoadExec = 8'h11;
+  localparam logic [7:0] KmCmdSramExec = 8'h12;
   localparam logic [7:0] KmCmdGenerate = 8'h22;
   localparam logic [7:0] KmCmdTransfer = 8'h24;
-  localparam logic [3:0] KmDestHmac = 4'h1;
-  localparam logic [3:0] KmDestKmac = 4'h2;
-  localparam logic [3:0] KmDestAes = 4'h4;
-  localparam logic [3:0] KmDestOtbn = 4'h8;
+  localparam logic [7:0] KmCmdOtpLock = 8'h28;
+  localparam logic [7:0] KmDestHmac = 8'h01;
+  localparam logic [7:0] KmDestKmac = 8'h02;
+  localparam logic [7:0] KmDestAes = 8'h04;
+  localparam logic [7:0] KmDestOtbn = 8'h08;
+  localparam logic [7:0] KmDestAbrMldsaSeed = 8'h10;
 
   localparam logic [1:0] AxiOkay = 2'b00;
   localparam int unsigned PageShift = 12;  // traffic_filter.sv compares [.:12]
@@ -379,9 +389,8 @@ module sep_fcov (
   // Reading a STATE share back is the completion event BOTH drivers produce.
   // `keyed_mac` -- the only path the KM sideload KAT takes -- polls STATUS and
   // reads the shares, and never touches INTR_STATE, so an INTR_STATE-only
-  // anchor could not sample a sideloaded operation at all: measured
-  // `cp_sideload.km_key` 0 hits against `sw_key` 13, because the leaf's single
-  // INTR_STATE read lands at EOT after the last SW-key leg.
+  // anchor could not sample a sideloaded operation at all: the leaf's single
+  // INTR_STATE read lands at EOT, after the last SW-key leg.
   wire       kmac_digest_rd = rd_ev && in_win(ar_addr_q, KMAC_STATE_MEM_BASE_ADDR,
       KMAC_STATE_MEM_BASE_ADDR + KMAC_STATE_MEM_SIZE);
 
@@ -430,7 +439,6 @@ module sep_fcov (
   wire km_wr_data = wr_ev && (aw_addr_q == KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_ADDR);
   wire km_rd_data = rd_ev && (ar_addr_q == KM_MAILBOX_SEP_SEP_READ_DATA_REG_ADDR);
 
-  logic [7:0] km_cmd_q;          // cmd_id of the frame being written
   logic [7:0] km_cmd_len_q;      // declared payload_len
   logic [8:0] km_cmd_idx_q;      // 0 = header
   logic       km_cmd_hdr_next_q; // next WRITE_DATA word starts a frame
@@ -438,15 +446,27 @@ module sep_fcov (
   logic       km_rsp_arm_q;      // a command frame has been sent, response pending
   logic [7:0] km_rsp_cmd_q;      // echoed cmd_id (payload word 2)
   logic [7:0] km_rsp_rc_q;       // rc (payload word 3)
+  logic       km_rsp_is_cmd_q;   // outbound header resp_id was RESP_CMD
 
   // Generate succeeded: the response frame echoed CMD_KEY_GENERATE with rc 0
   // and a non-null handle. Nothing here is inferred from silence.
   wire km_generate_ok = km_rd_data && km_rsp_arm_q && (km_rsp_idx_q == 9'd4) &&
       (km_rsp_cmd_q == KmCmdGenerate) && (km_rsp_rc_q == 8'h00) && (rd_data[7:0] != 8'h00);
-  // Transfer: the destination word of a CMD_KEY_TRANSFER command frame
-  // (payload = [handle, dest]). km_cmd_idx_q counts words already written
-  // after the header, so the dest word is the cycle it reads 1.
-  wire km_transfer_dest = km_wr_data && (km_cmd_q == KmCmdTransfer) && (km_cmd_idx_q == 9'd1);
+  // Score dest/cmd on a RESP_CMD payload, not on inbound WRITE_DATA.
+  // Transfer dest is RETURN_ARG dest_engine[15:8] of a success frame.
+  // Host-cmd sample is word 4 so rc is already latched. Success only,
+  // except CMD_SRAM_VER whose defined result is not success.
+  wire km_host_cmd_seen = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
+      (km_rsp_idx_q == 9'd4) &&
+      ((km_rsp_cmd_q == KmCmdSramVer) ? (km_rsp_rc_q != 8'h00)
+                                      : (km_rsp_rc_q == 8'h00));
+  wire km_xfer_scored = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
+      (km_rsp_idx_q == 9'd4) && (km_rsp_cmd_q == KmCmdTransfer) &&
+      (km_rsp_rc_q == 8'h00);
+  wire km_wipe = wr_ev && (aw_addr_q == SEP_CPU_CTRL_KM_WIPE_CTRL_REG_ADDR) &&
+      wr_strb[0] && wr_data[0];
+  wire km_swrst_rel = wr_ev && (aw_addr_q == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR) &&
+      wr_strb[0] && wr_data[0];
 
   // --- Secure DMA --------------------------------------------------------
   wire dma_go = wr_ev && (aw_addr_q == SECURE_DMA_CONTROL_REG_ADDR) &&
@@ -527,7 +547,7 @@ module sep_fcov (
 
   logic [31:0] m_aw_addr_q, m_ar_addr_q;
   // Same pairing contract as the LSU side: sep_axi_order_sweep_m_axi_test
-  // deliberately runs several inbound transactions at once, and a plain
+  // runs several inbound transactions at once, and a plain
   // last-write latch would pair one access's response with another's address.
   logic [3:0] m_aw_out_q, m_ar_out_q;
 
@@ -547,10 +567,10 @@ module sep_fcov (
   // --- eFuse program x write-lock ----------------------------------------
   // Programming a write-locked field is a LEGAL software action with a
   // specified outcome (refused), not a fault injection -- the same class as a
-  // read-only register, so it belongs here and not with the Phase 2 error
-  // groups. sep_efuse_program_lock_matrix_test walks unlocked-program then
-  // lock-then-reject on EACH of SPARE0..SPARE7 in order, so the whole cross is
-  // filled by ONE seed; only the bit offset inside a spare is seeded.
+  // read-only register. sep_efuse_program_lock_matrix_test walks
+  // unlocked-program then lock-then-reject on EACH of SPARE0..SPARE7 in order,
+  // so the whole cross is filled by ONE seed; only the bit offset inside a
+  // spare is seeded.
   //
   // Every operation is frontdoor on EFUSE_PROGRAM_CTRL: the write carries the
   // OTP bit index in EFUSE_ADDR plus PROGRAM_GO, and the outcome reads back as
@@ -757,6 +777,7 @@ module sep_fcov (
       km_cmd_idx_q      <= '0;
       km_rsp_idx_q      <= '0;
       km_rsp_arm_q      <= 1'b0;
+      km_rsp_is_cmd_q   <= 1'b0;
       dma_copy_q        <= 1'b0;
       dma_hs_q          <= 1'b0;
       dma_hash_q        <= 1'b0;
@@ -869,7 +890,6 @@ module sep_fcov (
       // when payload_len > 0.
       if (km_wr_data) begin
         if (km_cmd_hdr_next_q) begin
-          km_cmd_q          <= wr_data[15:8];
           km_cmd_len_q      <= wr_data[23:16];
           km_cmd_idx_q      <= 9'd0;
           km_cmd_hdr_next_q <= (wr_data[23:16] == 8'h00);
@@ -888,6 +908,7 @@ module sep_fcov (
       // would shift a later word onto index 4 and false-hit cp_generate.
       if (km_rd_data && km_rsp_arm_q) begin
         km_rsp_idx_q <= km_rsp_idx_q + 9'd1;
+        if (km_rsp_idx_q == 9'd0) km_rsp_is_cmd_q <= (rd_data[15:8] == KmRespCmd);
         if (km_rsp_idx_q == 9'd2) km_rsp_cmd_q <= rd_data[7:0];
         if (km_rsp_idx_q == 9'd3) km_rsp_rc_q <= rd_data[7:0];
         if (km_rsp_idx_q >= 9'd4) km_rsp_arm_q <= 1'b0;
@@ -1044,8 +1065,8 @@ module sep_fcov (
     }
     // Each cross cell is one configured mode/key size/operation that reached
     // OUTPUT_VALID and returned a data word. The suite walks nine ENC cells
-    // plus the ECB/CBC decrypt legs of the round-trip; CTR DECRYPT is Phase 2
-    // and is excluded rather than left as a permanently empty cell.
+    // plus the ECB/CBC decrypt legs of the round-trip; no suite test issues CTR
+    // DECRYPT, so that cell is excluded rather than left permanently empty.
     x_mode_key_op: cross cp_mode, cp_key, cp_op{
       ignore_bins ctr_decrypt = binsof (cp_mode.ctr) && binsof (cp_op.dec);
     }
@@ -1135,16 +1156,44 @@ module sep_fcov (
     cp_km: coverpoint edn_km_beat {bins km_sink = {1'b1};}
   endgroup
 
-  covergroup sep_km_command_sideload_cg with function sample (logic [3:0] dest);
+  covergroup sep_km_command_sideload_cg with function sample (logic [7:0] dest);
     option.per_instance = 1;
     option.name = "sep_km_command_sideload_cg";
-    // One cell per consumer, taken from the CMD_KEY_TRANSFER destination mask.
+    // One cell per consumer, taken from RETURN_ARG dest_engine on rc 0.
     cp_dest: coverpoint dest {
       bins hmac = {KmDestHmac};
       bins kmac = {KmDestKmac};
       bins aes = {KmDestAes};
       bins otbn = {KmDestOtbn};
+      bins abr_mldsa_seed = {KmDestAbrMldsaSeed};
     }
+  endgroup
+
+  covergroup sep_km_host_cmd_cg with function sample (logic [7:0] cmd_id);
+    option.per_instance = 1;
+    option.name = "sep_km_host_cmd_cg";
+    cp_cmd: coverpoint cmd_id {
+      bins hw_ver = {KmCmdHwVer};
+      bins rom_ver = {KmCmdRomVer};
+      bins sram_ver = {KmCmdSramVer};
+      bins recov_ack = {KmCmdRecovAck};
+      bins exec_rom = {KmCmdExecRom};
+      bins sram_load_exec = {KmCmdSramLoadExec};
+      bins sram_exec = {KmCmdSramExec};
+      bins otp_lock = {KmCmdOtpLock};
+    }
+  endgroup
+
+  covergroup sep_km_wipe_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_km_wipe_cg";
+    cp_wipe: coverpoint km_wipe {bins wipe_state = {1'b1};}
+  endgroup
+
+  covergroup sep_km_sw_reset_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_km_sw_reset_cg";
+    cp_rel: coverpoint km_swrst_rel {bins km_released = {1'b1};}
   endgroup
 
   covergroup sep_km_generate_cg @(posedge clk_i);
@@ -1401,6 +1450,9 @@ module sep_fcov (
   sep_abr_keygen_cg           u_sep_abr_keygen_cg           = new();
   sep_esrc_edn_flow_cg        u_sep_esrc_edn_flow_cg        = new();
   sep_km_command_sideload_cg  u_sep_km_command_sideload_cg  = new();
+  sep_km_host_cmd_cg          u_sep_km_host_cmd_cg          = new();
+  sep_km_wipe_cg              u_sep_km_wipe_cg              = new();
+  sep_km_sw_reset_cg          u_sep_km_sw_reset_cg          = new();
   sep_km_generate_cg          u_sep_km_generate_cg          = new();
   sep_dma_copy_hash_cg        u_sep_dma_copy_hash_cg        = new();
   sep_spi_flash_cg            u_sep_spi_flash_cg            = new();
@@ -1426,7 +1478,8 @@ module sep_fcov (
       if (kmac_cell_done)
         u_sep_kmac_mode_cg.sample(kmac_en_q, kmac_mode_q, kmac_str_q,
                                   kmac_keylen_valid_q ? kmac_keylen_q : 3'd7, kmac_sideload_q);
-      if (km_transfer_dest) u_sep_km_command_sideload_cg.sample(wr_data[3:0]);
+      if (km_xfer_scored) u_sep_km_command_sideload_cg.sample(rd_data[15:8]);
+      if (km_host_cmd_seen) u_sep_km_host_cmd_cg.sample(km_rsp_cmd_q);
       if (efuse_rd_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_read_state_i, 1'b0);
       if (efuse_pg_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_program_state_i, 1'b1);
       if (lc_diff_ok) u_sep_lc_state_cg.sample(lc_raw);

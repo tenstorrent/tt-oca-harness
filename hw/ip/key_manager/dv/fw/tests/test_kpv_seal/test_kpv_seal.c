@@ -28,8 +28,6 @@
  *     is shown to have destroyed it.
  *   - A wipe releases a sealed slot outright, zeroing data and every lock.
  *
- * Requirements: KPV seal (#201)
- *
  * Run with:
  *   make run_fw FW_TEST=test_kpv_seal
  */

@@ -14,6 +14,12 @@ from smc_base_test import smc_base_test
 class smc_smbus_pmbus_test(smc_base_test):
     """P2-A / P2-11: SMBus ARA + PEC + PMBus Linear11 proof."""
 
+    required_evidence = (
+        "CHK-SMBUS-ARA",
+        "CHK-SMBUS-PEC-REF",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

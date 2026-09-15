@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """CPU_CTRL MUTEX[0]/MUTEX[1]/SEMA[0] take / deny / release over SEP_IN AXI.
 
-EXPECT-SOURCE (SPEC, not RTL): ``hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl``
-@ repo revision 8f738aca --
+EXPECT-SOURCE (SPEC, not RTL): ``hw/sys/smc/regs/blocks/cpu_ctrl/cpu_ctrl.rdl``:
 
 * ``reg MUTEX`` (rdl:270-281), ``field ... mutex[0:0] = 0x1``, desc: "HW mutex.
   Reads will attempt to acquire mutex, 1 on success. If the mutex is already
@@ -167,12 +166,11 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
         )
 
         # ---- Reconciliation: the compares must have reached a real checker ----
-        # Loop integrity + scoreboard cross-check. This sweep issues no bounded
-        # read, so `assert_all_reachable` does NOT assert
-        # `timeouts == 0` (a no-response raises in the AXI driver instead); what
-        # it does assert is that the scoreboard actually checked at least as many
-        # SYS AXI items as this sequence issued -- which the sequence's own
-        # counter cannot see ([NO-ZERO-ACTIVITY-PASS]).
+        # Loop integrity + scoreboard cross-check: `assert_all_reachable`
+        # requires the scoreboard to have checked at least as many SYS AXI items
+        # as this sequence issued, which the sequence's own counter cannot see
+        # ([NO-ZERO-ACTIVITY-PASS]). A no-response raises in the AXI driver, so
+        # no timeout count is asserted here.
         self.assert_all_reachable(EXPECTED_ACCESSES, "CPU_CTRL MUTEX/SEMA")
         sb = self.env.scoreboard
         # Fail-capable value floor: the scoreboard books a value check only

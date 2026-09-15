@@ -9,8 +9,8 @@
 #include "smc_test.h"
 #include "smc.h"
 
-/* SPM window size this test bit-bangs near the boundary (placeholder span,
- * intentionally smaller than the full SMC_TOP_SPM_MEMORY_SIZE). */
+/* SPM span whose lower and upper edges this test writes; a sub-range of
+ * SMC_TOP_SPM_MEMORY_SIZE. */
 #define SPM_TEST_WINDOW_SIZE 0x1000u
 
 METAL_LOCK_DECLARE(mmio_lock);

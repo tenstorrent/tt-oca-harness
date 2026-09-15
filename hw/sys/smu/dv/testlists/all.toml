@@ -19,9 +19,13 @@ schema_version = 1
 # implementation as well as a cocotb one, and the SV-UVM harness is the `UVM`
 # shape of tb/tb_top.sv -- this DUT. Its entry carries the
 # `module = { cocotb, uvm }` binding map that `--dut smu_block --framework uvm`
-# resolves through. Its cocotb side is enrolled in migrated_dtp on the wrapper,
+# resolves through. Its cocotb side is enrolled in dtp_under_smu on the wrapper,
 # and that is the copy the regression scores.
 
+# testlists/wrapper.toml, the `--dut smu` regression, is not an include of this
+# file: smu_sim_cfg.toml [testlist] selects it directly, and the two DUTs have
+# separate configs and separate testlist roots, so no wrapper leaf is reachable
+# from here and none is meant to be.
 includes = ["dtp.toml"]
 
 [[groups]]
@@ -36,7 +40,7 @@ tests = [
 # carries no firmware, which matters: the hosted runner in .github/actions/dv-run installs
 # Verilator and nothing else, so a group needing the RISC-V toolchain cannot
 # run there. It is also the scenario the SV-UVM view binds to, so
-# `--framework uvm --items smoke --skip-unimplemented` still selects something.
+# `--framework uvm --items smoke` selects it.
 [[groups]]
 name = "smoke"
 tests = [

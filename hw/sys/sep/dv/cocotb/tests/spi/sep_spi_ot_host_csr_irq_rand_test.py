@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI host control-plane CSR / IRQ / error breadth (PyUVM, no_cpu).
 
-SPI-subsystem Phase-2 rep SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
+SPI host CSR/IRQ breadth. A combined-per-group `[RAND-REP]` that folds the
 reference suite OT-SPI host-control directed family (fw spi_ot_reg / tx_fifo /
 cmd_queue / interrupt / error_handling / watermark / enable_disable) into ONE rep.
 Not folded, because nothing here checks them: clock_config (CFG.CLKDIV is
@@ -13,7 +13,7 @@ the OT SPI host is already the active bare-SEP path). Drives the SEP-integrated 
 firmware, no flash BFM) -- this is the host CONTROL plane, DISTINCT from SPI flash command breadth
 (flash command datapath) and `sep_spi_ot_dma_rx_test` (flash READ + DMA).
 
-Randomization (SINGLE source of randomness; AGENTS.md s9/s11): SepSpiHostCfg seeds
+Randomization (SINGLE source of randomness): SepSpiHostCfg seeds
 legal field values for the register R/W walk + the watermark threshold from the
 runner seed. The golden is the documented reset values + RW/W1C/RO field semantics
 (seq_lib/sep_spi_host_csr_seq.py, taken from the generated spi_controller reg
@@ -189,8 +189,8 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
             )
             # Drive the bits the generated block does not implement and require
             # them to read back zero. The probe pattern is built from impl_mask,
-            # not from wmask: CTRL's SW_RST is implemented but deliberately outside
-            # the walk, and driving it here would soft-reset the core mid-walk.
+            # not from wmask: CTRL's SW_RST is implemented but outside the walk,
+            # since driving it here would soft-reset the core mid-walk.
             probe = ~impl_mask & 0xFFFF_FFFF
             if probe:
                 await self.spi.wr(addr, target | probe)
@@ -217,9 +217,9 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
 
     # ---- CHK-INTR ---------------------------------------------------------
     async def _chk_intr(self) -> None:
-        # This spi_controller drives INTR_STATUS as a LIVE mirror:
+        # INTR_STATUS is a live mirror:
         #   INTR_STATUS.X = (source_X | INTR_TEST.X) & INTR_ENABLE.X
-        # so INTR_ENABLE gates the state bit itself (not just the irq line), and
+        # so INTR_ENABLE gates the status bit itself (not just the irq line), and
         # clearing the source/test deasserts it (no W1C). Prove the INTR_TEST path
         # AND the INTR_ENABLE mask for both bits. EVENT_ENABLE/ERROR_STATUS are
         # clean here, so INTR_TEST is the only source.
@@ -309,9 +309,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 await self.spi.wr(CMD, CMD_DIR_TX)
 
         async def trig_accessinval():
-            # RTL access_valid accepts 1/2/4-byte contiguous strobes, not 3-byte
-            # 4'b0111. A 32-bit beat of length 3 is a real DUT write, not a
-            # non-contiguous strobe the AXI master cannot express.
+            # ACCESSINVAL trigger: a 3-byte TXDATA beat (contiguous 4'b0111).
+            # Legal TXDATA beats are 1, 2, or 4 bytes. A 32-bit beat of length 3
+            # is a real bus write, not a non-contiguous strobe the AXI master
+            # cannot express.
             await self.spi.wr(
                 TXDATA, 0x00A5A5A5, length=3, size=2, allow_unverified_write_resp=True
             )

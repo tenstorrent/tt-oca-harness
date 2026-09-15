@@ -125,8 +125,8 @@ def lc_state_next(
     Everything else follows from those three, including the destinations the
     chapter never names: from PROD_END every reachable set lands outside the
     named set, which is exactly the chapter's "the only permitted transition is
-    to INVALID". Do not re-add a destination table -- it would be a second,
-    weaker statement of the same rule.
+    to INVALID". A destination table would be a second, weaker statement of the
+    same rule.
 
     ``sip_match`` / ``chiplet_match`` are the token-comparator verdicts
     (``TOKEN_MATCH_CODE`` presented, not merely a token written).
@@ -154,7 +154,7 @@ def is_valid_lc_transition(prev: int, cur: int) -> bool:
       * Nothing leaves INVALID.
 
     A same-state step is always allowed (a resense of an unchanged image, or a
-    bit-0 set inside RMA_SIP / RMA_CHIPLET). This deliberately does NOT freeze
+    bit-0 set inside RMA_SIP / RMA_CHIPLET). This does not freeze
     PROD_END or RMA_CHIPLET: the chapter permits PROD_END -> INVALID, and bit 0
     is a don't-care within an RMA state.
     """

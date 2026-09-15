@@ -27,8 +27,8 @@ Protection_. This section records how they apply to the SMC eFuse controller.
 |Class 1a (confidentiality)
 |_none_
 |The SMC fuse map holds no device secrets -- it carries identifiers
-(`CHIPLET_ID`, `PACKAGE_ID`, `I2C_I3C_ID`), memory repair data (`BIRA`), and
-topology / clocking / SPI configuration. There are no keys, no UIDs used as key
+(`JTAG_PUBLIC_IDENTITY`, `I2C_I3C_ID`), boot configuration (`SMC_CONFIG`,
+`OCCP_TRANSPORT_TIMEOUT`), and spare regions. There are no keys, no UIDs used as key
 material, and no token registers. Consequently no confidentiality masking is
 required.
 

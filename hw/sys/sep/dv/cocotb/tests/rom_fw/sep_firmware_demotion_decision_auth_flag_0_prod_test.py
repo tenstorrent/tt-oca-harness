@@ -10,9 +10,9 @@ first of those for the mechanism and the second for ``+SECURE_BOOT_DIS``.
 **THIS IS A NEGATIVE CONTROL, AND THAT IS ITS WHOLE VALUE.** ``+AUTH_FLAG_0``
 sets ``usage_constraints.flags`` bit 0 -- the BL1 demotion request -- while
 ``selector_bits`` bit 17 stays clear. ``rom_main.c`` therefore does not take
-the first arm, never executes, and the request is discarded: BL0
+the first arm, and the request is discarded: BL0
 takes the ``else``, prints ``DEMOTE: BL2 deferred, lock non-demoted``
-, writes DEMOTE_1 **not demoted, locked**.
+and writes DEMOTE_1 **not demoted, locked**.
 
 A ROM that read ``flags[0]`` without first testing the selector bit -- or that
 ORed the two -- would write ``demote = 1`` here and this testcase would fail on
@@ -23,17 +23,16 @@ Two members of the family have that property and neither of the other five does:
 this one and the O4 sibling, which also sets ``flags[0]`` with the selector clear
 and would catch a ROM that routed into the selector arm on ``flags[0]`` alone.
 They are not interchangeable, because they catch it through different failures --
-here a WRONG VALUE in a written register, there a register written AT ALL. R3's
+here a WRONG VALUE in a written register, there a register written AT ALL. The
 O2a member sets both bits, so its ``demote = 1`` is correct under either reading,
-and the three PROD_END members never reach.
+and the three PROD_END members never reach the ``else``.
 
 The reference makes the same distinction for the same reason: with the selector
 bit clear its checker expects ``STATUS: DEMOTION_NOT_SELECTED`` regardless of
 ``+AUTH_FLAG_0`` (``sep_demotion_uid_checker.py``, which reads
 ``UNAUTH_FLAG_0`` and never ``AUTH_FLAG_0``).
 
-**Collapse note, stated because the honest claim is narrower than the tracker's
-row count.** ``no_flag_prod`` (tracker row 111, not in this batch) drives
+**Collapse note.** ``no_flag_prod`` (no testcase) drives
 (sel, auth, bl2) = (0, 0, 0) and produces this same O5 outcome, so it is
 covered-by-O5. On the DEMOTION inputs the two differ only in
 ``usage_constraints.flags`` bit 0 -- which this member asserts from the packed
@@ -46,7 +45,7 @@ above; what it does not add is a second ROM path.
 
 Both members' registers are read at the END of simulation, after BL1 has run to
 completion. That is sound here for a reason worth stating: DEMOTE_1 is written
-locked, ``sep_lifecycle_ctrl.sv`` derive the DEMOTE field's
+locked, ``sep_lifecycle_ctrl.sv`` derives the DEMOTE field's
 software write-enable from ``~lock``, and the LOCK field is
 write-one-to-set with no hardware clear (``sep_lifecycle_ctrl.rdl:23-36``), so
 neither field can be walked back by BL1 or by anything after it.
@@ -80,8 +79,8 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_test(sep_demotion_prod_bas
     demotion_values = ("BL2_DEMOTE_DEC=0",)
 
     # rom_main.c lc_write_demotion(demotion_reg=false, lock=true). demotion_reg
-    # is still its initialiser because never runs. DEMOTE_2 is written
-    # only, i.e. only at PROD_END, so lock 0 here means never written --
-    # sound because the field is write-one-to-set (sep_lifecycle_ctrl.rdl:31-36).
+    # keeps its initialiser because the selector arm never runs. DEMOTE_2 is
+    # written only at PROD_END, so lock 0 here means never written -- sound
+    # because the field is write-one-to-set (sep_lifecycle_ctrl.rdl:31-36).
     expect_demote_1 = (0, 1)
     expect_demote_2 = (0, 0)

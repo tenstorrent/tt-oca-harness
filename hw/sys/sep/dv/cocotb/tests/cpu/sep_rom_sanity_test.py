@@ -80,7 +80,7 @@ class sep_rom_sanity_test(sep_base_test):
         )
         assert "PASS: 7/7" in console, "firmware did not report the 7/7 summary"
         self.logger.info(
-            "CHK-ALL confirmed host-side: %d/%d ROM IFU function checks present in the console",
+            "CHK-ALL PASS: confirmed host-side, %d/%d ROM IFU function checks present in the console",
             seen,
             _EXPECTED_IFU_CHECKS,
         )

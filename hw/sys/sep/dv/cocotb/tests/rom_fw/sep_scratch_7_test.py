@@ -15,28 +15,18 @@ cold-booting. ``bootrom/prod/src/vector.S``::
     <status: WARM_RESET_JUMP>
     jr   t1                        # slot left intact, see below
 
-This covers the accept-and-jump arm only. The reject arm is covered only IN PART
-by ``sep_warm_reset_invalid_hang_test``: that test seeds
-``WARM_HANDLER_RANGE_END``, so it drives the UPPER bound (``bgeu``) alone. The
-LOWER bound (``bltu``, an address below ICCM base) has no testcase in this suite,
-and neither does the ``beqz`` early-out to ``cold_boot``. Do not read "the reject
-arm is covered" as covering the whole reject arm.
+This covers the accept-and-jump arm only. The reject arm's UPPER bound (``bgeu``)
+is ``sep_warm_reset_invalid_hang_test`` (seeds ``WARM_HANDLER_RANGE_END``), its
+LOWER bound (``bltu``) is ``sep_warm_reset_below_range_hang_test``, and the
+``beqz`` early-out to ``cold_boot`` is ``sep_warm_reset_unarmed_cold_boot_test``.
 
-COLD SCRATCH 7, AND ICCM, AND THAT IS A CORRECTION. The ROM reads
-``cold_scratch[7]`` and range-checks against SEP ICCM
-[0xC0000000, 0xC0040000), matching ``sep-boot-flow.puml:42-56``.
-
-It used to read WARM scratch 0 and check against SEP SRAM, and this test used to
-seed warm scratch 0 to match. Both were wrong against the spec, and the pair was
-GREEN -- the test faithfully verified what the ROM did, so it could not possibly
-detect that the ROM did the wrong thing. The spec picks the COLD bank for a
-reason it states outright: that register "maintains value across warm/watchdog
-resets", which is the entire point of a handler address that has to survive the
-reset it is dispatching from. The warm bank does not retain -- its
-``arst_n = sep_reset_n & wdt_rst_ni`` -- which had been filed as an RTL blocker
-(BLK-003) when it was really firmware parking a value in a bank that never
-promised to keep it. See ``FINDINGS.md`` F28 and
-``dv/docs/rom_boot_flow_vs_reference.md``.
+COLD SCRATCH 7, AND ICCM. The ROM reads ``cold_scratch[7]`` and range-checks
+against SEP ICCM [0xC0000000, 0xC0040000), matching ``sep-boot-flow.puml:42-56``.
+The spec picks the COLD bank for a reason it states outright: that register
+"maintains value across warm/watchdog resets", which is the entire point of a
+handler address that has to survive the reset it is dispatching from. The warm
+bank does not retain -- its ``arst_n = sep_reset_n & wdt_rst_ni`` -- so a handler
+parked there would be wiped by the very reset it should survive.
 
 WHY THE JUMP TARGET IS A REAL INSTRUCTION. Seeding an in-range address that holds
 garbage and keying off the resulting exception does not work here: this ROM's
@@ -47,7 +37,7 @@ ICCM by ``+sep_iccm_word`` with ECC computed by the testbench, and the evidence 
 the retired PC, which proves control reached exactly the seeded address rather
 than merely that some exception occurred. ICCM carries SECDED, so a raw write
 would read back as an ECC error rather than an instruction -- which is why this
-needs a dedicated poke rather than the ``+sep_sram_hex`` image it used before.
+needs a dedicated ECC-aware poke.
 
 ``SepBootScoreboard`` requires ``fw_done`` plus ``fw_pass``; the warm handler never
 writes the mailbox, so a passing warm dispatch would be scored as a failure. The
@@ -82,7 +72,7 @@ _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _ICCM_END = _ICCM_BASE + sym("SEP_ICCM_MEM_SIZE")
 
-# Handler entry, and the value seeded into cold_scratch[7]. Deliberately offset
+# Handler entry, and the value seeded into cold_scratch[7]. Offset
 # from the ICCM base so "the ROM used the scratch value" and "the ROM used the
 # range base" are distinguishable outcomes.
 #
@@ -97,12 +87,8 @@ _HANDLER_INSN = 0x0000_006F
 # SEP_STATUS_ID is 1 for BL0).
 #   STATUS_TYPE_INFO(0x01)  + SEP_MSG_WARM_RESET_JUMP(0x68)
 _STATUS_WARM_RESET_JUMP = 0x0101_0068
-#   STATUS_TYPE_DEBUG(0x80) + SEP_MSG_BOOTROM_START(0x44). Written in cold_boot,
-#   i.e. only reachable on the arm this test must NOT take -- so its absence is
-#   the proof that the ROM did not fall through.
-# cold_boot's out-of-range poison for the handler slot (vector.S). Its
-# ABSENCE is what proves the warm path was taken; unlike BOOTROM_START it
-# is written only by cold_boot in both the current and the spec-correct ROM.
+# cold_boot's out-of-range poison for the handler slot (vector.S). Only cold_boot
+# writes it, so its ABSENCE is what proves the warm path was taken.
 _COLD_POISON = 0xFFFF_FFFF
 
 # Fuse sense is not skipped (see run_scenario), and the core is held until it
@@ -171,10 +157,8 @@ class sep_scratch_7_test(sep_base_test):
         # The sampler has to be running BEFORE reset is released. The transient
         # fact this test depends on -- the seed being visible in cold_scratch[7]
         # while the ROM reads it -- occurs inside bring_up_cpu_boot, so sampling
-        # afterwards would race it away. (This used to say "two facts": the second
-        # was the ROM poisoning the slot back to 0, which the accept arm no longer
-        # does -- FINDINGS F29. The slot now simply retains the seed, which is
-        # asserted directly by CHK-RETAINED rather than caught in flight.)
+        # afterwards would race it away. The slot's retention is asserted by
+        # CHK-RETAINED after the run rather than caught in flight.
         obs = _WarmDispatchObserver(self)
         sampler = cocotb.start_soon(obs.run(dut))
         await self.bring_up_cpu_boot(
@@ -228,12 +212,10 @@ class _WarmDispatchObserver:
             # the negative checks are evaluated over what was recorded, and the
             # forbidden cold-boot status can only be written before the jump --
             # i.e. it would already be in status_seq if it had happened.
-            # `cold7_seq[-1] == 0` used to be a fourth term here, from when the
-            # ROM poisoned the slot before jumping. The ROM now leaves it intact
-            # (FINDINGS F29), so that term could never become true and the
-            # sampler ran the full budget every time -- 400,000 cycles of it --
-            # which also let post-jump execution pollute the sequences this test
-            # then asserts on. The retention check itself lives after the loop.
+            # The slot's value is not a stop term: the accept arm leaves it intact,
+            # so such a term would never fire, the sampler would run its whole
+            # budget, and post-jump execution would pollute the sequences asserted
+            # below. The retention check lives after the loop.
             if _STATUS_WARM_RESET_JUMP in self.status_seq and _HANDLER_ADDR in self.pcs:
                 log.info("warm dispatch observed at cycle %d; stopping sampler", cycle)
                 return
@@ -292,16 +274,14 @@ class _WarmDispatchObserver:
             f"did not arrive there. Distinct PCs seen: "
             f"{sorted(hex(p) for p in self.pcs)[:32]}"
         )
-        log.info("CHK-WARM-JUMP: retired at 0x%08x", _HANDLER_ADDR)
+        log.info("CHK-WARM-JUMP PASS: retired at 0x%08x", _HANDLER_ADDR)
 
-        # CHK-RETAINED: the slot is left ALONE, which is the opposite of what
-        # this check used to require and is what the spec asks for.
+        # CHK-RETAINED: the slot is left ALONE, as the spec asks.
         # sep-boot-flow.puml:46-48 branches to the address and writes nothing;
-        # the reference does the same (tt_sep vector.S:140-141). Persistence is
-        # the point of a watchdog handler slot: BL1 parks its re-entry address
-        # here before arming the watchdog, so the SECOND watchdog reset has to
-        # reach the handler too. The ROM used to poison it to 0, which silently
-        # disarmed recovery after the first dispatch. See FINDINGS F29.
+        # the reference's vector.S does the same. Persistence is the point of a
+        # watchdog handler slot: BL1 parks its re-entry address here before arming
+        # the watchdog, so the SECOND watchdog reset has to reach the handler too.
+        # Poisoning it to 0 would silently disarm recovery after the first dispatch.
         assert self.cold7_seq[-1] == _HANDLER_ADDR, (
             f"cold_scratch[7] ended at {hex(self.cold7_seq[-1])} rather than the "
             f"seeded handler address 0x{_HANDLER_ADDR:08x}. The ROM must leave the "
@@ -316,16 +296,12 @@ class _WarmDispatchObserver:
         # CHK-NO-COLD: the negative half of the dispatch -- proof the ROM did not
         # simply fall through to cold_boot.
         #
-        # DELIBERATELY NOT KEYED ON BOOTROM_START, and that is the point. This
-        # check used to assert BOOTROM_START was absent, because this ROM writes
-        # it inside cold_boot. But sep-boot-flow.puml:40 puts BOOTROM_START BEFORE
-        # the scratch-7 decision, so a spec-correct ROM emits it on the warm path
-        # too. Keying on its absence made this check a regression lock holding the
-        # ROM at a known divergence (FINDINGS F30): fixing the ROM would have
-        # broken the test, and someone would have "fixed" the test by reverting
-        # the ROM. That is precisely the failure this file's own header describes.
+        # NOT KEYED ON BOOTROM_START: sep-boot-flow.puml:40 puts BOOTROM_START
+        # BEFORE the scratch-7 decision, so a spec-correct ROM emits it on the warm
+        # path too, and keying on its absence would lock this test to a ROM that
+        # writes it inside cold_boot.
         #
-        # The two witnesses below hold whether or not F30 is fixed. cold_boot's
+        # The two witnesses below hold either way. cold_boot's
         # 0xFFFFFFFF write to the slot is unconditional on that path and cannot be
         # confused with anything the warm path does, and console output stays a
         # cold-boot-only signal because every simputs call is downstream of the C

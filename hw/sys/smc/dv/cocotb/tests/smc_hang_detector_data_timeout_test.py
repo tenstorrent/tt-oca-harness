@@ -15,6 +15,17 @@ from smc_base_test import smc_base_test
 class smc_hang_detector_data_timeout_test(smc_base_test):
     """DATA_ACCEL outstanding stall → timeout irq; unique vs SEP/SYS timeout."""
 
+    required_evidence = (
+        "CHK-HANG-DATA-TIMEOUT-ACCEPT",
+        "CHK-HANG-DATA-TIMEOUT-ARM",
+        "CHK-HANG-DATA-TIMEOUT-BASIC",
+        "CHK-HANG-DATA-TIMEOUT-DISABLED",
+        "CHK-HANG-DATA-TIMEOUT-DROP",
+        "CHK-HANG-DATA-TIMEOUT-FIRE",
+        "CHK-HANG-DATA-TIMEOUT-SEP-POS",
+    )
+    min_evidence = 7
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

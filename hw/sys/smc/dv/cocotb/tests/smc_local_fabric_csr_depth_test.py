@@ -16,6 +16,9 @@ from smc_base_test import smc_base_test
 class smc_local_fabric_csr_depth_test(smc_base_test):
     """Run a representative local-fabric CSR sweep."""
 
+    required_evidence = ("CHK-LOCAL-FABRIC-CSR-DEPTH",)
+    min_evidence = 1
+
     async def run_scenario(self) -> None:
         seq = smc_local_fabric_csr_depth_test_seq("local_fabric_csr_depth_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)

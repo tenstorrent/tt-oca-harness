@@ -15,6 +15,15 @@ from smc_base_test import smc_base_test
 class smc_efuse_boundary_signals_test(smc_base_test):
     """Sense completes under ext_boot hold; delayed fuse_reset_n waits release."""
 
+    required_evidence = (
+        "CHK-EFUSE-BND-BASIC",
+        "CHK-EFUSE-BND-HOLD",
+        "CHK-EFUSE-BND-MAP",
+        "CHK-EFUSE-BND-REL",
+        "CHK-EFUSE-BND-STAY",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

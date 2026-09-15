@@ -15,6 +15,7 @@ from enum import Enum
 from typing import Any
 
 __all__ = [
+    "DEFAULT_TIMEOUT_NS",
     "PROT_INSTRUCTION",
     "PROT_NONSECURE",
     "PROT_PRIVILEGED",
@@ -26,6 +27,7 @@ __all__ = [
     "OcahAxiProtocol",
     "axi_resp_ok",
     "bytes_to_int",
+    "default_timeout_ns",
     "normalize_resp_list",
     "resp_name",
     "words_from_bytes",
@@ -37,6 +39,23 @@ RESP_EXOKAY = 1
 RESP_SLVERR = 2
 RESP_DECERR = 3
 RESP_TIMEOUT = -1
+
+# Bound of every blocking master operation when neither the instance nor the
+# call names one; the ``+OCAH_AXI_TIMEOUT_NS`` plusarg overrides it for a run.
+DEFAULT_TIMEOUT_NS = 500_000
+_PLUSARG_TIMEOUT_NS = "OCAH_AXI_TIMEOUT_NS"
+
+
+def default_timeout_ns() -> int:
+    """Return the run's default master bound in ns (plusarg, else ``DEFAULT_TIMEOUT_NS``)."""
+    try:
+        import cocotb
+
+        raw = cocotb.plusargs.get(_PLUSARG_TIMEOUT_NS)
+    except Exception:  # noqa: BLE001 - plusargs exist only inside a simulator run
+        raw = None
+    return DEFAULT_TIMEOUT_NS if raw is None else int(raw)
+
 
 # AxPROT bit values (IHI 0022 A4.7): OR them into the `prot` argument.
 PROT_PRIVILEGED = 1

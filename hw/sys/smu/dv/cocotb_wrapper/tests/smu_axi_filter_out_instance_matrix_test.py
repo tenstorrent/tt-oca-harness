@@ -13,7 +13,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_axi_filter_out_instance_matrix_test(smu_base_test):
-    """Outbound filter S1 DECODE; S2/S3 deferred (needs ext_out); no Force."""
+    """Outbound filter S1 DECODE; S2/S3 need an ext_out peer; no Force."""
 
     use_shared_env = True
 

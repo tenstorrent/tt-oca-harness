@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Targeted mutation of a packed SEP boot manifest, for negative boot testcases.
 
-Mutating the packed bytes here rather than in a build step keeps these testcases
-Python-only: no new firmware profile and no HDL rebuild.
+The mutations operate on the packed bytes, so these testcases need no firmware
+profile and no HDL rebuild.
 
 LAYOUT AND THE TBS BOUNDARY. From ``bootrom/prod/include/manifest.h:198-234``, a
 manifest is 1184 bytes::
@@ -19,10 +19,10 @@ against the shipped image rather than trusting it:
   * A field OUTSIDE the TBS (``signature``, ``flag_args``) is written directly --
     the hash covers only the TBS, and the signature only the hash.
   * A field INSIDE the TBS invalidates ``manifest_hash``, so :func:`rehash` must
-    follow. Re-signing is not needed and deliberately not done: the ROM checks the
-    header and the hash (``manifest_load.c`` then), then
+    follow. The mutators do not re-sign: the ROM checks the header and the hash
+    (``manifest_load.c``), then
     security_version (``manifest_crypto.c``), then inside
-    ``validate_signature``  the signature_type, public_key_sel and
+    ``validate_signature`` the signature_type, public_key_sel and
     revocation, and only then ``rsa_3072_verify`` (``manifest_crypto.c``). So
     every in-TBS mutation used here is rejected before the RSA step and the stale
     signature is never reached. A mutation that must survive PAST RSA verification
@@ -79,9 +79,7 @@ PUBLIC_KEY_LEN = 384  # manifest.h, RSA_3072_KEY_SZ_BYTES
 
 # manifest.h. The format defines both; this ROM implements only RSA-3072
 # and rejects every other value at manifest_crypto.c, so ECC_P_256 is
-# named here as the map's other assigned value rather than as a recommended
-# stimulus -- see sep_firmware_backup_invalid_signature_type_test for why the
-# reference deliberately avoids it.
+# named here as the map's other assigned value, not as a stimulus.
 SIG_TYPE_RSA_3072 = 1
 SIG_TYPE_ECC_P_256 = 2
 # The packer's ManifestSignatureType.NO_SIGNATURE
@@ -273,9 +271,9 @@ def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
     would still take some path, so the testcase would pass for a reason nobody chose.
 
     The packer config supplies the missing half. ``secure_boot_test.yaml`` sets
-    ``selectors.life_cycle_states: 1`` with every other selector 0 (primary,
-    backup), ``life_cycle_states: 0x7`` (,) and
-    ``BL1_demotion: 0`` (,). Reading all three back and finding exactly
+    ``selectors.life_cycle_states: 1`` with every other selector 0,
+    ``life_cycle_states: 0x7`` and ``BL1_demotion: 0`` for both the primary and
+    the backup slot. Reading all three back and finding exactly
     those values is a three-way agreement that would not survive a field moving: a
     shifted window would have to land on 0x10000, 0x7 and 0 simultaneously.
 

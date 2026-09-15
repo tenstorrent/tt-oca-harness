@@ -6,10 +6,10 @@ After the outbound filter is programmed pass-all, one JTAG AXI write is issued
 at the SYS_OUT responder window (0x0200_0000). A clocked sticky observer records
 whether AW/W/B ever handshook on the JTAG ingress and on the SYS_OUT boundary.
 
-Healthy path: write completes and every channel handshook. The claimed
-four-state hang is AW-at-SYS_OUT without W-at-SYS_OUT after JTAG W was
-accepted. Those two outcomes are different assertion texts so a bare timeout
-cannot be mistaken for the split.
+Healthy path: write completes and every channel handshook. The four-state
+hang this test discriminates is AW-at-SYS_OUT without W-at-SYS_OUT after JTAG
+W was accepted. Those two outcomes are different assertion texts so a bare
+timeout cannot be mistaken for the split.
 """
 
 from __future__ import annotations
@@ -71,6 +71,9 @@ def _fmt_watch(watch: _HandshakeWatch) -> str:
 @pyuvm.test()
 class smc_sys_out_aw_w_split_test(smc_base_test):
     """One SYS_OUT write; fail specifically on AW-without-W at the boundary."""
+
+    required_evidence = ("CHK-SYS-OUT-WR-COMPLETE",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 

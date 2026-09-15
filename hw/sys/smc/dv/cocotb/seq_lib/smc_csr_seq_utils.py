@@ -15,6 +15,7 @@ from .smc_addr_map import (
     smc_indexed_addr,
 )
 from .smc_base_test_seq import smc_base_test_seq
+from .smc_efuse_vip_utils import EFUSE_BLOCKED_READ_DATA
 
 
 class SmcCsrSeq(smc_base_test_seq):
@@ -73,19 +74,25 @@ class SmcCsrSeq(smc_base_test_seq):
         for name, addr, _expected in regs:
             await self.csr_read_allow_error(name, addr)
 
-    # AXI error-slave data signature returned by the boundary/stub responders
-    # (prim_axi_lite_err_slv macro terminators, efuse stub, etc.).
-    ERR_SLAVE_SIGNATURE = 0xBADCAB1E
+    # Data word an AXI error slave returns alongside its error response. The
+    # one place the value is specified is the eFuse architecture document
+    # (``hw/ip/efuse/doc/architecture.adoc``, JTAG access control: "When a
+    # request is blocked, the error slave returns an error response with data
+    # value 0xbadcab1e"); ``EFUSE_BLOCKED_READ_DATA`` is the DV-owned copy of
+    # that sentence. The document states the word for the eFuse error slave
+    # only; expecting it from the other error-terminated windows the sweeps
+    # probe is a DV-owned assumption, declared here rather than cited.
+    ERR_SLAVE_SIGNATURE = EFUSE_BLOCKED_READ_DATA
 
     async def csr_read_err_signature(
         self, name: str, addr: int, length: int = 4, prot: int = 0
     ) -> int:
         """Read a window terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
-        complete with an error response (SLVERR/DECERR) AND return the
-        0xBADCAB1E signature (default ``prim_axi_lite_err_slv`` RESP_DATA).
-        Used for TB-side terminators (e.g. DTP CSR) and in-RTL stubs that keep
-        that signature."""
+        complete with an error response (SLVERR/DECERR) AND return
+        ``ERR_SLAVE_SIGNATURE``, the data word the eFuse architecture document
+        specifies for a blocked request. Used for TB-side terminators (e.g. DTP
+        CSR) and design-side error slaves that return that signature."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
@@ -115,8 +122,16 @@ class SmcCsrSeq(smc_base_test_seq):
             await self.csr_read_err_signature(name, addr)
 
     async def csr_read_decerr_zero(self, name: str, addr: int, length: int = 4) -> int:
-        """Read a window terminated by DECERR + zero data (smc_ip_integration
-        gpio_ctrl / axil_extension err_slv with RESP_DATA='0)."""
+        """Read a window that must complete with an AXI error response
+        (SLVERR/DECERR) and an all-zero data word.
+
+        The zero is a DV-owned expectation, not a document-cited value: an
+        error response carries no payload, so a terminator that hands back a
+        neighbouring register's contents or a stale bus word fails here. Two
+        sequences call it: ``smc_gpio_ctrl_full_sweep_test_seq`` (the external
+        GPIO_CTRL windows) relies on this DV-owned zero alone;
+        ``smc_sideband_protocol_smoke_test_seq`` reads AVS_READBACK on an empty
+        FIFO, where memmap.adoc does fix the zero, and cites it at the call."""
         mask = (1 << (length * 8)) - 1
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
@@ -135,10 +150,6 @@ class SmcCsrSeq(smc_base_test_seq):
         got = item.rdata & mask
         assert got == 0, f"{name} @ 0x{addr:08x}: expected rdata=0, got 0x{got:0{length * 2}x}"
         return item.rdata
-
-    async def csr_read_many_decerr_zero(self, regs: list[tuple[str, int, int | None]]) -> None:
-        for name, addr, _expected in regs:
-            await self.csr_read_decerr_zero(name, addr)
 
     async def csr_read_expect_error(self, name: str, addr: int, length: int = 4) -> int:
         """Read a window that deterministically returns an AXI error response
@@ -175,7 +186,7 @@ class SmcCsrSeq(smc_base_test_seq):
         """Bounded read: tolerates DECERR **and** timeout (no-decode).
 
         Intended for coverage-gap CSR probes where the block may be
-        clock-gated or absent from the current bring-up and there is no
+        clock-gated or absent from this bench and there is no
         AXI responder to send back OKAY/DECERR. Increments `timeouts` on
         no-response, `accesses` unconditionally.
         """
@@ -209,7 +220,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
-        item.allow_timeout = True  # intentional: assert timed_out below
+        item.allow_timeout = True  # the assert below requires timed_out
         item.timeout_ns = timeout_ns
         await self.start_item(item)
         await self.finish_item(item)
@@ -237,10 +248,10 @@ class SmcCsrSeq(smc_base_test_seq):
 
     # Bound for the OVRD-write -> open-drain pad settle. The path is
     # CSR write ack (clk_smc) -> i2c_wrap OVRD -> GPIO pad mux -> the tb_top
-    # open-drain resolver (tb_top.sv:635-638), i.e. a handful of clk_smc cycles
+    # open-drain resolver (tb_top.sv:644-647), i.e. a handful of clk_smc cycles
     # plus the AXI-Lite write completion the caller already awaited. The bound is
-    # generous (~30x the observed settle) purely so a slow build cannot flake;
-    # expiry is a FAILURE, never a pass ([TIMEOUT-MUST-FAIL]).
+    # generous so a slow build cannot flake; expiry is a FAILURE, never a pass
+    # ([TIMEOUT-MUST-FAIL]).
     _I2C0_PAD_SETTLE_TIMEOUT_CYCLES = 400
     _I2C0_PAD_POLL_CYCLES = 2
     # After the expected level is first seen, require it to still hold this many
@@ -438,7 +449,7 @@ class SmcCsrSeq(smc_base_test_seq):
         self, expected_accesses: int, block: str, gated_note: str
     ) -> None:
         """Reachability gate for windows that are clock-gated or
-        absent in the current OSS bring-up (e.g. the CPU cluster before firmware
+        absent in this OSS bench (e.g. the CPU cluster before firmware
         boot, a Verilator/vendor-stubbed macro).
 
         Unlike ``assert_all_reachable`` this does not hard-fail on a no-response,
@@ -452,9 +463,9 @@ class SmcCsrSeq(smc_base_test_seq):
         * the reachable subset is response-gated (those reads DID get an AXI
           answer), giving genuine decode coverage for whatever is present.
 
-        Any gated window is logged (not silently swallowed) so the deferred
-        register-level coverage is visible rather than hidden behind a green
-        vacuous ``accesses == N``.
+        Any gated window is logged (not silently swallowed) so the register-level
+        coverage this bench cannot take is visible rather than hidden behind a
+        green vacuous ``accesses == N``.
         """
         assert self.accesses == expected_accesses, (
             f"{block}: issued {self.accesses} accesses, expected "

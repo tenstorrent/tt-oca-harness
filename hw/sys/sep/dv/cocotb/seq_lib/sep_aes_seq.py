@@ -160,8 +160,8 @@ class SepAes(SepAxiRegDriver):
         await self._configure_ecb_256(sideload=sideload, operation=AES_OP_DEC, op_name="DEC")
 
     def _key_mask_rng(self):
-        """Independent stream for KEY_SHARE1 so the test's RAND-REP key/pt
-        draws are unchanged. ``0xA5E5`` is a domain tag, not a credential."""
+        """Independent stream for KEY_SHARE1, so the share draws do not consume
+        the test's RAND-REP key/pt stream. ``0xA5E5`` is a domain tag, not a credential."""
         rng = getattr(self, "_key_mask_rng_inst", None)
         if rng is None:
             from env.sep_seeded_rng import SepSeededRng

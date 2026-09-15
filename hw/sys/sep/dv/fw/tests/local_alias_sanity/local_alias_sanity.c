@@ -331,13 +331,13 @@ static int test_boundary(void) {
 //-----------------------------------------------------------------------------
 static int test_dma_alias(void) {
     printf("\n--- Test: DMA Transfer (SRAM to SRAM via Physical Address) ---\n");
-    printf("  Note: DMA uses physical addresses only (ROPEN-009).\n");
+    printf("  Note: DMA uses physical addresses only.\n");
     printf("  Local alias (0xD000_0000) only applies to CPU/LSU traffic, not DMA.\n");
 
     // DMA will read from one SRAM region and write to another using physical addresses.
     // Note: DMA cannot use local alias addresses (0xD000_0000 range) because the
     // local alias remap in the SEP crossbar only applies to CPU/LSU bus traffic.
-    // DMA must target physical addresses (ROPEN-009).
+    // DMA must target physical addresses.
 
     // Use different SRAM regions to avoid overlap
     uint32_t src_direct_addr = OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x2000; // 0x1000_2000
@@ -456,7 +456,7 @@ int main(void) {
     report_test("SRAM Alias (0xD000_0000)", test_sram_alias());
     report_test("64-bit Access via Alias", test_64bit_alias());
     report_test("Address Boundary", test_boundary());
-    report_test("DMA Transfer (physical addr, ROPEN-009)", test_dma_alias());
+    report_test("DMA Transfer (physical addr)", test_dma_alias());
 
     // Print summary
     printf("\n========================================\n");

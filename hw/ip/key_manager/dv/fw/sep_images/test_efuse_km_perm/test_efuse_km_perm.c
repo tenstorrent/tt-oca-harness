@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_efuse_km_perm.c
- * @brief KM CPU eFuse permission-parity agent (eFuse Suite 10.1 Phase 2).
+ * @brief KM CPU eFuse permission-parity agent (Phase 2 of test_efuse_km_axil).
  *
  * Runs as the KM ROM image inside the SEP UVM testbench. Unlike the Phase-1
  * routing test (test_efuse_km_axil), this firmware is a generic, UVM-driven

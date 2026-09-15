@@ -10,7 +10,7 @@
 // sep_rom_interface_shim here, which the responder replaces with equivalent
 // read-only/write-ignored behavior), reachable only by the EL2 CPU
 // (the no_cpu AXI splice forces lsu_axi_req_o, which cannot reach it). So this is
-// cpu-mode. Phase-1 proves the CPU IFU *executes* from ROM; boot-ROM LSU read covers the LSU
+// cpu-mode. The ROM sanity test proves the CPU IFU *executes* from ROM; boot-ROM LSU read covers the LSU
 // *data* read-port + the write-silently-ignored negative contract.
 //
 // The boot ROM responder is preloaded with a known image via

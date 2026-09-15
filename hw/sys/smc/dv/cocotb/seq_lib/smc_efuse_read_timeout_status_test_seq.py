@@ -1,34 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse READ_STATUS on a timed-out read -- reproducer for issue #1603.
+"""eFuse READ_STATUS on a timed-out read.
 
-**Expected to FAIL against current RTL.** It exists to hold the evidence for
-#1603 in runnable form, and is enrolled in the `rtl_issue` group only.
+`hw/ip/efuse/regs/efuse_interface_ctrl.rdl` defines ``EFUSE_READ_CTRL.READ_STATUS``
+as the read interface's error report (``read_done`` says the read completed,
+``read_status`` says how), ``EFUSE_READ_REQ_TIMEOUT`` arms a bound on the cycles
+the interface waits for a SHIM response, and `hw/ip/efuse/doc/programming.adoc`
+has software check ``read_status`` after every completion. A read that hits
+that bound is therefore a completed read with an error: ``read_done=1`` and
+``read_status=1``. This sequence proves the 1 is produced by the timeout.
 
-`hw/ip/efuse/regs/efuse_interface_ctrl.rdl` documents
-``EFUSE_READ_CTRL.READ_STATUS`` as the read interface's error report, and
-`hw/ip/efuse/rtl/efuse_program_interface.sv` sets its program-side counterpart
-``program_err_d = 1'b1`` on the timeout arm. The read side does not:
-`efuse_read_interface.sv`'s ``ST_WAIT_RESP`` timeout arm sets ``read_done``,
-clears busy and data and pulses ``read_timeout_event``, but never assigns
-``read_err_d``, whose ``always_comb`` default at ``:95`` is ``read_err_q`` -- a
-hold. Because the success arm at ``:148`` clears it, a timeout that follows any
-successful read reports ``read_done=1, read_status=0, read_back_data=0``:
-indistinguishable from a legitimate read of a fuse whose value is zero. The
-only observation that names the timeout is ``is_read_timeout_debug_o``, a debug
-port with no CSR behind it.
-
-The arming leg is what makes this a real check rather than a coincidence.
-``read_err_d`` holds, so a stale 1 from an earlier error would satisfy the
-timeout leg on its own; the successful read below is required first, and
-``READ_STATUS`` must be observed 0 there. ``STATUS.EFUSE_REQ_ERROR`` is also
-required clear, because `efuse_interface_controller.sv:612` gates
-``read_enable`` with ``&& ~efuse_req_err`` and would route a sticky req-err
-down the ``!read_enable_i`` branch, setting ``READ_STATUS`` for a reason that is
-not the timeout.
-
-Sibling reproducer: ``smc_efuse_read_noen_data_test``, for the stale-READ_DATA
-arm of the same state machine.
+The arming leg is what makes the check real. ``READ_STATUS`` is a status bit
+that holds until the next completion, so a stale 1 from an earlier error would
+satisfy the timeout leg on its own; a successful read at the RDL-default cycle
+count comes first, and ``READ_STATUS`` must be observed 0 there.
+``STATUS.EFUSE_REQ_ERROR`` is also required clear beforehand, because a sticky
+request error reports through ``READ_STATUS`` as well and would set the bit for
+a reason that is not the timeout.
 """
 
 from __future__ import annotations
@@ -56,7 +44,7 @@ _POLL = 10_000
 
 
 class smc_efuse_read_timeout_status_test_seq(SmcCsrSeq):
-    """#1603: a timed-out eFuse read must set READ_STATUS."""
+    """A timed-out eFuse read must set READ_STATUS."""
 
     def __init__(self, name: str = "smc_efuse_read_timeout_status_test_seq") -> None:
         super().__init__(name)
@@ -89,16 +77,17 @@ class smc_efuse_read_timeout_status_test_seq(SmcCsrSeq):
         stat_pre = await self.csr_read("STATUS_PRE", STATUS)
         assert (stat_pre & REQ_ERR) == 0, (
             f"STATUS.EFUSE_REQ_ERROR set before the arming read "
-            f"(STATUS=0x{stat_pre:x}): efuse_interface_controller.sv:612 would "
-            f"route that down the same !read_enable branch, so a READ_STATUS=1 "
-            f"below could not be attributed to the timeout"
+            f"(STATUS=0x{stat_pre:x}): a sticky request error also reports "
+            f"through READ_STATUS, so a READ_STATUS=1 below could not be "
+            f"attributed to the timeout"
         )
 
         st_ok, data_ok = await self._read("READ_OK")
         assert (st_ok & READ_ERR) == 0, (
             f"arming read reported READ_STATUS=1 at the RDL-default cycle count "
-            f"(READ_CTRL=0x{st_ok:x}); read_err_d holds, so the timeout leg "
-            f"below cannot then distinguish a fresh error from this stale one"
+            f"(READ_CTRL=0x{st_ok:x}); the bit holds until the next completion, "
+            f"so the timeout leg below could not distinguish a fresh error from "
+            f"this stale one"
         )
         cocotb.log.info(
             "CHK-EFUSE-TMO-RD-STATUS-ARM: READ_TMO=0x%x (RDL default) -> "
@@ -129,13 +118,11 @@ class smc_efuse_read_timeout_status_test_seq(SmcCsrSeq):
                 if st_tmo == st_ok
                 else ""
             )
-            + f". The only difference software can see is READ_DATA: "
-            f"0x{data_tmo:x} here against 0x{data_ok:x} there, and 0 is a "
-            f"legitimate fuse value. This is issue #1603: "
-            f"efuse_read_interface.sv's ST_WAIT_RESP timeout arm never assigns "
-            f"read_err_d, whose always_comb default is a hold, while "
-            f"efuse_program_interface.sv sets program_err_d on the identical "
-            f"arm"
+            + f". READ_DATA is 0x{data_tmo:x} here against 0x{data_ok:x} "
+            f"there, and 0 is a legitimate fuse value. "
+            f"efuse_interface_ctrl.rdl EFUSE_READ_CTRL.read_status is the read "
+            f"interface's error report and a timed-out read is a completed "
+            f"read with an error, so it must read 1 here"
         )
         cocotb.log.info(
             "CHK-EFUSE-TMO-RD-STATUS-SET: READ_TMO=0x%x (enable=1, cycles=0) -> "

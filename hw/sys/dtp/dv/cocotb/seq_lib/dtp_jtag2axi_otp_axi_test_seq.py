@@ -170,46 +170,31 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         await self.reset_tap()
         rng = self.rng(f"{self.target}.series_write_with_status")
         cfg = self.target_cfg(self.target)
-        size = cfg.default_size
-        stride = cfg.beat_bytes
-        base = self.random_target_aligned_addr(self.target, rng)
-        increments = [1, 0, 1, 1]
-        await self.jtag2axi_series_ctrl(
-            DtpJtag2AxiOp.WRITE,
-            base,
-            size=size,
-            target=self.target,
-            back_to_rti=True,
+        plan = self.arm_series_status_fault(
+            self.plan_series_status(self.target, rng), rng, read=False
         )
-        expected_addr = base
-        for idx, inc in enumerate(increments, start=1):
-            data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            self.log_iteration(
-                idx, len(increments), "status write addr=0x%08x inc=%d", expected_addr, inc
-            )
-            before = await self.target_activity_counts(self.target)
-            _, status_bit = await self.series_data_with_status(
-                data,
-                size=size,
-                increment=inc,
-                target=self.target,
-                back_to_rti=True,
-            )
-            await self.wait_for_target_activity(
-                self.target,
-                before=before,
-                read=False,
-                context=f"series_status.axi#{idx}",
-            )
-            self.assert_equal(f"series_status.status_bit#{idx}", status_bit, 0)
-            observed = self.read_target_mem_int(self.target, expected_addr, size)
-            self.assert_equal(f"series_status.mem#{idx}", observed, data)
-            expected_addr += stride if inc else 0
-            self.operation_count += 1
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=self.target)
-        self.assert_equal("series_status.status", status, DtpJtag2AxiStatus.SUCCESS)
-        self.assert_equal("series_status.addr_after", addr_after, expected_addr)
-        self.status = status
+        words = [
+            rng.getrandbits(cfg.data_width) & self.data_mask(plan.size) for _ in plan.increments
+        ]
+        self.log_step(
+            1,
+            "Write the with-status series; beat %d returns %s",
+            plan.fault_idx,
+            plan.expected.name,
+        )
+        await self.run_series_status_write(plan, words, context="series_status")
+        self.log_step(2, "Recover with a legal single write outside the stream")
+        self.status = await self.verify_target_recovery(
+            self.target,
+            addr=self.series_status_recovery_addr(plan),
+            data=rng.getrandbits(cfg.data_width),
+            read=False,
+            context="series_status",
+        )
+        self.operation_count += plan.beats + 1
+        self.emit_series_status_nonvacuity(
+            "series_write_incr_with_error", plan, self.operation_count
+        )
 
     async def run_random_ops(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP Randomized Writes")
@@ -454,74 +439,31 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         await self.reset_tap()
         rng = self.rng(f"{self.target}.series_read_with_status")
         cfg = self.target_cfg(self.target)
-        size = cfg.default_size
-        stride = cfg.beat_bytes
-        base = self.random_target_aligned_addr(self.target, rng)
-        increments = [1, 0, 1, 1]
-        expected_by_addr = {}
-        addr = base
-        await self.jtag2axi_series_ctrl(
-            DtpJtag2AxiOp.WRITE,
-            base,
-            size=size,
-            target=self.target,
-            back_to_rti=True,
+        plan = self.plan_series_status(self.target, rng)
+        words = [
+            rng.getrandbits(cfg.data_width) & self.data_mask(plan.size) for _ in plan.increments
+        ]
+        self.log_step(1, "Write the with-status series without a fault")
+        await self.run_series_status_write(plan, words, context="series_wr_rd_status.write")
+        plan = self.arm_series_status_fault(plan, rng, read=True)
+        self.log_step(
+            2, "Read the series back; beat %d returns %s", plan.fault_idx, plan.expected.name
         )
-        for idx, inc in enumerate(increments, start=1):
-            data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            before = await self.target_activity_counts(self.target)
-            await self.series_data_with_status(
-                data,
-                size=size,
-                increment=inc,
-                target=self.target,
-                back_to_rti=True,
-            )
-            await self.wait_for_target_activity(
-                self.target,
-                before=before,
-                read=False,
-                context=f"series_wr_rd_status.write_axi#{idx}",
-            )
-            expected_by_addr[addr] = data
-            addr += stride if inc else 0
-        addr = base
-        for idx, inc in enumerate(increments, start=1):
-            await self.jtag2axi_series_ctrl(
-                DtpJtag2AxiOp.READ,
-                addr,
-                size=size,
-                target=self.target,
-                back_to_rti=True,
-            )
-            before = await self.target_activity_counts(self.target)
-            await self.series_data_with_status(
-                0,
-                size=size,
-                increment=inc,
-                target=self.target,
-                back_to_rti=True,
-            )
-            await self.wait_for_target_activity(
-                self.target,
-                before=before,
-                read=True,
-                context=f"series_wr_rd_status.read_axi#{idx}",
-            )
-            raw_data, status_bit = await self.series_data_with_status(
-                0,
-                size=size,
-                increment=0,
-                target=self.target,
-                back_to_rti=True,
-            )
-            self.assert_equal(f"series_wr_rd_status.status_bit#{idx}", status_bit, 0)
-            self.assert_equal(f"series_wr_rd_status.rdata#{idx}", raw_data, expected_by_addr[addr])
-            addr += stride if inc else 0
-            self.operation_count += 1
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=self.target)
-        self.assert_equal("series_wr_rd_status.addr_after", addr_after, addr)
-        self.status = status
+        await self.run_series_status_read(
+            plan, plan.final_words(words), context="series_wr_rd_status.read"
+        )
+        self.log_step(3, "Recover with a legal single read outside the stream")
+        self.status = await self.verify_target_recovery(
+            self.target,
+            addr=self.series_status_recovery_addr(plan),
+            data=rng.getrandbits(cfg.data_width),
+            read=True,
+            context="series_wr_rd_status",
+        )
+        self.operation_count += 2 * plan.beats + 1
+        self.emit_series_status_nonvacuity(
+            "series_write_read_incr_with_error", plan, self.operation_count
+        )
 
     async def run_read_random_ops(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP Randomized Reads")

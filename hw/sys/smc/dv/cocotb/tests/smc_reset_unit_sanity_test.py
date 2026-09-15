@@ -13,6 +13,13 @@ from smc_base_test import smc_base_test
 class smc_reset_unit_sanity_test(smc_base_test):
     """COLD scratch persists a SEP WDT pulse; COLD_WARM does not."""
 
+    required_evidence = (
+        "CHK-RESET-UNIT-PRE",
+        "CHK-RESET-UNIT-SS-SWEEP",
+        "CHK-RESET-UNIT-WDT",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

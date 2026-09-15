@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_cfifo_test(smc_base_test):
     """Controller FMT FIFO empty-threshold interrupt."""
 
+    required_evidence = ("CHK-I2C-P0-CFIFO",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -23,10 +26,8 @@ class smc_i2c_p0_cfifo_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 9 accesses observed in the retained
-            # regression run; the FMT_THRESHOLD status poll is a
-            # timing-dependent remainder, so the floor is set below it. Literal
-            # here, not read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the FMT_THRESHOLD status poll is timing-dependent.
             min_csr_accesses=7,
             csr_accesses=seq.accesses,
             proxy=False,

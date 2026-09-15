@@ -9,9 +9,8 @@
 # `key_manager` yields the KM design alone without sep_pkg.sv and the VeeR EL2
 # collateral that the full `sep` target drags in.
 #
-# The open tree does not use per-`_tb` Bender targets: the testbench top
-# (tb_key_manager.sv) is added by the Makefile, not by Bender, mirroring the
-# convention used by the other open cocotb testbenches (e.g. hw/ip/gpio/dv/tb).
+# The testbench top (tb_key_manager.sv) is added by the Makefile, not by Bender,
+# as in the other cocotb testbenches (e.g. hw/ip/gpio/dv/tb).
 
 # Try git first, fall back to OCH_ROOT, fail if neither available
 _OCH_ROOT_GIT := $(shell git rev-parse --show-toplevel 2>/dev/null)
@@ -23,8 +22,8 @@ endif
 
 # Key Manager design + dependencies (AXI, common_cells, register_interface).
 # The KM design also needs the OpenTitan primitives (prim_lfsr, prim_rst_sync,
-# prim_fifo_sync, prim_diff_decode_multi) and the PicoRV32 core it embeds; in the
-# open tree both vendor file lists are opt-in targets rather than default-on.
+# prim_fifo_sync, prim_diff_decode_multi) and the PicoRV32 core it embeds; both
+# vendor file lists are opt-in Bender targets.
 COMMON_TARGETS = -t axi_rtl -t common_cells_rtl -t register_interface_l1 \
                  -t exclude_register_interface_deprecated \
                  -t key_manager -t picorv32_rtl
@@ -34,9 +33,8 @@ COMMON_TARGETS = -t axi_rtl -t common_cells_rtl -t register_interface_l1 \
 # ==============================================================================
 .PHONY: cocotb_simulation_filelist
 # Register packages are generated centrally (`make -f ocah.mk ocah-regen-regs`)
-# and committed under hw/ip/key_manager/regs/gen, so no per-IP register build is
-# needed here. Bender.lock is refreshed so Bender.local path overrides cannot go
-# stale.
+# and committed under hw/ip/key_manager/regs/gen. Bender.lock is refreshed so
+# Bender.local path overrides cannot go stale.
 cocotb_simulation_filelist:
 	@echo "Generating CocoTB simulation filelist from Bender..."
 	@cd $(OCH_ROOT) && bender update --local --no-checkout

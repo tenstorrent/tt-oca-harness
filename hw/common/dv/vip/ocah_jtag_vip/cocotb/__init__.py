@@ -9,7 +9,10 @@ the PTAP, STAP, and CPU TAP scenarios encountered in SMC and SEP debug flows.
 
 Internally the driver uses ``cocotbext-jtag`` bus/device primitives plus OCAH
 raw TAP stepping helpers. Tests import from this package only; no backend types
-leak out.
+leak out. Without ``cocotbext-jtag`` the package imports: the checker,
+the reference model, the state helpers, the device maps, and the reactive
+device engine work, and constructing a master-side class or a slave monitor
+raises ``OcahJtagVipBackendError`` naming the missing backend.
 
 Primary exports
 ---------------
@@ -49,22 +52,54 @@ boundary-scan (EXTEST/SAMPLE) are out of scope.
 from .ocah_jtag_checker import OcahJtagChecker, OcahJtagCheckerError
 from .ocah_jtag_device import OcahJtagDevice, OcahJtagRegister
 from .ocah_jtag_item import OcahJtagScanItem, OcahJtagStateItem
-from .ocah_jtag_master_agent import OcahJtagMasterAgent
 from .ocah_jtag_master_config import OcahJtagMasterConfig
-from .ocah_jtag_master_driver import OcahJtagMasterDriver, OcahJtagMasterDriverError
-from .ocah_jtag_master_monitor import OcahJtagMasterMonitor
-from .ocah_jtag_master_sequence import OcahJtagMasterSequence
 from .ocah_jtag_ref_model import TLR_TMS_ONES, OcahJtagTapRefModel
-from .ocah_jtag_slave_agent import OcahJtagSlaveAgent
 from .ocah_jtag_slave_config import OcahJtagSlaveConfig
 from .ocah_jtag_slave_driver import (
     OcahJtagSlaveDriver,
     OcahJtagSlaveEngine,
     OcahJtagSlaveUpdate,
 )
-from .ocah_jtag_slave_monitor import OcahJtagSlaveMonitor
 from .ocah_jtag_slave_sequence import OcahJtagSlaveSequence
 from .ocah_jtag_state import OcahJtagState, jtag_tms_path, next_jtag_state
+
+
+class OcahJtagVipBackendError(ImportError):
+    """Raised at construction of a class whose backend is not importable."""
+
+
+def _unavailable_class(class_name: str, backend: str):
+    class _Unavailable:
+        def __init__(self, *args, **kwargs) -> None:
+            raise OcahJtagVipBackendError(
+                f"{class_name} requires backend `{backend}`, which is not importable."
+            )
+
+    _Unavailable.__name__ = class_name
+    _Unavailable.__qualname__ = class_name
+    return _Unavailable
+
+
+# The master side binds the wire through the backend's bus primitives; the
+# slave monitor reuses the master monitor. Everything above imports without
+# the backend.
+try:
+    from .ocah_jtag_master_agent import OcahJtagMasterAgent
+    from .ocah_jtag_master_driver import OcahJtagMasterDriver, OcahJtagMasterDriverError
+    from .ocah_jtag_master_monitor import OcahJtagMasterMonitor
+    from .ocah_jtag_master_sequence import OcahJtagMasterSequence
+    from .ocah_jtag_slave_agent import OcahJtagSlaveAgent
+    from .ocah_jtag_slave_monitor import OcahJtagSlaveMonitor
+except ModuleNotFoundError as exc:
+    if "cocotbext" not in str(exc):
+        raise
+    OcahJtagMasterAgent = _unavailable_class("OcahJtagMasterAgent", "cocotbext-jtag")  # type: ignore[misc]
+    OcahJtagMasterDriver = _unavailable_class("OcahJtagMasterDriver", "cocotbext-jtag")  # type: ignore[misc]
+    OcahJtagMasterDriverError = OcahJtagVipBackendError  # type: ignore[misc,assignment]
+    OcahJtagMasterMonitor = _unavailable_class("OcahJtagMasterMonitor", "cocotbext-jtag")  # type: ignore[misc]
+    OcahJtagMasterSequence = _unavailable_class("OcahJtagMasterSequence", "cocotbext-jtag")  # type: ignore[misc]
+    OcahJtagSlaveAgent = _unavailable_class("OcahJtagSlaveAgent", "cocotbext-jtag")  # type: ignore[misc]
+    OcahJtagSlaveMonitor = _unavailable_class("OcahJtagSlaveMonitor", "cocotbext-jtag")  # type: ignore[misc]
 
 # Standard IDCODE instruction — IEEE 1149.1 §12.1.1 mandates opcode 0x01.
 IDCODE_OPCODE: int = 0x01
@@ -91,6 +126,7 @@ __all__ = [
     "OcahJtagStateItem",
     "OcahJtagState",
     "OcahJtagTapRefModel",
+    "OcahJtagVipBackendError",
     "TLR_TMS_ONES",
     "next_jtag_state",
     "jtag_tms_path",

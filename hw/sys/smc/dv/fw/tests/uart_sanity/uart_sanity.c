@@ -48,8 +48,7 @@ int main(void) {
         write_reg(uart_ctrl_reg_addr, uart_enables.w);
     }
 
-    int divisor = 1; // for 115200 --> (int) (1 / (CLOCK_PERIOD_NS * 1e-9)) / (16 * BAUD_RATE); //
-                     // DOUBLE CHECK FREQ
+    int divisor = 1; // divide-by-1: fastest baud for simulation
 
     //---------------------------//
     // UART 16550 Controller Setup //

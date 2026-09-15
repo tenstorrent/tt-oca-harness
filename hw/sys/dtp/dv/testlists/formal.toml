@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Formal items for `--dut dtp --mode formal` (dtp_formal_cfg.toml). `module` names the app table
+# the item launches, [formal.apps.<module>.<tool>]; one item is one sby invocation that runs every
+# task of that app, and the runner grades it from the per-task status files and JUnit reports.
+
+[[tests]]
+name = "dtp_tap_fpv"
+module = "fpv"
+tags = ["formal", "smoke", "ci"]
+
+# `smoke` is the fast gate; `fpv` is every formal item of the plan section.
+[[groups]]
+name = "smoke"
+tests = ["dtp_tap_fpv"]
+
+[[groups]]
+name = "fpv"
+tests = ["dtp_tap_fpv"]

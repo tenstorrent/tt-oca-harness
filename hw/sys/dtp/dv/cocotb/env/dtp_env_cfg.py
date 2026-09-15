@@ -10,6 +10,8 @@ from typing import Any
 from cocotb.triggers import Event
 from pyuvm import uvm_object
 
+from .dtp_xtrig_types import DtpXtrigCtpShadow
+
 __all__ = ["DtpEnvCfg"]
 
 
@@ -34,7 +36,7 @@ class DtpEnvCfg(uvm_object):
         self.smc_otp_axil_ram = None
         self.sep_otp_axil_ram = None
         self.jtag2axi_responders: dict[str, Any] = {}
-        # Shared AXI checker adoption: opt-in per test via
+        # Shared AXI checker: opt-in per test via
         # dtp_base_test.use_axi_scoreboard. Populated by DtpAxiScoreboard
         # (scoreboard/models) and DtpAxiAgent (monitors/watchers).
         self.axi_scoreboard_enabled = False
@@ -46,6 +48,9 @@ class DtpEnvCfg(uvm_object):
         self.axi_watchers: dict[str, Any] = {}
         self.xtrig_axil = None
         self.xtrig_bfm = None
+        # Programmed CTP mode/polarity, written by the XTRIG sequences and kept
+        # across passes because the DUT keeps its configuration between them.
+        self.xtrig_ctp_shadow = DtpXtrigCtpShadow()
         self.xtrig_num_ctp = 16
         self.xtrig_num_int_ct = 10
         # Downstream STAP TAPs: the STAP names whose host port

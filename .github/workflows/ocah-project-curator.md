@@ -35,9 +35,110 @@ tools:
     toolsets: [default, projects, actions]
     github-token: ${{ secrets.GH_AW_READ_PROJECT_TOKEN }}
 
+post-steps:
+  - name: Unwrap backtick-wrapped GitHub mentions
+    if: always()
+    env:
+      GH_AW_SAFE_OUTPUTS: ${{ steps.set-runtime-paths.outputs.GH_AW_SAFE_OUTPUTS }}
+    run: python3 "${GITHUB_WORKSPACE}/.github/scripts/unwrap_github_mentions.py"
+
 safe-outputs:
   staged: false
   report-failed-jobs: false
+  mentions:
+    allowed-collaborators: true
+    allow-context: true
+    # add_comment re-sanitizes against this list plus the parent author.
+    allowed:
+      - achayunTT
+      - ahsiaoTT
+      - akaviTT
+      - akeshavarajTT
+      - alexyapTT
+      - alpeshoza-tt
+      - aottavianoTT
+      - aulmerTT
+      - berwinTT
+      - bkeith-TT
+      - bmeltonTT
+      - bonnie-banks123
+      - bparsonsTT
+      - brucehsu-TT
+      - ctr-shanthiprasad
+      - ctr-smondal-TT
+      - dangthai-vnchip
+      - DanielG-lowRISC
+      - dkimTT
+      - dsheets-tt
+      - duyhuynh-vnchip
+      - efedotovaTT
+      - erentschler-TT
+      - ftorresmanobanda-TT
+      - gabrielgobTT
+      - gchangTT
+      - gchott
+      - gczajkowskiTT
+      - gsinghtt
+      - hcallahan-lowrisc
+      - hkanayaTT
+      - hliaott
+      - ikonumaTT
+      - inmcm
+      - jayalp
+      - jbakerTT
+      - joonkim-tt
+      - kaugustineTT
+      - kevinngTT
+      - kgreigTT
+      - luismarques
+      - lwengTT
+      - machshev
+      - marnovandermaas
+      - mattjohnson-TT
+      - minaliuTT
+      - minoruodaTT
+      - minshaohoTT
+      - mkimuraTT
+      - mkj121
+      - msollanych-tt
+      - mtomicTT
+      - MWoytovichTT
+      - mwvd
+      - nbetikTT
+      - nboettcher-tenstorrent
+      - nfarheenTT
+      - ngocnguyen-vnchip
+      - nranceTT
+      - nsextonTT
+      - nshivaprasad-tt
+      - nwistoffTT
+      - nxuTT
+      - pdroyTT
+      - pkulkarniTT
+      - quangle-vnchip
+      - rextsaiTT
+      - rmalhotraTT
+      - royfranz
+      - rswarbrick
+      - sangameshshettyTT
+      - schenTT
+      - sebphem-tt
+      - skuppuswamyTT
+      - stephencoTT
+      - svisalli-tt
+      - taek-tt
+      - tikedaTT
+      - TT-kqin
+      - ttssokorac
+      - tye-b
+      - uvaughanTT
+      - vinhtrieu-vnchip
+      - vpangTT
+      - vphanTT
+      - yenhenglaiTT
+      - yiyiwuTT
+      - zchenTT
+      - ziuziakowska
   update-project:
     project: https://github.com/orgs/tenstorrent/projects/291
     target-repo: tenstorrent/tt-oca-harness
@@ -99,7 +200,8 @@ Process an open item when any of the following holds; otherwise skip it:
 - The PR is non-draft and has no assignee, or has no requested reviewer and no review.
 - Title or body is not in house style.
 - A reminder is due: approved PR ≥3 days, due date within 3 days, review pending >1 business
-  day, draft >5 business days, changes-requested idle >3 business days, or no update in ≥21 days.
+  day, draft >5 business days, changes-requested idle >3 business days, unreviewed PR ≥3 days,
+  or no update in ≥21 days.
 
 Skip items where all of the following hold: fields complete, Curation state Managed, assignee
 present, title and body in style, and no reminder due. This keeps credit use bounded while
@@ -171,11 +273,12 @@ If someone else is a better fit, please feel free to reassign.
 
 <!-- github-auto-assign -->
 
-Comment only for an assign that stuck, a merge nudge, or a due reminder.
+Comment only for an assign that stuck, a merge nudge, a due reminder, a review
+reminder, a draft reminder, a changes-requested nudge, a stale-assignee nudge,
+an unreviewed-PR reminder, or a reviewer request that stuck.
 
-Always write @-mentions as plain text — never wrap them in backticks, code spans, or
-any other formatting. Backtick-wrapped mentions (`@login`) are rendered as code and do
-not trigger GitHub notifications.
+Always write @-mentions as @LOGIN with no markdown around the login. A code span
+around a login is not a GitHub mention and does not notify.
 
 ## Shared title and body style
 
@@ -298,6 +401,43 @@ Never use an issue taxonomy prefix (`[RTL/SMC]`, `[DV/OCAH]`) on a PR.
 
 If Assignees is empty, assign the opener. REASON is "you opened it".
 
+## PR reviewer backfill
+
+For every open non-draft PR with no requested reviewer and no submitted review,
+request one reviewer. Do not invent a name from memory or from who you think
+owns a path.
+
+Pick the first assignable human who is not the author and not a bot, using this
+order only:
+
+1. GitHub suggested reviewers on the pull request.
+2. Assignee of a linked closing issue (`Fixes` / `Closes` / `Resolves`), if that
+   person is not the author.
+3. Most recent human committers on the files the PR touches (GitHub commits on
+   the base branch for those paths), skipping the author.
+4. `curation.reviewer_pool` in `.github/issue-taxonomy.yml`, in listed order,
+   skipping the author.
+
+Call add_reviewer for that person. Then add_comment. REASON is one of:
+"GitHub suggested you based on the files it touches",
+"you are assigned to an issue this pull request closes",
+"you recently committed to files this pull request touches",
+"you are next in the repository reviewer pool".
+
+@LOGIN — you've been automatically requested to review this pull request because
+REASON.
+
+If someone else is a better fit, please feel free to reassign.
+
+<!-- github-auto-review-request -->
+
+A standing blocked / waiting / out comment does not skip this request. Skip when
+comments already contain `<!-- github-auto-review-request -->`, or when a
+reviewer is already requested or has reviewed.
+
+If every step fails, do not guess. Record the PR number under
+reviewers-unresolved in the noop.
+
 ## PR review reminder
 
 For every open non-draft PR where a reviewer has been requested but no review
@@ -314,6 +454,25 @@ posting another. Skip if the reviewer has replied with a standing reason
 open for more than one business day. Please leave a review when you get a chance.
 
 <!-- github-curator-review-reminder -->
+
+## Unreviewed PR reminder
+
+For every open non-draft PR with no submitted review, check the later of the
+opened date and the ready-for-review date. If 3 or more days have passed and
+comments do not already contain `<!-- github-curator-unreviewed-pr -->`, post
+the comment below. Wait at least 3 days after the last such comment before
+posting another. Skip drafts. Skip if the assignee or author posted a standing
+reason (blocked, waiting, out) after the last reminder, or at all if no
+reminder has been posted yet. PERSON is the assignee; if Assignees is empty,
+use the opener.
+
+A standing blocked comment suppresses this nudge only. It does not skip
+requesting a reviewer.
+
+@PERSON — this pull request has had no review for 3 days. Please request a
+reviewer or leave a note if it is blocked.
+
+<!-- github-curator-unreviewed-pr -->
 
 ## PR draft reminder
 
@@ -411,9 +570,10 @@ failing checks first if they are red.
 Emit this as the one noop message, even when other safe outputs already ran.
 
 By number: applied, skipped, needs-review, added to Project 291, assigned
-(issues and PRs separately), reviewers requested, milestones set, title or
-body edited, PR bodies normalized, merge nudges, due reminders, review
-reminders, draft reminders, changes-requested nudges, stale-assignee nudges,
-conflicts left untouched, remaining because the write budget ended. Name the
-window criterion used (last-run cutoff or state-driven). These counts are
-applied changes, not proposals.
+(issues and PRs separately), reviewers requested, reviewers-unresolved, milestones
+set, title or body edited, PR bodies normalized, merge nudges, due reminders,
+review reminders, unreviewed-PR nudges, draft reminders, changes-requested
+nudges, stale-assignee nudges, conflicts left untouched, remaining because the
+write budget ended. Name every PR that still has zero reviewers under
+reviewers-unresolved. Name the window criterion used (last-run cutoff or
+state-driven). These counts are applied changes, not proposals.

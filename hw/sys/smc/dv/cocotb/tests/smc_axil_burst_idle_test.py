@@ -2,13 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS PyUVM 8-sample AXI-Lite burst idle test.
 
-No DV-CARD provenance header. A header citing
-`hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1` with a
-`RECORD-SHA256` cannot be checked against anything: that file does not exist at
-this revision. No header is stamped until a real testcase contract exists -- the same choice the
-sequence half of this fix already made (`seq_lib/smc_axil_burst_idle_test_seq.py`
-drops the matching `SMC_003 scenario PASS` log line) ([NO-DUMMY-DEAD-CODE]).
-
 After base bring-up, a positive control drives `tb_axil_any_master_active` to 1
 over the real SEP_IN AXI frontdoor, then an eight-sample burst is dispatched on
 the AXI-Lite agent. `CHK-NONVAC` is gated on all eight samples' exact idle
@@ -28,10 +21,18 @@ from smc_base_test import smc_base_test
 class smc_axil_burst_idle_test(smc_base_test):
     """Run the SMC OSS AXI-Lite burst idle scenario."""
 
+    required_evidence = (
+        "CHK-DIAG-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+        "CHK-NONVAC",
+        "CHK-PROBE-AXIL-EXTERNAL-ALIVE",
+    )
+    min_evidence = 3
+
     # Positive control for `tb_axil_external_active`, the one AXI-Lite activity
-    # probe on this burst's proof path that had none (the eFuse-bank and
+    # probe on this burst's proof path without one elsewhere (the eFuse-bank and
     # any-master probes are covered by the sequence's own prover, and
-    # `tb_axil_dtp_csr_active` is unbackable in this TB -- tb_top.sv:1151 ties
+    # `tb_axil_dtp_csr_active` is unbackable in this TB -- tb_top.sv:1119 ties
     # `axil_dtp_csr_resp = '0'` -- so the scoreboard books it OBSERVED-ONLY and
     # never exact-compares it) ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
     probe_positive_controls = ("axil_external_active",)

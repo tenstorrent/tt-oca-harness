@@ -272,27 +272,23 @@ module smc_base #(
   logic [1023:0] debug_bus;
   logic [7:0]    debug_marker;
 
-  generate
-    begin : gen_4core_debug_routing
-      assign debug_bus[16*1-1:16*0]       = cpu_wb_reg_pc_i[0][15:0];
-      assign debug_bus[16*2-1:16*1]       = cpu_wb_reg_pc_i[0][31:16];
-      assign debug_bus[16*3-1:16*2]       = cpu_wb_reg_pc_i[1][15:0];
-      assign debug_bus[16*4-1:16*3]       = cpu_wb_reg_pc_i[1][31:16];
-      assign debug_bus[16*5-1:16*4]       = cpu_wb_reg_pc_i[2][15:0];
-      assign debug_bus[16*6-1:16*5]       = cpu_wb_reg_pc_i[2][31:16];
-      assign debug_bus[16*7-1:16*6]       = cpu_wb_reg_pc_i[3][15:0];
-      assign debug_bus[16*8-1:16*7]       = cpu_wb_reg_pc_i[3][31:16];
+  assign debug_bus[16*1-1:16*0]       = cpu_wb_reg_pc_i[0][15:0];
+  assign debug_bus[16*2-1:16*1]       = cpu_wb_reg_pc_i[0][31:16];
+  assign debug_bus[16*3-1:16*2]       = cpu_wb_reg_pc_i[1][15:0];
+  assign debug_bus[16*4-1:16*3]       = cpu_wb_reg_pc_i[1][31:16];
+  assign debug_bus[16*5-1:16*4]       = cpu_wb_reg_pc_i[2][15:0];
+  assign debug_bus[16*6-1:16*5]       = cpu_wb_reg_pc_i[2][31:16];
+  assign debug_bus[16*7-1:16*6]       = cpu_wb_reg_pc_i[3][15:0];
+  assign debug_bus[16*8-1:16*7]       = cpu_wb_reg_pc_i[3][31:16];
 
-      assign debug_bus[16*9-1:16*8]       = cpu_interrupts_o[15:0]    | cpu_interrupts_o[143:128];
-      assign debug_bus[16*10-1:16*9]      = cpu_interrupts_o[31:16]   | cpu_interrupts_o[159:144];
-      assign debug_bus[16*11-1:16*10]     = cpu_interrupts_o[47:32]   | cpu_interrupts_o[175:160];
-      assign debug_bus[16*12-1:16*11]     = cpu_interrupts_o[63:48]   | cpu_interrupts_o[191:176];
-      assign debug_bus[16*13-1:16*12]     = cpu_interrupts_o[79:64]   | cpu_interrupts_o[207:192];
-      assign debug_bus[16*14-1:16*13]     = cpu_interrupts_o[95:80]   | cpu_interrupts_o[223:208];
-      assign debug_bus[16*15-1:16*14]     = cpu_interrupts_o[111:96]  | cpu_interrupts_o[239:224];
-      assign debug_bus[16*16-1:16*15]     = cpu_interrupts_o[127:112] | cpu_interrupts_o[255:240];
-    end
-  endgenerate
+  assign debug_bus[16*9-1:16*8]       = cpu_interrupts_o[15:0]    | cpu_interrupts_o[143:128];
+  assign debug_bus[16*10-1:16*9]      = cpu_interrupts_o[31:16]   | cpu_interrupts_o[159:144];
+  assign debug_bus[16*11-1:16*10]     = cpu_interrupts_o[47:32]   | cpu_interrupts_o[175:160];
+  assign debug_bus[16*12-1:16*11]     = cpu_interrupts_o[63:48]   | cpu_interrupts_o[191:176];
+  assign debug_bus[16*13-1:16*12]     = cpu_interrupts_o[79:64]   | cpu_interrupts_o[207:192];
+  assign debug_bus[16*14-1:16*13]     = cpu_interrupts_o[95:80]   | cpu_interrupts_o[223:208];
+  assign debug_bus[16*15-1:16*14]     = cpu_interrupts_o[111:96]  | cpu_interrupts_o[239:224];
+  assign debug_bus[16*16-1:16*15]     = cpu_interrupts_o[127:112] | cpu_interrupts_o[255:240];
 
   assign debug_bus[16*17-1:16*16]     = peripheral_interrupts_i[15:0];
   assign debug_bus[16*18-1:16*17]     = peripheral_interrupts_i[31:16];
@@ -548,6 +544,7 @@ module smc_base #(
     .trace_mem_resp_i                 (trace_mem_resp_i),
 
     .test_en_i                        (test_en_i),
+    .scan_rst_ni                      (scan_rst_ni),
 
     .mem_repair_done_i                (mem_repair_done_i),
     .mem_repair_success_i             (mem_repair_success_i),

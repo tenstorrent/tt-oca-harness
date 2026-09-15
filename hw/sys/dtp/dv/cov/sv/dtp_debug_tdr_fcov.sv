@@ -340,6 +340,14 @@ module dtp_debug_tdr_fcov (
   // ------------------------------------------------------------------
   // Commercial-simulator covergroups mirroring the cover-property bins.
   // ------------------------------------------------------------------
+  // caps_reread_e is true only on the Capture-DR edge of a capability scan;
+  // the covergroup samples at that scan's Update-DR commit and reads the
+  // decision held from the capture.
+  logic caps_reread_q;
+  always_ff @(posedge tck_i) begin
+    if (caps_capture) caps_reread_q <= caps_reread_e;
+  end
+
   covergroup cg_tmp_ic_reset with function sample (
       logic tmp_on, logic [1:0] tmp_value, logic escape_armed, logic ovrd_any, logic asserted_any
   );
@@ -377,7 +385,11 @@ module dtp_debug_tdr_fcov (
       bins smc_otp_caps = {2'd2};
       bins sep_otp_caps = {2'd3};
     }
-    cp_reread: coverpoint reread;
+    // Stability is a property of a repeated read; the single bin closes
+    // on the capture-time decision held in caps_reread_q.
+    cp_reread: coverpoint reread {
+      bins repeated = {1'b1};
+    }
     cp_after: coverpoint {
       after_idcode, after_bypass
     } {
@@ -408,7 +420,7 @@ module dtp_debug_tdr_fcov (
     if (caps_write_committed) begin
       u_cg_caps_tdr.sample(
           caps_jtag_sel ? 2'd0 : (caps_smc_sel ? 2'd1 : (caps_smc_otp_sel ? 2'd2 : 2'd3)),
-          caps_reread_e, prev_instr_idcode_q, prev_instr_bypass_q,
+          caps_reread_q, prev_instr_idcode_q, prev_instr_bypass_q,
           caps_wr_zero_e ? 2'd0 : (caps_wr_ones_e ? 2'd1 : (caps_wr_alt_e ? 2'd2 : 2'd3)));
     end
   end

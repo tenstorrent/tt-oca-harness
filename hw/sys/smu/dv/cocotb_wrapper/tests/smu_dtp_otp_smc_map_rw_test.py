@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_dtp_otp_smc_map_rw_test — SMC OTP J2A MAP BIRA R/W (SEP=0, no Force)."""
+"""smu_dtp_otp_smc_map_rw_test — SMC OTP J2A MAP SPARE[0] R/W (SEP=0, no Force)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_otp_smc_map_rw_test(smu_base_test):
-    """OTP J2A MAP BIRA allow-path; gate tied open on SEP=0."""
+    """OTP J2A MAP SPARE[0] allow-path; gate tied open on SEP=0."""
 
     use_shared_env = True
 

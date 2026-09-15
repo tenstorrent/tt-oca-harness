@@ -3,8 +3,8 @@
 #
 # sep_entropy_golden.py
 #
-# End-to-end SEP entropy-datapath golden FACADE. Chains the five already-
-# validated, self-tested stage models into one stream-oriented model that a
+# End-to-end SEP entropy-datapath golden FACADE. Chains the five self-tested
+# stage models into one stream-oriented model that a
 # cocotb scoreboard can compare against DUT probes:
 #
 #   noise (12b/cyc)  ->  decorrelator (96b/decor-valid)
@@ -26,7 +26,7 @@
 # feed_noise() / feed_decor_sample() from DUT-observed strobes, so the DUT and
 # golden consume the same externally-driven raw-noise sequence.
 #
-# Inter-stage framing (honored exactly, per the reference scoreboard analysis):
+# Inter-stage framing (matches the reference scoreboard):
 #   - sample_clk_div=7 (/8): each lane emits a byte every 8 cycles; the 12 lane
 #     bytes pack into a 96b decor word (lane0 -> [7:0]) on a decor-valid event.
 #   - one BIW 32b word per decor-valid event (out[0] -> word[31:24]).
@@ -347,7 +347,7 @@ if __name__ == "__main__":
     assert g.n_compress_words >= INGRESS + SEED_WORDS, "too few compressor words"
 
     # ----- (c) genbits are demand-driven; (d) 4 KM beats/block -----
-    # Seeds alone produce no blocks now: the scoreboard pulls them. Pull one
+    # Seeds alone produce no blocks: the scoreboard pulls them. Pull one
     # full Generate's worth and close the command, as the RTL gen_last would.
     assert g.n_genbits == 0, f"seeds must not self-generate: {g.n_genbits} blocks appeared unpulled"
     for _ in range(GLEN):
@@ -361,7 +361,7 @@ if __name__ == "__main__":
 
     # (c2) The per-block path must reproduce the monolithic generate() bit for
     # bit -- same block values, same trailing Update, same resulting state.
-    # This is the property the whole demand-driven refactor rests on.
+    # This is the property the demand-driven model rests on.
     ref = SepCtrDrbgGolden()
     ref.instantiate(g.expected_seed[0])
     lazy = SepCtrDrbgGolden()
