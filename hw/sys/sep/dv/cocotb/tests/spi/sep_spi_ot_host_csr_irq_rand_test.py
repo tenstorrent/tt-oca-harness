@@ -339,7 +339,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
         await self.spi.wr(CTRL, ctrl)
         st_empty = await self.spi.rd(STATUS)
         assert (st_empty & ST_TXQD) == 0, f"CHK-WATERMARK FIFO not empty: 0x{st_empty:08x}"
-        # RTL: tx_wm = tx_qd < tx_watermark (asserted while there is room below the mark).
+        # spi_controller.rdl EVENT_ENABLE.TXWM: asserted while the number of
+        # 32-bit words in the TX FIFO is LESS THAN CONTROL.TX_WATERMARK -- so an
+        # empty FIFO sets it. The polarity is the whole of this facet, so it is
+        # taken from the register description rather than from the design.
         assert st_empty & ST_TXWM, (
             f"CHK-WATERMARK STATUS.TXWM clear while TXQD=0 < wm (0x{st_empty:08x})"
         )

@@ -396,15 +396,31 @@ class sep_km_command_set_rand_test(sep_base_test):
         # validation and is refused by the transfer itself: RC_FAILURE, not
         # RC_INVALID_ARG. Asserting the exact code keeps a refusal for the wrong
         # reason -- a malformed argument, say -- from reading as a pass.
+        #
+        # The engine is RELEASED for this beat. bad_dest is drawn from the three
+        # engines this test parks, so with it parked a refusal is equally
+        # consistent with the destination policy (the claim) and with the
+        # sideload target simply not running -- and the checker could not tell
+        # them apart. Released, the only thing still disqualifying it is that it
+        # is outside the key's permitted mask.
+        bad_name = DEST_NAME[cfg.bad_dest]
+        await self.swrst.release(bad_name)
+        if bad_name == "otbn":
+            from seq_lib.sep_otbn_seq import SepOtbn
+
+            await SepOtbn(self).wait_idle("bad-dest-release")
         rc, _ = await self.km.key_transfer(handle=handle_a, dest=cfg.bad_dest)
+        await self.swrst.park(bad_name)
         assert rc == KM_RC_FAILURE, (
             f"CHK-DEST FAIL: transfer to 0x{cfg.bad_dest:02x} returned rc={rc}, expected "
             f"{KM_RC_FAILURE} (RC_FAILURE) -- the key was loaded for "
             f"mask 0x{cfg.load_dest:02x}"
         )
         self.logger.info(
-            "CHK-DEST PASS: transfer to 0x%02x refused with RC_FAILURE -- outside DEST_VALID",
+            "CHK-DEST PASS: transfer to 0x%02x (%s, released for the beat) refused with "
+            "RC_FAILURE -- outside DEST_VALID, not merely parked",
             cfg.bad_dest,
+            bad_name,
         )
         await self._check_alive("post-dest-refusal")
 
