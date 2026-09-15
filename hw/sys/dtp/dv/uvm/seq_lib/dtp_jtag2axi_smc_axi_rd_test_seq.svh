@@ -356,6 +356,9 @@ class dtp_jtag2axi_smc_axi_rd_test_seq extends dtp_jtag2axi_base_test_seq;
                 status_bit,
                 raw_data
                 ), UVM_LOW)
+      if (status_bit !== 1'b0)
+        `uvm_error("jtag2axi_status_chk", $sformatf(
+                   "series_wr_rd_status.status_bit#%0d: %0d != expected 0", idx + 1, status_bit))
       if (raw_data !== expected_by_addr[addr])
         `uvm_error("jtag2axi_data_chk", $sformatf(
                    "series_wr_rd_status.rdata#%0d: read 0x%0h != expected 0x%0h (addr=0x%0h)",

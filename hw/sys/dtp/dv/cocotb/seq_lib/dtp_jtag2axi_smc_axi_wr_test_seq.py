@@ -238,12 +238,15 @@ class dtp_jtag2axi_smc_axi_wr_test_seq(dtp_jtag2axi_base_test_seq):
                 data,
             )
             before = await self.axi_activity_counts()
-            await self.series_data_with_status(data, size=size, increment=inc, back_to_rti=True)
+            _, status_bit = await self.series_data_with_status(
+                data, size=size, increment=inc, back_to_rti=True
+            )
             await self.wait_for_smc_axi_activity(
                 before=before,
                 read=False,
                 context=f"series_status.axi#{idx}",
             )
+            self.assert_equal(f"series_status.status_bit#{idx}", status_bit, 0)
             self.assert_equal(
                 f"series_status.mem#{idx}",
                 self.read_mem_int(expected_addr, size),
