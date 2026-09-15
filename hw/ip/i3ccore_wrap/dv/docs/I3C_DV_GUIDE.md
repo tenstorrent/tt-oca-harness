@@ -305,12 +305,11 @@ summary    passing=<n> total=29 failing=<m> skipped=0 elapsed=...
 
 The `all` group holds 29 modules totalling 38 cocotb test functions.
 
-**A plain `--items all` does not come back fully green**, for two known reasons
-that are not regressions: `test_i3ccore` times out under Verilator, and
+**A plain `--items all` does not come back fully green**:
 `i3c_error_target_abort` fails its `sre=0` test function against an open
-suspected DUT issue. Section 9 has the detail and Test Gaps items 9 and 10 track
-both. Compare a fresh run against the previous run's numbers rather than against
-a fixed expected tally.
+suspected DUT issue. Section 9 and Test Gaps item 9 have the detail. Compare a
+fresh run against the previous run's numbers rather than against a fixed
+expected tally.
 
 ---
 
@@ -1831,12 +1830,9 @@ including the first and last DAT/DCT entries and the address-range boundaries.
 
 This module reads un-written DAT/DCT SRAM and reset-X registers by design. Real
 SRAM powers up undefined and cocotb raises on reading an X bit, so it needs
-`COCOTB_RESOLVE_X=ZEROS`; the `xresolve` group exists to select exactly this
-module.
-
-The variable is necessary but not sufficient on Verilator: the module currently
-times out there even with it set (Test Gaps item 10), so treat its register
-sweep as unverified on the default tool.
+`COCOTB_RESOLVE_X=ZEROS`. The module sets that variable before importing cocotb,
+and the `xresolve` group exists to select exactly this module. Its full register
+sweep passes on Verilator.
 
 #### i3c_reg_reset_value_full
 
@@ -2549,22 +2545,15 @@ module's own cocotb log holds the per-test detail.
 
 ```
 regression start total=29 sim_jobs=1 executor=local seeds=1 retry=0
-regression done index=1/29 status=TIMEOUT item=test_i3ccore seed=1530441552 attempt=0 elapsed=1800.0s
-regression done index=2/29 status=PASS item=i3c_immediate_write_sanity seed=1581046766 attempt=0 elapsed=6.7s
+regression done index=1/29 status=PASS item=test_i3ccore seed=<seed> attempt=0 elapsed=<s>
+regression done index=2/29 status=PASS item=i3c_immediate_write_sanity seed=<seed> attempt=0 elapsed=<s>
 ...
 summary    passing=<n> total=29 failing=<m> skipped=0 elapsed=...
 ```
 
-Two modules are expected not to pass under Verilator today, and neither is a
-regression caused by the launcher migration:
-
-- `test_i3ccore` — **TIMEOUT under Verilator.** It hangs in the base-register
-  sweep and is killed at the 1800 s timeout. Setting `COCOTB_RESOLVE_X=ZEROS`
-  does *not* help: the `xresolve` run
-  `dv/build/runs/20260901_084400__verilator__xresolve/` has that variable set in
-  its recorded `env/sim.env` and still timed out. See Test Gaps item 10.
-- `i3c_error_target_abort` — fails its `sre=0` test function, the open
-  suspected-DUT issue in Test Gaps item 9.
+`i3c_error_target_abort` is expected not to pass under Verilator today: its
+`sre=0` test function fails against the open suspected DUT issue in Test Gaps
+item 9.
 
 Compare a fresh run against the previous run's tally rather than against a fixed
 expected result.
@@ -2770,12 +2759,6 @@ Based on code review, these specific gaps were identified:
    response descriptor on this path. Suspected DUT issue, unresolved and
    deliberately not worked around; the `sre=1` detection leg passes. See the
    "Open item" section of `BRINGUP_STATUS.md`
-10. **`test_i3ccore` under Verilator**: the register-interface module times out
-    (1800 s) partway through the base-register sweep, so the register sweep it
-    provides is currently unverified on the default tool. `COCOTB_RESOLVE_X=ZEROS`
-    is not the cause — run
-    `dv/build/runs/20260901_084400__verilator__xresolve/` had it set and still
-    timed out. Root cause not yet classified as test-side or DUT-side
 
 ### Recommendations for Production
 
@@ -2836,7 +2819,7 @@ cocotb test functions in the module (38 in total).
 
 | Module | Tests | Purpose |
 |--------|-------|---------|
-| test_i3ccore | 4 | Register access across the map; needs `COCOTB_RESOLVE_X=ZEROS`, times out on Verilator (gap 10) |
+| test_i3ccore | 4 | Register access across the map; resolves reset-X reads to zero and passes on Verilator |
 | i3c_immediate_write_sanity | 1 | Data embedded in the command descriptor |
 | i3c_write_read_sanity | 1 | 4-byte private write + read |
 | i3c_long_write_sanity | 1 | 500-byte private write |

@@ -21,23 +21,9 @@ import logging
 import sys
 
 import cocotb
-from cocotb.handle import Force, Release
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 from env.i3c_api import I3CHelper
-
-# Import tests from other test files
-
-# sim_handle is optional; when unavailable, DAT/DCT backdoor initialization is
-# skipped. The behavioral memory model resets these arrays to zero.
-sim_handle = None
-OCH_ROOT = os.getenv("OCH_ROOT")
-if OCH_ROOT:
-    sys.path.append(f"{OCH_ROOT}/dv/smc/tb/tb_wrap_cocotb")
-    try:
-        from common.smc_utils import sim_handle
-    except ImportError:
-        pass
 
 # Generated register model (make regen-regs TARGET=oca_i3c_wrap)
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
@@ -170,109 +156,6 @@ class TB:
         await ClockCycles(self.dut.clk, 5)
         self.log.info("Reset released")
 
-    def init_dat_dct_memory(self):
-        """
-        Initialize DAT and DCT backing memories to zero through optional
-        hierarchical access.
-
-        This prevents unresolved power-on values from reaching AXI reads.
-        """
-        # Try supported hierarchy variants until a backing-memory handle resolves.
-        dat_paths = [
-            "gen_i3c_mem[0].i3c_dat_memory.u_mem.gen_generic.u_impl_generic.mem",
-            "u_dut.u_i3c_wrapper.gen_dat_dct_memory.dat_memory.u_mem.gen_generic.u_impl_generic.mem",
-            "u_dut.gen_i3c_inst[0].u_i3c_wrapper.gen_dat_dct_memory.dat_memory.u_mem.gen_generic.u_impl_generic.mem",
-        ]
-
-        dct_paths = [
-            "gen_i3c_mem[0].i3c_dct_memory.u_mem.gen_generic.u_impl_generic.mem",
-            "u_dut.u_i3c_wrapper.gen_dat_dct_memory.dct_memory.u_mem.gen_generic.u_impl_generic.mem",
-            "u_dut.gen_i3c_inst[0].u_i3c_wrapper.gen_dat_dct_memory.dct_memory.u_mem.gen_generic.u_impl_generic.mem",
-        ]
-
-        # Initialize DAT memory
-        dat_initialized = False
-        for path in dat_paths:
-            try:
-                dat_mem = sim_handle(path, self.dut)
-                depth = len(dat_mem)
-                self.log.info(
-                    f"DAT memory handle: {dat_mem}, type: {type(dat_mem)}, depth: {depth}"
-                )
-                # Debug: read before write
-                self.log.info(f"DAT[0] before write: {dat_mem[0].value}")
-                for i in range(depth):
-                    # Force the backing SRAM to 0 to clear the power-on X so AXI
-                    # reads of un-written DAT/DCT entries don't choke the cocotb
-                    # AXI master. (Release reverts to X on this no-driver array,
-                    # and a plain deposit doesn't stick, so Force is used.) The
-                    # register_write_read test consequently sees these entries as
-                    # read-only-0, which its writable-bit auto-detection handles;
-                    # DAT/DCT writability is covered functionally elsewhere
-                    # (set_dat_entry + SETDASA + transfers).
-                    dat_mem[i].value = Force(0)
-                # Debug: read after write
-                self.log.info(f"DAT[0] after write: {dat_mem[0].value}")
-                self.log.info(f"DAT[1] after write: {dat_mem[1].value}")
-                self.log.info(f"Initialized DAT memory ({depth} entries) to 0 using Force()")
-                dat_initialized = True
-                break
-            except Exception as e:
-                self.log.debug(f"DAT path '{path}' failed: {e}")
-                continue
-
-        if not dat_initialized:
-            self.log.warning("Could not access DAT memory - check hierarchy path")
-            self._debug_memory_hierarchy()
-
-        # Initialize DCT memory
-        dct_initialized = False
-        for path in dct_paths:
-            try:
-                dct_mem = sim_handle(path, self.dut)
-                depth = len(dct_mem)
-                self.log.info(
-                    f"DCT memory handle: {dct_mem}, type: {type(dct_mem)}, depth: {depth}"
-                )
-                # Debug: read before write
-                self.log.info(f"DCT[0] before write: {dct_mem[0].value}")
-                for i in range(depth):
-                    # Release the forced value so hardware writes can update the entry.
-                    dct_mem[i].value = Force(0)
-                    dct_mem[i].value = Release()
-                # Debug: read after write
-                self.log.info(f"DCT[0] after write: {dct_mem[0].value}")
-                self.log.info(f"DCT[1] after write: {dct_mem[1].value}")
-                self.log.info(f"Initialized DCT memory ({depth} entries) to 0 (Force+Release)")
-                dct_initialized = True
-                break
-            except Exception as e:
-                self.log.debug(f"DCT path '{path}' failed: {e}")
-                continue
-
-        if not dct_initialized:
-            self.log.warning("Could not access DCT memory - check hierarchy path")
-
-    def _debug_memory_hierarchy(self):
-        """Debug helper to find the correct hierarchical path to memory."""
-        try:
-            u_dut = self.dut.u_dut
-            self.log.warning(f"u_dut children: {[n for n in dir(u_dut) if not n.startswith('_')]}")
-
-            # Check u_i3c_wrapper
-            if hasattr(u_dut, "u_i3c_wrapper"):
-                wrapper = u_dut.u_i3c_wrapper
-                wrapper_children = [n for n in dir(wrapper) if not n.startswith("_")]
-                self.log.warning(f"u_i3c_wrapper children: {wrapper_children}")
-
-                # Check for gen_dat_dct_memory
-                if hasattr(wrapper, "gen_dat_dct_memory"):
-                    gen_mem = wrapper.gen_dat_dct_memory
-                    gen_mem_children = [n for n in dir(gen_mem) if not n.startswith("_")]
-                    self.log.warning(f"gen_dat_dct_memory children: {gen_mem_children}")
-        except Exception as e:
-            self.log.warning(f"Debug failed: {e}")
-
     async def read_register(self, addr: int) -> int:
         """
         Read a 32-bit register via AXI-Lite.
@@ -386,9 +269,6 @@ async def test_register_access(dut):
 
     # Wait for reset release
     await tb.reset_dut()
-
-    # Initialize DAT/DCT memories to 0 (they are uninitialized by default)
-    tb.init_dat_dct_memory()
 
     # Test base registers (from base_registers.rdl)
     tb.log.info("-" * 40)
@@ -656,9 +536,6 @@ async def test_register_write_read(dut):
     # Wait for reset release
     await tb.reset_dut()
 
-    # Initialize DAT/DCT memories to 0 (they are uninitialized by default)
-    tb.init_dat_dct_memory()
-
     test_patterns = [0x5A5A5A5A, 0xA5A5A5A5]
     passed = 0
     failed = 0
@@ -751,9 +628,6 @@ async def test_address_range_boundaries(dut):
 
     # Wait for reset release
     await tb.reset_dut()
-
-    # Initialize DAT/DCT memories to 0 (they are uninitialized by default)
-    tb.init_dat_dct_memory()
 
     # Define boundary addresses with expected behavior
     # Format: (addr, expected_reset_or_writable, name, description)

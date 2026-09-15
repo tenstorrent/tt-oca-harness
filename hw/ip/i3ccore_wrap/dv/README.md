@@ -49,18 +49,17 @@ python3 $PY --dut i3ccore_wrap --items i3c_write_read_sanity --tool verilator --
 ```
 
 `test_i3ccore` surveys the whole address map, including unwritten DAT/DCT SRAM
-that powers up undefined. cocotb raises on an X read by default, so resolve X
-to zero for that module (the `xresolve` group selects it):
+that powers up undefined. cocotb raises on an X read by default, so the module
+sets `COCOTB_RESOLVE_X=ZEROS` before importing cocotb. The `xresolve` group
+selects that module:
 
 ```bash
-COCOTB_RESOLVE_X=ZEROS python3 $PY --dut i3ccore_wrap --items xresolve --tool verilator --stage sim
+python3 $PY --dut i3ccore_wrap --items xresolve --tool verilator --stage sim
 ```
 
-That variable is required but not currently sufficient on Verilator:
-`test_i3ccore` still times out in the base-register sweep. It and
-`i3c_error_target_abort` (`sre=0`, a suspected DUT issue) are the two known
-non-passing items in `--items all`. See Test Gaps items 9 and 10 in
-`docs/I3C_DV_GUIDE.md`.
+`test_i3ccore` passes on Verilator. `i3c_error_target_abort` (`sre=0`, a
+suspected DUT issue) remains the known non-passing item in `--items all`. See
+Test Gaps item 9 in `docs/I3C_DV_GUIDE.md`.
 
 Waves come from the launcher rather than a per-TB switch: `--waves` dumps every
 selected test, `--waves-on-fail` reruns only the non-passing ones. To view a
