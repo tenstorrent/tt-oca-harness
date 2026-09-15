@@ -52,7 +52,11 @@ from env.sep_mbox_golden import (
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_inbound_filter_rule_seq import SepInboundFilter, SepInboundFilterCfg
+from seq_lib.sep_inbound_filter_rule_seq import (
+    RESP_DECERR,
+    SepInboundFilter,
+    SepInboundFilterCfg,
+)
 from seq_lib.sep_mailbox_iface_seq import SepMbox
 
 # The peer aperture, by symbol from the register export rather than derived from
@@ -125,7 +129,8 @@ class sep_mailbox_peer_rx_rirqt_test(sep_base_test):
         # The filter blocks by default, so the peer aperture needs an explicit
         # read+write window before the external master can reach WRITE_DATA.
         filt = SepInboundFilter(self)
-        rule = SepInboundFilterCfg(entry=0, allow_addr=INBOUND_BASE)
+        self._filt_rule = SepInboundFilterCfg(entry=0, allow_addr=INBOUND_BASE)
+        rule = self._filt_rule
         await filt.program_rule(
             rule, read_allowed=True, write_allowed=True, end_addr=INBOUND_BASE + _MAILBOX_STRIDE - 1
         )
@@ -297,4 +302,56 @@ class sep_mailbox_peer_rx_rirqt_test(sep_base_test):
             "CHK-RIRQT PASS: draining to exactly RIRQT=%d cleared read_level_above "
             "(strict greater-than)",
             _RIRQT,
+        )
+
+        # --- CHK-FILTER-DENY: the filter gates the live peer path -------------
+        # Every push above went through an open allow window. Closing the window
+        # must stop the peer reaching WRITE_DATA at all. The measurement is taken
+        # here, where a healthy design demonstrably succeeds a line earlier, so
+        # the refusal is scored in a window that is otherwise live rather than
+        # against a dead bus.
+        st_before = await self.mb.rd_csr(STATUS)
+        await filt.disable_entry(self._filt_rule.entry)
+        rc = await self._peer_push64(_E1)
+        assert rc == RESP_DECERR, (
+            f"CHK-FILTER-DENY FAIL: with the allow window closed, the peer write to "
+            f"0x{INBOUND_BASE:08x} returned resp={rc}, expected DECERR "
+            f"({RESP_DECERR}) from the filter error slave. The identical write "
+            "succeeded with the window open, so the path is live."
+        )
+        st_after = await self.mb.rd_csr(STATUS)
+        assert st_after == st_before, (
+            f"CHK-FILTER-DENY FAIL: the refused write still changed the receive "
+            f"FIFO (STATUS 0x{st_before:08x} -> 0x{st_after:08x}). A DECERR that "
+            "still enqueues is worse than no filter at all."
+        )
+        self.logger.info(
+            "CHK-FILTER-DENY PASS: with the window closed the peer write took "
+            "DECERR and the receive FIFO did not move (STATUS=0x%08x)",
+            st_after,
+        )
+
+        # --- CHK-FILTER-REOPEN: the positive control --------------------------
+        # Without this the deny above could be a permanently broken peer path
+        # rather than the filter doing its job.
+        await filt.program_rule(
+            self._filt_rule,
+            read_allowed=True,
+            write_allowed=True,
+            end_addr=INBOUND_BASE + _MAILBOX_STRIDE - 1,
+        )
+        rc = await self._peer_push64(_E1)
+        assert rc == RESP_OKAY, (
+            f"CHK-FILTER-REOPEN FAIL: reopening the window did not restore the peer "
+            f"path (resp={rc}). Without this the deny above proves nothing."
+        )
+        st_reopen = await self.mb.rd_csr(STATUS)
+        assert st_reopen != st_after, (
+            f"CHK-FILTER-REOPEN FAIL: the accepted write did not change the receive "
+            f"FIFO (STATUS stayed 0x{st_after:08x})"
+        )
+        self.logger.info(
+            "CHK-FILTER-REOPEN PASS: reopening the window restored the peer write "
+            "and the receive FIFO moved again (STATUS=0x%08x)",
+            st_reopen,
         )

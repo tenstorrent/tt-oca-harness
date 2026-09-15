@@ -437,7 +437,7 @@ appears.
 |`sep_mailbox_peer_rx_rirqt_test`
 |no_cpu + external SMN master, +skip_fuse_sense
 |ocah_axi_vip
-|The receive half the TX rep cannot reach. The external master fills the FIFO through the peer aperture, which closes the data round-trip readback and the read threshold, and grades the specified behaviour that a 4-byte `READ_DATA` at either half pops a whole entry.
+|The receive half the TX rep cannot reach. The external master fills the FIFO through the peer aperture, which closes the data round-trip readback and the read threshold, and grades the specified behaviour that a 4-byte `READ_DATA` at either half pops a whole entry. Also walks the inbound filter allow and deny over that live peer path, each the other's control.
 |`sep_irq_simultaneous_fanin_no_alias_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -3331,7 +3331,7 @@ claimed for the same reason. Both need the external inbound master — see
 
 *Objective*: `fabric.adoc`: the mailbox registers sit on an 8-byte stride and a register's low and high halves alias to the same register, so "a read of `READ_DATA` at either half pops one FIFO entry. The mailbox drives the whole entry; the CPU keeps the half selected by address bit 2 and discards the other. Reading both halves consumes two entries." That, the data round-trip readback, and the read half of the threshold pair all need a value in the receive FIFO, which only the peer aperture can place there.
 
-*Test Coverage*: Peer-filled receive FIFO: round-trip readback, pop-per-read at either half with the discarded half lost, and the `RIRQT` read threshold with its interrupt.
+*Test Coverage*: Peer-filled receive FIFO: round-trip readback, pop-per-read at either half with the discarded half lost, the `RIRQT` read threshold with its interrupt, and the inbound filter gating that live peer path both ways.
 
 *Test Procedure*:
 
@@ -3342,6 +3342,7 @@ claimed for the same reason. Both need the external inbound master — see
 . Push two 64-bit entries whose four halves are all distinct, from the external master, at the peer aperture's `WRITE_DATA`. A non-OKAY response here fails immediately rather than being carried into the checks.
 . Read `READ_DATA` at the low half, then at the high half, and compare each against the entry halves.
 . Program `RIRQT`, enable `rtirq`, fill above the threshold, read `STATUS`, `IRQS` and `IRQP`, then drain back to exactly the threshold.
+. Close the allow window, repeat the peer write, and read `STATUS` either side of it. Then reopen the window and repeat the write once more.
 
 *Checkers*:
 
@@ -3358,6 +3359,10 @@ claimed for the same reason. Both need the external inbound master — see
 |The high-half read does not return the high word of the first entry. This is the specified behaviour and it is the opposite of the intuitive one: two 32-bit reads do not reassemble one 64-bit entry, they consume two entries and the discarded half is lost. A DUT that packed two reads into one entry fails here, and it is the reason the two entries are chosen with four distinct halves.
 |CHK-RIRQT
 |`RIRQT` reads back as written; `STATUS.read_level_above` is clear on an empty FIFO, set once the fill exceeds the threshold, and clear again at exactly the threshold, matching the strict greater-than the write half already uses. With `rtirq` enabled, `IRQS.rtirq` is raised and reaches `IRQP` through the enable gate.
+|CHK-FILTER-DENY
+|With the allow window closed, the same peer write that succeeded a moment earlier takes DECERR from the filter error slave and `STATUS` does not move. The refusal is measured on a path a healthy design has just been shown to complete, rather than against a bus that might be dead, which is what makes it a real deny rather than an absence of traffic. A DECERR that still enqueued would fail the second half.
+|CHK-FILTER-REOPEN
+|Reopening the window restores the peer write and the receive FIFO moves again. This is the positive control for CHK-FILTER-DENY: without it, a permanently broken peer path would satisfy the deny.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
