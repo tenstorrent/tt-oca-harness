@@ -593,7 +593,7 @@ tests = [
     "smc_efuse_boundary_signals_test",
     "smc_efuse_jtag_lc_access_matrix_test",
     # PROD/RMA JTAG-OTP access control: non-identity read and write return
-    # DECERR + 0xBADCAB1E while CHIPLET_ID/PACKAGE_ID return OKAY. The decision
+    # DECERR + 0xBADCAB1E while JTAG_PUBLIC_IDENTITY returns OKAY. The decision
     # is DUT RTL (smc_efuse_wrapper.sv:93-96 identity decode, :137-138 lc-gated
     # demux, :152 RESP_DATA 32'hbadcab1e) and the scored value has NO
     # efuse_bank_model dependence -- the sequence explicitly refuses to score

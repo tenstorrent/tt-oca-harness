@@ -430,8 +430,8 @@ CPU accesses to its own resources out through the output fabric.
 
 After global-aperture reconfiguration, software may use global addresses
 for accesses that leave the local SMC view. Global address derivation
-requires knowledge of the chiplet ID or chiplet BAR, both provisioned in
-fuses and available to firmware.
+requires the chiplet-global aperture base, which firmware reads from the
+`GLOBAL_BASE` CSR described above.
 
 ===== Outbound Traffic Flow
 

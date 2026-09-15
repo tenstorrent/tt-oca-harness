@@ -330,7 +330,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_dtp_otp_smc_map_rw_test": [
-        ("CHK-OTP-SMC-MAP-RW", "CHK-OTP-SMC-MAP-RW", "SMC OTP MAP BIRA R/W"),
+        ("CHK-OTP-SMC-MAP-RW", "CHK-OTP-SMC-MAP-RW", "SMC OTP MAP SPARE[0] R/W"),
     ],
     "smu_dtp_otp_smc_series_error_test": [
         (
