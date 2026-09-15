@@ -41,6 +41,11 @@ partial read costs far more time than a full one.
 | `hw/common/dv/fw/` | Shared firmware build engine (`compile.mk`), link modes, toolchain checks |
 | `nonfree/setup_env.sh` | Environment setup — *proprietary companion, only present with access* |
 
+`make doc-trm-serve` builds a TRM-first preview with the other documentation
+products included, since the TRM links to their pages. Its Make dependencies
+and container equivalent are defined in `doc/trm/doc.mk` and
+`scripts/docker-run.sh`; `antora-trm-playbook.yml` selects the content.
+
 ## Environment Setup
 
 The `nonfree/` companion is not part of the open repository. If you have it, it sets the

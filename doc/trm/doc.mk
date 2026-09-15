@@ -13,6 +13,7 @@ OCAH_TRM_BUILD ?= $(OCAH_TRM_DIR)/_build
 OCAH_TRM_DIST ?= $(OCAH_TRM_DIR)/dist
 OCAH_TRM_PLAYBOOK ?= $(OCAH_ROOT)/antora-trm-playbook.yml
 OCAH_TRM_PDF ?= ocah-trm.pdf
+OCAH_TRM_SERVE_PORT ?= 8000
 
 .PHONY: ocah-doc-trm-meta
 ocah-doc-trm-meta:
@@ -46,7 +47,7 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 	fi
 
 .PHONY: ocah-doc-trm-html
-ocah-doc-trm-html: ocah-doc-trm-setup
+ocah-doc-trm-html: ocah-doc-all-setup
 	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html trm"; exit 1; }
 	@echo "Building TRM HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
@@ -72,8 +73,8 @@ ocah-doc-trm-pdf: ocah-doc-trm-setup
 
 .PHONY: ocah-doc-trm-serve
 ocah-doc-trm-serve: ocah-doc-trm-html
-	@echo "Serving TRM at http://localhost:8000 (Ctrl+C to stop)"
-	@cd "$(OCAH_TRM_BUILD)/html_antora" && python3 -m http.server 8000
+	@echo "Serving TRM at http://localhost:$(OCAH_TRM_SERVE_PORT) (Ctrl+C to stop)"
+	@cd "$(OCAH_TRM_BUILD)/html_antora" && python3 -m http.server "$(OCAH_TRM_SERVE_PORT)"
 
 .PHONY: ocah-doc-trm-clean
 ocah-doc-trm-clean:

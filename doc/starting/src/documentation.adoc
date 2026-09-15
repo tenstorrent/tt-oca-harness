@@ -80,6 +80,12 @@ python3 -m http.server 8000
 
 This will generate the documentation, and then serve it on `http://localhost:8000/`. You will then be able to access it in your web browser.
 
+For a preview that opens at the TRM, run `make doc-trm-serve`.
+The TRM HTML build includes the other guides so links to Home, integration
+details, and programming procedures resolve locally. The container command
+`scripts/docker-run.sh doc-html trm` builds the same set of guides.
+If port 8000 is occupied, use `make doc-trm-serve OCAH_TRM_SERVE_PORT=8001`.
+
 === Embedding Images
 
 All images are stored in the repository at `doc/trm/assets` regardless of which document they
