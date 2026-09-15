@@ -47,8 +47,18 @@ module smc_clk_fcov #(
   input wire zeroer_gated_axi_clk_i,
   input wire zeroer_gated_reg_clk_i,
   input wire zeroer_busy_i,
-  input wire zeroer_bus_active_i
+  input wire zeroer_bus_active_i,
+
+  // Telemetry ATB receiver 0, captured in the telemetry clock domain.
+  input wire telemetry_atvalid_i,
+  input wire telemetry_atready_i,
+  input wire [7:0] telemetry_atdata_i
 );
+
+  // The clk_periph period point below compares a `$time` delta against a
+  // picosecond constant, so the unit this module counts in is pinned here
+  // rather than inherited from whichever file precedes it in the compile.
+  timeunit 1ps; timeprecision 1fs;
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
@@ -270,6 +280,105 @@ module smc_clk_fcov #(
                    in_reset)
   `OCAH_FCOV_COVER(c_zeroer_bus_active, zeroer_bus_active_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_zeroer_reg_clk_resume_on_access, zeroer_reg_clk_resume_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Peripheral-domain rate. The clock chapter states 100 MHz as the minimum
+  // for this domain, so the point is the measured period being at or under
+  // 10 ns. The period is the time between two successive rising edges, which
+  // is only meaningful once a first edge has been recorded.
+  // ------------------------------------------------------------------
+  localparam longint unsigned PeriphMinPeriodPs = 10_000;
+
+  logic [63:0] periph_edge_time_q;
+  logic [63:0] periph_period_q;
+  logic periph_edge_seen_q;
+  always_ff @(posedge clk_periph_i) begin
+    if (in_reset) begin
+      periph_edge_time_q <= 64'($time);
+      periph_period_q <= '0;
+      periph_edge_seen_q <= 1'b0;
+    end else begin
+      periph_edge_time_q <= 64'($time);
+      periph_period_q <= 64'($time) - periph_edge_time_q;
+      periph_edge_seen_q <= 1'b1;
+    end
+  end
+
+  wire periph_at_min_rate_e =
+      periph_edge_seen_q && (periph_period_q != '0) && (periph_period_q <= PeriphMinPeriodPs);
+  `OCAH_FCOV_COVER(c_clk_periph_at_minimum_100mhz, periph_at_min_rate_e, clk_periph_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Telemetry domain: an ATB beat accepted on the telemetry clock. The SMC
+  // has no telemetry PLL, so this tb runs the receiver on clk_smc_i and the
+  // point samples there.
+  // ------------------------------------------------------------------
+  wire atb_accept_e = (telemetry_atvalid_i === 1'b1) && (telemetry_atready_i === 1'b1);
+  logic [7:0] atb_data_q;
+  logic atb_accept_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      atb_data_q <= '0;
+      atb_accept_q <= 1'b0;
+    end else begin
+      atb_accept_q <= atb_accept_e;
+      if (atb_accept_e) atb_data_q <= telemetry_atdata_i;
+    end
+  end
+
+  wire atb_capture_e = atb_accept_q && (atb_data_q !== 8'h00);
+  `OCAH_FCOV_COVER(c_atb_capture_on_clk_telemetry, atb_capture_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Per-module gating as a contract independent of which module it is: a
+  // gate open with its clock moving, a gate closed with its clock held, and
+  // the restore edge where activity re-opens a closed gate. The restore
+  // point is an edge, so it cannot be satisfied by a gate that was never
+  // closed.
+  // ------------------------------------------------------------------
+  wire module_gate_enabled_e = (dma_cg_open_e && dma_clk_toggling)
+      || (zeroer_cg_open_e && zeroer_axi_clk_toggling);
+  wire module_gate_disabled_e = dma_clk_held_e || zeroer_axi_held_e || i2c_cg_closed_e;
+  `OCAH_FCOV_COVER(c_module_gate_enabled, module_gate_enabled_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_module_gate_disabled, module_gate_disabled_e, clk_smc_i, in_reset)
+
+  logic dma_cg_en_q, zeroer_cg_en_q;
+  logic dma_busy_q, zeroer_busy_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      dma_cg_en_q <= 1'b0;
+      zeroer_cg_en_q <= 1'b0;
+      dma_busy_q <= 1'b0;
+      zeroer_busy_q <= 1'b0;
+    end else begin
+      dma_cg_en_q <= dma_cg_en_i;
+      zeroer_cg_en_q <= zeroer_cg_en_i;
+      dma_busy_q <= dma_gater_busy_i;
+      zeroer_busy_q <= zeroer_busy_i;
+    end
+  end
+
+  // Restore is the gated clock resuming after having been held, with the
+  // activity term up. The cg_en inputs are the CSR controls, so an edge on
+  // them is a software write rather than an activity detection.
+  logic dma_clk_held_q, zeroer_axi_held_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      dma_clk_held_q <= 1'b0;
+      zeroer_axi_held_q <= 1'b0;
+    end else begin
+      dma_clk_held_q <= !dma_clk_toggling;
+      zeroer_axi_held_q <= !zeroer_axi_clk_toggling;
+    end
+  end
+
+  wire dma_gate_restored_e = dma_clk_held_q && dma_clk_toggling
+      && ((dma_gater_busy_i === 1'b1) || (dma_busy_q === 1'b1));
+  wire zeroer_gate_restored_e = zeroer_axi_held_q && zeroer_axi_clk_toggling
+      && ((zeroer_busy_i === 1'b1) || (zeroer_busy_q === 1'b1));
+  wire activity_restores_clock_e = dma_gate_restored_e || zeroer_gate_restored_e;
+  `OCAH_FCOV_COVER(c_activity_detected_clock_restored, activity_restores_clock_e, clk_smc_i,
+                   in_reset)
 
 `ifndef VERILATOR
   // ------------------------------------------------------------------

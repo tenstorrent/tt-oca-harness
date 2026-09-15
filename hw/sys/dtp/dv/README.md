@@ -188,6 +188,12 @@ DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
 DTP_XTRIG_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_ctm_p2p_cla_to_ctp_test
 
+# JTAG2AXI geometry gate negative validation: every JTAG2AXI scenario opens a
+# pass by comparing the three *_JTAG2AXI_CAPS TDRs with the DV geometry table
+# (CHK-J2A-GEOMETRY); a corrupted expected address size must fail the run
+DTP_J2A_GEOMETRY_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
+
 # SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
   --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
@@ -367,6 +373,12 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm \
 python3 tools/dv/run_dv.py --dut dtp --framework uvm \
   --items dtp_jtag2axi_smc_axi_single_write_read_test \
   --plusarg +DTP_J2A_REF_MODEL_NEGATIVE
+
+# JTAG2AXI geometry gate negative validation: a corrupted expected address
+# size in the per-pass CAPS comparison (CHK-J2A-GEOMETRY) must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test \
+  --plusarg +DTP_J2A_GEOMETRY_NEGATIVE
 ```
 
 PASS/FAIL is classified by the global parser registry in
