@@ -127,10 +127,9 @@ class SmcCsrSeq(smc_base_test_seq):
 
         The zero is a DV-owned expectation, not a document-cited value: an
         error response carries no payload, so a terminator that hands back a
-        neighbouring register's contents or a stale bus word fails here. Three
+        neighbouring register's contents or a stale bus word fails here. Two
         sequences call it: ``smc_gpio_ctrl_full_sweep_test_seq`` (the external
-        GPIO_CTRL windows) and ``smc_pvt_analog_sensor_test_seq`` (the POC/PBIAS
-        windows) rely on this DV-owned zero alone;
+        GPIO_CTRL windows) relies on this DV-owned zero alone;
         ``smc_sideband_protocol_smoke_test_seq`` reads AVS_READBACK on an empty
         FIFO, where memmap.adoc does fix the zero, and cites it at the call."""
         mask = (1 << (length * 8)) - 1
@@ -151,10 +150,6 @@ class SmcCsrSeq(smc_base_test_seq):
         got = item.rdata & mask
         assert got == 0, f"{name} @ 0x{addr:08x}: expected rdata=0, got 0x{got:0{length * 2}x}"
         return item.rdata
-
-    async def csr_read_many_decerr_zero(self, regs: list[tuple[str, int, int | None]]) -> None:
-        for name, addr, _expected in regs:
-            await self.csr_read_decerr_zero(name, addr)
 
     async def csr_read_expect_error(self, name: str, addr: int, length: int = 4) -> int:
         """Read a window that deterministically returns an AXI error response

@@ -6,8 +6,7 @@
 
 This chapter defines the fabric and peripheral honesty signoff. Feature credit
 is the SCOPE matrix in `SMC_SCOPE_TRACEABILITY.adoc`. A green fabric or I3C
-name is not protocol proof. OUT rows live in `SMC_DEFERRED_DISPOSITION.adoc`
-and the README "Present but not enrolled" table.
+name is not protocol proof. OUT rows live in `SMC_DEFERRED_DISPOSITION.adoc`.
 
 [[smc-fabric-credit]]
 === Credited vs OUT
@@ -24,15 +23,14 @@ and the README "Present but not enrolled" table.
 |AVSBus / sideband CSR |`smc_sideband_protocol_smoke_test` |`CHK-AVS-*` CSR/status tokens |YES
 |UART/SPI/log-engine CSR |`smc_uart_spi_log_engine_test` |`CHK-UART-LOG-*`, `CHK-UART-MSR-*` (CSR window, not loopback) |YES
 |I3C window decode |`smc_i3c_to_fabric_test` |HCI_VERSION / `proxy=True`; not in `smoke` |NO (not I3C protocol)
-|I3C CCC/IBI |`smc_i3c_ccc_ibi_full_test` |unenrolled `needs_i3c_dat_dct` |NO — child I3C TB
+|I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |no DAT/DCT macros on `smc_wrapper` |NO — child I3C TB
 |DTP CSR on `smc_wrapper` |idle port; no terminator |— |NO
-|PLL/PVT adopter wrap |`smc_pll_*` / `smc_pvt_*` |unenrolled `rtl_placeholder` |NO
-|GPIO / I2C SAMPLE observe |`smc_gpio_observe_test`, `smc_i2c_cg_sanity_test` |in `smoke` |NO (SAMPLE-only)
+|PLL/PVT adopter wrap |none; `smc_pll_*` / `smc_pvt_*` are dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |OKAY+0 placeholder wraps |NO
+|GPIO / I2C SAMPLE observe |`smc_gpio_observe_test`, `smc_i2c_cg_sanity_test` |in `functional`, not `smoke` |NO (SAMPLE-only)
 |UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |NO — UART/ROM intake
 |Ext-AXI / CPU traffic Force-era |`smc_cpu_traffic_*`, `smc_external_test` |OUT |NO
 |===
 
 I3C block-depth stays on the I3C intake. The wrapper leaf is decode
-only and is not a substitute for CCC/IBI. Placeholder tags in the
-README match the deferred disposition: `needs_i3c_dat_dct`,
-`needs_dtp_csr_sub`, `rtl_placeholder`, `fake_bfm`, `tb_glue`.
+only and is not a substitute for CCC/IBI. The blocker behind every OUT row
+above is named in `SMC_DEFERRED_DISPOSITION.adoc`.

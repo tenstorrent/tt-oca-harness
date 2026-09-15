@@ -7,7 +7,8 @@
 This chapter defines the reset, clock and interrupt signoff. Feature credit is
 the SCOPE matrix in `SMC_SCOPE_TRACEABILITY.adoc`, not every name in
 `reset.toml` / `clock.toml` / `irq.toml`. SAMPLE-only observe tests
-stay in `smoke` and are not requirement rows.
+stay in `functional` (only `smc_cold_reset_test` is also in `smoke`) and are
+not requirement rows.
 
 [[smc-rci-credit]]
 === Credited vs observe-only
@@ -21,7 +22,7 @@ stay in `smoke` and are not requirement rows.
 |GPIO IRQ active |`smc_gpio_irq_active_test` |`hosted`, `per_ip` |YES
 |Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |`hosted`, `per_ip` |YES
 |Cold reset / clk running / IRQ observe |`smc_cold_reset_test`, `smc_clk_running_test`, `smc_irq_observe_test` |`functional` (`smc_cold_reset_test` also `smoke`) |NO (SAMPLE-only)
-|PLL/PVT clock config |`smc_pll_*` |unenrolled `rtl_placeholder` |NO
+|PLL/PVT clock config |none; `smc_pll_*` are dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |OKAY+0 placeholder wraps |NO
 |===
 
 `allow_timeout=True` stays a reviewed exception: helpers in
@@ -31,6 +32,39 @@ paths receive no credit.
 
 Depth groups `reset` / `clock` / `irq` remain debug breadth. They are
 not an extra feature-credit set.
+
+On Verilator and Xcelium the `och_prim` `prim_sync2` / `prim_sync3` cells are
+replaced by the behavioural stand-ins in `tb/verilator_stubs/`; VCS drops them.
+Every leaf of
+`reset.toml`, `clock.toml` and `irq.toml` has a row in the *Bench stand-ins*
+section of `SMC_DEFERRED_DISPOSITION.adoc` stating which crossing sits on its
+proof path, what its verdict reads, and the result of a VCS run on the product
+cells. Two runs supply those results. The group control run (`--items reset
+clock irq`) covered the 35 leaves of the `reset`, `clock` and `irq` groups: 34
+entries of the three files plus `smc_irq_during_powergood_glitch_test`, an
+`irq` group member defined in `combined.toml`. The five entries the three
+files hold outside those groups -- `smc_jtag_reset_proxy_test`,
+`smc_flr_sanity_test`, `smc_multi_reset_csr_persistence_test`,
+`smc_zeroer_dma_timeout_test` and `smc_mailbox_irq_test` -- were not in it;
+the separate run `20260914_031352__vcs__standin_files_minus_groups`, with the waiver
+below in place, grades them 5 of 5 PASS on both the cocotb verdict and the
+runner, with no assertion firing after time 0. Two findings of the group
+control run belong to this signoff. The first
+is closed: the VCS flow graded every leaf FAIL on a time-0 PeakRDL external-ack
+assertion class (`assert_bad_ext_wr_ack` / `assert_bad_ext_rd_ack` in
+`cpu_ctrl_reg`, `reset_unit_reg` and `system_timer_octs_reg`) that fires once
+before reset, while the ack strobes are still X, and that the cocotb verdicts
+do not depend on. That class is waived at time 0 only, in `smc_sim_cfg.toml`
+`[pass_fail]` in the form SEP uses for `abr_reg`, and the waived re-run
+`20260914_035111__vcs__reset` grades 35 of 35 PASS. The second stays open:
+`smc_cg_dft_reset_bringup_test` fires the product assertion
+`CheckMutualExclusionClk1` in `avsbus_controller.u_refclk_apbclk_mux`
+(`prim_ag_clk_mux.sv`) at 4688 ns on seed 1611842931. The waiver does not
+cover it -- a replay of the leaf on that seed grades FAIL on that line -- and
+no Verilator run can observe it because assertions are compiled out there.
+That firing remains an open item of this signoff; the condition that closes
+it, and the tracker for it, are the *Closes when* cell of the `prim_sync2/3`
+control row in `SMC_DEFERRED_DISPOSITION.adoc`.
 
 The cool-reset OUT names (`smc_cool_reset_from_primary_chiplet_test`,
 `smc_cool_reset_from_bmc_test`, `smc_cool_reset_x_cool_reset_test`) have rows
