@@ -155,6 +155,16 @@ module sep_fcov (
   localparam logic [31:0] AbrCmdVerify = 32'h3;  // MLDSA_CTRL.CTRL = VERIFYING
   localparam logic [31:0] AbrStValid = 32'h2;  // MLDSA_STATUS.VALID
 
+  // ML-KEM is a separate register block in the same aperture: its own CTRL and
+  // STATUS, so a ML-DSA command can never score an ML-KEM cell. Offsets from
+  // the Caliptra abr_reg.rdl MLKEM block.
+  localparam logic [31:0] KemCtrl = AbrBase + 32'h9010;
+  localparam logic [31:0] KemStatus = AbrBase + 32'h9014;
+  localparam logic [31:0] KemCmdKeygen = 32'h1;  // MLKEM_CTRL.CTRL = KEYGEN
+  localparam logic [31:0] KemCmdEncaps = 32'h2;  // MLKEM_CTRL.CTRL = ENCAPS
+  localparam logic [31:0] KemCmdDecaps = 32'h3;  // MLKEM_CTRL.CTRL = DECAPS
+  localparam logic [31:0] KemStValid = 32'h2;  // MLKEM_STATUS.VALID
+
   // AES CTRL_SHADOWED / STATUS (OpenTitan aes_reg_pkg via sep_reg.svh).
   localparam logic [1:0] AesOpEnc = 2'b01;
   localparam logic [1:0] AesOpDec = 2'b10;
@@ -447,6 +457,18 @@ module sep_fcov (
   logic abr_sign_q, abr_verify_q;
   wire  abr_sign_done = abr_status_valid && abr_sign_q;
   wire  abr_verify_done = abr_status_valid && abr_verify_q;
+
+  // ML-KEM. Same one-pending-flag-per-command shape as the ML-DSA pair above,
+  // so a VALID read only scores the command that is actually outstanding.
+  wire kem_status_valid = rd_ev && (ar_addr_q == KemStatus) &&
+      ((rd_data & KemStValid) != 32'h0);
+  wire kem_keygen = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdKeygen[2:0]);
+  wire kem_encaps = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdEncaps[2:0]);
+  wire kem_decaps = wr_ev && (aw_addr_q == KemCtrl) && (wr_data[2:0] == KemCmdDecaps[2:0]);
+  logic kem_keygen_q, kem_encaps_q, kem_decaps_q;
+  wire  kem_keygen_done = kem_status_valid && kem_keygen_q;
+  wire  kem_encaps_done = kem_status_valid && kem_encaps_q;
+  wire  kem_decaps_done = kem_status_valid && kem_decaps_q;
 
   // --- ESRC / DRBG / EDN -------------------------------------------------
   logic esrc_seed_q;
@@ -811,6 +833,9 @@ module sep_fcov (
       abr_keygen_q      <= 1'b0;
       abr_sign_q        <= 1'b0;
       abr_verify_q      <= 1'b0;
+      kem_keygen_q      <= 1'b0;
+      kem_encaps_q      <= 1'b0;
+      kem_decaps_q      <= 1'b0;
       km_cmd_hdr_next_q <= 1'b1;
       km_cmd_idx_q      <= '0;
       km_rsp_idx_q      <= '0;
@@ -928,6 +953,13 @@ module sep_fcov (
       if (abr_sign_done) abr_sign_q <= 1'b0;
       if (abr_verify) abr_verify_q <= 1'b1;
       if (abr_verify_done) abr_verify_q <= 1'b0;
+
+      if (kem_keygen) kem_keygen_q <= 1'b1;
+      if (kem_keygen_done) kem_keygen_q <= 1'b0;
+      if (kem_encaps) kem_encaps_q <= 1'b1;
+      if (kem_encaps_done) kem_encaps_q <= 1'b0;
+      if (kem_decaps) kem_decaps_q <= 1'b1;
+      if (kem_decaps_done) kem_decaps_q <= 1'b0;
 
       // KM command frame: header, payload_len words, then the payload CRC word
       // when payload_len > 0.
@@ -1211,6 +1243,21 @@ module sep_fcov (
     cp_done: coverpoint {abr_verify_done, abr_sign_done} {
       bins sign_status_valid = {2'b01};
       bins verify_status_valid = {2'b10};
+    }
+  endgroup
+
+  covergroup sep_abr_mlkem_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_abr_mlkem_cg";
+    cp_op: coverpoint {kem_decaps, kem_encaps, kem_keygen} {
+      bins mlkem_keygen = {3'b001};
+      bins mlkem_encaps = {3'b010};
+      bins mlkem_decaps = {3'b100};
+    }
+    cp_done: coverpoint {kem_decaps_done, kem_encaps_done, kem_keygen_done} {
+      bins keygen_status_valid = {3'b001};
+      bins encaps_status_valid = {3'b010};
+      bins decaps_status_valid = {3'b100};
     }
   endgroup
 
@@ -1568,6 +1615,7 @@ module sep_fcov (
   sep_otbn_execute_cg         u_sep_otbn_execute_cg         = new();
   sep_abr_keygen_cg           u_sep_abr_keygen_cg           = new();
   sep_abr_sign_cg             u_sep_abr_sign_cg             = new();
+  sep_abr_mlkem_cg            u_sep_abr_mlkem_cg            = new();
   sep_esrc_edn_flow_cg        u_sep_esrc_edn_flow_cg        = new();
   sep_km_command_sideload_cg  u_sep_km_command_sideload_cg  = new();
   sep_km_host_cmd_cg          u_sep_km_host_cmd_cg          = new();

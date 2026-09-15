@@ -67,7 +67,7 @@ fault paths, illegal encodings. Named below. Not collected.
 |HMAC |`sep_hmac_mode_cg`
 |KMAC |`sep_kmac_mode_cg`
 |OTBN |`sep_otbn_execute_cg`
-|Adams Bridge |`sep_abr_keygen_cg`, `sep_abr_sign_cg`
+|Adams Bridge |`sep_abr_keygen_cg`, `sep_abr_sign_cg`, `sep_abr_mlkem_cg`
 |ESRC / DRBG / EDN |`sep_esrc_edn_flow_cg`
 |Key Manager |`sep_km_generate_cg`, `sep_km_command_sideload_cg`, `sep_km_host_cmd_cg`, `sep_km_wipe_cg`, `sep_km_sw_reset_cg`
 |Crypto isolate / reset |`sep_crypto_isolate_cg`
@@ -106,6 +106,7 @@ human. Other members may fill a group in passing.
 |`sep_otbn_execute_cg` |`sep_otbn_compute_rand_test`
 |`sep_abr_keygen_cg` |`sep_abr_mldsa_keygen_kat_test`
 |`sep_abr_sign_cg` |`sep_abr_mldsa_sign_verify_kat_test`
+|`sep_abr_mlkem_cg` |`sep_abr_mlkem_kat_test`
 |`sep_esrc_edn_flow_cg` |`sep_esrc_e2e_smoke_test`; KM sink `sep_drbg_real_sink_multi_km_aes_test`; `cp_edn_client` `sep_crypto_edn_round_robin_grant_test` (all four bins: it is the only leaf that drives every adapter client in one run)
 |`sep_km_generate_cg` |`sep_km_command_set_rand_test`
 |`sep_km_command_sideload_cg` |the four `sep_km_{aes,hmac,kmac,otbn}_sideload_kat_test` (MUST-fill for HMAC/KMAC/AES/OTBN). `sep_km_command_set_rand_test` writes one seed-selected classic dest plus a directed ABR ML-DSA seed dest every seed. `sep_km_abr_seed_sideload_test` also writes dest ABR. One seed of the command-set leaf does not fill all four classic cells.
@@ -341,6 +342,27 @@ VERIFYING are separate `MLDSA_CTRL.CTRL` encodings with separate owning leaves,
 and folding them would let the keygen leaf report a sign cell. The
 signature-equals-ACVP and verify-accept-vs-reject claims stay on
 `sep_abr_mldsa_sign_verify_kat_test`. KEYGEN_SIGN (0x4) is not covered.
+
+==== `sep_abr_mlkem_cg`
+
+*Description*: Adams Bridge ML-KEM-1024 commands complete.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|`cp_op` |`MLKEM_CTRL` = KEYGEN, ENCAPS, and DECAPS
+|`cp_done` |`MLKEM_STATUS.VALID` after each of the three -- as with the ML-DSA
+groups each bin pends on its own command, so a VALID read cannot score a command
+that was never issued
+|===
+
+ML-KEM is a separate register block from ML-DSA in the same aperture, with its
+own `MLKEM_CTRL` and `MLKEM_STATUS`, so this is a separate group rather than
+more bins on `sep_abr_sign_cg`: no ML-DSA command can reach an ML-KEM cell and
+the owning leaves stay distinct. The value claims -- ek/dk, ciphertext and
+shared key against the ACVP vectors, and the implicit-rejection key for a
+modified ciphertext -- stay on `sep_abr_mlkem_kat_test`. `KEYGEN+DECAPS` (0x4)
+is not covered.
 
 ==== `sep_esrc_edn_flow_cg`
 

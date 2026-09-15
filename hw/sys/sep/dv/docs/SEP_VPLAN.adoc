@@ -340,6 +340,10 @@ appears.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |ML-DSA-87 signing and verification through the same aperture: a deterministic external-mu signature compared word-for-word against the ACVP sigGen vector, and the sigVer pair that must verify and must not, whose results must differ.
+|`sep_abr_mlkem_kat_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|ML-KEM-1024 key generation, encapsulation and decapsulation through the ML-KEM register block: the two keys, the ciphertext and the shared key each compared against the published ACVP vector, with decapsulation walked as both the valid case and the modified-ciphertext case that FIPS-203 answers by implicit rejection.
 |`sep_entropy_pool_aperture_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -804,6 +808,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Adams Bridge ML-DSA-87 sigGen / sigVer
 |`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
+
+|Adams Bridge ML-KEM-1024
+|`sep_abr_mlkem_kat_test`. keyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. `KEYGEN+DECAPS` and the key-vault seed path are not claimed.
 
 |Entropy pool aperture + PIC sources
 |`sep_entropy_pool_aperture_test`. Drain-under-fill / stall-duration are not claimed.
@@ -3139,9 +3146,96 @@ updated per command, passes the accepting case alone and fails
 makes the signature a fixed function of inputs written over the bus, so a
 cached, constant or non-running engine cannot match 1157 words.
 
-*Not claimed*: ML-KEM-1024, `KEYGEN_SIGN` (0x4), the key-vault seed path, and
+*Not claimed*: `KEYGEN_SIGN` (0x4), the key-vault seed path, and
 `CMD_ABR_SK_TRANSFER` consume after a live ABR capture. The absolute encoding of
-`MLDSA_VERIFY_RES` is not pinned, only that accept and reject differ.
+`MLDSA_VERIFY_RES` is not pinned, only that accept and reject differ. ML-KEM is a
+separate vehicle, <<sep_abr_mlkem_kat_test>>.
+
+'''''
+
+[[sep_abr_mlkem_kat_test]]
+===== `sep_abr_mlkem_kat_test`
+
+*Phase*: 2
+
+*Bucket*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_mlkem_kat_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves the ML-KEM-1024 commands. ML-KEM is a second register block
+inside the Adams Bridge aperture, with its own `MLKEM_CTRL` and `MLKEM_STATUS`
+beside the ML-DSA pair, and no leaf drove it: the encapsulation key,
+decapsulation key, ciphertext and shared-key windows had no vehicle. Not
+randomized -- every input is a published vector.
+
+*Test Coverage*: ML-KEM-1024 keyGen, encapsulation, and decapsulation known
+answers, decapsulation walked as both the valid and the implicit-rejection case,
+and `ZEROIZE` between commands.
+
+*Test Procedure*:
+
+[arabic]
+. The aperture is the same `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR`
+(`hw/sys/sep/rtl/sep_crypto_pkg.sv`) the ML-DSA leaves use. The ML-KEM windows
+sit higher in the same 64 KB region; offsets resolve from the vendor
+`abr_reg.rdl` by symbol.
+. `MLKEM_CTRL` is writable only while `MLKEM_STATUS.READY` is set, so each
+command waits for READY first. A write to a busy engine is dropped with no
+error, and the previous `VALID` would otherwise be read as this command's
+completion.
+. keyGen takes the two seeds d and z over the bus and produces both keys.
+. Encapsulation takes the message randomness m over the bus as well as the
+encapsulation key, which is what makes the ciphertext a fixed function of
+published inputs rather than a value only a round trip could check.
+. Decapsulation is run twice, with the ACVP case that decapsulates normally and
+the case whose ciphertext was modified. Under FIPS-203 implicit rejection the
+modified ciphertext produces a different shared key rather than an error, and
+ACVP publishes that key.
+. `MLKEM_STATUS.VALID` is sticky, so every command is separated by a `ZEROIZE`.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-KEM-NAME
+|The ML-KEM identity registers read `KEM-1024`. Every window compare below reads
+back over this aperture, so a dead decode would turn all of them into compares
+against zero.
+|CHK-KEM-KEYGEN
+|For the ACVP seeds, the 392-word encapsulation key and the 792-word
+decapsulation key both match the published vector word-for-word.
+|CHK-KEM-ENCAPS
+|For that encapsulation key and the published message randomness, the 392-word
+ciphertext and the shared key both match the vector. Because the randomness is
+supplied over the bus this is an absolute value, not a self-consistency check.
+|CHK-KEM-DECAPS
+|The valid ACVP decapsulation case recovers the published shared key.
+|CHK-KEM-DECAPS-REJECT
+|The modified-ciphertext case returns the published *implicit-rejection* key --
+a different value, still exact. An engine that reported an error, returned
+zeros, skipped implicit rejection, or reused the previous shared key fails here
+while passing the accepting case.
+|CHK-KEM-ZEROIZE
+|`ZEROIZE` between commands drops `VALID` and the shared-key window then reads
+zero. Same scope limit as the ML-DSA leaves: the read port is gated on the valid
+register, so a zero window proves the key is no longer readable, *not* that the
+RAM was wiped.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Anti-vacuity*: the ML-KEM read ports return zero before a command completes, so
+a compare against zero would pass on an engine that never ran -- every expected
+value here is non-zero, and the vector loader refuses an all-zero expectation at
+import. The rejecting decapsulation case is the load-bearing one: implicit
+rejection has no error to observe, so the only thing that can fail is the value.
+
+*Not claimed*: `KEYGEN+DECAPS` (0x4), the key-vault seed and message read lanes,
+the shared-key write lane to the key vault, and ML-DSA.
 
 '''''
 
@@ -6413,6 +6507,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
 
 |Contracts not claimed (no vehicle in `all`)
-|Phase 3: ABR ML-KEM-1024; ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
+|Phase 3: ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
 
 |===
