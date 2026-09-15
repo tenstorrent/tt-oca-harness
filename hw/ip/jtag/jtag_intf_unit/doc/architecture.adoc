@@ -8,7 +8,7 @@ a unified debug access point.
 
 Shown below is an abstract diagram of the JTAG scan chain.
 
-image::jtag_scan_chain.svg[JTAG Interface Unit scan chain diagram showing PTAP, STAP chain and iJTAG SIB network,scaledwidth=90.0%]
+image::jtag_scan_chain.svg["JTAG Interface Unit scan chain diagram showing PTAP, STAP chain and iJTAG SIB network",scaledwidth=90.0%]
 
 === Scan Chain Topology
 

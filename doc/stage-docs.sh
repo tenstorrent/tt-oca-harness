@@ -246,8 +246,8 @@ stage_gen_html "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/html" "$MOD/ip/p
 while IFS= read -r img; do
   mkdir -p "$ASSETS"
   cp -f "$img" "$ASSETS/" 2>/dev/null || true
-done < <(find "$ROOT"/hw/ip/*/doc "$ROOT"/hw/ip/*/*/doc "$ROOT"/hw/sys/*/doc \
-  -type f \( -name '*.png' -o -name '*.svg' -o -name '*.jpg' -o -name '*.jpeg' \) 2>/dev/null)
+done < <(find -L "$ROOT"/hw/ip/*/doc "$ROOT"/hw/ip/*/*/doc "$ROOT"/hw/sys/*/doc -type f \
+  \( -name '*.png' -o -name '*.svg' -o -name '*.jpg' -o -name '*.jpeg' \) 2>/dev/null)
 
 stage_module_assets() {
   local src="$1"
