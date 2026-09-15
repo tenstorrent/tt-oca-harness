@@ -21,7 +21,7 @@
 
 [JTAG_PUBLIC_IDENTITY]
     write_locked = "False"
-    read_locked = "False"
+    read_locked = "True"
     [JTAG_PUBLIC_IDENTITY.fields.value]
     value = 0x0
 

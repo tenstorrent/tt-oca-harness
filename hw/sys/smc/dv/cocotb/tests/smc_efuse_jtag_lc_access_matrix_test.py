@@ -58,20 +58,9 @@ from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_addr_map import smc_addr
 from smc_base_test import smc_base_test
 
-# TODO(#1040): eFuse map reworked — update address constants and matrix below.
-#   CHIPLET_ID (0x008, 256-bit) + PACKAGE_ID (0x028, 256-bit) are gone.
-#   Replaced by JTAG_PUBLIC_IDENTITY at offset 0x008 (256-bit, single register).
-#   New symbol: SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR
-#   - Remove EFUSE_MAP_CHIPLET_ID and EFUSE_MAP_PACKAGE_ID.
-#   - Add EFUSE_MAP_JTAG_PUBLIC_IDENTITY with the new symbol.
-#   - LC_IDENTITY_ADDRS becomes a 1-tuple: (EFUSE_MAP_JTAG_PUBLIC_IDENTITY,)
-#   - READ_CLASSES loses CHIPLET_ID and PACKAGE_ID rows; add JTAG_PUBLIC_IDENTITY.
-#   - Update docstring and details= string accordingly.
-
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
 EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-EFUSE_MAP_CHIPLET_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR")
-EFUSE_MAP_PACKAGE_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR")
+EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
 
 # architecture.adoc:297-299 -- blocked request -> error slave -> 0xbadcab1e.
 BLOCK_SIGNATURE = 0xBADCAB1E
@@ -88,8 +77,8 @@ LC_PROD_END = 0x8
 # architecture.adoc:286 -- the restricted set is exactly PROD and RMA_SOP.
 LC_JTAG_RESTRICTED = (LC_PROD, LC_RMA_SOP, LC_RMA_SOP_ALT)
 
-# architecture.adoc:301-305 -- the identity exception is chiplet ID + package ID.
-LC_IDENTITY_ADDRS = (EFUSE_MAP_CHIPLET_ID, EFUSE_MAP_PACKAGE_ID)
+# architecture.adoc:301-305 -- the identity exception is JTAG_PUBLIC_IDENTITY.
+LC_IDENTITY_ADDRS = (EFUSE_MAP_JTAG_PUBLIC_IDENTITY,)
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
@@ -148,8 +137,7 @@ LC_MATRIX = [
 
 READ_CLASSES = (
     ("NON_ID", EFUSE_MAP_NON_ID),
-    ("CHIPLET_ID", EFUSE_MAP_CHIPLET_ID),
-    ("PACKAGE_ID", EFUSE_MAP_PACKAGE_ID),
+    ("JTAG_PUBLIC_IDENTITY", EFUSE_MAP_JTAG_PUBLIC_IDENTITY),
 )
 
 # Hierarchical decode probe. `hw/sys/smc/dv/tb/smc_public_scope.vlt` publishes
@@ -227,7 +215,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             if len(self.errors) == before:
                 token = f"CHK-EFUSE-JTAG-LC-{label}"
                 cocotb.log.info(
-                    "%s: lc_state_i=0x%02x (raw=0x%x sigint=%s) -- all four "
+                    "%s: lc_state_i=0x%02x (raw=0x%x sigint=%s) -- all three "
                     "SPEC-derived block/allow expectations held (%s)",
                     token,
                     pack_lc_state(raw, sigint=sigint),
@@ -287,7 +275,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             # below is the one the AXI response codes support.
             details=(
                 "lc_state_i-driven JTAG eFuse access-control ROUTING matrix "
-                "(PROD/RMA_SOP block + CHIPLET_ID/PACKAGE_ID exception + "
+                "(PROD/RMA_SOP block + JTAG_PUBLIC_IDENTITY exception + "
                 "differential-integrity lockdown), expectations derived from "
                 "hw/ip/efuse/doc/architecture.adoc:265-305; blocked/allowed "
                 "separated by AXI response code, both outcomes observed on the "
