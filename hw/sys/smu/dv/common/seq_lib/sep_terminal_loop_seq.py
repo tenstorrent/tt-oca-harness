@@ -97,6 +97,11 @@ class SepTerminalLoopSeq:
             f"{self.NAME}: no fail-loop symbol resolved, so a PASS could not be "
             "distinguished from the firmware never reporting anything"
         )
+        assert pass_pc not in fail_pcs, (
+            f"{self.NAME}: pass loop 0x{pass_pc:08x} shares its address with fail loop "
+            f"{fail_pcs[pass_pc]!r}; the toolchain folded the two bodies and the "
+            "verdict would be a coin toss"
+        )
 
         self.log.info("=" * 70)
         self.log.info("TEST: real SEP DV firmware %s in the OSS SMU wrapper", self.NAME)
