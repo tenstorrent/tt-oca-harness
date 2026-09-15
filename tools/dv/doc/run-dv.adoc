@@ -1564,7 +1564,7 @@ place is answered by a no-op compile.
 The identity travels into the results. `target_build` in the run-level
 `targets` table, in each `<test>/result.json` rollup, and in each leaf
 `result.json` carries `artifact_digest`, `build_identity`, `build_commit`,
-`build_dirty`, `built_at`, and `build_tool_version`; the surrounding `git`
+`build_dirty`, `built_at`, and `build_tool_version`. The run-level `git`
 object is the commit the *run* was launched at, and the two differ whenever a
 run reuses an earlier build. Every cocotb simulation log opens with the same
 facts as `# ocah_dv <name>=<value>` lines, so a log that outlives its run
@@ -1907,8 +1907,9 @@ keys, or authentication data.
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
-Leaf and rollup results carry the launching commit under `git` and the build
-they ran against under `target_build` (<<runner-build-identity>>).
+The run-level `result.json` records the launching commit under `git`. Leaf and
+rollup results record the build they ran against under `target_build`
+(<<runner-build-identity>>).
 
 The `tests` summary counts the recorded leaves (`total`, `passing`,
 `failing`, `skipped`) and records whether the run finished: `leaves_planned`

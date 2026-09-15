@@ -932,13 +932,8 @@ def fragment_payload(
     item: str,
     seed: int,
     result: StageResult,
-    git_metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Leaf result for one (test, seed, attempt) run.
-
-    `git` is the commit the run was launched at; the commit the simulator model was compiled at
-    is `target_build.build_commit`, and the two differ whenever a run reuses an earlier build.
-    """
+    """Leaf result for one (test, seed, attempt) run."""
     payload = {
         "schema_version": 1,
         "flow": flow.name,
@@ -947,7 +942,6 @@ def fragment_payload(
         "tool": tool,
         "item": item,
         "seed": seed,
-        "git": git_metadata if git_metadata is not None else git_info(root),
         "status": result.status,
         "exit_code": exit_code_for_status(result.status),
         "return_code": result.return_code,
@@ -983,7 +977,6 @@ def rollup_payload(
     run_dir: Path,
     item: str,
     runs: list[tuple[int, StageResult]],
-    git_metadata: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Per-test rollup across that test's seeds/attempts."""
     leaves = [result for _, result in runs]
@@ -996,7 +989,6 @@ def rollup_payload(
         "status": status,
         "exit_code": exit_code_for_status(status),
         "run_dir": repo_rel(root, run_dir),
-        "git": git_metadata if git_metadata is not None else git_info(root),
         "tests": _tests_summary(leaves),
         "runs": [
             {
