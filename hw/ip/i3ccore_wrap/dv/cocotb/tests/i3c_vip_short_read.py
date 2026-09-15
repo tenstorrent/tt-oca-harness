@@ -31,6 +31,7 @@ the 1:1 command/response mapping is successful *Write*-type transfers.
 """
 
 import cocotb
+import oca_i3c_wrap_reg as _csr
 from cocotb.triggers import ClockCycles
 from env.i3c_api import PioIntrStatus
 from env.i3c_rand import RandMgr, rand_bytes
@@ -41,12 +42,6 @@ from env.i3c_test_base import (
     make_env,
 )
 from env.i3c_vip_target import VipI3cTarget
-from I3CCSR_reg import (
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
-)
 
 BYTES_PER_ENTRY = 4
 
@@ -132,8 +127,8 @@ async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre, requested_len, s
         | (1 << TOC_BIT)
     )
     cmd_hi = requested_len << 16
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
 
     # Bounded loop: drain controller RX and wait for the response. The bound is the
     # "does not hang" guarantee.
@@ -145,11 +140,13 @@ async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre, requested_len, s
     for _ in range(POLL_BUDGET):
         polls += 1
         ctrl_status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+            ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
         )
         if ctrl_status.f.rx_thld_stat:
             for _e in range(rx_entries_per_int):
-                word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
+                word = await helper.read(
+                    ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_ADDR
+                )
                 rx_data.extend(helper.unpack_bytes(word, BYTES_PER_ENTRY))
                 bytes_read += BYTES_PER_ENTRY
         if ctrl_status.f.resp_ready_stat:
@@ -175,7 +172,7 @@ async def _drive_short_read(dut, tb, helper, ctrl, vip, r, sre, requested_len, s
     }
 
     if got_resp:
-        resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+        resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
         obs["resp"] = resp
         obs["err_status"] = (resp >> 28) & 0xF  # ERR_STATUS [31:28], Table 146
         obs["resp_len"] = resp & 0xFFFF
@@ -271,7 +268,7 @@ async def test_short_read_reporting_vip(dut):
     # batches, so a sub-threshold tail is still queued. HCI 6.8.1: use DATA_LENGTH.
     bytes_read, rx_data = permitted["bytes_read"], permitted["rx_data"]
     while bytes_read < permitted["resp_len"]:
-        word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
+        word = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_ADDR)
         take = min(BYTES_PER_ENTRY, permitted["resp_len"] - bytes_read)
         rx_data.extend(helper.unpack_bytes(word, take))
         bytes_read += take

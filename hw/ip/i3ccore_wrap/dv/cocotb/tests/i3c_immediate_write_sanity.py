@@ -22,15 +22,7 @@ from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 from env.i3c_api import I3CController, I3CHelper, I3CTarget
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
-from I3CCSR_reg import (
-    I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
-    I3C_EC_TTI_RX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-)
+import oca_i3c_wrap_reg as _csr
 
 # Address mapping
 CTRL_BASE = 0x0000
@@ -142,19 +134,21 @@ async def immediate_write(helper, ctrl, tgt, data_bytes, tid=0, dat_idx=0):
     helper.log.debug(f"  cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X}")
 
     # Write command descriptor (no TX FIFO writes needed)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
 
     # Wait for controller response
     ok, reg = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "resp_ready_stat"
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+        PioIntrStatus,
+        "resp_ready_stat",
     )
     if not ok:
         helper.log.error("immediate_write: timeout waiting for response")
         return False, 0, []
 
     # Read response descriptor
-    resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+    resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
     err_status = (resp >> 28) & 0xF
     resp_data_length = resp & 0xFFFF
     helper.log.debug(
@@ -172,7 +166,9 @@ async def immediate_write(helper, ctrl, tgt, data_bytes, tid=0, dat_idx=0):
     POLLS = 1000
     tgt_status = 0
     for _ in range(POLLS):
-        tgt_status = await helper.read(tgt.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
+        tgt_status = await helper.read(
+            tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR
+        )
         if tgt_status & TTI_RX_DESC_THLD_STAT:
             break
         await ClockCycles(helper.dut.clk, 10)
@@ -185,7 +181,9 @@ async def immediate_write(helper, ctrl, tgt, data_bytes, tid=0, dat_idx=0):
         return False, resp, []
 
     # Read target RX descriptor
-    tgt_rx_desc = await helper.read(tgt.base + I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR)
+    tgt_rx_desc = await helper.read(
+        tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR
+    )
     tgt_rx_data_length = tgt_rx_desc & 0xFFFF
     tgt_rx_error = (tgt_rx_desc >> 20) & 0xFFF
     helper.log.debug(
@@ -203,7 +201,7 @@ async def immediate_write(helper, ctrl, tgt, data_bytes, tid=0, dat_idx=0):
     rx_data = []
     bytes_remaining = tgt_rx_data_length
     while bytes_remaining > 0:
-        word = await helper.read(tgt.base + I3C_EC_TTI_RX_DATA_PORT_REG_ADDR)
+        word = await helper.read(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_RX_DATA_PORT_REG_ADDR)
         bytes_to_take = min(4, bytes_remaining)
         unpacked = helper.unpack_bytes(word, bytes_to_take)
         helper.log.debug(
@@ -270,7 +268,9 @@ async def test_immediate_write_sanity(dut):
     intr_en.f.resp_ready_stat_en = 1
     intr_en.f.cmd_queue_ready_stat_en = 1
     # tx_thld_stat_en = 0 (not set, disabled)
-    await helper.write(ctrl.base + PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR, intr_en.val)
+    await helper.write(
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR, intr_en.val
+    )
     tb.log.info("Disabled TX_THLD_STAT interrupt (not needed for immediate writes)")
 
     # Run all immediate write test cases

@@ -327,10 +327,11 @@ The I3C core uses a HCI (Host Controller Interface) register layout defined by t
 **Register Regions**:
 
 Every offset in this section is the `_REG_ADDR` value from the generated register
-map, `hw/ip/i3ccore_wrap/regs/gen/py/I3CCSR_reg.py`, which is the same module the
-tests import (as `_csr` in `cocotb/env/i3c_api.py`). Prefer the symbol over the
-literal in new code: the API always writes `self.base + <SYMBOL>_REG_ADDR`, so
-code written that way cannot drift when the register map is regenerated.
+map, `hw/ip/i3ccore_wrap/regs/gen/py/oca_i3c_wrap_reg.py`, which is the same
+module the tests import (as `_csr` in `cocotb/env/i3c_api.py`). The block
+testbench uses the `I3C_CSR_0__` address symbols for its 4 KB instance-0 window.
+Prefer the symbol over the literal in new code so addresses cannot drift when
+the register map is regenerated.
 
 | Region | Offset | Description |
 |--------|--------|-------------|
@@ -1844,8 +1845,8 @@ sweep as unverified on the default tool.
 Reads the real config and status registers after reset and compares each against
 the reset value published by the generated register map. Both halves of every
 row — the offset *and* the expected value — are resolved by symbol from
-`I3CCSR_reg`, never hand-copied, so a stale symbol raises `AttributeError` at
-import and a regenerated map moves offsets and reset values together.
+`oca_i3c_wrap_reg`, never hand-copied, so a stale symbol raises `AttributeError`
+at import and a regenerated map moves offsets and reset values together.
 
 It deliberately avoids two regions: the FIFO and data ports
 (COMMAND/RESPONSE/TX_DATA/RX_DATA/IBI), because reading those pops the queue or
@@ -2912,7 +2913,7 @@ Version 2.0 revised the guide for the `dv/cocotb/` layout and the `run_dv.py`
 launcher (the per-TB Makefile is gone), rewrote section 6 to cover every
 regression module, and corrected the register offsets and response-descriptor
 field definitions in sections 4 and 8 against
-`hw/ip/i3ccore_wrap/regs/gen/py/I3CCSR_reg.py` and
+`hw/ip/i3ccore_wrap/regs/gen/py/oca_i3c_wrap_reg.py` and
 `vendor/chipsalliance/i3c-core/upstream/src/i3c_pkg.sv`.
 
 ---

@@ -28,11 +28,7 @@ from env.i3c_api import I3CController, I3CHelper, I3CTarget, PioIntrStatus
 
 # Import register addresses for immediate write handling
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
-from I3CCSR_reg import (
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-)
+import oca_i3c_wrap_reg as _csr
 
 # Address mapping
 CTRL_BASE = 0x0000
@@ -374,8 +370,8 @@ async def i3c_ibi_during_broadcast(dut):
     cmd_lo, cmd_hi = build_immediate_write_cmd(write_data, dat_idx=0, tid=1)
     tb.log.debug(f"  cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X}")
 
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
 
     # Step 3: Wait for IBI to be received by controller (should be processed first)
     tb.log.info("Waiting for controller to receive IBI (should happen first)...")
@@ -412,9 +408,11 @@ async def i3c_ibi_during_broadcast(dut):
     # sample is taken and logged -- deliberately not a bounded wait, so there is no
     # timeout whose expiry could be mistaken for a check.
     await ClockCycles(dut.clk, 200)
-    pio = await helper.read_into(ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+    pio = await helper.read_into(
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+    )
     if pio.f.resp_ready_stat:
-        resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+        resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
         tb.log.info(
             f"  OBSERVED (unspecified): the preempted write did produce a "
             f"response 0x{resp:08X} (err_status=0x{(resp >> 28) & 0xF:X})"

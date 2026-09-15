@@ -13,14 +13,8 @@ peer-topology original.
 Requires `+i3c_vip_target`, which takes the RTL peer off the shared bus.
 """
 
+import oca_i3c_wrap_reg as _csr
 from cocotb.triggers import ClockCycles
-from I3CCSR_reg import (
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
-    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
-)
 
 from .i3c_api import PioIntrStatus
 from .i3c_test_base import DEFAULT_DYNAMIC_ADDR, DEFAULT_STATIC_ADDR, init_controller
@@ -81,8 +75,8 @@ async def bring_up_and_assign(
 
 async def _issue(helper, ctrl, *, length, is_read, dat_idx):
     cmd_lo = (dat_idx << 16) | (int(is_read) << RNW_BIT) | (1 << WROC_BIT) | (1 << TOC_BIT)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, length << 16)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, length << 16)
 
 
 async def private_write(dut, helper, ctrl, vip, data, dat_idx=0):
@@ -92,7 +86,9 @@ async def private_write(dut, helper, ctrl, vip, data, dat_idx=0):
     tx_bytes_per_int = (1 << (ctrl.tx_thld + 1)) * BYTES_PER_ENTRY
 
     ok, _ = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "cmd_queue_ready_stat"
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+        PioIntrStatus,
+        "cmd_queue_ready_stat",
     )
     assert ok, "command queue never reported ready"
 
@@ -102,7 +98,7 @@ async def private_write(dut, helper, ctrl, vip, data, dat_idx=0):
     status = None
     for _ in range(POLL_BUDGET):
         status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+            ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
         )
         if status.f.resp_ready_stat:
             break
@@ -110,7 +106,9 @@ async def private_write(dut, helper, ctrl, vip, data, dat_idx=0):
             chunk = min(tx_bytes_per_int, data_len - written)
             for off in range(0, chunk, BYTES_PER_ENTRY):
                 word = helper.pack_bytes(data[written + off : written + off + BYTES_PER_ENTRY])
-                await helper.write(ctrl.base + PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
+                await helper.write(
+                    ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_TX_DATA_PORT_REG_ADDR, word
+                )
             written += chunk
         await ClockCycles(dut.clk, 10)
     else:
@@ -120,7 +118,7 @@ async def private_write(dut, helper, ctrl, vip, data, dat_idx=0):
             f"last PIO_INTR_STATUS=0x{status.val:08X})"
         )
 
-    resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+    resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
     err_status = (resp >> 28) & 0xF
     resp_len = resp & 0xFFFF
     if err_status:
@@ -149,11 +147,13 @@ async def private_read(dut, helper, ctrl, vip, tx_data, dat_idx=0):
     status = None
     for _ in range(POLL_BUDGET):
         status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+            ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
         )
         if status.f.rx_thld_stat:
             for _e in range(rx_entries_per_int):
-                word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
+                word = await helper.read(
+                    ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_ADDR
+                )
                 rx_data.extend(helper.unpack_bytes(word, BYTES_PER_ENTRY))
         if status.f.resp_ready_stat:
             break
@@ -165,7 +165,7 @@ async def private_read(dut, helper, ctrl, vip, tx_data, dat_idx=0):
             f"last PIO_INTR_STATUS=0x{status.val:08X})"
         )
 
-    resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+    resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
     err_status = (resp >> 28) & 0xF
     resp_len = resp & 0xFFFF
     if err_status:
@@ -175,7 +175,7 @@ async def private_read(dut, helper, ctrl, vip, tx_data, dat_idx=0):
     # The threshold-driven drain moves whole rx_entries_per_int batches only, so a
     # sub-threshold tail is still queued. HCI 6.8.1: drain by DATA_LENGTH.
     while len(rx_data) < resp_len:
-        word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
+        word = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_ADDR)
         take = min(BYTES_PER_ENTRY, resp_len - len(rx_data))
         rx_data.extend(helper.unpack_bytes(word, take))
 

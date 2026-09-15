@@ -27,19 +27,8 @@ from env.i3c_api import I3CController, I3CHelper, I3CTarget, PioIntrStatus, TtiQ
 # Import register addresses
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
 # Constrained-random framework (shared, IP-agnostic core via i3c domain layer)
+import oca_i3c_wrap_reg as _csr
 from env.i3c_rand import RandMgr, rand_bytes, rand_i3c_addr, rand_ibi_mdb
-from I3CCSR_reg import (
-    # TTI registers for fifo overflow test
-    I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
-    I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
-    I3C_EC_TTI_TX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_QUEUE_SIZE_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
-)
 
 # Address mapping
 CTRL_BASE = 0x0000
@@ -243,18 +232,18 @@ async def i3c_error_wrong_addr(dut):
     tb.log.info("-" * 60)
     good_data = rand_bytes(r, 4)
     cmd_lo, cmd_hi = build_immediate_write_cmd(good_data, dat_idx=0, tid=0)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
 
     ok, _reg = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
         PioIntrStatus,
         "resp_ready_stat",
         max_polls=50000,
         interval=10,
     )
     assert ok, "positive control: timeout waiting for the response descriptor"
-    good_resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+    good_resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
     good_err = (good_resp >> 28) & 0xF  # ERR_STATUS, HCI v1.2 Table 146
     tb.log.info(f"  Positive control response: 0x{good_resp:08X} err_status={good_err}")
     assert good_err == 0, (
@@ -290,13 +279,13 @@ async def i3c_error_wrong_addr(dut):
     cmd_lo, cmd_hi = build_immediate_write_cmd(write_data, dat_idx=1, tid=1)
     tb.log.debug(f"  cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X}")
 
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
 
     # Wait for response
     tb.log.info("Waiting for response (expecting error)...")
     ok, reg = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
         PioIntrStatus,
         "resp_ready_stat",
         max_polls=50000,
@@ -305,7 +294,7 @@ async def i3c_error_wrong_addr(dut):
     assert ok, "Timeout waiting for response descriptor"
 
     # Read response descriptor
-    resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+    resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
     err_status = (resp >> 28) & 0xF
     data_length = resp & 0xFFFF
     tid = (resp >> 24) & 0xF
@@ -391,7 +380,7 @@ async def i3c_fifo_overflow(dut):
     # {tx_data_buffer_size[31:24], rx_data_buffer_size[23:16],
     # ibi_status_size[15:8], cr_queue_size[7:0]}; data-buffer sizes are encoded as
     # 2^(N+1) entries.
-    queue_size_reg = await helper.read(ctrl.base + PIOCONTROL_QUEUE_SIZE_REG_ADDR)
+    queue_size_reg = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_QUEUE_SIZE_REG_ADDR)
     rx_fifo_entries = 1 << (((queue_size_reg >> 16) & 0xFF) + 1)
     rx_fifo_bytes = rx_fifo_entries * bytes_per_entry
     # Read well past the RX FIFO so it overflows while the drain stays off. Kept a
@@ -427,7 +416,7 @@ async def i3c_fifo_overflow(dut):
     # Poll QUEUE_STATUS for target TX descriptor space because TX_DESC_THLD_STAT is
     # not a reliable readiness indication.
     ok, _qs = await helper.poll_field_clear(
-        tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
+        tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
         TtiQueueStatus,
         "tx_desc_queue_full",
         max_polls=1000,
@@ -440,26 +429,28 @@ async def i3c_fifo_overflow(dut):
 
     # Write TX descriptor to target - tells target how many bytes to send
     tx_desc = data_len << 16
-    await helper.write(tgt.base + I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, tx_desc)
+    await helper.write(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, tx_desc)
     tb.log.debug(f"  Wrote TX descriptor 0x{tx_desc:08X} (byte_count={data_len})")
 
     # Before issuing the read, prefill until the target TX queue is full or the
     # complete payload is queued. The target only ACKs when enough data is queued
     # to start the transfer.
     while bytes_written < data_len:
-        qs = await helper.read_into(tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
+        qs = await helper.read_into(
+            tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus
+        )
         if qs.f.tx_data_queue_full:
             break
         word = helper.pack_bytes(tx_data[bytes_written : bytes_written + bytes_per_entry])
-        await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
+        await helper.write(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
         bytes_written += min(bytes_per_entry, data_len - bytes_written)
     tb.log.debug(f"  Pre-filled {bytes_written}/{data_len} bytes to target TX (to FULL/threshold)")
 
     # Issue the read command AFTER the target is armed (cmd_lo rnw=1, cmd_hi data_length)
     cmd_lo = (0x0 << 0) | (dat_idx << 16) | (1 << 29) | (1 << 30) | (1 << 31)  # rnw=1
     cmd_hi = data_len << 16
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
     tb.log.debug(f"  Read command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})")
 
     # Main loop - wait for controller response (overflow error) or target TX_DESC_COMPLETE
@@ -471,14 +462,16 @@ async def i3c_fifo_overflow(dut):
 
         # Check if controller response is ready (overflow error will trigger this)
         ctrl_status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+            ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
         )
         if ctrl_status.f.resp_ready_stat:
             tb.log.debug(f"  Controller response ready, bytes_written={bytes_written}")
             break
 
         # Check if target TX transaction is complete
-        tgt_status = await helper.read(tgt.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
+        tgt_status = await helper.read(
+            tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR
+        )
         if tgt_status & TTI_TX_DESC_COMPLETE:
             tb.log.debug(f"  Target TX_DESC_COMPLETE, bytes_written={bytes_written}")
             break
@@ -491,7 +484,9 @@ async def i3c_fifo_overflow(dut):
                 word = helper.pack_bytes(
                     tx_data[bytes_written + i : bytes_written + i + bytes_per_entry]
                 )
-                await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
+                await helper.write(
+                    tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word
+                )
             bytes_written += chunk
             tb.log.debug(f"  Wrote {chunk} bytes to target TX, total={bytes_written}/{data_len}")
 
@@ -503,7 +498,7 @@ async def i3c_fifo_overflow(dut):
     # Wait for controller response descriptor (may already be ready from loop above)
     tb.log.info("Waiting for controller response (expecting overflow error)...")
     ok, reg = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
         PioIntrStatus,
         "resp_ready_stat",
         max_polls=50000,
@@ -512,7 +507,7 @@ async def i3c_fifo_overflow(dut):
     assert ok, "Timeout waiting for response descriptor"
 
     # Read response descriptor
-    resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+    resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
     err_status = (resp >> 28) & 0xF
     data_length = resp & 0xFFFF
     tid = (resp >> 24) & 0xF
@@ -619,14 +614,14 @@ async def i3c_tx_fifo_underflow(dut):
     # cmd_lo: attr=0, dat_idx, wroc=1, toc=1
     cmd_lo = (0x0 << 0) | (dat_idx << 16) | (1 << 30) | (1 << 31)
     cmd_hi = data_len << 16  # data_length in upper 16 bits
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
     tb.log.debug(f"  Write command issued (cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X})")
 
     # Wait for TX_THLD_STAT to indicate we can write to TX FIFO
     tb.log.info("Waiting for TX threshold interrupt...")
     ok, reg = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
         PioIntrStatus,
         "tx_thld_stat",
         max_polls=5000,
@@ -638,14 +633,14 @@ async def i3c_tx_fifo_underflow(dut):
     tb.log.info(f"Filling only {bytes_to_fill} bytes to TX FIFO (deliberately insufficient)...")
     for i in range(0, bytes_to_fill, bytes_per_entry):
         word = helper.pack_bytes(tx_data[i : i + bytes_per_entry])
-        await helper.write(ctrl.base + PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
+        await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
         tb.log.debug(f"  TX entry {i // bytes_per_entry}: 0x{word:08X}")
 
     tb.log.info("Stopping TX FIFO fill - waiting for underflow error...")
 
     # Wait for controller response descriptor (should get Ovl error)
     ok, reg = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
         PioIntrStatus,
         "resp_ready_stat",
         max_polls=100000,
@@ -654,7 +649,7 @@ async def i3c_tx_fifo_underflow(dut):
     assert ok, "Timeout waiting for response descriptor"
 
     # Read response descriptor
-    resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+    resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
     err_status = (resp >> 28) & 0xF
     data_length = resp & 0xFFFF
     tid = (resp >> 24) & 0xF
@@ -757,7 +752,7 @@ async def i3c_ibi_fifo_overflow(dut):
     # Read IBI FIFO size from QUEUE_SIZE register
     # QUEUE_SIZE format: {tx_data_buffer_size[31:24], rx_data_buffer_size[23:16],
     #                     ibi_status_size[15:8], cr_queue_size[7:0]}
-    queue_size_reg = await helper.read(ctrl.base + PIOCONTROL_QUEUE_SIZE_REG_ADDR)
+    queue_size_reg = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_QUEUE_SIZE_REG_ADDR)
     ibi_fifo_size = (queue_size_reg >> 8) & 0xFF
     tb.log.info(f"  QUEUE_SIZE register: 0x{queue_size_reg:08X}")
     tb.log.info(f"  IBI FIFO size: {ibi_fifo_size} entries ({ibi_fifo_size * 4} bytes)")

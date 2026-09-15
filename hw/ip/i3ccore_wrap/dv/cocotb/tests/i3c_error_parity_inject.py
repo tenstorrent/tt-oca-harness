@@ -53,16 +53,7 @@ from env.i3c_test_base import bring_up_and_assign, make_env
 
 # Authoritative register map (generated) — no hand-copied offsets.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
-from I3CCSR_reg import (  # noqa: E402
-    I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
-    I3C_EC_TTI_RX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
-    I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR,
-    I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR,
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-)
+import oca_i3c_wrap_reg as _csr  # noqa: E402
 
 WRITE_DATA = [0xDE, 0xAD, 0xBE, 0xEF]
 INJECT_BYTE = 2  # flip inside byte 2 -> bytes 0..1 should survive
@@ -72,12 +63,12 @@ INJECT_BIT = 0  # which of the 8 data bits of that byte
 async def _enable_te2_detection(helper, tgt, log):
     """Set TTI.TARGET_ERR_CTRL.te2_err_det_en and return the read-back bit."""
     reg = TtiTargetErrCtrl()
-    reg.val = await helper.read(tgt.base + I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR)
+    reg.val = await helper.read(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR)
     reg.f.te2_err_det_en = 1
-    await helper.write(tgt.base + I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR, reg.val)
+    await helper.write(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR, reg.val)
 
     back = TtiTargetErrCtrl()
-    back.val = await helper.read(tgt.base + I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR)
+    back.val = await helper.read(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CTRL_REG_ADDR)
     log.info(
         f"TARGET_ERR_CTRL = 0x{back.val:08X} "
         f"(te2_err_det_en bit {TTI_ERR_CTRL_TE2_DET_EN_BIT} = {back.f.te2_err_det_en})"
@@ -87,7 +78,9 @@ async def _enable_te2_detection(helper, tgt, log):
 
 async def _te2_count(helper, tgt):
     """Return the saturating 8-bit TARGET_ERR_CNT_TE2.CNT field."""
-    return (await helper.read(tgt.base + I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR)) & 0xFF
+    return (
+        await helper.read(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR)
+    ) & 0xFF
 
 
 async def _drain_target_rx(helper, tgt, log):
@@ -97,7 +90,7 @@ async def _drain_target_rx(helper, tgt, log):
     is a legitimate outcome (no byte survived to complete a descriptor).
     """
     ok, _ = await helper.poll_field_clear(
-        tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
+        tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
         TtiQueueStatus,
         "rx_desc_queue_empty",
         max_polls=2000,
@@ -107,7 +100,7 @@ async def _drain_target_rx(helper, tgt, log):
         log.info("  no target RX descriptor was posted")
         return None, []
 
-    desc = await helper.read(tgt.base + I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR)
+    desc = await helper.read(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR)
     n = desc & 0xFFFF
     err = (desc >> 20) & 0xFFF
     log.info(f"  target RX descriptor = 0x{desc:08X} (data_length={n}, error={err})")
@@ -115,7 +108,7 @@ async def _drain_target_rx(helper, tgt, log):
     data = []
     remaining = n
     while remaining > 0:
-        word = await helper.read(tgt.base + I3C_EC_TTI_RX_DATA_PORT_REG_ADDR)
+        word = await helper.read(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_RX_DATA_PORT_REG_ADDR)
         take = min(4, remaining)
         data.extend(helper.unpack_bytes(word, take))
         remaining -= take
@@ -125,14 +118,14 @@ async def _drain_target_rx(helper, tgt, log):
 async def _issue_immediate_write(helper, ctrl, data, tid=0):
     """Push an immediate-write command descriptor (no response wait)."""
     cmd_lo, cmd_hi = build_immediate_write_cmd(data, dat_idx=0, tid=tid)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
 
 
 async def _wait_response(helper, ctrl, log, max_polls=20000):
     """Wait for resp_ready_stat and return (ok, resp, err_status)."""
     ok, _ = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
         PioIntrStatus,
         "resp_ready_stat",
         max_polls=max_polls,
@@ -141,7 +134,7 @@ async def _wait_response(helper, ctrl, log, max_polls=20000):
     if not ok:
         log.info("  no controller response descriptor within the poll budget")
         return False, 0, None
-    resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+    resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
     err = (resp >> 28) & 0xF  # ERR_STATUS [31:28], HCI v1.2 Table 146
     log.info(f"  controller response = 0x{resp:08X} (err_status=0x{err:X})")
     return True, resp, err
@@ -214,7 +207,9 @@ async def test_error_status_baseline(dut):
 
     # No error was injected, so no error interrupt may be latched either.
     await ClockCycles(dut.clk, 50)
-    status = await helper.read_into(ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+    status = await helper.read_into(
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+    )
     tb.log.info(f"PIO_INTR_STATUS = 0x{status.val:08X}")
     assert not status.f.transfer_err_stat, (
         f"transfer_err_stat latched on a clean transfer: 0x{status.val:08X}"

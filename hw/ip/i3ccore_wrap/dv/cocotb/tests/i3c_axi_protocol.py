@@ -33,7 +33,7 @@ from env.i3c_test_base import CTRL_BASE, make_env
 
 # Authoritative register map (generated).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
-import I3CCSR_reg as _csr  # noqa: E402
+import oca_i3c_wrap_reg as _csr  # noqa: E402
 
 
 def _default_by_suffix(suffix):

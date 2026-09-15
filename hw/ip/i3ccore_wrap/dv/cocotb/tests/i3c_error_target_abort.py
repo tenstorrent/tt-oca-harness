@@ -36,20 +36,11 @@ distinguish a short read from an address NACK.
 """
 
 import cocotb
+import oca_i3c_wrap_reg as _csr
 from cocotb.triggers import ClockCycles
 from env.i3c_api import PioIntrStatus, TtiQueueStatus
 from env.i3c_rand import RandMgr, rand_bytes
 from env.i3c_test_base import bring_up_and_assign, make_env
-from I3CCSR_reg import (
-    I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
-    I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
-    I3C_EC_TTI_TX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
-)
 
 BYTES_PER_ENTRY = 4
 TTI_TX_DATA_THLD_STAT = 1 << 8
@@ -97,7 +88,7 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
     # address NACK. Poll QUEUE_STATUS because TX_DESC_THLD_STAT is not a reliable
     # readiness indication.
     ok, _qs = await helper.poll_field_clear(
-        tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
+        tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
         TtiQueueStatus,
         "tx_desc_queue_full",
         max_polls=1000,
@@ -109,7 +100,9 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
     )
 
     # Tell the target to supply only `supplied_len` bytes (fewer than requested).
-    await helper.write(tgt.base + I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, supplied_len << 16)
+    await helper.write(
+        tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, supplied_len << 16
+    )
 
     bytes_written = 0
     bytes_read = 0
@@ -118,11 +111,13 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
     # Pre-fill the whole short payload before the command so arming wins the race
     # deterministically; anything left over streams in the loop below.
     while bytes_written < supplied_len:
-        qs = await helper.read_into(tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus)
+        qs = await helper.read_into(
+            tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_QUEUE_STATUS_REG_ADDR, TtiQueueStatus
+        )
         if qs.f.tx_data_queue_full:
             break
         word = helper.pack_bytes(tgt_data[bytes_written : bytes_written + BYTES_PER_ENTRY])
-        await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
+        await helper.write(tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
         bytes_written += min(BYTES_PER_ENTRY, supplied_len - bytes_written)
     tb.log.info(f"  armed target: {bytes_written}/{supplied_len}B pre-filled")
 
@@ -136,8 +131,8 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
         | (1 << TOC_BIT)
     )
     cmd_hi = requested_len << 16
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
 
     # Bounded loop: top up target TX, drain controller RX, wait for the response.
     # The bound is the "does not hang" guarantee.
@@ -147,7 +142,9 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
     ctrl_status = None
     for _ in range(POLL_BUDGET):
         polls += 1
-        tgt_status = await helper.read(tgt.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
+        tgt_status = await helper.read(
+            tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR
+        )
 
         if bytes_written < supplied_len and (tgt_status & TTI_TX_DATA_THLD_STAT):
             chunk = min(BYTES_PER_ENTRY * rx_entries_per_int, supplied_len - bytes_written)
@@ -155,15 +152,19 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
                 word = helper.pack_bytes(
                     tgt_data[bytes_written + i : bytes_written + i + BYTES_PER_ENTRY]
                 )
-                await helper.write(tgt.base + I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word)
+                await helper.write(
+                    tgt.base + _csr.I3C_CSR_0__I3C_EC_TTI_TX_DATA_PORT_REG_ADDR, word
+                )
             bytes_written += chunk
 
         ctrl_status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+            ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
         )
         if ctrl_status.f.rx_thld_stat:
             for _e in range(rx_entries_per_int):
-                word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
+                word = await helper.read(
+                    ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_ADDR
+                )
                 rx_data.extend(helper.unpack_bytes(word, BYTES_PER_ENTRY))
                 bytes_read += BYTES_PER_ENTRY
         if ctrl_status.f.resp_ready_stat:
@@ -190,7 +191,7 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
     }
 
     if got_resp:
-        resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+        resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
         obs["resp"] = resp
         obs["err_status"] = (resp >> 28) & 0xF  # ERR_STATUS [31:28], Table 146
         obs["resp_len"] = resp & 0xFFFF
@@ -255,7 +256,7 @@ async def test_short_read_permitted(dut):
     # batches, so a sub-threshold tail is still queued. HCI 6.8.1: use DATA_LENGTH.
     bytes_read, rx_data = o["bytes_read"], o["rx_data"]
     while bytes_read < o["resp_len"]:
-        word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
+        word = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_ADDR)
         take = min(BYTES_PER_ENTRY, o["resp_len"] - bytes_read)
         rx_data.extend(helper.unpack_bytes(word, take))
         bytes_read += take

@@ -29,7 +29,7 @@ from env.i3c_test_base import bring_up_and_assign, make_env
 
 # Authoritative register map (generated) — no hand-copied offsets.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
-from I3CCSR_reg import PIOCONTROL_PIO_INTR_STATUS_REG_ADDR  # noqa: E402
+import oca_i3c_wrap_reg as _csr  # noqa: E402
 
 OBSERVE_CYCLES = 2000  # window the disabled target gets to (not) transmit
 MDB = 0xA5
@@ -66,7 +66,9 @@ async def test_ibi_nack_disabled(dut):
     tb.log.info(f"queued IBI mdb=0x{MDB:02X} with TTI_CONTROL.ibi_en verified 0 by read-back")
 
     await ClockCycles(dut.clk, OBSERVE_CYCLES)
-    status = await helper.read_into(ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus)
+    status = await helper.read_into(
+        ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+    )
     tb.log.info(f"PIO_INTR_STATUS (IBI disabled) = 0x{status.val:08X}")
     assert not status.f.ibi_status_thld_stat, (
         f"spurious IBI latched with target IBI generation disabled: "

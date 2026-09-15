@@ -19,6 +19,7 @@ does not have.
 """
 
 import cocotb
+import oca_i3c_wrap_reg as _csr
 from cocotb.triggers import ClockCycles
 from env.i3c_api import PioIntrStatus
 from env.i3c_test_base import (
@@ -28,13 +29,6 @@ from env.i3c_test_base import (
     make_env,
 )
 from env.i3c_vip_target import VipI3cTarget
-from I3CCSR_reg import (
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
-    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
-)
 
 BYTES_PER_ENTRY = 4
 
@@ -51,18 +45,18 @@ READ_DATA = bytes([0x11, 0x22, 0x33, 0x44])
 
 async def _issue_transfer(helper, ctrl, *, length, is_read, dat_idx=0):
     cmd_lo = (dat_idx << 16) | (int(is_read) << RNW_BIT) | (1 << WROC_BIT) | (1 << TOC_BIT)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
-    await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, length << 16)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_lo)
+    await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_COMMAND_PORT_REG_ADDR, length << 16)
 
 
 async def _await_response(dut, helper, ctrl, what):
     """Poll for the response descriptor and return it decoded."""
     for _ in range(POLL_BUDGET):
         status = await helper.read_into(
-            ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
+            ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus
         )
         if status.f.resp_ready_stat:
-            resp = await helper.read(ctrl.base + PIOCONTROL_RESPONSE_PORT_REG_ADDR)
+            resp = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RESPONSE_PORT_REG_ADDR)
             return resp, (resp >> 28) & 0xF, resp & 0xFFFF
         await ClockCycles(dut.clk, 10)
 
@@ -103,7 +97,7 @@ async def test_vip_write_read_sanity(dut):
     tb.log.info(f"Private write: {WRITE_DATA.hex()}")
     for off in range(0, len(WRITE_DATA), BYTES_PER_ENTRY):
         word = helper.pack_bytes(WRITE_DATA[off : off + BYTES_PER_ENTRY])
-        await helper.write(ctrl.base + PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
+        await helper.write(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_TX_DATA_PORT_REG_ADDR, word)
     await _issue_transfer(helper, ctrl, length=len(WRITE_DATA), is_read=False)
 
     resp, err_status, resp_len = await _await_response(dut, helper, ctrl, "private write")
@@ -145,7 +139,7 @@ async def test_vip_write_read_sanity(dut):
     # whole payload is still queued. HCI 6.8.1: drain by DATA_LENGTH.
     rx_data = []
     while len(rx_data) < resp_len:
-        word = await helper.read(ctrl.base + PIOCONTROL_RX_DATA_PORT_REG_ADDR)
+        word = await helper.read(ctrl.base + _csr.I3C_CSR_0__PIOCONTROL_RX_DATA_PORT_REG_ADDR)
         take = min(BYTES_PER_ENTRY, resp_len - len(rx_data))
         rx_data.extend(helper.unpack_bytes(word, take))
 

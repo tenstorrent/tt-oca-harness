@@ -8,7 +8,7 @@ Reads real config & status registers after reset and compares each against the
 reset value published by the generated register map.
 
 Both halves of every row — the offset AND the expected value — are resolved by
-symbol from I3CCSR_reg, never hand-copied. A stale symbol raises AttributeError
+symbol from oca_i3c_wrap_reg, never hand-copied. A stale symbol raises AttributeError
 at import, and a regenerated map moves offsets and reset values together.
 
 Deliberately avoids:
@@ -29,7 +29,7 @@ from env.i3c_test_base import CTRL_BASE, make_env
 
 # Authoritative register map (generated). Same path convention as i3c_error_sanity.py.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../regs/gen/py"))
-import I3CCSR_reg as csr  # noqa: E402
+import oca_i3c_wrap_reg as csr  # noqa: E402
 
 # The generated map spells reset values with a parameterisation-encoding prefix.
 # Naming them once keeps the rows below readable without losing the symbol trail.
@@ -100,13 +100,14 @@ def _resolve(rows):
     """(name, offset, reset value) per row; AttributeError names the stale symbol."""
     out = []
     for name, addr_sym, dflt_sym in rows:
-        for sym in (addr_sym, dflt_sym):
+        instance_addr_sym = f"I3C_CSR_0__{addr_sym}"
+        for sym in (instance_addr_sym, dflt_sym):
             if not hasattr(csr, sym):
                 raise AttributeError(
-                    f"{name}: I3CCSR_reg has no symbol {sym!r} — the generated register "
+                    f"{name}: oca_i3c_wrap_reg has no symbol {sym!r} — the generated register "
                     f"map was regenerated and this table is stale"
                 )
-        out.append((name, getattr(csr, addr_sym), getattr(csr, dflt_sym)))
+        out.append((name, getattr(csr, instance_addr_sym), getattr(csr, dflt_sym)))
     return out
 
 
