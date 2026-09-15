@@ -103,10 +103,10 @@ static int drain_acq(uint32_t tgt_idx, uint8_t *rx, uint32_t rx_size, uint32_t *
  * because the Target RX FIFO is full" (i2c.rdl:116-122).
  *
  * Pushing all 64 bytes and only then waiting for the controller cannot
- * complete: nothing drains the target in between, so it stretches at 62
- * entries, the controller can never retire its FMT entries, and the wait burns
- * its whole budget (ACQ Level 0x3e = 62, the threshold, with Idle: NO). That is
- * flow control, not an RTL defect.
+ * complete: nothing drains the target in between, so the target stretches at
+ * the 62-entry threshold, the controller can never retire its FMT entries, and
+ * the wait burns its whole budget with the bus still not idle. That is flow
+ * control, not an RTL defect.
  *
  * So push a byte at a time and drain whatever the target has accepted after each
  * push, keeping ACQ far below the stretch threshold. Bytes are collected here
