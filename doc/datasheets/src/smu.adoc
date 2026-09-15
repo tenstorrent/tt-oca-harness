@@ -37,7 +37,7 @@ a|
 [.datasheet-section]
 HIGHLIGHTS
 
-* Composes OCAH clock/reset/power/thermal management, debug/test, and optional
+* Coordinates OCAH clock/reset/power/thermal management, debug/test, and optional
   security subsystems
 * Full reference configuration integrates SMC, SEP, DTP, and a 3-by-3 AXI4 fabric
 * Alternate no-SEP configuration preserves SMC, DTP, and external AXI interfaces
@@ -167,6 +167,8 @@ trace memory, GPIO pads, PLL/PVT, entropy, and SEP crypto-memory boundaries
 |Build-time |SEP configuration, external entropy sources, JTAG
 functions/identity, and SEP memory/Adams Bridge options
 |===
+
+<<<
 
 // datasheet-section: integration-dependencies
 [.datasheet-section]
