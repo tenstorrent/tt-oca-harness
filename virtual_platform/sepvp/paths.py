@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Locate the sep-vp binary, the base config, and the SEP firmware trees.
 
 All paths are anchored relative to this file's location
@@ -13,10 +16,10 @@ from pathlib import Path
 
 # virtual_platform/sepvp/paths.py
 _THIS = Path(__file__).resolve()
-SEPVP_DIR = _THIS.parent                       # .../sepvp
-VP_DIR = SEPVP_DIR.parent                      # .../virtual_platform
-OCAH_ROOT = VP_DIR.parent                      # repo root (tt-oca-harness)
-SIM_DIR = VP_DIR / "tt-oca-harness-model"                # the SystemC platform source (submodule)
+SEPVP_DIR = _THIS.parent  # .../sepvp
+VP_DIR = SEPVP_DIR.parent  # .../virtual_platform
+OCAH_ROOT = VP_DIR.parent  # repo root (tt-oca-harness)
+SIM_DIR = VP_DIR / "tt-oca-harness-model"  # the SystemC platform source (submodule)
 
 # --- sep-vp platform -------------------------------------------------------
 VP_BUILD_DIR = SIM_DIR / "vp" / "build"
@@ -40,7 +43,7 @@ BOOTCODE_ELF = BOOTCODE_DIR / BOOTCODE_OT_BUILD_DIR / "boot_rom.elf"
 # .spi_preload: these are oca-combined SPI images placing the bundle at the slot
 # offsets the ROM reads, and SimConfig(flash_image=...) wants the raw form.
 # Built by `make -C <bootrom> oca-images`.
-OCA_NS_IMAGE  = BOOTCODE_DIR / "build" / "oca_non_secure_boot.bin"
+OCA_NS_IMAGE = BOOTCODE_DIR / "build" / "oca_non_secure_boot.bin"
 OCA_SEC_IMAGE = BOOTCODE_DIR / "build" / "oca_secure_boot.bin"
 OCA_ENC_IMAGE = BOOTCODE_DIR / "build" / "oca_encrypted_boot.bin"
 OCA_OTP_IMAGE = BOOTCODE_DIR / "build" / "oca_otp_key_boot.bin"
@@ -72,6 +75,7 @@ FW_TEST_BUILD_DIR = FW_DIR / "build" / "tests"
 
 # Default per-run working-directory root (logs + staged artifacts land here).
 LOGS_DIR = VP_DIR / "logs" / "sepvp"
+
 
 def default_riscv_toolchain() -> str:
     """Optional RISC-V cross-toolchain prefix for firmware builds.

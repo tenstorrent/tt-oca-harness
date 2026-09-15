@@ -34,9 +34,7 @@ and requires the sixth key to still work.
 from __future__ import annotations
 
 import pytest
-
-from sepvp import SimConfig
-from sepvp import paths
+from sepvp import SimConfig, paths
 from tests.bootcode import shared
 
 TIMEOUT = 180
@@ -61,8 +59,9 @@ def _slot_image(oca_images, slot):
 
 
 def _cfg(name, elf, image, **kw):
-    return SimConfig(name=name, elf=str(elf), flash_image=str(image),
-                     boot="primary", boot_timeout=TIMEOUT, **kw)
+    return SimConfig(
+        name=name, elf=str(elf), flash_image=str(image), boot="primary", boot_timeout=TIMEOUT, **kw
+    )
 
 
 def _revoke_map(tmp_path, name, revoke_bits):
@@ -134,7 +133,8 @@ def test_each_rom_key_slot_can_be_revoked(vp, bootcode_elf, oca_images, slot, tm
 
 @pytest.mark.parametrize("slot", ALL_SLOTS, ids=[f"slot{n}" for n in ALL_SLOTS])
 def test_revoking_the_other_rom_key_slots_leaves_this_one_usable(
-        vp, bootcode_elf, oca_images, slot, tmp_path):
+    vp, bootcode_elf, oca_images, slot, tmp_path
+):
     """Revoking all five OTHER slots must not stop slot N booting.
 
     The sharpest of the three axes. "Use" and "revoke" can both pass on a
@@ -178,8 +178,7 @@ def test_digest_table_pins_six_slots():
 
     # Distinctness, from the digest arrays themselves rather than the table.
     bodies = src.split("static const uint8_t digest_")[1:]
-    digests = {b.split("]")[0]: "".join(b.split("{")[1].split("}")[0].split())
-               for b in bodies}
+    digests = {b.split("]")[0]: "".join(b.split("{")[1].split("}")[0].split()) for b in bodies}
     assert len(digests) == 6, f"expected 6 digest arrays, found {len(digests)}"
     assert len(set(digests.values())) == 6, (
         "two or more ROM key slots share a digest; a slot resolved off-by-one "

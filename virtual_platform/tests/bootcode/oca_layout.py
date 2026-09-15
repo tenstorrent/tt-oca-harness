@@ -13,19 +13,18 @@ producer's crypto dependencies just to read integer offsets.
 """
 
 import importlib.util
-from pathlib import Path
 
 from sepvp import paths
 
-_CONSTANTS = (paths.BOOTCODE_DIR / "tools" / "tt-oca-manifest" / "src" / "oca"
-              / "constants.py")
+_CONSTANTS = paths.BOOTCODE_DIR / "tools" / "tt-oca-manifest" / "src" / "oca" / "constants.py"
 
 
 def _load():
     if not _CONSTANTS.is_file():
         raise FileNotFoundError(
             f"OCA producer constants not found at {_CONSTANTS}; is the "
-            "tt-oca-manifest submodule checked out?")
+            "tt-oca-manifest submodule checked out?"
+        )
     spec = importlib.util.spec_from_file_location("oca_producer_constants", _CONSTANTS)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -42,17 +41,17 @@ BACKUP_OFFSET = 0x41000
 # Re-exported for readability at the tamper sites.
 OCAC_MAGIC = C.OCAC_MAGIC
 OCAP_MAGIC = C.OCAP_MAGIC
-BODY_SIZE = C.OCA_CLASSIC_BODY_SIZE                 # 4096
+BODY_SIZE = C.OCA_CLASSIC_BODY_SIZE  # 4096
 SIGNED_REGION_END = C.OCA_CLASSIC_SIGNED_REGION_END  # 3172
 OFF_MAGIC = C.OFF_BOOT_MANIFEST_MAGIC
 OFF_MANIFEST_LENGTH = C.OFF_MANIFEST_LENGTH
 OFF_TRAILER = C.OFF_CLASSIC_MANIFEST_TRAILER
-OFF_PAYLOAD_OFFSET = C.OFF_PAYLOAD_OFFSET            # i64, UNSIGNED tail
+OFF_PAYLOAD_OFFSET = C.OFF_PAYLOAD_OFFSET  # i64, UNSIGNED tail
 OFF_PAYLOAD_LENGTH = C.OFF_PAYLOAD_LENGTH
 OFF_REVOKE = C.OFF_PUBLIC_KEY_CLASSIC_REVOKE
 OFF_SECURITY_VERSION = C.OFF_MANIFEST_SECURITY_VERSION
-TOC_HEADER_SIZE = C.TOC_HEADER_SIZE                  # 32
-TOC_ENTRY_SIZE = C.TOC_ENTRY_SIZE                    # 276
+TOC_HEADER_SIZE = C.TOC_HEADER_SIZE  # 32
+TOC_ENTRY_SIZE = C.TOC_ENTRY_SIZE  # 276
 
 # A byte inside the signed region, clear of any field a case wants to set on
 # purpose, for breaking manifest_hash.
@@ -61,4 +60,5 @@ SIGNED_REGION_BYTE = 24
 assert SIGNED_REGION_BYTE < SIGNED_REGION_END
 assert OFF_PAYLOAD_OFFSET >= SIGNED_REGION_END, (
     "payload_offset must lie in the unsigned tail for the no-re-signing tamper "
-    "cases to work; the format moved it")
+    "cases to work; the format moved it"
+)

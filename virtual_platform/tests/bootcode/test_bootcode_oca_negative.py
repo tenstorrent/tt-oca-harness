@@ -23,9 +23,8 @@ so this suite fails loudly rather than silently weakening if the format moves it
 
 import struct
 
-import pytest
-
 import oca_layout as L
+import pytest
 import shared
 from sepvp.config import SimConfig
 
@@ -39,6 +38,7 @@ TIMEOUT = 180
 # Each takes the whole SPI image and returns a tampered copy. They edit the
 # PRIMARY slot only; the backup stays valid, so a case that expects a hard
 # failure is also asserting the ROM did not quietly boot the backup instead.
+
 
 def _both_slots(raw, fn):
     """Apply fn to both slots, for cases that must exhaust the retry loop."""
@@ -56,7 +56,8 @@ def _primary_only(raw, fn):
 
 def _craft_bad_magic(raw):
     def f(b, base):
-        b[base + L.OFF_MAGIC:base + L.OFF_MAGIC + 4] = b"XXXX"
+        b[base + L.OFF_MAGIC : base + L.OFF_MAGIC + 4] = b"XXXX"
+
     return _both_slots(raw, f)
 
 
@@ -68,13 +69,15 @@ def _craft_pqc_magic(raw):
     # tell magic from trailer, but MANIFEST_ERR carries the distinct
     # oca_result_t in its low byte for anyone who needs to.
     def f(b, base):
-        b[base + L.OFF_MAGIC:base + L.OFF_MAGIC + 4] = L.OCAP_MAGIC
+        b[base + L.OFF_MAGIC : base + L.OFF_MAGIC + 4] = L.OCAP_MAGIC
+
     return _both_slots(raw, f)
 
 
 def _craft_bad_trailer(raw):
     def f(b, base):
         b[base + L.OFF_TRAILER] ^= 0xFF
+
     return _both_slots(raw, f)
 
 
@@ -85,6 +88,7 @@ def _craft_bad_manifest_length(raw):
     # broken hash that also results.
     def f(b, base):
         struct.pack_into("<I", b, base + L.OFF_MANIFEST_LENGTH, L.BODY_SIZE + 16)
+
     return _both_slots(raw, f)
 
 
@@ -93,6 +97,7 @@ def _craft_hash_tamper(raw):
     # before anything reads a field out of the body.
     def f(b, base):
         b[base + L.SIGNED_REGION_BYTE] ^= 0xFF
+
     return _both_slots(raw, f)
 
 
@@ -102,6 +107,7 @@ def _craft_payload_offset_outside_region(raw):
     # flash region the slot is allowed to reach.
     def f(b, base):
         struct.pack_into("<q", b, base + L.OFF_PAYLOAD_OFFSET, 0x40000000)
+
     return _both_slots(raw, f)
 
 
@@ -116,6 +122,7 @@ def _craft_payload_offset_negative(raw):
     # the case would then assert the wrong check.
     def f(b, base):
         struct.pack_into("<q", b, base + L.OFF_PAYLOAD_OFFSET, -0x100000)
+
     return _both_slots(raw, f)
 
 
@@ -127,6 +134,7 @@ def _craft_revoke_selected_key(raw):
     # The device-side revocation path is covered by test_revoked_key_fuse below.
     def f(b, base):
         b[base + L.OFF_REVOKE] |= 0x01
+
     return _both_slots(raw, f)
 
 
@@ -135,8 +143,9 @@ def _craft_toc_image_count_overflow(raw):
     # payload hash catches it first on a signed image; the assertion is that a
     # structurally impossible TOC never reaches the handoff.
     def f(b, base):
-        payload = base + 0x1000            # image layout: payload one body on
+        payload = base + 0x1000  # image layout: payload one body on
         struct.pack_into("<Q", b, payload + 16, 0xFFFF)
+
     return _both_slots(raw, f)
 
 
@@ -144,31 +153,44 @@ def _craft_rotate_to_backup(raw):
     # Corrupt the primary's magic only. The ROM must fall through to the backup
     # slot and boot it, which is the retry loop's whole purpose.
     def f(b, base):
-        b[base + L.OFF_MAGIC:base + L.OFF_MAGIC + 4] = b"XXXX"
+        b[base + L.OFF_MAGIC : base + L.OFF_MAGIC + 4] = b"XXXX"
+
     return _primary_only(raw, f)
 
 
 # (id, crafter, expected SEP_MSG, status type)
 CASES = [
-    ("bad_magic",         _craft_bad_magic,         "SEP_MSG_INVALID_MANIFEST_ID",      "ERROR"),
-    ("pqc_magic",         _craft_pqc_magic,         "SEP_MSG_INVALID_MANIFEST_ID",      "ERROR"),
-    ("bad_trailer",       _craft_bad_trailer,       "SEP_MSG_INVALID_MANIFEST_ID",      "ERROR"),
-    ("bad_manifest_len",  _craft_bad_manifest_length, "SEP_MSG_INVALID_MANIFEST_LENGTH", "ERROR"),
-    ("hash_tamper",       _craft_hash_tamper,       "SEP_MSG_INVALID_MANIFEST_HASH",    "ERROR"),
-    ("payload_outside",   _craft_payload_offset_outside_region,
-                                                    "SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH", "ERROR"),
-    ("payload_negative",  _craft_payload_offset_negative,
-                                                    "SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH", "ERROR"),
+    ("bad_magic", _craft_bad_magic, "SEP_MSG_INVALID_MANIFEST_ID", "ERROR"),
+    ("pqc_magic", _craft_pqc_magic, "SEP_MSG_INVALID_MANIFEST_ID", "ERROR"),
+    ("bad_trailer", _craft_bad_trailer, "SEP_MSG_INVALID_MANIFEST_ID", "ERROR"),
+    ("bad_manifest_len", _craft_bad_manifest_length, "SEP_MSG_INVALID_MANIFEST_LENGTH", "ERROR"),
+    ("hash_tamper", _craft_hash_tamper, "SEP_MSG_INVALID_MANIFEST_HASH", "ERROR"),
+    (
+        "payload_outside",
+        _craft_payload_offset_outside_region,
+        "SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH",
+        "ERROR",
+    ),
+    (
+        "payload_negative",
+        _craft_payload_offset_negative,
+        "SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH",
+        "ERROR",
+    ),
     ("revoked_in_manifest", _craft_revoke_selected_key, "SEP_MSG_INVALID_MANIFEST_HASH", "ERROR"),
-    ("toc_count_overflow", _craft_toc_image_count_overflow,
-                                                    "SEP_MSG_PAYLOAD_HASH_INVALID",     "ERROR"),
+    (
+        "toc_count_overflow",
+        _craft_toc_image_count_overflow,
+        "SEP_MSG_PAYLOAD_HASH_INVALID",
+        "ERROR",
+    ),
 ]
 
 
-@pytest.mark.parametrize("case,craft,expect_msg,expect_type", CASES,
-                         ids=[c[0] for c in CASES])
-def test_oca_manifest_negative(vp, bootcode_elf, oca_images, tmp_path,
-                               case, craft, expect_msg, expect_type):
+@pytest.mark.parametrize("case,craft,expect_msg,expect_type", CASES, ids=[c[0] for c in CASES])
+def test_oca_manifest_negative(
+    vp, bootcode_elf, oca_images, tmp_path, case, craft, expect_msg, expect_type
+):
     """A tampered OCA image is refused, and by the check the case names."""
     raw = oca_images["signed"].read_bytes()
     img = tmp_path / "tampered.bin"
@@ -177,8 +199,15 @@ def test_oca_manifest_negative(vp, bootcode_elf, oca_images, tmp_path,
     # Run dir is keyed on the CASE, not the expected message: several cases share
     # an expected message, and a shared name means each run wipes the previous
     # one's logs and none of them can be diagnosed afterwards.
-    t = vp(SimConfig(name=f"oca_neg_{case}", elf=str(bootcode_elf),
-                     flash_image=str(img), boot="primary", boot_timeout=TIMEOUT))
+    t = vp(
+        SimConfig(
+            name=f"oca_neg_{case}",
+            elf=str(bootcode_elf),
+            flash_image=str(img),
+            boot="primary",
+            boot_timeout=TIMEOUT,
+        )
+    )
     t.spawn()
     match = t.expect_status(expect_msg, type=expect_type, timeout=TIMEOUT)
     if expect_type == "ERROR":
@@ -191,8 +220,15 @@ def test_rotate_to_backup(vp, bootcode_elf, oca_images, tmp_path):
     img = tmp_path / "primary_bad.bin"
     img.write_bytes(_craft_rotate_to_backup(oca_images["signed"].read_bytes()))
 
-    t = vp(SimConfig(name="oca_rotate_backup", elf=str(bootcode_elf),
-                     flash_image=str(img), boot="primary", boot_timeout=TIMEOUT))
+    t = vp(
+        SimConfig(
+            name="oca_rotate_backup",
+            elf=str(bootcode_elf),
+            flash_image=str(img),
+            boot="primary",
+            boot_timeout=TIMEOUT,
+        )
+    )
     t.spawn()
     shared.expect_common_early(t, timeout=TIMEOUT)
     t.expect_status("SEP_MSG_STARTING_BL1", type="INFO", timeout=TIMEOUT)
@@ -206,10 +242,16 @@ def test_revoked_key_fuse(vp, bootcode_elf, oca_images):
     CHIPLET_PUBK_REVOKE -- which the in-manifest case cannot reach without also
     breaking the manifest hash.
     """
-    t = vp(SimConfig(name="oca_revoked_fuse", elf=str(bootcode_elf),
-                     flash_image=str(oca_images["signed"]),
-                     otp="tests/fuse_maps/oca_key_revoked.yaml",
-                     boot="primary", boot_timeout=TIMEOUT))
+    t = vp(
+        SimConfig(
+            name="oca_revoked_fuse",
+            elf=str(bootcode_elf),
+            flash_image=str(oca_images["signed"]),
+            otp="tests/fuse_maps/oca_key_revoked.yaml",
+            boot="primary",
+            boot_timeout=TIMEOUT,
+        )
+    )
     t.spawn()
     match = t.expect_status("SEP_MSG_REVOKED_KEY", type="ERROR", timeout=TIMEOUT)
     assert "ERROR" in match.group(0)
@@ -223,10 +265,16 @@ def test_security_version_rollback(vp, bootcode_elf, oca_images):
     manifest lacks rejects it. The image's manifest_security_version is zero, so
     any device bit at all is a rollback.
     """
-    t = vp(SimConfig(name="oca_rollback", elf=str(bootcode_elf),
-                     flash_image=str(oca_images["signed"]),
-                     otp="tests/fuse_maps/oca_secver_set.yaml",
-                     boot="primary", boot_timeout=TIMEOUT))
+    t = vp(
+        SimConfig(
+            name="oca_rollback",
+            elf=str(bootcode_elf),
+            flash_image=str(oca_images["signed"]),
+            otp="tests/fuse_maps/oca_secver_set.yaml",
+            boot="primary",
+            boot_timeout=TIMEOUT,
+        )
+    )
     t.spawn()
     match = t.expect_status("SEP_MSG_INVALID_SECURITY_VERSION", type="ERROR", timeout=TIMEOUT)
     assert "ERROR" in match.group(0)

@@ -34,25 +34,22 @@ own header is asking the model whether it agrees with itself.
 import re
 
 import pytest
-
 from sepvp import paths
 
 # Registers whose model spelling differs from the RDL's. Kept deliberately short:
 # every entry is a name the model has not caught up on, so the map shrinking is
 # progress and a new entry should be justified rather than added for convenience.
 _ALIASES = {
-    "LOCKS": "LOCKS_LO",                       # RDL 64-bit; model splits LO/HI
-    "SIP_DIS": "SIP_DIS_LO",                   # ditto
-    "SYS_DIS": "SYS_DIS_LO",                   # ditto
+    "LOCKS": "LOCKS_LO",  # RDL 64-bit; model splits LO/HI
+    "SIP_DIS": "SIP_DIS_LO",  # ditto
+    "SYS_DIS": "SYS_DIS_LO",  # ditto
     "RMA_SIP_TOKEN_DIGEST": "RMA_SIP_TOKEN",
     "RMA_CHIPLET_TOKEN_DIGEST": "RMA_CHIPLET_TOKEN",
     "ROM_CTL": "SEP_ROM_CTRL",
 }
 
-_GENERATED_HEADER = (paths.OCAH_ROOT / "hw" / "sys" / "sep" / "regs" / "gen" / "c"
-                     / "sep_addr.h")
-_MODEL_HEADER = (paths.SIM_DIR / "sep" / "peripherals" / "efuse" / "include"
-                 / "efuse_register.h")
+_GENERATED_HEADER = paths.OCAH_ROOT / "hw" / "sys" / "sep" / "regs" / "gen" / "c" / "sep_addr.h"
+_MODEL_HEADER = paths.SIM_DIR / "sep" / "peripherals" / "efuse" / "include" / "efuse_register.h"
 
 # The fuse-array shadow region. Above this the model models an OTP interface and
 # an MMR block whose layout is its own business.
@@ -63,8 +60,7 @@ def _rdl_offsets():
     """{register name: offset} for the shadow region, from the generated header."""
     text = _GENERATED_HEADER.read_text()
     out = {}
-    for m in re.finditer(r"SEP_EFUSE_MAP_([A-Z0-9_]+)_BASE_ADDR\s+0x1093(0[0-9A-F]{3})",
-                         text):
+    for m in re.finditer(r"SEP_EFUSE_MAP_([A-Z0-9_]+)_BASE_ADDR\s+0x1093(0[0-9A-F]{3})", text):
         off = int(m.group(2), 16)
         if off < _SHADOW_LIMIT:
             out[m.group(1)] = off
@@ -87,8 +83,10 @@ def maps():
     if not _GENERATED_HEADER.is_file():
         pytest.skip(f"generated register header not found: {_GENERATED_HEADER}")
     if not _MODEL_HEADER.is_file():
-        pytest.skip(f"model eFuse header not found: {_MODEL_HEADER} "
-                    "(tt-oca-harness-model submodule checked out?)")
+        pytest.skip(
+            f"model eFuse header not found: {_MODEL_HEADER} "
+            "(tt-oca-harness-model submodule checked out?)"
+        )
     rdl, model = _rdl_offsets(), _model_offsets()
     assert rdl, "parsed no registers from the generated header -- parser out of date?"
     assert model, "parsed no registers from the model header -- parser out of date?"
@@ -103,14 +101,14 @@ def test_every_rdl_register_exists_in_the_model(maps):
     provisioned.
     """
     rdl, model = maps
-    missing = sorted(f"{n} (0x{o:03X})" for n, o in rdl.items()
-                     if _ALIASES.get(n, n) not in model)
+    missing = sorted(f"{n} (0x{o:03X})" for n, o in rdl.items() if _ALIASES.get(n, n) not in model)
     assert not missing, (
         "registers in the RDL with no counterpart in the VP eFuse model:\n  "
         + "\n  ".join(missing)
         + "\nReads of these land in reserved space and return zeroes instead of "
-          "faulting. Add them to the model, or add an alias here if the model "
-          "simply spells the name differently.")
+        "faulting. Add them to the model, or add an alias here if the model "
+        "simply spells the name differently."
+    )
 
 
 def test_model_offsets_match_the_rdl(maps):
@@ -120,13 +118,17 @@ def test_model_offsets_match_the_rdl(maps):
     for name, off in sorted(rdl.items(), key=lambda kv: kv[1]):
         mname = _ALIASES.get(name, name)
         if mname in model and model[mname] != off:
-            wrong.append(f"{name}: RDL 0x{off:03X}, model {mname} "
-                         f"0x{model[mname]:03X} (off by {model[mname] - off:+d})")
+            wrong.append(
+                f"{name}: RDL 0x{off:03X}, model {mname} "
+                f"0x{model[mname]:03X} (off by {model[mname] - off:+d})"
+            )
     assert not wrong, (
-        "VP eFuse model offsets disagree with the RDL:\n  " + "\n  ".join(wrong)
+        "VP eFuse model offsets disagree with the RDL:\n  "
+        + "\n  ".join(wrong)
         + "\nThe ROM is built against the generated header, so it reads the RDL's "
-          "addresses; a model that places a register elsewhere hands firmware a "
-          "neighbouring register's contents.")
+        "addresses; a model that places a register elsewhere hands firmware a "
+        "neighbouring register's contents."
+    )
 
 
 def test_the_shadow_region_is_fully_covered(maps):

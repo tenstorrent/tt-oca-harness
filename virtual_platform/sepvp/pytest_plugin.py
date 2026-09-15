@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Shared pytest plugin for the sep-vp harness suites.
 
 This module is the single home for the harness framework — the CLI options, the
@@ -51,14 +54,26 @@ def pytest_addoption(parser):
     g = parser.getgroup("sepvp", "SEP virtual-platform harness")
     g.addoption("--vp-bin", default=None, help="path to the sep-vp executable")
     g.addoption("--vp-timeout", type=int, default=120, help="default per-run boot timeout (s)")
-    g.addoption("--no-build", dest="build", action="store_false", default=True,
-                help="do not rebuild firmware before running")
-    g.addoption("--build-type", choices=["test", "release"], default="test",
-                help="firmware build type: test (DEBUG/SIM_OUT) or release")
+    g.addoption(
+        "--no-build",
+        dest="build",
+        action="store_false",
+        default=True,
+        help="do not rebuild firmware before running",
+    )
+    g.addoption(
+        "--build-type",
+        choices=["test", "release"],
+        default="test",
+        help="firmware build type: test (DEBUG/SIM_OUT) or release",
+    )
     g.addoption("--stream", action="store_true", help="tee sep-vp stdout to the console")
-    g.addoption("--riscv-toolchain", default=paths.default_riscv_toolchain(),
-                help="RISC-V toolchain prefix dir (its bin/ is prepended to PATH for firmware "
-                     "builds; default: $RISCV_TOOLCHAIN, empty = use PATH as-is)")
+    g.addoption(
+        "--riscv-toolchain",
+        default=paths.default_riscv_toolchain(),
+        help="RISC-V toolchain prefix dir (its bin/ is prepended to PATH for firmware "
+        "builds; default: $RISCV_TOOLCHAIN, empty = use PATH as-is)",
+    )
 
 
 def pytest_configure(config):
@@ -109,10 +124,21 @@ def _native_fw_toolchain(env):
     if _NATIVE_TOOLCHAIN_OK is None:
         try:
             r = subprocess.run(
-                ["riscv64-unknown-elf-gcc", "--specs=picolibc.specs",
-                 "-x", "c", "-c", "-", "-o", os.devnull],
-                input="int main(void){return 0;}", env=env,
-                capture_output=True, text=True, timeout=60,
+                [
+                    "riscv64-unknown-elf-gcc",
+                    "--specs=picolibc.specs",
+                    "-x",
+                    "c",
+                    "-c",
+                    "-",
+                    "-o",
+                    os.devnull,
+                ],
+                input="int main(void){return 0;}",
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             _NATIVE_TOOLCHAIN_OK = r.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -130,8 +156,7 @@ def _make(config, *make_args, cwd, container_ok=True):
     env = _fw_env(config)
     argv = ["make", *make_args]
     if container_ok and not _native_fw_toolchain(env):
-        argv = [str(paths.OCAH_ROOT / "scripts" / "docker-run.sh"),
-                "run-here", "make", *make_args]
+        argv = [str(paths.OCAH_ROOT / "scripts" / "docker-run.sh"), "run-here", "make", *make_args]
     return subprocess.run(argv, cwd=str(cwd), env=env, capture_output=True, text=True)
 
 
@@ -150,8 +175,13 @@ def bootcode_elf(request):
     modeled). The named variant target is used instead of `all` because oca-images
     needs uv + the tt-oca-manifest submodule, which the ELF does not."""
     if request.config.getoption("build"):
-        res = _make(request.config, "-C", str(paths.BOOTCODE_DIR),
-                    "ot-toolchain-images", cwd=paths.OCAH_ROOT)
+        res = _make(
+            request.config,
+            "-C",
+            str(paths.BOOTCODE_DIR),
+            "ot-toolchain-images",
+            cwd=paths.OCAH_ROOT,
+        )
         if res.returncode != 0:
             pytest.fail(f"bootcode build failed:\n{res.stdout[-2000:]}\n{res.stderr[-2000:]}")
     if not paths.BOOTCODE_ELF.is_file():
@@ -174,23 +204,23 @@ def oca_images(request):
     rather than fails, which is a coverage hole worth knowing about.
     """
     imgs = {
-        "unsigned":  paths.OCA_NS_IMAGE,
-        "signed":    paths.OCA_SEC_IMAGE,
+        "unsigned": paths.OCA_NS_IMAGE,
+        "signed": paths.OCA_SEC_IMAGE,
         "encrypted": paths.OCA_ENC_IMAGE,
         # Signed with the same dev0 key, but public_key_select_classic names an
         # OTP anchor (CHIPLET_PUBK_HASH0) instead of a ROM digest slot.
-        "otp_key":   paths.OCA_OTP_IMAGE,
+        "otp_key": paths.OCA_OTP_IMAGE,
         # Bare bundle for the SMC-SRAM path, not a combined SPI image.
         "smc_bundle": paths.OCA_SMC_BUNDLE,
         # Manifest bound to a chiplet identity via usage_constraints.
-        "identity":  paths.OCA_ID_IMAGE,
-        "pqc":       paths.OCA_PQC_IMAGE,
-        "ecdsa":     paths.OCA_ECDSA_IMAGE,
-        "der":       paths.OCA_DER_IMAGE,
-        "aes128":    paths.OCA_AES128_IMAGE,
-        "sip_key":   paths.OCA_SIP_KEY_IMAGE,
-        "multi":     paths.OCA_MULTI_IMAGE,
-        "no_bl1":    paths.OCA_NO_BL1_IMAGE,
+        "identity": paths.OCA_ID_IMAGE,
+        "pqc": paths.OCA_PQC_IMAGE,
+        "ecdsa": paths.OCA_ECDSA_IMAGE,
+        "der": paths.OCA_DER_IMAGE,
+        "aes128": paths.OCA_AES128_IMAGE,
+        "sip_key": paths.OCA_SIP_KEY_IMAGE,
+        "multi": paths.OCA_MULTI_IMAGE,
+        "no_bl1": paths.OCA_NO_BL1_IMAGE,
         # ROM key slots 1-5, each signed by its own key (slot 0 is "signed").
         # Flat entries rather than a nested slot->path dict so the existence check
         # below still sees every path; tests/bootcode/test_bootcode_oca_rom_keys.py
@@ -198,17 +228,23 @@ def oca_images(request):
         **{f"rom_key{n}": paths.OCA_ROM_KEY_IMAGES[n] for n in range(1, 6)},
     }
     if request.config.getoption("build"):
-        res = _make(request.config, "-C", str(paths.BOOTCODE_DIR),
-                    "oca-images", cwd=paths.OCAH_ROOT, container_ok=False)
+        res = _make(
+            request.config,
+            "-C",
+            str(paths.BOOTCODE_DIR),
+            "oca-images",
+            cwd=paths.OCAH_ROOT,
+            container_ok=False,
+        )
         if res.returncode != 0:
             pytest.skip(
                 "oca-images build failed (tt-oca-manifest submodule initialized? "
                 "uv and a RISC-V toolchain on PATH?):\n"
-                f"{res.stdout[-1500:]}\n{res.stderr[-1500:]}")
+                f"{res.stdout[-1500:]}\n{res.stderr[-1500:]}"
+            )
     missing = [str(p) for p in imgs.values() if not p.is_file()]
     if missing:
-        pytest.skip(f"OCA images not present: {', '.join(missing)}; "
-                    "build them or drop --no-build")
+        pytest.skip(f"OCA images not present: {', '.join(missing)}; build them or drop --no-build")
     return imgs
 
 
@@ -219,20 +255,28 @@ def fw_test_builder(request):
     Tests are built by the shared DV firmware engine at the repo root
     (`make ocah-dv-fw-tests TARGET=sep TEST=<name>`), which drops
     build/tests/<name>/<name>.tcm.elf (default link mode)."""
+
     def _build(name):
         test_dir = paths.FW_TESTS_DIR / name
         if not test_dir.is_dir():
             pytest.skip(f"hw/sys/sep/dv/fw/tests/{name} not found")
         if request.config.getoption("build"):
-            res = _make(request.config, "-C", str(paths.OCAH_ROOT),
-                        "ocah-dv-fw-tests", "TARGET=sep", f"TEST={name}",
-                        cwd=paths.OCAH_ROOT)
+            res = _make(
+                request.config,
+                "-C",
+                str(paths.OCAH_ROOT),
+                "ocah-dv-fw-tests",
+                "TARGET=sep",
+                f"TEST={name}",
+                cwd=paths.OCAH_ROOT,
+            )
             if res.returncode != 0:
                 pytest.skip(f"dv fw test {name} build failed:\n{res.stderr[-1500:]}")
         elf = paths.fw_test_elf(name)
         if not elf.is_file():
             pytest.skip(f"{elf.name} not present after build")
         return elf
+
     return _build
 
 

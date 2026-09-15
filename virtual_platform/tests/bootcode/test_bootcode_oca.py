@@ -7,7 +7,6 @@ SEP_MSG_STARTING_BL1 alone does not distinguish "verified and booted" from
 """
 
 import pytest
-
 import shared
 from sepvp.config import SimConfig
 
@@ -17,8 +16,9 @@ TIMEOUT = 180
 
 
 def _cfg(name, elf, image, **kw):
-    return SimConfig(name=name, elf=str(elf), flash_image=str(image),
-                     boot="primary", boot_timeout=TIMEOUT, **kw)
+    return SimConfig(
+        name=name, elf=str(elf), flash_image=str(image), boot="primary", boot_timeout=TIMEOUT, **kw
+    )
 
 
 def test_unsigned_boots_to_bl1(vp, bootcode_elf, oca_images):
@@ -74,8 +74,14 @@ def test_encrypted_payload_boots_to_bl1(vp, bootcode_elf, oca_images):
     Needs the fuse map: the secret comes from CLASS_KEY, and an unprovisioned
     bank is refused as NO_PROVISIONED_SECRET rather than deriving from zeros.
     """
-    t = vp(_cfg("oca_encrypted", bootcode_elf, oca_images["encrypted"],
-                otp="tests/fuse_maps/oca_encrypted.yaml"))
+    t = vp(
+        _cfg(
+            "oca_encrypted",
+            bootcode_elf,
+            oca_images["encrypted"],
+            otp="tests/fuse_maps/oca_encrypted.yaml",
+        )
+    )
     t.spawn()
     shared.expect_common_early(t, timeout=TIMEOUT)
     t.expect_status("SEP_MSG_DECRYPTION_START", type="INFO", timeout=TIMEOUT)
@@ -123,6 +129,7 @@ def test_rotate_update_strap_selects_backup_first(vp, bootcode_elf, oca_images):
 # where the anchor lives changes, which keeps the anchor lookup as the single
 # variable.
 
+
 def test_otp_anchored_key_boots(vp, bootcode_elf, oca_images):
     """A key anchored in OTP rather than ROM authorizes and boots.
 
@@ -130,8 +137,14 @@ def test_otp_anchored_key_boots(vp, bootcode_elf, oca_images):
     that the digest is taken over the 384-byte modulus, not the 388-byte RAW blob
     -- a blob-wide digest would simply never match.
     """
-    t = vp(_cfg("oca_otp_key", bootcode_elf, oca_images["otp_key"],
-                otp="tests/fuse_maps/oca_otp_key.yaml"))
+    t = vp(
+        _cfg(
+            "oca_otp_key",
+            bootcode_elf,
+            oca_images["otp_key"],
+            otp="tests/fuse_maps/oca_otp_key.yaml",
+        )
+    )
     t.spawn()
     t.expect("PUBK_AUTHORIZED", timeout=TIMEOUT)
     t.expect("RSA_VERIFY_OK", timeout=TIMEOUT)
@@ -145,8 +158,14 @@ def test_otp_anchored_key_wrong_digest_refused(vp, bootcode_elf, oca_images):
     The map is byte-identical to the passing one except for one flipped bit in
     word 0, so this isolates the comparison itself rather than the plumbing.
     """
-    t = vp(_cfg("oca_otp_key_wrong", bootcode_elf, oca_images["otp_key"],
-                otp="tests/fuse_maps/oca_otp_key_wrong.yaml"))
+    t = vp(
+        _cfg(
+            "oca_otp_key_wrong",
+            bootcode_elf,
+            oca_images["otp_key"],
+            otp="tests/fuse_maps/oca_otp_key_wrong.yaml",
+        )
+    )
     t.spawn()
     match = t.expect_status("SEP_MSG_INVALID_KEY_HASH", type="ERROR", timeout=TIMEOUT)
     assert "ERROR" in match.group(0)
@@ -168,8 +187,7 @@ def test_otp_anchored_key_unprovisioned_refused(vp, bootcode_elf, oca_images):
     t.close()
 
 
-def test_otp_anchored_key_revocation_uses_the_same_slot_numbering(
-        vp, bootcode_elf, oca_images):
+def test_otp_anchored_key_revocation_uses_the_same_slot_numbering(vp, bootcode_elf, oca_images):
     """Provisioned AND revoked: the same bit index must mean the same key.
 
     public_key_select_classic and CHIPLET_PUBK_REVOKE index the same key entries,
@@ -183,8 +201,14 @@ def test_otp_anchored_key_revocation_uses_the_same_slot_numbering(
     key. Reported as REVOKED_KEY rather than INVALID_KEY_HASH, which also
     confirms authorization ran first and passed.
     """
-    t = vp(_cfg("oca_otp_key_revoked", bootcode_elf, oca_images["otp_key"],
-                otp="tests/fuse_maps/oca_otp_key_revoked.yaml"))
+    t = vp(
+        _cfg(
+            "oca_otp_key_revoked",
+            bootcode_elf,
+            oca_images["otp_key"],
+            otp="tests/fuse_maps/oca_otp_key_revoked.yaml",
+        )
+    )
     t.spawn()
     t.expect("PUBK_AUTHORIZED", timeout=TIMEOUT)
     match = t.expect_status("SEP_MSG_REVOKED_KEY", type="ERROR", timeout=TIMEOUT)
@@ -199,6 +223,7 @@ def test_otp_anchored_key_revocation_uses_the_same_slot_numbering(
 # same contract. A BARE BUNDLE, not a combined SPI image: this path resolves the
 # payload from the manifest's own payload_offset, which for a bundle is body_size.
 
+
 def test_smc_sram_secondary_chiplet_boots(vp, bootcode_elf, oca_images):
     """Secondary chiplet: wait for the SMC handshake, then boot its manifest.
 
@@ -206,9 +231,15 @@ def test_smc_sram_secondary_chiplet_boots(vp, bootcode_elf, oca_images):
     STATUS_TO_SEP for MANIFEST_READY and reads the offset the SMC published
     rather than touching SPI flash at all.
     """
-    t = vp(SimConfig(name="oca_smc_secondary", elf=str(bootcode_elf),
-                     smc_sram_image=str(oca_images["smc_bundle"]),
-                     boot="secondary", boot_timeout=TIMEOUT))
+    t = vp(
+        SimConfig(
+            name="oca_smc_secondary",
+            elf=str(bootcode_elf),
+            smc_sram_image=str(oca_images["smc_bundle"]),
+            boot="secondary",
+            boot_timeout=TIMEOUT,
+        )
+    )
     t.spawn()
     t.expect("WAIT_SMC_MANIFEST", timeout=TIMEOUT)
     t.expect("PUBK_AUTHORIZED", timeout=TIMEOUT)
@@ -223,9 +254,16 @@ def test_smc_sram_recovery_strap_boots(vp, bootcode_elf, oca_images):
     booted from SPI, and the recovery strap is what redirects it. Proves the strap
     reaches the load-path decision rather than only being reported.
     """
-    t = vp(SimConfig(name="oca_smc_recovery", elf=str(bootcode_elf),
-                     smc_sram_image=str(oca_images["smc_bundle"]),
-                     boot="primary", recovery=True, boot_timeout=TIMEOUT))
+    t = vp(
+        SimConfig(
+            name="oca_smc_recovery",
+            elf=str(bootcode_elf),
+            smc_sram_image=str(oca_images["smc_bundle"]),
+            boot="primary",
+            recovery=True,
+            boot_timeout=TIMEOUT,
+        )
+    )
     t.spawn()
     t.expect("WAIT_SMC_MANIFEST", timeout=TIMEOUT)
     t.expect_status("SEP_MSG_STARTING_BL1", type="INFO", timeout=TIMEOUT)
@@ -238,10 +276,17 @@ def test_smc_sram_recovery_strap_boots(vp, bootcode_elf, oca_images):
 # constrain that field, so an unconstrained manifest never reaches this at all.
 # These two are the accept and reject directions for the same image.
 
+
 def test_identity_constraint_matching_chiplet_boots(vp, bootcode_elf, oca_images):
     """A manifest bound to this chiplet's identity boots."""
-    t = vp(_cfg("oca_id_match", bootcode_elf, oca_images["identity"],
-                otp="tests/fuse_maps/oca_identity_match.yaml"))
+    t = vp(
+        _cfg(
+            "oca_id_match",
+            bootcode_elf,
+            oca_images["identity"],
+            otp="tests/fuse_maps/oca_identity_match.yaml",
+        )
+    )
     t.spawn()
     t.expect_status("SEP_MSG_STARTING_BL1", type="INFO", timeout=TIMEOUT)
     t.close()
@@ -255,8 +300,14 @@ def test_identity_constraint_other_chiplet_refused(vp, bootcode_elf, oca_images)
     also pass on a device that reported no identity at all, which is exactly what
     the VP did before the eFuse model gained this register.
     """
-    t = vp(_cfg("oca_id_mismatch", bootcode_elf, oca_images["identity"],
-                otp="tests/fuse_maps/oca_identity_mismatch.yaml"))
+    t = vp(
+        _cfg(
+            "oca_id_mismatch",
+            bootcode_elf,
+            oca_images["identity"],
+            otp="tests/fuse_maps/oca_identity_mismatch.yaml",
+        )
+    )
     t.spawn()
     match = t.expect_status("SEP_MSG_INVALID_CHIPLET_ID", type="ERROR", timeout=TIMEOUT)
     assert "ERROR" in match.group(0)
@@ -264,6 +315,7 @@ def test_identity_constraint_other_chiplet_refused(vp, bootcode_elf, oca_images)
 
 
 # --- variant, algorithm and encoding coverage ------------------------------
+
 
 def test_pqc_variant_with_classical_signature_boots(vp, bootcode_elf, oca_images):
     """An OCAP body signed with a classical RSA-3072 key boots.
@@ -319,8 +371,14 @@ def test_aes128_encrypted_payload_boots(vp, bootcode_elf, oca_images):
     widths aes_cbc_decrypt() accepts -- and an unknown width is rejected rather
     than defaulted, which is why both need exercising.
     """
-    t = vp(_cfg("oca_aes128", bootcode_elf, oca_images["aes128"],
-                otp="tests/fuse_maps/oca_encrypted.yaml"))
+    t = vp(
+        _cfg(
+            "oca_aes128",
+            bootcode_elf,
+            oca_images["aes128"],
+            otp="tests/fuse_maps/oca_encrypted.yaml",
+        )
+    )
     t.spawn()
     t.expect_status("SEP_MSG_DECRYPTION_END", type="INFO", timeout=TIMEOUT)
     t.expect_status("SEP_MSG_STARTING_BL1", type="INFO", timeout=TIMEOUT)
@@ -334,8 +392,14 @@ def test_sip_owner_otp_key_anchor_boots(vp, bootcode_elf, oca_images):
     slot map resolves more than one bank correctly rather than happening to work
     for the one case already covered.
     """
-    t = vp(_cfg("oca_sip_key", bootcode_elf, oca_images["sip_key"],
-                otp="tests/fuse_maps/oca_sip_key.yaml"))
+    t = vp(
+        _cfg(
+            "oca_sip_key",
+            bootcode_elf,
+            oca_images["sip_key"],
+            otp="tests/fuse_maps/oca_sip_key.yaml",
+        )
+    )
     t.spawn()
     t.expect("PUBK_AUTHORIZED", timeout=TIMEOUT)
     t.expect_status("SEP_MSG_STARTING_BL1", type="INFO", timeout=TIMEOUT)
@@ -384,8 +448,14 @@ def test_unsigned_image_refused_on_a_secure_lifecycle(vp, bootcode_elf, oca_imag
     reached. Earlier and in the library is the better place for it; assert the
     outcome rather than the old route to it.
     """
-    t = vp(_cfg("oca_unsigned_prod", bootcode_elf, oca_images["unsigned"],
-                otp="tests/fuse_maps/prod_secure.yaml"))
+    t = vp(
+        _cfg(
+            "oca_unsigned_prod",
+            bootcode_elf,
+            oca_images["unsigned"],
+            otp="tests/fuse_maps/prod_secure.yaml",
+        )
+    )
     t.spawn()
     # 0x0003_0024 == OCA_FAIL_SIGNATURE_CLASS_CONTROL. Pinning the code keeps
     # this honest: refusing for some unrelated reason would also produce an

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """SPI mux register + flash-loader checks on sep-vp.
 
 Drives the in-repo bare-metal test firmware (sw/sep-vp-tests/sep-spi-mux-test) through its own
@@ -18,7 +21,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from sepvp import paths
 
 pytestmark = pytest.mark.spi_mux
@@ -27,7 +29,7 @@ FW_DIR = paths.SIM_DIR / "sw" / "sep-vp-tests" / "sep-spi-mux-test"
 TIMEOUT = 180
 
 PASS_MARK = "All tests PASSED!"
-LOADED_MARK = "Backdoor: loaded"           # staged: "[spi_flash] Backdoor: loaded N bytes ..."
+LOADED_MARK = "Backdoor: loaded"  # staged: "[spi_flash] Backdoor: loaded N bytes ..."
 
 
 def _env(request):
@@ -41,8 +43,10 @@ def _env(request):
 
 def _require_prereqs(request):
     tc = request.config.getoption("--riscv-toolchain")
-    if not ((tc and (Path(tc) / "bin" / "riscv64-unknown-elf-gcc").exists())
-            or shutil.which("riscv64-unknown-elf-gcc")):
+    if not (
+        (tc and (Path(tc) / "bin" / "riscv64-unknown-elf-gcc").exists())
+        or shutil.which("riscv64-unknown-elf-gcc")
+    ):
         pytest.skip("RISC-V toolchain not found (PATH or --riscv-toolchain/RISCV_TOOLCHAIN)")
     if not paths.sep_vp_bin().is_file():
         pytest.skip(f"sep-vp not built ({paths.sep_vp_bin()})")
@@ -67,8 +71,12 @@ def _run_make(request, *make_args):
     """
     vp = f"timeout -k 5 {SIM_TIMEOUT} {paths.sep_vp_bin()}"
     res = subprocess.run(
-        ["make", *make_args, f"VP={vp}"], cwd=str(FW_DIR), env=_env(request),
-        capture_output=True, text=True, timeout=TIMEOUT,
+        ["make", *make_args, f"VP={vp}"],
+        cwd=str(FW_DIR),
+        env=_env(request),
+        capture_output=True,
+        text=True,
+        timeout=TIMEOUT,
     )
     return res.stdout + "\n" + res.stderr
 
@@ -76,8 +84,9 @@ def _run_make(request, *make_args):
 @pytest.fixture(autouse=True)
 def _cleanup(request):
     yield
-    subprocess.run(["make", "distclean"], cwd=str(FW_DIR),
-                   env=_env(request), capture_output=True, text=True)
+    subprocess.run(
+        ["make", "distclean"], cwd=str(FW_DIR), env=_env(request), capture_output=True, text=True
+    )
 
 
 def test_mux_rw_and_flash_noop_unstaged(request):
