@@ -52,7 +52,7 @@ __metal_clear_coordination_scratch_regs:
  * Early SRAM initialization.
  *
  * Hardware auto-zero is expected by default. Manual zeroing is performed only
- * when SRAM_AUTO_ZERO_DISABLE strap or OTP RESERVED_0[6] requests it.
+ * when SRAM_AUTO_ZERO_DISABLE strap or OTP SMC_CONFIG[7] requests it.
  */
 .global __metal_sram_init_early
 .type __metal_sram_init_early, @function
@@ -66,10 +66,10 @@ __metal_sram_init_early:
     and     t1, t1, t2
     bnez    t1, perform_manual_zeroing
 
-    /* Check OTP RESERVED_0[6] auto-zero disable override. */
-    li      t0, SMC_EFUSE_MAP_RESERVED_0_REG_ADDR_VAL
+    /* Check OTP SMC_CONFIG[7] auto-zero disable override. */
+    li      t0, SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL
     lwu     t1, 0(t0)
-    li      t2, SMC_EFUSE_RESERVED_0_SRAM_AUTO_ZERO_DISABLE_MASK_VAL
+    li      t2, SMC_EFUSE_SMC_CONFIG_SRAM_AUTO_ZERO_DISABLE_MASK_VAL
     and     t1, t1, t2
     beqz    t1, skip_early_scrub
 

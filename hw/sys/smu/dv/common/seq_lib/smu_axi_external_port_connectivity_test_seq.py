@@ -6,10 +6,18 @@ DV-CARD:          SMU_ALL_002   ANCHOR: smu_axi_external_port_connectivity_test
 
 Owns:
   SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via
-    direct IW converters (bare tb_top SEP=0; required_cells dir=in +
+    direct IW converters (wrapper bench, SEP=0; required_cells dir=in +
     dest=smc_aperture only).
   SMU-SEP-PARAM.S2 — SEP=0 elaboration of direct SMC↔external ID converters
     (non-OTP-error).
+
+The S1 probe lands on SMC BlockByDefault (no inbound window programmed), so
+its response is DECERR. A DECERR alone is also what a dead bus or a stuck
+converter would produce, so the same run carries a positive control: JTAG2AXI
+opens inbound filter 0 over CHIP_CONFIG.VERSION_LO, the same external master
+reads it through the same path and must see OKAY with the RDL reset value,
+and the window is cleared again so the DECERR returns. The deny leg is then a
+filter decision on a path shown live in this run.
 
 SEP aperture inbound (dest=sep_aperture) is owned by SMU-PORT-SMN-AXI.S4 on
 SMU_ALL_008 — out of scope for this card.
@@ -24,18 +32,23 @@ import time
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge, Timer, with_timeout
 from ocah_axi_vip import RESP_DECERR, RESP_OKAY
+from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO
+from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO, SMC_CHIP_CONFIG_VERSION_LO_RESET
 from seq_lib.smu_axi_helpers import (
     axi_read32_resp_ids,
     axi_write32_resp_ids,
     make_smu_axi_master,
     resp_name,
 )
+from seq_lib.smu_filter_helpers import (
+    await_smn_resp,
+    clear_inbound0_config,
+    page_align_window,
+    program_inbound0_window,
+)
+from seq_lib.smu_jtag_helpers import DTP_DEFAULT_IDCODE, make_smu_jtag_tap
 from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
-
-# SMC SYS_IN BlockByDefault err_slv poison (low 32b).
-SMC_FILTER_POISON_LO = 0xBADCAB1E
 
 
 class smu_axi_external_port_connectivity_test_seq:
@@ -43,10 +56,13 @@ class smu_axi_external_port_connectivity_test_seq:
 
     # Authoritative map: smc_addr.h VERSION_LO (SMC local-alias aperture).
     IN_PROBE = SMC_CHIP_CONFIG_VERSION_LO
+    # chip_config.rdl VERSION_LO is sw=r with a fixed reset value: the control
+    # read compares the value, not just the response class.
+    CONTROL_EXPECT = SMC_CHIP_CONFIG_VERSION_LO_RESET
     # Finite bound enforced by with_timeout — must match logged TIMEOUT bound.
     AXI_TIMEOUT_NS = 200_000
-    # Bounded waits: inbound write + inbound read (S2).
-    EXPECTED_TIMEOUT_PATHS = 2
+    # Bounded waits: inbound write + inbound read + control read (S2).
+    EXPECTED_TIMEOUT_PATHS = 3
 
     def __init__(self, test) -> None:
         self.test = test
@@ -61,6 +77,10 @@ class smu_axi_external_port_connectivity_test_seq:
         self.READ_ID = (self.WRITE_ID + 1 + rng.randint(0, 0x7F)) & 0xFF
         if self.READ_ID == 0 or self.READ_ID == self.WRITE_ID:
             self.READ_ID = (self.WRITE_ID ^ 0x55) or 0x43
+        # A third ID for the control read so its RID compare is its own.
+        self.CONTROL_ID = (self.READ_ID + 1 + rng.randint(0, 0x7F)) & 0xFF
+        while self.CONTROL_ID in (0, self.WRITE_ID, self.READ_ID):
+            self.CONTROL_ID = (self.CONTROL_ID + 1) & 0xFF
         self.wdata = rng.getrandbits(32)
         self._seed = seed
 
@@ -103,8 +123,7 @@ class smu_axi_external_port_connectivity_test_seq:
                 f"addr=0x{addr:08x}"
             ) from None
 
-    async def _axi_read_bounded(self, master, addr: int, arid: int):
-        label = "s2_inbound_read"
+    async def _axi_read_bounded(self, master, addr: int, arid: int, label: str = "s2_inbound_read"):
         try:
             result = await with_timeout(
                 axi_read32_resp_ids(master, addr, arid=arid),
@@ -123,6 +142,87 @@ class smu_axi_external_port_connectivity_test_seq:
                 f"TIMEOUT {label}: bound={self.AXI_TIMEOUT_NS}ns last_state=no_rresp "
                 f"addr=0x{addr:08x}"
             ) from None
+
+    async def _open_jtag2axi(self, dut):
+        """Bring the PTAP out of TLR and require the SMC JTAG2AXI gate open.
+
+        feat_ctrl is synchronised on TCK, so idle TCK cycles after the TAP
+        reset are needed before ``smc_jtag2axi_security_disable`` can drop;
+        while it is set SINGLE_OP no-ops with a SUCCESS status, so the gate is
+        read from the TB pin rather than inferred from the status.
+        """
+        jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
+        await jtag.reset_tap()
+        await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
+        for _ in range(8):
+            await jtag.step_tms(0)
+        idcode = await jtag.read_idcode()
+        if idcode != DTP_DEFAULT_IDCODE:
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
+        gate_pin = getattr(dut, "tb_smc_jtag2axi_security_disable", None)
+        if gate_pin is None:
+            raise AssertionError("tb_smc_jtag2axi_security_disable not on this TB top")
+        gate = self._sample(gate_pin, "tb_smc_jtag2axi_security_disable") & 1
+        if gate != 0:
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
+        self._log(f"J2A ready: idcode=0x{idcode:08x} smc_jtag2axi_security_disable={gate}")
+        return jtag
+
+    async def _control_leg(self, dut, master, sb) -> None:
+        """Positive control for the S1 DECERR: same master, same path, OKAY.
+
+        Inbound filter 0 is opened over the probe (allow_burst=1, so the
+        4 KB granule around it), the external master reads the probe and must
+        see OKAY, its own RID and the RDL reset value; the window is cleared
+        and the DECERR must come back. Both filter-ready waits are bounded
+        polls that fail with last-state.
+        """
+        jtag = await self._open_jtag2axi(dut)
+        lo, hi = page_align_window(self.IN_PROBE, self.IN_PROBE)
+        await program_inbound0_window(jtag, lo, hi, scoreboard=sb, tag="S1CTRL_INBOUND0")
+        self._log(f"S1 control: inbound0 window [0x{lo:08x},0x{hi:08x}] over VERSION_LO")
+        await await_smn_resp(
+            master, self.IN_PROBE, RESP_OKAY, clk=dut.clk_smu_i, label="s1_control_ready"
+        )
+        c_data, c_resp, _c_arid, c_rid = await self._axi_read_bounded(
+            master, self.IN_PROBE, self.CONTROL_ID, label="s2_control_read"
+        )
+        c_data &= 0xFFFF_FFFF
+        if c_resp != RESP_OKAY:
+            raise AssertionError(
+                f"control RRESP {resp_name(c_resp)} (expect OKAY through the programmed window)"
+            )
+        if c_rid != self.CONTROL_ID:
+            raise AssertionError(
+                f"control RID mismatch: rid=0x{c_rid:x} arid=0x{self.CONTROL_ID:x}"
+            )
+        sb.expect_eq(
+            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL VERSION_LO OKAY",
+            c_resp,
+            RESP_OKAY,
+            evidence="CHK-SMU-PORT-SMN-AXI-S1-CONTROL",
+        )
+        sb.expect_eq(
+            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL VERSION_LO reset value",
+            c_data,
+            self.CONTROL_EXPECT,
+            evidence="CHK-SMU-PORT-SMN-AXI-S1-CONTROL",
+        )
+        self._log(
+            "CHK-SMU-PORT-SMN-AXI-S1-CONTROL: PASS "
+            f"(dir=in dest=smc_aperture path=direct_iw addr=0x{self.IN_PROBE:08x} "
+            f"arid=0x{self.CONTROL_ID:x} rid=0x{c_rid:x} rresp={resp_name(c_resp)} "
+            f"rdata=0x{c_data:08x} expect=0x{self.CONTROL_EXPECT:08x})"
+        )
+
+        await clear_inbound0_config(jtag, scoreboard=sb)
+        r_data, r_resp = await await_smn_resp(
+            master, self.IN_PROBE, RESP_DECERR, clk=dut.clk_smu_i, label="s1_control_cleared"
+        )
+        self._log(
+            f"S1 control cleared: VERSION_LO {resp_name(r_resp)} "
+            f"rdata=0x{int(r_data) & 0xFFFF_FFFF:08x} with inbound0 disabled again"
+        )
 
     async def _observe_direct_iw_converters(self, dut) -> tuple[str, int, int]:
         """Passive hierarchy observe: gen_no_sep IW converters present; no xbar."""
@@ -173,7 +273,7 @@ class smu_axi_external_port_connectivity_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S1",
-            "SETUP: SEP=0 bare tb_top bring-up; clocks/resets stable; smu_axi_in BFM peer live",
+            "SETUP: SEP=0 wrapper bring-up; clocks/resets stable; smu_axi_in BFM peer live",
         )
         # Baseline aperture observe (SEP tied off under SEP=0).
         sep_base = self._sample(dut.sep_global_base_o, "sep_global_base_o")
@@ -195,7 +295,8 @@ class smu_axi_external_port_connectivity_test_seq:
 
         self._log(
             f"SEED: {self._seed} WRITE_ID=0x{self.WRITE_ID:x} "
-            f"READ_ID=0x{self.READ_ID:x} wdata=0x{self.wdata:08x}"
+            f"READ_ID=0x{self.READ_ID:x} CONTROL_ID=0x{self.CONTROL_ID:x} "
+            f"wdata=0x{self.wdata:08x}"
         )
         wdata = self.wdata
         wresp, w_awid, w_bid = await self._axi_write_bounded(
@@ -218,15 +319,6 @@ class smu_axi_external_port_connectivity_test_seq:
             )
         if r_rid != self.READ_ID:
             raise AssertionError(f"inbound RID mismatch: rid=0x{r_rid:x} arid=0x{self.READ_ID:x}")
-        # When BlockByDefault DECERR, err_slv poison confirms SMC consumer.
-        if rresp == RESP_DECERR:
-            poison = rdata & 0xFFFF_FFFF
-            if poison != SMC_FILTER_POISON_LO:
-                raise AssertionError(
-                    f"SMC filter poison mismatch: rdata=0x{poison:08x} "
-                    f"expect=0x{SMC_FILTER_POISON_LO:08x}"
-                )
-
         self._log(
             "CHK-SMU-PORT-SMN-AXI-S1: PASS "
             "(dir=in dest=smc_aperture path=direct_iw "
@@ -241,6 +333,15 @@ class smu_axi_external_port_connectivity_test_seq:
             self.WRITE_ID,
             evidence="CHK-SMU-PORT-SMN-AXI-S1",
         )
+
+        # Positive control for the deny-class responses above: same master,
+        # same probe, window opened -> OKAY + reset value, window cleared ->
+        # DECERR again.
+        self._log(
+            "ACTION SMU-PORT-SMN-AXI.S1 control: open inbound0 over "
+            f"0x{self.IN_PROBE:08x} via JTAG2AXI, read from smu_axi_in, clear"
+        )
+        await self._control_leg(dut, master, sb)
 
         # ------------------------------------------------------------------
         # S3 SMU-SEP-PARAM.S2 — SEP=0 direct SMC↔external converters
