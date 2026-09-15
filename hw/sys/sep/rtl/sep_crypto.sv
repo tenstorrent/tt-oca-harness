@@ -527,7 +527,7 @@ module sep_crypto #(
     .SRAM_LATENCY (SRAM_LATENCY)
   ) u_sep_crypto_abr_wrapper_s3c_scan (
     .clk_i                 (clk_i),
-    .rst_ni                (sep_reset_ni),
+    .rst_ni                (gated_rst_ni.abr),
     // Control/status path: ABR AXI aperture off the crypto interconnect
     .abr_axi_req_i         (abr_axi_req),
     .abr_axi_resp_o        (abr_axi_resp),

@@ -417,8 +417,6 @@ register map is reported in <<sep-detailed-register-map>>.
 ==== SEP Reset Controller
 
 The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
-Adams Bridge is the exception: it has no software-reset bit and resets with
-`sep_reset_n`.
 
 The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
 
@@ -431,17 +429,19 @@ The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` wi
 |3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
 |4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
 |5 |trng_sw_rst_n |RW |1 |Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)
+|6 |abr_sw_rst_n |RW |1 |Adams Bridge reset (0=assert, 1=release)
 |=======================================================================
 
-On power-up, `SW_RESET_N` resets to `0x3E`: KM is held in reset, while OTBN,
-AES, HMAC, KMAC, and the TRNG are released. The SEP host firmware writes `1` to
-release an IP from reset and writes `0` to request its software reset.
+On power-up, `SW_RESET_N` resets to `0x7E`: KM is held in reset, while OTBN,
+AES, HMAC, KMAC, the TRNG, and Adams Bridge are released. The SEP host firmware
+writes `1` to release an IP from reset and writes `0` to request its software
+reset.
 
 Each `SW_RESET_N` bit is a request to a per-domain sequencer. The sequencer
-isolates the domain's AXI4-Lite paths, waits for outstanding transactions to
-drain, and then asserts reset. New transactions presented while isolated
-terminate with SLVERR. Isolation remains asserted for the duration of reset and
-is released with reset when software removes the request.
+isolates the domain's AXI paths, waits for outstanding transactions to drain,
+and then asserts reset. New transactions presented while isolated terminate
+with SLVERR. Isolation remains asserted for the duration of reset and is
+released with reset when software removes the request.
 
 An accelerator reset waits for both its host CSR path and Key Manager key path
 to isolate. A Key Manager reset waits for all of its outgoing accelerator and

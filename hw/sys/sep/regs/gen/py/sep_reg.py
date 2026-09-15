@@ -5533,7 +5533,7 @@ class SEP_SCRATCH_SCRATCH_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000003E
+SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000007E
 class SEP_RESET_CTRL_SW_RESET_N_reg_t(Structure):
     _fields_ = [
         ('km_sw_rst_n', c_uint8, 1),
@@ -5542,9 +5542,10 @@ class SEP_RESET_CTRL_SW_RESET_N_reg_t(Structure):
         ('hmac_sw_rst_n', c_uint8, 1),
         ('kmac_sw_rst_n', c_uint8, 1),
         ('trng_sw_rst_n', c_uint8, 1),
+        ('abr_sw_rst_n', c_uint8, 1),
     ]
 
-SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000003E
+SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT = 0x000000000000007E
 
 class SEP_RESET_CTRL_SW_RESET_N_reg_u(Union):
     _fields_ = [
