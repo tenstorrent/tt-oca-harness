@@ -133,20 +133,29 @@ def build_image(config: dict, schema: dict) -> int:
     return image
 
 
+# The readers ($readmemh / $readmemb and the DV Python parsers) drop `//`
+# comments, so the image carries the same header as every other tracked file
+# and a regenerated image diffs clean against the committed one.
+_SPDX_HEADER = (
+    "// SPDX-License-Identifier: Apache-2.0",
+    "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
+)
+
+
 def write_image(image: int, path: Path, notation: str) -> None:
-    lines = []
+    lines = list(_SPDX_HEADER)
     if notation == "hex":
         for word in range(EFUSE_SIZE_BITS // EFUSE_WORD_SIZE_BITS):
             shift = word * EFUSE_WORD_SIZE_BITS
             lines.append(f"{(image >> shift) & 0xFFFF_FFFF:08x}")
     elif notation == "binary":
-        lines = [str((image >> bit) & 1) for bit in range(EFUSE_SIZE_BITS)]
+        lines.extend(str((image >> bit) & 1) for bit in range(EFUSE_SIZE_BITS))
     else:
         sys.exit(f"error: unknown notation '{notation}'")
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")
-    print(f"wrote {len(lines)} lines ({notation}) to {path}")
+    print(f"wrote {len(lines) - len(_SPDX_HEADER)} {notation} entries to {path}")
 
 
 def main() -> None:

@@ -33,7 +33,8 @@
 #if DEBUG_BUS_MARKER_TRACE16 == DEBUG_BUS_WAIT_TRACE16
 #error marker and wait trace16 collide
 #endif
-#if (DEBUG_BUS_BOGUS_TRACE16 == DEBUG_BUS_MARKER_TRACE16) || (DEBUG_BUS_BOGUS_TRACE16 == DEBUG_BUS_WAIT_TRACE16)
+#if (DEBUG_BUS_BOGUS_TRACE16 == DEBUG_BUS_MARKER_TRACE16) || \
+    (DEBUG_BUS_BOGUS_TRACE16 == DEBUG_BUS_WAIT_TRACE16)
 #error bogus match collides with marker or wait trace16
 #endif
 

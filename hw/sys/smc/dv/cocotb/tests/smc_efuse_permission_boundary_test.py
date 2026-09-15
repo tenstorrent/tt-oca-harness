@@ -1,16 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS eFuse chip-config read proxy, standing in for raw OTP permission paths.
+"""SMC OSS eFuse chip-config reads on the CSR side of the eFuse boundary.
 
-PROXY, not a permission/boundary test. This module runs the same
-``smc_efuse_chip_config_read_test_seq`` body as ``smc_efuse_chip_config_read_test``:
-four eFuse-derived chip-config reads plus the eFuse-bank positive control and
-idle leg. It does NOT program a lock, drive a lifecycle transition, attempt a
-denied access, or touch the raw OTP window -- the SMC CSR boundary exposes no
-such surface in the OSS bench.
+This module runs the same ``smc_efuse_chip_config_read_test_seq`` body as
+``smc_efuse_chip_config_read_test``: four eFuse-derived chip-config reads over
+SEP_IN AXI plus the eFuse-bank positive control and idle leg. It does NOT
+program a lock, drive a lifecycle transition or attempt a denied access -- the
+SMC CSR boundary exposes no such surface -- and it claims none of that.
 
-The residual gap -- raw OTP permission-path coverage -- is recorded under DOES
-NOT DEFEND in this testcase's VPLAN entry.
+The raw OTP permission path this bench cannot reach is a Known Limitations row
+in ``docs/SMC_VPLAN.adoc``.
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_efuse_permission_boundary_test(smc_base_test):
-    """Run eFuse-derived chip-config reads as the proxy for raw OTP permission paths."""
+    """Four chip-config reads plus the eFuse-bank positive control and idle leg."""
 
     required_evidence = (
         "CHK-EFUSE-BANK-AXIL-ACTIVE",
@@ -59,12 +58,12 @@ class smc_efuse_permission_boundary_test(smc_base_test):
             # completed each access, rather than `seq.accesses`, which the
             # sequence increments on dispatch regardless of what came back.
             csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
-            # This IS a proxy: it stands in for the raw OTP permission paths.
+            # CSR reads only: no protocol-level VIP traffic runs.
             proxy=True,
             details=(
-                "PROXY for raw OTP permission paths: eFuse-derived chip-config "
-                "reset-value reads plus eFuse-bank activity positive control "
-                "and idle leg. No lock programmed, no lifecycle transition, no "
-                "denied access, no raw OTP window touched"
+                "CSR-side eFuse chip-config reset-value reads plus eFuse-bank "
+                "activity positive control and idle leg; no protocol VIP "
+                "traffic. No lock programmed, no lifecycle transition, no "
+                "denied access"
             ),
         )

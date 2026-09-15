@@ -20,6 +20,12 @@ from smc_base_test import smc_base_test
 class smc_efuse_read_timeout_status_test(smc_base_test):
     """A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS."""
 
+    required_evidence = (
+        "CHK-EFUSE-TMO-RD-STATUS-ARM",
+        "CHK-EFUSE-TMO-RD-STATUS-SET",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
