@@ -151,6 +151,8 @@ module sep_fcov (
   localparam logic [31:0] AbrCtrl = AbrBase + 32'h10;
   localparam logic [31:0] AbrStatus = AbrBase + 32'h14;
   localparam logic [31:0] AbrCmdKeygen = 32'h1;  // MLDSA_CTRL.CTRL = KEYGEN
+  localparam logic [31:0] AbrCmdSign = 32'h2;  // MLDSA_CTRL.CTRL = SIGNING
+  localparam logic [31:0] AbrCmdVerify = 32'h3;  // MLDSA_CTRL.CTRL = VERIFYING
   localparam logic [31:0] AbrStValid = 32'h2;  // MLDSA_STATUS.VALID
 
   // AES CTRL_SHADOWED / STATUS (OpenTitan aes_reg_pkg via sep_reg.svh).
@@ -437,6 +439,14 @@ module sep_fcov (
       ((rd_data & AbrStValid) != 32'h0);
   logic abr_keygen_q;
   wire  abr_done = abr_status_valid && abr_keygen_q;
+  // SIGNING and VERIFYING are separate MLDSA_CTRL.CTRL commands, so each gets
+  // its own pending flag: a VALID read only scores the command that is still
+  // outstanding, and a leaf that issued one command cannot fill the other bin.
+  wire abr_sign = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdSign[3:0]);
+  wire abr_verify = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdVerify[3:0]);
+  logic abr_sign_q, abr_verify_q;
+  wire  abr_sign_done = abr_status_valid && abr_sign_q;
+  wire  abr_verify_done = abr_status_valid && abr_verify_q;
 
   // --- ESRC / DRBG / EDN -------------------------------------------------
   logic esrc_seed_q;
@@ -799,6 +809,8 @@ module sep_fcov (
       otbn_busy_q       <= 1'b0;
       otbn_idle_q       <= 1'b0;
       abr_keygen_q      <= 1'b0;
+      abr_sign_q        <= 1'b0;
+      abr_verify_q      <= 1'b0;
       km_cmd_hdr_next_q <= 1'b1;
       km_cmd_idx_q      <= '0;
       km_rsp_idx_q      <= '0;
@@ -911,6 +923,11 @@ module sep_fcov (
 
       if (abr_keygen) abr_keygen_q <= 1'b1;
       if (abr_done) abr_keygen_q <= 1'b0;
+
+      if (abr_sign) abr_sign_q <= 1'b1;
+      if (abr_sign_done) abr_sign_q <= 1'b0;
+      if (abr_verify) abr_verify_q <= 1'b1;
+      if (abr_verify_done) abr_verify_q <= 1'b0;
 
       // KM command frame: header, payload_len words, then the payload CRC word
       // when payload_len > 0.
@@ -1182,6 +1199,19 @@ module sep_fcov (
     option.name = "sep_abr_keygen_cg";
     cp_op: coverpoint abr_keygen {bins mldsa_keygen = {1'b1};}
     cp_done: coverpoint abr_done {bins status_valid = {1'b1};}
+  endgroup
+
+  covergroup sep_abr_sign_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_abr_sign_cg";
+    cp_op: coverpoint {abr_verify, abr_sign} {
+      bins mldsa_sign = {2'b01};
+      bins mldsa_verify = {2'b10};
+    }
+    cp_done: coverpoint {abr_verify_done, abr_sign_done} {
+      bins sign_status_valid = {2'b01};
+      bins verify_status_valid = {2'b10};
+    }
   endgroup
 
   covergroup sep_esrc_edn_flow_cg @(posedge clk_i);
@@ -1537,6 +1567,7 @@ module sep_fcov (
   sep_kmac_mode_cg            u_sep_kmac_mode_cg            = new();
   sep_otbn_execute_cg         u_sep_otbn_execute_cg         = new();
   sep_abr_keygen_cg           u_sep_abr_keygen_cg           = new();
+  sep_abr_sign_cg             u_sep_abr_sign_cg             = new();
   sep_esrc_edn_flow_cg        u_sep_esrc_edn_flow_cg        = new();
   sep_km_command_sideload_cg  u_sep_km_command_sideload_cg  = new();
   sep_km_host_cmd_cg          u_sep_km_host_cmd_cg          = new();

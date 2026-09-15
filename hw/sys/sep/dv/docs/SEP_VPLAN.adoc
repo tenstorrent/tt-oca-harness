@@ -336,6 +336,10 @@ appears.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |ML-DSA-87 key generation through the ABR register aperture: identity and reset status, an ACVP keyGen known-answer public key, completion status, the PIC error and notification legs, `ZEROIZE`, and single-bit seed sensitivity.
+|`sep_abr_mldsa_sign_verify_kat_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|ML-DSA-87 signing and verification through the same aperture: a deterministic external-mu signature compared word-for-word against the ACVP sigGen vector, and the sigVer pair that must verify and must not, whose results must differ.
 |`sep_entropy_pool_aperture_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -796,7 +800,10 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>.
 
 |Adams Bridge ML-DSA-87 keyGen
-|`sep_abr_mldsa_keygen_kat_test`. Sign/verify/ML-KEM/key-vault seed are not claimed.
+|`sep_abr_mldsa_keygen_kat_test`. ML-KEM and the key-vault seed path are not claimed.
+
+|Adams Bridge ML-DSA-87 sigGen / sigVer
+|`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
 
 |Entropy pool aperture + PIC sources
 |`sep_entropy_pool_aperture_test`. Drain-under-fill / stall-duration are not claimed.
@@ -3053,8 +3060,88 @@ match, so a cached or constant engine passes the first leg and fails the second.
 `[34]` is driven high through `error_intr_trig` and cleared before the KAT, so a
 stuck-low aggregator cannot satisfy both `CHK-PIC-ERROR` and `CHK-PIC-NOTIF`.
 
-*Not claimed*: ML-KEM-1024, ML-DSA sign/verify, and the key-vault seed path — a
-green keyGen closes none of them. This leaf writes the seed window over the bus.
+*Not claimed*: ML-KEM-1024 and the key-vault seed path — a green keyGen closes
+neither. This leaf writes the seed window over the bus. Sign and verify are a
+separate vehicle, <<sep_abr_mldsa_sign_verify_kat_test>>.
+
+'''''
+
+[[sep_abr_mldsa_sign_verify_kat_test]]
+===== `sep_abr_mldsa_sign_verify_kat_test`
+
+*Phase*: 2
+
+*Bucket*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_abr_mldsa_sign_verify_kat_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Proves the two ML-DSA-87 consume commands the keyGen leaf does not
+reach. `MLDSA_CTRL.CTRL` encodes SIGNING (0x2) and VERIFYING (0x3) beside KEYGEN
+(0x1); the signature and verify-result windows had no vehicle driving or reading
+them. Randomization is RANDCFG — the masking entropy words come from the run
+seed (`SepAbrKeygenCfg`); the vectors are fixed.
+
+*Test Coverage*: ML-DSA-87 sigGen known-answer, sigVer accept and reject, and
+`ZEROIZE` between commands.
+
+*Test Procedure*:
+
+[arabic]
+. The aperture is the same `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR`
+(`hw/sys/sep/rtl/sep_crypto_pkg.sv`) the keyGen leaf uses, with the same 32-bit
+beats and no `axi_lite_isolate` in front of it.
+. Both vectors are ACVP external-mu groups, so `MLDSA_CTRL.EXTERNAL_MU` is set
+and mu is written to `MLDSA_EXTERNAL_MU` rather than a raw message being hashed
+on the way in.
+. Signing is the deterministic variant, so the signature is a fixed function of
+the private key and mu and is compared word-for-word. A randomised signature
+could only be checked by verifying it, which is the weaker claim.
+. `MLDSA_STATUS.VALID` is sticky and READY does not re-assert until a `ZEROIZE`,
+so every command is separated by one.
+. The private key and public key are written over the bus. The key-vault seed
+path is not claimed.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-NAME
+|Identity registers read `MLDSA-87`. A dead aperture would read zero and every
+window compare below would be against a silent bus.
+|CHK-SIGN
+|The 1157-word `MLDSA_SIGNATURE` window matches the vendored ACVP sigGen vector
+word-for-word, with STATUS VALID and ERROR=0, and PIC `[34]` low.
+|CHK-VERIFY-ACCEPT
+|The ACVP case that must verify completes VALID and returns a non-zero
+`MLDSA_VERIFY_RES` — zero is what an engine that never ran would report.
+|CHK-VERIFY-REJECT
+|The ACVP case that must not verify returns a `MLDSA_VERIFY_RES` different from
+the accepting case. The claim is that the two are distinguished, not an absolute
+encoding: the register description does not state one, and transcribing a value
+would be checking the document rather than the engine.
+|CHK-ZEROIZE
+|`ZEROIZE` between commands drops VALID and the signature window then reads
+zero. Same scope limit as the keyGen leaf: the read port is gated on the valid
+register, so a zero window proves the signature is no longer readable, *not*
+that the RAM was wiped.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Anti-vacuity*: the rejecting sigVer case is the load-bearing half. An engine
+that reported success unconditionally, or a result register that was never
+updated per command, passes the accepting case alone and fails
+`CHK-VERIFY-REJECT`. On the signing side, deterministic external-mu signing
+makes the signature a fixed function of inputs written over the bus, so a
+cached, constant or non-running engine cannot match 1157 words.
+
+*Not claimed*: ML-KEM-1024, `KEYGEN_SIGN` (0x4), the key-vault seed path, and
+`CMD_ABR_SK_TRANSFER` consume after a live ABR capture. The absolute encoding of
+`MLDSA_VERIFY_RES` is not pinned, only that accept and reject differ.
 
 '''''
 
@@ -6326,6 +6413,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
 
 |Contracts not claimed (no vehicle in `all`)
-|Phase 3: ABR sign/verify and ML-KEM-1024; ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
+|Phase 3: ABR ML-KEM-1024; ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
 
 |===
