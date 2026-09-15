@@ -396,6 +396,7 @@ tests = [
     # xfail mechanism, so a run whose ONLY failure is this test is the expected
     # result. See its [[tests]] entry in rom_fw.toml.
     "sep_decryption_failure_terminal_test",
+    "sep_decryption_failure_failover_test",
     "sep_mbist_fail_continue_test",
     "sep_warm_reset_invalid_hang_test",
     "sep_warm_reset_below_range_hang_test",
