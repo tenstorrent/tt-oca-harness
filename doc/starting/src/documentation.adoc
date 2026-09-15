@@ -95,6 +95,12 @@ Any image can then be embedded in an Asciidoc document with:
 image::<my_image>.png[Alternative Text]
 ```
 
+On the HTML site, click an unlinked block image to open the image viewer.
+Use the mouse wheel to zoom and drag the image to pan. The toolbar provides
+zoom in, zoom out, actual size (`1:1`), and reset controls.
+Keyboard users can focus an image and press Enter or Space to open it,
+use the up/down arrow keys to zoom, and press Escape to close the viewer.
+
 === References
 
 * https://asciidoctor.org[Asciidoctor]

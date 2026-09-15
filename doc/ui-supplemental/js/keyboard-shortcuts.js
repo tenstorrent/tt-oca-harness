@@ -70,6 +70,8 @@
   }
 
   document.addEventListener('keydown', function (e) {
+    if (document.querySelector('.ocah-image-viewer[aria-modal="true"]')) return;
+
     // Cmd+K (Mac) / Ctrl+K (Windows/Linux) - checked first, and allowed to
     // fire even while already focused in the search box (harmless no-op).
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {

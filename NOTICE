@@ -124,8 +124,9 @@ This project incorporates code from the following third-party sources:
     d3.js excerpts (BSD-3-Clause, Copyright 2010-2016 Mike Bostock),
     and tslib (0BSD, Copyright (c) Microsoft Corporation).
 
-17. medium-zoom 1.1.0
-   Copyright (c) 2016-present François Chalifour
+17. Viewer.js 1.11.7
+   Copyright 2015-present Chen Fengyuan
    Licensed under the MIT License
-   Project: https://github.com/francoischalifour/medium-zoom
-   Vendored under doc/ui-supplemental/js/vendor/
+   Project: https://github.com/fengyuanchen/viewerjs
+   Vendored under doc/ui-supplemental/js/vendor/ and
+   doc/ui-supplemental/css/vendor/
