@@ -95,8 +95,9 @@ static int drain_acq(uint32_t tgt_idx, uint8_t *rx, uint32_t rx_size, uint32_t *
  * any other way on a single-threaded CPU.
  *
  * The target stretches SCL as soon as its ACQ FIFO has 2 or fewer free entries
- * (i2c_target_fsm.sv:271 `acq_fifo_plenty_space = remainder > 2`, :658
- * `stretch_rx = !acq_fifo_plenty_space`), which with
+ * (i2c_target_fsm.sv:271 `acq_fifo_plenty_space = remainder > 2`, :674
+ * `stretch_rx = !acq_fifo_plenty_space || !can_auto_ack`, whose second term is
+ * inactive here because ACK_CTRL mode is off), which with
  * smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH = 64 means it stretches at ACQ depth
  * 62. That is documented, intended flow control: the RDL describes the
  * ACQ_STRETCH interrupt as asserted "while the target is stretching the clock
