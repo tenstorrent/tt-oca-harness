@@ -105,7 +105,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
 from seq_lib.sep_hmac_seq import HMAC_CFG, HMAC_DIGEST_0, SepHmac
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 from seq_lib.sep_otbn_seq import OTBN_DMEM_RESULT_LO, OTBN_LOAD_CHECKSUM_RESET, SepOtbn
-from seq_lib.sep_sw_reset_seq import SepSwReset
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
 # Directed known vectors (RAND-NONE).
 HMAC_MSG = [0x6A6F6232, 0xDEADBEEF, 0x0BADF00D, 0xFEEDFACE]
@@ -547,6 +547,30 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         trng_rst = SepSwReset(self)
         await trng_rst.park("trng")
         await ClockCycles(cocotb.top.clk_i, 40)
+        # Witness the request inside the parked window. Without this the leg is
+        # two non-events: park() only proves its CSR write returned OKAY, and the
+        # "four accelerator domains released" half is read back BEFORE the park --
+        # so a TRNG bit that did nothing would pass identically. Reading the
+        # register back here requires the bit to be low while the neighbours are
+        # high, in the same window the digests are sampled.
+        sw_parked = await trng_rst.read_back()
+        trng_bit = 1 << SW_RESET_N_BIT["trng"]
+        neighbours = (
+            (1 << SW_RESET_N_BIT["otbn"])
+            | (1 << SW_RESET_N_BIT["aes"])
+            | (1 << SW_RESET_N_BIT["hmac"])
+            | (1 << SW_RESET_N_BIT["kmac"])
+        )
+        assert not (sw_parked & trng_bit), (
+            f"SW_RESET_N=0x{sw_parked:08x} shows the TRNG domain NOT held inside the "
+            "window the neighbour results are checked in, so this leg would pass "
+            "whether or not the reset request reached the entropy complex"
+        )
+        assert (sw_parked & neighbours) == neighbours, (
+            f"SW_RESET_N=0x{sw_parked:08x} shows an accelerator domain also held "
+            "during the TRNG-only reset, so a surviving neighbour result proves "
+            "nothing about isolation"
+        )
         assert await self.hmac.read_digest() == h_digest, (
             "HMAC held DIGEST was disturbed by a TRNG-only reset"
         )
@@ -556,7 +580,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await trng_rst.release("trng")
         self.logger.info(
             "CHK-TRNG-NEIGHBORS PASS: idle HMAC DIGEST and AES DATA_OUT survived "
-            "the shared entropy-complex reset"
+            "the shared entropy-complex reset, with SW_RESET_N=0x%08x inside the "
+            "window confirming the TRNG domain held and all four accelerator "
+            "domains released",
+            sw_parked,
         )
 
         self.logger.info(

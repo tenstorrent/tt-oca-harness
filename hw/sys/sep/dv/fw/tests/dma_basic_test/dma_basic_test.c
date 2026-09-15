@@ -56,8 +56,9 @@
 #define SRAM_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
 #define SRAM_SIZE OCH_SEP_TOP_SEP_SRAM_SIZE
 #define DMA_PARAM_MAGIC 0xDA0A11C0u
-#define ASID_OT_BOTH \
-    (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset | (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << 4))
+#define ASID_OT_BOTH                                          \
+    SEP_DMA_ASID_PAIR(SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset, \
+                      SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset)
 #define DONE_OR_ERR (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)
 #define STATUS_RW1C \
     (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm | SECURE_DMA__STATUS__CHUNK_DONE_bm)
@@ -105,7 +106,8 @@ static uint32_t dma_run_asid(uint32_t src, uint32_t dst, uint32_t total, uint32_
     wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
     wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
     wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
-       SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm | opcode);
+       SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
+           (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
 
     uint32_t st = 0;
     int t = POLL_ITERS;
@@ -143,7 +145,8 @@ static uint32_t dma_run_chunked(uint32_t src, uint32_t dst, uint32_t total, uint
     uint32_t st = 0;
     uint32_t initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
     for (uint32_t guard = 0; guard < 64; guard++) { // bounded chunk count
-        wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm | initial | opcode);
+        wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+           SECURE_DMA__CONTROL__GO_bm | initial | (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
         int t = POLL_ITERS;
         do {
             st = rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
@@ -498,7 +501,8 @@ static int chk_width(void) {
         // 16 bytes is a whole multiple of 1, 2 and 4, so a TRANSFER_WIDTH that ignored
         // writes and stayed at its 0x2 reset produced a byte-identical copy all three
         // times and the check could not tell 1B from 4B.
-        uint32_t wr_rb = rd(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR) & 0x3u;
+        uint32_t wr_rb = rd(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR) &
+                       SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bm;
         if (wr_rb != widths[w]) {
             sep_mbx_puts("FAIL: CHK-WIDTH TRANSFER_WIDTH readback ");
             sep_mbx_puthex(wr_rb);

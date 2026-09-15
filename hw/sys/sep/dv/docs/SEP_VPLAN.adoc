@@ -821,7 +821,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_irq_simultaneous_fanin_no_alias_test`. Several cross-IP sources asserted at once must produce exactly their own bits in `sep_internal_interrupts[8:33]`, with every bit of that region resolved rather than floating. `PIC source map` grades the source-to-PIC-id map and CPU delivery on `sep_pic_irq_source_map_delivery_test`; this row is the aggregation itself — the place a one-hot map can smear onto a neighbour — and is a distinct contract from delivery.
 
 |SPI host control plane (CSR, interrupt, error status, watermark, enable)
-|`sep_spi_ot_host_csr_irq_rand_test`. Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the interrupt-test path with its enable mask in both directions, all six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others, the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane.
+|`sep_spi_ot_host_csr_irq_rand_test`. Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the interrupt-test path setting and releasing interrupt status with no write-one-to-clear (whether the enable masks the status register itself is logged, not graded, because the register description does not state it), five of the six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others (ACCESSINVAL is not claimed: its documented trigger is a write with no bytes enabled, which this AXI master cannot drive), the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane.
 
 |SECURE_TM shadow-write lock
 |`sep_efuse_secure_tm_write_lock_test`. Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands and the readback is the OR-merge, and after the strap is raised and the image re-sensed the stored value does not move, `sep_internal_interrupts[33]` pulses and the response stays OKAY. A `SECURE_TM_UNLOCK` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`.
@@ -3726,8 +3726,8 @@ feature-scorecard hole.
 [arabic]
 . Read the eight control registers at documented reset with STATUS idle.
 . Walk each read/write register: write, read back, then drive its unimplemented bits and require them to read zero without disturbing the writable ones.
-. Drive the interrupt test register with the enable clear and then set.
-. Induce each of the six error conditions in turn and write-one-to-clear it.
+. Drive the interrupt test register with the enable clear (logged as an observation) and then set.
+. Induce each of the five claimed error conditions in turn and write-one-to-clear it.
 . Fill the transmit FIFO across the programmed watermark.
 . Measure the enabled command drain, then hold the same command off with the core disabled for a multiple of that measurement.
 
@@ -3737,7 +3737,7 @@ feature-scorecard hole.
 |===
 |Checker |Contract
 |CHK-RESET
-|Eight control registers read their documented reset values and the status register reads idle. Five of the eight expect zero, which a tied-off decode would also return — mitigated within this entry by the writability, interrupt and error checks below, each of which drives a register non-zero.
+|Eight control registers read their documented reset values and the status register reads idle. Six of the eight expect zero, which a tied-off decode would also return — mitigated within this entry by the writability, interrupt and error checks below, each of which drives a register non-zero.
 |CHK-REG-RW
 |Each read/write register accepts a write and reads it back exactly. Each register that HAS unimplemented bits additionally has those bits driven to one and confirmed to read back zero, with the writable bits undisturbed. The probe pattern is derived from the register's implemented mask, not from the walk mask: `CTRL.SW_RST` is implemented and outside the walk, since driving it would soft-reset the core mid-walk. `CSID` implements all 32 bits and so has no unimplemented half to probe.
 |CHK-NONVAC

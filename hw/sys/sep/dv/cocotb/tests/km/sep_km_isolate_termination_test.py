@@ -48,7 +48,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_crypto_reset_iso_seq import ENG_HMAC, SW_RESET_N, SepCryptoResetIso
+from seq_lib.sep_crypto_reset_iso_seq import ENG_HMAC, KM_RST_MASK, SW_RESET_N, SepCryptoResetIso
 from seq_lib.sep_km_mailbox_seq import (
     KM_MBOX_BASE,
     KM_MBOX_WRITE_DATA,
@@ -113,8 +113,8 @@ class sep_km_isolate_termination_test(sep_base_test):
         assert got == want, (
             f"SW_RESET_N readback 0x{got:08x} != requested 0x{want:08x}"
         )
-        km_bit = got & 0x1
-        assert km_bit == (live & 0x1), (
+        km_bit = got & KM_RST_MASK
+        assert km_bit == (live & KM_RST_MASK), (
             "the HMAC reset write disturbed the Key Manager reset bit: "
             f"0x{live:08x} -> 0x{got:08x}"
         )

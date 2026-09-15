@@ -44,7 +44,10 @@
 #define SEP_DMA_ASID_SOC 0xAu
 // Not one of the three enumerated encodings.
 #define SEP_DMA_ASID_INVALID 0x0u
-#define SEP_DMA_ASID_PAIR(src, dst) (((uint32_t)(src)) | (((uint32_t)(dst)) << 4))
+// Field positions come from the generated header, so an RDL move follows here.
+#define SEP_DMA_ASID_PAIR(src, dst)                                          \
+    ((((uint32_t)(src)) << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) |          \
+     (((uint32_t)(dst)) << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp))
 
 static inline uint32_t sep_dma_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;
@@ -67,7 +70,7 @@ static inline void sep_dma_sha256_start(uint32_t src, uint32_t dst, uint32_t len
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
     uint32_t asid = SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset;
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, asid | (asid << 4));
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, SEP_DMA_ASID_PAIR(asid, asid));
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
@@ -94,7 +97,7 @@ static inline void sep_dma_copy_start(uint32_t src, uint32_t dst, uint32_t len) 
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
     uint32_t asid = SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset;
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, asid | (asid << 4));
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, SEP_DMA_ASID_PAIR(asid, asid));
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
