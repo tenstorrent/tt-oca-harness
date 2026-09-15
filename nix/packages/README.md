@@ -16,6 +16,10 @@ This is a library used by the website build of the documentation, but not packag
 
 This bundles the nixpkgs antora binary with the ASCIIDoctor-Kroki (above) and Antora-Lunr (from nixpkgs) extensions, which removes a reliance on runtime NPM installations. 
 
+#### OCAH ASCIIDoctor
+
+Aliases ASCIIDoctor-with-extensions, to include ASCIIDoctor-Diagram
+
 ### RISCV-Toolchain
 
 OCAH Previously used a Debian linux container, with the debian `riscv64-unknown-elf-*` toolchain. These derivations construct the same toolchain, meaning that builds should work in the same way.

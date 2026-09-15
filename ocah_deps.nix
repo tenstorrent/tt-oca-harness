@@ -65,7 +65,7 @@ in
       uv
       # Documentation Tools
       ocah-antora
-      asciidoctor
+      ocah-asciidoctor
       # Build Tools
       gnumake
       bender
