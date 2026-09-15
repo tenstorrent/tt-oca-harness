@@ -37,7 +37,8 @@
 //
 // The request nets are driven from cocotb (--public-flat-rw) or, in the
 // SV-UVM shape, bridged from the ocah_axi_if instances below; the lint
-// waivers cover the undriven cocotb-owned nets.
+// waivers cover the undriven cocotb-owned nets, which the cocotb shape
+// starts at zero.
 
 `timescale 1ns / 1ps
 
@@ -234,6 +235,161 @@ module ocah_axi_vip_tb_top;
 
   /* verilator lint_on UNUSEDSIGNAL */
   /* verilator lint_on UNDRIVEN */
+
+`ifndef UVM
+  // The cocotb-owned nets and the responder-side members of the struct
+  // bridge's interface start at zero: a test binds VIPs to its own bundles
+  // only, and the reset-low and known-value rules of the bound checkers
+  // judge every bundle from time zero on a four-state simulator.
+  initial begin
+    u_mt_axi_if.awready = '0;
+    u_mt_axi_if.wready  = '0;
+    u_mt_axi_if.bid     = '0;
+    u_mt_axi_if.bresp   = '0;
+    u_mt_axi_if.buser   = '0;
+    u_mt_axi_if.bvalid  = '0;
+    u_mt_axi_if.arready = '0;
+    u_mt_axi_if.rid     = '0;
+    u_mt_axi_if.rdata   = '0;
+    u_mt_axi_if.rresp   = '0;
+    u_mt_axi_if.rlast   = '0;
+    u_mt_axi_if.ruser   = '0;
+    u_mt_axi_if.rvalid  = '0;
+    s_axi_awid = '0;
+    s_axi_awaddr = '0;
+    s_axi_awlen = '0;
+    s_axi_awsize = '0;
+    s_axi_awburst = '0;
+    s_axi_awlock = '0;
+    s_axi_awcache = '0;
+    s_axi_awprot = '0;
+    s_axi_awqos = '0;
+    s_axi_awregion = '0;
+    s_axi_awvalid = '0;
+    s_axi_awready = '0;
+    s_axi_wdata = '0;
+    s_axi_wstrb = '0;
+    s_axi_wlast = '0;
+    s_axi_wvalid = '0;
+    s_axi_wready = '0;
+    s_axi_bid = '0;
+    s_axi_bresp = '0;
+    s_axi_bvalid = '0;
+    s_axi_bready = '0;
+    s_axi_arid = '0;
+    s_axi_araddr = '0;
+    s_axi_arlen = '0;
+    s_axi_arsize = '0;
+    s_axi_arburst = '0;
+    s_axi_arlock = '0;
+    s_axi_arcache = '0;
+    s_axi_arprot = '0;
+    s_axi_arqos = '0;
+    s_axi_arregion = '0;
+    s_axi_arvalid = '0;
+    s_axi_arready = '0;
+    s_axi_rid = '0;
+    s_axi_rdata = '0;
+    s_axi_rresp = '0;
+    s_axi_rlast = '0;
+    s_axi_rvalid = '0;
+    s_axi_rready = '0;
+    s_axi_awuser = '0;
+    s_axi_wuser = '0;
+    s_axi_buser = '0;
+    s_axi_aruser = '0;
+    s_axi_ruser = '0;
+    t_axi_awid = '0;
+    t_axi_awaddr = '0;
+    t_axi_awlen = '0;
+    t_axi_awsize = '0;
+    t_axi_awburst = '0;
+    t_axi_awlock = '0;
+    t_axi_awcache = '0;
+    t_axi_awprot = '0;
+    t_axi_awqos = '0;
+    t_axi_awregion = '0;
+    t_axi_awvalid = '0;
+    t_axi_awready = '0;
+    t_axi_wdata = '0;
+    t_axi_wstrb = '0;
+    t_axi_wlast = '0;
+    t_axi_wvalid = '0;
+    t_axi_wready = '0;
+    t_axi_bid = '0;
+    t_axi_bresp = '0;
+    t_axi_bvalid = '0;
+    t_axi_bready = '0;
+    t_axi_arid = '0;
+    t_axi_araddr = '0;
+    t_axi_arlen = '0;
+    t_axi_arsize = '0;
+    t_axi_arburst = '0;
+    t_axi_arlock = '0;
+    t_axi_arcache = '0;
+    t_axi_arprot = '0;
+    t_axi_arqos = '0;
+    t_axi_arregion = '0;
+    t_axi_arvalid = '0;
+    t_axi_arready = '0;
+    t_axi_rid = '0;
+    t_axi_rdata = '0;
+    t_axi_rresp = '0;
+    t_axi_rlast = '0;
+    t_axi_rvalid = '0;
+    t_axi_rready = '0;
+    l_axi_awaddr = '0;
+    l_axi_awprot = '0;
+    l_axi_awvalid = '0;
+    l_axi_awready = '0;
+    l_axi_wdata = '0;
+    l_axi_wstrb = '0;
+    l_axi_wvalid = '0;
+    l_axi_wready = '0;
+    l_axi_bresp = '0;
+    l_axi_bvalid = '0;
+    l_axi_bready = '0;
+    l_axi_araddr = '0;
+    l_axi_arprot = '0;
+    l_axi_arvalid = '0;
+    l_axi_arready = '0;
+    l_axi_rdata = '0;
+    l_axi_rresp = '0;
+    l_axi_rvalid = '0;
+    l_axi_rready = '0;
+    mt_axi_awid = '0;
+    mt_axi_awaddr = '0;
+    mt_axi_awlen = '0;
+    mt_axi_awsize = '0;
+    mt_axi_awburst = '0;
+    mt_axi_awlock = '0;
+    mt_axi_awcache = '0;
+    mt_axi_awprot = '0;
+    mt_axi_awqos = '0;
+    mt_axi_awregion = '0;
+    mt_axi_awuser = '0;
+    mt_axi_awvalid = '0;
+    mt_axi_wdata = '0;
+    mt_axi_wstrb = '0;
+    mt_axi_wlast = '0;
+    mt_axi_wuser = '0;
+    mt_axi_wvalid = '0;
+    mt_axi_bready = '0;
+    mt_axi_arid = '0;
+    mt_axi_araddr = '0;
+    mt_axi_arlen = '0;
+    mt_axi_arsize = '0;
+    mt_axi_arburst = '0;
+    mt_axi_arlock = '0;
+    mt_axi_arcache = '0;
+    mt_axi_arprot = '0;
+    mt_axi_arqos = '0;
+    mt_axi_arregion = '0;
+    mt_axi_aruser = '0;
+    mt_axi_arvalid = '0;
+    mt_axi_rready = '0;
+  end
+`endif
 
   // ------------------------------------------------------------------
   // Struct-port boundary under test (both shapes): the mt_axi request nets

@@ -24,9 +24,13 @@ module ocah_axi_struct_bridge #(
   ocah_axi_if       axi_if
 );
 
-  localparam int unsigned IdWidth = $bits(axi_req_i.aw.id);
-  localparam int unsigned UserWidth = $bits(axi_req_i.aw.user);
-  localparam int unsigned DataWidth = $bits(axi_req_i.w.data);
+  // Struct member widths come from a constant of the request type: a member
+  // select on the port is not a constant expression to every simulator, a
+  // select on a parameter is.
+  localparam axi_req_t ReqZero = '0;
+  localparam int unsigned IdWidth = $bits(ReqZero.aw.id);
+  localparam int unsigned UserWidth = $bits(ReqZero.aw.user);
+  localparam int unsigned DataWidth = $bits(ReqZero.w.data);
   localparam int unsigned IfIdWidth = $bits(axi_if.awid);
   localparam int unsigned IfAddrWidth = $bits(axi_if.awaddr);
   localparam int unsigned IfUserWidth = $bits(axi_if.awuser);
