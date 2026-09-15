@@ -231,9 +231,32 @@ module smc_4core_cpu (
   // Core Reset Logic (Wait until init_mem_complete is asserted)
 
   logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] int_rst_core_n;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] mem_init_core_reset_n;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] hart_reset_n;
   logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] hart_reset_req;
 
-  assign int_rst_core_n = {smc_4core_cpu_pkg::NUM_CPU_CORES{init_mem_complete}} & rst_core_ni & ~hart_reset_req;
+  prim_and2 #(
+    .Width(smc_4core_cpu_pkg::NUM_CPU_CORES)
+  ) u_mem_init_core_reset_and (
+    .in0_i ({smc_4core_cpu_pkg::NUM_CPU_CORES{init_mem_complete}}),
+    .in1_i (rst_core_ni),
+    .out_o (mem_init_core_reset_n)
+  );
+
+  for (genvar core = 0; core < smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin : gen_hart_reset_inv
+    prim_inv u_hart_reset_inv (
+      .in_i  (hart_reset_req[core]),
+      .out_o (hart_reset_n[core])
+    );
+  end
+
+  prim_and2 #(
+    .Width(smc_4core_cpu_pkg::NUM_CPU_CORES)
+  ) u_hart_core_reset_and (
+    .in0_i (mem_init_core_reset_n),
+    .in1_i (hart_reset_n),
+    .out_o (int_rst_core_n)
+  );
 
   // ----------
   // Instantiate DigitalTop

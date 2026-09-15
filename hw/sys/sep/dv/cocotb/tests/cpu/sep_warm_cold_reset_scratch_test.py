@@ -6,9 +6,9 @@ OSS port of reference suite ``sep_clock_uvm_warm_reset_vs_cold_reset_test``.
 Proves the SEP System-block dual scratch banks honor their reset domains:
 
   * SCRATCH_WARM (base 0x1080_2080) is in the WARM domain -- its register block is
-    reset by ``rst_ni && rst_warm_ni`` (sep_system_csr.sv u_sep_scratch_reg_warm),
-    where ``rst_warm_ni = sep_cpu_reset_n = sep_reset_n & wdt_rst_ni`` (sep.sv:816,
-    sep_reset_ctrl.sv:59). A warm reset (wdt_rst_ni low) clears it.
+    reset by ``rst_warm_ni`` (sep_system_csr.sv u_sep_scratch_reg_warm), where
+    ``rst_warm_ni = sep_cpu_reset_n = sep_reset_n & wdt_rst_ni``. It therefore
+    clears on either cold reset or a WDT warm reset.
   * SCRATCH_COLD (base 0x1080_2000) is in the COLD domain -- reset by ``rst_ni``
     only (u_sep_scratch_reg_cold). A warm reset does NOT clear it; only a cold
     reset (rst_ni) does.
@@ -222,8 +222,8 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         # State going in: SCRATCH_COLD[0]=COLD_PATTERN, SCRATCH_WARM[0]=WARM_PATTERN2.
         # resense() pulses rst_ni low->high and re-gates fuse-sense; the clocks keep
         # running and the cocotb-driven idle defaults persist across the pulse. Both
-        # banks' arst_n deasserts on rst_ni (cold: rst_ni; warm: rst_ni && rst_warm_ni),
-        # so both must return to the reset default.
+        # banks' arst_n asserts on cold reset (cold: rst_ni; warm: rst_warm_ni,
+        # which already includes rst_ni), so both must return to the reset default.
         # Re-arm BOTH banks first. The warm reset above cleared warm[1..7] and only
         # warm[0] was rewritten, so without this the cold-reset assertion on those
         # seven is satisfied by state the warm reset already produced and cannot

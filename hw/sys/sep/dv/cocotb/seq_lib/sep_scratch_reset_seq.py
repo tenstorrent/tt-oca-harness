@@ -8,9 +8,8 @@ Direct-AXI R/W of the SEP System-block dual scratch banks over the CPU-LSU bus
   * SCRATCH_COLD (base 0x1080_2000) -- COLD domain: its register block is reset by
     ``rst_ni`` only (sep_system_csr.sv u_sep_scratch_reg_cold ``.arst_n(rst_ni)``).
   * SCRATCH_WARM (base 0x1080_2080) -- WARM domain: reset by
-    ``rst_ni && rst_warm_ni`` (u_sep_scratch_reg_warm), where
-    ``rst_warm_ni = sep_cpu_reset_n = sep_reset_n & wdt_rst_ni`` (sep.sv:816,
-    sep_reset_ctrl.sv:59).
+    ``rst_warm_ni`` (u_sep_scratch_reg_warm), where
+    ``rst_warm_ni = sep_cpu_reset_n = sep_reset_n & wdt_rst_ni``.
 
 Each bank is 8 x 64-bit registers (sep_scratch.rdl), 0x8 stride, only the lower
 32 bits used, reset default 0x0. The driver carries the per-index addresses and
@@ -28,9 +27,7 @@ from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 # SEP System-block scratch register addresses (sep_system_csr.sv aperture).
 SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR")  # cold domain: .arst_n(rst_ni)
-SCRATCH_WARM_0 = sym(
-    "SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"
-)  # warm domain: .arst_n(rst_ni && rst_warm_ni)
+SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR")  # warm domain: .arst_n(rst_warm_ni)
 SCRATCH_RESET_DEFAULT = 0x0000_0000
 
 # Both banks hold SCRATCH[8] (sep_scratch.rdl), 0x8 stride.

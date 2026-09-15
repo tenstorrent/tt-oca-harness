@@ -893,7 +893,7 @@ module sep_system_csr (
 
   sep_scratch_reg u_sep_scratch_reg_warm (
     .clk            (clk_i),
-    .arst_n         (rst_ni && rst_warm_ni),
+    .arst_n         (rst_warm_ni),
 
     .s_axil_awready (sep_system_csr_axil_resps[sep_pkg::SEP_SCRATCH_WARM].aw_ready),
     .s_axil_awvalid (sep_system_csr_axil_reqs[sep_pkg::SEP_SCRATCH_WARM].aw_valid),
