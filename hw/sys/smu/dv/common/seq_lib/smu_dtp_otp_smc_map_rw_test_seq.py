@@ -9,8 +9,7 @@ S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the RTL 14-bit packing.
 S3: Write PATTERN_A to MAP SPARE[0], readback OKAY + data match.
 S4: Write PATTERN_C (distinct) and readback — proves the write path is live.
 
-Address from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``
-(previously BIRA at 0xC0007048; now SPARE[0] at 0xC0007080).
+Address from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``.
 
 Not claimed: Force-closed OTP gate / PATTERN_B no-stick (needs LCC or Force);
 SEP OTP; series NO_INCR.
@@ -32,7 +31,7 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
 )
 
-BIRA = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
+SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 # smu.sv gen_no_sep: assign sep_lc_state = 8'hf0 (TEST, not PROD 4'b0001).
 SEP0_LC_STATE = 0xF0
 PATTERN_A = 0xA5A5_5A5A
@@ -41,7 +40,7 @@ OTP_POLL = 128
 
 
 class smu_dtp_otp_smc_map_rw_test_seq:
-    """OTP J2A MAP BIRA allow-path R/W; gate already open on SEP=0."""
+    """OTP J2A MAP SPARE[0] allow-path R/W; gate already open on SEP=0."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -122,26 +121,30 @@ class smu_dtp_otp_smc_map_rw_test_seq:
                 f"OTP CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS:04x}"
             )
         self.s2_ok = True
-        self._log(f"CHK-OTP-SMC-MAP-CAPS caps=0x{caps:04x} bira=0x{BIRA:08x}")
+        self._log(f"CHK-OTP-SMC-MAP-CAPS caps=0x{caps:04x} spare0=0x{SPARE0:08x}")
         sb.expect_eq("CHK-OTP-SMC-MAP-CAPS", caps, DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS)
 
-        await self._otp_wr(jtag, BIRA, PATTERN_A, "BIRA-A")
-        got_a = await self._otp_rd(jtag, BIRA, "BIRA-A")
+        await self._otp_wr(jtag, SPARE0, PATTERN_A, "SPARE0-A")
+        got_a = await self._otp_rd(jtag, SPARE0, "SPARE0-A")
         if got_a != PATTERN_A:
-            raise AssertionError(f"BIRA readback after A want 0x{PATTERN_A:08x} got 0x{got_a:08x}")
+            raise AssertionError(
+                f"SPARE[0] readback after A want 0x{PATTERN_A:08x} got 0x{got_a:08x}"
+            )
         self.s3_ok = True
         sb.expect_eq("CHK-OTP-SMC-MAP-RW", got_a, PATTERN_A)
 
-        await self._otp_wr(jtag, BIRA, PATTERN_C, "BIRA-C")
-        got_c = await self._otp_rd(jtag, BIRA, "BIRA-C")
+        await self._otp_wr(jtag, SPARE0, PATTERN_C, "SPARE0-C")
+        got_c = await self._otp_rd(jtag, SPARE0, "SPARE0-C")
         if got_c != PATTERN_C:
-            raise AssertionError(f"BIRA readback after C want 0x{PATTERN_C:08x} got 0x{got_c:08x}")
+            raise AssertionError(
+                f"SPARE[0] readback after C want 0x{PATTERN_C:08x} got 0x{got_c:08x}"
+            )
         if got_c == PATTERN_A:
-            raise AssertionError("BIRA still holds PATTERN_A; write path is dead")
+            raise AssertionError("SPARE[0] still holds PATTERN_A; write path is dead")
         self.s4_ok = True
         sb.expect_eq("CHK-OTP-SMC-MAP-ALLOW-PATH", got_c, PATTERN_C)
 
         self._log(
             f"PASS DTP-OTP-SMC-MAP-RW s1={self.s1_ok} s2={self.s2_ok} "
-            f"s3={self.s3_ok} s4={self.s4_ok} bira=0x{BIRA:08x}"
+            f"s3={self.s3_ok} s4={self.s4_ok} spare0=0x{SPARE0:08x}"
         )

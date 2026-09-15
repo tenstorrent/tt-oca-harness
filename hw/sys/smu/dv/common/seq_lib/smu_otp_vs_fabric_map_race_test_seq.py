@@ -26,9 +26,9 @@ from seq_lib.smu_jtag_helpers import (
     unpack_otp_single_op,
 )
 
-BIRA = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
+SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
-MAP_BYTE_OFF = BIRA - MAP_BASE
+MAP_BYTE_OFF = SPARE0 - MAP_BASE
 PAT_O = 0x0A70_AAA1
 PAT_F = 0xFAB0_BBB2
 PINGPONG = 4
@@ -94,7 +94,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
 
         raw_o = pack_otp_single_op(
             J2A_OP_WRITE,
-            BIRA,
+            SPARE0,
             PAT_O,
             wstrb=0xF,
             size=SMC_OTP_AXSIZE_4B,
@@ -103,7 +103,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
         require_jtag_tdo_resolved("OTP overlap kick")
         st_f, _ = await jtag2axi_single_write(
             jtag,
-            BIRA,
+            SPARE0,
             PAT_F,
             wstrb=0xF,
             size=SMC_DBG_AXSIZE_4B,
@@ -119,12 +119,12 @@ class smu_otp_vs_fabric_map_race_test_seq:
 
         await ClockCycles(dut.clk_smu_i, 32)
         st_or, ord_ = await otp_jtag2axi_single_read(
-            jtag, BIRA, require_complete=True, poll_limit=OTP_POLL
+            jtag, SPARE0, require_complete=True, poll_limit=OTP_POLL
         )
         require_jtag_tdo_resolved("overlap OTP read")
         st_fr, frd = await jtag2axi_single_read(
             jtag,
-            BIRA,
+            SPARE0,
             size=SMC_DBG_AXSIZE_4B,
             require_complete=True,
         )
@@ -147,7 +147,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
         self.s2_ok = True
         self._log(
             f"OTPFAB overlap winner=0x{o_val:08x} shadow=0x{shadow:08x} "
-            f"bira=0x{BIRA:08x} off=0x{MAP_BYTE_OFF:x}"
+            f"spare0=0x{SPARE0:08x} off=0x{MAP_BYTE_OFF:x}"
         )
         sb.expect_eq("CHK-OTPFAB-OVERLAP-COHERENT", o_val, f_val)
         sb.expect_eq("CHK-OTPFAB-OVERLAP-SHADOW", shadow, o_val)
@@ -158,7 +158,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
                 pat = PAT_O ^ (i << 8)
                 st, _ = await jtag2axi_single_write(
                     jtag,
-                    BIRA,
+                    SPARE0,
                     pat,
                     wstrb=0xF,
                     size=SMC_DBG_AXSIZE_4B,
@@ -171,7 +171,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
                 pat = PAT_F ^ (i << 8)
                 raw = pack_otp_single_op(
                     J2A_OP_WRITE,
-                    BIRA,
+                    SPARE0,
                     pat,
                     wstrb=0xF,
                     size=SMC_OTP_AXSIZE_4B,
@@ -185,7 +185,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
 
         st_r, rb = await jtag2axi_single_read(
             jtag,
-            BIRA,
+            SPARE0,
             size=SMC_DBG_AXSIZE_4B,
             require_complete=True,
         )
@@ -196,7 +196,7 @@ class smu_otp_vs_fabric_map_race_test_seq:
         if got != last:
             raise AssertionError(f"pingpong last-writer want 0x{last:08x} got 0x{got:08x}")
         st_or2, ord2 = await otp_jtag2axi_single_read(
-            jtag, BIRA, require_complete=True, poll_limit=OTP_POLL
+            jtag, SPARE0, require_complete=True, poll_limit=OTP_POLL
         )
         if st_or2 != J2A_STATUS_SUCCESS or (int(ord2) & 0xFFFF_FFFF) != last:
             raise AssertionError(

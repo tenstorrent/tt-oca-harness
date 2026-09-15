@@ -144,7 +144,9 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
         )
 
         async def _unlocked_write() -> None:
-            await self.csr_write("JTAG_PUBLIC_IDENTITY_UNLOCK_WR", JTAG_PUBLIC_IDENTITY, _UNLOCKED_PAT)
+            await self.csr_write(
+                "JTAG_PUBLIC_IDENTITY_UNLOCK_WR", JTAG_PUBLIC_IDENTITY, _UNLOCKED_PAT
+            )
 
         self.unlock_edges = await self._count_edges_during("UNLOCK", _unlocked_write())
         assert self.unlock_edges == 0, (
@@ -181,9 +183,7 @@ class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
             # the word a read-locked shadow register returns (see the module
             # docstring). The OBSERVED datum feeds the non-disclosure asserts
             # and the evidence token below.
-            self.rd_data = await self.csr_read(
-                "JTAG_PUBLIC_IDENTITY_LOCK_RD", JTAG_PUBLIC_IDENTITY
-            )
+            self.rd_data = await self.csr_read("JTAG_PUBLIC_IDENTITY_LOCK_RD", JTAG_PUBLIC_IDENTITY)
 
         self.rd_edges = await self._count_edges_during("RDLOCK", _locked_read())
         assert self.rd_edges == 1, (

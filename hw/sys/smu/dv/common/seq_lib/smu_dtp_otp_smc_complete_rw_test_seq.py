@@ -39,9 +39,7 @@ def _reserved_addrs() -> tuple[int, ...]:
         if not (MAP_BASE <= addr < end):
             raise RuntimeError(f"SPARE 0x{addr:08x} not in MAP [0x{MAP_BASE:08x}, 0x{end:08x})")
         if addr & 7:
-            raise RuntimeError(
-                f"SPARE 0x{addr:08x} is not 8-byte aligned"
-            )
+            raise RuntimeError(f"SPARE 0x{addr:08x} is not 8-byte aligned")
     return addrs
 
 
