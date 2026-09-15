@@ -26,6 +26,7 @@ from seq_lib.smu_fuse_gate_helpers import (
     FUSE_GATE_HOLD_CYCLES,
     FUSE_GATE_RELEASE_BOUND_CYCLES,
     FUSE_SENSE_BOUND_CYCLES,
+    assert_hold_window_covers,
 )
 from seq_lib.smu_jtag_helpers import (
     DBG_CLA_CLOCK_STOP_BIT,
@@ -226,6 +227,7 @@ class smu_clock_stop_coordination_test_seq:
             label="s1_fuse_release_after_sense",
             name="smc_fuse_reset_n_delayed_o",
         )
+        assert_hold_window_covers(release_cycles, label="s1 release-after-sense", log=cocotb.log)
         self._log(
             f"FUSE-SENSE bring-up: smc_fuse_sense_done_o rose after {sense_cycles} clk_smu, "
             f"smc_fuse_reset_n_delayed_o {release_cycles} clk_smu later @{self._sim_ns():.3f}ns"
@@ -372,6 +374,13 @@ class smu_clock_stop_coordination_test_seq:
             bound=FUSE_GATE_RELEASE_BOUND_CYCLES,
             label="s3_fuse_release_after_clear",
             name="smc_fuse_reset_n_delayed_o",
+        )
+        # The S1 hold above asserted fuse_reset stayed 0 for FUSE_GATE_HOLD_CYCLES
+        # while the stall was on. That is evidence only if a gate ignoring the
+        # stall would have released inside the window -- which is exactly the
+        # latency just measured, so check the two against each other.
+        assert_hold_window_covers(
+            release_cycles, label="s3 release-after-stall-clear", log=cocotb.log
         )
         await self._wait_eq_hold(
             dut.smc_fuse_reset_n_delayed_o,

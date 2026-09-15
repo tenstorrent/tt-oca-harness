@@ -30,12 +30,44 @@ from cocotb.utils import get_sim_time
 # The 768-word sense of the default image completes about 2 350 clk_smu after
 # the primary reset release; the expiry is about twice that.
 FUSE_SENSE_BOUND_CYCLES = 5000
-# Gate path once the stall input clears: prim_sync3 (3) + sticky flop (1) +
-# 16-stage pipe = 20 clk_smc, with the DTP export or pad path in front of it.
+# Expiry for a release that is expected to happen. The gate path once the stall
+# input clears is prim_sync3 (3) + sticky flop (1) + 16-stage pipe = 20 clk_smc,
+# with the DTP export or pad path in front of it; runs on this bench measure
+# 2-21 clk_smu. This is a generous timeout, not a claim about the latency.
 FUSE_GATE_RELEASE_BOUND_CYCLES = 256
-# A level that must not move is watched for this long; it exceeds the gate
-# path, so a gate that ignored the stall would release inside the window.
+# A level that must not move is watched for this long. The window is only
+# meaningful while it exceeds the real release latency -- otherwise "still 0
+# after N cycles" degrades to "not released yet" and the hold checks cannot
+# fail. Do not trust that from the derivation above: every sequence that
+# measures a release calls assert_hold_window_covers() on the measurement, so a
+# release that grew past this window fails the run instead of hollowing it out.
 FUSE_GATE_HOLD_CYCLES = 64
+
+
+def assert_hold_window_covers(release_cycles: int, *, label: str, log=None) -> None:
+    """Fail unless a measured gate release fits inside ``FUSE_GATE_HOLD_CYCLES``.
+
+    The hold checks assert that ``smc_fuse_reset_n_delayed_o`` stays at 0 for
+    ``FUSE_GATE_HOLD_CYCLES`` while the stall is asserted. That is evidence only
+    if a gate which ignored the stall would have released inside the window, so
+    the window has to exceed the real release latency of this DUT. This ties the
+    two together on the same run rather than on a comment: the release the
+    sequence just measured is checked against the window the hold checks use.
+    """
+    if release_cycles >= FUSE_GATE_HOLD_CYCLES:
+        raise AssertionError(
+            f"{label}: gate released after {release_cycles} clk_smu, at or beyond the "
+            f"{FUSE_GATE_HOLD_CYCLES}-cycle hold window; the hold checks in this package "
+            "would pass without observing anything. Raise FUSE_GATE_HOLD_CYCLES above the "
+            "measured release and re-run."
+        )
+    if log is not None:
+        log.info(
+            "FUSE-GATE-WINDOW %s: release %d clk_smu < hold window %d clk_smu",
+            label,
+            release_cycles,
+            FUSE_GATE_HOLD_CYCLES,
+        )
 
 
 def _sample(signal, name: str) -> int:
@@ -125,6 +157,7 @@ async def expect_release_after_sense(dut, sb, log, *, phase: str, name: str) -> 
         cycles=FUSE_GATE_HOLD_CYCLES,
         name=f"smc_fuse_reset_n_delayed_o ({phase})",
     )
+    assert_hold_window_covers(release, label=f"{phase} release-after-sense", log=log)
     log.info(
         "FUSE-GATE %s: smc_fuse_reset_n_delayed_o rose %d clk_smu after sense-done "
         "(bound %d) and held 1 for %d clk_smu at %.1f ns",
