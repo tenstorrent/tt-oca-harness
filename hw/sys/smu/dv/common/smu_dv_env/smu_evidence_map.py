@@ -186,11 +186,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-DTP-IO-STAP-SCAN", "CHK-DTP-IO-STAP-SCAN", "IO STAP host TCK observe"),
     ],
     "smu_dtp_jtag2axi_abort_mid_op_test": [
-        (
-            "CHK-J2A-FABRIC-ALIVE",
-            "J2A_MID_OP_FABRIC_ALIVE",
-            "two fabric VERSION_LO reads return the reset value with an OTP op outstanding",
-        ),
+        ("CHK-J2A-ABORT", "J2A_ABORT_RECOVER", "abort mid-BUSY recovers"),
     ],
     "smu_dtp_jtag2axi_back_to_back_error_ok_test": [
         ("CHK-J2A-B2B", "J2A_B2B_OK", "DECERR then immediate SUCCESS"),

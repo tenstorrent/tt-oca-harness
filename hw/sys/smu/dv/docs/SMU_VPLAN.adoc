@@ -1517,13 +1517,15 @@ check.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: An outstanding OTP SINGLE_OP does not wedge the DTP TAP or the SMC_DBG fabric bridge. The test name describes the stimulus, not the verdict: no abort is claimed.
+*Objective*: IR+TRST aborts a hung OTP SINGLE_OP, observed on that op's own status, and the fabric bridge still serves reads afterwards.
 
 *Test Coverage*:
 
 * An IR change taken while an OTP SINGLE_OP reads BUSY: IDCODE still shifts out correctly.
-* Two SMC_DBG fabric reads of VERSION_LO, taken after the IR+TRST while the OTP op is still unanswered, return its reset value. A mutation with the `reset_tap()` removed also passes, so this compare evidences the bridge being usable with an OTP op outstanding, not anything the reset did.
-* Whether the outstanding OTP op was aborted is *not* covered here, and no run on this bench can cover it. The SINGLE_OP `op` field's documented reset is 0, so the status captured after a TAP reset reads "not BUSY" whether the op was aborted or the TDR was merely cleared; a mutation run with the `reset_tap()` removed passes with the same `status=0`. That capture is logged as a diagnostic and carries no compare.
+* OTP J2A mid-BUSY abort: after the TAP reset the OTP SINGLE_OP DR is captured again and must no longer report BUSY.
+* The compare is falsifiable, and this is the check to run rather than take on trust: delete the `reset_tap()` call in the sequence and run `run_dv.py --dut smu_block --items smu_dtp_jtag2axi_abort_mid_op_test`. The run FAILs, with the status reading BUSY (3) where an unmutated run reads 0. The status is therefore produced by the TAP reset, not by a TDR that reads 0 whatever happens.
+* What the reset acts on is the bridge's own transaction state on the TCK side, which `i_trstn` returns to idle; the status read reflects that state. Whether the AXI side of an already-issued beat is also retired is not observed here and is not claimed.
+* Two fabric VERSION_LO reads after the abort return the reset value, showing the bridge is usable afterwards.
 * Requires +skip_fuse_sense.
 
 *Test Procedure*:
@@ -1542,7 +1544,7 @@ check.
 |`CHK-ABORT-GATE-OPEN` |Evidence token, emitted only after the compares it names have held
 |`CHK-ABORT-BUSY` |Evidence token, emitted only after the compares it names have held
 |`CHK-ABORT-IR-TRST` |Evidence token, emitted only after the compares it names have held
-|`CHK-J2A-FABRIC-ALIVE` |Two SMC_DBG fabric reads of VERSION_LO, taken with an OTP SINGLE_OP left outstanding, return its reset value with a SUCCESS status
+|`CHK-J2A-ABORT` |OTP SINGLE_OP status after the TAP reset is not BUSY, and two fabric VERSION_LO reads return the reset value
 |assertion |jtag2axi_abort incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 

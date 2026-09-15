@@ -8,7 +8,7 @@ This chapter has two parts. The table below is the catalog of every SMU test
 name classified deferred or OUT, and none of those names is in the SEP=0
 credit set `sep0_all`; <<smu-bench-standins>> is the record of every
 stand-in, force, skip and waiver on a proof path of an enrolled test. The
-table first. Two kinds of name are in it. Eleven have a test body and are
+table first. Two kinds of name are in it. Thirteen have a test body and are
 enrolled in `testlists/wrapper.toml`; their bucket says which group holds
 them and why that group is not credit. The rest have no test body in this
 tree and are not reportable as PASS. Enrolled names outside `sep0_all` that
@@ -93,6 +93,12 @@ Enrolled names outside this catalog:
 |OUT-until-SEP1
 |Needs real SEP instruction retirement and SEP=1 TB ports.
 |smu_sep_debug_bus_test
+|SEP1-blocked
+|Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
+|smu_sep_lc_handoff_test
+|SEP1-blocked
+|Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
+|smu_cla_sep_cpu_debug_test
 |SEP1-blocked
 |Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
 |smu_fuse_sense_handshake_test
