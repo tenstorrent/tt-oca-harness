@@ -210,7 +210,7 @@ verifying the block behind the port.
 |`smc_efuse_chip_config_read_test` |Run eFuse-derived chip-config read checks.
 |`smc_efuse_jtag_lc_access_matrix_test` |Drive lc_state_i + JTAG eFuse accesses; assert the block/allow matrix.
 |`smc_efuse_jtag_lc_negative_test` |PROD JTAG eFuse deny paths + identity-read exception.
-|`smc_efuse_locked_access_interrupt_test` |CHIPLET_ID unlocked write silent; locked write/read pulse bit 28.
+|`smc_efuse_locked_access_interrupt_test` |JTAG_PUBLIC_IDENTITY unlocked write silent; locked write/read pulse `tb_efuse_locked_access_irq`.
 |`smc_efuse_map_read_test` |SMC_EFUSE_MAP direct read.
 |`smc_efuse_otp_burn_shadow_test` |Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
 |`smc_efuse_otp_clock_config_depth_test` |Run eFuse OTP clock/timing register programming depth checks.
@@ -3554,11 +3554,11 @@ specification table row: it is the `INVALID ... (error fallback)` class
 `smc_efuse_wrapper` gates JTAG-to-eFuse access on `lc_state_i`; a blocked
 transaction returns DECERR with data `0xBADCAB1E`. `smc_efuse_jtag_lc_negative_test`
 covers the CSR-observable subset (`CHIP_CONFIG_LC_STATE` plus the always-allowed
-CHIPLET_ID / PACKAGE_ID reads).
+JTAG_PUBLIC_IDENTITY reads).
 
 [cols="2,2,2,3",options="header",]
 |===
-|SMC LC state (raw) |JTAG eFuse write |JTAG eFuse read (non-ID) |JTAG read CHIPLET_ID / PACKAGE_ID
+|SMC LC state (raw) |JTAG eFuse write |JTAG eFuse read (non-ID) |JTAG read JTAG_PUBLIC_IDENTITY
 |TEST_DEV `0x0` |allow |allow |allow
 |PROD `0x1` |BLOCK (DECERR/`0xBADCAB1E`) |BLOCK |allow
 |RMA_SOP `0x2`,`0x3` |BLOCK |BLOCK |allow
@@ -3630,13 +3630,13 @@ Drive `smc_efuse_jtag_lc_negative_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI), ocah_jtag_vip
 
-*Objective*: CHIPLET_ID unlocked write silent; locked write/read pulse bit 28.
+*Objective*: JTAG_PUBLIC_IDENTITY unlocked write silent; locked write/read pulse `tb_efuse_locked_access_irq`.
 
 *Test Coverage*:
 
 * Locked eFuse shadow access raises `tb_efuse_locked_access_irq`.
 * DECLARED PRECONDITION -- the read-lock is supplied by the bench, not the DUT.
-* `CHIPLET_ID` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `CHIPLET_ID_READ_LOCK` set, and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/depth.toml`).
+* `JTAG_PUBLIC_IDENTITY` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `JTAG_PUBLIC_IDENTITY_READ_LOCK` set (LOCKS bit 1), and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/depth.toml`).
 * The read-lock leg therefore proves that the DUT ENFORCES a lock it found already set; it does not prove a lock can be established through the fuse-programming path.
 * The write-lock leg does establish its own lock, through the real `LOCKS` CSR write path.
 * Everything asserted below -- lock enforcement, the non-disclosure property and the interrupt itself -- is produced by the design under test.
@@ -3653,7 +3653,7 @@ Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a name
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-EFUSE-LOCK-IRQ-RD` |The read of the read-locked `CHIPLET_ID` pulses `tb_efuse_locked_access_irq` exactly once and the word it returns is neither the fuse content nor the pattern the unlocked write attempted (sequence asserts). The word itself is not value-compared: no document fixes what a read-locked shadow register returns over the CSR path (`smc_efuse_locked_access_interrupt_test_seq.py`)
+|`CHK-EFUSE-LOCK-IRQ-RD` |The read of the read-locked `JTAG_PUBLIC_IDENTITY` pulses `tb_efuse_locked_access_irq` exactly once and the word it returns is neither the fuse content nor the pattern the unlocked write attempted (sequence asserts). The word itself is not value-compared: no document fixes what a read-locked shadow register returns over the CSR path (`smc_efuse_locked_access_interrupt_test_seq.py`)
 |`CHK-EFUSE-LOCK-IRQ-UNLOCK` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-LOCK-IRQ-WR` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
 |`CHK-EFUSE-LOCK-PRE` |Named compare in `smc_efuse_locked_access_interrupt_test_seq.py`; the run fails if it mismatches
@@ -3671,10 +3671,11 @@ Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a name
 
 *BFM / Model*: I3C VIP, SPI pad BFM, ocah_axi_vip (AXI)
 
-*Objective*: SMC_EFUSE_MAP direct read.
+*Objective*: SMC_EFUSE_MAP 1 KiB window direct read.
 
 *Test Coverage*:
 
+* The sweep reads LOCKS lo/hi, `JTAG_PUBLIC_IDENTITY`, `SMC_CONFIG`, `OCCP_TRANSPORT_TIMEOUT`, all nine `I2C_I3C_ID` entries, and SPARE[0:1] -- every region that has both a generated base address and a generated `*_READ_LOCK` bit, plus LOCKS itself.
 * readable words -- `efuse_preload_word_at(addr)` parses `hw/sys/smc/dv/assets/smc_efuse_default.hex` at run time and indexes it by `(addr - SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR)/4`, the same word ordering `efuse_bank_model.sv:140-160` uses. Regenerating the asset moves the expectation with it instead of leaving a stale literal asserting a false identity.
 * read-locked words -- `efuse_map_read_locked()` reads the `*_READ_LOCK` bit out of the *preloaded* `LOCKS` word using the generated bit position from `regs/gen/c/blocks/smc_efuse_map.h`; SPEC then fixes the data a blocked read returns: "When a request is blocked, the error slave returns an error response with data value `0xbadcab1e`" (`architecture.adoc:297-299`), and `lock[0] = 1` is "read-locked" (`architecture.adoc:198`).
 

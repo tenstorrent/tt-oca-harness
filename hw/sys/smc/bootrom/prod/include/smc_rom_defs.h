@@ -25,8 +25,20 @@
 #define SMC_STRAPS_LO_REG_ADDR 0xC0405800
 /* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_ADDR */
 #define SMC_STRAPS_HI_REG_ADDR 0xC0405804
-#define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR 0xC000BAFC /* SMC_EFUSE_MAP_RESERVED_0__REG_ADDR */
-#define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR 0xC000BB04 /* SMC_EFUSE_MAP_RESERVED_2__REG_ADDR */
+
+/*
+ * eFuse map addresses that registers/smc_top_regs.h gets wrong. That header still describes the
+ * previous fuse map and its generator is missing from the tree, so every eFuse register the ROM
+ * reads is defined here instead. Only LOCKS is still correct there.
+ *
+ * Do not reach for the header's SMC_EFUSE_MAP_CHIPLET_ID_* or SMC_EFUSE_MAP_PACKAGE_ID_*: those
+ * registers no longer exist, and PACKAGE_ID's stale address now lands inside I2C_I3C_ID.
+ *
+ * Mirror of the generated regs/gen/c/smc_addr.h symbols SMC_TOP_SMC_EFUSE_MAP_<REG>_BASE_ADDR.
+ */
+#define SMC_EFUSE_MAP_I2C_I3C_ID_REG_ADDR(idx) (0xC0007028 + ((idx)*8))
+#define SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR 0xC0007070
+#define SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_REG_ADDR 0xC0007078
 
 /*
  * Strap Bit Definitions
@@ -161,8 +173,7 @@
 #define MBIST_STATUS_MEM_REPAIR_BYPASSED 0x12340001
 #define MBIST_STATUS_MEM_BIST_BYPASSED 0x12340002
 
-/* OTP RESERVED_2 bit 0 allows boot to continue despite reported DFT errors. */
-#define SMC_EFUSE_RESERVED_2_DFT_IGNORE_ERROR_MASK 0x1
+/* OTP SMC_CONFIG bit 15 allows boot to continue despite reported DFT errors. */
 
 /* SMC Status to SEP (Scratch Register 9) Bitfield Definitions */
 #define SMC_SEP_STATUS_SRAM_INIT_BIT 0      /* SMC SRAM initialized */
@@ -249,24 +260,20 @@
 /* Pre-calculated values for expressions that can't be evaluated by assembler */
 #define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0405800
 #define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0405804
-/* These mirror generated symbols in smc_top_regs.h, which cannot be included
- * here because its C typedefs do not assemble. Each block below sat 0x4000 high
- * from before the peripherals moved, so the early MBIST check read an address
- * with nothing behind it, saw mbist_done clear, and took the "not done, assume
- * not required" branch -- booting normally and reporting success even when a
- * failure had been injected. Keep these in step with the generated header:
- *   SMC_TOP_SMC_EFUSE_MAP_RESERVED_0__BASE_ADDR
- *   SMC_TOP_SMC_EFUSE_MAP_RESERVED_2__BASE_ADDR
+/* Literal addresses for assembly, which cannot include the generated headers because their C
+ * typedefs do not assemble. Nothing cross-checks these against the register map, so keep them in
+ * step with regs/gen/c/smc_addr.h by hand:
+ *   SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR
  *   SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR
+ *   SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(15), whose stride is 8 bytes, not 4
  */
-#define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR_VAL 0xC0007AFC
-#define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR_VAL 0xC0007B04
+#define SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL 0xC0007070
 #define DFX_CTRL_STATUS_SMU_REG_ADDR_VAL 0xC000B800
 #define SMC_SCRATCH_MBIST_STATUS_ADDR_VAL 0xC00390F8
 #define ROM_PADDING_TRAP_STATUS_VAL 0xBADF00D0
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK_VAL 0x00002000
 #define SMC_STRAP_MEM_BIST_BYPASS_MASK_VAL 0x00400000 /* (1U << (54 - 32)) */
-#define SMC_EFUSE_RESERVED_0_SRAM_AUTO_ZERO_DISABLE_MASK_VAL 0x40
+#define SMC_EFUSE_SMC_CONFIG_SRAM_AUTO_ZERO_DISABLE_MASK_VAL 0x80
 #define SMC_ZEROER_DEST_ADDR_REG_VAL 0xC0038200
 #define SMC_ZEROER_SIZE_REG_VAL 0xC0038208
 #define SMC_ZEROER_CTRL_STATUS_REG_VAL 0xC0038210
@@ -285,7 +292,7 @@
 #define MBIST_STATUS_MEM_REPAIR_FAILED_VAL 0xBADC0FFE
 #define MBIST_STATUS_MEM_REPAIR_BYPASSED_VAL 0x12340001
 #define MBIST_STATUS_MEM_BIST_BYPASSED_VAL 0x12340002
-#define SMC_EFUSE_RESERVED_2_DFT_IGNORE_ERROR_MASK_VAL 0x1
+#define SMC_EFUSE_SMC_CONFIG_DFT_IGNORE_ERROR_MASK_VAL 0x8000
 #endif
 
 #endif /* SMC_ROM_DEFS_H */
