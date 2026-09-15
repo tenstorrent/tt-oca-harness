@@ -1091,8 +1091,19 @@ module sep_fcov (
     }
     // Each cross cell is one configured mode/key size/operation that reached
     // OUTPUT_VALID and returned a data word. The suite walks nine ENC cells
-    // plus the ECB/CBC decrypt legs of the round-trip; no suite test issues CTR
-    // DECRYPT, so that cell is excluded rather than left permanently empty.
+    // plus the ECB/CBC decrypt legs of the round-trip.
+    //
+    // CTR x DECRYPT is excluded because the cell has nothing to score, not
+    // because no test happens to drive it. CTR is a stream mode: the engine
+    // runs the forward cipher whichever way OPERATION is programmed, so
+    // decryption is the same operation as encryption and re-encrypting the
+    // ciphertext is what recovers the plaintext. A test that programmed
+    // DECRYPT here would pass with the OPERATION field disconnected. Filling
+    // this cell would record configuration, not consume.
+    //
+    // The scoreable neighbour is OPERATION's shadowed-register behaviour --
+    // one-hot readback and the update/storage-error alerts -- which is
+    // mode-independent and belongs on a CSR vehicle, not on a CTR cipher cell.
     x_mode_key_op: cross cp_mode, cp_key, cp_op{
       ignore_bins ctr_decrypt = binsof (cp_mode.ctr) && binsof (cp_op.dec);
     }

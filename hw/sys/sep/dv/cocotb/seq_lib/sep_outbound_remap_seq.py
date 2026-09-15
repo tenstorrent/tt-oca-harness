@@ -23,6 +23,8 @@ from sep_reg_meta import indexed_block_count, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
+    FILTER_END_ADDR,
+    FILTER_START_ADDR,
     AP_BASE,
     F_ALLOW_NS,
     F_ENTRY_ENABLED,
@@ -62,8 +64,6 @@ OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 # sep_outbound_mbx STDOUT window: always-ready OKAY responder on smn_outbound.
 REMAP_TARGET_BASE = 0x8000_0000
 
-FILTER_START_ADDR = 0x08
-FILTER_END_ADDR = 0x10
 RESP_OKAY = 0
 RESP_DECERR = 3
 

@@ -189,7 +189,11 @@ static int chk_reset(void) {
         uint32_t addr;
         uint32_t exp;
     } regs[] = {
-        {"TRANSFER_WIDTH", OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0x2u},
+        // Non-zero resets come from the generated per-field symbols. The 0x0u
+        // entries are whole-register reads-as-zero, not transcribed field
+        // values, so there is nothing to import for them.
+        {"TRANSFER_WIDTH", OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
+         SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_reset},
         {"CONTROL", OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x0u},
         {"SRC_CONFIG", OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x0u},
         {"DST_CONFIG", OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x0u},

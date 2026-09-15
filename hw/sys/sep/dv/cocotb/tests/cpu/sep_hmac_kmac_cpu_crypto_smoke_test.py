@@ -38,8 +38,8 @@ _ITCM_HEX = os.path.join(_FW_DIR, "hmac_kmac_smoke_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "hmac_kmac_smoke_test.dtcm.hex")
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
-# 3 HMAC hashes (+ SW SHA-256) and one KMAC masked hash; the run loop early-exits
-# on fw_done, so this is an upper bound.
+# 3 HMAC hashes (+ SW SHA-256), one KMAC masked hash and two AES-128-ECB passes;
+# the run loop early-exits on fw_done, so this is an upper bound.
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -68,4 +68,23 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+        )
+
+        # The firmware error count gates the PASS magic, so a failed leg already
+        # fails the scoreboard. These gates are here so the kept log cannot show
+        # a green run with a checker that never ran: a firmware image built
+        # without the AES leg, or one where it was skipped, would otherwise pass
+        # this test silently.
+        console = self.sb.console_text()
+        for needle, what in (
+            ("CHK-CPU-AES-ENC", "the AES encrypt leg against the FIPS-197 vector"),
+            ("CHK-CPU-AES-RT", "the AES SRAM round trip"),
+        ):
+            assert needle in console, (
+                f"firmware console has no {needle} line, so {what} did not run. "
+                "A green result here would not mean the contract was proven."
+            )
+        self.logger.info(
+            "CHK-CPU-AES-ENC / CHK-CPU-AES-RT PASS: both AES legs reported in the "
+            "firmware console"
         )

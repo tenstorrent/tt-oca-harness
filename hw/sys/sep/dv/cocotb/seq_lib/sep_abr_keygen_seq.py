@@ -37,7 +37,12 @@ ABR_NOTIF_INTR = ABR_INTR + abr_off("notif_internal_intr_r")
 NAME0_EXP, NAME1_EXP = mldsa_name_words()
 
 CMD_KEYGEN = 0x1
+CMD_SIGN = 0x2
+CMD_VERIFY = 0x3
 CTRL_ZEROIZE = 1 << 3
+# MLDSA_CTRL.EXTERNAL_MU. The vendored sigGen/sigVer vectors are the ACVP
+# external-mu groups, so the engine is handed mu directly instead of a message.
+CTRL_EXTERNAL_MU = 1 << 5
 ST_READY = 1 << 0
 ST_VALID = 1 << 1
 ST_ERROR = 1 << 3
@@ -45,6 +50,18 @@ ST_ERROR = 1 << 3
 SEED_WORDS = 8
 ENTROPY_WORDS = 16
 PK_WORDS = 648
+SK_WORDS = 1224
+MU_WORDS = 16
+SIG_WORDS = 1157
+
+# Sign / verify register windows, by symbol from the vendor RDL like the
+# keygen ones above.
+ABR_MSG = ABR_BASE + abr_off("MLDSA_MSG")
+ABR_EXTERNAL_MU = ABR_BASE + abr_off("MLDSA_EXTERNAL_MU")
+ABR_SIGN_RND = ABR_BASE + abr_off("MLDSA_SIGN_RND")
+ABR_SIGNATURE = ABR_BASE + abr_off("MLDSA_SIGNATURE")
+ABR_VERIFY_RES = ABR_BASE + abr_off("MLDSA_VERIFY_RES")
+ABR_PRIVKEY_IN = ABR_BASE + abr_off("MLDSA_PRIVKEY_IN")
 
 IRQ_ABR_ERROR = agg_from_pic("Adams Bridge error")
 IRQ_ABR_NOTIF = agg_from_pic("Adams Bridge notification")
@@ -129,6 +146,16 @@ def _selftest() -> None:
     assert ABR_ENTROPY - ABR_BASE == 0x18
     assert ABR_SEED - ABR_BASE == 0x58
     assert ABR_PUBKEY - ABR_BASE == 0x1000
+    # Sign / verify windows, pinned so a bad RDL resolution fails at import
+    # rather than as a mid-simulation wrong-address access.
+    assert ABR_SIGN_RND - ABR_BASE == 0x78
+    assert ABR_MSG - ABR_BASE == 0x98
+    assert ABR_VERIFY_RES - ABR_BASE == 0xD8
+    assert ABR_EXTERNAL_MU - ABR_BASE == 0x118
+    assert ABR_SIGNATURE - ABR_BASE == 0x2000
+    assert ABR_PRIVKEY_IN - ABR_BASE == 0x6000
+    # The four windows a sign or verify touches must not overlap each other.
+    assert ABR_SIGNATURE + 4 * SIG_WORDS <= ABR_PRIVKEY_IN
     assert ABR_ERROR_INTR - ABR_INTR == 0x14
     assert ABR_ERROR_TRIG - ABR_INTR == 0x1C
     assert ABR_NOTIF_INTR - ABR_INTR == 0x18

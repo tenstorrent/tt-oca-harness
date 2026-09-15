@@ -243,11 +243,17 @@ scoreboard. A covergroup counts hits, not distinct values.
 |`cp_key` |128, 192, 256
 |`cp_op` |ENC, DEC
 |`cp_sideload` |SW key (`KEY_SHARE` CSRs) and KM sideload key (`CTRL_SHADOWED.sideload`)
-|`x_mode_key_op` |15 cells: the 9 ENC cells plus the ECB/CBC decrypt legs of the round-trip. A cell is sampled when that configuration reached `STATUS.output_valid` and its `DATA_OUT_0` word was read
+|`x_mode_key_op` |15 cells: the 9 ENC cells plus the ECB/CBC decrypt legs of the round-trip. CTR x DECRYPT is excluded, see below. A cell is sampled when that configuration reached `STATUS.output_valid` and its `DATA_OUT_0` word was read
 |===
 
-CTR DECRYPT is Phase 2 and is an `ignore_bins` in the cross, not a
-permanently empty cell. `cp_op` and the decrypt cells are owned by
+CTR x DECRYPT is an `ignore_bins` in the cross because the cell has nothing
+to score, not because the suite happens not to drive it. CTR is a stream
+mode: the engine runs the forward cipher whichever way `OPERATION` is
+programmed, so a test that programmed DECRYPT there would pass with the
+field disconnected. It is not a deferral -- there is no cipher contract
+behind that cell for a later phase to claim. The scoreable neighbour is
+`OPERATION`'s shadowed-register behaviour, which is mode-independent and
+belongs on a CSR vehicle. `cp_op` and the decrypt cells are owned by
 `sep_aes_mode_keysize_rand_test` CHK-RT (the engine round-trip);
 `cp_sideload.km_key` by `sep_km_aes_sideload_kat_test` and
 `sep_km_command_set_rand_test`. The ciphertext-equals-golden and

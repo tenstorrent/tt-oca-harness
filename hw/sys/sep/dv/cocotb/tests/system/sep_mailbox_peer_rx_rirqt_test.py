@@ -232,15 +232,16 @@ class sep_mailbox_peer_rx_rirqt_test(sep_base_test):
             got,
             _hi(_E0),
         )
-        self.logger.info(
-            "CHK-POP-PER-READ PASS: one 4-byte READ_DATA beat popped one whole "
-            "entry at each half, so two reads consumed both entries"
-        )
-
         st = await self.mb.rd_csr(STATUS)
         assert st & ST_EMPTY, (
             f"CHK-POP-PER-READ FAIL: RX not empty after two reads of two entries "
             f"(STATUS=0x{st:08x})"
+        )
+        self.logger.info(
+            "CHK-POP-PER-READ PASS: one 4-byte READ_DATA beat popped one whole "
+            "entry at each half, so two reads consumed both entries and the FIFO "
+            "is empty (STATUS=0x%08x)",
+            st,
         )
 
         # --- CHK-RIRQT: the read half of the threshold pair -------------------
