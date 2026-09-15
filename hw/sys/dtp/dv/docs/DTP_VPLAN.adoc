@@ -1589,6 +1589,13 @@ b. RD_PL_DEPTH and WR_PL_DEPTH == their `+SMC_OTP_*+` pipeline-depth parameters.
 [[sec-2-jtag2axi-write-scenarios]]
 ==== 2. JTAG2AXI Write Scenarios
 
+NOTE: Every JTAG2AXI scenario in this section and in <<sec-3-jtag2axi-read-scenarios>> and
+<<sec-4-jtag2axi-error-backpressure-cdc-and-decode-scenarios>> opens each pass with the geometry gate of the JTAG2AXI base
+sequence: it reads the three `*_JTAG2AXI_CAPS` TDRs and records `CHK-J2A-GEOMETRY` for the bus type,
+address size, and data size of each bridge against the DV geometry table. A DUT that publishes a
+different geometry fails the pass before any bridge
+request is packed with the table's field widths.
+
 [[sec-20-dtp_jtag2axi_smc_axi_wr_test]]
 ===== 2.0 `dtp_jtag2axi_smc_axi_wr_test`
 
