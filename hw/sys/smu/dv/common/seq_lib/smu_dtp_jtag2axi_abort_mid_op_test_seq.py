@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP J2A mid-BUSY abort, observed on the aborted op, then fabric VERSION_LO recovery.
+"""An outstanding OTP SINGLE_OP does not wedge the DTP TAP or the fabric bridge.
 
-The abort is proven on the thing that was aborted: after the TAP reset the OTP
-SINGLE_OP DR is captured again and must no longer report BUSY. The fabric
-VERSION_LO reads that follow show the bridge is usable afterwards. Requires
+The name describes the stimulus, not a verdict: the sequence issues an IR
+change and a TRST while an OTP SINGLE_OP is BUSY, and nothing observable from
+JTAG says whether that op was aborted. What is compared is what the TAP and the
+bridge still do: IDCODE reads back correctly through an IR change taken
+mid-BUSY, and two SMC_DBG fabric reads of VERSION_LO taken after it, with the
+OTP op still unanswered, return its reset value. The OTP SINGLE_OP status is read back afterwards as a
+logged diagnostic only -- see the comment at that step. Requires
 +skip_fuse_sense. SEP=0, no Force.
 """
 
@@ -40,7 +44,7 @@ OTP_POLL = 128
 
 
 class smu_dtp_jtag2axi_abort_mid_op_test_seq:
-    """IR+TRST abort of a hung OTP SINGLE_OP, seen on its status; fabric J2A recovers."""
+    """IR+TRST taken mid-BUSY: the TAP answers IDCODE and the fabric bridge still reads."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -136,17 +140,17 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
         self._log("CHK-ABORT-IR-TRST IDCODE mid-BUSY then TAP reset")
         sb.expect_eq("CHK-ABORT-IR-TRST", idc, DTP_DEFAULT_IDCODE)
 
-        # The op that was hung: its status after the reset is the abort evidence.
-        # A bridge that kept the AXI state machine waiting would still say BUSY.
+        # Logged, not compared. The op field's documented reset is 0, so if the
+        # TAP reset clears this TDR the capture reads "not BUSY" whether or not
+        # the outstanding op was aborted -- a compare on it cannot fail. A
+        # mutation run with the reset_tap() above removed passed with the same
+        # status=0, which settles it. Nothing reachable from JTAG distinguishes
+        # an aborted op from a cleared status register, so no abort is claimed.
         await ClockCycles(self.dut.clk_smu_i, 32)
         capt = await jtag.read("SMC_OTP_AXI_SINGLE_OP", shift_value=0)
         require_jtag_tdo_resolved("OTP SINGLE_OP status after TAP reset")
         otp_st_after, _ = unpack_otp_single_op(capt)
-        if otp_st_after == J2A_STATUS_BUSY:
-            raise AssertionError(
-                "OTP SINGLE_OP still BUSY after the TAP reset: the outstanding op was not aborted"
-            )
-        self._log(f"CHK-J2A-ABORT OTP SINGLE_OP status after TAP reset={otp_st_after} (not BUSY)")
+        self._log(f"OTP SINGLE_OP status after TAP reset={otp_st_after} (diagnostic, not compared)")
 
         recovered = []
         for i in range(2):
@@ -165,15 +169,16 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
                     f"want SUCCESS+0x{VERSION_LO_RESET:08x}"
                 )
             recovered.append(data)
-            self._log(f"CHK-J2A-ABORT VERSION_LO[{i}]=0x{data:08x} status=SUCCESS")
+            self._log(f"CHK-J2A-FABRIC-ALIVE VERSION_LO[{i}]=0x{data:08x} status=SUCCESS")
         self.s4_ok = True
         sb.expect_eq(
-            "CHK-J2A-ABORT",
-            (otp_st_after != J2A_STATUS_BUSY, *recovered),
-            (True, VERSION_LO_RESET, VERSION_LO_RESET),
+            "CHK-J2A-FABRIC-ALIVE",
+            tuple(recovered),
+            (VERSION_LO_RESET, VERSION_LO_RESET),
+            evidence="J2A_MID_OP_FABRIC_ALIVE",
         )
 
         self._log(
-            f"PASS JTAG2AXI-ABORT s1={self.s1_ok} s2={self.s2_ok} "
+            f"PASS JTAG2AXI-MID-OP s1={self.s1_ok} s2={self.s2_ok} "
             f"s3={self.s3_ok} s4={self.s4_ok} probe=+0x{SMC_OTP_DEFAULT_PROBE_ADDR:x}"
         )

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_dtp_jtag2axi_abort_mid_op_test — OTP BUSY abort, fabric recovers."""
+"""smu_dtp_jtag2axi_abort_mid_op_test — TAP and fabric survive an outstanding OTP op."""
 
 from __future__ import annotations
 
@@ -13,7 +13,10 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_jtag2axi_abort_mid_op_test(smu_base_test):
-    """IR+TRST abort of hung OTP SINGLE_OP; fabric VERSION_LO recovers."""
+    """IR+TRST taken mid-BUSY: IDCODE still reads and the fabric bridge still serves.
+
+    The name is the stimulus. No abort is claimed -- see the sequence docstring.
+    """
 
     use_shared_env = True
 

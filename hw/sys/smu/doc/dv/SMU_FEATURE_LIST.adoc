@@ -93,7 +93,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_jtag2axi_smc_rw_matrix_test` |F3 |dtp_under_smu, sep0_all |`J2A_RW_MATRIX_OK`
 |`smu_dtp_jtag2axi_wstrb_partial_sticky_test` |F3 |dtp_under_smu, sep0_all |`J2A_WSTRB_NEIGHBOR`
 |`smu_dtp_jtag2axi_back_to_back_error_ok_test` |F3 |dtp_under_smu, sep0_all |`J2A_B2B_OK`
-|`smu_dtp_jtag2axi_abort_mid_op_test` |F3 |needs_otp_stall |`J2A_ABORT_RECOVER`
+|`smu_dtp_jtag2axi_abort_mid_op_test` |F3 |needs_otp_stall |`J2A_MID_OP_FABRIC_ALIVE`
 |`smu_jtag2axi_vs_smn_same_csr_race_test` |F3/F4 |dtp_under_smu, sep0_all |`RACE_J2A_SMN`
 |`smu_otp_vs_fabric_map_race_test` |F3 |dtp_under_smu, sep0_all |`RACE_OTP_FABRIC`
 |`smu_dtp_otp_smc_complete_rw_test` |F3 |dtp_under_smu, sep0_all |`OTP_MAP_RW_OK`
