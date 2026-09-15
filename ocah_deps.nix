@@ -17,6 +17,7 @@ in
     OCAH_ANTORA = "${pkgs.ocah-antora}/bin/antora";
     # Diagram generator paths
     DIAGRAM_DITAA_CLASSPATH = "${pkgs.ocah-ditaa}/lib/ditaa.jar";
+    DIAGRAM_PLANTUML_CLASSPATH = "${pkgs.plantuml}/lib/plantuml.jar";
     OCAH_NO_INSTALL_NPM_DEPS = "1";
     # Run Synth Natively, rather than (nesting) container
     OCAH_EDA_SKIP_CONTAINERS = "1";
@@ -68,6 +69,7 @@ in
       ocah-asciidoctor
       ocah-ditaa
       mermaid-cli
+      plantuml
       # Build Tools
       gnumake
       bender
