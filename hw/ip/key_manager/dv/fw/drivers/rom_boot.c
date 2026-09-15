@@ -77,12 +77,11 @@ void rom_boot_init(void) {
     rom_kmcsr_irq_status_clear(0xFFFFFFFF);
     rom_kmcsr_irq_enable_write(irq_en.w);
 
-    /* Defense-in-depth: re-assert the ROM IRQ vector before any IRQ can fire.
-     * IRQ_ENTRY_ADDR/IRQ_ENTRY_LOCK are warm-reset-domain, so every reset that
-     * re-enters ROM already restores this value and clears the lock; a prior
-     * mutable-firmware-chosen vector can never persist into ROM execution.
-     * We rewrite it here anyway so ROM's interrupt safety does not rely solely
-     * on that hardware reset value. Must precede maskirq(0) below. */
+    /* Re-assert the ROM IRQ vector before any IRQ can fire, so ROM interrupt
+     * safety does not rest on the warm-reset value of IRQ_ENTRY_ADDR alone
+     * (IRQ_ENTRY_ADDR/IRQ_ENTRY_LOCK are warm-reset-domain: every reset that
+     * re-enters ROM restores this value and clears the lock). Must precede
+     * maskirq(0) below. */
     rom_kmcsr_irq_entry_addr_write(ROM_KM_ROM_IRQ_ENTRY);
 
     rom_picorv32_maskirq(0);

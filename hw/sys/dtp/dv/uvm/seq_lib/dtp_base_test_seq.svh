@@ -369,9 +369,7 @@ class dtp_base_test_seq extends ocah_sequence;
   // ------------------------------------------------------------------
 
   // System-clock cycles: the sequence layer holds no clock handle, so the
-  // wait is derived from the period the env published on tb_if (the one
-  // time-derived wait in DTP class code outside drivers and the reset
-  // ladder).
+  // wait is derived from the period the env published on tb_if.
   task wait_sys_cycles(int unsigned cycles = 4);
     if (tb_vif.clk_period_ns == 0)
       `uvm_fatal(get_type_name(), "tb_if.clk_period_ns is 0; the env did not publish it")
@@ -406,7 +404,7 @@ class dtp_base_test_seq extends ocah_sequence;
   // Drive the lifecycle disable vector, then settle through the DUT's
   // 2-stage TCK-domain synchronizers.
   task set_dbg_disable(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
-    tb_vif.dbg_disable <= d;
+    tb_vif.drive_dbg_disable(d);
     for (int unsigned i = 0; i < DbgDisableTckCycles; i++) step(1'b0);
     wait_sys_cycles(DbgDisableSysCycles);
     `uvm_info(get_type_name(), $sformatf("dbg_disable=0x%03h", d), UVM_MEDIUM)

@@ -161,5 +161,5 @@ int main(void) {
     return 0;
 }
 
-/* secondary_main intentionally not defined — crt0 default routes only
- * the boot hart to main(), non-boot harts spin in WFI. */
+/* secondary_main is not defined here: the crt0 weak default routes only the
+ * boot hart to main() and parks the other harts in WFI. */

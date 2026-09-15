@@ -8,8 +8,8 @@
  * I2C_1 (controller) issues a READ while I2C_0 (target) leaves TX FIFO empty,
  * causing automatic TX clock stretch. Firmware fail-closed waits for
  * INTR_STATE.stretch_timeout on the controller, then disables both sides for
- * a clean end. Recovery/verify-write is covered by
- * smc_i2c_tx_stretch_timeout_recovery_test.
+ * a clean end. Controller recovery after the timeout is exercised by the
+ * i2c_tx_stretch_timeout_recovery firmware test.
  */
 
 #include <stdint.h>
@@ -24,6 +24,11 @@
 #define TARGET_ADDR 0x10
 #define READ_STRETCH_TIMEOUT_CYCLES 2000
 #define POLL_TIMEOUT 100000
+
+/* Bound on retrying the W1C once the stretch has been released. Each iteration
+ * is a register write plus a read, so this covers well past the bus time the
+ * controller FSM needs to leave the stretched state. */
+#define W1C_CLEAR_POLL_BOUND 20000u
 
 static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
     uint32_t wrapper_addr = SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR(0) + (idx * 4);
@@ -75,6 +80,28 @@ static int init_controller(void) {
                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
               intr_en.w);
     i2c_clear_interrupts(CONTROLLER_IDX, 0xFFFFFFFF);
+
+    /* Positive control: the bit must read 0 before the stretch is provoked.
+     *
+     * The whole proof below is "poll INTR_STATE until STRETCH_TIMEOUT == 1".
+     * Without confirming it reads 0 first, a bit stuck at 1 -- or a broken W1C
+     * that never clears -- satisfies that poll immediately and the test passes
+     * having observed nothing. The clear above was previously issued and never
+     * read back.
+     */
+    {
+        i2c__INTR_STATE_t after_clear = {
+            .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                                  SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+        simputs("  Baseline after clear: INTR_STATE=");
+        simputshex32("", after_clear.w);
+        simputs("\n");
+        if (after_clear.f.STRETCH_TIMEOUT) {
+            simputs("  ERROR: stretch_timeout already set before any stretch --\n");
+            simputs("         the poll below would prove nothing\n");
+            return I2C_ERROR;
+        }
+    }
 
     return I2C_OK;
 }
@@ -157,8 +184,55 @@ static int wait_stretch_timeout_intr(void) {
                                   SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         if (intr.f.STRETCH_TIMEOUT) {
             simputs("  PASS: stretch_timeout interrupt asserted\n");
-            simputshex32("  INTR_STATE=0x", intr.w);
+            simputshex32("  INTR_STATE=", intr.w);
             simputs("\n");
+
+            /* Second leg: W1C must actually clear it, because observing only the
+             * set leg cannot distinguish a real event from a bit stuck at 1.
+             *
+             * The cause has to be removed first. event_stretch_timeout_o is a
+             * level, not a pulse -- it is
+             *   stretch_en && timeout_enable_i && (stretch_idle_cnt > timeout)
+             * (i2c_controller_fsm.sv:1005) -- and INTR_STATE.STRETCH_TIMEOUT is
+             * continuously re-driven from it (i2c_core.sv:1015). So while the
+             * target is still stretching, W1C clears the bit for one cycle and
+             * the level immediately sets it again. An earlier version of this
+             * check wrote W1C with the stretch still active and read 0x80 back,
+             * which looked like a broken W1C but is the specified behaviour of a
+             * level-driven status bit. Disabling the target releases the stretch
+             * and deasserts the level; only then is the clear observable. */
+            i2c_target_disable(TARGET_IDX);
+            {
+                i2c__INTR_STATE_t after = {.w = 0};
+                uint32_t tries = 0;
+
+                /* Releasing SCL takes bus time to propagate and let the
+                 * controller FSM leave the stretched state, so the level does
+                 * not fall in the few core cycles after the disable. Retry the
+                 * W1C until it sticks, bounded.
+                 *
+                 * This stays a real check: a bit genuinely stuck at 1, or a
+                 * level that never deasserts, exhausts the bound and fails. */
+                for (tries = 0; tries < W1C_CLEAR_POLL_BOUND; tries++) {
+                    i2c_clear_interrupts(CONTROLLER_IDX, 0xFFFFFFFF);
+                    after.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
+                    if (!after.f.STRETCH_TIMEOUT) {
+                        break;
+                    }
+                }
+
+                simputs("  After stretch release + W1C: INTR_STATE=");
+                simputshex32("", after.w);
+                simputs(" tries=");
+                simputshex32("", tries);
+                simputs("\n");
+                if (after.f.STRETCH_TIMEOUT) {
+                    simputs("  ERROR: stretch_timeout did not clear on W1C after the\n");
+                    simputs("         stretch was released; the bit is stuck set\n");
+                    return I2C_ERROR;
+                }
+            }
             return I2C_OK;
         }
     }
@@ -166,7 +240,7 @@ static int wait_stretch_timeout_intr(void) {
     i2c__INTR_STATE_t last = {
         .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
-    simputs("  ERROR: stretch_timeout not observed, INTR_STATE=0x");
+    simputs("  ERROR: stretch_timeout not observed, INTR_STATE=");
     simputshex32("", last.w);
     simputs("\n");
     return I2C_ERROR_TIMEOUT;
@@ -213,7 +287,7 @@ int main(void) {
         test_fail(0);
     }
 
-    /* Release bus for a clean end (full recovery covered elsewhere) */
+    /* Release the bus for a clean end (recovery is exercised by i2c_tx_stretch_timeout_recovery) */
     write_scratch(1, 0x00000040);
     i2c_target_disable(TARGET_IDX);
     i2c_controller_disable(CONTROLLER_IDX);

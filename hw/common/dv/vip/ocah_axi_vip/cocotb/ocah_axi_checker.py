@@ -291,8 +291,7 @@ class OcahAxiChecker:
         beat_bytes = 2 ** int(item.size)
         transfer_bytes = beat_bytes * max(item.beat_count, 1)
         # Beats after the first are size-aligned, so the burst footprint spans
-        # from the ALIGNED start; using the raw (possibly unaligned) address
-        # would overestimate and false-fail boundary-adjacent bursts.
+        # from the ALIGNED start.
         aligned = item.address & ~(beat_bytes - 1)
         if (aligned & 0xFFF) + transfer_bytes > 0x1000:
             self._record(

@@ -4,10 +4,9 @@
 schema_version = 1
 
 # Launch entry: selected by `--dut dtp`. Two frameworks share this config and one tb_top:
-# cocotb/PyUVM (default; open-source VIP — cocotbext-jtag for the JTAG TAP, cocotbext-axi for the
-# JTAG2AXI debug/OTP AXI targets; iJTAG/CTP/CTM stay on in-house BFMs) and SV-UVM
-# (`--framework uvm`, VCS; see the [frameworks.uvm] overlay at the bottom). Shared stage graph +
-# tool list come from profile = "native".
+# cocotb/PyUVM (default) and SV-UVM (`--framework uvm`, VCS; see the [frameworks.uvm] overlay at
+# the bottom); both bind the shared ocah_jtag_vip / ocah_axi_vip interfaces that tb_top
+# instantiates. Shared stage graph + tool list come from profile = "native".
 name = "dtp"
 profile = "native"
 default_framework = "cocotb"
@@ -22,7 +21,7 @@ kind = "clean"
 paths = ["{run_dir}", "hw/sys/dtp/dv/build"]
 
 [build]
-# Native build is driven by the Bender/filelist keys below; .core files are external-only.
+# Native build is driven by the Bender/filelist keys below.
 top_module = "dtp_uvm_top"
 top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
 filelist = "hw/sys/dtp/dv/build/dtp_dut_compile.f"
@@ -65,6 +64,10 @@ python_root = "hw/sys/dtp/dv/cocotb"
 test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
+  # Generated SystemRDL Python headers of the cross-trigger IP; the XTRIG CSR map
+  # in cocotb/env/dtp_xtrig_types.py imports its offsets and field masks from them.
+  "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/py",
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/py",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
@@ -129,7 +132,7 @@ flags = [
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
-# several hundred MB that a hosted runner cannot compile (measured on SMC).
+# several hundred MB that a hosted runner cannot compile.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
@@ -137,7 +140,7 @@ build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output
 # for both frameworks: +define+UVM (below) adds the harness block of tb/tb_top.sv (clock
 # generator, uvm_config_db publication, run_test()), which `include`s uvm/tests/dtp_tests.sv.
 [frameworks.uvm]
-description = "DTP SV-UVM smoke flow (VCS)"
+description = "DTP SV-UVM flow (VCS)"
 
 [frameworks.uvm.build]
 # The shared framework library and the VIP SV-UVM layers come from their owned ordered
@@ -161,6 +164,10 @@ bender_filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_bender.f"
 work_dir = "hw/sys/dtp/dv/build/uvm"
 incdirs = [
   "hw/common/assert",
+  # Generated SystemRDL SystemVerilog headers of the cross-trigger IP: field masks
+  # for the XTRIG CSR constants in uvm/env/dtp_types.svh.
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/svh",
+  "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/svh",
   "hw/sys/dtp/dv/uvm/env",
   "hw/sys/dtp/dv/uvm/seq_lib",
   "hw/sys/dtp/dv/uvm/tests",

@@ -90,11 +90,10 @@ static int sha3_256_abc_test(void) {
      * generates wmask=4'b0001 (byte lane 0 valid, data[7:0]=value). prim_packer
      * absorbs byte[0] at the current pos_q, then advances pos_q by 8.
      *
-     * BUG-001 FIX v2: Prior fix used fifo8[0/1/2] — byte stores to non-word-
-     * aligned addresses (0x10913801, 0x10913802) are dropped by the 64→32 bit
-     * AXI DW converter in kmac_wrapper.sv, leaving only 'a' absorbed. Fix:
-     * use fifo8[0] (word-aligned) for ALL three bytes. The address offset
-     * within MSG_FIFO is irrelevant — prim_packer's pos_q accumulates correctly.
+     * Byte stores to non-word-aligned addresses (0x10913801, 0x10913802) are
+     * dropped by the 64→32 bit AXI DW converter in kmac_wrapper.sv, so ALL three
+     * bytes go to the word-aligned fifo8[0]; the address offset within MSG_FIFO
+     * is irrelevant because prim_packer's pos_q supplies the byte position.
      */
     {
         volatile uint8_t *fifo8 =

@@ -7,14 +7,11 @@
 of the rollback check -- the last value that must be allowed through. This testcase
 runs that boundary on the PRIMARY and requires a completed boot.
 
-WHY THE ACCEPT CASE, WHEN THE REFERENCE RUNS THE REJECT CASE. Stated plainly, because
-the two are different cases and the choice has to be justified rather than assumed.
+WHY THE ACCEPT CASE, WHEN THE REFERENCE RUNS THE REJECT CASE.
 ``sep_firmware_base_test.sv`` burns ``bl_ver_value = 256'hFF`` -- popcount 8 --
 into ``efuse_bl1_ver``, while the packer default leaves the manifest at
-``security_version: 5``,
-so ``5 < 8`` and the ROM must reject. It is a self-consistent REJECT test; the earlier
-claim that it contradicts itself was investigated on the VP half and WITHDRAWN
-(``batch_runs_0904_vp/FINDINGS.md`` F11 item 3), and is not repeated here.
+``security_version: 5``, so ``5 < 8`` and the ROM must reject. It is a
+self-consistent REJECT test.
 
 **BUT THE REFERENCE DOES NOT ENFORCE THAT REJECTION, AND THAT CHANGES WHAT THIS PORT
 IS REPLACING.** Its two checks are ``log.info`` calls, not assertions: they call
@@ -27,41 +24,36 @@ ACCEPT one; it is replacing a REJECT-INTENT test that enforces nothing with an
 ACCEPT test that enforces 14 required markers, 16 forbidden markers, an ordering
 chain, four exactly-once counts and two device-side properties.
 
-The reference's own stated intent, moreover, is the equality case: writes
+The reference's own stated intent, moreover, is the equality case: it writes
 the fuse's BL1 version into ``primary.manifest.version`` and
 ``backup.manifest.version``, i.e. "make the manifest version equal the fuse version".
-Two latent defects in the reference defeat that intent -- reads field
-``'BL1_Version'`` while the parser names it ``BL1_VER``
-, so the
+Two latent defects in the reference defeat that intent -- it reads field
+``'BL1_Version'`` while the parser names it ``BL1_VER``, so the
 lookup returns ``None`` and the test falls back to 0; and
 ``manifest.version`` is not a packer key at all, the field the ROM reads being
-``security_version`` (``bootrom/prod/include/manifest.h:218``). Both were recorded on
-the VP half as ``batch_runs_0904_vp/FINDINGS.md`` F06 / F10 item 3, whose instruction
-to this batch -- set ``security_version`` directly and assert ``MFST_VER=`` as an
-exact value, do not port ``manifest.version`` -- is what this testcase does.
+``security_version`` (``bootrom/prod/include/manifest.h:218``). This testcase sets
+``security_version`` directly and asserts ``MFST_VER=`` as an exact value; it does
+not port ``manifest.version``.
 
-Implementing the intent rather than the accident is defensible here for a second,
-independent reason: **the REJECT side is already covered TWICE in this testlist**, by
+**The REJECT side is covered TWICE in this testlist**, by
 ``sep_firmware_backup_invalid_security_version_test`` (fuse floor 8, both slots below
 it) and by ``sep_firmware_primary_invalid_security_version_test`` (fuse floor 1,
 primary below it and the backup re-signed at the boundary). Neither covers the
-primary-side ACCEPT boundary, and no testcase covered it before this one. This is a
-DELIBERATELY DIFFERENT CASE, not a correction of a broken reference, and it is
-recorded that way in the row's ``flow_deviation``.
+primary-side ACCEPT boundary; this testcase does. It is a DIFFERENT CASE from the
+reference's, not a correction of it.
 
 **THE COVERAGE THIS ADDS BEYOND THE BOUNDARY: ALL EIGHT THERMOMETER WORDS, EACH
 DISTINGUISHABLE.** ``get_security_version_from_fuse`` (``manifest_crypto.c``)
 loops over EIGHT 32-bit words of ``BL1_VERSION`` and sums their popcounts. Every
-existing preload in this tree puts its bits in word 0 --
+other preload in this tree keeps its bits in word 0 --
 ``sep_efuse_lc_prod_secver1.toml`` uses ``0x1`` and
 ``sep_efuse_lc_prod_secver8.toml`` uses ``0xff`` -- so a ROM that read only the first
-word would decode all of them correctly. Batch R1 recorded that gap deliberately
-(``batch_runs_0904_rtl/RUN_JOURNAL.md``, "Known gaps left open"). This testcase closes
-it: ``sep_efuse_lc_prod_bl1ver36_spread.toml`` gives word ``i`` exactly ``i+1`` set
-bits, so the total is 1+2+...+8 = 36 and **no plausible truncated, repeated or
+word would decode all of them correctly. ``sep_efuse_lc_prod_bl1ver36_spread.toml``
+gives word ``i`` exactly ``i+1`` set bits, so the total is 1+2+...+8 = 36 and **no
+plausible truncated, repeated or
 mis-indexed decode of those eight words reaches 36**.
 
-Stated that way on purpose. A literal "no other multiset sums to 36" would be false --
+A literal "no other multiset sums to 36" would be false --
 8+8+8+8+1+1+1+1 also sums to 36 -- but no decode DEFECT produces that multiset. What
 the spread does catch is every systematic misread: read only word 0 (1), read word 0
 eight times (8), stop at seven words (29), read one word twice and skip another (any
@@ -69,12 +61,12 @@ value but 36), or index with a wrong stride (a different subset sum). The load-b
 check is not the total alone but ``sorted(per_word) == list(range(1, 9))`` at
 :meth:`_check_efuse` plus the exact ``FUSE_VER=0x00000024`` echo.
 
-An earlier draft used one bit per word (total 8). A reviewer correctly showed that was
-weaker: eight reads of the SAME word also sum to 8, so it caught a wrong loop bound
-but not a wrong index expression. This is also why the floor is 36 rather
-than the reference's 8 -- eight non-zero words with distinct popcounts need at least
-36 bits, so matching the reference's VALUE and distinguishing the eight words cannot
-both be done. The boundary itself is preserved because the manifest is raised to match.
+One bit per word (total 8) would be weaker: eight reads of the SAME word also sum to
+8, so it would catch a wrong loop bound but not a wrong index expression. This is
+also why the floor is 36 rather than the reference's 8 -- eight non-zero words with
+distinct popcounts need at least 36 bits, so matching the reference's VALUE and
+distinguishing the eight words cannot both be done. The boundary itself is preserved
+because the manifest is raised to match.
 
 The accept boundary ALONE cannot catch a truncated decode -- a smaller floor is still
 satisfied by the same manifest, so the run would still boot. What catches it is the
@@ -89,11 +81,11 @@ WHAT ELSE THE RUN MUST SHOW, because "it booted" is not a result:
   * ``FUSE_VER=0x00000024`` then ``MFST_VER=0x00000024``, each EXACTLY ONCE and in
     that order (``manifest_crypto.c``). One slot is attempted, so a second
     occurrence would mean a failover this testcase forbids;
-  * ``VERSION_ROLLBACK``  absent -- the rejecting arm did not fire;
+  * ``VERSION_ROLLBACK`` absent -- the rejecting arm did not fire;
   * the rollback check ran BEFORE key selection: ``FUSE_VER`` precedes ``PUBK_SEL=``
     because ``manifest_crypto_validate`` calls ``check_security_version``
-     before ``validate_signature``. This is the ordering the key
-    testcases of batches R1/R2 rely on to keep their verdicts attributable, and this
+    before ``validate_signature``. This is the ordering the key-selection
+    testcases rely on to keep their verdicts attributable, and this
     is the one testcase whose stimulus IS the version field, so it is asserted here
     rather than assumed. Be honest about its weight: on an ACCEPT path both stages
     run, so this shows SEQUENCE only. The stronger property -- that a rejected
@@ -110,9 +102,9 @@ PLATFORM ADAPTATION -- MARKERS. The reference asserts
 ``STATUS: MANIFEST_VALIDATED``, which this ROM DOES emit
 (``SEP_MSG_MANIFEST_VALIDATED``, ``manifest_crypto.c``), and
 ``ERROR: INVALID_SECURITY_VERSION``, whose code ``SEP_MSG_INVALID_SECURITY_VERSION``
-(``bootrom/prod/include/status_values.h:9``) is defined and never emitted -- the
-wider gap is ``batch_runs_0904_rtl/FINDINGS.md`` R04, and it does not bite here
-because this port runs the ACCEPT case and needs no rejection code. The version
+(``bootrom/prod/include/status_values.h:9``) is defined and never emitted -- that
+gap does not bite here because this port runs the ACCEPT case and needs no
+rejection code. The version
 values themselves have no architected code on either ROM, so ``FUSE_VER=`` /
 ``MFST_VER=`` are console echoes in both.
 
@@ -123,8 +115,7 @@ operands does not show the ``<`` executed, and the absence of ``VERSION_ROLLBACK
 plus continuation to ``RSA_VERIFY_START`` is equally consistent with "compared and
 accepted" and with "never compared". The ordering assertion above does not close that
 either -- order is sequence, not comparison. **The comparison's EXISTENCE is proven by
-the two REJECT siblings named earlier**, which is exactly why keeping them matters and
-why removing either would have been a weakening rather than a tidy-up.
+the two REJECT siblings named earlier.**
 
 BOTH SLOTS ARE RE-SIGNED. ``security_version`` sits inside the TBS
 (``bootrom/prod/include/manifest.h:218``, offset 162), so raising it invalidates the
@@ -164,13 +155,12 @@ _EFUSE_PRELOAD = (
 )
 
 # The thermometer floor the preload burns, and the manifest value this testcase
-# writes. Equal on purpose: that equality IS the boundary under test.
+# writes. Equal: that equality IS the boundary under test.
 #
 # 36 = 1+2+...+8, because the preload gives word i exactly i+1 set bits so that no
 # other combination of the eight words sums to it. The reference's effective floor is
-# 8 (sep_firmware_base_test.sv'hFF -> popcount 8), all of it in the low
-# byte; matching that VALUE and distinguishing the eight words are mutually exclusive,
-# and the decode coverage is worth more than the scale. Disclosed in flow_deviation.
+# 8 (sep_firmware_base_test.sv burns 'hFF -> popcount 8), all of it in the low
+# byte; matching that VALUE and distinguishing the eight words are mutually exclusive.
 _SECURITY_VERSION = 36
 _FUSE_VER_ECHO = f"FUSE_VER=0x{_SECURITY_VERSION:08x}"  # manifest_crypto.c
 _MFST_VER_ECHO = f"MFST_VER=0x{_SECURITY_VERSION:08x}"  # manifest_crypto.c
@@ -362,10 +352,10 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             f"{_SIG_VALID}@{i_sig} -> {_CRYPTO_OK}@{i_ok}. Console: {console}"
         )
         # CHK-ROLLBACK-BEFORE-KEYSEL: check_security_version (manifest_crypto.c)
-        # precedes validate_signature (:369). Every key-selection testcase in
-        # batches R1 and R2 relies on that ordering to keep its own verdict
-        # attributable; this is the testcase whose stimulus is the version field, so
-        # it is the right place to assert the ordering rather than inherit it.
+        # precedes validate_signature (:369). Every key-selection testcase relies
+        # on that ordering to keep its own verdict attributable; this is the
+        # testcase whose stimulus is the version field, so it is the right place to
+        # assert the ordering rather than inherit it.
         assert 0 <= i_fuse < i_sel, (
             f"{_FUSE_VER_ECHO}@{i_fuse} did not precede {_PUBK_SEL}@{i_sel}: the "
             f"rollback check no longer runs before key selection, which invalidates "

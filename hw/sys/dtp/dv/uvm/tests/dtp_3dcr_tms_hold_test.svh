@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_3dcr_tms_hold_test — per-STAP TRST + SIB-open flow in a seeded order: an unselected port
-// never drives tdo_oen (parked TMS polarity is OSS-loopback-limited)
+// never drives tdo_oen (the parked TMS polarity is state-dependent under the
+// tb_top wire loopback, so it is logged only)
 // (looped runner with per-pass family evidence, 16-pass floor).
 
 class dtp_3dcr_tms_hold_test extends dtp_base_test;

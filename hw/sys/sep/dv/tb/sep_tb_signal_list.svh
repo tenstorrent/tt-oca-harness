@@ -48,8 +48,8 @@
 `SEP_TB_IN(logic, jtag_kmac_rst_hold_i)
 `SEP_TB_IN(logic, jtag_trng_rst_hold_i)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
-// pair onto the LCC decoder input (signed off -- no legal OTP image can present
-// one). See the force block below.
+// pair onto the LCC decoder input (no legal OTP image can present one). See
+// the force block below.
 `SEP_TB_IN(logic, lc_sigint_inject_i)
 // Token-comparator redundancy fault inject. Default 0. Encoding:
 //   3'b000 off
@@ -69,8 +69,8 @@
 //          so the presented token does not reach the result: they show that
 //          a unanimous legal pair raises no fault, not that any particular
 //          token compares a particular way.
-// Signed off -- no legal token/OTP image can break the three identical
-// compare cones. See the force block below.
+// No legal token/OTP image can break the three identical compare cones. See
+// the force block below.
 `SEP_TB_IN(logic [2:0], token_cmp_fault_inject_i)
 // Which token comparator the inject hits. Default 0.
 //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
@@ -80,7 +80,7 @@
 `SEP_TB_IN(logic, token_digest_test_en_inject_i)
 // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
 // broken codeword onto the host-adapter command-integrity decoder input
-// (signed off -- software cannot emit a bad TL-UL user code). The checker
+// (software cannot emit a bad TL-UL user code). The checker
 // still gates on a_valid, so a DMA-issued command is required. See the
 // force block below.
 `SEP_TB_IN(logic, dma_host_intg_inject_i)
@@ -383,7 +383,7 @@
 // sequence the adapter hands to the crypto endpoints; with a single active
 // crypto sink the adapter is in-order so AES's post-adapter beats equal this
 // stream 1:1, and each word is also chained to the CHK4 genbits golden. Mirrors
-// the reference suite's hw_axis1_* tap (sep_entropy_noise_if.sv). Read-only XMR, no force.
+// the reference suite's hw_axis1_* tap. Read-only XMR, no force.
 `SEP_TB_OUT(logic, axis1_tvalid_o)  // entropy_muxed_req[1].tvalid
 `SEP_TB_OUT(logic, axis1_tready_o)  // entropy_muxed_rsp[1].tready
 `SEP_TB_OUT(logic [31:0], axis1_tdata_o)  // entropy_muxed_req[1].tdata (32b word)
@@ -414,10 +414,11 @@
 `SEP_TB_OUT(logic [sep_pkg::NUM_INTERNAL_IRQS-1:0], sep_internal_interrupts_probe_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
+`SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)
 // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
 // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
-// SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to
-// single" is this bridge. The external master still sees AxLEN=1;
+// fabric.adoc "convert burst to single" is this bridge. The external master
+// sees AxLEN=1;
 // Lite has no AxLEN, so the split is not a frontdoor CSR. Addr is the
 // local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
 // m_axi ready/valid cones.
@@ -443,6 +444,34 @@
 `SEP_TB_OUT(logic, token_digest_valid_en_pre_o)
 `SEP_TB_OUT(logic, token_digest_latch_en_o)
 `SEP_TB_OUT(logic, token_digest_valid_en_o)
+
+// eFuse read/program FSM fail-closed observability and fault injection.
+// `efuse_read_interface` and `efuse_program_interface` each hold a two-bit
+// state whose only legal encodings are 2'b01 and 2'b10; 2'b00 and 2'b11 are
+// unreachable by any frontdoor stimulus, so the fail-closed behaviour the
+// design asserts on them has no other way to be provoked. The inject inputs
+// drive one illegal encoding for one cycle; the probes are read-only taps on
+// the state and on the error/data outputs the contract names.
+`SEP_TB_IN(logic [1:0], efuse_read_state_inject_i)
+`SEP_TB_IN(logic, efuse_read_state_inject_en_i)
+`SEP_TB_IN(logic [1:0], efuse_program_state_inject_i)
+`SEP_TB_IN(logic, efuse_program_state_inject_en_i)
+`SEP_TB_OUT(logic [1:0], efuse_read_state_o)
+`SEP_TB_OUT(logic [1:0], efuse_program_state_o)
+`SEP_TB_OUT(logic, efuse_read_error_o)
+`SEP_TB_OUT(logic, efuse_read_done_o)
+`SEP_TB_OUT(logic, efuse_read_busy_o)
+`SEP_TB_OUT(logic [31:0], efuse_read_back_data_o)
+// One per interface: each drives its own command request, and checking the
+// program machine against the read machine's request would hold on any RTL.
+`SEP_TB_OUT(logic, efuse_read_cmd_req_valid_o)
+`SEP_TB_OUT(logic, efuse_program_cmd_req_valid_o)
+// The program interface's retirement outputs, so its fail-closed leg grades the
+// same contract the read leg does rather than only the absence of a command.
+`SEP_TB_OUT(logic, efuse_program_error_o)
+`SEP_TB_OUT(logic, efuse_program_done_o)
+`SEP_TB_OUT(logic, efuse_program_busy_o)
+`SEP_TB_OUT(logic [31:0], efuse_program_read_back_data_o)
 // Demotion state outputs expose the differential {~demote, demote} encoding;
 // 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
 // have no DUT output, and the CPU owns their AXI frontdoor during firmware

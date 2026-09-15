@@ -22,10 +22,10 @@
 // the entry address, so the trace shows exactly the seeded PC and nothing after.
 //
 // LAYOUT. u_sep_sram is 32768 x 64-bit, byte-addressed from 0x10000000, and
-// $readmemh fills from index 0. The handler entry is 0x10000100 -- deliberately
-// NOT offset 0, so "PC == seeded address" cannot be satisfied by a ROM that
-// jumped to the range base by mistake. Byte offset 0x100 is 64-bit word 32, so
-// words 0..31 are zero filler and word 32 carries the instruction.
+// $readmemh fills from index 0. The handler entry is 0x10000100, not offset 0,
+// so "PC == seeded address" cannot be satisfied by a ROM that jumped to the range
+// base by mistake. Byte offset 0x100 is 64-bit word 32, so words 0..31 are zero
+// filler and word 32 carries the instruction.
 //
 // Both halves of word 32 hold the instruction. Only the low half (0x10000100) is
 // the entry, but filling both makes the preload immune to a half-mapping

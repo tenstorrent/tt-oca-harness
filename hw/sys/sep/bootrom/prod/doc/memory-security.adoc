@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-prod-rom-memory-security]]
+== Memory and security
+
+=== Image and runtime layout
+
+[cols="2,2,2,4",options="header"]
+|===
+|Region |Address |Size |Use
+
+|SEP SRAM
+|`0x1000_0000`
+|256 KiB
+|Manifest and payload staging.
+
+|Boot ROM
+|`0x1004_0000`
+|64 KiB
+|BL0 code, metadata, read-only data, and the load image of `.data`.
+
+|SPI XIP
+|`0x3000_0000`
+|256 MiB aperture
+|Memory-mapped flash source for the default controller path.
+
+|SMC SRAM
+|SEP view `0x4006_0000`
+|1 MiB
+|Recovery/secondary manifest source and status ring storage.
+
+|ICCM
+|`0xC000_0000`
+|256 KiB
+|Validated BL1 execution image.
+
+|DCCM
+|`0xC004_0000`
+|128 KiB
+|BL0 writable data, BSS, stack, and BL0-to-BL1 state.
+|===
+
+The linker keeps `.text`, `.metadata`, and `.rodata` in ROM. `.data` executes
+from DCCM but has a ROM load image. `.bss` and the stack occupy only DCCM. A
+128-byte reserve at the top of DCCM holds `struct bl0_state`; runtime and
+compile-time checks keep the structure from overlapping the downward-growing
+stack.
+
+`bl0_state` gives BL1 the validated manifest address, boot mode, secure-boot
+decision, lifecycle and feature-control values, last error, boot measurement,
+deferred BL2 demotion decision, and the SRAM address of the BL1 image.
+
+=== Security ordering
+
+The following ordering is part of the ROM security contract:
+
+. Memory repair and MBIST are evaluated before the ROM writes or trusts DCCM.
+. The lifecycle state is validated before it can select secure-boot policy.
+. Manifest bounds and structure are checked before payload addresses are used.
+. For an encrypted image, the payload hash covers ciphertext and is checked
+  before in-place decryption; the TOC is parsed only after decryption.
+. Image ranges are checked before image data is hashed.
+. Sensitive fuse reads are locked before the demotion register is written.
+. The stack canary is checked before the non-returning manifest and handoff
+  path.
+. BL1 is copied only after the manifest, payload, TOC, and BL1 entry have all
+  passed validation.
+
+Hash and public-key digest comparisons accumulate differences over every byte
+instead of returning on the first mismatch.
+
+=== Lifecycle and secure-boot policy
+
+The lifecycle controller accepts TEST_DEV, PROD, PROD_END, and the defined RMA
+encodings. An invalid value causes BL0 to hold the SMC cores in reset, report a
+terminal error, and stop.
+
+`SBOOT_DIS` is an eFuse override that disables secure boot. When it is clear,
+PROD and PROD_END enforce secure boot regardless of the manifest request.
+TEST_DEV and RMA enable secure boot when the manifest requests it. An encrypted
+payload is rejected when secure boot is not active.
+
+=== Manifest authentication
+
+The ROM always checks the SHA-256 manifest hash over the to-be-signed region.
+When secure boot is active it additionally:
+
+. compares the manifest security version with the thermometer-encoded
+  `BL1_VERSION` fuse;
+. selects a ROM-embedded or eFuse public-key digest;
+. checks the corresponding revocation bit;
+. binds the manifest RSA modulus to the selected digest; and
+. verifies the RSA-3072 PKCS#1 v1.5 signature with OTBN.
+
+The public key in the manifest is therefore not trusted by itself. The Key
+Manager does not participate in this verification path.
+
+=== Payload protection
+
+The payload SHA-256 is checked on both secure and non-secure boots. Secure
+encrypted images derive an AES-128 key from the `CLASS_KEY` fuse with
+KBKDF-HMAC-SHA256 and decrypt the payload in place with AES-CBC. Temporary key,
+salt, and derivation buffers are explicitly cleared.
+
+After decryption, the ROM validates the TOC and every image extent, requires a
+usable SEP BL1 entry, verifies each image SHA-256, and clears bytes in gaps
+between described images and after the final image.
+
+=== Secret locking, demotion, and measurement
+
+Before handoff, BL0 read-locks `CLASS_KEY`, both RMA token digests, and the
+chiplet, SiP, and system UIDs. Failure to read back all requested lock bits is
+terminal.
+
+PROD_END prevents demotion and locks both demotion registers. Other lifecycle
+states apply the BL1 decision or preserve a deferred BL2 decision according to
+the manifest. BL0 records a SHA-256 boot measurement over the manifest hash,
+lifecycle, demotion decision, secure-boot state, and `SBOOT_DIS`. This digest
+reports the selected boot state to BL1; it does not itself bind a key to that
+state.

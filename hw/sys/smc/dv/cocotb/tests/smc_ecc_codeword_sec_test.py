@@ -16,6 +16,9 @@ from smc_base_test import smc_base_test
 class smc_ecc_codeword_sec_test(smc_base_test):
     """One flipped codeword bit: the CPU reads the bank and DED stays low."""
 
+    required_evidence = ("CHK-ECC-CODEWORD-SEC",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

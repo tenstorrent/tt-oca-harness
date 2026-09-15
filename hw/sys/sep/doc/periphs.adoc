@@ -101,22 +101,15 @@ field is split across two RDL registers because PeakRDL requires power-of-2
 `regwidth`; all 96 bits are physically fused and mapped 1-to-1 to OTP words 0–2:
 
 * `LOCKS` (64-bit `@0x0`): slots 0–31 — two bits per field, write-lock at bit 2n, read-lock at 2n+1
-* `LOCKS_SPARE` (32-bit `@0x8`): slots 32–39 in bits [15:0]; slots 40–47 (unassigned) in bits [31:16]
+* `LOCKS_SPARE` (32-bit `@0x8`): slots 32–40 in bits [17:0]; slots 41–47 (unassigned) in bits [31:18]
 
 Firmware reads the complete 96-bit lock state as three consecutive 32-bit APB words.
-There are 40 lockable fields (slots 0–39). LOCK is not one of them: *_the 96-bit
+There are 41 lockable fields (slots 0–40). LOCK is not one of them: *_the 96-bit
 lock field has no lock-bit pair of its own_*, and no lock bit may write-lock or
 read-lock `LOCKS` or `LOCKS_SPARE`. When write-locked, the corresponding
 shadow register is not writable. When read-locked, neither software nor JTAG can
 read the corresponding shadow register or fuse field. The fuse-sensing FSM is
 _always_ able to read the fuses in order to populate the shadow registers.
-
-Per-field lock slots (v0.5.22):
-[none]
-* Slots  0–28: original fields (LC_STATE through SIP_PUBK_PQC_HASH1) — LOCKS[57:0]
-* Slots 29–31: v0.5.22 identity fuses (SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID) — LOCKS[63:58]
-* Slots 32–39: v0.5.22 spare fields (spare0–spare7) — LOCKS_SPARE[15:0]
-* Slots 40–47: unassigned — LOCKS_SPARE[31:16] (reserved for future fields)
 
 |LC_STATE |1 |32 (use only 4 bits) |set-only |true |Life-cycle state of the
 chiplet. *_LC_STATE shall never be write-locked or read-locked by the
@@ -212,20 +205,9 @@ it does not.
 ROM_CTL[5:1]: row-swap control; swaps ROM slices when set. ROM_CTL[31:6]:
 reserved.
 
-|SPI_CONFIG |19 |288 |true |true |SPI discovery has 8 configuration values
-as well as 1 enable bitfield. Each word is 32-bits in length: [0]
-SPI_CONFIG_EN Enable for each of the following 8 SPI_CONFIG field words.
-SPI_CONFIG_EN[7:0] corresponds to registers 1-8 below. When bit N is set
-in this field, then configuration register N+1 is valid in fuses and
-that value will be read from fuses and written into the specified SPI
-configuration register during the SPI controller initialization.
-SPI_CONFIG_EN[31:8] are reserved. [1] SPI_CTRL_DISCOVERY_CTRL_REG [2]
-SPI_CTRL_INIT_PHY_DQ_TIMING_REG_ADDR phy_dq_timing_reg [3]
-SPI_CTRL_INIT_PHY_DQS_TIMING_REG_ADDR phy_dqs_timing_reg [4]
-SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_ADDR phy_gate_lpbk_ctrl_reg [5]
-SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_ADDR phy_dll_slave_ctrl_reg [6]
-SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_ADDR phy_dll_master_ctrl_reg [7]
-SEP_SPI_PHY_MISC [8] INIT_RB_VALID_TIME
+|SYSCLK_FREQ_MHZ |19 |32 (11 used) |true |true |Configured sysclk PLL frequency
+in MHz (`sysclk_freq_mhz[10:0]`). Ignored when 0. Consumed by boot ROM clock
+math (PLL selection and SPI `CLKDIV` derivation).
 
 |CHIPLET_PUBK_HASH0 |20 |256 |true |true |Hash of chiplet-owner authentication
 key 0, fused. These fused chiplet-owner key hashes can be used in addition to
@@ -291,21 +273,23 @@ protection required. Lock slot 30 in LOCKS.
 Personalization input for the Key Manager identity root. Public; no read
 protection required. Lock slot 31 in LOCKS.
 
-|spare0 |33 |256 |true |true |Spare field 0 for future use (v0.5.22). Lock slot 32 in LOCKS_SPARE[1:0].
+|spare0 |33 |256 |true |true |Spare field 0 for future use.
 
-|spare1 |34 |256 |true |true |Spare field 1 for future use (v0.5.22). Lock slot 33 in LOCKS_SPARE[3:2].
+|spare1 |34 |256 |true |true |Spare field 1 for future use.
 
-|spare2 |35 |256 |true |true |Spare field 2 for future use (v0.5.22). Lock slot 34 in LOCKS_SPARE[5:4].
+|spare2 |35 |256 |true |true |Spare field 2 for future use.
 
-|spare3 |36 |256 |true |true |Spare field 3 for future use (v0.5.22). Lock slot 35 in LOCKS_SPARE[7:6].
+|spare3 |36 |256 |true |true |Spare field 3 for future use.
 
-|spare4 |37 |256 |true |true |Spare field 4 for future use (v0.5.22). Lock slot 36 in LOCKS_SPARE[9:8].
+|spare4 |37 |256 |true |true |Spare field 4 for future use.
 
-|spare5 |38 |256 |true |true |Spare field 5 for future use (v0.5.22). Lock slot 37 in LOCKS_SPARE[11:10].
+|spare5 |38 |256 |true |true |Spare field 5 for future use.
 
-|spare6 |39 |256 |true |true |Spare field 6 for future use (v0.5.22). Lock slot 38 in LOCKS_SPARE[13:12].
+|spare6 |39 |256 |true |true |Spare field 6 for future use.
 
-|spare7 |40 |256 |true |true |Spare field 7 for future use (v0.5.22). Lock slot 39 in LOCKS_SPARE[15:14].
+|spare7 |40 |256 |true |true |Spare field 7 for future use.
+
+|spare8 |41 |256 |true |true |Spare field 8 for future use.
 |=======================================================================
 
 The fuse map is exactly 8192 bits ending at `0x400` (1024 bytes, 256 × 32-bit words).

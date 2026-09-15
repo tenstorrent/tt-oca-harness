@@ -42,15 +42,16 @@ UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t",
 #   DDSR [1] / DDCD [3]: same delta-since-last-read contract for DSR / DCD
 #   TERI [2] "set when RI has changed from a 1 to a 0"
 #
-# DSR / RI / DCD are static zero: the SMC integration hardwires
-# ``uart_dsr_ni`` / ``uart_ri_ni`` / ``uart_dcd_ni`` to 1'b1 for every UART
-# instance (``hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv:732-734``),
-# so DSR = RI = DCD = 0, and with RI never moving TERI = DDSR = DDCD = 0. Only
-# CTS/DCTS are live, which is what this sequence exercises.
+# DSR / RI / DCD (and their delta bits DDSR / TERI / DDCD) are outside every
+# compare below. The integrator pin table
+# (``doc/integrator/meta/ocah_gpio_table.csv``) pins only RX / TX / RTS / CTS
+# for each UART, so no pad reaches ``dsr_ni`` / ``ri_ni`` / ``dcd_ni`` and this
+# bench has no authority for their level other than the design itself. The
+# compares are therefore masked to the CTS / DCTS bits this test drives
+# (``MSR_LIVE_MASK``); the other six bits are logged, not asserted.
 #
-# CTS INPUT LEVEL -- driven by this test, not inherited from a pad default.
-# "The SMC cocotb bench drives no external value on that pad, so cts_ni = 0" is
-# not a safe premise here, and neither is "identical on Verilator and VCS":
+# CTS INPUT LEVEL -- driven by this test, because an undriven pad has no
+# simulator-independent level:
 #   * ``tb_top.sv:803`` instantiates ``pullup u_pad_pullup (gpio_pad_io[i])`` on
 #     EVERY pad, "to give idle/unconnected pads a defined '1"
 #     (tb_top.sv:692-693) -- an undriven pad here is 1, not 0; and
@@ -61,9 +62,9 @@ UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t",
 # So the level is stimulus this sequence establishes: pad 14 is driven from
 # the top-level ``tb_gpio_ext_drive_en`` / ``tb_gpio_ext_drive_value`` pins,
 # which are the highest-precedence entry in tb_top's pad-injection mux
-# (``tb_top.sv:716-721``, evaluated before the pullup and before every other
-# injector) -- the same approved external pad-drive path the GPIO/I2C sequences
-# use. No force, no deposit, no hierarchical write.
+# (``tb_top.sv:725-730``, evaluated before the pullup and before every other
+# injector) -- the same external pad-drive path the GPIO/I2C sequences use. No
+# force, no deposit, no hierarchical write.
 #
 # PAD IDENTITY: pad 14 is UART[0].CTS per the authoritative integrator pin table
 # ``doc/integrator/meta/ocah_gpio_table.csv:16`` /
@@ -72,15 +73,16 @@ UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t",
 #
 # STIMULUS PATH (how the pad reaches the pin -- a stimulus statement, NOT the
 # source of any expected value): the pad's UART function is muxed on, so it must
-# be enabled before the pad can drive ``uart_cts_ni``.
-# ``smc_padring.sv:242-246`` selects pad 14's LSIO function with
-# ``uart_enable_i[0]`` and routes ``uart_cts_n_o[0] = lsio_pad2core_data[14]``;
-# ``uart_enable_i[0]`` is ``UART_LOG_ENGINE_CTRL.CTRL.UART_EN``
-# (``uart_log_engine_wrap.sv:367``). This sequence therefore reads
+# be enabled before the pad can drive the UART's CTS input.
+# ``UART_LOG_ENGINE_CTRL.CTRL.UART_EN`` is that enable
+# (``uart_log_engine_ctrl.rdl``: "When set, the pad-mux downstream will be
+# forced to accept UART traffic"). This sequence therefore reads
 # UART_LOG_ENGINE_CTRL at its RDL reset 0x0 first (which is what proves UART_EN
 # starts cleared) and only then writes UART_EN = 1.
 MSR_DCTS = reg_field_pack("UART_16550_MAIN_MSR_reg_t", dcts=1)
 MSR_CTS = reg_field_pack("UART_16550_MAIN_MSR_reg_t", cts=1)
+# The bits every MSR compare is masked to: the two this test drives and reads.
+MSR_LIVE_MASK = MSR_DCTS | MSR_CTS
 
 # cts_ni driven 0  =>  CTS = ~0 = 1. First MSR read of the simulation:
 # "changed since the last time this register was read" with no prior read and
@@ -101,9 +103,8 @@ UART0_CTS_PAD = 14
 # Bounded poll for a driven pad level to appear in MSR. There is no handshake to
 # wait on (the pad is an asynchronous input crossing into the UART's clock
 # domain), so completion is a bounded retry whose expiry is a hard failure
-# ([TIMEOUT-MUST-FAIL]); each CSR read is itself hundreds of ns of sim time, so
-# this bound is orders of magnitude above the observed 1-read latency and is
-# never tuned to make a pass happen.
+# ([TIMEOUT-MUST-FAIL]); each CSR read is hundreds of ns of sim time, so the
+# bound sits far above the pad-to-MSR latency.
 MSR_POLL_READS = 40
 
 UART_LOG_READS = [
@@ -167,9 +168,29 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         dut.tb_gpio_ext_drive_value.value = int(dut.tb_gpio_ext_drive_value.value) & ~mask
 
     async def _read_msr(self, name: str, expected: int | None = None) -> int:
-        rdata = await self.csr_read(name, UART_MSR, expected=expected)
+        """Read UART_MSR and return its CTS / DCTS bits.
+
+        ``expected`` is compared against the masked word, so the pass asserts
+        nothing about DSR / RI / DCD or their delta bits. The unmasked word is
+        logged on every read, so those bits stay visible without being asserted.
+        """
+        rdata = await self.csr_read(name, UART_MSR)
         self.msr_reads += 1
-        return rdata
+        live = rdata & MSR_LIVE_MASK
+        cocotb.log.info(
+            "%s: UART_MSR full word 0x%08x, CTS/DCTS bits 0x%02x, bits outside the "
+            "compare 0x%08x (DSR/RI/DCD and their delta bits, logged only)",
+            name,
+            rdata,
+            live,
+            rdata & ~MSR_LIVE_MASK,
+        )
+        if expected is not None:
+            assert live == expected, (
+                f"{name}: UART_MSR CTS/DCTS bits 0x{live:02x} != expected "
+                f"0x{expected:02x} (full word 0x{rdata:08x})"
+            )
+        return live
 
     async def _msr_follow_pad(self, level: int) -> int:
         """Drive pad 14 to ``level``, then prove MSR follows it exactly.
@@ -252,9 +273,9 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
             )
 
         # Establish the CTS level as this test's own stimulus and route the pad
-        # to the pin. Driving pad 14 LOW first is deliberate: cts_ni reads 0
-        # both before and after the UART_EN write, so enabling the pad function
-        # cannot itself move CTS and the first MSR read needs no settling.
+        # to the pin. Pad 14 is driven LOW before UART_EN: cts_ni then reads 0
+        # both before and after the write, so enabling the pad function cannot
+        # itself move CTS and the first MSR read needs no settling.
         self._drive_cts_pad(0)
         await self.csr_write(
             "UART_LOG_ENGINE_CTRL_UART_EN", UART_LOG_ENGINE_CTRL_CTRL, UART_LOG_ENGINE_CTRL_UART_EN
@@ -262,10 +283,10 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
 
         msr_first = await self._read_msr("UART_MSR", expected=MSR_FIRST_READ)
         cocotb.log.info(
-            "CHK-UART-MSR-FIRST: UART_MSR @ 0x%08x = 0x%08x == DCTS|CTS 0x%02x "
-            "(this test drives CTS pad %d low -> cts_ni=0 -> CTS=1; "
-            "dsr_ni/ri_ni/dcd_ni tied 1 -> DSR=RI=DCD=0; first read of this "
-            "register -> DCTS=1)",
+            "CHK-UART-MSR-FIRST: UART_MSR @ 0x%08x CTS/DCTS bits = 0x%02x == "
+            "DCTS|CTS 0x%02x (this test drives CTS pad %d low -> cts_ni=0 -> "
+            "CTS=1; first read of this register -> DCTS=1; DSR/RI/DCD and "
+            "their delta bits are masked out of the compare)",
             UART_MSR,
             msr_first,
             MSR_FIRST_READ,
@@ -274,7 +295,7 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
 
         msr_second = await self._read_msr("UART_MSR_RD2", expected=MSR_SECOND_READ)
         cocotb.log.info(
-            "CHK-UART-MSR-DELTA-CLEAR: second UART_MSR read = 0x%08x == 0x%02x "
+            "CHK-UART-MSR-DELTA-CLEAR: second UART_MSR read CTS/DCTS = 0x%02x == 0x%02x "
             "-- DCTS cleared by the preceding read while CTS stayed asserted, "
             "as the MSR delta-since-last-read contract requires",
             msr_second,
@@ -282,8 +303,7 @@ class smc_uart_spi_log_engine_test_seq(SmcCsrSeq):
         )
 
         # Both polarities of the pin->MSR mapping, and DCTS set->clear in both
-        # directions. This is the leg an observed-HW golden could never assert
-        # and the leg a pad default could never establish.
+        # directions.
         try:
             await self._msr_follow_pad(1)
             await self._msr_follow_pad(0)

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_otp_axi_read_random_ops_test — the `read_random_ops` SMC
-// fabric JTAG2AXI scenario: randomized single reads (address/size/payload)
+// dtp_jtag2axi_smc_otp_axi_read_random_ops_test — the `read_random_ops` SMC OTP
+// AXI-Lite JTAG2AXI scenario: randomized single reads (address/size/payload)
 // of backdoor-preloaded responder memory, every returned value checked in
 // the sequence and every observed read compared by the shared passive env.
 

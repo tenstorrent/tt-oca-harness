@@ -10,11 +10,9 @@ time 0. The DUT knows nothing about register names, so something has to turn
 Placement is NOT described here. Register offsets and widths come from
 ``SepEfuseImage``'s field table (derived from the generated register header, in
 turn generated from ``sep_efuse_map.rdl``), and bit ranges within a register come
-from that header's ctypes bitfield structs. Nothing here restates the fuse map,
-which is the point: the reference implementation this replaces carried a
-hand-maintained ``efuse_schema.toml`` copy of the map and placed registers by
-TOML iteration order, so reordering a config file silently moved every field
-after the edit.
+from that header's ctypes bitfield structs. Nothing here restates the fuse map:
+a hand-maintained copy placed by TOML iteration order would let a reordered
+config file silently move every field after the edit.
 
 ``apply_toml()`` is called TWICE per simulation, from two processes:
 ``dv_sim_prestage.stage()`` before the simulator launches, to write the array the
@@ -57,11 +55,10 @@ _CONFIG_DIR = _DV_ROOT / "tb" / "efuse_preloads" / "efuse_configurations"
 def _reexec_under_venv() -> None:
     """Re-exec under the repo virtualenv if this interpreter cannot parse TOML.
 
-    Only reachable when run as a script. The DV flow already runs Python 3.11
-    under ``.venv``, but a bare ``./sep_generate_efuse_preload.py`` picks up the
-    system Python 3.9, which has neither ``tomllib`` nor ``tomli``/``toml``
-    installed -- there is nothing to fall back to, so hand the invocation to the
-    interpreter the flow itself uses.
+    Only reachable when run as a script. The DV flow runs Python 3.11 under
+    ``.venv``, but a bare ``./sep_generate_efuse_preload.py`` may pick up an older
+    system Python without ``tomllib`` -- there is nothing to fall back to, so hand
+    the invocation to the interpreter the flow itself uses.
     """
     if sys.version_info >= (3, 11):
         return
@@ -98,15 +95,13 @@ WORD_BITS = 32
 # the config still loads and the author's intent is quietly dropped.
 #   value    -- whole register, little-endian
 #   fields   -- named bitfields
-#   regwidth -- the reference suite restates the width the RDL already fixes;
-#               accepted for compatibility and never allowed to affect placement
+#   regwidth -- present in reference-suite configs; the RDL fixes the width, so the
+#               key is accepted and never affects placement
 _ALLOWED_KEYS = frozenset(("value", "fields", "regwidth"))
 
-# Lock support was deliberately not implemented. The reference config format
-# carries per-register read_locked/write_locked, but no config here sets one and
-# no test checks lock enforcement, so the lock-vector assembly would be untested
-# code on the path that decides what the DUT senses. Reject the keys loudly so a
-# config copied from the reference cannot appear to set a lock that never lands.
+# Lock keys are rejected, not modelled. The reference config format carries
+# per-register read_locked/write_locked; rejecting them loudly means a config copied
+# from the reference cannot appear to set a lock that never lands.
 _LOCK_KEYS = frozenset(("read_locked", "write_locked"))
 
 
@@ -146,7 +141,7 @@ def _check_width(value: int, width: int, where: str) -> int:
 def _apply_register(image, reg_name: str, body: dict) -> None:
     """Apply one ``[REG]`` table onto ``image``.
 
-    LC_STATE is written as a plain word ON PURPOSE -- it does NOT go through
+    LC_STATE is written as a plain word, bypassing
     ``SepEfuseImage.set_lc_state()``, which rejects any code outside the 7 legal
     ones. Preloads that sense the DUT straight into a corrupt (non-complementary)
     or INVALID lifecycle encoding exist precisely to inject a state the write
@@ -269,9 +264,9 @@ _failures: list = []
 def _selftest() -> int:
     """Cover what the committed configs cannot.
 
-    The four live configs touch four registers between them and none of them can
-    fail, so the wide registers and every error path would otherwise be untested
-    code on the path that decides what the DUT senses at t=0.
+    The committed configs touch few registers and none of them can fail, so the
+    wide registers and every error path would otherwise be untested code on the
+    path that decides what the DUT senses at t=0.
     """
     import tempfile
 
@@ -344,10 +339,9 @@ def _selftest() -> int:
     )
     ok(
         "the reference suite's stray regwidth key is ignored",
-        "[SEP_SPI_CTRL_FIELD_EN]\nregwidth = 288\n"
-        "  [SEP_SPI_CTRL_FIELD_EN.fields.smu_pll_sysclk]\n  value = 0x320\n",
-        0x320 << 8,
-        lambda i: i.field_int("SEP_SPI_CTRL_FIELD_EN"),
+        "[SYSCLK_FREQ_MHZ]\n  [SYSCLK_FREQ_MHZ.fields.sysclk_freq_mhz]\n  value = 0x320\n",
+        0x320,
+        lambda i: i.field_int("SYSCLK_FREQ_MHZ"),
     )
 
     # Registers no live config sets. A name here that the RDL no longer has makes
@@ -363,8 +357,8 @@ def _selftest() -> int:
         "[RMA_CHIPLET_TOKEN_DIGEST]\n  [RMA_CHIPLET_TOKEN_DIGEST.fields.token]\n"
         "  value = 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925\n"
         "[CHIPLET_UID]\n  [CHIPLET_UID.fields.uid]\n  value = 0xdeadbeef\n"
-        "[SEP_SPI_CTRL_FIELD_EN]\n"
-        "  [SEP_SPI_CTRL_FIELD_EN.fields.smu_pll_sysclk]\n  value = 0x320\n"
+        "[SYSCLK_FREQ_MHZ]\n"
+        "  [SYSCLK_FREQ_MHZ.fields.sysclk_freq_mhz]\n  value = 0x320\n"
     )
     for reg, want in (
         ("TRANSIENT_RMA_EN", 0x1),
@@ -376,8 +370,7 @@ def _selftest() -> int:
             0x66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925,
         ),
         ("CHIPLET_UID", 0xDEADBEEF),
-        # 800 MHz in smu_pll_sysclk[18:8], so the register value is shifted.
-        ("SEP_SPI_CTRL_FIELD_EN", 0x320 << 8),
+        ("SYSCLK_FREQ_MHZ", 0x320),
     ):
         ok(f"{reg} round-trips", wide, want, lambda i, r=reg: i.field_int(r))
 
@@ -415,10 +408,10 @@ def _selftest() -> int:
 
     # Loading each live config is the floor: these are what the DUT senses at
     # t=0, so one that no longer parses -- because the RDL renamed a field, say
-    # -- must fail here and not in a 20-minute simulation. The byte-compare only
-    # applies to configs that still have a committed image; most do not, because
-    # the plusargs name the .toml and the array is generated. Count them and say
-    # so, since a loop that compares nothing looks like one that verified all.
+    # -- must fail here and not in a long simulation. The byte-compare applies only
+    # to configs with a committed .hex image (the plusargs name the .toml and the
+    # array is generated, so a committed image is the exception). Count them and
+    # say so, since a loop that compares nothing looks like one that verified all.
     print("\n-- every live config loads, and matches its .hex if one exists --")
     configs = sorted(_CONFIG_DIR.glob("*.toml"))
     if not configs:

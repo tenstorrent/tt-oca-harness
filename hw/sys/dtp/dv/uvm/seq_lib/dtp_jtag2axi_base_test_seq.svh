@@ -46,6 +46,54 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     super.new(name);
   endfunction
 
+  // Geometry gate: every pass opens by reading the three *_JTAG2AXI_CAPS
+  // TDRs and comparing bus type, address size, and data size with the
+  // dtp_types table (CHK-J2A-GEOMETRY), so no bridge request is packed with
+  // field widths the DUT does not publish.
+  virtual task pre_body();
+    super.pre_body();
+    verify_bridge_geometry();
+  endtask
+
+  // +DTP_J2A_GEOMETRY_NEGATIVE corrupts the expected address size so the
+  // run must FAIL, proving the gate rejects a wrong table end to end.
+  task verify_bridge_geometry();
+    string names[3] = '{"smc_otp", "sep_otp", "smc_axi"};
+    bit negative = (test_cfg != null) && test_cfg.j2a_geometry_negative;
+    ocah_jtag_checker geometry = ocah_jtag_checker::type_id::create({get_name(), ".geometry"});
+    geometry.name_tag     = "dtp_jtag2axi_geometry";
+    geometry.required_ids = {DtpJ2aGeometryCheckId};
+    if (negative)
+      `uvm_info(get_type_name(),
+                "NEGATIVE VALIDATION: geometry gate expectations will be corrupted", UVM_LOW)
+    tap_reset();
+    step(1'b0);  // TLR -> RTI: TDR reads start their IR scan from Run-Test/Idle
+    foreach (names[i]) begin
+      dtp_j2a_target_t t = dtp_j2a_target_by_name(names[i]);
+      bit [63:0] value;
+      bit [63:0] exp_addr = 64'(t.addr_width) ^ 64'(negative);
+      read_tdr(IrWidth'(t.caps_instr), DtpJtag2AxiCapsLen, value);
+      `uvm_info(get_type_name(), $sformatf(
+                "GEOMETRY %s raw=0x%04h bus_type=%0d addr_size=%0d data_size=%0d",
+                t.caps_instr.name(),
+                value,
+                value[0],
+                value[6:1],
+                value[9:7]
+                ), UVM_LOW)
+      void'(geometry.expect_equal(
+          DtpJ2aGeometryCheckId, 64'(value[0]), 64'(t.bus_type), {t.name, " bus_type"}
+      ));
+      void'(geometry.expect_equal(
+          DtpJ2aGeometryCheckId, 64'(value[6:1]), exp_addr, {t.name, " addr_size"}
+      ));
+      void'(geometry.expect_equal(
+          DtpJ2aGeometryCheckId, 64'(value[9:7]), 64'(dtp_j2a_data_size(t)), {t.name, " data_size"}
+      ));
+    end
+    geometry.finalize();
+  endtask
+
   // --- bridge geometry and codec (dtp_types; kept under their short names
   //     for the scenario bodies) ------------------------------------------
   static function dtp_j2a_target_t target_smc_otp();
@@ -412,13 +460,24 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     series_data_shift(t, t.series_data_no_incr_instr, data, size, -1, unused);
   endtask
 
+  // With-status shift: the payload and the status bit above it, which sits
+  // past bit 63 for a 64-bit bridge and so comes from the operation's own
+  // capture rather than the 64-bit result word.
   task series_data_with_status(dtp_j2a_target_t t, bit [63:0] data, int unsigned size,
                                bit increment, output bit [63:0] rdata, output bit status_bit);
-    bit [63:0] result;
     int unsigned payload_bits = 8 * size_bytes(size);
-    series_data_shift(t, t.series_data_with_status_instr, data, size, int'(increment), result);
-    rdata      = result & data_mask(size);
-    status_bit = result[payload_bits];
+    dtp_jtag2axi_series_data_seq shift =
+            dtp_jtag2axi_series_data_seq::type_id::create("series_data_status");
+    shift.target    = t;
+    shift.instr     = t.series_data_with_status_instr;
+    shift.data      = data;
+    shift.size      = size;
+    shift.increment = int'(increment);
+    run_jtag_op(shift);
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_DATA shift");
+    note_tdr_access(payload_bits + 1, $sformatf("%s series_data", t.name));
+    rdata      = shift.captured & data_mask(size);
+    status_bit = shift.captured_status;
   endtask
 
   // --- lifecycle debug disables (must be cleared before JTAG2AXI ops) ----

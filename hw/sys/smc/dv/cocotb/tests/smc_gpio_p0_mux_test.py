@@ -14,6 +14,14 @@ from smc_base_test import smc_base_test
 class smc_gpio_p0_mux_test(smc_base_test):
     """GPIO0 interface_enable vs a live lsio_select competitor."""
 
+    required_evidence = (
+        "CHK-GPIO-P0-MUX-LSIO",
+        "CHK-GPIO-P0-MUX-PATTERN",
+        "CHK-GPIO-P0-MUX-PRIO",
+        "CHK-GPIO-P0-MUX-REG",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

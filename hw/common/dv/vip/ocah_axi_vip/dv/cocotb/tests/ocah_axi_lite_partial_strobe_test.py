@@ -147,7 +147,7 @@ async def ocah_axi_lite_partial_strobe_test(dut) -> None:
         await run_strobed_write(dut, seq, slave, index=index, addr=addr, strb=strb)
         index += 1
 
-    # Compatibility path: write() forwards strb and returns the response code.
+    # write() forwards strb and returns only the response code.
     addr = random.randrange(0, 2**14) & ~0x3
     await seq.write(addr, 0xA5A5A5A5)
     resp = await seq.write(addr, 0xFFFF00FF, strb=0x2)

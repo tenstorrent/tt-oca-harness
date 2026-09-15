@@ -8,8 +8,7 @@ images run against an external AXI master that this sequence plays:
   * SEP: hw/sys/sep/dv/fw/tests/sep_smu_ext_axi
   * SMC: hw/sys/smc/dv/fw/tests/smu_sep_ext_axi
   * ext_in: this sequence, on the flat ext_in_* pins that tb_wrapper_top.sv
-    exposes for cocotbext.axi. Before those pins existed smu_axi_in_req was tied
-    off, so this half had no way to exist and the test could not be enrolled.
+    exposes for cocotbext.axi.
 
 Protocol, and every address, comes from the firmwares' own shared header
 hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h -- nothing here is

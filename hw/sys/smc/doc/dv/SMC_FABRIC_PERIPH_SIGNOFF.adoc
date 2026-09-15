@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smc-fabric-periph-signoff]]
+== SMC fabric and peripheral honesty signoff
+
+This chapter defines the fabric and peripheral honesty signoff. Feature credit
+is the SCOPE matrix in `SMC_SCOPE_TRACEABILITY.adoc`. A green fabric or I3C
+name is not protocol proof. OUT rows live in `SMC_DEFERRED_DISPOSITION.adoc`.
+
+[[smc-fabric-credit]]
+=== Credited vs OUT
+
+[cols="2,3,3,1",options="header",]
+|===
+|Requirement |Test |Evidence |Credit
+|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |`CHK-INPUT-OUTPUT-FABRIC-WR-RD` |YES
+|Outbound filter / remap |`smc_output_filter_remap_security_test` |`CHK-OUTBOUND-PASS-ALL`, `CHK-OUTBOUND-BLOCK-WRITE` |YES
+|CPU-control / SEP_IN path |`smc_cpu_to_sep_axi_test` |`CHK-CPU-BFM-OBSERVABILITY` plus CPU_CTRL window AXI |YES
+|I2C master/target active |`smc_i2c_master_target_test` |`CHK-I2C0-HOST-WRITE`, `CHK-I2C0-SMBUS-ARA` / `PEC` |YES
+|GPIO IRQ active |`smc_gpio_irq_active_test` |`CHK-GPIO-IRQ-ACTIVE-LOW-*`, `CHK-GPIO0-DATA-CTRL-READBACK` |YES
+|iJTAG / TAP-adjacent |`smc_ijtag_basic_test` |`CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-DTMCS` |YES
+|AVSBus / sideband CSR |`smc_sideband_protocol_smoke_test` |`CHK-AVS-*` CSR/status tokens |YES
+|UART/SPI/log-engine CSR |`smc_uart_spi_log_engine_test` |`CHK-UART-LOG-*`, `CHK-UART-MSR-*` (CSR window, not loopback) |YES
+|I3C window decode |`smc_i3c_to_fabric_test` |HCI_VERSION / `proxy=True`; not in `smoke` |NO (not I3C protocol)
+|I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |no DAT/DCT macros on `smc_wrapper` |NO — child I3C TB
+|DTP CSR on `smc_wrapper` |idle port; no terminator |— |NO
+|PLL/PVT adopter wrap |none; `smc_pll_*` / `smc_pvt_*` are dispositioned in `SMC_DEFERRED_DISPOSITION.adoc` |OKAY+0 placeholder wraps |NO
+|GPIO / I2C SAMPLE observe |`smc_gpio_observe_test`, `smc_i2c_cg_sanity_test` |in `functional`, not `smoke` |NO (SAMPLE-only)
+|UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |NO — UART/ROM intake
+|Ext-AXI / CPU traffic Force-era |`smc_cpu_traffic_*`, `smc_external_test` |OUT |NO
+|===
+
+I3C block-depth stays on the I3C intake. The wrapper leaf is decode
+only and is not a substitute for CCC/IBI. The blocker behind every OUT row
+above is named in `SMC_DEFERRED_DISPOSITION.adoc`.

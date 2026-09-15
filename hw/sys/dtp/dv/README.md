@@ -1,34 +1,44 @@
 # DTP OCAH Open-Source TB
 
 OCAH open-source **PyUVM** DV testbench for **DTP (Debug & Test Ports)** in the
-`tt-oca` repository. DTP is the
+`tt-oca-harness` repository. DTP is the
 subsystem that hosts the primary JTAG TAP (IEEE 1149.1), the JTAG2AXI debug
 bridges, the iJTAG networks (IEEE 1687), and the cross-trigger network (CTP/CTM).
 It follows the canonical `hw/sys/<system>/dv/` layout and runs on Verilator.
 
-The TB wraps unified OCAH BFMs in a UVM hierarchy:
+The cocotb realization composes the shared OCAH VIPs in a PyUVM hierarchy;
+the SV-UVM twin and the differences between the two realizations are in
+`docs/DTP_TB_ARCH.adoc`:
 
 ```
-dtp_<scenario>_test (uvm_test, @pyuvm.test)
+dtp_<scenario>_test (@pyuvm.test, on dtp_base_test from the ocah_lib OcahTest base)
   └─ DtpEnv
-       ├─ DtpJtagAgent   sequencer + driver (wraps ocah_jtag_vip) + analysis port
-       ├─ DtpAxiAgent    ocah_axi_vip OcahAxiSlaveAgent responder + backdoor
-       └─ DtpScoreboard  IDCODE / JTAG2AXI data-integrity checks
-  seq_lib/ dtp_base_test_seq → dtp_sanity_test_seq, dtp_jtag_idcode_test_seq,
-           dtp_jtag2axi_smc_axi_wr_test_seq, dtp_jtag2axi_smc_axi_rd_test_seq
+       ├─ DtpJtagAgent      sequencer + DtpJtagDriver over the ocah_jtag_vip engine
+       ├─ DtpAxiAgent       ocah_axi_vip slave agents and passive monitors on the three
+       │                    JTAG2AXI bridge ports, with memory backdoor
+       ├─ DtpXtrigAgent     ocah_axi_vip AXI-Lite master on the CSR port + CTP/CTM pin BFM
+       ├─ DtpStapDsAgent    ocah_jtag_vip slave devices behind the STAP host ports
+       ├─ DtpScoreboard     IDCODE and JTAG2AXI data-integrity checks on the driver's
+       │                    completed-item stream
+       └─ DtpAxiScoreboard  shared ocah_axi_vip reference models and scoreboard, armed
+                            by the JTAG2AXI tests with required evidence IDs
+  seq_lib/ dtp_base_test_seq → dtp_<family>_base_test_seq → dtp_<scenario>_test_seq
 ```
 
-Tests inherit `dtp_base_test` (env build + clock/reset + `start_seq` helper);
-sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test has
-its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
+Tests inherit `dtp_base_test` (env build, the `bring_up()` reset ladder, the
+looped `run_scenario()`); scenario sequences inherit a family base on
+`dtp_base_test_seq` (common TAP building blocks). A single-scenario test pairs
+`tests/<name>.py` with `seq_lib/<name>_seq.py`; a multi-scenario family shares
+one parameterized sequence.
 
-- `docs/` — public verification plan, TB architecture, and functional-coverage plan. The design specification and the register maps are designer-owned: `../doc/` (DTP integration plus the JTAG and cross-trigger IP chapters) and the SystemRDL under `hw/ip/cross_trigger/*/regs/`.
+- `docs/` — public verification plan, TB architecture, functional-coverage plan, and the requirement-to-test matrix (`docs/DTP_SCOPE_TRACEABILITY.adoc`). The design specification and the register maps are designer-owned: `../doc/` (DTP integration plus the JTAG and cross-trigger IP chapters) and the SystemRDL under `hw/ip/cross_trigger/*/regs/`.
 - `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, one framework-neutral core shared by the cocotb and SV-UVM flows) and the `dtp_tb_if`, `dtp_scan_if`, and `dtp_xtrig_if` TB interfaces.
 - `env/` — UVM env: config, JTAG agent, AXI memory agent, scoreboard, TDR encoders.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
-- `dtp_sim_cfg.toml` — `tt-oca`-local simulation defaults, modes, bender targets, tool knobs.
+- `dtp_sim_cfg.toml` — the DUT's simulation defaults, run modes, Bender targets, and tool knobs.
+- `formal/` — formal properties on the TAP controller (`props/`), the open-path SymbiYosys task file and reset environment (`fpv/sby/`), and the generated filelist and work directories (`build/`); see `hw/common/dv/docs/formal-property-style.adoc`.
 
 ## BFM Policy
 
@@ -102,6 +112,31 @@ TAP controller's effective reset. A new rule with two-state-safe operands goes o
 `OCAH_SVA_ASSERT`; one that needs `$isunknown` or X-propagation goes on
 `OCAH_ASSERT`.
 
+## Formal
+
+`formal/` is the reference implementation of the property style in
+`hw/common/dv/docs/formal-property-style.adoc`: a bound property module on the
+IEEE 1149.1 TAP controller in the boolean subset that the open-source frontend
+and the licensed backends both elaborate, with `bmc`, `cover` and `prove` tasks
+run against `dtp` as the formal top. `dtp_formal_cfg.toml` and
+`testlists/formal.toml` launch it through the runner; the plan section is
+"Formal Verification Plan" in `docs/DTP_VPLAN.adoc`, which scopes nine
+targets over the `dtp`, `jtag2axi` and `cross_trigger_network` formal tops
+and names the item, depth and path of each. `testlists/formal.toml` lists the
+items in the `smoke` and `fpv` groups.
+
+```bash
+python3 tools/dv/run_dv.py --dut dtp --mode formal            # flist, then sby bmc/cover/prove
+python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run  # the rendered command
+```
+
+That chapter also carries the filelist generation and the `sby` invocation by
+hand. The item needs `sby`, Yosys with a yosys-slang build that carries the
+concurrent-assertion lowering, and `yices` on one `PATH`; a site whose tools
+live in a container or that supplies a licensed backend selects them through
+the site layer, as the Formal verification chapter of `tools/dv/doc/run-dv.adoc`
+describes.
+
 ## Running
 
 ```bash
@@ -153,6 +188,12 @@ DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
 DTP_XTRIG_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_ctm_p2p_cla_to_ctp_test
 
+# JTAG2AXI geometry gate negative validation: every JTAG2AXI scenario opens a
+# pass by comparing the three *_JTAG2AXI_CAPS TDRs with the DV geometry table
+# (CHK-J2A-GEOMETRY); a corrupted expected address size must fail the run
+DTP_J2A_GEOMETRY_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
+
 # SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
   --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
@@ -171,7 +212,7 @@ python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool xcelium --co
 
 ### SystemVerilog UVM framework (`--framework uvm`)
 
-The SV-UVM smoke flow shares this DV root, sim config, and testlist with the
+The SV-UVM flow shares this DV root, sim config, and testlist with the
 cocotb flow: `dtp_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay
 (same Bender RTL recipe and defines), and `--dut dtp --framework uvm` selects
 it. A testlist scenario carries both implementations in its `module` binding
@@ -332,6 +373,12 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm \
 python3 tools/dv/run_dv.py --dut dtp --framework uvm \
   --items dtp_jtag2axi_smc_axi_single_write_read_test \
   --plusarg +DTP_J2A_REF_MODEL_NEGATIVE
+
+# JTAG2AXI geometry gate negative validation: a corrupted expected address
+# size in the per-pass CAPS comparison (CHK-J2A-GEOMETRY) must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test \
+  --plusarg +DTP_J2A_GEOMETRY_NEGATIVE
 ```
 
 PASS/FAIL is classified by the global parser registry in
@@ -372,21 +419,13 @@ An overlay is three adopter-owned files, kept outside this repository
    same work library before `dtp_uvm_compile.f`, then both tops elaborated
    (`dtp_uvm_top` plus the wiring top).
 
-Synopsys VIP (svt) integration notes for the AMBA AXI suite: every analysis
-step, including the UVM library pre-analysis, must carry the same
-`+define+UVM_PACKER_MAX_BYTES` value the suite expects, or the suite exits
-fatally at time zero; the suite package's compile unit must see
-`uvm_macros.svh` before the suite package (include the macros header, not
-`uvm_pkg.sv`, which resolves to a simulator wrapper) so the suite's
-methodology detection engages; `DESIGNWARE_HOME` points at the VIP
-installation root, with the suite's include and source directories on the
-include path. A healthy overlaid run shows the vendor license checkout and
-the vendor monitor's transaction tracking alongside the unchanged `CHK-*`
-evidence and the `UVM TEST PASSED` banner.
+A vendor library brings its own compile-unit requirements (packer-size
+defines applied to every analysis step, macro-header ordering, an
+installation-root variable); those live in the overlay's build recipe.
 
 ## Scope
 
-The DTP public testbench covers the 19-test Smoke and Basic JTAG group:
+The DTP public testbench covers the Smoke and Basic JTAG groups:
 TAP FSM, IDCODE, BYPASS variants, undefined-instruction fallback, RUNBIST,
 BSR-oriented instructions, TMP CLAMP_HOLD/RELEASE, TRST/POR/TLR reset behavior,
 and AC EXTEST train/pulse smoke checks. JTAG2AXI, iJTAG/3DCR, and cross-trigger

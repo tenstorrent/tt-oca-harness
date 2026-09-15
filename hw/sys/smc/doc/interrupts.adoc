@@ -58,7 +58,7 @@ see the following section.
 This section documents the raw `cpu_interrupts_o` vector assembled in
 `hw/sys/smc/rtl/smc_base.sv`. The vector is built from four sources:
 
-* `ext_interrupts_i`
+* `smc_ext_interrupts_i`
 * `peripheral_interrupts_i[31:0]`
 * `mailbox_interrupts[31:0]`
 * four internal interrupt signals
@@ -71,7 +71,7 @@ The vector layout is:
 
 [source,systemverilog]
 ----
-cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // ext_interrupts_i after 3-stage sync to clk_smc
+cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
 cpu_interrupts_o[NUM_EXT_INTERRUPTS+:32]        = peripheral_interrupts_i;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32]   = mailbox_interrupts;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
@@ -96,7 +96,8 @@ names are called out in the `RTL trace` column instead.
 |External interrupts
 |Integration-defined external interrupt inputs
 |`hw/sys/smc/rtl/smc_base.sv` synchronizes `ext_interrupts_i` to `clk_smc`
-(`prim_sync3 u_ext_interrupts_sync3`) and drives
+(`prim_sync3 u_ext_interrupts_sync3`; wired from `smc.sv`
+`smc_ext_interrupts_i`) and drives
 `cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk`.
 
 |`256`
@@ -367,6 +368,14 @@ The PLIC provides hardware prioritization,
 per-core routing, and configurable thresholds for efficient, parallel
 interrupt handling. The SMC-driven contribution to global interrupt
 indices is given in <<cpu-interrupt-vector-map>> above.
+
+The PLIC gateways are active-high and level-sensitive. There is no
+per-source edge or pulse configuration. A source may be a held level, or
+a pulse that remains high long enough to be sampled on `clk_smc`.
+External inputs on `ext_interrupts_i` pass through a three-flop
+synchronizer (`prim_sync3`). A pulse that is not high at a `clk_smc`
+sampling edge of the first flop does not reach the PLIC; stretch a short
+or asynchronous pulse, or convert it to a held level, before the pin.
 
 Software must initialize PLIC priority and enable registers to known values
 (typically priority 0 and disabled) before enabling external interrupts; these

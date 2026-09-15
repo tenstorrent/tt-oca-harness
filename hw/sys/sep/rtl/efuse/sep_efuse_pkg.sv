@@ -42,8 +42,8 @@ package sep_efuse_pkg;
     logic [0:0]   chiplet_pubk_hash1_write_lock ;       // [40]     slot 20
     logic [0:0]   chiplet_pubk_hash0_read_lock ;        // [39]     slot 19
     logic [0:0]   chiplet_pubk_hash0_write_lock ;       // [38]     slot 19
-    logic [0:0]   spi_config_en_read_lock ;             // [37]     slot 18
-    logic [0:0]   spi_config_en_write_lock ;            // [36]     slot 18
+    logic [0:0]   sysclk_freq_mhz_read_lock ;          // [37]     slot 18
+    logic [0:0]   sysclk_freq_mhz_write_lock ;         // [36]     slot 18
     logic [0:0]   rom_ctl_read_lock ;                   // [35]     slot 17
     logic [0:0]   rom_ctl_write_lock ;                  // [34]     slot 17
     logic [0:0]   status_rpt_read_lock ;                // [33]     slot 16
@@ -84,7 +84,9 @@ package sep_efuse_pkg;
 
   // LOCKS_SPARE — 32-bit register, slots 32-47.
   typedef struct packed {
-    logic [15:0]  spare_lock_rsvd ;      // [31:16] slots 40-47, unassigned
+    logic [13:0]  spare_lock_rsvd ;      // [31:18] slots 41-47, unassigned
+    logic [0:0]   spare8_read_lock ;     // [17]    slot 40
+    logic [0:0]   spare8_write_lock ;    // [16]    slot 40
     logic [0:0]   spare7_read_lock ;     // [15]    slot 39
     logic [0:0]   spare7_write_lock ;    // [14]    slot 39
     logic [0:0]   spare6_read_lock ;     // [13]    slot 38
@@ -198,43 +200,9 @@ package sep_efuse_pkg;
 
 
   typedef struct packed {
-    logic [12:0]   spi_control_field_en_rsvd ;
-    logic [10:0]   smu_pll_sysclk ;
-    logic [7:0]    spi_control_field_en ;
-  } sep_efuse_map_sep_spi_ctrl_field_en_reg_t;
-
-
-
-  typedef struct packed {logic [31:0] discovery;} sep_efuse_map_spi_discovery_ctrl_reg_t;
-
-
-
-  typedef struct packed {logic [31:0] dq_timing;} sep_efuse_map_spi_phy_dq_timing_reg_t;
-
-
-
-  typedef struct packed {logic [31:0] dqs_timing;} sep_efuse_map_spi_phy_dqs_timing_reg_t;
-
-
-
-  typedef struct packed {logic [31:0] gate_lpbk;} sep_efuse_map_spi_phy_gate_lpbk_reg_t;
-
-
-
-  typedef struct packed {logic [31:0] dll_slave;} sep_efuse_map_spi_phy_dll_slave_reg_t;
-
-
-
-  typedef struct packed {logic [31:0] dll_master;} sep_efuse_map_spi_phy_dll_master_reg_t;
-
-
-
-  typedef struct packed {logic [31:0] misc;} sep_efuse_map_spi_phy_misc_reg_t;
-
-
-
-  typedef struct packed {logic [31:0] rb_valid_time;} sep_efuse_map_spi_rb_valid_time_reg_t;
-
+    logic [20:0]   rsvd ;
+    logic [10:0]   sysclk_freq_mhz ;
+  } sep_efuse_map_sysclk_freq_mhz_reg_t;
 
   typedef struct packed {logic [255:0] key_hash;} sep_efuse_map_chiplet_pubk_hash_reg_t;
 
@@ -265,6 +233,7 @@ package sep_efuse_pkg;
   // Total size must equal NumEfuseBits = 8192.
   // -------------------------------------------------------------------------
   typedef struct packed {
+    sep_efuse_map_spare_256_reg_t              spare8 ;
     sep_efuse_map_spare_256_reg_t              spare7 ;
     sep_efuse_map_spare_256_reg_t              spare6 ;
     sep_efuse_map_spare_256_reg_t              spare5 ;
@@ -286,15 +255,7 @@ package sep_efuse_pkg;
     sep_efuse_map_required_signers_v_t         required_signers ;
     sep_efuse_map_chiplet_pubk_hash_reg_t      chiplet_pubk_hash1 ;
     sep_efuse_map_chiplet_pubk_hash_reg_t      chiplet_pubk_hash0 ;
-    sep_efuse_map_spi_rb_valid_time_reg_t      spi_rb_valid_time ;
-    sep_efuse_map_spi_phy_misc_reg_t           spi_phy_misc ;
-    sep_efuse_map_spi_phy_dll_master_reg_t     spi_phy_dll_master ;
-    sep_efuse_map_spi_phy_dll_slave_reg_t      spi_phy_dll_slave ;
-    sep_efuse_map_spi_phy_gate_lpbk_reg_t      spi_phy_gate_lpbk ;
-    sep_efuse_map_spi_phy_dqs_timing_reg_t     spi_phy_dqs_timing ;
-    sep_efuse_map_spi_phy_dq_timing_reg_t      spi_phy_dq_timing ;
-    sep_efuse_map_spi_discovery_ctrl_reg_t     spi_discovery_ctrl ;
-    sep_efuse_map_sep_spi_ctrl_field_en_reg_t  sep_spi_ctrl_field_en ;
+    sep_efuse_map_sysclk_freq_mhz_reg_t        sysclk_freq_mhz ;
     sep_efuse_map_rom_ctl_reg_t                rom_ctl ;
     sep_efuse_map_status_rpt_reg_t             status_rpt ;
     sep_efuse_map_sys_uid_reg_t                sys_uid ;
@@ -355,8 +316,8 @@ package sep_efuse_pkg;
   `AXI_LITE_TYPEDEF_ALL(efuse_axil, addr_t, data_t, strb_t)
   `APB_TYPEDEF_ALL(efuse_apb, addr_t, data_t, strb_t)
 
-  // 40 real lockable fields (idx 0-39) + LOCKS meta-field (idx 6'h3F).
-  localparam int unsigned NUM_EFUSE_FIELDS = 41;
+  // 41 real lockable fields (idx 0-40) + LOCKS meta-field (idx 6'h3F).
+  localparam int unsigned NUM_EFUSE_FIELDS = 42;
   localparam logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] LOCKS_META_IDX = '1;
   localparam logic [1:0] WRITE_LOCK = 2'b11;
   localparam logic [1:0] WRITE_UNLOCK = 2'b00;
@@ -373,11 +334,9 @@ package sep_efuse_pkg;
       sep_efuse_map_locks_spare_reg_t
   );
 
-  // TODO: Why is this needed?
   // efuse_lock_view_t presents the efuse_map_t union with the full 96-bit
   // lock field at the LSB end, mirroring where LOCKS/LOCKS_SPARE sit in the
-  // packed struct. locks[79:0] holds the 80 meaningful lock-pair bits (slots 0-39);
-  // locks[95:80] are LOCKS_SPARE[31:16] (unassigned slots 40-47).
+  // packed struct.
   typedef struct packed {
     logic [NumEfuseBits-LockFieldBits-1:0] reserved;
     logic [LockFieldBits-1:0]              locks;
@@ -391,9 +350,6 @@ package sep_efuse_pkg;
 
   // Class 1 storage is selected by field identity; all locations and widths
   // are derived directly from the generated RDL metadata.
-  // LockFieldBits == 96: LOCKS (words 0-1) + LOCKS_SPARE (word 2) are all sensed.
-
-  // TODO: Why is NumFuseWordWidth passed in?
   localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
       efuse_pkg::make_shadow_word_range
       (
@@ -561,6 +517,17 @@ package sep_efuse_pkg;
   // lock[2:1] write: 00 -> unlock;11 -> lock ;10 -> set only;
   // lock[0]   read: 0 -> readable; 1 -> read locked
   localparam efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] EfuseFieldMap = '{
+      // idx 40: spare8 — lock slot 40 (LOCKS_SPARE[16:17])
+      '{
+          idx: 6'd40,
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
+          start_addr:
+          efuse_offset
+          (
+              och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE8_BASE_ADDR
+          ),
+          end_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE - 1
+      },
       // idx 39: spare7 — lock slot 39 (LOCKS_SPARE[14:15])
       '{
           idx: 6'd39,
@@ -570,7 +537,11 @@ package sep_efuse_pkg;
           (
               och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR
           ),
-          end_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE) - 32'd1
+          end_addr:
+          efuse_offset
+          (
+              och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE8_BASE_ADDR
+          ) - 1
       },
       // idx 38: spare6 — lock slot 38 (LOCKS_SPARE[12:13])
       '{
@@ -822,7 +793,7 @@ package sep_efuse_pkg;
       },
       '{  // REQUIRED_SIGNERS (idx 21)
           idx: 6'd21,
-          lock: {SECURE_TM_UNLOCK, WRITE_SET_ONLY, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -862,13 +833,13 @@ package sep_efuse_pkg;
               och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR
           ) - 1
       },
-      '{  // SPI_CONFIG / SEP_SPI_CTRL_FIELD_EN through SPI_RB_VALID_TIME (idx 18)
+      '{  // SYSCLK_FREQ_MHZ (idx 18)
           idx: 6'd18,
           lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
-              och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR
+              och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR
           ),
           end_addr:
           efuse_offset
@@ -887,7 +858,7 @@ package sep_efuse_pkg;
           end_addr:
           efuse_offset
           (
-              och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR
+              och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR
           ) - 1
       },
       '{  // STATUS_RPT (idx 16)
@@ -1030,10 +1001,9 @@ package sep_efuse_pkg;
               och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR
           ) - 1
       },
-      // TODO: should this have SECURE_TM_LOCK? Not in hw/sys/sep/doc/lifecycle_controller.adoc list
       '{  // RMA_CHIPLET_TOKEN_DIGEST (idx 6)
           idx: 6'd06,
-          lock: {SECURE_TM_LOCK, WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -1045,10 +1015,9 @@ package sep_efuse_pkg;
               och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
           ) - 1
       },
-      // TODO: should this have SECURE_TM_LOCK? Not in hw/sys/sep/doc/lifecycle_controller.adoc list
       '{  // RMA_SIP_TOKEN_DIGEST (idx 5)
           idx: 6'd05,
-          lock: {SECURE_TM_LOCK, WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (

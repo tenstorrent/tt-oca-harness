@@ -16,8 +16,8 @@ int main(void) {
         uint32_t chip_id;
         uint32_t lc_state;
 
-        version_low_expected = 0x000100A0; // ENSURE THIS IS CORRECT
-        version_high_expected = 0x0;       // ENSURE THIS IS CORRECT
+        version_low_expected = 0x000100A0; // CHIP_CONFIG__VERSION_LO__VERSION_LO_reset
+        version_high_expected = 0x0;       // VERSION_HI reset value
 
         version_low = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR);
         write_scratch(1, version_low);

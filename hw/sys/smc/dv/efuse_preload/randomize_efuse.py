@@ -15,12 +15,13 @@ Feed the result to generate_efuse_preload.py.
 
 WHAT IS RANDOMIZED
 ------------------
-RESERVED[1] -- the OCCP transport timeout.
+OCCP_TRANSPORT_TIMEOUT -- the OCCP transport timeout.
 
-  The boot ROM reads SMC_EFUSE_MAP_RESERVED_1 and treats it as the OCCP
-  transport timeout in cycles, substituting a 10000-cycle default when the
-  fuse reads 0 (bootrom/prod/lib/src/occp.c, bootrom/prod/drivers/src/
-  smc_efuse.c). Both branches are worth exercising, so this script picks:
+  The boot ROM reads SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT and treats bits
+  [31:0] as the transport timeout in cycles, substituting a 10000-cycle
+  default when the fuse reads 0 (bootrom/prod/lib/src/occp.c, bootrom/prod/
+  drivers/src/smc_efuse.c). Both branches are worth exercising, so this
+  script picks:
 
       50% of runs   0            -> ROM default path
       50% of runs   400..1000    -> programmed-fuse path
@@ -28,27 +29,26 @@ RESERVED[1] -- the OCCP transport timeout.
   --transport-timeout pins the value instead, which is what a test wants when
   it needs the shortest timeout deterministically rather than a random one.
 
-NOT RANDOMIZED
---------------
-The reference environment also varies the fields below; none is implemented
-here, and no OSS test depends on them.
+HELD FIXED
+----------
+The fields below keep the base configuration's values: no OSS test observes
+them, and the reference environment's randomization of them has no equivalent
+here.
 
   rom_flip_endianness    ROM image endianness swap, paired with the matching
-                         fuse. Needs the ROM build to emit both endiannesses
-                         before the fuse bit means anything, so it is a
-                         two-part change.
+                         fuse; the fuse bit means nothing unless the ROM build
+                         emits both endiannesses.
   sram_auto_zero_disable SRAM auto-zero on/off. Strap-controlled in the
-                         OSS flow; the fuse path is untested.
+                         OSS flow.
   rom_bank_swap          ROM bank swap select.
   mbist_enable /         MBIST enable and its timeout value. The OSS flow has
   mbist_timeout          no MBIST agent, so these have no observable effect
                          until one exists.
-  ignore_mbist           RESERVED[2] bit 0 in the reference layout.
+  ignore_mbist           DFT_IGNORE_ERROR at SMC_CONFIG[15] in the current layout.
 
-  Adding one means: extend the argument list, rewrite the matching block in
-  _rewrite(), and -- most importantly -- add a test that can tell the two
-  settings apart. A randomized field nothing observes is worse than a fixed
-  one, because it makes runs differ without making them prove anything.
+A field is randomized only together with a test that can tell the two settings
+apart: a randomized field nothing observes makes runs differ without making
+them prove anything.
 """
 
 from __future__ import annotations
@@ -59,11 +59,9 @@ import re
 import sys
 from pathlib import Path
 
-# RESERVED[1] is the second 32-bit word of the RESERVED block, so bits 63:32
-# of the flattened 2080-bit value the schema declares.
-RESERVED_WORD_BITS = 32
-TRANSPORT_TIMEOUT_WORD = 1
-TRANSPORT_TIMEOUT_LO = TRANSPORT_TIMEOUT_WORD * RESERVED_WORD_BITS
+# OCCP_TRANSPORT_TIMEOUT is its own 64-bit block; bits [31:0] hold the timeout
+# value the boot ROM reads, bits [63:32] are reserved.
+TIMEOUT_FIELD_BITS = 32
 
 # Matches the reference environment's range, so a value programmed here means
 # the same thing on both sides.
@@ -111,32 +109,30 @@ def main() -> None:
         "--transport-timeout",
         type=int,
         default=None,
-        help=f"pin RESERVED[1] to this value instead of drawing it "
+        help=f"pin OCCP_TRANSPORT_TIMEOUT to this value instead of drawing it "
         f"(0, or {TIMEOUT_MIN}..{TIMEOUT_MAX})",
     )
     args = parser.parse_args()
 
     if args.transport_timeout is not None:
-        if not (0 <= args.transport_timeout < (1 << RESERVED_WORD_BITS)):
+        if not (0 <= args.transport_timeout < (1 << TIMEOUT_FIELD_BITS)):
             sys.exit("error: --transport-timeout does not fit in 32 bits")
 
-    # Seeded with a string, not the bare integer. random.Random(n) for small n
-    # leaves the first few draws correlated across neighbouring seeds -- over
-    # seeds 1..20 the branch below came out 12:8 instead of 10:10, and every
-    # seed in 1..4 picked the same branch. Testlists pin small seeds, so that
-    # bias would have made the "50% of runs" claim above false in practice.
+    # Seeded with a string, not the bare integer: random.Random(n) for small n
+    # leaves the first draws correlated across neighbouring seeds, and testlists
+    # pin small seeds, so a bare-integer seed would bias the 50/50 branch above.
     rng = random.Random(f"smc-efuse-{args.seed}")
     timeout = _pick_transport_timeout(rng, args.transport_timeout)
 
     text = args.base.read_text()
-    # RESERVED[1] occupies bits 63:32 of the flattened RESERVED value; every
-    # other reserved word stays 0, which is what the base configuration has.
-    text = _rewrite(text, "RESERVED", "reserved_data", timeout << TRANSPORT_TIMEOUT_LO)
+    # OCCP_TRANSPORT_TIMEOUT is a dedicated 64-bit block; the timeout value sits
+    # in bits [31:0] and is written directly as the 64-bit field value.
+    text = _rewrite(text, "OCCP_TRANSPORT_TIMEOUT", "transport_timeout", timeout)
 
     args.output_file.parent.mkdir(parents=True, exist_ok=True)
     args.output_file.write_text(text)
     print(
-        f"seed={args.seed}: RESERVED[1] transport_timeout={timeout}"
+        f"seed={args.seed}: OCCP_TRANSPORT_TIMEOUT transport_timeout={timeout}"
         f"{' (ROM default path)' if timeout == 0 else ''} -> {args.output_file}"
     )
 

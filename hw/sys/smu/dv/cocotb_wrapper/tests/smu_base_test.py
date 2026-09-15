@@ -36,36 +36,25 @@ from smu_dv_env.smu_env import SmuEnv  # noqa: E402
 class smu_base_test(uvm_test):
     """Clock/reset bring-up and scenario hook shared by every SMU OSS test."""
 
-    #: Set True by a leaf migrated from the bare-smu catalog to get
-    #: self.env.scoreboard, the shared SmuEnv the bare tests score against.
+    #: Set True by a leaf that scores through self.env.scoreboard, the shared
+    #: SmuEnv the bare-smu catalog scores against.
     use_shared_env = False
 
     #: Minimum jtag_period_ns / smu_clk_period_ns this leaf will run at, or
     #: None to take whatever randomize_timing drew.
     #:
-    #: Only the SMC-fabric SERIES-write leaves set it, and only because of open
-    #: RTL issue #1599: an SMC JTAG2AXI SERIES write returns zeros or parks in
-    #: BUSY whenever that ratio is under 4. randomize_timing draws three such
-    #: pairs out of nine -- (smu 10, jtag 32), (12, 32), (12, 40) -- so each
-    #: affected leaf is red on a third of seeds, and `sep0_all` (which CI runs)
-    #: would be red on 5 of 9 nights for a bug already filed with its own
-    #: reproduction. Clamping here keeps the gate meaningful instead of
-    #: habitually red.
-    #:
-    #: This is a workaround with an owner, not a fix: delete the override on
-    #: those leaves when #1599 closes. The randomization itself is deliberately
-    #: left alone -- it is what found the bug, and clamping it suite-wide would
-    #: hide the next one like it.
+    #: Only the SMC-fabric SERIES-write leaves set it: an SMC JTAG2AXI SERIES
+    #: write returns zeros or parks in BUSY whenever that ratio is under 4, and
+    #: randomize_timing draws three such pairs out of nine -- (smu 10, jtag 32),
+    #: (12, 32), (12, 40). The clamp is per leaf; randomize_timing itself is not
+    #: clamped.
     min_jtag_smu_ratio: float | None = None
 
     #: Set by a leaf whose checks compare clk_ref_i against clk_smu_i at the
     #: boundary. randomize_timing can hand both domains the same period, and an
     #: equality observation cannot then tell one clock from the other, so such a
     #: leaf reports "cannot prove separation" on a correct design. The leaf asks
-    #: for distinct periods instead of the check being weakened.
-    #:
-    #: Suite-wide clamping stays out for the same reason it does above: the
-    #: randomization is what surfaces this class of hole.
+    #: for distinct periods; randomize_timing itself is not clamped.
     require_distinct_ref_smu: bool = False
 
     @staticmethod
@@ -87,9 +76,9 @@ class smu_base_test(uvm_test):
         Same contract as the bare tb_top.sv base test: Verilator two-state
         powers jtag_trst up at 0, which is not a falling edge, and the IC_RESET
         reset_hold flop resets only on TRST with RESET_VAL=1. Left at 0 it
-        keeps the override asserted and SMC cold reset never releases. This
-        bring-up does the same pre-drive inline; the method exists so a
-        migrated leaf that re-arms mid-test finds it here too.
+        keeps the override asserted and SMC cold reset never releases.
+        bring_up() performs the same pre-drive inline; this method serves a
+        leaf that re-arms mid-test.
         """
         dut = cocotb.top
         dut.powergood_i.value = 1
@@ -104,9 +93,8 @@ class smu_base_test(uvm_test):
     async def wait_signal_high(self, signal, clk, *, timeout_cycles: int, name: str) -> int:
         """Block until `signal` reads 1, and say how long it took.
 
-        Mirrors seq_lib.smu_axi_helpers.wait_signal_high in the bare-smu tree.
-        Kept here rather than imported so the base test does not depend on an
-        AXI helper for a generic wait.
+        Mirrors seq_lib.smu_axi_helpers.wait_signal_high; the base test carries
+        no dependency on the AXI helpers.
         """
         for cycle in range(timeout_cycles):
             if self.read_int(signal, name, allow_xz=True):
@@ -121,12 +109,10 @@ class smu_base_test(uvm_test):
             needed = self.min_jtag_smu_ratio * self.cfg.smu_clk_period_ns
             if self.cfg.jtag_period_ns < needed:
                 raised = int(-(-needed // 1))  # ceil, keeping an integer period
-                # WARNING, not INFO: every run of an affected leaf says in its log
-                # that it is avoiding the #1599 regime, so the clamp is visible
-                # rather than silent while the issue stays open.
+                # WARNING, not INFO: the clamp is visible in every affected run's log.
                 self.logger.warning(
-                    "jtag_period_ns %d -> %d to hold jtag/smu >= %s (open RTL issue "
-                    "#1599; remove this override when it closes)",
+                    "jtag_period_ns %d -> %d to hold jtag/smu >= %s "
+                    "(SMC JTAG2AXI SERIES-write clamp)",
                     self.cfg.jtag_period_ns,
                     raised,
                     self.min_jtag_smu_ratio,
@@ -152,12 +138,10 @@ class smu_base_test(uvm_test):
         self.sep_trace_mon = SmuSepCpuTraceMonitor("sep_trace_mon", self)
         ConfigDB().set(None, "*", "sep_trace_mon", self.sep_trace_mon)
         self._attach_sep_symbols()
-        # The same PyUVM env the bare-smu tests score against, so a leaf
-        # migrated onto this DUT keeps its self.env.scoreboard checks instead
-        # of being rewritten. Opt-in, not automatic: SmuScoreboard refuses a
-        # run that registered no checks ("zero checks executed - refusing
-        # vacuous PASS"), which is right for a leaf that scores through it and
-        # wrong for the wrapper leaves that carry their own scoreboard.
+        # The PyUVM env the bare-smu catalog scores against. Opt-in: SmuScoreboard
+        # refuses a run that registered no checks ("zero checks executed -
+        # refusing vacuous PASS"), and the wrapper-native leaves carry their own
+        # scoreboard.
         if self.use_shared_env:
             self.env = SmuEnv("env", self)
         self.logger.info(
@@ -242,12 +226,11 @@ class smu_base_test(uvm_test):
         # exercises entropy needs it running; with it static the source produces
         # nothing however the stack is programmed.
         #
-        # Started only under +esrc_noise_force, which is not a convenience: this
-        # clock is 3 ns against clk_smu's 10 ns, so leaving it on adds edges to
-        # every SEP=1 run, and it is useless on its own anyway -- the ring
-        # oscillators do not self-oscillate under Verilator, so a sample clock
-        # with no driven noise samples nothing. The two belong together, and both
-        # entropy-consuming sequences already assert the plusarg is present.
+        # Started only under +esrc_noise_force: the ring oscillators do not
+        # self-oscillate under Verilator, so the sample clock samples nothing
+        # without driven noise, and at 3 ns against clk_smu's 10 ns it adds
+        # edges to every SEP=1 run. The entropy-consuming sequences assert the
+        # plusarg is present.
         if cocotb.plusargs.get("esrc_noise_force") is not None:
             cocotb.start_soon(
                 Clock(
@@ -365,9 +348,8 @@ class smu_base_test(uvm_test):
         # post_reset_cycles is a settle, not a release. The SMC primary reset
         # runs a 32-cycle cold deglitch and then a 255-cycle extender on
         # clk_ref, so it is still asserted when that settle expires -- an AXI
-        # read issued at this point gets no response and times out. The bare
-        # tb_top.sv bring-up has always blocked on these two; this one now does
-        # too, so a test does not have to know.
+        # read issued at this point gets no response and times out. Bring-up
+        # blocks on both releases so a test does not have to.
         cold_cycles = await self.wait_signal_high(
             dut.rst_cold_n_o, dut.clk_ref_i, timeout_cycles=2000, name="rst_cold_n_o"
         )
@@ -378,12 +360,10 @@ class smu_base_test(uvm_test):
             name="rst_primary_smc_clk_n_o",
         )
         # The peripheral domain is a third primary reset and has to be waited
-        # on for the same reason as the other two, which is easy to miss
-        # because whether it is already released depends on the seed:
-        # randomize_timing draws clk_periph at 16/20/24 ns against clk_ref's
-        # 10/12/16, so on a slow-periph draw its deglitch chain is still
-        # running when the other two have finished. smu_smc_reset_ctrl_test
-        # sampled it directly and passed or failed by draw.
+        # on for the same reason as the other two. Whether it is already
+        # released depends on the seed: randomize_timing draws clk_periph at
+        # 16/20/24 ns against clk_ref's 10/12/16, so on a slow-periph draw its
+        # deglitch chain is still running when the other two have finished.
         periph_cycles = await self.wait_signal_high(
             dut.rst_primary_periph_clk_no,
             dut.clk_periph_i,
@@ -405,9 +385,23 @@ class smu_base_test(uvm_test):
 
     async def run_phase(self) -> None:
         self.raise_objection()
+        tc = self.get_type_name()
+        if self.use_shared_env:
+            # Bound before any expect_* runs so a check name can attach to its
+            # mapped token.
+            self.env.scoreboard.bind_testcase(tc)
         await self.bring_up()
         try:
             await self.run_scenario()
+            if self.use_shared_env:
+                self.env.scoreboard.prove_mapped_features()
+            else:
+                self.logger.info(
+                    "EVIDENCE MAP GATE SKIPPED %s: no SmuScoreboard on this leaf "
+                    "(use_shared_env=False); the verdict is the sequence's own "
+                    "raise or the leaf's own scoreboard",
+                    tc,
+                )
         except Exception:  # noqa: BLE001 -- re-raised once the SEP state is in the log
             self.sep_trace_mon.dump_diagnostics(logging.ERROR)
             raise

@@ -6,7 +6,7 @@ STIMULUS. Both slot spans are erased to 0xFF, so the single device answers at bo
 addresses but neither holds a boot slot. See the "slot erasure" section of
 ``env/sep_manifest_mutate.py`` for why erasure rather than field corruption.
 
-``SepBootScoreboard`` is deliberately NOT used: it asserts ``fw_done and fw_pass``
+``SepBootScoreboard`` is NOT used: it asserts ``fw_done and fw_pass``
 (``env/sep_boot_scoreboard.py:79-84``), while the correct outcome here is
 ``fw_done`` with ``fw_pass == 0``. Disabling a checker to accommodate an expected
 failure would invalidate the pass, so the poll loop below samples the boot
@@ -76,8 +76,8 @@ _MAX_RUN_CYCLES = 24_000_000
 _PROGRESS_EVERY = 200_000
 # Cycles to keep watching after the terminal verdict, to establish that the ROM
 # stayed in its terminal state. The ROM's hang is `for(;;) wfi` in rom_err_fail();
-# 20k cycles is ~15x the longest single ROM step observed in these runs, so a ROM
-# that was going to do anything else would have started doing it.
+# 20k cycles is ~15x the longest single ROM step, so a ROM that was going to do
+# anything else would have started doing it.
 _HANG_OBSERVE_CYCLES = 20_000
 
 
@@ -172,8 +172,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                     status_seq.append(status)
                 if self.rd(dut.cpu_trace_valid_o):
                     retired += 1
-                # Completion comes from the verdict word in cold_scratch[0]
-                # (dv/docs/rom_verdict_scratch0_migration.md).
+                # Completion comes from the verdict word in cold_scratch[0].
                 verdict = decode_verdict(probe)
                 if verdict is not None:
                     fw_done = True
@@ -325,7 +324,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         )
         assert not fw_pass, "ROM signalled PASS with no valid manifest at either address"
         log.info(
-            "CHK-TERMINAL: %s after both rejections, cold_scratch[1] held "
+            "CHK-TERMINAL PASS: %s after both rejections, cold_scratch[1] held "
             "0x%08x then 0x%08x, mailbox FAIL (fw_pass=0)",
             _ALL_FAILED,
             _STATUS_LOOP_FAILED,

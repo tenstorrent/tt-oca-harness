@@ -18,8 +18,8 @@ addrmap sep_efuse_map {
     // The spec's 96-bit LOCK field is split across two RDL registers because
     // PeakRDL requires power-of-2 regwidths. All 96 bits are physically fused.
     //   LOCKS      (64-bit @0x0): slots 0-31, functional fields LC_STATE..SEP_SYS_ID
-    //   LOCKS_SPARE (32-bit @0x8): slots 32-39, spare0-spare7 field locks;
-    //                              slots 40-47 unassigned (SPARE_LOCK_RSVD[31:16])
+    //   LOCKS_SPARE (32-bit @0x8): slots 32-40, spare0-spare8 field locks;
+    //                              slots 41-47 unassigned (SPARE_LOCK_RSVD[31:18])
     // firmware reads the full lock state as three consecutive 32-bit words.
     reg LOCKS {
         regwidth    = 64;
@@ -280,15 +280,15 @@ addrmap sep_efuse_map {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "spi_config_en_write_lock, when set, the SPI_CONFIG group is not write-able (neither the eFuse nor the shadow register)";
-        } SPI_CONFIG_EN_WRITE_LOCK[36:36] = 0x0;
+            desc = "sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)";
+        } SYSCLK_FREQ_MHZ_WRITE_LOCK[36:36] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = r;
-            desc = "spi_config_en_read_lock, when set, the SPI_CONFIG group is not read-able (neither the eFuse nor the shadow register)";
-        } SPI_CONFIG_EN_READ_LOCK[37:37] = 0x0;
+            desc = "sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)";
+        } SYSCLK_FREQ_MHZ_READ_LOCK[37:37] = 0x0;
 
         field {
             sw = rw;
@@ -464,8 +464,8 @@ addrmap sep_efuse_map {
     };
 
     // LOCKS_SPARE holds the upper 32 bits of the 96-bit LOCK field.
-    //   [15:0]  slots 32-39: spare0-spare7 write/read locks
-    //   [31:16] slots 40-47: unassigned; reserved for future field lock slots
+    //   [17:0]  slots 32-40: spare0-spare8 write/read locks
+    //   [31:18] slots 41-47: unassigned; reserved for future field lock slots
     reg LOCKS_SPARE {
         regwidth    = 32;
         accesswidth = 32;
@@ -552,8 +552,18 @@ addrmap sep_efuse_map {
 
         field {
             sw = rw; onwrite = woset; hw = r;
-            desc = "Unassigned lock slots 40-47. Reserved for future field lock assignments.";
-        } SPARE_LOCK_RSVD[31:16] = 0x0;
+            desc = "spare8_write_lock (slot 40): when set, spare8 is not write-able.";
+        } SPARE8_WRITE_LOCK[16:16] = 0x0;
+
+        field {
+            sw = rw; onwrite = woset; hw = r;
+            desc = "spare8_read_lock (slot 40): when set, spare8 is not read-able.";
+        } SPARE8_READ_LOCK[17:17] = 0x0;
+
+        field {
+            sw = rw; onwrite = woset; hw = r;
+            desc = "Unassigned lock slots 41-47. Reserved for future field lock assignments.";
+        } SPARE_LOCK_RSVD[31:18] = 0x0;
     };
 
     reg LC_STATE {
@@ -804,105 +814,19 @@ addrmap sep_efuse_map {
         } reserved[31:6] = 0x0;
     };
 
-    reg SEP_SPI_CTRL_FIELD_EN{
-        regwidth = 32;
-        accesswidth = 32;
-        field{
-            sw = r;
-            hw = rw;
-            desc = "8 bit which indicates the following 8 spi config regs are enabled or not. SPI_CONFIG_EN[7:0] corresponds to SPI config words 1-8. When bit N is set, configuration register N+1 is valid in fuses and will be written into the specified SPI configuration register during SPI controller initialization. 1->enabled; 0->disabled";
-        } spi_control_field_en[7:0] = 0x0;
-        field{
-            sw = r;
-            hw = rw;
-            desc = "11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0";
-        } smu_pll_sysclk[18:8] = 0x0;
-        field{
-            sw = r;
-            hw = rw;
-            desc = "Reserved 13 bits";
-        } spi_control_field_en_rsvd[31:19] = 0x0;
-    };
-
-    reg SPI_DISCOVERY_CTRL{
+    reg SYSCLK_FREQ_MHZ {
         regwidth = 32;
         accesswidth = 32;
         field {
             sw = r;
             hw = rw;
-            desc = "spi discovery control reg";
-        } discovery[31:0] = 0x0;
-    };
-
-    reg SPI_PHY_DQ_TIMING {
-        regwidth = 32;
-        accesswidth = 32;
+            desc = "Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.";
+        } sysclk_freq_mhz[10:0] = 0x0;
         field {
             sw = r;
             hw = rw;
-            desc = "spi phy dq timing reg";
-        } dq_timing[31:0] = 0x0;
-    };
-
-    reg SPI_PHY_DQS_TIMING {
-        regwidth = 32;
-        accesswidth = 32;
-        field {
-            sw = r;
-            hw = rw;
-            desc = "spi phy dqs timing reg";
-        } dqs_timing[31:0] = 0x0;
-    };
-
-    reg SPI_PHY_GATE_LPBK {
-        regwidth = 32;
-        accesswidth = 32;
-        field {
-            sw = r;
-            hw = rw;
-            desc = "spi phy gate lpbk ctrl reg";
-        } gate_lpbk[31:0] = 0x0;
-    };
-
-    reg SPI_PHY_DLL_SLAVE {
-        regwidth = 32;
-        accesswidth = 32;
-        field {
-            sw = r;
-            hw = rw;
-            desc = "spi phy dll slv ctrl reg";
-        } dll_slave[31:0] = 0x0;
-
-    };
-
-    reg SPI_PHY_DLL_MASTER {
-        regwidth = 32;
-        accesswidth = 32;
-        field {
-            sw = r;
-            hw = rw;
-            desc = "spi phy dll mst ctrl reg";
-        } dll_master[31:0] = 0x0;
-    };
-
-    reg SPI_PHY_MISC {
-        regwidth = 32;
-        accesswidth = 32;
-        field {
-            sw = r;
-            hw = rw;
-            desc = "spi init phy misc ";
-        } misc[31:0] = 0x0;
-    };
-
-    reg SPI_RB_VALID_TIME {
-        regwidth = 32;
-        accesswidth = 32;
-        field {
-            sw = r;
-            hw = rw;
-            desc = "spi init rb valid time";
-        } rb_valid_time[31:0] = 0x0;
+            desc = "Reserved";
+        } rsvd[31:11] = 0x0;
     };
 
     reg CHIPLET_PUBK_HASH {
@@ -989,9 +913,6 @@ addrmap sep_efuse_map {
         } key_hash[255:0] = 0x0;
     };
 
-    // v0.5.22: Per-owner public identity fuses. These are public (no read protection
-    // required) and personalize each owner's Key Manager identity root.
-    // TODO(v0.5.22-locks): wire individual write/read locks when LOCK widens to 96 bits.
     reg SEP_ID {
         regwidth = 256;
         accesswidth = 256;
@@ -1002,16 +923,13 @@ addrmap sep_efuse_map {
         } id [255:0] = 0x0;
     };
 
-    // v0.5.22: Individually lockable 256-bit spare fields (spare0-spare7).
-    // Each field has a dedicated write/read lock pair in LOCKS_SPARE[15:0]
-    // (slots 32-39 of the 96-bit lock space).
     reg SPARE_256_BITS {
         regwidth = 256;
         accesswidth = 256;
         field {
             sw = r;
             hw = rw;
-            desc = "Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).";
+            desc = "Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).";
         } rsvd[255:0] = 0x0;
     };
 
@@ -1021,8 +939,7 @@ addrmap sep_efuse_map {
     ////////////////////////////////////////////////////////////////////////////
 
     // 96-bit LOCK field split across LOCKS (64-bit) + LOCKS_SPARE (32-bit).
-    // All registers from LC_STATE onwards are at offsets -4 relative to the
-    // previous 128-bit LOCKS layout. Map ends at 0x3FF (8192 bits total).
+    // Map ends at 0x3FF (8192 bits total).
     LOCKS                         LOCKS                     @0x0;
     LOCKS_SPARE                   LOCKS_SPARE               @0x8;
     LC_STATE                      LC_STATE                  @0xC;
@@ -1043,38 +960,29 @@ addrmap sep_efuse_map {
     SYS_UID                       SYS_UID                   @0x14C;
     STATUS_RPT                    STATUS_RPT                @0x16C;
     ROM_CTL                       ROM_CTL                   @0x170;
-    SEP_SPI_CTRL_FIELD_EN         SEP_SPI_CTRL_FIELD_EN     @0x174;
-    SPI_DISCOVERY_CTRL            SPI_DISCOVERY_CTRL        @0x178;
-    SPI_PHY_DQ_TIMING             SPI_PHY_DQ_TIMING         @0x17C;
-    SPI_PHY_DQS_TIMING            SPI_PHY_DQS_TIMING        @0x180;
-    SPI_PHY_GATE_LPBK             SPI_PHY_GATE_LPBK         @0x184;
-    SPI_PHY_DLL_SLAVE             SPI_PHY_DLL_SLAVE         @0x188;
-    SPI_PHY_DLL_MASTER            SPI_PHY_DLL_MASTER        @0x18C;
-    SPI_PHY_MISC                  SPI_PHY_MISC              @0x190;
-    SPI_RB_VALID_TIME             SPI_RB_VALID_TIME         @0x194;
-    CHIPLET_PUBK_HASH             CHIPLET_PUBK_HASH0        @0x198;
-    CHIPLET_PUBK_HASH             CHIPLET_PUBK_HASH1        @0x1B8;
-    REQUIRED_SIGNERS              REQUIRED_SIGNERS          @0x1D8;
-    REQUIRED_ALGS                 REQUIRED_ALGS             @0x1DC;
-    CHIPLET_PUBK_PQC_HASH         CHIPLET_PUBK_PQC_HASH0    @0x1E0;
-    CHIPLET_PUBK_PQC_HASH         CHIPLET_PUBK_PQC_HASH1    @0x200;
-    SIP_PUBK_PQC_HASH             SIP_PUBK_PQC_HASH0        @0x220;
-    SYS_PUBK_PQC_HASH             SYS_PUBK_PQC_HASH         @0x240;
-    SIP_PUBK_HASH                 SIP_PUBK_HASH1            @0x260;
-    SIP_PUBK_PQC_HASH             SIP_PUBK_PQC_HASH1        @0x280;
-    // v0.5.22 identity fuses (public, 256 bits each; individually lockable via LOCKS[58:63])
-    SEP_ID                        SEP_CHIPLET_ID            @0x2A0;
-    SEP_ID                        SEP_SIP_ID                @0x2C0;
-    SEP_ID                        SEP_SYS_ID                @0x2E0;
-    // v0.5.22 spare fields (256 bits each, individually lockable via LOCKS_SPARE[15:0])
-    SPARE_256_BITS                spare0                    @0x300;
-    SPARE_256_BITS                spare1                    @0x320;
-    SPARE_256_BITS                spare2                    @0x340;
-    SPARE_256_BITS                spare3                    @0x360;
-    SPARE_256_BITS                spare4                    @0x380;
-    SPARE_256_BITS                spare5                    @0x3A0;
-    SPARE_256_BITS                spare6                    @0x3C0;
-    SPARE_256_BITS                spare7                    @0x3E0;
+    SYSCLK_FREQ_MHZ               SYSCLK_FREQ_MHZ           @0x174;
+    CHIPLET_PUBK_HASH             CHIPLET_PUBK_HASH0        @0x178;
+    CHIPLET_PUBK_HASH             CHIPLET_PUBK_HASH1        @0x198;
+    REQUIRED_SIGNERS              REQUIRED_SIGNERS          @0x1B8;
+    REQUIRED_ALGS                 REQUIRED_ALGS             @0x1BC;
+    CHIPLET_PUBK_PQC_HASH         CHIPLET_PUBK_PQC_HASH0    @0x1C0;
+    CHIPLET_PUBK_PQC_HASH         CHIPLET_PUBK_PQC_HASH1    @0x1E0;
+    SIP_PUBK_PQC_HASH             SIP_PUBK_PQC_HASH0        @0x200;
+    SYS_PUBK_PQC_HASH             SYS_PUBK_PQC_HASH         @0x220;
+    SIP_PUBK_HASH                 SIP_PUBK_HASH1            @0x240;
+    SIP_PUBK_PQC_HASH             SIP_PUBK_PQC_HASH1        @0x260;
+    SEP_ID                        SEP_CHIPLET_ID            @0x280;
+    SEP_ID                        SEP_SIP_ID                @0x2A0;
+    SEP_ID                        SEP_SYS_ID                @0x2C0;
+    SPARE_256_BITS                spare0                    @0x2E0;
+    SPARE_256_BITS                spare1                    @0x300;
+    SPARE_256_BITS                spare2                    @0x320;
+    SPARE_256_BITS                spare3                    @0x340;
+    SPARE_256_BITS                spare4                    @0x360;
+    SPARE_256_BITS                spare5                    @0x380;
+    SPARE_256_BITS                spare6                    @0x3A0;
+    SPARE_256_BITS                spare7                    @0x3C0;
+    SPARE_256_BITS                spare8                    @0x3E0;
 };
 
 `endif

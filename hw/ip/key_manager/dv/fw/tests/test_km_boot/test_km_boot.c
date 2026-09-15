@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_boot.c
- * @brief T028 - Boot initialization integration test
+ * @brief Boot initialization integration test
  *
  * Calls rom_boot_init() and verifies:
  *  1. SRAM scrambler is enabled and locked

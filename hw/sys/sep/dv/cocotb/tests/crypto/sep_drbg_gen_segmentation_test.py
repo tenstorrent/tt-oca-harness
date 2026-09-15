@@ -21,7 +21,7 @@ their one-open-command CHK4 budgets stay put.
 What this proves that no other test does:
   * ``gen_last`` is observed asserted, so the trailing CTR_DRBG Update runs;
   * every completed command carries exactly ``cfg.glen`` blocks -- a segment of
-    any other length now fails;
+    any other length fails;
   * CHK1..CHK4 stay bit-exact across those Update boundaries.
 """
 

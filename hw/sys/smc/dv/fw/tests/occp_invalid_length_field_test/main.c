@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Invalid Length Field Test (Refactored)
+ * OCCP Invalid Length Field Test
  *
  * Enables global invalid length injection and runs random traffic.
  * Then (optionally) sends manual JUMP/VALIDATE if in secure mode.

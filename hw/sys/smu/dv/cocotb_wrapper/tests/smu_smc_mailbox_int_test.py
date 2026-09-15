@@ -4,7 +4,7 @@
 
 DV-CARD:          SMU_ALL_004   ANCHOR: smu_smc_mailbox_int_test
 
-Bare ``tb_top`` / ``smu_uvm_top`` SEP=0 — DECODE of ``ext_mailbox_interrupts``:
+SEP=0 DECODE of ``ext_mailbox_interrupts``:
 width == NUM_MAILBOXES (32), and mailbox 0 / 31 IRQs raised over J2A move
 bits 0 / 31.
 """
@@ -24,7 +24,7 @@ class smu_smc_mailbox_int_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_smc_mailbox_int_test SMU_ALL_004 r8 SEP=0 EXT.S2 width DECODE"
+            "DUT_TAG=WRAPPER smu_smc_mailbox_int_test SMU_ALL_004 SEP=0 EXT.S2 width DECODE"
         )
         seq = smu_smc_mailbox_int_test_seq(self)
         await seq.run()

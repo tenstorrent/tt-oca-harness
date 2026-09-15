@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GitHub Project P0 alias for AVSBus sideband precheck."""
+"""P0 alias for the AVSBus sideband precheck."""
 
 from __future__ import annotations
 
@@ -15,7 +15,20 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_avsbus_sanity_test(smc_base_test):
-    """Run the AVSBus proxy scenario tracked by the P0 project issue."""
+    """Run the AVSBus sideband proxy scenario."""
+
+    required_evidence = (
+        "CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE",
+        "CHK-AVS-FIFOS-STATUS",
+        "CHK-AVS-INTERRUPT-MASK",
+        "CHK-AVS-INTERRUPT-W1C",
+        "CHK-AVS-NORMAL-STATUS",
+        "CHK-AVS-READBACK-EMPTY-FIFO-READ",
+        "CHK-AVS-READBACK-POINTER-ADVANCE",
+        "CHK-AVS-SLAVE-STATUS",
+        "CHK-SIDEBAND-OBSERVABILITY",
+    )
+    min_evidence = 9
 
     auto_protocol_vip = False
 

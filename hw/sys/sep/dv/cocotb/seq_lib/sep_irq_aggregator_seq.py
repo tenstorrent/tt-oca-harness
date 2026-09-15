@@ -31,6 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from env.sep_spec_tables import pic
 from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -47,17 +48,17 @@ RESP_SLVERR = 2
 
 # PIC source IDs from hw/sys/sep/doc/interrupts.adoc (1-based).
 # sep_internal_interrupts[N] feeds PIC source N+1.
-PIC_HMAC_DONE = 18
-PIC_KMAC_DONE = 21
-PIC_CSRNG_CMD_REQ_DONE = 24
-PIC_CSRNG_ENTROPY_REQ = 25
-PIC_CSRNG_HW_INST_EXC = 26
-PIC_CSRNG_FATAL_ERR = 27
-PIC_EDN_CMD_REQ_DONE = 28
-PIC_EDN_FATAL_ERR = 29
-PIC_DMA_REG_PATH = 41
-PIC_DMA_HOST_PATH = 42
-PIC_PERIPH_OR = 43
+PIC_HMAC_DONE = pic("HMAC done")
+PIC_KMAC_DONE = pic("KMAC done")
+PIC_CSRNG_CMD_REQ_DONE = pic("CSRNG command request done")
+PIC_CSRNG_ENTROPY_REQ = pic("CSRNG entropy request")
+PIC_CSRNG_HW_INST_EXC = pic("CSRNG HW instance exception")
+PIC_CSRNG_FATAL_ERR = pic("CSRNG fatal error")
+PIC_EDN_CMD_REQ_DONE = pic("EDN command request done")
+PIC_EDN_FATAL_ERR = pic("EDN fatal error")
+PIC_DMA_REG_PATH = pic("DMA register-path bus error")
+PIC_DMA_HOST_PATH = pic("DMA host-path integrity/bus fault")
+PIC_PERIPH_OR = pic("Peripheral register-bridge fault")
 
 
 def agg_from_pic(pic_source: int) -> int:

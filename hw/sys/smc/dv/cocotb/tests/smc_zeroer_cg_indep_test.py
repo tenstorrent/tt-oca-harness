@@ -14,7 +14,13 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_zeroer_cg_indep_test(smc_base_test):
-    """LIVE Zeroer axi/reg CG independence (Skill 1.5)."""
+    """LIVE Zeroer axi/reg CG independence."""
+
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-ZINDEP-DECOUPLE",
+    )
+    min_evidence = 2
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
@@ -31,11 +37,8 @@ class smc_zeroer_cg_indep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
-            # Conservative stimulus floor: the directed CG/zeroer programming
-            # issued 13 accesses in the retained regression run, of which the
-            # zeroer-DONE poll is a timing-dependent remainder, so the floor is
-            # set below the observed count. Literal here, not read from
-            # `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the zeroer-DONE poll is timing-dependent.
             min_csr_accesses=10,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,

@@ -117,7 +117,9 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
                 "dft_nonsecure": rng.randrange(0, 2),
                 "dfd": rng.randrange(0, 2),
             }
-            self.log_iteration(idx + 1, 16, "pattern=0b%03b dbg_disable=%s", pattern, dbg)
+            self.log_iteration(
+                idx + 1, 16, "pattern=0b%s dbg_disable=%s", format(pattern, "03b"), dbg
+            )
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"random.iter_{idx}")
         self.log_summary("iJTAG random", exhaustive_patterns=8, random_iterations=16)
 
@@ -148,7 +150,9 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         for idx in range(8):
             pattern = 0b001 | (rng.randrange(0, 4) << 1)
             dbg = {"dfd": rng.randrange(0, 2)}
-            self.log_iteration(idx + 1, 8, "pattern=0b%03b dbg_disable=%s", pattern, dbg)
+            self.log_iteration(
+                idx + 1, 8, "pattern=0b%s dbg_disable=%s", format(pattern, "03b"), dbg
+            )
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"dfd.random_{idx}")
         await self.check_stored_sib_across_gate("dfd", 0b001, context="dfd.stored")
         self.log_summary("iJTAG DFD", random_iterations=8)

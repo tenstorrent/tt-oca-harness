@@ -68,7 +68,7 @@ _MAX_SENSE_CYCLES = 20_000
 
 # Distinct non-zero disable vectors so the decoded FEAT_CTRL is a non-trivial
 # value in BOTH states (guards the golden checks against a vacuous all-zero pass).
-# DBG_1 bits 0 (sep_debug) and 1 (chiplet_dbg) are deliberately LEFT ENABLED in both
+# DBG_1 bits 0 (sep_debug) and 1 (chiplet_dbg) are LEFT ENABLED in both
 # vectors. Under the per-group decode a PROD demotion only relaxes its debug group to
 # honour SIP_DIS|SYS_DIS; it does not force the group open. A vector that
 # disables sep_debug would make this test's own property unreachable: DEMOTE_1 would
@@ -119,8 +119,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
 
         # allow_timeout=False: a blocked access must return the SPECIFIC DECERR
         # the inbound filter's axi_err_slv emits (axi_filter_wrap.sv RESP_DECERR),
-        # NOT a timeout (which would be a wedge) and NOT SLVERR. A timeout now
-        # raises in the driver and fails the test.
+        # NOT a timeout (which would be a wedge) and NOT SLVERR. A timeout raises
+        # in the driver and fails the test.
         probe_prod = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
         await self.start_ext_seq(probe_prod)
         assert not probe_prod.resp_ok, (
@@ -208,12 +208,12 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         )
 
         # Read BOTH FEAT_CTRL halves over the external master. The DISTINCTIVE half is
-        # now the LO word: demotion acts only on DBG_1, so the hi (Function) word is
+        # the LO word: demotion acts only on DBG_1, so the hi (Function) word is
         # identical in PROD and PROD_DBG_1 and cannot distinguish them. The lo word
         # is ~(SIP_DIS|SYS_DIS) over both debug groups = 0xf000f003 -- neither all-ones
         # nor zero, so a dummy responder or any unrelated OKAY slave fails it, and
         # matching it proves the external read actually reached the LCC FEAT_CTRL
-        # register. The hi word now carries DBG_2 [47:24] as well as Function.
+        # register. The hi word carries DBG_2 [47:24] as well as Function.
         exp_lo = feat_dbg & 0xFFFF_FFFF
         exp_hi = (feat_dbg >> 32) & 0xFFFF_FFFF
         probe_lo = SepExtAxiProbeSeq(LCC_FEAT_CTRL)

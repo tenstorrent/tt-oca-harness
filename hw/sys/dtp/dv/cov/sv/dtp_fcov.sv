@@ -48,10 +48,9 @@ module dtp_fcov (
   wire update_dr = (tap_state_i == jtag_tap_pkg::UPDATE_DR);
 
   // No declaration initializers: VCS rejects them on always_ff-driven
-  // variables (initializer_driver_checks). Until the first TCK edge the
-  // history is 0 (Verilator, 2-state) or X (VCS); either way the covers
-  // below can only under-fire, never false-fire, because every condition
-  // requires a specific defined non-zero pattern.
+  // variables (initializer_driver_checks). Before the first TCK edge the
+  // history reads 0 (Verilator, 2-state) or X (VCS), so every cover
+  // condition must require a defined non-zero history pattern.
   logic [15:0] tap_state_q;
   logic        tms_q;
   logic        ir_loaded_since_tlr;
@@ -375,13 +374,59 @@ module dtp_fcov (
     cp_state: coverpoint st {bins state[] = {[0 : 15]};}
   endgroup
 
+  // Bin values are the same one-hot positions state_index() reports at run
+  // time; the labels follow the c_arc_* cover properties.
+  `define DTP_FCOV_ARC_BIN(__label, __from, __tms, __to)                        \
+    bins __label = {{4'($clog2(jtag_tap_pkg::__from)), (__tms),               \
+                     4'($clog2(jtag_tap_pkg::__to))}};
+
   covergroup cg_tap_arc with function sample (logic [3:0] prev, logic tms, logic [3:0] nxt);
     option.per_instance = 1;
     cp_prev: coverpoint prev {bins state[] = {[0 : 15]};}
     cp_tms: coverpoint tms;
     cp_next: coverpoint nxt {bins state[] = {[0 : 15]};}
-    x_arc : cross cp_prev, cp_tms, cp_next;
+    // TMS reaches exactly one next state from each state, so the 32 arcs
+    // below are the only (prev, tms, next) triples the controller produces;
+    // a TRST pulse between two TCK edges lands in TEST_LOGIC_RESET from any
+    // state and is collected by c_reset_trst_from_active instead.
+    cp_arc: coverpoint {
+      prev, tms, nxt
+    } {
+      `DTP_FCOV_ARC_BIN(tlr_tms0_rti, TEST_LOGIC_RESET, 1'b0, RUN_TEST_IDLE)
+      `DTP_FCOV_ARC_BIN(tlr_tms1_tlr, TEST_LOGIC_RESET, 1'b1, TEST_LOGIC_RESET)
+      `DTP_FCOV_ARC_BIN(rti_tms0_rti, RUN_TEST_IDLE, 1'b0, RUN_TEST_IDLE)
+      `DTP_FCOV_ARC_BIN(rti_tms1_seldr, RUN_TEST_IDLE, 1'b1, SELECT_DR_SCAN)
+      `DTP_FCOV_ARC_BIN(seldr_tms0_capdr, SELECT_DR_SCAN, 1'b0, CAPTURE_DR)
+      `DTP_FCOV_ARC_BIN(seldr_tms1_selir, SELECT_DR_SCAN, 1'b1, SELECT_IR_SCAN)
+      `DTP_FCOV_ARC_BIN(capdr_tms0_shdr, CAPTURE_DR, 1'b0, SHIFT_DR)
+      `DTP_FCOV_ARC_BIN(capdr_tms1_ex1dr, CAPTURE_DR, 1'b1, EXIT1_DR)
+      `DTP_FCOV_ARC_BIN(shdr_tms0_shdr, SHIFT_DR, 1'b0, SHIFT_DR)
+      `DTP_FCOV_ARC_BIN(shdr_tms1_ex1dr, SHIFT_DR, 1'b1, EXIT1_DR)
+      `DTP_FCOV_ARC_BIN(ex1dr_tms0_pdr, EXIT1_DR, 1'b0, PAUSE_DR)
+      `DTP_FCOV_ARC_BIN(ex1dr_tms1_updr, EXIT1_DR, 1'b1, UPDATE_DR)
+      `DTP_FCOV_ARC_BIN(pdr_tms0_pdr, PAUSE_DR, 1'b0, PAUSE_DR)
+      `DTP_FCOV_ARC_BIN(pdr_tms1_ex2dr, PAUSE_DR, 1'b1, EXIT2_DR)
+      `DTP_FCOV_ARC_BIN(ex2dr_tms0_shdr, EXIT2_DR, 1'b0, SHIFT_DR)
+      `DTP_FCOV_ARC_BIN(ex2dr_tms1_updr, EXIT2_DR, 1'b1, UPDATE_DR)
+      `DTP_FCOV_ARC_BIN(updr_tms0_rti, UPDATE_DR, 1'b0, RUN_TEST_IDLE)
+      `DTP_FCOV_ARC_BIN(updr_tms1_seldr, UPDATE_DR, 1'b1, SELECT_DR_SCAN)
+      `DTP_FCOV_ARC_BIN(selir_tms0_capir, SELECT_IR_SCAN, 1'b0, CAPTURE_IR)
+      `DTP_FCOV_ARC_BIN(selir_tms1_tlr, SELECT_IR_SCAN, 1'b1, TEST_LOGIC_RESET)
+      `DTP_FCOV_ARC_BIN(capir_tms0_shir, CAPTURE_IR, 1'b0, SHIFT_IR)
+      `DTP_FCOV_ARC_BIN(capir_tms1_ex1ir, CAPTURE_IR, 1'b1, EXIT1_IR)
+      `DTP_FCOV_ARC_BIN(shir_tms0_shir, SHIFT_IR, 1'b0, SHIFT_IR)
+      `DTP_FCOV_ARC_BIN(shir_tms1_ex1ir, SHIFT_IR, 1'b1, EXIT1_IR)
+      `DTP_FCOV_ARC_BIN(ex1ir_tms0_pir, EXIT1_IR, 1'b0, PAUSE_IR)
+      `DTP_FCOV_ARC_BIN(ex1ir_tms1_upir, EXIT1_IR, 1'b1, UPDATE_IR)
+      `DTP_FCOV_ARC_BIN(pir_tms0_pir, PAUSE_IR, 1'b0, PAUSE_IR)
+      `DTP_FCOV_ARC_BIN(pir_tms1_ex2ir, PAUSE_IR, 1'b1, EXIT2_IR)
+      `DTP_FCOV_ARC_BIN(ex2ir_tms0_shir, EXIT2_IR, 1'b0, SHIFT_IR)
+      `DTP_FCOV_ARC_BIN(ex2ir_tms1_upir, EXIT2_IR, 1'b1, UPDATE_IR)
+      `DTP_FCOV_ARC_BIN(upir_tms0_rti, UPDATE_IR, 1'b0, RUN_TEST_IDLE)
+      `DTP_FCOV_ARC_BIN(upir_tms1_seldr, UPDATE_IR, 1'b1, SELECT_DR_SCAN)
+    }
   endgroup
+  `undef DTP_FCOV_ARC_BIN
 
   covergroup cg_jtag_instruction with function sample (
       logic [5:0] opcode, logic [2:0] category, logic disabled_to_bypass

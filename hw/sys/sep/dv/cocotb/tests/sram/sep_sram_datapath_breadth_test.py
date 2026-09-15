@@ -21,9 +21,9 @@ seed-randomized:
 
 The SRAM port is 64-bit SINGLE-BEAT (no multi-beat burst feature; the reference suite's burst
 tests are audit-only AWLEN=0/ARLEN=0). WSTRB=0x00 is excluded (undefined). NON-
-contiguous WSTRB masks (e.g. 0x05) are infra-gated: cocotbext-axi derives the
-strobe from addr+length (contiguous only), so they need a lower-level explicit-
-strobe write -- deferred (documented delta vs the reference suite's full byte-strobe matrix).
+contiguous WSTRB masks (e.g. 0x05) are not walked: cocotbext-axi derives the
+strobe from addr+length (contiguous only), and this master has no explicit-strobe
+write.
 
 Checks (each value-compares an exact read-back against the cfg golden + logs a
 positive PASS line):

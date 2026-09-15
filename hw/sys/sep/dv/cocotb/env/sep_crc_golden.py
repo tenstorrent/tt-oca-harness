@@ -18,7 +18,10 @@ The anchor matters. A golden derived as "four byte steps", compared against
 hardware that is also "four byte steps", agrees even when the polynomial or the
 byte order is wrong in both. The self-tests below pin the polynomial,
 reflection and byte order to values published outside this repository, so a
-transcription error fails at import rather than passing a run.
+transcription error fails at import rather than passing a run. CRC-8/ROHC
+parameters (poly ``0x07`` / reflected ``0xE0``, init ``0xFF``, RefIn/RefOut,
+XorOut ``0x00``, check ``"123456789"`` → ``0xD0``) are
+``hw/ip/key_manager/doc/firmware.adoc`` HEADER_CRC8 and the CRC-8/ROHC table.
 """
 
 from __future__ import annotations

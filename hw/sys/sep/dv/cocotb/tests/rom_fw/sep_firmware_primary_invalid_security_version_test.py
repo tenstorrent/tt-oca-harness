@@ -47,7 +47,7 @@ ENABLED and passing on a legitimately signed image, which is what the reference'
 packer does for the same scenario -- it is not a bypass. ``verify_signing_key``
 proves the local signer reproduces the shipped signature byte for byte before any
 mutation, and the shared base re-runs ``verify_sealed`` afterwards, so the re-seal
-is established rather than asserted. The PRIMARY is deliberately NOT re-signed and
+is established rather than asserted. The PRIMARY is NOT re-signed and
 NOT modified: its shipped ``security_version`` is already 0, so it stays fully
 sealed and the rollback is the only thing wrong with it.
 

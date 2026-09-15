@@ -72,9 +72,8 @@
 #define SLOT_SIZE (LOG_REGION_SIZE / NUM_ENTRIES) // 16 bytes
 
 static int read_byte_with_timeout(uint8_t *out) {
-    /* 1000000 polls is ~4 s of sim here; the harness timeout fired long
-     * before it, making the RX-timeout FAIL path unreachable. 200 polls
-     * (~0.8 ms) still dwarfs a single byte's latency. */
+    /* Poll bound: 200 register reads dwarf a single byte's latency and expire
+     * before the harness timeout. */
     for (uint32_t t = 0; t < 200u; t++) {
         if (read_reg(WRAP0_UART_BASE + UART_LSR_OFF) & 0x1u) {
             *out = (uint8_t)(read_reg(WRAP0_UART_BASE + UART_RBR_OFF) & 0xFFu);
@@ -118,15 +117,9 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
 
     //--------------------------------------------------------------------------
-    // Positive control for the terminal "INTR_STATUS & 0x11 == 0" check.
-    //
-    // On its own that check passes identically on a DUT whose error bits can
-    // never set -- it cannot tell "no error occurred" from "this status can
-    // never report one". INTR_TEST exists precisely to drive the bits from
-    // software, so use it: prove both bits CAN set, clear them, and only then
-    // let the end-of-test zero mean something.
-    //
-    // Bit positions come from the generated map, not literals.
+    // Positive control for the terminal "INTR_STATUS & 0x11 == 0" check: drive
+    // both status bits through INTR_TEST, then clear them, so the end-of-test
+    // zero is a checked outcome.
     {
         const uint32_t both =
             LOG_ENGINE__INTR_TEST__LOG_FETCH_ERR_bm | LOG_ENGINE__INTR_TEST__LOG_WRITE_ERR_bm;
@@ -182,7 +175,7 @@ int main(void) {
 
         // Wait for LOG_CTRL[i] to clear
         {
-            uint32_t t = 200u; /* see note above: keep expiry reachable */
+            uint32_t t = 200u; /* bound expires before the harness timeout */
             while (t > 0u &&
                    (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF + (i * 4u)) & 0xFFFFu) != 0u) {
                 t--;

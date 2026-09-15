@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_recov_mbox.c
- * @brief T060 - Mailbox fault recovery test
+ * @brief Mailbox fault recovery test
  *
  * Tests the recoverable fault mechanism by directly triggering a fault
  * and verifying the recovery acknowledgment path:

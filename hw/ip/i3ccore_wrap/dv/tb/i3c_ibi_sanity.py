@@ -141,7 +141,7 @@ async def i3c_ibi_sanity(dut):
     # Initialize controller and target
     tb.log.info("Initializing controller...")
     await ctrl.initialize()
-    await ctrl.configure_timing_od_i3c()  # Now includes T_AVAL, T_IDLE
+    await ctrl.configure_timing_od_i3c()
     await ctrl.configure_timing_pp()
 
     tb.log.info("Configuring controller thresholds...")
@@ -149,8 +149,6 @@ async def i3c_ibi_sanity(dut):
 
     tb.log.info("Initializing target...")
     await tgt.initialize(TARGET_STATIC_ADDR)
-    # await tgt.configure_timing_od_i3c()
-    # await tgt.configure_timing_pp()
     tb.log.info("Configuring target thresholds...")
     await tgt.configure_thresholds(tx_buf=2, tx_start=0, rx_buf=1, rx_start=0)
 
@@ -273,7 +271,6 @@ async def i3c_ibi_during_broadcast(dut):
 
     tb.log.info("Initializing target...")
     await tgt.initialize(TARGET_STATIC_ADDR)
-    # await tgt.configure_timing_od_i3c()
     tb.log.info("Configuring target thresholds...")
     await tgt.configure_thresholds(tx_buf=2, tx_start=0, rx_buf=1, rx_start=0)
 

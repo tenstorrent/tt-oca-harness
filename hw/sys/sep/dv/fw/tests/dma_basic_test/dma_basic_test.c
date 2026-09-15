@@ -8,7 +8,7 @@
 // EL2 firmware drives the Secure DMA (sep_dma.h, base 0x1080_0000) over the CPU
 // LSU and proves the DMA CSR + copy-datapath basic contracts on bare sep. The
 // transfers are SRAM->SRAM (DMA master -> SEP local xbar -> SRAM). Distinct from
-// the Phase-1 DMA trio (dma_hash SHA-256 + SRAM->DCCM + IRQ; dma_cpu_contention
+// the DMA trio (dma_hash SHA-256 + SRAM->DCCM + IRQ; dma_cpu_contention
 // mid-flight BUSY + dual-master; spi_ot_dma_rx lsio handshake): DMA basic breadth adds the
 // CSR/REGWEN breadth + address-mode/width matrix + one opcode-error.
 //

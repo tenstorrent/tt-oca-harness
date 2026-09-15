@@ -286,7 +286,7 @@ Whatever the testbench, these hold:
 
 | Path | Contents |
 |---|---|
-| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
+| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (`cross_trigger/`, `jtag/`, `uart/` hold sub-blocks) |
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
@@ -461,8 +461,10 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR.
-Ingest assigns the opener when Assignees is empty. The curator rewrites a
-PR title only when it is not already this form.
+Ingest assigns the opener when Assignees is empty. It requests a reviewer
+from GitHub suggestions, then a linked-issue assignee, then recent committers
+on the touched paths, then the reviewer pool in `.github/issue-taxonomy.yml`.
+The curator rewrites a PR title only when it is not already this form.
 
 ### Paired pull requests with the `nonfree` companion
 

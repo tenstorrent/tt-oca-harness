@@ -23,16 +23,15 @@ from smu_base_test import smu_base_test
 DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
 SRC_ACK_PATS = (0x01, 0x80, 0x3C)
 
-# Lane 7 is the only lane the TB configures point-to-point (tb_top.sv sets
+# Lane 7 is the only lane the TB configures point-to-point (both TB tops set
 # XTRIG_INT_CT_MODE = 8'h80); the wire-OR lanes tie ctm_dst_ack_o to 0 in the
 # RTL, so only lane 7 has an ack that moves at all.
 #
 # That ack is not combinational the way the req remap is: it crosses
 # cross_trigger_port's prim_flop_2sync and then the handshake FSM's own
-# ct_ack_out_q, three cycles measured, in *both* directions -- rising when
-# lane 7's req asserts and falling when it deasserts. Sampling once at a
-# two-cycle settle reads the pre-transition value, which is what made this
-# check pass on the wire-OR lanes and fail on lane 7.
+# ct_ack_out_q, three cycles in both directions -- rising when lane 7's req
+# asserts and falling when it deasserts -- so a single sample at a two-cycle
+# settle reads the pre-transition value.
 #
 # So the property is a settle-and-hold: within ACK_SETTLE cycles the ack must
 # reach (pat & 0x80), and it must stay there for the rest of the window.
