@@ -145,25 +145,15 @@ module efuse_interface_controller #(
 
   // Internal signals from shadow registers module
   logic fuse_sense_done;
-  logic reset_release_ready;
   logic reset_n;
 
   // Fuse Sense Released Reset
   assign fuse_sense_done_o = fuse_sense_done;
   // External boot sequence done includes memory repair and shadow reg override being complete, the rest of SMC can now boot
-  prim_and2 #(
-    .Width(1)
-  ) u_reset_release_ready_and (
+  prim_and3 u_reset_release_and (
     .in0_i (fuse_sense_done),
     .in1_i (ext_boot_seq_done_i),
-    .out_o (reset_release_ready)
-  );
-
-  prim_and2 #(
-    .Width(1)
-  ) u_reset_release_and (
-    .in0_i (reset_release_ready),
-    .in1_i (rst_ni),
+    .in2_i (rst_ni),
     .out_o (reset_n)
   );
 
