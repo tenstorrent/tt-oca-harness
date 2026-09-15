@@ -24,21 +24,26 @@ The golden inputs/outputs are the official NIST ACVP "internalProjection" files
   curl -sSL -o /tmp/mlkem_keygen.json $base/ML-KEM-keyGen-FIPS203/internalProjection.json
   curl -sSL -o /tmp/mlkem_encdec.json $base/ML-KEM-encapDecap-FIPS203/internalProjection.json
 
-ABR register I/O is little-endian 32-bit words with no byte-swap on the ML-DSA
-register->core path (verified in abr_ctrl.sv), so an ACVP hex byte string maps
-directly to a native uint32_t LE array, matching the SEP abr_write_array/
-abr_read_array helpers. Outputs are FIPS-204 layout (PUBKEY=rho||t1,
-SIGNATURE=c~||z||h). Default signing computes mu internally from the raw message
-with an empty context, so the ACVP "message" maps straight to MLDSA_MSG.
+Word packing. abr_reg.rdl declares every ABR key, signature and ciphertext
+window as memwidth = 32 -- "648 32-bit registers storing the public key", and
+likewise for MLDSA_SIGNATURE, MLDSA_PRIVKEY_IN/OUT and the MLKEM_* windows -- so
+byte b of an ACVP string lands in word b/4. The byte order WITHIN a word is the
+little-endian convention of the CPU and the bus, which no document in this tree
+states for this block; it is not asserted here on anyone's authority. It does
+not need to be: a wrong mapping cannot survive the compares these vectors feed.
+The signature check is 1157 words against a deterministic ACVP value and the
+ML-KEM checks are the full ek/dk/ciphertext windows, so a byte order error fails
+them. The packing is established by those tests passing, not by reading the
+design.
 
-ML-KEM-1024 uses the same word packing against the MLKEM_* windows, which
-abr_reg.rdl states directly: every MLKEM key, ciphertext and shared-key window
-is declared memwidth = 32, so byte b of an ACVP string lands in word b/4. Its
-decaps
-set carries both a "valid decapsulation" case and a "modified ciphertext" one:
-FIPS-203 implicit rejection means a bad ciphertext yields a DIFFERENT shared key
-rather than an error, so the rejecting case has its own expected K and is graded
-by value, not by an absence of error.
+Outputs are FIPS-204 layout (PUBKEY=rho||t1, SIGNATURE=c~||z||h). Default
+signing computes mu internally from the raw message with an empty context, so
+the ACVP "message" maps straight to MLDSA_MSG.
+
+The ML-KEM decaps set carries both a "valid decapsulation" case and a "modified
+ciphertext" one: FIPS-203 implicit rejection means a bad ciphertext yields a
+DIFFERENT shared key rather than an error, so the rejecting case has its own
+expected K and is graded by value, not by an absence of error.
 """
 
 import json
