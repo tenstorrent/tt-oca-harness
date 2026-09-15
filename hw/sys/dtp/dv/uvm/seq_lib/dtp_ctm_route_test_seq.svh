@@ -73,8 +73,8 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
     start_activity_window();
     drive_input_port(input_port, CtpModeWireOr);
     drive_input_port(overlap_input, CtpModeWireOr);
-    check_output_mask(32'd1 << overlap_output, CtpModeWireOr, predicted,
-                      {"wire_or.", name, ".overlap"});
+    check_output_mask(32'd1 << overlap_output, CtpModeWireOr, predicted, {
+                      "wire_or.", name, ".overlap"});
   endtask
 
   protected task run_wire_or_cla_to_ctp();

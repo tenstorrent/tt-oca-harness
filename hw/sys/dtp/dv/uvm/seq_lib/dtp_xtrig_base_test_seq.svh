@@ -533,8 +533,8 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     // entering P2P mode would otherwise present a request left pending from
     // wire-OR routing. RESET is a level: assert, then program.
     if (mode == CtpModeP2p)
-      csr_write(ctp_config_addr(port), pack_ctp_config(mode, 1'b0, 1'b1), 4'hF,
-                $sformatf("ctp%0d.handshake_reset", port));
+      csr_write(ctp_config_addr(port), pack_ctp_config(mode, 1'b0, 1'b1), 4'hF, $sformatf(
+                "ctp%0d.handshake_reset", port));
     program_ctp(port, mode, 1'b0, 1'b0, stretch);
   endtask
 
@@ -643,10 +643,12 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     wait_sys_cycles(IsolationTailCycles);
     stop_activity_window();
     fired = fired_vector();
-    `uvm_info(get_type_name(), $sformatf(
-              "XTRIG WINDOW %s fired=0x%07h predicted=0x%07h intent=0x%07h p2p_ctps=0x%04h cycles=%0d",
-              label, fired, predicted & CtmSelectMask, intent,
-              p_sequencer.m_xtrig_ctp_shadow.p2p_mask(), window_cycles), UVM_LOW)
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "XTRIG WINDOW %s fired=0x%07h predicted=0x%07h intent=0x%07h p2p_ctps=0x%04h cycles=%0d",
+            label, fired, predicted & CtmSelectMask, intent,
+            p_sequencer.m_xtrig_ctp_shadow.p2p_mask(), window_cycles), UVM_LOW)
     // Reference model against the DUT: the outputs that fired anywhere in the
     // window, and only those, are the model's prediction.
     check_evidence(ChkRouteModel, {label, ".model_route"}, 64'(fired),
