@@ -6,6 +6,7 @@ The blob manifest and the run-time provenance check in sep_base_test both call
 this, so the two cannot drift apart on how the digest is formed. The order of
 the arguments is part of the digest; callers must pass the same list.
 """
+
 import hashlib
 import sys
 

@@ -45,8 +45,8 @@
 // Not one of the three enumerated encodings.
 #define SEP_DMA_ASID_INVALID 0x0u
 // Field positions come from the generated header, so an RDL move follows here.
-#define SEP_DMA_ASID_PAIR(src, dst)                                          \
-    ((((uint32_t)(src)) << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) |          \
+#define SEP_DMA_ASID_PAIR(src, dst) \
+    ((((uint32_t)(src)) << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) | \
      (((uint32_t)(dst)) << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp))
 
 static inline uint32_t sep_dma_rd(uint32_t addr) {

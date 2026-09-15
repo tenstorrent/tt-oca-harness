@@ -1058,7 +1058,9 @@ class sep_base_test(uvm_test):
         )
         return seq
 
-    def start_esrc_noise_driver(self, *, noise_mode: str = "unbiased", seed_base: int = 0x1234_5678):
+    def start_esrc_noise_driver(
+        self, *, noise_mode: str = "unbiased", seed_base: int = 0x1234_5678
+    ):
         """Drive tb_top.esrc_noise_ext_i every cycle and return the forked task.
 
         ``+esrc_noise_force`` only routes this port onto the ring-oscillator
@@ -1288,7 +1290,10 @@ class sep_base_test(uvm_test):
                 exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
             self.logger.info(
                 "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s bytes=%d mtime=%d",
-                exe, exe_digest, st.st_size, int(st.st_mtime),
+                exe,
+                exe_digest,
+                st.st_size,
+                int(st.st_mtime),
             )
         except (OSError, ValueError) as exc:
             # Say so rather than omit the line: a missing build identity is a
@@ -1355,6 +1360,7 @@ class sep_base_test(uvm_test):
                     "" if len(areas) == len(shown_areas) else f", first {len(shown_areas)} shown",
                     ",".join(shown_areas),
                 )
+
     def _check_km_rom_provenance(self) -> None:
         """Fail a run whose KM ROM image does not match the sources it was built from.
 
@@ -1387,9 +1393,7 @@ class sep_base_test(uvm_test):
         fw_dir = _COCOTB_ROOT / "tests" / "km_fw"
         manifest = fw_dir / "blob_manifest.txt"
         if not manifest.is_file():
-            self.logger.info(
-                "KM-ROM-PROVENANCE: %s UNVERIFIED -- no %s", rom, manifest
-            )
+            self.logger.info("KM-ROM-PROVENANCE: %s UNVERIFIED -- no %s", rom, manifest)
             return
         entry = None
         for line in manifest.read_text().splitlines():
@@ -1418,9 +1422,7 @@ class sep_base_test(uvm_test):
         try:
             from hash_inputs import digest as _digest
         except ImportError as exc:
-            self.logger.info(
-                "KM-ROM-PROVENANCE: %s UNVERIFIED -- %s", rom, exc
-            )
+            self.logger.info("KM-ROM-PROVENANCE: %s UNVERIFIED -- %s", rom, exc)
             return
         finally:
             sys.path.pop(0)
@@ -1443,7 +1445,7 @@ class sep_base_test(uvm_test):
         except OSError as exc:
             self.logger.info("KM-ROM-PROVENANCE: %s UNVERIFIED -- %s", rom, exc)
             return
-        rebuild = f"make -C hw/sys/sep/dv/cocotb/tests/km_fw all"
+        rebuild = "make -C hw/sys/sep/dv/cocotb/tests/km_fw all"
         assert got_inputs == want_inputs, (
             f"KM-ROM-PROVENANCE FAIL: a build input of {rom}.parhex has changed "
             f"since it was built ({rom}.S, gen_parhex.py, key_manager_addr.h or "
@@ -1459,8 +1461,7 @@ class sep_base_test(uvm_test):
             f"without a rebuild. Rebuild with `{rebuild}`."
         )
         self.logger.info(
-            "KM-ROM-PROVENANCE: %s matches its manifest entry (inputs %s, "
-            "loaded blob %s)",
+            "KM-ROM-PROVENANCE: %s matches its manifest entry (inputs %s, loaded blob %s)",
             loaded,
             want_inputs[:16],
             want_blob[:16],

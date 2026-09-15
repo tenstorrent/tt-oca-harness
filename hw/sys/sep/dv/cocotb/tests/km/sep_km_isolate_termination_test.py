@@ -110,13 +110,10 @@ class sep_km_isolate_termination_test(sep_base_test):
         await self.start_seq(seq)
         assert seq.resp_ok, "SW_RESET_N write not OKAY"
         got = await self.rst.read_back()
-        assert got == want, (
-            f"SW_RESET_N readback 0x{got:08x} != requested 0x{want:08x}"
-        )
+        assert got == want, f"SW_RESET_N readback 0x{got:08x} != requested 0x{want:08x}"
         km_bit = got & KM_RST_MASK
         assert km_bit == (live & KM_RST_MASK), (
-            "the HMAC reset write disturbed the Key Manager reset bit: "
-            f"0x{live:08x} -> 0x{got:08x}"
+            f"the HMAC reset write disturbed the Key Manager reset bit: 0x{live:08x} -> 0x{got:08x}"
         )
         return got
 
@@ -163,9 +160,7 @@ class sep_km_isolate_termination_test(sep_base_test):
                 "km_hmac never reported isolated after the HMAC reset request, so "
                 "the isolated leg would not have been run against an isolated path"
             )
-        self.logger.info(
-            "km_hmac reported isolated; releasing the KM image into the isolated leg"
-        )
+        self.logger.info("km_hmac reported isolated; releasing the KM image into the isolated leg")
         await self._post_mbox("parked", 2)
         await self._await_phase(2)
 

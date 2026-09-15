@@ -67,8 +67,14 @@ _RND_REQ_CYCLES = 200_000
 # grades arbitration and routing; the KMAC value matrix is walked by
 # sep_kmac_mode_strength_rand_test.
 _KMAC_KEY = (
-    0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F,
-    0x10111213, 0x14151617, 0x18191A1B, 0x1C1D1E1F,
+    0x00010203,
+    0x04050607,
+    0x08090A0B,
+    0x0C0D0E0F,
+    0x10111213,
+    0x14151617,
+    0x18191A1B,
+    0x1C1D1E1F,
 )
 _KMAC_MSG = [0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F]
 _KMAC_S = b"crypto EDN four-client"
@@ -286,8 +292,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             "CHK5_otbn_rnd cannot fail."
         )
         self.logger.info(
-            "CHK-RND-REQ PASS: OTBN raised crypto_edn_req bit %d (RND) "
-            "(crypto_edn_req_o=0x%x)",
+            "CHK-RND-REQ PASS: OTBN raised crypto_edn_req bit %d (RND) (crypto_edn_req_o=0x%x)",
             _RND_BIT,
             _req(),
         )
@@ -295,8 +300,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         await otbn.wait_idle("post-rnd-prog", timeout=20_000)
         rnd_err = await otbn.read_errbits()
         assert rnd_err == 0, (
-            f"CHK-RND-CONSUME FAIL: OTBN RND program ERR_BITS=0x{rnd_err:08x}, "
-            "expected 0"
+            f"CHK-RND-CONSUME FAIL: OTBN RND program ERR_BITS=0x{rnd_err:08x}, expected 0"
         )
         rnd_words = await otbn.read_dmem_words(OTBN_DMEM_RND_BASE, OTBN_RND_READS)
         # Each CSR read of RND is served from a fresh 256-bit EDN fetch, so a

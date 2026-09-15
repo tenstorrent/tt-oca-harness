@@ -56,7 +56,7 @@
 #define SRAM_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
 #define SRAM_SIZE OCH_SEP_TOP_SEP_SRAM_SIZE
 #define DMA_PARAM_MAGIC 0xDA0A11C0u
-#define ASID_OT_BOTH                                          \
+#define ASID_OT_BOTH \
     SEP_DMA_ASID_PAIR(SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset, \
                       SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset)
 #define DONE_OR_ERR (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)
@@ -93,8 +93,8 @@ static inline void wr(uint32_t a, uint32_t v) {
 // Program + start one transfer (caller has set the locked full range), poll until
 // DONE or ERROR (robust against BUSY-assert latency), and return final STATUS.
 static uint32_t dma_run_asid(uint32_t src, uint32_t dst, uint32_t total, uint32_t chunk,
-                            uint32_t width, uint32_t src_cfg, uint32_t dst_cfg, uint32_t opcode,
-                            uint32_t asid) {
+                             uint32_t width, uint32_t src_cfg, uint32_t dst_cfg, uint32_t opcode,
+                             uint32_t asid) {
     wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
     wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0);
     wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
@@ -105,9 +105,9 @@ static uint32_t dma_run_asid(uint32_t src, uint32_t dst, uint32_t total, uint32_
     wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, chunk);
     wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_cfg);
     wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_cfg);
-    wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
-       SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
-           (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
+    wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm |
+                                                     SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
+                                                     (opcode << SECURE_DMA__CONTROL__OPCODE_bp));
 
     uint32_t st = 0;
     int t = POLL_ITERS;
@@ -502,7 +502,7 @@ static int chk_width(void) {
         // writes and stayed at its 0x2 reset produced a byte-identical copy all three
         // times and the check could not tell 1B from 4B.
         uint32_t wr_rb = rd(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR) &
-                       SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bm;
+                         SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bm;
         if (wr_rb != widths[w]) {
             sep_mbx_puts("FAIL: CHK-WIDTH TRANSFER_WIDTH readback ");
             sep_mbx_puthex(wr_rb);
@@ -929,15 +929,14 @@ static int chk_err_asid(void) {
     const uint32_t ncells = (uint32_t)(sizeof(cells) / sizeof(cells[0]));
 
     for (uint32_t c = 0; c < ncells; c++) {
-        uint32_t st = dma_run_asid(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
-                                   SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
-                                   SECURE_DMA__DST_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY,
-                                   cells[c].asid);
+        uint32_t st =
+            dma_run_asid(src_base, dst_base, copy_bytes, copy_bytes, SEP_DMA_WIDTH_4B,
+                         SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__DST_CONFIG__INCREMENT_bm,
+                         SEP_DMA_OPCODE_COPY, cells[c].asid);
         uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
         // Exclusive, like the opcode and address cells: an ERROR_CODE that also
         // raises another bit is a different defect and must not read as a pass.
-        if (!(st & SECURE_DMA__STATUS__ERROR_bm) ||
-            err != SECURE_DMA__ERROR_CODE__ASID_ERROR_bm) {
+        if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != SECURE_DMA__ERROR_CODE__ASID_ERROR_bm) {
             sep_mbx_puts("FAIL: CHK-ERR-ASID ");
             sep_mbx_puts(cells[c].name);
             sep_mbx_puts(" did not set asid_error exclusively (status ");

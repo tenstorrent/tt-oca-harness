@@ -43,8 +43,6 @@ from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_coun
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
-    FILTER_END_ADDR,
-    FILTER_START_ADDR,
     ALIAS_BASE,
     AP_BASE,
     F_ALLOW_BURST,
@@ -54,6 +52,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_SRC_ID_LSB,
     F_WRITE_ALLOWED,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
+    FILTER_START_ADDR,
     FILTER_STRIDE,
     INFILT_BASE,
     OUTFILT_BASE,

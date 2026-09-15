@@ -348,9 +348,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 )
                 break
             if arrival_read is None and (host_iso == 1 or km_iso == 1):
-                arrival_read = axi_driver.axi.init_read(
-                    address=HMAC_DIGEST_0, length=4, size=2
-                )
+                arrival_read = axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
                 arrival_iso = (host_iso, km_iso)
                 self.logger.info(
                     "drain window open (host_hmac=%d km_hmac=%d, gated reset still "
