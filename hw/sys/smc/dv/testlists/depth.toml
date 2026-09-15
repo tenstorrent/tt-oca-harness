@@ -157,6 +157,14 @@ tags = ["ci", "vplan_gap", "zeroer_dma_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dma_reserved_stream_banks_test"
+module = "smc_dma_reserved_stream_banks_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "zeroer_dma_depth", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dfd_sanity_test"
 module = "smc_dfd_sanity_test"
 seed = 1

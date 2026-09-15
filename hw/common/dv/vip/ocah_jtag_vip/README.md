@@ -417,7 +417,7 @@ PYTHONPATH=hw/common/dv/vip python3 hw/common/dv/vip/ocah_jtag_vip/cocotb/exampl
 | Slave side | Reactive TAP device with IDCODE, BYPASS, undefined instructions as BYPASS, and a register map that latches on Update-DR, holding its shift registers across Pause-x and latching the captured value on a scan with no Shift-x cycle; simulator-free selftest | A DUT-specific register decode beyond the map |
 | Protocol checking | `sva/ocah_jtag_sva.sv` (TDO falling-edge timing, TLR via TMS and TRST, one-hot state legality with an exported state, X-hygiene on four-state simulators), bound in the `dv/` harness (state rules from the device's mirrored state in the cocotb shape, pin rules in the SV-UVM shape) and in the DTP, SMU, and SMC benches | State rules in the SV-UVM harness shape, where the device state stays inside the slave driver |
 | Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`), sampled by the SV-UVM harness (`--dut ocah_jtag_vip --framework uvm --tool vcs --cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through `--dut ocah_jtag_vip --cov`, graded by `dv/cov/config/verilator/coverage_policy.toml`, and through the DTP bench | Covergroups on Verilator |
-| Simulators | Verilator (cocotb: the `dv/` harness and the DTP, SMC, and SMU benches) and VCS (SV-UVM: the `dv/` harness and the DTP and SMU benches) | Xcelium |
+| Simulators | Verilator, VCS, and Xcelium (cocotb: the `dv/` harness; Verilator also the DTP, SMC, and SMU benches) and VCS (SV-UVM: the `dv/` harness and the DTP and SMU benches) | SV-UVM on Xcelium (the runner's SV-UVM flow is VCS-only) |
 
 ## Scope
 

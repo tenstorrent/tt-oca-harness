@@ -4,9 +4,12 @@
 // DTP bench constants, DUT geometry, and pure codec functions shared by the
 // environment (reference models, virtual sequencer, cfgs) and the
 // sequence library (reusable operations, scenario helpers). The cocotb twin
-// is env/dtp_types.py plus env/dtp_xtrig_types.py. Register opcodes and
-// geometry come from the generated DUT collateral (jtag_inst_reg_pkg,
-// cross_trigger_*_pkg, dtp_pkg); the few bench-only constants cite their
+// is env/dtp_types.py plus env/dtp_xtrig_types.py. Register opcodes come from
+// the generated jtag_inst_reg_pkg, the cross-trigger CSR map from the
+// generated cross_trigger_* collateral, the JTAG2AXI bridge geometries from
+// the values each bridge publishes in its *_JTAG2AXI_CAPS TDR (compared with
+// the DUT every pass by the geometry gate), and the TDR field layouts from the
+// PTAP document; the few bench-only constants cite their
 // source. No class lives here: everything is a package-scope type, constant,
 // or `function automatic`.
 
@@ -64,6 +67,9 @@ typedef enum int unsigned {
 typedef struct {
   string                                name;
   ocah_axi_protocol_e protocol;
+  // *_JTAG2AXI_CAPS bus_type: 0 AXI4, 1 AXI4-Lite.
+  bit                                   bus_type;
+  jtag_inst_reg_pkg::jtag_instruction_e caps_instr;
   jtag_inst_reg_pkg::jtag_instruction_e single_op_instr;
   jtag_inst_reg_pkg::jtag_instruction_e series_ctrl_instr;
   jtag_inst_reg_pkg::jtag_instruction_e series_data_incr_instr;
@@ -90,14 +96,49 @@ localparam int unsigned DtpJ2aSeriesLaunchCycles = 5;
 // before a Capture-DR shows it (jtag2axi status CDC); a status capture
 // inside this window after a completion is not checkable.
 localparam int unsigned DtpJ2aStatusSettleTck = 4;
+// Read and write pipeline depth every bridge publishes in the rd_pl_depth and
+// wr_pl_depth fields of its *_JTAG2AXI_CAPS TDR; the CAPS scenarios compare them.
+localparam int unsigned DtpJ2aPipelineDepth = 3;
 // Series read requests one CTRL programming may enqueue: pipeline_depth + 1,
-// with the depth capped at the bridge FIFO depth (jtag_ptap *_RD_PL_DEPTH).
-localparam int unsigned DtpJ2aMaxPipelineDepth = 3;
+// with the depth capped at the bridge's read pipeline depth.
+localparam int unsigned DtpJ2aMaxPipelineDepth = DtpJ2aPipelineDepth;
+// *_JTAG2AXI_CAPS[13:0] (PTAP document, "*_JTAG2AXI_CAPS" table).
+localparam int unsigned DtpJtag2AxiCapsLen = 14;
+// Evidence ID of the per-pass geometry gate every JTAG2AXI scenario records.
+localparam string DtpJ2aGeometryCheckId = "CHK-J2A-GEOMETRY";
 
+// *_JTAG2AXI_CAPS data_size: the beat width in bytes as a power of two.
+function automatic int unsigned dtp_j2a_data_size(dtp_j2a_target_t t);
+  return $clog2(t.data_width / 8);
+endfunction
+
+// Width of the SINGLE_OP and SERIES_CTRL size field: the smallest width that
+// encodes every AxSIZE up to a full beat, and at least one bit; the PTAP
+// document's "*_AXI_SINGLE_OP" table names this width $bits(size).
+function automatic int unsigned dtp_j2a_size_field_bits(int unsigned data_width);
+  int unsigned data_size = $clog2(data_width / 8);
+  return (data_size == 0) ? 1 : $clog2(data_size + 1);
+endfunction
+
+// Every width other than the bus type, address width, and data width follows
+// from the data width (PTAP document, "*_AXI_SINGLE_OP" and
+// "*_AXI_SERIES_CTRL" tables).
+function automatic void dtp_j2a_derive_geometry(ref dtp_j2a_target_t t);
+  t.bus_type     = (t.protocol == OCAH_AXI_PROTO_AXI4_LITE);
+  t.beat_bytes   = t.data_width / 8;
+  t.default_size = dtp_j2a_data_size(t);
+  t.size_bits    = dtp_j2a_size_field_bits(t.data_width);
+  t.wstrb_bits   = 1 << dtp_j2a_data_size(t);
+endfunction
+
+// One function per bridge: bus type, address width, and data width are the
+// values the bridge publishes in its *_JTAG2AXI_CAPS TDR; the geometry gate
+// compares them with the DUT every pass.
 function automatic dtp_j2a_target_t dtp_j2a_target_smc_otp();
   dtp_j2a_target_t t;
   t.name                          = "smc_otp";
   t.protocol = OCAH_AXI_PROTO_AXI4_LITE;
+  t.caps_instr                    = jtag_inst_reg_pkg::SMC_OTP_JTAG2AXI_CAPS_INSTR;
   t.single_op_instr               = jtag_inst_reg_pkg::SMC_OTP_AXI_SINGLE_OP_INSTR;
   t.series_ctrl_instr             = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_CTRL_INSTR;
   t.series_data_incr_instr        = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_INCR_INSTR;
@@ -106,10 +147,7 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_otp();
         jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
   t.addr_width       = 32;
   t.data_width       = 32;
-  t.size_bits        = 2;
-  t.wstrb_bits       = 4;
-  t.default_size     = 2;
-  t.beat_bytes       = 4;
+  dtp_j2a_derive_geometry(t);
   t.dbg_disable_mask = '0;
   t.dbg_disable_mask.smc_otp_jtag2axi = 1'b1;
   return t;
@@ -119,6 +157,7 @@ function automatic dtp_j2a_target_t dtp_j2a_target_sep_otp();
   dtp_j2a_target_t t;
   t.name                          = "sep_otp";
   t.protocol = OCAH_AXI_PROTO_AXI4_LITE;
+  t.caps_instr                    = jtag_inst_reg_pkg::SEP_OTP_JTAG2AXI_CAPS_INSTR;
   t.single_op_instr               = jtag_inst_reg_pkg::SEP_OTP_AXI_SINGLE_OP_INSTR;
   t.series_ctrl_instr             = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_CTRL_INSTR;
   t.series_data_incr_instr        = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_INCR_INSTR;
@@ -127,10 +166,7 @@ function automatic dtp_j2a_target_t dtp_j2a_target_sep_otp();
         jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
   t.addr_width       = 32;
   t.data_width       = 32;
-  t.size_bits        = 2;
-  t.wstrb_bits       = 4;
-  t.default_size     = 2;
-  t.beat_bytes       = 4;
+  dtp_j2a_derive_geometry(t);
   t.dbg_disable_mask = '0;
   t.dbg_disable_mask.sep_otp_jtag2axi = 1'b1;
   return t;
@@ -140,6 +176,7 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_axi();
   dtp_j2a_target_t t;
   t.name                          = "smc_axi";
   t.protocol = OCAH_AXI_PROTO_AXI4;
+  t.caps_instr                    = jtag_inst_reg_pkg::SMC_JTAG2AXI_CAPS_INSTR;
   t.single_op_instr               = jtag_inst_reg_pkg::SMC_AXI_SINGLE_OP_INSTR;
   t.series_ctrl_instr             = jtag_inst_reg_pkg::SMC_AXI_SERIES_CTRL_INSTR;
   t.series_data_incr_instr        = jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_INCR_INSTR;
@@ -148,10 +185,7 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_axi();
         jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
   t.addr_width       = 56;
   t.data_width       = 64;
-  t.size_bits        = 2;
-  t.wstrb_bits       = 8;
-  t.default_size     = 3;
-  t.beat_bytes       = 8;
+  dtp_j2a_derive_geometry(t);
   t.dbg_disable_mask = '0;
   t.dbg_disable_mask.smc_jtag2axi = 1'b1;
   return t;
@@ -194,7 +228,8 @@ function automatic bit [7:0] dtp_j2a_full_wstrb(int unsigned size);
   return 8'((1 << dtp_j2a_size_bytes(size)) - 1);
 endfunction
 
-// SINGLE_OP DR packing (LSB-first: OP | SIZE | WSTRB | DATA | ADDR).
+// SINGLE_OP DR packing, the *_AXI_SINGLE_OP table order LSB-first:
+// OP | SIZE | WSTRB | DATA | ADDR.
 function automatic void dtp_j2a_pack_single_op(dtp_j2a_target_t t, dtp_j2a_op_e op, bit [63:0] addr,
                                                bit [63:0] data, bit [7:0] wstrb, int unsigned size,
                                                ref bit dr[]);
@@ -219,7 +254,8 @@ function automatic void dtp_j2a_unpack_single_op(
   rdata[i] = rbits[data_off+i];
 endfunction
 
-// SERIES_CTRL packing (LSB-first: OP | SIZE | PL_DEPTH | ADDR | RESET).
+// SERIES_CTRL packing, the *_AXI_SERIES_CTRL table order LSB-first:
+// OP | SIZE | PL_DEPTH | ADDR | RESET.
 function automatic bit [63:0] dtp_j2a_pack_series_ctrl(dtp_j2a_target_t t, dtp_j2a_op_e op,
                                                        bit [63:0] addr, int unsigned pipeline_depth,
                                                        int unsigned size, bit series_reset);

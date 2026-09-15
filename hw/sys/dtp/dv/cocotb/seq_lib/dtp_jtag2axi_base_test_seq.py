@@ -4,9 +4,12 @@
 
 from __future__ import annotations
 
+import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
+from env.dtp_tap_device import unpack_jtag2axi_caps
 from env.dtp_types import (
+    JTAG2AXI_TARGETS,
     SMC_DBG_AXSIZE_8B,
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
@@ -19,16 +22,60 @@ from env.dtp_types import (
     unpack_series_data,
     unpack_single_op,
 )
+from ocah_jtag_vip import OcahJtagChecker
 from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
 AXI_MEM_SIZE = 2**16
 AXI_BEAT_BYTES = 8
+GEOMETRY_CHECK_ID = "CHK-J2A-GEOMETRY"
 
 
 class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     """Helpers for DTP JTAG2AXI single-operation and series-operation tests."""
+
+    async def pre_body(self) -> None:
+        """Gate every pass on the DUT publishing the geometry the DV table holds."""
+        await super().pre_body()
+        await self.verify_bridge_geometry()
+
+    async def verify_bridge_geometry(self) -> None:
+        """Compare each bridge's ``*_JTAG2AXI_CAPS`` fields with ``JTAG2AXI_TARGETS``.
+
+        Records ``CHK-J2A-GEOMETRY`` per bridge and fails the pass on a mismatch,
+        before any bridge request is packed with the table's field widths.
+        ``DTP_J2A_GEOMETRY_NEGATIVE=1`` corrupts the expected address size so the
+        run must FAIL, proving the gate rejects a wrong table end to end.
+        """
+        checker = OcahJtagChecker(
+            name=f"{self.get_name()}.geometry",
+            raise_on_error=False,
+            required_ids={GEOMETRY_CHECK_ID},
+            logger=cocotb.log,
+        )
+        negative = OcahKnobs.is_set("DTP_J2A_GEOMETRY_NEGATIVE")
+        if negative:
+            self.log.warning("NEGATIVE VALIDATION: geometry gate expectations will be corrupted")
+        await self.reset_tap()
+        for cfg in JTAG2AXI_TARGETS.values():
+            value = await self.read_tdr(cfg.caps_reg)
+            observed = unpack_jtag2axi_caps(value)
+            self.log.info(
+                "GEOMETRY %s raw=0x%04x bus_type=%d addr_size=%d data_size=%d",
+                cfg.caps_reg,
+                value,
+                observed["bus_type"],
+                observed["addr_size"],
+                observed["data_size"],
+            )
+            checker.expect_equal(
+                GEOMETRY_CHECK_ID,
+                (observed["bus_type"], observed["addr_size"], observed["data_size"]),
+                (cfg.bus_type, cfg.addr_width ^ int(negative), cfg.data_size),
+                context=f"{cfg.caps_reg} (bus_type, addr_size, data_size)",
+            )
+        checker.finalize()
 
     async def jtag2axi_write(
         self,

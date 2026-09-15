@@ -22,8 +22,8 @@ grading rules and the waiver fields are in
 |Simulator that collects |Verilator (`--cov`); no other coverage configuration exists in this tree
 |What each DUT collects |`--dut smu_block`: toggle plus `user` over the scope file. `--dut smu` (the release group, weekly `--cov` in `regress.yml`): line, expression and `user`; toggle is off because the wrapper elaborates the real SEP, SMC and DTP and unscoped toggle is the 0.5 GB-per-leaf case
 |Scope file |`cov/config/verilator/smu_cov_scope.vlt`
-|Policy file |`cov/config/verilator/smu_block_coverage_policy.toml` (`--dut smu_block`); `--dut smu` has none
-|Cover-property modules |`cov/sv/smu_boot_fcov.sv`, `cov/sv/smu_xbar_fcov.sv`
+|Policy file |`cov/config/verilator/smu_block_coverage_policy.toml` (`--dut smu_block`); `cov/config/verilator/smu_wrapper_coverage_policy.toml` (`--dut smu`)
+|Cover-property modules |11 under `cov/sv/`, 120 points in all; see <<smu-fcov-points>>
 |===
 
 === Metric Choice
@@ -86,19 +86,70 @@ Verify a scope change by counting `__vlCoverToggleInsert` sites per source
 bucket in the generated model, not by the build passing: a wrong scope
 changes nothing and warns about nothing.
 
+[[smu-fcov-points]]
 === Functional Coverage Points
 
-`cov/sv/` carries two modules of labelled `cover property` points,
-instantiated in the shared `tb/tb_top.sv`. Under `--cov` they land in the
-`user` metric family of the native coverage database, so they reach
+`cov/sv/` carries 11 modules of labelled cover-property points, 120 in all,
+each declared through the `OCAH_FCOV_COVER` macro. Under `--cov` they land in
+the `user` metric family of the native coverage database, so they reach
 `cov_merge`, `cov_report` and the coverage policy.
 
-[cols="2,4",options="header",]
+The block bench `tb/tb_top.sv` instantiates ten of them; the wrapper bench
+`tb/tb_wrapper_top.sv` instantiates all eleven. `smu_clk_fcov.sv` is the one
+the block bench does not carry: it reads clock mirrors only the wrapper bench
+publishes. Point counts below are the declarations in each file, counted from
+the source; how many of them *elaborate* on a given target is lower wherever a
+`g_sep` guard removes one, and that number needs a run rather than a count.
+
+[cols="2,1,4",options="header",]
 |===
-|Module |Intent it makes real
-|`cov/sv/smu_boot_fcov.sv` |`smc_boot_cg` bring-up: reset-release edges, boot-stall sources and release, lifecycle broadcast
-|`cov/sv/smu_xbar_fcov.sv` |`xbar_route_cg` filter and `reg_access_cg` outcome: window programming and reprogramming, inbound AXI handshake, all four response encodings, forwarded versus not-forwarded routing
+|Module |Points |Intent it makes real
+|`smu_xbar_fcov.sv` |26 |Window programming and reprogramming, inbound AXI handshake, all four response encodings, forwarded versus not-forwarded routing
+|`smu_boot_fcov.sv` |21 |Reset-release edges, boot-stall sources and release, lifecycle broadcast, fuse sense, SRAM auto-init
+|`smu_rst_fcov.sv` |17 |Cold-reset assertion and release, per-domain reset order, power-good
+|`smu_dbg_fcov.sv` |13 |JTAG2AXI debug paths, security-disable, TAP state
+|`smu_ext_fcov.sv` |10 |External boot-sequence gate and the external AXI boundary
+|`smu_nosep_fcov.sv` |8 |The SEP=0 composition: what the boundary presents with no SEP elaborated
+|`smu_dtp_fcov.sv` |7 |Cross-trigger ports and XTRIG mode
+|`smu_lc_fcov.sv` |6 |Lifecycle state broadcast and demotion
+|`smu_alias_fcov.sv` |6 |Alias and remap manager scope at the SMU boundary
+|`smu_clk_fcov.sv` |3 |Clock mirrors only the wrapper bench exposes
+|`smu_clkstop_fcov.sv` |3 |Clock-stop request and grant
 |===
+
+==== `SepPresent`, a third scope mechanism
+
+Two mechanisms keep a point out of a graded number, and `SepPresent` is a
+third that is easy to confuse with them.
+
+* The scope files `smu_cov_scope.vlt` and `smu_wrapper_cov_scope.vlt` apply
+  `coverage_off` by source file at compile time, so the point never enters the
+  database. Structural OUT, by file.
+* `SepPresent` gates the `g_sep` generate blocks in `cov/sv/*_fcov.sv`. A
+  point whose observable exists only with SEP elaborated is not elaborated at
+  all on a SEP=0 build, so it never reaches the database and no waiver has to
+  name it. Structural OUT, by elaboration.
+* A `[[holes]]` entry is the opposite case: the point exists, is not hit, and
+  is carried with a category, a rationale, an owner and an expiry.
+
+`tb_wrapper_top.sv` passes `SepPresent = 1'b0` under the `SMU_NO_SEP` define;
+the block bench passes `1'b0` unconditionally, because it hardcodes SEP=0.
+
+This matters because one Verilator policy grades both wrapper targets:
+`policy_file` resolves per tool, not per target. An accepted waiver whose
+selector matches a covered point is a hard `ConfigError`, so the wrapper
+policy's holes come from the no-SEP run that CI gates, and a point which can
+only fire with SEP present must not exist on that elaboration. The `g_sep`
+guards are what makes that true.
+
+==== Fuse-sense run modes
+
+Every run mode in `smu_sim_cfg.toml` passes `+skip_fuse_sense`, under which
+`efuse_shadow_regs.sv` drives `fuse_sense_done` from the plusarg and loads the
+shadow array from a preload file. A test that observes fuse-sense completion
+has to run without it, so that the eFuse bank models supply the sensed data.
+`[run_modes.no_sep_fuse_sense]` and `[run_modes.sep_rtl_fuse_sense]` are the
+two that leave the plusarg unset, and they carry the only two tests needing it.
 
 Points must need stimulus beyond power-up and reset release. A level that is
 true in the quiescent state is either absent or qualified by a sticky flag
@@ -135,5 +186,8 @@ Three limits decide what `SMU_VPLAN.adoc` is allowed to say about coverage:
 `cov/config/<tool>/coverage_policy.toml` discovery would resolve identically
 for both DUTs, and whichever DUT the file did not name would fail
 `--validate-configs`. `[coverage.verilator].policy_file` in
-`smu_block_sim_cfg.toml` names a DUT-qualified file instead; the wrapper
-config `smu_sim_cfg.toml` sets no policy file.
+each config names a DUT-qualified file instead: `smu_block_coverage_policy.toml`
+for the block bench and `smu_wrapper_coverage_policy.toml` for `--dut smu`.
+Each carries one `[[holes]]` entry per unhit point, with
+`disposition = "waive"`, `status = "accepted"` and an `expires` date after
+which it grades as open again. Neither sets a threshold.
