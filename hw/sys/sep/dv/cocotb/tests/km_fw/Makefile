@@ -7,12 +7,12 @@ PYTHON ?= python3
 
 OUT_DIR := ..
 ROMS := km_rom km_rom_entropy km_rom_coexist km_rom_vault km_rom_crc \
-        km_rom_kpv_scrambler
+        km_rom_kpv_scrambler km_rom_iso
 
 # The KM PicoRV32 is built with ENABLE_REGS_16_31=0, so an image that runs on
 # it must be assembled for RV32E and may use x0-x15 only. Images that only feed
 # the tb keep the wider base ISA.
-RV32E_ROMS := km_rom_vault km_rom_crc km_rom_kpv_scrambler
+RV32E_ROMS := km_rom_vault km_rom_crc km_rom_kpv_scrambler km_rom_iso
 ARCH_FLAGS = -march=rv32i -mabi=ilp32
 $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(RV32E_ROMS))): \
         ARCH_FLAGS := -march=rv32e -mabi=ilp32e

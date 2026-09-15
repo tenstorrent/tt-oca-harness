@@ -49,11 +49,20 @@
     .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
 
     # The KM SRAM is a memory, not a register block, so the generated register
-    # header carries no symbol for it. Its base is km_intf_pkg.sv
-    # SRAM_BASE_ADDR; the same constant the other KM images use.
+    # header carries no symbol for its base. km_csr.rdl documents SRAM lock
+    # region 0 as 0x8000-0x83FF, which is where the region map starts and so
+    # where the memory starts.
     .equ KM_SRAM_BASE, 0x00008000
 
-    .equ AXI_ERR_BITS, 0x30        # IRQ_STATUS AXI_SLVERR | AXI_DECERR
+    # IRQ_STATUS AXI_SLVERR (bit 4) | AXI_DECERR (bit 5), from km_csr.rdl.
+    # This mask IS the observation that carries CHK-KM-ISO-TERM, so it should
+    # come from a symbol -- but the only generated field masks
+    # (KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm and friends) live in km_csr.h,
+    # a C header of structs and static_asserts the assembler cannot pull in.
+    # The raw addr headers carry addresses only. Until that export gap closes,
+    # every KM image types its field positions; this one at least names the
+    # field rather than the number.
+    .equ AXI_ERR_BITS, 0x30
     .equ POLL_LIMIT,   32
 
     .section .text

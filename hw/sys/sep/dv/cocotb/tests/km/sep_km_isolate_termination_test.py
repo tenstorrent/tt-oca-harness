@@ -130,7 +130,7 @@ class sep_km_isolate_termination_test(sep_base_test):
             if (word >> 24) == RESULT_MAGIC and (word & 0xF) == phase:
                 return word
         raise AssertionError(
-            f"CHK-KM-LIVE FAIL: KM SRAM word0=0x{word:08x} after {polled} cycles "
+            f"KM image liveness FAIL: KM SRAM word0=0x{word:08x} after {polled} cycles "
             f"(phase {phase} never published; the KM image did not reach that leg)"
         )
 
