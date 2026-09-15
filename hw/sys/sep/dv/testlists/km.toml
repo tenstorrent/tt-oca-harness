@@ -136,6 +136,16 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]
 
 [[tests]]
+name = "sep_km_isolate_termination_test"
+module = "km.sep_km_isolate_termination_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "isolate", "reset", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_iso.parhex"]
+
+[[tests]]
 # KM mailbox command set: generate, transfer, revoke-or-shred, illegal-to-error,
 # version queries, OTP cold lock, recoverable-fault ACK, and a directed ABR
 # ML-DSA seed transfer every seed. RANDCFG: generated key size, the extra

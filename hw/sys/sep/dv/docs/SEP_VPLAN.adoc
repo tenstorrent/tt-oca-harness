@@ -578,6 +578,11 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 [cols="2,2,2,4",options="header"]
 |===
 |Test Case |Run mode |VIP / Model |Description
+|`sep_km_isolate_termination_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, KM CPU image
+|What a Key Manager MASTER transaction receives when its own AXI-Lite path is isolated. Every other isolation entry drives the SEP host port and so reaches the `host_*` paths only; the KM masters the `km_*` paths, so a KM-CPU image is the vehicle. The same store to the HMAC key aperture is clean, then raises an AXI error while `km_hmac` is isolated, then is clean again.
+
 |`sep_km_key_policy_vault_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
@@ -2886,11 +2891,12 @@ domain grades drain-before-reset separately in
 
 *Not claimed*: drain-before-reset for the AES, KMAC and OTBN domains — the
 mechanism is shared, but a per-domain demonstration is not made here. Key
-Manager isolate termination is not claimed either: the KM paths are mastered by
-the Key Manager, so pinning a termination response on them needs KM firmware
-traffic, which this no_cpu entry does not run. `CHK-DRAIN-ORDER` reads the
+Manager isolate termination is not claimed here: `CHK-DRAIN-ORDER` reads the
 `km_hmac` isolate bit, so it shows the KM path reaching isolation, not what a
-KM transaction receives. SMC CPU-MMIO isolate is out of this subsystem.
+KM transaction receives. That response is graded for `km_hmac` in
+<<sep_km_isolate_termination_test>>, which runs a KM CPU image so the
+transaction comes from the master that owns the path. SMC CPU-MMIO isolate is
+out of this subsystem.
 
 '''''
 
@@ -5442,6 +5448,69 @@ error path works.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_km_isolate_termination_test]]
+===== `sep_km_isolate_termination_test`
+
+*Phase*: 2
+
+*Bucket*: Key Manager vault
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_iso.parhex`
+
+*Source Module*: `sep_km_isolate_termination_test`
+
+*BFM / Model*: ocah_axi_vip, KM CPU image
+
+*Randomization*: RAND-NONE — one directed path, three directed legs.
+
+*Objective*: What a Key Manager master transaction receives when its own AXI-Lite path to a destination is isolated. Every other isolation entry in this plan drives the SEP host port, which reaches the `host_*` paths and never the `km_*` ones, so the response a KM transaction gets was not graded anywhere. The KM CPU image stores to the same HMAC wrapper key address three times: clean while the path is open, an AXI error while `km_hmac` is isolated, clean again after release.
+
+*Test Coverage*: `km_hmac` isolate termination, and that isolation does not wedge the KM path.
+
+*Test Procedure*:
+
+[arabic]
+. Dedicated `km_rom_iso` on the KM CPU bus, not `rom_main`. The image publishes a phase marker in KM SRAM word0 and blocks on an inbound mailbox word between legs, so the host controls when each leg runs.
+. Each leg W1Cs `IRQ_STATUS` AXI_SLVERR and AXI_DECERR and requires them to read back clear before its store. The bits are sticky, so without that precondition a leg would also be satisfied by an earlier fault anywhere on the KM CPU bus.
+. Leg A with HMAC released: the store completes with neither bit set.
+. The host parks HMAC by read-modify-write of `SW_RESET_N`, preserving the Key Manager's own release bit, then waits for the `km_hmac` isolate-completion bit before releasing the image into leg B. A leg B that raced the coordinator would store into a still-open path.
+. Leg B: the same store raises AXI_SLVERR or AXI_DECERR.
+. The host releases HMAC; leg C repeats the store and requires it clean.
+
+[NOTE]
+====
+Legs A and C cannot fail on their own — "no error" is also what a dead poll loop
+reports — and are not offered as evidence by themselves. They are the controls
+that make `CHK-KM-ISO-TERM` discriminating: the same instruction at the same
+address in the same image, differing only in whether the host holds HMAC in
+reset. Without them the error leg would be satisfied by an address that always
+errors.
+====
+
+*Checkers*:
+
+[cols="2,6",options="header"]
+|===
+|Checker |What it proves
+|CHK-KM-ISO-PRECOND
+|Every leg began with both AXI error bits clear, so the bit a leg reports belongs to that leg's store.
+|CHK-KM-PATH-LIVE
+|With HMAC released, the KM store to the HMAC key aperture completes with no AXI error — the path is open.
+|CHK-KM-ISO-TERM
+|With `km_hmac` isolated, the same store raises AXI_SLVERR or AXI_DECERR. It neither completes nor hangs.
+|CHK-KM-ISO-REOPEN
+|After release the same store is clean again, so isolation did not leave the KM path wedged.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Not claimed*: the other five KM destination paths (`km_otbn`, `km_aes`,
+`km_kmac`, `km_abr`, `km_efuse`). They share the mechanism; only `km_hmac` is
+demonstrated. The response code is graded as "an AXI error", not pinned to
+SLVERR specifically, because the KM CSR status bit the image polls reports the
+two codes as one field.
 
 '''''
 
