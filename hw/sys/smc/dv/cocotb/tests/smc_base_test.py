@@ -1418,12 +1418,19 @@ class smc_base_test(uvm_test):
             dut.tb_spi_dq_oe_n.value = 0xFF
             if hasattr(dut, "tb_spi_miso_ext"):
                 dut.tb_spi_miso_ext.value = 0
-        # Telemetry ATB receiver 0 (U4-6): idle quiet, AFREADY high.
+        # Telemetry ATB (U4-6): every lifted receiver idles quiet, receiver 0
+        # with AFREADY high. These are the values the tie-offs they replaced
+        # presented, so a test that drives none of them is unaffected.
         if hasattr(dut, "tb_telemetry0_atvalid"):
             dut.tb_telemetry0_atdata.value = 0
             dut.tb_telemetry0_atid.value = 0
             dut.tb_telemetry0_atvalid.value = 0
             dut.tb_telemetry0_afready.value = 1
+        for telem_rx in (1, 2):
+            if hasattr(dut, f"tb_telemetry{telem_rx}_atvalid"):
+                getattr(dut, f"tb_telemetry{telem_rx}_atdata").value = 0
+                getattr(dut, f"tb_telemetry{telem_rx}_atid").value = 0
+                getattr(dut, f"tb_telemetry{telem_rx}_atvalid").value = 0
         # AVSBus sdata (pad 51): idle-high (pull-up / no ACK).
         if hasattr(dut, "tb_avs_sdata_ext"):
             dut.tb_avs_sdata_ext.value = 1

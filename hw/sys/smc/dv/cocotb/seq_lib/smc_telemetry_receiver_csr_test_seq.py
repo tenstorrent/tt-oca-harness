@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""U4-6: TELEMETRY CSR + INTR_TEST IRQ + ATB message into receiver 0.
+"""U4-6: TELEMETRY CSR + INTR_TEST IRQ + a framed ATB message per receiver.
 
 ATB FRAMING PROVENANCE. The IP lives at ``hw/ip/telemetry_receiver/``; the
 framing this sequence drives is a DV-owned table (the ``_ATB_*`` constants
@@ -43,13 +43,11 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 # Reset sweep across all three receivers.
 #
-# On the ATB stimulus side only receiver 0 is driven -- `tb_top.sv:518` says
-# "receiver 0 driven; 1/2 quiet". Quiet is NOT tied off: the generated address
-# map carries indexed TELEMETRY_RECEIVER symbols for all three receivers, and
-# the INTR_ENABLE write/readback leg below proves each register block is live.
-# A CSR RESET read does not need ATB input, and receivers 1/2 being
-# unstimulated is exactly what guarantees their registers are still at reset
-# when they are read.
+# The reset reads run before any ATB stimulus, which is what guarantees every
+# receiver's registers are still at reset when they are read. The generated
+# address map carries indexed TELEMETRY_RECEIVER symbols for all three
+# receivers, and the INTR_ENABLE write/readback leg below proves each register
+# block is live.
 #
 # All seven single-indexed register types are swept. `TELEMETRY_COUNTER` is
 # excluded: its generated macro is DOUBLY indexed
@@ -71,9 +69,9 @@ _TELEMETRY_REG_TYPES = (
     ("TELEMETRY_COUNTER_VLDS", 0x0),
 )
 _TELEMETRY_RECEIVERS = 3
-# Receivers 1 and 2 take no ATB stimulus, so a reset sweep alone would leave
-# their entire claim at "mapped, and at reset". Each therefore also takes a
-# write/readback/restore on INTR_ENABLE, whose two writable fields are
+# A reset sweep alone would leave receivers 1 and 2 at "mapped, and at reset",
+# so each also takes a write/readback/restore on INTR_ENABLE before its own
+# framed ATB message below. INTR_ENABLE's two writable fields are
 # `MISSING_LAST[0]` and `BUFFER_THRESHOLD[4]` (telemetry_receiver.rdl:127-141),
 # giving the pattern below. A window that decodes but does not store, or one
 # that returns a bus default, fails the readback
@@ -134,6 +132,22 @@ _PROBE_ID = 0x05
 assert _PROBE_ID < (1 << _ATB_PROBE_ID_BITS)
 _COUNTERS = [0x11223344, 0x55667788]
 
+# Per-receiver ATB legs. Each receiver is framed with a probe ID of its own, so
+# the PROBE_ID readback below cannot be satisfied by another receiver's message
+# leaking into the wrong buffer, and with an ATB ID of its own, which is the
+# only stimulus that distinguishes the three ATB sources at the pins.
+_RX_ATB_LEGS = {
+    0: {"probe_id": _PROBE_ID, "atid": 0x00, "counters": _COUNTERS},
+    1: {"probe_id": 0x0A, "atid": 0x11, "counters": [0x9A8B7C6D, 0x0F1E2D3C]},
+    2: {"probe_id": 0x13, "atid": 0x22, "counters": [0xDEADBEEF, 0xFEEDFACE]},
+}
+for _leg in _RX_ATB_LEGS.values():
+    assert _leg["probe_id"] < (1 << _ATB_PROBE_ID_BITS)
+assert len({_leg["atid"] for _leg in _RX_ATB_LEGS.values()}) == len(_RX_ATB_LEGS)
+assert len({_leg["probe_id"] for _leg in _RX_ATB_LEGS.values()}) == len(_RX_ATB_LEGS)
+# Bound on the assembled message reaching the message buffer.
+_BUFFER_POLL_BOUND = 200
+
 
 _ATB_READY_BOUND = 64
 # Bound for the INTR_TEST-to-IRQ and IRQ-clear observations. No stated
@@ -161,40 +175,52 @@ async def _await_irq_level(dut, want: int, label: str) -> int:
     )
 
 
-async def _atb_write_beat(dut, value: int, *, beat: int = -1) -> None:
-    """Drive one ATB beat and REQUIRE the handshake to complete.
+async def _atb_write_beat(dut, value: int, *, beat: int = -1, rx: int = 0, atid: int = 0) -> None:
+    """Drive one ATB beat into receiver `rx` and REQUIRE the handshake.
 
     Expiry is a failure: a dropped beat produces a PARTIAL frame, which can
     still clear STATUS.EMPTY and still match PROBE_ID, so a truncated message
     would score as a good one ([TIMEOUT-MUST-FAIL]).
     """
-    dut.tb_telemetry0_atdata.value = value & 0xFF
-    dut.tb_telemetry0_atid.value = 0
-    dut.tb_telemetry0_atvalid.value = 1
+    atdata = getattr(dut, f"tb_telemetry{rx}_atdata")
+    atid_pin = getattr(dut, f"tb_telemetry{rx}_atid")
+    atvalid = getattr(dut, f"tb_telemetry{rx}_atvalid")
+    atready = getattr(dut, f"tb_telemetry{rx}_atready")
+    atdata.value = value & 0xFF
+    atid_pin.value = atid & 0x7F
+    atvalid.value = 1
     await RisingEdge(dut.clk_smc_i)
     accepted = False
     for _ in range(_ATB_READY_BOUND):
-        if int(dut.tb_telemetry0_atready.value):
+        raw = atready.value
+        if not raw.is_resolvable:
+            raise AssertionError(f"tb_telemetry{rx}_atready is X/Z: {raw}")
+        if int(raw):
             accepted = True
             break
         await RisingEdge(dut.clk_smc_i)
-    dut.tb_telemetry0_atvalid.value = 0
+    atvalid.value = 0
     if not accepted:
         raise AssertionError(
-            f"ATB beat {beat} (data=0x{value & 0xFF:02x}) was never accepted: "
-            f"tb_telemetry0_atready stayed low for {_ATB_READY_BOUND} "
-            f"clk_smc_i cycles. Continuing would send a truncated frame, which "
-            f"can still clear STATUS.EMPTY and still match PROBE_ID."
+            f"ATB beat {beat} (data=0x{value & 0xFF:02x}) into receiver {rx} was "
+            f"never accepted: tb_telemetry{rx}_atready stayed low for "
+            f"{_ATB_READY_BOUND} clk_smc_i cycles. Continuing would send a "
+            f"truncated frame, which can still clear STATUS.EMPTY and still "
+            f"match PROBE_ID."
         )
 
 
-async def _send_telemetry_packet(dut, packet_data: int) -> None:
+async def _send_telemetry_packet(dut, packet_data: int, *, rx: int = 0, atid: int = 0) -> None:
     beat_mask = (1 << _ATB_BEAT_BITS) - 1
     for i in range(_NUM_BEATS_PER_PACKET):
-        await _atb_write_beat(dut, (packet_data >> (i * _ATB_BEAT_BITS)) & beat_mask, beat=i)
+        await _atb_write_beat(
+            dut, (packet_data >> (i * _ATB_BEAT_BITS)) & beat_mask, beat=i, rx=rx, atid=atid
+        )
 
 
-async def _send_telemetry_message(dut, probe_id: int, counter_values: list[int]) -> None:
+async def _send_telemetry_message(
+    dut, probe_id: int, counter_values: list[int], *, rx: int = 0, atid: int = 0
+) -> None:
     """Send a complete last-flagged message (all counter bytes marked valid)."""
     counter_bytes: list[int] = []
     for counter_value in counter_values:
@@ -210,9 +236,9 @@ async def _send_telemetry_message(dut, probe_id: int, counter_values: list[int])
         packet_data |= 1 << (bit_index + _ATB_BLOCK_DATA_BITS)  # valid flag
         if i == len(counter_bytes) - 1:
             packet_data |= 1 << _ATB_LAST_PACKET_BIT
-            await _send_telemetry_packet(dut, packet_data)
+            await _send_telemetry_packet(dut, packet_data, rx=rx, atid=atid)
         elif bit_index == 0:
-            await _send_telemetry_packet(dut, packet_data)
+            await _send_telemetry_packet(dut, packet_data, rx=rx, atid=atid)
             packet_data = 0
             bit_index = _ATB_NEXT_BLOCK_LSB
         else:
@@ -228,6 +254,76 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         self.irq_rise_cycles: int | None = None
         self.irq_fall_cycles: int | None = None
         self.quiet_receivers_proved: list[int] = []
+        #: PROBE_ID read back per receiver after its own ATB message.
+        self.rx_atb_probe_ids: dict[int, int] = {}
+        #: STATUS word sampled per receiver while its buffer was non-empty.
+        self.rx_atb_status: dict[int, int] = {}
+
+    async def _atb_message_leg(self, dut, rx: int) -> None:
+        """Frame one message into receiver `rx` and score its CSR consequence.
+
+        Receivers 1 and 2 previously took no ATB stimulus at all -- their ATB
+        pins were tied off in the bench -- so their claim stopped at "mapped,
+        at reset, and stores INTR_ENABLE". This leg drives the same framing the
+        receiver-0 leg drives, with a probe ID and an ATB ID of its own, and
+        scores the same two CSR consequences: EMPTY clearing on THIS receiver
+        and THIS receiver's PROBE_ID reading back the value framed into it. A
+        wrap that routed the beats to the wrong receiver fails on the empty
+        sample of the receiver it was told to fill, and a receiver that latched
+        the neighbour's header fails on PROBE_ID.
+        """
+        leg = _RX_ATB_LEGS[rx]
+        status_addr = smc_indexed_addr(
+            "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_STATUS_BASE_ADDR", rx
+        )
+        probe_addr = smc_indexed_addr(
+            "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_TELEMETRY_PROBE_ID_BASE_ADDR",
+            rx,
+        )
+        ctrl_addr = smc_indexed_addr(
+            "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_CTRL_BASE_ADDR", rx
+        )
+        before = await self.csr_read(f"TELEMETRY_{rx}_STATUS_PRE_ATB", status_addr)
+        assert before & _STATUS_EMPTY, (
+            f"TELEMETRY_{rx} STATUS.EMPTY expected before its ATB message, got "
+            f"0x{before:08x}; a later non-empty sample would not be "
+            f"attributable to this leg"
+        )
+        await _send_telemetry_message(
+            dut, leg["probe_id"], leg["counters"], rx=rx, atid=leg["atid"]
+        )
+        await ClockCycles(dut.clk_smc_i, 16)
+        status = 0
+        for _ in range(_BUFFER_POLL_BOUND):
+            status = await self.csr_read(f"TELEMETRY_{rx}_STATUS_ATB", status_addr)
+            if not (status & _STATUS_EMPTY):
+                break
+            await ClockCycles(dut.clk_smc_i, 1)
+        else:
+            raise AssertionError(
+                f"TELEMETRY_{rx} buffer stayed EMPTY after its ATB message "
+                f"(STATUS=0x{status:08x}) over {_BUFFER_POLL_BOUND} polls"
+            )
+        probe = await self.csr_read(f"TELEMETRY_{rx}_PROBE_ID_ATB", probe_addr)
+        assert (probe & 0x1F) == leg["probe_id"], (
+            f"TELEMETRY_{rx} PROBE_ID mismatch: got 0x{probe:x}, expected "
+            f"0x{leg['probe_id']:x} (the value framed into receiver {rx})"
+        )
+        await self.csr_write(f"TELEMETRY_{rx}_BUFFER_POP", ctrl_addr, 0x1)
+        await ClockCycles(dut.clk_smc_i, 4)
+        self.rx_atb_probe_ids[rx] = probe & 0x1F
+        self.rx_atb_status[rx] = status
+        cocotb.log.info(
+            "CHK-TELEMETRY-RECEIVER-%d-ATB: STATUS went 0x%08x (EMPTY set) -> "
+            "0x%08x (EMPTY clear) and TELEMETRY_PROBE_ID read back 0x%02X for "
+            "the message framed into receiver %d with ATB ID 0x%02X",
+            rx,
+            before,
+            status,
+            self.rx_atb_probe_ids[rx],
+            rx,
+            leg["atid"],
+        )
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -323,6 +419,10 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         await self.csr_write("TELEMETRY_0_BUFFER_POP", _TELEMETRY_0_CTRL, 0x1)
         await ClockCycles(dut.clk_smc_i, 4)
 
+        # --- U4-6c: the same framed message into receivers 1 and 2
+        for rx in _QUIET_RECEIVERS:
+            await self._atb_message_leg(dut, rx)
+
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", _CLOCK_GATE_CONTROL, cg)
         # Every field below is a value this run read back or counted
         # ([EVIDENCE-TOKEN-CONDITIONAL]).
@@ -332,11 +432,16 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
             "clear) after the ATB message; INTR_TEST raised "
             "tb_telemetry_irq_any %d clk_smc_i cycle(s) after the write and "
             "the W1C cleared it %d cycle(s) after; receivers %s each stored and "
-            "restored INTR_ENABLE=0x%02x",
+            "restored INTR_ENABLE=0x%02x; each of receivers %s also assembled "
+            "its own framed ATB message, reading back PROBE_ID %s against the "
+            "framed values %s",
             self.probe_id_readback,
             self.status_non_empty,
             self.irq_rise_cycles,
             self.irq_fall_cycles,
             ",".join(str(r) for r in self.quiet_receivers_proved),
             _INTR_ENABLE_WRITABLE,
+            ",".join(str(r) for r in sorted(self.rx_atb_probe_ids)),
+            ",".join(f"0x{self.rx_atb_probe_ids[r]:02X}" for r in sorted(self.rx_atb_probe_ids)),
+            ",".join(f"0x{_RX_ATB_LEGS[r]['probe_id']:02X}" for r in sorted(self.rx_atb_probe_ids)),
         )
