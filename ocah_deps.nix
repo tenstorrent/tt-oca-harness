@@ -67,6 +67,7 @@ in
       ocah-antora
       ocah-asciidoctor
       ocah-ditaa
+      mermaid-cli
       # Build Tools
       gnumake
       bender
