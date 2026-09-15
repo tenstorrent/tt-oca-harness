@@ -21,9 +21,9 @@ post-reset secure wipe has consumed URND, which already needs EDN enabled. So
 this test drives it as its own client -- a program that reads RND four times
 -- and claims routing and consume for it, not alternation.
 
-Three crypto sinks are live (AES + OTBN URND + OTBN RND), so CHK5 is
-three-sink ROUTING: each post-adapter beat equals the AXIS1 word the adapter
-granted that cycle.
+Four crypto sinks are live (AES, KMAC, OTBN URND and OTBN RND) plus the entropy
+pool, so CHK5 is five-sink ROUTING: each post-adapter beat equals the AXIS1 word
+the adapter granted that cycle.
 
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
 ports).
@@ -35,6 +35,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.sep_drbg_scoreboard import SepDrbgScoreboard
+from env.sep_kmac_golden import kmac_family_words
 from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
 from seq_lib.sep_esrc_bringup_seq import (
@@ -43,7 +44,6 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
-from env.sep_kmac_golden import kmac_family_words
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 from seq_lib.sep_otbn_seq import (
     OTBN_DMEM_RND_BASE,
@@ -72,6 +72,15 @@ _KMAC_KEY = (
 )
 _KMAC_MSG = [0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F]
 _KMAC_S = b"crypto EDN four-client"
+# Floors for the two sinks added with the fourth client. A keyed KMAC-256
+# masking reseed and the pool's own pull both move well past these; they are
+# set below the observed traffic so a seed change does not trip them, and above
+# one so a starved sink cannot pass.
+_KMAC_MIN_BEATS = 4
+_POOL_MIN_BEATS = 16
+# One OTBN RND CSR read pulls a 256-bit EDN word, i.e. eight 32-bit beats, so the
+# RND routing floor is OTBN_RND_READS x this -- the sink's whole stimulus.
+_EDN_BEATS_PER_RND_READ = 8
 _DUAL_REQ_CYCLES = 50_000
 # Enough consecutive grants to see the arbiter alternate, and the floor below
 # which the sample says nothing. Literals, so the asserts do not move with the
@@ -239,14 +248,14 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             f"(alt_pairs={alt_pairs} need>={min_alt} grants={grants} "
             f"dual_grants={dual_grants})"
         )
+        # No "both clients appear in the prefix" assert here: the monitor only
+        # records the two bits, so an alternating prefix of length >= 2 contains
+        # both by construction and such an assert could never fail. The
+        # alternation floor above is what carries the claim.
         prefix = grants[: alt_pairs + 1]
-        assert _AES_BIT in prefix and _URND_BIT in prefix, (
-            "CHK-GRANT-ALT FAIL: alternating prefix did not grant both "
-            f"clients (prefix={prefix} grants={grants})"
-        )
         self.logger.info(
-            "CHK-GRANT-ALT PASS: %d consecutive pairs alternate and both "
-            "clients appear before any same-client repeat (grants=%s "
+            "CHK-GRANT-ALT PASS: %d consecutive post-adapter grant pairs "
+            "strictly alternate between AES and OTBN URND (grants=%s "
             "dual_grants=%s)",
             alt_pairs,
             grants[:16],
@@ -300,10 +309,8 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             f"({[f'0x{w:08x}' for w in rnd_words]}) -- RND was not refetched "
             "per read"
         )
-        assert any(w != 0 for w in rnd_words), (
-            f"CHK-RND-CONSUME FAIL: every RND word read back as zero "
-            f"({[f'0x{w:08x}' for w in rnd_words]})"
-        )
+        # No "not all zero" assert: distinctness above already makes at most one
+        # of the words zero, so that assert could never fail.
         self.logger.info(
             "CHK-RND-CONSUME PASS: %d RND CSR reads retired with ERR_BITS=0 and "
             "returned %d distinct words %s",
@@ -361,14 +368,20 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        # The grant sample above establishes how much traffic each client
-        # actually took, so the routing floors are held to that rather than to
-        # the scoreboard's default of one beat. RND is floored at its own
-        # traffic: OTBN_RND_READS fetches of eight 32-bit EDN beats each.
+        # Routing floors, and what each one is: only RND is derived from its own
+        # stimulus -- OTBN_RND_READS CSR reads of _EDN_BEATS_PER_RND_READ 32-bit
+        # EDN beats each -- so a DUT that routed a few beats and then starved
+        # fails it. The other four are non-vacuity floors: set above one so a
+        # starved sink cannot pass, but below the observed traffic so a seed
+        # change does not trip them. They do NOT bound their sink's full
+        # stimulus, and a partial-then-starve fault on those four is caught by
+        # zero-mismatch routing, not by the floor.
         self.drbg_sb.set_min_matches(
             CHK5_aes=_GRANT_MIN_SAMPLES,
             CHK5_otbn_urnd=_GRANT_MIN_SAMPLES,
-            CHK5_otbn_rnd=OTBN_RND_READS,
+            CHK5_otbn_rnd=OTBN_RND_READS * _EDN_BEATS_PER_RND_READ,
+            CHK5_kmac=_KMAC_MIN_BEATS,
+            CHK5_pool=_POOL_MIN_BEATS,
         )
         assert self.drbg_sb.report()
         ra = self.drbg_sb.results["CHK5_aes"]

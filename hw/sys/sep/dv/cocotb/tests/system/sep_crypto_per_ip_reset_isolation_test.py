@@ -312,32 +312,52 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         ]
         reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_HMAC.rst_bit))
 
-        # A further read that ARRIVES while isolation is draining (#245).
-        await ClockCycles(cocotb.top.clk_i, 2)
-        arrival_read = axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
-
         # The HMAC reset may not assert until BOTH paths that domain depends on
         # report isolated. Sampling every cycle catches the assert edge -- but
         # only if the reset is still RELEASED here: entering the loop after the
         # edge would grade a steady state in which both isolate bits are high
         # anyway, and the check could not fail.
         assert int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 1, (
-            "HMAC reset already asserted before the drain window opened, so the "
-            "ordering check would not witness the assert edge"
+            "HMAC gated reset was already asserted before the reset request was "
+            "issued, so this domain asserted reset with no drain window at all"
         )
+
+        # The drain window is the interval in which an isolate bit is asserted
+        # while the gated reset is still released. The arrival beat (#245) is
+        # issued INSIDE that window, on the first cycle a probe shows it open --
+        # not on a fixed delay, which in an earlier revision put the beat on the
+        # bus in the same cycle as the pre-request batch and 45 ns before the
+        # SW_RESET_N write's own B response. The probe values at issue are kept
+        # in the log, so the beat's position in the window is evidence, and a
+        # design that never opens a window fails below rather than scoring the
+        # pre-request property a second time.
+        arrival_read = None
+        arrival_iso = None
         for _ in range(1_000):
+            host_iso = int(cocotb.top.hmac_host_isolated_probe_o.value)
+            km_iso = int(cocotb.top.hmac_km_isolated_probe_o.value)
             if int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 0:
-                host_iso = int(cocotb.top.hmac_host_isolated_probe_o.value)
-                km_iso = int(cocotb.top.hmac_km_isolated_probe_o.value)
                 assert host_iso == 1 and km_iso == 1, (
                     "HMAC reset asserted before its AXI-Lite paths isolated: "
                     f"host_hmac={host_iso} km_hmac={km_iso}"
                 )
                 self.logger.info(
                     "CHK-DRAIN-ORDER PASS: HMAC reset asserted only after the host "
-                    "and Key Manager paths both reported isolated"
+                    "and Key Manager paths both reported isolated (sampled in the "
+                    "same cycle as the observed assert edge)"
                 )
                 break
+            if arrival_read is None and (host_iso == 1 or km_iso == 1):
+                arrival_read = axi_driver.axi.init_read(
+                    address=HMAC_DIGEST_0, length=4, size=2
+                )
+                arrival_iso = (host_iso, km_iso)
+                self.logger.info(
+                    "drain window open (host_hmac=%d km_hmac=%d, gated reset still "
+                    "released): arrival read issued here",
+                    host_iso,
+                    km_iso,
+                )
             await ClockCycles(cocotb.top.clk_i, 1)
         else:
             raise AssertionError("HMAC gated reset never asserted after the reset request")
@@ -361,6 +381,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             drain_codes,
         )
 
+        assert arrival_read is not None, (
+            "no drain window was ever observed: the HMAC gated reset asserted "
+            "without any cycle in which an isolate bit was set and the reset was "
+            "still released, so the arrival-during-drain case has no beat and "
+            "CHK-DRAIN-ARRIVAL has nothing to grade"
+        )
         await with_timeout(arrival_read.wait(), 10_000, "ns")
         arrival_code = worst_resp(getattr(arrival_read.data, "resp", None))
         assert arrival_code in (RESP_OKAY, RESP_SLVERR), (
@@ -368,7 +394,11 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "expected OKAY (drained) or SLVERR (terminated), never DECERR or a hang"
         )
         self.logger.info(
-            "CHK-DRAIN-ARRIVAL PASS: a read arriving mid-drain resolved resp=%d, no hang",
+            "CHK-DRAIN-ARRIVAL PASS: a read issued inside the drain window "
+            "(host_hmac=%d km_hmac=%d at issue, gated reset still released) "
+            "resolved resp=%d, no hang",
+            arrival_iso[0],
+            arrival_iso[1],
             arrival_code,
         )
 

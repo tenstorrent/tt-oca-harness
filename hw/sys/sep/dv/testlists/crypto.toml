@@ -197,7 +197,8 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # time-span overlap test above, which cannot hold two edn_req bits together.
 # Then OTBN RND, the adapter's third scored client, is driven by a program
 # blocked on the RND CSR; its routing and consume are graded, not alternation.
-# Strict CHK1..CHK4 + CHK5_aes/CHK5_otbn_urnd/CHK5_otbn_rnd ROUTING (three live sinks).
+# Strict CHK1..CHK4 + CHK5 ROUTING on all four adapter clients and the entropy
+# pool (five scored streams).
 name = "sep_crypto_edn_round_robin_grant_test"
 module = "crypto.sep_crypto_edn_round_robin_grant_test"
 seed = 1

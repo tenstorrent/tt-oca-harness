@@ -44,6 +44,7 @@
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_iso.parhex
 
 #include "key_manager_addr.h"
+#include "km_csr_fields.inc"
 
     .equ MBOX_READ_DATA,   (KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
     .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
@@ -54,15 +55,13 @@
     # where the memory starts.
     .equ KM_SRAM_BASE, 0x00008000
 
-    # IRQ_STATUS AXI_SLVERR (bit 4) | AXI_DECERR (bit 5), from km_csr.rdl.
-    # This mask IS the observation that carries CHK-KM-ISO-TERM, so it should
-    # come from a symbol -- but the only generated field masks
-    # (KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm and friends) live in km_csr.h,
-    # a C header of structs and static_asserts the assembler cannot pull in.
-    # The raw addr headers carry addresses only. Until that export gap closes,
-    # every KM image types its field positions; this one at least names the
-    # field rather than the number.
-    .equ AXI_ERR_BITS, 0x30
+    # IRQ_STATUS AXI_SLVERR | AXI_DECERR -- the mask that carries
+    # CHK-KM-ISO-TERM, so it comes from the generated field masks, not from a
+    # typed number. km_csr.h itself is a C header the assembler cannot pull in;
+    # km_csr_fields.inc is the assembler-safe extract the km_fw Makefile lifts
+    # out of it, so a field that moves at the next RDL regeneration moves here.
+    .equ AXI_ERR_BITS, (KM_CSR__IRQ_STATUS_REG__AXI_SLVERR_bm | \
+                        KM_CSR__IRQ_STATUS_REG__AXI_DECERR_bm)
     .equ POLL_LIMIT,   32
 
     .section .text

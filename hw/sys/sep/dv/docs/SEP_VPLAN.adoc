@@ -199,7 +199,7 @@ appears.
 |`sep_hmac_kmac_cpu_crypto_smoke_test`
 |cpu
 |ocah_axi_vip, CPU FW
-|Brings the HMAC and KMAC engines up over the real CPU-to-fabric path, as a complement to the sideload tests which drive them from the Key Manager.
+|Brings the HMAC, KMAC and AES engines up over the real CPU-to-fabric path, as a complement to the sideload tests which drive them from the Key Manager. The AES leg round-trips a block through SRAM in both directions, against the published FIPS-197 vector on the encrypt side.
 |===
 
 ==== Phase 1 — Representatives
@@ -480,7 +480,7 @@ appears.
 |`sep_dma_basic_test`
 |cpu
 |ocah_axi_vip, CPU FW
-|Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address, address-space-id and transfer-width refusals, the inverted-range refusal, a copy that leaves SRAM for the instruction memory and back, a DMA-issued host-path command-integrity inject (`host_path_err` / aggregator bit 40), and a fabric DECERR dest that raises the same bit with the pin low. The mode and width walk is directed.
+|Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address, address-space-id and transfer-width refusals, the inverted-range refusal, a copy that leaves SRAM for the instruction memory and back, a DMA-issued host-path command-integrity inject (`host_path_err` / aggregator bit 41), and a fabric DECERR dest that raises the same bit with the pin low. The mode and width walk is directed.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_ot_host_csr_irq_rand_test>> covers the SPI host CSR and interrupt surface. It is graded there so each test has one owning bucket.
@@ -673,7 +673,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test`
 
 |AES mode × key-size
-|`sep_aes_mode_keysize_rand_test` (9-cell). CTR DECRYPT opcode is not claimed (<<phase-3>>).
+|`sep_aes_mode_keysize_rand_test` (9-cell). CTR x DECRYPT is not claimed, and is not deferred either: CTR is a stream mode and the engine runs the forward cipher whichever way `OPERATION` is programmed, so the cell has no DUT-observable cipher contract and a test there would pass with the field disconnected. `OPERATION`'s shadowed-register behaviour is mode-independent and belongs on a CSR vehicle.
 
 |HMAC SHA variants
 |`sep_hmac_sha_variant_rand_test`
@@ -742,7 +742,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset for the four accelerator domains is not claimed. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset is claimed for the HMAC domain only — see the detail entry; it is not claimed for AES, KMAC or OTBN. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
@@ -1837,15 +1837,17 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 
 *BFM / Model*: ocah_axi_vip, CPU FW
 
-*Objective*: Brings the HMAC and KMAC engines up over the real CPU-to-fabric path, as a complement to the sideload tests which drive them from the Key Manager.
+*Objective*: Brings the HMAC, KMAC and AES engines up over the real CPU-to-fabric path, as a complement to the sideload tests which drive them from the Key Manager. The AES leg is the CPU-owned data path specifically: firmware stages the plaintext in SRAM, hands it to the engine, writes the ciphertext back to SRAM, and recovers the plaintext from there, so SRAM is on the path in both directions rather than the block living in registers.
 
-*Test Coverage*: HMAC and KMAC over the CPU fabric path.
+*Test Coverage*: HMAC, KMAC and an AES-128-ECB SRAM round trip over the CPU fabric path.
 
 *Test Procedure*:
 
 [arabic]
 . HMAC: configure for SHA-256; start; feed the message with queue backpressure; process; poll done; read and byte-swap the digest. Repeat for three messages.
 . KMAC: poll idle; configure for the customisable mode with software-supplied entropy; set the entropy-ready bit (it is set, never read back); load the seed and prefix; start; feed the message with its length encoding; process; read the unmasked digest.
+. AES: release the engine's software reset; stage the FIPS-197 C.1 plaintext block into SRAM; read it back out of SRAM into the engine; configure AES-128-ECB encrypt; run; store the ciphertext to SRAM; compare it against the published vector.
+. Reconfigure the same engine for decrypt, feed the ciphertext back from SRAM, run, store the recovered block to SRAM, and compare it against the original plaintext read from SRAM.
 
 *Checkers*:
 
@@ -1862,6 +1864,10 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 |Both engines' done events clear on write-one-to-clear.
 |CHK-KMAC-LIVE
 |KMAC completes with clean error status and a non-zero digest. Golden-checked KMAC is `sep_kmac_mode_strength_rand_test`.
+|CHK-CPU-AES-ENC
+|The ciphertext the engine produced from the SRAM-staged plaintext equals the published FIPS-197 C.1 AES-128 vector, word for word. An absolute value, so this leg cannot be satisfied by a round trip that is self-consistent but wrong -- an engine that encrypted with the wrong key or the wrong number of rounds fails here even though its own decrypt would undo it.
+|CHK-CPU-AES-RT
+|Feeding that ciphertext back from SRAM under `operation=DECRYPT` recovers the original plaintext, compared against the block re-read from SRAM rather than against the firmware's own constant. This is the direction the AXI leaf cannot claim: the data crosses CPU stores and loads to SRAM on both sides of the engine, so a broken CPU-to-SRAM path fails it while the register-resident AXI walk would still pass.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -2731,7 +2737,7 @@ NIST samples.
 |CHK-DUAL-REQ
 |At least one cycle both selected clients have `edn_req` high. Without this, CHK-GRANT-ALT is vacuous.
 |CHK-GRANT-ALT
-|After that dual request, a prefix of consecutive post-adapter grants strictly alternates between the two clients. A same-client repeat is allowed only after that prefix has already granted both. A grant stream that is one client then the other, with no alternating prefix, fails. Same-cycle dual-`edn_req` grants are not scored: AES reseed pulses, so an ack-time dual sample can be AES-only. This is sharing plus an alternating prefix, not a lockstep proof of `prim_arbiter_ppc` under simultaneous request.
+|After that dual request, a prefix of consecutive post-adapter grants strictly alternates between the two clients. A grant stream that is one client then the other, with no alternating prefix, fails. The prefix necessarily contains both clients, since only the two are recorded, so that is not scored separately. Same-cycle dual-`edn_req` grants are not scored: AES reseed pulses, so an ack-time dual sample can be AES-only. This is sharing plus an alternating prefix, not a lockstep proof of `prim_arbiter_ppc` under simultaneous request.
 |CHK-NO-STARVE
 |Each requesting client receives at least one `edn_ack` in the window.
 |CHK-ROUTING
@@ -2741,7 +2747,7 @@ NIST samples.
 |CHK-RND-REQ
 |`crypto_edn_req[2]` (OTBN RND) is high while the loaded program is blocked on the RND CSR. Without this request the adapter never grants RND and CHK5_otbn_rnd cannot fail, so this is the control for it.
 |CHK-RND-CONSUME
-|The RND program retires with `ERR_BITS` == 0 and the four words it stored to DMEM are all distinct and not all zero. Each CSR read of RND is served from a fresh 256-bit EDN fetch, so a DUT that latched one value and replayed it, or that returned the reset value, fails here. This is the consume proof at the OTBN end; CHK5_otbn_rnd is the routing proof at the adapter, and neither implies the other.
+|The RND program retires with `ERR_BITS` == 0 and the four words it stored to DMEM are all distinct — which already leaves at most one of them zero, so an all-zero stream is not scored separately. Each CSR read of RND is served from a fresh 256-bit EDN fetch, so a DUT that latched one value and replayed it, or that returned the reset value, fails here. This is the consume proof at the OTBN end; CHK5_otbn_rnd is the routing proof at the adapter, and neither implies the other.
 |CHK-KMAC-CLIENT
 |The fourth adapter client completes a keyed KMAC-256 whose digest equals the Keccak golden. A client that took EDN beats but produced the wrong digest is not a working client, so the digest rather than the beat count is what is graded here. The value matrix itself is walked by `sep_kmac_mode_strength_rand_test`; this cell is fixed.
 |CHK-FOUR-CLIENT
@@ -2869,7 +2875,7 @@ one word and parks, which is enough for the legality check to execute.
 |CHK-HOST-DRAIN
 |Host reads the fabric accepted before the reset request resolve OKAY or SLVERR — never DECERR, never a hang — and at least one resolves OKAY, so accepted traffic provably drained rather than being dropped.
 |CHK-DRAIN-ARRIVAL
-|A read issued while isolation is draining also resolves. It may drain (OKAY) or be terminated (SLVERR); it may not hang. This is the arrival-during-drain case.
+|A read issued *inside an observed drain window* also resolves. The beat is issued on the first cycle a TB probe shows an isolate bit asserted while the gated reset is still released, and the probe values at issue are recorded in the log, so the beat's position in the window is evidence rather than a timing assumption. It may drain (OKAY) or be terminated (SLVERR); it may not hang. A domain that asserts its gated reset with no such cycle at all fails this checker rather than re-scoring `CHK-HOST-DRAIN`'s property.
 |CHK-ISOLATE-REOPEN
 |After release the same `DIGEST_0` answers OKAY again. This is also what shows the drain did not leave the path wedged.
 |CHK-ISOLATE-RESET-DEFAULT
@@ -3593,7 +3599,7 @@ poll and yields the same pass.
 |CHK-ERR-CMDINVAL
 |A command with the reserved speed encoding latches exactly `ERROR_STATUS.CMDINVAL`, then write-one-to-clear releases it.
 |CHK-ERR-CSIDINVAL
-|A segment whose chip-select is outside `NUM_CS` latches exactly `ERROR_STATUS.CSIDINVAL`, then write-one-to-clear releases it.
+|A segment whose chip-select is outside `NumCS` — driven at the top of the 32-bit `CSID` field, so the stimulus assumes no particular `NumCS` — latches exactly `ERROR_STATUS.CSIDINVAL`, then write-one-to-clear releases it.
 |CHK-ERR-RECOVER
 |READ ID completes with the BFM JEDEC identity after the three injections, so the host was released rather than left disabled.
 |CHK-RAND-REP
@@ -3650,11 +3656,11 @@ feature-scorecard hole.
 |CHK-NONVAC
 |EVERY walked register's readback differs from its own observed pre-write value. Where a seeded value happens to equal what the register already holds, the test flips the lowest writable bit instead, so no register on any seed can satisfy this by writing back what was already there.
 |CHK-INTR
-|The interrupt test register drives interrupt status, gated by the enable — mask proven in both directions — and clearing the source deasserts it.
+|The interrupt test register drives interrupt status while the enable is set, and clearing the source deasserts it with no write-one-to-clear. Whether the enable masks the status register itself is logged as an observation, not graded: the register description does not state it.
 |CHK-ERR-W1C
-|Six error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY, ACCESSINVAL) are each induced by their own trigger, observed set, and cleared by write-one-to-clear, with a clean precondition asserted first. Each trigger must set its OWN bit and no other: the clean precondition makes exclusivity checkable, and without it a device that raised every error bit on any stimulus would satisfy all six legs. These are the six bits the generated register block defines; none is left unprovoked.
+|Five error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY) are each induced by their own trigger, observed set, and cleared by write-one-to-clear, with a clean precondition asserted first. Each trigger must set its OWN bit and no other: the clean precondition makes exclusivity checkable, and without it a device that raised every error bit on any stimulus would satisfy all five legs. The OVERFLOW and CMDBUSY triggers find the boundary from the DUT's own `STATUS.TXFULL` / `STATUS.READY` report and then write one beat past it, so no FIFO depth is imported as a golden. The sixth bit the register block defines, ACCESSINVAL, is *not claimed*: its documented trigger is a TXDATA write with no bytes enabled, which the AXI master on this path cannot drive.
 |CHK-WATERMARK
-|`STATUS.TXWM` follows the RTL polarity (set while TXQD is below the watermark): set while empty and at occupancy `wm-1`, clear at the exact watermark and after filling past it.
+|`STATUS.TXWM` follows the documented polarity (`spi_controller.rdl` `STATUS.TXWM`: set while TXQD is below `CTRL.TX_WATERMARK`): set while empty and at occupancy `wm-1`, clear at the exact watermark and after filling past it.
 |CHK-ENABLE
 |Clearing the enable holds the queued command off; setting it drains the transmit FIFO. The negative window is not a constant: the test first measures how many polls the same one-word command takes to drain with the core ENABLED, then requires the disabled command to survive a fixed multiple of that measurement, with `TXQD` still 1 and `TXEMPTY` clear at the end of it. A device that ignored the enable but merely executed slowly would pass a hand-picked window; it cannot pass a calibrated one.
 |===
@@ -6320,6 +6326,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
 
 |Contracts not claimed (no vehicle in `all`)
-|Phase 3: CPU-firmware AES SRAM round-trip; AES CTR DECRYPT; ABR sign/verify and ML-KEM-1024; ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
+|Phase 3: ABR sign/verify and ML-KEM-1024; ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
 
 |===

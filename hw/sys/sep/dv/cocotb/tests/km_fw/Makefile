@@ -88,13 +88,28 @@ rom_main: rom_main_stamp
 # build error instead of a silently stale constant.
 KM_REG_INC := $(OCH_ROOT)/hw/ip/key_manager/regs/gen/c
 
-$(OUT_DIR)/%.parhex: %.S gen_parhex.py $(KM_REG_INC)/key_manager_addr.h
-	$(RISCV_CC) -nostdlib $(ARCH_FLAGS) -I$(KM_REG_INC) -Ttext=0 -o $*.elf $<
+# Field MASKS live in km_csr.h, a C header of structs and static_asserts an .S
+# cannot include. This target lifts the plain #define lines an image needs out
+# of it into an assembler-safe include, so a field that moves at the next RDL
+# regeneration changes the mask instead of leaving a hand-typed literal behind.
+# The grep is the trace: if a name disappears, the build fails here.
+KM_CSR_H := $(KM_REG_INC)/km_csr.h
+KM_FIELD_INC := km_csr_fields.inc
+KM_FIELD_DEFS := KM_CSR__IRQ_STATUS_REG__AXI_(SLVERR|DECERR)_bm
+
+$(KM_FIELD_INC): $(KM_CSR_H) Makefile
+	@printf '/* Generated from km_csr.h by km_fw/Makefile. Do not edit. */\n' > $@
+	@grep -E '^#define ($(KM_FIELD_DEFS)) ' $< >> $@ || { \
+	    echo "$<: expected field-mask defines matching $(KM_FIELD_DEFS)" >&2; \
+	    rm -f $@; exit 1; }
+
+$(OUT_DIR)/%.parhex: %.S gen_parhex.py $(KM_REG_INC)/key_manager_addr.h $(KM_FIELD_INC)
+	$(RISCV_CC) -nostdlib $(ARCH_FLAGS) -I$(KM_REG_INC) -I. -Ttext=0 -o $*.elf $<
 	$(RISCV_OBJCOPY) -O binary $*.elf $*.bin
 	$(PYTHON) gen_parhex.py $*.bin > $@
 
 clean:
-	rm -f *.elf *.bin $(PARHEX) $(OUT_DIR)/rom_main.rom.parhex
+	rm -f *.elf *.bin $(KM_FIELD_INC) $(PARHEX) $(OUT_DIR)/rom_main.rom.parhex
 	# Whole build tree, not just build/tests/rom_main: the driver objects that
 	# carry the wipe defines (rom_boot.o, libkey_manager.a) live flat in build/.
 	rm -rf $(KM_FW_DIR)/build
