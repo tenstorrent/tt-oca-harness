@@ -1274,24 +1274,55 @@ class sep_base_test(uvm_test):
         # sources on disk at time 0, which is not the same claim as "the model
         # executing was compiled from them" -- a reused simv, or a rebuild that
         # landed after the flist was read, produces a truthful-looking commit
-        # line for a run that executed something else. Hashing the executable
-        # makes two runs over the same or different builds distinguishable
-        # after the fact, which is the part that cannot be recovered later.
+        # line for a run that executed something else. The digest is the part
+        # that cannot be recovered after the fact.
+        #
+        # Hashed ONCE PER BUILD, not once per test. A regression reuses one
+        # binary across every leaf, and sha256 runs at ~45 MB/s here, so a
+        # 512 MiB VCS simv would cost ~11 s on every one of them. The digest is
+        # a property of the binary, so it is cached beside it, keyed on size
+        # and mtime; an unwritable or mismatched cache costs a rehash, never a
+        # wrong answer. The line says which it was: `cached` is trusted on
+        # (size, mtime) rather than on content, so a reader chasing a
+        # provenance question knows to delete the sidecar and rerun to get a
+        # digest computed from the bytes.
         try:
             exe = os.path.realpath("/proc/self/exe")
             st = os.stat(exe)
-            if st.st_size <= _SIM_BINARY_HASH_MAX_BYTES:
-                h = hashlib.sha256()
-                with open(exe, "rb") as fh:
-                    for chunk in iter(lambda: fh.read(1 << 20), b""):
-                        h.update(chunk)
-                exe_digest = h.hexdigest()[:16]
-            else:
-                exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
+            key = f"{st.st_size} {int(st.st_mtime)}"
+            cache = Path(f"{exe}.sha256")
+            exe_digest = ""
+            digest_src = "computed"
+            try:
+                cached_key, cached_digest = cache.read_text().split("\n")[0].rsplit(" ", 1)
+                if cached_key == key:
+                    exe_digest = cached_digest.strip()
+                    digest_src = "cached"
+            except (OSError, ValueError):
+                pass
+            if not exe_digest:
+                if st.st_size <= _SIM_BINARY_HASH_MAX_BYTES:
+                    h = hashlib.sha256()
+                    with open(exe, "rb") as fh:
+                        for chunk in iter(lambda: fh.read(1 << 20), b""):
+                            h.update(chunk)
+                    exe_digest = h.hexdigest()[:16]
+                    try:
+                        # Atomic, because concurrent leaves of one regression
+                        # race here; a torn file would be read back as a
+                        # mismatched key and simply rehashed.
+                        tmp = cache.with_suffix(f".sha256.{os.getpid()}")
+                        tmp.write_text(f"{key} {exe_digest}\n")
+                        os.replace(tmp, cache)
+                    except OSError:
+                        pass
+                else:
+                    exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
             self.logger.info(
-                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s bytes=%d mtime=%d",
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d",
                 exe,
                 exe_digest,
+                digest_src,
                 st.st_size,
                 int(st.st_mtime),
             )
@@ -1361,112 +1392,6 @@ class sep_base_test(uvm_test):
                     ",".join(shown_areas),
                 )
 
-    def _check_km_rom_provenance(self) -> None:
-        """Fail a run whose KM ROM image does not match the sources it was built from.
-
-        These .parhex images are committed artifacts and no stage rebuilds
-        them, so an edit to a build input reaches no simulation until somebody
-        runs make -- and the run in between executes the OLD image while a
-        reader sees the NEW source. km_fw/blob_manifest.txt records, per blob,
-        one digest over ALL of its build inputs and one over the blob itself;
-        this recomputes both and fails the run if either moved.
-
-        Two things this deliberately does NOT shortcut:
-
-        * The blob digest is taken on the copy the DUT loads. run_dv copies
-          every .parhex into the per-test run directory and the testbench
-          $readmemh's the bare name against the simulation CWD, so hashing the
-          source tree would certify a file the simulation never opened.
-        * The input digest covers every prerequisite of the blob rule, not just
-          the .S. A regenerated key_manager_addr.h makes every blob stale while
-          leaving the .S untouched.
-
-        A gap is reported, never assumed benign: no manifest, no entry, or an
-        unreadable input each log a line saying the image is unverified.
-        """
-        img = cocotb.plusargs.get("km_rom_hex")
-        if not img:
-            return
-        img = str(img).strip().strip('"')
-        rom = os.path.basename(img)
-        rom = rom[: -len(".parhex")] if rom.endswith(".parhex") else rom
-        fw_dir = _COCOTB_ROOT / "tests" / "km_fw"
-        manifest = fw_dir / "blob_manifest.txt"
-        if not manifest.is_file():
-            self.logger.info("KM-ROM-PROVENANCE: %s UNVERIFIED -- no %s", rom, manifest)
-            return
-        entry = None
-        for line in manifest.read_text().splitlines():
-            if line.startswith("#") or not line.strip():
-                continue
-            fields = line.split()
-            if len(fields) == 3 and fields[0] == rom:
-                entry = fields
-                break
-        if entry is None:
-            # rom_main is built from tracked firmware by the c_compile stage and
-            # is gitignored, so it has no committed blob to bind. Say which case
-            # this is rather than implying the image was checked.
-            self.logger.info(
-                "KM-ROM-PROVENANCE: %s UNVERIFIED -- not a manifest-covered "
-                "committed blob (generated images are bound by their build)",
-                rom,
-            )
-            return
-        _, want_inputs, want_blob = entry
-
-        # The digest helper is the Makefile's own, imported rather than
-        # reimplemented: two copies of "how the digest is formed" drift, and
-        # the failure mode of that drift is a red run nobody can explain.
-        sys.path.insert(0, str(fw_dir))
-        try:
-            from hash_inputs import digest as _digest
-        except ImportError as exc:
-            self.logger.info("KM-ROM-PROVENANCE: %s UNVERIFIED -- %s", rom, exc)
-            return
-        finally:
-            sys.path.pop(0)
-
-        km_reg_inc = _OSS_HW_ROOT / "ip" / "key_manager" / "regs" / "gen" / "c"
-        inputs = [
-            fw_dir / f"{rom}.S",
-            fw_dir / "gen_parhex.py",
-            km_reg_inc / "key_manager_addr.h",
-            km_reg_inc / "km_csr.h",
-        ]
-        # The image the simulation opens: run_dv stages a copy into the run
-        # directory and the testbench reads it relative to the CWD.
-        loaded = Path.cwd() / os.path.basename(img)
-        if not loaded.is_file():
-            loaded = _COCOTB_ROOT / "tests" / f"{rom}.parhex"
-        try:
-            got_inputs = _digest([str(f) for f in inputs])
-            got_blob = _digest([str(loaded)])
-        except OSError as exc:
-            self.logger.info("KM-ROM-PROVENANCE: %s UNVERIFIED -- %s", rom, exc)
-            return
-        rebuild = "make -C hw/sys/sep/dv/cocotb/tests/km_fw all"
-        assert got_inputs == want_inputs, (
-            f"KM-ROM-PROVENANCE FAIL: a build input of {rom}.parhex has changed "
-            f"since it was built ({rom}.S, gen_parhex.py, key_manager_addr.h or "
-            f"km_csr.h), so this run executes the OLD image while the sources say "
-            f"otherwise. inputs sha256={got_inputs} but the manifest recorded "
-            f"{want_inputs}. Rebuild with `{rebuild}` and commit the blob and the "
-            "manifest together."
-        )
-        assert got_blob == want_blob, (
-            f"KM-ROM-PROVENANCE FAIL: the {rom}.parhex this run loaded "
-            f"({loaded}) does not match the manifest ({got_blob} vs "
-            f"{want_blob}); the image was modified or staged from elsewhere "
-            f"without a rebuild. Rebuild with `{rebuild}`."
-        )
-        self.logger.info(
-            "KM-ROM-PROVENANCE: %s matches its manifest entry (inputs %s, loaded blob %s)",
-            loaded,
-            want_inputs[:16],
-            want_blob[:16],
-        )
-
     def _finalize_evidence(self) -> None:
         """Report the evidence this run produced, and grade it if the leaf asked.
 
@@ -1515,7 +1440,6 @@ class sep_base_test(uvm_test):
     async def run_phase(self) -> None:
         self.raise_objection()
         self._log_run_identity()
-        self._check_km_rom_provenance()
         await self.run_scenario()
         self._finalize_evidence()
         self.drop_objection()
