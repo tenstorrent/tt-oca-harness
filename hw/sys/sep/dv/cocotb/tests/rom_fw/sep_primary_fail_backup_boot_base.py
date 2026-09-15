@@ -23,13 +23,14 @@ key revocation and the security version, all of which return before the verifier
 runs. It would NOT hold for a member whose primary defect sits DOWNSTREAM of the
 signature: a payload hash mismatch, a decryption failure or a TOC error. Such a
 primary legitimately prints ``RSA_VERIFY_OK``,
-the count becomes 2, and this base would fail it for the wrong reason. Anyone adding
-that shape must parameterise this the way ``primary_expected_rsa_starts`` is
-parameterised -- ``primary_expected_rsa_oks: int = 0`` and
-``assert n_sig == 1 + primary_expected_rsa_oks`` -- rather than relax the count.
-Recorded here rather than done now because changing it is an executable edit to a
-base with nine dependants and would invalidate their current evidence for no present
-gain.
+the count becomes 2, and this base would fail it for the wrong reason.
+
+That shape arrived on 2026-09-15 with ``sep_decryption_failure_failover_test``,
+whose primary decrypts successfully and is then refused on the TOC identifier --
+precisely the "TOC error" case named above. So the count is now parameterised as
+this note prescribed, by ``primary_expected_rsa_oks``, rather than relaxed. The
+default is 0, which is the previous behaviour exactly, so the nine members that
+predate it keep their evidence unchanged and none of their assertions move.
 
 THE BACKUP MUST BE PROVABLY VALID, and this base asserts that rather than assuming
 it. After the subclass has planted its primary defect, two checks run over the
@@ -136,6 +137,13 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
     # itself. See the module docstring: this is a declaration of which arm rejects
     # the primary, and check_transport asserts it rather than tolerating either.
     primary_expected_rsa_starts: int = 0
+    # How many times the PRIMARY slot's signature VERIFIES. 0 for a primary refused
+    # at or before the verifier -- the default, and true of every member that
+    # predates this -- and 1 for a primary whose defect sits DOWNSTREAM of the
+    # signature, which therefore prints RSA_VERIFY_OK of its own. Declaring it is
+    # what separates "two slots verified because this defect is downstream" from
+    # "two slots were accepted in one run", which would be a real ROM defect.
+    primary_expected_rsa_oks: int = 0
     # Committed OTP preload this scenario needs.
     efuse_preload: Path | None = None
     # Extra markers that must not appear, on top of the shared list.
@@ -327,13 +335,17 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
                 f"Console: {console}"
             )
 
-        # Exactly one slot's signature verified. RSA_VERIFY_OK is printed only
-        # after the verifier returns success (rsa_verify.c:179), so a second
-        # occurrence would mean two slots were accepted in one run.
+        # The backup's signature verified, plus however many the member declared
+        # for its primary. RSA_VERIFY_OK is printed only after the verifier
+        # returns success (rsa_verify.c:179), so an UNDECLARED second occurrence
+        # would mean two slots were accepted in one run -- which is why this is a
+        # declaration rather than a relaxation.
         n_sig = sum(1 for line in console if _RSA_OK in line)
-        assert n_sig == 1, (
-            f"{_RSA_OK} appeared {n_sig} times, expected exactly 1 (the "
-            f"backup's). Console: {console}"
+        want_sig = 1 + self.primary_expected_rsa_oks
+        assert n_sig == want_sig, (
+            f"{_RSA_OK} appeared {n_sig} times, expected exactly {want_sig} (the "
+            f"backup's, plus {self.primary_expected_rsa_oks} declared for the "
+            f"primary). Console: {console}"
         )
 
         # CHK-RECOVERED: the boot came from the backup, and its signature really

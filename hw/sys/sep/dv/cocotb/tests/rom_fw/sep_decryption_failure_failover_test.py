@@ -30,12 +30,20 @@ the LAST block and is untouched, so decryption itself succeeds and the rejection
 lands where it is aimed: ``OCA_FAIL_PAYLOAD_TOC``.
 
 WHAT MAKES THE VERDICT ATTRIBUTABLE. ``DECRYPT_OK`` must appear, and the primary
-must drive the RSA verifier exactly once -- ``primary_expected_rsa_starts = 1``,
-because this defect is refused DOWNSTREAM of the verifier rather than upstream of
-it. Together they place the refusal after the signature check and after the AES
-engine drained, which is the only window ``OCA_FAIL_PAYLOAD_TOC`` can come from.
-An ``AES_PAD_BAD`` here would mean the class key is wrong rather than the
-plaintext -- see the note in ``sep_efuse_lc_prod_class_key.toml``.
+must both drive the RSA verifier and have its signature verify --
+``primary_expected_rsa_starts = 1`` and ``primary_expected_rsa_oks = 1`` -- because
+this defect is refused DOWNSTREAM of the verifier rather than upstream of it.
+Together they place the refusal after the signature check and after the AES engine
+drained, which is the only window ``OCA_FAIL_PAYLOAD_TOC`` can come from. An
+``AES_PAD_BAD`` here would mean the class key is wrong rather than the plaintext --
+see the note in ``sep_efuse_lc_prod_class_key.toml``.
+
+This is the first member of the family whose primary verifies successfully, so it
+is the shape the base's docstring reserved ``primary_expected_rsa_oks`` for: with
+it undeclared the base requires ``RSA_VERIFY_OK`` exactly once, and this run
+prints it twice. Declaring it is what keeps "two slots verified because the defect
+is downstream" distinguishable from "two slots were accepted in one run", which
+would be a ROM defect rather than this stimulus.
 
 THE BACKUP IS UNTOUCHED and is proved bootable before the run, with ``check_toc``
 cleared: its TOC is ciphertext until the ROM decrypts it, so the manifest-side
@@ -92,6 +100,12 @@ class sep_decryption_failure_failover_test(sep_primary_fail_backup_boot_base):
     # Refused downstream of the verifier: the primary's own RSA_EXEC must sit
     # between the primary read and the primary error, and the total must be 2.
     primary_expected_rsa_starts = 1
+    # And its signature VERIFIES before it is refused, so RSA_VERIFY_OK appears
+    # twice -- once per slot. This is the shape the base's docstring reserved this
+    # parameter for; declaring it keeps "two slots verified because the defect is
+    # downstream" distinguishable from "two slots were accepted", which would be a
+    # ROM defect rather than this stimulus.
+    primary_expected_rsa_oks = 1
     # Decryption must have RUN and completed, or the refusal is not the one aimed at.
     extra_required = (_DECRYPT_OK,)
     extra_forbidden = _PREMATURE
