@@ -1253,7 +1253,7 @@ class sep_base_test(uvm_test):
 
         # Tree state. `unknown` is a third value, distinct from clean: a check
         # that could not run must not print what a clean tree prints.
-        dirty_ok, dirty_out = _git("status", "--porcelain")
+        dirty_ok, dirty_out = _git("status", "--porcelain", "-uall")
         dirty = dirty_out.decode("utf-8", "replace") if dirty_ok else ""
         if not dirty_ok:
             state = " (tree state UNKNOWN: git status failed -- do not read this as clean)"
@@ -1308,40 +1308,75 @@ class sep_base_test(uvm_test):
         # modified one -- `--untracked-files=no` would hide exactly the new
         # test or generated image most likely to matter.
         if dirty_ok and dirty.strip():
-            paths = []
+            # Tracked modifications and untracked files are reported
+            # separately, because they answer the proof-path question
+            # differently and mixing them buries the answer: `-uall` expands a
+            # single untracked venv/ into four figures of paths, and a 40-path
+            # cap then hides the one modified source that mattered. Tracked
+            # paths are listed; untracked are counted and named by top-level
+            # area, which is enough to see whether a new module could be on the
+            # proof path.
+            tracked, untracked = [], []
             for line in dirty.splitlines():
                 # Porcelain v1: two status characters, a space, then the path.
                 # Slice the RAW line -- stripping the block first eats the
                 # leading space of an unstaged-only first entry (" M path") and
                 # cuts a character off that path, which is precisely the name a
                 # reader greps against the proof path.
-                if len(line) > 3:
-                    paths.append(line[3:].strip().strip('"'))
+                if len(line) <= 3:
+                    continue
+                path = line[3:].strip().strip('"')
+                (untracked if line.startswith("??") else tracked).append(path)
             digest = "unavailable"
             diff_ok, diff_out = _git("diff", "HEAD", timeout=30)
             if diff_ok:
                 digest = hashlib.sha256(diff_out).hexdigest()[:16]
-            shown = paths[:_RUN_IDENTITY_MAX_PATHS]
+            shown = tracked[:_RUN_IDENTITY_MAX_PATHS]
             self.logger.info(
-                "RUN-IDENTITY-DIRTY: %d file(s) tracked-diff-sha256=%s%s paths=%s",
-                len(paths),
+                "RUN-IDENTITY-DIRTY: %d tracked file(s) modified, "
+                "tracked-diff-sha256=%s%s paths=%s",
+                len(tracked),
                 digest,
-                "" if len(paths) == len(shown) else f" (first {len(shown)} shown)",
-                ",".join(shown),
+                "" if len(tracked) == len(shown) else f" (first {len(shown)} shown)",
+                ",".join(shown) or "none",
             )
-
+            if untracked:
+                # Group by the first two path components, so "venv/bin" is one
+                # area rather than 300, and a new DV module still shows as
+                # "hw/sys" -- specific enough to ask "could that be on my
+                # proof path?" without reprinting the list.
+                areas = sorted({"/".join(u.split("/")[:2]) for u in untracked})
+                shown_areas = areas[:_RUN_IDENTITY_MAX_PATHS]
+                self.logger.info(
+                    "RUN-IDENTITY-UNTRACKED: %d file(s) in %d area(s)%s: %s "
+                    "(not covered by tracked-diff-sha256)",
+                    len(untracked),
+                    len(areas),
+                    "" if len(areas) == len(shown_areas) else f", first {len(shown_areas)} shown",
+                    ",".join(shown_areas),
+                )
     def _check_km_rom_provenance(self) -> None:
-        """Fail a run whose KM ROM image does not match the source it is built from.
+        """Fail a run whose KM ROM image does not match the sources it was built from.
 
         These .parhex images are committed artifacts and no stage rebuilds
-        them, so an edit to a .S reaches no simulation until somebody runs
-        make -- and the run in between executes the OLD image while a reader
-        sees the NEW source. km_fw/blob_manifest.txt records both digests at
-        build time; this compares them against what is on disk now, so that
-        drift fails the run that depends on it instead of passing quietly.
+        them, so an edit to a build input reaches no simulation until somebody
+        runs make -- and the run in between executes the OLD image while a
+        reader sees the NEW source. km_fw/blob_manifest.txt records, per blob,
+        one digest over ALL of its build inputs and one over the blob itself;
+        this recomputes both and fails the run if either moved.
+
+        Two things this deliberately does NOT shortcut:
+
+        * The blob digest is taken on the copy the DUT loads. run_dv copies
+          every .parhex into the per-test run directory and the testbench
+          $readmemh's the bare name against the simulation CWD, so hashing the
+          source tree would certify a file the simulation never opened.
+        * The input digest covers every prerequisite of the blob rule, not just
+          the .S. A regenerated key_manager_addr.h makes every blob stale while
+          leaving the .S untouched.
 
         A gap is reported, never assumed benign: no manifest, no entry, or an
-        unreadable file each log a line saying the image is unverified.
+        unreadable input each log a line saying the image is unverified.
         """
         img = cocotb.plusargs.get("km_rom_hex")
         if not img:
@@ -1374,39 +1409,60 @@ class sep_base_test(uvm_test):
                 rom,
             )
             return
-        _, want_src, want_blob = entry
+        _, want_inputs, want_blob = entry
 
-        def _sha(path):
-            import hashlib
-
-            return hashlib.sha256(path.read_bytes()).hexdigest()
-
-        src = fw_dir / f"{rom}.S"
-        blob = _COCOTB_ROOT / "tests" / f"{rom}.parhex"
+        # The digest helper is the Makefile's own, imported rather than
+        # reimplemented: two copies of "how the digest is formed" drift, and
+        # the failure mode of that drift is a red run nobody can explain.
+        sys.path.insert(0, str(fw_dir))
         try:
-            got_src = _sha(src)
-            got_blob = _sha(blob)
-        except OSError as exc:
+            from hash_inputs import digest as _digest
+        except ImportError as exc:
             self.logger.info(
                 "KM-ROM-PROVENANCE: %s UNVERIFIED -- %s", rom, exc
             )
             return
-        assert got_src == want_src, (
-            f"KM-ROM-PROVENANCE FAIL: {rom}.S has changed since "
-            f"{rom}.parhex was built, so this run executes the OLD image while "
-            f"the source says otherwise. .S sha256={got_src} but the manifest "
-            f"recorded {want_src}. Rebuild with `make -C cocotb/tests/km_fw "
-            f"{rom}.parhex` and commit the blob and the manifest together."
+        finally:
+            sys.path.pop(0)
+
+        km_reg_inc = _OSS_HW_ROOT / "ip" / "key_manager" / "regs" / "gen" / "c"
+        inputs = [
+            fw_dir / f"{rom}.S",
+            fw_dir / "gen_parhex.py",
+            km_reg_inc / "key_manager_addr.h",
+            km_reg_inc / "km_csr.h",
+        ]
+        # The image the simulation opens: run_dv stages a copy into the run
+        # directory and the testbench reads it relative to the CWD.
+        loaded = Path.cwd() / os.path.basename(img)
+        if not loaded.is_file():
+            loaded = _COCOTB_ROOT / "tests" / f"{rom}.parhex"
+        try:
+            got_inputs = _digest([str(f) for f in inputs])
+            got_blob = _digest([str(loaded)])
+        except OSError as exc:
+            self.logger.info("KM-ROM-PROVENANCE: %s UNVERIFIED -- %s", rom, exc)
+            return
+        rebuild = f"make -C hw/sys/sep/dv/cocotb/tests/km_fw all"
+        assert got_inputs == want_inputs, (
+            f"KM-ROM-PROVENANCE FAIL: a build input of {rom}.parhex has changed "
+            f"since it was built ({rom}.S, gen_parhex.py, key_manager_addr.h or "
+            f"km_csr.h), so this run executes the OLD image while the sources say "
+            f"otherwise. inputs sha256={got_inputs} but the manifest recorded "
+            f"{want_inputs}. Rebuild with `{rebuild}` and commit the blob and the "
+            "manifest together."
         )
         assert got_blob == want_blob, (
-            f"KM-ROM-PROVENANCE FAIL: {rom}.parhex does not match the manifest "
-            f"({got_blob} vs {want_blob}); the committed image was modified "
-            "without a rebuild."
+            f"KM-ROM-PROVENANCE FAIL: the {rom}.parhex this run loaded "
+            f"({loaded}) does not match the manifest ({got_blob} vs "
+            f"{want_blob}); the image was modified or staged from elsewhere "
+            f"without a rebuild. Rebuild with `{rebuild}`."
         )
         self.logger.info(
-            "KM-ROM-PROVENANCE: %s.parhex matches %s.S (manifest sha256 %s)",
-            rom,
-            rom,
+            "KM-ROM-PROVENANCE: %s matches its manifest entry (inputs %s, "
+            "loaded blob %s)",
+            loaded,
+            want_inputs[:16],
             want_blob[:16],
         )
 
