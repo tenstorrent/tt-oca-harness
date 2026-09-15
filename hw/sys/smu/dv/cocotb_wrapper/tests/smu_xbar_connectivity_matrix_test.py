@@ -33,7 +33,6 @@ class smu_xbar_connectivity_matrix_test(smu_base_test):
     """Unmatched ext_in access decode-errors instead of reaching ext_out."""
 
     use_shared_env = True
-    enforce_evidence_map = True
 
     async def run_scenario(self) -> None:
         await smu_xbar_connectivity_matrix_seq(self).run()

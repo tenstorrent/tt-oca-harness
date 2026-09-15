@@ -30,7 +30,6 @@ class smu_reset_release_sync_test(smu_base_test):
     """Cold and primary reset deassertions are clock-edge aligned."""
 
     use_shared_env = True
-    enforce_evidence_map = True
 
     async def run_scenario(self) -> None:
         await smu_reset_release_sync_seq(self).run()

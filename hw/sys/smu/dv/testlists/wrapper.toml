@@ -32,6 +32,9 @@ args = [
   "+expected_sep=0",
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: elaboration claim; no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -51,6 +54,10 @@ args = [
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: elaboration claim; no eFuse word is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -65,6 +72,9 @@ run_modes = ["no_sep"]
 args = [
   "+rom_hex=smu_smc_smoke.rom.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: SMC firmware boot to TEST_PASS; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # Real SEP RTL boot readiness.
@@ -87,12 +97,16 @@ args = [
   "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
   "+sep_itcm_hex=smu_sep_smoke.itcm.hex",
   "+sep_dtcm_hex=smu_sep_smoke.dtcm.hex",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Real SEP DV firmware (hw/sys/sep/dv/fw/tests/sep_smu_boot_health), built by
-# [c_build.sep_dv_fw] in smu_sim_cfg.toml inside the OCAH toolchain container,
-# so it is enrolled in `sep_real_fw` and not in `smoke`: the hosted CI runners
-# carry no container image.
+# [c_build.sep_dv_fw] in smu_sim_cfg.toml -- in the OCAH toolchain container
+# unless the caller's RISCV_TOOLCHAIN has picolibc -- so it is enrolled in
+# `sep_real_fw` and not in `smoke`: the hosted CI runners carry neither.
 [[tests]]
 name = "smu_sep_boot_health_test"
 module = "smu_sep_boot_health_test"
@@ -110,6 +124,10 @@ args = [
   "+sep_itcm_hex=sep_smu_boot_health.itcm.hex",
   "+sep_dtcm_hex=sep_smu_boot_health.dtcm.hex",
   "+sep_sym=sep_smu_boot_health.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP-side HMAC (SHA-256) and KMAC (SHA3-256) known-answer tests. The digests
@@ -135,6 +153,10 @@ args = [
   "+sep_itcm_hex=sep_smu_sanity.itcm.hex",
   "+sep_dtcm_hex=sep_smu_sanity.dtcm.hex",
   "+sep_sym=sep_smu_sanity.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP module touch-point matrix: AES, HMAC and KMAC stages run on-chip and the
@@ -166,6 +188,10 @@ args = [
   "+sep_dtcm_hex=sep_smu_modules.dtcm.hex",
   "+sep_sym=sep_smu_modules.tcm.sym",
   "+esrc_noise_force",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Dedicated AES known-answer image: a second, independent AES-128 ECB vector
@@ -190,6 +216,10 @@ args = [
   "+sep_dtcm_hex=sep_smu_aes.dtcm.hex",
   "+sep_sym=sep_smu_aes.tcm.sym",
   "+esrc_noise_force",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # OTBN CSR reachability, a narrow claim: the image writes five OTBN
@@ -216,6 +246,10 @@ args = [
   "+sep_itcm_hex=sep_smu_otbn.itcm.hex",
   "+sep_dtcm_hex=sep_smu_otbn.dtcm.hex",
   "+sep_sym=sep_smu_otbn.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # ext_in-driven SEP + SMC routing: the three-party test the sys-inbound path
@@ -245,7 +279,7 @@ args = [
 name = "smu_sep_ext_axi_test"
 module = "smu_sep_ext_axi_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_ext_axi", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_ext_axi", mode = "sep_dv_fw_smu_sep_ext_axi" }
 seed = 1
 timeout_sec = 3600
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -260,6 +294,10 @@ args = [
   "+sep_sym=sep_smu_ext_axi.tcm.sym",
   "+smc_scratch_ram_hex=smu_sep_ext_axi.ecc.hex",
   "+smc_sym=smu_sep_ext_axi.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP eFuse control + external-shim CSR read/write path. The shim block
@@ -283,6 +321,10 @@ args = [
   "+sep_itcm_hex=sep_smu_efuse.itcm.hex",
   "+sep_dtcm_hex=sep_smu_efuse.dtcm.hex",
   "+sep_sym=sep_smu_efuse.tcm.sym",
+  # +skip_fuse_sense: firmware drives the SEP eFuse CSR/shim path; the sense FSM is not the claim.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP watchdog control and bark/bite threshold register path.
@@ -303,6 +345,10 @@ args = [
   "+sep_itcm_hex=sep_smu_wdt.itcm.hex",
   "+sep_dtcm_hex=sep_smu_wdt.dtcm.hex",
   "+sep_sym=sep_smu_wdt.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP DMA engine register path.
@@ -323,6 +369,10 @@ args = [
   "+sep_itcm_hex=sep_smu_dma.itcm.hex",
   "+sep_dtcm_hex=sep_smu_dma.dtcm.hex",
   "+sep_sym=sep_smu_dma.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP<->SMC bidirectional handshake. Needs BOTH halves: the SEP image from the
@@ -332,7 +382,7 @@ args = [
 name = "smu_sep_bidirect_test"
 module = "smu_sep_bidirect_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_bidirect", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_bidirect", mode = "sep_dv_fw_bidirect_arm" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -345,6 +395,10 @@ args = [
   "+sep_itcm_hex=sep_smu_bidirect.itcm.hex",
   "+sep_dtcm_hex=sep_smu_bidirect.dtcm.hex",
   "+sep_sym=sep_smu_bidirect.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP AP/STEE output-remap programming. The firmware is a stimulus generator,
@@ -372,6 +426,10 @@ args = [
   "+sep_itcm_hex=sep_smu_remap.itcm.hex",
   "+sep_dtcm_hex=sep_smu_remap.dtcm.hex",
   "+sep_sym=sep_smu_remap.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # The SEP loads its own TCM: no testbench preload at all. This is the one image
@@ -383,7 +441,7 @@ args = [
 name = "smu_sep_rom_tcm_load_test"
 module = "smu_sep_rom_tcm_load_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "rom_no_tcm_preload_mem_init", mode = "sep_dv_fw" }
+firmware = { name = "rom_no_tcm_preload_mem_init", mode = "sep_dv_fw_rom_only" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "real_rtl", "real_fw", "boot"]
@@ -395,6 +453,10 @@ args = [
   "+sep_boot_rom_hex=rom_no_tcm_preload_mem_init.vmem",
   "+sep_no_tcm_preload",
   "+sep_sym=rom_no_tcm_preload_mem_init.rom_only.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP OpenTitan spi_controller command sequence. The licensed SPI controller
@@ -419,6 +481,10 @@ args = [
   "+sep_itcm_hex=sep_smu_spi.itcm.hex",
   "+sep_dtcm_hex=sep_smu_spi.dtcm.hex",
   "+sep_sym=sep_smu_spi.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP-driven SMC bring-up plus the SEP<->SMC crossbar handshake. The SMC does
@@ -439,7 +505,7 @@ args = [
 name = "smu_sep_smc_xbar_test"
 module = "smu_sep_smc_xbar_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smc_xbar", mode = "sep_dv_fw" }
+firmware = { name = "sep_smc_xbar", mode = "sep_dv_fw_smc_sep_xbar" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -454,6 +520,10 @@ args = [
   "+sep_sym=sep_smc_xbar.tcm.sym",
   "+smc_scratch_ram_hex=smc_sep_xbar.ecc.hex",
   "+smc_sym=smc_sep_xbar.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Dual-firmware leaves that share sep_smc_bringup_from_sram with the xbar
@@ -464,7 +534,7 @@ args = [
 name = "smu_sep_debug_bus_test"
 module = "smu_sep_debug_bus_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_debug_bus", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_debug_bus", mode = "sep_dv_fw_smu_sep_debug_bus" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -479,13 +549,17 @@ args = [
   "+sep_sym=sep_smu_debug_bus.tcm.sym",
   "+smc_scratch_ram_hex=smu_sep_debug_bus.ecc.hex",
   "+smc_sym=smu_sep_debug_bus.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
 name = "smu_sep_wdt_reset_to_smc_test"
 module = "smu_sep_wdt_reset_to_smc_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_wdt_reset_to_smc", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_wdt_reset_to_smc", mode = "sep_dv_fw_smu_sep_boot" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -500,13 +574,17 @@ args = [
   "+sep_sym=sep_smu_wdt_reset_to_smc.tcm.sym",
   "+smc_scratch_ram_hex=smu_sep_boot.ecc.hex",
   "+smc_sym=smu_sep_boot.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
 name = "smu_sep_lc_handoff_test"
 module = "smu_sep_lc_handoff_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "sep_smu_lc_handoff", mode = "sep_dv_fw" }
+firmware = { name = "sep_smu_lc_handoff", mode = "sep_dv_fw_smu_sep_lc_handoff" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -521,13 +599,17 @@ args = [
   "+sep_sym=sep_smu_lc_handoff.tcm.sym",
   "+smc_scratch_ram_hex=smu_sep_lc_handoff.ecc.hex",
   "+smc_sym=smu_sep_lc_handoff.sram.sym",
+  # +skip_fuse_sense: the shadow image's lifecycle word is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
 name = "smu_cla_sep_cpu_debug_test"
 module = "smu_cla_sep_cpu_debug_test"
 target = "compile_smu_chiplet_sep_rtl"
-firmware = { name = "smu_cla_sep_cpu_debug", mode = "sep_dv_fw" }
+firmware = { name = "smu_cla_sep_cpu_debug", mode = "sep_dv_fw_smu_cla_sep_cpu_debug" }
 seed = 1
 timeout_sec = 1800
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
@@ -542,6 +624,10 @@ args = [
   "+sep_sym=smu_cla_sep_cpu_debug.tcm.sym",
   "+smc_scratch_ram_hex=smu_cla_sep_cpu_debug.ecc.hex",
   "+smc_sym=smu_cla_sep_cpu_debug.sram.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SEP outbound egress path, walked segment by segment: SEP issues an outbound
@@ -567,6 +653,10 @@ args = [
   "+sep_itcm_hex=sep_smc_notify.itcm.hex",
   "+sep_dtcm_hex=sep_smc_notify.dtcm.hex",
   "+sep_sym=sep_smc_notify.tcm.sym",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Primary TAP driven from cocotb, with the SEP running. The TAP must answer
@@ -588,14 +678,20 @@ args = [
   "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
   "+sep_itcm_hex=hello_world.itcm.hex",
   "+sep_dtcm_hex=hello_world.dtcm.hex",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
-# Firmware-driven SEP lifecycle flow. The SEP LCC is the source of the
-# chiplet's lifecycle posture. Three consumers act on it (lc_state -> SMC,
-# dbg_disable -> DTP, feat_ctrl). The firmware drives the DEMOTE registers
-# and the sequence checks the posture moved at the consumers, not only
-# inside the register block. The write-once DEMOTE lock keeps the demote
-# stages non-vacuous.
+# SEP lifecycle flow: real eFuse sense, then firmware-driven demotes. The SEP
+# LCC is the source of the chiplet's lifecycle posture. Three consumers act on
+# it (lc_state -> SMC, dbg_disable -> DTP, feat_ctrl). The sequence samples the
+# consumers before the SEP sense delivers the LC word and after
+# sep_fuse_sense_done_o, then the firmware drives the DEMOTE registers and the
+# sequence checks the posture moved at the consumers, not only inside the
+# register block. The write-once DEMOTE lock keeps the demote stages
+# non-vacuous.
 [[tests]]
 name = "smu_sep_lcc_flow_test"
 module = "smu_sep_lcc_flow_test"
@@ -608,11 +704,14 @@ run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smu_sep_arm.rom.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # The SEP sense reads this image; its LC word (all-zero, raw 0x0) is TEST_DEV.
   "+sep_efuse_hex=sep_efuse_default.hex",
   "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
   "+sep_itcm_hex=sep_smu_lcc_flow.itcm.hex",
   "+sep_dtcm_hex=sep_smu_lcc_flow.dtcm.hex",
   "+sep_sym=sep_smu_lcc_flow.tcm.sym",
+  # Real fuse sense (no +skip_fuse_sense): the lc_state / dbg_disable posture the
+  # checks observe is the SEP eFuse controller's own sense of +sep_efuse_hex.
 ]
 
 # TEST_DEV (raw 0x0): baseline feat_ctrl[31:0] already open (~(sip_dis|sys_dis));
@@ -639,6 +738,9 @@ args = [
   "+lcc_expect_lc_state=0xf0",
   "+lcc_expect_demote_effective=1",
   "+lcc_expect_dbg_disabled=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD (raw 0x1): baseline feat_ctrl[31:0] is closed; demote must open it
@@ -664,6 +766,9 @@ args = [
   "+lcc_expect_lc_state=0xe1",
   "+lcc_expect_demote_effective=1",
   "+lcc_expect_dbg_disabled=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD_END (raw 0x8): Table 50 has no demote entry, so feat_ctrl[31:0] must stay closed and debug must be disabled -- the discriminating case
@@ -688,6 +793,9 @@ args = [
   "+lcc_expect_lc_state=0x78",
   "+lcc_expect_demote_effective=0",
   "+lcc_expect_dbg_disabled=1",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # RMA_CHIPLET (raw 0x6): feat_ctrl is all-ones by state, independent of the
@@ -714,6 +822,9 @@ args = [
   "+lcc_expect_lc_state=0x96",
   "+lcc_expect_demote_effective=1",
   "+lcc_expect_dbg_disabled=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # TEST_DEV: debug is open here with a blank eFuse -- feat_ctrl is
@@ -741,6 +852,9 @@ args = [
   "+sep_dtcm_hex=hello_world.dtcm.hex",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
   "+dbg_expect_gated=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD_END: dbg_disable asserts, so the bridge must launch nothing at all. jtag2axi.sv gates its update on !security_disable_i, which jtag_intf_unit.sv drives from dbg_disable.smc_jtag2axi.
@@ -762,6 +876,9 @@ args = [
   "+sep_dtcm_hex=hello_world.dtcm.hex",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload",
   "+dbg_expect_gated=1",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD: Table 50 lets the SEP's demote open feat_ctrl[15:0], so debug opens and the DTP read must complete and return the SMC's live scratch value. All three subsystems active in one run.
@@ -784,6 +901,9 @@ args = [
   "+sep_sym=sep_smu_lcc_flow.tcm.sym",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload",
   "+chain_expect_served=1",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # PROD_END: identical firmware and identical JTAG operation, but Table 50 has no demote entry here -- the SEP's demote changes nothing, debug stays disabled and the bridge must launch nothing. This is what makes the PROD case attributable to the SEP rather than to the JTAG access alone.
@@ -806,6 +926,9 @@ args = [
   "+sep_sym=sep_smu_lcc_flow.tcm.sym",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload",
   "+chain_expect_served=0",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared stimulus.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # SEP entropy stack brought up by firmware, with entropy proven to reach the
@@ -831,6 +954,10 @@ args = [
   "+sep_dtcm_hex=sep_smu_entropy_bringup.dtcm.hex",
   "+sep_sym=sep_smu_entropy_bringup.tcm.sym",
   "+esrc_noise_force",
+  # +skip_fuse_sense: SEP firmware/probe claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # Merge-gate smoke: both profiles, including real SEP CPU execution.
@@ -859,11 +986,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "no_sep", "migration_pilot"]
+tags = ["fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # Fabric leaves. seq_lib resolves its pins by role, so the same sequences run
@@ -875,11 +1005,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -889,11 +1022,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "migrated", "no_sep"]
+tags = ["fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -903,11 +1039,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "migrated", "no_sep"]
+tags = ["fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -917,11 +1056,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["fabric", "migrated", "no_sep"]
+tags = ["fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -931,11 +1073,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -945,11 +1090,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -959,11 +1107,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -973,11 +1124,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -987,11 +1141,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "fabric", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1001,11 +1158,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1015,11 +1175,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1029,11 +1192,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1043,16 +1209,19 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+tags = ["depth", "fabric", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # The fabric leaves as one group; every one is also in `sep0_all` and `all`.
 [[groups]]
-name = "migrated_fabric"
+name = "fabric"
 tests = [
   "smu_axi_id_width_conversion_test",
   "smu_axi_alias_remap_manager_scope_test",
@@ -1078,11 +1247,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["bsr", "dtp", "migrated", "no_sep", "phase4"]
+tags = ["bsr", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1092,11 +1264,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_gate", "migrated", "no_sep", "smc"]
+tags = ["boot_gate", "no_sep", "smc"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1106,11 +1281,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "fabric", "migrated", "no_sep", "smc", "tier_c"]
+tags = ["depth", "fabric", "no_sep", "smc", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: fabric claim; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1120,11 +1298,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "ic_reset", "migrated", "no_sep", "phase4"]
+tags = ["dtp", "ic_reset", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1134,11 +1315,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["migrated", "no_sep", "smc", "smoke"]
+tags = ["no_sep", "smc", "smoke"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1148,11 +1332,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["mailbox", "migrated", "no_sep", "smc", "smu_all_004"]
+tags = ["mailbox", "no_sep", "smc", "smu_all_004"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1162,11 +1349,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "mailbox", "migrated", "no_sep", "smc", "tier_c"]
+tags = ["depth", "mailbox", "no_sep", "smc", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1176,11 +1366,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["migrated", "no_sep", "reset", "smc"]
+tags = ["no_sep", "reset", "smc"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1190,11 +1383,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["migrated", "no_sep", "security", "smc"]
+tags = ["no_sep", "security", "smc"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1204,11 +1400,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "migrated", "no_sep", "smc", "tier_c", "wdt"]
+tags = ["depth", "no_sep", "smc", "tier_c", "wdt"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1218,11 +1417,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "migrated", "no_sep", "smc", "tier_c", "wdt"]
+tags = ["depth", "no_sep", "smc", "tier_c", "wdt"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1232,15 +1434,18 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "migrated", "no_sep", "octs", "smc", "tier_c"]
+tags = ["depth", "no_sep", "octs", "smc", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[groups]]
-name = "migrated_smc"
+name = "smc_under_smu"
 tests = [
   "smu_dtp_bsr_extest_loopback_test",
   "smu_ext_boot_seq_gate_test",
@@ -1264,11 +1469,13 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+tags = ["boot_stall", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1278,11 +1485,13 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+tags = ["boot_stall", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1292,11 +1501,13 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["clock_stop", "dtp", "migrated", "no_sep"]
+tags = ["clock_stop", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1306,11 +1517,13 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+tags = ["boot_stall", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1320,11 +1533,13 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+tags = ["boot_stall", "dtp", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # Real fuse sense (no +skip_fuse_sense): the fuse-reset release the checks observe
+  # is the SMC eFuse controller's own sense completion against +smc_efuse_hex.
 ]
 
 [[tests]]
@@ -1334,11 +1549,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["bsr", "depth", "dtp", "migrated", "no_sep", "tier_c"]
+tags = ["bsr", "depth", "dtp", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1348,11 +1566,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "migrated", "no_sep", "stap", "tier_c"]
+tags = ["depth", "dtp", "no_sep", "stap", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1362,11 +1583,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the sequence declares the skip as its precondition.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1376,11 +1600,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1390,11 +1617,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1404,11 +1634,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1418,11 +1651,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1432,11 +1668,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1446,11 +1685,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "smoke"]
+tags = ["dtp", "no_sep", "smoke"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1460,11 +1702,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1474,11 +1719,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1488,11 +1736,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1502,11 +1753,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "jtag", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1516,11 +1770,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "migrated", "no_sep", "stap", "tier_c"]
+tags = ["depth", "dtp", "no_sep", "stap", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1530,11 +1787,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "ic_reset", "migrated", "no_sep"]
+tags = ["dtp", "ic_reset", "no_sep"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1544,11 +1804,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "reset"]
+tags = ["dtp", "no_sep", "reset"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1558,11 +1821,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1572,11 +1838,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1586,11 +1855,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "reset"]
+tags = ["dtp", "no_sep", "reset"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1600,11 +1872,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "otp", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "otp", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the preloaded shadow image is the OTP content the JTAG OTP path reads.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1614,11 +1889,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+tags = ["depth", "dtp", "jtag2axi", "no_sep", "tier_c"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1628,11 +1906,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "xtrig"]
+tags = ["dtp", "no_sep", "xtrig"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -1642,11 +1923,14 @@ target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "migrated", "no_sep", "xtrig"]
+tags = ["dtp", "no_sep", "xtrig"]
 run_modes = ["no_sep"]
 args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 # P0 composition and bring-up leaves written against this DUT. They need no
@@ -1839,7 +2123,7 @@ args = [
 
 # The DTP leaves as one group.
 [[groups]]
-name = "migrated_dtp"
+name = "dtp_under_smu"
 tests = [
   "smu_boot_stall_jtag_cold_reset_matrix_test",
   "smu_boot_stall_vs_ic_reset_priority_test",
@@ -1890,7 +2174,7 @@ tests = [
 # both DUTs. Reaching this scenario needs a way to hold the OTP response off
 # (a stallable eFuse model hook), which is a testbench feature.
 [[groups]]
-name = "migrated_dtp_pending"
+name = "needs_otp_stall"
 tests = [
   "smu_dtp_jtag2axi_abort_mid_op_test",  # the real OTP model answers before the BUSY poll can capture it
 ]
@@ -1999,7 +2283,7 @@ expected_count = 58
 # is the whole SMU regression.
 #
 # Omitted, with reasons in their own groups: the two sep_smc_sram_blocked
-# leaves, which cannot pass by construction, and migrated_dtp_pending's
+# leaves, which cannot pass by construction, and needs_otp_stall's
 # smu_dtp_jtag2axi_abort_mid_op_test, which needs an OTP interface that hangs
 # (testlists/all.toml). Anything else added to this file belongs here too, so
 # that `--items all` keeps meaning "all of it".

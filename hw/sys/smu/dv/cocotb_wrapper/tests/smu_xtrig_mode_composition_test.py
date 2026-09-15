@@ -29,7 +29,6 @@ class smu_xtrig_mode_composition_test(smu_base_test):
     """Mode vector concatenation {Cfg.XTRIG_INT_CT_MODE, 2'b00} at the DTP."""
 
     use_shared_env = True
-    enforce_evidence_map = True
 
     async def run_scenario(self) -> None:
         await smu_xtrig_mode_composition_seq(self).run()

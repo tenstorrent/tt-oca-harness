@@ -36,7 +36,6 @@ class smu_boundary_port_composition_test(smu_base_test):
     """Static widths, presence and tie-off inertness at the SEP=1 SMU boundary."""
 
     use_shared_env = True
-    enforce_evidence_map = True
 
     async def run_scenario(self) -> None:
         await smu_boundary_port_composition_seq(self).run()

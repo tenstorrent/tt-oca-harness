@@ -31,7 +31,6 @@ class smu_sep_fuse_sense_done_test(smu_base_test):
     """SEP fuse sense completes and reports on sep_fuse_sense_done_o."""
 
     use_shared_env = True
-    enforce_evidence_map = True
 
     async def bring_up(self) -> None:
         """Arm the fuse-sense observers, then run the shared bring-up.

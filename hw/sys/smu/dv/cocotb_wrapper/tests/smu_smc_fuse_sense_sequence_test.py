@@ -33,7 +33,6 @@ class smu_smc_fuse_sense_sequence_test(smu_base_test):
     """SMC fuse sense completes and the delayed fuse reset follows it."""
 
     use_shared_env = True
-    enforce_evidence_map = True
 
     async def bring_up(self) -> None:
         """Arm the fuse-sense observers, then run the shared bring-up.

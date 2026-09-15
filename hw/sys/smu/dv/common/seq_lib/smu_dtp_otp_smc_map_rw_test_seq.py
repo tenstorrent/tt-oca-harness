@@ -2,10 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OTP JTAG2AXI write/readback of eFuse MAP SPARE[0] (SEP=0, no Force).
 
-S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` is 0 (gen_no_sep ties
-    ``sep_feat_ctrl='1`` including fuse_test). ``lc_state_o==0xF0`` (not PROD)
-    so the eFuse JTAG demux stays off err_slv.
-S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the RTL 14-bit packing.
+S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
+    J2A gate is open in this configuration. ``lc_state_o`` is the no-LCC
+    word of ``seq_lib.smu_lifecycle_table`` (not PROD), so the eFuse JTAG
+    demux stays off err_slv.
+S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the 14-bit packing of
+    ``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``.
 S3: Write PATTERN_A to MAP SPARE[0], readback OKAY + data match.
 S4: Write PATTERN_C (distinct) and readback — proves the write path is live.
 
@@ -30,10 +32,9 @@ from seq_lib.smu_jtag_helpers import (
     otp_jtag2axi_single_write,
     require_jtag_tdo_resolved,
 )
+from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
 SPARE0 = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
-# smu.sv gen_no_sep: assign sep_lc_state = 8'hf0 (TEST, not PROD 4'b0001).
-SEP0_LC_STATE = 0xF0
 PATTERN_A = 0xA5A5_5A5A
 PATTERN_C = 0x3C3C_C3C3
 OTP_POLL = 128
@@ -103,9 +104,9 @@ class smu_dtp_otp_smc_map_rw_test_seq:
         sigint = self._sample_int("lc_sigint_err_o") & 1
         if gate != 0:
             raise AssertionError(f"OTP J2A still gated after TCK sync: security_disable={gate}")
-        if lc != SEP0_LC_STATE:
+        if lc != LC_STATE_NO_LCC:
             raise AssertionError(
-                f"lc_state_o=0x{lc:02x} want 0x{SEP0_LC_STATE:02x} "
+                f"lc_state_o=0x{lc:02x} want 0x{LC_STATE_NO_LCC:02x} "
                 "(PROD would steer eFuse JTAG demux to err_slv)"
             )
         if sigint != 0:

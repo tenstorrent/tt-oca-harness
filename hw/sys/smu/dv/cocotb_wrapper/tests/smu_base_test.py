@@ -50,15 +50,6 @@ class smu_base_test(uvm_test):
     #: clamped.
     min_jtag_smu_ratio: float | None = None
 
-    #: Set True by a leaf whose CHK-SMU-* evidence tokens are registered in
-    #: smu_dv_env.smu_evidence_map. run_phase then binds that map and requires
-    #: every mapped token to have been logged by a passing compare, so a token
-    #: this leaf emits is an enforced contract rather than a log line. Leaves
-    #: that carry no rows leave it False: turning it on for them would make
-    #: prove_mapped_features raise on the missing rows rather than check
-    #: anything.
-    enforce_evidence_map: bool = False
-
     #: Set by a leaf whose checks compare clk_ref_i against clk_smu_i at the
     #: boundary. randomize_timing can hand both domains the same period, and an
     #: equality observation cannot then tell one clock from the other, so such a
@@ -394,14 +385,24 @@ class smu_base_test(uvm_test):
 
     async def run_phase(self) -> None:
         self.raise_objection()
-        if self.enforce_evidence_map:
-            self.env.scoreboard.bind_testcase(type(self).__name__)
+        tc = self.get_type_name()
+        if self.use_shared_env:
+            # Bound before any expect_* runs so a check name can attach to its
+            # mapped token.
+            self.env.scoreboard.bind_testcase(tc)
         await self.bring_up()
         try:
             await self.run_scenario()
+            if self.use_shared_env:
+                self.env.scoreboard.prove_mapped_features()
+            else:
+                self.logger.info(
+                    "EVIDENCE MAP GATE SKIPPED %s: no SmuScoreboard on this leaf "
+                    "(use_shared_env=False); the verdict is the sequence's own "
+                    "raise or the leaf's own scoreboard",
+                    tc,
+                )
         except Exception:  # noqa: BLE001 -- re-raised once the SEP state is in the log
             self.sep_trace_mon.dump_diagnostics(logging.ERROR)
             raise
-        if self.enforce_evidence_map:
-            self.env.scoreboard.prove_mapped_features()
         self.drop_objection()

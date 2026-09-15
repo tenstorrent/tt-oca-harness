@@ -32,7 +32,6 @@ class smu_clock_domain_composition_test(smu_base_test):
     """Per-domain clock and reset identity, rate and independence from clk_smu_i."""
 
     use_shared_env = True
-    enforce_evidence_map = True
     require_distinct_ref_smu = True
 
     async def run_scenario(self) -> None:

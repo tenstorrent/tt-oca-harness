@@ -36,7 +36,6 @@ class smu_composition_parameter_test(smu_base_test):
     """Token, OTP depth, security_disable and Cfg plumbing, both build profiles."""
 
     use_shared_env = True
-    enforce_evidence_map = True
 
     async def run_scenario(self) -> None:
         await smu_composition_parameter_seq(self).run()
