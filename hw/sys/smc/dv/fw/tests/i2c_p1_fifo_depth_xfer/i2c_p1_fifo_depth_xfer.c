@@ -95,18 +95,19 @@ static int drain_acq(uint32_t tgt_idx, uint8_t *rx, uint32_t rx_size, uint32_t *
  * any other way on a single-threaded CPU.
  *
  * The target stretches SCL as soon as its ACQ FIFO has 2 or fewer free entries
- * (i2c_target_fsm.sv:271 `acq_fifo_plenty_space = remainder > 2`, :658
- * `stretch_rx = !acq_fifo_plenty_space`), which with
+ * (i2c_target_fsm.sv:271 `acq_fifo_plenty_space = remainder > 2`, :674
+ * `stretch_rx = !acq_fifo_plenty_space || !can_auto_ack`, whose second term is
+ * inactive here because ACK_CTRL mode is off), which with
  * smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH = 64 means it stretches at ACQ depth
  * 62. That is documented, intended flow control: the RDL describes the
  * ACQ_STRETCH interrupt as asserted "while the target is stretching the clock
  * because the Target RX FIFO is full" (i2c.rdl:116-122).
  *
  * Pushing all 64 bytes and only then waiting for the controller cannot
- * complete: nothing drains the target in between, so it stretches at 62
- * entries, the controller can never retire its FMT entries, and the wait burns
- * its whole budget (ACQ Level 0x3e = 62, the threshold, with Idle: NO). That is
- * flow control, not an RTL defect.
+ * complete: nothing drains the target in between, so the target stretches at
+ * the 62-entry threshold, the controller can never retire its FMT entries, and
+ * the wait burns its whole budget with the bus still not idle. That is flow
+ * control, not an RTL defect.
  *
  * So push a byte at a time and drain whatever the target has accepted after each
  * push, keeping ACQ far below the stretch threshold. Bytes are collected here
@@ -174,12 +175,6 @@ int main(void) {
     simputs("##   I2C P1 DMA Interface Verification Test    ##\n");
     simputs("###################################################\n");
     simputs("\n");
-
-    /* The former "Step 1: System Initialization" was two progress markers and a
-     * simputs around no work at all, and its markers were indistinguishable in
-     * the console transcript from those of the steps that do something -- the
-     * log reported four executed steps where three existed. The real
-     * initialization is the two steps below, which now carry the numbering. */
 
     write_scratch(1, 0x00000010);
     simputs("Step 1: Wrapper Control Enable\n");
@@ -330,15 +325,10 @@ int main(void) {
     simputshex32("", received_len);
     simputs(" bytes\n");
 
-    // The transfer is reconciled against the stimulus.
-    //
-    // This test previously contained no comparison of any kind: read_buffer was
-    // never compared to write_data, received_len never to LARGE_DATA_SIZE, and
-    // the entire verdict was `ret != I2C_OK`. It therefore passed a run in which
-    // one byte of sixty-four arrived and 62 entries sat unread in the target's
-    // ACQ FIFO. Both the count and every byte are now checked, and the expected
-    // bytes are recomputed here from the same closed form that produced the
-    // stimulus rather than read back from the DUT.
+    // The transfer is reconciled against the stimulus: both the byte count and
+    // every byte are compared, and the expected bytes are recomputed here from
+    // the same closed form that produced the stimulus rather than read back
+    // from the DUT.
     if (received_len != LARGE_DATA_SIZE) {
         simputs("  ERROR: byte count mismatch -- expected 0x");
         simputshex32("", LARGE_DATA_SIZE);
@@ -366,12 +356,9 @@ int main(void) {
 
     /* Nothing may be left behind in the target's ACQ FIFO.
      *
-     * The other half of the zero-activity gap: the audited run passed while
-     * ACQLVL read 0x3e -- 62 entries the test never looked at -- because the
-     * receive step reported success after one byte and no one reconciled what
-     * remained. A residual entry after the expected payload has been drained
-     * means the target accepted traffic this test has not accounted for, so it
-     * fails here instead of being discarded as leftover state.
+     * A residual entry after the expected payload has been drained means the
+     * target accepted traffic this test has not accounted for, so it fails here
+     * instead of being discarded as leftover state.
      *
      * CTRL.ACQ_START_STOP_EN is left at its reset value of 0 (i2c.rdl:580) and
      * i2c_target_init never sets it, so the target writes no START/RESTART/STOP

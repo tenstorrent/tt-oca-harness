@@ -15,9 +15,11 @@
 # function, standard padding (0x80, zeros, 64-bit big-endian bit length) and a
 # big-endian digest with state[i] MSB-first. `hashlib.sha256` over the SAME byte
 # stream yields the identical digest and is the core compression function here;
-# the class keeps the RTL word/byte framing, and the self-test re-derives the
-# digest with a fully manual FIPS-180-4 transform.
+# the class keeps the architecture.adoc word/byte framing, and the self-test
+# re-derives the digest with a fully manual FIPS-180-4 transform.
 # ----------------------------------------------------------------------------
+
+from sep_spec_tables import BIW_OUT_SHIFTS, BIW_TRIPLES
 
 GF_POLY = 0x1B  # AES reduction polynomial
 N_LANES = 12
@@ -29,13 +31,9 @@ class SepBiwCompress:
     GF(2^8) multiply-add over the AES field with reduction value 0x1B.
     Addition in GF(2^8) is XOR.
 
-    Lane -> word mapping from ``entropy_generator_complex.sv``:
-        out[0] = (b[0] * b[4]) + b[8]   -> word[31:24]  (MSB)
-        out[1] = (b[1] * b[5]) + b[9]   -> word[23:16]
-        out[2] = (b[2] * b[6]) + b[10]  -> word[15:8]
-        out[3] = (b[3] * b[7]) + b[11]  -> word[7:0]   (LSB)
-    RTL packs {biw[0],biw[1],biw[2],biw[3]} with biw[0] as MSB (line 245), i.e.
-    out[0]<<24 ... out[3]<<0.
+    Lane -> word mapping from the DV-owned ``BIW_TRIPLES`` / ``BIW_OUT_SHIFTS``
+    tables in ``sep_spec_tables``:
+        out[i] = (b[i] * b[i+4]) + b[i+8], packed with out[0] as word MSB.
     """
 
     @staticmethod
@@ -69,12 +67,15 @@ class SepBiwCompress:
             raise ValueError(
                 "BIW compress requires exactly %d lane bytes, got %d" % (N_LANES, len(lanes))
             )
-        out0 = SepBiwCompress.gf256_muladd(lanes[0], lanes[4], lanes[8])
-        out1 = SepBiwCompress.gf256_muladd(lanes[1], lanes[5], lanes[9])
-        out2 = SepBiwCompress.gf256_muladd(lanes[2], lanes[6], lanes[10])
-        out3 = SepBiwCompress.gf256_muladd(lanes[3], lanes[7], lanes[11])
-        # Pack out[0] as the most-significant byte.
-        return ((out0 << 24) | (out1 << 16) | (out2 << 8) | out3) & 0xFFFFFFFF
+        if len(BIW_TRIPLES) != len(BIW_OUT_SHIFTS):
+            raise ValueError(
+                "BIW_TRIPLES and BIW_OUT_SHIFTS length mismatch "
+                f"({len(BIW_TRIPLES)} vs {len(BIW_OUT_SHIFTS)})"
+            )
+        word = 0
+        for (a, b, c), shift in zip(BIW_TRIPLES, BIW_OUT_SHIFTS):
+            word |= SepBiwCompress.gf256_muladd(lanes[a], lanes[b], lanes[c]) << shift
+        return word & 0xFFFFFFFF
 
     @staticmethod
     def compress_from_packed(packed_96):
@@ -97,8 +98,8 @@ class SepSha256Conditioner:
     (16 words -> 512-bit block -> 8 digest words).
 
     Each accumulated 32-bit word is serialized BIG-ENDIAN
-    (w>>24, w>>16, w>>8, w) into the SHA input stream. This matches the RTL
-    feeding word[31:24] first.
+    (w>>24, w>>16, w>>8, w) into the SHA input stream. This matches the
+    architecture.adoc conditioner framing (word MSB first).
 
     SHA -> output-word framing: the 32-byte digest is grouped big-endian into
     8 words; digest[0..3] form word[0]. get_digest_words() returns the same

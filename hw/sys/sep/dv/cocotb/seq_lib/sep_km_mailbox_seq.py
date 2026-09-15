@@ -24,6 +24,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
+from env.sep_spec_tables import agg_from_pic
 from sep_reg_meta import sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -67,8 +68,7 @@ KM_IRQ_EN_INBOUND_OVERFLOW = 2
 KM_IRQ_EN_OUTBOUND_UNDERFLOW = 3
 KM_IRQ_EN_FLUSHED_BY_KM = 4
 
-# sep.sv assembles km_mbox_irq onto sep_internal_interrupts[14].
-KM_MBOX_IRQ_AGG = 14
+KM_MBOX_IRQ_AGG = agg_from_pic("KM mailbox IRQ")
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
@@ -124,7 +124,9 @@ KM_VALID_CMD_IDS = (
 # stand-in for "a handle the key registry does not hold".
 KM_KEY_HANDLE_NULL = 0x00
 
-# Destination bitmask (rom_defs.h): bits [3:0] classic engines, [7:4] ABR.
+# Destination bitmask (`rom_defs.h` rom_km_dest_bits_t /
+# `hw/ip/key_manager/doc/firmware.adoc` DEST_VALID): bit0 HMAC, bit1 KMAC,
+# bit2 AES, bit3 OTBN, bit4 ABR ML-DSA seed, bits 5-7 ABR ML-KEM.
 KM_DEST_HMAC = 0x01
 KM_DEST_KMAC = 0x02
 KM_DEST_AES = 0x04
