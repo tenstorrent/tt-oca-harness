@@ -38,7 +38,6 @@ def production_rdl_sources() -> list[Path]:
             "hw/ip/*/*/regs/**/*.rdl",
             "hw/ip/*/dv/models/regs/*.rdl",
             "hw/ip/*/*/dv/models/regs/*.rdl",
-
             "hw/common/regs/*.rdl",
             "vendor/*/*/overlay/**/*.rdl",
             "vendor/tenstorrent/aou/upstream/csr/*.rdl",
