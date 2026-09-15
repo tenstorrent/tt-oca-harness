@@ -65,10 +65,10 @@ of its one to four resource planes (RPs) presents a local AXI4 subordinate and a
 peer-facing AXI4 manager. After software requests activation, the controller
 performs the UCIe 3.0 FDI handshakes and the engine exchanges AoU packets.
 
-OCAH vendors the BOS Semiconductors and Tenstorrent `aou-rtl` package without
-local RTL modification. Protocol semantics and packet encoding are specified in the
-https://cdn.sanity.io/files/jpb4ed5r/production/25de1707769f21e4a3916103371d1fb419cadac0.pdf[AoU Technical Reference Manual].
-This datasheet describes the OCAH integration boundary.
+The AoU RTL, developed jointly by Tenstorrent and BOS Semiconductors, provides
+the protocol engine and optional FDI bring-up controller for integration with
+a UCIe PHY. The PHY is not a deliverable of this beta release; the integrator
+supplies and qualifies the PHY and physical link.
 
 // datasheet-section: system-context
 [.datasheet-section]
@@ -78,9 +78,7 @@ AoU occupies the always-on domain alongside the System Management Unit (SMU)
 and System Management Network (SMN). The adopter owns the PHY and physical
 link; the peer need only be OCA-compliant.
 
-....
-[Local AXI] <-> [AoU] <-> [Adopter PHY] <-> [Peer OCA]
-....
+image::../assets/aou-block-diagram.svg[AoU system context,pdfwidth=4.75in,align=center]
 
 [.datasheet-small]
 The integrator connects the APB CSR port to a suitable manager.

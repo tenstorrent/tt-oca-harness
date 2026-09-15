@@ -43,7 +43,8 @@ HIGHLIGHTS
 * Configurable secondary TAP topology, compliant with IEEE 1838, for local and
   downstream chiplet access
 * JTAG-to-AXI paths for SMC fabric, SMC OTP, and SEP OTP debug access
-* Cross-trigger routing between chiplet-local and external trigger endpoints
+* Cross-trigger routing between chiplet-local interfaces and external Cross
+  Trigger Ports (CTPs)
 * Lifecycle-controlled disable inputs for all internal and external debug access
   ports
 * Integrated debug clock-stop, boot-stall, and multi-target reset controls
@@ -64,21 +65,18 @@ a|
 [.datasheet-section]
 OVERVIEW
 
-The Debug and Test Ports (DTP) subsystem provides the central debug and test
-infrastructure for an OCAH chiplet. Its JTAG Interface Unit implements
-interfaces based on IEEE 1149.1-2013, IEEE 1687-2014, and IEEE 1838. Its Cross
-Trigger Network coordinates local and inter-chiplet triggers. Together, the two
-blocks provide controlled debug access, boundary scan, cross triggering, boot
-and reset controls, and clock control for multi-chiplet debugging.
+The Debug and Test Ports (DTP) subsystem combines a JTAG Interface Unit based
+on IEEE 1149.1-2013, IEEE 1687-2014, and IEEE 1838 with a Cross Trigger Network
+for local and inter-chiplet triggers, boot, reset, and clock control. Optional
+JTAG-to-AXI bridges access the SMC fabric and SMC/SEP OTP interfaces; adopter-IP
+access depends on the downstream address map.
 
-A primary JTAG TAP provides boundary-scan, iJTAG, secondary-TAP, debug-control,
-capability, and JTAG-to-AXI data registers. Optional bridges issue debug
-transactions onto the SMC system fabric and the SMC and SEP OTP AXI4-Lite
-interfaces. Whether any adopter IP is reachable depends on the adopter's
-downstream address map. Lifecycle-derived, active-high disable fields are
-synchronized into the scan domain and gate the corresponding paths. When DTP is
-used standalone, the adopter owns the policy source and permitted address
-ranges; within the OCAH SMU, the SEP defines the lifecycle control policy.
+Active-high disable inputs are synchronized into the
+scan domain and gate the corresponding paths. In an SMU with SEP, SEP supplies
+the lifecycle-control policy. Without SEP, debug and test paths are open by
+default; protection requires routing and gating all such access through a
+primary chiplet's SEP-controlled DTP path. For standalone DTP, the adopter
+supplies the policy source and permitted address ranges.
 
 // datasheet-section: system-context
 [.datasheet-section]
@@ -192,6 +190,8 @@ INTEGRATION DEPENDENCIES
   tie-offs.
 * Integrate the cross-trigger CSR subordinate into the management address map
   and connect the required local, external, and clock-stop endpoints.
+
+<<<
 
 // datasheet-section: verification-and-maturity
 [.datasheet-section]
