@@ -255,13 +255,33 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
                     return i
             return -1
 
+        def index_after(marker: str, after: int) -> int:
+            """First occurrence of ``marker`` strictly after line ``after``.
+
+            The accepted-manifest checks below want the BACKUP's markers. Taking
+            the first occurrence overall is only unambiguous while the primary
+            prints neither, which is true of every member whose primary is refused
+            at or before signature verification -- for those this returns exactly
+            what index_of() did. A member declaring
+            ``primary_expected_rsa_oks`` has a primary that prints RSA_VERIFY_OK
+            and MANIFEST_OK of its own, and for those the first occurrence is the
+            PRIMARY's, which made the ordering assertion compare the wrong lines.
+            """
+            if after < 0:
+                return -1
+            for i in range(after + 1, len(console)):
+                if marker in console[i]:
+                    return i
+            return -1
+
         slot_err = f"MANIFEST_ERR=0x{self.primary_expected_error:08x}"
         i_psrc = index_of(_PRIMARY_SRC)
         i_perr = index_of(slot_err)
         i_bsrc = index_of(_BACKUP_SRC)
         i_rsa = index_of(_RSA_EXEC)
-        i_sig = index_of(_RSA_OK)
-        i_ok = index_of(_MANIFEST_OK)
+        # The BACKUP's, not the run's first -- see index_after().
+        i_sig = index_after(_RSA_OK, i_bsrc)
+        i_ok = index_after(_MANIFEST_OK, i_bsrc)
 
         # CHK-FAILOVER: the primary was read, rejected for the planted reason, and
         # only then was the backup read. Two markers in any order would also be
