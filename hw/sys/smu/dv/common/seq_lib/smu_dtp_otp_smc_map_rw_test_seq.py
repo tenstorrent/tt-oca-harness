@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OTP JTAG2AXI write/readback of eFuse MAP BIRA (SEP=0, no Force).
+"""SMC OTP JTAG2AXI write/readback of eFuse MAP SPARE[0] (SEP=0, no Force).
 
 S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` is 0 (gen_no_sep ties
     ``sep_feat_ctrl='1`` including fuse_test). ``lc_state_o==0xF0`` (not PROD)
     so the eFuse JTAG demux stays off err_slv.
 S2: ``SMC_OTP_JTAG2AXI_CAPS`` matches the RTL 14-bit packing.
-S3: Write PATTERN_A to MAP BIRA, readback OKAY + data match.
+S3: Write PATTERN_A to MAP SPARE[0], readback OKAY + data match.
 S4: Write PATTERN_C (distinct) and readback — proves the write path is live.
 
-Address from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR`` (0xC0007048).
-The relative +0x80 probe routes to the OTP shim, not to MAP BIRA.
+Address from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``
+(previously BIRA at 0xC0007048; now SPARE[0] at 0xC0007080).
 
 Not claimed: Force-closed OTP gate / PATTERN_B no-stick (needs LCC or Force);
 SEP OTP; series NO_INCR.
@@ -21,7 +21,7 @@ from __future__ import annotations
 import cocotb
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_addr_map import smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS,
@@ -32,7 +32,7 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
 )
 
-BIRA = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR")
+BIRA = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 # smu.sv gen_no_sep: assign sep_lc_state = 8'hf0 (TEST, not PROD 4'b0001).
 SEP0_LC_STATE = 0xF0
 PATTERN_A = 0xA5A5_5A5A

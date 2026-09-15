@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP vs fabric J2A MAP BIRA race; last writer wins, no tear. SEP=0, no Force."""
+"""OTP vs fabric J2A MAP SPARE[0] race; last writer wins, no tear. SEP=0, no Force."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_OP_WRITE,
@@ -26,7 +26,7 @@ from seq_lib.smu_jtag_helpers import (
     unpack_otp_single_op,
 )
 
-BIRA = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR")
+BIRA = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_BYTE_OFF = BIRA - MAP_BASE
 PAT_O = 0x0A70_AAA1

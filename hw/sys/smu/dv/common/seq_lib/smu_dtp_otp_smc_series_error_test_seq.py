@@ -4,13 +4,14 @@
 
 S1: After TCK sync, OTP J2A gate is open (gen_no_sep ties feat_ctrl including
     fuse_test). ``lc_state_o==0xF0`` so the eFuse JTAG demux is not err_slv.
-S2: Series NO_INCR write PATTERN_A to MAP BIRA, then series NO_INCR readback
+S2: Series NO_INCR write PATTERN_A to MAP SPARE[0], then series NO_INCR readback
     OKAY + data match.
-S3: SINGLE_OP read of BIRA (same IR as the hole) returns SUCCESS + PATTERN_A;
+S3: SINGLE_OP read of SPARE[0] (same IR as the hole) returns SUCCESS + PATTERN_A;
     SINGLE_OP read of MAP_BASE+MAP_SIZE (below CTRL) returns SLVERR +
-    ``0xbadcab1e``; SINGLE_OP re-read of BIRA still SUCCESS + PATTERN_A.
+    ``0xbadcab1e``; SINGLE_OP re-read of SPARE[0] still SUCCESS + PATTERN_A.
 
-BIRA from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR``.
+SPARE[0] from ``smc_addr.h`` ``SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)``
+(previously BIRA at 0xC0007048; now SPARE[0] at 0xC0007080).
 Hole from ``SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR + SMC_TOP_SMC_EFUSE_MAP_SIZE``.
 
 Not claimed: Force-closed gate; SEP OTP; INCR across MAP fields; SHIM-unmapped
@@ -22,7 +23,7 @@ from __future__ import annotations
 import cocotb
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SLVERR,
@@ -35,7 +36,7 @@ from seq_lib.smu_jtag_helpers import (
     otp_series_data_mask,
 )
 
-BIRA = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR")
+BIRA = smc_indexed_addr("SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 0)
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
 CTRL_BASE = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR")

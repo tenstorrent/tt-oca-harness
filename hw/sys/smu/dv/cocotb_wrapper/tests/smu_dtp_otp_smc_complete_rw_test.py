@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_dtp_otp_smc_complete_rw_test — OTP MAP RESERVED walk (SEP=0, no Force)."""
+"""smu_dtp_otp_smc_complete_rw_test — OTP MAP SPARE walk (SEP=0, no Force)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_otp_smc_complete_rw_test(smu_base_test):
-    """OTP+fabric+shadow MAP RESERVED walk; gated-deny is not claimed."""
+    """OTP+fabric+shadow MAP SPARE walk; gated-deny is not claimed."""
 
     use_shared_env = True
 
