@@ -792,33 +792,42 @@ args = [
 # never leaves reseed and the run hangs after DECRYPT_START (see
 # sep_rom_oca_encrypted_boot_test).
 #
-# ################ THIS TEST IS EXPECTED TO FAIL. DO NOT "FIX" IT. ################
+# ############ RESOLVED 2026-09-14: the procedure step was over-generalised ############
 #
-# It is a deliberate known-fail sentinel, kept red on purpose while a
-# specification question is open. This framework has no xfail/expect_fail
-# mechanism, so a red `rom_fw` or `all` run with THIS test as the only failure is
-# the expected result, not a regression. Budget ~47 minutes for it.
+# This entry was a deliberate known-fail sentinel while a specification question
+# was open: TP049 step 5 read as "a decryption failure is TERMINAL and not
+# backup-eligible", the ROM instead failed over to the backup and booted it, and
+# CHK-NO-BACKUP-RETRY was left at full spec strength so the disagreement could not
+# be hidden. The note here reserved the call for the procedure author.
 #
-# What it asserts and why it fails: the procedure (TP049 step 5) says a decryption
-# failure is TERMINAL. The ROM instead rejects the primary and fails over to the
-# backup, which then boots -- observed as DECRYPT_OK, MANIFEST_ERR=0x00030005,
-# then MANIFEST_SRC=0x00041000 and BL1_JUMP=0xC0000000. CHK-NO-BACKUP-RETRY is
-# left at full spec strength and therefore fires.
+# The procedure author has ruled, in the ROM's favour. The slot BUNDLE -- manifest
+# and payload together, decryption and plaintext validation included -- is the unit
+# of verification, and until a bundle is fully confirmed and the device begins
+# locking for ROM exit, switching to the other slot is legitimate. That is what
+# oca_boot.c's retry loop already implemented: every slot verdict is a WARN while
+# retries remain, and only slot exhaustion is an ERROR with MANIFEST_ALL_FAILED.
+# sep-boot-flow.puml agreed all along -- an invalid TOC identifier is a <<Warning>>
+# routed to the (S) backup-retry connector.
 #
-# Who is right is NOT yet decided, which is exactly why this stays red. The
-# authoritative flow diagram (sep-boot-flow.puml) sides with the ROM: a primary
-# with an invalid TOC identifier is a <<Warning>> routed to the (S) backup-retry
-# connector, and only DECRYPTION_KEY_FAILED / DECRYPTION_FAILED are <<Error>> +
-# kill. So the procedure step looks over-generalised -- but that is the procedure
-# author's call to make, not DV's.
+# So the expectation changed, with that as the cited reason. This entry keeps the
+# TERMINAL shape its name and base class describe, which under bundle-level
+# failover requires the defect in BOTH slots; the one-slot shape moved to
+# sep_decryption_failure_failover_test, which asserts the failover positively.
+# Neither is a known-fail any more and both should run green.
 #
-# Do NOT resolve this by relaxing CHK-NO-BACKUP-RETRY, by removing this entry from
-# the groups in all.toml, or by deleting the test. Any of those hides an open
-# specification dispute. When the procedure author rules, either the procedure is
-# corrected (then this test's expectation changes with a cited reason) or the ROM
-# is corrected (then this test goes green on its own).
+# Two fixture defects were found and fixed while resolving this, either of which
+# would have failed the run on its own:
+#   * the CLASS_KEY preload carried a stale 16-byte AES-128-era key against an
+#     AES-256 config, so BOTH slots decrypted to garbage and died at AES_PAD_BAD.
+#     That also manufactured a false terminal outcome, which is what let the real
+#     dispute hide for as long as it did.
+#   * the testcase required PAYLOAD_OK (printed only after the WHOLE payload
+#     validates, so unreachable here) and DECRYPT_START (a status-ring message,
+#     never a console token).
 #
-# The specification question is open; see the SEP ROM spec.
+# The verdict is MANIFEST_ERR=0x00030015 (OCA_FAIL_PAYLOAD_TOC), observed in run
+# 20260914_145012. An earlier note here said 0x00030005; that predates the OCA
+# result-code mapping and was stale.
 # ################################################################################
 name = "sep_decryption_failure_terminal_test"
 module = "rom_fw.sep_decryption_failure_terminal_test"
@@ -833,6 +842,37 @@ seed = 1
 # 1,000-1,600 s more, so this matches the cap the other two-modexp members carry.
 timeout_sec = 21600
 tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
+  "+esrc_noise_force",
+]
+
+[[tests]]
+# The positive half of the bundle-level failover rule resolved on 2026-09-14: a
+# defect found AFTER decryption -- deep inside the slot bundle -- must still fail
+# over rather than end the boot. Same stimulus as the terminal member above but on
+# the PRIMARY only, with the backup left shipped-valid and proved bootable before
+# the run, so a green result means the ROM recovered rather than that nothing was
+# wrong.
+#
+# Same preload and plusargs as the terminal member, and for the same reasons: PROD
+# enforces the crypto chain from the lifecycle, CLASS_KEY is the KBKDF root the AES
+# key derives from, and +esrc_noise_force serves every EDN client so the AES
+# masking PRNG leaves reseed (without it the run hangs after decryption starts).
+#
+# Two modexps like its sibling -- the primary verifies before it is refused
+# downstream, and the backup verifies on its way to booting -- so it carries the
+# same 21600 cap rather than the 14400 default.
+name = "sep_decryption_failure_failover_test"
+module = "rom_fw.sep_decryption_failure_failover_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 21600
+tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
