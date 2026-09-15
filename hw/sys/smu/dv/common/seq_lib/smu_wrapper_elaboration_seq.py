@@ -25,18 +25,19 @@ class SmuWrapperElaborationSeq:
 
     BOUND_REF_CYCLES = 500
     # Bounded waits in the SEP=1 card path (must match _timeout_paths length):
-    # S1 powergood_stable + rst_cold (2), S4 smu_axi awready (1),
-    # S5 prim assert + prim release + cold release (3).
-    EXPECTED_TIMEOUT_PATHS_SEP1 = 6
+    # S1 powergood_stable baseline high + driven low + driven release + rst_cold
+    # (4), S4 smu_axi awready (1), S5 prim assert + prim release + cold release
+    # (3).
+    EXPECTED_TIMEOUT_PATHS_SEP1 = 8
     # Non-vacuity floors. MIN_DUT_CHECKS is the number of fail-capable
     # comparisons against DUT-sourced samples the leg's own stimulus issues:
-    # SEP=1 counts 6 bounded waits, 12 hierarchical clk-identity comparisons in
+    # SEP=1 counts 8 bounded waits, 12 hierarchical clk-identity comparisons in
     # the two compose loops, 8 in the shared-domain loop, and the discrete
-    # reset/domain/lifecycle compares; SEP=0 counts 6 bounded waits plus the
-    # power-good record. MIN_ADVANCING_STEPS and MIN_SPAN_NS are the simulation
-    # time that stimulus cannot complete in less than.
-    MIN_DUT_CHECKS_SEP1 = 30
-    MIN_DUT_CHECKS_NO_SEP = 7
+    # reset/domain/lifecycle compares; SEP=0 counts 8 bounded waits.
+    # MIN_ADVANCING_STEPS and MIN_SPAN_NS are the simulation time that stimulus
+    # cannot complete in less than.
+    MIN_DUT_CHECKS_SEP1 = 31
+    MIN_DUT_CHECKS_NO_SEP = 8
     MIN_ADVANCING_STEPS_SEP1 = 5
     MIN_ADVANCING_STEPS_NO_SEP = 2
     MIN_SPAN_NS_SEP1 = 500
@@ -131,20 +132,45 @@ class SmuWrapperElaborationSeq:
         return counts
 
     async def _check_powergood_reached_dut(self) -> None:
-        """Require the DUT's power-good synchronizer to have fallen and risen."""
+        """Drive a power-good deassertion and require the DUT to follow it.
+
+        The three bounded waits are one 1 -> 0 -> 1 transition of the DUT
+        synchronizer output around a powergood_i deassertion this sequence
+        drives. The leading wait for 1 is what makes the low attributable: the
+        bench initializes every node to 0, so a low sampled without a proven
+        high ahead of it is the power-up value rather than a response, and the
+        sticky obs_powergood_stable_low_seen_o record carries that power-up
+        value from time zero. A run in which powergood_i is never deasserted
+        expires the middle wait and fails.
+        """
         await self.wait_value(
             self.dut.obs_powergood_stable_o,
             1,
-            "obs_powergood_stable_o",
+            "obs_powergood_stable_o baseline_high",
+            self.BOUND_REF_CYCLES,
+        )
+        self.dut.powergood_i.value = 0
+        await self.wait_value(
+            self.dut.obs_powergood_stable_o,
+            0,
+            "obs_powergood_stable_o driven_low",
+            self.BOUND_REF_CYCLES,
+        )
+        self.dut.powergood_i.value = 1
+        await self.wait_value(
+            self.dut.obs_powergood_stable_o,
+            1,
+            "obs_powergood_stable_o driven_release",
             self.BOUND_REF_CYCLES,
         )
         low_seen = self._sample(
             self.dut.obs_powergood_stable_low_seen_o, "obs_powergood_stable_low_seen_o"
         )
-        self._check(
-            low_seen == 1,
-            "power-good never reached the DUT: obs_powergood_stable_o was released without "
-            "ever being observed deasserted while powergood_i was low",
+        self.log.info(
+            "CHK-WRAPPER-POWERGOOD: obs_powergood_stable_o 1 -> 0 -> 1 across the "
+            "powergood_i deassertion this sequence drove (sticky low_seen=%d, which "
+            "also holds the power-up value and is a diagnostic, not a term)",
+            low_seen,
         )
 
     async def _assert_compose_hier_clk_identity(self, dut, samples_per_edge: int = 4) -> dict:
@@ -236,7 +262,10 @@ class SmuWrapperElaborationSeq:
 
         await self._check_powergood_reached_dut()
         await self.wait_value(self.dut.rst_cold_n_o, 1, "rst_cold_n_o")
-        self._mark_step("S2", "powergood_stable/rst_cold released after bring-up")
+        self._mark_step(
+            "S2",
+            "powergood_stable observed high, driven low and released; rst_cold released",
+        )
         self.log.info("EVIDENCE:CHK-WRAPPER-POWERGOOD_OK")
         self.log.info("EVIDENCE:CHK-WRAPPER-RST-COLD-RELEASE_OK")
 
@@ -293,7 +322,7 @@ class SmuWrapperElaborationSeq:
         )
         self._mark_step(
             "S1",
-            "SETUP: clocks stable; obs_powergood_stable_o=1; rst_cold_n_o=1; "
+            "SETUP: clocks stable; obs_powergood_stable_o driven 1->0->1; rst_cold_n_o=1; "
             f"sep_enabled_o=1 baseline cold_sep_reset_n="
             f"{self.test.pre_release_sep_reset}",
         )

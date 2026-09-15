@@ -491,9 +491,10 @@ Every SMC leaf either runs on a scheduled tier -- `smoke` per PR (`sim.yml`),
 closing condition. The hosted runners carry Verilator, bender and uv only.
 The `ocah-toolchain` image (`tools/docker/Dockerfile`: `gcc-riscv64-unknown-elf`
 and `picolibc-riscv64-unknown-elf`) is built locally and published to no
-registry, and no workflow builds firmware, so every leaf below, each of which
-runs a `c_compile` stage, is run on demand (`scripts/docker-run.sh` builds the
-images) until CI has a toolchain.
+registry, and no workflow builds firmware, so every firmware leaf below, each
+of which runs a `c_compile` stage, is run on demand (`scripts/docker-run.sh`
+builds the images) until CI has a toolchain. The last row is held out for a
+different reason: it is in no group, so no tier selects it.
 
 [cols="2,1,3,1,1,3",options="header"]
 |===
@@ -517,6 +518,7 @@ images) until CI has a toolchain.
 |`smc_dual_axi_sram_probe_test` |`dual_smoke`, `dual_all`, `all` |`target = "dual"` and `firmware = prod_rom` |SMC DV owner |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
 |`smc_occp_sanity_test` |`dual_all`, `all` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |SMC DV owner |2026-12-15 |Toolchain as above
 |`smc_occp_dual_unsecure_boot_test` |`dual_all`, `occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |SMC DV owner |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
+|`smc_ref_clock_timer_rate_test` |none |In no group, so `smoke`, `hosted` and `rtl_issue` all miss it. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |SMC DV owner |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
 |===
 
 `dual.toml` is therefore in the toolchain bucket, not an "elaboration only"

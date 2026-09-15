@@ -249,7 +249,9 @@ python3 tools/dv/run_dv.py --doctor --dut dtp
 ```
 
 `OCAH_DV_SKIP_UV=1` skips the re-exec, for environments that already supply the
-`dv` dependency group.
+`dv` dependency group. The dependency pins with their licenses, the
+clean-environment qualification steps, and the supported Python and simulator
+matrix are in `docs/vip-deployment.adoc`.
 
 `--doctor --dut <name>` checks the shared package, required Python packages, the
 namespace bridge, one shared VIP import, and the selected DUT-local import. If an

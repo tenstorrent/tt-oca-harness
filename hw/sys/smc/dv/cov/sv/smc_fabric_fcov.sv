@@ -52,6 +52,14 @@ module smc_fabric_fcov (
   input wire sep_rlast_i,
   input wire [1:0] sep_rresp_i,
   input wire sep_r_hold_i,
+  // SEP_IN address and ID, for the internal-address-range and
+  // response-ID-matches-request-port points.
+  input wire [55:0] sep_awaddr_i,
+  input wire [55:0] sep_araddr_i,
+  input wire [5:0] sep_awid_i,
+  input wire [5:0] sep_arid_i,
+  input wire [5:0] sep_bid_i,
+  input wire [5:0] sep_rid_i,
 
   // SYS_IN inbound manager.
   input wire sys_awvalid_i,
@@ -323,6 +331,72 @@ module smc_fabric_fcov (
   wire out_read_advanced_e = (out_read_count_i != out_read_count_q);
   `OCAH_FCOV_COVER(c_sys_out_write_count_advanced, out_write_advanced_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_sys_out_read_count_advanced, out_read_advanced_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Data width on the AXI4 network. A full 64-bit beat is every strobe set;
+  // a partial beat is some but not all, which is the half that shows the
+  // strobes are honoured rather than tied.
+  // ------------------------------------------------------------------
+  wire sep_w_accept_beat = (sep_wvalid_i === 1'b1) && (sep_wready_i === 1'b1);
+  wire full_64bit_beat_e = sep_w_accept_beat && (sep_wstrb_i === 8'hFF);
+  wire partial_strobe_beat_e = sep_w_accept_beat && (sep_wstrb_i !== 8'hFF)
+      && (sep_wstrb_i !== 8'h00) && (^sep_wstrb_i !== 1'bx);
+  `OCAH_FCOV_COVER(c_full_64bit_beat, full_64bit_beat_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_partial_strobe_beat, partial_strobe_beat_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // SMC-internal 32-bit address range. Bit 31 of the internal address picks
+  // the half, so both points together say the whole declared width was
+  // presented rather than only the alias window.
+  // ------------------------------------------------------------------
+  wire sep_aw_acc_addr = (sep_awvalid_i === 1'b1) && (sep_awready_i === 1'b1);
+  wire sep_ar_acc_addr = (sep_arvalid_i === 1'b1) && (sep_arready_i === 1'b1);
+  wire internal_addr_low_e = (sep_aw_acc_addr && (sep_awaddr_i[31] === 1'b0))
+      || (sep_ar_acc_addr && (sep_araddr_i[31] === 1'b0));
+  wire internal_addr_high_e = (sep_aw_acc_addr && (sep_awaddr_i[31] === 1'b1))
+      || (sep_ar_acc_addr && (sep_araddr_i[31] === 1'b1));
+  `OCAH_FCOV_COVER(c_internal_addr_low, internal_addr_low_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_internal_addr_high, internal_addr_high_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Response ID against the request that opened the transaction. The
+  // tracker latches an ID only while it is the only transaction in flight,
+  // so a match is attributed rather than coincidental.
+  // ------------------------------------------------------------------
+  logic [7:0] wr_out_id_q, rd_out_id_q;
+  logic [5:0] wr_id_q, rd_id_q;
+  logic wr_id_single_q, rd_id_single_q;
+  wire sep_b_acc_id = (sep_bvalid_i === 1'b1) && (sep_bready_i === 1'b1);
+  wire sep_r_last_acc_id = (sep_rvalid_i === 1'b1) && (sep_rready_i === 1'b1)
+      && (sep_rlast_i === 1'b1);
+
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      wr_out_id_q <= '0;
+      rd_out_id_q <= '0;
+      wr_id_q <= '0;
+      rd_id_q <= '0;
+      wr_id_single_q <= 1'b0;
+      rd_id_single_q <= 1'b0;
+    end else begin
+      wr_out_id_q <= wr_out_id_q + 8'(sep_aw_acc_addr) - 8'(sep_b_acc_id);
+      rd_out_id_q <= rd_out_id_q + 8'(sep_ar_acc_addr) - 8'(sep_r_last_acc_id);
+      if (sep_aw_acc_addr) begin
+        wr_id_q <= sep_awid_i;
+        wr_id_single_q <= (wr_out_id_q == 8'd0) || ((wr_out_id_q == 8'd1) && sep_b_acc_id);
+      end
+      if (sep_ar_acc_addr) begin
+        rd_id_q <= sep_arid_i;
+        rd_id_single_q <= (rd_out_id_q == 8'd0) || ((rd_out_id_q == 8'd1) && sep_r_last_acc_id);
+      end
+    end
+  end
+
+  wire response_id_matches_e =
+      (sep_b_acc_id && (wr_out_id_q == 8'd1) && wr_id_single_q && (sep_bid_i === wr_id_q))
+      || (sep_r_last_acc_id && (rd_out_id_q == 8'd1) && rd_id_single_q
+          && (sep_rid_i === rd_id_q));
+  `OCAH_FCOV_COVER(c_response_id_matches_request_port, response_id_matches_e, clk_smc_i, in_reset)
 
 `ifndef VERILATOR
   // ------------------------------------------------------------------

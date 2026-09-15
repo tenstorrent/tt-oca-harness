@@ -4,8 +4,10 @@
 // dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test — the
 // `series_write_incr_with_error` SEP OTP AXI-Lite JTAG2AXI scenario:
 // SERIES_DATA_WITH_ERROR_STATUS write mode with a mixed per-beat increment
-// pattern; memory and the post-stream SERIES_CTRL address prove each beat's
-// increment decision took effect.
+// pattern and one armed SLVERR/DECERR beat: the lagged status bit flags that
+// beat (CHK-J2A-STATUS-BIT), its slot stays unchanged, memory and the
+// post-stream SERIES_CTRL address prove each increment decision took effect,
+// and a legal single write outside the stream proves recovery.
 
 class dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test)
@@ -17,7 +19,14 @@ class dtp_jtag2axi_sep_otp_axi_series_write_incr_with_error_test extends dtp_bas
 
   virtual function void configure_test_cfg(dtp_test_cfg cfg);
     super.configure_test_cfg(cfg);
-    cfg.require_axi_ids("sep_otp", '{"CHK-AXI-RESP", "CHK-AXI-COMPLETION", "CHK-AXI-NONVAC"});
+    cfg.require_axi_ids("sep_otp",
+                        '{
+                            "CHK-AXI-RESP",
+                            "CHK-AXI-ERR-INJ",
+                            "CHK-AXI-COMPLETION",
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-STATUS-BIT"
+                        });
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();

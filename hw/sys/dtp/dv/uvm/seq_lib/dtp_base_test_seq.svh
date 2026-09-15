@@ -404,7 +404,7 @@ class dtp_base_test_seq extends ocah_sequence;
   // Drive the lifecycle disable vector, then settle through the DUT's
   // 2-stage TCK-domain synchronizers.
   task set_dbg_disable(sep_lifecycle_ctrl_pkg::dbg_disable_t d);
-    tb_vif.dbg_disable <= d;
+    tb_vif.drive_dbg_disable(d);
     for (int unsigned i = 0; i < DbgDisableTckCycles; i++) step(1'b0);
     wait_sys_cycles(DbgDisableSysCycles);
     `uvm_info(get_type_name(), $sformatf("dbg_disable=0x%03h", d), UVM_MEDIUM)
