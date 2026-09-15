@@ -15,6 +15,19 @@ from smc_base_test import smc_base_test
 class smc_dbs_idle_test(smc_base_test):
     """Run the DBS/DFD/ECC diagnostic proxy scenario."""
 
+    required_evidence = (
+        "CHK-DIAG-AXIL-ACTIVE",
+        "CHK-DIAG-AXIL-IDLE",
+        "CHK-DIAG-CSR-COUNT",
+        "CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX",
+        "CHK-DIAG-CSR-DFX_DEBUG_CTRL",
+        "CHK-DIAG-CSR-NDMRESET_PROCESS",
+        "CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS",
+        "CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO",
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+    )
+    min_evidence = 9
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

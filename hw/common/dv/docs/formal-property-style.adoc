@@ -293,9 +293,20 @@ described block.
   (<<formal-style-clocks>>).
 * `fpv/sby/dtp.sby`: `bmc` and `cover` on `smtbmc` with yices at depth 30 and
   `prove` on `abc pdr`, all under `multiclock on`.
+* `dtp_formal_cfg.toml` and `testlists/formal.toml`: the runner launch entry.
+  The `flist` stage regenerates the filelist and the `formal` stage runs the
+  three tasks in one `sby` invocation; the depth justification is the "Formal
+  Verification Plan" section of `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`.
 
-Generate the filelist from the repository root, then run the tasks from the
-`.sby` directory:
+The runner drives the tasks:
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp --mode formal
+----
+
+By hand, generate the filelist from the repository root, then run the tasks
+from the `.sby` directory:
 
 [source,bash]
 ----

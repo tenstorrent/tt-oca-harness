@@ -29,6 +29,18 @@ SIDEBAND_MIN_CSR_ACCESSES = 11
 class smc_sideband_protocol_smoke_test(smc_base_test):
     """Run the AVSBus sideband CSR representative precheck."""
 
+    required_evidence = (
+        "CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE",
+        "CHK-AVS-FIFOS-STATUS",
+        "CHK-AVS-INTERRUPT-MASK",
+        "CHK-AVS-INTERRUPT-W1C",
+        "CHK-AVS-NORMAL-STATUS",
+        "CHK-AVS-READBACK-EMPTY-FIFO-READ",
+        "CHK-AVS-READBACK-POINTER-ADVANCE",
+        "CHK-AVS-SLAVE-STATUS",
+    )
+    min_evidence = 8
+
     # No AUTO-COVERAGE-STAMP: this scenario records its own protocol VIP item
     # from measured counts below, so the base-test activity stamp would only add
     # a second, weaker record of the same traffic.

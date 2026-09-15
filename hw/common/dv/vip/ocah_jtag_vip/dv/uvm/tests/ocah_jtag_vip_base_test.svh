@@ -18,9 +18,19 @@ class ocah_jtag_vip_base_test extends uvm_test;
     m_env = ocah_jtag_vip_env::type_id::create("m_env", this);
   endfunction
 
+  // +OCAH_CHECKER_SELFTEST_NEGATIVE arms a required ID no scenario records, so
+  // the evidence core's finalization must reject the run (missing=1).
+  localparam string CheckerNegativeKnob = "OCAH_CHECKER_SELFTEST_NEGATIVE";
+  localparam string NeverRecordedId = "CHK-NEVER-RECORDED";
+
   protected function void require_ids(string ids[$]);
     m_env.require_checks = 1'b1;
     foreach (ids[i]) m_env.m_checker.required_ids.push_back(ids[i]);
+    if (ocah_knobs::is_set(CheckerNegativeKnob)) begin
+      `uvm_warning(get_type_name(), {"NEGATIVE VALIDATION: required ID ", NeverRecordedId,
+                                     " is never recorded; CHECKER_SUMMARY must report missing=1"})
+      m_env.m_checker.required_ids.push_back(NeverRecordedId);
+    end
   endfunction
 
   protected task run_scenario(ocah_jtag_vip_base_test_seq seq, uvm_phase phase);

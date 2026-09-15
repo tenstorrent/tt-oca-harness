@@ -107,9 +107,11 @@ PASSes are SMU integration evidence and are outside this matrix.
 * The 22-cell debug-disable contract is credited only through the two
   matrix tests, whose checker-gated ledger refuses to finish with a missing
   cell; the directed gating scenarios corroborate individual cells.
-* The formal property module on the TAP controller (`formal/props/`)
-  corroborates the F1 state-machine rows; it runs through `sby` outside
-  `run_dv.py` and is not regression credit.
+* The formal property modules under `formal/props/` corroborate the rows the
+  plan's target table names, the TAP controller module the F1 state-machine
+  rows; `run_dv.py --dut dtp --mode formal` runs them as the `*_fpv` items of
+  `testlists/formal.toml` (<<dtp-formal-plan>>), and they are not regression
+  credit.
 * Deriving `dbg_disable_t` from lifecycle policy, the SMU-composed IC_RESET
   external slice, and real SMC and SEP debug TAPs behind the STAPs are
   integration-level: OUT. The downstream TAPs the scan scenarios attach are
@@ -171,6 +173,5 @@ is absorbed here.
 |Settled-status polls complete within three captures under the responder stall profile, so the long-wait poll class never fires |F4.4 |Hole entries in `coverage_policy.toml` carry the structural reason and the tracker link
 |The SV-UVM long-stall scenario on the SMC fabric target can exceed its sixteen-poll status budget at high TCK-to-clock ratios; the cocotb realization and the two OTP targets complete |F4.4 |Tracked DV defect
 |The cocotb debug-TDR family checks through the base sequence's inline `CHECK` assertions; only the SV-UVM twin records the named `CHK-DBG-*`, `CHK-CAPS*`, and `CHK-TMP-*` evidence |F2.1–F2.5 |Realization-parity item for the cocotb family layer; the row's named evidence is the SV-UVM twin's
-|The TAP-controller formal properties run through `sby` by hand; the runner has no formal mode or testlist for `dtp` |F1.1 |Tracked; the properties corroborate and do not replace the simulation credit
 |The SMC fabric series write hangs when the TCK period is under four system-clock periods, observed on the SMU bench |F4.2 |Tracked RTL defect; this bench's period draw includes that ratio range
 |===

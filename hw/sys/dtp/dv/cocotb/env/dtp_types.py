@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP JTAG types and helpers shared by the OSS cocotb tests.
 
-Only the pieces needed by the public smoke/functional tests are defined here.
-The full instruction set lives in the DTP spec; this mirrors the opcodes used by
-the open-source JTAG and JTAG2AXI tests.
+The DTP instantiates one JTAG Interface Unit as its primary debug access point
+(`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction, TAP-state and
+JTAG2AXI tables below are transcriptions of that unit's and its PTAP's
+documentation; each names the document and section it copies.
 """
 
 from __future__ import annotations
@@ -13,13 +14,26 @@ from collections import deque
 from dataclasses import dataclass
 from enum import IntEnum
 
-# Primary TAP instruction register width (6 bits; opcodes span 0x00..0x2C).
+# Primary TAP instruction register width: "6-bit instruction encodings"
+# (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc` and
+# `hw/ip/jtag/jtag_ptap/doc/interface.adoc`, both "Instruction Encodings").
 DTP_IR_WIDTH = 6
 
 
 class DtpJtagInstr(IntEnum):
-    """DTP primary TAP (PTAP) instruction opcodes (subset used by OSS tests)."""
+    """DTP primary TAP (PTAP) instruction opcodes, one member per 6-bit encoding.
 
+    Transcription of the "Instruction Encodings" table in
+    `hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`. The PTAP's own table
+    (`hw/ip/jtag/jtag_ptap/doc/interface.adoc`, "Instruction Encodings") lists
+    the same encodings for the instructions it defines and omits the RISC-V
+    reserved range and the JTAG2AXI bridge TDRs. Member names are the document's
+    names; the two BYPASS rows and the encodings without a row carry the encoding
+    as a suffix. Both tables note that every encoding not explicitly defined in
+    the table maps to BYPASS.
+    """
+
+    # IEEE 1149.1 and IEEE 1838 instructions.
     BYPASS_00 = 0x00
     IDCODE = 0x01
     RUNBIST = 0x02
@@ -35,7 +49,10 @@ class DtpJtagInstr(IntEnum):
     TMP_STATUS = 0x0C
     IC_RESET = 0x0D
     TAP_3DCR = 0x0E
+    # No row in either table; maps to BYPASS.
     UNDEFINED_BYPASS_0F = 0x0F
+    # "Reserved for RISC-V" in the interface-unit table; the PTAP table has no
+    # row for 0x10-0x17, so they map to BYPASS.
     RISCV_RESERVED_0 = 0x10
     RISCV_RESERVED_1 = 0x11
     RISCV_RESERVED_2 = 0x12
@@ -44,28 +61,32 @@ class DtpJtagInstr(IntEnum):
     RISCV_RESERVED_5 = 0x15
     RISCV_RESERVED_6 = 0x16
     RISCV_RESERVED_7 = 0x17
+    # Debug and clock stop control, capabilities readback, iJTAG network selection.
     DEBUG_CONTROL = 0x18
     JTAG_CAPS = 0x19
     SELECT_IJTAG = 0x1A
+    # SMC OTP controller JTAG2AXI bridge TDRs (interface-unit table only).
     SMC_OTP_JTAG2AXI_CAPS = 0x1B
     SMC_OTP_AXI_SINGLE_OP = 0x1C
     SMC_OTP_AXI_SERIES_CTRL = 0x1D
     SMC_OTP_AXI_SERIES_DATA_INCR = 0x1E
     SMC_OTP_AXI_SERIES_DATA_NO_INCR = 0x1F
     SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS = 0x20
+    # SEP OTP controller JTAG2AXI bridge TDRs (interface-unit table only).
     SEP_OTP_JTAG2AXI_CAPS = 0x21
     SEP_OTP_AXI_SINGLE_OP = 0x22
     SEP_OTP_AXI_SERIES_CTRL = 0x23
     SEP_OTP_AXI_SERIES_DATA_INCR = 0x24
     SEP_OTP_AXI_SERIES_DATA_NO_INCR = 0x25
     SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS = 0x26
-    # SMC fabric debug JTAG2AXI bridge TDRs
+    # SMC fabric debug JTAG2AXI bridge TDRs (interface-unit table only).
     SMC_JTAG2AXI_CAPS = 0x27
     SMC_AXI_SINGLE_OP = 0x28
     SMC_AXI_SERIES_CTRL = 0x29
     SMC_AXI_SERIES_DATA_INCR = 0x2A
     SMC_AXI_SERIES_DATA_NO_INCR = 0x2B
     SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS = 0x2C
+    # No row in either table for 0x2D-0x3C; they map to BYPASS.
     UNDEFINED_BYPASS_2D = 0x2D
     UNDEFINED_BYPASS_2E = 0x2E
     UNDEFINED_BYPASS_2F = 0x2F
@@ -82,18 +103,25 @@ class DtpJtagInstr(IntEnum):
     UNDEFINED_BYPASS_3A = 0x3A
     UNDEFINED_BYPASS_3B = 0x3B
     UNDEFINED_BYPASS_3C = 0x3C
+    # Zero-length, inverted, and all-ones IEEE 1149.1 BYPASS.
     ZERO_LENGTH_BYPASS = 0x3D
     INV_BYPASS = 0x3E
     BYPASS_3F = 0x3F
 
 
+# Encodings for which neither table defines an instruction; the tables' note
+# maps them to BYPASS.
 UNDEFINED_BYPASS_INSTRS = tuple(
     DtpJtagInstr(value) for value in [0x0F, *range(0x10, 0x18), *range(0x2D, 0x3D)]
 )
 
 
 class DtpTapState(IntEnum):
-    """IEEE 1149.1 TAP controller states as one-hot values from `tap_state_e`."""
+    """IEEE 1149.1 TAP controller states as 16-bit one-hot encodings.
+
+    Transcription of the state table in `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`,
+    "TAP Controller State Machine".
+    """
 
     TEST_LOGIC_RESET = 0x0001
     RUN_TEST_IDLE = 0x0002
@@ -229,7 +257,12 @@ class DtpTapFsm:
 
 
 class DtpJtag2AxiOp(IntEnum):
-    """JTAG2AXI single-op operation request (OP field on issue)."""
+    """JTAG2AXI `op` field as written by the debugger.
+
+    From the `*_AXI_SINGLE_OP` and `*_AXI_SERIES_CTRL` tables in
+    `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, "JTAG2AXI Support": 0 nop,
+    1 read, 2 write, 3 reserved.
+    """
 
     NOP = 0
     READ = 1
@@ -237,7 +270,12 @@ class DtpJtag2AxiOp(IntEnum):
 
 
 class DtpJtag2AxiStatus(IntEnum):
-    """JTAG2AXI single-op capture status (OP field on response)."""
+    """JTAG2AXI `op` field as read back by the debugger.
+
+    From the same `*_AXI_SINGLE_OP` / `*_AXI_SERIES_CTRL` tables: 0 OKAY,
+    1 SLVERR, 2 DECERR or other error, 3 operation attempted while the previous
+    one was still pending.
+    """
 
     SUCCESS = 0
     SLVERR = 1
@@ -281,7 +319,8 @@ SMC_DBG_SIZE_BITS = 2  # SCAN_CHAIN_SIZE_FIELD_WIDTH for 64-bit data
 SMC_DBG_WSTRB_BITS = 8  # DATA_WIDTH/8
 SMC_DBG_AXSIZE_8B = 3  # AXI awsize/arsize for a full 8-byte beat
 
-# SINGLE_OP DR layout (LSB-first): OP[2] | SIZE | WSTRB | DATA | ADDR
+# SINGLE_OP DR layout (LSB-first): OP[2] | SIZE | WSTRB | DATA | ADDR, the field
+# order of the `*_AXI_SINGLE_OP` table (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`).
 _OP_OFF = 0
 _SIZE_OFF = _OP_OFF + 2
 _WSTRB_OFF = _SIZE_OFF + SMC_DBG_SIZE_BITS
@@ -289,7 +328,8 @@ _DATA_OFF = _WSTRB_OFF + SMC_DBG_WSTRB_BITS
 _ADDR_OFF = _DATA_OFF + SMC_DBG_DATA_WIDTH
 SMC_DBG_SINGLE_OP_LEN = _ADDR_OFF + SMC_DBG_ADDR_WIDTH  # 132
 
-# SERIES_CTRL DR layout (LSB-first): OP[2] | SIZE | PL_DEPTH[2] | ADDR | RESET
+# SERIES_CTRL DR layout (LSB-first): OP[2] | SIZE | PL_DEPTH[2] | ADDR | RESET, the
+# field order of the `*_AXI_SERIES_CTRL` table in the same document.
 _SERIES_OP_OFF = 0
 _SERIES_SIZE_OFF = _SERIES_OP_OFF + 2
 _SERIES_PL_DEPTH_OFF = _SERIES_SIZE_OFF + SMC_DBG_SIZE_BITS
@@ -360,11 +400,11 @@ def get_jtag2axi_target(target: str | DtpJtag2AxiTargetCfg) -> DtpJtag2AxiTarget
 
 
 def series_data_len(size: int, *, with_status: bool = False) -> int:
-    """Return the SMC series data TDR width for one transfer size.
+    """Return the series data TDR width for one transfer size.
 
-    The DTP series-data TDR is sized to the active transfer payload, not the
-    whole 64-bit bridge width. The optional status/increment bit is the MSB used
-    by *_DATA_WITH_ERROR_STATUS.
+    `*_AXI_SERIES_DATA_INCR` / `_NO_INCR` are n = 8*(2**size) bits and
+    `*_AXI_SERIES_DATA_WITH_ERROR_STATUS` is n+1 bits with the increment/status
+    bit at n (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, "JTAG2AXI Support").
     """
     payload_bits = 8 * (1 << size)
     return payload_bits + (1 if with_status else 0)
@@ -418,8 +458,8 @@ def pack_series_ctrl(
 ) -> int:
     """Pack a target-specific *_AXI_SERIES_CTRL DR value.
 
-    Bit ordering follows the RTL scan direction:
-    OP in the low bits, then SIZE, pipeline depth, ADDR, and RESET as the MSB.
+    Field order is that of the `*_AXI_SERIES_CTRL` table: OP in the low bits,
+    then SIZE, pipeline depth, ADDR, and RESET as the MSB.
     """
     cfg = get_jtag2axi_target(target)
     size_off = 2

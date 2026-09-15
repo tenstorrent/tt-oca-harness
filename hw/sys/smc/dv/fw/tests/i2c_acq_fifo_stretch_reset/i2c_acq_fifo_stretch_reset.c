@@ -45,6 +45,13 @@
  * abort, ~300 us in the reference run, so this is >15x the observed worst case
  * while still expiring inside a normal job. */
 #define POLL_TIMEOUT POLL_ITERS_FOR_NS(5000000u)
+/* 20 ms. STATUS.ACQFULL asserts only after the target has accepted enough of
+ * the long write to leave two ACQ entries free, i.e. after ~62 bytes have
+ * crossed the bus. At standard mode that is 62 x 9 bit times of ~10 us, about
+ * 5.6 ms at the nominal periph clock and ~6.7 ms at the slowest one the bench
+ * randomises, so the 5 ms POLL_TIMEOUT above would expire inside a healthy
+ * fill; this bound is ~3x the slowest fill and still expires inside a job. */
+#define ACQ_FILL_TIMEOUT POLL_ITERS_FOR_NS(20000000u)
 /* ~110 us, about 11 SCL periods. If the target has not returned to idle within
  * that many bit times the discarded long-write tail is still in flight, and the
  * target is force-disabled instead of waited on. */
@@ -135,7 +142,7 @@ static int tb_sync(uint32_t marker) {
 static int wait_for_acq_stretch(uint32_t idx, uint32_t *acqlvl_out) {
     uint32_t acqlvl = 0;
 
-    for (uint32_t i = 0; i < POLL_TIMEOUT; i++) {
+    for (uint32_t i = 0; i < ACQ_FILL_TIMEOUT; i++) {
         i2c__STATUS_t status = get_i2c_status(idx);
 
         acqlvl = get_acq_level(idx);

@@ -22,8 +22,8 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_lite_channel_skew_test"
-# cocotb-only: the SV-UVM master's skew knobs are exercised by its own flow.
-module = { cocotb = "ocah_axi_lite_channel_skew_test" }
+# The SV-UVM master's skew knobs are exercised by its own flow.
+module = { cocotb = "ocah_axi_lite_channel_skew_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_lite"]
@@ -31,7 +31,7 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_lite_ready_hold_test"
-module = { cocotb = "ocah_axi_lite_ready_hold_test" }
+module = { cocotb = "ocah_axi_lite_ready_hold_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_lite"]
@@ -39,7 +39,7 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_lite_partial_strobe_test"
-module = { cocotb = "ocah_axi_lite_partial_strobe_test" }
+module = { cocotb = "ocah_axi_lite_partial_strobe_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_lite"]
@@ -47,8 +47,8 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_lite_geometry_test"
-# cocotb-only: the SV-UVM layer binds geometry through ocah_axi_config's masks.
-module = { cocotb = "ocah_axi_lite_geometry_test" }
+# The SV-UVM layer binds geometry through ocah_axi_config's masks.
+module = { cocotb = "ocah_axi_lite_geometry_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_geometry"]
@@ -56,7 +56,7 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_geometry_test"
-module = { cocotb = "ocah_axi_geometry_test" }
+module = { cocotb = "ocah_axi_geometry_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_geometry"]

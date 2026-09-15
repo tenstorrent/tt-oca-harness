@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[project-defines]]
+= Project Defines
+
+Compile-time defines that apply across OCAH rather than to a single block.
+
+[[simulation-define]]
+== `SIMULATION`
+
+`SIMULATION` selects the verification view of OCAH RTL. Set it on every
+simulation compile and on no other kind of build:
+
+[source,shell]
+----
++define+SIMULATION   # VCS, Xcelium
+-DSIMULATION         # Verilator, Icarus
+----
+
+OCAH's own DV flows set it; a compile driven by an adopter's testbench does not.
+
+[WARNING]
+====
+Do not let `SIMULATION` reach synthesis, formal, or a gate-level flow. It
+enables `initial` blocks, `$readmemh`, `$random` and DPI exports; a tool that
+skips those rather than rejecting them yields a netlist that does not
+correspond to the RTL you verified.
+====
+
+Without the define, these testbench hooks are not compiled in and the plusargs
+are silently ignored:
+
+[cols="<40%,<60%",options="header"]
+|===
+|Plusarg |Effect
+
+|`+skip_fuse_sense`
+|`efuse_shadow_regs` reports fuse sense complete immediately rather than
+sensing the bank through the adopter's SHIM.
+
+|`+smc_shadow_reg_preload=<file>`,
+`+sep_shadow_reg_preload=<file>`
+|Loads the shadow registers from a hex image. Takes effect only alongside
+`+skip_fuse_sense`.
+
+|`+rom_bin64=<file>`, `+rom_hex=<file>`
+|Preloads `OCAH4CORECluster_rom_ext`, the SMC CPU ROM simulation model. Applies
+only to integrations that use the reference memory swaps.
+|===
+
+The define also zeroes the RMA and security-disable token and digest bits in
+`efuse_token_processing` at time 0, which have no reset and otherwise power up
+X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
+`$error` on non-UVM runs.
+
+Two model families it enables make simulation deliberately non-deterministic:
+`prim_flop_2sync` and its Caliptra and Adams Bridge equivalents insert
+`prim_cdc_rand_delay` ahead of the synchronizer, and
+`prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
+other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
+test are therefore not identical unless the simulator seed is fixed; record the
+seed with any failure you intend to reproduce.

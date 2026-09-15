@@ -2,29 +2,35 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-6: TELEMETRY CSR + INTR_TEST IRQ + ATB message into receiver 0.
 
-ATB FRAMING PROVENANCE. The IP lives at ``hw/ip/telemetry_receiver/``; every
-citation below is to that tree ([INDEPENDENT-EXPECTED-MODEL]).
+ATB FRAMING PROVENANCE. The IP lives at ``hw/ip/telemetry_receiver/``; the
+framing this sequence drives is a DV-owned table (the ``_ATB_*`` constants
+below) and each entry names its source:
 
-The framing constants come from the DUT RTL:
+* 8-bit beats assembled LSB-first into 64-bit packets -- ``doc/interface.adoc``
+  (``ATB_DATA_WIDTH`` 8, ``PACKET_WIDTH`` 64, "8-bit data beats") and
+  ``doc/architecture.adoc`` ("assembles streams of 8-bit ATB data into 64-bit
+  packets ... little-endian (LSB-first) byte alignment"). Beats per packet is
+  the quotient of the two documented widths.
+* 9-bit blocks, each an 8-bit counter byte plus its valid flag --
+  ``doc/architecture.adoc`` ("validates each 9-bit packet block"; "broken into
+  9-bit blocks, counters are extracted and checked, and validity flags
+  assigned").
+* a 5-bit probe-ID header and a last-packet flag --
+  ``regs/telemetry_receiver.rdl`` (``TELEMETRY_PROBE_ID.PROBE_ID[4:0]``, "the
+  Probe ID field of the telemetry message"; ``INTR_STATUS.MISSING_LAST``, "has
+  not received a Last Packet flag") and ``doc/architecture.adoc`` ("parsed for
+  headers (probe ID)", "detects last-packet boundaries").
+* the bit positions of the probe-ID header, of the last-packet flag and of the
+  first block in each packet -- no document in the tree fixes them, so their
+  values are not derived from any document: they are the layout this bench
+  drives and the receiver under test accepts (``_ATB_PROBE_ID_LSB``,
+  ``_ATB_LAST_PACKET_BIT``, ``_ATB_FIRST_BLOCK_LSB``, ``_ATB_NEXT_BLOCK_LSB``),
+  recorded as DV-owned assumptions until a document states the packet layout.
 
-* 8-bit beats and the assembly into packets -- ``doc/interface.adoc:59,69``
-  ("8-bit data beats", "Data Width: 8 bits per beat") and
-  ``doc/architecture.adoc:56``; ``NUM_BEATS_PER_PACKET`` is the RTL localparam
-  ``TELEMETRY_PACKET_WIDTH / TELEMETRY_DATA_WIDTH``
-  (``rtl/telemetry_receiver_pkg.sv:51``), used at
-  ``rtl/telemetry_receiver.sv:134``.
-* ``probe_id`` at bits ``[60:56]`` -- ``rtl/telemetry_receiver.sv:77-81``,
-  ``get_telemetry_probe_id`` returns ``telemetry_packets[0][60:56]``.
-* ``last_packet`` at bit 63 -- it is the most significant field of the 64-bit
-  packed ``telemetry_packet_t`` (``rtl/telemetry_receiver_pkg.sv:60-63``), read
-  at ``rtl/telemetry_receiver.sv:139``.
-
-The prose in ``doc/architecture.adoc:43-45,56-60`` describes probe IDs and
-last-packet boundaries but gives no bit positions, so no spec-level source for
-them exists in the tree. The framing is therefore a STIMULUS FORMAT taken from
-the design, not an independently derived expectation; what this testcase scores
-is the CSR-visible consequence (STATUS.EMPTY clearing, PROBE_ID reading back the
-value that was framed), not the framing itself.
+What this testcase scores is the CSR-visible consequence of a message framed
+per that table (STATUS.EMPTY clearing, PROBE_ID reading back the value that was
+framed), not that the table is the specified telemetry format: a receiver that
+decoded a differently laid-out message would fail here without being wrong.
 """
 
 from __future__ import annotations
@@ -38,11 +44,12 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # Reset sweep across all three receivers.
 #
 # On the ATB stimulus side only receiver 0 is driven -- `tb_top.sv:518` says
-# "receiver 0 driven; 1/2 quiet". Quiet is NOT tied off: `smc_peripherals.sv:774`
-# instantiates `telemetry_receiver_wrap` with `NUM_TELEMETRY_RECEIVERS`, so all
-# three receivers have real register blocks behind real addresses. A CSR RESET
-# read does not need ATB input, and receivers 1/2 being unstimulated is exactly
-# what guarantees their registers are still at reset when they are read.
+# "receiver 0 driven; 1/2 quiet". Quiet is NOT tied off: the generated address
+# map carries indexed TELEMETRY_RECEIVER symbols for all three receivers, and
+# the INTR_ENABLE write/readback leg below proves each register block is live.
+# A CSR RESET read does not need ATB input, and receivers 1/2 being
+# unstimulated is exactly what guarantees their registers are still at reset
+# when they are read.
 #
 # All seven single-indexed register types are swept. `TELEMETRY_COUNTER` is
 # excluded: its generated macro is DOUBLY indexed
@@ -110,8 +117,21 @@ _STATUS_EMPTY = 0x1
 _INTR_MISSING_LAST = 0x1
 _CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 _TELEMETRY_CG_EN = TELEMETRY_CG_EN
-_NUM_BEATS_PER_PACKET = 8
+# DV-owned ATB framing table; the provenance of every entry is in the module
+# docstring.
+_ATB_BEAT_BITS = 8  # interface.adoc ATB_DATA_WIDTH
+_ATB_PACKET_BITS = 64  # interface.adoc PACKET_WIDTH
+_NUM_BEATS_PER_PACKET = _ATB_PACKET_BITS // _ATB_BEAT_BITS
+_ATB_BLOCK_DATA_BITS = 8  # one counter byte per block (architecture.adoc)
+_ATB_BLOCK_BITS = _ATB_BLOCK_DATA_BITS + 1  # plus its valid flag: "9-bit block"
+_ATB_PROBE_ID_BITS = 5  # telemetry_receiver.rdl PROBE_ID[4:0]
+# Positions no document fixes (DV-owned assumptions, see the module docstring).
+_ATB_PROBE_ID_LSB = 56
+_ATB_LAST_PACKET_BIT = 63
+_ATB_FIRST_BLOCK_LSB = 45  # first block of the packet that carries the header
+_ATB_NEXT_BLOCK_LSB = 54  # first block of every following packet
 _PROBE_ID = 0x05
+assert _PROBE_ID < (1 << _ATB_PROBE_ID_BITS)
 _COUNTERS = [0x11223344, 0x55667788]
 
 
@@ -169,8 +189,9 @@ async def _atb_write_beat(dut, value: int, *, beat: int = -1) -> None:
 
 
 async def _send_telemetry_packet(dut, packet_data: int) -> None:
+    beat_mask = (1 << _ATB_BEAT_BITS) - 1
     for i in range(_NUM_BEATS_PER_PACKET):
-        await _atb_write_beat(dut, (packet_data >> (i * 8)) & 0xFF, beat=i)
+        await _atb_write_beat(dut, (packet_data >> (i * _ATB_BEAT_BITS)) & beat_mask, beat=i)
 
 
 async def _send_telemetry_message(dut, probe_id: int, counter_values: list[int]) -> None:
@@ -181,21 +202,21 @@ async def _send_telemetry_message(dut, probe_id: int, counter_values: list[int])
             counter_bytes.append((counter_value >> ((3 - i) * 8)) & 0xFF)
 
     packet_data = 0
-    packet_data |= (probe_id & 0x1F) << 56
-    bit_index = 45
+    packet_data |= (probe_id & ((1 << _ATB_PROBE_ID_BITS) - 1)) << _ATB_PROBE_ID_LSB
+    bit_index = _ATB_FIRST_BLOCK_LSB
 
     for i, counter_byte in enumerate(counter_bytes):
         packet_data |= (counter_byte & 0xFF) << bit_index
-        packet_data |= 1 << (bit_index + 8)  # valid bit
+        packet_data |= 1 << (bit_index + _ATB_BLOCK_DATA_BITS)  # valid flag
         if i == len(counter_bytes) - 1:
-            packet_data |= 1 << 63  # last packet
+            packet_data |= 1 << _ATB_LAST_PACKET_BIT
             await _send_telemetry_packet(dut, packet_data)
         elif bit_index == 0:
             await _send_telemetry_packet(dut, packet_data)
             packet_data = 0
-            bit_index = 54
+            bit_index = _ATB_NEXT_BLOCK_LSB
         else:
-            bit_index -= 9
+            bit_index -= _ATB_BLOCK_BITS
 
 
 class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):

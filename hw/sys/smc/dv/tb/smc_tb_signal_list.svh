@@ -415,6 +415,7 @@
 // CPU memory responder observability for firmware boot tests.
 `SMC_TB_OUT(logic [31:0], tb_cpu_rom_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_read_count)
+`SMC_TB_OUT(logic [chipyard_4core_mem_pkg::NUM_SRAM_BANKS*32-1:0], tb_cpu_scratch_bank_read_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_scratch_write_count)
 `SMC_TB_OUT(logic [31:0], tb_cpu_fw_mailbox)
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)
@@ -472,6 +473,11 @@
 // CPU cluster double-error detect (live + sticky).
 `SMC_TB_OUT(logic, tb_cluster_ded)
 `SMC_TB_OUT(logic, tb_cluster_ded_seen)
+// Cluster WDT first / second timeout pins (live + sticky).
+`SMC_TB_OUT(logic, tb_wdt_first_timeout)
+`SMC_TB_OUT(logic, tb_wdt_first_timeout_seen)
+`SMC_TB_OUT(logic, tb_wdt_second_timeout)
+`SMC_TB_OUT(logic, tb_wdt_second_timeout_seen)
 `SMC_TB_OUT(logic [31:0], tb_cpu_ecc_inject_fire_count)
 `SMC_TB_OUT(logic, tb_cpu_scratch0_inject_fire)
 

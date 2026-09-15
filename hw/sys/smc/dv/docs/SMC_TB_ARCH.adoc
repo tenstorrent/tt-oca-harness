@@ -18,7 +18,8 @@ Subsystem-specific sections sit on top of that spine.
 |DUT |`smc` (`hw/top/smc_wrapper.sv`), selected by `--dut smc`
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
-|Commercial simulator use |VCS/Xcelium coverage on the same cocotb tests
+|Commercial simulator use |VCS `--cov` coverage on the same cocotb tests;
+Xcelium runs them without a coverage configuration
 |===
 
 How tests, sequences, and checkers are structured in the SMC OSS cocotb/PyUVM
@@ -29,8 +30,9 @@ SMC and SEP differ, this doc describes *SMC* and notes the SEP contrast.
 [[what-kind-of-environment-this-is]]
 * *cocotb + PyUVM*, not classic SystemVerilog UVM. Env, sequences, scoreboards,
 and models are Python.
-* *Verilator* is the functional backend; VCS/Xcelium run the same cocotb tests
-for coverage. Driven by `tools/dv/run_dv.py`.
+* *Verilator* is the functional backend; VCS runs the same cocotb tests for
+`--cov` coverage, and Xcelium runs them without a coverage configuration.
+Driven by `tools/dv/run_dv.py`.
 * *Single DUT*: `--dut smc` → `smc_sim_cfg.toml`, top
 `smc_uvm_top` (`tb/tb_top.sv`) instantiating `hw/top/smc_wrapper.sv`.
 PLL/PVT/eFuse/pads/CPU mem and the I3C DAT/DCT/RLT memories live inside
@@ -49,8 +51,9 @@ already wires that port to DTP).
 `smu_wrapper` is a different DUT in that file and is not this bench.
 
 Placeholder PLL/PVT OKAY+0 wraps, idle DTP CSR, and I3C decode-only
-(`proxy=True`) are not feature proof. See `SMC_SCOPE_TRACEABILITY.adoc`
-and `SMC_DEFERRED_DISPOSITION.adoc`.
+(`proxy=True`) are not feature proof. See
+`hw/sys/smc/doc/dv/SMC_SCOPE_TRACEABILITY.adoc` and
+`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 
 [[vip-selection-policy]]
 === VIP Selection Policy
@@ -153,9 +156,9 @@ Non-proxy evidence, by area — what lets a group record
 |Output fabric |`smc_output_fabric_wr_rd_responder_test`, `smc_input_output_fabric_wr_rd_test`, `smc_output_filter_remap_security_test` |`tb_top` exposes flattened `s_axi_*` / `jtag_axi_*` inputs; SEP_IN programs the fabric and JTAG AXI traffic drives a DV-only output-fabric responder. Checks write/read completion, readback data, blocked-write `DECERR`, and `tb_output_axi_*` counters
 |I2C |`smc_i2c_master_target_test`, `smc_i2c_p1_rdwr_protocol_test`, `smc_i2c_error_fifo_depth_test` |I2C0 resolved SCL/SDA exposed; release/pull-low behavior checked through the DUT override path
 |I3C |`smc_i3c_to_fabric_test` |I3C0 resolved SCL/SDA exposed; external pull-low/release verified via `check_i3c0_external_pull_low`; the CSR window gate is HCI_VERSION decode. The test records `proxy=True` — no protocol-level VIP traffic runs
-|CPU JTAG |`smc_ijtag_basic_test`, `smc_chiplet_reg_jtag_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_dft_timeout_proxy_test`, `smc_jtag_reset_proxy_test` |TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required
+|CPU JTAG |`smc_ijtag_basic_test`, `smc_jtag_dmi_smoke_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_reset_proxy_test` |TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required
 |Mailbox |`smc_mailbox_irq_test`, `smc_mailbox_data_error_test`, `smc_mailbox_event_irq_test` |DV-only `tb_sep_mailbox_interrupts` source + `tb_mailbox_irq_any` checker prove SEP mailbox interrupt bits reach the SMC peripheral vector
-|GPIO / external IRQ |`smc_gpio_irq_active_test`, `smc_ext_interrupts_pin_test` |DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert. Strap capture is `tb_captured_straps`; that leaf is not enrolled (`no_dut_port`).
+|GPIO / external IRQ |`smc_gpio_irq_active_test`, `smc_ext_interrupts_pin_test` |DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert. Strap capture has no testcase: `tb_captured_straps` has no `smc_wrapper` pin to drive (`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`).
 |Sideband (AVSBus/OCTS) |`smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `smc_octs_sanity_test` |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug` bounded observability alongside real CSR decode/timeout. These tests record `proxy=True`; full promotion needs a real pad-level AVSBus/OCTS BFM
 |CPU / OCCP |`smc_cpu_sanity_test`, `smc_cpu_ctrl_scratch_window_test`, `smc_cpu_ctrl_map_depth_test`, `smc_cpu_to_sep_axi_test`, `smc_occp_sanity_secure_error_test` |SEP_IN AXI master-BFM substitutes for firmware traffic; CPU-control map + scratch write/read/restore + reset/powergood checks
 |eFuse / OTP |`smc_efuse_permission_boundary_test`, `smc_efuse_chip_config_read_test`, `smc_efuse_otp_clock_config_depth_test`, `smc_efuse_otp_clock_test` |eFuse-derived chip-config surface for version/LC/RAS semantics + OTP clock-gate restore + eFuse-bank AXI-Lite idle checker
@@ -223,22 +226,8 @@ SmcEnv
 [[directory-layout]]
 === Directory Structure
 
-....
-hw/sys/smc/dv/
-├── cocotb/                 # PyUVM env / seq_lib / tests
-├── uvm/                    # SV-UVM env / seq_lib / tests (--framework uvm)
-├── models/                 # TB responders + models/regs/ pll/pvt PeakRDL wraps
-├── tb/                     # tb_top.sv (both shapes), smc_tb_signal_list.svh,
-│                           # smc_tb_if.sv, verilator_stubs/
-├── testlists/              # per-feature TOML leaves + all.toml
-├── assets/                 # ROM/eFuse/shadow preload images
-├── smc_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper), both frameworks
-└── docs/                   # index.adoc, TB_ARCH, VPLAN, FCOV, SCOPE, DEFERRED
-....
-
-NOTE: `dv/README.md` carries the authoritative directory layout. The sketch
-above is the subset this chapter refers to; when the two disagree the README
-is right.
+The directory layout is the `Layout` section of `README.md` in this DV tree;
+this chapter names directories only where a component lives.
 
 [[hdl-top]]
 === HDL Top
@@ -249,8 +238,9 @@ the wrapper. The TB provides the SYS_OUT AXI responder (the shared
 `ocah_axi_vip` slave agent behind `ocah_axi_struct_bridge`; in the SV-UVM
 realization `smc_env.m_sys_out_slave_agent` on `sys_out_vif`).
 The DTP CSR port is a `smc_wrapper` boundary: the TB ties
-`axil_dtp_csr_resp` to zero and does not instantiate an `err_slv`. Tests that
-need a DTP CSR subordinate stay unenrolled (`needs_dtp_csr_sub`).
+`axil_dtp_csr_resp` to zero and does not instantiate an `err_slv`. A test that
+needs a DTP CSR subordinate cannot run on this bench;
+`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` holds its disposition.
 
 The module has two shapes selected by the bare `UVM` define. Every TB signal
 is declared exactly once in `tb/smc_tb_signal_list.svh` and expanded by the
@@ -363,6 +353,33 @@ stack, trap records, and recent-PC tail at error level before the assertion;
 `+smc_trace_log` streams every retirement to `smc_trace.log`. The dual bench
 runs one `SmcCpuTraceState` per instance from `SmcDualHarness.bring_up` and
 appends both reports to its failure messages.
+
+[[validated-python-lifecycle-pattern-pyuvm-4]]
+==== Agent and scoreboard lifecycle (pyuvm 4)
+
+[source,python]
+----
+class SmcXxxAgent(uvm_agent):
+    def build_phase(self):
+        self.cfg = ConfigDB().get(self, "", "cfg")
+        self.sequencer = uvm_sequencer("sequencer", self)
+        self.driver = SmcXxxDriver("driver", self)
+        # NOTE: do NOT touch self.driver.ap here
+
+    def connect_phase(self):
+        self.driver.seq_item_port.connect(self.sequencer.seq_item_export)
+        self.ap = self.driver.ap
+
+class SmcScoreboard(uvm_subscriber):
+    def build_phase(self):
+        self.samples_seen_by_type = {}
+
+    def write(self, item):
+        if isinstance(item, SmcXxxItem):
+            self._check_xxx(item)
+----
+
+Replicate this skeleton for every new agent + scoreboard hook.
 
 [[clock-and-reset-strategy]]
 === Clock and Reset Strategy
@@ -492,11 +509,52 @@ await _OneShot(clk_item,   "os").start(self.env.clk_agent.sequencer)
 `smc_canonical_smoke_test` uses this to run reset/i2c/clk/irq/gpio/axil
 observability in one scenario.
 
+[[public-busregister-helper]]
+==== SEP_IN bus/register path
+
+The public bus/register access path is the SEP_IN AXI ingress:
+
+[source,text]
+----
+smc_output_filter_remap_security_test
+  -> SmcCsrSeq / SmcSysAxiItem / SmcSysAxiDriver
+  -> ocah_axi_vip.OcahAxiMasterAgent
+  -> tb_top.sv s_axi_*
+  -> smc.sep_axi_in_req_i
+  -> SMC filter/remap CSRs
+----
+
+This is active stimulus, not an observation-only proxy. The scenario programs
+the filter/remap CSRs through SEP_IN, then uses the public JTAG AXI injection
+port to prove an allowed write/read with golden-memory comparison and a blocked
+write that returns exact DECERR without corrupting the retained data. The
+flattened public buses are AXI4 with a 56-bit address and 64-bit data path; the
+local helper supports 1-, 2-, 4-, and 8-byte single-beat CSR accesses.
+
+`SmcSysAxiDriver` bounds every access with `SmcEnvCfg.axi_timeout_ns` (50,000 ns
+by default). A normal access fails on timeout or a non-OKAY response. A negative
+test may explicitly allow an error response, but an expected SLVERR/DECERR must
+complete; `expect_error` rejects both an incorrect OKAY response and a timeout.
+
+`env.sys_axi_agent`, despite its name, drives the
+`s_axi_*` SEP_IN bridge above. The separate `env.sys_in_axi_agent` drives
+`sys_axi_*` into `sys_axi_in_req_i`; this scenario does not exercise that SYS_IN
+path. Its direct `jtag_axi_*` injection is an AXI fabric path, not proof of
+serial JTAG-to-AXI conversion.
+
+The AXI protocol engine remains shared in `ocah_axi_vip`. The
+`SmcSysAxiDriver` and `SmcCsrSeq` adapters stay DUT-local because they carry
+PyUVM sequencing, SMC address/catalog policy, SMC error signatures, and
+SMC-specific register-to-pin helpers. Promote a register helper to shared DV
+only after a second DUT needs the same protocol-neutral API with those policies
+removed.
+
 [[testlists-toml]]
 ==== Testlists (TOML)
 
-`testlists/all.toml` includes the per-feature leaves and defines `groups`
-(`smoke`, `pyuvm`). Each test entry lives once in a leaf list:
+`testlists/all.toml` includes the per-feature leaves and defines the
+regression groups; the groups and their membership live there and nowhere
+else. Each test entry lives once in a leaf list:
 
 [source,toml]
 ----
@@ -555,15 +613,20 @@ assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
 === Canonical RTL Selection
 
 Bender supplies the product SMC RTL to the simulator flows. Verilator and the
-commercial simulators therefore compile the same subsystem source graph.
-`tb/verilator_stubs/` may contain tooling shims only (`prim_sync2` /
-`prim_sync3` for OSS prim port remap and X-init). Product-module overrides
-(`smc_reset_*`, `smc_dfx_*`, …) are forbidden.
+commercial simulators therefore compile the same subsystem source graph, with
+one difference: `tb/verilator_stubs/` replaces the `och_prim` `prim_sync2` /
+`prim_sync3` cells with behavioural stand-ins on Verilator and Xcelium, and the
+runner drops those stubs on VCS only, where the product cells elaborate. What
+that directory may hold is stated in its own `tb/verilator_stubs/README.md`.
 
 PeakRDL nested hwif structs stay compilable with `disable_public_flat_rw` plus
 `smc_public_scope.vlt`. PLL and PVT windows compile the adopter `pll_wrap` /
 `pvt_wrap` placeholders inside `smc_ip_integration`; those are handshake
 responders, not substitute macro RTL.
+
+Both stand-ins, the leaves whose verdict reads a signal behind one, and the
+control that keeps each claim honest are recorded in the *Bench stand-ins*
+section of `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
 
 [[house-rules]]
 === House rules
@@ -571,9 +634,11 @@ responders, not substitute macro RTL.
 * *PASS/FAIL needs positive evidence from `results.xml`* (parser registry
 `hw/common/dv/configs/parsers.toml`) — a clean exit alone is not enough.
 The scoreboard also asserts non-vacuity (`total > 0`).
-* *No DUT backdoor writes*: the only `.value=` writes in `seq_lib` target
-TB external-pad stimulus (`dut.tb_*`), never internal DUT registers. The
-memory-model golden is TB-local, not a DUT-hierarchy read.
+* *No hierarchical writes*: every `.value=` write in `seq_lib` targets a
+top-level pin of `smc_uvm_top` -- a reset input, a `tb_*` pad stimulus, or one
+of the inject / poke hooks the VPLAN's Verification Strategy admits -- never a
+DUT register by hierarchical path. The memory-model golden is TB-local, not a DUT-hierarchy
+read.
 * *OSS hygiene*: the public filelist must be vendor-clean — verify with
 `check_no_vendor_paths.py --filelist build/smc_bender.f --target smc`. Never
 commit simulator artifacts (waves/logs/xrun tmpdirs); the local `.gitignore`
@@ -584,6 +649,10 @@ wrongly-OKAY blocked access fails structurally, not just in a sequence assert.
 * *Golden-value traceability*: prefer RDL-cited reset values over
 golden==observed regression-locks; where a value is not RDL-traceable, label it
 a regression-lock with its real source.
+* *Enrollment*: a test enters `smoke` or `per_ip` only with active stimulus
+and at least one Verilator PASS. `per_ip` stays coverage-minimal: a depth
+test does not enter it for passing, only by replacing an older representative
+with strictly better coverage.
 
 [[sv-uvm-realization]]
 === SystemVerilog UVM Realization (`--framework uvm`)
@@ -673,273 +742,8 @@ scenario passes (`ocah_test.MinDefaultLoops`), each seeded `+ntb_random_seed`
 PASSED` is emitted only in the base test's `report_phase` when the global
 UVM_ERROR/UVM_FATAL counts are zero, matching the `uvm-log` parser policy.
 
-[[sec-2-running-tests]]
-=== Build and Run
-
-[[sec-1-environment-setup]]
-==== Environment Setup
-
-`tools/dv/run_dv.py` bootstraps its own Python environment: it locates the
-repository root, re-executes inside the locked uv-managed environment
-(root `uv.lock`, dependency group `dv`), and puts the generated namespace
-bridge on `PYTHONPATH`. There is nothing to source.
-
-[source,bash]
-----
-python3 tools/dv/run_dv.py --list          # confirm the DUT resolves
-python3 tools/dv/run_dv.py --doctor --dut smc   # confirm simulators/licenses
-----
-
-Set `OCAH_DV_SKIP_UV=1` only when running inside a pre-provisioned environment
-that already supplies the `dv` group.
-
-Simulators are not provisioned by the repo. Put `verilator`, `xrun`, or `vcs` on
-`PATH` yourself, with whatever license configuration your site requires, then use
-`--doctor` to confirm what is visible.
-
-[source,bash]
-----
-PY=tools/dv/run_dv.py
-python3 $PY --dut smc --items smc_canonical_smoke_test --stage flist --stage sim
-python3 $PY --dut smc --items all --tag smoke --stage sim
-python3 $PY --dut smc --items all --tag smoke --tool vcs --cov
-python3 $PY --dut smc --items all --stage sim --regress
-python3 $PY --dut smc --items all
-
-# SV-UVM realization (VCS; see <<sv-uvm-realization>>)
-python3 $PY --dut smc --framework uvm --build-only --skip-unimplemented
-python3 $PY --dut smc --framework uvm --items smc_register_sanity_test --seed 1
-python3 $PY --dut smc --framework uvm --items smoke --skip-unimplemented
-python3 $PY --dut smc --framework uvm --items smc_register_sanity_test \
-  --plusarg +SMC_CSR_SCOREBOARD_NEGATIVE   # must FAIL
-----
-
-[[full-smoke]]
-==== Full smoke
-
-[source,bash]
-----
-python3 tools/dv/run_dv.py --dut smc --tag smoke --tool xcelium
-python3 tools/dv/run_dv.py --dut smc --tag smoke --tool verilator
-----
-
-[[common-flags]]
-==== Common flags
-
-[cols=",",options="header",]
-|===========================================================================================================================================================
-|Purpose |Flag
-|Single test |`--items smc_cold_reset_test`
-|Feature subset |`--items` / `--tag` `reset` / `axil` / `clock` / `i2c` / `irq` / `gpio` / `combined` / `depth_reg` / `mailbox_depth` / `depth_efuse` / `cpu_depth` / `jtag_depth` / `depth_fabric` / `avsbus_depth` / `functional` / `smoke`
-|Multi-seed |`--seed N` (exported as `RANDOM_SEED` → `randomize_timing(seed)`)
-|Force clean rebuild |`--rebuild`
-|List tests / DUTs |`--list` (combine with `--dut smc` for SMC details)
-|Validate configs |`--validate-configs`
-|Dry-run |`--dry-run`
-|Coverage |`--cov`
-|Waves |`--waves [fst\|vcd]`
-|===========================================================================================================================================================
-
-[[testlist-layout]]
-==== Testlist layout
-
-....
-hw/sys/smc/dv/testlists/
-├── all.toml            # aggregator (includes = [...]) + smoke / pyuvm groups
-├── reset.toml          # reset family
-├── i2c.toml
-├── clock.toml
-├── irq.toml
-├── gpio.toml
-├── axil.toml
-├── combined.toml       # combined / canonical observer tests
-├── register.toml       # CSR sanity, default-read and boundary depth
-├── mailbox.toml        # mailbox CSR, IRQ and multi-instance
-├── efuse.toml          # eFuse map, OTP and permission boundary
-├── cpu.toml            # CPU, cluster, ECC, SPM and DMA
-├── jtag.toml           # JTAG, iJTAG, DFD and debug-bus
-├── fabric.toml         # fabric routing, filters, remap and dead space
-├── power.toml          # AVSBus, OCTS, telemetry and WDT
-├── spi.toml            # SPI pad BFM
-├── uart.toml           # UART and log engine
-├── dual.toml           # dual-SMC elaboration and cross-instance probes
-├── occp_boot.toml      # prod-ROM OCCP readiness
-└── depth.toml          # per-functional-module depth triplets
-....
-
-`--tag smoke` and `--tag pyuvm` resolve through `all.toml` groups. Treat this as
-the broad debug regression, not the coverage-minimal canonical set.
-
-`--tag functional` and the `functional` *group* are separate selectors and their
-sizes are not interchangeable: `--tag` matches every entry carrying the tag,
-`--items functional` resolves the group membership in `all.toml`. Four names in
-the group are thin wrappers over the sequences stronger siblings run:
-`smc_mailbox_idle_test`, `smc_input_fabric_axi_wr_rd_test`,
-`smc_avsbus_sanity_test`, and `smc_dbs_idle_test`.
-
-`--tag mailbox_depth` is a depth target for mailbox write/read data and
-expected error responses. It is not part of `per_ip`, so the routine
-regression does not duplicate mailbox breadth.
-
-[[legacy-migration-depth-tags]]
-==== Depth tags
-
-Depth tests carry a per-area depth tag; the same-named `[[groups]]` entry in
-the feature testlist resolves them:
-
-[cols=",,",options="header",]
-|=======================================================================================================================================================
-|Depth tag |Purpose |Group members
-|`depth_reg` |Register default, boundary, retained/non-retained behavior |`smc_register_boundary_depth_test`
-|`depth_fabric` |Local fabric CSR ranges and remap/filter programming |`smc_local_fabric_csr_depth_test`, `smc_output_filter_remap_security_test`
-|`mailbox_depth` |Mailbox data FIFO and expected error responses |`smc_mailbox_data_error_test`
-|`depth_efuse` |eFuse/OTP clock and permission/boundary CSR behavior |`smc_efuse_otp_clock_config_depth_test`, `smc_efuse_chip_config_read_test`, `smc_efuse_locked_access_interrupt_test`, `smc_efuse_boundary_signals_test`, `smc_efuse_read_program_timeout_test`, `smc_state_fault_inject_test`
-|`depth_uart_log` |UART/SPI/log-engine register and error-boundary coverage |`smc_uart_log_engine_reg_rw_test`
-|=======================================================================================================================================================
-
-Do not add depth tests to `per_ip` just because they pass. That group
-groups stay coverage-minimal; a depth test enters canonical only if it replaces
-an older representative with strictly better coverage.
-
-[[canonical-planning-tiers]]
-==== Canonical planning tiers
-
-The SMC plan follows the SEP OSS VPLAN structure: define a coverage universe,
-choose the fewest high-density tests, and track the infrastructure each selected
-test needs.
-
-[cols=",,",options="header",]
-|===
-|Group |Goal |Note
-|`smoke` |fast CI gate with real stimulus |Bring-up scenarios that must hold before anything else is worth running
-|`per_ip` |one scenario per IP, full breadth |The routine regression; a failure here names the IP directly
-|`all` |every enrolled testcase |The full package, run before sign-off
-|===
-
-Do not add a test to `smoke` or `per_ip` until it has active stimulus and at
-least one Verilator PASS. Keep weak SAMPLE-only variants under the feature
-groups for debug.
-
-[[fast-real-axi-loop]]
-==== Fast real-AXI loop
-
-After the one-time Verilator model build for the `tb_top` AXI bridge, Python-only
-edits to sequences, scoreboards, or testlists should use `--stage sim`:
-
-[source,bash]
-----
-python3 tools/dv/run_dv.py --dut smc --tag smoke        --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag per_ip  --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag functional      --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag mailbox_depth   --tool verilator --stage sim
-----
-
-Use `--rebuild` only after changing SystemVerilog TB/stubs, Bender/filelist
-inputs, RTL, or generated hardware files.
-
-[[public-busregister-helper]]
-==== Public bus/register helper
-
-The public bus/register access path is the SEP_IN AXI ingress:
-
-[source,text]
-----
-smc_output_filter_remap_security_test
-  -> SmcCsrSeq / SmcSysAxiItem / SmcSysAxiDriver
-  -> ocah_axi_vip.OcahAxiMasterAgent
-  -> tb_top.sv s_axi_*
-  -> smc.sep_axi_in_req_i
-  -> SMC filter/remap CSRs
-----
-
-This is active stimulus, not an observation-only proxy. The scenario programs
-the filter/remap CSRs through SEP_IN, then uses the public JTAG AXI injection
-port to prove an allowed write/read with golden-memory comparison and a blocked
-write that returns exact DECERR without corrupting the retained data. The
-flattened public buses are AXI4 with a 56-bit address and 64-bit data path; the
-local helper supports 1-, 2-, 4-, and 8-byte single-beat CSR accesses.
-
-`SmcSysAxiDriver` bounds every access with `SmcEnvCfg.axi_timeout_ns` (50,000 ns
-by default). A normal access fails on timeout or a non-OKAY response. A negative
-test may explicitly allow an error response, but an expected SLVERR/DECERR must
-complete; `expect_error` rejects both an incorrect OKAY response and a timeout.
-
-`env.sys_axi_agent`, despite its name, drives the
-`s_axi_*` SEP_IN bridge above. The separate `env.sys_in_axi_agent` drives
-`sys_axi_*` into `sys_axi_in_req_i`; this scenario does not exercise that SYS_IN
-path. Its direct `jtag_axi_*` injection is an AXI fabric path, not proof of
-serial JTAG-to-AXI conversion.
-
-The AXI protocol engine remains shared in `ocah_axi_vip`. The
-`SmcSysAxiDriver` and `SmcCsrSeq` adapters stay DUT-local because they carry
-PyUVM sequencing, SMC address/catalog policy, SMC error signatures, and
-SMC-specific register-to-pin helpers. Promote a register helper to shared DV
-only after a second DUT needs the same protocol-neutral API with those policies
-removed.
-
-Focused validation:
-
-[source,bash]
-----
-python3 tools/dv/run_dv.py --dut smc \
-  --items smc_output_filter_remap_security_test --tool verilator --seed 1
-----
-
-'''''
-
-[[sec-5-build-caching--performance-notes]]
-==== Build Caching & Performance Notes
-
-* *Incremental build* is the default. Pass `--rebuild` only when changing the
-Verilator stubs, `tb_top`, or RTL.
-* For Python-only test, sequence, scoreboard, or testlist edits, reuse the
-existing model with `--stage sim`; rebuilding the Verilator model is the
-expensive step.
-* A Verilator `--rebuild` is bounded by C++ compile time; raise make
-parallelism (`MAKEFLAGS=-jN`) to shorten it.
-* Both simulators share bender filelist generation; concurrent `--rebuild` runs
-*race* and can fail. Run them serially.
-
-'''''
-
-[[sec-6-quick-reference-verified-commands]]
-==== Quick Reference
-
-[source,bash]
-----
-# Validate sim_cfg + list testlists
-python3 tools/dv/run_dv.py --validate-configs
-python3 tools/dv/run_dv.py --dut smc --list
-
-# Single test, either simulator
-python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --tool xcelium
-python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --tool verilator
-
-# Feature subset / full smoke
-python3 tools/dv/run_dv.py --dut smc --tag reset --tool xcelium
-python3 tools/dv/run_dv.py --dut smc --tag smoke --tool verilator
-
-# smoke and per_ip groups (sim-only after the one-time model build)
-python3 tools/dv/run_dv.py --dut smc --tag smoke        --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag per_ip  --tool verilator --stage sim
-
-# functional group and category triplets
-python3 tools/dv/run_dv.py --dut smc --tag functional --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --items functional_depth --tool verilator --stage sim
-
-# Depth triplets and the coverage-closure slate
-python3 tools/dv/run_dv.py --dut smc --items depth --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --items coverage_closure --tool verilator --stage sim
-
-# Static checks before running any sim
-python3 -m py_compile \
-  hw/sys/smc/dv/cocotb/seq_lib/<changed_seq>.py \
-  hw/sys/smc/dv/cocotb/tests/<changed_test>.py
-python3 tools/dv/run_dv.py --validate-configs
-----
-
 [[root-causes-worth-remembering]]
-===== Pitfalls
+=== Pitfalls
 
 *`atop` must be driven.* `tb_top` drives `.aw.atop = '0` on `sep_axi_in_req`,
 `sys_axi_in_req`, and `jtag_axi_in_req`. The outbound filter's `axi_err_slv`
@@ -964,40 +768,10 @@ binding is reported by the Verilator front-end as _Mixing positional and
 importable — a dependency, not an RTL or TB defect. Confirm the dependency
 surface before debugging a protocol test.
 
-[[sec-12-working-execution-recipe-verified-end-to-end-pass]]
-==== Single-test recipe (Xcelium)
+[[sec-2-running-tests]]
+=== Build and Run
 
-Xcelium must be on `PATH` with a license configured for your site; see
-<<sec-1-environment-setup,Environment Setup>>.
-
-[source,bash]
-----
-python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test --tool xcelium
-----
-
-[[validated-python-lifecycle-pattern-pyuvm-4]]
-===== Python lifecycle pattern (pyuvm 4)
-
-[source,python]
-----
-class SmcXxxAgent(uvm_agent):
-    def build_phase(self):
-        self.cfg = ConfigDB().get(self, "", "cfg")
-        self.sequencer = uvm_sequencer("sequencer", self)
-        self.driver = SmcXxxDriver("driver", self)
-        # NOTE: do NOT touch self.driver.ap here
-
-    def connect_phase(self):
-        self.driver.seq_item_port.connect(self.sequencer.seq_item_export)
-        self.ap = self.driver.ap
-
-class SmcScoreboard(uvm_subscriber):
-    def build_phase(self):
-        self.samples_seen_by_type = {}
-
-    def write(self, item):
-        if isinstance(item, SmcXxxItem):
-            self._check_xxx(item)
-----
-
-Replicate this skeleton for every new agent + scoreboard hook.
+How to build and run is the Quick start of link:../README.md[`README.md`] in
+this DV tree, which also owns the prerequisites and the environment variables
+the runner reads. `--framework uvm` selects the SystemVerilog UVM shape in
+<<sv-uvm-realization>>.

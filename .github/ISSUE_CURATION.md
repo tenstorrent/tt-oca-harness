@@ -52,8 +52,10 @@ unreviewed PR (≥3 days, pings the assignee), draft open (>5 business days),
 changes-requested idle (>3 business days), and stale-assigned issue (≥21 days).
 All reminders are gated by a hidden marker and minimum re-nudge spacing.
 Comment bodies pass through `.github/scripts/unwrap_github_mentions.py` so a
-login wrapped in a code span becomes a real @mention before posting; gh-aw
-still escapes people who are not collaborators or issue/PR context. The
+login wrapped in a code span becomes a real @mention before posting. gh-aw
+`add_comment` then keeps mentions in `safe-outputs.mentions.allowed` (human
+repository collaborators) plus the parent issue or PR author. Refresh that
+list when someone new should be pingable. The
 Actions run conclusion is the `noop` safe-output; the agent emits one every run.
 
 ```bash

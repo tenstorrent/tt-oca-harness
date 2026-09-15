@@ -5,6 +5,7 @@
 // dv/tb/tb_top.sv in its SV-UVM shape.
 
 `include "uvm_macros.svh"
+import ocah_lib_pkg::*;
 import ocah_jtag_vip_env_pkg::*;
 import ocah_jtag_vip_seq_lib_pkg::*;
 
