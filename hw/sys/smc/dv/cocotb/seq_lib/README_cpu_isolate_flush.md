@@ -73,14 +73,14 @@ isolate.
 
 | Path | Scenario | Result |
 | --- | --- | --- |
-| MMIO | CPU stops accepting a response; fabric is healthy | The response is absorbed and the isolate can drain |
-| MMIO | Fabric returns B/R after the timeout reset | The late response is absorbed during the recovery window |
-| MMIO | Fabric never returns B/R | The isolate and reset handshake recover, but routing state toward the dead endpoint can remain occupied |
-| MMIO | Fabric never accepts a presented AW/AR | That channel stays in `Hold`; the flush waits rather than retracting the request |
-| L2 | Fabric-side master stops accepting B/R | The isolate and reset handshake recover, but the issuing master must discard or otherwise resolve its stale transaction |
-| L2 | CPU accepts a request but never produces B/R | The isolate recovers; fabric tracking outside it can remain occupied |
-| L2 | CPU does not accept a presented AW/AR/W | The channel clears only if the CPU later accepts the presented beat |
-| L2 | A W burst stops before its last beat | The reset can recover if already requested, but the incomplete burst can keep upstream W routing occupied |
+| MMIO | CPU stops accepting a response; fabric is healthy | **Recovers.** The isolate absorbs the response, clears its pending count, and completes the reset drain. |
+| MMIO | Fabric returns B/R after the timeout reset | **Recovers when the response arrives.** The recovery window absorbs the late response and releases its routing state. |
+| MMIO | Fabric never returns B/R | **Partially recovers.** The isolate and reset handshake complete, but fabric routing toward the dead endpoint remains occupied because no response clears it. |
+| MMIO | Fabric never accepts a presented AW/AR | **Does not recover.** The channel remains in `Hold`; clearing it would retract an AXI request that is already presented. |
+| L2 | Fabric-side master stops accepting B/R | **Partially recovers.** The isolate and reset handshake complete, but the issuing master must discard or otherwise resolve its stale transaction. |
+| L2 | CPU accepts a request but never produces B/R | **Partially recovers.** The isolate clears its count, but the issuing master and fabric can remain blocked waiting for the missing response. |
+| L2 | CPU does not accept a presented AW/AR/W | **Does not recover if the beat is never accepted.** The flush remains pending to avoid retracting the request; it applies automatically if the CPU later accepts the beat. |
+| L2 | A W burst stops before its last beat | **Partially recovers if reset is already requested.** The reset can complete, but upstream W routing remains occupied until the remaining beats, including `last`, arrive. |
 
 For a response that never arrives, a downstream demux can continue tracking
 the transaction by AXI ID. Later traffic using that ID may remain blocked,
