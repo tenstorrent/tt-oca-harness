@@ -24,17 +24,25 @@ The golden inputs/outputs are the official NIST ACVP "internalProjection" files
   curl -sSL -o /tmp/mlkem_keygen.json $base/ML-KEM-keyGen-FIPS203/internalProjection.json
   curl -sSL -o /tmp/mlkem_encdec.json $base/ML-KEM-encapDecap-FIPS203/internalProjection.json
 
-Word packing. abr_reg.rdl declares every ABR key, signature and ciphertext
-window as memwidth = 32 -- "648 32-bit registers storing the public key", and
-likewise for MLDSA_SIGNATURE, MLDSA_PRIVKEY_IN/OUT and the MLKEM_* windows -- so
-byte b of an ACVP string lands in word b/4. The byte order WITHIN a word is the
-little-endian convention of the CPU and the bus, which no document in this tree
-states for this block; it is not asserted here on anyone's authority. It does
-not need to be: a wrong mapping cannot survive the compares these vectors feed.
-The signature check is 1157 words against a deterministic ACVP value and the
-ML-KEM checks are the full ek/dk/ciphertext windows, so a byte order error fails
-them. The packing is established by those tests passing, not by reading the
-design.
+Word packing, from the register description -- abr_reg.rdl, which is the
+specification for this block, not a view of the implementation.
+
+Width: every ABR key, signature and ciphertext window is declared memwidth = 32
+("648 32-bit registers storing the public key", and likewise for
+MLDSA_SIGNATURE, MLDSA_PRIVKEY_IN/OUT and the MLKEM_* windows), so byte b of an
+ACVP string lands in word b/4.
+
+Byte order within a word: MLDSA_MSG_STROBE is described as a "Byte enable strobe
+for each 32 bits of message" whose valid values are 4'b0000, 4'b0001, 4'b0011,
+4'b0111 and 4'b1111, set "for each valid byte in the last msg data, starting
+from LSB". A trailing partial word is therefore strobed from the low byte up,
+which places earlier message bytes in the lower byte lanes -- little-endian
+packing, stated by the register description. The block-level lsb0 = true pins
+the bit numbering those lanes are counted in.
+
+Corroborated, not merely asserted: a byte-order error could not survive the
+compares these vectors feed -- 1157 signature words against a deterministic ACVP
+value, and the full ek/dk/ciphertext windows on the ML-KEM side.
 
 Outputs are FIPS-204 layout (PUBKEY=rho||t1, SIGNATURE=c~||z||h). Default
 signing computes mu internally from the raw message with an empty context, so
