@@ -83,9 +83,7 @@ MAILBOX_WRITE_DATA_RD_SENTINEL = 0xFEEDC0DE
 # From hw/sys/sep/doc/fabric.adoc ("Sixteen remap regions").
 OUTPUT_REMAP_REGIONS = 16
 
-# DV-owned BIW lane packing. architecture.adoc states four gf_muladd in
-# GF(2^8)/0x1B reducing 12 bytes to one 32-bit word; it does not name the
-# triples or the MSB lane. out[i] = (b[i] * b[i+4]) + b[i+8]; out[0] is MSB.
+# DV-owned BIW lane packing: out[i] = (b[i] * b[i+4]) + b[i+8]; out[0] is MSB.
 BIW_TRIPLES = ((0, 4, 8), (1, 5, 9), (2, 6, 10), (3, 7, 11))
 BIW_OUT_SHIFTS = (24, 16, 8, 0)
 

@@ -31,8 +31,8 @@ START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
 whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
 is write-once (`filter_ctrl.rdl`). A further write of a locked entry
-completes SLVERR (checker-owned; #1918 Finding 1 — the RDL does not name
-the response), so the frozen allow_burst keeps governing the granule.
+completes SLVERR (checker-owned; #1918), so the frozen allow_burst keeps
+governing the granule.
 """
 
 from __future__ import annotations
