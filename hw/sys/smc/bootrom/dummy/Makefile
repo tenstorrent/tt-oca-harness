@@ -87,15 +87,15 @@ pack-images:
 	  echo "error: dummy ROM toolchain image is missing; run 'make toolchain-images' first" >&2; \
 	  exit 1; \
 	}
-	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(DUMMY_BIN)" \
+	$(PYTHON) "$(FW_DIR)/scripts/bin_to_verilog.py" "$(DUMMY_BIN)" \
 	    --data_width 64 --out_file "$(DUMMY_IMAGE_DIR)/dummy.rom.hex"
-	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(DUMMY_BIN)" \
+	$(PYTHON) "$(FW_DIR)/scripts/bin_to_verilog.py" "$(DUMMY_BIN)" \
 	    --data_width 1 --out_file "$(DUMMY_IMAGE_DIR)/dummy.rom.spi"
-	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" \
+	$(PYTHON) "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" \
 	    "$(DUMMY_IMAGE_DIR)/dummy.rom.hex" \
 	    --out_file "$(DUMMY_IMAGE_DIR)/dummy.rom.preload.hex"
-	python3 "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" \
+	$(PYTHON) "$(FW_DIR)/scripts/update_smc_hex_to_preload_addr.py" \
 	    "$(DUMMY_IMAGE_DIR)/dummy.rom.spi" \
 	    --out_file "$(DUMMY_IMAGE_DIR)/dummy.rom.spi_preload"
-	python3 "$(FW_DIR)/scripts/bin_to_verilog.py" "$(DUMMY_BIN)" \
+	$(PYTHON) "$(FW_DIR)/scripts/bin_to_verilog.py" "$(DUMMY_BIN)" \
 	    --data_width 72 --out_file "$(DUMMY_IMAGE_DIR)/dummy.ecc.hex"

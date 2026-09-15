@@ -20,12 +20,17 @@ ifndef OCAH_ROOT
 $(error OCAH_ROOT is not set. Please run: export OCAH_ROOT=<path to the tt-oca checkout>)
 endif
 
+
+
 # Directory structure
 COMMON_OTBN_DIR := $(OCAH_ROOT)/hw/sys/sep/dv/fw/tests/common_otbn
 OTBN_IP_DIR    := $(OCAH_ROOT)/vendor/lowRISC/opentitan/upstream/hw/ip/otbn
 OTBN_UTIL_DIR   := $(OTBN_IP_DIR)/util
 OTBN_DATA_DIR   := $(OTBN_IP_DIR)/data
-OTBN_PYTHON     ?= uv run python3
+
+# Allow uv binary or python override
+UV ?= uv
+OTBN_PYTHON     ?= $(UV) --directory "$(OCAH_ROOT)" run --locked python3
 
 # Build tools from vendored OpenTitan OTBN
 OTBN_AS := $(OTBN_PYTHON) $(OTBN_UTIL_DIR)/otbn_as.py
