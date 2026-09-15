@@ -10,7 +10,8 @@
 //   * the XTRIG CSR map (dtp_types: CTM CT_SRC select registers, CTP
 //     config/status/stretch registers) and typed write/read/check accessors,
 //   * the CTM routing model (env dtp_xtrig_ctm_model, the cocotb
-//     DtpCtmRefModel twin) cross-checked on every programmed route,
+//     DtpCtmRefModel twin) compared against the DUT output vector on every
+//     programmed route,
 //   * the cross-trigger pin surface over dtp_xtrig_if (CTM src/dst req-ack
 //     pairs for the internal CTs, CTP pad din/dout/en quartets), with
 //     pulse drivers, masked-signal polls, width measurement, and quiet
@@ -25,10 +26,11 @@
 // must fail on route scenarios, proving the model comparison gates
 // pass/fail end to end.
 //
-// CTM register names use the RTL convention: CT_SRC[i].CT_DST_SELECT
-// selects which CTM destination-input bits feed output/source port i. The
-// route helpers therefore program `output_port <- input_port_mask` and log
-// both the VPLAN source/destination intent and the concrete CSR mapping.
+// CT_SRC[k].CONFIG_0.CT_DST_SELECT (cross_trigger_matrix.rdl) selects the
+// CT_Dst input ports whose pulses are OR'd onto CT_Src output k: CT_Src ports
+// are matrix outputs, CT_Dst ports are matrix inputs. The route helpers
+// therefore program `output_port <- input_port_mask` and log both the VPLAN
+// source/destination intent and the concrete CSR mapping.
 
 class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   `uvm_object_utils(dtp_xtrig_base_test_seq)
@@ -85,9 +87,22 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   dtp_xtrig_ctm_model ctm_model;
   protected bit           m_negative;
 
+  // Observables a routed pulse can reach; the activity window ORs and ANDs
+  // them per cycle from before the input pulse until the drain tail ends.
+  protected string output_signals[$];
+  // Cycles the window stays open after the last expected output, so a late
+  // or stretched pulse on any port is inside it.
+  localparam int unsigned IsolationTailCycles = 6;
+  protected bit window_running;
+  protected int unsigned window_cycles;
+  protected bit [31:0] window_activity[string];
+  protected bit [31:0] window_hold[string];
+  protected bit [31:0] window_last[string];
+
   function new(string name = "dtp_xtrig_base_test_seq");
     super.new(name);
     ctm_model = new();
+    output_signals = '{"xtrig_ctm_src_req", "xtrig_ctp_req_out_dout", "xtrig_ctp_req_out_dout_en"};
   endfunction
 
   // ------------------------------------------------------------------
@@ -294,6 +309,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   task program_ctp(int unsigned ctp_idx, int unsigned mode = CtpModeWireOr, bit invert = 1'b0,
                    bit rst = 1'b0, bit [15:0] stretch = '0);
     bit [31:0] cfg_word = pack_ctp_config(mode, invert, rst);
+    p_sequencer.m_xtrig_ctp_shadow.note(ctp_idx, mode, invert);
     `uvm_info(get_type_name(),
               $sformatf("Configure CTP[%0d]: mode=%s invert=%0d reset=%0d stretch=%0d", ctp_idx,
                         mode == CtpModeP2p ? "p2p" : "wire_or", invert, rst, stretch), UVM_MEDIUM)
@@ -329,6 +345,7 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
 
   task clear_xtrig();
     clear_xtrig_inputs();
+    p_sequencer.m_xtrig_ctp_shadow.clear();
     for (int unsigned ctp_idx = 0; ctp_idx < XtrigNumCtp; ctp_idx++) begin
       csr_write(ctp_config_addr(ctp_idx), '0, 4'hF, $sformatf("cleanup.ctp%0d.cfg", ctp_idx));
       csr_write(ctp_stretch_addr(ctp_idx), '0, 4'hF, $sformatf("cleanup.ctp%0d.stretch", ctp_idx));
@@ -449,8 +466,11 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
 
   // Pulse system reset while the cross-trigger inputs idle (the cocotb
   // pulse_reset twin; POR and TRST stay released).
+  // System reset with idle inputs; every XTRIG CSR returns to its reset value.
   task pulse_reset(int unsigned cycles = 3);
     clear_xtrig_inputs();
+    ctm_model = new();
+    p_sequencer.m_xtrig_ctp_shadow.clear();
     tb_vif.sys_rst_n <= 1'b0;
     wait_sys_cycles(cycles);
     tb_vif.sys_rst_n <= 1'b1;
@@ -507,7 +527,15 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // ------------------------------------------------------------------
   task configure_ctp_mode_for_port(int unsigned port, int unsigned mode,
                                    bit [15:0] stretch = 16'd1);
-    if (is_ctp_port(port)) program_ctp(port, mode, 1'b0, 1'b0, stretch);
+    if (!is_ctp_port(port)) return;
+    // The handshake sender latches every delivered trigger whatever the
+    // mode, and only an acknowledge or CONFIG.RESET releases it, so a port
+    // entering P2P mode would otherwise present a request left pending from
+    // wire-OR routing. RESET is a level: assert, then program.
+    if (mode == CtpModeP2p)
+      csr_write(ctp_config_addr(port), pack_ctp_config(mode, 1'b0, 1'b1), 4'hF, $sformatf(
+                "ctp%0d.handshake_reset", port));
+    program_ctp(port, mode, 1'b0, 1'b0, stretch);
   endtask
 
   task configure_ctp_modes_for_route(int unsigned input_port, bit [31:0] output_mask,
@@ -540,9 +568,71 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     end else drive_internal_dst_pulse(int_idx_from_port(input_port), cycles);
   endtask
 
-  task check_output_mask(bit [31:0] output_mask, int unsigned mode, string label);
+  // Window sampler: one sample per system clock period from start until stop.
+  task start_activity_window();
+    window_cycles = 0;
+    foreach (output_signals[i]) begin
+      window_activity[output_signals[i]] = '0;
+      window_hold[output_signals[i]] = '1;
+      window_last[output_signals[i]] = '0;
+    end
+    window_running = 1'b1;
+    fork
+      while (window_running) begin
+        record_window_sample();
+        wait_sys_cycles(1);
+      end
+    join_none
+  endtask
+
+  function void record_window_sample();
+    foreach (output_signals[i]) begin
+      bit [31:0] value = xtrig_pin(output_signals[i]);
+      window_activity[output_signals[i]] |= value;
+      window_hold[output_signals[i]] &= value;
+      window_last[output_signals[i]] = value;
+    end
+    window_cycles++;
+  endfunction
+
+  function void stop_activity_window();
+    window_running = 1'b0;
+    record_window_sample();
+  endfunction
+
+  // CTM-port vector (CTP bits low, internal bits high) of every output that
+  // requested at some cycle of the window. A wire-OR CTP requests through its
+  // output enable; a P2P CTP through its request level, which idles low (or
+  // high when inverted). Internal ports request through xtrig_ctm_src_req.
+  function bit [31:0] fired_vector();
+    bit [31:0] all_ctp = (32'd1 << XtrigNumCtp) - 1;
+    bit [31:0] p2p = p_sequencer.m_xtrig_ctp_shadow.p2p_mask();
+    bit [31:0] inverted = p_sequencer.m_xtrig_ctp_shadow.invert_mask();
+    bit [31:0] dout_any = window_activity["xtrig_ctp_req_out_dout"];
+    bit [31:0] dout_all = window_hold["xtrig_ctp_req_out_dout"];
+    bit [31:0] p2p_fired = ((dout_any & ~inverted) | (~dout_all & inverted)) & p2p;
+    bit [31:0] wire_or_fired = window_activity["xtrig_ctp_req_out_dout_en"] & ~p2p;
+    bit [31:0] int_fired = window_activity["xtrig_ctm_src_req"] & ((32'd1 << XtrigNumIntCt) - 1);
+    return ((p2p_fired | wire_or_fired) & all_ctp) | (int_fired << XtrigNumCtp);
+  endfunction
+
+  // CTM-port vector of every output requesting in the last window sample.
+  function bit [31:0] level_vector();
+    bit [31:0] all_ctp = (32'd1 << XtrigNumCtp) - 1;
+    bit [31:0] p2p = p_sequencer.m_xtrig_ctp_shadow.p2p_mask();
+    bit [31:0] inverted = p_sequencer.m_xtrig_ctp_shadow.invert_mask();
+    bit [31:0] p2p_level = (window_last["xtrig_ctp_req_out_dout"] ^ inverted) & p2p;
+    bit [31:0] wire_or_level = window_last["xtrig_ctp_req_out_dout_en"] & ~p2p;
+    bit [31:0] int_level = window_last["xtrig_ctm_src_req"] & ((32'd1 << XtrigNumIntCt) - 1);
+    return ((p2p_level | wire_or_level) & all_ctp) | (int_level << XtrigNumCtp);
+  endfunction
+
+  task check_output_mask(bit [31:0] output_mask, int unsigned mode, bit [31:0] predicted,
+                         string label);
     bit [31:0] ctp_outputs = project_ctp_mask(output_mask);
     bit [31:0] int_outputs = project_internal_mask(output_mask);
+    bit [31:0] intent = output_mask & CtmSelectMask;
+    bit [31:0] fired;
     if (ctp_outputs != 0) begin
       string sig = (mode == CtpModeP2p) ? "xtrig_ctp_req_out_dout" : "xtrig_ctp_req_out_dout_en";
       wait_signal_mask(sig, ctp_outputs, ctp_outputs, 60, {label, ".ctp"});
@@ -550,12 +640,25 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     end
     if (int_outputs != 0)
       wait_signal_mask("xtrig_ctm_src_req", int_outputs, int_outputs, 60, {label, ".internal"});
-    // Negative check: after the event drains, no unselected-output
-    // residue may remain (CHK-XTRIG-ISOLATION).
-    wait_sys_cycles(6);
-    log_xtrig_sample({label, ".post"});
-    check_evidence(ChkIsolation, {label, ".unselected_internal_quiet"}, 64'(xtrig_pin(
-                   "xtrig_ctm_src_req") & ~int_outputs), 64'd0);
+    wait_sys_cycles(IsolationTailCycles);
+    stop_activity_window();
+    fired = fired_vector();
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "XTRIG WINDOW %s fired=0x%07h predicted=0x%07h intent=0x%07h p2p_ctps=0x%04h cycles=%0d",
+            label, fired, predicted & CtmSelectMask, intent,
+            p_sequencer.m_xtrig_ctp_shadow.p2p_mask(), window_cycles), UVM_LOW)
+    // Reference model against the DUT: the outputs that fired anywhere in the
+    // window, and only those, are the model's prediction.
+    check_evidence(ChkRouteModel, {label, ".model_route"}, 64'(fired),
+                   64'(predicted & CtmSelectMask), $sformatf("mode=%0d", mode));
+    // Isolation: no unselected output fired anywhere in the window, and the
+    // selected outputs are idle again at its end.
+    check_evidence(ChkIsolation, {label, ".unselected_quiet"}, 64'(fired & ~intent), 64'd0,
+                   $sformatf("mode=%0d", mode));
+    check_evidence(ChkIsolation, {label, ".selected_deasserted"}, 64'(level_vector() & intent),
+                   64'd0, $sformatf("mode=%0d", mode));
   endtask
 
   task verify_route(int unsigned input_port, bit [31:0] output_mask, int unsigned mode,
@@ -563,17 +666,15 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
     bit [31:0] predicted;
     configure_ctp_modes_for_route(input_port, output_mask, mode);
     program_route(input_port, output_mask, label);
-    // Reference-model cross-check: the CTM model programmed alongside
-    // the CSRs must predict exactly the outputs this route intends to
-    // fire. +DTP_XTRIG_CHECKER_NEGATIVE corrupts the model so this
-    // must fail.
+    // The model programmed alongside the CSRs predicts the DUT output vector
+    // for this pulse; +DTP_XTRIG_CHECKER_NEGATIVE corrupts the model so the
+    // comparison against the DUT must fail.
     predicted = ctm_model.route(32'd1 << input_port);
-    check_evidence(ChkRouteModel, {label, ".model_route"}, 64'(predicted),
-                   64'(output_mask & CtmSelectMask), $sformatf("input_port=%0d", input_port));
     clear_xtrig_inputs();
     wait_sys_cycles(2);
+    start_activity_window();
     drive_input_port(input_port, mode);
-    check_output_mask(output_mask, mode, label);
+    check_output_mask(output_mask, mode, predicted, label);
   endtask
 
   task check_all_ctm_cleared(string label);

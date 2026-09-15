@@ -22,9 +22,13 @@ class dtp_virtual_sequencer extends ocah_sequencer;
   ocah_axi_slave_sequence  m_sep_otp_slave_seq;
   ocah_axi_slave_sequence  m_smc_axi_slave_seq;
   ocah_jtag_slave_sequence m_stap_ds_seq[DtpStapCount];
+  // Programmed CTP mode/polarity, written by the XTRIG sequences and kept
+  // across passes because the DUT keeps its configuration between them.
+  dtp_xtrig_ctp_shadow m_xtrig_ctp_shadow;
 
   function new(string name = "dtp_virtual_sequencer", uvm_component parent = null);
     super.new(name, parent);
+    m_xtrig_ctp_shadow = new();
   endfunction
 
   // Responder sequence of a JTAG2AXI bridge by target name.
