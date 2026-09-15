@@ -1845,7 +1845,7 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 
 *Phase*: 1
 
-*Run mode*: `cpu`
+*Run mode*: `cpu`, `+skip_fuse_sense`, `+esrc_noise_force`
 
 *Source Module*: `sep_hmac_kmac_cpu_crypto_smoke_test`
 
@@ -1886,6 +1886,15 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Not claimed*: AES breadth on this path -- one key size in one mode (AES-128-ECB),
+where the mode x key-size x operation matrix belongs to
+<<sep_aes_mode_keysize_rand_test>>. The quality of the masking PRNG and of its
+reseed is not graded: the entropy stack is a precondition for the engine to
+complete at all, and no checker here reads an entropy value. `+esrc_noise_force`
+supplies the raw ring-oscillator noise, so this leaf makes no claim about the
+physical noise source. The KMAC leg stays completion-and-non-degeneracy only;
+the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 
 '''''
 

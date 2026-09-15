@@ -37,8 +37,11 @@ for each 32 bits of message" whose valid values are 4'b0000, 4'b0001, 4'b0011,
 4'b0111 and 4'b1111, set "for each valid byte in the last msg data, starting
 from LSB". A trailing partial word is therefore strobed from the low byte up,
 which places earlier message bytes in the lower byte lanes -- little-endian
-packing, stated by the register description. The block-level lsb0 = true pins
-the bit numbering those lanes are counted in.
+packing. The block-level lsb0 = true pins the bit numbering those lanes are
+counted in. Note the scope: the description states this for the message window,
+and the same packing is applied to the key, signature and ciphertext windows,
+which is an inference from one block-wide convention rather than a separate
+statement about each window.
 
 Corroborated, not merely asserted: a byte-order error could not survive the
 compares these vectors feed -- 1157 signature words against a deterministic ACVP

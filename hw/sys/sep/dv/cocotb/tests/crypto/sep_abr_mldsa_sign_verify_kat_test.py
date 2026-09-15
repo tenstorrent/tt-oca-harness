@@ -153,6 +153,12 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
         assert (st & ST_ERROR) == 0, f"sign: VALID with ERROR (0x{st:08x})"
 
         sig = await abr.read_words(ABR_SIGNATURE, SIG_WORDS)
+        # Length before value: zip() stops at the shorter list, so a short
+        # readback would narrow the compare instead of failing it.
+        assert len(sig) == len(NIST_SG_SIG), (
+            f"CHK-SIGN FAIL: read {len(sig)} signature words, vector has "
+            f"{len(NIST_SG_SIG)}"
+        )
         mismatch = next((i for i, (g, e) in enumerate(zip(sig, NIST_SG_SIG)) if g != e), None)
         assert mismatch is None, (
             f"CHK-SIGN FAIL: signature mismatch at word {mismatch} of {SIG_WORDS}: "
