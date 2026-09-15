@@ -77,6 +77,9 @@ _STALL_CSR_TIMEOUT_NS = 50_000
 # Cap on the dirty-file list in RUN-IDENTITY-DIRTY. The digest covers the whole
 # diff; the paths are there to be read, so a 400-file rebase does not bury the log.
 _RUN_IDENTITY_MAX_PATHS = 40
+# Above this the simulator binary is named and sized but not hashed, so a
+# pathological build cannot add minutes to every run's time 0.
+_SIM_BINARY_HASH_MAX_BYTES = 512 << 20
 
 
 class _EvidenceFilter(logging.Filter):
@@ -1265,6 +1268,36 @@ class sep_base_test(uvm_test):
             state,
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
+        # Build identity: the binary this process IS. A commit names the
+        # sources on disk at time 0, which is not the same claim as "the model
+        # executing was compiled from them" -- a reused simv, or a rebuild that
+        # landed after the flist was read, produces a truthful-looking commit
+        # line for a run that executed something else. Hashing the executable
+        # makes two runs over the same or different builds distinguishable
+        # after the fact, which is the part that cannot be recovered later.
+        try:
+            exe = os.path.realpath("/proc/self/exe")
+            st = os.stat(exe)
+            if st.st_size <= _SIM_BINARY_HASH_MAX_BYTES:
+                h = hashlib.sha256()
+                with open(exe, "rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                exe_digest = h.hexdigest()[:16]
+            else:
+                exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
+            self.logger.info(
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s bytes=%d mtime=%d",
+                exe, exe_digest, st.st_size, int(st.st_mtime),
+            )
+        except (OSError, ValueError) as exc:
+            # Say so rather than omit the line: a missing build identity is a
+            # gap a reader must see, not one they should have to infer.
+            self.logger.info(
+                "RUN-IDENTITY-BUILD: unavailable (%s) -- this log cannot be "
+                "bound to the build that produced it",
+                type(exc).__name__,
+            )
         # WHICH files, not just that some were. "tree dirty" alone cannot be
         # acted on after the run: a reader has to decide whether any
         # uncommitted file was on this test's proof path, and the boolean makes
@@ -1296,6 +1329,86 @@ class sep_base_test(uvm_test):
                 "" if len(paths) == len(shown) else f" (first {len(shown)} shown)",
                 ",".join(shown),
             )
+
+    def _check_km_rom_provenance(self) -> None:
+        """Fail a run whose KM ROM image does not match the source it is built from.
+
+        These .parhex images are committed artifacts and no stage rebuilds
+        them, so an edit to a .S reaches no simulation until somebody runs
+        make -- and the run in between executes the OLD image while a reader
+        sees the NEW source. km_fw/blob_manifest.txt records both digests at
+        build time; this compares them against what is on disk now, so that
+        drift fails the run that depends on it instead of passing quietly.
+
+        A gap is reported, never assumed benign: no manifest, no entry, or an
+        unreadable file each log a line saying the image is unverified.
+        """
+        img = cocotb.plusargs.get("km_rom_hex")
+        if not img:
+            return
+        img = str(img).strip().strip('"')
+        rom = os.path.basename(img)
+        rom = rom[: -len(".parhex")] if rom.endswith(".parhex") else rom
+        fw_dir = _COCOTB_ROOT / "tests" / "km_fw"
+        manifest = fw_dir / "blob_manifest.txt"
+        if not manifest.is_file():
+            self.logger.info(
+                "KM-ROM-PROVENANCE: %s UNVERIFIED -- no %s", rom, manifest
+            )
+            return
+        entry = None
+        for line in manifest.read_text().splitlines():
+            if line.startswith("#") or not line.strip():
+                continue
+            fields = line.split()
+            if len(fields) == 3 and fields[0] == rom:
+                entry = fields
+                break
+        if entry is None:
+            # rom_main is built from tracked firmware by the c_compile stage and
+            # is gitignored, so it has no committed blob to bind. Say which case
+            # this is rather than implying the image was checked.
+            self.logger.info(
+                "KM-ROM-PROVENANCE: %s UNVERIFIED -- not a manifest-covered "
+                "committed blob (generated images are bound by their build)",
+                rom,
+            )
+            return
+        _, want_src, want_blob = entry
+
+        def _sha(path):
+            import hashlib
+
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+
+        src = fw_dir / f"{rom}.S"
+        blob = _COCOTB_ROOT / "tests" / f"{rom}.parhex"
+        try:
+            got_src = _sha(src)
+            got_blob = _sha(blob)
+        except OSError as exc:
+            self.logger.info(
+                "KM-ROM-PROVENANCE: %s UNVERIFIED -- %s", rom, exc
+            )
+            return
+        assert got_src == want_src, (
+            f"KM-ROM-PROVENANCE FAIL: {rom}.S has changed since "
+            f"{rom}.parhex was built, so this run executes the OLD image while "
+            f"the source says otherwise. .S sha256={got_src} but the manifest "
+            f"recorded {want_src}. Rebuild with `make -C cocotb/tests/km_fw "
+            f"{rom}.parhex` and commit the blob and the manifest together."
+        )
+        assert got_blob == want_blob, (
+            f"KM-ROM-PROVENANCE FAIL: {rom}.parhex does not match the manifest "
+            f"({got_blob} vs {want_blob}); the committed image was modified "
+            "without a rebuild."
+        )
+        self.logger.info(
+            "KM-ROM-PROVENANCE: %s.parhex matches %s.S (manifest sha256 %s)",
+            rom,
+            rom,
+            want_blob[:16],
+        )
 
     def _finalize_evidence(self) -> None:
         """Report the evidence this run produced, and grade it if the leaf asked.
@@ -1345,6 +1458,7 @@ class sep_base_test(uvm_test):
     async def run_phase(self) -> None:
         self.raise_objection()
         self._log_run_identity()
+        self._check_km_rom_provenance()
         await self.run_scenario()
         self._finalize_evidence()
         self.drop_objection()
