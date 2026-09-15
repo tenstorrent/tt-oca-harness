@@ -41,8 +41,9 @@ class smc_ecc_dfd_dbs_sanity_test(smc_base_test):
         "CHK-DIAG-CSR-NDMRESET_PROCESS",
         "CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS",
         "CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO",
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
     )
-    min_evidence = 8
+    min_evidence = 9
 
     auto_protocol_vip = False
 
