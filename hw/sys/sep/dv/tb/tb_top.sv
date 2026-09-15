@@ -2177,6 +2177,7 @@ module sep_uvm_top
         .drbg_genbits_vld_i    (drbg_genbits_vld_o),
         .axis1_tvalid_i        (axis1_tvalid_o),
         .axis1_tready_i        (axis1_tready_o),
+        .crypto_edn_ack_i      (crypto_edn_ack_o),
         .km_entropy_tvalid_i   (km_entropy_tvalid_o),
         .km_entropy_tready_i   (km_entropy_tready_o),
         // sep.sv:534 assembles the SEP AXI mailbox onto

@@ -319,7 +319,7 @@ appears.
 |`sep_crypto_edn_round_robin_grant_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|Holds AES and OTBN URND `edn_req` together, then grades that both clients are granted and that a prefix of post-adapter grants alternates. Same-cycle dual-request lockstep is not claimed. `hw/sys/sep/doc/crypto.adoc` names the adapter as a native-protocol EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
+|Holds AES and OTBN URND `edn_req` together, then grades that both clients are granted and that a prefix of post-adapter grants alternates. Same-cycle dual-request lockstep is not claimed. Then drives OTBN RND, the adapter's third scored client, with a program blocked on the RND CSR, and grades its routing and its consume. `hw/sys/sep/doc/crypto.adoc` names the adapter as a native-protocol EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
 |`sep_drbg_gen_segmentation_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -2688,7 +2688,7 @@ NIST samples.
 
 *Objective*: `hw/sys/sep/doc/crypto.adoc`: `u_axis_edn_crypto_s3c_scan` (`drbg_axis_edn_adapter`) is a small round-robin native-protocol EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
 
-*Test Coverage*: Round-robin EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
+*Test Coverage*: Round-robin EDN fan-out. AES and OTBN URND are graded for sharing and alternation; OTBN RND is graded for routing and consume. KMAC is not claimed.
 
 *Test Procedure*:
 
@@ -2697,6 +2697,8 @@ NIST samples.
 . Hold AES PRNG reseed and OTBN URND `edn_req` together before EDN is enabled.
 . Bring up the entropy stack (noise force, seed, then enable EDN).
 . Sample `crypto_edn_ack_o` for a fixed grant budget, then let the checkers decide. Breaking the collection loop on the alternation condition would make the checkers restatements of that guard.
+. Then load a four-read RND program into OTBN IMEM and issue EXECUTE without polling STATUS, so the blocked `crypto_edn_req[2]` is observable. RND cannot join the dual-request window above: it only requests while a program is blocked on the RND CSR, and OTBN cannot execute until its post-reset secure wipe has consumed URND, which already needs EDN enabled.
+. Wait for IDLE, read `ERR_BITS`, and read the four RND words the program stored to DMEM.
 
 *Checkers*:
 
@@ -2713,8 +2715,12 @@ NIST samples.
 |Each AES post-adapter beat and each OTBN URND post-adapter beat equals the AXIS1 word the adapter granted that cycle.
 |CHK1..CHK4
 |Strict entropy scoreboard on the same bring-up that feeds the dual-request window: FIFO drain after the seed, then `report()`.
-|CHK5_aes / CHK5_otbn_urnd
-|Both live sinks match the AXIS1 grant-order stream with zero mismatches. This entry drives two of the four crypto sinks (AES and OTBN URND); KMAC and OTBN RND sharing is not claimed here, and OTBN RND is scored by no vehicle in the tree. The testlist pins one seed, so the per-sink word counts are fixed rather than varying per seed; the zero-mismatch requirement is what is claimed.
+|CHK-RND-REQ
+|`crypto_edn_req[2]` (OTBN RND) is high while the loaded program is blocked on the RND CSR. Without this request the adapter never grants RND and CHK5_otbn_rnd cannot fail, so this is the control for it.
+|CHK-RND-CONSUME
+|The RND program retires with `ERR_BITS` == 0 and the four words it stored to DMEM are all distinct and not all zero. Each CSR read of RND is served from a fresh 256-bit EDN fetch, so a DUT that latched one value and replayed it, or that returned the reset value, fails here. This is the consume proof at the OTBN end; CHK5_otbn_rnd is the routing proof at the adapter, and neither implies the other.
+|CHK5_aes / CHK5_otbn_urnd / CHK5_otbn_rnd
+|All three live sinks match the AXIS1 grant-order stream with zero mismatches. This entry drives three of the adapter's four crypto sinks; KMAC is not claimed here. RND is floored at one match per CSR read. The testlist pins one seed, so the per-sink word counts are fixed rather than varying per seed; the zero-mismatch requirement is what is claimed. Alternation is claimed for AES and OTBN URND only: RND is granted outside that window, so this entry claims its routing and its consume, not its arbitration.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 

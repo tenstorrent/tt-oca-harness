@@ -87,6 +87,10 @@ module sep_fcov (
   input wire        drbg_genbits_vld_i,
   input wire        axis1_tvalid_i,
   input wire        axis1_tready_i,
+  // Per-client post-adapter EDN grant (drbg_axis_edn_adapter client order:
+  // AES, KMAC, OTBN-RND, OTBN-URND). axis1_* above is the shared stream
+  // ahead of the fan-out and cannot say which client took the beat.
+  input wire [3:0]  crypto_edn_ack_i,
   input wire        km_entropy_tvalid_i,
   input wire        km_entropy_tready_i,
   input wire [7:0]  irq_mailbox_i,
@@ -1154,6 +1158,16 @@ module sep_fcov (
     cp_gen: coverpoint drbg_gen {bins genbits_valid = {1'b1};}
     cp_crypto: coverpoint edn_crypto_beat {bins crypto_sink = {1'b1};}
     cp_km: coverpoint edn_km_beat {bins km_sink = {1'b1};}
+    // Which adapter client took the grant. cp_crypto above scores the shared
+    // AXIS stream and is hit by any sink, so it cannot show that a given
+    // client was ever served. KMAC has no leaf that holds it requesting, so
+    // that bin has no producer and is not declared rather than left a
+    // permanent hole.
+    cp_edn_client: coverpoint crypto_edn_ack_i iff (!in_reset) {
+      bins aes       = {4'b0001};
+      bins otbn_rnd  = {4'b0100};
+      bins otbn_urnd = {4'b1000};
+    }
   endgroup
 
   covergroup sep_km_command_sideload_cg with function sample (logic [7:0] dest);

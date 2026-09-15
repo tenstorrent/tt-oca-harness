@@ -12,8 +12,17 @@ has to grant both.
 
 The grant monitor starts only after the ESRC seed is ready so the dual-req
 window is not sampled during ``wait_seed_ready``. CHK1..CHK4 stay bit-exact
-on that bring-up. Two crypto sinks are live (AES + OTBN URND), so CHK5 is
-dual-sink ROUTING: each post-adapter beat equals the AXIS1 word the adapter
+on that bring-up.
+
+OTBN RND (crypto_edn[2]) is the adapter's fourth client and joins after the
+alternation proof rather than inside it: RND only requests while an OTBN
+program is blocked on the RND CSR, and OTBN cannot execute until its
+post-reset secure wipe has consumed URND, which already needs EDN enabled. So
+this test drives it as its own client -- a program that reads RND four times
+-- and claims routing and consume for it, not alternation.
+
+Three crypto sinks are live (AES + OTBN URND + OTBN RND), so CHK5 is
+three-sink ROUTING: each post-adapter beat equals the AXIS1 word the adapter
 granted that cycle.
 
 Probes: ``tb_top.crypto_edn_req_o`` / ``crypto_edn_ack_o`` (observation
@@ -34,10 +43,21 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
+from seq_lib.sep_otbn_seq import (
+    OTBN_DMEM_RND_BASE,
+    OTBN_RND_PROG,
+    OTBN_RND_READS,
+    SepOtbn,
+)
 
 _AES_BIT = 0
+_RND_BIT = 2
 _URND_BIT = 3
 _BOTH = (1 << _AES_BIT) | (1 << _URND_BIT)
+# The RND client only requests while an OTBN program is blocked on the RND CSR,
+# so it is brought in after the AES/URND alternation window rather than held
+# alongside it.
+_RND_REQ_CYCLES = 200_000
 _DUAL_REQ_CYCLES = 50_000
 # Enough consecutive grants to see the arbiter alternate, and the floor below
 # which the sample says nothing. Literals, so the asserts do not move with the
@@ -113,7 +133,7 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             golden_kwargs=cfg.golden_kwargs(),
             chk2_backdoor=cfg.chk2_backdoor,
             score_km=False,
-            score_sinks={"aes": "golden", "otbn_urnd": "golden"},
+            score_sinks={"aes": "golden", "otbn_urnd": "golden", "otbn_rnd": "golden"},
         )
         self.drbg_sb.start()
         await self.assert_noise_force_active()
@@ -202,19 +222,88 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             dual_grants[:12],
         )
 
+        # --- OTBN RND, the fourth adapter client -----------------------------
+        # AES (bit 0) and OTBN URND (bit 3) are proven above. RND (bit 2) cannot
+        # join that window: it only requests while an OTBN program is blocked on
+        # the RND CSR, and OTBN cannot execute until its post-reset secure wipe
+        # has consumed URND, which needs EDN already enabled. So it is driven
+        # here, after the alternation proof, as its own client.
+        otbn = SepOtbn(self)
+        await otbn.wait_idle("post-urnd-wipe", timeout=8_000)
+        await otbn.load_program(OTBN_RND_PROG)
+        await otbn.start_execute()
+
+        rnd_req_seen = False
+        for _ in range(_RND_REQ_CYCLES):
+            if _req() & (1 << _RND_BIT):
+                rnd_req_seen = True
+                break
+            await RisingEdge(dut.clk_i)
+        assert rnd_req_seen, (
+            "CHK-RND-REQ FAIL: OTBN RND never raised crypto_edn_req bit "
+            f"{_RND_BIT} while a program was blocked on the RND CSR "
+            f"(last crypto_edn_req_o=0x{_req():x}). Without this request "
+            "CHK5_otbn_rnd cannot fail."
+        )
+        self.logger.info(
+            "CHK-RND-REQ PASS: OTBN raised crypto_edn_req bit %d (RND) "
+            "(crypto_edn_req_o=0x%x)",
+            _RND_BIT,
+            _req(),
+        )
+
+        await otbn.wait_idle("post-rnd-prog", timeout=20_000)
+        rnd_err = await otbn.read_errbits()
+        assert rnd_err == 0, (
+            f"CHK-RND-CONSUME FAIL: OTBN RND program ERR_BITS=0x{rnd_err:08x}, "
+            "expected 0"
+        )
+        rnd_words = await otbn.read_dmem_words(OTBN_DMEM_RND_BASE, OTBN_RND_READS)
+        # Each CSR read of RND is served from a fresh 256-bit EDN fetch, so a
+        # DUT that latched one value and replayed it -- or that returned the
+        # reset value -- fails here. This is the consume proof at the OTBN end;
+        # CHK5_otbn_rnd below is the bit-exact routing proof at the adapter.
+        assert len(set(rnd_words)) == OTBN_RND_READS, (
+            f"CHK-RND-CONSUME FAIL: {OTBN_RND_READS} RND CSR reads returned "
+            f"{len(set(rnd_words))} distinct words "
+            f"({[f'0x{w:08x}' for w in rnd_words]}) -- RND was not refetched "
+            "per read"
+        )
+        assert any(w != 0 for w in rnd_words), (
+            f"CHK-RND-CONSUME FAIL: every RND word read back as zero "
+            f"({[f'0x{w:08x}' for w in rnd_words]})"
+        )
+        self.logger.info(
+            "CHK-RND-CONSUME PASS: %d RND CSR reads retired with ERR_BITS=0 and "
+            "returned %d distinct words %s",
+            OTBN_RND_READS,
+            len(set(rnd_words)),
+            [f"0x{w:08x}" for w in rnd_words],
+        )
+
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         # The grant sample above establishes how much traffic each client
         # actually took, so the routing floors are held to that rather than to
-        # the scoreboard's default of one beat.
-        self.drbg_sb.set_min_matches(CHK5_aes=_GRANT_MIN_SAMPLES, CHK5_otbn_urnd=_GRANT_MIN_SAMPLES)
+        # the scoreboard's default of one beat. RND is floored at its own
+        # traffic: OTBN_RND_READS fetches of eight 32-bit EDN beats each.
+        self.drbg_sb.set_min_matches(
+            CHK5_aes=_GRANT_MIN_SAMPLES,
+            CHK5_otbn_urnd=_GRANT_MIN_SAMPLES,
+            CHK5_otbn_rnd=OTBN_RND_READS,
+        )
         assert self.drbg_sb.report()
         ra = self.drbg_sb.results["CHK5_aes"]
         ru = self.drbg_sb.results["CHK5_otbn_urnd"]
+        rr = self.drbg_sb.results["CHK5_otbn_rnd"]
         self.logger.info(
-            "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_otbn_urnd match=%d "
-            "equal the AXIS1 grant-order stream (mismatch=0)",
+            "CHK-ROUTING PASS: CHK5_aes match=%d, CHK5_otbn_urnd match=%d and "
+            "CHK5_otbn_rnd match=%d equal the AXIS1 grant-order stream "
+            "(mismatch=0)",
             ra.matches,
             ru.matches,
+            rr.matches,
         )
-        self.logger.info("CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS")
+        self.logger.info(
+            "CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd/CHK5_otbn_rnd ROUTING PASS"
+        )
