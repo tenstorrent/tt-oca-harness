@@ -1777,6 +1777,9 @@ static int smc_occp_read_from_bus_4byte_aligned_or_complete_stream(
             return OCCP_ERROR_TIMEOUT;
         }
         simputs("smc_occp_read_from_bus: Error writing to buffer from I2C bus\n");
+        /* Fail-safe: an unmapped driver status (e.g. I2C_ERR_HW, or any future code)
+         * must not fall through as success -- that silently accepted corrupt/absent data. */
+        return OCCP_ERROR_INTERFACE_ERROR;
     } else if (drv_type == DRIVER_TYPE_I3C) {
         i3c_status = i3c_drv->receive_payload_stream(i3c_drv, buffer, length, &bytes_received,
                                                      timeout, expect_excess_bytes, is_flush);
