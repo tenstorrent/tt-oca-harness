@@ -72,6 +72,9 @@ _DEFAULT_EFUSE_PRELOAD = (
 # AXI round trip (which is tens of ns) but finite, so a wedged fabric cannot turn
 # the diagnostic itself into a sim timeout.
 _STALL_CSR_TIMEOUT_NS = 50_000
+# Cap on the dirty-file list in RUN-IDENTITY-DIRTY. The digest covers the whole
+# diff; the paths are there to be read, so a 400-file rebase does not bury the log.
+_RUN_IDENTITY_MAX_PATHS = 40
 
 
 class _EvidenceFilter(logging.Filter):
@@ -1178,6 +1181,7 @@ class sep_base_test(uvm_test):
         offered as evidence for, and the identity cannot be recovered after
         the run.
         """
+        import hashlib
         import os
         import subprocess
 
@@ -1212,6 +1216,32 @@ class sep_base_test(uvm_test):
             " (tree dirty: uncommitted sources)" if dirty else "",
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
+        # WHICH files were dirty, not just that some were. "tree dirty" alone
+        # cannot be acted on after the run: a reader has to decide whether any
+        # uncommitted file was on this test's proof path, and the boolean makes
+        # that unanswerable from the artifact. The paths answer it, and the
+        # diff digest lets two runs claiming the same commit be told apart.
+        if dirty:
+            paths = [line[3:].strip() for line in dirty.splitlines() if len(line) > 3]
+            digest = ""
+            try:
+                diff = subprocess.run(
+                    ["git", "diff", "HEAD"],
+                    cwd=os.path.dirname(os.path.abspath(__file__)),
+                    capture_output=True,
+                    timeout=30,
+                ).stdout
+                digest = hashlib.sha256(diff).hexdigest()[:16]
+            except (OSError, subprocess.SubprocessError):
+                pass
+            shown = paths[:_RUN_IDENTITY_MAX_PATHS]
+            self.logger.info(
+                "RUN-IDENTITY-DIRTY: %d file(s) diff-sha256=%s%s paths=%s",
+                len(paths),
+                digest or "unavailable",
+                "" if len(paths) == len(shown) else f" (first {len(shown)} shown)",
+                ",".join(shown),
+            )
 
     def _finalize_evidence(self) -> None:
         """Report the evidence this run produced, and grade it if the leaf asked.

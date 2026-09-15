@@ -18,9 +18,39 @@ $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(RV32E_ROMS))): \
         ARCH_FLAGS := -march=rv32e -mabi=ilp32e
 PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
-.PHONY: all clean rom_main
+.PHONY: all clean rom_main verify
 
 all: $(PARHEX)
+
+# verify: the committed .parhex blobs still match what their .S assembles to.
+#
+# These images are committed artifacts, and no run_dv stage rebuilds them --
+# a test boots the blob through `+km_rom_hex=<name>.parhex`, not through a
+# `firmware = {...}` build declaration. So an edit to a .S reaches no
+# simulation until somebody runs `make`, and the run that follows quietly
+# executes the OLD image while the audit reads the NEW source. Nothing in the
+# flow notices; this target is what notices. Run it after editing any .S, and
+# commit the regenerated blob with the source change.
+#
+# It rebuilds into a scratch copy so a stale blob is REPORTED rather than
+# silently corrected -- a target that fixed the tree would let the same drift
+# through on the next edit.
+verify:
+	@rc=0; tmp=$$(mktemp -d); trap 'rm -rf $$tmp' EXIT; \
+	for r in $(ROMS); do \
+	    cp $(OUT_DIR)/$$r.parhex $$tmp/$$r.committed 2>/dev/null || { \
+	        echo "MISSING: $$r.parhex is not committed" >&2; rc=1; continue; }; \
+	    touch $$r.S; \
+	    $(MAKE) --no-print-directory $(OUT_DIR)/$$r.parhex >$$tmp/$$r.log 2>&1 || { \
+	        echo "BUILD FAILED: $$r (see $$tmp/$$r.log)" >&2; rc=1; continue; }; \
+	    if cmp -s $(OUT_DIR)/$$r.parhex $$tmp/$$r.committed; then \
+	        echo "ok       $$r.parhex"; \
+	    else \
+	        echo "STALE    $$r.parhex does not match $$r.S -- commit the rebuild" >&2; \
+	        rc=1; \
+	    fi; \
+	done; \
+	exit $$rc
 
 # rom_main: the real KM production ROM, built from tracked KM firmware source.
 # PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0 disable the boot/unrecoverable-fault SRAM

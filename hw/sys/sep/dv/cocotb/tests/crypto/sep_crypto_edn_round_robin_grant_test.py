@@ -72,15 +72,20 @@ _KMAC_KEY = (
 )
 _KMAC_MSG = [0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F]
 _KMAC_S = b"crypto EDN four-client"
-# Floors for the two sinks added with the fourth client. A keyed KMAC-256
-# masking reseed and the pool's own pull both move well past these; they are
-# set below the observed traffic so a seed change does not trip them, and above
-# one so a starved sink cannot pass.
+# Non-vacuity floors for the two sinks whose full stimulus this leaf cannot
+# derive. They are above one, so a sink that took nothing fails, and below the
+# observed traffic, so a seed change does not trip them. They are NOT
+# starvation bounds -- see the floor block in run_scenario for what does and
+# does not bound each sink.
 _KMAC_MIN_BEATS = 4
 _POOL_MIN_BEATS = 16
 # One OTBN RND CSR read pulls a 256-bit EDN word, i.e. eight 32-bit beats, so the
 # RND routing floor is OTBN_RND_READS x this -- the sink's whole stimulus.
 _EDN_BEATS_PER_RND_READ = 8
+# Quiet window between the last EDN traffic and the grant-count snapshot that
+# sets the AES/URND routing floors, so an ack whose beats are still in flight
+# cannot floor the check above what has been scored.
+_FLOOR_SETTLE_CYCLES = 2_000
 _DUAL_REQ_CYCLES = 50_000
 # Enough consecutive grants to see the arbiter alternate, and the floor below
 # which the sample says nothing. Literals, so the asserts do not move with the
@@ -368,20 +373,54 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
-        # Routing floors, and what each one is: only RND is derived from its own
-        # stimulus -- OTBN_RND_READS CSR reads of _EDN_BEATS_PER_RND_READ 32-bit
-        # EDN beats each -- so a DUT that routed a few beats and then starved
-        # fails it. The other four are non-vacuity floors: set above one so a
-        # starved sink cannot pass, but below the observed traffic so a seed
-        # change does not trip them. They do NOT bound their sink's full
-        # stimulus, and a partial-then-starve fault on those four is caught by
-        # zero-mismatch routing, not by the floor.
+        # Routing floors. Three are bounds a partial-then-starve fault breaks;
+        # two are not, and the difference is stated rather than blurred, because
+        # an unobserved beat creates no scoreboard item -- so zero mismatches
+        # does NOT catch a sink that routed a few beats correctly and then
+        # starved. Only a floor catches that, and only where the floor is tied
+        # to something outside the scored stream.
+        #
+        #   RND   derived from its own stimulus: OTBN_RND_READS CSR reads of
+        #         _EDN_BEATS_PER_RND_READ 32-bit beats each.
+        #   AES,  tied to the independent grant probe. Each rising edge on
+        #   URND  crypto_edn_ack_o for a client delivers at least one beat to
+        #         that client, so the grants this run actually observed are a
+        #         lower bound on the beats that had to arrive. The sample stops
+        #         at _GRANT_SAMPLE_TARGET while the sinks keep pulling, so this
+        #         is a floor, not a count -- and it moves with the run instead
+        #         of sitting at a constant a starved sink survives.
+        #   KMAC  NOT bounded here. Its non-vacuity floor is a constant; what
+        #         actually proves KMAC consumed is CHK-KMAC-CLIENT, whose digest
+        #         cannot match the Keccak golden if the masking reseed was short.
+        #   pool  NOT bounded here, and nothing else in this leaf bounds it.
+        #         Deriving it needs the EDN-beats-per-pool-seed ratio, which is
+        #         a design fact this test does not own; the entropy-pool owner
+        #         has the open question.
+        # Settle before snapshotting the grant counts. The monitor records an
+        # ack edge, and the beats that ack releases are scored by the
+        # scoreboard on later cycles, so a count taken in the same cycle as a
+        # just-granted ack would demand a beat that has not been scored yet and
+        # fail a healthy DUT. The window is DV-side timing hygiene, not a
+        # tolerance on the check: it moves the snapshot to a quiet point, and
+        # the floor it produces is still every grant this run saw.
+        await ClockCycles(dut.clk_i, _FLOOR_SETTLE_CYCLES)
+        aes_grants = grants.count(_AES_BIT)
+        urnd_grants = grants.count(_URND_BIT)
         self.drbg_sb.set_min_matches(
-            CHK5_aes=_GRANT_MIN_SAMPLES,
-            CHK5_otbn_urnd=_GRANT_MIN_SAMPLES,
+            CHK5_aes=max(aes_grants, 1),
+            CHK5_otbn_urnd=max(urnd_grants, 1),
             CHK5_otbn_rnd=OTBN_RND_READS * _EDN_BEATS_PER_RND_READ,
             CHK5_kmac=_KMAC_MIN_BEATS,
             CHK5_pool=_POOL_MIN_BEATS,
+        )
+        self.logger.info(
+            "CHK-ROUTING floors: aes>=%d urnd>=%d (observed grants), rnd>=%d "
+            "(derived), kmac>=%d pool>=%d (non-vacuity only)",
+            max(aes_grants, 1),
+            max(urnd_grants, 1),
+            OTBN_RND_READS * _EDN_BEATS_PER_RND_READ,
+            _KMAC_MIN_BEATS,
+            _POOL_MIN_BEATS,
         )
         assert self.drbg_sb.report()
         ra = self.drbg_sb.results["CHK5_aes"]
