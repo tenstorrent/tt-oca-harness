@@ -209,7 +209,7 @@ class RepositoryContractTests(unittest.TestCase):
 
         for label in (
             "External debug / test",
-            "OCAH chiplet",
+            "Chiplet boundary",
             "Peer OCA chiplet",
             "JTAG Interface Unit",
             "Cross Trigger Network",

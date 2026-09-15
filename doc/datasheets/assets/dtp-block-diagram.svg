@@ -1,89 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="480" viewBox="0 0 1000 480">
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-      <path d="M0,0 L8,4 L0,8 z" fill="#484848"/>
-    </marker>
-    <marker id="arrow-start" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
-      <path d="M8,0 L0,4 L8,8 z" fill="#484848"/>
-    </marker>
-    <style>
-      .title { font: 700 24px sans-serif; fill: #103525; }
-      .label { font: 700 17px sans-serif; fill: #103525; }
-      .text { font: 14px sans-serif; fill: #484848; }
-      .small { font: 12px sans-serif; fill: #484848; }
-      .chiplet { fill: #ffffff; stroke: #77736b; stroke-width: 2; stroke-dasharray: 8 5; rx: 12; }
-      .dtp { fill: #f8f4eb; stroke: #103525; stroke-width: 2.5; rx: 10; }
-      .core { fill: #ffffff; stroke: #937027; stroke-width: 2; rx: 8; }
-      .external { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; rx: 8; }
-      .line { fill: none; stroke: #484848; stroke-width: 2; marker-end: url(#arrow); }
-      .both { fill: none; stroke: #484848; stroke-width: 2; marker-start: url(#arrow-start); marker-end: url(#arrow); }
-      .bus { fill: none; stroke: #484848; stroke-width: 2; }
-    </style>
-  </defs>
-
-  <text class="title" x="500" y="27" text-anchor="middle">OCAH DTP in an OCA multi-chiplet system</text>
-
-  <rect class="external" x="15" y="125" width="175" height="145"/>
-  <text class="label" x="102" y="158" text-anchor="middle">External debug / test</text>
-  <text class="text" x="102" y="190" text-anchor="middle">JTAG controller</text>
-  <text class="text" x="102" y="216" text-anchor="middle">scan equipment</text>
-  <text class="text" x="102" y="242" text-anchor="middle">trigger endpoints</text>
-
-  <rect class="chiplet" x="220" y="48" width="550" height="405"/>
-  <text class="label" x="245" y="77">OCAH chiplet</text>
-
-  <rect class="dtp" x="245" y="94" width="500" height="174"/>
-  <text class="label" x="495" y="121" text-anchor="middle">Debug and Test Ports (DTP)</text>
-  <rect class="core" x="270" y="140" width="210" height="96"/>
-  <text class="label" x="375" y="175" text-anchor="middle">JTAG Interface Unit</text>
-  <text class="small" x="375" y="199" text-anchor="middle">TAP · scan · JTAG-to-AXI</text>
-  <text class="small" x="375" y="219" text-anchor="middle">boot · reset · clock controls</text>
-  <rect class="core" x="510" y="140" width="210" height="96"/>
-  <text class="label" x="615" y="175" text-anchor="middle">Cross Trigger Network</text>
-  <text class="small" x="615" y="199" text-anchor="middle">trigger routing · CTPs</text>
-  <text class="small" x="615" y="219" text-anchor="middle">clock-stop aggregation</text>
-
-  <rect class="core" x="245" y="310" width="112" height="76"/>
-  <text class="label" x="301" y="343" text-anchor="middle">SMC</text>
-  <text class="small" x="301" y="367" text-anchor="middle">fabric · OTP</text>
-  <rect class="core" x="374" y="310" width="112" height="76"/>
-  <text class="label" x="430" y="343" text-anchor="middle">SEP</text>
-  <text class="small" x="430" y="367" text-anchor="middle">OTP · scan</text>
-  <rect class="core" x="503" y="310" width="112" height="76"/>
-  <text class="label" x="559" y="343" text-anchor="middle">Adopter IP</text>
-  <text class="small" x="559" y="367" text-anchor="middle">when connected</text>
-  <rect class="core" x="632" y="310" width="112" height="76"/>
-  <text class="label" x="688" y="340" text-anchor="middle">Clock / reset</text>
-  <text class="small" x="688" y="364" text-anchor="middle">and local triggers</text>
-
-  <text class="small" x="495" y="425" text-anchor="middle">Adopter supplies pads, policy, clocks, resets, scan chains, and permitted mappings</text>
-
-  <rect class="chiplet" x="805" y="86" width="180" height="300"/>
-  <text class="label" x="895" y="118" text-anchor="middle">Peer OCA chiplet</text>
-  <rect class="dtp" x="829" y="145" width="132" height="76"/>
-  <text class="label" x="895" y="177" text-anchor="middle">Debug/Test</text>
-  <text class="small" x="895" y="201" text-anchor="middle">JTAG + triggers</text>
-  <rect class="core" x="829" y="264" width="132" height="76"/>
-  <text class="label" x="895" y="296" text-anchor="middle">Internal functions</text>
-  <text class="small" x="895" y="320" text-anchor="middle">management · IP</text>
-
-  <path class="both" d="M190 172 H270"/>
-  <text class="small" x="228" y="161" text-anchor="middle">JTAG / scan</text>
-  <path class="both" d="M190 210 H210 V276 H615 V236"/>
-  <text class="small" x="270" y="269" text-anchor="middle">Peer STAP &#8594; OCAH PTAP / triggers</text>
-  <path class="both" d="M720 172 H829"/>
-  <text class="small" x="774" y="161" text-anchor="middle">OCAH STAP &#8594; Peer PTAP</text>
-  <path class="both" d="M720 205 H774 V300 H961 V221"/>
-  <text class="small" x="835" y="293" text-anchor="middle">cross-trigger</text>
-  <path class="both" d="M480 188 H510"/>
-  <path class="both" d="M375 236 V286"/>
-  <path class="bus" d="M301 286 H688"/>
-  <path class="line" d="M301 286 V310"/>
-  <path class="line" d="M430 286 V310"/>
-  <path class="line" d="M559 286 V310"/>
-  <path class="line" d="M688 286 V310"/>
-  <path class="both" d="M895 221 V264"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="610" viewBox="0 0 1100 610">
+<defs><marker id="end" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 Z" fill="#484848"/></marker><marker id="start" markerWidth="7" markerHeight="7" refX="1" refY="3.5" orient="auto"><path d="M7 0 L0 3.5 L7 7 Z" fill="#484848"/></marker></defs>
+<text x="550" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="23" fill="#103525">OCAH DTP in an OCA multi-chiplet system</text>
+<rect x="225" y="50" width="635" height="510" fill="none" stroke="#77736b" stroke-dasharray="7 5"/>
+<text x="542.5" y="72" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">Chiplet boundary</text>
+<rect x="250" y="180" width="580" height="150" fill="none" stroke="#77736b" stroke-dasharray="7 5"/>
+<text x="540" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">Debug and Test Ports (DTP)</text>
+<rect x="275" y="225" width="235" height="80" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="392.5" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">JTAG Interface Unit</text>
+<text x="392.5" y="271" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">TAP · scan · JTAG-to-AXI</text>
+<text x="392.5" y="292" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Boot · reset · clock controls</text>
+<rect x="565" y="225" width="240" height="80" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="685" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">Cross Trigger Network</text>
+<text x="685" y="271" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Trigger routing · CTPs</text>
+<text x="685" y="292" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Clock-stop aggregation</text>
+<rect x="10" y="190" width="180" height="95" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="100" y="215" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">External debug / test</text>
+<text x="100" y="236" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">JTAG controller or</text>
+<text x="100" y="257" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">upstream peer STAP</text>
+<path d="M190 245 H275" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)"/>
+<text x="110" y="164" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#103525">Peer STAP → OCAH PTAP</text>
+<path d="M300 225 V120 H1080 V240 H1065" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)"/>
+<text x="675" y="106" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">OCAH STAP → Peer PTAP</text>
+<rect x="890" y="170" width="200" height="355" fill="none" stroke="#77736b" stroke-dasharray="7 5"/>
+<text x="990" y="192" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">Peer OCA chiplet</text>
+<rect x="915" y="210" width="150" height="90" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="990" y="235" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">Debug/Test</text>
+<text x="990" y="256" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">JTAG + triggers</text>
+<path d="M805 278 H845 V357 H990 V300" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)" marker-start="url(#start)"/>
+<text x="961" y="344" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#103525">Cross-trigger</text>
+<rect x="915" y="415" width="150" height="70" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="990" y="440" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">Internal functions</text>
+<text x="990" y="461" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Management · IP</text>
+<path d="M1040 300 V415" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)" marker-start="url(#start)"/>
+<path d="M565 262 H510" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)"/>
+<rect x="10" y="345" width="180" height="70" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="100" y="370" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">Trigger endpoints</text>
+<text x="100" y="391" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">External debug / test</text>
+<path d="M190 380 H685 V305" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)" marker-start="url(#start)"/>
+<text x="397" y="369" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#103525">External Cross Trigger Ports (CTPs)</text>
+<rect x="255" y="465" width="125" height="65" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="317.5" y="490" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">SMC</text>
+<text x="317.5" y="511" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Fabric · OTP</text>
+<rect x="395" y="465" width="125" height="65" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="457.5" y="490" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">SEP</text>
+<text x="457.5" y="511" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">OTP · scan</text>
+<rect x="535" y="465" width="125" height="65" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="597.5" y="490" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">Adopter IP</text>
+<text x="597.5" y="511" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">When connected</text>
+<rect x="675" y="465" width="155" height="65" rx="6" fill="#f8f4eb" stroke="#937027" stroke-width="1.5"/>
+<text x="752.5" y="490" text-anchor="middle" font-family="Arial, sans-serif" font-size="17" fill="#103525">Clock / reset</text>
+<text x="752.5" y="511" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#103525">Local triggers</text>
+<path d="M392 305 V432 H317 V465" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)"/>
+<path d="M392 432 H457 V465" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)"/>
+<path d="M457 432 H597 V465" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)"/>
+<path d="M685 380 V432 H752 V465" fill="none" stroke="#484848" stroke-width="1.5" marker-end="url(#end)"/>
+<text x="550" y="588" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#103525">Adopter supplies pads, policy, clocks, resets, scan chains and permitted mappings.</text>
 </svg>
