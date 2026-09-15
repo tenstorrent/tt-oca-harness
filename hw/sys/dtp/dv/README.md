@@ -194,6 +194,13 @@ DTP_XTRIG_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
 DTP_J2A_GEOMETRY_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
 
+# JTAG2AXI with-status series negative validation: the six
+# *_series_write*_incr_with_error tests arm one SLVERR/DECERR beat and judge
+# the WITH_ERROR_STATUS bit on every shift (CHK-J2A-STATUS-BIT); leaving the
+# fault unarmed while the expectation stands must fail the fault beat's checks
+DTP_J2A_STATUS_BIT_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test
+
 # SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
   --plusarg +DTP_JTAG_TAP_CHECKER_NEGATIVE
@@ -379,6 +386,13 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm \
 python3 tools/dv/run_dv.py --dut dtp --framework uvm \
   --items dtp_jtag2axi_smc_otp_axi_single_write_read_test \
   --plusarg +DTP_J2A_GEOMETRY_NEGATIVE
+
+# JTAG2AXI with-status series negative validation: the fault beat left
+# unarmed while its expectation stands (CHK-J2A-STATUS-BIT) must fail the
+# fault beat's checks
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test \
+  --plusarg +DTP_J2A_STATUS_BIT_NEGATIVE
 ```
 
 PASS/FAIL is classified by the global parser registry in

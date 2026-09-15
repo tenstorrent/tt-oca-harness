@@ -1913,32 +1913,37 @@ b. Capture SMC_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address = the
 
 * An incrementing AXI4 write series through the SMC fabric bridge carried by SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x2C), the series-data form whose shift selects the address increment per beat and returns the previous beat's error status
 * The increment pattern 1, 0, 1, 1: the second beat re-writes the held address, so the series spans three addresses and the later word wins at the held one
-* Every returned status bit reading 0 while all beats complete OKAY
-* SERIES_CTRL readback reporting OKAY at the pattern's final address
-* Fault injection on this series-data form is covered by <<sec-47-dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test,4.7>>
+* One beat, chosen at random among the beats that first touch their address, returns SLVERR or DECERR; the status bit is 1 on the shift after that beat and 0 on every other shift, including a trailing shift that returns the last beat's status
+* The faulting beat leaves its slot unchanged while every other beat lands, so a held-address re-write after a faulting first write lands
+* SERIES_CTRL readback reporting the pattern's final address, then a legal SINGLE_OP write outside the stream completing OKAY
+* The error-series entry <<sec-47-dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test,4.7>> covers the same series-data form on an incrementing-only stream together with the SERIES_CTRL fault code
 
 *Test Procedure*:
 
 [arabic]
-. Choose a beat-aligned base address and draw a data word per beat of the increment pattern 1, 0, 1, 1.
+. Choose a beat-aligned base address whose four-slot footprint fits the target window, draw a data word per beat of the increment pattern 1, 0, 1, 1, and pick the fault beat and its response (SLVERR or DECERR) from the scenario RNG.
+. Arm the responder to return that response once at the fault beat's address and record the slot's prior word.
 . Issue the series through SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS:
 a. Load SMC_AXI_SERIES_CTRL (IR=0x29) with op=0b10 (Write), size, and the base address; Update-DR.
 b. For each beat: shift the data word and the beat's increment flag through SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x2C); Update-DR issues the write and advances the series address only when the flag is set.
-c. After each Update-DR, wait for the AXI write handshake, verify the returned status bit is 0, and confirm the `OcahAxiSlaveAgent` subordinate holds the data word at the beat's address.
-. Verify the series end state:
-a. Capture SMC_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address = base{plus}3*stride, the pattern's final address.
+c. After each Update-DR, wait for the AXI write handshake, verify the returned status bit is 1 only on the shift after the fault beat, and confirm the `OcahAxiSlaveAgent` subordinate holds the data word at the beat's address, or the prior word at the faulting beat's address.
+d. Shift one trailing word (data 0, increment 0) and verify its status bit reports the last beat.
+. Capture SMC_AXI_SERIES_CTRL and verify address = base{plus}3*stride, the pattern's final address.
+. Issue a legal SMC_AXI_SINGLE_OP (IR=0x28) write to a slot outside the stream; verify OKAY and the memory update, proving recovery.
+. Negative validation: `DTP_J2A_STATUS_BIT_NEGATIVE=1` (cocotb) or `+DTP_J2A_STATUS_BIT_NEGATIVE` (SV-UVM) keeps the expectation but leaves the fault unarmed, so the fault beat's checks must fail the run.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`smc_axi_wr_status_bit_chk` |Every returned status bit is 0 and the SERIES_CTRL readback reports OKAY (0b00)
-|`smc_axi_wr_status_data_chk` |Each beat's address holds the last data word written to it
+|`smc_axi_wr_status_bit_chk` |`CHK-J2A-STATUS-BIT`: the status bit is 1 on the shift after the fault beat and 0 on every other shift, trailing shift included
+|`smc_axi_wr_status_data_chk` |Each non-faulting beat's address holds the last data word written to it; the faulting beat's slot keeps its prior word
 |`smc_axi_wr_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride (the held beat did not advance the address)
+|`smc_axi_wr_status_recover_chk` |A legal single write outside the stream completes OKAY with its memory update; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
-*Pass Criteria*: All four beats complete with status bit 0, each address holds the last word written to it, and the SERIES_CTRL readback reports OKAY at base{plus}3*stride, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The fault beat's response surfaces on the following shift's status bit and nowhere else, every other beat lands, the faulting slot is unchanged, the SERIES_CTRL readback shows base{plus}3*stride, and the recovery write completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -2208,32 +2213,37 @@ b. Capture SMC_OTP_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address =
 
 * An incrementing AXI4-Lite write series through the SMC OTP bridge carried by SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x20), the series-data form whose shift selects the address increment per beat and returns the previous beat's error status
 * The increment pattern 1, 0, 1, 1: the second beat re-writes the held address, so the series spans three addresses and the later word wins at the held one
-* Every returned status bit reading 0 while all beats complete OKAY
-* SERIES_CTRL readback reporting OKAY at the pattern's final address
-* Fault injection on this series-data form is covered by <<sec-416-dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test,4.16>>
+* One beat, chosen at random among the beats that first touch their address, returns SLVERR or DECERR; the status bit is 1 on the shift after that beat and 0 on every other shift, including a trailing shift that returns the last beat's status
+* The faulting beat leaves its slot unchanged while every other beat lands, so a held-address re-write after a faulting first write lands
+* SERIES_CTRL readback reporting the pattern's final address, then a legal SINGLE_OP write outside the stream completing OKAY
+* The error-series entry <<sec-416-dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test,4.16>> covers the same series-data form on an incrementing-only stream together with the SERIES_CTRL fault code
 
 *Test Procedure*:
 
 [arabic]
-. Choose a beat-aligned base address and draw a data word per beat of the increment pattern 1, 0, 1, 1.
+. Choose a beat-aligned base address whose four-slot footprint fits the target window, draw a data word per beat of the increment pattern 1, 0, 1, 1, and pick the fault beat and its response (SLVERR or DECERR) from the scenario RNG.
+. Arm the responder to return that response once at the fault beat's address and record the slot's prior word.
 . Issue the series through SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS:
 a. Load SMC_OTP_AXI_SERIES_CTRL (IR=0x1D) with op=0b10 (Write), size, and the base address; Update-DR.
 b. For each beat: shift the data word and the beat's increment flag through SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x20); Update-DR issues the write and advances the series address only when the flag is set.
-c. After each Update-DR, wait for the AXI-Lite write handshake, verify the returned status bit is 0, and confirm the AXI-Lite subordinate holds the data word at the beat's address.
-. Verify the series end state:
-a. Capture SMC_OTP_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address = base{plus}3*stride, the pattern's final address.
+c. After each Update-DR, wait for the AXI-Lite write handshake, verify the returned status bit is 1 only on the shift after the fault beat, and confirm the AXI-Lite subordinate holds the data word at the beat's address, or the prior word at the faulting beat's address.
+d. Shift one trailing word (data 0, increment 0) and verify its status bit reports the last beat.
+. Capture SMC_OTP_AXI_SERIES_CTRL and verify address = base{plus}3*stride, the pattern's final address.
+. Issue a legal SMC_OTP_AXI_SINGLE_OP (IR=0x1C) write to a slot outside the stream; verify OKAY and the memory update, proving recovery.
+. Negative validation: `DTP_J2A_STATUS_BIT_NEGATIVE=1` (cocotb) or `+DTP_J2A_STATUS_BIT_NEGATIVE` (SV-UVM) keeps the expectation but leaves the fault unarmed, so the fault beat's checks must fail the run.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`smc_otp_axi_wr_status_bit_chk` |Every returned status bit is 0 and the SERIES_CTRL readback reports OKAY (0b00)
-|`smc_otp_axi_wr_status_data_chk` |Each beat's address holds the last data word written to it
+|`smc_otp_axi_wr_status_bit_chk` |`CHK-J2A-STATUS-BIT`: the status bit is 1 on the shift after the fault beat and 0 on every other shift, trailing shift included
+|`smc_otp_axi_wr_status_data_chk` |Each non-faulting beat's address holds the last data word written to it; the faulting beat's slot keeps its prior word
 |`smc_otp_axi_wr_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride (the held beat did not advance the address)
+|`smc_otp_axi_wr_status_recover_chk` |A legal single write outside the stream completes OKAY with its memory update; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
-*Pass Criteria*: All four beats complete with status bit 0, each address holds the last word written to it, and the SERIES_CTRL readback reports OKAY at base{plus}3*stride, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The fault beat's response surfaces on the following shift's status bit and nowhere else, every other beat lands, the faulting slot is unchanged, the SERIES_CTRL readback shows base{plus}3*stride, and the recovery write completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -2503,32 +2513,37 @@ b. Capture SEP_OTP_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address =
 
 * An incrementing AXI4-Lite write series through the SEP OTP bridge carried by SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x26), the series-data form whose shift selects the address increment per beat and returns the previous beat's error status
 * The increment pattern 1, 0, 1, 1: the second beat re-writes the held address, so the series spans three addresses and the later word wins at the held one
-* Every returned status bit reading 0 while all beats complete OKAY
-* SERIES_CTRL readback reporting OKAY at the pattern's final address
-* Fault injection on this series-data form is covered by <<sec-425-dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test,4.25>>
+* One beat, chosen at random among the beats that first touch their address, returns SLVERR or DECERR; the status bit is 1 on the shift after that beat and 0 on every other shift, including a trailing shift that returns the last beat's status
+* The faulting beat leaves its slot unchanged while every other beat lands, so a held-address re-write after a faulting first write lands
+* SERIES_CTRL readback reporting the pattern's final address, then a legal SINGLE_OP write outside the stream completing OKAY
+* The error-series entry <<sec-425-dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test,4.25>> covers the same series-data form on an incrementing-only stream together with the SERIES_CTRL fault code
 
 *Test Procedure*:
 
 [arabic]
-. Choose a beat-aligned base address and draw a data word per beat of the increment pattern 1, 0, 1, 1.
+. Choose a beat-aligned base address whose four-slot footprint fits the target window, draw a data word per beat of the increment pattern 1, 0, 1, 1, and pick the fault beat and its response (SLVERR or DECERR) from the scenario RNG.
+. Arm the responder to return that response once at the fault beat's address and record the slot's prior word.
 . Issue the series through SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS:
 a. Load SEP_OTP_AXI_SERIES_CTRL (IR=0x23) with op=0b10 (Write), size, and the base address; Update-DR.
 b. For each beat: shift the data word and the beat's increment flag through SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x26); Update-DR issues the write and advances the series address only when the flag is set.
-c. After each Update-DR, wait for the AXI-Lite write handshake, verify the returned status bit is 0, and confirm the AXI-Lite subordinate holds the data word at the beat's address.
-. Verify the series end state:
-a. Capture SEP_OTP_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address = base{plus}3*stride, the pattern's final address.
+c. After each Update-DR, wait for the AXI-Lite write handshake, verify the returned status bit is 1 only on the shift after the fault beat, and confirm the AXI-Lite subordinate holds the data word at the beat's address, or the prior word at the faulting beat's address.
+d. Shift one trailing word (data 0, increment 0) and verify its status bit reports the last beat.
+. Capture SEP_OTP_AXI_SERIES_CTRL and verify address = base{plus}3*stride, the pattern's final address.
+. Issue a legal SEP_OTP_AXI_SINGLE_OP (IR=0x22) write to a slot outside the stream; verify OKAY and the memory update, proving recovery.
+. Negative validation: `DTP_J2A_STATUS_BIT_NEGATIVE=1` (cocotb) or `+DTP_J2A_STATUS_BIT_NEGATIVE` (SV-UVM) keeps the expectation but leaves the fault unarmed, so the fault beat's checks must fail the run.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`sep_otp_axi_wr_status_bit_chk` |Every returned status bit is 0 and the SERIES_CTRL readback reports OKAY (0b00)
-|`sep_otp_axi_wr_status_data_chk` |Each beat's address holds the last data word written to it
+|`sep_otp_axi_wr_status_bit_chk` |`CHK-J2A-STATUS-BIT`: the status bit is 1 on the shift after the fault beat and 0 on every other shift, trailing shift included
+|`sep_otp_axi_wr_status_data_chk` |Each non-faulting beat's address holds the last data word written to it; the faulting beat's slot keeps its prior word
 |`sep_otp_axi_wr_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride (the held beat did not advance the address)
+|`sep_otp_axi_wr_status_recover_chk` |A legal single write outside the stream completes OKAY with its memory update; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
-*Pass Criteria*: All four beats complete with status bit 0, each address holds the last word written to it, and the SERIES_CTRL readback reports OKAY at base{plus}3*stride, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The fault beat's response surfaces on the following shift's status bit and nowhere else, every other beat lands, the faulting slot is unchanged, the SERIES_CTRL readback shows base{plus}3*stride, and the recovery write completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -2856,35 +2871,41 @@ b. Shift SMC_AXI_SERIES_DATA_NO_INCR once to launch the read and wait for the AX
 
 * AXI4 write then read series through the SMC fabric bridge carried by SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x2C), the series-data form whose shift selects the address increment per beat and returns the previous beat's error status
 * The increment pattern 1, 0, 1, 1 on both legs: the second beat re-writes the held address, so the series spans three addresses and the later word wins at the held one
-* Read-side Capture-DR returning the last word written to each address with status bit 0
-* SERIES_CTRL readback reporting OKAY at the pattern's final address
-* Fault injection on this series-data form is covered by <<sec-47-dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test,4.7>> and <<sec-48-dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test,4.8>>
+* A clean write leg with status bit 0 on every shift, then a read leg from one SERIES_CTRL preload in which one beat, chosen at random among the beats that first touch their address, returns SLVERR or DECERR
+* Read-side Capture-DR returning the previous read's word and status bit: the bit is 1 only on the shift after the faulting read, every other beat returns the last word written to its address, and a held-address re-read after a faulting first read returns the word
+* SERIES_CTRL readback reporting the pattern's final address after each leg, then a legal SINGLE_OP read outside the stream completing OKAY
+* The error-series entries <<sec-47-dtp_jtag2axi_smc_axi_error_series_incr_write_with_status_test,4.7>> and <<sec-48-dtp_jtag2axi_smc_axi_error_series_incr_read_with_status_test,4.8>> cover the same series-data form on incrementing-only streams together with the SERIES_CTRL fault code
 
 *Test Procedure*:
 
 [arabic]
-. Choose a beat-aligned base address and draw a data word per beat of the increment pattern 1, 0, 1, 1.
+. Choose a beat-aligned base address whose four-slot footprint fits the target window and draw a data word per beat of the increment pattern 1, 0, 1, 1.
 . Write the series through the SMC fabric AXI4 bridge.
 a. Load SMC_AXI_SERIES_CTRL (IR=0x29) with op=0b10 (Write), size, and the base address; Update-DR.
 b. For each beat: shift the data word and the beat's increment flag through SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x2C); Update-DR issues the write and advances the series address only when the flag is set.
-c. After each Update-DR, wait for the AXI write handshake and record the word as the expected content of the beat's address.
-. Read the same addresses back with the same increment pattern.
-a. For each beat: load SMC_AXI_SERIES_CTRL with op=0b01 (Read), size, and the beat's address; Update-DR.
-b. Shift SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS with the beat's increment flag to launch the read and wait for the AXI read handshake; shift it again with increment 0 and take the Capture-DR payload and status bit.
-. Verify each returned beat equals the last word written to its address and its status bit is 0.
-. Capture SMC_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address = base{plus}3*stride, the pattern's final address.
+c. After each Update-DR, wait for the AXI write handshake, verify the returned status bit is 0, and confirm the `OcahAxiSlaveAgent` subordinate holds the data word at the beat's address; shift one trailing word (data 0, increment 0) and verify its status bit is 0.
+d. Capture SMC_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
+. Pick the fault beat and its response (SLVERR or DECERR) from the scenario RNG and arm the responder to return that response once at the beat's address.
+. Read the series back from one preload:
+a. Load SMC_AXI_SERIES_CTRL with op=0b01 (Read), size, and the base address; Update-DR.
+b. Shift four words carrying the beats' increment flags, then one trailing word (increment 0), through SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS; every Update-DR launches a read, and shift k returns the word and status bit of read k-1.
+c. Verify the status bit is 1 only on the shift after the fault beat and every non-faulting beat returns the last word written to its address.
+d. Capture SMC_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
+. Issue a legal SMC_AXI_SINGLE_OP (IR=0x28) read of a preloaded slot outside the stream; verify OKAY and the word, proving recovery.
+. Negative validation: `DTP_J2A_STATUS_BIT_NEGATIVE=1` (cocotb) or `+DTP_J2A_STATUS_BIT_NEGATIVE` (SV-UVM) keeps the expectation but leaves the fault unarmed, so the fault beat's checks must fail the run.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`smc_axi_series_status_bit_chk` |Every returned status bit is 0 and the SERIES_CTRL readback reports OKAY (0b00)
-|`smc_axi_series_status_rdata_chk` |Each returned beat equals the last word written to its address
-|`smc_axi_series_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride (the held beat did not advance the address)
+|`smc_axi_series_status_bit_chk` |`CHK-J2A-STATUS-BIT`: status bit 0 on every write-leg shift and 1 only on the read-leg shift after the fault beat
+|`smc_axi_series_status_rdata_chk` |Each non-faulting read beat returns the last word written to its address
+|`smc_axi_series_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride after each leg (the held beat did not advance the address)
+|`smc_axi_series_status_recover_chk` |A legal single read outside the stream returns its word with OKAY; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
-*Pass Criteria*: Every beat writes and reads back through the with-error-status form with status bit 0, each address holds the last word written to it, and the SERIES_CTRL readback reports OKAY at base{plus}3*stride, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The write leg completes clean, the read leg's fault surfaces on the following shift's status bit and nowhere else, every other beat returns its word, both SERIES_CTRL readbacks show base{plus}3*stride, and the recovery read completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -3148,35 +3169,41 @@ b. Shift SMC_OTP_AXI_SERIES_DATA_NO_INCR once to launch the read and wait for th
 
 * AXI4-Lite write then read series through the SMC OTP bridge carried by SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x20), the series-data form whose shift selects the address increment per beat and returns the previous beat's error status
 * The increment pattern 1, 0, 1, 1 on both legs: the second beat re-writes the held address, so the series spans three addresses and the later word wins at the held one
-* Read-side Capture-DR returning the last word written to each address with status bit 0
-* SERIES_CTRL readback reporting OKAY at the pattern's final address
-* Fault injection on this series-data form is covered by <<sec-416-dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test,4.16>> and <<sec-417-dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test,4.17>>
+* A clean write leg with status bit 0 on every shift, then a read leg from one SERIES_CTRL preload in which one beat, chosen at random among the beats that first touch their address, returns SLVERR or DECERR
+* Read-side Capture-DR returning the previous read's word and status bit: the bit is 1 only on the shift after the faulting read, every other beat returns the last word written to its address, and a held-address re-read after a faulting first read returns the word
+* SERIES_CTRL readback reporting the pattern's final address after each leg, then a legal SINGLE_OP read outside the stream completing OKAY
+* The error-series entries <<sec-416-dtp_jtag2axi_smc_otp_axi_error_series_incr_write_with_status_test,4.16>> and <<sec-417-dtp_jtag2axi_smc_otp_axi_error_series_incr_read_with_status_test,4.17>> cover the same series-data form on incrementing-only streams together with the SERIES_CTRL fault code
 
 *Test Procedure*:
 
 [arabic]
-. Choose a beat-aligned base address and draw a data word per beat of the increment pattern 1, 0, 1, 1.
+. Choose a beat-aligned base address whose four-slot footprint fits the target window and draw a data word per beat of the increment pattern 1, 0, 1, 1.
 . Write the series through the SMC OTP AXI4-Lite bridge.
 a. Load SMC_OTP_AXI_SERIES_CTRL (IR=0x1D) with op=0b10 (Write), size, and the base address; Update-DR.
 b. For each beat: shift the data word and the beat's increment flag through SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x20); Update-DR issues the write and advances the series address only when the flag is set.
-c. After each Update-DR, wait for the AXI-Lite write handshake and record the word as the expected content of the beat's address.
-. Read the same addresses back with the same increment pattern.
-a. For each beat: load SMC_OTP_AXI_SERIES_CTRL with op=0b01 (Read), size, and the beat's address; Update-DR.
-b. Shift SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS with the beat's increment flag to launch the read and wait for the AXI-Lite read handshake; shift it again with increment 0 and take the Capture-DR payload and status bit.
-. Verify each returned beat equals the last word written to its address and its status bit is 0.
-. Capture SMC_OTP_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address = base{plus}3*stride, the pattern's final address.
+c. After each Update-DR, wait for the AXI-Lite write handshake, verify the returned status bit is 0, and confirm the AXI-Lite subordinate holds the data word at the beat's address; shift one trailing word (data 0, increment 0) and verify its status bit is 0.
+d. Capture SMC_OTP_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
+. Pick the fault beat and its response (SLVERR or DECERR) from the scenario RNG and arm the responder to return that response once at the beat's address.
+. Read the series back from one preload:
+a. Load SMC_OTP_AXI_SERIES_CTRL with op=0b01 (Read), size, and the base address; Update-DR.
+b. Shift four words carrying the beats' increment flags, then one trailing word (increment 0), through SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS; every Update-DR launches a read, and shift k returns the word and status bit of read k-1.
+c. Verify the status bit is 1 only on the shift after the fault beat and every non-faulting beat returns the last word written to its address.
+d. Capture SMC_OTP_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
+. Issue a legal SMC_OTP_AXI_SINGLE_OP (IR=0x1C) read of a preloaded slot outside the stream; verify OKAY and the word, proving recovery.
+. Negative validation: `DTP_J2A_STATUS_BIT_NEGATIVE=1` (cocotb) or `+DTP_J2A_STATUS_BIT_NEGATIVE` (SV-UVM) keeps the expectation but leaves the fault unarmed, so the fault beat's checks must fail the run.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`smc_otp_series_status_bit_chk` |Every returned status bit is 0 and the SERIES_CTRL readback reports OKAY (0b00)
-|`smc_otp_series_status_rdata_chk` |Each returned beat equals the last word written to its address
-|`smc_otp_series_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride (the held beat did not advance the address)
+|`smc_otp_series_status_bit_chk` |`CHK-J2A-STATUS-BIT`: status bit 0 on every write-leg shift and 1 only on the read-leg shift after the fault beat
+|`smc_otp_series_status_rdata_chk` |Each non-faulting read beat returns the last word written to its address
+|`smc_otp_series_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride after each leg (the held beat did not advance the address)
+|`smc_otp_series_status_recover_chk` |A legal single read outside the stream returns its word with OKAY; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
-*Pass Criteria*: Every beat writes and reads back through the with-error-status form with status bit 0, each address holds the last word written to it, and the SERIES_CTRL readback reports OKAY at base{plus}3*stride, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The write leg completes clean, the read leg's fault surfaces on the following shift's status bit and nowhere else, every other beat returns its word, both SERIES_CTRL readbacks show base{plus}3*stride, and the recovery read completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -3404,35 +3431,41 @@ b. Shift SEP_OTP_AXI_SERIES_DATA_NO_INCR once to launch the read and wait for th
 
 * AXI4-Lite write then read series through the SEP OTP bridge carried by SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x26), the series-data form whose shift selects the address increment per beat and returns the previous beat's error status
 * The increment pattern 1, 0, 1, 1 on both legs: the second beat re-writes the held address, so the series spans three addresses and the later word wins at the held one
-* Read-side Capture-DR returning the last word written to each address with status bit 0
-* SERIES_CTRL readback reporting OKAY at the pattern's final address
-* Fault injection on this series-data form is covered by <<sec-425-dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test,4.25>> and <<sec-426-dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test,4.26>>
+* A clean write leg with status bit 0 on every shift, then a read leg from one SERIES_CTRL preload in which one beat, chosen at random among the beats that first touch their address, returns SLVERR or DECERR
+* Read-side Capture-DR returning the previous read's word and status bit: the bit is 1 only on the shift after the faulting read, every other beat returns the last word written to its address, and a held-address re-read after a faulting first read returns the word
+* SERIES_CTRL readback reporting the pattern's final address after each leg, then a legal SINGLE_OP read outside the stream completing OKAY
+* The error-series entries <<sec-425-dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test,4.25>> and <<sec-426-dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test,4.26>> cover the same series-data form on incrementing-only streams together with the SERIES_CTRL fault code
 
 *Test Procedure*:
 
 [arabic]
-. Choose a beat-aligned base address and draw a data word per beat of the increment pattern 1, 0, 1, 1.
+. Choose a beat-aligned base address whose four-slot footprint fits the target window and draw a data word per beat of the increment pattern 1, 0, 1, 1.
 . Write the series through the SEP OTP AXI4-Lite bridge.
 a. Load SEP_OTP_AXI_SERIES_CTRL (IR=0x23) with op=0b10 (Write), size, and the base address; Update-DR.
 b. For each beat: shift the data word and the beat's increment flag through SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS (IR=0x26); Update-DR issues the write and advances the series address only when the flag is set.
-c. After each Update-DR, wait for the AXI-Lite write handshake and record the word as the expected content of the beat's address.
-. Read the same addresses back with the same increment pattern.
-a. For each beat: load SEP_OTP_AXI_SERIES_CTRL with op=0b01 (Read), size, and the beat's address; Update-DR.
-b. Shift SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS with the beat's increment flag to launch the read and wait for the AXI-Lite read handshake; shift it again with increment 0 and take the Capture-DR payload and status bit.
-. Verify each returned beat equals the last word written to its address and its status bit is 0.
-. Capture SEP_OTP_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address = base{plus}3*stride, the pattern's final address.
+c. After each Update-DR, wait for the AXI-Lite write handshake, verify the returned status bit is 0, and confirm the AXI-Lite subordinate holds the data word at the beat's address; shift one trailing word (data 0, increment 0) and verify its status bit is 0.
+d. Capture SEP_OTP_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
+. Pick the fault beat and its response (SLVERR or DECERR) from the scenario RNG and arm the responder to return that response once at the beat's address.
+. Read the series back from one preload:
+a. Load SEP_OTP_AXI_SERIES_CTRL with op=0b01 (Read), size, and the base address; Update-DR.
+b. Shift four words carrying the beats' increment flags, then one trailing word (increment 0), through SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS; every Update-DR launches a read, and shift k returns the word and status bit of read k-1.
+c. Verify the status bit is 1 only on the shift after the fault beat and every non-faulting beat returns the last word written to its address.
+d. Capture SEP_OTP_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
+. Issue a legal SEP_OTP_AXI_SINGLE_OP (IR=0x22) read of a preloaded slot outside the stream; verify OKAY and the word, proving recovery.
+. Negative validation: `DTP_J2A_STATUS_BIT_NEGATIVE=1` (cocotb) or `+DTP_J2A_STATUS_BIT_NEGATIVE` (SV-UVM) keeps the expectation but leaves the fault unarmed, so the fault beat's checks must fail the run.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`sep_otp_series_status_bit_chk` |Every returned status bit is 0 and the SERIES_CTRL readback reports OKAY (0b00)
-|`sep_otp_series_status_rdata_chk` |Each returned beat equals the last word written to its address
-|`sep_otp_series_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride (the held beat did not advance the address)
+|`sep_otp_series_status_bit_chk` |`CHK-J2A-STATUS-BIT`: status bit 0 on every write-leg shift and 1 only on the read-leg shift after the fault beat
+|`sep_otp_series_status_rdata_chk` |Each non-faulting read beat returns the last word written to its address
+|`sep_otp_series_status_addr_chk` |SERIES_CTRL address readback equals base {plus} 3*stride after each leg (the held beat did not advance the address)
+|`sep_otp_series_status_recover_chk` |A legal single read outside the stream returns its word with OKAY; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
-*Pass Criteria*: Every beat writes and reads back through the with-error-status form with status bit 0, each address holds the last word written to it, and the SERIES_CTRL readback reports OKAY at base{plus}3*stride, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The write leg completes clean, the read leg's fault surfaces on the following shift's status bit and nowhere else, every other beat returns its word, both SERIES_CTRL readbacks show base{plus}3*stride, and the recovery read completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
 

@@ -106,6 +106,11 @@ localparam int unsigned DtpJ2aMaxPipelineDepth = DtpJ2aPipelineDepth;
 localparam int unsigned DtpJtag2AxiCapsLen = 14;
 // Evidence ID of the per-pass geometry gate every JTAG2AXI scenario records.
 localparam string DtpJ2aGeometryCheckId = "CHK-J2A-GEOMETRY";
+localparam string DtpJ2aStatusBitCheckId = "CHK-J2A-STATUS-BIT";
+localparam int unsigned DtpJ2aSeriesStatusBeats = 4;
+// Increment flag per beat of the WITH_ERROR_STATUS streams (bit i = beat i):
+// the second beat re-writes the held address.
+localparam bit [DtpJ2aSeriesStatusBeats-1:0] DtpJ2aSeriesStatusIncrements = 4'b1101;
 
 // *_JTAG2AXI_CAPS data_size: the beat width in bytes as a power of two.
 function automatic int unsigned dtp_j2a_data_size(dtp_j2a_target_t t);
@@ -214,6 +219,69 @@ function automatic dtp_j2a_status_e dtp_j2a_axi_resp_to_status(ocah_axi_resp_e r
     OCAH_AXI_RESP_DECERR: return DTP_J2A_DECERR;
     default:              return DTP_J2A_SUCCESS;
   endcase
+endfunction
+
+// One WITH_ERROR_STATUS stream: its geometry and the beat that carries the
+// fault (-1 for a clean stream). The status bit a shift returns belongs to
+// the previous beat, so only the shift after the fault beat expects a 1.
+typedef struct {
+  bit [63:0]       base;
+  int unsigned     size;
+  int unsigned     stride;
+  int              fault_idx;
+  dtp_j2a_status_e expected;
+} dtp_j2a_series_status_plan_t;
+
+function automatic bit [63:0] dtp_j2a_series_status_addr(dtp_j2a_series_status_plan_t p,
+                                                         int unsigned idx);
+  bit [63:0] addr = p.base;
+  for (int unsigned i = 0; i < idx && i < DtpJ2aSeriesStatusBeats; i++)
+  if (DtpJ2aSeriesStatusIncrements[i]) addr += p.stride;
+  return addr;
+endfunction
+
+function automatic bit [63:0] dtp_j2a_series_status_final_addr(dtp_j2a_series_status_plan_t p);
+  return dtp_j2a_series_status_addr(p, DtpJ2aSeriesStatusBeats);
+endfunction
+
+// Bytes from base through the slot the trailing shift touches.
+function automatic bit [63:0] dtp_j2a_series_status_span(dtp_j2a_series_status_plan_t p);
+  return dtp_j2a_series_status_final_addr(p) - p.base + p.stride;
+endfunction
+
+function automatic bit dtp_j2a_series_status_is_fault(dtp_j2a_series_status_plan_t p,
+                                                      int unsigned idx);
+  return (p.fault_idx >= 0) && (int'(idx) == p.fault_idx);
+endfunction
+
+function automatic bit dtp_j2a_series_status_expected_bit(dtp_j2a_series_status_plan_t p,
+                                                          int unsigned shift);
+  return (shift > 0) && dtp_j2a_series_status_is_fault(p, shift - 1);
+endfunction
+
+// Beats whose address no earlier beat touched; a one-shot fault fires on
+// the first access.
+function automatic void dtp_j2a_series_status_first_visits(dtp_j2a_series_status_plan_t p,
+                                                           output int unsigned beats[$]);
+  for (int unsigned idx = 0; idx < DtpJ2aSeriesStatusBeats; idx++) begin
+    bit seen = 1'b0;
+    for (int unsigned j = 0; j < idx; j++)
+    if (dtp_j2a_series_status_addr(p, j) == dtp_j2a_series_status_addr(p, idx)) seen = 1'b1;
+    if (!seen) beats.push_back(idx);
+  end
+endfunction
+
+// The word each beat's address holds after the stream: the last one written
+// there.
+function automatic void dtp_j2a_series_status_final_words(
+    dtp_j2a_series_status_plan_t p, bit [63:0] words[], output bit [63:0] expected[]);
+  expected = new[words.size()];
+  foreach (words[idx]) begin
+    expected[idx] = words[idx];
+    for (int unsigned j = idx + 1; j < words.size(); j++)
+    if (dtp_j2a_series_status_addr(p, j) == dtp_j2a_series_status_addr(p, idx))
+      expected[idx] = words[j];
+  end
 endfunction
 
 function automatic int unsigned dtp_j2a_size_bytes(int unsigned size);
