@@ -454,9 +454,10 @@ function automatic int unsigned dtp_stap_ds_tdr_width(int unsigned idx);
 endfunction
 
 // ---------------------------------------------------------------------------
-// Cross-trigger CSR block (dtp_xtrig_types.py parity). The port counts and
-// the block layout come from the RTL and register packages; the register
-// masks follow the generated cross_trigger_port_reg_pkg field widths.
+// Cross-trigger CSR block (dtp_xtrig_types.py parity). Port counts come from
+// dtp_pkg, the window split from cross_trigger_network_pkg, register offsets
+// from the generated address-map packages, and field masks from the generated
+// cross_trigger_port_reg.svh and cross_trigger_matrix_reg.svh headers.
 // ---------------------------------------------------------------------------
 
 localparam int unsigned DtpXtrigNumCtp = dtp_pkg::DEFAULT_NUM_CTP;
@@ -477,24 +478,25 @@ localparam int unsigned DtpCtpStatusOffset  =
 localparam int unsigned DtpCtpStretchOffset =
     int'(cross_trigger_port_addrmap_pkg::CROSS_TRIGGER_PORT_STRETCH_MULT_BASE_ADDR);
 
-// CONFIG fields MODE[0], INVERT[1], RESET[2]; STRETCH_MULT[15:0]; CT_SRC
-// CONFIG_0 select[NumCtmPorts-1:0]. Every field resets to zero.
-localparam bit [31:0] DtpCtpConfigModeMask = 32'h1;
-localparam bit [31:0] DtpCtpConfigInvertMask = 32'h2;
-localparam bit [31:0] DtpCtpConfigResetMask = 32'h4;
-localparam bit [31:0] DtpCtpConfigMask = 32'h7;
-localparam bit [31:0] DtpCtpStretchMask = 32'hFFFF;
-localparam bit [31:0] DtpCtmSelectMask = (32'd1 << DtpXtrigNumCtmPorts) - 1;
+// CONFIG, STRETCH_MULT, and CT_SRC CONFIG_0 field masks from the generated headers.
+localparam bit [31:0] DtpCtpConfigModeMask = 32'(CROSS_TRIGGER_PORT_CONFIG_MODE_MASK);
+localparam bit [31:0] DtpCtpConfigInvertMask = 32'(CROSS_TRIGGER_PORT_CONFIG_INVERT_MASK);
+localparam bit [31:0] DtpCtpConfigResetMask = 32'(CROSS_TRIGGER_PORT_CONFIG_RESET_MASK);
+localparam bit [31:0] DtpCtpConfigMask =
+    DtpCtpConfigModeMask | DtpCtpConfigInvertMask | DtpCtpConfigResetMask;
+localparam bit [31:0] DtpCtpStretchMask = 32'(CROSS_TRIGGER_PORT_STRETCH_MULT_STRETCH_MULT_MASK);
+localparam bit [31:0] DtpCtmSelectMask = 32'(CT_SRC_CONFIG_0_CT_DST_SELECT_MASK);
 
+// CONFIG.MODE encoding (cross_trigger_port.rdl): 0 wire-OR, 1 point-to-point.
 localparam int unsigned DtpCtpModeWireOr = 0;
 localparam int unsigned DtpCtpModeP2p = 1;
 
 // STATUS fields (read-only, volatile).
-localparam bit [31:0] DtpCtpStatusBusy = 32'h01;
-localparam bit [31:0] DtpCtpStatusReqOut = 32'h10;
-localparam bit [31:0] DtpCtpStatusAckIn = 32'h20;
-localparam bit [31:0] DtpCtpStatusReqIn = 32'h40;
-localparam bit [31:0] DtpCtpStatusAckOut = 32'h80;
+localparam bit [31:0] DtpCtpStatusBusy = 32'(CROSS_TRIGGER_PORT_STATUS_BUSY_MASK);
+localparam bit [31:0] DtpCtpStatusReqOut = 32'(CROSS_TRIGGER_PORT_STATUS_REQ_OUT_MASK);
+localparam bit [31:0] DtpCtpStatusAckIn = 32'(CROSS_TRIGGER_PORT_STATUS_ACK_IN_MASK);
+localparam bit [31:0] DtpCtpStatusReqIn = 32'(CROSS_TRIGGER_PORT_STATUS_REQ_IN_MASK);
+localparam bit [31:0] DtpCtpStatusAckOut = 32'(CROSS_TRIGGER_PORT_STATUS_ACK_OUT_MASK);
 
 typedef enum int unsigned {
   DTP_XTRIG_CSR_UNMAPPED    = 0,

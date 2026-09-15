@@ -10,6 +10,7 @@ contiguous partial strobes).
 
 from __future__ import annotations
 
+import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 from pyuvm import ConfigDB, uvm_agent
@@ -27,6 +28,71 @@ from .dtp_xtrig_types import (
 
 def _int(signal) -> int:
     return int(signal.value)
+
+
+class DtpXtrigActivityWindow:
+    """Per-cycle OR and AND of named observables from ``start`` until ``stop``.
+
+    Sampling happens in the read-only phase of every clock cycle, so a
+    one-cycle pulse anywhere in the window lands in ``activity`` (OR of all
+    samples) and a one-cycle drop lands in ``hold`` (AND of all samples), which
+    is how an active-low request is seen. ``stop`` cancels the sampler and
+    returns activity, hold, and the last sample.
+    """
+
+    ALL_ONES = (1 << 32) - 1
+
+    def __init__(self, bfm: DtpXtrigBfm, names: tuple[str, ...]) -> None:
+        self._bfm = bfm
+        self.names = names
+        self.activity = {name: 0 for name in names}
+        self.hold = {name: self.ALL_ONES for name in names}
+        self.last = {name: 0 for name in names}
+        # Cycle offset (from start) at which each bit of each signal first rose.
+        self.first_seen: dict[str, dict[int, int]] = {name: {} for name in names}
+        self.cycles = 0
+        self._task: cocotb.Task | None = None
+
+    def start(self) -> None:
+        if self._task is None:
+            self._task = cocotb.start_soon(self._run())
+
+    async def _run(self) -> None:
+        while True:
+            await ReadOnly()
+            self._record()
+            await NextTimeStep()
+            await ClockCycles(self._bfm.clk, 1)
+
+    def _record(self) -> None:
+        for name in self.names:
+            value = self._bfm.tb_if.sample(name)
+            new_bits = value & ~self.activity[name]
+            while new_bits:
+                bit = (new_bits & -new_bits).bit_length() - 1
+                self.first_seen[name][bit] = self.cycles
+                new_bits &= new_bits - 1
+            self.activity[name] |= value
+            self.hold[name] &= value
+            self.last[name] = value
+        self.cycles += 1
+
+    def first_seen_text(self, names: tuple[str, ...] | None = None) -> str:
+        """``signal:bit@cycle`` list of every bit that rose, for the log."""
+        parts = []
+        for name in names or self.names:
+            for bit, cycle in sorted(self.first_seen[name].items()):
+                parts.append(f"{name.removeprefix('xtrig_')}:{bit}@{cycle}")
+        return " ".join(parts) or "-"
+
+    async def stop(self) -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
+        if self._task is not None:
+            self._task.cancel()
+            self._task = None
+        await ReadOnly()
+        self._record()
+        await NextTimeStep()
+        return dict(self.activity), dict(self.hold), dict(self.last)
 
 
 class DtpXtrigBfm:
@@ -107,6 +173,10 @@ class DtpXtrigBfm:
         self.pins.xtrig_ctm_dst_req.value = mask & ((1 << XTRIG_NUM_INT_CT) - 1)
         await ClockCycles(self.clk, cycles)
         self.pins.xtrig_ctm_dst_req.value = 0
+
+    def activity_window(self, names: tuple[str, ...]) -> DtpXtrigActivityWindow:
+        """Window sampler over ``names``; the caller starts and stops it."""
+        return DtpXtrigActivityWindow(self, names)
 
     def sample_signal(self, name: str) -> int:
         """Integer value of one cross-trigger observable or counter by its flat name."""
