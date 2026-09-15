@@ -248,6 +248,16 @@ selectable in the public testlists.
 
 ==== XTRIG, CTP, and CTM Scenarios
 
+CTM port naming follows the cross-trigger matrix register map
+(`hw/ip/cross_trigger/cross_trigger_matrix/regs/cross_trigger_matrix.rdl`): a
+CT_Src port is a matrix output, the port that delivers a trigger, and a CT_Dst
+port is a matrix input, the port a trigger enters on.
+`+CT_SRC[k]_CONFIG_0.CT_DST_SELECT+` therefore holds one bit per input port
+whose pulses are OR'd onto output `k`. The CTM procedures below name the
+register by the output that must fire (`dst`) and its bits by the inputs that
+fire it (`src`); a multicast is one register per selected output, each holding
+the same source-input bit.
+
 [cols=",,,",options="header",]
 |===
 |Test Case |Source Module |VIP / Model |Description
@@ -5952,6 +5962,10 @@ a. Verify ARVALID remains asserted and ARADDR remains stable while ARREADY is lo
 
 '''''
 
+NOTE: In the CTM entries that follow, `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT+` is
+the register of output port `dst`, and each set bit names a source input port
+(see the port-naming note at the head of this section).
+
 [[sec-611-dtp_ctm_wire_or_cla_to_ctp_test]]
 ===== 6.11 `dtp_ctm_wire_or_cla_to_ctp_test`
 
@@ -5964,17 +5978,17 @@ a. Verify ARVALID remains asserted and ARADDR remains stable while ARREADY is lo
 *Test Coverage*:
 
 * CTM wire-OR (multicast) routing of one internal CLA source to multiple external CTP destinations
-* `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` programmed with several destination bits set simultaneously
+* `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT+` of every selected CTP output programmed with the single CLA source-input bit; the overlap step adds a second source-input bit to one of them
 * All selected CTP destinations receive the trigger on the same source pulse; non-selected ports stay idle
 * Wire-OR superposition when a second overlapping CLA source targets one of the same CTP destinations
-* CSR readback of the multicast destination mask matches the programmed value
+* CSR readback of each selected output register matches its programmed source-input bits
 
 *Test Procedure*:
 
 [arabic]
 . Program the multicast route via `OcahAxiLiteMasterAgent`:
-a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with multiple CTP destination bits set (e.g. bits 0, 5, 16).
-b. Read the register back and confirm the multicast mask matches the written value.
+a. Write `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` for each selected CTP output `dst` (e.g. outputs 0, 5, 12).
+b. Read each written register back and confirm only the source-input bit is set.
 . Drive a cross-trigger request on the CLA source via the OCAH-local CTM BFM.
 . Observe the CTP destinations with the OCAH-local CTP monitor:
 a. Verify every selected CTP destination asserts the trigger simultaneously.
@@ -5988,7 +6002,7 @@ b. Pulse both sources and verify the overlapped destination ORs the contribution
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_wire_or_cla_to_ctp_csr_chk` |CSR readback of the multicast `CT_DST_SELECT` mask matches the programmed value
+|`ctm_wire_or_cla_to_ctp_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
 |`ctm_wire_or_cla_to_ctp_route_chk` |All selected CTP destinations assert on the CLA pulse against the reference model
 |`ctm_wire_or_cla_to_ctp_or_chk` |Overlapping CLA sources OR together at the shared CTP destination
 |`ctm_wire_or_cla_to_ctp_nospur_chk` |No non-selected destination port toggles
@@ -6010,17 +6024,17 @@ b. Pulse both sources and verify the overlapped destination ORs the contribution
 *Test Coverage*:
 
 * CTM wire-OR routing of one external CTP source to multiple internal CLA destinations
-* `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` programmed with several CLA destination bits set
+* `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT+` of every selected CLA output programmed with the single CTP source-input bit
 * All selected CLA destinations observe the trigger on the same CTP input pulse; non-selected stay idle
 * Wire-OR superposition when an overlapping CTP source targets a shared CLA destination
-* CSR readback of the multicast destination mask matches the programmed value
+* CSR readback of each selected output register matches its programmed source-input bits
 
 *Test Procedure*:
 
 [arabic]
 . Program the multicast route via `OcahAxiLiteMasterAgent`:
-a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with multiple CLA destination bits set.
-b. Read the register back and confirm the multicast mask matches.
+a. Write `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` for each selected CLA output `dst`.
+b. Read each written register back and confirm only the source-input bit is set.
 . Drive a cross-trigger request on the external CTP source via the OCAH-local CTP BFM.
 . Observe the CLA destinations with the OCAH-local CTM monitor:
 a. Verify every selected CLA destination asserts simultaneously.
@@ -6032,7 +6046,7 @@ b. Verify non-selected CLA destinations remain quiet.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_wire_or_ctp_to_cla_csr_chk` |CSR readback of the multicast `CT_DST_SELECT` mask matches the programmed value
+|`ctm_wire_or_ctp_to_cla_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
 |`ctm_wire_or_ctp_to_cla_route_chk` |All selected CLA destinations assert on the CTP pulse against the reference model
 |`ctm_wire_or_ctp_to_cla_or_chk` |Overlapping CTP sources OR together at the shared CLA destination
 |`ctm_wire_or_ctp_to_cla_nospur_chk` |No non-selected CLA destination toggles
@@ -6054,7 +6068,7 @@ b. Verify non-selected CLA destinations remain quiet.
 *Test Coverage*:
 
 * CTM wire-OR routing entirely between internal CLA channels (source CLA to multiple destination CLA)
-* `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` programmed with multiple internal CLA destination bits
+* `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT+` of every selected CLA output programmed with the single CLA source-input bit
 * All selected destination CLA channels pulse on the source CLA pulse; non-selected stay idle
 * Wire-OR superposition of two CLA sources sharing a destination CLA channel
 * No feedback loop where a destination CLA re-triggers its own source route
@@ -6063,8 +6077,8 @@ b. Verify non-selected CLA destinations remain quiet.
 
 [arabic]
 . Program the intra-CLA multicast route via `OcahAxiLiteMasterAgent`:
-a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with several CLA destination bits set.
-b. Read the register back and confirm the mask matches.
+a. Write `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` for each selected CLA output `dst`.
+b. Read each written register back and confirm only the source-input bit is set.
 . Pulse the source CLA via the OCAH-local CTM BFM.
 . Observe the destination CLA channels with the OCAH-local CTM monitor:
 a. Verify every selected destination CLA pulses.
@@ -6076,7 +6090,7 @@ b. Verify the routing mask behavior: non-selected CLA channels stay idle and the
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_wire_or_cla_to_cla_csr_chk` |CSR readback of the multicast `CT_DST_SELECT` mask matches the programmed value
+|`ctm_wire_or_cla_to_cla_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
 |`ctm_wire_or_cla_to_cla_route_chk` |All selected destination CLA channels pulse against the reference model
 |`ctm_wire_or_cla_to_cla_or_chk` |Overlapping CLA sources OR together at the shared CLA destination
 |`ctm_wire_or_cla_to_cla_noloop_chk` |No feedback loop or self-retrigger of the source CLA
@@ -6098,7 +6112,7 @@ b. Verify the routing mask behavior: non-selected CLA channels stay idle and the
 *Test Coverage*:
 
 * CTM wire-OR routing entirely between external CTP ports (source CTP to multiple destination CTP)
-* `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` programmed with multiple external CTP destination bits
+* `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT+` of every selected CTP output programmed with the single CTP source-input bit
 * All selected destination CTP ports pulse with matching pulse width on the source CTP pulse
 * Wire-OR superposition of two CTP sources sharing a destination CTP port
 * No feedback loop from a destination CTP port back into the source route
@@ -6107,8 +6121,8 @@ b. Verify the routing mask behavior: non-selected CLA channels stay idle and the
 
 [arabic]
 . Program the inter-CTP multicast route via `OcahAxiLiteMasterAgent`:
-a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` with several CTP destination bits set.
-b. Read the register back and confirm the mask matches.
+a. Write `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` for each selected CTP output `dst`.
+b. Read each written register back and confirm only the source-input bit is set.
 . Pulse the source CTP via the OCAH-local CTP BFM.
 . Observe the destination CTP ports with the OCAH-local CTP monitor:
 a. Verify every selected destination CTP port pulses.
@@ -6121,7 +6135,7 @@ c. Verify no feedback loop re-triggers the source.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_wire_or_ctp_to_ctp_csr_chk` |CSR readback of the multicast `CT_DST_SELECT` mask matches the programmed value
+|`ctm_wire_or_ctp_to_ctp_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
 |`ctm_wire_or_ctp_to_ctp_route_chk` |All selected destination CTP ports pulse against the reference model
 |`ctm_wire_or_ctp_to_ctp_width_chk` |Destination CTP pulse width matches the source pulse
 |`ctm_wire_or_ctp_to_ctp_noloop_chk` |No feedback loop or self-retrigger of the source CTP
@@ -6143,7 +6157,7 @@ c. Verify no feedback loop re-triggers the source.
 *Test Coverage*:
 
 * CTM point-to-point routing of an internal CLA source to a single external CTP destination
-* `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` programmed with exactly one destination bit set
+* `+CT_SRC[ctp_dst]_CONFIG_0.CT_DST_SELECT+` programmed with exactly one source-input bit set
 * Request appears only at the selected CTP destination; no spurious triggers elsewhere
 * Several distinct CLA-source / CTP-destination pairs exercised to vary the single-bit position
 
@@ -6151,8 +6165,8 @@ c. Verify no feedback loop re-triggers the source.
 
 [arabic]
 . Program the point-to-point route via `OcahAxiLiteMasterAgent`:
-a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << ctp_dst)+` so a single CTP destination bit is set.
-b. Read the register back and confirm only the one destination bit is set.
+a. Write `+CT_SRC[ctp_dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` so the destination CTP output selects the single source input.
+b. Read the register back and confirm only the one source-input bit is set.
 . Drive a cross-trigger request on the CLA source via the OCAH-local CTM BFM.
 . Observe the destinations with the OCAH-local CTP monitor:
 a. Verify the request appears at exactly the selected CTP destination.
@@ -6164,7 +6178,7 @@ b. Verify no other destination port observes the request.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_p2p_cla_to_ctp_csr_chk` |CSR readback shows exactly one CTP destination bit set
+|`ctm_p2p_cla_to_ctp_csr_chk` |CSR readback of the destination CTP output register shows exactly one source-input bit set
 |`ctm_p2p_cla_to_ctp_route_chk` |Trigger reaches exactly the selected CTP destination against the reference model
 |`ctm_p2p_cla_to_ctp_nospur_chk` |No spurious triggers on non-selected destinations
 |===
@@ -6185,7 +6199,7 @@ b. Verify no other destination port observes the request.
 *Test Coverage*:
 
 * CTM point-to-point routing of an external CTP source to a single internal CLA destination
-* `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` programmed with exactly one CLA destination bit set
+* `+CT_SRC[cla_dst]_CONFIG_0.CT_DST_SELECT+` programmed with exactly one source-input bit set
 * Request appears only at the selected CLA destination; no spurious triggers elsewhere
 * Several distinct CTP-source / CLA-destination pairs exercised
 
@@ -6193,8 +6207,8 @@ b. Verify no other destination port observes the request.
 
 [arabic]
 . Program the point-to-point route via `OcahAxiLiteMasterAgent`:
-a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << cla_dst)+` so a single CLA destination bit is set.
-b. Read the register back and confirm only the one destination bit is set.
+a. Write `+CT_SRC[cla_dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` so the destination CLA output selects the single source input.
+b. Read the register back and confirm only the one source-input bit is set.
 . Drive a cross-trigger request on the CTP source via the OCAH-local CTP BFM.
 . Observe the destinations with the OCAH-local CTM monitor:
 a. Verify the request appears at exactly the selected CLA destination.
@@ -6206,7 +6220,7 @@ b. Verify no other destination observes the request.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_p2p_ctp_to_cla_csr_chk` |CSR readback shows exactly one CLA destination bit set
+|`ctm_p2p_ctp_to_cla_csr_chk` |CSR readback of the destination CLA output register shows exactly one source-input bit set
 |`ctm_p2p_ctp_to_cla_route_chk` |Trigger reaches exactly the selected CLA destination against the reference model
 |`ctm_p2p_ctp_to_cla_nospur_chk` |No spurious triggers on non-selected destinations
 |===
@@ -6227,7 +6241,7 @@ b. Verify no other destination observes the request.
 *Test Coverage*:
 
 * CTM point-to-point routing entirely between internal CLA channels (single source CLA to single destination CLA)
-* `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` programmed with exactly one CLA destination bit set
+* `+CT_SRC[cla_dst]_CONFIG_0.CT_DST_SELECT+` programmed with exactly one source-input bit set
 * Request appears only at the selected destination CLA; no spurious triggers elsewhere
 * No feedback loop where the source CLA re-triggers itself
 
@@ -6235,8 +6249,8 @@ b. Verify no other destination observes the request.
 
 [arabic]
 . Program the intra-CLA point-to-point route via `OcahAxiLiteMasterAgent`:
-a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << cla_dst)+` so a single CLA destination bit is set.
-b. Read the register back and confirm only the one destination bit is set.
+a. Write `+CT_SRC[cla_dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` so the destination CLA output selects the single source input.
+b. Read the register back and confirm only the one source-input bit is set.
 . Drive the source CLA request via the OCAH-local CTM BFM.
 . Observe the CLA destinations with the OCAH-local CTM monitor:
 a. Verify the request reaches exactly the selected destination CLA.
@@ -6248,7 +6262,7 @@ b. Verify no other CLA channel observes the request and the source is not fed ba
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_p2p_cla_to_cla_csr_chk` |CSR readback shows exactly one CLA destination bit set
+|`ctm_p2p_cla_to_cla_csr_chk` |CSR readback of the destination CLA output register shows exactly one source-input bit set
 |`ctm_p2p_cla_to_cla_route_chk` |Trigger reaches exactly the selected CLA destination against the reference model
 |`ctm_p2p_cla_to_cla_nospur_chk` |No spurious triggers and no source self-retrigger
 |===
@@ -6269,7 +6283,7 @@ b. Verify no other CLA channel observes the request and the source is not fed ba
 *Test Coverage*:
 
 * CTM point-to-point routing entirely between external CTP ports (single source CTP to single destination CTP)
-* `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT+` programmed with exactly one CTP destination bit set
+* `+CT_SRC[ctp_dst]_CONFIG_0.CT_DST_SELECT+` programmed with exactly one source-input bit set
 * Request appears only at the selected destination CTP; no spurious triggers elsewhere
 * No feedback loop from the destination CTP back into the source route
 
@@ -6277,8 +6291,8 @@ b. Verify no other CLA channel observes the request and the source is not fed ba
 
 [arabic]
 . Program the inter-CTP point-to-point route via `OcahAxiLiteMasterAgent`:
-a. Write `+CT_SRC[src]_CONFIG_0.CT_DST_SELECT = (1 << ctp_dst)+` so a single CTP destination bit is set.
-b. Read the register back and confirm only the one destination bit is set.
+a. Write `+CT_SRC[ctp_dst]_CONFIG_0.CT_DST_SELECT = (1 << src)+` so the destination CTP output selects the single source input.
+b. Read the register back and confirm only the one source-input bit is set.
 . Drive the source CTP request via the OCAH-local CTP BFM.
 . Observe the CTP destinations with the OCAH-local CTP monitor:
 a. Verify the request reaches exactly the selected destination CTP.
@@ -6290,7 +6304,7 @@ b. Verify no other CTP port observes the request and no feedback loop re-trigger
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_p2p_ctp_to_ctp_csr_chk` |CSR readback shows exactly one CTP destination bit set
+|`ctm_p2p_ctp_to_ctp_csr_chk` |CSR readback of the destination CTP output register shows exactly one source-input bit set
 |`ctm_p2p_ctp_to_ctp_route_chk` |Trigger reaches exactly the selected CTP destination against the reference model
 |`ctm_p2p_ctp_to_ctp_nospur_chk` |No spurious triggers and no source feedback loop
 |===
