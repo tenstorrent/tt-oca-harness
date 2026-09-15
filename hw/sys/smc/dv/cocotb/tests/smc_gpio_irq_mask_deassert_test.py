@@ -20,17 +20,14 @@ from smc_base_test import smc_base_test
 class smc_gpio_irq_mask_deassert_test(smc_base_test):
     """Clearing interrupt_enable must de-assert interrupt_o."""
 
+    required_evidence = (
+        "CHK-GPIO-IRQ-MASK-ARM",
+        "CHK-GPIO-IRQ-MASK-DEASSERT",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         seq = smc_gpio_irq_mask_deassert_test_seq("gpio_irq_mask_deassert_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # Gate on the emitted tokens rather than on a boolean the sequence set:
-        # each leg raises on failure, so a relayed flag could only ever report
-        # that the line was reached.
-        required = (
-            "CHK-GPIO-IRQ-MASK-ARM",
-            "CHK-GPIO-IRQ-MASK-DEASSERT",
-        )
-        missing = [n for n in required if n not in seq.chk_seen]
-        assert not missing, f"missing CHK evidence tokens: {missing}"
