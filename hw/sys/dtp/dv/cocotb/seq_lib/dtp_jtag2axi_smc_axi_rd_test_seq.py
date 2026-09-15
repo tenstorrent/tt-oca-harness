@@ -215,10 +215,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"series_wr_rd_status.read_axi#{idx}",
             )
             raw_data, status_bit = await self.series_data_with_status(
-                0,
-                size=size,
-                increment=0,
-                back_to_rti=True,
+                0, size=size, increment=0, back_to_rti=True
             )
             exp = expected_by_addr[addr]
             self.log_iteration(
@@ -229,6 +226,7 @@ class dtp_jtag2axi_smc_axi_rd_test_seq(dtp_jtag2axi_base_test_seq):
                 inc,
                 status_bit,
             )
+            self.assert_equal(f"series_wr_rd_status.status_bit#{idx}", status_bit, 0)
             self.assert_equal(f"series_wr_rd_status.rdata#{idx}", raw_data, exp)
             addr += stride if inc else 0
             self.operation_count += 1

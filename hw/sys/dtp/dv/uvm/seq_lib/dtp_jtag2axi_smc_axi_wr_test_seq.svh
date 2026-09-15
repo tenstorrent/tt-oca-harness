@@ -310,6 +310,9 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
       wait_for_target_activity(t, before_aw, before_w, before_ar, 1'b0, $sformatf(
                                "series_status.axi#%0d", idx + 1));
       wait_for_write_completion(t, wb0, $sformatf("series_status.commit#%0d", idx + 1));
+      if (status_bit !== 1'b0)
+        `uvm_error("jtag2axi_status_chk", $sformatf(
+                   "series_status.status_bit#%0d: %0d != expected 0", idx + 1, status_bit))
       observed = read_target_mem_int(t, expected_addr, size);
       if (observed !== data)
         `uvm_error("jtag2axi_data_chk", $sformatf(
