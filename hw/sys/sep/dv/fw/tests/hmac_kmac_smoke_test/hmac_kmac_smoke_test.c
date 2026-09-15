@@ -32,6 +32,7 @@
 #include "sep_kmac.h"
 #include "sha256.h"
 #include "sep_aes_init.h"
+#include "sep_entropy.h"
 #include "aes_test_util.h"
 
 // CTRL_SHADOWED encodings from the IP register specification
@@ -162,7 +163,19 @@ int main(void) {
     // The AXI leaf already walks the AES mode/key matrix from the testbench
     // master. What it cannot show is the CPU-owned path: firmware staging the
     // block in SRAM, handing it to the engine, and recovering it from SRAM.
-    if (sep_aes_sw_reset_release() != 0) {
+    //
+    // AES masking reseeds its PRNG from crypto-EDN, so STATUS.IDLE never clears
+    // unless the entropy stack is running. The HMAC and KMAC legs above do not
+    // need it -- KMAC is driven with software entropy -- so the bring-up is
+    // here, next to the only consumer that depends on it. It is idempotent: if
+    // the boot gate is already open it enables EDN and returns.
+    int entropy_rc = sep_entropy_bringup();
+    if (entropy_rc != SEP_ENTROPY_OK) {
+        sep_mbx_puts("[FAIL] entropy bring-up rc=");
+        sep_mbx_puthex((uint32_t)entropy_rc);
+        sep_mbx_puts(" (-1=main_sm alert, -2=boot gate timeout); AES cannot run\n");
+        errors++;
+    } else if (sep_aes_sw_reset_release() != 0) {
         sep_mbx_puts("[FAIL] AES software reset did not release\n");
         errors++;
     } else {

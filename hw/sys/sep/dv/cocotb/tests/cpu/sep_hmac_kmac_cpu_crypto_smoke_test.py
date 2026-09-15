@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SEP HMAC + KMAC CPU crypto smoke test (PyUVM).
+"""SEP HMAC + KMAC + AES CPU crypto smoke test (PyUVM).
 
 OSS port combining the reference suite ``hmac_test`` and ``kmac_test`` (crypto
-engine datapath). Boots the VeeR EL2 core and runs the hmac_kmac firmware, which
-exercises the two OpenTitan crypto engines over the real CPU->fabric path on bare
-``sep``:
+engine datapath), plus the CPU-owned AES data path. Boots the VeeR EL2 core and
+runs the hmac_kmac firmware, which exercises three OpenTitan crypto engines over
+the real CPU->fabric path on bare ``sep``:
 
   * HMAC (SHA-256 mode): hashes empty / "abc" / "Hello OTBN." and compares each
     HW digest against an independent software SHA-256 (fw/tests/common/sha256.c), plus
@@ -14,6 +14,18 @@ exercises the two OpenTitan crypto engines over the real CPU->fabric path on bar
     entropy (no EDN, cannot hang) -- checks done, ERR_CODE == 0, and the unmasked
     digest (share0 ^ share1) is non-zero. The KMAC side is smoke-only (no
     bare-metal Keccak model); the HMAC side carries exact digests.
+  * AES (128-ECB): an SRAM round trip. Firmware stages the FIPS-197 C.1
+    plaintext in SRAM, reads it back into the engine, encrypts, and stores the
+    ciphertext to SRAM where it is compared against the published vector; then
+    it feeds that ciphertext back under DECRYPT and compares the recovered block
+    against the plaintext re-read from SRAM. SRAM is on the path in both
+    directions, which is what the AXI mode walk cannot claim -- there the block
+    never leaves the registers.
+
+The AES leg needs live entropy: masking reseeds its PRNG from crypto-EDN and
+STATUS.IDLE never clears until that completes, so the firmware brings the stack
+up (sep_entropy.h) and this test drives the raw noise the ring oscillators
+cannot produce under Verilator.
 
 Firmware-self-checking: main() returns the error count and start.S emits the PASS
 (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which the boot
@@ -60,6 +72,14 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
         # Override the boot scoreboard's expected banner here (after its own
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
+
+        # The firmware programs ESRC/CSRNG/EDN itself, but the ring oscillators
+        # do not self-oscillate under Verilator: +esrc_noise_force routes this
+        # port onto the noise input and something still has to drive it. Started
+        # before the core is released so the raw bits are already moving when the
+        # firmware opens the health window.
+        noise = self.start_esrc_noise_driver()
+
         await self.boot_firmware(
             self.sb,
             _ITCM_HEX,
@@ -70,21 +90,30 @@ class sep_hmac_kmac_cpu_crypto_smoke_test(sep_base_test):
             progress_every=_PROGRESS_EVERY,
         )
 
+        # Stop driving before the simulator tears the DUT down: a forked task
+        # still writing a DUT port after $finish segfaults the simulation, which
+        # surfaces as a non-zero exit on an otherwise passing run.
+        noise.kill()
+
         # The firmware error count gates the PASS magic, so a failed leg already
         # fails the scoreboard. These gates are here so the kept log cannot show
         # a green run with a checker that never ran: a firmware image built
         # without the AES leg, or one where it was skipped, would otherwise pass
         # this test silently.
+        # Match the firmware's [PASS] prefix, not the bare checker name: the
+        # firmware's own [FAIL] line names the same checker, so a bare-substring
+        # gate would be satisfied by the failure it is meant to catch and would
+        # then log a PASS of its own.
         console = self.sb.console_text()
-        for needle, what in (
+        for chk, what in (
             ("CHK-CPU-AES-ENC", "the AES encrypt leg against the FIPS-197 vector"),
             ("CHK-CPU-AES-RT", "the AES SRAM round trip"),
         ):
-            assert needle in console, (
-                f"firmware console has no {needle} line, so {what} did not run. "
-                "A green result here would not mean the contract was proven."
+            assert f"[PASS] {chk}" in console, (
+                f"firmware console has no '[PASS] {chk}' line, so {what} did not "
+                f"run or did not pass. Console was:\n{console}"
             )
         self.logger.info(
-            "CHK-CPU-AES-ENC / CHK-CPU-AES-RT PASS: both AES legs reported in the "
-            "firmware console"
+            "CHK-CPU-AES-ENC / CHK-CPU-AES-RT PASS: both AES legs reported passing "
+            "in the firmware console"
         )

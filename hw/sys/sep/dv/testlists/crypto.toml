@@ -103,9 +103,12 @@ module = "cpu.sep_hmac_kmac_cpu_crypto_smoke_test"
 firmware = "hmac_kmac_smoke_test"
 seed = 1
 timeout_sec = 3600
-tags = ["boot", "cpu", "crypto", "hmac", "kmac", "subsystem"]
+tags = ["boot", "cpu", "crypto", "hmac", "kmac", "aes", "subsystem"]
 run_modes = ["cpu"]
-args = ["+skip_fuse_sense"]
+# +esrc_noise_force: the AES leg reseeds its masking PRNG from crypto-EDN, and
+# the firmware brings the entropy stack up itself. Under Verilator the ESRC ring
+# oscillators do not self-oscillate, so the raw noise comes from the testbench.
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
 # Standalone KMAC-family mode x strength breadth (RAND-REP). no_cpu direct-AXI walk

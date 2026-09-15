@@ -80,9 +80,9 @@
 // entropy_stream_valid, so enabling EDN before it issues an Instantiate against
 // a source that cannot answer. ALERT/ERR mean the FSM escalated and no further
 // entropy will come out -- a different verdict from "not yet".
-#define SEP_MAIN_SM_BOOT_PHASE_DONE (1u << 12)
-#define SEP_MAIN_SM_ERR (1u << 11)
-#define SEP_MAIN_SM_ALERT (1u << 10)
+#define SEP_MAIN_SM_BOOT_PHASE_DONE ENTROPY_SOURCE__MAIN_SM_STATUS__BOOT_PHASE_DONE_bm
+#define SEP_MAIN_SM_ERR ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bm
+#define SEP_MAIN_SM_ALERT ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bm
 
 // One boot health-test window is 2048 samples at the div64 rate, ~131k core
 // cycles; each poll here is an uncached AXI read, so a few thousand covers it.
