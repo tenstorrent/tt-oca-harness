@@ -13646,14 +13646,16 @@ allowing software to reliably detect when memory is ready for use.</p>
 <div class="paragraph">
 <p>The SMC CPU subsystem includes Built-In Redundancy Analysis (BIRA) memory repair
 support to address manufacturing defects in SRAM arrays. Repair uses redundant
-memory elements configured with data stored in eFuse memory, applied during the
+memory elements configured by an external repair controller, applied during the
 boot sequence.</p>
 </div>
 <div class="paragraph">
 <p>Memory repair executes automatically after eFuse sensing completes and before
-MBIST operations. The process reads repair data from the eFuse BIRA register
-(16-kilobit <code>repair_data</code> field) and configures redundant memory elements,
-ensuring SRAM arrays are functional before the CPU cluster begins execution.</p>
+MBIST operations. The external controller configures the redundant memory
+elements and reports completion through <code>mem_repair_done</code> / <code>mem_repair_success</code>,
+ensuring SRAM arrays are functional before the CPU cluster begins execution. The
+SMC fuse map provides no repair-data storage; where that data lives is an
+integration choice.</p>
 </div>
 <div class="paragraph">
 <p><strong>Control Mechanisms:</strong></p>
@@ -16276,8 +16278,8 @@ CPU accesses to its own resources out through the output fabric.</p>
 <div class="paragraph">
 <p>After global-aperture reconfiguration, software may use global addresses
 for accesses that leave the local SMC view. Global address derivation
-requires knowledge of the chiplet ID or chiplet BAR, both provisioned in
-fuses and available to firmware.</p>
+requires the chiplet-global aperture base, which firmware reads from the
+<code>GLOBAL_BASE</code> CSR described above.</p>
 </div>
 </div>
 <div class="sect4">
@@ -19377,8 +19379,8 @@ Protection</em>. This section records how they apply to the SMC eFuse controller
 <td class="tableblock halign-left valign-top"><p class="tableblock">Class 1a (confidentiality)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em>none</em></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The SMC fuse map holds no device secrets&#8201;&#8212;&#8201;it carries identifiers
-(<code>CHIPLET_ID</code>, <code>PACKAGE_ID</code>, <code>I2C_I3C_ID</code>), memory repair data (<code>BIRA</code>), and
-topology / clocking / SPI configuration. There are no keys, no UIDs used as key
+(<code>JTAG_PUBLIC_IDENTITY</code>, <code>I2C_I3C_ID</code>), boot configuration (<code>SMC_CONFIG</code>,
+<code>OCCP_TRANSPORT_TIMEOUT</code>), and spare regions. There are no keys, no UIDs used as key
 material, and no token registers. Consequently no confidentiality masking is
 required.</p></td>
 </tr>

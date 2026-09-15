@@ -354,14 +354,16 @@ allowing software to reliably detect when memory is ready for use.</p>
 <div class="paragraph">
 <p>The SMC CPU subsystem includes Built-In Redundancy Analysis (BIRA) memory repair
 support to address manufacturing defects in SRAM arrays. Repair uses redundant
-memory elements configured with data stored in eFuse memory, applied during the
+memory elements configured by an external repair controller, applied during the
 boot sequence.</p>
 </div>
 <div class="paragraph">
 <p>Memory repair executes automatically after eFuse sensing completes and before
-MBIST operations. The process reads repair data from the eFuse BIRA register
-(16-kilobit <code>repair_data</code> field) and configures redundant memory elements,
-ensuring SRAM arrays are functional before the CPU cluster begins execution.</p>
+MBIST operations. The external controller configures the redundant memory
+elements and reports completion through <code>mem_repair_done</code> / <code>mem_repair_success</code>,
+ensuring SRAM arrays are functional before the CPU cluster begins execution. The
+SMC fuse map provides no repair-data storage; where that data lives is an
+integration choice.</p>
 </div>
 <div class="paragraph">
 <p><strong>Control Mechanisms:</strong></p>
