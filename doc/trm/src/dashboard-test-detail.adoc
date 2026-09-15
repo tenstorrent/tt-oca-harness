@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[verification-test-detail]]
+= Test Detail
+
+Every published run of one test, with the seeds it ran, the reason given for
+any that failed, and a link to the run that produced it.
+
+ifdef::backend-html5[]
+++++
+<div class="dashboard">
+  <p class="dashboard-back" id="dashboard-detail-back"></p>
+
+  <h3 id="dashboard-detail-name">Test</h3>
+  <div id="dashboard-status" class="dashboard-status">Loading test detail&hellip;</div>
+
+  <div id="dashboard-test-detail" hidden>
+    <table class="dashboard-detail-table">
+      <thead id="dashboard-detail-head"></thead>
+      <tbody id="dashboard-detail-rows"></tbody>
+    </table>
+  </div>
+
+  <noscript>
+    <p class="dashboard-status dashboard-status-error">
+      This page renders live regression data with JavaScript. With scripting
+      disabled, read the published data directly from the
+      <code>dv-dashboard-data</code> branch.
+    </p>
+  </noscript>
+</div>
+<script src="../../_/js/dashboard.js"></script>
+++++
+endif::[]
+
+ifndef::backend-html5[]
+[NOTE]
+====
+Test detail renders live regression data in the browser and has no static
+equivalent in this PDF. See the Test Detail page of the published HTML
+documentation.
+====
+endif::[]
