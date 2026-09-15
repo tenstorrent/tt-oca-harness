@@ -518,7 +518,7 @@ module dtp_uvm_top
   always @(negedge rst_n_i) sys_rst_assert_count <= sys_rst_assert_count + 32'd1;
   always @(negedge pwr_on_rst_ni) por_assert_count <= por_assert_count + 32'd1;
 
-  // Flat slave inputs (from AxiRam) -> DUT resp struct
+  // Flat responder outputs -> DUT resp struct
   always_comb begin
     axi_smc_dbg_resp          = '{default: '0};
     axi_smc_dbg_resp.aw_ready = m_axi_awready;
@@ -646,7 +646,7 @@ module dtp_uvm_top
   end
 
   // ------------------------------------------------------------------
-  // DTP DUT (default parameters; type params use jtag_tap_pkg/dtp_pkg stubs)
+  // DTP DUT: default parameters; the type parameters come from jtag_tap_pkg and dtp_pkg
   // ------------------------------------------------------------------
   dtp u_dut (
     .clk_i                            (clk_i),

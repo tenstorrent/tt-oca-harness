@@ -267,7 +267,11 @@ def git_head(root: Path) -> dict[str, str]:
     if cached is None:
         cached = {
             "commit": command_text(["git", "rev-parse", "HEAD"], root),
-            "dirty": "true" if command_text(["git", "status", "--porcelain"], root) else "false",
+            # Untracked files are not compiled -- the filelists name tracked
+            # sources -- so they do not make the artifact's tree dirty.
+            "dirty": "true"
+            if command_text(["git", "status", "--porcelain", "--untracked-files=no"], root)
+            else "false",
         }
         _GIT_HEAD[key] = cached
     return dict(cached)
