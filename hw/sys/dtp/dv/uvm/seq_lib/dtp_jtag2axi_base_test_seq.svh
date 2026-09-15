@@ -460,13 +460,24 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     series_data_shift(t, t.series_data_no_incr_instr, data, size, -1, unused);
   endtask
 
+  // With-status shift: the payload and the status bit above it, which sits
+  // past bit 63 for a 64-bit bridge and so comes from the operation's own
+  // capture rather than the 64-bit result word.
   task series_data_with_status(dtp_j2a_target_t t, bit [63:0] data, int unsigned size,
                                bit increment, output bit [63:0] rdata, output bit status_bit);
-    bit [63:0] result;
     int unsigned payload_bits = 8 * size_bytes(size);
-    series_data_shift(t, t.series_data_with_status_instr, data, size, int'(increment), result);
-    rdata      = result & data_mask(size);
-    status_bit = result[payload_bits];
+    dtp_jtag2axi_series_data_seq shift =
+            dtp_jtag2axi_series_data_seq::type_id::create("series_data_status");
+    shift.target    = t;
+    shift.instr     = t.series_data_with_status_instr;
+    shift.data      = data;
+    shift.size      = size;
+    shift.increment = int'(increment);
+    run_jtag_op(shift);
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SERIES_DATA shift");
+    note_tdr_access(payload_bits + 1, $sformatf("%s series_data", t.name));
+    rdata      = shift.captured & data_mask(size);
+    status_bit = shift.captured_status;
   endtask
 
   // --- lifecycle debug disables (must be cleared before JTAG2AXI ops) ----
