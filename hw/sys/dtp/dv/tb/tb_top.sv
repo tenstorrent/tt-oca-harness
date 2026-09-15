@@ -969,9 +969,10 @@ module dtp_uvm_top
   assign u_scan_if.jtag_bsr_update_en  = jtag_bsr_update_en;
 
   // Lifecycle debug disables and clock-stop requests: sequences drive the
-  // typed dbg_disable_t and the CLA clock-stop request vector through
-  // dtp_tb_if (dbg_disable init '1 = fail-closed; clk_stop_req init '0 =
-  // quiescent; the debug-TDR sequences drive the requests they need).
+  // named debug disables and the CLA clock-stop request vector through
+  // dtp_tb_if, which binds the disables into the typed dbg_disable_t
+  // (disables init 1 = fail-closed; clk_stop_req init '0 = quiescent; the
+  // debug-TDR sequences drive the requests they need).
   assign xtrig_clk_stop_req = u_tb_if.xtrig_clk_stop_req;
   assign dbg_disable        = u_tb_if.dbg_disable;
 
