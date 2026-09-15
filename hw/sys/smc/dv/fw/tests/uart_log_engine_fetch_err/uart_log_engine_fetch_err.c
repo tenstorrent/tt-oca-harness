@@ -43,11 +43,12 @@
 //   must not capture into its status bit -- but does not yet express it as a
 //   generated property.  The ENABLE-gating arms below check that DECLARED
 //   INTENT and nothing more.  Whether INTR_ENABLE gates INTR_STATUS capture
-//   or only the IRQ output is settled as an RTL defect: #1635 records that the
-//   RTL gates the SET path where prim_intr_hw masks the OUTPUT, and asks for
-//   the output-mask form.
-// TODO(minshaohoTT, #1635): once the log engine masks the output instead, the
-//   two ENABLE-gating arms below must expect capture while masked.
+//   or only the IRQ output is settled as an RTL defect: the RTL gates the SET
+//   path where prim_intr_hw masks the OUTPUT, and the intended form is the
+//   output-mask form.
+// The two ENABLE-gating arms below expect no capture while masked, which is
+// the SET-path gating the RTL has today. Those arms must then expect capture
+// while masked if the log engine moves to the output-mask form.
 //
 //==========================================================================
 // OBSERVED DUT BEHAVIOUR THIS TEST MUST WORK AROUND (not an expectation)

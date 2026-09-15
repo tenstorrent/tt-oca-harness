@@ -198,13 +198,11 @@ int main(void) {
     simputs("  [4.2] Waiting for ACQ FIFO data...\n");
     /* Synchronise on the target's own end-of-transaction event.
      *
-     * Counting expected ACQ entries from the number of FMT pushes is guesswork:
-     * a 6-byte write (address + length header + 4 data) landed 5 ACQ entries,
-     * and waiting for 6 simply never returned. The diagnostic that established
-     * this also showed the transfer had completed normally -- controller
-     * STATUS=0x33c (FMTEMPTY, HOSTIDLE, all empty), EVENTS=0 (no NACK, no
-     * arbitration loss), FMTLVL=0, and target TARGET_EVENTS=0x18 =
-     * START_DETECT | STOP_DETECT. Nothing stalled; the expectation was wrong.
+     * The count of ACQ entries is not derivable from the number of FMT pushes:
+     * CTRL.ACQ_START_STOP_EN is at its reset value of 0 (i2c.rdl:580), so the
+     * target writes no START/RESTART/STOP entry, and a write of N bytes leaves
+     * fewer than N+1 entries. Waiting on a count computed that way cannot be
+     * relied on to return.
      *
      * STOP_DETECT is the DUT telling us the transaction is over, so wait for
      * that and then drain whatever it produced. Bounded, and the bound fails.
@@ -291,9 +289,7 @@ int main(void) {
         simputs("\n");
     }
 
-    /* Reconciled against the stimulus. This test previously compared nothing at
-     * all -- data_buf and recv_buffer never met, received_len was only a loop
-     * bound -- and passed a run in which zero bytes arrived. */
+    /* The payload count and every byte are reconciled against the stimulus. */
     if (received_len != sizeof(data_buf)) {
         simputs("  [ERROR] payload count mismatch: expected 0x");
         simputshex32("", (uint32_t)sizeof(data_buf));
