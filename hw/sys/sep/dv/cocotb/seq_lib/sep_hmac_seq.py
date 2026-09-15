@@ -51,6 +51,9 @@ HMAC_CMD_HASH_START = 1 << 0
 HMAC_CMD_HASH_PROCESS = 1 << 1
 
 HMAC_STATUS_FIFO_FULL = 1 << 2
+# STATUS.hmac_idle: set while the core holds no in-flight message. Taken from
+# the generated block, so a field move cannot leave a stale literal here.
+HMAC_STATUS_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
 HMAC_INTR_DONE = 1 << 0
 HMAC_INTR_ERR = 1 << 2
 
@@ -242,6 +245,19 @@ class SepHmac(SepAxiRegDriver):
             f"HMAC INTR_STATE.hmac_done not cleared by W1C (0x{post:08x})"
         )
         return digest
+
+    async def wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
+        """Poll STATUS until hmac_idle. A caller that has just released this
+        domain from reset needs the core to be accepting again before it can
+        attribute a refusal to anything other than the core being busy."""
+        for i in range(timeout):
+            if await self._rd(HMAC_STATUS) & HMAC_STATUS_IDLE:
+                self.log.info("HMAC idle (%s) after %d polls", tag, i)
+                return
+            if i and i % 500 == 0:
+                self.log.info("HMAC wait_idle (%s): poll %d", tag, i)
+            await ClockCycles(cocotb.top.clk_i, poll_cycles)
+        raise AssertionError(f"HMAC did not reach STATUS.hmac_idle ({tag})")
 
     async def _wait_fifo_space(self, *, timeout: int = 2_000, poll_cycles: int = 10) -> None:
         for _ in range(timeout):

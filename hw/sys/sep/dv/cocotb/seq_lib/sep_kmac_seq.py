@@ -340,6 +340,11 @@ class SepKmac(SepAxiRegDriver):
             post,
         )
 
+    async def wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
+        """Poll STATUS until sha3_idle. Public form of the internal wait, for a
+        caller that must know the core is accepting after a reset release."""
+        await self._wait_idle(tag, timeout=timeout, poll_cycles=poll_cycles)
+
     async def _wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
         await self._poll(KMAC_STATUS_IDLE, f"idle/{tag}", timeout=timeout, poll_cycles=poll_cycles)
 

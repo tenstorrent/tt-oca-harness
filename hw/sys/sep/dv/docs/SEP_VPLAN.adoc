@@ -5694,7 +5694,7 @@ slot, so over this surface an erase always frees.
 |CHK-ABR-DEST
 |A directed `CMD_KEY_LOAD` + `CMD_KEY_TRANSFER` of an 8-word palindromic seed to dest ABR ML-DSA seed returns success and echoes that dest. Every seed walks this cell. Consume is not claimed here.
 |CHK-DEST
-|A transfer to an engine outside the key's permitted set is refused with the failure code, not an argument-validation code.
+|A transfer to an engine outside the key's permitted set is refused with the failure code, not an argument-validation code. The refusal is attributable: the target engine is released from reset and waited to idle for that beat, so being parked is not the cause, and an unconditional control beat transfers the same handle to a destination inside its permitted set and requires success, so a handle that no longer exists -- which carries the same failure code -- is not the cause either.
 |CHK-SHRED
 |`CMD_ENGINE_SHRED` succeeds with its destination echoed, and the engine re-keys: a second distinct key transferred afterwards encrypts to its own golden and no longer to the first key's.
 |CHK-REVOKE
