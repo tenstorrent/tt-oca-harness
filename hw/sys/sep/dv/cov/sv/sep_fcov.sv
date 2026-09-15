@@ -1175,11 +1175,10 @@ module sep_fcov (
     cp_km: coverpoint edn_km_beat {bins km_sink = {1'b1};}
     // Which adapter client took the grant. cp_crypto above scores the shared
     // AXIS stream and is hit by any sink, so it cannot show that a given
-    // client was ever served. KMAC has no leaf that holds it requesting, so
-    // that bin has no producer and is not declared rather than left a
-    // permanent hole.
+    // client was ever served. All four clients have a producer.
     cp_edn_client: coverpoint crypto_edn_ack_i iff (!in_reset) {
       bins aes       = {4'b0001};
+      bins kmac      = {4'b0010};
       bins otbn_rnd  = {4'b0100};
       bins otbn_urnd = {4'b1000};
     }

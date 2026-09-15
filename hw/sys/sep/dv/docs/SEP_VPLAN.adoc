@@ -2704,7 +2704,7 @@ NIST samples.
 
 *Objective*: `hw/sys/sep/doc/crypto.adoc`: `u_axis_edn_crypto_s3c_scan` (`drbg_axis_edn_adapter`) is a small round-robin native-protocol EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
 
-*Test Coverage*: Round-robin EDN fan-out. AES and OTBN URND are graded for sharing and alternation; OTBN RND is graded for routing and consume. KMAC is not claimed.
+*Test Coverage*: Round-robin EDN fan-out under its full client load. AES and OTBN URND are graded for sharing and alternation; OTBN RND and KMAC are graded for routing and consume; the entropy pool is scored as a concurrent fifth endpoint.
 
 *Test Procedure*:
 
@@ -2715,6 +2715,8 @@ NIST samples.
 . Sample `crypto_edn_ack_o` for a fixed grant budget, then let the checkers decide. Breaking the collection loop on the alternation condition would make the checkers restatements of that guard.
 . Then load a four-read RND program into OTBN IMEM and issue EXECUTE without polling STATUS, so the blocked `crypto_edn_req[2]` is observable. RND cannot join the dual-request window above: it only requests while a program is blocked on the RND CSR, and OTBN cannot execute until its post-reset secure wipe has consumed URND, which already needs EDN enabled.
 . Wait for IDLE, read `ERR_BITS`, and read the four RND words the program stored to DMEM.
+. Then run a keyed KMAC-256 cell, the adapter's fourth client, and compare its digest against the Keccak golden.
+. Collect the set of client bits granted anywhere in the run from the monitor.
 
 *Checkers*:
 
@@ -2735,8 +2737,12 @@ NIST samples.
 |`crypto_edn_req[2]` (OTBN RND) is high while the loaded program is blocked on the RND CSR. Without this request the adapter never grants RND and CHK5_otbn_rnd cannot fail, so this is the control for it.
 |CHK-RND-CONSUME
 |The RND program retires with `ERR_BITS` == 0 and the four words it stored to DMEM are all distinct and not all zero. Each CSR read of RND is served from a fresh 256-bit EDN fetch, so a DUT that latched one value and replayed it, or that returned the reset value, fails here. This is the consume proof at the OTBN end; CHK5_otbn_rnd is the routing proof at the adapter, and neither implies the other.
-|CHK5_aes / CHK5_otbn_urnd / CHK5_otbn_rnd
-|All three live sinks match the AXIS1 grant-order stream with zero mismatches. This entry drives three of the adapter's four crypto sinks; KMAC is not claimed here. RND is floored at one match per CSR read. The testlist pins one seed, so the per-sink word counts are fixed rather than varying per seed; the zero-mismatch requirement is what is claimed. Alternation is claimed for AES and OTBN URND only: RND is granted outside that window, so this entry claims its routing and its consume, not its arbitration.
+|CHK-KMAC-CLIENT
+|The fourth adapter client completes a keyed KMAC-256 whose digest equals the Keccak golden. A client that took EDN beats but produced the wrong digest is not a working client, so the digest rather than the beat count is what is graded here. The value matrix itself is walked by `sep_kmac_mode_strength_rand_test`; this cell is fixed.
+|CHK-FOUR-CLIENT
+|Every one of the adapter's four clients was granted at some point in the run. The alternation sampler deliberately watches only AES and OTBN URND, so this is taken from the per-client grant bits accumulated across the whole run. It is what makes this leaf a full-client-load proof rather than a subset.
+|CHK5_aes / CHK5_kmac / CHK5_otbn_rnd / CHK5_otbn_urnd / CHK5_pool
+|All four crypto sinks match the AXIS1 grant-order stream and the entropy pool matches the AXIS2 stream, with zero mismatches on all five. RND is floored at one match per CSR read. The testlist pins one seed, so the per-sink word counts are fixed rather than varying per seed; the zero-mismatch requirement is what is claimed. Alternation is claimed for AES and OTBN URND only: RND and KMAC are granted outside that window, so this entry claims their routing and their consume, not their arbitration.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -2853,8 +2859,14 @@ one word and parks, which is enough for the legality check to execute.
 |During the window a write to HMAC `CFG` completes SLVERR. The write target is the RW `CFG` register, not the RO digest.
 |CHK-ISOLATE-SIBLING
 |AES `DATA_OUT_0` answers OKAY with the held ciphertext in the same HMAC window (port-scoped, not a global bus kill).
+|CHK-DRAIN-ORDER
+|The HMAC gated reset does not assert until both AXI-Lite paths that domain depends on — the SEP host path and the Key Manager path — report isolated. Read from the two named TB probe bits, sampled every cycle so the assert edge cannot be missed.
+|CHK-HOST-DRAIN
+|Host reads the fabric accepted before the reset request resolve OKAY or SLVERR — never DECERR, never a hang — and at least one resolves OKAY, so accepted traffic provably drained rather than being dropped.
+|CHK-DRAIN-ARRIVAL
+|A read issued while isolation is draining also resolves. It may drain (OKAY) or be terminated (SLVERR); it may not hang. This is the arrival-during-drain case.
 |CHK-ISOLATE-REOPEN
-|After release the same `DIGEST_0` answers OKAY again.
+|After release the same `DIGEST_0` answers OKAY again. This is also what shows the drain did not leave the path wedged.
 |CHK-ISOLATE-RESET-DEFAULT
 |After release `DIGEST_0` reads its reset value 0.
 |CHK-TRNG-NEIGHBORS
@@ -2865,10 +2877,20 @@ one word and parks, which is enough for the legality check to execute.
 *Scope limit*: scope walks AES, HMAC, KMAC and OTBN. The Key Manager bit stays at
 its reset default (a different mechanism) and is not claimed.
 
-*Not claimed*: drain-before-reset for these four domains. The `CHK-ISOLATE-*`
-rows cover in-window SLVERR and sibling OKAY only. The shared TRNG domain
-grades drain-before-reset in <<sep_trng_reset_recovery_test>>. Key Manager
-isolate termination and SMC CPU-MMIO isolate are not claimed.
+*Drain-before-reset*: claimed for the HMAC domain only, by `CHK-DRAIN-ORDER`,
+`CHK-HOST-DRAIN` and `CHK-DRAIN-ARRIVAL`. HMAC is the domain this entry already
+drives to a live golden-checked result and already isolates, so the drain runs
+against real traffic on a path the same entry proves is live. The shared TRNG
+domain grades drain-before-reset separately in
+<<sep_trng_reset_recovery_test>>.
+
+*Not claimed*: drain-before-reset for the AES, KMAC and OTBN domains — the
+mechanism is shared, but a per-domain demonstration is not made here. Key
+Manager isolate termination is not claimed either: the KM paths are mastered by
+the Key Manager, so pinning a termination response on them needs KM firmware
+traffic, which this no_cpu entry does not run. `CHK-DRAIN-ORDER` reads the
+`km_hmac` isolate bit, so it shows the KM path reaching isolation, not what a
+KM transaction receives. SMC CPU-MMIO isolate is out of this subsystem.
 
 '''''
 

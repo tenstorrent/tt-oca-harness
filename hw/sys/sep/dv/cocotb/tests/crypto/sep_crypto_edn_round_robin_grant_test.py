@@ -43,6 +43,8 @@ from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
+from env.sep_kmac_golden import kmac_family_words
+from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 from seq_lib.sep_otbn_seq import (
     OTBN_DMEM_RND_BASE,
     OTBN_RND_PROG,
@@ -51,13 +53,25 @@ from seq_lib.sep_otbn_seq import (
 )
 
 _AES_BIT = 0
+_KMAC_BIT = 1
 _RND_BIT = 2
 _URND_BIT = 3
+_ALL_CLIENTS = (_AES_BIT, _KMAC_BIT, _RND_BIT, _URND_BIT)
 _BOTH = (1 << _AES_BIT) | (1 << _URND_BIT)
 # The RND client only requests while an OTBN program is blocked on the RND CSR,
 # so it is brought in after the AES/URND alternation window rather than held
 # alongside it.
 _RND_REQ_CYCLES = 200_000
+
+# KMAC-256 keyed cell for the fourth adapter client. Fixed, because this leaf
+# grades arbitration and routing; the KMAC value matrix is walked by
+# sep_kmac_mode_strength_rand_test.
+_KMAC_KEY = (
+    0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F,
+    0x10111213, 0x14151617, 0x18191A1B, 0x1C1D1E1F,
+)
+_KMAC_MSG = [0x00010203, 0x04050607, 0x08090A0B, 0x0C0D0E0F]
+_KMAC_S = b"crypto EDN four-client"
 _DUAL_REQ_CYCLES = 50_000
 # Enough consecutive grants to see the arbiter alternate, and the floor below
 # which the sample says nothing. Literals, so the asserts do not move with the
@@ -133,7 +147,16 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             golden_kwargs=cfg.golden_kwargs(),
             chk2_backdoor=cfg.chk2_backdoor,
             score_km=False,
-            score_sinks={"aes": "golden", "otbn_urnd": "golden", "otbn_rnd": "golden"},
+            score_sinks={
+                "aes": "golden",
+                "otbn_urnd": "golden",
+                "otbn_rnd": "golden",
+                "kmac": "golden",
+                # The entropy FIFO pulls mux endpoint [2] from reset, so the pool
+                # is a live fifth endpoint throughout and is scored rather than
+                # left unclaimed while four crypto clients are loading the DRBG.
+                "pool": "golden",
+            },
         )
         self.drbg_sb.start()
         await self.assert_noise_force_active()
@@ -147,6 +170,11 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
 
         grants: list[int] = []
         dual_grants: list[int] = []
+        # Which adapter clients were granted anywhere in the run. The grant list
+        # above is the AES/URND alternation sample and deliberately watches only
+        # those two; CHK-FOUR-CLIENT needs every client, including the two driven
+        # later.
+        acked = {"mask": 0}
 
         async def _monitor() -> None:
             prev_ack = 0
@@ -154,10 +182,13 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
                 await RisingEdge(dut.clk_i)
                 req = _req()
                 ack = _ack()
-                for bit in (_AES_BIT, _URND_BIT):
+                for bit in _ALL_CLIENTS:
                     mask = 1 << bit
                     rising = (ack & mask) and not (prev_ack & mask)
-                    if rising and (req & mask):
+                    if not rising:
+                        continue
+                    acked["mask"] |= mask
+                    if bit in (_AES_BIT, _URND_BIT) and (req & mask):
                         grants.append(bit)
                         if (req & _BOTH) == _BOTH:
                             dual_grants.append(bit)
@@ -281,6 +312,53 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             [f"0x{w:08x}" for w in rnd_words],
         )
 
+        # --- KMAC, the fourth adapter client ---------------------------------
+        # AES, OTBN URND and OTBN RND are all proven above. KMAC is the adapter's
+        # remaining client, and like AES it requests while it masks. Running a
+        # real keyed KMAC here makes every one of the four clients a live,
+        # value-checked consumer in one run, and it is what lets the arbiter be
+        # graded under its full client load rather than a subset of it.
+        kmac = SepKmac(self)
+        kmac_cfg = SepKmacCfg(
+            mode="kmac",
+            sec=256,
+            msg_words=list(_KMAC_MSG),
+            outlen_bytes=32,
+            key_words=list(_KMAC_KEY),
+            key_bits=256,
+            s=_KMAC_S,
+        )
+        kmac_golden = kmac_family_words(**kmac_cfg.golden_kwargs())
+        kmac_digest = await kmac.run_family(kmac_cfg, tag="KMAC-fourth-client")
+        assert kmac_digest == kmac_golden, (
+            "CHK-KMAC-CLIENT FAIL: KMAC digest does not match the Keccak golden "
+            f"(got {[f'0x{w:08x}' for w in kmac_digest]}, "
+            f"want {[f'0x{w:08x}' for w in kmac_golden]}). A KMAC that took EDN "
+            "beats but produced the wrong digest is not a working client."
+        )
+        await kmac.check_status_clean("EOT")
+        self.logger.info(
+            "CHK-KMAC-CLIENT PASS: the fourth adapter client completed a keyed "
+            "KMAC-256 matching the Keccak golden"
+        )
+
+        # --- CHK-FOUR-CLIENT --------------------------------------------------
+        # Every adapter client was granted at some point in this run. The grant
+        # sampler above only watches AES and URND, so this is taken from the
+        # per-client ack bits the monitor accumulated across the whole run.
+        acked_mask = acked["mask"]
+        missing = [b for b in _ALL_CLIENTS if not (acked_mask & (1 << b))]
+        assert not missing, (
+            f"CHK-FOUR-CLIENT FAIL: adapter client bit(s) {missing} were never "
+            f"granted (acked_mask=0x{acked_mask:x}). drbg_axis_edn_adapter fans out "
+            "to AES, KMAC, OTBN RND and OTBN URND, and this leaf drives all four."
+        )
+        self.logger.info(
+            "CHK-FOUR-CLIENT PASS: all four adapter clients were granted in one run "
+            "(acked_mask=0x%x)",
+            acked_mask,
+        )
+
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         # The grant sample above establishes how much traffic each client
@@ -296,14 +374,20 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         ra = self.drbg_sb.results["CHK5_aes"]
         ru = self.drbg_sb.results["CHK5_otbn_urnd"]
         rr = self.drbg_sb.results["CHK5_otbn_rnd"]
+        rk = self.drbg_sb.results["CHK5_kmac"]
+        rp = self.drbg_sb.results["CHK5_pool"]
         self.logger.info(
-            "CHK-ROUTING PASS: CHK5_aes match=%d, CHK5_otbn_urnd match=%d and "
-            "CHK5_otbn_rnd match=%d equal the AXIS1 grant-order stream "
-            "(mismatch=0)",
+            "CHK-ROUTING PASS: CHK5_aes match=%d, CHK5_otbn_urnd match=%d, "
+            "CHK5_otbn_rnd match=%d and CHK5_kmac match=%d equal the AXIS1 "
+            "grant-order stream, and CHK5_pool match=%d equals the AXIS2 stream "
+            "(mismatch=0 on all five)",
             ra.matches,
             ru.matches,
             rr.matches,
+            rk.matches,
+            rp.matches,
         )
         self.logger.info(
-            "CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd/CHK5_otbn_rnd ROUTING PASS"
+            "CHK1..CHK4 bit-exact + CHK5 ROUTING on all four adapter clients and "
+            "the entropy pool PASS"
         )
