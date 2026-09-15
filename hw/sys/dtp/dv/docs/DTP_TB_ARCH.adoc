@@ -575,6 +575,7 @@ and what the target is.
 |TAP reference model |`DtpTapFsm` in `env/dtp_types.py`, a DUT-local next-state and TMS-path model; the `OcahJtagChecker` is attached per scenario |`dtp_tap_fsm_checker`, an env subscriber on the VIP next-state model |The VIP model inside an env subscriber in both
 |Debug-TDR evidence |Inline `CHECK` assertions of the base sequence |Named `CHK-DBG-TDR`, `CHK-DBG-PIN`, `CHK-CAPS`, `CHK-CAPS-RO`, and `CHK-TMP-*` records |The same named evidence in both
 |JTAG2AXI geometry gate |`dtp_jtag2axi_base_test_seq.pre_body` records `CHK-J2A-GEOMETRY` per bridge from the `*_JTAG2AXI_CAPS` TDRs against `JTAG2AXI_TARGETS` |`dtp_jtag2axi_base_test_seq::pre_body` does the same against the `dtp_j2a_target_*` functions |The same gate and evidence ID in both
+|WITH_ERROR_STATUS fault streams |`dtp_jtag2axi_base_test_seq.run_series_status_write` and `run_series_status_read` drive the with-error series with one armed fault beat and record `CHK-J2A-STATUS-BIT` on every shift |`dtp_jtag2axi_base_test_seq::run_series_status_write` and `run_series_status_read` do the same |The same stream drivers and evidence ID in both
 |Plain-model basenames |`env/dtp_scan_ref_model.py` and `env/dtp_xtrig_types.py` hold the plain scan and cross-trigger models |`dtp_stap_3dcr_model.svh`, `dtp_ijtag_sib_model.svh`, `dtp_xtrig_ctm_model.svh` |`_model` basenames, identical in both trees
 |===
 
