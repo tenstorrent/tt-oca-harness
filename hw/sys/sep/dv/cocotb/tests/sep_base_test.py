@@ -35,6 +35,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import (
     ClockCycles,
+    NextTimeStep,
     ReadOnly,
     RisingEdge,
     SimTimeoutError,
@@ -58,6 +59,7 @@ from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
+from env.sep_noise_golden import SepNoiseGolden
 from env.sep_smc_mem import SMC_AXI_GEOMETRY, SMC_MEM_SIZE, preload_smc_mem
 from env.sep_verdict import decode_verdict
 
@@ -1053,6 +1055,35 @@ class sep_base_test(uvm_test):
         )
         return seq
 
+    def start_esrc_noise_driver(self, *, noise_mode: str = "unbiased", seed_base: int = 0x1234_5678):
+        """Drive tb_top.esrc_noise_ext_i every cycle and return the forked task.
+
+        ``+esrc_noise_force`` only routes this port onto the ring-oscillator
+        noise input; it does not generate anything. A test that brings the
+        entropy stack up WITHOUT the DRBG scoreboard -- firmware doing its own
+        ESRC/CSRNG/EDN programming, for instance -- still needs the raw bits
+        driven, or the health window never fills and the boot gate never opens.
+
+        This is the drive half of ``SepDrbgScoreboard`` with no golden chain and
+        no scoring: the caller gets entropy that moves, not entropy that is
+        graded. A test that needs the values checked wants ``bring_up_entropy``.
+
+        Kill the returned task before the test ends. A forked task still writing
+        a DUT port while the simulator tears down segfaults the run, which shows
+        up as a non-zero exit on an otherwise passing test.
+        """
+        dut = cocotb.top
+        gen = SepNoiseGolden()
+        gen.configure(noise_mode, seed_base=seed_base)
+
+        async def _drive() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                await NextTimeStep()
+                dut.esrc_noise_ext_i.value = gen.step_all()
+
+        return cocotb.start_soon(_drive())
+
     async def assert_noise_force_active(self, cycles: int = 16) -> None:
         """Prove +esrc_noise_force took: lane-0's actual DUT noise_i tracks the
         driven raw-noise bit, and the driven noise actually toggles (not stuck)."""
@@ -1185,60 +1216,83 @@ class sep_base_test(uvm_test):
         import os
         import subprocess
 
-        rev = os.environ.get("SEP_DV_GIT_REV")
-        if not rev:
+        git_dir = os.path.dirname(os.path.abspath(__file__))
+
+        def _git(*args, timeout=15):
+            """Run one git command. Returns (ok, stdout_bytes).
+
+            ok is False for a failed spawn, a nonzero exit AND a timeout, so a
+            caller can tell "git said no" from "git said nothing". Treating
+            those as an empty answer is what lets an unanswered question read
+            as a negative answer.
+            """
             try:
-                rev = subprocess.run(
-                    ["git", "rev-parse", "HEAD"],
-                    cwd=os.path.dirname(os.path.abspath(__file__)),
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                ).stdout.strip()
+                cp = subprocess.run(
+                    ["git", *args], cwd=git_dir, capture_output=True, timeout=timeout
+                )
             except (OSError, subprocess.SubprocessError):
-                rev = ""
-        # A dirty tree is part of the identity: the commit alone would name
-        # sources the run did not use.
-        dirty = ""
-        try:
-            dirty = subprocess.run(
-                ["git", "status", "--porcelain", "--untracked-files=no"],
-                cwd=os.path.dirname(os.path.abspath(__file__)),
-                capture_output=True,
-                text=True,
-                timeout=15,
-            ).stdout.strip()
-        except (OSError, subprocess.SubprocessError):
-            pass
+                return False, b""
+            return cp.returncode == 0, cp.stdout
+
+        head_ok, head_out = _git("rev-parse", "HEAD", timeout=10)
+        head = head_out.decode("utf-8", "replace").strip() if head_ok else ""
+        # An env override names the commit the CALLER believes was built. It is
+        # reported next to live HEAD rather than in place of it: a stale export
+        # would otherwise pair commit A with tree B's dirtiness, and nothing in
+        # the log would show it.
+        env_rev = os.environ.get("SEP_DV_GIT_REV") or ""
+        rev = env_rev or head
+        rev_note = ""
+        if env_rev and head_ok and env_rev != head:
+            rev_note = f" (SEP_DV_GIT_REV; live HEAD={head} -- THEY DISAGREE)"
+        elif env_rev and not head_ok:
+            rev_note = " (SEP_DV_GIT_REV; live HEAD unavailable, not corroborated)"
+
+        # Tree state. `unknown` is a third value, distinct from clean: a check
+        # that could not run must not print what a clean tree prints.
+        dirty_ok, dirty_out = _git("status", "--porcelain")
+        dirty = dirty_out.decode("utf-8", "replace") if dirty_ok else ""
+        if not dirty_ok:
+            state = " (tree state UNKNOWN: git status failed -- do not read this as clean)"
+        elif dirty.strip():
+            state = " (tree dirty: uncommitted sources)"
+        else:
+            state = ""
         self.logger.info(
-            "RUN-IDENTITY: commit=%s%s work-dir=%s",
+            "RUN-IDENTITY: commit=%s%s%s work-dir=%s",
             rev or "unknown",
-            " (tree dirty: uncommitted sources)" if dirty else "",
+            rev_note,
+            state,
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
-        # WHICH files were dirty, not just that some were. "tree dirty" alone
-        # cannot be acted on after the run: a reader has to decide whether any
+        # WHICH files, not just that some were. "tree dirty" alone cannot be
+        # acted on after the run: a reader has to decide whether any
         # uncommitted file was on this test's proof path, and the boolean makes
-        # that unanswerable from the artifact. The paths answer it, and the
-        # diff digest lets two runs claiming the same commit be told apart.
-        if dirty:
-            paths = [line[3:].strip() for line in dirty.splitlines() if len(line) > 3]
-            digest = ""
-            try:
-                diff = subprocess.run(
-                    ["git", "diff", "HEAD"],
-                    cwd=os.path.dirname(os.path.abspath(__file__)),
-                    capture_output=True,
-                    timeout=30,
-                ).stdout
-                digest = hashlib.sha256(diff).hexdigest()[:16]
-            except (OSError, subprocess.SubprocessError):
-                pass
+        # that unanswerable from the artifact.
+        #
+        # Untracked files are included. The question is what the run executed,
+        # and an untracked module on a proof path is as unrecorded as a
+        # modified one -- `--untracked-files=no` would hide exactly the new
+        # test or generated image most likely to matter.
+        if dirty_ok and dirty.strip():
+            paths = []
+            for line in dirty.splitlines():
+                # Porcelain v1: two status characters, a space, then the path.
+                # Slice the RAW line -- stripping the block first eats the
+                # leading space of an unstaged-only first entry (" M path") and
+                # cuts a character off that path, which is precisely the name a
+                # reader greps against the proof path.
+                if len(line) > 3:
+                    paths.append(line[3:].strip().strip('"'))
+            digest = "unavailable"
+            diff_ok, diff_out = _git("diff", "HEAD", timeout=30)
+            if diff_ok:
+                digest = hashlib.sha256(diff_out).hexdigest()[:16]
             shown = paths[:_RUN_IDENTITY_MAX_PATHS]
             self.logger.info(
-                "RUN-IDENTITY-DIRTY: %d file(s) diff-sha256=%s%s paths=%s",
+                "RUN-IDENTITY-DIRTY: %d file(s) tracked-diff-sha256=%s%s paths=%s",
                 len(paths),
-                digest or "unavailable",
+                digest,
                 "" if len(paths) == len(shown) else f" (first {len(shown)} shown)",
                 ",".join(shown),
             )

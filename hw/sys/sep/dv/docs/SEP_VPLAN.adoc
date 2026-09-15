@@ -2767,7 +2767,7 @@ NIST samples.
 |CHK-FOUR-CLIENT
 |Every one of the adapter's four clients was granted at some point in the run. The alternation sampler deliberately watches only AES and OTBN URND, so this is taken from the per-client grant bits accumulated across the whole run. It is what makes this leaf a full-client-load proof rather than a subset.
 |CHK5_aes / CHK5_kmac / CHK5_otbn_rnd / CHK5_otbn_urnd / CHK5_pool
-|All four crypto sinks match the AXIS1 grant-order stream and the entropy pool matches the AXIS2 stream, with zero mismatches on all five. RND is floored at one match per CSR read. The testlist pins one seed, so the per-sink word counts are fixed rather than varying per seed; the zero-mismatch requirement is what is claimed. Alternation is claimed for AES and OTBN URND only: RND and KMAC are granted outside that window, so this entry claims their routing and their consume, not their arbitration.
+|All four crypto sinks match the AXIS1 grant-order stream and the entropy pool matches the AXIS2 stream, with zero mismatches on all five. RND carries the only stimulus-derived floor: one match per 32-bit beat of every RND CSR read the program issues. The AES, OTBN URND, KMAC and entropy-pool floors are non-vacuity floors -- above zero, below the traffic any seed produces -- so they fail a sink that took nothing and do not bound one that started and then starved; the zero-mismatch requirement plus the grant-stream checkers are what is claimed for those four. Alternation is claimed for AES and OTBN URND only: RND and KMAC are granted outside that window, so this entry claims their routing and their consume, not their arbitration.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 

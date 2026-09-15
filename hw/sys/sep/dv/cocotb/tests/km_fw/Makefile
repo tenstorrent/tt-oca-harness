@@ -28,28 +28,39 @@ all: $(PARHEX)
 # a test boots the blob through `+km_rom_hex=<name>.parhex`, not through a
 # `firmware = {...}` build declaration. So an edit to a .S reaches no
 # simulation until somebody runs `make`, and the run that follows quietly
-# executes the OLD image while the audit reads the NEW source. Nothing in the
-# flow notices; this target is what notices. Run it after editing any .S, and
-# commit the regenerated blob with the source change.
+# executes the OLD image while a reader sees the NEW source.
 #
-# It rebuilds into a scratch copy so a stale blob is REPORTED rather than
-# silently corrected -- a target that fixed the tree would let the same drift
-# through on the next edit.
+# NOTHING RUNS THIS AUTOMATICALLY. No stage, testlist or CI job invokes it, so
+# it does not by itself prevent the drift above -- it only lets you detect it.
+# Run it after editing any .S, and commit the regenerated blob with the source
+# change. It needs the RISC-V toolchain on PATH (see sim/run.sh for the site
+# path); without it every image reports BUILD FAILED, which is why a failed
+# build is a distinct token from a mismatch.
+#
+# It rebuilds into a scratch OUT_DIR and never writes the tracked blob: the
+# recipe redirects gen_parhex.py output at its target, so building at the
+# tracked path would truncate the committed artifact before python ran, and a
+# reported mismatch would leave the rebuild in the tree -- self-clearing on the
+# next run and booting an uncommitted image in the meantime.
 verify:
 	@rc=0; tmp=$$(mktemp -d); trap 'rm -rf $$tmp' EXIT; \
 	for r in $(ROMS); do \
-	    cp $(OUT_DIR)/$$r.parhex $$tmp/$$r.committed 2>/dev/null || { \
-	        echo "MISSING: $$r.parhex is not committed" >&2; rc=1; continue; }; \
-	    touch $$r.S; \
-	    $(MAKE) --no-print-directory $(OUT_DIR)/$$r.parhex >$$tmp/$$r.log 2>&1 || { \
-	        echo "BUILD FAILED: $$r (see $$tmp/$$r.log)" >&2; rc=1; continue; }; \
-	    if cmp -s $(OUT_DIR)/$$r.parhex $$tmp/$$r.committed; then \
+	    if [ ! -f $(OUT_DIR)/$$r.parhex ]; then \
+	        echo "MISSING  $$r.parhex is not committed" >&2; rc=1; continue; \
+	    fi; \
+	    if ! $(MAKE) --no-print-directory OUT_DIR=$$tmp $$tmp/$$r.parhex \
+	            >$$tmp/$$r.log 2>&1; then \
+	        echo "BUILD FAILED  $$r ($$(tail -n1 $$tmp/$$r.log))" >&2; rc=1; continue; \
+	    fi; \
+	    if cmp -s $$tmp/$$r.parhex $(OUT_DIR)/$$r.parhex; then \
 	        echo "ok       $$r.parhex"; \
 	    else \
-	        echo "STALE    $$r.parhex does not match $$r.S -- commit the rebuild" >&2; \
+	        echo "STALE    $$r.parhex does not match $$r.S -- rebuild with" \
+	             "\`make $$r.parhex\` and commit it" >&2; \
 	        rc=1; \
 	    fi; \
 	done; \
+	if [ $$rc -ne 0 ]; then echo "verify: FAILED" >&2; else echo "verify: all $(words $(ROMS)) blobs match their source"; fi; \
 	exit $$rc
 
 # rom_main: the real KM production ROM, built from tracked KM firmware source.
