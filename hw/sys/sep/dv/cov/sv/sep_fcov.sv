@@ -1345,7 +1345,9 @@ module sep_fcov (
     // lose BOTH grants, which reads afterwards as a client the test never
     // drove. This is the leaf that must fill all four, and simultaneous acks
     // are likeliest exactly here.
-    cp_edn_aes: coverpoint crypto_edn_ack_i[0] iff (!in_reset) {bins aes = {1'b1};}
+    cp_edn_aes: coverpoint crypto_edn_ack_i[0] iff (!in_reset) {
+      bins aes = {1'b1};
+    }
     cp_edn_kmac: coverpoint crypto_edn_ack_i[1] iff (!in_reset) {bins kmac = {1'b1};}
     cp_edn_otbn_rnd: coverpoint crypto_edn_ack_i[2] iff (!in_reset) {bins otbn_rnd = {1'b1};}
     cp_edn_otbn_urnd: coverpoint crypto_edn_ack_i[3] iff (!in_reset) {bins otbn_urnd = {1'b1};}
