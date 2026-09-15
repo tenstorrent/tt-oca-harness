@@ -16,9 +16,10 @@ sep_debug skip gate). The filter CSR layout is defined in sep_fabric_csr_bank_se
 SepInboundFilterMatrixCfg is the single source of truth for the walked cells
 (entry x window x R/W-allow x src-id class).
 
-FILTER_CONFIG.src_id=0 is match-all (traffic_filter.sv). A non-zero src_id
-matches only the external master's ar/awuser[3:0]. allow_ns=1 matches the
-master's NONSECURE prot.
+FILTER_CONFIG.src_id=0 is match-all (`filter_ctrl.rdl` src_id wildcard;
+`hw/ip/axi_filter/doc/index.adoc`). A non-zero src_id matches only the
+external master's ar/awuser[3:0]. allow_ns=1 matches the master's
+NONSECURE prot.
 
 FILTER_CONFIG.allow_burst (bit 24) is walked on both filter instances
 (AR and AW). A 2-beat INCR (AxLEN=1) makes traffic_filter.sv pass_burst

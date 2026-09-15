@@ -111,7 +111,9 @@ KM_VALID_CMD_IDS = (
 # stand-in for "a handle the key registry does not hold".
 KM_KEY_HANDLE_NULL = 0x00
 
-# Destination bitmask (rom_defs.h / sep_km_types.sv): bit3 = OTBN
+# Destination bitmask (`rom_defs.h` rom_km_dest_bits_t /
+# `hw/ip/key_manager/doc/firmware.adoc` DEST_VALID): bit0 HMAC, bit1 KMAC,
+# bit2 AES, bit3 OTBN.
 KM_DEST_HMAC = 0x01
 KM_DEST_KMAC = 0x02
 KM_DEST_AES = 0x04

@@ -65,8 +65,8 @@ def hmac_sha256_words(
 # The standalone SW-key breadth test (HMAC SHA-variant breadth) covers all three SHA-2 variants in
 # both keyed-HMAC and plain-SHA modes. Map the CFG.digest_size selection (by SHA
 # output bit-width) to the stdlib hash constructor and the count of valid 32-bit
-# DIGEST_* words the engine exposes (hmac.sv:265-277): SHA-256 -> 8, SHA-384 ->
-# 12, SHA-512 -> 16.
+# DIGEST_* words the engine exposes: SHA-2 digest length / 32 (FIPS 180-4).
+# SHA-256 -> 8, SHA-384 -> 12, SHA-512 -> 16.
 _SHA2 = {
     256: (hashlib.sha256, 8),
     384: (hashlib.sha384, 12),

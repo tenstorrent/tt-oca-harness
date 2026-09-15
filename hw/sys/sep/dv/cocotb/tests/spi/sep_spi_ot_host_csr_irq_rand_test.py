@@ -309,9 +309,10 @@ class sep_spi_ot_host_csr_irq_rand_test(sep_base_test):
                 await self.spi.wr(CMD, CMD_DIR_TX)
 
         async def trig_accessinval():
-            # RTL access_valid accepts 1/2/4-byte contiguous strobes, not 3-byte
-            # 4'b0111. A 32-bit beat of length 3 is a real DUT write, not a
-            # non-contiguous strobe the AXI master cannot express.
+            # ACCESSINVAL trigger: a 3-byte TXDATA beat (contiguous 4'b0111).
+            # Legal TXDATA beats are 1, 2, or 4 bytes. A 32-bit beat of length 3
+            # is a real bus write, not a non-contiguous strobe the AXI master
+            # cannot express.
             await self.spi.wr(
                 TXDATA, 0x00A5A5A5, length=3, size=2, allow_unverified_write_resp=True
             )

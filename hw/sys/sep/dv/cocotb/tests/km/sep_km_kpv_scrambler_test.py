@@ -150,11 +150,12 @@ class sep_km_kpv_scrambler_test(sep_base_test):
             f"(0x{cfg.key_a:08x} and 0x{cfg.key_b:08x}) -- the data path ignores the key"
         )
         self.logger.info(
-            "CHK-KEYED PASS: logical %d stored differently under the two keys "
-            "(key B: physical %d = 0x%08x)",
+            "CHK-KEYED PASS: logical %d key-B word 0x%08x (physical %d) "
+            "is not among the %d first-key stored words",
             first_logical,
-            key_b_index,
             key_b_value,
+            key_b_index,
+            len(first_words),
         )
 
         # --- CHK-RT -----------------------------------------------------------
