@@ -234,6 +234,19 @@ class sep_dma_basic_test(sep_base_test):
                 "firmware console missing CHK-HOSTFABRIC PASS "
                 "(host-path fabric non-OKAY contract was not proven)"
             )
+        # The two checkers that actually walk the modes and the widths. Logging
+        # CHK-RAND-REP without them would put a PASS record in the kept log on a
+        # run where the walk failed -- poll_boot returns normally on a firmware
+        # FAIL, and the scoreboard verdict lands later.
+        for needle, what in (
+            ("CHK-COPY-MODE PASS:", "the INCR/FIXED/WRAP walk"),
+            ("CHK-WIDTH PASS:", "the 1B/2B/4B width walk"),
+        ):
+            if needle not in console:
+                raise AssertionError(
+                    f"firmware console missing {needle} ({what} did not pass), so "
+                    "CHK-RAND-REP has nothing to report"
+                )
         self.logger.info(
             "CHK-RAND-REP PASS: walked INCR/FIXED/WRAP x 1B/2B/4B; seed=%d nbytes=%d",
             cfg.seed,

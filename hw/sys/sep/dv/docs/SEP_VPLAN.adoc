@@ -476,7 +476,7 @@ appears.
 |`sep_dma_basic_test`
 |cpu
 |ocah_axi_vip, CPU FW
-|Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address and inverted-range refusals, a DMA-issued host-path command-integrity inject (`host_path_err` / aggregator bit 40), and a fabric DECERR dest that raises the same bit with the pin low. The mode and width walk is directed.
+|Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address, address-space-id and transfer-width refusals, the inverted-range refusal, a copy that leaves SRAM for the instruction memory and back, a DMA-issued host-path command-integrity inject (`host_path_err` / aggregator bit 40), and a fabric DECERR dest that raises the same bit with the pin low. The mode and width walk is directed.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_ot_host_csr_irq_rand_test>> covers the SPI host CSR and interrupt surface. It is graded there so each test has one owning bucket.
@@ -3636,7 +3636,7 @@ claimed.
 
 *BFM / Model*: ocah_axi_vip, CPU FW
 
-*Objective*: Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address and inverted-range refusals, a DMA-issued host-path command-integrity inject, and a fabric DECERR dest that raises `host_path_err` with the pin low. The mode and width walk is directed.
+*Objective*: Secure-DMA control and copy breadth over the CPU LSU: documented reset values, the configuration lock reading locked while the engine is observed busy, the range-valid gate and its rw0c lock each with a positive control, FIXED/INCR/WRAP against a per-mode golden, 1/2/4-byte widths, `STATUS.done` RW1C, one invalid-opcode error with recovery, the address, address-space-id and transfer-width refusals, the inverted-range refusal, a copy that leaves SRAM for the instruction memory and back, a DMA-issued host-path command-integrity inject, and a fabric DECERR dest that raises `host_path_err` with the pin low. The mode and width walk is directed.
 
 *Test Coverage*: Secure-DMA locks, address modes, widths, errors, and host-path integrity.
 
@@ -3671,6 +3671,12 @@ claimed.
 |An invalid opcode raises exactly the opcode error — asserted *exclusively*, so no other error bit may be set — with the done bit required clear, then cleared by write-one-to-clear. The recovery copy after the error matches the independent source snapshot.
 |CHK-ERR-ADDR
 |The address validation the engine applies before it moves a byte. Four refused descriptors, each asserting its `ERROR_CODE` bit *exclusively*: a 4-byte transfer whose source is not 4-byte aligned raises `src_addr_error`, the same on the destination raises `dst_addr_error`, a 2-byte transfer on an odd source raises `src_addr_error`, and a 2-byte transfer on an odd destination raises `dst_addr_error`. None may set `STATUS.done`, and a clean copy after the four proves the engine recovers. The inverted-range leg sits in `CHK-RANGE-REGWEN`, which must run before the one-way range lock closes.
+|CHK-ERR-ASID
+|An address-space id outside the three encodings the IP register specification enumerates (`OT_ADDR` 0x7, `SYS_ADDR` 0x9, `SOC_ADDR` 0xa) is refused. Walked on the source field and on the destination field separately, each asserting `asid_error` *exclusively* with `STATUS.done` clear, then cleared by write-one-to-clear, then a clean copy at the legal id. The legal set is a DV-owned table in `fw/drivers/sep_dma.h`, since the register description carries only the reset value.
+|CHK-ERR-SIZE
+|A transfer width outside the 1/2/4-byte encodings raises `size_error` *exclusively* with `STATUS.done` clear, then clears, then a clean copy at a legal width. Distinct from `CHK-ERR-ADDR`, where the width is legal and the address is not: this is the width decode itself refusing.
+|CHK-ICCM
+|A copy that leaves SRAM. Every other transfer in this entry is SRAM to SRAM, so an engine that cannot reach the instruction memory passes all of them. The data goes SRAM to ICCM and back to a second SRAM region, and the returned words are compared against the source over a sentinel pre-fill, with the count of words that changed required to be non-zero so a transfer that moved nothing fails. The round trip is used because the core takes a store access fault on a direct write to ICCM, so the processor cannot pre-fill or read back that memory; only the DMA touches it, which is what the checker is about.
 |CHK-HOSTINTG
 |A DMA-issued host command under `dma_host_intg_inject_i` raises exactly `DMA_BUS_ERR_STATUS.host_path_err`. Aggregator bit 41 is 1 and bit 40 stays 0. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 41 to 0. A legal copy with the pin low then matches the independent source snapshot. Each leg also requires the transfer to terminate, so a wedged engine cannot pass on a latch raised from its first command.
 |CHK-HOSTFABRIC
