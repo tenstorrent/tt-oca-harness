@@ -6,7 +6,7 @@
  *
  * This test verifies the sep_reset_ctrl CSR and the sw-reset isolation
  * sequencing through the AXI-Lite isolates in sep_crypto_axi_interconnect.
- * For each accelerator (OTBN, AES, HMAC, KMAC):
+ * For each accelerator (OTBN, AES, HMAC, KMAC, ABR):
  *
  *   a) Probe write/readback proves the port is open and the IP is alive.
  *   b) Assert only that IP's SW_RESET_N bit and HOLD it.
@@ -20,6 +20,7 @@
  *      proving the reset wire reached the IP.
  *
  * SW_RESET_N bit layout:
+ *   bit 6 = abr_sw_rst_n   (default 1, released)
  *   bit 5 = trng_sw_rst_n  (default 1, released)
  *   bit 4 = kmac_sw_rst_n  (default 1, released)
  *   bit 3 = hmac_sw_rst_n  (default 1, released)
@@ -27,7 +28,7 @@
  *   bit 1 = otbn_sw_rst_n  (default 1, released)
  *   bit 0 = km_sw_rst_n    (default 0, held in reset)
  *
- * Default value: 0x3E = 0b111110
+ * Default value: 0x7E = 0b1111110
  *
  * KM is skipped because it cannot be brought out of reset in this test case.
  *
@@ -41,9 +42,11 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "nmi.h"
+#include "abr_mldsa.h"
 
-#define SW_RESET_N_DEFAULT 0x3eu
+#define SW_RESET_N_DEFAULT 0x7eu
 #define SW_RESET_N_TRNG_BIT (1u << 5)
+#define ABR_GLOBAL_INTR_ENABLE (ABR_BASE + 0x8100u)
 
 void reset_ctrl_nmi_handler(void) {
     uint32_t prev = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
@@ -116,6 +119,8 @@ int main(void) {
         {"kmac", (1u << 4), OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
          KMAC__INTR_ENABLE__KMAC_DONE_reset, OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR,
          HMAC__INTR_ENABLE__HMAC_DONE_reset},
+        {"abr", (1u << 6), ABR_GLOBAL_INTR_ENABLE, 0x00000003, 0x00000000,
+         OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, HMAC__INTR_ENABLE__HMAC_DONE_reset},
     };
 
     uint32_t expected_nmi = 0;
