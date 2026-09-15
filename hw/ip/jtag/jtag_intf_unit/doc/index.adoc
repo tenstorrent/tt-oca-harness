@@ -14,7 +14,7 @@ logic.
 
 The JIU contains:
 
-* One Primary TAP (PTAP) with chiplet IDCODE, boundary scan, BIST, reset
+* A Primary TAP (PTAP) with chiplet IDCODE, boundary scan, BIST, reset
   control and JTAG2AXI bridges.
 * A configurable number of Secondary TAPs (STAPs) for downstream chiplet JTAG,
   SMC CPU debug, SEP CPU debug, and optional additional TAPs.

@@ -28,12 +28,12 @@ anchor:composition[]The SMU combines:
   and memory-zeroer accelerators.
 
 ifdef::backend-html5[]
-* xref:dtp:index.adoc[*Debug &amp; Test Ports (DTP)*] — {smu-dtp-desc}
+* xref:dtp:index.adoc[*Debug and Test Ports (DTP)*] — {smu-dtp-desc}
 * xref:sep:index.adoc[*Security Processor (SEP)*] — {smu-sep-desc}
 * xref:smc:index.adoc[*System Management Controller (SMC)*] — {smu-smc-desc}
 endif::backend-html5[]
 ifdef::backend-pdf[]
-* *Debug &amp; Test Ports (DTP)* — {smu-dtp-desc} See <<debug-test-ports>>.
+* *Debug and Test Ports (DTP)* — {smu-dtp-desc} See <<debug-test-ports>>.
 * *Security Processor (SEP)* — {smu-sep-desc} See <<security-processor-sep>>.
 * *System Management Controller (SMC)* — {smu-smc-desc}
   See <<system-management-controller>>.

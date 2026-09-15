@@ -13,7 +13,7 @@ internal devices) and sinks under AXI-Lite CSR control.
 == Overview
 
 The CTM is compatible with both wire-OR and point-to-point CTPs. Typical
-connections include Core Logic Analysers (CLAs) and Cross Trigger Ports (CTPs).
+connections include Core Logic Analyzers (CLAs) and Cross Trigger Ports (CTPs).
 Each device connected to the CTM acts as both a source and a sink.
 
 The register map dimensions define the matrix size as localparams:
