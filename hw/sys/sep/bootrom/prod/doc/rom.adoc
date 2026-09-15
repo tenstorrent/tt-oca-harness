@@ -2364,7 +2364,7 @@ measurements and leaves them (with their raw inputs) where BL1 can register them
 
 ===== Target Architecture: the PCRV
 
-The OCAH roadmap adds a *Platform Configuration Registers Vault (PCRV)* to the Key Manager
+The OCAH roadmap adds a *PCR Vault (PCRV)* to the Key Manager
 IP. Its measurement model: software *registers* measurement records; the PCRV hashes them
 internally and accumulates them in an incrementing register bank that software cannot tamper
 with and that clears only on cold reset (TPM PCR extend semantics). On the key side, the Key
