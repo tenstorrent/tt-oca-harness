@@ -105,7 +105,14 @@ module sep_fcov (
   input wire [1:0]  demote_2_i,
   input wire        cpu_reset_n_i,
   input wire        spi_cs_n_i,
-  input wire        spi_sck_i
+  input wire        spi_sck_i,
+
+  // Crypto isolate / per-IP reset sequencing for the HMAC domain. An
+  // accelerator reset waits on BOTH the SEP host path and the Key Manager
+  // path, so the two isolate-completion bits are separate inputs.
+  input wire        hmac_gated_rst_n_i,
+  input wire        hmac_host_isolated_i,
+  input wire        hmac_km_isolated_i
 );
 
   import och_sep_top_addrmap_pkg::*;
@@ -1224,6 +1231,37 @@ module sep_fcov (
     cp_rel: coverpoint km_swrst_rel {bins km_released = {1'b1};}
   endgroup
 
+  // --- crypto isolate sequencing -----------------------------------------
+  // Registered copies so an edge can be named. The reset is active-low, so a
+  // fall is the domain going INTO reset.
+  logic hmac_rst_n_q, hmac_km_iso_q;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      hmac_rst_n_q  <= 1'b1;
+      hmac_km_iso_q <= 1'b0;
+    end else begin
+      hmac_rst_n_q  <= hmac_gated_rst_n_i;
+      hmac_km_iso_q <= hmac_km_isolated_i;
+    end
+  end
+
+  // The cycle the HMAC domain enters reset. Sampling the state instead would
+  // bin a steady condition that holds for the whole window, and both isolate
+  // bits are high throughout it -- so the ordering bin would fill whatever the
+  // sequencer did.
+  wire hmac_rst_fall   = hmac_rst_n_q && !hmac_gated_rst_n_i;
+  wire hmac_km_iso_rise = !hmac_km_iso_q && hmac_km_isolated_i;
+  wire hmac_km_iso_fall = hmac_km_iso_q && !hmac_km_isolated_i;
+  wire hmac_rst_ordered = hmac_rst_fall && hmac_host_isolated_i && hmac_km_isolated_i;
+
+  covergroup sep_crypto_isolate_cg @(posedge clk_i);
+    option.per_instance = 1;
+    option.name = "sep_crypto_isolate_cg";
+    cp_km_iso:      coverpoint hmac_km_iso_rise  {bins km_path_isolated = {1'b1};}
+    cp_rst_ordered: coverpoint hmac_rst_ordered  {bins reset_after_both_isolated = {1'b1};}
+    cp_reopen:      coverpoint hmac_km_iso_fall  {bins km_path_reopened = {1'b1};}
+  endgroup
+
   covergroup sep_km_generate_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_km_generate_cg";
@@ -1493,6 +1531,7 @@ module sep_fcov (
   sep_km_host_cmd_cg          u_sep_km_host_cmd_cg          = new();
   sep_km_wipe_cg              u_sep_km_wipe_cg              = new();
   sep_km_sw_reset_cg          u_sep_km_sw_reset_cg          = new();
+  sep_crypto_isolate_cg       u_sep_crypto_isolate_cg       = new();
   sep_km_generate_cg          u_sep_km_generate_cg          = new();
   sep_dma_copy_hash_cg        u_sep_dma_copy_hash_cg        = new();
   sep_spi_flash_cg            u_sep_spi_flash_cg            = new();

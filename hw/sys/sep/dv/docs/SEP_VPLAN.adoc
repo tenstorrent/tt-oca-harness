@@ -5470,6 +5470,8 @@ error path works.
 
 *Test Coverage*: `km_hmac` isolate termination, and that isolation does not wedge the KM path.
 
+*Functional Coverage*: `sep_crypto_isolate_cg` in link:SEP_FCOV.adoc[SEP_FCOV]. This entry is the only leaf that fills all three bins — it isolates a KM path, presents a KM master transaction to it, and reopens it. The bins are edges rather than states, because both isolate bits hold high for the whole reset window and a state bin would fill even on a run whose reset preceded the drain.
+
 *Test Procedure*:
 
 [arabic]

@@ -2178,6 +2178,10 @@ module sep_uvm_top
         .m_axi_rvalid_i        (m_axi_rvalid),
         .m_axi_rready_i        (m_axi_rready),
 
+        .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
+        .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
+        .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+
         .cpu_trace_valid_i     (cpu_trace_valid_o),
         .cpu_trace_addr_i      (cpu_trace_addr_o),
         .cpu_trace_interrupt_i (cpu_trace_interrupt_o),
