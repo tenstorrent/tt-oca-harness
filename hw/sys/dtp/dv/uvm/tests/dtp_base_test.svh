@@ -134,7 +134,7 @@ class dtp_base_test extends ocah_test;
   // in test code, derived from the randomized clock period.
   virtual task bring_up();
     attach_stap_ds();
-    m_env.tb_vif.dbg_disable <= '0;
+    m_env.tb_vif.drive_dbg_disable('0);
     m_env.tb_vif.por_rst_n   <= 1'b0;
     m_env.tb_vif.sys_rst_n   <= 1'b0;
     wait_clk_cycles(dtp_base_test_seq::PorHoldCycles);

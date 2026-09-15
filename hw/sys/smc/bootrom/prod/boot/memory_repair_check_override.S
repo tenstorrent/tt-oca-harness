@@ -75,16 +75,17 @@ memory_repair_complete_return:
 
 memory_repair_failed:
     /*
-     * Memory repair reported failure - check OTP RESERVED_2 bit 0 (DFT ignore error flag)
-     * Hardware bug workaround: If OTP RESERVED_2 bit 0 is set, mem_repair/mbist
+     * Memory repair reported failure - check OTP SMC_CONFIG bit 15 (DFT ignore error flag)
+     * Hardware bug workaround: If OTP SMC_CONFIG bit 15 is set, mem_repair/mbist
      * can report false errors. Ignore the error and continue booting.
      */
-    li      t0, SMC_EFUSE_MAP_RESERVED_2_REG_ADDR_VAL               /* RESERVED_2 eFuse register address */
-    lwu     t1, 0(t0)                                               /* Read RESERVED_2 register */
-    andi    t1, t1, SMC_EFUSE_RESERVED_2_DFT_IGNORE_ERROR_MASK_VAL /* Check bit 0 (DFT ignore) */
-    bnez    t1, memory_repair_error_ignored                         /* If bit 0 set, ignore error */
+    li      t0, SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL                /* SMC_CONFIG eFuse register address */
+    lwu     t1, 0(t0)                                                /* Read SMC_CONFIG register */
+    li      t2, SMC_EFUSE_SMC_CONFIG_DFT_IGNORE_ERROR_MASK_VAL       /* 0x8000 exceeds andi immediate range */
+    and     t1, t1, t2                                               /* Check bit 15 (DFT ignore) */
+    bnez    t1, memory_repair_error_ignored                          /* If bit 15 set, ignore error */
 
-    /* Bit 0 not set - treat as real failure and halt */
+    /* Bit 15 not set - treat as real failure and halt */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_MEM_REPAIR_FAILED_VAL
     sw      t1, 0(t0)
@@ -95,7 +96,7 @@ memory_repair_halt_loop:
     j       memory_repair_halt_loop         /* Infinite loop */
 
 memory_repair_error_ignored:
-    /* OTP RESERVED_2 bit 0 is set - ignore mem_repair error and continue boot */
+    /* OTP SMC_CONFIG bit 15 is set - ignore mem_repair error and continue boot */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_MEM_REPAIR_FAILED_VAL     /* Report actual failure status */
     sw      t1, 0(t0)
