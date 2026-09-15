@@ -385,9 +385,23 @@ class smu_base_test(uvm_test):
 
     async def run_phase(self) -> None:
         self.raise_objection()
+        tc = self.get_type_name()
+        if self.use_shared_env:
+            # Bound before any expect_* runs so a check name can attach to its
+            # mapped token.
+            self.env.scoreboard.bind_testcase(tc)
         await self.bring_up()
         try:
             await self.run_scenario()
+            if self.use_shared_env:
+                self.env.scoreboard.prove_mapped_features()
+            else:
+                self.logger.info(
+                    "EVIDENCE MAP GATE SKIPPED %s: no SmuScoreboard on this leaf "
+                    "(use_shared_env=False); the verdict is the sequence's own "
+                    "raise or the leaf's own scoreboard",
+                    tc,
+                )
         except Exception:  # noqa: BLE001 -- re-raised once the SEP state is in the log
             self.sep_trace_mon.dump_diagnostics(logging.ERROR)
             raise

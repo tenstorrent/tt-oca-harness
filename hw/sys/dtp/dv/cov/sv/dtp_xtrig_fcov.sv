@@ -36,9 +36,9 @@ module dtp_xtrig_fcov (
   input wire [15:0] ctp_ack_in_din_i
 );
 
-  // CSR map constants (dtp_xtrig_types).
-  localparam logic [31:0] CtpBase = 32'h200;
-  localparam int unsigned CtpStride = 'h10;
+  // CSR windows of the cross-trigger network (cross_trigger_network_pkg).
+  localparam logic [31:0] CtpBase = 32'(cross_trigger_network_pkg::CSR_ADDR_CTM_SIZE);
+  localparam int unsigned CtpStride = cross_trigger_network_pkg::CSR_ADDR_CTP_SIZE;
   localparam int unsigned NumCtp = 16;
   localparam logic [31:0] CtpEnd = CtpBase + 32'(NumCtp * CtpStride);
 

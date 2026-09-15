@@ -207,6 +207,7 @@ def _selftest() -> None:
     assert KMAC_XOF_STRENGTHS == (128, 256)
     assert abr_off("MLDSA_CTRL") == 0x10
     assert abr_off("MLDSA_PUBKEY") == 0x1000
+    assert abr_off("kv_mldsa_seed_rd_ctrl") == 0x8000
     name0, name1 = mldsa_name_words()
     assert name0 == 0x44534D4C
     assert name1 == 0x3837412D

@@ -19,7 +19,7 @@ the `expected_count` guards in `hw/sys/smc/dv/testlists/all.toml`.
 |===
 |Group |Role
 |`smoke` |PR gate: canonical bring-up, cold reset, and a CSR frontdoor read
-|`hosted` |Nightly and weekly: `all` minus the five leaves that need the RISC-V toolchain (two `fw` leaves, three dual-target leaves that run a ROM or firmware image)
+|`hosted` |Nightly and weekly: `all` minus the seventeen leaves that need the RISC-V toolchain (fourteen `fw` leaves, three dual-target leaves that run a ROM or firmware image)
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no bring-up credit
 |`per_ip` |One pass across every IP the bench drives
 |`all` |The package regression; `all.toml` names the leaves outside it and why, and `SMC_DEFERRED_DISPOSITION.adoc` records the leaves no scheduled tier runs
