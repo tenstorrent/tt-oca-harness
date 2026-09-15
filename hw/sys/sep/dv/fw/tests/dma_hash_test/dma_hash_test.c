@@ -2,12 +2,20 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Secure DMA SHA-256 Hash Test
+ * Secure DMA inline hash test: SHA-256 and SHA-384.
  *
- * This test transfers data from SRAM to DCCM and uses the hash engine in the
- * DMA to compute the SHA-256 hash of the data. It then verifies the hash against
- * the expected hash, calculated by software SHA256 library.
+ * Two passes over the same SRAM-to-DCCM path, both with the DMA's inline hash
+ * engine enabled.
  *
+ * Pass 1, SHA-256: transfers build-varying data and checks the hardware digest
+ * against a software SHA-256 computed over the same bytes, plus a byte compare
+ * of the copy.
+ *
+ * Pass 2, SHA-384: there is no 64-bit SHA-2 core in this firmware, so the
+ * expectation is the published FIPS 180-4 digest for a fixed 56-byte message
+ * rather than a software hash. The message is the input and the vector is the
+ * expectation; neither is read back from the engine. The copy is checked too,
+ * so a correct digest over a broken copy still fails.
  */
 
 #include <stdio.h>
@@ -17,6 +25,7 @@
 #include "test_completion.h"
 #include "och_sep_common.h"
 #include "sep.h"
+#include "sep_dma.h"
 #include "sep_outbound_filter.h"
 #include "sha256.h"
 #include "sep_pic.h"
@@ -43,7 +52,23 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
 // ASID / opcode / width used by this SHA-256 copy.
 #define ASID_OT_ADDR 0x7
 #define OPCODE_SHA256 0x1
+// SHA-384 opcode from the DV-owned encoding table (fw/drivers/sep_dma.h).
+#define OPCODE_SHA384 SEP_DMA_OPCODE_SHA384
 #define TRANSFER_WIDTH_FOUR_BYTE 0x2
+
+// SHA-384 digest is 384 bits = 12 of the 16 SHA2_DIGEST words.
+#define SHA384_DIGEST_WORDS 12
+#define SHA384_DIGEST_BYTES 48
+
+// FIPS 180-4 second SHA-2 test message, 56 bytes. Chosen over the one-block
+// "abc" vector because the DMA transfers whole 4-byte words, and 56 is a
+// multiple of 4 where 3 is not. The digest below is the published constant for
+// this exact message, not a value read back from the engine.
+static const char kFips1804Msg[] = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+#define FIPS_MSG_LEN 56
+static const char kFips1804Sha384Hex[] =
+    "3391fdddfc8dc7393707a65b1b4709397cf8b1d162af05abfe8f450de5f36bc6"
+    "b0455a8520bc4e6f5fe95b1fe3c8452b";
 
 // Test data size in bytes - must be a multiple of 4
 // 64 bytes = 1 SHA block + padding = ~8-10K cycles for SW hash
@@ -69,6 +94,17 @@ void compute_sha256(const unsigned char *data, size_t data_len, unsigned char *h
 
     // Finalize and retrieve the hash
     sha256_final(&ctx, hash_output);
+}
+
+// Render a big-endian digest byte stream as lowercase hex, for comparison
+// against a published vector string.
+static void digest_to_hex(const uint8_t *digest, size_t n, char *out) {
+    static const char hex_chars[] = "0123456789abcdef";
+    for (size_t i = 0; i < n; i++) {
+        out[2 * i] = hex_chars[(digest[i] >> 4) & 0xF];
+        out[2 * i + 1] = hex_chars[digest[i] & 0xF];
+    }
+    out[2 * n] = '\0';
 }
 
 //==============================================================================
@@ -323,13 +359,100 @@ int main(void) {
         printf("  PASS: SRAM and DCCM data matches!\n");
     }
 
+    //==========================================================================
+    // Step 6: Second pass -- inline SHA-384 over the FIPS 180-4 test message
+    //==========================================================================
+    // The SHA-256 pass above hashes seed-varying data and checks it against a
+    // software SHA-256 computed over the same bytes. There is no 64-bit SHA-2
+    // core in this firmware, so SHA-384 is instead pinned to the published FIPS
+    // 180-4 digest for a fixed message. The message is the input, the vector is
+    // the expectation, and neither comes from the DMA.
+    printf("\n=== Secure DMA SHA-384 (FIPS 180-4 vector) ===\n");
+
+    // Stage the fixed message in SRAM, where the SHA-256 pass left random data.
+    volatile uint8_t *msg_ptr = (volatile uint8_t *)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
+    for (int i = 0; i < FIPS_MSG_LEN; i++) {
+        msg_ptr[i] = (uint8_t)kFips1804Msg[i];
+    }
+    __asm__ volatile("fence" ::: "memory");
+
+    // Same src/dst/width/ASID as the first pass; only the length and the opcode
+    // change.
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+
+    dma_interrupt_fired = 0;
+    __asm__ volatile("fence" ::: "memory");
+
+    secure_dma__CONTROL_t sha384_ctrl = {
+        .f = {.OPCODE = OPCODE_SHA384, .DIGEST_SWAP = 1, .INITIAL_TRANSFER = 1, .GO = 1}};
+    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, sha384_ctrl.w);
+
+    int sha384_timeout = 100000;
+    while (sha384_timeout-- > 0) {
+        __asm__ volatile("wfi");
+        if (dma_interrupt_fired) break;
+    }
+
+    secure_dma__ERROR_CODE_t sha384_err;
+    sha384_err.w = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+
+    if (!dma_interrupt_fired) {
+        printf("  ERROR: SHA-384 DMA transfer timeout!\n");
+        secure_dma__CONTROL_t abort_ctrl = {.f = {.ABORT = 1}};
+        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
+        errors++;
+    } else if (sha384_err.w != 0) {
+        // OPCODE_ERROR here would mean the engine does not accept OpcSha384 on
+        // this build, which is a real result and not something to skip past.
+        printf("  ERROR: SHA-384 DMA transfer failed, ERROR_CODE = 0x%x\n", sha384_err.w);
+        if (sha384_err.f.OPCODE_ERROR) printf("    - OPCODE_ERROR: SHA-384 opcode rejected\n");
+        errors++;
+    } else {
+        printf("  SHA-384 DMA transfer completed!\n");
+
+        uint32_t hw384[SHA384_DIGEST_WORDS];
+        for (int i = 0; i < SHA384_DIGEST_WORDS; i++) {
+            hw384[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+        }
+
+        char got_hex[2 * SHA384_DIGEST_BYTES + 1];
+        digest_to_hex((const uint8_t *)hw384, SHA384_DIGEST_BYTES, got_hex);
+
+        printf("  Computed (HW) = %s\n", got_hex);
+        printf("  Expected (NIST) = %s\n", kFips1804Sha384Hex);
+
+        if (strcmp(got_hex, kFips1804Sha384Hex) != 0) {
+            printf("  ERROR: SHA-384 digest does not match the FIPS 180-4 vector!\n");
+            errors++;
+        } else {
+            printf("  PASS: SHA-384 digest matches the FIPS 180-4 vector\n");
+        }
+
+        // The same transfer also copied the message; check it landed. A digest
+        // engine fed correctly while the copy path is broken still fails here.
+        volatile uint8_t *dst8 = (volatile uint8_t *)DMA_DST_ADDR;
+        int msg_mismatches = 0;
+        for (int i = 0; i < FIPS_MSG_LEN; i++) {
+            if (dst8[i] != (uint8_t)kFips1804Msg[i]) {
+                printf("  ERROR: SHA-384 copy mismatch at byte %d: got 0x%02x want 0x%02x\n", i,
+                       dst8[i], (uint8_t)kFips1804Msg[i]);
+                errors++;
+                msg_mismatches++;
+            }
+        }
+        if (msg_mismatches == 0) {
+            printf("  PASS: SHA-384 pass also copied the message to DCCM intact\n");
+        }
+    }
+
     printf("\n=== Test Summary ===\n");
 
     if (errors == 0) {
-        printf("All SHA-256 hash tests PASSED\n");
+        printf("All SHA-256 and SHA-384 hash tests PASSED\n");
         test_pass(0);
     } else {
-        printf("FAILED: %d SHA-256 hash test(s) failed\n", errors);
+        printf("FAILED: %d hash test(s) failed\n", errors);
         test_fail(errors);
     }
 

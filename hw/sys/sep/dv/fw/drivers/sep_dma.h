@@ -19,6 +19,8 @@
 // CONTROL.OPCODE encodings (not named in PeakRDL).
 #define SEP_DMA_OPCODE_COPY 0x0u
 #define SEP_DMA_OPCODE_SHA256 0x1u
+#define SEP_DMA_OPCODE_SHA384 0x2u
+#define SEP_DMA_OPCODE_SHA512 0x3u
 // OPCODE[3:0] valid range is 0x0..0x3; 0x4..0xF are reserved -> opcode_error.
 #define SEP_DMA_OPCODE_INVALID 0xFu
 
@@ -26,6 +28,20 @@
 #define SEP_DMA_WIDTH_1B 0x0u
 #define SEP_DMA_WIDTH_2B 0x1u
 #define SEP_DMA_WIDTH_4B 0x2u
+#define SEP_DMA_WIDTH_INVALID 0x3u
+
+// ADDR_SPACE_ID SRC_ASID[3:0] / DST_ASID[7:4] encodings. PeakRDL carries only
+// the reset value, so the legal set is transcribed here from the IP register
+// specification: vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson
+// enumerates src_asid/dst_asid as OT_ADDR 0x7, SYS_ADDR 0x9, SOC_ADDR 0xa.
+// Anything else is outside the enumeration; the RDL describes ASID_ERROR as
+// "The source or destination ASID contains an invalid value."
+#define SEP_DMA_ASID_OT 0x7u
+#define SEP_DMA_ASID_SYS 0x9u
+#define SEP_DMA_ASID_SOC 0xAu
+// Not one of the three enumerated encodings.
+#define SEP_DMA_ASID_INVALID 0x0u
+#define SEP_DMA_ASID_PAIR(src, dst) (((uint32_t)(src)) | (((uint32_t)(dst)) << 4))
 
 static inline uint32_t sep_dma_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;

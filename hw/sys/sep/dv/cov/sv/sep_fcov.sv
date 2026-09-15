@@ -193,6 +193,7 @@ module sep_fcov (
 
   localparam logic [3:0] DmaOpCopy = 4'h0;  // fw/drivers/sep_dma.h
   localparam logic [3:0] DmaOpSha256 = 4'h1;
+  localparam logic [3:0] DmaOpSha384 = 4'h2;
 
   // aon_timer INTR_STATE: wkup_timer_expired[0], wdog_timer_bark[1]. The
   // vendored block exports no field symbol into sep_reg.svh; the position is
@@ -479,6 +480,11 @@ module sep_fcov (
       SECURE_DMA_CONTROL_OPCODE_SHIFT;
   wire dma_copy_go = dma_go && (dma_opcode_w == DmaOpCopy);
   wire dma_hash_go = dma_go && (dma_opcode_w == DmaOpSha256);
+  // Any inline-hash GO, whatever the digest length, so the opcode
+  // coverpoint can say WHICH hash the suite walked. dma_hash_go above
+  // stays SHA-256-only because the completion pairing below is written
+  // against that leaf.
+  wire dma_hash_any_go = dma_go && (dma_opcode_w != DmaOpCopy);
   wire dma_hs_go   = dma_go &&
       ((wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0);
   logic dma_copy_q, dma_hash_q, dma_hs_q;
@@ -1232,6 +1238,14 @@ module sep_fcov (
       bins chunk_done = {1'b1};
     }
     cp_rego: coverpoint dma_rego_non_initial {bins rego_not_initial = {1'b1};}
+    // Which inline-hash opcode was commanded. cp_hash above is SHA-256 only, so
+    // a SHA-384 transfer scored nothing before this. SHA-512 is a legal opcode
+    // with no leaf that commands it, so it has no bin rather than a permanent
+    // hole.
+    cp_hash_opcode: coverpoint dma_opcode_w iff (dma_hash_any_go) {
+      bins sha256 = {DmaOpSha256};
+      bins sha384 = {DmaOpSha384};
+    }
   endgroup
 
   covergroup sep_dma_completion_route_cg with function sample (logic irq_route, logic handshake);
