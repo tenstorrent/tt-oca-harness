@@ -48,34 +48,8 @@ name = "all"
 #                                     path, `run_modes = ["prod_rom"]`. Runs as
 #                                     `occp_boot`, and carries the `ci` tag.
 #
-# The test modules under cocotb/tests/ that are in no testlist each carry the
-# reason in their own docstring, on a leading `# deferred: <tag>` line where
-# one applies:
-#
-#   smc_pll_awm_freq_sweep_test        smc_pvt_analog_sensor_test
-#   smc_pll_cgm_awm_config_test        smc_pvt_droop_test
-#   smc_pll_dvfs_depth_test            smc_i3c_ccc_ibi_full_test
-#   smc_pll_pvt_clock_config_test      smc_macro_axil_routing_test
-#
-#     -- rtl_placeholder / needs_dtp_csr_sub: placeholder PLL/PVT RTL, the I3C
-#        DAT/DCT backing RAM this bench does not instantiate, and the idle DTP
-#        CSR port. All four appear in SMC_VPLAN.adoc under Known Limitations.
-#
-#   smc_captured_straps_test      no_dut_port: smc_wrapper declares no
-#                                 captured_straps_i, so there is no tap to drive
-#   smc_clint_csr_test            the 0xC8xx_xxxx cluster-local window folds onto
-#                                 0xC0xx_xxxx on SEP_IN, so the reads never reach
-#                                 the CLINT and the MTIME-monotonic leg cannot pass
-#   smc_dfd_dbs_fault_inject_test tb_glue: the TB latches a hardcoded
-#                                 0xDB5C_AFE1; real DFD is smc_dfd_wrap
-#   smc_sideband_avsbus_octs_bfm_test
-#                                 fake_bfm: raises on entry rather than standing
-#                                 in for a pad VIP that does not exist
-#   smc_cluster_plic_csr_test     no_sep_in_write_path: the PLIC aperture at
-#                                 0xC400_0000 accepts writes with OKAY and
-#                                 stores nothing, and its +2 MB context pages
-#                                 return non-OKAY. See the docstring and
-#                                 SMC_VPLAN Known Limitations
+# Test names that are catalogued but have no module under cocotb/tests/ are
+# dispositioned in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc.
 #
 # The `rtl_issue` group is out: its members (smc_deadspace_decode_test and
 # smc_remap_cla_test among them) fail on RTL defects rather than test defects,
@@ -620,8 +594,8 @@ tests = [
     "smc_efuse_jtag_lc_access_matrix_test",
     # PROD/RMA JTAG-OTP access control: non-identity read and write return
     # DECERR + 0xBADCAB1E while CHIPLET_ID/PACKAGE_ID return OKAY. The decision
-    # is DUT RTL (smc_efuse_wrapper.sv:86-89 identity decode, :129-135 lc-gated
-    # demux, :145 RESP_DATA 32'hbadcab1e) and the scored value has NO
+    # is DUT RTL (smc_efuse_wrapper.sv:93-96 identity decode, :137-138 lc-gated
+    # demux, :152 RESP_DATA 32'hbadcab1e) and the scored value has NO
     # efuse_bank_model dependence -- the sequence explicitly refuses to score
     # rdata on the ALLOW path. By contrast, smc_efuse_otp_burn_shadow_test scores
     # against the adopter efuse_bank_model.

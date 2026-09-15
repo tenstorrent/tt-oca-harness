@@ -254,6 +254,32 @@ promoted protocol-VIP test.
 `protocol_vip` for each promoted area
 |===
 
+[[block-coverage-by-group]]
+==== Block coverage by group
+
+One row per block or edge of the DUT: the leaves in `per_ip` that carry the
+block's routine claim (`smoke` is a subset of `per_ip`), and what the `all`
+sign-off sweep adds. Group membership is `testlists/all.toml`; the per-leaf
+detail is the card in `SMC_VPLAN.adoc`.
+
+[cols="2,3,3",options="header",]
+|===
+|Block / edge |`per_ip` |`all` (sign-off)
+|Reset / powergood / cool / FLR |`smc_cold_reset_test`, `smc_canonical_smoke_test`, `smc_flr_sanity_test` |same plus the reset cluster
+|CSR / scratch / chip-config |`smc_register_sanity_test`, `smc_default_reg_rd_test` |same plus `smc_register_boundary_depth_test`
+|SEP_IN / local fabric |`smc_i3c_to_fabric_test`, `smc_local_fabric_csr_depth_test` |same plus fabric depth
+|Mailbox / IRQ |`smc_mailbox_irq_test` |same plus mailbox depth
+|I2C protocol |`smc_i2c_master_target_test` |same plus the I2C cluster
+|JTAG / iJTAG |`smc_ijtag_basic_test` |same plus DMI / DFX
+|eFuse / OTP / LC-gated JTAG |`smc_efuse_otp_clock_test`, `smc_efuse_jtag_lc_access_matrix_test`, `smc_efuse_jtag_lc_negative_test` |same plus the eFuse depth cluster
+|eFuse / Zeroer illegal-state recovery |`smc_state_fault_inject_test` |same
+|GPIO / ext IRQ |`smc_gpio_irq_active_test` |same plus the GPIO cluster
+|UART / log / sideband |`smc_sideband_protocol_smoke_test` |same plus UART / AVSBus / OCTS
+|ECC / DFD / DBS |`smc_ecc_dfd_dbs_sanity_test` |same plus diagnostic depth
+|Deadspace aliasing |`smc_deadspace_decode_test` (fails on the decode defect under Known Limitations) |held out of `all`
+|CLA / ALIAS_REMAP |`smc_remap_cla_test` (fails on the decode defect under Known Limitations) |held out of `all`
+|===
+
 === Collection Strategy
 
 [cols=",",options="header",]
