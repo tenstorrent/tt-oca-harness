@@ -30,6 +30,10 @@ module sep_crypto_axi_interconnect (
   output sep_pkg::sep_32_32_axil_req_t       kmac_axil_isolated_req_o,
   input  sep_pkg::sep_32_32_axil_resp_t      kmac_axil_isolated_resp_i,
 
+  // Isolated full-AXI host bus to Adams Bridge
+  output sep_pkg::sep_32_64_6_12_axi_req_t   abr_axi_isolated_req_o,
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t  abr_axi_isolated_resp_i,
+
   // KM key-bus slave ports (from key_manager master ports)
   input  sep_pkg::sep_32_32_axil_req_t       otbn_key_axil_req_i,
   output sep_pkg::sep_32_32_axil_resp_t      otbn_key_axil_resp_o,
@@ -78,9 +82,7 @@ module sep_crypto_axi_interconnect (
   output sep_pkg::sep_32_64_6_12_axi_req_t   fuse_axi_req_o,
   input  sep_pkg::sep_32_64_6_12_axi_resp_t  fuse_axi_resp_i,
   output sep_pkg::sep_32_64_6_12_axi_req_t   lifecycle_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t  lifecycle_axi_resp_i,
-  output sep_pkg::sep_32_64_6_12_axi_req_t   abr_axi_req_o,
-  input  sep_pkg::sep_32_64_6_12_axi_resp_t  abr_axi_resp_i
+  input  sep_pkg::sep_32_64_6_12_axi_resp_t  lifecycle_axi_resp_i
 );
 
   // Drain depth of every isolate matches the crypto demux transaction limit.
@@ -1051,12 +1053,12 @@ module sep_crypto_axi_interconnect (
     .rst_ni     (rst_ni),
     .slv_req_i  (abr_axi_isolated_req),
     .slv_resp_o (abr_axi_isolated_resp),
-    .mst_req_o  (abr_axi_req_o),
-    .mst_resp_i (abr_axi_resp_i)
+    .mst_req_o  (abr_axi_isolated_req_o),
+    .mst_resp_i (abr_axi_isolated_resp_i)
   );
 `else
-  assign abr_axi_req_o        = abr_axi_isolated_req;
-  assign abr_axi_isolated_resp = abr_axi_resp_i;
+  assign abr_axi_isolated_req_o = abr_axi_isolated_req;
+  assign abr_axi_isolated_resp  = abr_axi_isolated_resp_i;
 `endif
 
 endmodule
