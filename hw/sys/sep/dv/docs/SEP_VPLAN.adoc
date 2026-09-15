@@ -804,7 +804,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>.
 
 |Adams Bridge ML-DSA-87 keyGen
-|`sep_abr_mldsa_keygen_kat_test`. ML-KEM and the key-vault seed path are not claimed.
+|`sep_abr_mldsa_keygen_kat_test`. The key-vault seed path is not claimed. ML-KEM is a separate vehicle, `sep_abr_mlkem_kat_test`.
 
 |Adams Bridge ML-DSA-87 sigGen / sigVer
 |`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
@@ -3068,9 +3068,10 @@ match, so a cached or constant engine passes the first leg and fails the second.
 `[34]` is driven high through `error_intr_trig` and cleared before the KAT, so a
 stuck-low aggregator cannot satisfy both `CHK-PIC-ERROR` and `CHK-PIC-NOTIF`.
 
-*Not claimed*: ML-KEM-1024 and the key-vault seed path — a green keyGen closes
-neither. This leaf writes the seed window over the bus. Sign and verify are a
-separate vehicle, <<sep_abr_mldsa_sign_verify_kat_test>>.
+*Not claimed*: the key-vault seed path — a green keyGen does not close it, and
+this leaf writes the seed window over the bus. ML-KEM-1024 is equally not closed
+by a green keyGen, and is owned by <<sep_abr_mlkem_kat_test>>; sign and verify by
+<<sep_abr_mldsa_sign_verify_kat_test>>.
 
 '''''
 
@@ -3089,8 +3090,8 @@ separate vehicle, <<sep_abr_mldsa_sign_verify_kat_test>>.
 
 *Objective*: Proves the two ML-DSA-87 consume commands the keyGen leaf does not
 reach. `MLDSA_CTRL.CTRL` encodes SIGNING (0x2) and VERIFYING (0x3) beside KEYGEN
-(0x1); the signature and verify-result windows had no vehicle driving or reading
-them. Randomization is RANDCFG — the masking entropy words come from the run
+(0x1), and this leaf owns both, together with the signature and verify-result
+windows they drive. Randomization is RANDCFG — the masking entropy words come from the run
 seed (`SepAbrKeygenCfg`); the vectors are fixed.
 
 *Test Coverage*: ML-DSA-87 sigGen known-answer, sigVer accept and reject, and
@@ -3169,9 +3170,9 @@ separate vehicle, <<sep_abr_mlkem_kat_test>>.
 
 *Objective*: Proves the ML-KEM-1024 commands. ML-KEM is a second register block
 inside the Adams Bridge aperture, with its own `MLKEM_CTRL` and `MLKEM_STATUS`
-beside the ML-DSA pair, and no leaf drove it: the encapsulation key,
-decapsulation key, ciphertext and shared-key windows had no vehicle. Not
-randomized -- every input is a published vector.
+beside the ML-DSA pair, and this leaf owns it: the encapsulation key,
+decapsulation key, ciphertext and shared-key windows are driven and read here.
+Not randomized -- every input is a published vector.
 
 *Test Coverage*: ML-KEM-1024 keyGen, encapsulation, and decapsulation known
 answers, decapsulation walked as both the valid and the implicit-rejection case,

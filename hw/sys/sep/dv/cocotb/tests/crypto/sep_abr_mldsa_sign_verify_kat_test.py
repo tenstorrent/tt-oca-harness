@@ -3,8 +3,8 @@
 """Adams Bridge ML-DSA-87 SIGN and VERIFY NIST KAT on the ABR aperture.
 
 ``sep_abr_mldsa_keygen_kat_test`` owns KEYGEN (0x1). ``MLDSA_CTRL.CTRL`` also
-encodes SIGNING (0x2) and VERIFYING (0x3), and neither had a vehicle: the
-signature and verify-result windows were never driven or read.
+encodes SIGNING (0x2) and VERIFYING (0x3), and this leaf owns both, together
+with the signature and verify-result windows they drive.
 
 Both vectors are the ACVP external-mu groups, so ``MLDSA_CTRL.EXTERNAL_MU`` is
 set and mu is written directly rather than a raw message. Signing is the

@@ -3,9 +3,9 @@
 """Adams Bridge ML-KEM-1024 keyGen / encaps / decaps NIST KAT on the ABR aperture.
 
 The ML-DSA leaves own MLDSA_CTRL. ML-KEM is a separate register block in the
-same aperture with its own MLKEM_CTRL command field, and no open test drove it:
-the encapsulation key, decapsulation key, ciphertext and shared-key windows had
-no vehicle.
+same aperture with its own MLKEM_CTRL command field, and this leaf owns it: the
+encapsulation key, decapsulation key, ciphertext and shared-key windows are
+driven and read here.
 
 Three legal commands are walked, each against the published ACVP value:
 
