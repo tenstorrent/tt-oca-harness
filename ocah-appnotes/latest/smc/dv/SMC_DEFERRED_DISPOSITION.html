@@ -1306,9 +1306,10 @@ any RTL behind it, including none. The catalog-only PLL names
 closing condition. The hosted runners carry Verilator, bender and uv only.
 The <code>ocah-toolchain</code> image (<code>tools/docker/Dockerfile</code>: <code>gcc-riscv64-unknown-elf</code>
 and <code>picolibc-riscv64-unknown-elf</code>) is built locally and published to no
-registry, and no workflow builds firmware, so every leaf below, each of which
-runs a <code>c_compile</code> stage, is run on demand (<code>scripts/docker-run.sh</code> builds the
-images) until CI has a toolchain.</p>
+registry, and no workflow builds firmware, so every firmware leaf below, each
+of which runs a <code>c_compile</code> stage, is run on demand (<code>scripts/docker-run.sh</code>
+builds the images) until CI has a toolchain. The last row is held out for a
+different reason: it is in no group, so no tier selects it.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -1481,6 +1482,14 @@ images) until CI has a toolchain.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC DV owner</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-15</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Toolchain as above and a runner budget that fits it: its own weekly <code>items: occp_dual</code> row with a timeout near the six-hour hosted cap</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ref_clock_timer_rate_test</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">none</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In no group, so <code>smoke</code>, <code>hosted</code> and <code>rtl_issue</code> all miss it. It fails the rate comparison it was written to make: <code>clk_rst.adoc:37-39</code> places the OCTS system timer in the reference clock domain, <code>smc_peripherals.sv:945-947</code> clocks <code>system_timer_octs</code> from <code>clk_smc_i</code>, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 <code>clk_ref_i</code> and 1026 <code>clk_smc_i</code> edges elapsed over the same window, against a tolerance of 14. It keeps its <code><a id="tests"></a></code> entry in <code>cpu.toml</code> and runs on demand (<code>--items smc_ref_clock_timer_rate_test</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC DV owner</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2026-12-15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The clock-domain discrepancy is ruled: either <code>system_timer_octs</code> takes <code>clk_ref_i</code> and the leaf joins the <code>clock</code> group with the <code>ci</code> tag, or <code>clk_rst.adoc</code> is corrected and the leaf&#8217;s expectation moves to <code>clk_smc_i</code>; if neither is ruled, the leaf joins <code>rtl_issue</code> under <code>expect_fail</code> with the rate assertion as <code>expect_fail_match</code></p></td>
 </tr>
 </tbody>
 </table>
