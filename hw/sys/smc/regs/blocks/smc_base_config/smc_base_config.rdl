@@ -145,11 +145,11 @@ addrmap smc_base_config {
         } enable[0:0] = 0x0;
         field {
             sw = rw; hw = r;
-            desc = "Interrupt enable. When 1, a timeout event propagates to irq_o.";
+            desc = "Interrupt enable. When irq_en and enable are high, irq_o follows the detector; when 0, irq_o is held low. Gates a real timeout and irq_test alike.";
         } irq_en[4:4] = 0x0;
         field {
             sw = rw; hw = r;
-            desc = "Interrupt test. When 1, forces irq_o high for verification / firmware bring-up.";
+            desc = "Interrupt test. When 1, asserts irq_o without a bus stall, so firmware can exercise the interrupt path. Gated by enable and irq_en: it substitutes for the timeout, it does not override the interrupt enable.";
         } irq_test[8:8] = 0x0;
     };
 
@@ -157,7 +157,7 @@ addrmap smc_base_config {
         desc = "Consecutive cycles with outstanding AXI transactions and no completion before a timeout fires.";
         field {
             sw = rw; hw = r;
-            desc = "Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz).";
+            desc = "Threshold in clock cycles. Default 0x1000. 20 bits => up to ~1M cycles (~1ms at 1GHz). 0 disables timeout detection: a stalled bus never asserts irq_o, though irq_test still asserts it. A threshold write takes effect when the stall count next restarts (on a completion, an idle bus, or enable cleared). So it does not change a stall already being timed.";
         } value[19:0] = 0x1000;
     };
 

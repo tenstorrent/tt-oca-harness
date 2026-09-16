@@ -92,19 +92,23 @@ module axi_hang_detector #(
   //
   // The threshold is latched when a stall window starts: the counter (re)loads
   // threshold while the bus is idle/making progress, counts down each stalled
-  // cycle, and fires (a level) on reaching 0.
+  // cycle, and fires (a level) on reaching 0. detect_armed_q latches alongside
+  // it, so a threshold written mid-window cannot change that window's outcome.
 
   logic [19:0] stall_cnt_q;
+  logic        detect_armed_q;
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       // Max value (non-zero) so the compare-to-zero below does not read as
       // "fired" during/just after reset; reloaded to threshold on the
       // first idle cycle.
-      stall_cnt_q <= 20'hF_FFFF;
+      stall_cnt_q    <= 20'hF_FFFF;
+      detect_armed_q <= 1'b0;
     end else if (!enable_i || !req_count_nonzero || any_completion) begin
       // Idle / making progress: (re)arm by loading the threshold.
-      stall_cnt_q <= threshold_i;
+      stall_cnt_q    <= threshold_i;
+      detect_armed_q <= (threshold_i != 20'd0);
     end else if (stall_cnt_q != 20'd0) begin
       // Outstanding tx with no completion: count down toward the timeout.
       stall_cnt_q <= stall_cnt_q - 20'd1;
@@ -114,11 +118,10 @@ module axi_hang_detector #(
 
   // Level: high once the counter has counted down to 0 (bus still hung).
   // Drops naturally when a completion or !enable reloads the counter.
-  // threshold == 0 disables detection: the loaded value 0 would read as fired
-  // immediately, so guard it off.
+  // threshold == 0 disables detection: detect_armed_q is low for that window, so
+  // the counter sitting at 0 with nothing to count does not read as fired.
   logic timeout_active;
-  assign timeout_active = enable_i && (threshold_i != 20'd0)
-                                     && (stall_cnt_q == 20'd0);
+  assign timeout_active = enable_i && detect_armed_q && (stall_cnt_q == 20'd0);
 
 
   ///////////////////////////////
