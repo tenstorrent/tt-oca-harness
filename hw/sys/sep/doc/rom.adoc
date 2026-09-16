@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[sep-rom]]
 = Boot ROM
 
+[[sep-rom]]
 The SEP maps a 64 KiB immutable Boot ROM aperture at `0x1004_0000` through
 `0x1004_FFFF`. The SEP CPU wrapper sets the VeeR EL2 `RESET_VEC` parameter to
 the base of this region, so a cold boot begins in the BL0 Root-of-Trust

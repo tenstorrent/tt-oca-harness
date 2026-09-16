@@ -5,9 +5,11 @@
 :description: SEP VeeR EL2 configuration, boot, DMA, and alarm processing.
 ifdef::backend-html5[]
 :sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
+:sep-rom-reference: xref:sep:rom.adoc#sep-rom[SEP Boot ROM]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
+:sep-rom-reference: <<sep-rom,SEP Boot ROM>>
 endif::backend-pdf[]
 
 [[cpu-subsystem]]
@@ -99,6 +101,8 @@ features:
 * 64 kB capacity
 * SECDED Error Correction - single error detect double error correct
 ** 32-bit data + 7-bit ECC tag
+
+See {sep-rom-reference} for the hardware and firmware-image layout.
 
 There is no ROM patching facility in the first generation
 implementation. This feature is planned for the second generation design
