@@ -1373,9 +1373,9 @@ wired internally within the SMU.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck,tms,trst_n}` when `SEP=1`, else unused
-|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo` when `SEP=1`, else `1'b0`
-|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck_i,tms_i,trst_ni}` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo_o` when `SEP=1`, else `1'b0`
+|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi_i` when `SEP=1`, else unused
 |`jtag_stap_sep_host_tdo_oen_o` |output |1 |Internal only; not consumed by SEP at SMU level
 |===
 
@@ -1943,7 +1943,7 @@ depends on the module parameter `SEP`.
 
 |SMC SEP AXI Input |`sep_axi_in_req_i` = SEP traffic when `SEP=1`, else `'0` |Dedicated SEP-to-SMC subordinate path
 |DTP SEP OTP JTAG |SEP `axil_sep_otp_jtag_*` when `SEP=1`, else `u_sep_otp_axil_err_slv` |SEP OTP debug AXI-Lite path
-|DTP SEP STAP return |SEP `jtag_tdo` when `SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
+|DTP SEP STAP return |SEP `jtag_tdo_o` when `SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
 |SMU |`sep_mailbox_interrupts` |Internal SEP-to-SMC mailbox interrupts when `SEP=1`, else `'0`
 |SMC |`sep_wdt_reset_n_i = ~sep_wdt_timer_rst_req` when `SEP=1`, else `1'b1` |SEP watchdog reset input to SMC
 |===

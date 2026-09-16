@@ -292,7 +292,7 @@ enrolment and point here; the dispositions live only here.
 Kinds used in the leaf tables:
 
 * *reads the crossing* -- the verdict samples the stand-in's output itself
-  (a CSR field or a `tb_top` tap wired to `o_q`). On Verilator that value has
+  (a CSR field or a `tb_top` tap wired to `q_o`). On Verilator that value has
   the stand-in as its author until the pipe has filled.
 * *downstream* -- the verdict reads product state that the DUT derives from
   the crossing's output.
