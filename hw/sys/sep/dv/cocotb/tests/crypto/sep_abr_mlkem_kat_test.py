@@ -82,6 +82,12 @@ from seq_lib.sep_abr_mlkem_seq import (
     MLKEM_STATUS,
     SepAbrMlkem,
 )
+from seq_lib.sep_crypto_reset_iso_seq import (
+    ENG_HMAC,
+    RESP_SLVERR,
+    RST_ABR,
+    SepCryptoResetIso,
+)
 
 # Backstop so a wedged engine fails the wait with a named contract rather than
 # running into the simulation timeout.
@@ -233,6 +239,87 @@ class sep_abr_mlkem_kat_test(sep_base_test):
             "success or reusing the last key",
             shared["reject"][0],
             shared["accept"][0],
+        )
+
+        # --- CHK-ABR-SELF-RESET and CHK-ABR-NEIGHBOR-SURVIVES -----------------
+        # The ABR datapath is pulsed through SW_RESET_N's ABR bit.
+        # Re-establish the encaps result: STATUS.VALID set with the shared key
+        # bit-exact against the ACVP vector is the live state both legs read.
+        await kem.write_words(MLKEM_ENCAPS_KEY, list(NIST_KEM_ENC_EK))
+        await kem.write_words(MLKEM_MSG, list(NIST_KEM_ENC_M))
+        await self._command(kem, KEM_CMD_ENCAPS, what="encaps before the reset legs")
+        k_live = await kem.read_words(MLKEM_SHARED_KEY, KEM_K_WORDS)
+        self._compare(k_live, NIST_KEM_ENC_K, chk="CHK-ABR-SELF-RESET", what="the shared key")
+        st_live = await kem.rd32(MLKEM_STATUS)
+        assert st_live & KEM_ST_VALID, (
+            f"MLKEM_STATUS=0x{st_live:08x} has VALID clear before the reset legs, so "
+            "neither a cleared nor a surviving result below would mean anything"
+        )
+
+        rst = SepCryptoResetIso(self)
+
+        # A sibling domain's reset must not reach ABR. HMAC is pulsed and
+        # released; the ABR result must still be VALID and bit-exact.
+        await rst.assert_reset(ENG_HMAC.rst_bit)
+        # HMAC's reset is drain-gated, so a back-to-back release can restore the
+        # default before the domain ever enters reset -- and a surviving ABR
+        # result would then prove only that nothing happened. Wait for the
+        # observed assert edge before releasing.
+        for _ in range(1_000):
+            if int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 0:
+                break
+            await ClockCycles(cocotb.top.clk_i, 1)
+        else:
+            raise AssertionError(
+                "HMAC gated reset never asserted, so the sibling-reset leg has no "
+                "stimulus to grade the ABR result against"
+            )
+        await rst.release_resets()
+        st_sib = await kem.rd32(MLKEM_STATUS)
+        k_sib = await kem.read_words(MLKEM_SHARED_KEY, KEM_K_WORDS)
+        assert st_sib & KEM_ST_VALID, (
+            f"MLKEM_STATUS=0x{st_sib:08x} lost VALID across the HMAC reset, so a "
+            "sibling domain's reset reached the ABR datapath"
+        )
+        self._compare(k_sib, NIST_KEM_ENC_K, chk="CHK-ABR-NEIGHBOR-SURVIVES", what="the shared key")
+        self.logger.info(
+            "CHK-ABR-NEIGHBOR-SURVIVES PASS: the held ML-KEM shared key stayed "
+            "bit-exact with MLKEM_STATUS=0x%08x across a sibling HMAC reset",
+            st_sib,
+        )
+
+        # ABR's own reset must land in the datapath. While the bit is held the
+        # host path is isolated, so the same MLKEM_STATUS address that just
+        # returned OKAY must now return SLVERR -- that is the full-AXI isolate,
+        # and it is read back after release to show the result did not survive.
+        # VALID is hardware-driven, so a reset that never reached ABR leaves it
+        # set. The shared-key window is read-gated on VALID, so its post-reset
+        # zeros are NOT offered as evidence of a wipe.
+        await rst.assert_reset(RST_ABR)
+        held = await rst.probe(MLKEM_STATUS, expect_error=True)
+        assert held.resp_code == RESP_SLVERR, (
+            f"MLKEM_STATUS read returned resp={held.resp_code} while the ABR "
+            "SW_RESET_N bit was held, expected SLVERR from the isolated host path"
+        )
+        self.logger.info(
+            "CHK-ABR-ISOLATE PASS: the MLKEM_STATUS address that returned OKAY "
+            "with a live result returns SLVERR while the ABR domain is held"
+        )
+
+        await rst.release_resets()
+        st_back = await self._wait_status(
+            kem, KEM_ST_READY, KEM_ST_READY, what="ABR post-reset READY"
+        )
+        assert not (st_back & KEM_ST_VALID), (
+            f"MLKEM_STATUS=0x{st_back:08x} came back with VALID set after the ABR "
+            "reset released, so the live result survived its own domain reset"
+        )
+        self.logger.info(
+            "CHK-ABR-SELF-RESET PASS: a live encaps result (STATUS=0x%08x) did not "
+            "survive the ABR SW_RESET_N pulse; the engine returned READY with "
+            "VALID clear (0x%08x)",
+            st_live,
+            st_back,
         )
 
         # --- CHK-KEM-ZEROIZE --------------------------------------------------

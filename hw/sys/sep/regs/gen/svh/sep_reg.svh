@@ -5947,7 +5947,7 @@ localparam longint unsigned AON_TIMER_INTR_STATE_REG_DEFAULT                    
 localparam longint unsigned AON_TIMER_INTR_TEST_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned AON_TIMER_WKUP_CAUSE_REG_DEFAULT                                                      = 32'h00000000;
 localparam longint unsigned SEP_SCRATCH_SCRATCH_REG_DEFAULT                                                       = 64'h0000000000000000;
-localparam longint unsigned SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT                                                 = 64'h000000000000003E;
+localparam longint unsigned SEP_RESET_CTRL_SW_RESET_N_REG_DEFAULT                                                 = 64'h000000000000007E;
 localparam longint unsigned OTBN_INTR_STATE_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned OTBN_INTR_ENABLE_REG_DEFAULT                                                          = 32'h00000000;
 localparam longint unsigned OTBN_INTR_TEST_REG_DEFAULT                                                            = 32'h00000000;
@@ -6461,6 +6461,9 @@ localparam     int unsigned SEP_RESET_CTRL_SW_RESET_N_KMAC_SW_RST_N_SHIFT       
 
 localparam longint unsigned SEP_RESET_CTRL_SW_RESET_N_TRNG_SW_RST_N_MASK                                          = 64'h20;
 localparam     int unsigned SEP_RESET_CTRL_SW_RESET_N_TRNG_SW_RST_N_SHIFT                                         = 5;
+
+localparam longint unsigned SEP_RESET_CTRL_SW_RESET_N_ABR_SW_RST_N_MASK                                           = 64'h40;
+localparam     int unsigned SEP_RESET_CTRL_SW_RESET_N_ABR_SW_RST_N_SHIFT                                          = 6;
 
 localparam int unsigned OTBN_INTR_STATE_DONE_MASK                                                                 = 32'h1;
 localparam int unsigned OTBN_INTR_STATE_DONE_SHIFT                                                                = 0;
@@ -9338,6 +9341,7 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [0:0]   abr_sw_rst_n ;
     logic [0:0]   trng_sw_rst_n ;
     logic [0:0]   kmac_sw_rst_n ;
     logic [0:0]   hmac_sw_rst_n ;
