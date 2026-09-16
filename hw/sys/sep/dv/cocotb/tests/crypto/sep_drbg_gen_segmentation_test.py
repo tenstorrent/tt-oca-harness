@@ -41,17 +41,28 @@ SEGMENTATION_GLEN = 4
 # Poll window for completed Generate commands. Sized from the measured rate --
 # about one command per 1.1 ms of sim at glen=4 -- so two commands have room to
 # land with margin. Two is the floor the Update-boundary claim needs.
-POLL_ITERATIONS = 1200
+POLL_ITERATIONS = 400
 POLL_CYCLES = 200
-# Two completed commands is the floor: the trailing Update fires after the last
-# block of a command, so one command never puts a golden-compared block on the
-# far side of a boundary.
-MIN_COMPLETED_COMMANDS = 2
+# One completed command is all this vehicle reaches. Measured: at 80,000 and at
+# 240,000 poll cycles the run ends identically, 1 command and 4 genbits, so the
+# limit is not time -- EDN issues no second Generate once the first retires. The
+# trailing Update therefore has no golden-compared block on its far side, and
+# this leaf does not claim one. See the Not-claimed note in the docstring.
+MIN_COMPLETED_COMMANDS = 1
 
 
 @pyuvm.test()
 class sep_drbg_gen_segmentation_test(sep_base_test):
-    """Prove the Generate-command segmentation contract at a short glen."""
+    """Prove the Generate-command segmentation contract at a short glen.
+
+    Not claimed: bit-exactness across a trailing CTR_DRBG Update boundary. The
+    Update fires after the last block of a command and this vehicle completes
+    exactly one command, so no golden-compared block lands on its far side.
+    Measured at 80,000 and at 240,000 poll cycles with an identical result -- one
+    command, four genbits -- so the limit is EDN issuing no second Generate, not
+    the poll window. Reaching the boundary needs a second Generate commanded,
+    which this leaf does not do.
+    """
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -87,13 +98,9 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         # At glen=4 the usual block budget spans multiple commands, so this is
         # about letting them land, not about stretching the run.
         #
-        # The window must cover at least TWO completed commands, not one. The
-        # trailing CTR_DRBG Update fires after the last block of a command, so a
-        # run that completes a single command never compares a golden-predicted
-        # block on the far side of an Update boundary -- which is the contract
-        # CHK1..CHK4 claim to hold across. Measured rate is about one command per
-        # 1.1 ms of sim at this glen, entropy-limited rather than demand-limited
-        # (the FIFO drain above is already running), so the bound is time.
+        # Let the one Generate this vehicle issues retire. A second command does
+        # not arrive however long the poll runs -- measured identical at 80,000
+        # and 240,000 cycles -- so this waits for completion, not for a boundary.
         sb = self.drbg_sb
         # Exit as soon as the boundary claim is satisfiable -- two completed
         # commands, and the blocks they carry. A higher block target is not worth
@@ -122,19 +129,15 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
             f"{sb.open_generate_remaining()} left in the open command). gen_last was never "
             f"seen asserted, so this test did not exercise what it exists for."
         )
-        # Two completed commands are what puts a golden-compared block after an
-        # Update boundary. One command leaves the trailing Update unobserved: its
-        # only effect is on state nothing reads out again, so an Update that ran
-        # wrongly or did not run at all produces the same PASS. If this fires,
-        # the window was not the limit and the claim needs narrowing instead --
-        # do not raise the bound further without checking the rate in the log.
+        # A second completed command would put a golden-compared block on the far
+        # side of the trailing Update. This vehicle does not reach one -- see
+        # MIN_COMPLETED_COMMANDS -- so the boundary is explicitly not claimed
+        # rather than silently assumed. Raising the poll bound does not help; it
+        # was measured at 3x with an identical result.
         assert completed >= MIN_COMPLETED_COMMANDS, (
-            f"only {completed} Generate command(s) completed in "
-            f"{POLL_ITERATIONS * POLL_CYCLES} cycles, so no genbits block was "
-            f"compared across a trailing CTR_DRBG Update boundary "
-            f"({sb.results['CHK4_genbits'].dut_items} genbits observed). "
-            f"CHK1..CHK4 claim bit-exactness across that boundary and this run "
-            f"cannot support it."
+            f"no Generate command completed in "
+            f"{POLL_ITERATIONS * POLL_CYCLES} cycles "
+            f"({sb.results['CHK4_genbits'].dut_items} genbits observed)"
         )
         # Every completed command must be exactly glen blocks. report() also
         # checks this against legal_gen_lengths; assert here so the failure names
@@ -145,8 +148,8 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         )
         self.logger.info(
             "CHK4-SEGMENTATION PASS: %d Generate command(s) completed, each exactly "
-            "%d blocks, so at least one golden-compared block landed after a "
-            "trailing Update boundary",
+            "%d blocks. The trailing Update is NOT observed: no golden-compared "
+            "block lands on its far side in this vehicle",
             completed,
             SEGMENTATION_GLEN,
         )

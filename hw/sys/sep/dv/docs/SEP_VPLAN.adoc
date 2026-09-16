@@ -2823,9 +2823,9 @@ scored (`rom_main` KM). This test uses golden routing.
 |===
 |Checker |Contract
 |CHK-SEGMENTATION
-|At least one Generate command completed, and every completed command carried exactly the commanded `glen=4` blocks — so `gen_last` was observed, the trailing Update ran, and a segment of any other length would fail.
+|At least one Generate command completed, and every completed command carried exactly the commanded `glen=4` blocks — so `gen_last` was observed and a segment of any other length would fail. *The trailing CTR_DRBG Update is not observed*: it fires after the last block of a command, and this vehicle completes exactly one command, so no golden-compared block lands on its far side. Measured at 80,000 and at 240,000 poll cycles with an identical result, so the limit is EDN issuing no second Generate, not the window.
 |CHK1..CHK4
-|The entropy stack matches its golden bit-exactly at each stage, including across the Update boundary this entry forces, in strict mode, with `report()` called.
+|The entropy stack matches its golden bit-exactly at each stage, in strict mode, with `report()` called. Bit-exactness *across* a trailing Update boundary is not claimed — see CHK-SEGMENTATION for why this vehicle cannot reach one.
 |CHK5_km
 |The Key Manager consumes an entropy word on the post-mux AXIS endpoint and it matches golden bit-exactly — the same consumer close as the end-to-end smoke. It says nothing about Key Manager *memory*; `CHK5_km_sram` is the row that covers the store.
 |CHK5_km_sram
