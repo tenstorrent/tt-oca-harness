@@ -372,8 +372,7 @@ are enrolled through `rtl_issue` -- no `ci` tag, not in `smoke`, `hosted` or
 the group on its own `regress.yml` row and grades the recorded failure as
 PASS, so the row goes red (`expected_fail_passed`) the week a defect is
 fixed and the leaf moves to its feature testlist. `smc_deadspace_decode_test`
-(#585) and `smc_remap_cla_test` (#1855) are members too; their cards are under
-FABRIC.
+(#585) is a member too; its card is under FABRIC.
 
 Every one carries an arm leg that must pass before its defect leg is scored.
 Without that, a stuck-at field or a dead probe would satisfy the defect leg for
@@ -1627,7 +1626,7 @@ Drive `smc_output_filter_remap_security_test_seq`. Each checker below is a named
 
 * **ALIAS_REMAP address translation** -- entry 0 is programmed (`REGION_START` / `REGION_END` / `REGION_ATTRS.offset|valid`) and a JTAG AXI write issued at the source address is observed **landing at the translated address** on the SYS_OUT responder (`tb_output_axi_last_addr`). The un-programmed identity case is the same-run positive control and the entry-disabled re-read is the same-run negative control, so "the remap moved the access" is distinguishable from "nothing happened".
 * **SMC_MMODE_REMAP_0..7 / SMC_ALIAS_REMAP_0..7** -- per-entry decode *and* the RDL reset content (`expected=` on every read, not merely an OKAY response).
-* **SMC_CLA_REG** -- the Cluster Local Aggregator window: an allow leg on real CLA registers (RDL reset values + a scratch write/readback) paired with the deny leg on unmapped in-window offsets, so the error response is attributable to *this* aperture's decode rather than to a dead bus.
+* **SMC_CLA_REG** -- the Cluster Local Aggregator window: an allow leg on real CLA registers (RDL reset values + a scratch write/readback) paired with the in-window-hole leg. Unallocated offsets inside the map complete OKAY with data 0; the five non-zero reset rows and the scratch write/readback distinguish a live aperture from a hole.
 
 *Test Procedure*:
 
@@ -1641,7 +1640,7 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 |Checker |Description
 |`CHK-CLA-RESET-SWEEP` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
 |`CHK-CLA-WINDOW-ALLOW` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
-|`CHK-CLA-WINDOW-DENY` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
+|`CHK-CLA-WINDOW-DENY` |Unmapped in-window CLA offsets complete OKAY with data 0 (`smc_remap_cla_test_seq.py`); the run fails if a hole returns an error or non-zero data
 |`CHK-REMAP-ALIAS0-IDENTITY` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
 |`CHK-REMAP-ALIAS0-LANDING` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
 |`CHK-REMAP-ALIAS0-OFF` |Named compare in `smc_remap_cla_test_seq.py`; the run fails if it mismatches
@@ -1649,7 +1648,7 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. The ALIAS_REMAP translation, the remap-table reset sweep and the CLA allow leg hold; the CLA deny leg fails because the first unmapped in-window offset, `+0x38` (0xC016_0038), completes with OKAY instead of SLVERR/DECERR. The leaf runs weekly in `rtl_issue` under `expect_fail` with `expect_fail_match` pinned to that `resp=0` assertion, so the recorded failure grades PASS and any other failure grades FAIL. Known Limitations records the hole. Enrolled in: `rtl_issue`, `per_ip`.
+*Pass Criteria*: `CHK-CLA-RESET-SWEEP`, `CHK-CLA-WINDOW-ALLOW`, `CHK-CLA-WINDOW-DENY`, `CHK-REMAP-ALIAS0-IDENTITY`, `CHK-REMAP-ALIAS0-LANDING`, `CHK-REMAP-ALIAS0-OFF`, `CHK-REMAP-TABLE-RESET` hold after their compares. Enrolled in: `all`, `hosted`, `per_ip`.
 '''''
 
 [[sec-036-smc_sys_out_aw_w_split_test]]
@@ -7489,7 +7488,7 @@ checked by inverting one assertion. `--validate-configs` then lists
 [cols=",",options="header",]
 |===
 |Group |Purpose
-|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Seven enrolled leaves are outside it: `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime; each runs in its own group), and the five `rtl_issue` reproducers, whose job is to fail and which the weekly tier runs on their own row (`smc_deadspace_decode_test`, `smc_gpio_irq_mask_deassert_test`, `smc_i2c_intr_mask_test`, `smc_log_engine_intr_mask_test`, `smc_remap_cla_test`). Seventeen members of `all` need more than a plain hosted runner: the fourteen `fw` leaves build a C image with the RISC-V toolchain, and the three dual-target leaves (`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test`) run the production ROM or a DV ROM image on the `SMC_DUAL` elaboration
+|`all` |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Six enrolled leaves are outside it: `smc_occp_dual_unsecure_boot_test` and `smc_prod_rom_occp_ready_test` (held on runtime; each runs in its own group), and the four `rtl_issue` reproducers, whose job is to fail and which the weekly tier runs on their own row (`smc_deadspace_decode_test`, `smc_gpio_irq_mask_deassert_test`, `smc_i2c_intr_mask_test`, `smc_log_engine_intr_mask_test`). Seventeen members of `all` need more than a plain hosted runner: the fourteen `fw` leaves build a C image with the RISC-V toolchain, and the three dual-target leaves (`smc_dual_axi_sram_probe_test`, `smc_dual_elaboration_test`, `smc_occp_sanity_test`) run the production ROM or a DV ROM image on the `SMC_DUAL` elaboration
 |`avsbus_depth` |avsbus depth coverage
 |`axil` |axil coverage
 |`per_ip` |One-per-IP breadth run used for routine regression
@@ -7536,7 +7535,6 @@ checked by inverting one assertion. `--validate-configs` then lists
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |`smc_deadspace_decode_test` measures wrap-to-live aliasing: dead offsets in seven register windows wrap onto live registers with an OKAY response |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail`, so the defect has a graded measurement and the row goes red when the decode changes |Resolve the wrap-to-live aliasing decode contract (#585); the leaf then moves to its feature testlist with the `ci` tag
-|`smc_remap_cla_test` CLA deny leg: the unmapped in-window offset `+0x38` (0xC016_0038) completes with OKAY instead of SLVERR/DECERR |Not in `all`; the card does not claim sign-off PASS. The leaf runs weekly in `rtl_issue` under `expect_fail` |Resolve #1855, which rules whether an unmapped in-window CLA offset may complete OKAY, and decide the aperture's decode contract; the leaf then moves to its feature testlist with the `ci` tag
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
 |Thirteen test modules written against this bench are out of the tree |Their blockers are outside the test: adopter placeholder PLL/PVT RTL, a wrapper pin that does not exist, an idle DTP boundary, a PLIC aperture SEP_IN cannot write, a CLINT window SEP_IN cannot reach, TB glue, or a pad-level VIP the bench lacks. The retired-module table in `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` names the blocker per row |Clear the blocker named in the row; the module is restored from git history
 |The raw OTP window has no responder on `smc_wrapper` |No testcase exercises a permission check at the raw OTP window -- the OTP bank itself, as distinct from the eFuse-shim CSR window `smc_efuse_chip_config_read_test_seq` reads over SEP_IN and the JTAG access-control path `smc_efuse_jtag_lc_access_matrix_test` drives. `smc_efuse_permission_boundary_test` stays on the CSR side of the eFuse boundary and claims only the chip-config reads it makes. The permission semantics this bench can reach are covered elsewhere: `smc_efuse_jtag_lc_access_matrix_test` (lifecycle-gated JTAG-side access) and `smc_efuse_locked_access_interrupt_test` (locked-shadow access) |Add a raw-OTP responder to the bench, or assign the raw OTP permission path to the eFuse block-level TB

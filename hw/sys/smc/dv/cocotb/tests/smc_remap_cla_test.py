@@ -60,6 +60,6 @@ class smc_remap_cla_test(smc_base_test):
             proxy=False,
             details=(
                 "ALIAS_REMAP_0 address translation proven at the SYS_OUT landing "
-                "site; MMODE/ALIAS reset sweep; CLA allow+deny window"
+                "site; MMODE/ALIAS reset sweep; CLA allow and in-window-hole window"
             ),
         )

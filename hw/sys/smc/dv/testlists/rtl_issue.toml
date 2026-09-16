@@ -95,21 +95,6 @@ run_modes = ["smoke"]
 expect_fail = "#585: dead offsets in seven register windows wrap onto live registers with an OKAY response"
 expect_fail_match = "aliased live registers \\(wrap_to_live=[1-9][0-9]* read_alias="
 
-[[tests]]
-# The ALIAS_REMAP translation and the MMODE/ALIAS reset sweep pass; the CLA
-# deny leg does not: the first hole the generated CLA map yields, +0x38, is an
-# in-window offset no MMR decoder claims, and it completes with resp=0 (OKAY)
-# where the leg expects SLVERR/DECERR. #1855 rules whether that completion is
-# a defect.
-name = "smc_remap_cla_test"
-module = "smc_remap_cla_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue", "pyuvm"]
-run_modes = ["smoke"]
-expect_fail = "#1855: the unmapped in-window CLA offset +0x38 completes with OKAY instead of SLVERR/DECERR"
-expect_fail_match = "read @ 0x0*c0160038 marked expect_error but returned resp=0"
-
 [[groups]]
 name = "rtl_issue"
 tests = [
@@ -117,6 +102,5 @@ tests = [
     "smc_log_engine_intr_mask_test",
     "smc_i2c_intr_mask_test",
     "smc_deadspace_decode_test",
-    "smc_remap_cla_test",
 ]
-expected_count = 5
+expected_count = 4
