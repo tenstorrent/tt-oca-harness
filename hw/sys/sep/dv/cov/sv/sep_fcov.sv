@@ -112,7 +112,12 @@ module sep_fcov (
   // path, so the two isolate-completion bits are separate inputs.
   input wire        hmac_gated_rst_n_i,
   input wire        hmac_host_isolated_i,
-  input wire        hmac_km_isolated_i
+  input wire        hmac_km_isolated_i,
+  // The same three for the Adams Bridge domain. Its host path is a full-AXI
+  // isolate and its Key Manager path is shared with the KM domain.
+  input wire        abr_gated_rst_n_i,
+  input wire        abr_host_isolated_i,
+  input wire        abr_km_isolated_i
 );
 
   import och_sep_top_addrmap_pkg::*;
@@ -1421,13 +1426,16 @@ module sep_fcov (
   // to 1/0 would manufacture both edges below on the first clock of every run,
   // in every test, whether or not anything sequenced an isolate.
   logic hmac_rst_n_q, hmac_km_iso_q;
+  logic abr_rst_n_q;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       hmac_rst_n_q  <= hmac_gated_rst_n_i;
       hmac_km_iso_q <= hmac_km_isolated_i;
+      abr_rst_n_q   <= abr_gated_rst_n_i;
     end else begin
       hmac_rst_n_q  <= hmac_gated_rst_n_i;
       hmac_km_iso_q <= hmac_km_isolated_i;
+      abr_rst_n_q   <= abr_gated_rst_n_i;
     end
   end
 
@@ -1441,6 +1449,8 @@ module sep_fcov (
   wire hmac_km_iso_rise = !in_reset && !hmac_km_iso_q && hmac_km_isolated_i;
   wire hmac_km_iso_fall = !in_reset && hmac_km_iso_q && !hmac_km_isolated_i;
   wire hmac_rst_ordered = hmac_rst_fall && hmac_host_isolated_i && hmac_km_isolated_i;
+  wire abr_rst_fall    = !in_reset && abr_rst_n_q && !abr_gated_rst_n_i;
+  wire abr_rst_ordered = abr_rst_fall && abr_host_isolated_i && abr_km_isolated_i;
 
   covergroup sep_crypto_isolate_cg @(posedge clk_i);
     option.per_instance = 1;
@@ -1448,6 +1458,7 @@ module sep_fcov (
     cp_km_iso: coverpoint hmac_km_iso_rise {bins km_path_isolated = {1'b1};}
     cp_rst_ordered: coverpoint hmac_rst_ordered {bins reset_after_both_isolated = {1'b1};}
     cp_reopen: coverpoint hmac_km_iso_fall {bins km_path_reopened = {1'b1};}
+    cp_abr_rst_ordered: coverpoint abr_rst_ordered {bins reset_after_both_isolated = {1'b1};}
   endgroup
 
   covergroup sep_km_generate_cg @(posedge clk_i);

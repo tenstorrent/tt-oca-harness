@@ -58,6 +58,25 @@ Isolation proof (both directions, then the remaining isolated bits):
                     resolves; it may drain or terminate, but it
                     may not hang. That the path is not left wedged is the
                     existing CHK-ISOLATE-REOPEN beat after release.
+  * CHK-ABR-DRAIN-ORDER  the Adams Bridge reset does not assert until BOTH
+                    paths its domain depends on report isolated: the full-AXI
+                    SEP host path and the shared Key Manager path. An ABR-only
+                    reset request must raise the Key Manager bit on its own --
+                    a design that raises it only for a Key Manager reset never
+                    releases the sequencer and fails here rather than passing
+                    on a steady state.
+  * CHK-ABR-HOST-DRAIN  host reads accepted before the ABR reset request resolve
+                    OKAY or SLVERR, never DECERR and never a hang, and at least
+                    one drains OKAY. The count still unretired as the isolate
+                    closes is asserted non-zero, so the leg grades traffic the
+                    isolate actually had to drain.
+  * CHK-ABR-DRAIN-ARRIVAL  a read issued WHILE the ABR isolate drains resolves
+                    too; it may drain or terminate, but it may not hang.
+  * CHK-ABR-JTAG-OVERRIDE  the JTAG IC_RESET override holds the Adams Bridge
+                    domain in reset while SW_RESET_N still reports it released,
+                    and releasing the override lets the domain come back. The
+                    override is sampled against the gated reset, so a mux that
+                    ignored the override select fails here.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
                     TRNG-only reset. SW_RESET_N inside the window shows the
                     TRNG bit held and the four accelerator bits released.
@@ -89,6 +108,7 @@ from env.sep_kmac_golden import kmac_family_words
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC
+from seq_lib.sep_abr_mlkem_seq import MLKEM_STATUS
 from seq_lib.sep_aes_seq import AES_DATA_OUT_0, SepAes
 from seq_lib.sep_crypto_reset_iso_seq import (
     ENG_AES,
@@ -98,6 +118,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     HMAC_DIGEST_RESET,
     RESP_OKAY,
     RESP_SLVERR,
+    RST_ABR,
     RST_HMAC,
     SW_RESET_N_DEFAULT,
     SepCryptoResetIso,
@@ -583,6 +604,153 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "window confirming the TRNG domain held and all four accelerator "
             "domains released",
             sw_parked,
+        )
+
+        # ---- Adams Bridge drain-before-reset ---------------------------------
+        # ABR's host path is a full-AXI isolate and its Key Manager path is
+        # shared with the KM domain, so the sequencer waits on host_abr AND
+        # km_abr. The reset must still be released when the loop starts, or the
+        # sampled state would be the settled one in which both bits are high
+        # anyway and the order could not fail.
+        abr_rst = SepCryptoResetIso(self)
+        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 1, (
+            "ABR gated reset was already asserted before the reset request was "
+            "issued, so this domain asserted reset with no drain window at all"
+        )
+        # Queue host reads the fabric can accept BEFORE the request, so the
+        # full-AXI isolate has real traffic to drain. This is the only full-AXI
+        # host isolate in the design; every other accelerator path is AXI-Lite,
+        # so TerminateTransaction and NumPending are exercised nowhere else.
+        abr_axi = self.env.axi_agent.driver
+        abr_drain_reads = [
+            abr_axi.axi.init_read(address=MLKEM_STATUS, length=4, size=2) for _ in range(16)
+        ]
+        abr_task = cocotb.start_soon(abr_rst.assert_reset(RST_ABR))
+        abr_arrival = None
+        abr_outstanding = None
+        abr_saw_window = False
+        for _ in range(1_000):
+            host_iso = int(cocotb.top.abr_host_isolated_probe_o.value)
+            km_iso = int(cocotb.top.abr_km_isolated_probe_o.value)
+            if int(cocotb.top.abr_gated_rst_n_probe_o.value) == 0:
+                assert host_iso == 1 and km_iso == 1, (
+                    "ABR reset asserted before its AXI paths isolated: "
+                    f"host_abr={host_iso} km_abr={km_iso}"
+                )
+                self.logger.info(
+                    "CHK-ABR-DRAIN-ORDER PASS: ABR reset asserted only after the "
+                    "full-AXI host path and the shared Key Manager path both "
+                    "reported isolated (sampled in the same cycle as the observed "
+                    "assert edge)"
+                )
+                break
+            if not abr_saw_window and (host_iso == 1 or km_iso == 1):
+                abr_saw_window = True
+                # Beats still unretired as the isolate closes. Without this the
+                # drain check below would pass on traffic that had already
+                # completed before the reset request went out -- the reads and
+                # the SW_RESET_N write share one master, so ordering alone does
+                # not put them in the window.
+                abr_outstanding = sum(1 for e in abr_drain_reads if not e.is_set())
+                abr_arrival = abr_axi.axi.init_read(address=MLKEM_STATUS, length=4, size=2)
+                self.logger.info(
+                    "ABR drain window open (host_abr=%d km_abr=%d, gated reset still released)",
+                    host_iso,
+                    km_iso,
+                )
+            await ClockCycles(cocotb.top.clk_i, 1)
+        else:
+            raise AssertionError(
+                "ABR gated reset never asserted after the reset request: the "
+                "sequencer is still waiting for host_abr and km_abr to isolate"
+            )
+        await abr_task
+
+        abr_codes = []
+        for event in abr_drain_reads:
+            await with_timeout(event.wait(), 10_000, "ns")
+            abr_codes.append(worst_resp(getattr(event.data, "resp", None)))
+        assert all(code in (RESP_OKAY, RESP_SLVERR) for code in abr_codes), (
+            f"in-flight ABR host reads returned unexpected responses {abr_codes}"
+        )
+        assert RESP_OKAY in abr_codes, (
+            "no pre-reset ABR host read drained successfully, so this run does not "
+            "show that the full-AXI isolate completes accepted traffic rather than "
+            "dropping it"
+        )
+        assert abr_outstanding, (
+            f"{abr_outstanding} of the {len(abr_drain_reads)} pre-request ABR reads "
+            "were still unretired when the isolate closed, so every one of them had "
+            "already completed and this leg grades no traffic that the isolate had "
+            "to drain"
+        )
+        self.logger.info(
+            "CHK-ABR-HOST-DRAIN PASS: %d of %d ABR host reads were still unretired "
+            "when the full-AXI isolate closed, and all resolved %s (no hang, no "
+            "DECERR); at least one drained OKAY",
+            abr_outstanding,
+            len(abr_drain_reads),
+            abr_codes,
+        )
+
+        assert abr_arrival is not None, (
+            "no ABR drain window was observed, so the arrival-during-drain case has "
+            "no beat and CHK-ABR-DRAIN-ARRIVAL has nothing to grade"
+        )
+        await with_timeout(abr_arrival.wait(), 10_000, "ns")
+        abr_arrival_code = worst_resp(getattr(abr_arrival.data, "resp", None))
+        assert abr_arrival_code in (RESP_OKAY, RESP_SLVERR), (
+            "an ABR host read issued INSIDE the drain window returned "
+            f"{abr_arrival_code}; it may drain or terminate, but it may not hang or "
+            "DECERR"
+        )
+        self.logger.info(
+            "CHK-ABR-DRAIN-ARRIVAL PASS: a read issued inside the ABR drain window "
+            "resolved %d rather than hanging",
+            abr_arrival_code,
+        )
+
+        assert abr_saw_window, (
+            "no ABR drain window was observed: the gated reset asserted with no "
+            "cycle in which an isolate bit was set and the reset still released"
+        )
+        await abr_rst.release_resets()
+
+        # ---- ABR JTAG IC_RESET override -------------------------------------
+        # The override mux sits after the SW-reset AND: asserting it must hold
+        # the domain even though SW_RESET_N still shows ABR released. Both
+        # directions are graded, so a mux stuck in either position fails.
+        sw_before = await abr_rst.read_back()
+        assert sw_before & (1 << RST_ABR), (
+            f"SW_RESET_N=0x{sw_before:08x} shows ABR already held before the JTAG "
+            "override is applied, so a held gated reset below would prove nothing"
+        )
+        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 1, (
+            "ABR gated reset is already asserted before the JTAG override, so the "
+            "override cannot be shown to be what holds it"
+        )
+        cocotb.top.jtag_abr_rst_hold_i.value = 1
+        await ClockCycles(cocotb.top.clk_i, 10)
+        sw_held = await abr_rst.read_back()
+        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 0, (
+            "JTAG override asserted but the ABR gated reset stayed released, so "
+            "the override select does not reach the reset mux"
+        )
+        assert sw_held & (1 << RST_ABR), (
+            f"SW_RESET_N=0x{sw_held:08x} shows the ABR bit low inside the override "
+            "window, so the hold cannot be attributed to JTAG rather than software"
+        )
+        cocotb.top.jtag_abr_rst_hold_i.value = 0
+        await ClockCycles(cocotb.top.clk_i, 10)
+        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 1, (
+            "ABR gated reset stayed asserted after the JTAG override released, so "
+            "the mux is stuck on the override leg"
+        )
+        self.logger.info(
+            "CHK-ABR-JTAG-OVERRIDE PASS: the override held the ABR domain with "
+            "SW_RESET_N=0x%08x still reporting it released, and the domain "
+            "returned when the override released",
+            sw_held,
         )
 
         self.logger.info(

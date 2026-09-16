@@ -343,7 +343,7 @@ appears.
 |`sep_abr_mlkem_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|ML-KEM-1024 key generation, encapsulation and decapsulation through the ML-KEM register block: the two keys, the ciphertext and the shared key each compared against the published ACVP vector, with decapsulation walked as both the valid case and the modified-ciphertext case that FIPS-203 answers by implicit rejection.
+|ML-KEM-1024 key generation, encapsulation and decapsulation through the ML-KEM register block: the two keys, the ciphertext and the shared key each compared against the published ACVP vector, with decapsulation walked as both the valid case and the modified-ciphertext case that FIPS-203 answers by implicit rejection. Also the Adams Bridge `SW_RESET_N` domain: a live encaps result survives a sibling engine's reset bit-exact, the host path returns SLVERR while the ABR bit is held, and the result does not survive ABR's own reset.
 |`sep_entropy_pool_aperture_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -750,7 +750,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset is claimed for the HMAC domain only — see the detail entry; it is not claimed for AES, KMAC or OTBN. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset is claimed for the HMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES, KMAC or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
@@ -810,7 +810,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_abr_mldsa_sign_verify_kat_test`. Deterministic external-mu signing against the ACVP vector, and verification walked as the accepting and rejecting pair. `KEYGEN_SIGN` and the key-vault seed path are not claimed.
 
 |Adams Bridge ML-KEM-1024
-|`sep_abr_mlkem_kat_test`. keyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. `KEYGEN+DECAPS` and the key-vault seed path are not claimed.
+|`sep_abr_mlkem_kat_test`. keyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. The same leaf grades the Adams Bridge `SW_RESET_N` domain on a live result — see `Per-IP SW_RESET_N isolation`. `KEYGEN+DECAPS` and the key-vault seed path are not claimed.
 
 |Entropy pool aperture + PIC sources
 |`sep_entropy_pool_aperture_test`. Drain-under-fill / stall-duration are not claimed.
@@ -2379,7 +2379,7 @@ reaches its wait before the interrupt fires.
 *Test Procedure*:
 
 [arabic]
-. Check the software reset register default, which is `0x3E`: the Key Manager is held and OTBN, AES, HMAC, KMAC and the TRNG come up released. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The TRNG is not parked, because it supplies entropy rather than requesting it. The firmware then probes each per-IP reset wire, including the shared TRNG bit: assert the bit, confirm the register goes to its reset value, release, confirm it is writable again.
+. Check the software reset register default, which is `0x7E`: the Key Manager is held and OTBN, AES, HMAC, KMAC, the TRNG and Adams Bridge come up released. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The TRNG is not parked, because it supplies entropy rather than requesting it. The firmware then probes each per-IP reset wire, including the shared TRNG bit: assert the bit, confirm the register goes to its reset value, release, confirm it is writable again.
 . Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts.
 . Configure the watchdog with small bark and bite thresholds; enable.
 . On the first bark the handler clears and disables; confirm the count is frozen non-zero, pet returns it to zero, and it stays zero while disabled.
@@ -2403,7 +2403,7 @@ reaches its wait before the interrupt fires.
 |CHK-BITE
 |The bite reset request reaches the real output pin.
 |CHK-SWRST-DEFAULT
-|The software reset register holds its specified default of `0x3E`.
+|The software reset register holds its specified default of `0x7E`.
 |CHK-SWRST-WIRE
 |Pulsing each per-IP bit, the shared TRNG bit included, returns that domain's probe register to its reset value and leaves the neighbouring domains untouched.
 |===
@@ -2882,6 +2882,28 @@ one word and parks, which is enough for the legality check to execute.
 |The reverse direction: the HMAC reset clears its own digest to the exact reset value, and the AES output is bit-exact intact.
 |CHK-KMAC-SELF
 |KMAC `SW_RESET_N` restores `STATUS` to its register-map reset and STATE (share0^share1) reads 0, while HMAC DIGEST stays bit-exact.
+|CHK-ABR-DRAIN-ORDER
+|The Adams Bridge reset does not assert until both paths its domain depends on
+report isolated: the full-AXI SEP host path and the shared Key Manager path. The
+two are sampled every cycle from the reset request, so the order is observed at
+the assert edge rather than read off a settled state. It also grades the Key
+Manager path's ABR term -- a design that raised that bit only for a Key
+Manager reset never releases the sequencer and fails here.
+|CHK-ABR-HOST-DRAIN
+|Host reads accepted before the ABR reset request resolve OKAY or SLVERR, never
+DECERR and never a hang, and at least one drains OKAY. The number still
+unretired at the cycle the isolate closes is asserted non-zero, so the leg
+grades traffic the isolate had to drain rather than beats that had already
+completed.
+|CHK-ABR-DRAIN-ARRIVAL
+|A read issued WHILE the ABR isolate is draining resolves rather than hanging.
+It may drain or terminate; the graded property is that the path is not left
+wedged.
+|CHK-ABR-JTAG-OVERRIDE
+|The JTAG `IC_RESET` override holds the ABR domain while `SW_RESET_N`, read back
+inside the window, still reports it released -- so the hold is attributable to
+JTAG rather than to software -- and the domain returns when the override
+releases. Both mux directions are graded.
 |CHK-KMAC-NEIGHBOR
 |HMAC `SW_RESET_N` leaves KMAC STATE bit-exact intact.
 |CHK-OTBN
@@ -3187,7 +3209,8 @@ Not randomized -- every input is a published vector.
 
 *Test Coverage*: ML-KEM-1024 keyGen, encapsulation, and decapsulation known
 answers, decapsulation walked as both the valid and the implicit-rejection case,
-and `ZEROIZE` between commands.
+`ZEROIZE` between commands, and the Adams Bridge per-IP `SW_RESET_N` domain
+graded on a live encaps result.
 
 *Test Procedure*:
 
@@ -3209,6 +3232,9 @@ the case whose ciphertext was modified. Under FIPS-203 implicit rejection the
 modified ciphertext produces a different shared key rather than an error, and
 ACVP publishes that key.
 . `MLKEM_STATUS.VALID` is sticky, so every command is separated by a `ZEROIZE`.
+. A final encapsulation re-establishes a live, vector-matched shared key. A
+sibling engine (HMAC) is then pulsed through `SW_RESET_N`, and afterwards the
+ABR bit itself. The pulse uses `SW_RESET_N.abr_sw_rst_n`.
 
 *Checkers*:
 
@@ -3233,6 +3259,20 @@ supplied over the bus this is an absolute value, not a self-consistency check.
 a different value, still exact. An engine that reported an error, returned
 zeros, skipped implicit rejection, or reused the previous shared key fails here
 while passing the accepting case.
+|CHK-ABR-NEIGHBOR-SURVIVES
+|A live encaps result -- `STATUS.VALID` set and the shared key bit-exact against
+the ACVP vector -- is intact after a sibling HMAC `SW_RESET_N` pulse. The
+pre-pulse state is asserted first, so a run in which no result was live fails
+rather than passing on an empty compare.
+|CHK-ABR-ISOLATE
+|The `MLKEM_STATUS` address that just returned OKAY with a live result returns
+SLVERR while the ABR `SW_RESET_N` bit is held. This is the full-AXI host isolate;
+every other accelerator host path is AXI-Lite.
+|CHK-ABR-SELF-RESET
+|The live result does not survive ABR's own reset: after release the engine
+returns READY with `VALID` clear. `VALID` is hardware-driven, so a reset that
+never reached the datapath leaves it set. The shared-key window is read-gated on
+`VALID`, so its post-reset zeros are *not* offered as evidence of a wipe.
 |CHK-KEM-ZEROIZE
 |`ZEROIZE` between commands drops `VALID` and the shared-key window then reads
 zero. Same scope limit as the ML-DSA leaves: the read port is gated on the valid

@@ -44,10 +44,10 @@ which map key words into the sideload structures expected by the OpenTitan
 cores. These buses are independently isolated so that they drain before either
 the Key Manager or the destination accelerator enters software reset.
 
-Each accelerator except Adams Bridge has its own software-controllable
-reset. The SEP Reset Controller drains and isolates both its host and Key Manager
-paths before asserting reset; a Key Manager reset similarly drains all of its
-key paths. The entropy source, CSRNG, and EDN share one coordinated reset. See
+Each accelerator has its own software-controllable reset. The SEP Reset
+Controller drains and isolates both its host and Key Manager paths before
+asserting reset; a Key Manager reset similarly drains all of its key paths. The
+entropy source, CSRNG, and EDN share one coordinated reset. See
 <<sep-reset-controller>> and <<sep-trng-reset>>.
 
 [[sep-crypto-alert-policy]]
