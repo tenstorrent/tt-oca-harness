@@ -41,20 +41,22 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagMasterSequence, OcahJtagState
 
+from seq_lib.smu_boundary_regs import (
+    SEP_RTL_STAP_ORDER,
+    ptap_prefixed,
+    stap_3dcr_scan_word,
+    stap_sib_pattern,
+)
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     DTP_IR_IDCODE,
     DTP_IR_TAP_3DCR,
     DTP_IR_WIDTH,
     PTAP_3DCR_WIDTH,
-    SMU_STAP_ORDER,
     dtp_ir_opcode,
     make_smu_jtag_tap,
     ptap_3dcr_value,
-    ptap_prefixed,
     require_jtag_tdo_resolved,
-    stap_3dcr_scan_word,
-    stap_sib_pattern,
 )
 
 DTP_IR_SELECT_IJTAG = dtp_ir_opcode("SELECT_IJTAG")
@@ -314,7 +316,7 @@ class smu_dtp_scan_chain_boundary_seq:
         )
         await self.jtag.step_tms(0)
         await self.jtag.step_tms(0)
-        sib_word, sib_width = ptap_prefixed(stap_sib_pattern(name, 1), len(SMU_STAP_ORDER))
+        sib_word, sib_width = ptap_prefixed(stap_sib_pattern(name, 1), len(SEP_RTL_STAP_ORDER))
         await self.jtag.shift_dr(sib_word, sib_width, back_to_rti=True)
         stap_word, stap_width = stap_3dcr_scan_word(
             name, config_hold=1, stap_sel=1, tms_hold=1, close_sib=0

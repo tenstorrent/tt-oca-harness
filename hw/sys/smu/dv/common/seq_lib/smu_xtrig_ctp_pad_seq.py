@@ -47,7 +47,8 @@ import cocotb
 from cocotb.triggers import ClockCycles
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import cross_trigger_u32, smc_addr
+from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_boundary_regs import cross_trigger_u32
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,

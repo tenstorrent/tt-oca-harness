@@ -519,6 +519,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
+    "smu_smc_wdt_boundary_timeout_test": [
+        (
+            "CHK-SMU-WDT-FIRST",
+            "CHK-SMU-WDT-FIRST",
+            "CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP "
+            "raises smc_wdt_first_timeout_o, with WDOGIP0 set at the same time "
+            "and both clear beforehand",
+        ),
+        (
+            "CHK-SMU-WDT-SECOND",
+            "CHK-SMU-WDT-SECOND",
+            "the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out "
+            "to smc_wdt_second_timeout_o, and the SMC warm reset drops with it",
+        ),
+    ],
     "smu_smc_wdt_sanity_test": [
         ("CHK-WDT-UNLOCK", "WDT_UNLOCK_OK", "WDT unlock SUCCESS"),
     ],
@@ -694,6 +709,16 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-FUSE-SENSE-S3",
             "CHK-SMU-FUSE-SENSE-S3",
             "smc_fuse_reset_n_delayed_o releases after that rise, not with the cold reset",
+        ),
+    ],
+    "smu_sram_auto_init_disabled_test": [
+        (
+            "CHK-SMU-MEMINIT-DISABLED",
+            "CHK-SMU-MEMINIT-DISABLED",
+            "with smc_disable_sram_auto_init_i high the zeroing sweep never "
+            "starts and no zeroing write reaches the scratch RAM, yet "
+            "smc_init_mem_done_o clears under cold reset and asserts and holds "
+            "after release",
         ),
     ],
     "smu_sram_auto_init_done_test": [

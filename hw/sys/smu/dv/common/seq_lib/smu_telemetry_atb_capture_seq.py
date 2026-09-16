@@ -42,11 +42,10 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import (
-    smc_addr,
+from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
+from seq_lib.smu_boundary_regs import (
     smc_base_config_u32,
     smc_indexed2_addr,
-    smc_indexed_addr,
     telemetry_receiver_u32,
 )
 from seq_lib.smu_jtag_helpers import (

@@ -1525,10 +1525,12 @@ tests = [
   "smu_ic_reset_ss_domain_matrix_test",
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
+  "smu_sram_auto_init_disabled_test",
   "smu_telemetry_atb_capture_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
   "smu_smc_reset_ctrl_test",
+  "smu_smc_wdt_boundary_timeout_test",
   "smu_smc_wdt_sanity_test",
   "smu_smc_wdt_timeout_irq_test",
   "smu_system_timer_octs_test",
@@ -2263,14 +2265,17 @@ firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
 tags = ["dtp", "jtag", "no_sep", "p0"]
+tags = ["dtp", "jtag", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [
+  "+expected_sep=1",
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
   "+sep_efuse_hex=sep_efuse_default.hex",
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
 ]
 
 # The ATB telemetry source at the SMU boundary, read back through the
@@ -2283,14 +2288,17 @@ firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "telemetry", "no_sep", "p0"]
+tags = ["smc", "telemetry", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [
+  "+expected_sep=1",
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
   "+sep_efuse_hex=sep_efuse_default.hex",
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
 ]
 
 # The cross-trigger port pads, programmed through the DTP CSR window in the
@@ -2303,14 +2311,32 @@ firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
 tags = ["dtp", "xtrig", "no_sep", "p0"]
+tags = ["dtp", "xtrig", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [
+  "+expected_sep=1",
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
   "+sep_efuse_hex=sep_efuse_default.hex",
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+# The complement of smu_sram_auto_init_done_test. +smc_scratch_ram_hex is what
+# raises smc_disable_sram_auto_init_i at the SMU boundary, so the image the
+# sweep would otherwise overwrite is what selects the disabled path.
+name = "smu_sram_auto_init_disabled_test"
+module = "smu_sram_auto_init_disabled_test"
+tags = ["smc", "boot", "sep", "p0", "real_rtl"]
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+smc_scratch_ram_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.ecc.hex",
+# The CORE0 watchdog followed out to smc_wdt_first/second_timeout_o. The
+# pending-bit leaf next door never sets WDOGRSTEN, which is what gates the
+# cluster's reset output, so it cannot reach the SMU boundary.
+name = "smu_smc_wdt_boundary_timeout_test"
+module = "smu_smc_wdt_boundary_timeout_test"
+tags = ["smc", "wdt", "sep", "p0", "real_rtl"]
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
 ]
 
 # SMC-facing boundary signals against the SMC registers that own them.
@@ -2324,14 +2350,17 @@ firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
 timeout_sec = 1800
 tags = ["smc", "no_sep", "p0"]
+tags = ["smc", "sep", "p0", "real_rtl"]
 run_modes = ["sep_rtl"]
 args = [
+  "+expected_sep=1",
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
   "+sep_efuse_hex=sep_efuse_default.hex",
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
 ]
 
 [[tests]]
@@ -2547,8 +2576,10 @@ tests = [
   "smu_dtp_scan_chain_boundary_test",
   "smu_telemetry_atb_capture_test",
   "smu_xtrig_ctp_pad_test",
+  "smu_sram_auto_init_disabled_test",
+  "smu_smc_wdt_boundary_timeout_test",
 ]
-expected_count = 64
+expected_count = 66
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2651,8 +2682,10 @@ tests = [
   "smu_dtp_scan_chain_boundary_test",
   "smu_telemetry_atb_capture_test",
   "smu_xtrig_ctp_pad_test",
+  "smu_sram_auto_init_disabled_test",
+  "smu_smc_wdt_boundary_timeout_test",
 ]
-expected_count = 90
+expected_count = 92
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
