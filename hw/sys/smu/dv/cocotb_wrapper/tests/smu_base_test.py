@@ -209,6 +209,15 @@ class smu_base_test(uvm_test):
         "xtrig_ctm_dst_req",
         "xtrig_ctm_src_ack",
         "xtrig_clk_stop_req",
+        "tb_telemetry_atdata",
+        "tb_telemetry_atid",
+        "tb_telemetry_atvalid",
+        "tb_telemetry_afready",
+        "tb_smc_ext_interrupts",
+        "tb_smc_ndmreset_request",
+        "tb_cfg_flr_pf_active",
+        "tb_mem_repair_abort",
+        "tb_mbist_abort",
     )
 
     def drive_idle_inputs(self) -> None:

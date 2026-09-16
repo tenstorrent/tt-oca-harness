@@ -1524,6 +1524,7 @@ tests = [
   "smu_i3c_mem_port_connectivity_test",
   "smu_ic_reset_ss_domain_matrix_test",
   "smu_periph_ext_window_test",
+  "smu_smc_boundary_io_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
   "smu_smc_reset_ctrl_test",
@@ -2250,6 +2251,27 @@ args = [
   "+sep_dtcm_hex=sep_dtcm_default.hex",
 ]
 
+# SMC-facing boundary signals against the SMC registers that own them.
+# port_table.adoc declares each one; the bench previously tied them off, so no
+# leaf had ever driven or observed them.
+[[tests]]
+name = "smu_smc_boundary_io_test"
+module = "smu_smc_boundary_io_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "no_sep", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
 [[tests]]
 name = "smu_sram_auto_init_done_test"
 module = "smu_sram_auto_init_done_test"
@@ -2457,8 +2479,9 @@ tests = [
   "smu_reset_release_sync_test",
   "smu_sram_auto_init_done_test",
   "smu_smc_fuse_sense_sequence_test",
+  "smu_smc_boundary_io_test",
 ]
-expected_count = 60
+expected_count = 61
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2557,8 +2580,9 @@ tests = [
   "smu_sram_auto_init_done_test",
   "smu_smc_fuse_sense_sequence_test",
   "smu_sep_fuse_sense_done_test",
+  "smu_smc_boundary_io_test",
 ]
-expected_count = 86
+expected_count = 87
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

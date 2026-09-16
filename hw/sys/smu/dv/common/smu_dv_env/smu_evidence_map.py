@@ -403,6 +403,56 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<PASS"),
     ],
+    "smu_smc_boundary_io_test": [
+        (
+            "CHK-SMU-NDMRESET-REQ",
+            "CHK-SMU-NDMRESET-REQ",
+            "NDM_RESET.NDMRESET_REQUEST mirrors smc_ndmreset_request_i for two "
+            "patterns and follows it back to zero, on the block whose "
+            "NDMRESET_CLUSTER_COUNT reads the elaborated cluster count",
+        ),
+        (
+            "CHK-SMU-NDMRESET-PROC",
+            "CHK-SMU-NDMRESET-PROC",
+            "smc_ndmreset_process_o carries NDMRESET_PROCESS[CPU_CLUSTER_COUNT-1:0], "
+            "including the all-ones write that pins the port width",
+        ),
+        (
+            "CHK-SMU-EXT-IRQ",
+            "CHK-SMU-EXT-IRQ",
+            "smc_ext_interrupts_i lane 0 shows pending at cluster PLIC source 1 "
+            "and the level gateway drops it with the pin",
+        ),
+        (
+            "CHK-SMU-SS-CONFIG",
+            "CHK-SMU-SS-CONFIG",
+            "ss_config_o carries RESET_UNIT.SS_CONFIG with SS_CONFIG_LOCK open, and clears with it",
+        ),
+        (
+            "CHK-SMU-SYNC-IRQ",
+            "CHK-SMU-SYNC-IRQ",
+            "sync_irq_o is RESET_UNIT.SYNC_REG.sync, set and cleared",
+        ),
+        (
+            "CHK-SMU-ISOLATE-REQ",
+            "CHK-SMU-ISOLATE-REQ",
+            "isolate_req_o carries the ISOLATE_REQ_REG software term",
+        ),
+        (
+            "CHK-SMU-DFT-ABORT",
+            "CHK-SMU-DFT-ABORT",
+            "mem_repair_abort_i and mbist_abort_i reach DFX_CTRL.STATUS_SMU and "
+            "the fields hold after both pins are released",
+        ),
+        (
+            "CHK-SMU-FLR-ISOLATE",
+            "CHK-SMU-FLR-ISOLATE",
+            "a cfg_flr_pf_active_i rising edge sets ISOLATE_REQ_SMC_REG, which "
+            "raises isolate_req_o through ISOLATE_REQ_SMCEN_REG and "
+            "skip_mem_repair_o; the latch holds when the pin drops and only a "
+            "software write releases both",
+        ),
+    ],
     "smu_smc_dtp_jtag2axi_smoke_test": [
         ("CHK-JTAG2AXI-SMOKE-SCRATCH", "CHK-JTAG2AXI-SMOKE-SCRATCH", "J2A scratch write/readback"),
     ],

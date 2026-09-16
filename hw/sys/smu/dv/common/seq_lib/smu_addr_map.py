@@ -23,6 +23,12 @@ _RESET_UNIT_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "bloc
 _AXIL_MAILBOX_H = (
     _REPO_ROOT / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c" / "axil_mailbox.h"
 )
+_DFX_CTRL_STATUS_H = (
+    _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
+)
+_TELEMETRY_RECEIVER_H = (
+    _REPO_ROOT / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
+)
 
 _DEFINE_RE = re.compile(r"^\s*#define\s+(SMC_TOP_\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
 _ANY_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
@@ -177,6 +183,16 @@ def wdt_u32(symbol: str) -> int:
 def reset_unit_u32(symbol: str) -> int:
     """Return a ``RESET_UNIT__*`` integer ``#define`` from ``reset_unit.h``."""
     return c_header_u32(_RESET_UNIT_H, symbol)
+
+
+def dfx_ctrl_status_u32(symbol: str) -> int:
+    """Return a ``DFX_CTRL_STATUS__*`` integer ``#define`` from ``dfx_ctrl_status.h``."""
+    return c_header_u32(_DFX_CTRL_STATUS_H, symbol)
+
+
+def telemetry_receiver_u32(symbol: str) -> int:
+    """Return a ``TELEMETRY_RECEIVER__*`` integer ``#define`` from ``telemetry_receiver.h``."""
+    return c_header_u32(_TELEMETRY_RECEIVER_H, symbol)
 
 
 def mailbox_u32(symbol: str) -> int:

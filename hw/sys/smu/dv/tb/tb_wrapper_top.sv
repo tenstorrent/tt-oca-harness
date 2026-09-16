@@ -320,7 +320,47 @@ module smu_wrapper_uvm_top (
   output logic        obs_powergood_stable_low_seen_o,
   output logic        obs_jtag_tdo_o,
   output logic        obs_smu_axi_awready_o,
-  output logic        obs_xtrig_src_req0_o
+  output logic        obs_xtrig_src_req0_o,
+  // Secondary-TAP and iJTAG scan-chain hosts. smu_wrapper is the scan master
+  // on all of them, so the bench has to supply the client side; tb_top.sv
+  // closes each chain with scan_in <- scan_out and this does the same, so a
+  // shift through the primary TAP leaves the wrapper at its boundary pins and
+  // re-enters there. The select and TDO-enable taps are what separates
+  // "the chain shifted" from "the host was never selected".
+  output logic        tb_dfd_select,
+  output logic        tb_dft_select,
+  output logic        tb_dft_secure_select,
+  output logic        tb_stap_host_select,
+  output logic        tb_stap_io_tms,
+  output logic        tb_stap_io_tdo,
+  output logic        tb_stap_io_tdo_oen,
+  output logic        tb_stap_extra0_tms,
+  output logic        tb_stap_extra0_tdo,
+  output logic        tb_stap_extra0_tdo_oen,
+  // ATB telemetry source for receiver 0. Receivers 1 and 2 stay idle.
+  input  wire  logic [7:0] tb_telemetry_atdata,
+  input  wire  logic [6:0] tb_telemetry_atid,
+  input  wire  logic       tb_telemetry_atvalid,
+  input  wire  logic       tb_telemetry_afready,
+  output logic             tb_telemetry_atready,
+  output logic             tb_telemetry_afvalid,
+  // SMC boundary inputs the bench previously tied off, and the outputs they
+  // and the SMC CSRs drive.
+  input  wire  logic [31:0] tb_smc_ext_interrupts,
+  input  wire  logic [3:0]  tb_smc_ndmreset_request,
+  input  wire  logic        tb_cfg_flr_pf_active,
+  input  wire  logic        tb_mem_repair_abort,
+  input  wire  logic        tb_mbist_abort,
+  output logic [3:0]        tb_smc_ndmreset_process,
+  output logic [31:0]       tb_isolate_req,
+  output logic [31:0]       tb_ss_config,
+  output logic              tb_sync_irq,
+  output logic              tb_skip_mem_repair,
+  output logic              tb_smc_cluster_ded,
+  output logic              tb_smc_wdt_first_timeout,
+  output logic              tb_smc_wdt_second_timeout,
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  tb_gpio_interrupt,
+  output logic [smc_config_pkg::NUM_UART-1:0] tb_uart_interrupt
 );
 
 `ifdef SMU_NO_SEP
@@ -577,6 +617,75 @@ module smu_wrapper_uvm_top (
   logic [31:0] jtag_ptap_state_w;
   logic [31:0] smu_axi_in_awvalid_count, smu_axi_out_awvalid_count;
   logic tb_axil_external_active;
+
+  // Scan-chain closures. Each host's scan_in is its own scan_out, as
+  // tb_top.sv does for the same ports, so the path a shift takes runs out of
+  // the wrapper and back in.
+  prim_jtag_pkg::jtag_scan_ctrl_t stap_scan_ctrl_w, dfd_ctrl_w, dft_ctrl_w, dft_sec_ctrl_w;
+  logic stap_scan_loop, dfd_scan_loop, dft_scan_loop, dft_sec_scan_loop;
+  logic stap_io_tdo_w, stap_io_tdo_oen_w;
+  prim_jtag_pkg::jtag_tap_ctrl_t stap_extra_ctrl_w [0:0];
+  logic stap_extra_tdi_w [0:0];
+  logic stap_extra_tdo_w [0:0];
+  logic stap_extra_tdo_oen_w [0:0];
+
+  assign stap_extra_tdi_w[0] = stap_extra_tdo_w[0];
+
+  assign tb_stap_host_select    = stap_scan_ctrl_w.select;
+  assign tb_dfd_select          = dfd_ctrl_w.select;
+  assign tb_dft_select          = dft_ctrl_w.select;
+  assign tb_dft_secure_select   = dft_sec_ctrl_w.select;
+  assign tb_stap_io_tms         = stap_io_ctrl_w.tms;
+  assign tb_stap_io_tdo         = stap_io_tdo_w;
+  assign tb_stap_io_tdo_oen     = stap_io_tdo_oen_w;
+  assign tb_stap_extra0_tms     = stap_extra_ctrl_w[0].tms;
+  assign tb_stap_extra0_tdo     = stap_extra_tdo_w[0];
+  assign tb_stap_extra0_tdo_oen = stap_extra_tdo_oen_w[0];
+
+  // ATB telemetry: the bench is the source for receiver 0 only.
+  localparam int unsigned NUM_TEL = smc_config_pkg::NUM_TELEMETRY_RECEIVERS;
+  telemetry_receiver_pkg::telemetry_data_t [NUM_TEL-1:0] tel_atdata_w;
+  telemetry_receiver_pkg::atb_id_t         [NUM_TEL-1:0] tel_atid_w;
+  logic [NUM_TEL-1:0] tel_atvalid_w, tel_afready_w, tel_atready_w, tel_afvalid_w;
+
+  always_comb begin
+    tel_atdata_w     = '0;
+    tel_atid_w       = '0;
+    tel_atvalid_w    = '0;
+    tel_afready_w    = '0;
+    tel_atdata_w[0]  = tb_telemetry_atdata;
+    tel_atid_w[0]    = tb_telemetry_atid;
+    tel_atvalid_w[0] = tb_telemetry_atvalid;
+    tel_afready_w[0] = tb_telemetry_afready;
+  end
+
+  assign tb_telemetry_atready = tel_atready_w[0];
+  assign tb_telemetry_afvalid = tel_afvalid_w[0];
+
+  // SMC boundary: the external interrupt vector is NUM_INT_TO_SMC wide and the
+  // bench drives its low 32 lanes.
+  logic [SMU_CFG.NUM_INT_TO_SMC-1:0] smc_ext_interrupts_w;
+  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_w;
+  logic [31:0] isolate_req_w;
+  logic sync_irq_w, cluster_ded_w, wdt_first_timeout_w, wdt_second_timeout_w;
+  logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_w;
+  logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_w;
+
+  always_comb begin
+    smc_ext_interrupts_w         = '0;
+    smc_ext_interrupts_w[31:0]   = tb_smc_ext_interrupts;
+  end
+
+  assign tb_smc_ndmreset_process   = ndmreset_process_w;
+  assign tb_isolate_req            = isolate_req_w;
+  assign tb_ss_config              = ss_config_w;
+  assign tb_sync_irq               = sync_irq_w;
+  assign tb_skip_mem_repair        = skip_mem_repair_w;
+  assign tb_smc_cluster_ded        = cluster_ded_w;
+  assign tb_smc_wdt_first_timeout  = wdt_first_timeout_w;
+  assign tb_smc_wdt_second_timeout = wdt_second_timeout_w;
+  assign tb_gpio_interrupt         = gpio_interrupt_w;
+  assign tb_uart_interrupt         = uart_interrupt_w;
 
   assign secure_tm_req = 1'b0;
   // ------------------------------------------------------------------
@@ -1382,30 +1491,30 @@ module smu_wrapper_uvm_top (
     .jtag_bsr_host_scan_out_o  (bsr_scan_loop),
 
     .jtag_stap_io_host_tap_ctrl_o (stap_io_ctrl_w),
-    .jtag_stap_io_host_tdi_i      (1'b0),
-    .jtag_stap_io_host_tdo_o      (),
-    .jtag_stap_io_host_tdo_oen_o  (),
+    .jtag_stap_io_host_tdi_i      (stap_io_tdo_w),
+    .jtag_stap_io_host_tdo_o      (stap_io_tdo_w),
+    .jtag_stap_io_host_tdo_oen_o  (stap_io_tdo_oen_w),
 
-    .jtag_stap_extra_host_tap_ctrl_o (),
-    .jtag_stap_extra_host_tdi_i      ('{default: '0}),
-    .jtag_stap_extra_host_tdo_o      (),
-    .jtag_stap_extra_host_tdo_oen_o  (),
+    .jtag_stap_extra_host_tap_ctrl_o (stap_extra_ctrl_w),
+    .jtag_stap_extra_host_tdi_i      (stap_extra_tdi_w),
+    .jtag_stap_extra_host_tdo_o      (stap_extra_tdo_w),
+    .jtag_stap_extra_host_tdo_oen_o  (stap_extra_tdo_oen_w),
 
-    .jtag_stap_host_scan_ctrl_o (),
-    .jtag_stap_host_scan_in_i   (1'b0),
-    .jtag_stap_host_scan_out_o  (),
+    .jtag_stap_host_scan_ctrl_o (stap_scan_ctrl_w),
+    .jtag_stap_host_scan_in_i   (stap_scan_loop),
+    .jtag_stap_host_scan_out_o  (stap_scan_loop),
 
-    .jtag_dfd_host_scan_ctrl_o (),
-    .jtag_dfd_host_scan_in_i   (1'b0),
-    .jtag_dfd_host_scan_out_o  (),
+    .jtag_dfd_host_scan_ctrl_o (dfd_ctrl_w),
+    .jtag_dfd_host_scan_in_i   (dfd_scan_loop),
+    .jtag_dfd_host_scan_out_o  (dfd_scan_loop),
 
-    .jtag_dft_secure_host_scan_ctrl_o (),
-    .jtag_dft_secure_host_scan_in_i   (1'b0),
-    .jtag_dft_secure_host_scan_out_o  (),
+    .jtag_dft_secure_host_scan_ctrl_o (dft_sec_ctrl_w),
+    .jtag_dft_secure_host_scan_in_i   (dft_sec_scan_loop),
+    .jtag_dft_secure_host_scan_out_o  (dft_sec_scan_loop),
 
-    .jtag_dft_host_scan_ctrl_o (),
-    .jtag_dft_host_scan_in_i   (1'b0),
-    .jtag_dft_host_scan_out_o  (),
+    .jtag_dft_host_scan_ctrl_o (dft_ctrl_w),
+    .jtag_dft_host_scan_in_i   (dft_scan_loop),
+    .jtag_dft_host_scan_out_o  (dft_scan_loop),
 
     .dtp_stop_clks_o (dtp_stop_clks_o),
     .jtag_ptap_state_o (jtag_ptap_state),
@@ -1450,39 +1559,39 @@ module smu_wrapper_uvm_top (
 
     .clk_telemetry_i (clk_ref_i),
     .rst_telemetry_ni (rst_cold_ni),
-    .telemetry_atdata_i ('0),
-    .telemetry_atid_i ('0),
-    .telemetry_atready_o (),
-    .telemetry_atvalid_i ('0),
-    .telemetry_afvalid_o (),
-    .telemetry_afready_i ('0),
+    .telemetry_atdata_i (tel_atdata_w),
+    .telemetry_atid_i (tel_atid_w),
+    .telemetry_atready_o (tel_atready_w),
+    .telemetry_atvalid_i (tel_atvalid_w),
+    .telemetry_afvalid_o (tel_afvalid_w),
+    .telemetry_afready_i (tel_afready_w),
 
-    .smc_cluster_ded_o (),
-    .smc_wdt_first_timeout_o (),
-    .smc_wdt_second_timeout_o (),
+    .smc_cluster_ded_o (cluster_ded_w),
+    .smc_wdt_first_timeout_o (wdt_first_timeout_w),
+    .smc_wdt_second_timeout_o (wdt_second_timeout_w),
 
     .smc_global_base_o (smc_global_base_o),
     .smc_region_size_o (smc_region_size_o),
     .sep_global_base_o (sep_global_base_o),
     .sep_region_size_o (sep_region_size_o),
 
-    .smc_ext_interrupts_i ('0),
+    .smc_ext_interrupts_i (smc_ext_interrupts_w),
     .smc_fuse_sense_done_o,
     .smc_fuse_reset_n_delayed_o,
     .skip_mem_repair_o (skip_mem_repair_w),
     .ext_boot_seq_done_i (ext_boot_seq_done_i),
     .lc_state_o (lc_state),
     .lc_sigint_err_o (lc_sigint_err_o),
-    .smc_ndmreset_request_i ('0),
-    .smc_ndmreset_process_o (),
+    .smc_ndmreset_request_i (tb_smc_ndmreset_request),
+    .smc_ndmreset_process_o (ndmreset_process_w),
     .smc_ext_mailbox_interrupts_o (ext_mailbox_interrupts),
 
-    .cfg_flr_pf_active_i (1'b0),
-    .isolate_req_o (),
+    .cfg_flr_pf_active_i (tb_cfg_flr_pf_active),
+    .isolate_req_o (isolate_req_w),
     .ss_reset_complete_i ('1),
     .ss_config_o (ss_config_w),
     .ss_reset_ctrl_o (ss_reset_ctrl_w),
-    .sync_irq_o (),
+    .sync_irq_o (sync_irq_w),
 
     .smc_disable_sram_auto_init_i (smc_disable_sram_auto_init),
     .smc_init_mem_done_o,
@@ -1496,10 +1605,10 @@ module smu_wrapper_uvm_top (
     // if these stay low (CPU never fetches ROM).
     .mem_repair_done_i (1'b1),
     .mem_repair_success_i (1'b1),
-    .mem_repair_abort_i (1'b0),
+    .mem_repair_abort_i (tb_mem_repair_abort),
     .mbist_done_i (1'b1),
     .mbist_pass_i (1'b1),
-    .mbist_abort_i (1'b0),
+    .mbist_abort_i (tb_mbist_abort),
 
     .sep_cpu_trace_o (sep_cpu_trace),
     .sep_ext_interrupts_i ('0),
@@ -1512,8 +1621,8 @@ module smu_wrapper_uvm_top (
     .secure_tm_req_i (secure_tm_req),
 
     .ext_debug_bus_i ('0),
-    .gpio_interrupt_o (),
-    .uart_interrupt_o (),
+    .gpio_interrupt_o (gpio_interrupt_w),
+    .uart_interrupt_o (uart_interrupt_w),
     .sep_efuse_debug_bus_o (),
     .smc_efuse_debug_bus_o (),
 
