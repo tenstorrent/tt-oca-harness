@@ -129,7 +129,6 @@ selectable in the public testlists.
 [cols=",,,",options="header",]
 |===
 |Test Case |Source Module |VIP / Model |Description
-|`dtp_jtag2axi_smc_axi_wr_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Legacy module-name enrolment; loops the `single_write` scenario
 |`dtp_jtag2axi_smc_axi_single_write_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric single write
 |`dtp_jtag2axi_smc_axi_single_write_data_verify_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric single write with read-back data verification
 |`dtp_jtag2axi_smc_axi_series_write_incr_test` |`dtp_jtag2axi_smc_axi_wr_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric incrementing series write
@@ -159,7 +158,6 @@ selectable in the public testlists.
 [cols=",,,",options="header",]
 |===
 |Test Case |Source Module |VIP / Model |Description
-|`dtp_jtag2axi_smc_axi_rd_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Legacy module-name enrolment; loops the `single_write_read` scenario
 |`dtp_jtag2axi_smc_axi_single_write_read_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric write-read path
 |`dtp_jtag2axi_smc_axi_series_write_read_incr_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric incrementing series write-read
 |`dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test` |`dtp_jtag2axi_smc_axi_rd_test` |`ocah_jtag_vip`, `ocah_axi_vip` |SMC fabric 32-bit incrementing series write-read at beat offset +4
@@ -1634,58 +1632,6 @@ address size, and data size of each bridge against the DV geometry table. A DUT 
 different geometry fails the pass before any bridge
 request is packed with the table's field widths.
 
-[[sec-20-dtp_jtag2axi_smc_axi_wr_test]]
-===== 2.0 `dtp_jtag2axi_smc_axi_wr_test`
-
-*Source Module*: `dtp_jtag2axi_smc_axi_wr_test`
-
-*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
-
-*Objective*: Legacy module-name enrolment of the `single_write` scenario, run as a loop.
-
-*Test Coverage*:
-
-* `testlists/jtag2axi.toml` enrols the module name itself, tagged `legacy`, alongside the
-  per-scenario entries. It passes no `args`, so the body runs its default scenario --
-  `single_write` -- which is the scenario <<sec-21-dtp_jtag2axi_smc_axi_single_write_test,2.1>> cards.
-* *This entry adds no behavioural claim of its own.* What `single_write` proves is
-  stated once, in <<sec-21-dtp_jtag2axi_smc_axi_single_write_test,`dtp_jtag2axi_smc_axi_single_write_test`>>, and is deliberately not restated
-  here so the two cannot drift apart.
-* What the enrolment does add is repetition and an activity floor: the body loops the
-  scenario 16 times by default (`DTP_JTAG2AXI_SMC_AXI_WR_TEST_LOOPS`, else the group knob
-  `DTP_JTAG2AXI_TEST_LOOPS`) and asserts `DtpJtag2AxiStatus.SUCCESS` on every iteration.
-* The shared AXI checker is enabled (`use_axi_scoreboard = True`); the body requires the
-  evidence IDs `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-COMPLETION`, `CHK-AXI-STREAM-MIN` and a minimum of 2 compared transactions on the `smc_axi` stream, so
-  a run that drove nothing fails at finalization instead of passing silently.
-
-*Test Procedure*:
-
-[arabic]
-. Resolve the loop count from `DTP_JTAG2AXI_SMC_AXI_WR_TEST_LOOPS`, else `DTP_JTAG2AXI_TEST_LOOPS`, else 16.
-. Run the `single_write` scenario that many times through `dtp_jtag2axi_smc_axi_wr_test_seq`; the per-iteration
-  steps are the ones in <<sec-21-dtp_jtag2axi_smc_axi_single_write_test,2.1>>.
-. Assert every iteration returned `DtpJtag2AxiStatus.SUCCESS`.
-. At finalization, require the shared AXI checker to have recorded all four evidence IDs
-  and at least 2 compared transactions on `smc_axi`.
-
-*Checkers*:
-
-[cols=",",options="header",]
-|===
-|Checker |Description
-|`CHK-AXI-RESP` |Shared AXI checker: every observed response matches the reference model
-|`CHK-AXI-STRB` |Shared AXI checker: write strobes match the reference model
-|`CHK-AXI-COMPLETION` |Shared AXI checker: no transaction is left outstanding at end of test
-|`CHK-AXI-STREAM-MIN` |At least 2 transactions were compared on the `smc_axi` stream, so a no-op run cannot pass
-|`single_write_status_chk` |Every loop iteration returned `DtpJtag2AxiStatus.SUCCESS`
-|===
-
-*Pass Criteria*: Every iteration of `single_write` returns SUCCESS, all four shared-AXI
-evidence IDs are recorded, and at least 2 `smc_axi` transactions were compared, with zero
-scoreboard/reference-model errors.
-
-'''''
-
 [[sec-21-dtp_jtag2axi_smc_axi_single_write_test]]
 ===== 2.1 `dtp_jtag2axi_smc_axi_single_write_test`
 
@@ -2632,58 +2578,6 @@ a. With all required enables high, verify a legal write again completes with OKA
 
 [[sec-3-jtag2axi-read-scenarios]]
 ==== 3. JTAG2AXI Read Scenarios
-
-[[sec-30-dtp_jtag2axi_smc_axi_rd_test]]
-===== 3.0 `dtp_jtag2axi_smc_axi_rd_test`
-
-*Source Module*: `dtp_jtag2axi_smc_axi_rd_test`
-
-*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
-
-*Objective*: Legacy module-name enrolment of the `single_write_read` scenario, run as a loop.
-
-*Test Coverage*:
-
-* `testlists/jtag2axi.toml` enrols the module name itself, tagged `legacy`, alongside the
-  per-scenario entries. It passes no `args`, so the body runs its default scenario --
-  `single_write_read` -- which is the scenario <<sec-31-dtp_jtag2axi_smc_axi_single_write_read_test,3.1>> cards.
-* *This entry adds no behavioural claim of its own.* What `single_write_read` proves is
-  stated once, in <<sec-31-dtp_jtag2axi_smc_axi_single_write_read_test,`dtp_jtag2axi_smc_axi_single_write_read_test`>>, and is deliberately not restated
-  here so the two cannot drift apart.
-* What the enrolment does add is repetition and an activity floor: the body loops the
-  scenario 16 times by default (`DTP_JTAG2AXI_SMC_AXI_RD_TEST_LOOPS`, else the group knob
-  `DTP_JTAG2AXI_TEST_LOOPS`) and asserts `DtpJtag2AxiStatus.SUCCESS` on every iteration.
-* The shared AXI checker is enabled (`use_axi_scoreboard = True`); the body requires the
-  evidence IDs `CHK-AXI-RESP`, `CHK-AXI-RDATA`, `CHK-AXI-COMPLETION`, `CHK-AXI-STREAM-MIN` and a minimum of 2 compared transactions on the `smc_axi` stream, so
-  a run that drove nothing fails at finalization instead of passing silently.
-
-*Test Procedure*:
-
-[arabic]
-. Resolve the loop count from `DTP_JTAG2AXI_SMC_AXI_RD_TEST_LOOPS`, else `DTP_JTAG2AXI_TEST_LOOPS`, else 16.
-. Run the `single_write_read` scenario that many times through `dtp_jtag2axi_smc_axi_rd_test_seq`; the per-iteration
-  steps are the ones in <<sec-31-dtp_jtag2axi_smc_axi_single_write_read_test,3.1>>.
-. Assert every iteration returned `DtpJtag2AxiStatus.SUCCESS`.
-. At finalization, require the shared AXI checker to have recorded all four evidence IDs
-  and at least 2 compared transactions on `smc_axi`.
-
-*Checkers*:
-
-[cols=",",options="header",]
-|===
-|Checker |Description
-|`CHK-AXI-RESP` |Shared AXI checker: every observed response matches the reference model
-|`CHK-AXI-RDATA` |Shared AXI checker: read data matches the reference model
-|`CHK-AXI-COMPLETION` |Shared AXI checker: no transaction is left outstanding at end of test
-|`CHK-AXI-STREAM-MIN` |At least 2 transactions were compared on the `smc_axi` stream, so a no-op run cannot pass
-|`single_write_read_status_chk` |Every loop iteration returned `DtpJtag2AxiStatus.SUCCESS`
-|===
-
-*Pass Criteria*: Every iteration of `single_write_read` returns SUCCESS, all four shared-AXI
-evidence IDs are recorded, and at least 2 `smc_axi` transactions were compared, with zero
-scoreboard/reference-model errors.
-
-'''''
 
 [[sec-31-dtp_jtag2axi_smc_axi_single_write_read_test]]
 ===== 3.1 `dtp_jtag2axi_smc_axi_single_write_read_test`

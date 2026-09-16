@@ -156,9 +156,9 @@ python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
 # Basic JTAG: all Smoke and Basic JTAG VPLAN scenarios
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 
-# JTAG2AXI SMC fabric write / read
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
+# JTAG2AXI SMC fabric write / write-read
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_read_test
 
 # Every JTAG2AXI test runs the shared ocah_axi_vip scoreboard (passive bus
 # monitors + reference model) with per-test required evidence IDs and

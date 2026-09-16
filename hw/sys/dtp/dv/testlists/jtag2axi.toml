@@ -4,26 +4,6 @@
 schema_version = 1
 
 # SMC fabric JTAG2AXI scenarios.
-# dtp_jtag2axi_smc_axi_wr_test / _rd_test are aliases of the single_write /
-# single_write_read scenario tests (the names the README example commands use).
-# They are reachable only by explicit --items name or --tag legacy and belong to
-# no group, so a regression runs each scenario once.
-
-[[tests]]
-name = "dtp_jtag2axi_smc_axi_wr_test"
-module = { cocotb = "dtp_jtag2axi_smc_axi_wr_test", uvm = false }
-seed = 1
-timeout_sec = 1800
-tags = ["legacy"]
-run_modes = ["functional", "jtag2axi"]
-
-[[tests]]
-name = "dtp_jtag2axi_smc_axi_rd_test"
-module = { cocotb = "dtp_jtag2axi_smc_axi_rd_test", uvm = false }
-seed = 1
-timeout_sec = 1800
-tags = ["legacy"]
-run_modes = ["functional", "jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_single_write_test"

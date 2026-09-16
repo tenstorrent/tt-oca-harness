@@ -590,8 +590,8 @@ python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test
 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 python3 tools/dv/run_dv.py --dut dtp --items debug_tdr
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_read_test
 python3 tools/dv/run_dv.py --dut dtp --items functional
 python3 tools/dv/run_dv.py --dut dtp --items dbg_disable
 python3 tools/dv/run_dv.py --dut dtp --items all --dry-run

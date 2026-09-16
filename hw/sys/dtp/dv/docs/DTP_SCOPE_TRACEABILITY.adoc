@@ -38,7 +38,7 @@ Where the documents overlap, the table names the one that wins.
 |What DTP must do |The design documentation under `hw/sys/dtp/doc/` and its IP chapters |`DTP_VPLAN.adoc` cites it and adds no requirement; a plan statement that contradicts a design chapter is a plan defect
 |Register and TDR layouts |The `jtag_ptap` architecture chapter (TDRs); the SystemRDL under `hw/ip/cross_trigger/*/regs/` (CSRs) |The DV reference models (`dtp_jtag_ir_model`, `dtp_jtag2axi_model`, `dtp_xtrig_csr_model`) encode these layouts and are checked against them, never the reverse
 |Which scenarios exist |`testlists/all.toml` and the per-area lists (`jtag.toml`, `debug_tdr.toml`, `jtag2axi.toml`, `scan.toml`, `xtrig.toml`) |`DTP_VPLAN.adoc` documents every enrolled name; a name in one and not the other is a defect in whichever lacks it
-|Which scenarios count |The `all` group, `expected_count`-pinned |The two `legacy`-tagged module-name entries are runnable by name and count for nothing (see <<dtp-credit-rules>>)
+|Which scenarios count |The `all` group, `expected_count`-pinned |Every `[[tests]]` entry belongs to at least one scheduled group, so no declared scenario runs only by name (see <<dtp-credit-rules>>)
 |Coverage intent per requirement |`DTP_FCOV.adoc` and the `cov/sv/` modules |This matrix names the covergroup a row leans on; the bin lists stay in `DTP_FCOV.adoc`
 |Points that cannot fire |The hole entries in `cov/config/verilator/coverage_policy.toml` |Each entry states the structural reason and the tracker link; this matrix repeats neither
 |===
@@ -78,11 +78,6 @@ Executable membership is resolved from the testlists; each group's
 |`dbg_disable` |Cross-cutting lifecycle-gating closure: the two matrix tests plus every directed gating scenario; every member also belongs to `jtag2axi` or `scan`, so the group adds closure, not names
 |`all` |Every canonical scenario, the union of the five credit sets; the `regress.yml` denominator
 |===
-
-The two `legacy`-tagged entries, `dtp_jtag2axi_smc_axi_wr_test` and
-`dtp_jtag2axi_smc_axi_rd_test`, are module-name aliases that loop the
-`single_write` and `single_write_read` scenarios. They are in no group, have
-no SV-UVM realization, and are not in `all`.
 
 `--dut smu` enrols its own DTP-facing scenarios
 (`hw/sys/smu/dv/testlists/dtp.toml` and the `dtp_under_smu` group). Those
