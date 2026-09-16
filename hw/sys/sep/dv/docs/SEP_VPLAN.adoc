@@ -1983,8 +1983,8 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |Decrypting the sideload ciphertext recovers the original plaintext.
 |CHK0
 |Key Manager firmware boots on real entropy and reports ready over the mailbox.
-|CHK-PUB
-|After the sideload transfer, frontdoor reads of the AES public `KEY_SHARE0`/`KEY_SHARE1` registers return zero — the software-unreadability property of a sideloaded key. A readable status register in the same window is the positive control that the frontdoor read path is alive, so an all-zero read from a dead bus cannot pass.
+|CHK-PUB (observation)
+|Observation, not a check. `aes.hjson` declares `KEY_SHARE0`/`KEY_SHARE1` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered — the read cannot fail and is logged rather than scored. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-SIDE and CHK-MAC below.
 |CHK1..CHK3
 |The entropy stack matches its golden bit-exactly at the decorrelator, compress and seed stages.
 |CHK5
@@ -2037,8 +2037,8 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |The done event clears on write-one-to-clear.
 |CHK0
 |Key Manager firmware boots on real entropy and reports ready over the mailbox.
-|CHK-PUB
-|After the sideload transfer, frontdoor reads of the HMAC public `KEY` registers return zero — the software-unreadability property of a sideloaded key. A readable status register in the same window is the positive control that the frontdoor read path is alive.
+|CHK-PUB (observation)
+|Observation, not a check. `hmac.hjson` declares `KEY` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered — the read cannot fail and is logged rather than scored. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-SIDE and CHK-MAC below.
 |CHK1..CHK3
 |The entropy stack matches its golden bit-exactly at the decorrelator, compress and seed stages.
 |CHK5
@@ -2093,8 +2093,8 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |The engine draws real masking entropy. Alive-mode beat count. Bit-exact per-sink compare is the small KM ROM tests, not `rom_main`. The scoreboard reports it as `CHK5_km` / `CHK5_kmac`.
 |CHK0
 |Key Manager firmware boots on real entropy and reports ready over the mailbox.
-|CHK-PUB
-|After the sideload transfer, frontdoor reads of the KMAC public `KEY_SHARE0`/`KEY_SHARE1` registers return zero — the software-unreadability property of a sideloaded key. A readable status register in the same window is the positive control that the frontdoor read path is alive.
+|CHK-PUB (observation)
+|Observation, not a check. `kmac.hjson` declares `KEY_SHARE0`/`KEY_SHARE1` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered — the read cannot fail and is logged rather than scored. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-SIDE and CHK-MAC below.
 |CHK1..CHK3
 |The entropy stack matches its golden bit-exactly at the decorrelator, compress and seed stages.
 |===
