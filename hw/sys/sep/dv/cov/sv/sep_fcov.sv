@@ -1050,13 +1050,17 @@ module sep_fcov (
       // would shift a later word onto index 4 and false-hit cp_generate.
       if (km_rd_data && km_rsp_arm_q) begin
         km_rsp_idx_q <= km_rsp_idx_q + 9'd1;
+        // The header carries the length, so it cannot itself be compared
+        // against it: at index 0 the register still holds the PREVIOUS frame's
+        // value, and a reset 0 would retire the frame on its own header.
         if (km_rsp_idx_q == 9'd0) begin
           km_rsp_is_cmd_q <= (rd_data[15:8] == KmRespCmd);
           km_rsp_len_q    <= rd_data[23:16];
+        end else if (km_rsp_idx_q >= 9'(km_rsp_len_q)) begin
+          km_rsp_arm_q <= 1'b0;
         end
         if (km_rsp_idx_q == 9'd2) km_rsp_cmd_q <= rd_data[7:0];
         if (km_rsp_idx_q == 9'd3) km_rsp_rc_q <= rd_data[7:0];
-        if (km_rsp_idx_q >= 9'(km_rsp_len_q)) km_rsp_arm_q <= 1'b0;
       end
 
       if (dma_copy_go) begin
