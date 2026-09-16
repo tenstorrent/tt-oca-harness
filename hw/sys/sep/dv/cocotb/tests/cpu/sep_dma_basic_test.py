@@ -262,6 +262,9 @@ class sep_dma_basic_test(sep_base_test):
         for needle, what in (
             ("CHK-COPY-MODE PASS:", "the INCR/FIXED/WRAP walk"),
             ("CHK-WIDTH PASS:", "the 1B/2B/4B width walk"),
+            ("CHK-ERR-ASID PASS:", "the unencoded-ASID error legs"),
+            ("CHK-ERR-SIZE PASS:", "the unencoded-width error leg"),
+            ("CHK-ICCM PASS:", "the SRAM->ICCM->SRAM round trip"),
         ):
             if needle not in console:
                 raise AssertionError(
