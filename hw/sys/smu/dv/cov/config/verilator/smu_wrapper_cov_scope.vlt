@@ -35,6 +35,10 @@ coverage_off -file "*hw/sys/smu/dv/tb/smu_tb_if.sv"
 coverage_off -file "*hw/sys/smc/*"
 coverage_off -file "*hw/sys/dtp/*"
 coverage_off -file "*hw/sys/sep/*"
+// The SEP and SMC integration shells under hw/top belong to those packages:
+// they instantiate the subsystem and its adopter-side collateral, not SMU logic.
+coverage_off -file "*hw/top/sep_ip_integration.sv"
+coverage_off -file "*hw/top/smc_ip_integration.sv"
 
 // ---------------------------------------------------------------------------
 // Third-party and generated RTL, and the IP blocks the subsystems integrate.
