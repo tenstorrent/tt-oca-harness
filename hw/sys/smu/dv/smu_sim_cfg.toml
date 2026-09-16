@@ -174,11 +174,17 @@ ccache = true
 # up was actually exercised. It is affordable on this DUT only because
 # smu_wrapper_cov_scope.vlt drops the subsystem, vendored and generated trees
 # at compile time, which is the same reason `--dut smu_block` can carry it.
+#
+# --output-groups 0 compiles the generated .cpp files one by one, as the other
+# DUTs do: grouped, one unit of the coverage-instrumented model grows past
+# what the CI compiler finishes in time.
 build_args = [
   "--coverage-line",
   "--coverage-expr",
   "--coverage-toggle",
   "--coverage-user",
+  "--output-groups",
+  "0",
   "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
 ]
 # Two DUTs share this dv tree, so the policy is named per DUT rather than
