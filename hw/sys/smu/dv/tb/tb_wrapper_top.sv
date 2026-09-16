@@ -365,6 +365,11 @@ module smu_wrapper_uvm_top (
   // boot-stall strap drive on pin 57 below.
   input  wire  logic tb_gpio0_drive_en,
   input  wire  logic tb_gpio0_drive_val,
+  // SEP secure test-mode request strap. The SEP eFuse wrapper samples it on
+  // the rising edge of its fuse-sense-done, so a leaf drives it across a cold
+  // reset rather than at an arbitrary time.
+  input  wire  logic tb_secure_tm_req,
+  output logic       tb_secure_tm,
   // Cross-trigger port pads. The DTP is the pad controller on all four
   // groups, so the bench is the padring on the data inputs and watches the
   // data and enable outputs.
@@ -694,6 +699,7 @@ module smu_wrapper_uvm_top (
   logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_w;
   logic [31:0] isolate_req_w;
   logic sync_irq_w, cluster_ded_w, wdt_first_timeout_w, wdt_second_timeout_w;
+  logic secure_tm_w;
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_w;
   logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_w;
 
@@ -726,7 +732,8 @@ module smu_wrapper_uvm_top (
   assign tb_xtrig_ctp_ack_out_dout_en = ctp_ack_out_dout_en_w;
   assign tb_xtrig_ctp_ack_out_din_en  = ctp_ack_out_din_en_w;
 
-  assign secure_tm_req = 1'b0;
+  assign secure_tm_req = tb_secure_tm_req;
+  assign tb_secure_tm  = secure_tm_w;
   // ------------------------------------------------------------------
   // ext_in AXI master surface.
   //
@@ -1658,6 +1665,7 @@ module smu_wrapper_uvm_top (
     .smc_fuse_dft_disable_o (),
     .sep_fuse_sense_done_o,
     .clk_sep_wdt_i,
+    .secure_tm_o (secure_tm_w),
     .secure_tm_req_i (secure_tm_req),
 
     .ext_debug_bus_i ('0),

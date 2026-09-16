@@ -218,6 +218,7 @@ class smu_base_test(uvm_test):
         "tb_cfg_flr_pf_active",
         "tb_mem_repair_abort",
         "tb_mbist_abort",
+        "tb_secure_tm_req",
         "tb_gpio0_drive_en",
         "tb_gpio0_drive_val",
         "tb_xtrig_ctp_req_out_din",

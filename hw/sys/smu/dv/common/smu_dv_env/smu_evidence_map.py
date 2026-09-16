@@ -509,6 +509,32 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_security_demote_pm_test": [
         ("CHK-DEMOTE-TIEOFF", "DEMOTE_TIEOFF_OBS", "SEP=0 demote hardwire observe"),
     ],
+    "smu_smc_peripheral_irq_test": [
+        (
+            "CHK-SMU-GPIO-IRQ",
+            "CHK-SMU-GPIO-IRQ",
+            "GPIO pin 0 taken from its LSIO owner and armed as an active-high "
+            "level: driving the pad raises gpio_interrupt_o[0] and "
+            "DATA_CTRL.PAD2CORE with no other lane moving, and both release "
+            "with the pad",
+        ),
+        (
+            "CHK-SMU-UART-IRQ",
+            "CHK-SMU-UART-IRQ",
+            "with the UART clock gate read open, enabling IER.ETBEI raises "
+            "uart_interrupt_o[0] alone, IIR reports pending with the "
+            "transmitter-empty identification, and the IIR read retires it",
+        ),
+    ],
+    "smu_sep_secure_tm_test": [
+        (
+            "CHK-SMU-SECURE-TM",
+            "CHK-SMU-SECURE-TM",
+            "secure_tm_o carries secure_tm_req_i as sampled at the SEP "
+            "fuse-sense-done edge of each of three cold resets, and ignores the "
+            "strap between those windows in both directions",
+        ),
+    ],
     "smu_smc_smoke_test": [
         (
             "CHK-SMC-FAB-DUAL-NET-S2",

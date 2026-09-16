@@ -27,6 +27,8 @@ _DFX_CTRL_STATUS_H = (
 _TELEMETRY_RECEIVER_H = (
     _REPO_ROOT / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
 )
+_GPIO_INTF_H = _REPO_ROOT / "hw" / "ip" / "gpio" / "regs" / "gen" / "c" / "gpio_intf.h"
+_UART_MAIN_C = _REPO_ROOT / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c"
 _CROSS_TRIGGER_C = (
     _REPO_ROOT / "hw" / "ip" / "cross_trigger" / "cross_trigger_port" / "regs" / "gen" / "c",
     _REPO_ROOT / "hw" / "ip" / "cross_trigger" / "cross_trigger_matrix" / "regs" / "gen" / "c",
@@ -53,6 +55,21 @@ def dfx_ctrl_status_u32(symbol: str) -> int:
 def telemetry_receiver_u32(symbol: str) -> int:
     """Return a ``TELEMETRY_RECEIVER__*`` integer ``#define``."""
     return c_header_u32(_TELEMETRY_RECEIVER_H, symbol)
+
+
+def gpio_intf_u32(symbol: str) -> int:
+    """Return a ``GPIO_INTF__*`` integer ``#define``."""
+    return c_header_u32(_GPIO_INTF_H, symbol)
+
+
+def uart_main_u32(symbol: str) -> int:
+    """Return a ``UART_16550_MAIN*`` integer ``#define`` from its two headers."""
+    for name in ("uart_16550_main.h", "uart_16550_main_addr.h"):
+        try:
+            return c_header_u32(_UART_MAIN_C / name, symbol)
+        except KeyError:
+            continue
+    raise KeyError(f"{symbol} not in {_UART_MAIN_C}")
 
 
 def cross_trigger_u32(symbol: str) -> int:

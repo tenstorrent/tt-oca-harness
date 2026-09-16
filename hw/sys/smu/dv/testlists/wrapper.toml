@@ -1525,6 +1525,7 @@ tests = [
   "smu_ic_reset_ss_domain_matrix_test",
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
+  "smu_smc_peripheral_irq_test",
   "smu_sram_auto_init_disabled_test",
   "smu_telemetry_atb_capture_test",
   "smu_smc_mailbox_int_test",
@@ -2339,6 +2340,55 @@ tags = ["smc", "wdt", "sep", "p0", "real_rtl"]
   # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
 ]
 
+# The raw GPIO and UART interrupt vectors, raised through the SMC registers
+# that own their sources.
+[[tests]]
+name = "smu_smc_peripheral_irq_test"
+module = "smu_smc_peripheral_irq_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["smc", "gpio", "uart", "sep", "real_rtl", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
+# The SEP secure test-mode strap, sampled once per cold reset.
+[[tests]]
+name = "smu_sep_secure_tm_test"
+module = "smu_sep_secure_tm_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["sep", "efuse", "real_rtl", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the claim is a boundary interface, not an eFuse word.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
 # SMC-facing boundary signals against the SMC registers that own them.
 # port_table.adoc declares each one; the bench previously tied them off, so no
 # leaf had ever driven or observed them.
@@ -2578,8 +2628,10 @@ tests = [
   "smu_xtrig_ctp_pad_test",
   "smu_sram_auto_init_disabled_test",
   "smu_smc_wdt_boundary_timeout_test",
+  "smu_smc_peripheral_irq_test",
+  "smu_sep_secure_tm_test",
 ]
-expected_count = 66
+expected_count = 68
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2684,8 +2736,10 @@ tests = [
   "smu_xtrig_ctp_pad_test",
   "smu_sram_auto_init_disabled_test",
   "smu_smc_wdt_boundary_timeout_test",
+  "smu_smc_peripheral_irq_test",
+  "smu_sep_secure_tm_test",
 ]
-expected_count = 92
+expected_count = 94
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
