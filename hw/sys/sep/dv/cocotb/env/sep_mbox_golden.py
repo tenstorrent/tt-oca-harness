@@ -49,6 +49,7 @@ IRQP = AXIL_MAILBOX_OUTBOUND_0.offset("IRQP")
 CTRL = AXIL_MAILBOX_OUTBOUND_0.offset("CTRL")
 
 # STATUS / IRQS / ERROR_FLAGS bit positions from the generated bitfields.
+CTRL_WFLUSH = AXIL_MAILBOX_OUTBOUND_0.field_mask("CTRL", "wflush")
 ST_EMPTY = AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "empty")
 ST_FULL = AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "full")
 ST_WLVL_ABOVE = AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "write_level_above_thresh")

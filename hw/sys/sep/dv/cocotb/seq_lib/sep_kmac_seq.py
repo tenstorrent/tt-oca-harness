@@ -55,9 +55,9 @@ KMAC_CMD_START = 0x1D
 KMAC_CMD_PROCESS = 0x2E
 KMAC_CMD_DONE = 0x16
 
-# STATUS bits: sha3_idle = bit0, sha3_squeeze = bit2.
-KMAC_STATUS_IDLE = 1 << 0
-KMAC_STATUS_SQUEEZE = 1 << 2
+# STATUS bits from the generated export, as the CFG path already does.
+KMAC_STATUS_IDLE = KMAC.field_mask("STATUS", "sha3_idle")
+KMAC_STATUS_SQUEEZE = KMAC.field_mask("STATUS", "sha3_squeeze")
 
 # INTR_STATE bits (kmac.adoc: kmac_done[0], fifo_empty[1], kmac_err[2]).
 # kmac_done fires on the absorbed event (SHA3 message fully absorbed -> squeeze

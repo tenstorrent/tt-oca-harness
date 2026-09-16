@@ -61,7 +61,7 @@ ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
 # --- AP / STEE output-remap ---------------------------------------------------
 AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
-REMAP_STRIDE = 0x08
+REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
 REMAP_ATTRS = 0x00  # 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
 
 # --- inbound / outbound filter config -----------------------------------------
