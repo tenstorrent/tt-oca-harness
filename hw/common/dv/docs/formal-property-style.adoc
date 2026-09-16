@@ -156,10 +156,13 @@ include path, as the yosys synthesis flow does, and the shim there governs.
 [[formal-style-attachment]]
 === Attaching a property module
 
-Properties live in `<top>_<block>_props.sv`, a module with input ports only,
-attached by one `bind` statement in `<top>_<block>_bind.sv`. `<top>` is the
-formal top, the DUT itself, and `<block>` the module the properties describe;
-the bind names that module, so every instance under the top is checked. The
+Every file under the DUT's DV tree carries `<dut>_` as its prefix. Properties
+live in `<dut>_<block>_props.sv`, a module of the same name with input ports
+only, attached by one `bind` statement in `<dut>_<block>_bind.sv`. `<block>`
+names the module the properties describe, prefixed by the formal top when
+that top is not the DUT (`dtp_ctn_csr_props.sv` on the cross-trigger
+network); the bind names the described module, so every instance under the
+top is checked. The
 RTL carries no properties and is not edited for formal. Internal signals reach
 the module through the bind port list, downward hierarchical references and
 struct members included; the frontend accepts them when it elaborates without
@@ -215,8 +218,8 @@ at least two steps of depth, and the asynchronous resets are free inputs.
 Under that model a reset that changes at a sampling edge, or between two edges,
 lands in the state register without the sampled `disable iff` seeing it, so
 the open path needs a reset environment. It lives in
-`<app>/sby/<top>_sby_env.sv`, a module bound to the top and read only by the
-task file: it is the open-path counterpart of the clock and reset commands a
+`<app>/sby/<dut>_sby_env.sv`, or `<dut>_<top>_sby_env.sv` for a top other than
+the DUT, a module bound to the top and read only by the task file: it is the open-path counterpart of the clock and reset commands a
 licensed backend's script issues, and it holds `asm_env_` assumptions on the
 top's input ports, and on internal state where the environment stands for a
 peer or a configuration bound. The DTP environments assert every reset up to
@@ -243,10 +246,12 @@ before it is unconstrained.
 <dut-dv-root>/
   <dut>_formal_cfg.toml            runner launch fields (--mode formal)
   formal/
-    props/<top>_<block>_props.sv   property module, one per described block
-    props/<top>_<block>_bind.sv    bind statement
-    <app>/sby/<top>.sby            open-path task file, one per app and top
-    <app>/sby/<top>_sby_env.sv     open-path clock and reset environment
+    props/<dut>_<block>_props.sv   property module, one per described block
+    props/<dut>_<block>_bind.sv    bind statement
+    <app>/sby/<dut>.sby            open-path task file, one per app, the DUT as top
+    <app>/sby/<dut>_<top>.sby      open-path task file for another top
+    <app>/sby/<dut>_sby_env.sv     open-path clock and reset environment, one per top
+                                   (<dut>_<top>_sby_env.sv for another top)
     build/                         generated: bender filelist, sby work directories
 ----
 
@@ -313,7 +318,7 @@ tops in the same shape.
 * `fpv/sby/dtp.sby`: one task triple per block on the `dtp` top, selected by
   the block's tag; the TAP triple is `tap_bmc` and `tap_cover` on `smtbmc`
   with yices at depth 30 and `tap_prove` on `abc pdr`, all under
-  `multiclock on`. `jtag2axi.sby` and `cross_trigger_network.sby` beside it
+  `multiclock on`. `dtp_jtag2axi.sby` and `dtp_cross_trigger_network.sby` beside it
   carry the other two tops.
 * `dtp_formal_cfg.toml` and `testlists/formal.toml`: the runner launch entry,
   one app table and one item per block. The `flist` stage regenerates the

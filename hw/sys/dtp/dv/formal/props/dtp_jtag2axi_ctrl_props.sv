@@ -3,7 +3,7 @@
 //
 // Formal properties for the control of the JTAG-to-AXI bridge: the request machine, the
 // tck-side admit counters, the ACLK-side outstanding counters, the status encoder, and the
-// disable gate with its flush. Attached to jtag2axi by jtag2axi_ctrl_bind.sv and checked with
+// disable gate with its flush. Attached to jtag2axi by dtp_jtag2axi_ctrl_bind.sv and checked with
 // jtag2axi as the formal top; bound by module name, the same module serves the three DTP
 // instances under the dtp top. Every property body is a boolean over current and one-cycle-past
 // values (hw/common/dv/docs/formal-property-style.adoc). The data path is out of scope: the
@@ -11,11 +11,11 @@
 //
 // The machine and its counters are tck posedge flops, so a value sampled at a posedge is the
 // one the machine consumed at that edge. The disable input reaches the negedge update latches
-// as the value present at the preceding posedge (jtag2axi_sby_env.sv).
+// as the value present at the preceding posedge (dtp_jtag2axi_sby_env.sv).
 
 `include "ocah_fv_macros.svh"
 
-module jtag2axi_ctrl_props #(
+module dtp_jtag2axi_ctrl_props #(
   parameter int FIFO_DEPTH = 3,
   parameter int SR_LEN = 1,
   localparam int CNT_W = $clog2(FIFO_DEPTH + 2),
@@ -199,4 +199,4 @@ module jtag2axi_ctrl_props #(
   end
   // verilog_format: on
 
-endmodule : jtag2axi_ctrl_props
+endmodule : dtp_jtag2axi_ctrl_props

@@ -6,7 +6,7 @@
 # dtp top supplies the sources (hw/common/dv/docs/formal-property-style.adoc); sby copies every
 # [files] entry into the task's src/ directory, so the paths inside the filelist must be absolute.
 # The bridge has a tck domain with negedge latches and an ACLK domain, so the clocks are modelled
-# explicitly (multiclock on) and jtag2axi_sby_env.sv supplies the reset model, the JTAG-side
+# explicitly (multiclock on) and dtp_jtag2axi_sby_env.sv supplies the reset model, the JTAG-side
 # control shape and the AXI responder rules. Two cutpoints keep the target on the control: the
 # shared shift register is free at every step in every task, so an Update-DR can present any
 # request without the 72 shift cycles that loading it through TDI costs; and in the bounded and
@@ -41,13 +41,13 @@ prove: abc pdr
 
 [script]
 plugin -i slang
-j2a_ctrl: read_slang -D FORMAL --top jtag2axi -G ADDR_WIDTH=32 -G DATA_WIDTH=32 -G ID_WIDTH=1 -G USER_WIDTH=1 -G FIFO_DEPTH=3 --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f jtag2axi_ctrl_props.sv jtag2axi_ctrl_bind.sv jtag2axi_sby_env.sv
+j2a_ctrl: read_slang -D FORMAL --top jtag2axi -G ADDR_WIDTH=32 -G DATA_WIDTH=32 -G ID_WIDTH=1 -G USER_WIDTH=1 -G FIFO_DEPTH=3 --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_jtag2axi_ctrl_props.sv dtp_jtag2axi_ctrl_bind.sv dtp_jtag2axi_sby_env.sv
 cutpoint jtag2axi/w:shift_register_q_tclk
 free_resp: cutpoint jtag2axi/w:src_resp
 prep -top jtag2axi
 
 [files]
 ../../build/dtp.f
-jtag2axi_sby_env.sv
-j2a_ctrl: ../../props/jtag2axi_ctrl_props.sv
-j2a_ctrl: ../../props/jtag2axi_ctrl_bind.sv
+dtp_jtag2axi_sby_env.sv
+j2a_ctrl: ../../props/dtp_jtag2axi_ctrl_props.sv
+j2a_ctrl: ../../props/dtp_jtag2axi_ctrl_bind.sv

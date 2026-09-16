@@ -4,17 +4,17 @@
 // Formal properties for the CSR access contract of the cross-trigger network: the address map
 // into the AXI-Lite crossbar and its error subordinate, and the field access, strobes and reset
 // values of one port register block and the matrix register block. Attached to
-// cross_trigger_network by ctn_csr_bind.sv and checked with cross_trigger_network as the formal
+// cross_trigger_network by dtp_ctn_csr_bind.sv and checked with cross_trigger_network as the formal
 // top. Every property body is a boolean over current and one-cycle-past values
 // (hw/common/dv/docs/formal-property-style.adoc).
 //
-// The manager issues one write and one read at a time (cross_trigger_network_sby_env.sv), so
+// The manager issues one write and one read at a time (dtp_cross_trigger_network_sby_env.sv), so
 // the address of the request a response answers is the one the helper flops recorded at the
 // last address handshake.
 
 `include "ocah_fv_macros.svh"
 
-module ctn_csr_props
+module dtp_ctn_csr_props
   import cross_trigger_network_pkg::*;
   import cross_trigger_port_reg_pkg::*;
   import cross_trigger_matrix_reg_pkg::*;
@@ -221,4 +221,4 @@ module ctn_csr_props
                  $past(ctp0_wr_biten_i[15:0]) != '0, clk_i, rst_ni)
   // verilog_format: on
 
-endmodule : ctn_csr_props
+endmodule : dtp_ctn_csr_props

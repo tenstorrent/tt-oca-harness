@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Attaches jtag2axi_ctrl_props to every jtag2axi instance under the formal top. Internal signals
+// Attaches dtp_jtag2axi_ctrl_props to every jtag2axi instance under the formal top. Internal signals
 // reach the property module through this port list only; the RTL carries no properties.
 
-bind jtag2axi jtag2axi_ctrl_props #(
+bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .FIFO_DEPTH (FIFO_DEPTH),
   .SR_LEN     (SHARED_SR_LEN)
-) u_jtag2axi_ctrl_props (
+) u_dtp_jtag2axi_ctrl_props (
   .i_tck                  (i_tck),
   .i_trstn                (i_trstn),
   .i_aclk                 (i_aclk),

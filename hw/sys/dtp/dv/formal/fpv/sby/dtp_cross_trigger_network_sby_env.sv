@@ -16,7 +16,7 @@
 
 `include "ocah_fv_macros.svh"
 
-module cross_trigger_network_sby_env
+module dtp_cross_trigger_network_sby_env
   import cross_trigger_network_pkg::*;
 (
   input logic           clk_i,
@@ -86,9 +86,9 @@ module cross_trigger_network_sby_env
   // verilog_format: on
 `endif
 
-endmodule : cross_trigger_network_sby_env
+endmodule : dtp_cross_trigger_network_sby_env
 
-bind cross_trigger_network cross_trigger_network_sby_env u_cross_trigger_network_sby_env (
+bind cross_trigger_network dtp_cross_trigger_network_sby_env u_dtp_cross_trigger_network_sby_env (
   .clk_i               (clk_i),
   .rst_ni              (rst_ni),
   .axil_req_i          (axil_req_i),

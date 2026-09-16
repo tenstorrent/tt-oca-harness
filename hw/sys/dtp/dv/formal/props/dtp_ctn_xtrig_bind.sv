@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Attaches ctn_xtrig_props to every cross_trigger_network instance under the formal top. External
+// Attaches dtp_ctn_xtrig_props to every cross_trigger_network instance under the formal top. External
 // port 0 and matrix slice 0 stand for their arrays; the internal-port vectors list the ports in
 // index order. Internal signals reach the property module through this port list only; the RTL
 // carries no properties.
 
-bind cross_trigger_network ctn_xtrig_props #(
+bind cross_trigger_network dtp_ctn_xtrig_props #(
   .NUM_INT_CT (NUM_INT_CT),
   .NUM_CT_DST (NUM_CTM_PORTS)
-) u_ctn_xtrig_props (
+) u_dtp_ctn_xtrig_props (
   .clk_i                 (clk_i),
   .rst_ni                (rst_ni),
   .mode_wire_or_i        (gen_ext_ctp[0].u_ctp.u_core.mode_wire_or_i),

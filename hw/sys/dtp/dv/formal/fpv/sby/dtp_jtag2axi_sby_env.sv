@@ -19,7 +19,7 @@
 
 `include "ocah_fv_macros.svh"
 
-module jtag2axi_sby_env (
+module dtp_jtag2axi_sby_env (
   input logic       i_tck,
   input logic       i_trstn,
   input logic       i_aclk,
@@ -154,9 +154,9 @@ module jtag2axi_sby_env (
   // verilog_format: on
 `endif
 
-endmodule : jtag2axi_sby_env
+endmodule : dtp_jtag2axi_sby_env
 
-bind jtag2axi jtag2axi_sby_env u_jtag2axi_sby_env (
+bind jtag2axi dtp_jtag2axi_sby_env u_dtp_jtag2axi_sby_env (
   .i_tck                                 (i_tck),
   .i_trstn                               (i_trstn),
   .i_aclk                                (i_aclk),

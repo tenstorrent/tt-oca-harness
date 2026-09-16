@@ -3,7 +3,7 @@
 //
 // Formal properties for the cross-trigger transport: the four-phase handshake controller, the
 // mode multiplexers and wire-OR edge detect of the port core, the pulse stretcher, and one source
-// selector slice of the matrix. Attached to cross_trigger_network by ctn_xtrig_bind.sv, which
+// selector slice of the matrix. Attached to cross_trigger_network by dtp_ctn_xtrig_bind.sv, which
 // names external port 0 and matrix slice 0 as the representatives of their arrays and packs the
 // internal ports' mode and route signals into vectors, and checked with cross_trigger_network as
 // the formal top. Every property body is a boolean over current and one-cycle-past values
@@ -12,7 +12,7 @@
 
 `include "ocah_fv_macros.svh"
 
-module ctn_xtrig_props #(
+module dtp_ctn_xtrig_props #(
   parameter int unsigned NUM_INT_CT = 10,
   parameter int unsigned NUM_CT_DST = 26
 ) (
@@ -202,4 +202,4 @@ module ctn_xtrig_props #(
   `OCAH_FV_COVER(cov_hs_reset_in_wire_or, hs_reset_i && mode_wire_or_i, clk_i, rst_ni)
   // verilog_format: on
 
-endmodule : ctn_xtrig_props
+endmodule : dtp_ctn_xtrig_props

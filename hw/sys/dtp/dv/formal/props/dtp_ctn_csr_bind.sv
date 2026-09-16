@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Attaches ctn_csr_props to every cross_trigger_network instance under the formal top. Port 0
+// Attaches dtp_ctn_csr_props to every cross_trigger_network instance under the formal top. Port 0
 // stands for the sixteen port register blocks. Internal signals reach the property module through
 // this port list only; the RTL carries no properties.
 
-bind cross_trigger_network ctn_csr_props #(
+bind cross_trigger_network dtp_ctn_csr_props #(
   .NUM_CTP (NUM_CTP),
   .NUM_MST (NUM_XBAR_MST_PORTS)
-) u_ctn_csr_props (
+) u_dtp_ctn_csr_props (
   .clk_i            (clk_i),
   .rst_ni           (rst_ni),
   .req_i            (axil_req_i),

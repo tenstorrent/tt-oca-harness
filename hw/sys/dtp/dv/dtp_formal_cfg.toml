@@ -84,22 +84,22 @@ args = ["dbgctl_bmc", "dbgctl_cover", "dbgctl_prove"]
 # memory of one host.
 [formal.apps.j2a_ctrl_fpv.sby]
 cwd = "hw/sys/dtp/dv/formal/fpv/sby"
-script = "jtag2axi.sby"
+script = "dtp_jtag2axi.sby"
 args = ["j2a_ctrl_bmc", "j2a_ctrl_cover", "j2a_ctrl_prove", "--sequential"]
 
 [formal.apps.ctn_clkstop_fpv.sby]
 cwd = "hw/sys/dtp/dv/formal/fpv/sby"
-script = "cross_trigger_network.sby"
+script = "dtp_cross_trigger_network.sby"
 args = ["ctn_clkstop_bmc", "ctn_clkstop_cover", "ctn_clkstop_prove"]
 
 # The transport block is P1 and signs off bounded: its item runs bmc and cover, and the
 # ctn_xtrig_prove task stays in the task file for a run by hand.
 [formal.apps.ctn_xtrig_fpv.sby]
 cwd = "hw/sys/dtp/dv/formal/fpv/sby"
-script = "cross_trigger_network.sby"
+script = "dtp_cross_trigger_network.sby"
 args = ["ctn_xtrig_bmc", "ctn_xtrig_cover"]
 
 [formal.apps.ctn_csr_fpv.sby]
 cwd = "hw/sys/dtp/dv/formal/fpv/sby"
-script = "cross_trigger_network.sby"
+script = "dtp_cross_trigger_network.sby"
 args = ["ctn_csr_bmc", "ctn_csr_cover", "ctn_csr_prove"]
