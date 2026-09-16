@@ -262,11 +262,10 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
     async def _atb_message_leg(self, dut, rx: int) -> None:
         """Frame one message into receiver `rx` and score its CSR consequence.
 
-        Receivers 1 and 2 previously took no ATB stimulus at all -- their ATB
-        pins were tied off in the bench -- so their claim stopped at "mapped,
-        at reset, and stores INTR_ENABLE". This leg drives the same framing the
-        receiver-0 leg drives, with a probe ID and an ATB ID of its own, and
-        scores the same two CSR consequences: EMPTY clearing on THIS receiver
+        Each receiver gets the same framing the receiver-0 leg drives, with a
+        probe ID and an ATB ID of its own, so the claim for receivers 1 and 2
+        is the same as for receiver 0 rather than stopping at "mapped, at
+        reset, and stores INTR_ENABLE". The leg scores two CSR consequences: EMPTY clearing on THIS receiver
         and THIS receiver's PROBE_ID reading back the value framed into it. A
         wrap that routed the beats to the wrong receiver fails on the empty
         sample of the receiver it was told to fill, and a receiver that latched
