@@ -321,6 +321,29 @@ def aon_timer_wkup_ticks_per_count(prescaler: int) -> int:
     return prescaler + AON_TIMER_PRESCALE_OFFSET
 
 
+# AMBA AXI byte-lane mapping (IHI 0022, "Data read and write structure" /
+# narrow transfers): on a data bus of W bytes, a transfer is carried on the byte
+# lanes selected by the low bits of the address, and WSTRB bit n asserts byte
+# lane n. A 32-bit access on a 64-bit bus therefore uses lanes 0-3 when
+# address[2] is 0 and lanes 4-7 when it is 1. Alignment is the protocol's, not
+# any one adapter's: address[1:0] must be 0 for a 32-bit transfer.
+#
+# DV-owned, so a lane adapter that disagreed with AMBA is driven with a
+# protocol-legal access and answers for itself, rather than defining what legal
+# means.
+AXI_BUS_BYTES = 8
+
+
+def axi_lane_strobe(addr: int, access_bytes: int = 4, bus_bytes: int = AXI_BUS_BYTES) -> int:
+    """WSTRB for an aligned ``access_bytes`` transfer at ``addr`` on the bus."""
+    if access_bytes <= 0 or bus_bytes % access_bytes:
+        raise ValueError(f"{access_bytes}-byte access does not divide a {bus_bytes}-byte bus")
+    if addr % access_bytes:
+        raise ValueError(f"0x{addr:x} is not aligned for a {access_bytes}-byte AXI transfer")
+    lane = addr % bus_bytes
+    return ((1 << access_bytes) - 1) << lane
+
+
 def _selftest() -> None:
     assert window("ABR").base == 0x1094_0000
     assert window("EPOOL").base == 0x1095_0000
@@ -353,6 +376,10 @@ def _selftest() -> None:
     assert "WKUP_THOLD_LO" not in aon_timer_regwen_gates("WDOG_REGWEN")
     assert aon_timer_wkup_ticks_per_count(0) == 1
     assert aon_timer_wkup_ticks_per_count(24) == 25
+    assert axi_lane_strobe(0x0) == 0x0F
+    assert axi_lane_strobe(0x4) == 0xF0
+    assert axi_lane_strobe(0x8) == 0x0F
+    assert axi_lane_strobe(0xC) == 0xF0
 
 
 _selftest()
