@@ -1637,9 +1637,9 @@ module smc_uvm_top
     assign tb_inb_isolate_write = `SMC_INB.smc_sys_inbound_filter.isolate_write;
     assign tb_inb_isolate_read  = `SMC_INB.smc_sys_inbound_filter.isolate_read;
     assign tb_remap_jtag_aw_hit =
-        `SMC_INB.smc_alias_remap_wrap.o_remap_debug_jtag.aw_remap_hit_debug;
+        `SMC_INB.smc_alias_remap_wrap.remap_debug_jtag_o.aw_remap_hit_debug;
     assign tb_remap_jtag_ar_hit =
-        `SMC_INB.smc_alias_remap_wrap.o_remap_debug_jtag.ar_remap_hit_debug;
+        `SMC_INB.smc_alias_remap_wrap.remap_debug_jtag_o.ar_remap_hit_debug;
     `undef SMC_INB
 
     // Isolation / FLR sequencing state. The two watchdog timeout pins are
