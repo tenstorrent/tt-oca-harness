@@ -9,7 +9,7 @@ S2: Same IDCODE while SMC STAP is *not* selected: ``tb_stap_smc_tms`` stays
 S3: TRST restores the 2-bit PTAP 3DCR, re-select, IDCODE with non-zero DR.
 
 TDI/TCK fan out without ``stap_sel``; they are not the select proof.
-``tb_stap_smc_tdo_oen`` is logged when live. SEP=0: IO + SMC + extra0.
+``tb_stap_smc_tdo_oen`` is logged when live. IO + SMC + SEP debug + extra0 on the wrapper.
 Not claimed: SMC DTM abstract commands, STAP slave BFM IDCODE, real LCC.
 """
 

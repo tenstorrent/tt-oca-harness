@@ -26,17 +26,15 @@ from check_no_vendor_paths import (  # noqa: E402
 
 SIM_CFG = "smu_sim_cfg.toml"
 CATALOG = "testlists/wrapper.toml"
-TARGET_NO_SEP = "compile_smu_chiplet_no_sep"
-TARGET_SEP_RTL = "compile_smu_chiplet_sep_rtl"
+# The wrapper has one compile profile: SEP=1 with the real EL2 CPU.
+TARGET_SEP_RTL = "compile_smu_chiplet"
 SMOKE_TESTS = {
-    "smu_wrapper_elaboration_no_sep_test": TARGET_NO_SEP,
     "smu_wrapper_elaboration_sep_rtl_test": TARGET_SEP_RTL,
-    "smu_smc_smoke_test": TARGET_NO_SEP,
+    "smu_smc_smoke_test": TARGET_SEP_RTL,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
-# Merge-gate smoke covers both wrapper profiles.
+# Merge-gate smoke: the elaboration leaf and both firmware smokes.
 EXPECTED_SMOKE_GROUP = {
-    "smu_wrapper_elaboration_no_sep_test",
     "smu_wrapper_elaboration_sep_rtl_test",
     "smu_smc_smoke_test",
     "smu_sep_smoke_test",
@@ -146,7 +144,7 @@ def check_sources(result: Readiness) -> None:
         return
     config = _read_toml(config_path)
     targets = config.get("targets", {})
-    for target in (TARGET_NO_SEP, TARGET_SEP_RTL):
+    for target in (TARGET_SEP_RTL,):
         result.record(
             f"target:{target}",
             target in targets,

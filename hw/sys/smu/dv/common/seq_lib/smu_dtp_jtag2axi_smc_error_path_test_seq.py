@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI unmapped DECERR then VERSION_LO + SPM series recovery. SEP=0, no Force."""
+"""JTAG2AXI unmapped DECERR then VERSION_LO + SPM series recovery. SEP=1, no Force."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ OTP_POLL = 128
 
 
 class smu_dtp_jtag2axi_smc_error_path_test_seq:
-    """SMC fabric J2A unmapped DECERR + recovery; gate already open on SEP=0."""
+    """SMC fabric J2A unmapped DECERR + recovery; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test

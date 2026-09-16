@@ -32229,7 +32229,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>oca_i3c_wrap</ipxact:name>
-          <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
+          <ipxact:description>OCA I3C Controller wrapper</ipxact:description>
           <ipxact:addressOffset>'hc003a000</ipxact:addressOffset>
           <ipxact:range>'h6000</ipxact:range>
           <ipxact:registerFile>

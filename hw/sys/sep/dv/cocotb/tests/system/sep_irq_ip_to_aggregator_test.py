@@ -81,6 +81,19 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         await ReadOnly()
         return self.rd(cocotb.top.sep_internal_interrupts_probe_o)
 
+    async def _sample_agg_known(self, mask: int) -> int:
+        """Sample the vector, requiring the bits in ``mask`` to be 0 or 1.
+
+        For a compare whose passing branch is zero. ``rd`` resolves an unknown
+        bit to 0, so ``bit == 0`` would also hold for a bit nothing drives --
+        which is the whole risk on bit [41], a source this leaf never raises.
+        Only the named bits are required to be known; the rest of the vector may
+        legitimately be X.
+        """
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        return self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask)
+
     async def _poll_agg(self, idx: int, expect: int, *, timeout: int = 200) -> tuple[bool, int]:
         sample = 0
         for _ in range(timeout):
@@ -201,10 +214,17 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             f"sep_internal_interrupts[{IRQ_DMA_REG_PATH}] stayed 0 after "
             f"DMA register-path SLVERR (vec=0x{dma_vec:x})"
         )
-        assert ((dma_vec >> IRQ_DMA_HOST_PATH) & 1) == 0, (
+        # Exclusivity, not liveness: a register-path fault must not raise the
+        # host-path or peripheral-OR source. Re-sampled with the two bits
+        # required to be known -- this leaf never drives [41] high (see the
+        # module docstring), so an undriven or X bit would otherwise satisfy
+        # "== 0" on any RTL.
+        excl_mask = (1 << IRQ_DMA_HOST_PATH) | (1 << IRQ_PERIPH_OR)
+        excl_vec = await self._sample_agg_known(excl_mask)
+        assert ((excl_vec >> IRQ_DMA_HOST_PATH) & 1) == 0, (
             "host-path bit [41] set on a register-path fault"
         )
-        assert ((dma_vec >> IRQ_PERIPH_OR) & 1) == 0, (
+        assert ((excl_vec >> IRQ_PERIPH_OR) & 1) == 0, (
             "periph OR [42] set on a DMA register-path fault"
         )
         self.logger.info(

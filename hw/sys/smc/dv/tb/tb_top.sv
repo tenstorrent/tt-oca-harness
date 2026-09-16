@@ -438,7 +438,9 @@ module smc_uvm_top
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_pad_drive_en;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0] tb_pad_drive_val;
 
-    // Telemetry ATB bundle (receiver 0 driven; 1/2 quiet).
+    // Telemetry ATB bundle. Every receiver's AT channel is lifted to the signal
+    // list; the AF channel is lifted for receiver 0 only and every receiver
+    // above index 2 keeps the constants the tie-off below presented.
     telemetry_receiver_pkg::telemetry_data_t
         [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] tb_telemetry_atdata;
     telemetry_receiver_pkg::atb_id_t
@@ -454,10 +456,30 @@ module smc_uvm_top
     assign tb_telemetry0_atready = tb_telemetry_atready[0];
     assign tb_telemetry0_afvalid = tb_telemetry_afvalid[0];
     assign tb_telemetry_afready[0] = tb_telemetry0_afready;
-    for (genvar tel_i = 1; tel_i < smc_config_pkg::NUM_TELEMETRY_RECEIVERS; tel_i++) begin : gen_tel_tie
+    if (smc_config_pkg::NUM_TELEMETRY_RECEIVERS > 1) begin : gen_tel1_lift
+        assign tb_telemetry_atdata[1] = tb_telemetry1_atdata;
+        assign tb_telemetry_atid[1] = tb_telemetry1_atid;
+        assign tb_telemetry_atvalid[1] = tb_telemetry1_atvalid;
+        assign tb_telemetry1_atready = tb_telemetry_atready[1];
+    end else begin : gen_tel1_absent
+        assign tb_telemetry1_atready = 1'b0;
+    end
+    if (smc_config_pkg::NUM_TELEMETRY_RECEIVERS > 2) begin : gen_tel2_lift
+        assign tb_telemetry_atdata[2] = tb_telemetry2_atdata;
+        assign tb_telemetry_atid[2] = tb_telemetry2_atid;
+        assign tb_telemetry_atvalid[2] = tb_telemetry2_atvalid;
+        assign tb_telemetry2_atready = tb_telemetry_atready[2];
+    end else begin : gen_tel2_absent
+        assign tb_telemetry2_atready = 1'b0;
+    end
+    // Receivers past index 2 keep the AT tie-off; the AF channel of every
+    // receiver except 0 keeps its ready high, exactly as before the lift.
+    for (genvar tel_i = 3; tel_i < smc_config_pkg::NUM_TELEMETRY_RECEIVERS; tel_i++) begin : gen_tel_at_tie
         assign tb_telemetry_atdata[tel_i] = '0;
         assign tb_telemetry_atid[tel_i] = '0;
         assign tb_telemetry_atvalid[tel_i] = 1'b0;
+    end
+    for (genvar tel_i = 1; tel_i < smc_config_pkg::NUM_TELEMETRY_RECEIVERS; tel_i++) begin : gen_tel_af_tie
         assign tb_telemetry_afready[tel_i] = 1'b1;
     end
 
@@ -3179,11 +3201,17 @@ module smc_uvm_top
     assign tb_cpu_jtag_reset   = 1'b1;
     assign tb_uart0_rx_ext_drive = 1'b1;
 
-    // Telemetry ATB receiver 0 quiet with AFREADY high.
+    // Telemetry ATB receivers quiet with AFREADY high.
     assign tb_telemetry0_atdata  = '0;
     assign tb_telemetry0_atid    = '0;
     assign tb_telemetry0_atvalid = 1'b0;
     assign tb_telemetry0_afready = 1'b1;
+    assign tb_telemetry1_atdata  = '0;
+    assign tb_telemetry1_atid    = '0;
+    assign tb_telemetry1_atvalid = 1'b0;
+    assign tb_telemetry2_atdata  = '0;
+    assign tb_telemetry2_atid    = '0;
+    assign tb_telemetry2_atvalid = 1'b0;
 
     // SPI octal pads idle-safe: mux off, CS deasserted, OE/IE negated high.
     assign tb_spi_enable   = 1'b0;

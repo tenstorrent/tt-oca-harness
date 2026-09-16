@@ -146,6 +146,8 @@ module sep_uvm_top
             (jtag_kmac_rst_hold_i === 1'b1);
         jtag_sep_reset_ctrl_drive.ovrd.trng_jtag_rst_n_ovrd =
             (jtag_trng_rst_hold_i === 1'b1);
+        jtag_sep_reset_ctrl_drive.ovrd.abr_jtag_rst_n_ovrd =
+            (jtag_abr_rst_hold_i === 1'b1);
     end
 
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
@@ -251,11 +253,13 @@ module sep_uvm_top
     // otbn_rnd.sv:233 UrndNoReseedOnReset_A cannot pass on this instance. It arms
     // only while OTBN is in reset -- disable iff (rst_ni !== '0) -- and its guard
     // reads CURRENT rst_ni while the property body reads SAMPLED rst_ni. SEP
-    // asserts OTBN's reset ON a clk_i edge, because otbn_gated_rst_n is a flop
-    // output of hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv, so at that edge the
-    // guard sees reset active and arms an attempt whose body still sees the
-    // pre-reset value and therefore demands seed_en_q be high. It fires on every
-    // software reset whatever the DUT does.
+    // asserts OTBN's reset ON a clk_i edge: the reset is a posedge clk_i flop
+    // output (sep_isolate_rst_seq.sv gated_rst_n_q), routed through the JTAG
+    // override mux u_otbn_rst_ovrd_mux in sep_reset_ctrl.sv to
+    // gated_rst_ni.otbn at sep_crypto.sv. At that edge the guard sees reset
+    // active and arms an attempt whose body still sees the pre-reset value and
+    // therefore demands seed_en_q be high. It fires on every software reset
+    // whatever the DUT does.
     //
     // This holds the property off for the WHOLE RUN, not just that edge, so no
     // in-reset cycle is checked in any test. The flop at otbn_rnd.sv:205-213
@@ -1012,6 +1016,27 @@ module sep_uvm_top
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
     };
 
+    // HMAC per-IP gated reset and the two isolate-completion bits that domain
+    // depends on. The reset sequencer holds the domain until every AXI-Lite
+    // path it depends on reports isolated, so the drain-before-reset checks
+    // read the reset and both paths.
+    assign hmac_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.hmac;
+    assign hmac_host_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
+    assign hmac_km_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+
+    // Adams Bridge per-IP gated reset and the two isolate-completion bits its
+    // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
+    // the Key Manager domain and an ABR reset request alone must raise it.
+    assign abr_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.abr;
+    assign abr_host_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
+    assign abr_km_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
+
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
     // programmed. These leaf fields sit outside the AXI ready/valid combinational
@@ -1647,8 +1672,11 @@ module sep_uvm_top
     assign otbn_dmem_write_count_o = otbn_dmem_wr_cnt_q;
     // KM SRAM word 0: peek the real macro array. The KM SRAM is one unscrambled
     // prim_ram_1p_adv (sep_ip_integration.u_km_sram) addressed by word index
-    // within the 32 KB km_intf_pkg SRAM window, so km_intf_pkg::SRAM_BASE_ADDR
-    // (0x0000_8000) + 0 is mem[0]. Both KM ROM images store their word there.
+    // within the 32 KB SRAM window the Key Manager specification places at
+    // 0x0000_8000, so base + 0 is mem[0]. Both KM ROM images store their word
+    // there. The index is a hierarchical path and does not depend on that base:
+    // a firmware store to the wrong window leaves mem[0] untouched and the
+    // word0 compare in sep_km_mem_smoke_test fails.
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
 
@@ -2165,6 +2193,13 @@ module sep_uvm_top
         .m_axi_rvalid_i        (m_axi_rvalid),
         .m_axi_rready_i        (m_axi_rready),
 
+        .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
+        .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
+        .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+        .abr_gated_rst_n_i     (abr_gated_rst_n_probe_o),
+        .abr_host_isolated_i   (abr_host_isolated_probe_o),
+        .abr_km_isolated_i     (abr_km_isolated_probe_o),
+
         .cpu_trace_valid_i     (cpu_trace_valid_o),
         .cpu_trace_addr_i      (cpu_trace_addr_o),
         .cpu_trace_interrupt_i (cpu_trace_interrupt_o),
@@ -2177,6 +2212,7 @@ module sep_uvm_top
         .drbg_genbits_vld_i    (drbg_genbits_vld_o),
         .axis1_tvalid_i        (axis1_tvalid_o),
         .axis1_tready_i        (axis1_tready_o),
+        .crypto_edn_ack_i      (crypto_edn_ack_o),
         .km_entropy_tvalid_i   (km_entropy_tvalid_o),
         .km_entropy_tready_i   (km_entropy_tready_o),
         // sep.sv:534 assembles the SEP AXI mailbox onto

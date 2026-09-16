@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OTP JTAG2AXI series NO_INCR R/W + MAP-CTRL hole SLVERR (SEP=0, no Force).
+"""SMC OTP JTAG2AXI series NO_INCR R/W + MAP-CTRL hole SLVERR (SEP=1, no Force).
 
 S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
     J2A gate is open in this configuration. ``lc_state_o`` is the no-LCC word

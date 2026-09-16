@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_3dcr_tms_hold_test — per-STAP TRST + SIB-open flow in a seeded order: an unselected port
-// never drives tdo_oen (the parked TMS polarity is state-dependent under the
-// tb_top wire loopback, so it is logged only)
+// dtp_3dcr_tms_hold_test — per-STAP, per-polarity select/deselect flow in a seeded order: the
+// deselected port parks its host TMS at the stored TMS_HOLD for a whole scan,
+// never drives tdo_oen, and its 3DCR reads back through the chain
 // (looped runner with per-pass family evidence, 16-pass floor).
 
 class dtp_3dcr_tms_hold_test extends dtp_base_test;

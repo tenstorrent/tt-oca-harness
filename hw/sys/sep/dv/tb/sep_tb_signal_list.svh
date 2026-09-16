@@ -47,6 +47,7 @@
 `SEP_TB_IN(logic, jtag_hmac_rst_hold_i)
 `SEP_TB_IN(logic, jtag_kmac_rst_hold_i)
 `SEP_TB_IN(logic, jtag_trng_rst_hold_i)
+`SEP_TB_IN(logic, jtag_abr_rst_hold_i)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
 // pair onto the LCC decoder input (no legal OTP image can present one). See
 // the force block below.
@@ -406,6 +407,17 @@
 // completion bits, used to prove reset cannot precede the slowest drain.
 `SEP_TB_OUT(logic, trng_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic [2:0], trng_axi_isolated_probe_o)
+// Same observation for the HMAC accelerator domain. An accelerator reset
+// depends on BOTH its host path and its Key Manager path, so both isolate
+// completion bits are exposed. Each bit is named here rather than exposing the
+// packed sep_crypto_isolate_t vector, so no test has to hand-derive a field
+// position from the struct declaration.
+`SEP_TB_OUT(logic, hmac_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, hmac_host_isolated_probe_o)
+`SEP_TB_OUT(logic, hmac_km_isolated_probe_o)
+`SEP_TB_OUT(logic, abr_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, abr_host_isolated_probe_o)
+`SEP_TB_OUT(logic, abr_km_isolated_probe_o)
 // IP-interrupt aggregator: observation-only mirror of the 34-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the

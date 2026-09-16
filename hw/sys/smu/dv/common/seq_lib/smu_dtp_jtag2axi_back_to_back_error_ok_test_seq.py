@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI DECERR then immediate VERSION_LO SUCCESS. SEP=0, no Force."""
+"""JTAG2AXI DECERR then immediate VERSION_LO SUCCESS. SEP=1, no Force."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ OTP_POLL = 128
 
 
 class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
-    """DECERR then immediate VERSION_LO SUCCESS; gate already open on SEP=0."""
+    """DECERR then immediate VERSION_LO SUCCESS; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test

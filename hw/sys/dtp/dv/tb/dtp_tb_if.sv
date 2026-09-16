@@ -111,6 +111,40 @@ interface dtp_tb_if;
   logic [31:0] xtrig_axil_awvalid_count;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
+  // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID
+  // and ARVALID held while the crossbar keeps the matching READY low.
+  logic [31:0] xtrig_axil_aw_stall_count;
+  logic [31:0] xtrig_axil_ar_stall_count;
+
+  // XTRIG crossbar demux state behind the CSR port (driven by tb_top from
+  // the AXI-Lite demux of the cross-trigger network): the AW lock flag,
+  // which holds an AW presented to a master port whose AWREADY was low,
+  // and the W-pending flag, high from an accepted AW until its W beat
+  // passes the demux.
+  logic xtrig_demux_aw_lock;
+  logic xtrig_demux_w_pending;
+
+  // Registered BUSY of every external cross-trigger port (driven by tb_top
+  // from the CTP busy outputs); STATUS.BUSY reads the same flop.
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_busy;
+
+  // JTAG2AXI bridge state per target for the reset-abort scenarios, sampled
+  // by tb_top from the bridges' TCK-domain registers: the AXI FSM state
+  // (jtag2axi.sv axi_state_e: 0 IDLE, 1 SEND_ADDR_W, 2 SEND_DATA_W,
+  // 3 WAIT_BRESP, 4 SEND_ADDR_R, 5 WAIT_RDATA, 6 UPDATE_STATUS), the
+  // single-op pending flag, and a sticky flag set once the bridge's CDC has
+  // run its TCK-side isolate-and-clear; cdc_clear_seen_clear = 1 clears the
+  // sticky flags.
+  logic [2:0] smc_axi_fsm_state;
+  logic       smc_axi_op_pending;
+  logic       smc_axi_cdc_clear_seen;
+  logic [2:0] smc_otp_fsm_state;
+  logic       smc_otp_op_pending;
+  logic       smc_otp_cdc_clear_seen;
+  logic [2:0] sep_otp_fsm_state;
+  logic       sep_otp_op_pending;
+  logic       sep_otp_cdc_clear_seen;
+  logic       cdc_clear_seen_clear = 1'b0;
 
   // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
   // boot-stall outputs and the flattened IC_RESET slice outputs.

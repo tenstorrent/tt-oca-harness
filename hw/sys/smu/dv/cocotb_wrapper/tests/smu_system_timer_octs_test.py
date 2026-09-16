@@ -17,7 +17,7 @@ class smu_system_timer_octs_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_system_timer_octs_test TierC SYS-TIMER-OCTS SEP=0 J2A"
+            "DUT_TAG=WRAPPER smu_system_timer_octs_test TierC SYS-TIMER-OCTS SEP=1 J2A"
         )
         seq = smu_system_timer_octs_test_seq(self)
         await seq.run()
