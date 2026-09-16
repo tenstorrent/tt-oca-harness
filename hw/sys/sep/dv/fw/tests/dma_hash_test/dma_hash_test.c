@@ -47,7 +47,10 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
 }
 
 // CFG_REGWEN values (multi-bit bool)
-#define MUBI4_TRUE 0x6 // Unlocked
+// CFG_REGWEN unlocked. SEP_DMA_REGWEN_UNLOCKED (fw/drivers/sep_dma.h) is
+// SECURE_DMA__CFG_REGWEN__REGWEN_reset from the generated header, so this
+// tracks an RDL change instead of rotting as a copied literal.
+#define MUBI4_TRUE SEP_DMA_REGWEN_UNLOCKED
 
 // ASID / opcode / width used by this SHA-256 copy.
 #define ASID_OT_ADDR 0x7

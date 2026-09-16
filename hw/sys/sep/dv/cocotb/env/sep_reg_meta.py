@@ -71,6 +71,11 @@ _TYPE_ALIAS = {
     "TIMEOUT_COUNT_ENTROPY_READ": "TIMEOUT_COUNT",
     "TIMEOUT_COUNT_FILTER_OUT": "TIMEOUT_COUNT",
     "TIMEOUT_COUNT_ALIAS_REMAP": "TIMEOUT_COUNT",
+    # km_mailbox_sep.rdl declares SEP_STATUS with the typedef `status_reg`, so
+    # PeakRDL emits KM_MAILBOX_SEP_STATUS_REG_* and the <block>_<reg> walk misses
+    # it. The register is in the RDL and the block is in the SEP addrmap; only the
+    # generated name differs.
+    "SEP_STATUS": "STATUS_REG",
 }
 
 # PeakRDL type name when it is not ``<block>_<reg>`` and the suffix walk is
@@ -741,6 +746,7 @@ EDN = CHeaderRegBlock("EDN", ot_c_header("edn"))
 EFUSE_INTERFACE_CTRL = RegBlock("EFUSE_INTERFACE_CTRL")
 AXIL_MAILBOX_OUTBOUND_0 = RegBlock("AXIL_MAILBOX_OUTBOUND_MAILBOX_0")
 SEP_LIFECYCLE_CTRL = RegBlock("SEP_LIFECYCLE_CTRL")
+KM_MAILBOX_SEP = RegBlock("KM_MAILBOX_SEP")
 INBOUND_FILTER_CTRL_0 = RegBlock("INBOUND_FILTER_CTRL_0_")
 LOCAL_MASTER_ALIAS_REMAP_CTRL_0 = RegBlock("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_")
 
