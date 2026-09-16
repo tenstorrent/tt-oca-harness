@@ -180,18 +180,20 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             if 0 < hot < len(SCAN_FIELDS):
                 self.fcov.sample_aux("unrelated_isolation", context=label)
 
-        # The all_disabled row ran last: release everything without reset and
-        # prove no gated open attempt sticks (a delayed replay would show a
-        # SIB select pulse here), then a sanctioned all-clear row recovers.
+        # Delayed-replay proof (the check_stored_sib_across_gate pattern): a
+        # SIB's update register retains a sanctioned open through a gate, so
+        # close every SIB with a sanctioned write first, then attempt a fully
+        # gated open of all three, release without reset, and prove no select
+        # pulses (a gated open attempt that stuck would assert here).
+        all_gated = {field: 1 for field in SCAN_FIELDS}
         await self.set_dbg_disable_vector({})
-        quiet = tuple(f"{self.IJTAG_SIGNAL_PREFIX[name]}_select" for name in IJTAG_SIB_ORDER)
-        window = self.start_scan_window(quiet)
-        _, signals = await self.observe_ijtag_controls(0b000, context="release.observe")
-        self.check_scan_window(window, quiet=quiet, context="release.window")
-        for name in IJTAG_SIB_ORDER:
-            self.check_observable(
-                signals, f"{self.IJTAG_SIGNAL_PREFIX[name]}_select", 0, context=f"release.{name}"
-            )
+        await self.program_ijtag_sibs(0b000, context="release.close")
+        await self.set_dbg_disable_vector(all_gated)
+        await self.program_ijtag_sibs(
+            0b111, dbg_disable=all_gated, context="release.gated_open_attempt"
+        )
+        await self.set_dbg_disable_vector({})
+        await self.check_ijtag_all_closed(context="release.observe")
         self.fcov.sample_aux("release_no_replay", context="post_all_disabled_release")
 
         await self.check_ijtag_row({}, context="recovery")

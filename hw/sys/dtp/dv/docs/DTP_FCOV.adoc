@@ -343,7 +343,7 @@ Sampling rules:
 |===
 |VPLAN Test / Group |Coverage
 |`dtp_sanity_test` |`tap_smoke_cg`, partial `tap_state_cg`
-|`basic_jtag` group |`tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR/iJTAG loopback observations
+|`basic_jtag` group |`tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR loopback observations
 |`dtp_jtag2axi_smc_axi_single_write_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS write
 |`dtp_jtag2axi_smc_axi_single_write_read_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS read
 |JTAG instruction scenarios |`jtag_instruction_cg`, `tap_state_cg`

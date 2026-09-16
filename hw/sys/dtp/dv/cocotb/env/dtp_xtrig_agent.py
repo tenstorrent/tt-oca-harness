@@ -140,10 +140,45 @@ class DtpXtrigBfm:
             "xtrig_axil_awvalid_count",
             "xtrig_axil_wvalid_count",
             "xtrig_axil_arvalid_count",
+            "xtrig_axil_aw_stall_count",
+            "xtrig_axil_ar_stall_count",
+            "xtrig_demux_aw_lock",
+            "xtrig_demux_w_pending",
+            "xtrig_ctp_busy",
         )
         sample = {name: self.tb_if.sample(name) for name in names if self.tb_if.has(name)}
         await NextTimeStep()
         return sample
+
+    async def pulse_input_mask(
+        self, ctp_mask: int, int_mask: int, *, ctp_invert: int = 0, cycles: int = 2
+    ) -> None:
+        """Pulse CTP request-out pads and internal CT requests in the same cycles.
+
+        A pad of ``ctp_invert`` pulses low from its high idle level; every
+        other pad pulses high from low. Bits outside the masks keep their
+        levels.
+        """
+        ctp_mask &= (1 << XTRIG_NUM_CTP) - 1
+        int_mask &= (1 << XTRIG_NUM_INT_CT) - 1
+        ctp_rest = _int(self.pins.xtrig_ctp_req_out_din) & ~ctp_mask
+        self.pins.xtrig_ctp_req_out_din.value = ctp_rest | (ctp_mask & ~ctp_invert)
+        self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) | int_mask
+        await ClockCycles(self.clk, cycles)
+        self.pins.xtrig_ctp_req_out_din.value = ctp_rest | (ctp_mask & ctp_invert)
+        self.pins.xtrig_ctm_dst_req.value = _int(self.pins.xtrig_ctm_dst_req) & ~int_mask
+
+    def set_ctp_req_out_din(self, mask: int) -> None:
+        """Drive the CTP request-out pad inputs to ``mask``."""
+        self.pins.xtrig_ctp_req_out_din.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+
+    def set_ctp_req_in_din(self, mask: int) -> None:
+        """Drive the CTP request-in pad inputs to ``mask``."""
+        self.pins.xtrig_ctp_req_in_din.value = mask & ((1 << XTRIG_NUM_CTP) - 1)
+
+    def set_sys_reset(self, *, active: bool) -> None:
+        """Hold (``True``) or release the system reset."""
+        self.tb_if.sys_rst_n.value = 0 if active else 1
 
     async def drive_internal_dst_pulse(self, int_idx: int, cycles: int = 1) -> None:
         mask = 1 << int_idx

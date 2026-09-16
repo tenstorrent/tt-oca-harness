@@ -9,8 +9,8 @@ transactions (with results) on an analysis port for the scoreboard.
 
 from __future__ import annotations
 
-from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
-from ocah_jtag_vip import OcahJtagMasterDriver
+from cocotb.triggers import NextTimeStep, ReadOnly, Timer
+from ocah_jtag_vip import OcahJtagMasterDriver, OcahJtagState
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -138,21 +138,36 @@ class DtpJtagDriver(uvm_driver):
         )
 
     async def _set_trst(self, item: DtpJtagItem) -> None:
-        """Drive TRST_N directly, tick TCK, and sample the TAP state."""
+        """Drive TRST_N, hold it across TCK cycles, and sample the TAP state.
+
+        Asserting samples the state once the pin has settled and before any
+        TCK edge, then clocks TCK with TMS low, which leaves Test-Logic-Reset
+        unless the reset holds the controller there. Releasing clocks TCK
+        with TMS high, the Test-Logic-Reset self-loop.
+        """
+        asserted = (item.value & 0x1) == 0
         self.tb_if.jtag.trst_n.value = item.value & 0x1
+        await ReadOnly()
+        item.reset_state = self.tb_if.sample("jtag_ptap_state")
+        await NextTimeStep()
         for _ in range(max(item.cycles, 1)):
-            await self.jtag.step_tms(1)
+            await self.jtag.step_tms(0 if asserted else 1)
         await self._sample_observables(item)
 
     async def _pulse_por(self, item: DtpJtagItem) -> None:
-        """Pulse power-on reset and sample the primary TAP state."""
+        """Hold power-on reset for TCK periods with TCK idle and sample the TAP under it.
+
+        The pulse carries no TCK edge, so the sampled Test-Logic-Reset comes
+        from the reset alone; the BFM's tracked state is re-synchronized to
+        the controller the reset moved without a clock on this bus.
+        """
+        hold_ns = max(item.cycles, 1) * self.cfg.jtag_period_ns
         self.tb_if.por_rst_n.value = 0
-        for _ in range(max(item.cycles, 1)):
-            await self.jtag.step_tms(1)
-        await ClockCycles(self.tb_if.clk, max(item.cycles, 1))
+        await Timer(hold_ns, unit="ns")
         await self._sample_observables(item)
         self.tb_if.por_rst_n.value = 1
-        await ClockCycles(self.tb_if.clk, max(item.cycles, 1))
+        await Timer(hold_ns, unit="ns")
+        self.jtag.sync_model(OcahJtagState.TEST_LOGIC_RESET)
 
     async def _sample_observables(self, item: DtpJtagItem) -> None:
         """Sample the DTP observables of the domain interfaces by their flat names."""
@@ -162,10 +177,14 @@ class DtpJtagDriver(uvm_driver):
         item.decoded = self.tb_if.sample("jtag_ptap_inst_decoded")
         item.signals["jtag_ptap_inst_decoded"] = item.decoded
         for name in (
+            "jtag_trst",
             "jtag_bsr_select",
             "jtag_bsr_shift_en",
             "jtag_bsr_capture_en",
             "jtag_bsr_update_en",
+            "jtag_bsr_run_test_idle",
+            "jtag_bsr_test_logic_reset",
+            "jtag_bsr_runbist",
             "jtag_dft_secure_select",
             "jtag_dft_secure_shift_en",
             "jtag_dft_secure_capture_en",
@@ -174,6 +193,9 @@ class DtpJtagDriver(uvm_driver):
             "jtag_dft_shift_en",
             "jtag_dft_capture_en",
             "jtag_dft_update_en",
+            "jtag_dft_run_test_idle",
+            "jtag_dft_test_logic_reset",
+            "jtag_dft_runbist",
             "jtag_dfd_select",
             "jtag_dfd_shift_en",
             "jtag_dfd_capture_en",

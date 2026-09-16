@@ -384,7 +384,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         rng = self.rng("decerr_write_data")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             addr = self._target_addr(target, idx + 24)
+            size = self.target_cfg(target).default_size
             expected = self.configure_target_error(target, addr, AXI_DECERR, read=False, write=True)
+            before = self.read_target_mem_int(target, addr, size)
             status, _ = await self.write_target_single_expect_status(
                 target,
                 addr,
@@ -393,6 +395,14 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 context=f"decerr_write.{target}",
             )
             self.assert_equal(f"decerr_write.{target}.status", status, DtpJtag2AxiStatus.DECERR)
+            # The responder drops an armed write beat, so the error slot keeps
+            # its prior value.
+            self.assert_equal(
+                f"decerr_write.{target}.no_write_side_effect",
+                self.read_target_mem_int(target, addr, size),
+                before,
+                f"addr=0x{addr:x}",
+            )
             await self.verify_target_recovery(
                 target,
                 addr=addr + 0x200,
@@ -410,14 +420,28 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         rng = self.rng("decerr_read_data")
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             addr = self._target_addr(target, idx + 32)
+            cfg = self.target_cfg(target)
+            # A nonzero preload keeps the slot's word distinguishable from the
+            # errored beat's RDATA.
+            preload = rng.randrange(1, 1 << cfg.data_width)
+            self.write_target_mem_int(target, addr, preload, cfg.default_size)
             expected = self.configure_target_error(target, addr, AXI_DECERR, read=True, write=False)
-            status, _ = await self.read_target_single_expect_status(
+            status, rdata = await self.read_target_single_expect_status(
                 target,
                 addr,
                 expected,
                 context=f"decerr_read.{target}",
             )
             self.assert_equal(f"decerr_read.{target}.status", status, DtpJtag2AxiStatus.DECERR)
+            self.check_error_rdata(
+                target,
+                addr,
+                rdata,
+                resp=AXI_DECERR,
+                preload=preload,
+                size=cfg.default_size,
+                context=f"decerr_read.{target}",
+            )
             await self.verify_target_recovery(
                 target,
                 addr=addr + 0x200,

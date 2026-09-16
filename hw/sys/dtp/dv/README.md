@@ -53,7 +53,7 @@ protocol BFMs behind a stable API:
 | AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
 | AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM / `OcahAxiLiteMasterAgent`, cocotb) | Both flows drive the CSR port through the shared VIP master; the channel-skew, RREADY-hold, and partial-strobe operations live on its sequence APIs. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
-| iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
+| iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and the bench's 4/5/6-bit instrument stubs; topology-specific. |
 | STAP / 3DCR | DUT-local `DtpStap3dcrModel` over **`ocah_jtag_vip`** slave devices | Composed TAP_3DCR chain model (PTAP 3DCR, per-STAP SIB/3DCR, network-wide IR scans); the STAP host ports loop back by default, and the STAP-selection scenarios splice a shared `ocah_jtag_vip` reactive TAP behind every port (see "Downstream STAP TAPs"). |
 | CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCAH routing policy; promote only after parameterization and independent reuse. |
 
