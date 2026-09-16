@@ -2196,6 +2196,9 @@ module sep_uvm_top
         .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
         .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
         .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+        .abr_gated_rst_n_i     (abr_gated_rst_n_probe_o),
+        .abr_host_isolated_i   (abr_host_isolated_probe_o),
+        .abr_km_isolated_i     (abr_km_isolated_probe_o),
 
         .cpu_trace_valid_i     (cpu_trace_valid_o),
         .cpu_trace_addr_i      (cpu_trace_addr_o),
