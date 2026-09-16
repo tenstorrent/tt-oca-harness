@@ -55,7 +55,7 @@ static inline void sep_reset_release_trng(void) {
 }
 
 // Begin alarm recovery by holding all native-EDN consumers in reset before the
-// TRNG request. HMAC is intentionally absent because it has no EDN input.
+// TRNG request. HMAC is absent: it has no EDN input.
 // Set reset_km when mux leg 0 selects the internal DRBG and KM is not known idle.
 // The returned value is restored only after ESRC/CSRNG/EDN reinitialization and
 // an observation of fresh endpoint/pool progress.
@@ -66,8 +66,7 @@ static inline uint32_t sep_reset_begin_trng_recovery(bool reset_km) {
     if (reset_km) consumer_bits |= SEP_SW_RESET_N_KM_BIT;
 
     sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, saved & ~consumer_bits);
-    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N,
-                 saved & ~consumer_bits & ~SEP_SW_RESET_N_TRNG_BIT);
+    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, saved & ~consumer_bits & ~SEP_SW_RESET_N_TRNG_BIT);
     return saved;
 }
 

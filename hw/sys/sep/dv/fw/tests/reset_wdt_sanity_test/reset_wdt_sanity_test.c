@@ -81,14 +81,31 @@ void nmi_handler(void) {
     __asm__ volatile("fence" ::: "memory");
 }
 
-// One IP reset-wire check: write probe, confirm, pulse this IP's reset bit, and
-// confirm the probe returned to its reset default. Returns 1 on failure.
+// One IP reset-wire check, both halves of CHK-SWRST-WIRE: write this IP's probe
+// and a neighbour domain's probe, pulse only this IP's reset bit, then require
+// this probe back at its reset default AND the neighbour probe unchanged. The
+// neighbour is what makes the pulse per-IP rather than global: without it a
+// reset network that pulsed every domain on any single-bit write would pass
+// identically. nb_addr must sit in a different SW_RESET_N domain from bit_mask
+// (esrc/csrng/edn all share SEP_SW_RESET_N_TRNG_BIT, so their neighbour is a
+// non-TRNG block). Returns 1 on failure.
 static int check_reset_wire(const char *name, uint32_t bit_mask, uint32_t probe_addr,
-                            uint32_t write_val, uint32_t expect_after_rst) {
+                            uint32_t write_val, uint32_t expect_after_rst, const char *nb_name,
+                            uint32_t nb_addr, uint32_t nb_val) {
     sep_reset_wr(probe_addr, write_val);
     if (sep_reset_rd(probe_addr) != write_val) {
         sep_mbx_puts("FAIL: probe write did not land: ");
         sep_mbx_puts(name);
+        sep_mbx_putc('\n');
+        return 1;
+    }
+    // Neighbour probe, held across the pulse. Confirmed landed first, so a
+    // neighbour read of nb_val after the pulse cannot be a write that never
+    // took.
+    sep_reset_wr(nb_addr, nb_val);
+    if (sep_reset_rd(nb_addr) != nb_val) {
+        sep_mbx_puts("FAIL: neighbour probe write did not land: ");
+        sep_mbx_puts(nb_name);
         sep_mbx_putc('\n');
         return 1;
     }
@@ -101,8 +118,18 @@ static int check_reset_wire(const char *name, uint32_t bit_mask, uint32_t probe_
         sep_mbx_putc('\n');
         return 1;
     }
+    if (sep_reset_rd(nb_addr) != nb_val) {
+        sep_mbx_puts("FAIL: neighbour domain disturbed: ");
+        sep_mbx_puts(name);
+        sep_mbx_puts(" reset changed ");
+        sep_mbx_puts(nb_name);
+        sep_mbx_putc('\n');
+        return 1;
+    }
     sep_mbx_puts(name);
-    sep_mbx_puts(" reset wire OK\n");
+    sep_mbx_puts(" reset wire OK, neighbour ");
+    sep_mbx_puts(nb_name);
+    sep_mbx_puts(" survived\n");
     return 0;
 }
 
@@ -125,15 +152,20 @@ int main(void) {
         errors++;
     }
 
-    errors += check_reset_wire("otbn", SEP_SW_RESET_N_OTBN_BIT, OTBN_INTR_ENABLE_ADDR, 0x1u, 0x0u);
-    errors += check_reset_wire("aes", SEP_SW_RESET_N_AES_BIT, AES_CTRL_AUX_REGWEN_ADDR, 0x0u, 0x1u);
-    errors += check_reset_wire("hmac", SEP_SW_RESET_N_HMAC_BIT, HMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u);
-    errors += check_reset_wire("kmac", SEP_SW_RESET_N_KMAC_BIT, KMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u);
-    errors +=
-        check_reset_wire("esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, 0x1u, 0x0u);
-    errors +=
-        check_reset_wire("csrng", SEP_SW_RESET_N_TRNG_BIT, CSRNG_INTR_ENABLE_ADDR, 0x1u, 0x0u);
-    errors += check_reset_wire("edn", SEP_SW_RESET_N_TRNG_BIT, EDN_INTR_ENABLE_ADDR, 0x1u, 0x0u);
+    errors += check_reset_wire("otbn", SEP_SW_RESET_N_OTBN_BIT, OTBN_INTR_ENABLE_ADDR, 0x1u, 0x0u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("aes", SEP_SW_RESET_N_AES_BIT, AES_CTRL_AUX_REGWEN_ADDR, 0x0u, 0x1u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("hmac", SEP_SW_RESET_N_HMAC_BIT, HMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u,
+                               "kmac", KMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("kmac", SEP_SW_RESET_N_KMAC_BIT, KMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, 0x1u, 0x0u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("csrng", SEP_SW_RESET_N_TRNG_BIT, CSRNG_INTR_ENABLE_ADDR, 0x1u, 0x0u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
+    errors += check_reset_wire("edn", SEP_SW_RESET_N_TRNG_BIT, EDN_INTR_ENABLE_ADDR, 0x1u, 0x0u,
+                               "hmac", HMAC_INTR_ENABLE_ADDR, 0x7u);
 
     if (sep_reset_rd(SEP_RESET_CTRL_SW_RESET_N) != SEP_SW_RESET_N_DEFAULT) {
         sep_mbx_puts("FAIL: SW_RESET_N not restored to default\n");

@@ -10,6 +10,9 @@ This directory contains comprehensive testbenches for verifying the entropy comp
 # Run the simulation
 make
 
+# Check that enabling the ring advances simulated time
+make ring-smoke
+
 # View help
 make help
 
@@ -50,13 +53,11 @@ Verifies the `entropy_noise_source` module with comprehensive frequency measurem
 - **Metastability Analysis**: Estimates metastable events and rates from sampling process
 - **Extended Runtime**: 2ms simulation for at least 500 synchronized output edges
 
-### Key Measurements
+### Clock Configuration
 
 - **Ring Oscillator**: ~35.7 MHz asynchronous oscillation (internal to noise source)
 - **Sample Clock**: 6.0 MHz (1/6 of ring frequency, used for metastable sampling)
 - **System Clock**: 10.0 MHz (used for final synchronization)
-- **Synchronized Output**: ~0.29 MHz (after metastable sampling and two-stage synchronizer)
-- **Metastable Events**: ~36% event rate (realistic for frequency ratio and sampling process)
 
 ### DUT Configuration
 
@@ -101,34 +102,6 @@ Comprehensively verifies the `entropy_debug_monitor` module which provides confi
 - **Division Ratios**: 1, 2, 4, 8, 16, 32, 64 (powers of 2)
 - **Expected Results**: Output frequency should match input frequency divided by selected ratio
 
-### Test Results
-
-#### ✅ Signal Selection Verification
-
-All 16 signals can be individually selected with frequency division:
-
-- Signal[0]: 32.26 MHz → 8.06 MHz (÷4) ✓
-- Signal[7]: 16.39 MHz → 4.10 MHz (÷4) ✓
-- Signal[15]: 9.90 MHz → 2.46 MHz (÷4) ✓
-
-#### ✅ Frequency Division Verification
-
-All division ratios work correctly:
-
-- ÷1: 16.39 MHz → 16.40 MHz ✓
-- ÷2: 16.39 MHz → 8.20 MHz ✓
-- ÷4: 16.39 MHz → 4.10 MHz ✓
-- ÷8: 16.39 MHz → 2.05 MHz ✓
-- ÷16: 16.39 MHz → 1.03 MHz ✓
-- ÷32: 16.39 MHz → 0.51 MHz ✓
-- ÷64: 16.39 MHz → 0.26 MHz ✓
-
-### Accuracy
-
-- All measurements within **2% of expected values**
-- Excellent performance for an asynchronous ripple divider
-- Realistic tolerances with informative pass/fail reporting
-
 ### Input Oscillators
 
 16 coprime period oscillators to minimize correlation:
@@ -153,13 +126,13 @@ entropy_debug_monitor #(
 );
 ```
 
-### Key Features Verified
+### Features Exercised
 
-- ✅ **Signal multiplexer**: Selects 1 of 16 inputs using 4-bit select
-- ✅ **Asynchronous frequency divider**: 6-stage ripple counter for division
-- ✅ **Output multiplexer**: Selects divided signal using 4-bit select
-- ✅ **Reset behavior**: Proper initialization of all divider stages
-- ✅ **One-hot verification**: Continuous monitoring of decode logic integrity
+- **Signal multiplexer**: Selects 1 of 16 inputs using 4-bit select
+- **Asynchronous frequency divider**: 6-stage ripple counter for division
+- **Output multiplexer**: Selects divided signal using 4-bit select
+- **Reset behavior**: Proper initialization of all divider stages
+- **One-hot verification**: Continuous monitoring of decode logic integrity
 
 ### Files Generated
 
@@ -195,7 +168,7 @@ Accurate frequency measurement using edge counting:
 
 ### RTL Sources
 
-- `../rtl/gcells.sv` - Generic gate cell library with timing models
+- `../../../../common/och_prim_generic/rtl/` - Shared OCAH primitive behavioral models
 - `../rtl/entropy_ring_oscillator.sv` - Simple ring oscillator module (used internally)
 - `../rtl/entropy_noise_source.sv` - Main noise source with ring oscillator and sampling
 - `../rtl/entropy_debug_monitor.sv` - Debug monitoring and signal selection
@@ -203,7 +176,7 @@ Accurate frequency measurement using edge counting:
 ### Simulation Tools
 
 - **iverilog**: Verilog compiler and simulator
-- **Surfer**: Waveform viewer (replaces GTKWave)
+- **Surfer**: Waveform viewer
 - **VCD format**: Standard waveform dump format
 
 ## Usage for Entropy System
@@ -221,32 +194,3 @@ Accurate frequency measurement using edge counting:
 - **Frequency scaling**: Scale down high frequencies for measurement equipment
 - **Off-chip monitoring**: Provide clean output signals for external analysis
 - **System debug**: Troubleshoot entropy source performance issues
-
-## Development History
-
-### RTL Bug Fixes Applied
-
-During development, several critical issues were identified and fixed:
-
-#### Entropy Noise Source
-
-1. **Hierarchy reorganization**: Created entropy_noise_source module to encapsulate ring oscillator and sampling
-2. **Startup issues**: Fixed multiple Verilator startup problems, switched to iverilog
-3. **Frequency measurement**: Corrected edge counting and timing calculations for integrated sampling
-4. **Metastability detection**: Enhanced setup/hold violation estimation in sampling process
-
-#### Debug Monitor
-
-1. **Port width mismatch**: Fixed `select_freq_div_i` width calculation
-2. **Signal selection logic**: Corrected multiplexer connections
-3. **Frequency divider reset**: Fixed `gdffqb` reset behavior for proper toggle operation
-4. **Output selection**: Corrected final signal multiplexer logic
-
-### Testbench Enhancements
-
-1. **Realistic tolerances**: Changed from strict 5% to practical 10-20% error bands
-2. **Informative reporting**: Added detailed error percentages and pass/info/fail categories
-3. **One-hot verification**: Moved from RTL to testbench for clean synthesis
-4. **Enhanced VCD dumps**: Added critical internal signals for debugging
-
-Both testbenches demonstrate that the entropy generation system is fully functional and ready for integration into larger systems requiring hardware random number generation.

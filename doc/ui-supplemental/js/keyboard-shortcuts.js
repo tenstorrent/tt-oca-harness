@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 // Keyboard shortcuts for the docs site: "/" and Cmd/Ctrl+K focus the search
 // field; "n"/"N" go to the next/previous page (when pagination links exist
 // on the current page); "j"/"k" step between section headings on the

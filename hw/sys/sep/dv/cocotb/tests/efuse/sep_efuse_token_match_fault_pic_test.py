@@ -86,4 +86,10 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         ):
             if needle not in console:
                 raise AssertionError(f"firmware missing {needle!r}")
+        # The needles show the firmware reached each check; the magic is what
+        # says it passed. Require both before logging a PASS summary.
+        assert self.sb.fw_done and self.sb.fw_pass, (
+            "firmware did not signal a PASS verdict; the console needles are not "
+            "a verdict on their own"
+        )
         self.logger.info("CHK-PIC-40 PASS: claim id 40, SEC_DISABLE sticky, mask stopped re-entry")

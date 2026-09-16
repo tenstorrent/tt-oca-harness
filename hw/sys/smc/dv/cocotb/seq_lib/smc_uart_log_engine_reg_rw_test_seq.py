@@ -41,6 +41,10 @@ LOG_REGION_SIZE_MASK = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_REGION_SIZE__
 LOG_REGION_ADDR_LO_MASK = _field_mask(
     _LOG_ENGINE_H, "LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_LO_bm"
 )
+LOG_REGION_ADDR_HI_MASK = (
+    _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_REGION_ADDR__LOG_REGION_ADDR_HI_bm") >> 32
+)
+LOG_REGION_ADDR_RESERVED_MASK = (~LOG_REGION_ADDR_HI_MASK) & 0xFFFF_FFFF
 # INTR_ENABLE has exactly these two fields in log_engine.h; the mask is their
 # union rather than a hand-written 0x11.
 LOG_INTR_ENABLE_MASK = _field_mask(
@@ -51,20 +55,16 @@ LOG_INTR_ENABLE_MASK = _field_mask(
 # `sw = w` with `singlepulse`, so a written 1 does not stick and no
 # write/read-back expectation is derivable for it.
 LOG_WRITE_ADDR_MASK = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bm")
-# `LOG_CTRL` is deliberately NOT added to the write sweep, for two independent
-# reasons: its generated macro is doubly indexed
+# `LOG_CTRL` is outside the write sweep: its generated macro is doubly indexed
 # (`..._LOG_CTRL_BASE_ADDR(wrap_idx, LOG_CTRL_idx)`, smc_addr.h:756) so
-# `smc_indexed_addr` cannot resolve it, and this file already records that
-# LOG_CTRL is read-only-swept because writing it trips an arbiter assumption on
-# an unfinished log write.
+# `smc_indexed_addr` cannot resolve it, and a write trips an arbiter assumption
+# on an unfinished log write.
 
-# NOTE ON WHAT THE READ SWEEP PROVES. Every row below passes `expected=None`,
-# and `csr_read` with `expected=None` books NO scoreboard value check
-# (smc_csr_seq_utils.py) -- only `resp_ok` is asserted. These ten rows are
-# therefore DECODE-ONLY evidence: they show the windows answer OKAY, not that
-# they answer correctly. They must not be counted as register coverage; the
-# coverage claim of this testcase rests on the masked write/read-back sweep in
-# `UART_LOG_WRITES` below, whose compares the scoreboard does book.
+# Every row below passes `expected=None`, and `csr_read` with `expected=None`
+# books NO scoreboard value check (smc_csr_seq_utils.py) -- only `resp_ok` is
+# asserted. These rows are DECODE-ONLY evidence (the windows answer OKAY); the
+# register-coverage claim of this testcase rests on the masked write/read-back
+# sweep in `UART_LOG_WRITES` below, whose compares the scoreboard does book.
 UART_LOG_READS = [
     (
         "UART_LOG_ENGINE_CTRL",
@@ -132,7 +132,7 @@ UART_LOG_READS = [
     ),
 ]
 
-# LOG_ENGINE_LOG_CTRL_0 is intentionally READ-only-swept (see UART_LOG_READS)
+# LOG_ENGINE_LOG_CTRL_0 is READ-only-swept (see UART_LOG_READS)
 # and NOT part of the write/restore sweep (arbiter assume on unfinished log write).
 UART_LOG_WRITES = [
     (
@@ -168,6 +168,16 @@ UART_LOG_WRITES = [
         LOG_REGION_ADDR_LO_MASK,
     ),
     (
+        "LOG_ENGINE_REGION_ADDR_HI",
+        smc_indexed_addr(
+            "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_REGION_ADDR_BASE_ADDR",
+            _UART0,
+        )
+        + 4,
+        0xFF5A_A5A5,
+        LOG_REGION_ADDR_HI_MASK,
+    ),
+    (
         "LOG_ENGINE_INTR_ENABLE",
         smc_indexed_addr(
             "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR", _UART0
@@ -189,15 +199,15 @@ UART_LOG_WRITES = [
 # the closing gate / the testcase-level protocol-VIP record. They are not
 # recomputed from the two tables the body walks: a floor derived from the same
 # tables moves with the stimulus and can never catch a sweep that stopped short.
-UART_LOG_MIN_CSR_ACCESSES = 40  # 10 reads + 6 registers x (save, write, rb,
+UART_LOG_MIN_CSR_ACCESSES = 45  # 10 reads + 7 registers x (save, write, rb,
 # restore, restore-rb)
 # Masked read-back compares this scenario must have PERFORMED AND PASSED: one
 # after each write, one after each restore.
-UART_LOG_EXPECTED_COMPARES = 12
+UART_LOG_EXPECTED_COMPARES = 14
 
 
 class smc_uart_log_engine_reg_rw_test_seq(SmcCsrSeq):
-    """Port the low-risk legacy UART/log-engine register RW coverage."""
+    """UART/log-engine register RW sweep: decode reads, then save/write/readback/restore."""
 
     def __init__(self, name: str = "smc_uart_log_engine_reg_rw_test_seq") -> None:
         super().__init__(name)
@@ -217,6 +227,10 @@ class smc_uart_log_engine_reg_rw_test_seq(SmcCsrSeq):
             assert (got & mask) == (pattern & mask), (
                 f"{name} readback 0x{got:x} does not match 0x{pattern:x} mask 0x{mask:x}"
             )
+            if name == "LOG_ENGINE_REGION_ADDR_HI":
+                assert (got & LOG_REGION_ADDR_RESERVED_MASK) == 0, (
+                    f"{name} reserved bits read nonzero after write: 0x{got:x}"
+                )
             self.compares_passed += 1
             cocotb.log.info(
                 "CHK-UART-LOG-ENGINE-REG-RW: %s @0x%08x wrote 0x%08x, read back "
@@ -236,6 +250,10 @@ class smc_uart_log_engine_reg_rw_test_seq(SmcCsrSeq):
             assert (got & mask) == (value & mask), (
                 f"{name} restore got 0x{got:x}, expected 0x{value:x} mask 0x{mask:x}"
             )
+            if name == "LOG_ENGINE_REGION_ADDR_HI":
+                assert (got & LOG_REGION_ADDR_RESERVED_MASK) == 0, (
+                    f"{name} reserved bits read nonzero after restore: 0x{got:x}"
+                )
             self.compares_passed += 1
             cocotb.log.info(
                 "CHK-UART-LOG-ENGINE-REG-RESTORE: %s @0x%08x restored to the "

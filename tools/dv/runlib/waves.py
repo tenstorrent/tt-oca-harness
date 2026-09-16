@@ -340,6 +340,8 @@ def same_seed_replay_command(
     ]
     if getattr(args, "run_mode", None):
         command.extend(["--run-mode", str(args.run_mode)])
+    if getattr(args, "target", None):
+        command.extend(["--target", str(args.target)])
     for attr, flag in (
         ("wave_start", "--wave-start"),
         ("wave_end", "--wave-end"),

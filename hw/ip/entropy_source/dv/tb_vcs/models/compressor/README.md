@@ -245,11 +245,11 @@ The assertions will automatically run at simulation start and verify:
 
 ### Properties Verified
 
-- ✅ Commutativity: `a * b = b * a`
-- ✅ Identity: `a * 1 = a`
-- ✅ Zero: `a * 0 = 0`
-- ✅ Distributive: `a * (b + c) = (a * b) + (a * c)`
-- ✅ Associative (addition): `(a + b) + c = a + (b + c)`
+- Commutativity: `a * b = b * a`
+- Identity: `a * 1 = a`
+- Zero: `a * 0 = 0`
+- Distributive: `a * (b + c) = (a * b) + (a * c)`
+- Associative (addition): `(a + b) + c = a + (b + c)`
 
 ## Implementation Notes
 
@@ -264,13 +264,6 @@ For each bit i in b (0 to 7):
     3. Shift a_shifted left by 1
     4. If overflow: a_shifted = a_shifted XOR POLY
 ```
-
-### Why Unrolled?
-
-- ✅ **Faster synthesis**: No loops to unroll
-- ✅ **Predictable timing**: Combinational logic only
-- ✅ **Better optimization**: Tools can optimize each stage
-- ✅ **Easier verification**: Each stage is explicit
 
 ## References
 
@@ -386,14 +379,3 @@ Enable compile-time checking:
 - Zero output rate monitoring (warns if >1%)
 - Pattern repeat monitoring (warns if >5%)
 - Output activity checking
-
-## Implementation Status
-
-1. ✅ **Phase 1 Complete**: GF(2^8) functions implemented with AES test vectors
-2. ✅ **Phase 2 Complete**: Configuration interface with debug features
-3. ✅ **Phase 3 Complete**: Main reference model with BIW extraction
-4. ⬜ **Phase 4**: Integrate into testbench (`tb_entropy_top.sv`)
-5. ⬜ **Phase 5**: Python helper functions
-6. ⬜ **Phase 6**: Unit and integration tests
-
-See `../test/ENTROPY_COMPRESSOR_MODEL.md` for complete implementation plan.

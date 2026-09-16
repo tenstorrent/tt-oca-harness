@@ -206,7 +206,6 @@ int main(void) {
         }
 
         /* Test default behavior (SLVERR) - SEP-side CTRL controls outbound underflow */
-        /* Verify CTRL register defaults to 0 (SLVERR) */
         uint32_t sep_status_val;
         if (!tb_sep_mbox_status_read(&sep_status_val, 1000)) {
             TEST_FAIL("Failed to read SEP mailbox STATUS register");

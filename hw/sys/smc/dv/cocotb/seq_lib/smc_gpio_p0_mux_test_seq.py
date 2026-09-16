@@ -43,14 +43,14 @@ _IF_ENABLE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__INTERFACE_ENABLE_bm")
 _LSIO_SELECT = gpio_intf_u32("GPIO_INTF__DATA_CTRL__LSIO_SELECT_bm")
 _PAD2CORE = gpio_intf_u32("GPIO_INTF__DATA_CTRL__PAD2CORE_bm")
 
-#: DATA_CTRL bits a readback may legitimately differ in: PAD2CORE is a live pad
+#: DATA_CTRL bits a readback may differ in: PAD2CORE is a live pad
 #: status bit, not storage, so it is excluded from the write/readback compare.
 _CTRL_STORED_MASK = 0xFFFF_FFFF & ~_PAD2CORE
 
 OUT_REG = _IF_ENABLE | _TX_ENABLE | _CORE2PAD
 # Both mux bits set: interface_enable must still win (RDL: higher priority).
 OUT_REG_WITH_LSIO = OUT_REG | _LSIO_SELECT
-# LSIO requested, register interface off. CORE2PAD is deliberately NOT set here:
+# LSIO requested, register interface off. CORE2PAD is NOT set here:
 # with the register path deselected the pad data must come from the LSIO source,
 # so leaving the register's own data bit clear keeps the two candidates distinct.
 OUT_LSIO_ONLY = _LSIO_SELECT | _TX_ENABLE
@@ -130,7 +130,7 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
     def _drive_lsio_source(dut, *, driving: bool, data: int) -> None:
         """Drive wrap 0's LSIO function (SPI DQ0) through top-level TB pins.
 
-        `spi_enable_i` is deliberately left at 0. `smc_padring.sv:199-205`
+        `spi_enable_i` is left at 0. `smc_padring.sv:199-205`
         assigns `lsio_interface_select_o[s] = spi_enable_i` but wires the LSIO
         data / output-enable inputs unconditionally, and `gpio.sv:166` computes
         `lsio_active = (lsio_interface_select_i || reg__lsio_select) &&
@@ -180,9 +180,9 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
 
         # PRIORITY, against a live competitor. `lsio_select` is set as well, and
         # the LSIO source is driving data 0 while the register carries CORE2PAD
-        # = 1, so "interface_enable wins" and "lsio_select wins" now produce
-        # DIFFERENT pad data. With the SPI source parked both produced the same
-        # value and this leg could not tell them apart.
+        # = 1, so "interface_enable wins" and "lsio_select wins" produce
+        # DIFFERENT pad data; with the SPI source parked both would produce the
+        # same value.
         await self.csr_write("GPIO0_REG_WINS", GPIO0_DATA_CTRL, OUT_REG_WITH_LSIO)
         await self._await_en_bit(dut, 1, "PRIO")
         await self._check_ctrl_readback("GPIO0_REG_WINS_RB", OUT_REG_WITH_LSIO)
@@ -209,11 +209,10 @@ class smc_gpio_p0_mux_test_seq(SmcCsrSeq):
 
         # LSIO ROUTING, the positive control for the select bit itself.
         # interface_enable is cleared and CORE2PAD is left at 0, so the register
-        # path contributes en=0 / data=0. `lsio_active` now equals
+        # path contributes en=0 / data=0. `lsio_active` equals
         # `reg__lsio_select` alone (spi_enable_i is 0), and the LSIO source is
         # driving, so a live select bit gives en=1 and a select bit tied to 0
-        # gives en=0. That is the observation the parked-source form could not
-        # make.
+        # gives en=0.
         await self.csr_write("GPIO0_LSIO", GPIO0_DATA_CTRL, OUT_LSIO_ONLY)
         await self._await_en_bit(dut, 1, "LSIO")
         await self._check_ctrl_readback("GPIO0_LSIO_RB", OUT_LSIO_ONLY)

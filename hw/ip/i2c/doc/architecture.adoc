@@ -645,7 +645,7 @@ target-initiated communication
 attention request
 ** Controller Mode: Status monitored via `SMBUS_STATUS.SMBALERT`
 register, interrupt via `INTR_STATE.SMBALERT`
-** Supports SMBus Alert Response Address (ARA) protocol for multi-target
+** Alert Response Address (ARA) protocol for multi-target SMBus
 systems
 
 ====== SMBus Timeout Management

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap round 3: per-filter 3-field sweep x 4 entries x 2 dirs."""
+"""Per-filter 3-field sweep x 4 entries x 2 dirs."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_filter_field_sweep_test(smc_base_test):
-    """P1 coverage-gap round 3: per-filter 3-field sweep x 4 entries x 2 dirs."""
+    """Per-filter 3-field sweep x 4 entries x 2 dirs."""
 
     auto_protocol_vip = False
 
@@ -28,5 +28,5 @@ class smc_filter_field_sweep_test(smc_base_test):
             min_csr_accesses=24,
             csr_accesses=seq.accesses,
             proxy=False,
-            details="P1 coverage-gap round 3: per-filter 3-field sweep x 4 entries x 2 dirs",
+            details="per-filter 3-field sweep x 4 entries x 2 dirs",
         )

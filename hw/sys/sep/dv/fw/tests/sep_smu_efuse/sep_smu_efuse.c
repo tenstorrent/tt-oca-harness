@@ -28,12 +28,9 @@ static int run_efuse_reg_sequence(void) {
          * External efuse shim CSR path.
          *
          * EFUSE_TIMING_CTRL_7/8 exist only in register maps that generate the wide
-         * shim block. This tree generates a narrow one whose only register is
-         * EFUSE_BANK_INIT_TIME, so cover the shim through that instead of dropping
-         * the block entirely. The substitution proves the same thing the original
-         * pair was there to prove -- the shim CSR path is alive and read/writable --
-         * and nothing more: on this map TIMING_CTRL_7/8 are NOT exercised, because
-         * they do not exist.
+         * shim block; the narrow block's only register is EFUSE_BANK_INIT_TIME.
+         * Either branch proves the shim CSR path is alive and read/writable and
+         * nothing more.
          */
 #ifdef OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
     if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,

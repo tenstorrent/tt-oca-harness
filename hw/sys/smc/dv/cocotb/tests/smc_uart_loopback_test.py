@@ -24,10 +24,8 @@ class smc_uart_loopback_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
-            # Conservative stimulus floor: 9 accesses observed in the retained
-            # regression runs; the TX-empty poll is a timing-dependent
-            # remainder, so the floor is set below it. Literal here, not read
-            # from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the TX-empty poll is timing-dependent.
             min_csr_accesses=7,
             csr_accesses=seq.accesses,
             proxy=False,

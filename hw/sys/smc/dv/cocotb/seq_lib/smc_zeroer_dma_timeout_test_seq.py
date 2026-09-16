@@ -48,9 +48,6 @@ ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_e
 #   INT_EN[0]  = 1  -- ``hw/ip/zeroer/regs/zeroer_ctrl.rdl``: ``sw = rw; hw = r``.
 #                     Software owns the field and hardware never writes it, so it
 #                     holds the 1 that S3 wrote to arm the completion interrupt.
-#                     Until round 3 this write was fire-and-forget: nothing ever
-#                     read CTRL_STATUS back, so "the interrupt is armed" was an
-#                     unverified claim.
 #   STATUS[32] = 0  -- the field carries BUSY (see the polarity note below) and
 #                     by the time this read is issued the operation is
 #                     independently proven finished -- the responder counted the
@@ -60,34 +57,22 @@ ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_e
 #   all other bits  = 0 -- the RDL declares no field there (``rsvd_0[31:1]`` and
 #                     nothing above bit 32), so reserved-zero.
 #
-# STATUS POLARITY -- documentation is wrong, RTL is the only correct source
-# today, and this expectation does NOT rest on the documentation:
+# STATUS POLARITY -- the RDL description and the RTL disagree, and this
+# expectation rests on the observed lifecycle, not on the documentation:
 #   * ``hw/ip/zeroer/regs/zeroer_ctrl.rdl:51`` describes STATUS as "Returns
-#     status of whether zeroer has completed".
-#   * ``hw/sys/smc/doc/zeroer.adoc`` does NOT contradict that: its "Detailed
-#     Register Map" section ``include::``s the PeakRDL-generated
-#     ``hw/ip/zeroer/regs/gen/adoc/zeroer_ctrl.adoc``, so the only field-level
-#     statement about bit 32 that the SMC spec renders is that same "completed"
-#     wording. The adoc's own text mentions busy and completion only as block
-#     features (a register-summary row and a "Status Features" bullet list) and
-#     assigns neither to a bit position. There is no adoc-vs-RDL precedence
-#     question to arbitrate; there is no such conflict in the tree.
+#     status of whether zeroer has completed"; ``hw/sys/smc/doc/zeroer.adoc``
+#     renders that same generated field text and assigns busy/completion to no
+#     bit position of its own.
 #   * ``hw/ip/zeroer/rtl/zeroer.sv:201`` drives
 #     ``hwif_in.CTRL_STATUS.STATUS.next = zeroer_busy_o`` and ``:128`` defines
 #     ``zeroer_busy_o = status_swacc[1] | (cur_state != ST_IDLE) |
 #     (|outstanding_reqs)``. The implemented polarity is therefore BUSY.
-# Because no authoritative field-level source states the implemented polarity,
-# this testcase does not transcribe one: S5 *observes* the lifecycle
-# (0 before the trigger, 1 inside the trigger-to-idle window, 0 again after
-# completion), which is what makes the S4 zero the closing half of a proven
-# transition rather than an idle value a dead bit would also return.
-# ACTION FOR THE SPEC OWNER: correct the ``zeroer_ctrl.rdl`` STATUS description
-# to say "busy" and regenerate ``zeroer_ctrl.adoc``, so the field table the SMC
-# spec includes states the polarity the RTL implements. Filed as
-# tenstorrent/tt-oca-harness#1234 (OPEN, "[RDL/OCAH] CTRL_STATUS.STATUS is
-# documented as completed but implements busy"). The emitted
-# CHK-ZEROER-CTRL-STATUS token must cite ``zeroer.sv`` + the S5 observation for
-# the polarity, never the adoc, which contradicts it.
+# No field-level source states the implemented polarity, so this testcase
+# transcribes none: S5 *observes* the lifecycle (0 before the trigger, 1 inside
+# the trigger-to-idle window, 0 again after completion), which makes the S4 zero
+# the closing half of a proven transition rather than an idle value a dead bit
+# would also return. The CHK-ZEROER-CTRL-STATUS token cites ``zeroer.sv`` and
+# the S5 observation for the polarity.
 ZEROER_CTRL_STATUS_DONE = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1, status=0)
 
 OUTPUT_FABRIC_NEIGHBOUR_ADDR = OUTPUT_FABRIC_ADDR + 8
@@ -102,7 +87,7 @@ ZEROER_WAIT_CYCLES = 200
 # The payload operation clears 8 bytes = one 64-bit AXI beat, which retires in
 # far less time than one AXI-Lite CSR read takes to return, so polling
 # CTRL_STATUS around it can never catch STATUS asserted. S5 therefore runs a
-# SECOND, deliberately long zeroing purely as the positive control for the
+# SECOND, long zeroing purely as the positive control for the
 # STATUS bit: BUSY_PROBE_SIZE bytes / 8 bytes per beat = BUSY_PROBE_BEATS beats,
 # which holds `cur_state != ST_IDLE` (and `|outstanding_reqs`) across many CSR
 # reads. It runs after every payload assertion, targets the same already-zeroed
@@ -136,16 +121,14 @@ def _sample_output_write_count() -> int:
 def _coverage_report_dirs() -> list[Path]:
     """Ordered candidate dirs for the artifact, most authoritative first.
 
-    Only directories that belong to the run tree are offered, and never the bare
-    working directory: ``Path.cwd()`` is wherever the simulator happened to be
-    launched from (the repo root for a hand-run), so writing the artifact there
-    dropped an untracked ``functional-coverage-report.json`` outside the run and
-    made a stale copy indistinguishable from this run's. The
+    Only directories that belong to the run tree are offered, never the bare
+    working directory: ``Path.cwd()`` is wherever the simulator was launched
+    from (the repo root for a hand-run), so an artifact written there lands
+    outside the run and a stale copy is indistinguishable from this run's. The
     caller writes exactly ONE copy -- the first candidate that accepts it -- so
-    there is a single artifact per run to hash, not three identical ones.
-    ``<cwd>/coverage`` remains the last resort for a bare ``pytest``-style
-    invocation with neither harness variable set, but it is still a dedicated
-    subdirectory rather than the working directory itself.
+    there is a single artifact per run to hash. ``<cwd>/coverage`` is the last
+    resort for a bare ``pytest``-style invocation with neither harness variable
+    set: a dedicated subdirectory, not the working directory itself.
     """
     candidates: list[Path] = []
     env_dir = os.environ.get("SMC_DV_RUN_LOGDIR")
@@ -174,9 +157,9 @@ def _run_seed() -> int:
 
     ``smc_base_test.random_seed()`` reads ``RANDOM_SEED`` and the runner exports
     it (``tools/dv/runlib/stages.py``). ``SEED`` is never set by the harness, so
-    reading it stamped every artifact with the default ``1`` while the run used a
-    different seed ([SEED-REPRODUCIBLE]). Absent is a failure,
-    not a default: an artifact that names the wrong seed cannot be reproduced.
+    an artifact stamped from it would carry the default ``1`` while the run used
+    a different seed ([SEED-REPRODUCIBLE]). Absent is a failure, not a default:
+    an artifact that names the wrong seed cannot be reproduced.
     """
     raw = os.environ.get("RANDOM_SEED")
     assert raw, (
@@ -222,7 +205,7 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
 
     Inherits the shared output-fabric filter programming
     (``program_inbound_pass_all`` / ``program_outbound_pass_all``) from
-    ``output_fabric_pass_all_cfg_seq`` instead of keeping a private copy.
+    ``output_fabric_pass_all_cfg_seq``.
     """
 
     def __init__(self, name: str = "smc_zeroer_dma_timeout_test_seq") -> None:
@@ -288,8 +271,7 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             f"{ZEROER_NEIGHBOUR_POISON.hex()} at {OUTPUT_FABRIC_NEIGHBOUR_ADDR:#x}"
         )
         self._ensure_model_region()
-        # Inherited from output_fabric_pass_all_cfg_seq; called directly (the
-        # one-line private wrapper was dead layering).
+        # Inherited from output_fabric_pass_all_cfg_seq.
         await self.program_inbound_pass_all()
         await self.program_outbound_pass_all()
 
@@ -310,7 +292,7 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         )
         assert preload_rb == ZEROER_POISON
         assert neighbour_preload == ZEROER_NEIGHBOUR_POISON
-        # Baseline AFTER JTAG preload so +2 cannot be satisfied by preload writes.
+        # Baseline AFTER JTAG preload so the +1 cannot be satisfied by preload writes.
         start_writes, start_reads = output_responder_counts()
         cocotb.log.info(
             "CHK-NONVAC: S1 JTAG preload readback confirms poison "
@@ -325,6 +307,30 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         )
         await self.csr_write("ZEROER_DEST_ADDR", ZEROER_DEST_ADDR, OUTPUT_FABRIC_ADDR, length=8)
         await self.csr_write("ZEROER_SIZE", ZEROER_SIZE, len(ZEROER_POISON), length=8)
+        # Read both command words back before the trigger. `expected=` is the
+        # compare: the scoreboard applies an exact 64-bit equality and raises on
+        # mismatch, so a command register that dropped the write, aliased onto
+        # its sibling, or returned a reset value is caught here rather than
+        # showing up later as an unexplained wrong-sized operation. Neither
+        # register carries a write side effect (only CTRL_STATUS does --
+        # zeroer_ctrl.rdl gives INT_EN wr_swacc), so the readbacks cannot start
+        # the FSM early.
+        dest_rb = await self.csr_read(
+            "ZEROER_DEST_ADDR_RB", ZEROER_DEST_ADDR, expected=OUTPUT_FABRIC_ADDR, length=8
+        )
+        size_rb = await self.csr_read(
+            "ZEROER_SIZE_RB", ZEROER_SIZE, expected=len(ZEROER_POISON), length=8
+        )
+        assert dest_rb == OUTPUT_FABRIC_ADDR and size_rb == len(ZEROER_POISON), (
+            f"zeroer command registers did not hold the programmed values: "
+            f"DEST_ADDR read {dest_rb:#x} (wrote {OUTPUT_FABRIC_ADDR:#x}), "
+            f"SIZE read {size_rb:#x} (wrote {len(ZEROER_POISON):#x})"
+        )
+        cocotb.log.info(
+            "CHK-ZEROER-CMD-READBACK: DEST_ADDR@"
+            f"{ZEROER_DEST_ADDR:#x} reads {dest_rb:#x} and SIZE@{ZEROER_SIZE:#x} "
+            f"reads {size_rb:#x}, both equal to what S2 wrote"
+        )
         cocotb.log.info(
             "CHK-ZEROER-REGION-DECODE: csr_write ZEROER_DEST_ADDR@"
             f"{ZEROER_DEST_ADDR:#x}={OUTPUT_FABRIC_ADDR:#x} and ZEROER_SIZE@"
@@ -406,19 +412,16 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             "interrupt this test armed at S3 is latched in the register, rdl "
             "sw=rw/hw=r), STATUS[32]=0 (polarity is BUSY per zeroer.sv:201 / "
             ":128 and is OBSERVED in S5's 0->1->0 lifecycle, NOT transcribed "
-            "from documentation: every field-level doc source -- "
-            "zeroer_ctrl.rdl:51 and the generated zeroer_ctrl.adoc that "
-            "zeroer.adoc includes -- still says 'completed' and is pending the "
-            "RDL fix filed as tenstorrent/tt-oca-harness#1234; the operation "
-            "is independently proven complete above), reserved bits 0. "
-            "SCOPE: the INT_EN write is load-bearing (zeroer_ctrl.rdl:43 gives "
-            "it wr_swacc and zeroer.sv:207/:260 make that strobe the FSM "
-            "trigger), so it cannot be written as 0; the resulting completion "
-            "IRQ OUTPUT is deliberately UNOBSERVED here and by every SMC "
-            "cocotb testcase -- hw/sys/smc/dv/tb/tb_top.sv exposes no "
-            "tb_zeroer_*_irq observability port, so no testcase can own it "
-            "today. This token claims the latched enable only, never the "
-            "interrupt firing."
+            "from documentation: zeroer_ctrl.rdl:51 and the generated "
+            "zeroer_ctrl.adoc that zeroer.adoc includes describe the field as "
+            "'completed'; the operation is independently proven complete "
+            "above), reserved bits 0. SCOPE: the INT_EN write is load-bearing "
+            "(zeroer_ctrl.rdl:43 gives it wr_swacc and zeroer.sv:207/:260 make "
+            "that strobe the FSM trigger), so it cannot be written as 0; the "
+            "resulting completion IRQ OUTPUT is UNOBSERVED here and by every "
+            "SMC cocotb testcase -- hw/sys/smc/dv/tb/tb_top.sv exposes no "
+            "tb_zeroer_*_irq observability port. This token claims the latched "
+            "enable only, never the interrupt firing."
         )
 
         cocotb.log.info(
@@ -430,11 +433,11 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             f"(baseline={start_writes}); "
             f"COV cells={cells_hit}; functional-coverage-report={report_path}"
         )
-        await self._prove_status_busy_lifecycle(ctrl_status)
+        await self._prove_status_busy_lifecycle()
 
         cocotb.log.info("SMC_006 scenario PASS")
 
-    async def _prove_status_busy_lifecycle(self, cleared_before: int) -> None:
+    async def _prove_status_busy_lifecycle(self) -> None:
         """Observe CTRL_STATUS.STATUS 0 -> 1 -> 0 on a long zeroing.
 
         Without this, every STATUS compare in the testcase is against 0, and a
@@ -442,9 +445,11 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         passes identically to a working busy flag -- 0 is simultaneously "not
         busy", "not completed" and "field absent"
         ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). The asserted state is the only
-        observation that separates those, so it is observed here rather than
-        argued for in a comment.
+        observation that separates those.
         """
+        # Sampled here rather than inherited from the caller's earlier read, so
+        # the cleared leg is observed at the point the lifecycle claims it.
+        cleared_before = await self.csr_read("ZEROER_STATUS_CLEARED", ZEROER_CTRL_STATUS)
         assert not (cleared_before & STATUS_BM), (
             f"CTRL_STATUS pre-trigger read {cleared_before:#018x} already has "
             f"STATUS set (mask {STATUS_BM:#018x}); the lifecycle cannot start "

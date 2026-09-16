@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
@@ -22,8 +22,8 @@ args = ["+skip_fuse_sense"]
 # CPU, like every reference-suite spi_ot flash test. [RAND-REP] -- the cocotb test seeds
 # legal flash address/word-count/data and patches them into the firmware param
 # block per run (+spi1_directed pins the directed defaults). Walks BFM-visible
-# opcodes (JEDEC/WREN/RDSR/WRDI/PP/READ/FAST_READ/ERASE). dual/quad opcode+lane
-# path deferred (BFM single-bit, no 0x3B/0x6B). cpu; +skip_fuse_sense.
+# opcodes (JEDEC/WREN/RDSR/WRDI/PP/READ/FAST_READ/ERASE). The dual/quad opcode+lane
+# path is not walked: the BFM is single-bit (no 0x3B/0x6B). cpu; +skip_fuse_sense.
 name = "sep_spi_ot_flash_cmd_rand_test"
 module = "spi.sep_spi_ot_flash_cmd_rand_test"
 firmware = "spi_ot_flash_cmd_test"

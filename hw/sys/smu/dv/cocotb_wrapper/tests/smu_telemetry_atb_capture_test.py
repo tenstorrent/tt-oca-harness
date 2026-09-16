@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""smu_telemetry_atb_capture_test - the ATB telemetry source at the SMU boundary.
+
+Drives one complete last-flagged ATB message into telemetry receiver 0 through
+the wrapper's telemetry pins and reads it back out of the receiver's registers
+over JTAG2AXI: the buffer goes non-empty, the probe id matches the one framed
+on the beats, and one valid bit appears per counter sent. A second leg drives
+the ATB flush handshake, where the request holds until telemetry_afready_i
+acknowledges it.
+
+CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
+    --items smu_telemetry_atb_capture_test --target compile_smu_chiplet_no_sep
+"""
+
+from __future__ import annotations
+
+import pyuvm
+from seq_lib.smu_telemetry_atb_capture_seq import smu_telemetry_atb_capture_seq
+from smu_base_test import smu_base_test
+
+
+@pyuvm.test()
+class smu_telemetry_atb_capture_test(smu_base_test):
+    """An ATB message and a flush handshake at the wrapper telemetry pins."""
+
+    use_shared_env = True
+
+    async def run_scenario(self) -> None:
+        await smu_telemetry_atb_capture_seq(self).run()

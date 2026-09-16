@@ -71,7 +71,6 @@ sources:
     - upstream/rtl/mmr/funnel_mmr.sv
     - upstream/rtl/mmr/ntr_mmr.sv
     - upstream/rtl/mmr/ntr_sink_mmr.sv
-    - upstream/rtl/dfd_pkg.svh
     - upstream/rtl/cla/dst_pkg.svh
     - upstream/rtl/cla/cla_pkg.svh
     - upstream/rtl/cla/tt_dbm_pkg.svh
@@ -115,7 +114,7 @@ sources:
     - upstream/rtl/mmrs.sv
     - upstream/rtl/mux_sel.sv
     - upstream/rtl/apb2mmr.sv
-    - upstream/rtl/mmr_read_delay.sv
+    - upstream/rtl/mmr_req_ctrl.sv
     - upstream/rtl/clk_rst_wrapper.sv
     - upstream/rtl/cla_wrapper.sv
     - upstream/rtl/dst_wrapper.sv

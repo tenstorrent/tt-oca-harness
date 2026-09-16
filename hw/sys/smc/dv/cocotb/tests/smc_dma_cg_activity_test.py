@@ -16,7 +16,20 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_dma_cg_activity_test(smc_base_test):
-    """LIVE DMA activity/enable clock-gating check (Skill 1.5)."""
+    """LIVE DMA activity/enable clock-gating check."""
+
+    required_evidence = (
+        "CHK-DMA-GATE-OFF",
+        "CHK-DMA-GATING-DISABLED",
+        "CHK-DMA-HYST-RACE",
+        "CHK-DMA-HYST-SWEEP",
+        "CHK-DMA-WAKEUP-BACKEND",
+        "CHK-DMA-WAKEUP-FRONTEND",
+        "CHK-NONVAC",
+        "CHK-NONVAC-P2",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 9
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
@@ -25,8 +38,6 @@ class smc_dma_cg_activity_test(smc_base_test):
         seq = smc_dma_cg_activity_test_seq("dma_cg_activity_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         # Required evidence tokens must already be in the kept log from the seq.
-        # P1 tokens are unchanged (additive extension keeps the closed P1 grade
-        # valid); the P2 (SMC_CG_P2_001) tokens are appended.
         required = (
             "CHK-DMA-GATE-OFF",
             "CHK-DMA-WAKEUP-FRONTEND",
@@ -43,10 +54,9 @@ class smc_dma_cg_activity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
-            # Conservative stimulus floor: 88 accesses observed in the retained
-            # regression run across the four CG evidence phases; the DMA-DONE
-            # polls are a timing-dependent remainder, so the floor is set below
-            # the observed count. Literal here, not read from `seq.accesses`.
+            # Stimulus floor set below the run-to-run minimum: the DMA-DONE
+            # polls across the four CG evidence phases are a timing-dependent
+            # remainder. Literal here, not read from `seq.accesses`.
             min_csr_accesses=70,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,

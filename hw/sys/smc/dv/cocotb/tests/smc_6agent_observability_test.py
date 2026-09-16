@@ -12,12 +12,22 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_6agent_observability_test(smc_base_test):
-    # Eight of this scenario's value compares were idle-zero negative checks
-    # delegated to peers by comment only. These controls make the dependency
-    # real and same-run: each drives the probe's producer, requires it observed
-    # at 1 inside a bounded window and back at 0, and credits the liveness
-    # ledger the scoreboard consults ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
-    # `tb_axil_dtp_csr_active` stays unbackable in this TB (tb_top.sv:1151 ties
+    required_evidence = (
+        "CHK-6AGENT-AXIL",
+        "CHK-6AGENT-CLK",
+        "CHK-6AGENT-COMPOSITION",
+        "CHK-6AGENT-GPIO",
+        "CHK-6AGENT-I2C",
+        "CHK-6AGENT-IRQ",
+        "CHK-6AGENT-RESET",
+    )
+    min_evidence = 7
+
+    # The idle-zero value compares of this scenario need same-run positive
+    # controls: each drives the probe's producer, requires it observed at 1
+    # inside a bounded window and back at 0, and credits the liveness ledger the
+    # scoreboard consults ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+    # `tb_axil_dtp_csr_active` is unbackable in this TB (tb_top ties
     # `axil_dtp_csr_resp = '0'`) and is booked OBSERVED-ONLY, never checked.
     probe_positive_controls = (
         "sync_irq",

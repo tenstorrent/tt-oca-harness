@@ -21,6 +21,15 @@ class smc_efuse_otp_burn_shadow_test(smc_base_test):
     sequence docstring for which assertions are model-scored.
     """
 
+    required_evidence = (
+        "CHK-EFUSE-OTP-PRELOAD",
+        "CHK-EFUSE-OTP-PROGRAM-FAIL",
+        "CHK-EFUSE-OTP-PROGRAM-OK",
+        "CHK-EFUSE-OTP-SHADOW",
+        "CHK-EFUSE-OTP-STATUS",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

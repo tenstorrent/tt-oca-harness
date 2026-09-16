@@ -9,7 +9,7 @@
  *   [15:0]  = seed (forced non-zero) -> selects mode/key_len and seeds the
  *             deterministic plaintext PRNG.
  *
- * Verification (V1): encrypt the whole payload into a DCCM ciphertext buffer,
+ * Verification: encrypt the whole payload into a DCCM ciphertext buffer,
  * then decrypt it back and compare byte-exact against the PRNG-regenerated
  * plaintext. A fixed NIST AES-128 ECB golden block runs first to anchor
  * correctness (catches symmetric ENC/DEC faults a pure round-trip could mask).

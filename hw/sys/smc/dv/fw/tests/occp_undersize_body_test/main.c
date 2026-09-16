@@ -27,7 +27,6 @@ int main(void) {
     ctx.invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
 
     /* Warm-up */
-    // execute_random_commands(&ctx, 5);
 
     /* Enable undersize body injection */
     ctx.inject_undersize_body_err = true;

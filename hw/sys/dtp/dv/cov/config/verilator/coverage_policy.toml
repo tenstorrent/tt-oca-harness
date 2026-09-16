@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
 # DTP Verilator coverage policy: hole dispositions for the functional
-# coverage points collected by the cov/sv modules. Reference-only — no
-# [[thresholds]] are set here; score targets and waiver approval stay with
-# the coverage-policy work tracked on the DTP coverage issues.
+# coverage points collected by the cov/sv modules. Reference-only: no
+# [[thresholds]] are set here.
 
 schema_version = 1
 dut = "dtp"
@@ -17,11 +16,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands with the request stalled on the bus; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the request stalled on the bus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -34,11 +33,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands with the W beat outstanding; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the W beat outstanding."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -51,11 +50,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands while awaiting the response; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands while awaiting the response."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -68,11 +67,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: CDC clear after a mid-flight request abort; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC clear after a mid-flight request abort."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -85,11 +84,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: CDC isolation after a mid-flight data abort; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC isolation after a mid-flight data abort."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -102,11 +101,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands with the request stalled on the bus; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the request stalled on the bus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -119,11 +118,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands with the W beat outstanding; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the W beat outstanding."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -136,11 +135,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands while awaiting the response; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands while awaiting the response."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -153,11 +152,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: CDC clear after a mid-flight request abort; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC clear after a mid-flight request abort."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -170,11 +169,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: CDC isolation after a mid-flight data abort; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC isolation after a mid-flight data abort."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -187,11 +186,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands with the request stalled on the bus; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the request stalled on the bus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -204,11 +203,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands with the W beat outstanding; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the W beat outstanding."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -221,11 +220,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: reset lands while awaiting the response; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands while awaiting the response."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -238,11 +237,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: CDC clear after a mid-flight request abort; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC clear after a mid-flight request abort."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -255,11 +254,11 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Cannot fire until mid-flight reset aborts recover: CDC isolation after a mid-flight data abort; a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL."
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC isolation after a mid-flight data abort."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330"]
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
@@ -272,7 +271,7 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls; the settle point vs. poll cadence needs measurement."
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
@@ -289,7 +288,7 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls; the settle point vs. poll cadence needs measurement."
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"
@@ -306,7 +305,7 @@ category = "needs_review"
 disposition = "review"
 status = "open"
 confidence = "high"
-rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls; the settle point vs. poll cadence needs measurement."
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
 owner = "dtp-dv"
 reviewer = "dtp-dv"
 date = "2026-08-29"

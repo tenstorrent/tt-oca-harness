@@ -52,7 +52,7 @@ ocah_vale_check_files = @[ -n "$(strip $(ocah_vale_files))" ] || { echo "error: 
 ## Check documentation prose with Vale (no autofix -- the CLI has none;
 ## a finding names the correct value in its message, but applying it is a
 ## manual edit). Rules live in styles/OCAH/; see that directory's
-## Acronyms.yml for what it checks and why.
+## Acronyms.yml and styles/config/scripts/AcronymDefinitions.tengo.
 ## @param VALE_PATH=doc Optional path to scope the check; default repo root
 .PHONY: ocah-lint-vale
 ocah-lint-vale:

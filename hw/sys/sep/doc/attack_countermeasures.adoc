@@ -80,7 +80,7 @@ these consumers, so a permitted test shift moves no real secret.
 chain (never scannable):
 
 * Class 1a (confidentiality): UIDs, `CLASS_KEY`, token-plaintext input
-registers (`*_TOKEN_I`).
+registers (`*_TOKEN_I`), raw fuse read-back data.
 * Class 1b (integrity): `LOCKS`/`LOCKS_SPARE`, `LC_STATE`, `SIP_DIS`, `SYS_DIS`,
 `*_TOKEN_DIGEST` shadow registers.
 

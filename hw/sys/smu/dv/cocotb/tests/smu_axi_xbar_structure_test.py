@@ -13,6 +13,8 @@ from smu_base_test import smu_base_test
 class smu_axi_xbar_structure_test(smu_base_test):
     """gen_no_sep IW converters present; smu_axi_xbar not elaborated."""
 
+    use_shared_env = True
+
     async def run_scenario(self) -> None:
         seq = smu_axi_xbar_structure_test_seq(self)
         await seq.run()

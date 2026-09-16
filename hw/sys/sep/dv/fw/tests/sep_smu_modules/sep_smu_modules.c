@@ -4,8 +4,8 @@
 /*
  * sep_smu_modules - SMU-level SEP module matrix smoke test.
  *
- * This test intentionally exercises module touch-points listed in SEP testplan
- * by performing proven, low-risk register/functional checks:
+ * Exercises the module touch-points listed in the SEP testplan with
+ * register/functional checks:
  *   - clock/reset/fabric/sram/bootrom
  *   - dma/wdt/aes/hmac/kmac/otbn
  *   - lcc(key lifecycle ctrl)/km mailbox/efuse
@@ -311,11 +311,9 @@ static int stage_efuse(void) {
     if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, 0x00001234u) != 0)
         return -1;
         /*
-         * EFUSE_TIMING_CTRL_7 is not present in every generated SEP register map.
-         * In this tree the external efuse shim block exposes only
-         * EFUSE_BANK_INIT_TIME, so the reference would not compile. Guard rather
-         * than retarget: silently pointing the check at a different register would
-         * report coverage of a register this map does not have.
+         * EFUSE_TIMING_CTRL_7 exists only in register maps that generate the wide
+         * shim block; this map's shim block exposes only EFUSE_BANK_INIT_TIME, so
+         * the check is compiled only where the register exists.
          */
 #ifdef OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
     if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
@@ -356,9 +354,9 @@ __attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_aes_loop(voi
     }
 }
 
-/* Separate from the AES fail loop on purpose: an entropy bring-up that never
- * completed is a prerequisite failure, not an AES defect, and conflating the two
- * is what made the AES stage's original stall read as an AES bug. */
+/* Separate from the AES fail loop: an entropy bring-up that never completed is a
+ * prerequisite failure, not an AES defect, and the testbench classifies the run
+ * by which loop the CPU parks in. */
 __attribute__((used, noinline, noreturn)) void smu_sep_modules_fail_entropy_loop(void) {
     while (1) {
         __asm__ volatile("wfi");

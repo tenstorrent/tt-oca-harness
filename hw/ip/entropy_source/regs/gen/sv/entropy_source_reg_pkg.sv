@@ -90,7 +90,7 @@ package entropy_source_reg_pkg;
     } entropy_source__SHA256_STATUS__INPUT_COUNT__in_t;
 
     typedef struct {
-        logic [2:0] next;
+        logic [3:0] next;
     } entropy_source__SHA256_STATUS__OUTPUT_COUNT__in_t;
 
     typedef struct {

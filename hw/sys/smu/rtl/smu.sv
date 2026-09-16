@@ -22,29 +22,29 @@ module smu #(
   parameter int unsigned  EXT_TRNG_NUM_AXIS     = 3,
 
   // Type parameters for SMC CPU memory interfaces (cannot be in packed struct)
-  parameter  type         rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,
-  parameter  type         rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,
-  parameter  type         scratch_ram_req_t     = chipyard_4core_mem_pkg::scratch_ram_req_t,
-  parameter  type         scratch_ram_rsp_t     = chipyard_4core_mem_pkg::scratch_ram_rsp_t,
-  parameter  type         l1_icache_tag_req_t   = chipyard_4core_mem_pkg::l1_icache_tag_req_t,
-  parameter  type         l1_icache_tag_rsp_t   = chipyard_4core_mem_pkg::l1_icache_tag_rsp_t,
-  parameter  type         l1_icache_data_req_t  = chipyard_4core_mem_pkg::l1_icache_data_req_t,
-  parameter  type         l1_icache_data_rsp_t  = chipyard_4core_mem_pkg::l1_icache_data_rsp_t,
-  parameter  type         l1_dcache_tag_req_t   = chipyard_4core_mem_pkg::l1_dcache_tag_req_t,
-  parameter  type         l1_dcache_tag_rsp_t   = chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t,
-  parameter  type         l1_dcache_data_req_t  = chipyard_4core_mem_pkg::l1_dcache_data_req_t,
-  parameter  type         l1_dcache_data_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,
+  parameter  type         smc_rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,
+  parameter  type         smc_rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,
+  parameter  type         smc_scratch_ram_req_t     = chipyard_4core_mem_pkg::scratch_ram_req_t,
+  parameter  type         smc_scratch_ram_rsp_t     = chipyard_4core_mem_pkg::scratch_ram_rsp_t,
+  parameter  type         smc_l1_icache_tag_req_t   = chipyard_4core_mem_pkg::l1_icache_tag_req_t,
+  parameter  type         smc_l1_icache_tag_rsp_t   = chipyard_4core_mem_pkg::l1_icache_tag_rsp_t,
+  parameter  type         smc_l1_icache_data_req_t  = chipyard_4core_mem_pkg::l1_icache_data_req_t,
+  parameter  type         smc_l1_icache_data_rsp_t  = chipyard_4core_mem_pkg::l1_icache_data_rsp_t,
+  parameter  type         smc_l1_dcache_tag_req_t   = chipyard_4core_mem_pkg::l1_dcache_tag_req_t,
+  parameter  type         smc_l1_dcache_tag_rsp_t   = chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t,
+  parameter  type         smc_l1_dcache_data_req_t  = chipyard_4core_mem_pkg::l1_dcache_data_req_t,
+  parameter  type         smc_l1_dcache_data_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,
 
-  // Derived localparams from Cfg
-  localparam int unsigned NUM_CPU_CORES         = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES              : smc_1core_cpu_pkg::NUM_CPU_CORES,
-  localparam int unsigned NUM_CPU_INTERRUPTS    = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS         : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
-  localparam int unsigned NUM_EXT_INTERRUPTS    = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS         : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS,
+  // CPU cluster localparams
+  localparam int unsigned NUM_CPU_CORES         = smc_4core_cpu_pkg::NUM_CPU_CORES,
+  localparam int unsigned NUM_CPU_INTERRUPTS    = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,
+  localparam int unsigned NUM_EXT_INTERRUPTS    = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS,
 
-  localparam int unsigned NUM_SRAM_BANKS        = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_SRAM_BANKS        : chipyard_1core_mem_pkg::NUM_SRAM_BANKS,
-  localparam int unsigned NUM_ICACHE_TAG_BANKS  = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_ICACHE_TAG_BANKS,
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_ICACHE_DATA_BANKS,
-  localparam int unsigned NUM_DCACHE_TAG_BANKS  = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_DCACHE_TAG_BANKS,
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = (Cfg.SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_DCACHE_DATA_BANKS,
+  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,
+  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,
+  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,
+  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,
+  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS,
 
   // Type parameter for the external IC_RESET TDR slice exposed to the SMU caller.
   parameter type  ic_reset_ext_t = jtag_tap_pkg::jtag_ic_reset_default_t,
@@ -196,9 +196,9 @@ module smu #(
   input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_afready_i,
 
   // DED/WDT
-  output logic  cluster_ded_o,
-  output logic  wdt_first_timeout_o,
-  output logic  wdt_second_timeout_o,
+  output logic  smc_cluster_ded_o,
+  output logic  smc_wdt_first_timeout_o,
+  output logic  smc_wdt_second_timeout_o,
 
   // SMC and SEP apertures (from the respective CSRs). Surfaced at the
   // boundary so external address decoders / NoC routing logic can observe
@@ -209,33 +209,26 @@ module smu #(
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,
 
   // External Interrupts
-  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  ext_interrupts_i,
+  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,
 
   // Fuse Signals
-  output logic  fuse_sense_done_o,
-  output logic  fuse_reset_n_delayed_o,
+  output logic  smc_fuse_sense_done_o,
+  output logic  smc_fuse_reset_n_delayed_o,
 
   // External boot / memory-repair signals
   output logic  skip_mem_repair_o,
   input  logic  ext_boot_seq_done_i,
 
-  // PVT
-  input  logic  temp_interrupt_i,
-
   // Lifecycle State (driven by SEP)
   output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,
   output logic                                  lc_sigint_err_o,
 
-  // RAS Bank Settings
-  output logic [3:0]  ras_bank_chip_o,
-  output logic [3:0]  ras_bank_instance_o,
-
   // NDM Reset signals
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  ndmreset_process_o,
+  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_request_i,
+  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_process_o,
 
   // Mailbox Interrupts
-  output logic [smc_pkg::NUM_MAILBOXES-1:0]  ext_mailbox_interrupts_o,
+  output logic [smc_pkg::NUM_MAILBOXES-1:0]  smc_ext_mailbox_interrupts_o,
 
   // Reset Unit Signals
   input  logic  cfg_flr_pf_active_i,
@@ -246,22 +239,22 @@ module smu #(
   output logic  sync_irq_o,
 
   // CPU Memory Signals
-  output rom_req_t  rom_intf_req_o,
-  input  rom_rsp_t  rom_intf_rsp_i,
-  output scratch_ram_req_t  scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],
-  input  scratch_ram_rsp_t  scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],
-  output l1_icache_tag_req_t  l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],
-  input  l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],
-  output l1_icache_data_req_t  l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],
-  input  l1_icache_data_rsp_t  l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],
-  output l1_dcache_tag_req_t  l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],
-  input  l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],
-  output l1_dcache_data_req_t  l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],
-  input  l1_dcache_data_rsp_t  l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],
+  output smc_rom_req_t             smc_rom_intf_req_o,
+  input  smc_rom_rsp_t             smc_rom_intf_rsp_i,
+  output smc_scratch_ram_req_t     smc_scratch_ram_intf_req_o [NUM_SRAM_BANKS-1:0],
+  input  smc_scratch_ram_rsp_t     smc_scratch_ram_intf_rsp_i [NUM_SRAM_BANKS-1:0],
+  output smc_l1_icache_tag_req_t   smc_l1_icache_tag_intf_req_o [NUM_ICACHE_TAG_BANKS-1:0],
+  input  smc_l1_icache_tag_rsp_t   smc_l1_icache_tag_intf_rsp_i [NUM_ICACHE_TAG_BANKS-1:0],
+  output smc_l1_icache_data_req_t  smc_l1_icache_data_intf_req_o [NUM_ICACHE_DATA_BANKS-1:0],
+  input  smc_l1_icache_data_rsp_t  smc_l1_icache_data_intf_rsp_i [NUM_ICACHE_DATA_BANKS-1:0],
+  output smc_l1_dcache_tag_req_t   smc_l1_dcache_tag_intf_req_o [NUM_DCACHE_TAG_BANKS-1:0],
+  input  smc_l1_dcache_tag_rsp_t   smc_l1_dcache_tag_intf_rsp_i [NUM_DCACHE_TAG_BANKS-1:0],
+  output smc_l1_dcache_data_req_t  smc_l1_dcache_data_intf_req_o [NUM_DCACHE_DATA_BANKS-1:0],
+  input  smc_l1_dcache_data_rsp_t  smc_l1_dcache_data_intf_rsp_i [NUM_DCACHE_DATA_BANKS-1:0],
 
   // Memory Init
-  input  logic  disable_sram_auto_init_i,
-  output logic  init_mem_done_o,
+  input  logic  smc_disable_sram_auto_init_i,
+  output logic  smc_init_mem_done_o,
 
   // System Timer OCTS Interface
   input  logic  chiplet_is_primary_i,
@@ -274,9 +267,6 @@ module smu #(
   // Test Mode
   input  logic  test_en_i,
   input  logic  scan_rst_ni,
-
-  // Captured Straps
-  input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]  captured_straps_i,
 
   // DFT status indicators
   input  logic mem_repair_done_i,
@@ -316,7 +306,6 @@ module smu #(
   input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
   output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
   input  logic                               ext_trng_irq_i,
-  input  logic                               ext_trng_alarm_i,
 
   // Ring-oscillator sample clock for SEP entropy_source (async to clk_i)
   input  logic                               entropy_rosc_sample_clk_i,
@@ -329,9 +318,6 @@ module smu #(
   output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,
   input  km_intf_pkg::km_sram_mem_rsp_t  sep_km_sram_mem_rsp_i,
 
-  // External SPI interrupt
-  input  logic                        spi_irq_i,
-
   output sep_pkg::sep_32_64_6_12_axi_req_t   sep_external_req_o,
   input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_external_resp_i,
 
@@ -339,11 +325,16 @@ module smu #(
   input  sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i,
   output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,
 
-  input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_extintsrc_req_i,
+  input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_ext_interrupts_i,
 
   output logic [1:0]  lcc_demote_state_1_o,
   output logic [1:0]  lcc_demote_state_2_o,
   output logic secure_tm_o,
+
+  // Gates for the DFT-inserted OTP access paths. Unconnected in the functional
+  // design: an adopter's DFT insertion adds the paths and connects these.
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
 
   output logic  sep_fuse_sense_done_o,
 
@@ -351,7 +342,7 @@ module smu #(
   input  logic  clk_sep_wdt_i,
 
   // SEP straps
-  input  sep_pkg::sep_straps_t  sep_straps_i,
+  input  logic                  secure_tm_req_i,
 
   // I3C DAT/DCT memory interfaces
   input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,
@@ -375,9 +366,9 @@ module smu #(
   // Internal Signals
   //--------------------------------------------------------------------------
 
-  // Zero-pad ext_interrupts_i to full NUM_EXT_INTERRUPTS width for SMC
-  logic [NUM_EXT_INTERRUPTS-1:0] ext_interrupts_padded;
-  assign ext_interrupts_padded = NUM_EXT_INTERRUPTS'(ext_interrupts_i);
+  // Zero-pad smc_ext_interrupts_i to full NUM_EXT_INTERRUPTS width for SMC
+  logic [NUM_EXT_INTERRUPTS-1:0] smc_ext_interrupts_padded;
+  assign smc_ext_interrupts_padded = NUM_EXT_INTERRUPTS'(smc_ext_interrupts_i);
 
   logic powergood_stable;
 
@@ -665,19 +656,18 @@ module smu #(
 
   smc #(
     .MAX_TRANS(MAX_TRANS),
-    .SMC_CPU_CONFIG(smc_pkg::smc_cpu_config_e'(Cfg.SMC_CPU_CONFIG)),
-    .rom_req_t(rom_req_t),
-    .rom_rsp_t(rom_rsp_t),
-    .scratch_ram_req_t(scratch_ram_req_t),
-    .scratch_ram_rsp_t(scratch_ram_rsp_t),
-    .l1_icache_tag_req_t(l1_icache_tag_req_t),
-    .l1_icache_tag_rsp_t(l1_icache_tag_rsp_t),
-    .l1_icache_data_req_t(l1_icache_data_req_t),
-    .l1_icache_data_rsp_t(l1_icache_data_rsp_t),
-    .l1_dcache_tag_req_t(l1_dcache_tag_req_t),
-    .l1_dcache_tag_rsp_t(l1_dcache_tag_rsp_t),
-    .l1_dcache_data_req_t(l1_dcache_data_req_t),
-    .l1_dcache_data_rsp_t(l1_dcache_data_rsp_t),
+    .rom_req_t(smc_rom_req_t),
+    .rom_rsp_t(smc_rom_rsp_t),
+    .scratch_ram_req_t(smc_scratch_ram_req_t),
+    .scratch_ram_rsp_t(smc_scratch_ram_rsp_t),
+    .l1_icache_tag_req_t(smc_l1_icache_tag_req_t),
+    .l1_icache_tag_rsp_t(smc_l1_icache_tag_rsp_t),
+    .l1_icache_data_req_t(smc_l1_icache_data_req_t),
+    .l1_icache_data_rsp_t(smc_l1_icache_data_rsp_t),
+    .l1_dcache_tag_req_t(smc_l1_dcache_tag_req_t),
+    .l1_dcache_tag_rsp_t(smc_l1_dcache_tag_rsp_t),
+    .l1_dcache_data_req_t(smc_l1_dcache_data_req_t),
+    .l1_dcache_data_rsp_t(smc_l1_dcache_data_rsp_t),
     .EFUSE_SHIM_SIZE(SMC_EFUSE_SHIM_SIZE)
   ) u_smc (
     .clk_smc_i                           (clk_smu_i),
@@ -742,50 +732,47 @@ module smu #(
     .telemetry_atvalid_i                 (telemetry_atvalid_i),
     .telemetry_afvalid_o                 (telemetry_afvalid_o),
     .telemetry_afready_i                 (telemetry_afready_i),
-    .cluster_ded_o                       (cluster_ded_o),
-    .wdt_first_timeout_o                 (wdt_first_timeout_o),
-    .wdt_second_timeout_o                (wdt_second_timeout_o),
+    .smc_cluster_ded_o                   (smc_cluster_ded_o),
+    .smc_wdt_first_timeout_o             (smc_wdt_first_timeout_o),
+    .smc_wdt_second_timeout_o            (smc_wdt_second_timeout_o),
     .smc_global_base_o                   (smc_global_base_o),
     .smc_region_size_o                   (smc_region_size_o),
-    .ext_interrupts_i                    (ext_interrupts_padded),
+    .smc_ext_interrupts_i                (smc_ext_interrupts_padded),
     .sep_mailbox_interrupts_i            (sep_mailbox_interrupts),
     .sep_wdt_reset_n_i                   (~sep_wdt_timer_rst_req),
-    .fuse_sense_done_o                   (fuse_sense_done_o),
-    .fuse_reset_n_delayed_o              (fuse_reset_n_delayed_o),
+    .smc_fuse_sense_done_o               (smc_fuse_sense_done_o),
+    .smc_fuse_reset_n_delayed_o          (smc_fuse_reset_n_delayed_o),
     .boot_stall_jtag_ovrd_i              (boot_stall_jtag_ovrd),
     .boot_stall_jtag_val_i               (boot_stall_jtag_val),
     .boot_stall_combined_o               (boot_stall_combined),
     .skip_mem_repair_o                   (skip_mem_repair_o),
     .ext_boot_seq_done_i                 (ext_boot_seq_done_i),
     .sep_security_disable_i              (sep_security_disable),
-    .temp_interrupt_i                    (temp_interrupt_i),
     .lc_state_i                          (sep_lc_state),
     .lc_sigint_err_o                     (efuse_lc_sigint_err),
-    .ras_bank_chip_o                     (ras_bank_chip_o),
-    .ras_bank_instance_o                 (ras_bank_instance_o),
-    .ndmreset_request_i                  (ndmreset_request_i),
-    .ndmreset_process_o                  (ndmreset_process_o),
-    .ext_mailbox_interrupts_o            (ext_mailbox_interrupts_o),
+    .smc_ndmreset_request_i              (smc_ndmreset_request_i),
+    .smc_ndmreset_process_o              (smc_ndmreset_process_o),
+    .smc_ext_mailbox_interrupts_o        (smc_ext_mailbox_interrupts_o),
     .cfg_flr_pf_active_i                 (cfg_flr_pf_active_i),
     .isolate_req_o                       (isolate_req_o),
     .ss_reset_complete_i                 (ss_reset_complete_i),
     .ss_config_o                         (ss_config_o),
     .ss_reset_ctrl_o                     (ss_reset_ctrl_o),
     .sync_irq_o                          (sync_irq_o),
-    .rom_intf_req_o                      (rom_intf_req_o),
-    .rom_intf_rsp_i                      (rom_intf_rsp_i),
-    .scratch_ram_intf_req_o              (scratch_ram_intf_req_o),
-    .scratch_ram_intf_rsp_i              (scratch_ram_intf_rsp_i),
-    .l1_icache_tag_intf_req_o            (l1_icache_tag_intf_req_o),
-    .l1_icache_tag_intf_rsp_i            (l1_icache_tag_intf_rsp_i),
-    .l1_icache_data_intf_req_o           (l1_icache_data_intf_req_o),
-    .l1_icache_data_intf_rsp_i           (l1_icache_data_intf_rsp_i),
-    .l1_dcache_tag_intf_req_o            (l1_dcache_tag_intf_req_o),
-    .l1_dcache_tag_intf_rsp_i            (l1_dcache_tag_intf_rsp_i),
-    .l1_dcache_data_intf_req_o           (l1_dcache_data_intf_req_o),
-    .l1_dcache_data_intf_rsp_i           (l1_dcache_data_intf_rsp_i),
-    .disable_sram_auto_init_i            (disable_sram_auto_init_i),
-    .init_mem_done_o                     (init_mem_done_o),
+    .smc_rom_intf_req_o                  (smc_rom_intf_req_o),
+    .smc_rom_intf_rsp_i                  (smc_rom_intf_rsp_i),
+    .smc_scratch_ram_intf_req_o          (smc_scratch_ram_intf_req_o),
+    .smc_scratch_ram_intf_rsp_i          (smc_scratch_ram_intf_rsp_i),
+    .smc_l1_icache_tag_intf_req_o        (smc_l1_icache_tag_intf_req_o),
+    .smc_l1_icache_tag_intf_rsp_i        (smc_l1_icache_tag_intf_rsp_i),
+    .smc_l1_icache_data_intf_req_o       (smc_l1_icache_data_intf_req_o),
+    .smc_l1_icache_data_intf_rsp_i       (smc_l1_icache_data_intf_rsp_i),
+    .smc_l1_dcache_tag_intf_req_o        (smc_l1_dcache_tag_intf_req_o),
+    .smc_l1_dcache_tag_intf_rsp_i        (smc_l1_dcache_tag_intf_rsp_i),
+    .smc_l1_dcache_data_intf_req_o       (smc_l1_dcache_data_intf_req_o),
+    .smc_l1_dcache_data_intf_rsp_i       (smc_l1_dcache_data_intf_rsp_i),
+    .smc_disable_sram_auto_init_i        (smc_disable_sram_auto_init_i),
+    .smc_init_mem_done_o                 (smc_init_mem_done_o),
     .chiplet_is_primary_i                (chiplet_is_primary_i),
     .timer_count_o                       (timer_count_o),
 
@@ -801,7 +788,6 @@ module smu #(
     .ext_debug_bus_i                     (ext_debug_bus),
     .test_en_i                           (test_en_i),
     .scan_rst_ni                         (scan_rst_ni),
-    .captured_straps_i                   (captured_straps_i),
     .mem_repair_done_i                   (mem_repair_done_i),
     .mem_repair_success_i                (mem_repair_success_i),
     .mem_repair_abort_i                  (mem_repair_abort_i),
@@ -904,7 +890,7 @@ module smu #(
       // No external CLINT; EL2 internal timers drive mip.MTIP / mip.MSIP
       .timer_int                     (1'b0),
       .soft_int                      (1'b0),
-      .extintsrc_req                 (sep_extintsrc_req_i),
+      .extintsrc_req                 (sep_ext_interrupts_i),
 
       .sep_cpu_tcm_req_o             (sep_cpu_tcm_req_o),
       .sep_cpu_tcm_rsp_i             (sep_cpu_tcm_rsp_i),
@@ -940,7 +926,6 @@ module smu #(
       .ext_trng_axis_req_i           (ext_trng_axis_req_i),
       .ext_trng_axis_rsp_o           (ext_trng_axis_rsp_o),
       .ext_trng_irq_i                (ext_trng_irq_i),
-      .ext_trng_alarm_i              (ext_trng_alarm_i),
 
       .lcc_demote_state_1_o          (lcc_demote_state_1_o),
       .lcc_demote_state_2_o          (lcc_demote_state_2_o),
@@ -959,20 +944,20 @@ module smu #(
       .sep_io_spi_req_o              (sep_io_spi_req),
       .sep_io_spi_rsp_i              (sep_io_spi_rsp),
 
-      .spi_irq_i                     (spi_irq_i),
-
       .lc_state_o                    (sep_lc_state),
       .dbg_disable_o                 (sep_dbg_disable),
+      .sep_fuse_dft_disable_o        (sep_fuse_dft_disable_o),
+      .smc_fuse_dft_disable_o        (smc_fuse_dft_disable_o),
       .lc_sigint_err_o               (sep_lc_sigint_err),
       .security_disable_o            (sep_security_disable),
       .secure_tm_o                   (secure_tm_o),
 
       .smc_mailbox_interrupt_o       (sep_mailbox_interrupts),
 
-      .smc_fuse_sense_done_i         (fuse_sense_done_o),
+      .smc_fuse_sense_done_i         (smc_fuse_sense_done_o),
       .sep_fuse_sense_done_o         (sep_fuse_sense_done_o),
 
-      .sep_straps_i                  (sep_straps_i),
+      .secure_tm_req_i               (secure_tm_req_i),
 
       .sep_external_axi_req_o       (sep_external_req_o),
       .sep_external_axi_resp_i      (sep_external_resp_i),
@@ -1104,7 +1089,9 @@ module smu #(
     // Lifecycle & mailbox driven by SEP
     // ==================================================================
     assign lc_state_o      = sep_lc_state;
-    assign lc_sigint_err_o = sep_lc_sigint_err;
+
+    // differential encoding error reported by either the SEP or SMC efuse interface
+    assign lc_sigint_err_o = sep_lc_sigint_err | efuse_lc_sigint_err;
 
     // Export the OT SPI request to the wrapper-level SPI mux (u_sep_ip_integration).
     assign sep_io_spi_req_o = sep_io_spi_req;
@@ -1163,6 +1150,11 @@ module smu #(
     assign sep_security_disable = 1'b0;
     assign secure_tm_o = 1'b0;
 
+    // No lifecycle controller in this configuration, so nothing can authorise the
+    // inserted fuse paths; hold them disabled.
+    assign sep_fuse_dft_disable_o = 1'b1;
+    assign smc_fuse_dft_disable_o = 1'b1;
+
     // ==================================================================
     // Lifecycle state -- original standalone behavior
     // ==================================================================
@@ -1170,7 +1162,9 @@ module smu #(
     assign sep_dbg_disable   = '0;
     assign sep_lc_sigint_err = 1'b0;
     assign lc_state_o        = sep_lc_state;
-    assign lc_sigint_err_o   = efuse_lc_sigint_err;
+
+    // differential encoding error reported by either the SEP or SMC efuse interface
+    assign lc_sigint_err_o   = sep_lc_sigint_err | efuse_lc_sigint_err;
 
     // ==================================================================
     // SEP mailbox and WDT tie-offs

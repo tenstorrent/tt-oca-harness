@@ -30,8 +30,8 @@ class SmcResetOp(Enum):
     SAMPLE = "SAMPLE"
     RAW_SAMPLE = "RAW_SAMPLE"
     # Bounded poll until the requested expect_* state is observed. Expiry is a
-    # testcase failure with last-state diagnostics ([TIMEOUT-MUST-FAIL]) --
-    # this is the handshake replacement for "fixed ClockCycles then SAMPLE".
+    # testcase failure with last-state diagnostics ([TIMEOUT-MUST-FAIL]): a
+    # handshake, not a fixed ClockCycles delay followed by SAMPLE.
     WAIT_STATE = "WAIT_STATE"
     POWERGOOD_LO = "POWERGOOD_LO"
     POWERGOOD_HI = "POWERGOOD_HI"

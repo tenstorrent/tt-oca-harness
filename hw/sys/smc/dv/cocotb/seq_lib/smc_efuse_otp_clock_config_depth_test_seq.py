@@ -8,8 +8,8 @@ Two legs, and only the first is a closure claim:
    pattern, read back under a mask, restore, and re-read against the saved
    value. Evidence: ``CHK-EFUSE-CLOCK-GATE-DEPTH``.
 2. **CHIP_CONFIG proxy reads** -- fuse-derived mirror registers. ``VERSION_LO`` /
-   ``VERSION_HI`` carry their generated RDL resets; the remaining three are
-   observed only (see below).
+   ``VERSION_HI`` carry their generated RDL resets; ``CHIP_ID`` and ``LC_STATE``
+   are observed only (see below).
 
 This sequence also runs :func:`prove_efuse_bank_axil_activity` before the
 bounded OTP work. Without it the test's ``tb_axil_efuse_bank_active == 0``
@@ -29,7 +29,7 @@ from .smc_efuse_vip_utils import prove_efuse_bank_axil_activity
 
 CLOCK_GATE_CONTROL = smc_addr(
     "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+)  # base_config offset 0x18
 CLOCK_GATE_PATTERN = (1 << 8) | (1 << 11) | (1 << 12)
 CLOCK_GATE_MASK = 0x0000_1FFF
 
@@ -42,21 +42,15 @@ _CHIP_CONFIG = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 VERSION_LO_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 VERSION_HI_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_HI__VERSION_HI_reset")
 
-# CHIP_ID / LC_STATE / RAS_BANK_INFO are fuse-derived mirrors whose expected
+# CHIP_ID / LC_STATE are fuse-derived mirrors whose expected
 # content is not published in any artifact this bench can read, so they carry no
 # expectation and are OBSERVED ONLY -- they prove decode/reachability, nothing
-# about their content. The testcase's `details=` is narrowed accordingly rather
-# than claiming "fuse-derived semantics checked" ([EXACT-EXPECTATION]).
+# about their content ([EXACT-EXPECTATION]).
 EFUSE_PROXY_READS = [
     ("CHIP_CONFIG_VERSION_LO", _CHIP_CONFIG, VERSION_LO_RESET),
     ("CHIP_CONFIG_VERSION_HI", _CHIP_CONFIG + 0x4, VERSION_HI_RESET),
     ("CHIP_CONFIG_CHIP_ID_OBSERVED_ONLY", _CHIP_CONFIG + 0x8, None),
     ("CHIP_CONFIG_LC_STATE_OBSERVED_ONLY", _CHIP_CONFIG + 0xC, None),
-    (
-        "CHIP_CONFIG_RAS_BANK_INFO_OBSERVED_ONLY",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-        None,
-    ),
 ]
 
 

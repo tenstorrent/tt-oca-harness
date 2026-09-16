@@ -48,7 +48,7 @@ class SepAxiAccessSeq(uvm_sequence):
         self._expect_error = expect_error
         # Packed AWUSER/ARUSER (inbound FILTER_CONFIG.src_id matches user[3:0]).
         self._user = user
-        # AXI AxBURST. None = VIP default (single-beat callers stay unchanged).
+        # AXI AxBURST. None = VIP default (single beat).
         self._burst = burst
         self.rdata: int = 0
         self.resp_ok: bool = False

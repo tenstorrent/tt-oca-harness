@@ -151,9 +151,7 @@ int main(void) {
     // RESET & PLL //
     //-------------//
 
-    // Note: peripherals_out_of_reset() is no longer needed as peripherals
-    // are automatically taken out of reset by hardware
-    // peripherals_out_of_reset();
+    // Hardware releases the peripherals from reset.
 
     simputs("\n");
     simputs("################################################\n");
@@ -310,7 +308,7 @@ int main(void) {
     for (volatile uint32_t i = 0; i < 1000; i++)
         ;
 
-    // Fail-closed: SMBUS_STATUS.SMBALERT must be observed asserted before ARA clear wait
+    // Fail-closed: SMBUS_CTRL.SMBALERT must read back asserted before the ARA clear wait
     bool alert_status = smbus_get_alert_ctrl(TARGET_IDX);
     if (!alert_status) {
         simputs("  ERROR: SMBUS_CTRL.SMBALERT not set after i2c_smbus_alert(true)\n");

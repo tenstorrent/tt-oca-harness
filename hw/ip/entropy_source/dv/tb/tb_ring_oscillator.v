@@ -5,7 +5,7 @@
 // Entropy Noise Source iverilog Testbench
 //
 // Description:
-// Enhanced Verilog testbench with frequency measurement and metastability detection
+// Verilog testbench with frequency measurement and metastability detection
 // Tests the entropy_noise_source module which instantiates a ring oscillator and
 // performs sampling with metastable D flip-flops
 //------------------------------------------------------------------------------
@@ -64,9 +64,9 @@ module tb_ring_oscillator ();
 
   // Connect debug signals
   assign rosc_async = u_entropy_noise_src.noise_async;
-  assign feedback = u_entropy_noise_src.ro.feedback;
-  assign stage_0 = u_entropy_noise_src.ro.stage_o[0];
-  assign stage_o = u_entropy_noise_src.ro.stage_o;
+  assign feedback = u_entropy_noise_src.u_ring_oscillator.feedback;
+  assign stage_0 = u_entropy_noise_src.u_ring_oscillator.stage_o[0];
+  assign stage_o = u_entropy_noise_src.u_ring_oscillator.stage_o;
 
   // Clock generation
   initial begin
@@ -149,7 +149,7 @@ module tb_ring_oscillator ();
     $display("Time=%0t: Extended monitoring for frequency measurement and metastability...", $time);
 
     // Extended monitoring to capture frequency and metastable events
-    // Run for ~4ms to get at least 1000 edges on synchronized output (doubled simulation time)
+    // Run for ~4ms to get at least 1000 edges on the synchronized output
     repeat (400000) begin
       #10;
       if ($time % 100000 == 0) begin
@@ -226,9 +226,9 @@ module tb_ring_oscillator ();
       if ($time % int'(277.78) > int'(275.78) || $time % int'(277.78) < int'(2.0)) begin
         potential_metastable_events = potential_metastable_events + 1;
         if (potential_metastable_events <= 10) begin
-          $display(
-              "Time=%0t: Estimated metastable event #%0d (rosc_async transition in setup/hold window)",
-              $time, potential_metastable_events);
+          $display({"Time=%0t: Estimated metastable event #%0d ",
+                    "(rosc_async transition in setup/hold window)"}, $time,
+                     potential_metastable_events);
         end
       end
     end
@@ -238,7 +238,7 @@ module tb_ring_oscillator ();
   initial begin
     $dumpfile("ring_oscillator.vcd");
     $dumpvars(0, tb_ring_oscillator);
-    $dumpvars(1, u_entropy_noise_src.ro.stage_o);
+    $dumpvars(1, u_entropy_noise_src.u_ring_oscillator.stage_o);
     $dumpvars(1, u_entropy_noise_src.noise_sample);
     $dumpvars(1, u_entropy_noise_src.noise_sync);
   end

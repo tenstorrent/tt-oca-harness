@@ -39,7 +39,7 @@ AVSBUS_TIMEOUT_READS = [
     ("AVS_CONFIG", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CONFIG_BASE_ADDR")),
 ]
 
-# Positive-control bound. Generous on purpose -- it exists only so a wedged
+# Positive-control bound. Generous -- it exists only so a wedged
 # bench cannot hang the shared CSR master; expiry is a FAILURE of the positive
 # control (asserted below), never a pass ([TIMEOUT-MUST-FAIL]).
 _UNGATED_PROBE_BOUND_NS = 4000

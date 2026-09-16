@@ -3,9 +3,8 @@
 
 """Collect a DUT's native `run_dv.py` result.json into normalized dashboard result JSON.
 
-OSS dashboard collection consumes the normalized `result.json` that `run_dv.py` emits for every
-DUT. The older log/URG/JUnit scrapers were removed once every OSS flow emitted `result.json`; any
-private/historical importers live out-of-tree.
+Dashboard collection consumes only the normalized `result.json` that `run_dv.py` emits for every
+DUT.
 """
 
 from __future__ import annotations
@@ -872,6 +871,9 @@ def _collect_native_result(
         duration_sec=timing["duration_sec"],
         tests_total=int(tests.get("total") or 0),
         tests_passing=int(tests.get("passing") or 0),
+        tests_completed=tests.get("completed")
+        if isinstance(tests.get("completed"), bool)
+        else None,
         coverage_percent=coverage.get("total_percent"),
         coverage_breakdown={
             k.removesuffix("_percent"): v for k, v in (coverage.get("metrics") or {}).items()
@@ -992,8 +994,7 @@ def main(argv: list[str] | None = None) -> int:
             and (result.get("source") or {}).get("collector") == "run_dv-result"
             and collected_framework != args.framework
         ):
-            # Fail loudly on a mispaired run dir instead of publishing a run under the
-            # wrong framework view.
+            # A result.json that records a different framework is a mispaired --run-dir.
             raise ConfigError(
                 f"--framework {args.framework} was requested but the collected result.json "
                 f"records framework `{collected_framework}` — wrong --run-dir pairing?"

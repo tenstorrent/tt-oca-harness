@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[documentation]]
+== Working with Documentation
+
+[WARNING]
+====
+This section is currently under development.
+====
+
+=== Document formats
+
+OCAH primarily uses AsciiDoc (.adoc) for structured documentation.
+
+Native README files in GitHub which are intended to be read in isolation are written in Markdown (.md)
+
+This approach provides:
+
+* GitHub-native rendering for README files
+* Professional documentation rendering with Asciidoctor for detailed specs
+* Human readable document source text that can be revision controlled
+* Multiple output formats (PDF, HTML) with cross-referencing
+capabilities
+
+In most cases documentation it is built in two formats:
+- Using Antora for the HTML site
+- Using asciidoctor-pdf for downloadable PDFs
+
+Material intended only to be viewed via the website will not be built as downloadable PDFs
+
+Documents are published in GitHub Pages at [https://tenstorrent.github.io/tt-oca-harness/](https://tenstorrent.github.io/tt-oca-harness/)
+
+Downloadable PDFs are also accessible from the above location.
+
+=== Updating documentation
+
+Document updates are made by pushing changes to `main`.
+
+The CI process deploys to the published site on all pushes to `main` (see `.github/workflows/doc.yml`).
+
+=== Build Process and Local Builds
+
+Documentation may also be built locally for development. Follow the instructions xref:setup.adoc#package-dependencies[here] to install Asciidoctor and Antora.
+
+Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install `podman` or `docker` as described xref:setup.adoc#containers[here].
+
+The two commands below may be executed from the root of the checked out repository.
+They generate the built material in subfolders under each book.
+
+```bash
+# Locally installed Packages
+make doc-all-html
+make doc-all-pdf
+
+# OR Container workflow
+scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
+scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/dist/ocah-trm.pdf
+```
+
+Once the documents are built they can be staged with the command below.
+This builds the whole site in the location shown.
+```bash
+make doc-stage-ghpages
+
+# OR
+
+scripts/docker-run.sh doc-stage       # site → doc/_build/html_antora
+```
+
+The build can then be served locally for viewing with the commands below.
+```bash
+make doc-all-serve
+
+# OR
+
+cd doc/_build/html_antora
+python3 -m http.server 8000
+```
+
+This will generate the documentation, and then serve it on `http://localhost:8000/`. You will then be able to access it in your web browser.
+
+=== Embedding Images
+
+All images are stored in the repository at `doc/trm/assets` regardless of which document they
+appear in.  This allows images to be reused across documents without requiring a copy for each
+document.
+
+Images are copied from this location to the `assets` directory of every document as part of
+the build process.
+
+Any image can then be embedded in an Asciidoc document with:
+
+```
+image::<my_image>.png[Alternative Text]
+```
+
+=== References
+
+* https://asciidoctor.org[Asciidoctor]

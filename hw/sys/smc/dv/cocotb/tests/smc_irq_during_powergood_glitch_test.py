@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_irq_during_powergood_glitch_test(smc_base_test):
+    required_evidence = ("CHK-IRQ-PG-GLITCH-NO-SPURIOUS",)
+    min_evidence = 1
+
     # The claimed property is "no spurious interrupt on any of the three
     # observed aggregates" -- a pure negative check that a tied-off or mis-bound
     # probe satisfies. These controls run before the glitch scenario, prove each

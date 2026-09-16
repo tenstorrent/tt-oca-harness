@@ -6,7 +6,8 @@ Programs one of the sixteen ``axi_alias_remap`` regions on the system-
 peripherals local-master path so a CPU-LSU beat of a filter-bank page is
 rewritten to ``CLOCK_GATE_CTRL``. The predicted address is
 ``{offset[55:12] + addr[55:12], addr[11:0]}``
-(``hw/common/axi/axi_alias_remap/rtl/axi_alias_remap.sv``). The mailbox
+(``hw/ip/axi_alias_remap/regs/alias_remap.rdl`` REGION_ATTRS offset:
+add to bits [55:12], preserve [11:0]). The mailbox
 window at ``0x8000_0000`` is not an LSU identity target.
 
 CSR programming of the bank stays on ``sep_fabric_csr_bank_seq``. This
@@ -34,8 +35,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     OUTFILT_BASE,
 )
 
-# `local_master_alias_remap_ctrl[16]`; the count comes from the export so a
-# seed can select any region the bank actually has.
+# `local_master_alias_remap_ctrl[16]`; the count comes from the export. The
+# datapath test selects the upper half so the remap debug index's MSB is exercised.
 N_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL")
 IDX_START = 12
 PAGE = 1 << IDX_START
@@ -58,7 +59,8 @@ class SepLocalAliasCfg:
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
-        self.region = rng.randrange(N_REGIONS)
+        upper_half = N_REGIONS // 2
+        self.region = upper_half + rng.randrange(N_REGIONS - upper_half)
         self.src_page = rng.choice(SRC_PAGES)
         self.intra = DEST_ADDR & (PAGE - 1)
         self.access_addr = self.src_page + self.intra
@@ -95,9 +97,9 @@ class SepLocalAlias(SepAxiRegDriver):
         await self._wr(base + ALIAS_END, end & 0xFFFF_FFFF)
         await self._wr(base + ALIAS_END + 4, (end >> 32) & 0x00FF_FFFF)
         await self._wr(base + ALIAS_ATTRS, cfg.offset & 0xFFFF_FFFF)
-        # region_valid gates the remap (axi_alias_remap.sv aw_remap_hit/ar_remap_hit).
-        # Programming the window with the bit clear is what makes the pass-through
-        # path observable: bounds and offset are live, only the enable is not.
+        # REGION_ATTRS.valid gates the remap (alias_remap.rdl). Programming the
+        # window with the bit clear is what makes the pass-through path
+        # observable: bounds and offset are live, only the enable is not.
         valid_bit = VALID_HI if valid else 0
         await self._wr(base + ALIAS_ATTRS + 4, ((cfg.offset >> 32) & 0x00FF_FFFF) | valid_bit)
         rb_lo = await self._rd(base + ALIAS_ATTRS)

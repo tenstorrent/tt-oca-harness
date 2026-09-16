@@ -13,7 +13,7 @@
 // streams in lockstep; scans that are not a bridge capture, and captures
 // inside the CDC settle window after a completion, carry no contract.
 // Series-data captures (the pipelined read FIFO) are not predicted. No
-// comparison, no reporting. The cocotb realization has no twin yet
+// comparison, no reporting. The cocotb realization has no twin
 // (DTP_TB_ARCH).
 
 `uvm_analysis_imp_decl(_dtp_j2a_status_event)

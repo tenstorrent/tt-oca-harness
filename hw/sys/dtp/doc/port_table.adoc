@@ -10,7 +10,7 @@
 |`clk_i` |`logic` |Input |1 |System clock for cross trigger logic and JTAG2AXI bridges. |System clock |N/A
 |`rst_n_i` |`logic` |Input |1 |System reset (active low). Resets cross trigger and AXI logic; does not affect the TAP controller. |System reset |N/A
 |`pwr_on_rst_ni` |`logic` |Input |1 |Power-on reset for JTAG state machine (active low, asynchronous). |Power-on reset |N/A
-|`feat_ctrl_i` |`sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t` |Input |- |Lifecycle feature control vector gating debug interfaces. Enable-polarity (1 = feature enabled). |Lifecycle controller |N/A
+|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |Input |- |Per-path debug/test disables. Active-high (1 = path disabled). |SEP |N/A
 
 |`jtag_ptap_client_tap_ctrl_i` |`jtag_tap_ctrl_t` |Input |- |Primary JTAG TAP control (TCK, TMS, TRST_N). |External JTAG pads |N/A
 |`jtag_ptap_client_tdi_i` |`logic` |Input |1 |Primary JTAG TDI. |External JTAG pads |N/A
@@ -21,22 +21,22 @@
 |`jtag_bsr_host_scan_in_i` |`logic` |Input |1 |Boundary scan data in. |Boundary scan chain |N/A
 |`jtag_bsr_host_scan_out_o` |`logic` |Output |1 |Boundary scan data out. |Boundary scan chain |N/A
 
-|`jtag_stap_io_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |I/O STAP TAP control for chiplet-to-chiplet connectivity. |I/O STAP host |Tie to '0 if `JTAG_STAP_IO_ENABLE=0`
+|`jtag_stap_io_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |I/O STAP TAP control for chiplet-to-chiplet connectivity. `.tck` remains driven when the STAP generate is off. |I/O STAP host |TMS/TRST idle if `JTAG_STAP_IO_ENABLE=0`
 |`jtag_stap_io_host_tdi_i` |`logic` |Input |1 |I/O STAP TDI. |I/O STAP host |Tie to '0 if unused
 |`jtag_stap_io_host_tdo_o` |`logic` |Output |1 |I/O STAP TDO. |I/O STAP host |N/A
 |`jtag_stap_io_host_tdo_oen_o` |`logic` |Output |1 |I/O STAP TDO output enable. |I/O STAP host |N/A
 
-|`jtag_stap_smc_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |SMC debug STAP TAP control. |SMC JTAG port |Tie to '0 if `JTAG_SMC_DBG_ENABLE=0`
+|`jtag_stap_smc_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |SMC debug STAP TAP control. `.tck` remains driven when the STAP generate is off. |SMC JTAG port |TMS/TRST idle if `JTAG_SMC_DBG_ENABLE=0`
 |`jtag_stap_smc_host_tdi_i` |`logic` |Input |1 |SMC debug STAP TDI (from SMC TDO). |SMC JTAG port |Tie to '0 if unused
 |`jtag_stap_smc_host_tdo_o` |`logic` |Output |1 |SMC debug STAP TDO (to SMC TDI). |SMC JTAG port |N/A
 |`jtag_stap_smc_host_tdo_oen_o` |`logic` |Output |1 |SMC debug STAP TDO output enable. |SMC JTAG port |N/A
 
-|`jtag_stap_sep_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |SEP debug STAP TAP control. |SEP JTAG port |Tie to '0 if `JTAG_SEP_DBG_ENABLE=0`
+|`jtag_stap_sep_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |- |SEP debug STAP TAP control. `.tck` remains driven when the STAP generate is off. |SEP JTAG port |TMS/TRST idle if `JTAG_SEP_DBG_ENABLE=0`
 |`jtag_stap_sep_host_tdi_i` |`logic` |Input |1 |SEP debug STAP TDI (from SEP TDO). |SEP JTAG port |Tie to '0 if unused
 |`jtag_stap_sep_host_tdo_o` |`logic` |Output |1 |SEP debug STAP TDO (to SEP TDI). |SEP JTAG port |N/A
 |`jtag_stap_sep_host_tdo_oen_o` |`logic` |Output |1 |SEP debug STAP TDO output enable. |SEP JTAG port |N/A
 
-|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TAP control array. |Extra STAP hosts |Tie to '0 if `JTAG_NUM_EXTRA_STAPS=0`
+|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Output |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TAP control array. `.tck` remains driven when the STAP generate is off. |Extra STAP hosts |TMS/TRST idle if `JTAG_NUM_EXTRA_STAPS=0`
 |`jtag_stap_extra_host_tdi_i` |`logic` |Input |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDI array. |Extra STAP hosts |Tie to '0 if unused
 |`jtag_stap_extra_host_tdo_o` |`logic` |Output |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO array. |Extra STAP hosts |N/A
 |`jtag_stap_extra_host_tdo_oen_o` |`logic` |Output |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts |N/A

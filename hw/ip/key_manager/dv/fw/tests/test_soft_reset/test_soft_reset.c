@@ -29,8 +29,7 @@
 /* Soft reset code: "SRST" = 0x53525354 */
 #define SOFT_RST_CODE_MAGIC 0x53525354
 
-/* Marker value written to a retained mid-SRAM location before reset. */
-/* Keep this outside the startup-cleared globals for the current linker layout. */
+/* Marker word at a mid-SRAM address outside the startup-cleared .bss; it survives the reset. */
 #define RESET_MARKER_VALUE 0xDEADBEEF
 #define RESET_MARKER_ADDR (SRAM_BASE + 0x3000)
 

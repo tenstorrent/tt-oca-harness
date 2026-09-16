@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// ocah_axi_id_mismatch_test — issue #1129 (parity contract from #433): a
+// ocah_axi_id_mismatch_test — response-ID parity contract with the cocotb twin: a
 // mismatching returned response ID is distinguishable through the master
 // sequence API (observed == issued ^ mask, one-shot per direction, data
 // path untouched, RLAST-beat burst sampling, clear_errors() disarm). The
-// passive observation stack is disabled for this scenario: a deliberately
+// passive observation stack is disabled for this scenario: a
 // corrupted response ID is an orphan completion to a passive observer.
 
 class ocah_axi_id_mismatch_test extends ocah_axi_vip_base_test;

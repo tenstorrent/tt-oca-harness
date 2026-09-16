@@ -20,6 +20,9 @@ The DTP supports the following STAP types:
   connectivity
 * *Extended STAP Scan Interface*: Port for adding STAPs external to the DTP
 
+Each STAP has an active-high disable input. When it is asserted, STAP
+selection, host TDO, and 3DCR updates are blocked.
+
 ==== Configuration Parameters
 
 The STAP provides three timing-related configuration parameters to optimize

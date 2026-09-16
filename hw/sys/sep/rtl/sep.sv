@@ -4,6 +4,7 @@
 // SEP Security Processor
 
 `include "axi/assign.svh"
+`include "prim_assert.sv"
 
 module sep #(
   parameter bit KM_LATCHED_MEM_RDATA = 1'b1,
@@ -126,9 +127,8 @@ module sep #(
   input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
   output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
 
-  // External TRNG irq (PIC); alarm reserved for RAS (wired in sep_wrapper → sep)
+  // External TRNG irq (PIC)
   input logic ext_trng_irq_i,
-  input logic ext_trng_alarm_i,
 
   // Key Manager ROM/SRAM memory interfaces (hard macros at integration level)
   output km_intf_pkg::km_rom_mem_req_t   km_rom_mem_req_o,
@@ -153,15 +153,14 @@ module sep #(
   output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,
   input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-  // SPI IRQ to the PIC, driven by whichever SPI controller the integration selects
-  input  logic spi_irq_i,
-
   /////////////
   // LC State
   /////////////
 
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
   output logic lc_sigint_err_o,
   output logic security_disable_o,
   output logic secure_tm_o,
@@ -183,7 +182,7 @@ module sep #(
   // Straps //
   /////////
 
-  input sep_pkg::sep_straps_t sep_straps_i,
+  input logic secure_tm_req_i,
 
   ///////////////////
   // AXI Extension //
@@ -536,7 +535,7 @@ NUM_EXT_DEMUX_PORTS
     sep_internal_interrupts[10]     = intr_dma_error;
     sep_internal_interrupts[11]     = dma_alert;
     sep_internal_interrupts[12]     = wdt_alert;
-    sep_internal_interrupts[13]     = spi_irq_i;
+    sep_internal_interrupts[13]     = sep_io_spi_req_o.irq;
     sep_internal_interrupts[14]     = km_mbox_irq;
     sep_internal_interrupts[15]     = entropy_source_irq;
     sep_internal_interrupts[16]     = ext_trng_irq;
@@ -583,10 +582,6 @@ NUM_EXT_DEMUX_PORTS
   // Expose KM error signals as output ports
   assign km_unrecoverable_err_o = km_unrecoverable_err;
   assign km_recoverable_err_o   = km_recoverable_err;
-
-  // TRNG alarm: route to SoC RAS when integrated (stub drives 0 today)
-  logic unused_ext_trng_alarm_sink;
-  assign unused_ext_trng_alarm_sink = ext_trng_alarm_i;
 
   /////////////
   // SEP CPU //
@@ -842,12 +837,14 @@ NUM_EXT_DEMUX_PORTS
     .sep_reset_ni                           (sep_reset_n),
     .sep_intermediate_reset_no              (sep_intermediate_reset_n),
 
-    .sep_straps_i                           (sep_straps_i),
+    .secure_tm_req_i                        (secure_tm_req_i),
     .ext_boot_seq_done_i                    (ext_boot_seq_done_i),
     .security_disable_o                     (security_disable),
     .lc_state_o                             (lc_state_o),
     .feat_ctrl_o                            (feat_ctrl),
     .dbg_disable_o                          (dbg_disable_o),
+    .sep_fuse_dft_disable_o                 (sep_fuse_dft_disable_o),
+    .smc_fuse_dft_disable_o                 (smc_fuse_dft_disable_o),
     .lc_sigint_err_o                        (lc_sigint_err_o),
     .shadow_regs_o                          (),
     .fuse_sense_done_o                      (sep_fuse_sense_done_o),
@@ -1018,7 +1015,6 @@ NUM_EXT_DEMUX_PORTS
     .smc_fuse_sense_done_i            (smc_fuse_sense_done_i),
     .sep_fuse_sense_done_i            (sep_fuse_sense_done_o),
 
-    .sep_straps_i                     (sep_straps_i),
 
     .nmi_vec_o                        (nmi_vec),
 
@@ -1124,74 +1120,139 @@ NUM_EXT_DEMUX_PORTS
   assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
   assign security_disable_o   = security_disable;
 
-  // External debug bus assignment (384 bits, 16-bit aligned fields)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugCpuStatusLaneWidth_A, $bits
+      ({sep_cpu_trace.trace_rv_i_valid_ip, sep_cpu_trace.trace_rv_i_exception_ip, sep_cpu_trace.trace_rv_i_interrupt_ip, 13'b0}
+          ) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugEccPerfLaneWidth_A, $bits
+      ({cpu_iccm_ecc_single_error, cpu_iccm_ecc_double_error, cpu_dccm_ecc_single_error, cpu_dccm_ecc_double_error, cpu_dec_tlu_perfcnt0, cpu_dec_tlu_perfcnt1, cpu_dec_tlu_perfcnt2, cpu_dec_tlu_perfcnt3, 8'b0}
+          ) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugInterruptLaneWidth_A, $bits
+      ({intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq, entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error, 1'b0}
+          ) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugResetStatusLaneWidth_A, $bits
+                                    ({sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0})
+                                    == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceAddressLaneWidth_A, $bits
+                                    (sep_cpu_trace.trace_rv_i_address_ip[15:0]) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceInsnLaneWidth_A, $bits
+                                    (sep_cpu_trace.trace_rv_i_insn_ip[15:0]) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugTraceExceptionLaneWidth_A, $bits
+      ({sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugControlLaneWidth_A, $bits
+      ({8'b0, o_cpu_run_ack, o_debug_mode_status, o_cpu_halt_status, o_cpu_halt_ack, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
+          ) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugSipTokenLaneWidth_A, $bits
+                                    ({10'b0, sep_efuse_token_match_sip_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugChipletTokenLaneWidth_A, $bits
+                                    ({10'b0, sep_efuse_token_match_chiplet_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugRemapLaneWidth_A, $bits
+                                    ({8'b0, local_masters_remap_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugOutboundFilterLaneWidth_A, $bits
+      ({{(16 - 2 * $clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)
+       ) {1'b0}}, outbound_write_filter_hit_debug, outbound_read_filter_hit_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugInboundFilterLaneWidth_A, $bits
+      ({{(16 - 2 * $clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)
+       ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugReservedLanesWidth_A, $bits(160'b0) == 10 * 16)
+
+  // External debug bus assignment (24 lanes, 16 bits per lane)
   assign ext_debug_bus_o = {
-            // [383:368] CPU trace valid and exception
-            sep_cpu_trace.trace_rv_i_valid_ip, sep_cpu_trace.trace_rv_i_exception_ip,
-            sep_cpu_trace.trace_rv_i_interrupt_ip, 13'b0,
+    // [383:368] CPU trace valid and exception
+    sep_cpu_trace.trace_rv_i_valid_ip,
+    sep_cpu_trace.trace_rv_i_exception_ip,
+    sep_cpu_trace.trace_rv_i_interrupt_ip,
+    13'b0,
 
-            // [367:352] ECC errors and performance counters
-            cpu_iccm_ecc_single_error, cpu_iccm_ecc_double_error,
-            cpu_dccm_ecc_single_error, cpu_dccm_ecc_double_error,
-            cpu_dec_tlu_perfcnt0, cpu_dec_tlu_perfcnt1, cpu_dec_tlu_perfcnt2, cpu_dec_tlu_perfcnt3,
-            8'b0,
+    // [367:352] ECC errors and performance counters
+    cpu_iccm_ecc_single_error,
+    cpu_iccm_ecc_double_error,
+    cpu_dccm_ecc_single_error,
+    cpu_dccm_ecc_double_error,
+    cpu_dec_tlu_perfcnt0,
+    cpu_dec_tlu_perfcnt1,
+    cpu_dec_tlu_perfcnt2,
+    cpu_dec_tlu_perfcnt3,
+    8'b0,
 
-            // [351:336] Interrupt signals
-            intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq,
-            entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error,
-            8'b0,
+    // [351:336] Seven scalar interrupts, eight mailbox interrupts, one reserved bit
+    intr_wdog_timer_bark,
+    sep_mailbox_interrupt,
+    km_mbox_irq,
+    entropy_source_irq,
+    ext_trng_irq,
+    intr_dma_done,
+    intr_dma_chunk_done,
+    intr_dma_error,
+    1'b0,  // [336] Reserved
 
-            // [335:320] Reset and security status
-            sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0,
+    // [335:320] Reset and security status
+    sep_reset_n,
+    wdt_timer_rst_req,
+    security_disable,
+    13'b0,
 
-            // [319:304] CPU trace instruction address [15:0]
-            sep_cpu_trace.trace_rv_i_address_ip[15:0],
+    // [319:304] CPU trace instruction address [15:0]
+    sep_cpu_trace.trace_rv_i_address_ip[15:0],
 
-            // [303:288] CPU trace instruction [15:0]
-            sep_cpu_trace.trace_rv_i_insn_ip[15:0],
+    // [303:288] CPU trace instruction [15:0]
+    sep_cpu_trace.trace_rv_i_insn_ip[15:0],
 
-            // [287:272] CPU trace ecause and tval [15:0]
-            {sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]},
+    // [287:272] CPU trace ecause and tval [15:0]
+    {
+      sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]
+    },
 
-            // [271:256] Debug control signals
-            8'b0,                  // [271:264] Reserved padding
-            o_cpu_run_ack,         // [263]
-            o_debug_mode_status,   // [262]
-            o_cpu_halt_status,     // [261]
-            o_cpu_halt_ack,        // [260]
-            1'b0,
-            debug_brkpt_status,    // [258]
-            mpc_debug_run_ack,     // [257]
-            mpc_debug_halt_ack,    // [256]
+    // [271:256] Debug control signals
+    8'b0,  // [271:264] Reserved padding
+    o_cpu_run_ack,  // [263]
+    o_debug_mode_status,  // [262]
+    o_cpu_halt_status,  // [261]
+    o_cpu_halt_ack,  // [260]
+    1'b0,
+    debug_brkpt_status,  // [258]
+    mpc_debug_run_ack,  // [257]
+    mpc_debug_halt_ack,  // [256]
 
-            // [255:240] SEP eFuse debug
-            6'b0,                  // [255:250] Reserved padding
-            sep_efuse_debug,       // [249:240]
+    // [255:240] SEP eFuse debug
+    6'b0,  // [255:250] Reserved padding
+    sep_efuse_debug,  // [249:240]
 
-            // [239:224] SEP eFuse RMA SiP token match debug
-            10'b0,                 // [239:230] Reserved padding
-            sep_efuse_token_match_sip_debug,      // [229:224]
+    // [239:224] SEP eFuse RMA SiP token match debug
+    10'b0,  // [239:230] Reserved padding
+    sep_efuse_token_match_sip_debug,  // [229:224]
 
-            // [223:208] SEP eFuse RMA chiplet token match debug
-            10'b0,                 // [223:214] Reserved padding
-            sep_efuse_token_match_chiplet_debug,  // [213:208]
+    // [223:208] SEP eFuse RMA chiplet token match debug
+    10'b0,  // [223:214] Reserved padding
+    sep_efuse_token_match_chiplet_debug,  // [213:208]
 
-            // [207:192] Local masters address-remap hit debug
-            10'b0,                        // [207:198] Reserved padding
-            local_masters_remap_debug,    // [197:192]
+    // [207:192] Local masters address-remap hit debug
+    8'b0,  // [207:200] Reserved padding
+    local_masters_remap_debug,  // [199:192]
 
-            // [191:176] Outbound filter hit debug
-            {(16 - 2*$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)){1'b0}},
-            outbound_write_filter_hit_debug,
-            outbound_read_filter_hit_debug,
+    // [191:176] Outbound filter hit debug
+    {(16 - 2 * $clog2(
+        sep_pkg::OUTBOUND_FILTER_NUM_FILTERS
+    )) {1'b0}},
+    outbound_write_filter_hit_debug,
+    outbound_read_filter_hit_debug,
 
-            // [175:160] Inbound filter hit debug
-            {(16 - 2*$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)){1'b0}},
-            inbound_write_filter_hit_debug,
-            inbound_read_filter_hit_debug,
+    // [175:160] Inbound filter hit debug
+    {(16 - 2 * $clog2(
+        sep_pkg::INBOUND_FILTER_NUM_FILTERS
+    )) {1'b0}},
+    inbound_write_filter_hit_debug,
+    inbound_read_filter_hit_debug,
 
-            // [159:0] Reserved for future use
-            160'b0
-        };
+    // [159:0] Reserved for future use
+    160'b0
+  };
 
 endmodule

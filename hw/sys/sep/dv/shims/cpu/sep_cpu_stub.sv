@@ -136,11 +136,10 @@ module sep_cpu
   sep_32_64_3_12_axi_req_t  lsu_axi_req;   // driven below from the tb cocotb master
   sep_32_64_3_12_axi_resp_t lsu_axi_resp;  // tb reads this net; driven by demux below
 
-  // The stub is the SOLE driver of the LSU master (no VeeR core), so drive the
-  // request directly from the tb's assembled cocotb-AXI struct via an upward
-  // reference instead of a tb-side `force`. This keeps lsu_axi_req single-driven
-  // -- `force` is only needed to override a real driver, which the stub does not
-  // have, and it is also a Verilator limitation we avoid here.
+  // The stub is the SOLE driver of the LSU master (no VeeR core), so the
+  // request is driven from the tb's assembled cocotb-AXI struct through an
+  // upward reference and lsu_axi_req stays single-driven; Verilator cannot
+  // force a whole request struct.
   // (Do NOT assign lsu_axi_resp - it is driven by the LSU demux below.)
   assign lsu_axi_req = sep_uvm_top.lsu_req_drive;
 

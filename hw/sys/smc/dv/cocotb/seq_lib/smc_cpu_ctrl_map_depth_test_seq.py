@@ -13,24 +13,22 @@ symbol from ``hw/sys/smc/regs/gen/c/blocks/smc_base_config.h`` -- never a hand
 literal and never an address computed as ``BASE_ADDR + <offset>``. So every read
 verifies decode *and* spec-defined reset content.
 
-There is deliberately no row addressing ``0xC001_0050``. It is not
-"reserved/open-bus space within the block window":
-``SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR``
-is ``0xC0010000`` and ``SMC_TOP_SMC_BASE_CONFIG_SIZE`` is ``0x0000004C``
+``SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR`` is ``0xC0010000`` and
+``SMC_TOP_SMC_BASE_CONFIG_SIZE`` is ``0x0000004C``
 (``hw/sys/smc/regs/gen/c/smc_addr.h:108-109``), so the window ends at
-``0xC001004B`` and ``0xC0010050`` is outside it. Undecoded space reads back
-``0x00000000``, which is exactly what the row expected, so it could not fail on
-any RTL while logging a register-shaped name that names no register
-(``[ADDRESS-FROM-AUTHORITATIVE-MAP]``). It is replaced here by ``REGION_SIZE``,
-a real register of the same block with a non-zero generated reset -- more decode
-coverage, not less, and a row that fails if the fabric ever stops decoding it.
+``0xC001004B``. Undecoded space above it reads back ``0x00000000``, so a row
+that expected 0 there could not fail on any RTL while logging a register-shaped
+name that names no register (``[ADDRESS-FROM-AUTHORITATIVE-MAP]``); every row
+therefore addresses a register inside the window, and ``REGION_SIZE`` -- a real
+register of the same block with a non-zero generated reset -- fails if the
+fabric ever stops decoding it.
 """
 
 from __future__ import annotations
 
 import cocotb
 
-from .smc_addr_map import _SMC_BASE_CFG_H, _field_mask, smc_addr
+from .smc_addr_map import _SMC_BASE_CFG_H, HANG_DET_IRQ_TEST, _field_mask, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 
@@ -76,7 +74,7 @@ CPU_MAP_READS = [
 
 
 class smc_cpu_ctrl_map_depth_test_seq(SmcCsrSeq):
-    """Cover SMC_BASE_CONFIG map/hang-detector CSRs until firmware traffic is public."""
+    """Read the SMC_BASE_CONFIG map/hang-detector CSRs at their generated resets over SEP_IN."""
 
     def __init__(self, name: str = "smc_cpu_ctrl_map_depth_test_seq") -> None:
         super().__init__(name)
@@ -90,7 +88,31 @@ class smc_cpu_ctrl_map_depth_test_seq(SmcCsrSeq):
         # checking zero items while this sequence still passed
         # ([NO-ZERO-ACTIVITY-PASS]). `assert_all_reachable` adds the scoreboard
         # cross-check (`sys_axi_checks_seen >= accesses`) that carries the claim.
-        self.assert_all_reachable(len(CPU_MAP_READS), "CPU_CTRL_MAP")
+
+        # Positive control for the sweep above. Every row compares a reset value,
+        # so a window that answered its reset word from a dead responder, or a
+        # read path stuck at those constants, satisfies all of them. Writing a
+        # non-reset value into one row and reading it back shows the window is
+        # live, then the reset value is restored so the sweep's own compares are
+        # unaffected.
+        probe_addr = dict((n, a) for n, a, _e in CPU_MAP_READS)["HANG_DET_DATA_ACCEL_CTRL"]
+        probe_reset = dict((n, e) for n, _a, e in CPU_MAP_READS)["HANG_DET_DATA_ACCEL_CTRL"]
+        probe_val = probe_reset ^ HANG_DET_IRQ_TEST
+        await self.csr_write("CPU_MAP_PROBE_WRITE", probe_addr, probe_val)
+        await self.csr_read("CPU_MAP_PROBE_READBACK", probe_addr, expected=probe_val)
+        await self.csr_write("CPU_MAP_PROBE_RESTORE", probe_addr, probe_reset)
+        await self.csr_read("CPU_MAP_PROBE_RESTORE_RB", probe_addr, expected=probe_reset)
+        cocotb.log.info(
+            "CHK-CPU-CTRL-MAP-LIVE: HANG_DET_DATA_ACCEL_CTRL@0x%08x took "
+            "0x%x and returned to its reset 0x%x, so the reset compares below "
+            "are read from a live window",
+            probe_addr,
+            probe_val,
+            probe_reset,
+        )
+        self.chk_seen.add("CHK-CPU-CTRL-MAP-LIVE")
+
+        self.assert_all_reachable(len(CPU_MAP_READS) + 4, "CPU_CTRL_MAP")
         # Conditional evidence for the map rows themselves: emitted only after
         # every row's exact reset compare has been enforced by the scoreboard
         # and the reachability cross-check above has passed.

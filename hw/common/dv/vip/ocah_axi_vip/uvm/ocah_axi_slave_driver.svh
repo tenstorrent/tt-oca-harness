@@ -3,7 +3,7 @@
 //
 // Reactive AXI4/AXI4-Lite memory-backed responder driver (device side).
 //
-// The class analogue of sv/ocah_axi_ram_responder.sv: a sparse zero-default
+// A sparse zero-default
 // byte memory answering FIXED/INCR/WRAP single- and multi-beat bursts with
 // ID echo, per-beat one-shot error matching (via ocah_axi_slave_config),
 // per-channel bounded READY backpressure, and single-outstanding registered
@@ -16,16 +16,15 @@
 // DRIVES the responder-side signals (awready/wready/b*/arready/r*)
 // procedurally with NBA — so the TB must wire only the master-driven
 // direction into this vif and route the responder-driven signals back to
-// the DUT. Reactive: there is deliberately no sequencer; tests configure
-// and inspect the device through ocah_axi_slave_sequence.
+// the DUT. Reactive: there is no sequencer; tests configure and inspect the
+// device through ocah_axi_slave_sequence.
 
 class ocah_axi_slave_driver extends uvm_component;
   `uvm_component_utils(ocah_axi_slave_driver)
 
   ocah_axi_slave_config cfg;
 
-  // Sparse backing memory: unwritten bytes read as zero (matching the
-  // zero-initialized SV RAM responder).
+  // Sparse backing memory: unwritten bytes read as zero.
   protected bit [7:0] m_mem[bit [63:0]];
 
   // Statistics (completed bursts).

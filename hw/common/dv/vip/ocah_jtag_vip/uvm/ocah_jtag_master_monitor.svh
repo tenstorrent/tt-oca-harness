@@ -17,8 +17,8 @@
 //     reconstruction state across reset boundaries.
 //
 // IR/DR scan-level reconstruction (accumulating Shift-x bits across
-// Pause/Exit2 re-entries into scan transactions) is the next decode layer,
-// added when a scoreboard consumer exists.
+// Pause/Exit2 re-entries into scan transactions) is ocah_jtag_scan_builder's
+// job, layered on this event stream.
 
 class ocah_jtag_master_monitor extends uvm_monitor;
   `uvm_component_utils(ocah_jtag_master_monitor)

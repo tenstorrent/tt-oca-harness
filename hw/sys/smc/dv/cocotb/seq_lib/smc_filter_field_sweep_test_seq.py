@@ -1,11 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap round 3: per-filter field sweep.
+"""Per-filter field sweep.
 
-Round 1/2 only touched FILTER_CONFIG. Each filter entry exposes 3
-CSR fields: FILTER_CONFIG, START_ADDR, END_ADDR. This test reads all
-3 fields of entries 0-3 in both directions (inbound + outbound) = 24
-reads, addressing and expecting via the generated PeakRDL map.
+Each filter entry exposes three CSR fields: FILTER_CONFIG, START_ADDR,
+END_ADDR. This test reads every field of entries 0-3 in both directions
+(inbound + outbound), addressing and expecting via the generated PeakRDL map.
 """
 
 from __future__ import annotations

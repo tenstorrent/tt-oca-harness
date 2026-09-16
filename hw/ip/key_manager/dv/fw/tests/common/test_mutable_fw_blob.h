@@ -137,9 +137,8 @@ static const uint32_t mutable_fw_blob_small[] = {
  * the same word before handing over to establish the contrast.
  *
  * A blocked read is not a trap — zero is a legitimate data value — so the blob
- * survives to report.  TEST_RESULT is set from the comparison rather than
- * hard-coded to 1, so a ROM that is still readable fails the test outright
- * instead of hanging.
+ * survives to report.  TEST_RESULT carries the comparison result, so a readable
+ * ROM fails the test instead of hanging it.
  *
  * Layout (offsets from SRAM base 0x8000):
  *   0x0000  JAL   x0, +20      jump to main at 0x8014

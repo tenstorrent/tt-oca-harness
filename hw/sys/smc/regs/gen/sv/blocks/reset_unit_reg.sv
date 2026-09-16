@@ -241,8 +241,6 @@ module reset_unit_reg (
         logic SS_RESET_COMPLETE;
         logic SS_COLD_RESET_LOCK;
         logic SS_FORCE_TO_REF_CLK;
-        logic STRAPS_LO;
-        logic STRAPS_HI;
         logic SYNC_REG;
         logic ISOLATE_REQ_REG;
         logic ISOLATE_REQ_PINEN_REG;
@@ -282,8 +280,6 @@ module reset_unit_reg (
         decoded_reg_strb.SS_RESET_COMPLETE = cpuif_req_masked & (cpuif_addr == 8'h60) & !cpuif_req_is_wr;
         decoded_reg_strb.SS_COLD_RESET_LOCK = cpuif_req_masked & (cpuif_addr == 8'h70);
         decoded_reg_strb.SS_FORCE_TO_REF_CLK = cpuif_req_masked & (cpuif_addr == 8'h80);
-        decoded_reg_strb.STRAPS_LO = cpuif_req_masked & (cpuif_addr == 8'h90) & !cpuif_req_is_wr;
-        decoded_reg_strb.STRAPS_HI = cpuif_req_masked & (cpuif_addr == 8'h94) & !cpuif_req_is_wr;
         decoded_reg_strb.SYNC_REG = cpuif_req_masked & (cpuif_addr == 8'ha8);
         decoded_reg_strb.ISOLATE_REQ_REG = cpuif_req_masked & (cpuif_addr == 8'hb0);
         is_external |= cpuif_req_masked & (cpuif_addr == 8'hb0);
@@ -775,12 +771,6 @@ module reset_unit_reg (
         end
         if(rd_mux_addr == 8'h80) begin
             readback_data_var[31:0] = field_storage.SS_FORCE_TO_REF_CLK.force_ss_to_ref_clk_n.value;
-        end
-        if(rd_mux_addr == 8'h90) begin
-            readback_data_var[31:0] = hwif_in.STRAPS_LO.straps.next;
-        end
-        if(rd_mux_addr == 8'h94) begin
-            readback_data_var[28:0] = hwif_in.STRAPS_HI.straps.next;
         end
         if(rd_mux_addr == 8'ha8) begin
             readback_data_var[0] = field_storage.SYNC_REG.sync.value;

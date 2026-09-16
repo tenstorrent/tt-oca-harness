@@ -75,7 +75,7 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
     read_loops = test_cfg.idcode_reads_per_loop;
     // No scan-count cross-check: the random-TMS-walk preconditions cross
     // Shift-x, publishing scan-builder items the sequence cannot count
-    // (the cocotb twin likewise ran without the pin-level monitor).
+    // (cocotb use_monitor=False parity).
     attach_family_checker({
                           "CHK-IDCODE-RAW",
                           "CHK-IDCODE-STABLE",

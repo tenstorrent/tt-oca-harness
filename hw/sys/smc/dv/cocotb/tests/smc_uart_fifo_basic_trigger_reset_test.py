@@ -17,18 +17,29 @@ from smc_base_test import smc_base_test
 class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
     """UART0 loopback FIFO trigger levels + RX/TX FIFO reset."""
 
+    required_evidence = (
+        "CHK-UART-FIFO-RST-RX",
+        "CHK-UART-FIFO-RST-TX",
+        "CHK-UART-FIFO-TRIG-1B",
+        "CHK-UART-FIFO-TRIG-32B",
+        "CHK-UART-FIFO-TRIG-4B",
+        "CHK-UART-FIFO-TRIG-ABOVE-DEPTH",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         seq = smc_uart_fifo_basic_trigger_reset_test_seq("uart_fifo_basic_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.reset_ok, "RX/TX FIFO reset phase did not complete"
+        assert seq.above_depth_ok, "above-depth RX FIFO trigger checks did not complete"
         # Gate on the MEASURED interrupt ids of each trigger cell: below the
         # programmed level the RCVR-data-available id must be absent, at the
         # level it must be present, and after popping back below it must be gone
         # again. Both cells run the same three legs against different levels, so
         # a tied-off FCR.RCVR_TRIGGER fails one of them.
-        for label in ("1B", "4B"):
+        for label in ("1B", "4B", "32B"):
             ids = seq.trigger_ids.get(label)
             assert ids is not None, f"trigger cell {label} produced no samples"
             pre_id, trig_id, below_id = ids
@@ -51,14 +62,15 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
-            # Conservative stimulus floor: 127-143 accesses observed across the
-            # retained regression runs (FIFO trigger polls vary with timing), so
-            # the floor is set below the minimum observed.
+            # Stimulus floor: it sits below the run-to-run minimum because the FIFO trigger polls
+            # are timing-dependent.
             min_csr_accesses=100,
             csr_accesses=measured_csr,
             proxy=False,
             details=(
-                f"FIFO trigger-level ids {seq.trigger_ids}; RX/TX FIFO reset "
-                f"before/after LSR contrast"
+                f"FIFO trigger-level ids {seq.trigger_ids}; threshold 32 stayed "
+                f"inactive at depth 31 and fired at 32, while thresholds 64 "
+                f"through 4096 stayed inactive for an empty 32-entry FIFO; "
+                f"RX/TX FIFO reset before/after LSR contrast"
             ),
         )

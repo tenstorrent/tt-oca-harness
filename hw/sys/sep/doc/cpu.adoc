@@ -61,16 +61,11 @@ recovery mode versus normal mode.
 [[cpu-reset-vector]]
 ==== Reset Vector
 
-The SEP CPU reset vector is held in a test data register (TDR) in the EL2
-debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
-Boot ROM base address (`SEP_BOOT_ROM_MEM_BASE_ADDR`) on JTAG reset
-(TRST assertion or the Test-Logic-Reset TAP state), so the CPU executes the
-BL0 Root-of-Trust code after any cold boot.
-
-A debugger may redirect the first instruction fetch by shifting an alternate
-address into the TDR through JTAG while the SEP CPU is held in reset. The
-programmed value persists until the TAP is reset. This supports bring-up and
-failure analysis flows that execute from a memory other than the Boot ROM.
+The SEP CPU wrapper sets the VeeR EL2 `RESET_VEC` parameter to the Boot ROM
+base address, `SEP_BOOT_ROM_MEM_BASE_ADDR`. The current CPU therefore fetches
+BL0 from that address after reset. The vendored VeeR EL2 debug TAP has no
+reset-vector test data register, so JTAG cannot redirect the reset vector in
+the current integration.
 
 [[debug-module]]
 ==== Debug Module
@@ -88,9 +83,12 @@ The Boot ROM holds the BL0 immutable Root-of-Trust code which is the
 first code running on the SEP host upon power on. It has the following
 features:
 
-* 64 kB capacity
-* SECDED Error Correction - single error detect double error correct
-** 32-bit data + 7-bit ECC tag
+* 64 KiB CPU-visible address aperture
+* Dedicated CPU memory path outside the SEP local AXI crossbar
+* Read-only behavior; stores receive a response but do not modify the ROM
+
+The open integration uses a 64-bit generic ROM without an ECC error sideband.
+See <<sep-rom>> for the hardware and firmware-image layout.
 
 There is no ROM patching facility in the first generation
 implementation. This feature is planned for the second generation design
@@ -99,58 +97,21 @@ and will use OTP as the backup storage.
 [[bl0-secure-boot-and-bl1-execution-unlock]]
 ==== BL0 Secure Boot and BL1 Execution Unlock
 
-The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
-SEP system into a runnable state after power on reset (PoR) and running
-the first stage of external firmware AKA BL1. Below is a summary of the
-steps involved.
+The SEP CPU Boot ROM firmware, BL0, establishes the execution environment,
+selects a boot source, validates a manifest and its payload, and transfers
+control to SEP BL1. A primary chiplet normally reads from SPI flash; recovery
+and secondary-chiplet boots wait for an image staged by the SMC.
 
-* SEP initialization
-** Read configuration strap values from GPIO registers
-** Determine boot options, if any
-* Configure CPU CSRs
-** PMP
-* Configure peripherals
-** SPI host controller
-** OTP controller
-** DMA controller
-** HMAC-SHA256
-* Start C runtime and execute the following boot tasks
-* Load second stage bootloader firmware BL1
-** Instruct SPI host controller to fetch BL1 firmware from an attached
-external SPI flash memory device. Stream image from SPI to TCM memory
-via DMA controller.
-* Verify integrity of BL1 firmware image via RSA digital signature
-verification algorithm
-** Read manifest and extract firmware signature, RSA public key (n, e)
-and OTP personality mask
-** Run SHA256 firmware to generate the hash digest ``h'' of \{BL1
-firmware, OTP fuse profile}
-** Configure OTBN PK cryptographic accelerator image and parameters
-*** Extract the RSA3k digital signature verification firmware from BL0
-and load into the OTBN Imem, i.e. the instruction memory
-*** Provision the BL1 manifest's public key (n, e) into Key Manager via
-software write port.
-**** Exponent e is expected to be a short value such as 2**16+1, so we
-don't need 3k bits even if RSA3k is being used, only 17 bits
-**** Modulus n would still be the full 3k bits for RSA3k
-** Run RSA firmware to verify the BL1 signature stored in its manifest
-using its public key also stored in the manifest
-** Compare hash digest ``h'' with the decrypted signature. This is to
-guard against fault attacks.
-*** Read decrypted signature from OTBN Dmem.
-*** Remove any padding from digest (e.g. PKCS#1) to produce h'
-*** Perform comparison PASS := (h==h')
-**** Repeat this operation at least twice with a random delay in between
-and only pass verification check if individual checks pass. This is a
-guard against fault injection attacks.
-* Anti-rollback checks are completed at this point: security version of
-manifest is compared to security version in OTP
-* Verification of the integrity of SEP / SMC BL1 payload image based on
-payload hash/length
-* Execution unlock logic in the CPU PMP to enable BL1 code execution if
-hash comparisons have passed.
-** Failure to complete any of the above checks will result in processor
-entering fail loop requiring a reset event to exit
+Secure boot binds the manifest public key to a ROM or eFuse digest, checks key
+revocation and the BL1 security version, verifies the RSA-3072 signature with
+OTBN, and verifies the payload before execution. The validated BL1 image is
+copied to ICCM with the secure DMA and entered at its manifest-specified entry
+point. A failed check either selects the other SPI slot or terminates in a
+reset-only failure loop.
+
+The complete hardware contract is in <<sep-rom>>. Detailed firmware ordering,
+manifest processing, lifecycle policy, and BL1 handoff are in the production
+ROM firmware documentation under `hw/sys/sep/bootrom/prod/doc/`.
 
 Future versions of the SEP will also have additional hardware redundancy
 by running the CPU in Dual Core Lock Step. This will further protect
@@ -178,7 +139,7 @@ Scratch register set 1 has *additional warm reset* behavior. It can be
 reset by a signal from the Watchdog Timer (WDT).
 
 [[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
-==== Direct Memory Access Controller (DMA)
+==== Direct Memory Access (DMA)
 
 The module is based on the
 https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA

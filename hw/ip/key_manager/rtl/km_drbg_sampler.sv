@@ -183,20 +183,15 @@ module km_drbg_sampler
   //   - timeout_cnt never underflows past 0.
   assign timeout_hit = timeout_en && (timeout_cnt == 16'h0);
 
-  // Clear COUNT_GOOD/COUNT_BAD: write any value other than 0 to the respective STATUS field
-  // AW and W may handshake on different cycles; latch pending STATUS write on AW accept, fire on W accept
-  logic pending_status_wr;
-  logic write_status;
+  // PeakRDL presents the written COUNT field in .value the cycle after wr_swacc.
+  logic status_wr;
+  logic status_wr_q;
+  assign status_wr = hwif_out.STATUS.count_good.wr_swacc;
   always_ff @(posedge clk_i or negedge cold_rst_ni) begin
-    if (!cold_rst_ni) pending_status_wr <= 1'b0;
-    else if (!warm_rst_ni) pending_status_wr <= 1'b0;
-    else begin
-      if (reg_awvalid && reg_awready && (reg_awaddr == KM_DRBG_SAMPLER_STATUS_BASE_ADDR[ADDR_W-1:0]))
-        pending_status_wr <= 1'b1;
-      if (reg_wvalid && reg_wready && pending_status_wr) pending_status_wr <= 1'b0;
-    end
+    if (!cold_rst_ni) status_wr_q <= 1'b0;
+    else if (!warm_rst_ni) status_wr_q <= 1'b0;
+    else status_wr_q <= status_wr;
   end
-  assign write_status = reg_wvalid && reg_wready && pending_status_wr;
 
   // Prefetch: one word when CFG.PREFETCH=1; declared before DRBG handshake (used in tready)
   logic prefetched_valid;
@@ -317,10 +312,12 @@ module km_drbg_sampler
         if (state_q == StRespond || state_q == StTimeout || state_q == StStreamErr)
           data_bytes_collected <= 3'd0;
       end
-      // Clear on write non-zero to STATUS; else increment
-      if (write_status) begin
-        if (reg_wdata[31:16] != 16'h0) count_good <= 16'h0;
-        if (reg_wdata[15:8] != 8'h0) count_bad <= 8'h0;
+      // Hold increment for the decode cycle so .value is the write data.
+      if (status_wr || status_wr_q) begin
+        if (status_wr_q) begin
+          if (hwif_out.STATUS.count_good.value != 16'h0) count_good <= 16'h0;
+          if (hwif_out.STATUS.count_bad.value != 8'h0) count_bad <= 8'h0;
+        end
       end else begin
         if (state_q == StRespond && slot_valid && slot_is_data && data_read_rresp == 2'b00) begin
           if (count_good != 16'hFFFF) count_good <= count_good + 1'b1;

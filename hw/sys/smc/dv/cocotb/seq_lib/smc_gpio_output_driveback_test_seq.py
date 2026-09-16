@@ -14,7 +14,7 @@ so exactly one output-enable bit must change, and that bit's value must track
 the register. This is self-locating (no hard-coded pad index) and does not
 depend on the OR aggregates.
 
-DATA_CTRL field encoding (hw/periph/gpio/data/registers/rdl/gpio_intf.rdl):
+DATA_CTRL field encoding (hw/ip/gpio/regs/gpio_intf.rdl):
   * bit0      core2pad          register-driven value to the pad
   * bit[5:4]  enable_rx_tx      2'b01 = TX enabled (drive pad)
   * bit16     interface_enable  select register values to drive the pad

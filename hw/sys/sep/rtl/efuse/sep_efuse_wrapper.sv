@@ -28,7 +28,7 @@ module sep_efuse_wrapper #(
   input  logic                               test_en_i,
   input  logic                               scan_rst_ni,
 
-  input  sep_pkg::sep_straps_t               sep_straps_i,
+  input  logic                               secure_tm_req_i,
   input  logic                               ext_boot_seq_done_i,
 
   output logic                               security_disable_o,
@@ -101,6 +101,10 @@ module sep_efuse_wrapper #(
   logic [sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_local_raw;
   logic lc_sigint_err;
   logic lc_restricted_state;
+  localparam sep_efuse_pkg::addr_t EFUSE_MMR_BASE_ADDR =
+      sep_efuse_pkg::addr_t'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR);
+  localparam sep_efuse_pkg::addr_t EFUSE_MMR_SIZE =
+      sep_efuse_pkg::addr_t'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE);
 
   // Efuse signals
   logic fuse_sense_done;
@@ -193,9 +197,8 @@ module sep_efuse_wrapper #(
   //   - If security_disable is NOT asserted, the test_en strap is latched when SEP fuse sense is done.
   always_ff @(posedge clk_i) begin
     if (!rst_ni) secure_tm_n0_scan <= 1'b0;
-    else if (security_disable && (reset_cycle_cnt == 2'd1))
-      secure_tm_n0_scan <= sep_straps_i.test_straps.test_en;
-    else if (fuse_sense_done_posedge) secure_tm_n0_scan <= sep_straps_i.test_straps.test_en;
+    else if (security_disable && (reset_cycle_cnt == 2'd1)) secure_tm_n0_scan <= secure_tm_req_i;
+    else if (fuse_sense_done_posedge) secure_tm_n0_scan <= secure_tm_req_i;
   end
 
   /////////////////////////////////////////////////////////////
@@ -213,8 +216,12 @@ module sep_efuse_wrapper #(
   );
 
   // Additional control shall be applied to the JTAG port, such that, in PROD and RMA_SIP states, it can only access the MMR registers.
-  assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
-  assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside {[och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR:och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR+och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE-1]};
+  assign is_wr_access_token = axil_sep_otp_jtag_req_i.aw.addr inside
+      {[EFUSE_MMR_BASE_ADDR:
+        EFUSE_MMR_BASE_ADDR + EFUSE_MMR_SIZE - sep_efuse_pkg::addr_t'(1)]};
+  assign is_rd_access_token = axil_sep_otp_jtag_req_i.ar.addr inside
+      {[EFUSE_MMR_BASE_ADDR:
+        EFUSE_MMR_BASE_ADDR + EFUSE_MMR_SIZE - sep_efuse_pkg::addr_t'(1)]};
 
   // A differential-decode integrity error (lc_sigint_err) is treated as a restricted state, exactly like PROD / RMA_SiP.
   assign lc_restricted_state = lc_sigint_err ||

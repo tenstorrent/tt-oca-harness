@@ -10,7 +10,11 @@
 // per scan item so the scoreboard pairs the two streams in lockstep: IR
 // scans, scans under another instruction, and scans under an unknown
 // instruction carry no contract. No comparison, no reporting. The cocotb
-// realization has no twin yet (DTP_TB_ARCH).
+// realization has no twin (DTP_TB_ARCH).
+//
+// expected_idcode defaults to the public DTP elaboration's value; a bench
+// that embeds DTP sets it from its own configuration before build_phase, so
+// the same model judges the embedded instance.
 
 `uvm_analysis_imp_decl(_dtp_idcode_event)
 
@@ -18,6 +22,9 @@ class dtp_idcode_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
   `uvm_component_utils(dtp_idcode_ref_model)
 
   virtual dtp_tb_if tb_vif;
+
+  // Device identification the model predicts (32 bits, IEEE 1149.1 layout).
+  bit [31:0] expected_idcode = DtpDefaultIdcode;
 
   uvm_analysis_imp_dtp_idcode_event #(ocah_jtag_event, dtp_idcode_ref_model) event_export;
 
@@ -45,7 +52,7 @@ class dtp_idcode_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
       int unsigned width = (t.bit_count < 32) ? t.bit_count : 32;
       exp.compare   = 1'b1;
       exp.mask      = ocah_rng::bit_mask(width);
-      exp.expected  = DtpDefaultIdcode & exp.mask;
+      exp.expected  = expected_idcode & exp.mask;
       exp.context_s = $sformatf("ir=0x%02h bits=%0d", m_model.ir(), t.bit_count);
     end
     expected_ap.write(exp);

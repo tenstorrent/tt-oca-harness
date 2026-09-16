@@ -6,7 +6,7 @@
 
 === Straps and eFuses
 
-Early assembly reads strap registers at `0xC0002090` and `0xC0002094`.
+Early assembly reads strap registers at `0xC0405800` and `0xC0405804`.
 The C strap driver later caches the fields used for reporting or policy.
 
 .ROM strap use

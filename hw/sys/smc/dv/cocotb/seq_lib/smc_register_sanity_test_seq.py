@@ -1,20 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_register_sanity_test (Batch B).
+"""Sequence for smc_register_sanity_test.
 
 Real AXI traffic on the **SEP_IN** fabric ingress port:
   * read reset value from SMC scratch registers,
   * write distinct patterns,
   * read back the exact values.
 
-Access-port identity (do not restate this as "SYS AXI"): the test starts this
-sequence on ``env.sys_axi_agent``, whose driver is ``SmcSysAxiDriver`` with
-``bus_prefix = "s_axi"`` / ``bus_name = "SEP_IN AXI"``
-(``env/smc_sys_axi_agent.py``), and ``tb_top.sv`` wires the top-level ``s_axi_*``
-pins into ``smc.sep_axi_in_req_i``. The historical ``sys_axi_agent`` handle name
-is misleading; the separate ``env.sys_in_axi_agent`` (``bus_prefix =
-"sys_axi"``) is the one that drives ``sys_axi_in_req_i``, and this sequence never
-uses it.
+Access-port identity: the test starts this sequence on ``env.sys_axi_agent``,
+whose driver is ``SmcSysAxiDriver`` with ``bus_prefix = "s_axi"`` /
+``bus_name = "SEP_IN AXI"`` (``env/smc_sys_axi_agent.py``), and ``tb_top.sv``
+wires the top-level ``s_axi_*`` pins into ``smc.sep_axi_in_req_i``. The
+separate ``env.sys_in_axi_agent`` (``bus_prefix = "sys_axi"``) drives
+``sys_axi_in_req_i``; this sequence never uses it.
 
 What that does and does not prove: the scratch CSRs are internal to
 ``smc_misc_wrap`` and are reached over the same internal register fabric from
@@ -75,10 +73,8 @@ class smc_register_sanity_test_seq(smc_base_test_seq):
         # The catalog entry validates the address AND carries the symbol-sourced
         # RDL reset value (``SCRATCH__SCRATCH__DATA_reset`` out of the generated
         # ``misc_wrap.h``). That value is what the reset read and the restore
-        # write below compare against: loading it and then comparing a hand-typed
-        # ``0`` made the symbol-sourced half dead code while the compare rotted
-        # independently of the RDL ([NO-DUMMY-DEAD-CODE] /
-        # [ADDRESS-FROM-AUTHORITATIVE-MAP]).
+        # write below compare against, so the compare moves with the RDL instead
+        # of a hand-typed ``0`` ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
         targets = []
         for name, addr, pattern in WRITE_READBACK:
             entry = catalog_entry(name, addr, writable=True)
@@ -102,11 +98,9 @@ class smc_register_sanity_test_seq(smc_base_test_seq):
             await self._write(name, addr, reset)
             await self._read(name, addr, expected=reset)
 
-        # Structural invariant (refactor guard), NOT the activity floor: the loops
-        # above are directed with no early exit, so this equals
-        # 3 CSRs x 5 accesses = 15 whenever body() completes. The fail-capable
-        # floor lives at the record_protocol_vip call in
-        # tests/smc_register_sanity_test.py (min_csr_accesses=15).
+        # Exact access count of this body (5 accesses per CSR); the fail-capable
+        # floor is `min_csr_accesses` at the record_protocol_vip call in
+        # tests/smc_register_sanity_test.py.
         assert self.accesses == 5 * len(WRITE_READBACK), (
             f"expected {5 * len(WRITE_READBACK)} real SEP_IN AXI CSR accesses, got {self.accesses}"
         )

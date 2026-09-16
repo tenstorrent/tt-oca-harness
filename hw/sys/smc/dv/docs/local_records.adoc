@@ -77,10 +77,10 @@ required an upstream fix, a commercial simulator, or PeakRDL re-generation.
 |4 |Clock glitch-free |`clk_glitch_free_test` |`smc_clk_glitch_free_test` |`SmcClockObserver` |clk mux select
 |5 |Clock force ref |`clk_force_refclk_test` |`smc_clk_force_refclk_test` |`SmcClockObserver` |ref/smc select
 |6 |PLL observability |`pll_gpio_observe_test` |`smc_pll_observe_test` |`SmcGpioObserver` |PLL lock + GPIO
-|7 |GPIO strap sanity |`smc_gpio_strap_sanity_test` |`smc_gpio_strap_sanity_test` |`SmcGpioAgent` |gpio_i/o, strap
+|7 |GPIO strap / IRQ |`smc_gpio_irq_active_test` |`smc_gpio_irq_active_test` |`SmcGpioAgent` |gpio_i/o;
 |8 |I2C clock-gate |already built |`smc_i2c_cg_sanity_test` ✓ |`SmcI2cAgent` (observer) |already in tb_top
 |9 |Hang detector |`smc_hang_detector_sanity_test` |`smc_hang_detector_sanity_test` |`SmcInterruptObserver` |hang IRQ
-|10 |External interrupts |`smc_external_interrupts_test` |`smc_ext_irq_sanity_test` |`SmcInterruptAgent` |IRQ in/out
+|10 |External interrupts |`smc_ext_interrupts_pin_test` |`smc_ext_interrupts_pin_test` |`SmcInterruptAgent` |IRQ in/out
 |=========================================================================================================================================
 
 Effort: ~5 days tests + 3 days shared infra = *8 days*
@@ -113,7 +113,7 @@ Effort: ~12 days tests + 7 days BFM infra = *19 days*
 |# |Module |Legacy test |OSS testcase |OCAH VIP
 |21 |I2C controller↔target |`smc_i2c_sanity_test` |`smc_i2c_master_target_test` |`smc_i2c_protocol_vip` (SMC-local)
 |22 |I2C target only |`smc_i2c_target_sanity_test` |`smc_i2c_target_sanity_test` |`smc_i2c_protocol_vip` (SMC-local)
-|23 |Dual I2C |`dual_i2c_test` |`smc_dual_i2c_test` |`smc_i2c_protocol_vip` (SMC-local)
+|23 |Dual I2C |`smc_i2c_p0_multictrl_test` |`smc_i2c_p0_multictrl_test` |`smc_i2c_protocol_vip` (SMC-local)
 |24 |iJTAG |`smc_basic_ijtag_test` |`smc_ijtag_basic_test` |`ocah_jtag_vip`
 |25 |I3C → fabric |`smc_input_fabric_i3c_to_output_wr_rd_test` |`smc_i3c_to_fabric_test` |proxy CSR + pad checks (no I3C VIP)
 |26 |OCTS |`octs_sanity_test` |`smc_octs_sanity_test` |new OCAH-local BFM

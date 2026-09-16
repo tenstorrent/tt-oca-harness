@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unit tests for the VCS UVM-library precompile command.
+"""Unit tests for the VCS stage helpers (cocotb runner build args, UVM precompile).
 
 Run from the repository root:
 
@@ -15,6 +15,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from runlib.stages import (  # noqa: E402
+    COCOTB_RUNNER_TOOLS,
+    _cocotb_build_args,
     _last_plusarg_wins,
     _uvm_testname_override,
     _vcs_uvm_precompile_cmd,
@@ -125,3 +127,49 @@ class LastPlusargWins(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CocotbVcsRunnerBuildArgs(unittest.TestCase):
+    """The cocotb VCS path builds through cocotb's Python runner like Verilator/Xcelium."""
+
+    def _args(self, **overrides) -> Namespace:
+        base = {"define": [], "comp_arg": [], "build_jobs": None, "sim_jobs": 1}
+        base.update(overrides)
+        return Namespace(**base)
+
+    def test_vcs_is_a_python_runner_tool(self):
+        self.assertIn("vcs", COCOTB_RUNNER_TOOLS)
+
+    def test_timescale_target_flags_defines_and_filelist(self):
+        build = {"vcs": {"timescale": "1ns/1ps"}}
+        run_target = {"defines": ["SMU_TB"], "tools": {"vcs": {"flags": ["-assert", "svaext"]}}}
+        argv = _cocotb_build_args(
+            "vcs", None, Path("/repo"), build, run_target, {}, {}, Path("/repo/f.f"), self._args()
+        )
+        self.assertEqual(argv[0], "-timescale=1ns/1ps")
+        self.assertEqual(argv[1:3], ["-assert", "svaext"])
+        self.assertIn("+define+SMU_TB", argv)
+        self.assertEqual(argv[-2:], ["-f", "/repo/f.f"])
+
+    def test_no_timescale_when_unset(self):
+        argv = _cocotb_build_args(
+            "vcs", None, Path("/repo"), {}, {}, {}, {}, Path("/repo/f.f"), self._args()
+        )
+        self.assertFalse(any(arg.startswith("-timescale") for arg in argv))
+
+    def test_build_jobs_and_cli_flags_reach_vcs(self):
+        argv = _cocotb_build_args(
+            "vcs",
+            None,
+            Path("/repo"),
+            {"vcs": {"partition_compile": True}},
+            {},
+            {},
+            {},
+            Path("/repo/f.f"),
+            self._args(define=["X=1"], comp_arg=["-lca"], build_jobs=8),
+        )
+        self.assertIn("-lca", argv)
+        self.assertIn("+define+X=1", argv)
+        self.assertIn("-j8", argv)
+        self.assertIn("-partcomp", argv)

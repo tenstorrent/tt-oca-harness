@@ -46,7 +46,7 @@ class SmcClkItem(uvm_sequence_item):
         # gater whose enable is deasserted (cg_en == 0) must pass its clock
         # through, so the gated output has to toggle over the window. This is
         # the only leg of COUNT_EDGES that can fail because of DUT RTL. Set
-        # False on a leg where the gated clock is legitimately stopped for a
+        # False on a leg where the gated clock is stopped for a
         # different reason (e.g. its source domain is held in reset).
         self.gated_clk_contract: bool = True
 

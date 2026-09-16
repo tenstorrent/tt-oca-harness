@@ -52,7 +52,6 @@ static int test_address_field_precise_toggle(void) {
             return -1;
         }
 
-        // Read back to verify toggle
         uint32_t readback;
         if (read_output_remap_reg(region, OUTPUT_REMAP_SRC_ADDR_LOW_OFFSET, &readback) != 0) {
             printf("ERROR: Failed to read address pattern %d\n", i);
@@ -89,13 +88,11 @@ static int test_enable_bit_combinations(void) {
             return -1;
         }
 
-        // Toggle enable/disable
         if (toggle_output_remap_region_enable(region) != 0) {
             printf("ERROR: Failed enable toggle %d\n", i);
             return -1;
         }
 
-        // Toggle again
         if (toggle_output_remap_region_enable(region) != 0) {
             printf("ERROR: Failed enable re-toggle %d\n", i);
             return -1;
@@ -161,7 +158,6 @@ static int test_size_mask_full_toggle(void) {
             return -1;
         }
 
-        // Verify mask value
         uint32_t readback_mask;
         if (read_output_remap_reg(region, OUTPUT_REMAP_CTRL_OFFSET, &readback_mask) != 0) {
             printf("ERROR: Failed size mask readback %d\n", i);
@@ -191,7 +187,6 @@ static int test_attribute_flag_complete_toggle(void) {
             return -1;
         }
 
-        // Test attribute readback
         uint32_t status_readback;
         if (read_output_remap_reg(region, OUTPUT_REMAP_STATUS_OFFSET, &status_readback) != 0) {
             printf("ERROR: Failed attribute status readback %d\n", attr_cycle);
@@ -207,7 +202,6 @@ int main(void) {
     printf("Output Remap Reg Final Push Test\n");
     printf("Strategy: Full scan of remaining CSR toggle bits\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_output_remap_reg_final_push_test");
         return TEST_FAIL;

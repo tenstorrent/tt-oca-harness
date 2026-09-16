@@ -4,7 +4,10 @@
 
 from __future__ import annotations
 
-from pyuvm import uvm_component
+import cocotb
+from pyuvm import ConfigDB, UVMConfigItemNotFound, uvm_component
+
+__all__ = ["SmuSepBootScoreboard", "SmuSmcBootScoreboard"]
 
 
 class SmuSmcBootScoreboard(uvm_component):
@@ -48,7 +51,7 @@ class SmuSmcBootScoreboard(uvm_component):
         if self.max_scratch_writes == 0:
             errors.append("SMC scratch SRAM had no write activity")
         assert not errors, "SMC boot scoreboard: " + "; ".join(errors)
-        # aidv tokens for wrapper firmware smoke (distinct from DUT cocotb smoke)
+        # Evidence tokens of the wrapper firmware smoke (distinct from the bare-DUT smoke)
         self._log_evidence(self.logger, "SMC_ROM_READ_OK")
         self._log_evidence(self.logger, "SMC_SCRATCH_WRITE_OK")
         self._log_evidence(self.logger, "SMC_TEST_PASS_OK")
@@ -58,11 +61,10 @@ class SmuSmcBootScoreboard(uvm_component):
 class SmuSepBootScoreboard(uvm_component):
     """Require real SEP reset, boot-ROM fetch, ICCM execution, and DCCM stores.
 
-    This is the boot-readiness bar of the SMU-level SEP smoke (mirroring the
-    internal `smu_sep_smoke_test` contract): SEP must be observed fetching
-    from the boot-ROM entry window and then executing firmware from ICCM.
-    Console/STDOUT checking over the external AXI path is out of scope here
-    and tracked separately (issue #3939).
+    This is the boot-readiness bar of the SMU-level SEP smoke: SEP must be
+    observed fetching from the boot-ROM entry window and then executing
+    firmware from ICCM.
+    Console/STDOUT checking over the external AXI path is out of scope here.
     """
 
     MIN_DISTINCT_PCS = 16
@@ -73,17 +75,43 @@ class SmuSepBootScoreboard(uvm_component):
     ICCM_END = 0xC004_0000
 
     def build_phase(self) -> None:
+        # Retirement evidence lives in the SEP CPU trace monitor, which
+        # smu_base_test builds before any scoreboard. check_phase fails loudly
+        # when it is absent: skipping the PC-advance check would vacuously pass
+        # a core that never booted.
+        try:
+            self.trace_mon = ConfigDB().get(self, "", "sep_trace_mon")
+        except UVMConfigItemNotFound:
+            self.trace_mon = None
         self.reset_low_seen = False
         self.reset_high_seen = False
         self.fuse_low_seen = False
         self.fuse_high_seen = False
+        self._fuse_sense_skipped = None
         self.smc_arm_seen = False
-        self.trace_count = 0
-        self.pcs: set[int] = set()
         self.boot_rom_seen = False
         self.iccm_seen = False
         self.max_dccm_writes = 0
         self.console = bytearray()
+
+    @property
+    def fuse_sense_skipped(self) -> bool:
+        """Whether the DUT replaced the SEP fuse sense with the shadow preload.
+
+        Read from ``sep_fuse_sense_skipped_o``, which the testbench drives from
+        the SEP efuse shadow registers' own ``sim_skip_fuse_sense`` flag: the
+        node that selects the substitute, inside the module that would otherwise
+        run the sense. An unreadable or unresolved port reads as "the sense
+        ran", which keeps the fuse conditions required.
+        """
+        if self._fuse_sense_skipped is None:
+            signal = getattr(cocotb.top, "sep_fuse_sense_skipped_o", None)
+            value = signal.value if signal is not None else None
+            if value is None or (hasattr(value, "is_resolvable") and not value.is_resolvable):
+                self._fuse_sense_skipped = False
+            else:
+                self._fuse_sense_skipped = bool(int(value))
+        return self._fuse_sense_skipped
 
     def sample_status(self, *, reset_n: int, fuse_done: int) -> None:
         self.reset_low_seen |= not bool(reset_n)
@@ -94,13 +122,13 @@ class SmuSepBootScoreboard(uvm_component):
     def sample_arm(self, smc_pass: int) -> None:
         self.smc_arm_seen |= bool(smc_pass)
 
-    def sample_trace(self, valid: int, pc: int) -> None:
-        if valid:
-            pc &= 0xFFFF_FFFF
-            self.trace_count += 1
-            self.pcs.add(pc)
-            self.boot_rom_seen |= self.BOOT_ROM_BASE <= pc < self.BOOT_ROM_END
-            self.iccm_seen |= self.ICCM_BASE <= pc < self.ICCM_END
+    @property
+    def trace_count(self) -> int:
+        return self.trace_mon.trace_count if self.trace_mon is not None else 0
+
+    @property
+    def pcs(self) -> set[int]:
+        return self.trace_mon.pcs if self.trace_mon is not None else set()
 
     def sample_windows(self, *, boot_rom_seen: int, iccm_seen: int) -> None:
         """Fold in the TB's sticky fetch-window detectors.
@@ -122,12 +150,16 @@ class SmuSepBootScoreboard(uvm_component):
         return bytes(self.console).decode("ascii", "replace")
 
     def boot_ready(self) -> bool:
-        """True once every required boot-readiness evidence item is present."""
+        """True once every required boot-readiness evidence item is present.
+
+        The fuse-sense terms count only when the sense actually runs; with the
+        substitute active they are testbench-supplied and carry no readiness.
+        """
+        fuse_ready = self.fuse_sense_skipped or (self.fuse_low_seen and self.fuse_high_seen)
         return (
             self.reset_low_seen
             and self.reset_high_seen
-            and self.fuse_low_seen
-            and self.fuse_high_seen
+            and fuse_ready
             and self.smc_arm_seen
             and self.boot_rom_seen
             and self.iccm_seen
@@ -147,12 +179,13 @@ class SmuSepBootScoreboard(uvm_component):
     def check_phase(self) -> None:
         self.logger.info(
             "SEP boot evidence: reset(low/high)=%s/%s fuse(low/high)=%s/%s "
-            "smc_arm=%s traces=%d distinct_pcs=%d boot_rom=%s iccm=%s "
-            "dccm_writes=%d console=%r",
+            "fuse_sense_skipped=%s smc_arm=%s traces=%d distinct_pcs=%d "
+            "boot_rom=%s iccm=%s dccm_writes=%d console=%r",
             self.reset_low_seen,
             self.reset_high_seen,
             self.fuse_low_seen,
             self.fuse_high_seen,
+            self.fuse_sense_skipped,
             self.smc_arm_seen,
             self.trace_count,
             len(self.pcs),
@@ -162,14 +195,25 @@ class SmuSepBootScoreboard(uvm_component):
             self.console_text(),
         )
         errors: list[str] = []
+        if self.trace_mon is None:
+            errors.append("no SEP CPU trace monitor attached (sep_trace_mon missing from ConfigDB)")
         if not self.reset_low_seen:
             errors.append("SEP reset was never observed asserted")
         if not self.reset_high_seen:
             errors.append("SEP reset was never observed released")
-        if not self.fuse_low_seen:
-            errors.append("SEP fuse-done was never observed inactive")
-        if not self.fuse_high_seen:
-            errors.append("SEP fuse sense never completed")
+        if self.fuse_sense_skipped:
+            self.logger.info(
+                "SEP fuse sense is replaced by the shadow-register preload in this run "
+                "(sep_fuse_sense_skipped_o=1): fuse-done low/high=%s/%s is informational, "
+                "not boot-readiness evidence",
+                self.fuse_low_seen,
+                self.fuse_high_seen,
+            )
+        else:
+            if not self.fuse_low_seen:
+                errors.append("SEP fuse-done was never observed inactive")
+            if not self.fuse_high_seen:
+                errors.append("SEP fuse sense never completed")
         if not self.smc_arm_seen:
             errors.append("SMC arm firmware never signaled TEST_PASS")
         if not self.boot_rom_seen:

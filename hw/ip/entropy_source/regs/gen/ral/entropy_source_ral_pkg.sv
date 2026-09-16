@@ -200,7 +200,7 @@
             this.INPUT_COUNT = uvm_reg_field::type_id::create("INPUT_COUNT");
             this.INPUT_COUNT.configure(this, 4, 4, "RO", 1, 'h0, 1, 1, 0);
             this.OUTPUT_COUNT = uvm_reg_field::type_id::create("OUTPUT_COUNT");
-            this.OUTPUT_COUNT.configure(this, 3, 8, "RO", 1, 'h0, 1, 1, 0);
+            this.OUTPUT_COUNT.configure(this, 4, 8, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__SHA256_STATUS
 

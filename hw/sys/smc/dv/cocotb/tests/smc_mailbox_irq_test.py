@@ -22,15 +22,24 @@ from smc_base_test import smc_base_test
 #   6  WIRQT / RIRQT / IRQEN write + read-back pairs
 #   6  the same three restored to 0, write + read-back pairs
 #   2  CLOCK_GATE_CONTROL restore write + read-back
-# The floor stays at 19 (a minimum, not the exact count): the sequence's own end
-# gate asserts the exact 20 (`EXPECTED_ACCESSES`, seq:109/193-196), so raising
-# this to 20 would duplicate that verdict here.
+# The floor is a minimum, not the exact count: the sequence's own end gate
+# asserts the exact 20 (`EXPECTED_ACCESSES`).
 MAILBOX_IRQ_MIN_CSR_ACCESSES = 19
 
 
 @pyuvm.test()
 class smc_mailbox_irq_test(smc_base_test):
     """Run mailbox status and IRQ-control CSR checks."""
+
+    required_evidence = (
+        "CHK-MAILBOX-IRQ-ASSERT",
+        "CHK-MAILBOX-IRQ-CLEAR",
+        "CHK-MAILBOX-IRQ-IDLE",
+        "CHK-MAILBOX-IRQ-SOURCE",
+        "CHK-MAILBOX-IRQT-CLAMP",
+        "CHK-MAILBOX-IRQT-IN-RANGE",
+    )
+    min_evidence = 6
 
     auto_protocol_vip = False
 
@@ -44,12 +53,11 @@ class smc_mailbox_irq_test(smc_base_test):
             csr_accesses=seq.accesses,
             min_csr_accesses=MAILBOX_IRQ_MIN_CSR_ACCESSES,
             proxy=False,
-            # Names the observable this scenario actually checked. The previous
-            # wording claimed "toggled SMC sync IRQ", but check_mailbox_irq_source
-            # reads only tb_mailbox_irq_any (tb_top.sv:1363,
+            # Names the observable this scenario actually checked:
+            # check_mailbox_irq_source reads only tb_mailbox_irq_any (tb_top.sv,
             # |u_dut.u_smc.peripheral_interrupts[7:0]); tb_sync_irq is a
-            # different net (tb_top.sv:1355) that this test never samples, and
-            # the IRQ agent is not started here.
+            # different net that this test never samples, and the IRQ agent is
+            # not started here.
             details=(
                 "SEP mailbox interrupt injection raised tb_mailbox_irq_any "
                 "(peripheral_interrupts[7:0]); tb_sync_irq not sampled here"

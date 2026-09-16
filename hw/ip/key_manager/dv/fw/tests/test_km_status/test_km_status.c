@@ -4,14 +4,14 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_status.c
- * @brief T040 - Status and version command integration test
+ * @brief Status and version command integration test
  *
  * Boots the KM firmware and exercises all four status/version commands
  * through the full messaging pipeline (SEP mailbox → ISR → rx_buf →
  * rom_msg_rx_process → dispatch → handler → tx_buf → ISR → outbound):
  *
  *   1. CMD_HW_VER   → SUCCESS, return_arg = KMCSR VERSION register
- *   2. CMD_ROM_VER  → SUCCESS, return_arg = 1.0.0 packed
+ *   2. CMD_ROM_VER  → SUCCESS, return_arg = ROM_KM_ROM_VERSION_* packed
  *   3. CMD_SRAM_VER → FAILURE  (no SRAM firmware loaded)
  *   4. CMD_STAT     → SUCCESS, return_arg = RECOVERABLE_ERR (0 after boot)
  *
@@ -136,7 +136,7 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*=================================================================
-     * Subtest 2: CMD_ROM_VER → SUCCESS, return_arg = 1.0.0
+     * Subtest 2: CMD_ROM_VER → SUCCESS, return_arg = packed ROM_KM_ROM_VERSION_*
      *=================================================================*/
     TEST_SUBTEST_START("CMD_ROM_VER");
     {

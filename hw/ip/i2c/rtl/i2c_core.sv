@@ -86,7 +86,7 @@ module i2c_core
   logic [29:0] bus_active_timeout;
   logic        stretch_timeout_enable;
   logic        bus_timeout_enable;
-  logic [19:0] host_timeout;
+  logic [30:0] host_timeout;
   logic [30:0] nack_timeout;
   logic        nack_timeout_en;
   logic [30:0] host_nack_handler_timeout;
@@ -1152,5 +1152,10 @@ module i2c_core
                        TARGET_TX_FIFO_DEPTH > 0 && TARGET_TX_FIFO_DEPTH_W <= MaxFifoDepthW)
   `OCAH_OT_ASSERT_INIT(TargetRxFifoDepthValid_A,
                        TARGET_RX_FIFO_DEPTH > 0 && TARGET_RX_FIFO_DEPTH_W <= MaxFifoDepthW)
+  `OCAH_OT_ASSERT_INIT(HostTimeoutWidthValid_A, $bits(host_timeout) == $bits
+                       (reg_out_i.HOST_TIMEOUT_CTRL.VAL.value))
+
+  `OCAH_OT_ASSERT(HostTimeoutValuePreserved_A,
+                  host_timeout == reg_out_i.HOST_TIMEOUT_CTRL.VAL.value)
 
 endmodule

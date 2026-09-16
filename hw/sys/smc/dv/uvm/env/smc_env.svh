@@ -10,6 +10,9 @@
 //   * the active ocah_axi_master_env driving the SEP_IN AXI4 ingress (the
 //     VIP's commercial-overridable unit) and the smc_virtual_sequencer that
 //     exposes its sequencer to the scenario virtual sequences;
+//   * the memory-backed, fault-capable ocah_axi_slave_agent that answers the
+//     SYS_OUT AXI4 boundary on the ocah_axi_if tb_top publishes as
+//     sys_out_vif; its slave sequence rides the virtual sequencer;
 //   * one passive ocah_axi_env on the SEP_IN mirror interface, monitor only:
 //     the VIP's memory-shadow reference model cannot describe a CSR block
 //     (reset values, read-only fields, side effects), so the bench's own
@@ -34,6 +37,11 @@ class smc_env extends ocah_env;
   ocah_axi_config m_sep_in_axi_cfg;
   ocah_axi_env    m_sep_in_axi_env;
 
+  // SYS_OUT egress: the shared VIP responder on the ocah_axi_if the struct
+  // bridge feeds in tb_top.
+  ocah_axi_slave_config m_sys_out_slave_cfg;
+  ocah_axi_slave_agent  m_sys_out_slave_agent;
+
   // Always-on checking: one reference model per feature and the scoreboard
   // that pairs them; the virtual sequencer every pass runs on.
   smc_scratch_csr_ref_model m_scratch_csr_ref_model;
@@ -57,6 +65,7 @@ class smc_env extends ocah_env;
 
     build_sep_in_master();
     build_sep_in_passive();
+    build_sys_out_slave();
 
     m_scratch_csr_ref_model =
             smc_scratch_csr_ref_model::type_id::create("m_scratch_csr_ref_model", this);
@@ -68,7 +77,8 @@ class smc_env extends ocah_env;
 
   function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
-    m_vseqr.m_sep_in_seqr = m_sep_in_master_env.m_sequencer;
+    m_vseqr.m_sep_in_seqr       = m_sep_in_master_env.m_sequencer;
+    m_vseqr.m_sys_out_slave_seq = m_sys_out_slave_agent.seq;
     // scratch_csr: the monitor stream feeds the reference model and the
     // scoreboard's observed side; the model's expected_ap feeds the other.
     m_sep_in_axi_env.item_ap.connect(m_scratch_csr_ref_model.analysis_export);
@@ -111,6 +121,21 @@ class smc_env extends ocah_env;
     m_sep_in_axi_cfg.en_scoreboard = 1'b0;
     uvm_config_db#(ocah_axi_config)::set(this, "m_sep_in_axi_env*", "cfg", m_sep_in_axi_cfg);
     m_sep_in_axi_env = ocah_axi_env::type_id::create("m_sep_in_axi_env", this);
+  endfunction
+
+  protected function void build_sys_out_slave();
+    m_sys_out_slave_cfg = ocah_axi_slave_config::type_id::create("m_sys_out_slave_cfg");
+    if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "sys_out_vif", m_sys_out_slave_cfg.vif))
+      `uvm_fatal(get_type_name(), "virtual ocah_axi_if `sys_out_vif` not found in uvm_config_db")
+    m_sys_out_slave_cfg.protocol   = OCAH_AXI_PROTO_AXI4;
+    m_sys_out_slave_cfg.addr_width = SmcSysOutAddrWidth;
+    m_sys_out_slave_cfg.data_width = SmcSysOutDataWidth;
+    m_sys_out_slave_cfg.id_width   = SmcSysOutIdWidth;
+    m_sys_out_slave_cfg.mem_bytes  = cfg.sys_out_mem_bytes;
+    m_sys_out_slave_cfg.name_tag   = "smc_sys_out";
+    uvm_config_db#(ocah_axi_slave_config)::set(this, "m_sys_out_slave_agent*", "slave_cfg",
+                                               m_sys_out_slave_cfg);
+    m_sys_out_slave_agent = ocah_axi_slave_agent::type_id::create("m_sys_out_slave_agent", this);
   endfunction
 
 endclass : smc_env

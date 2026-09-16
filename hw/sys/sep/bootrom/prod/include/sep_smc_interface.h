@@ -36,21 +36,41 @@ static inline uint32_t sep_get_smc_base(void) {
 // SMC register offsets (relative to SMC base)
 // ---------------------------------------------------------------------------
 
-// Reset unit — latched strap values (32-bit LO + 32-bit HI).
-#define SMC_STRAPS_LO_OFFSET 0x2090u
-#define SMC_STRAPS_HI_OFFSET 0x2094u
+// Latched strap values (32-bit LO + 32-bit HI). Live in the smc_external_supplementary window
+#define SMC_STRAPS_LO_OFFSET 0x405800u
+#define SMC_STRAPS_HI_OFFSET 0x405804u
 
 // CPU_CTRL scratch registers (64-bit stride: index * 8).
-#define SMC_SCRATCH_BASE_OFFSET 0x10100u
+//
+// 0x39080 is SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR (smc_addr.h), 0xC0039080
+// SMC-local, 16 entries of 8 bytes (SMC_CPU_CTRL_SCRATCH_NUM = 0x10) -- exactly
+// the shape the index<<3 accessor below assumes, up to the highest index used
+// (15, MEM_REPAIR_STATUS).
+//
+// Was 0x10100, which is unmapped in this design: it falls in the gap between
+// SMC_BASE_CONFIG (ends 0xC001004C) and SMC_ALIAS_REMAP (0xC0012000). Every
+// scratch access -- post code, virtual console, the manifest-address and
+// status-to-SEP handshake, the MBIST failure publication -- therefore went to a
+// hole. DV could not see it: the testbench models the SMC as a flat axi_sim_mem
+// seeded at whatever address the ROM reads, so any offset "works" in simulation.
+#define SMC_SCRATCH_BASE_OFFSET 0x39080u
 
-// Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE, RAS_BANK_INFO).
+// Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE).
 #define SMC_CHIP_ID_OFFSET 0x2908u
 
 // SMC fuse map — chiplet/package ID for usage constraints (C13.7).
 // 8 × 32-bit words each. SEP reads via AXI: smc_base + offset.
-// These are the shared offsets for the SMC fuse-map register window.
-#define SMC_FUSE_MAP_CHIPLET_ID_OFFSET 0xB008u
-#define SMC_FUSE_MAP_PACKAGE_ID_OFFSET 0xB028u
+//
+// 0x7008 / 0x7028 are SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID / _PACKAGE_ID
+// (smc_addr.h), 0xC0007008 / 0xC0007028 SMC-local, inside SMC_EFUSE_MAP at
+// 0xC0007000.
+//
+// Were 0xB008 / 0xB028, which are unmapped here: that range lies between
+// DTP_CTRL_REG (0xC000B000) and DFX_CTRL (0xC000B800). Note the low 12 bits were
+// already right -- only the block base moved, 0xB000 -> 0x7000 -- which is the
+// same shape of drift as the DFX register below.
+#define SMC_FUSE_MAP_CHIPLET_ID_OFFSET 0x7008u
+#define SMC_FUSE_MAP_PACKAGE_ID_OFFSET 0x7028u
 #define SMC_LC_STATE_OFFSET 0x290Cu
 
 // SMC SRAM (SPM memory).
@@ -58,7 +78,21 @@ static inline uint32_t sep_get_smc_base(void) {
 #define SMC_SRAM_SIZE_BYTES 0x100000u // 1 MiB
 
 // DFX_CTRL_STATUS_SMU register — memory repair + MBIST status (merged into single register).
-#define SMC_DFX_CTRL_STATUS_SMU_OFFSET 0xF800u
+//
+// 0xB800 is SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR (smc_addr.h), 0xC000B800
+// SMC-local, the first register of the DFX_CTRL block (base 0xC000B800,
+// size 0x18: STATUS_SMU, DEBUG_CTRL at +8, DEBUG_BUS_MUX at +0x10).
+//
+// Was 0xF800, unmapped in this design -- the gap between DFX_CTRL_DEBUG_BUS_MUX
+// (0xC000B810) and SMC_BASE_CONFIG (0xC0010000). The pre-C boot gate in vector.S
+// reads this register and fails closed, so on real silicon an unmapped read
+// returning 0 would halt every boot with mem_repair_success clear.
+//
+// A SEP->SMC address remap cannot account for the difference: output_remap.sv
+// substitutes only bits [55:IdxStart] and passes [IdxStart-1:0] through
+// unchanged, with IdxStart = 19 (sep_pkg.sv, 512 KB granularity). Both 0xF800
+// and 0xB800 lie inside those preserved low bits.
+#define SMC_DFX_CTRL_STATUS_SMU_OFFSET 0xB800u
 
 // DFX_CTRL_STATUS bitfield (same for SOC and SEP_SMC views).
 #define DFT_STATUS_MEM_REPAIR_DONE_BIT 0
@@ -72,22 +106,24 @@ static inline uint32_t sep_get_smc_base(void) {
 // Strap bit definitions (SEP↔SMC interface contract)
 // ---------------------------------------------------------------------------
 
-// STRAPS_LO (32-bit):
+// STRAPS_LO (GPIO 0-31, bit index == GPIO index):
 #define SMC_STRAP_MEM_REPAIR_BYPASS_BIT 13
+#define SMC_STRAP_BOOT_RECOVERY_BIT 19
+#define SMC_STRAP_BL0_PLLCLK_BIT 20
 #define SMC_STRAP_STATUS_RPT_DISABLE_BIT 21
 #define SMC_STRAP_PRIMARY_CHIPLET_BIT 25
 
-// STRAPS_HI (32-bit, representing bits [63:32] of the 64-bit strap word):
-#define SMC_STRAP_BOOT_RECOVERY_BIT_HI 23 // absolute bit 55
-#define SMC_STRAP_BL0_PLLCLK_BIT_HI 24    // absolute bit 56
-#define SMC_STRAP_ROTATE_UPDATE_BIT_HI 29 // absolute bit 61
+// STRAPS_HI (GPIO 32-60, bit index == GPIO index - 32):
+#define SMC_STRAP_MBIST_BYPASS_BIT_HI 22  // GPIO 54
+#define SMC_STRAP_ROTATE_UPDATE_BIT_HI 26 // GPIO 58
 
 // Masks (applied to the corresponding 32-bit register read).
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK (1u << SMC_STRAP_MEM_REPAIR_BYPASS_BIT)
+#define SMC_STRAP_BOOT_RECOVERY_MASK (1u << SMC_STRAP_BOOT_RECOVERY_BIT)
+#define SMC_STRAP_BL0_PLLCLK_MASK (1u << SMC_STRAP_BL0_PLLCLK_BIT)
 #define SMC_STRAP_STATUS_RPT_DISABLE_MASK (1u << SMC_STRAP_STATUS_RPT_DISABLE_BIT)
 #define SMC_STRAP_PRIMARY_CHIPLET_MASK (1u << SMC_STRAP_PRIMARY_CHIPLET_BIT)
-#define SMC_STRAP_BOOT_RECOVERY_MASK (1u << SMC_STRAP_BOOT_RECOVERY_BIT_HI)
-#define SMC_STRAP_BL0_PLLCLK_MASK (1u << SMC_STRAP_BL0_PLLCLK_BIT_HI)
+#define SMC_STRAP_MBIST_BYPASS_MASK (1u << SMC_STRAP_MBIST_BYPASS_BIT_HI)
 #define SMC_STRAP_ROTATE_UPDATE_MASK (1u << SMC_STRAP_ROTATE_UPDATE_BIT_HI)
 
 // ---------------------------------------------------------------------------

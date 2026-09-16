@@ -22,8 +22,8 @@ from .ocah_axi_lite_slave_sequence import OcahAxiLiteSlaveSequence
 
 __all__ = ["OcahAxiLiteSlaveAgent"]
 
-# Accepted for signature compatibility with earlier releases; geometry is
-# taken from the bus signals themselves.
+# Accepted and ignored for signature compatibility; geometry is taken from
+# the bus signals themselves.
 _INFORMATIONAL_KEYS = ("data_width", "strb_width", "start")
 
 

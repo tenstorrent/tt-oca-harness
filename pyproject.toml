@@ -22,6 +22,7 @@ dependencies = [
   "peakrdl-regblock>=1.2.0",
   "peakrdl-systemrdl>=1.0.1",
   "pre-commit==4.5.1",  # 4.6+ requires Git 2.31; supported environments include Git 2.26
+  "pyelftools>=0.33",
   "ruff==0.16.5",
   "semantic-version>=2.10.0",
   "shellcheck-py==0.11.0.1",  # wraps the shellcheck binary; see shfmt-py below for the formatter half
@@ -75,6 +76,7 @@ ignore = ["E501"]
 # sep_reg_meta must import before sep_reg (it puts regs/gen/py on sys.path as
 # a side effect); isort's alphabetical sort would put sep_reg first and break it.
 "hw/sys/sep/dv/cocotb/env/sep_efuse_image.py" = ["I001"]
+"hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py" = ["I001"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -101,10 +103,13 @@ exclude = '''(?x)^(
 #   is reverted by the next `regen-regs` run, so the real fix belongs upstream.
 # - chipyard_generated_files/crossbars/ot_pkg mirror flows/lint/verible.mk's
 #   own excludes: generated or OpenTitan-origin RTL this repo doesn't hand-edit.
+# - integration collateral is a symlink index over sources covered here or
+#   intentionally skipped at their canonical generated/vendor locations.
 # - dv/fw/include/metal and dv/fw/tests/coremark* are upstream SiFive Metal
 #   HAL and EEMBC CoreMark sources, copied in rather than hand-maintained here.
 skip = """\
 vendor,nonfree,.git,\
+*/integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
 */dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
 *.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,uv.lock,*.lock\
@@ -116,5 +121,6 @@ ignore-words-list = """\
 STAP,stap,STAPs,staps,EDN,edn,OT,hart,Hart,THRE,thre,WEL,DED,ded,\
 inout,Inout,ist,wit,dout,oen,chainIn,LockIn,DAA,clen,aack,thi,pres,te,\
 Dum,ND,nd,RUNN,ASSIGNIN,Synopsys,synopsys,unsecure,Unsecure,UNSECURE,\
-interruptor,Interruptor,interruptors,Interruptors\
+interruptor,Interruptor,interruptors,Interruptors,\
+SpecField,specfield\
 """

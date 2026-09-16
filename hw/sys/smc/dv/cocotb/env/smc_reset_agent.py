@@ -66,7 +66,7 @@ class SmcResetDriver(uvm_driver):
     def _matches(self, item: SmcResetItem) -> bool:
         """True when the last sample satisfies every expectation on `item`.
 
-        Duplicated (deliberately) from the scoreboard's compare: the driver
+        Duplicated from the scoreboard's compare: the driver
         needs the predicate to know when to stop polling, while the *verdict*
         stays in the scoreboard so a WAIT_STATE that never matched still fails
         there with diagnostics rather than being silently absorbed here.

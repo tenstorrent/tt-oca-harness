@@ -183,12 +183,11 @@ int main(void) {
     simputs("Phase B: Timeout - Monitoring for timeout condition\n");
     write_scratch(0, 0x03);
 
-    /* Poll for timeout flag for ~200us (2000 polls * 100 cycles)
-     * Timeout should occur at 100us (100k cycles) after SYNC stops
+    /* Poll STATUS over a 200-poll * 100-cycle window; the SECONDARY timeout fires 100k
+     * cycles after SYNC stops and is measured on the cocotb side.
      */
     uint32_t timeout_poll_count = 0;
-    uint32_t max_timeout_polls =
-        200; /* 200 * 100 = 20us monitoring window (kept short for co-sim speed) */
+    uint32_t max_timeout_polls = 200;
 
     for (timeout_poll_count = 0; timeout_poll_count < max_timeout_polls; timeout_poll_count++) {
         wait_cycles(100);

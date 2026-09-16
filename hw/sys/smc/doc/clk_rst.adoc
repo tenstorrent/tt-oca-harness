@@ -219,7 +219,7 @@ assertion.
 
 ====== Memory Test Bypass
 
-Memory repair and Built-In Self-Test (MBIST) operations can be
+Memory Built-In Self-Test (MBIST) and repair operations can be
 selectively bypassed during FLR operations (skip_mem_repair_o), enabling
 rapid reset sequences when comprehensive memory testing is not required.
 This bypass activates automatically when either FLR-triggered or

@@ -14,6 +14,6 @@ class dtp_ijtag_sib_all_off_test(dtp_base_test):
             dtp_ijtag_scan_test_seq,
             "sib_all_off",
             scenario="sib_all_off",
-            specific_env="DTP_IJTAG_SIB_ALL_OFF_TEST_LOOPS",
-            group_env="DTP_SCAN_TEST_LOOPS",
+            specific_knob="DTP_IJTAG_SIB_ALL_OFF_TEST_LOOPS",
+            group_knob="DTP_SCAN_TEST_LOOPS",
         )

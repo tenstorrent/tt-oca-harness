@@ -5,19 +5,18 @@
  * @file main.c
  * @brief OCTS P0 Sync-Load Test - DUT as PRIMARY, BFM as SECONDARY
  *
- * Genuine PRIMARY/SECONDARY OCTS sync_load test.
+ * PRIMARY/SECONDARY OCTS sync_load test.
  *
  * The OCTS SECONDARY datapath cannot be exercised with the DUT strapped SECONDARY in
  * this single-DUT-firmware testbench: the RTL SECONDARY trips ExpectedCountValid_A the
  * instant it sees a credit before being enabled by a sync_load, and that ordering cannot
- * be guaranteed across two independently-booting chiplets without changing hw/ RTL (which
- * is not permitted). Instead this test runs the DUT as OCTS PRIMARY and the master-BFM
- * chiplet as OCTS SECONDARY (booting the st_octs_p1_credit_test ROM). Starting the PRIMARY
- * timer emits the sync_load pulse (then the credit stream) on GPIO[58:59]; the BFM
- * SECONDARY latches the sync_load and tracks it. The cocotb checker
- * (check_primary_secondary_sync) does a REAL cross-chiplet verification (sync_load/credit
- * alignment + timer_count tracking within a margin), and this firmware reports its own
- * PRIMARY verdict in scratch[0].
+ * be guaranteed across two independently-booting chiplets. This test therefore runs the
+ * DUT as OCTS PRIMARY and the master-BFM chiplet as OCTS SECONDARY (booting the
+ * st_octs_p1_credit_test ROM). Starting the PRIMARY timer emits the sync_load pulse (then
+ * the credit stream) on GPIO[58:59]; the BFM SECONDARY latches the sync_load and tracks
+ * it. The cocotb checker (check_primary_secondary_sync) performs the cross-chiplet
+ * verification (sync_load/credit alignment + timer_count tracking within a margin), and
+ * this firmware reports its own PRIMARY verdict in scratch[0].
  */
 
 #include <stdint.h>

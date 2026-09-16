@@ -286,11 +286,11 @@ int main(void) {
 
     /*=================================================================
      * DEST_VALID[31:8] != 0 → invalid_arg, arg=1
-     * (Bits 4-7 are now valid for ABR seeds; bit 8 and above remain reserved.)
+     * (Bits 4-7 select ABR seeds; bit 8 and above are reserved.)
      *=================================================================*/
     TEST_SUBTEST_START("DEST_VALID rsvd[31:8] set (bit 8) → invalid_arg");
     {
-        uint32_t payload[6] = {3u,    0x00000100u, /* DEST_VALID: bit 8 set (truly reserved) */
+        uint32_t payload[6] = {3u,    0x00000100u, /* DEST_VALID: bit 8 set (reserved) */
                                0x11u, 0x22u,       0x33u, 0x44u};
         snapshot_kpv_ctrl(snap_before);
         int8_t rc;
@@ -344,13 +344,9 @@ int main(void) {
     /*=================================================================
      * Handle-pool exhaustion → failure, no arg, no KPV mutation
      *
-     * Directly set rom_keyreg_state.next_handle = 0 to simulate wrap-around
-     * (handle pool exhausted). Some KPV slots are free at this point (after
-     * the KPV-full test revokes are not done, but the pre-check must catch
-     * it before any slot is consumed).
-     *
-     * Use a fresh boot-state approach: reset next_handle to 0 and confirm
-     * CMD_KEY_LOAD detects exhaustion before mutating KPV.
+     * rom_keyreg_state.next_handle == 0 is the exhaustion sentinel (wrap
+     * from 255 to 0 after 255 allocations).  CMD_KEY_LOAD must detect it
+     * before mutating the KPV.
      *=================================================================*/
     TEST_SUBTEST_START("handle exhaustion (next_handle=0) → failure, no KPV mutation");
     {
@@ -360,13 +356,9 @@ int main(void) {
         uint8_t saved_next_handle = rom_keyreg_state.next_handle;
         rom_keyreg_state.next_handle = 0u;
 
-        /* With KPV full from the previous test, there are no free slots either.
-         * Reset rom_keyreg_state slot map for at least 1 slot to make the slot-fit
-         * succeed so we can verify the handle pre-check fires BEFORE KPV mutation.
-         *
-         * Alternative: just verify the handle pre-check fires.  Since all KPV
-         * slots are filled, find_consecutive_slots() will fail first.  To test
-         * the handle-exhaustion path specifically, revoke one key to free a slot. */
+        /* The KPV is full from the previous subtest, so find_consecutive_slots()
+         * would reject the load first; revoking one key frees a slot so the
+         * handle pre-check is the path under test. */
 
         /* Restore next_handle so we can do a revoke (revoke doesn't touch next_handle). */
         rom_keyreg_state.next_handle = saved_next_handle;

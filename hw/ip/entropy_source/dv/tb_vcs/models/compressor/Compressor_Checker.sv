@@ -7,9 +7,6 @@
 // Description:
 //   Compares DUT compressor output against reference model output.
 //   Reports mismatches using $error and tracks statistics.
-//
-// Author: Reference Model Generator
-// Date: 2025-11-21
 //------------------------------------------------------------------------------
 
 `timescale 1ns / 1ps
@@ -109,8 +106,8 @@ module Compressor_Checker (
   //--------------------------------------------------------------------------
 
   final begin
-    // Final report removed - use Python compressor_checker_verify() for summary
-    // Mismatches are reported immediately during simulation via $error above
+    // The Python compressor_checker_verify() summarizes check_count_o and
+    // mismatch_count_o at end of test; each mismatch is reported above via $error.
   end
 
 endmodule : Compressor_Checker

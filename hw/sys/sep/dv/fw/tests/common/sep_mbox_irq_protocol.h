@@ -43,12 +43,13 @@
  * generated OCH_SEP_TOP_AXIL_MAILBOX_* macros (no hardcoded literals). The SMC fw CANNOT include
  * sep.h -- that generated SEP header defines EFUSE_INTERFACE_CTRL/etc. reg types that
  * COLLIDE with the SMC's own smc_top_regs.h ("conflicting types"), so the SMC toolchain uses the
- * literal mirror below. This is not a silent duplication: sep_mbox_golden.py
+ * literal mirror below. sep_mbox_golden.py
  * derives the same offsets and masks from PeakRDL, so an SMC literal that
  * drifts from RDL lands at an address the golden does not expect and the
  * test fails. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
  * stride = OUTBOUND_1-OUTBOUND_0 (= 2*MAILBOX_SIZE = 0x1000). */
-#ifdef OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR /* SEP fw: generated source of truth */
+#ifdef OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR /* SEP fw: generated source of truth \
+                                                              */
 #define SMU015_MBOX_OUTBOUND_BASE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
 #define SMU015_MBOX_INBOUND_BASE OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR
 #define SMU015_MBOX_CH_STRIDE \

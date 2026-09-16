@@ -7,7 +7,8 @@ Agent / monitor honesty (U6-1):
     sampling, not protocol BFMs.
   * Protocol / traffic agents: sep_in_axi (alias: sys_axi) / sys_in_axi /
     jtag_axi / protocol_vip.
-  * Passive monitors: axi_monitor (SEP_IN), output_axi_monitor (SYS_OUT, U6-2).
+  * Passive monitors: axi_monitor (SEP_IN), output_axi_monitor (SYS_OUT, U6-2),
+    cpu_trace_mon (hart-0 retirement trace; idle without a firmware image).
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from pyuvm import ConfigDB, uvm_env
 from .smc_axi_monitor import SmcAxiMonitor
 from .smc_axil_agent import SmcAxilAgent
 from .smc_clk_agent import SmcClkAgent
+from .smc_cpu_trace_monitor import SmcCpuTraceMonitor
 from .smc_gpio_agent import SmcGpioAgent
 from .smc_i2c_agent import SmcI2cAgent
 from .smc_irq_agent import SmcIrqAgent
@@ -38,20 +40,16 @@ class SmcEnv(uvm_env):
         self.gpio_agent = SmcGpioAgent("gpio_agent", self)
         self.axil_agent = SmcAxilAgent("axil_agent", self)
         # --- Protocol / traffic agents ---
-        # Port identity, stated once here because the historical handle name is
-        # misleading ([ADDRESS-FROM-AUTHORITATIVE-MAP]):
+        # Port identity ([ADDRESS-FROM-AUTHORITATIVE-MAP]):
         #
         #   sep_in_axi_agent (SmcSysAxiAgent,   bus_prefix "s_axi")
         #       -> tb_top s_axi_* bridge -> smc.sep_axi_in_req_i   ["SEP_IN AXI"]
         #   sys_in_axi_agent (SmcSysInAxiAgent, bus_prefix "sys_axi")
         #       -> smc.sys_axi_in_req_i                            ["SYS_IN AXI"]
         #
-        # `sep_in_axi_agent` is the correctly-named handle and agrees with its
-        # driver's bus_prefix/bus_name; `sys_axi_agent` is kept as a deprecated
-        # alias for the same instance because ~50 call sites across tests/ and
-        # seq_lib/ still use it. Prefer `sep_in_axi_agent` in new code. The alias
-        # is the same object, so `bus_name` in every kept log line stays the
-        # authority on which port was driven.
+        # `sys_axi_agent` is an alias of `sep_in_axi_agent` (the same object), so
+        # `bus_name` in every kept log line is the authority on which port was
+        # driven.
         self.sep_in_axi_agent = SmcSysAxiAgent("sep_in_axi_agent", self)
         self.sys_axi_agent = self.sep_in_axi_agent
         self.sys_in_axi_agent = SmcSysInAxiAgent("sys_in_axi_agent", self)
@@ -60,6 +58,7 @@ class SmcEnv(uvm_env):
         # --- Bus monitors ---
         self.axi_monitor = SmcAxiMonitor("axi_monitor", self)
         self.output_axi_monitor = SmcOutputAxiMonitor("output_axi_monitor", self)
+        self.cpu_trace_mon = SmcCpuTraceMonitor("cpu_trace_mon", self)
         self.scoreboard = SmcScoreboard("scoreboard", self)
 
     def connect_phase(self) -> None:

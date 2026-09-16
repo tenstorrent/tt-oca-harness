@@ -15,6 +15,16 @@ from smc_base_test import smc_base_test
 class smc_mailbox_event_irq_test(smc_base_test):
     """Run mailbox IRQ-control decode plus real sync IRQ injection."""
 
+    required_evidence = (
+        "CHK-MAILBOX-IRQ-ASSERT",
+        "CHK-MAILBOX-IRQ-CLEAR",
+        "CHK-MAILBOX-IRQ-IDLE",
+        "CHK-MAILBOX-IRQ-SOURCE",
+        "CHK-MAILBOX-IRQT-CLAMP",
+        "CHK-MAILBOX-IRQT-IN-RANGE",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -27,12 +37,16 @@ class smc_mailbox_event_irq_test(smc_base_test):
             # Directed stimulus floor: 19 SEP_IN AXI mailbox event/IRQ-control
             # accesses. Literal here, not read from `seq.accesses`.
             min_csr_accesses=19,
-            csr_accesses=seq.accesses,
+            # The scoreboard's own per-bus tally, stamped by the driver that
+            # completed each access, rather than `seq.accesses`, which the
+            # sequence increments on dispatch regardless of what came back.
+            # The floor then compares a DUT-completed count against a literal.
+            csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
             proxy=False,
             # Names the observable actually checked: check_mailbox_irq_source
-            # reads tb_mailbox_irq_any (tb_top.sv:1363,
+            # reads tb_mailbox_irq_any (tb_top.sv,
             # |u_dut.u_smc.peripheral_interrupts[7:0]). tb_sync_irq is a
-            # different net (tb_top.sv:1355) and is not sampled here.
+            # different net in tb_top.sv and is not sampled here.
             details=(
                 "SEP mailbox interrupt injection raised tb_mailbox_irq_any "
                 "(peripheral_interrupts[7:0]); tb_sync_irq not sampled here"

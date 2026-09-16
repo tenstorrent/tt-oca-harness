@@ -53,9 +53,10 @@ from entropy_source_reg import (
     ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,
+    ENTROPY_SOURCE_SHA256_STATUS_REG_DEFAULT,
 )
 
-# Legacy constant for backward compatibility
+# Fixed-point scale for the p_bias/p_corr values written to the RO model.
 PROB_SCALE = DEFAULT_CONFIG.ro.prob_scale
 
 # Register Address Map (from entropy_source.rdl)
@@ -101,7 +102,13 @@ REG_MAP = {
         ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT,
         0x11111111,
     ),
-    # 0x1C RESERVED
+    "SHA256_STATUS": (
+        0x1C,
+        "RO",
+        "SHA-256 conditioner progress",
+        ENTROPY_SOURCE_SHA256_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
     "FIFO_CTRL": (0x20, "RW", "FIFO Control", ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT, 0x00000011),
     "FIFO_STATUS": (
         0x24,
@@ -493,12 +500,12 @@ async def fifo_error_monitor(dut, apb: APBMaster) -> None:
     - Does not block the calling function
     - Continues running until test ends or exception raised
 
-    To disable for tests that intentionally trigger errors, set:
+    To disable for tests that expect overflow or underflow, set:
         config.fifo_error_monitor_enable = False
 
     Args:
         dut: DUT instance
-        apb: Unused (kept for API compatibility)
+        apb: Unused.
 
     Raises:
         AssertionError: If FIFO overflow or underflow is detected
@@ -784,9 +791,6 @@ async def get_random_val(dut, log: bool = True) -> int:
     return val
 
 
-# ============================================================================
-# 32-bit Word Generation (Health Test Direct Injection)
-# ============================================================================
 # =============================================================================
 # RO Model Configuration Validation
 # =============================================================================
@@ -874,7 +878,7 @@ def _validate_ro_config(dut, p_bias: float, p_corr: float) -> None:
         ================================================================================
     """
 
-    # Check for invalid ranges (should be caught by _fp_to_scale, but double-check)
+    # _fp_to_scale clamps silently; report out-of-range values before the clamp hides them.
     if p_bias < 0.0 or p_bias > 1.0:
         dut._log.error("=" * 80)
         dut._log.error(f"INVALID CONFIGURATION: p_bias={p_bias} out of range [0.0, 1.0]!")
@@ -955,7 +959,7 @@ def _validate_ro_config(dut, p_bias: float, p_corr: float) -> None:
         dut._log.warning("    await ro_model_word32_set_fixed(dut, <your_pattern>)")
         dut._log.warning("=" * 80)
 
-    # Check for extreme bias with low correlation (intentional but worth noting)
+    # Extreme bias with low correlation: log the expected ones ratio
     elif (p_bias >= 0.95 or p_bias <= 0.05) and p_corr <= 0.1:
         dut._log.info("=" * 80)
         dut._log.info("CONFIGURATION NOTE: Extreme bias with low correlation")
@@ -1301,8 +1305,8 @@ def decor_configure(dut, mode: int, shift_dir: int = 1, log: bool = True) -> Non
     3. Logs the configuration (if log=True)
     4. Shows the recommended sample period
 
-    NOTE: Sample period is currently hardcoded in the testbench
-    (tb_entropy_source.sv). This function only displays the recommendation.
+    The reference model in tb_entropy_top.sv samples on the DUT clock divider
+    (DECORRELATOR_CTRL.SAMPLE_CLK_DIV); this function only displays the recommendation.
 
     Args:
         dut: DUT instance
@@ -1335,7 +1339,7 @@ def decor_configure(dut, mode: int, shift_dir: int = 1, log: bool = True) -> Non
 # Configuration Init Functions (Single Source of Truth)
 # ============================================================================
 # These functions apply Python configuration to SystemVerilog interfaces
-# Called automatically during init() - replaces old SV set_defaults()
+# init() calls these before starting the clocks.
 
 
 def ro_init(dut, config, log: bool = False) -> None:
@@ -1440,9 +1444,8 @@ def compressor_init(dut, config, log: bool = False) -> None:
         dut._log.info("=" * 60)
 
 
-# Legacy alias for backward compatibility
 def compressor_configure(dut, config, log: bool = False) -> None:
-    """Legacy alias for compressor_init(). Use compressor_init() instead."""
+    """Alias for compressor_init()."""
     compressor_init(dut, config, log)
 
 
@@ -1493,9 +1496,7 @@ def compressor_set_lane_mask(dut, lane_mask: int) -> None:
 def compressor_get_stats(dut) -> dict:
     """Read compressor statistics.
 
-    NOTE: Statistics removed from combinational compressor model.
-    This function now returns dummy values for backward compatibility.
-    If statistics are needed, implement them in the testbench.
+    The combinational compressor model tracks no statistics; every count reads zero.
 
     Returns:
         Dictionary with dummy statistics (all zeros):
@@ -1509,7 +1510,6 @@ def compressor_get_stats(dut) -> dict:
         stats = compressor_get_stats(dut)
         # Returns all zeros - statistics not tracked in combinational model
     """
-    # Return dummy values for backward compatibility
     return {
         "sample_count": 0,
         "zero_count": 0,
@@ -2595,7 +2595,7 @@ async def collect_entropy_samples(dut, config: TestConfig, num_samples: int):
             ref_bytes = [(packed >> (8 * i)) & 0xFF for i in range(cfg.ro.num_lanes)]
             ref_samples.append(ref_bytes)
         elif hasattr(dut, "entropy_bytes_flat"):
-            # Fallback to unmasked bytes (for backward compatibility)
+            # Without the masked view, compare against the raw lane bytes.
             packed = int(dut.entropy_bytes_flat.value)
             ref_bytes = [(packed >> (8 * i)) & 0xFF for i in range(cfg.ro.num_lanes)]
             ref_samples.append(ref_bytes)
@@ -2867,7 +2867,7 @@ class RepetitionCounterGolden:
     Monitors entropy samples and calculates expected repetition counter value.
     The repetition test counts RUN LENGTH (total occurrences, not repetitions).
 
-    Counter semantics (updated to match RTL):
+    Counter semantics (matching the RTL):
     - First bit: count = 1 (run length of 1)
     - Second identical bit: count = 2 (run length of 2)
     - Third identical bit: count = 3 (run length of 3)

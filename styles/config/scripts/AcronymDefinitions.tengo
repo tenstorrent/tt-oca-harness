@@ -4,8 +4,11 @@
 // Checks that this repo's own acronyms expand to the one phrase each is
 // canonically defined as, wherever the document spells the expansion out:
 // "<Phrase> (ACRONYM)" or "ACRONYM (<Phrase>)". A mismatch is flagged
-// regardless of how the wrong expansion is worded. See styles/OCAH/
-// Acronyms.yml for the canonical map and how each entry is sourced.
+// regardless of how the wrong expansion is worded.
+//
+// This registry is the single source of truth for both canonical and
+// additionally accepted expansions. Add an acronym only after confirming
+// its expansion in-tree, and cite that source beside the entry.
 //
 // Tengo's regex support (Go's RE2) has no lookaround, so the phrase-match
 // pattern below just grabs the run of hyphen/space-joined words immediately
@@ -16,21 +19,100 @@
 text := import("text")
 
 canonical := {
-  DFD:  "design-for-debug",
-  OCA:  "open chiplet atlas",
-  OCCP: "open chiplet configuration protocol",
-  OCTS: "open chiplet time synchronization",
-  SMC:  "system management controller",
-  SEP:  "security processor",
-  DTP:  "debug and test ports",
-  SMU:  "system management unit",
-  AoU:  "axi-over-ucie bridge",
-  OCCT: "open chiplet cross triggering",
-  CLA:  "core logic analyzer",
-  PTAP: "primary tap",
-  STAP: "secondary tap",
-  SIB:  "segment insertion bit",
-  ATB:  "advanced trace bus"
+  DFD:    ["design-for-debug"], // hw/sys/smc/doc/dfd.adoc
+  OCA:    ["open chiplet atlas"], // README.md, NOTICE, doc/**/antora.yml
+  OCAH:   ["open chiplet atlas harness"], // README.md
+  OCCP:   ["open chiplet configuration protocol"], // hw/sys/smc/bootrom/prod/doc/index.adoc
+  OCTS:   ["open chiplet time synchronization"], // hw/ip/system_timer_octs/regs/system_timer_octs.rdl
+  OCMI:   ["open chiplet management interface"], // doc/home/src/features.adoc
+  OCCT:   ["open chiplet cross triggering"], // hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc
+  SMC:    ["system management controller"], // doc/trm/src/architecture.adoc
+  SEP:    ["security processor"], // doc/programmer/src/index.adoc
+  DTP:    ["debug and test ports"], // hw/sys/dtp/doc/overview.adoc
+  SMU:    ["system management unit"], // doc/trm/src/architecture.adoc
+  SMN:    ["system management network"], // doc/home/src/features.adoc
+  SMO:    ["safety monitor"], // doc/trm/src/architecture.adoc
+  AoU:    ["axi-over-ucie bridge", "axi-over-ucie"], // doc/home/src/features.adoc
+  CLA:    ["core logic analyzer"], // hw/sys/smc/doc/dfd.adoc
+  PTAP:   ["primary tap"], // hw/ip/jtag/jtag_ptap/doc/index.adoc
+  STAP:   ["secondary tap"], // hw/ip/jtag/jtag_stap/doc/index.adoc
+  SIB:    ["segment insertion bit"], // hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc
+  ATB:    ["advanced trace bus"], // hw/sys/smc/doc/clk_rst.adoc
+  CTM:    ["cross trigger matrix"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
+  CTP:    ["cross trigger port"], // hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc
+  CTN:    ["cross trigger network"], // hw/ip/cross_trigger/cross_trigger_network/dv/README.md
+  KM:     ["key manager"], // hw/ip/key_manager/doc/architecture.adoc
+  KPV:    ["key and policy vault"], // hw/ip/key_manager/doc/architecture.adoc
+  LCC:    ["life cycle controller"], // hw/sys/sep/doc/lifecycle_controller.adoc
+  AGP:    ["alarm aggregation processor"], // hw/sys/sep/doc/cpu.adoc
+  ARBC:   ["anti-rollback counter"], // hw/sys/sep/doc/periphs.adoc
+  FLR:    ["function level reset"], // hw/sys/smc/doc/clk_rst.adoc
+  CLINT:  ["core local interruptor"], // hw/sys/smc/doc/interrupts.adoc
+  PLIC:   ["platform-level interrupt controller"], // hw/sys/smc/doc/interrupts.adoc
+  BIRA:   ["built-in redundancy analysis"], // hw/sys/smc/doc/cpu.adoc
+  TMP:    ["test mode persistence"], // hw/ip/jtag/jtag_ptap/doc/architecture.adoc
+  TRNG:   ["true random number generator"], // hw/sys/sep/doc/crypto.adoc
+  DRBG:   ["deterministic random bit generator"], // hw/ip/drbg/doc/architecture.adoc
+  DCLS:   ["dual core lock step"], // hw/sys/sep/doc/cpu.adoc
+  AVSBus: ["adaptive voltage scaling bus"], // hw/ip/avsbus_controller/README.adoc
+  TTI:    ["target transaction interface"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  DAT:    ["device address table"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  DCT:    ["device characteristic table"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  HCI:    ["host controller interface"], // hw/ip/i3ccore_wrap/doc/interface.adoc
+  OTP:    ["one-time programmable"], // hw/ip/efuse/doc/architecture.adoc
+  BIW:    ["barak-impagliazzo-wigderson"], // hw/ip/entropy_source/doc/architecture.adoc
+  RAS:    ["reliability, availability, and serviceability"], // hw/sys/sep/doc/overview.adoc
+  MBIST:  ["memory built-in self-test"], // hw/sys/smc/doc/clk_rst.adoc
+  DMA:    ["direct memory access"], // hw/sys/sep/doc/cpu.adoc
+  AES:    ["advanced encryption standard"], // hw/ip/entropy_source/dv/tb_vcs/models/compressor/README.md
+  SPI:    ["serial peripheral interface"], // hw/sys/sep/doc/periphs.adoc
+  CSR:    ["control and status register"], // hw/ip/i2c/doc/architecture.adoc
+  CSRs:   ["control and status registers"], // hw/ip/i2c/doc/architecture.adoc
+  RDL:    ["register description language"], // hw/ip/memory_interface/README.adoc
+  DV:     ["design verification"], // hw/ip/i3ccore_wrap/dv/tb/I3C_DV_GUIDE.md
+  FSM:    ["finite state machine"], // doc/starting/src/guidelines.adoc
+  FSMs:   ["finite state machines"], // doc/starting/src/guidelines.adoc
+  MMR:    ["memory mapped register"], // hw/ip/efuse/doc/memmap.adoc
+  PMP:    ["physical memory protection"], // hw/sys/sep/doc/cpu.adoc
+  KDF:    ["key derivation function"], // hw/ip/key_manager/doc/architecture.adoc
+  PCR:    ["platform configuration register"], // hw/ip/key_manager/doc/architecture.adoc
+  IBI:    ["in-band interrupt", "in-band interrupts"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  KMCSR:  ["key manager control and status registers"], // hw/ip/key_manager/doc/architecture.adoc
+  ABR:    ["adams bridge"], // hw/ip/key_manager/doc/architecture.adoc
+  CCC:    ["common command codes"], // hw/ip/i3ccore_wrap/doc/interface.adoc
+  WDT:    ["watchdog timer"], // hw/sys/sep/doc/periphs.adoc
+  RoT:    ["root of trust"], // doc/trm/src/architecture.adoc
+  PCRV:   ["pcr vault"], // hw/ip/key_manager/doc/architecture.adoc
+  PIC:    ["programmable interrupt controller"], // hw/sys/sep/doc/cpu.adoc
+  LC:     ["life cycle"], // hw/ip/key_manager/doc/architecture.adoc
+  BEU:    ["bus error unit", "bus error units"], // hw/sys/smc/doc/interrupts.adoc
+  CTPs:   ["cross trigger ports"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
+  CLAs:   ["core logic analyzers"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
+  DFT:    ["design for test"], // hw/ip/gpio/doc/interface.adoc
+  VROM:   ["virtual rom"], // hw/ip/key_manager/dv/tb/README.md
+  PCPI:   ["pico co-processor interface"], // hw/ip/key_manager/doc/architecture.adoc
+  EK:     ["endorsement key"], // hw/ip/key_manager/doc/architecture.adoc
+  AK:     ["attestation key"], // hw/ip/key_manager/doc/architecture.adoc
+  TLR:    ["test-logic-reset"], // hw/sys/dtp/dv/docs/DTP_VPLAN.adoc
+  TDRs:   ["test data registers"], // hw/ip/jtag/jtag_ptap/doc/index.adoc
+  DLAB:   ["divisor latch access bit"], // hw/ip/uart/uart_16550/doc/architecture.adoc
+  PMBus:  ["power management bus"], // hw/ip/i2c/doc/architecture.adoc
+  SMBus:  ["system management bus"], // hw/ip/i2c/doc/architecture.adoc
+  PEC:    ["packet error checking", "smbus packet error checking"], // hw/ip/i2c/doc/architecture.adoc
+  ARA:    ["alert response address"], // hw/ip/i2c/doc/architecture.adoc
+  MDB:    ["mandatory data byte"], // hw/ip/i3ccore_wrap/dv/tb/I3C_DV_GUIDE.md
+  DLL:    ["divisor latch low"], // hw/ip/uart/uart_16550/doc/architecture.adoc
+  DLM:    ["divisor latch high"], // hw/ip/uart/uart_16550/doc/architecture.adoc
+  LCR:    ["line control register"], // hw/ip/uart/uart_16550/doc/memmap.adoc
+  CVD:    ["coordinated vulnerability disclosure"], // doc/starting/src/defects.adoc
+  DDR:    ["double data rate"], // hw/common/dv/vip/ocah_spi_vip/README.md
+  TCRI:   ["transfer command response interface"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
+  RO:     ["ring oscillator"], // hw/ip/entropy_source/dv/tb_vcs/README.md
+  PQC:    ["post-quantum cryptography"], // hw/sys/sep/doc/crypto.adoc
+  "R/O":  ["read only"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
+  "R/W":  ["read write"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
+  "W/O":  ["write only"], // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
+  "W1/C": ["write-1-clear"] // hw/ip/entropy_source/dv/tb_vcs/doc/REGISTER_VERIFICATION_GUIDE.md
 }
 
 matches := []
@@ -38,20 +120,41 @@ matches := []
 canonicalize := func(phrase) {
   // A phrase that line-wrapped in the source carries the hard newline the
   // capture crossed; collapse any run of whitespace back to one space
-  // before comparing.
+  // before comparing. Hyphens, commas, and apostrophes are folded so
+  // "Memory-Mapped" and "Reliability, Availability" compare equal to the
+  // unpunctuated canonical form. Expected values are run through the same
+  // function, so a hyphen in the map is not a mismatch.
   collapsed := text.trim_space(text.re_replace("\\s+", phrase, " "))
   lower := text.to_lower(collapsed)
+  lower = text.re_replace("'", lower, "")
   lower = text.re_replace("\\s*&\\s*", lower, " and ")
+  lower = text.re_replace("[-,]", lower, " ")
   lower = text.trim_space(text.re_replace("\\s+", lower, " "))
   if text.has_prefix(lower, "the ") {
     lower = text.trim_space(text.trim_prefix(lower, "the "))
   }
+  if text.has_prefix(lower, "a ") {
+    lower = text.trim_space(text.trim_prefix(lower, "a "))
+  }
+  if text.has_prefix(lower, "an ") {
+    lower = text.trim_space(text.trim_prefix(lower, "an "))
+  }
   return lower
 }
 
+accepted := func(acr, phrase) {
+  got := canonicalize(phrase)
+  for accepted_phrase in canonical[acr] {
+    if got == canonicalize(accepted_phrase) {
+      return true
+    }
+  }
+  return false
+}
+
 flag := func(begin, end, acr, phrase) {
-  expected := canonical[acr]
-  if canonicalize(phrase) != expected {
+  if !accepted(acr, phrase) {
+    expected := canonical[acr][0]
     display := text.trim_space(text.re_replace("\\s+", phrase, " "))
     matches = append(matches, {
       begin: begin,
@@ -72,15 +175,18 @@ flag := func(begin, end, acr, phrase) {
 // routinely split across a line break -- the separator class has to match
 // a hard newline, not just a space or hyphen.
 linking_word := "for|of|the|and|on|in|to|over|&"
-word := "(?:[A-Z][A-Za-z]*|" + linking_word + ")"
+// Digits are allowed mid-phrase so "Write-1-Clear" is one expansion, not a
+// capture that stops at "Write".
+word := "(?:[A-Z][A-Za-z']*|[0-9]+|" + linking_word + ")"
 // At least one repetition: a lone capitalized word next to an unrelated
 // acronym's parenthetical (e.g. an OS license tag like "(FOSS)" landing
 // beside an unrelated "SEP") is far more likely to be coincidence than a
 // genuine one-word acronym expansion -- every canonical entry here is at
-// least two tokens.
-phrase_pattern := "[A-Z][A-Za-z]*(?:[-\\s]" + word + "){1,6}"
+// least two tokens. Commas are separators so a list expansion such as
+// "Reliability, Availability, and Serviceability" is one phrase.
+phrase_pattern := "[A-Z][A-Za-z']*(?:[-,\\s]" + word + "){1,6}"
 
-for acr, expected in canonical {
+for acr, accepted_phrases in canonical {
   // "<Phrase> (ACRONYM)"
   forward := text.re_find("(" + phrase_pattern + ")\\s*\\(" + acr + "\\)", scope, -1)
   if !is_undefined(forward) {

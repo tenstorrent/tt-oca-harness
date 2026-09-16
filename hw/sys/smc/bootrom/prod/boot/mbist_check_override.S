@@ -85,23 +85,24 @@ mbist_timeout:
 
 mbist_failed:
     /*
-     * MBIST reported failure - check OTP RESERVED_2 bit 0 (MBIST ignore error flag)
-     * Hardware bug workaround: If OTP RESERVED_2 bit 0 is set, mem_repair/mbist
+     * MBIST reported failure - check OTP SMC_CONFIG bit 15 (MBIST ignore error flag)
+     * Hardware bug workaround: If OTP SMC_CONFIG bit 15 is set, mem_repair/mbist
      * can report false errors. Ignore the error and continue booting.
      */
-    li      t0, SMC_EFUSE_MAP_RESERVED_2_REG_ADDR_VAL               /* RESERVED_2 eFuse register address */
-    lwu     t1, 0(t0)                                               /* Read RESERVED_2 register */
-    andi    t1, t1, SMC_EFUSE_RESERVED_2_DFT_IGNORE_ERROR_MASK_VAL /* Check bit 0 (DFT ignore) */
-    bnez    t1, mbist_error_ignored                                 /* If bit 0 set, ignore error */
+    li      t0, SMC_EFUSE_MAP_SMC_CONFIG_REG_ADDR_VAL                /* SMC_CONFIG eFuse register address */
+    lwu     t1, 0(t0)                                                /* Read SMC_CONFIG register */
+    li      t2, SMC_EFUSE_SMC_CONFIG_DFT_IGNORE_ERROR_MASK_VAL       /* 0x8000 exceeds andi immediate range */
+    and     t1, t1, t2                                               /* Check bit 15 (DFT ignore) */
+    bnez    t1, mbist_error_ignored                                  /* If bit 15 set, ignore error */
 
-    /* Bit 0 not set - treat as real failure and halt */
+    /* Bit 15 not set - treat as real failure and halt */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_FAILED_VAL
     sw      t1, 0(t0)
     j       mbist_halt_cpu
 
 mbist_error_ignored:
-    /* OTP RESERVED_2 bit 0 is set - ignore MBIST error and continue boot */
+    /* OTP SMC_CONFIG bit 15 is set - ignore MBIST error and continue boot */
     li      t0, SMC_SCRATCH_MBIST_STATUS_ADDR_VAL
     li      t1, MBIST_STATUS_FAILED_VAL     /* Report actual failure status */
     sw      t1, 0(t0)

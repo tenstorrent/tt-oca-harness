@@ -20,6 +20,7 @@ from .ocah_jtag_checker import OcahJtagChecker
 from .ocah_jtag_master_driver import OcahJtagMasterDriver
 from .ocah_jtag_master_monitor import OcahJtagMasterMonitor
 from .ocah_jtag_ref_model import TLR_TMS_ONES
+from .ocah_jtag_state import OcahJtagState
 
 __all__ = ["OcahJtagMasterSequence"]
 
@@ -56,9 +57,29 @@ class OcahJtagMasterSequence:
         await self.tap.reset_tap(cycles=max(cycles, TLR_TMS_ONES))
         self.checker.ref_model.reset()
 
+    async def step(self, tms: int, tdi: int = 0) -> int:
+        """Drive one TCK cycle with ``tms``/``tdi`` and return sampled TDO."""
+        return await self.tap.step(tms, tdi)
+
     async def step_tms(self, tms: int) -> int:
         """Drive one raw TMS cycle and return sampled TDO."""
         return await self.tap.step_tms(tms)
+
+    def sync_model(self, state: OcahJtagState | str, *, instruction: int | None = None) -> None:
+        """Re-align the driver's tracked state and the checker's reference model."""
+        self.tap.sync_model(state, instruction=instruction)
+        self.checker.ref_model.sync(state)
+
+    async def assert_trst(self, *, tck_cycles: int = 1) -> None:
+        """Assert TRST with ``tck_cycles`` of TMS high and re-baseline the reference model."""
+        await self.tap.assert_trst(tck_cycles=tck_cycles)
+        self.checker.ref_model.reset()
+
+    async def release_trst(self, *, tck_cycles: int = 0) -> None:
+        """Release TRST, then step ``tck_cycles`` of TMS high through the reference model."""
+        await self.tap.release_trst(tck_cycles=tck_cycles)
+        for _ in range(max(int(tck_cycles), 0)):
+            self.checker.ref_model.step(1)
 
     async def goto_state(self, state) -> None:
         """Navigate to a TAP state using a shortest TMS path."""

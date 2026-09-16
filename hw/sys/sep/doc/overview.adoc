@@ -34,8 +34,8 @@ IMEM, OTBN DMEM
 * Scratch Register Bank x 2
 * DMA Engine
 * Watchdog Timer (WDT)
-* _Alarm aggregation processor (AGP) with Reliability and Service (RAS)
-port - deferred to the next generation_
+* _Alarm aggregation processor (AGP) with Reliability, Availability, and
+Serviceability (RAS) port - deferred to the next generation_
 * Cryptographic subsystem
 ** Cryptographic accelerators: Public Key Engine, AES, HMAC-SHA2,
 KMAC-SHA3

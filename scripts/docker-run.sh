@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|starting|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
 #   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build     (re)build firmware image + publish to shared tarball cache
 #   ensure    make firmware image available (local -> cache -> build); auto-run
@@ -354,10 +354,10 @@ doc_product_paths() {
   integrator) echo "doc/integrator antora-integrator-playbook.yml ocah-doc-integrator-setup ocah-doc-integrator-pdf" ;;
   programmer) echo "doc/programmer antora-programmer-playbook.yml ocah-doc-programmer-setup ocah-doc-programmer-pdf" ;;
   appnotes) echo "doc/appnotes antora-appnotes-playbook.yml ocah-doc-appnotes-setup ocah-doc-appnotes-pdf" ;;
-  contributing) echo "doc/contributing antora-contributing-playbook.yml ocah-doc-contributing-setup ocah-doc-contributing-pdf" ;;
+  starting) echo "doc/starting antora-starting-playbook.yml ocah-doc-starting-setup ocah-doc-starting-pdf" ;;
   home) echo "doc/home antora-home-playbook.yml ocah-doc-home-setup" ;;
   *)
-    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home or contributing)" >&2
+    echo "error: unknown doc product '$1' (expected trm, integrator, programmer, appnotes, home or starting)" >&2
     exit 1
     ;;
   esac
@@ -413,7 +413,7 @@ doc_html_all() {
   doc_setup programmer
   doc_setup appnotes
   doc_setup home
-  doc_setup contributing
+  doc_setup starting
   # The prebuilt antora/antora:3.1.10 image has Antora pre-installed but
   # NOT the Node extensions used by the npx-based OCAH_ANTORA path in
   # doc/doc.mk, which real CI uses via `make ocah-doc-combined-html`.
@@ -447,7 +447,7 @@ doc_stage() {
   local integrator_dist="${OCAH_INTEGRATOR_DIST:-doc/integrator/dist}" integrator_pdf="${OCAH_INTEGRATOR_PDF:-ocah-integrator-guide.pdf}"
   local programmer_dist="${OCAH_PROGRAMMER_DIST:-doc/programmer/dist}" programmer_pdf="${OCAH_PROGRAMMER_PDF:-ocah-programmer-guide.pdf}"
   local appnotes_dist="${OCAH_APPNOTES_DIST:-doc/appnotes/dist}" appnotes_pdf="${OCAH_APPNOTES_PDF:-ocah-appnotes.pdf}"
-  local contributing_dist="${OCAH_CONTRIBUTING_DIST:-doc/contributing/dist}" contributing_pdf="${OCAH_CONTRIBUTING_PDF:-ocah-contributing.pdf}"
+  local starting_dist="${OCAH_STARTING_DIST:-doc/starting/dist}" starting_pdf="${OCAH_STARTING_PDF:-ocah-starting.pdf}"
 
   if [[ ! -d "$ROOT/$ghpages_dir" ]]; then
     echo "error: missing combined HTML output at $ghpages_dir" >&2
@@ -482,10 +482,10 @@ doc_stage() {
     echo "warning: Application Notes PDF not found at $appnotes_dist/$appnotes_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf appnotes)"
   fi
 
-  if [[ -f "$ROOT/$contributing_dist/$contributing_pdf" ]]; then
-    cp "$ROOT/$contributing_dist/$contributing_pdf" "$ROOT/$ghpages_dir/downloads/"
+  if [[ -f "$ROOT/$starting_dist/$starting_pdf" ]]; then
+    cp "$ROOT/$starting_dist/$starting_pdf" "$ROOT/$ghpages_dir/downloads/"
   else
-    echo "warning: Contributing PDF not found at $contributing_dist/$contributing_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf contributing)"
+    echo "warning: Getting Started PDF not found at $starting_dist/$starting_pdf, skipping (run: ./scripts/docker-run.sh doc-pdf starting)"
   fi
 
   doc_stage_dashboard_data "$ROOT/$ghpages_dir"

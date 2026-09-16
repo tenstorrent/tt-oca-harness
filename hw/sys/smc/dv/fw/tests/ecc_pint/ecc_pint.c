@@ -188,7 +188,7 @@ int main(void) {
 
         metal_buserror_set_platform_interrupt(buserrorunit,
                                               METAL_BUSERROR_EVENT_DATA_CORRECTABLE_ECC_ERROR,
-                                              false); // for dcache 2 bit
+                                              false); // for dcache 1 bit
         metal_buserror_set_event_enabled(buserrorunit,
                                          METAL_BUSERROR_EVENT_DATA_CORRECTABLE_ECC_ERROR,
                                          false); // for dcache 1 bit
@@ -232,7 +232,7 @@ int main(void) {
         metal_buserror_set_event_enabled(buserrorunit,
                                          METAL_BUSERROR_EVENT_DATA_UNCORRECTABLE_ECC_ERROR,
                                          false); // for dcache 2 bit
-        /* ************* DCACHE LINT Test End **************** */
+        /* ************* DCACHE PINT Test End **************** */
 
         test_pass(hartid);
     }

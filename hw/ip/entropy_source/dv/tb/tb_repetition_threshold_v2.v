@@ -5,7 +5,7 @@
 // Testbench: Repetition Test Threshold Verification V2
 //
 // Description:
-// Improved test that sends bits sequentially to properly test threshold behavior.
+// Sends bits sequentially to test the threshold boundary.
 // Sends exactly the number of consecutive bits needed, followed by an opposite bit.
 //------------------------------------------------------------------------------
 

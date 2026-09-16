@@ -62,7 +62,7 @@ class smc_uart_loopback_test_seq(SmcCsrSeq):
         await self.csr_write("UART0_DLM", UART0_IER, (self.divisor >> 8) & 0xFF)
         await self.csr_write("UART0_LCR_8N1", UART0_LCR, LCR_8N1)
 
-        # Allow divisor reload to settle (legacy 16550 TB waits ~default*16).
+        # Allow divisor reload to settle.
         await ClockCycles(cocotb.top.clk_smc_i, max(64, self.divisor * 16))
 
         try:

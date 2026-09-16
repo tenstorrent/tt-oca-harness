@@ -335,11 +335,6 @@
 #define SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR (0xC000290C)
 #define SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_REG_ADDR \
     (SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR)
-#define SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_REG_OFFSET (0x00000010)
-#define SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR (0xC0002910)
-#define SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_REG_ADDR \
-    (SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR)
-
 //==============================================================================
 // Addresses for Address Map: ndm_reset
 //==============================================================================
@@ -19570,18 +19565,6 @@ typedef union {
 #define CHIP_CONFIG_LC_STATE_REG_DEFAULT (0x0000000F)
 
 typedef struct {
-    uint32_t bank_chip : 4;
-    uint32_t bank_instance : 4;
-} CHIP_CONFIG_RAS_BANK_INFO_reg_t;
-
-typedef union {
-    uint32_t val;
-    CHIP_CONFIG_RAS_BANK_INFO_reg_t f;
-} CHIP_CONFIG_RAS_BANK_INFO_reg_u;
-
-#define CHIP_CONFIG_RAS_BANK_INFO_REG_DEFAULT (0x00000000)
-
-typedef struct {
     uint32_t ndmreset_request : 32;
 } NDM_RESET_NDMRESET_REQUEST_reg_t;
 
@@ -28766,7 +28749,6 @@ typedef struct {
     CHIP_CONFIG_VERSION_HI_reg_u chip_config_version_hi;
     CHIP_CONFIG_CHIP_ID_reg_u chip_config_chip_id;
     CHIP_CONFIG_LC_STATE_reg_u chip_config_lc_state;
-    CHIP_CONFIG_RAS_BANK_INFO_reg_u chip_config_ras_bank_info;
     NDM_RESET_NDMRESET_REQUEST_reg_u ndm_reset_ndmreset_request;
     NDM_RESET_NDMRESET_PROCESS_reg_u ndm_reset_ndmreset_process;
     NDM_RESET_NDMRESET_CLUSTER_COUNT_reg_u ndm_reset_ndmreset_cluster_count;
@@ -30792,12 +30774,6 @@ typedef struct {
 
 #define CHIP_CONFIG_LC_STATE_LC_STATE_MASK 0xFF
 #define CHIP_CONFIG_LC_STATE_LC_STATE_SHIFT 0
-
-#define CHIP_CONFIG_RAS_BANK_INFO_BANK_CHIP_MASK 0xF
-#define CHIP_CONFIG_RAS_BANK_INFO_BANK_CHIP_SHIFT 0
-
-#define CHIP_CONFIG_RAS_BANK_INFO_BANK_INSTANCE_MASK 0xF0
-#define CHIP_CONFIG_RAS_BANK_INFO_BANK_INSTANCE_SHIFT 4
 
 #define NDM_RESET_NDMRESET_REQUEST_NDMRESET_REQUEST_MASK 0xFFFFFFFF
 #define NDM_RESET_NDMRESET_REQUEST_NDMRESET_REQUEST_SHIFT 0

@@ -53,9 +53,9 @@ module tb_repetition_test ();
 
   // Test parameters
   localparam logic [7:0] TEST_THRESHOLD_LOW = 8'd10;  // Low threshold for quick testing
-  localparam logic [7:0] TEST_THRESHOLD_MED = 8'd15;  // Medium threshold - reduced from 25
-  localparam logic [7:0] TEST_THRESHOLD_HIGH = 8'd20;  // High threshold - reduced from 50
-  localparam logic [7:0] TEST_THRESHOLD_SAT = 8'd15;   // Test counter saturation - same as other working tests
+  localparam logic [7:0] TEST_THRESHOLD_MED = 8'd15;  // Medium threshold
+  localparam logic [7:0] TEST_THRESHOLD_HIGH = 8'd20;  // High threshold
+  localparam logic [7:0] TEST_THRESHOLD_SAT = 8'd15;  // Threshold for the saturation test
 
   // Instantiate the DUT
   entropy_repetition_test u_repetition_test (
@@ -361,8 +361,8 @@ module tb_repetition_test ();
           $display("✓ Failure flag cleared successfully");
         end
 
-        // Step 3: Re-enable and use good alternating data (not random)
-        // Temporarily increase threshold to ensure random data won't trigger
+        // Step 3: Re-enable with PRNG data under a raised threshold so that no
+        // random run trips the test during recovery
         repetition_limit_i = 8'd200;  // Very high threshold
         inject_failure = 0;
         enable_i = 1;

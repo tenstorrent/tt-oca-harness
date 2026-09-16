@@ -16,15 +16,16 @@
 //
 // Modeled here (via smc_ip_integration.sv / sep_ip_integration.sv): the
 // shared eFuse bank/shim model (one SEP instance, one SMC instance), PLL/PVT
-// AXI-Lite stubs, one prim_pad_shim.sv per GPIO pin, the SEP SRAM/boot-ROM/
-// OTBN/Key-Manager memory macros (OpenTitan generic RAM/ROM primitives) and
-// TCM (OpenTitan-derived ICCM/DCCM wrapper), and the trace sink RAM banks.
-// The GPIO-shim CSR and adopter-extension AXI-Lite/AXI4 buses are terminated
-// with DECERR slaves. sep_ip_integration's TRNG DECERR termination is
-// instantiated for interface parity, tied off since smu.sv keeps its TRNG
-// ports internal. Every other technology-specific interface (SMC CPU
-// cache/SRAM/ROM macros, I3C DAT/DCT memory macros, ATB telemetry, JTAG,
-// ...) is passed straight through; see hw/top/README.md.
+// AXI-Lite stubs, one prim_pad_shim.sv per GPIO pin, the I3C DAT/DCT/RLT table
+// memories, the SEP SRAM/boot-ROM/OTBN/Key-Manager memory macros (OpenTitan
+// generic RAM/ROM primitives) and TCM (OpenTitan-derived ICCM/DCCM wrapper),
+// and the trace sink RAM banks. The GPIO-shim CSR and
+// adopter-extension AXI-Lite/AXI4 buses are terminated with DECERR slaves.
+// sep_ip_integration's TRNG DECERR termination is instantiated for
+// interface parity, tied off since smu.sv keeps its TRNG ports internal.
+// Every other technology-specific interface (SMC CPU cache/SRAM/ROM macros,
+// ATB telemetry, JTAG, ...) is passed straight through; see
+// hw/top/README.md.
 //
 // This is a reference integration example, provided for adopters to
 // substitute with their own vendor IP/macros.
@@ -172,9 +173,9 @@ module smu_wrapper
   input  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]  telemetry_afready_i,
 
   // DED/WDT
-  output logic  cluster_ded_o,
-  output logic  wdt_first_timeout_o,
-  output logic  wdt_second_timeout_o,
+  output logic  smc_cluster_ded_o,
+  output logic  smc_wdt_first_timeout_o,
+  output logic  smc_wdt_second_timeout_o,
 
   output smc_pkg::smc_axi_addr_t                                   smc_global_base_o,
   output logic [31:0]                                              smc_region_size_o,
@@ -182,33 +183,26 @@ module smu_wrapper
   output logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] sep_region_size_o,
 
   // External Interrupts
-  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  ext_interrupts_i,
+  input  logic [Cfg.NUM_INT_TO_SMC-1:0]  smc_ext_interrupts_i,
 
   // Fuse Signals
-  output logic  fuse_sense_done_o,
-  output logic  fuse_reset_n_delayed_o,
+  output logic  smc_fuse_sense_done_o,
+  output logic  smc_fuse_reset_n_delayed_o,
 
   // External boot / memory-repair signals
   output logic  skip_mem_repair_o,
   input  logic  ext_boot_seq_done_i,
 
-  // PVT
-  input  logic  temp_interrupt_i,
-
   // Lifecycle State (driven by SEP)
   output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,
   output logic                                  lc_sigint_err_o,
 
-  // RAS Bank Settings
-  output logic [3:0]  ras_bank_chip_o,
-  output logic [3:0]  ras_bank_instance_o,
-
   // NDM Reset signals
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  ndmreset_process_o,
+  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_request_i,
+  output logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  smc_ndmreset_process_o,
 
   // Mailbox Interrupts
-  output logic [smc_pkg::NUM_MAILBOXES-1:0]  ext_mailbox_interrupts_o,
+  output logic [smc_pkg::NUM_MAILBOXES-1:0]  smc_ext_mailbox_interrupts_o,
 
   // Reset Unit Signals
   input  logic  cfg_flr_pf_active_i,
@@ -221,8 +215,8 @@ module smu_wrapper
   // CPU ROM/scratch/L1$ are absorbed by smc_ip_integration (not ports).
 
   // Memory Init
-  input  logic  disable_sram_auto_init_i,
-  output logic  init_mem_done_o,
+  input  logic  smc_disable_sram_auto_init_i,
+  output logic  smc_init_mem_done_o,
 
   // System Timer OCTS Interface
   input  logic  chiplet_is_primary_i,
@@ -232,9 +226,6 @@ module smu_wrapper
   input  logic  test_en_i,
   input  logic  scan_rst_ni,
 
-  // Captured Straps
-  input  logic [63:0]  captured_straps_i,
-
   // DFT status indicators
   input  logic mem_repair_done_i,
   input  logic mem_repair_success_i,
@@ -242,9 +233,6 @@ module smu_wrapper
   input  logic mbist_done_i,
   input  logic mbist_pass_i,
   input  logic mbist_abort_i,
-
-  // SPI IRQ from the selected open or adopter-provided SPI integration
-  input  logic                        spi_irq_i,
 
   // OpenTitan SPI request, surfaced for observation; the loop closes in smu.sv
   output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
@@ -258,10 +246,15 @@ module smu_wrapper
   input  sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i,
   output sep_pkg::sep_lockstep_status_t sep_lockstep_status_o,
 
-  input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_extintsrc_req_i,
+  input  wire logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0]   sep_ext_interrupts_i,
 
   output logic [1:0]  lcc_demote_state_1_o,
   output logic [1:0]  lcc_demote_state_2_o,
+
+  // Gates for the DFT-inserted OTP access paths, surfaced beside the eFuse shims
+  // an adopter's DFT insertion attaches to.
+  output logic  sep_fuse_dft_disable_o,
+  output logic  smc_fuse_dft_disable_o,
 
   output logic  sep_fuse_sense_done_o,
 
@@ -269,15 +262,10 @@ module smu_wrapper
   input  logic  clk_sep_wdt_i,
 
   // SEP straps
-  input  sep_pkg::sep_straps_t  sep_straps_i,
+  input  logic                  secure_tm_req_i,
 
-  // I3C DAT/DCT/RLT memory interfaces (macro interfaces, passed straight through)
-  input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_sink_o,
-  input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_sink_o,
-  input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_sink_o,
+  // Gated I3C peripheral clock. The table memories it drives are absorbed by
+  // smc_ip_integration, so this leaves the wrapper for observation only.
   output logic                                                  gated_clk_periph_i3c_o,
 
   // Debug bus
@@ -301,33 +289,32 @@ module smu_wrapper
   smc_pkg::smc_axil_32_32_req_t  smc_external_req;
   smc_pkg::smc_axil_32_32_resp_t smc_external_resp;
 
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select;
   // Trace sink memories (smu <-> smc_ip_integration)
   trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req;
   trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp;
 
   // CPU mem macros (smu <-> smc_ip_integration)
-  chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
-  chipyard_4core_mem_pkg::rom_rsp_t            rom_intf_rsp;
-  chipyard_4core_mem_pkg::scratch_ram_req_t    scratch_ram_intf_req
+  chipyard_4core_mem_pkg::rom_req_t            smc_rom_intf_req;
+  chipyard_4core_mem_pkg::rom_rsp_t            smc_rom_intf_rsp;
+  chipyard_4core_mem_pkg::scratch_ram_req_t    smc_scratch_ram_intf_req
         [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
-  chipyard_4core_mem_pkg::scratch_ram_rsp_t    scratch_ram_intf_rsp
+  chipyard_4core_mem_pkg::scratch_ram_rsp_t    smc_scratch_ram_intf_rsp
         [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
-  chipyard_4core_mem_pkg::l1_icache_tag_req_t  l1_icache_tag_intf_req
+  chipyard_4core_mem_pkg::l1_icache_tag_req_t  smc_l1_icache_tag_intf_req
         [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
-  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  l1_icache_tag_intf_rsp
+  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t  smc_l1_icache_tag_intf_rsp
         [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0];
-  chipyard_4core_mem_pkg::l1_icache_data_req_t l1_icache_data_intf_req
+  chipyard_4core_mem_pkg::l1_icache_data_req_t smc_l1_icache_data_intf_req
         [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
-  chipyard_4core_mem_pkg::l1_icache_data_rsp_t l1_icache_data_intf_rsp
+  chipyard_4core_mem_pkg::l1_icache_data_rsp_t smc_l1_icache_data_intf_rsp
         [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0];
-  chipyard_4core_mem_pkg::l1_dcache_tag_req_t  l1_dcache_tag_intf_req
+  chipyard_4core_mem_pkg::l1_dcache_tag_req_t  smc_l1_dcache_tag_intf_req
         [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
-  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  l1_dcache_tag_intf_rsp
+  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t  smc_l1_dcache_tag_intf_rsp
         [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0];
-  chipyard_4core_mem_pkg::l1_dcache_data_req_t l1_dcache_data_intf_req
+  chipyard_4core_mem_pkg::l1_dcache_data_req_t smc_l1_dcache_data_intf_req
         [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
-  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t l1_dcache_data_intf_rsp
+  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t smc_l1_dcache_data_intf_rsp
         [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0];
 
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core;
@@ -335,7 +322,13 @@ module smu_wrapper
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en;
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en;
 
-  assign lsio_interface_select_o = lsio_interface_select;
+  // I3C table memory macros (smu <-> smc_ip_integration)
+  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src;
+  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
+  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
+  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
+  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
+  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
 
   smc_pkg::smc_axil_32_32_req_t     smc_efuse_bank_ctrl_req;
   smc_pkg::smc_axil_32_32_resp_t    smc_efuse_bank_ctrl_resp;
@@ -356,7 +349,6 @@ module smu_wrapper
   ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
-  logic ext_trng_alarm;
 
   sep_crypto_pkg::abr_mem_req_t abr_mem_req;
   sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp;
@@ -403,8 +395,7 @@ module smu_wrapper
     .ext_trng_axis_req_i (ext_trng_axis_req),
     .ext_trng_axis_rsp_o (ext_trng_axis_rsp),
 
-    .ext_trng_irq_i   (ext_trng_irq),
-    .ext_trng_alarm_i (ext_trng_alarm),
+    .ext_trng_irq_i (ext_trng_irq),
 
     .smc_external_req_o  (smc_external_req),
     .smc_external_resp_i (smc_external_resp),
@@ -414,18 +405,25 @@ module smu_wrapper
     .pad2core_en_o (pad2core_en),
     .core2pad_en_o (core2pad_en),
 
-    .rom_intf_req_o            (rom_intf_req),
-    .rom_intf_rsp_i            (rom_intf_rsp),
-    .scratch_ram_intf_req_o    (scratch_ram_intf_req),
-    .scratch_ram_intf_rsp_i    (scratch_ram_intf_rsp),
-    .l1_icache_tag_intf_req_o  (l1_icache_tag_intf_req),
-    .l1_icache_tag_intf_rsp_i  (l1_icache_tag_intf_rsp),
-    .l1_icache_data_intf_req_o (l1_icache_data_intf_req),
-    .l1_icache_data_intf_rsp_i (l1_icache_data_intf_rsp),
-    .l1_dcache_tag_intf_req_o  (l1_dcache_tag_intf_req),
-    .l1_dcache_tag_intf_rsp_i  (l1_dcache_tag_intf_rsp),
-    .l1_dcache_data_intf_req_o (l1_dcache_data_intf_req),
-    .l1_dcache_data_intf_rsp_i (l1_dcache_data_intf_rsp),
+    .smc_rom_intf_req_o            (smc_rom_intf_req),
+    .smc_rom_intf_rsp_i            (smc_rom_intf_rsp),
+    .smc_scratch_ram_intf_req_o    (smc_scratch_ram_intf_req),
+    .smc_scratch_ram_intf_rsp_i    (smc_scratch_ram_intf_rsp),
+    .smc_l1_icache_tag_intf_req_o  (smc_l1_icache_tag_intf_req),
+    .smc_l1_icache_tag_intf_rsp_i  (smc_l1_icache_tag_intf_rsp),
+    .smc_l1_icache_data_intf_req_o (smc_l1_icache_data_intf_req),
+    .smc_l1_icache_data_intf_rsp_i (smc_l1_icache_data_intf_rsp),
+    .smc_l1_dcache_tag_intf_req_o  (smc_l1_dcache_tag_intf_req),
+    .smc_l1_dcache_tag_intf_rsp_i  (smc_l1_dcache_tag_intf_rsp),
+    .smc_l1_dcache_data_intf_req_o (smc_l1_dcache_data_intf_req),
+    .smc_l1_dcache_data_intf_rsp_i (smc_l1_dcache_data_intf_rsp),
+
+    .i3c_dat_mem_src_i  (i3c_dat_mem_src),
+    .i3c_dat_mem_sink_o (i3c_dat_mem_sink),
+    .i3c_dct_mem_src_i  (i3c_dct_mem_src),
+    .i3c_dct_mem_sink_o (i3c_dct_mem_sink),
+    .i3c_rlt_mem_src_i  (i3c_rlt_mem_src),
+    .i3c_rlt_mem_sink_o (i3c_rlt_mem_sink),
 
     .smc_efuse_bank_ctrl_req_o     (smc_efuse_bank_ctrl_req),
     .smc_efuse_bank_ctrl_resp_i    (smc_efuse_bank_ctrl_resp),
@@ -470,6 +468,9 @@ module smu_wrapper
     .clk_smc_i               (clk_smu_i),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
+    .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
+    .rst_primary_periph_clk_ni (rst_primary_periph_clk_no),
+
     .smc_external_req_i  (smc_external_req),
     .smc_external_resp_o (smc_external_resp),
 
@@ -487,18 +488,25 @@ module smu_wrapper
 
     .gpio_pad_io (gpio_pad_io),
 
-    .rom_intf_req            (rom_intf_req),
-    .rom_intf_rsp            (rom_intf_rsp),
-    .scratch_ram_intf_req    (scratch_ram_intf_req),
-    .scratch_ram_intf_rsp    (scratch_ram_intf_rsp),
-    .l1_icache_tag_intf_req  (l1_icache_tag_intf_req),
-    .l1_icache_tag_intf_rsp  (l1_icache_tag_intf_rsp),
-    .l1_icache_data_intf_req (l1_icache_data_intf_req),
-    .l1_icache_data_intf_rsp (l1_icache_data_intf_rsp),
-    .l1_dcache_tag_intf_req  (l1_dcache_tag_intf_req),
-    .l1_dcache_tag_intf_rsp  (l1_dcache_tag_intf_rsp),
-    .l1_dcache_data_intf_req (l1_dcache_data_intf_req),
-    .l1_dcache_data_intf_rsp (l1_dcache_data_intf_rsp),
+    .rom_intf_req            (smc_rom_intf_req),
+    .rom_intf_rsp            (smc_rom_intf_rsp),
+    .scratch_ram_intf_req    (smc_scratch_ram_intf_req),
+    .scratch_ram_intf_rsp    (smc_scratch_ram_intf_rsp),
+    .l1_icache_tag_intf_req  (smc_l1_icache_tag_intf_req),
+    .l1_icache_tag_intf_rsp  (smc_l1_icache_tag_intf_rsp),
+    .l1_icache_data_intf_req (smc_l1_icache_data_intf_req),
+    .l1_icache_data_intf_rsp (smc_l1_icache_data_intf_rsp),
+    .l1_dcache_tag_intf_req  (smc_l1_dcache_tag_intf_req),
+    .l1_dcache_tag_intf_rsp  (smc_l1_dcache_tag_intf_rsp),
+    .l1_dcache_data_intf_req (smc_l1_dcache_data_intf_req),
+    .l1_dcache_data_intf_rsp (smc_l1_dcache_data_intf_rsp),
+
+    .i3c_dat_mem_sink_i (i3c_dat_mem_sink),
+    .i3c_dat_mem_src_o  (i3c_dat_mem_src),
+    .i3c_dct_mem_sink_i (i3c_dct_mem_sink),
+    .i3c_dct_mem_src_o  (i3c_dct_mem_src),
+    .i3c_rlt_mem_sink_i (i3c_rlt_mem_sink),
+    .i3c_rlt_mem_src_o  (i3c_rlt_mem_src),
 
     .trace_mem_req  (trace_mem_req),
     .trace_mem_resp (trace_mem_resp),
@@ -549,8 +557,7 @@ module smu_wrapper
     .ext_trng_axis_req_o (ext_trng_axis_req),
     .ext_trng_axis_rsp_i (ext_trng_axis_rsp),
 
-    .ext_trng_irq_o   (ext_trng_irq),
-    .ext_trng_alarm_o (ext_trng_alarm),
+    .ext_trng_irq_o (ext_trng_irq),
 
     .abr_mem_req_i (abr_mem_req),
     .abr_mem_rsp_o (abr_mem_rsp),

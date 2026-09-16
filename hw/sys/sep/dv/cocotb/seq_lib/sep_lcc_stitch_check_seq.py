@@ -90,7 +90,7 @@ class sep_lcc_stitch_check_seq(uvm_sequence):
         )
         # Publish the vector the DUT returned on AXI, not the golden that the
         # sequence already compared it against. Callers log this as the observe
-        # half of the signed-off sigint inject (probe + FEAT_CTRL).
+        # half of the sigint inject (probe + FEAT_CTRL).
         self.observed_feat = feat_lo | (feat_hi << 32)
 
         cocotb.log.info(

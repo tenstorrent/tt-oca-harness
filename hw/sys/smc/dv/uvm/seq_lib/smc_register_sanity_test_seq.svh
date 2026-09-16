@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SMC register-sanity scenario sequence (VPLAN TC_SMC_P0_006), carrying the
+// SMC register-sanity scenario sequence (smc_register_sanity_test), carrying the
 // cocotb smc_register_sanity_test_seq semantics on the SEP_IN AXI4 ingress:
 //   * wait for the warm-reset domain release (fuse sense -> delayed fuse
 //     reset -> rst_warm), since SCRATCH_COLD_WARM sits behind it;
@@ -64,11 +64,12 @@ class smc_register_sanity_test_seq extends smc_base_test_seq;
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkCsrIdle, ChkCsrReadback, ChkCsrRandom,
                     ChkCsrRestore, ChkNonvac});
     scratch_cases(cases);
-    `uvm_info(get_type_name(),
-              $sformatf(
-                  {"SMC SV-UVM register sanity (TC_SMC_P0_006): SEP_IN scratch CSR idle/write/",
-                   "readback/restore on %0d registers; scenario_seed=%0d random_count=%0d"},
-                    cases.size(), scenario_seed, random_count), UVM_LOW)
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            {"SMC SV-UVM register sanity (smc_register_sanity_test): SEP_IN scratch CSR idle/write/",
+             "readback/restore on %0d registers; scenario_seed=%0d random_count=%0d"},
+              cases.size(), scenario_seed, random_count), UVM_LOW)
 
     wait_fuse_sense_done();
 

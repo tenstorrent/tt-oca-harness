@@ -29,423 +29,467 @@ localparam int unsigned SMC_CLA_REG_MAP_BASE_ADDR                               
 localparam int unsigned SMC_CLA_REG_MAP_SIZE                                                                      = 32'h00004000;
 
 
-localparam int unsigned TRDSTRAMCONTROL_REG_OFFSET                                                                = 32'h00000000;
-localparam int unsigned TRDSTRAMCONTROL_REG_ADDR                                                                  = 32'h00000000;
-localparam int unsigned TRDSTRAMIMPL_REG_OFFSET                                                                   = 32'h00000004;
-localparam int unsigned TRDSTRAMIMPL_REG_ADDR                                                                     = 32'h00000004;
-localparam int unsigned TRDSTRAMSTARTLOW_REG_OFFSET                                                               = 32'h00000010;
-localparam int unsigned TRDSTRAMSTARTLOW_REG_ADDR                                                                 = 32'h00000010;
-localparam int unsigned TRDSTRAMSTARTHIGH_REG_OFFSET                                                              = 32'h00000014;
-localparam int unsigned TRDSTRAMSTARTHIGH_REG_ADDR                                                                = 32'h00000014;
-localparam int unsigned TRDSTRAMLIMITLOW_REG_OFFSET                                                               = 32'h00000018;
-localparam int unsigned TRDSTRAMLIMITLOW_REG_ADDR                                                                 = 32'h00000018;
-localparam int unsigned TRDSTRAMLIMITHIGH_REG_OFFSET                                                              = 32'h0000001C;
-localparam int unsigned TRDSTRAMLIMITHIGH_REG_ADDR                                                                = 32'h0000001C;
-localparam int unsigned TRDSTRAMWPLOW_REG_OFFSET                                                                  = 32'h00000020;
-localparam int unsigned TRDSTRAMWPLOW_REG_ADDR                                                                    = 32'h00000020;
-localparam int unsigned TRDSTRAMWPHIGH_REG_OFFSET                                                                 = 32'h00000024;
-localparam int unsigned TRDSTRAMWPHIGH_REG_ADDR                                                                   = 32'h00000024;
-localparam int unsigned TRDSTRAMRPLOW_REG_OFFSET                                                                  = 32'h00000028;
-localparam int unsigned TRDSTRAMRPLOW_REG_ADDR                                                                    = 32'h00000028;
-localparam int unsigned TRDSTRAMRPHIGH_REG_OFFSET                                                                 = 32'h0000002C;
-localparam int unsigned TRDSTRAMRPHIGH_REG_ADDR                                                                   = 32'h0000002C;
-localparam int unsigned TRDSTRAMDATA_REG_OFFSET                                                                   = 32'h00000040;
-localparam int unsigned TRDSTRAMDATA_REG_ADDR                                                                     = 32'h00000040;
-localparam int unsigned TRDSTSINKSCRATCHLO_REG_OFFSET                                                             = 32'h00000FF8;
-localparam int unsigned TRDSTSINKSCRATCHLO_REG_ADDR                                                               = 32'h00000FF8;
-localparam int unsigned TRDSTSINKSCRATCHHI_REG_OFFSET                                                             = 32'h00000FFC;
-localparam int unsigned TRDSTSINKSCRATCHHI_REG_ADDR                                                               = 32'h00000FFC;
-localparam int unsigned TRFUNNELCONTROL_REG_OFFSET                                                                = 32'h00001000;
-localparam int unsigned TRFUNNELCONTROL_REG_ADDR                                                                  = 32'h00001000;
-localparam int unsigned TRFUNNELIMPL_REG_OFFSET                                                                   = 32'h00001004;
-localparam int unsigned TRFUNNELIMPL_REG_ADDR                                                                     = 32'h00001004;
-localparam int unsigned TRFUNNELDISINPUT_REG_OFFSET                                                               = 32'h00001008;
-localparam int unsigned TRFUNNELDISINPUT_REG_ADDR                                                                 = 32'h00001008;
-localparam int unsigned TRFUNNELSCRATCHLO_REG_OFFSET                                                              = 32'h00001FF8;
-localparam int unsigned TRFUNNELSCRATCHLO_REG_ADDR                                                                = 32'h00001FF8;
-localparam int unsigned TRFUNNELSCRATCHHI_REG_OFFSET                                                              = 32'h00001FFC;
-localparam int unsigned TRFUNNELSCRATCHHI_REG_ADDR                                                                = 32'h00001FFC;
-localparam int unsigned CDBGCLACOUNTER0CFG_REG_OFFSET                                                             = 32'h00002100;
-localparam int unsigned CDBGCLACOUNTER0CFG_REG_ADDR                                                               = 32'h00002100;
-localparam int unsigned CDBGCLACOUNTER1CFG_REG_OFFSET                                                             = 32'h00002108;
-localparam int unsigned CDBGCLACOUNTER1CFG_REG_ADDR                                                               = 32'h00002108;
-localparam int unsigned CDBGCLACOUNTER2CFG_REG_OFFSET                                                             = 32'h00002110;
-localparam int unsigned CDBGCLACOUNTER2CFG_REG_ADDR                                                               = 32'h00002110;
-localparam int unsigned CDBGCLACOUNTER3CFG_REG_OFFSET                                                             = 32'h00002118;
-localparam int unsigned CDBGCLACOUNTER3CFG_REG_ADDR                                                               = 32'h00002118;
-localparam int unsigned CDBGNODE0EAP0_REG_OFFSET                                                                  = 32'h00002120;
-localparam int unsigned CDBGNODE0EAP0_REG_ADDR                                                                    = 32'h00002120;
-localparam int unsigned CDBGNODE0EAP1_REG_OFFSET                                                                  = 32'h00002128;
-localparam int unsigned CDBGNODE0EAP1_REG_ADDR                                                                    = 32'h00002128;
-localparam int unsigned CDBGNODE1EAP0_REG_OFFSET                                                                  = 32'h00002130;
-localparam int unsigned CDBGNODE1EAP0_REG_ADDR                                                                    = 32'h00002130;
-localparam int unsigned CDBGNODE1EAP1_REG_OFFSET                                                                  = 32'h00002138;
-localparam int unsigned CDBGNODE1EAP1_REG_ADDR                                                                    = 32'h00002138;
-localparam int unsigned CDBGNODE2EAP0_REG_OFFSET                                                                  = 32'h00002140;
-localparam int unsigned CDBGNODE2EAP0_REG_ADDR                                                                    = 32'h00002140;
-localparam int unsigned CDBGNODE2EAP1_REG_OFFSET                                                                  = 32'h00002148;
-localparam int unsigned CDBGNODE2EAP1_REG_ADDR                                                                    = 32'h00002148;
-localparam int unsigned CDBGNODE3EAP0_REG_OFFSET                                                                  = 32'h00002150;
-localparam int unsigned CDBGNODE3EAP0_REG_ADDR                                                                    = 32'h00002150;
-localparam int unsigned CDBGNODE3EAP1_REG_OFFSET                                                                  = 32'h00002158;
-localparam int unsigned CDBGNODE3EAP1_REG_ADDR                                                                    = 32'h00002158;
-localparam int unsigned CDBGSIGNALMASK0LO_REG_OFFSET                                                              = 32'h00002160;
-localparam int unsigned CDBGSIGNALMASK0LO_REG_ADDR                                                                = 32'h00002160;
-localparam int unsigned CDBGSIGNALMATCH0LO_REG_OFFSET                                                             = 32'h00002168;
-localparam int unsigned CDBGSIGNALMATCH0LO_REG_ADDR                                                               = 32'h00002168;
-localparam int unsigned CDBGSIGNALMASK1LO_REG_OFFSET                                                              = 32'h00002170;
-localparam int unsigned CDBGSIGNALMASK1LO_REG_ADDR                                                                = 32'h00002170;
-localparam int unsigned CDBGSIGNALMATCH1LO_REG_OFFSET                                                             = 32'h00002178;
-localparam int unsigned CDBGSIGNALMATCH1LO_REG_ADDR                                                               = 32'h00002178;
-localparam int unsigned CDBGSIGNALEDGEDETECTCFG_REG_OFFSET                                                        = 32'h00002180;
-localparam int unsigned CDBGSIGNALEDGEDETECTCFG_REG_ADDR                                                          = 32'h00002180;
-localparam int unsigned CDBGEAPSTATUS_REG_OFFSET                                                                  = 32'h00002188;
-localparam int unsigned CDBGEAPSTATUS_REG_ADDR                                                                    = 32'h00002188;
-localparam int unsigned CDBGCLACTRLSTATUS_REG_OFFSET                                                              = 32'h00002190;
-localparam int unsigned CDBGCLACTRLSTATUS_REG_ADDR                                                                = 32'h00002190;
-localparam int unsigned CDBGMUXSELLO_REG_OFFSET                                                                   = 32'h00002198;
-localparam int unsigned CDBGMUXSELLO_REG_ADDR                                                                     = 32'h00002198;
-localparam int unsigned CDBGRSVD1_REG_OFFSET                                                                      = 32'h000021A0;
-localparam int unsigned CDBGRSVD1_REG_ADDR                                                                        = 32'h000021A0;
-localparam int unsigned CDBGRSVD2_REG_OFFSET                                                                      = 32'h000021A8;
-localparam int unsigned CDBGRSVD2_REG_ADDR                                                                        = 32'h000021A8;
-localparam int unsigned CDBGTRANSITIONMASKLO_REG_OFFSET                                                           = 32'h000021B0;
-localparam int unsigned CDBGTRANSITIONMASKLO_REG_ADDR                                                             = 32'h000021B0;
-localparam int unsigned CDBGTRANSITIONFROMVALUELO_REG_OFFSET                                                      = 32'h000021B8;
-localparam int unsigned CDBGTRANSITIONFROMVALUELO_REG_ADDR                                                        = 32'h000021B8;
-localparam int unsigned CDBGTRANSITIONTOVALUELO_REG_OFFSET                                                        = 32'h000021C0;
-localparam int unsigned CDBGTRANSITIONTOVALUELO_REG_ADDR                                                          = 32'h000021C0;
-localparam int unsigned CDBGONESCOUNTMASKLO_REG_OFFSET                                                            = 32'h000021C8;
-localparam int unsigned CDBGONESCOUNTMASKLO_REG_ADDR                                                              = 32'h000021C8;
-localparam int unsigned CDBGONESCOUNTVALUE_REG_OFFSET                                                             = 32'h000021D0;
-localparam int unsigned CDBGONESCOUNTVALUE_REG_ADDR                                                               = 32'h000021D0;
-localparam int unsigned CDBGANYCHANGELO_REG_OFFSET                                                                = 32'h000021D8;
-localparam int unsigned CDBGANYCHANGELO_REG_ADDR                                                                  = 32'h000021D8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP0LO_REG_OFFSET                                                  = 32'h000021E0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP0LO_REG_ADDR                                                    = 32'h000021E0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP1LO_REG_OFFSET                                                  = 32'h000021E8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP1LO_REG_ADDR                                                    = 32'h000021E8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP0LO_REG_OFFSET                                                  = 32'h000021F0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP0LO_REG_ADDR                                                    = 32'h000021F0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP1LO_REG_OFFSET                                                  = 32'h000021F8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP1LO_REG_ADDR                                                    = 32'h000021F8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP0LO_REG_OFFSET                                                  = 32'h00002200;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP0LO_REG_ADDR                                                    = 32'h00002200;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP1LO_REG_OFFSET                                                  = 32'h00002208;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP1LO_REG_ADDR                                                    = 32'h00002208;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP0LO_REG_OFFSET                                                  = 32'h00002210;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP0LO_REG_ADDR                                                    = 32'h00002210;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP1LO_REG_OFFSET                                                  = 32'h00002218;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP1LO_REG_ADDR                                                    = 32'h00002218;
-localparam int unsigned CDBGCLATIMEMATCH_REG_OFFSET                                                               = 32'h00002220;
-localparam int unsigned CDBGCLATIMEMATCH_REG_ADDR                                                                 = 32'h00002220;
-localparam int unsigned CDBGSIGNALMASK2LO_REG_OFFSET                                                              = 32'h00002228;
-localparam int unsigned CDBGSIGNALMASK2LO_REG_ADDR                                                                = 32'h00002228;
-localparam int unsigned CDBGSIGNALMATCH2LO_REG_OFFSET                                                             = 32'h00002230;
-localparam int unsigned CDBGSIGNALMATCH2LO_REG_ADDR                                                               = 32'h00002230;
-localparam int unsigned CDBGSIGNALMASK3LO_REG_OFFSET                                                              = 32'h00002238;
-localparam int unsigned CDBGSIGNALMASK3LO_REG_ADDR                                                                = 32'h00002238;
-localparam int unsigned CDBGSIGNALMATCH3LO_REG_OFFSET                                                             = 32'h00002240;
-localparam int unsigned CDBGSIGNALMATCH3LO_REG_ADDR                                                               = 32'h00002240;
-localparam int unsigned CDBGNODE0EAP2_REG_OFFSET                                                                  = 32'h00002248;
-localparam int unsigned CDBGNODE0EAP2_REG_ADDR                                                                    = 32'h00002248;
-localparam int unsigned CDBGNODE0EAP3_REG_OFFSET                                                                  = 32'h00002250;
-localparam int unsigned CDBGNODE0EAP3_REG_ADDR                                                                    = 32'h00002250;
-localparam int unsigned CDBGNODE1EAP2_REG_OFFSET                                                                  = 32'h00002258;
-localparam int unsigned CDBGNODE1EAP2_REG_ADDR                                                                    = 32'h00002258;
-localparam int unsigned CDBGNODE1EAP3_REG_OFFSET                                                                  = 32'h00002260;
-localparam int unsigned CDBGNODE1EAP3_REG_ADDR                                                                    = 32'h00002260;
-localparam int unsigned CDBGNODE2EAP2_REG_OFFSET                                                                  = 32'h00002268;
-localparam int unsigned CDBGNODE2EAP2_REG_ADDR                                                                    = 32'h00002268;
-localparam int unsigned CDBGNODE2EAP3_REG_OFFSET                                                                  = 32'h00002270;
-localparam int unsigned CDBGNODE2EAP3_REG_ADDR                                                                    = 32'h00002270;
-localparam int unsigned CDBGNODE3EAP2_REG_OFFSET                                                                  = 32'h00002278;
-localparam int unsigned CDBGNODE3EAP2_REG_ADDR                                                                    = 32'h00002278;
-localparam int unsigned CDBGNODE3EAP3_REG_OFFSET                                                                  = 32'h00002280;
-localparam int unsigned CDBGNODE3EAP3_REG_ADDR                                                                    = 32'h00002280;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP2LO_REG_OFFSET                                                  = 32'h00002288;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP2LO_REG_ADDR                                                    = 32'h00002288;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP3LO_REG_OFFSET                                                  = 32'h00002290;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP3LO_REG_ADDR                                                    = 32'h00002290;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP2LO_REG_OFFSET                                                  = 32'h00002298;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP2LO_REG_ADDR                                                    = 32'h00002298;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP3LO_REG_OFFSET                                                  = 32'h000022A0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP3LO_REG_ADDR                                                    = 32'h000022A0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP2LO_REG_OFFSET                                                  = 32'h000022A8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP2LO_REG_ADDR                                                    = 32'h000022A8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP3LO_REG_OFFSET                                                  = 32'h000022B0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP3LO_REG_ADDR                                                    = 32'h000022B0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP2LO_REG_OFFSET                                                  = 32'h000022B8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP2LO_REG_ADDR                                                    = 32'h000022B8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP3LO_REG_OFFSET                                                  = 32'h000022C0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP3LO_REG_ADDR                                                    = 32'h000022C0;
-localparam int unsigned CDBGSIGNALDELAYMUXSEL_REG_OFFSET                                                          = 32'h000022C8;
-localparam int unsigned CDBGSIGNALDELAYMUXSEL_REG_ADDR                                                            = 32'h000022C8;
-localparam int unsigned CDBGCLAXTRIGGERTIMESTRETCH_REG_OFFSET                                                     = 32'h000022D8;
-localparam int unsigned CDBGCLAXTRIGGERTIMESTRETCH_REG_ADDR                                                       = 32'h000022D8;
-localparam int unsigned CDBGCLATIMESTAMP_REG_OFFSET                                                               = 32'h000022F0;
-localparam int unsigned CDBGCLATIMESTAMP_REG_ADDR                                                                 = 32'h000022F0;
-localparam int unsigned CDBGCLATIMESTAMPSYNC_REG_OFFSET                                                           = 32'h000022F8;
-localparam int unsigned CDBGCLATIMESTAMPSYNC_REG_ADDR                                                             = 32'h000022F8;
-localparam int unsigned CDBGCLATIMESTAMPCONFIG_REG_OFFSET                                                         = 32'h00002300;
-localparam int unsigned CDBGCLATIMESTAMPCONFIG_REG_ADDR                                                           = 32'h00002300;
-localparam int unsigned CRSCRATCHPAD_REG_OFFSET                                                                   = 32'h000023F0;
-localparam int unsigned CRSCRATCHPAD_REG_ADDR                                                                     = 32'h000023F0;
-localparam int unsigned CDBGSIGNALMASK0HI_REG_OFFSET                                                              = 32'h00002400;
-localparam int unsigned CDBGSIGNALMASK0HI_REG_ADDR                                                                = 32'h00002400;
-localparam int unsigned CDBGSIGNALMATCH0HI_REG_OFFSET                                                             = 32'h00002408;
-localparam int unsigned CDBGSIGNALMATCH0HI_REG_ADDR                                                               = 32'h00002408;
-localparam int unsigned CDBGSIGNALMASK1HI_REG_OFFSET                                                              = 32'h00002410;
-localparam int unsigned CDBGSIGNALMASK1HI_REG_ADDR                                                                = 32'h00002410;
-localparam int unsigned CDBGSIGNALMATCH1HI_REG_OFFSET                                                             = 32'h00002418;
-localparam int unsigned CDBGSIGNALMATCH1HI_REG_ADDR                                                               = 32'h00002418;
-localparam int unsigned CDBGSIGNALMASK2HI_REG_OFFSET                                                              = 32'h00002420;
-localparam int unsigned CDBGSIGNALMASK2HI_REG_ADDR                                                                = 32'h00002420;
-localparam int unsigned CDBGSIGNALMATCH2HI_REG_OFFSET                                                             = 32'h00002428;
-localparam int unsigned CDBGSIGNALMATCH2HI_REG_ADDR                                                               = 32'h00002428;
-localparam int unsigned CDBGSIGNALMASK3HI_REG_OFFSET                                                              = 32'h00002430;
-localparam int unsigned CDBGSIGNALMASK3HI_REG_ADDR                                                                = 32'h00002430;
-localparam int unsigned CDBGSIGNALMATCH3HI_REG_OFFSET                                                             = 32'h00002438;
-localparam int unsigned CDBGSIGNALMATCH3HI_REG_ADDR                                                               = 32'h00002438;
-localparam int unsigned CDBGMUXSELHI_REG_OFFSET                                                                   = 32'h00002440;
-localparam int unsigned CDBGMUXSELHI_REG_ADDR                                                                     = 32'h00002440;
-localparam int unsigned CDBGTRANSITIONMASKHI_REG_OFFSET                                                           = 32'h00002448;
-localparam int unsigned CDBGTRANSITIONMASKHI_REG_ADDR                                                             = 32'h00002448;
-localparam int unsigned CDBGTRANSITIONFROMVALUEHI_REG_OFFSET                                                      = 32'h00002450;
-localparam int unsigned CDBGTRANSITIONFROMVALUEHI_REG_ADDR                                                        = 32'h00002450;
-localparam int unsigned CDBGTRANSITIONTOVALUEHI_REG_OFFSET                                                        = 32'h00002458;
-localparam int unsigned CDBGTRANSITIONTOVALUEHI_REG_ADDR                                                          = 32'h00002458;
-localparam int unsigned CDBGONESCOUNTMASKHI_REG_OFFSET                                                            = 32'h00002460;
-localparam int unsigned CDBGONESCOUNTMASKHI_REG_ADDR                                                              = 32'h00002460;
-localparam int unsigned CDBGANYCHANGEHI_REG_OFFSET                                                                = 32'h00002468;
-localparam int unsigned CDBGANYCHANGEHI_REG_ADDR                                                                  = 32'h00002468;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP0HI_REG_OFFSET                                                  = 32'h00002470;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP0HI_REG_ADDR                                                    = 32'h00002470;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP1HI_REG_OFFSET                                                  = 32'h00002478;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP1HI_REG_ADDR                                                    = 32'h00002478;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP0HI_REG_OFFSET                                                  = 32'h00002480;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP0HI_REG_ADDR                                                    = 32'h00002480;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP1HI_REG_OFFSET                                                  = 32'h00002488;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP1HI_REG_ADDR                                                    = 32'h00002488;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP0HI_REG_OFFSET                                                  = 32'h00002490;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP0HI_REG_ADDR                                                    = 32'h00002490;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP1HI_REG_OFFSET                                                  = 32'h00002498;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP1HI_REG_ADDR                                                    = 32'h00002498;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP0HI_REG_OFFSET                                                  = 32'h000024A0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP0HI_REG_ADDR                                                    = 32'h000024A0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP1HI_REG_OFFSET                                                  = 32'h000024A8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP1HI_REG_ADDR                                                    = 32'h000024A8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP2HI_REG_OFFSET                                                  = 32'h000024B0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP2HI_REG_ADDR                                                    = 32'h000024B0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP3HI_REG_OFFSET                                                  = 32'h000024B8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE0EAP3HI_REG_ADDR                                                    = 32'h000024B8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP2HI_REG_OFFSET                                                  = 32'h000024C0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP2HI_REG_ADDR                                                    = 32'h000024C0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP3HI_REG_OFFSET                                                  = 32'h000024C8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE1EAP3HI_REG_ADDR                                                    = 32'h000024C8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP2HI_REG_OFFSET                                                  = 32'h000024D0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP2HI_REG_ADDR                                                    = 32'h000024D0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP3HI_REG_OFFSET                                                  = 32'h000024D8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE2EAP3HI_REG_ADDR                                                    = 32'h000024D8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP2HI_REG_OFFSET                                                  = 32'h000024E0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP2HI_REG_ADDR                                                    = 32'h000024E0;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP3HI_REG_OFFSET                                                  = 32'h000024E8;
-localparam int unsigned CDBGSIGNALSNAPSHOTNODE3EAP3HI_REG_ADDR                                                    = 32'h000024E8;
-localparam int unsigned CDBGLFSR_REG_OFFSET                                                                       = 32'h000024F0;
-localparam int unsigned CDBGLFSR_REG_ADDR                                                                         = 32'h000024F0;
-localparam int unsigned CDBGLFSRMASK_REG_OFFSET                                                                   = 32'h000024F8;
-localparam int unsigned CDBGLFSRMASK_REG_ADDR                                                                     = 32'h000024F8;
-localparam int unsigned CDBGTIMESTAMPCAPTURE_REG_OFFSET                                                           = 32'h00002500;
-localparam int unsigned CDBGTIMESTAMPCAPTURE_REG_ADDR                                                             = 32'h00002500;
-localparam int unsigned CDBGCOMPARE0LO_REG_OFFSET                                                                 = 32'h00002508;
-localparam int unsigned CDBGCOMPARE0LO_REG_ADDR                                                                   = 32'h00002508;
-localparam int unsigned CDBGCOMPARE0MASKLO_REG_OFFSET                                                             = 32'h00002510;
-localparam int unsigned CDBGCOMPARE0MASKLO_REG_ADDR                                                               = 32'h00002510;
-localparam int unsigned CDBGCOMPARE1LO_REG_OFFSET                                                                 = 32'h00002518;
-localparam int unsigned CDBGCOMPARE1LO_REG_ADDR                                                                   = 32'h00002518;
-localparam int unsigned CDBGCOMPARE1MASKLO_REG_OFFSET                                                             = 32'h00002520;
-localparam int unsigned CDBGCOMPARE1MASKLO_REG_ADDR                                                               = 32'h00002520;
-localparam int unsigned CDBGCOMPARE2LO_REG_OFFSET                                                                 = 32'h00002528;
-localparam int unsigned CDBGCOMPARE2LO_REG_ADDR                                                                   = 32'h00002528;
-localparam int unsigned CDBGCOMPARE2MASKLO_REG_OFFSET                                                             = 32'h00002530;
-localparam int unsigned CDBGCOMPARE2MASKLO_REG_ADDR                                                               = 32'h00002530;
-localparam int unsigned CDBGCOMPARE3LO_REG_OFFSET                                                                 = 32'h00002538;
-localparam int unsigned CDBGCOMPARE3LO_REG_ADDR                                                                   = 32'h00002538;
-localparam int unsigned CDBGCOMPARE3MASKLO_REG_OFFSET                                                             = 32'h00002540;
-localparam int unsigned CDBGCOMPARE3MASKLO_REG_ADDR                                                               = 32'h00002540;
-localparam int unsigned CDBGCOMPARE0HI_REG_OFFSET                                                                 = 32'h00002548;
-localparam int unsigned CDBGCOMPARE0HI_REG_ADDR                                                                   = 32'h00002548;
-localparam int unsigned CDBGCOMPARE0MASKHI_REG_OFFSET                                                             = 32'h00002550;
-localparam int unsigned CDBGCOMPARE0MASKHI_REG_ADDR                                                               = 32'h00002550;
-localparam int unsigned CDBGCOMPARE1HI_REG_OFFSET                                                                 = 32'h00002558;
-localparam int unsigned CDBGCOMPARE1HI_REG_ADDR                                                                   = 32'h00002558;
-localparam int unsigned CDBGCOMPARE1MASKHI_REG_OFFSET                                                             = 32'h00002560;
-localparam int unsigned CDBGCOMPARE1MASKHI_REG_ADDR                                                               = 32'h00002560;
-localparam int unsigned CDBGCOMPARE2HI_REG_OFFSET                                                                 = 32'h00002568;
-localparam int unsigned CDBGCOMPARE2HI_REG_ADDR                                                                   = 32'h00002568;
-localparam int unsigned CDBGCOMPARE2MASKHI_REG_OFFSET                                                             = 32'h00002570;
-localparam int unsigned CDBGCOMPARE2MASKHI_REG_ADDR                                                               = 32'h00002570;
-localparam int unsigned CDBGCOMPARE3HI_REG_OFFSET                                                                 = 32'h00002578;
-localparam int unsigned CDBGCOMPARE3HI_REG_ADDR                                                                   = 32'h00002578;
-localparam int unsigned CDBGCOMPARE3MASKHI_REG_OFFSET                                                             = 32'h00002580;
-localparam int unsigned CDBGCOMPARE3MASKHI_REG_ADDR                                                               = 32'h00002580;
-localparam int unsigned SCRATCH_REG_OFFSET                                                                        = 32'h00002FF8;
-localparam int unsigned SCRATCH_REG_ADDR                                                                          = 32'h00002FF8;
-localparam int unsigned TRDSTCONTROL_REG_OFFSET                                                                   = 32'h00003000;
-localparam int unsigned TRDSTCONTROL_REG_ADDR                                                                     = 32'h00003000;
-localparam int unsigned TRDSTIMPL_REG_OFFSET                                                                      = 32'h00003004;
-localparam int unsigned TRDSTIMPL_REG_ADDR                                                                        = 32'h00003004;
-localparam int unsigned TRDSTINSTFEATURES_REG_OFFSET                                                              = 32'h00003008;
-localparam int unsigned TRDSTINSTFEATURES_REG_ADDR                                                                = 32'h00003008;
-localparam int unsigned CDBGDEBUGTRACECFG_REG_OFFSET                                                              = 32'h000031A0;
-localparam int unsigned CDBGDEBUGTRACECFG_REG_ADDR                                                                = 32'h000031A0;
-localparam int unsigned TRDSTSCRATCHLO_REG_OFFSET                                                                 = 32'h00003FF8;
-localparam int unsigned TRDSTSCRATCHLO_REG_ADDR                                                                   = 32'h00003FF8;
-localparam int unsigned TRDSTSCRATCHHI_REG_OFFSET                                                                 = 32'h00003FFC;
-localparam int unsigned TRDSTSCRATCHHI_REG_ADDR                                                                   = 32'h00003FFC;
+
+
+//==============================================================================
+// Addresses for Address Map: dst_sink
+//==============================================================================
+
+
+localparam int unsigned DST_SINK_REG_MAP_BASE_ADDR                                                                = 32'h00000000;
+localparam int unsigned DST_SINK_REG_MAP_SIZE                                                                     = 32'h00001000;
+
+
+localparam int unsigned DST_SINK_TRDSTRAMCONTROL_REG_OFFSET                                                       = 32'h00000000;
+localparam int unsigned DST_SINK_TRDSTRAMCONTROL_REG_ADDR                                                         = 32'h00000000;
+localparam int unsigned DST_SINK_TRDSTRAMIMPL_REG_OFFSET                                                          = 32'h00000004;
+localparam int unsigned DST_SINK_TRDSTRAMIMPL_REG_ADDR                                                            = 32'h00000004;
+localparam int unsigned DST_SINK_TRDSTRAMSTARTLOW_REG_OFFSET                                                      = 32'h00000010;
+localparam int unsigned DST_SINK_TRDSTRAMSTARTLOW_REG_ADDR                                                        = 32'h00000010;
+localparam int unsigned DST_SINK_TRDSTRAMSTARTHIGH_REG_OFFSET                                                     = 32'h00000014;
+localparam int unsigned DST_SINK_TRDSTRAMSTARTHIGH_REG_ADDR                                                       = 32'h00000014;
+localparam int unsigned DST_SINK_TRDSTRAMLIMITLOW_REG_OFFSET                                                      = 32'h00000018;
+localparam int unsigned DST_SINK_TRDSTRAMLIMITLOW_REG_ADDR                                                        = 32'h00000018;
+localparam int unsigned DST_SINK_TRDSTRAMLIMITHIGH_REG_OFFSET                                                     = 32'h0000001C;
+localparam int unsigned DST_SINK_TRDSTRAMLIMITHIGH_REG_ADDR                                                       = 32'h0000001C;
+localparam int unsigned DST_SINK_TRDSTRAMWPLOW_REG_OFFSET                                                         = 32'h00000020;
+localparam int unsigned DST_SINK_TRDSTRAMWPLOW_REG_ADDR                                                           = 32'h00000020;
+localparam int unsigned DST_SINK_TRDSTRAMWPHIGH_REG_OFFSET                                                        = 32'h00000024;
+localparam int unsigned DST_SINK_TRDSTRAMWPHIGH_REG_ADDR                                                          = 32'h00000024;
+localparam int unsigned DST_SINK_TRDSTRAMRPLOW_REG_OFFSET                                                         = 32'h00000028;
+localparam int unsigned DST_SINK_TRDSTRAMRPLOW_REG_ADDR                                                           = 32'h00000028;
+localparam int unsigned DST_SINK_TRDSTRAMRPHIGH_REG_OFFSET                                                        = 32'h0000002C;
+localparam int unsigned DST_SINK_TRDSTRAMRPHIGH_REG_ADDR                                                          = 32'h0000002C;
+localparam int unsigned DST_SINK_TRDSTRAMDATA_REG_OFFSET                                                          = 32'h00000040;
+localparam int unsigned DST_SINK_TRDSTRAMDATA_REG_ADDR                                                            = 32'h00000040;
+localparam int unsigned DST_SINK_SCRATCHLO_REG_OFFSET                                                             = 32'h00000FF8;
+localparam int unsigned DST_SINK_SCRATCHLO_REG_ADDR                                                               = 32'h00000FF8;
+localparam int unsigned DST_SINK_SCRATCHHI_REG_OFFSET                                                             = 32'h00000FFC;
+localparam int unsigned DST_SINK_SCRATCHHI_REG_ADDR                                                               = 32'h00000FFC;
+
+
+//==============================================================================
+// Addresses for Address Map: funnel
+//==============================================================================
+
+
+localparam int unsigned FUNNEL_REG_MAP_BASE_ADDR                                                                  = 32'h00001000;
+localparam int unsigned FUNNEL_REG_MAP_SIZE                                                                       = 32'h00001000;
+
+
+localparam int unsigned FUNNEL_TRFUNNELCONTROL_REG_OFFSET                                                         = 32'h00000000;
+localparam int unsigned FUNNEL_TRFUNNELCONTROL_REG_ADDR                                                           = 32'h00001000;
+localparam int unsigned FUNNEL_TRFUNNELIMPL_REG_OFFSET                                                            = 32'h00000004;
+localparam int unsigned FUNNEL_TRFUNNELIMPL_REG_ADDR                                                              = 32'h00001004;
+localparam int unsigned FUNNEL_TRFUNNELDISINPUT_REG_OFFSET                                                        = 32'h00000008;
+localparam int unsigned FUNNEL_TRFUNNELDISINPUT_REG_ADDR                                                          = 32'h00001008;
+localparam int unsigned FUNNEL_SCRATCHLO_REG_OFFSET                                                               = 32'h00000FF8;
+localparam int unsigned FUNNEL_SCRATCHLO_REG_ADDR                                                                 = 32'h00001FF8;
+localparam int unsigned FUNNEL_SCRATCHHI_REG_OFFSET                                                               = 32'h00000FFC;
+localparam int unsigned FUNNEL_SCRATCHHI_REG_ADDR                                                                 = 32'h00001FFC;
+
+
+//==============================================================================
+// Addresses for Address Map: cla[0]
+//==============================================================================
+
+
+localparam int unsigned CLA_0__REG_MAP_BASE_ADDR                                                                  = 32'h00002000;
+localparam int unsigned CLA_0__REG_MAP_SIZE                                                                       = 32'h00001000;
+
+
+localparam int unsigned CLA_0__CDBGCLACOUNTER0CFG_REG_OFFSET                                                      = 32'h00000100;
+localparam int unsigned CLA_0__CDBGCLACOUNTER0CFG_REG_ADDR                                                        = 32'h00002100;
+localparam int unsigned CLA_0__CDBGCLACOUNTER1CFG_REG_OFFSET                                                      = 32'h00000108;
+localparam int unsigned CLA_0__CDBGCLACOUNTER1CFG_REG_ADDR                                                        = 32'h00002108;
+localparam int unsigned CLA_0__CDBGCLACOUNTER2CFG_REG_OFFSET                                                      = 32'h00000110;
+localparam int unsigned CLA_0__CDBGCLACOUNTER2CFG_REG_ADDR                                                        = 32'h00002110;
+localparam int unsigned CLA_0__CDBGCLACOUNTER3CFG_REG_OFFSET                                                      = 32'h00000118;
+localparam int unsigned CLA_0__CDBGCLACOUNTER3CFG_REG_ADDR                                                        = 32'h00002118;
+localparam int unsigned CLA_0__CDBGNODE0EAP0_REG_OFFSET                                                           = 32'h00000120;
+localparam int unsigned CLA_0__CDBGNODE0EAP0_REG_ADDR                                                             = 32'h00002120;
+localparam int unsigned CLA_0__CDBGNODE0EAP1_REG_OFFSET                                                           = 32'h00000128;
+localparam int unsigned CLA_0__CDBGNODE0EAP1_REG_ADDR                                                             = 32'h00002128;
+localparam int unsigned CLA_0__CDBGNODE1EAP0_REG_OFFSET                                                           = 32'h00000130;
+localparam int unsigned CLA_0__CDBGNODE1EAP0_REG_ADDR                                                             = 32'h00002130;
+localparam int unsigned CLA_0__CDBGNODE1EAP1_REG_OFFSET                                                           = 32'h00000138;
+localparam int unsigned CLA_0__CDBGNODE1EAP1_REG_ADDR                                                             = 32'h00002138;
+localparam int unsigned CLA_0__CDBGNODE2EAP0_REG_OFFSET                                                           = 32'h00000140;
+localparam int unsigned CLA_0__CDBGNODE2EAP0_REG_ADDR                                                             = 32'h00002140;
+localparam int unsigned CLA_0__CDBGNODE2EAP1_REG_OFFSET                                                           = 32'h00000148;
+localparam int unsigned CLA_0__CDBGNODE2EAP1_REG_ADDR                                                             = 32'h00002148;
+localparam int unsigned CLA_0__CDBGNODE3EAP0_REG_OFFSET                                                           = 32'h00000150;
+localparam int unsigned CLA_0__CDBGNODE3EAP0_REG_ADDR                                                             = 32'h00002150;
+localparam int unsigned CLA_0__CDBGNODE3EAP1_REG_OFFSET                                                           = 32'h00000158;
+localparam int unsigned CLA_0__CDBGNODE3EAP1_REG_ADDR                                                             = 32'h00002158;
+localparam int unsigned CLA_0__CDBGSIGNALMASK0LO_REG_OFFSET                                                       = 32'h00000160;
+localparam int unsigned CLA_0__CDBGSIGNALMASK0LO_REG_ADDR                                                         = 32'h00002160;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH0LO_REG_OFFSET                                                      = 32'h00000168;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH0LO_REG_ADDR                                                        = 32'h00002168;
+localparam int unsigned CLA_0__CDBGSIGNALMASK1LO_REG_OFFSET                                                       = 32'h00000170;
+localparam int unsigned CLA_0__CDBGSIGNALMASK1LO_REG_ADDR                                                         = 32'h00002170;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH1LO_REG_OFFSET                                                      = 32'h00000178;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH1LO_REG_ADDR                                                        = 32'h00002178;
+localparam int unsigned CLA_0__CDBGSIGNALEDGEDETECTCFG_REG_OFFSET                                                 = 32'h00000180;
+localparam int unsigned CLA_0__CDBGSIGNALEDGEDETECTCFG_REG_ADDR                                                   = 32'h00002180;
+localparam int unsigned CLA_0__CDBGEAPSTATUS_REG_OFFSET                                                           = 32'h00000188;
+localparam int unsigned CLA_0__CDBGEAPSTATUS_REG_ADDR                                                             = 32'h00002188;
+localparam int unsigned CLA_0__CDBGCLACTRLSTATUS_REG_OFFSET                                                       = 32'h00000190;
+localparam int unsigned CLA_0__CDBGCLACTRLSTATUS_REG_ADDR                                                         = 32'h00002190;
+localparam int unsigned CLA_0__CDBGMUXSELLO_REG_OFFSET                                                            = 32'h00000198;
+localparam int unsigned CLA_0__CDBGMUXSELLO_REG_ADDR                                                              = 32'h00002198;
+localparam int unsigned CLA_0__CDBGRSVD1_REG_OFFSET                                                               = 32'h000001A0;
+localparam int unsigned CLA_0__CDBGRSVD1_REG_ADDR                                                                 = 32'h000021A0;
+localparam int unsigned CLA_0__CDBGRSVD2_REG_OFFSET                                                               = 32'h000001A8;
+localparam int unsigned CLA_0__CDBGRSVD2_REG_ADDR                                                                 = 32'h000021A8;
+localparam int unsigned CLA_0__CDBGTRANSITIONMASKLO_REG_OFFSET                                                    = 32'h000001B0;
+localparam int unsigned CLA_0__CDBGTRANSITIONMASKLO_REG_ADDR                                                      = 32'h000021B0;
+localparam int unsigned CLA_0__CDBGTRANSITIONFROMVALUELO_REG_OFFSET                                               = 32'h000001B8;
+localparam int unsigned CLA_0__CDBGTRANSITIONFROMVALUELO_REG_ADDR                                                 = 32'h000021B8;
+localparam int unsigned CLA_0__CDBGTRANSITIONTOVALUELO_REG_OFFSET                                                 = 32'h000001C0;
+localparam int unsigned CLA_0__CDBGTRANSITIONTOVALUELO_REG_ADDR                                                   = 32'h000021C0;
+localparam int unsigned CLA_0__CDBGONESCOUNTMASKLO_REG_OFFSET                                                     = 32'h000001C8;
+localparam int unsigned CLA_0__CDBGONESCOUNTMASKLO_REG_ADDR                                                       = 32'h000021C8;
+localparam int unsigned CLA_0__CDBGONESCOUNTVALUE_REG_OFFSET                                                      = 32'h000001D0;
+localparam int unsigned CLA_0__CDBGONESCOUNTVALUE_REG_ADDR                                                        = 32'h000021D0;
+localparam int unsigned CLA_0__CDBGANYCHANGELO_REG_OFFSET                                                         = 32'h000001D8;
+localparam int unsigned CLA_0__CDBGANYCHANGELO_REG_ADDR                                                           = 32'h000021D8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP0LO_REG_OFFSET                                           = 32'h000001E0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP0LO_REG_ADDR                                             = 32'h000021E0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP1LO_REG_OFFSET                                           = 32'h000001E8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP1LO_REG_ADDR                                             = 32'h000021E8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP0LO_REG_OFFSET                                           = 32'h000001F0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP0LO_REG_ADDR                                             = 32'h000021F0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP1LO_REG_OFFSET                                           = 32'h000001F8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP1LO_REG_ADDR                                             = 32'h000021F8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP0LO_REG_OFFSET                                           = 32'h00000200;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP0LO_REG_ADDR                                             = 32'h00002200;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP1LO_REG_OFFSET                                           = 32'h00000208;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP1LO_REG_ADDR                                             = 32'h00002208;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP0LO_REG_OFFSET                                           = 32'h00000210;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP0LO_REG_ADDR                                             = 32'h00002210;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP1LO_REG_OFFSET                                           = 32'h00000218;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP1LO_REG_ADDR                                             = 32'h00002218;
+localparam int unsigned CLA_0__CDBGCLATIMEMATCH_REG_OFFSET                                                        = 32'h00000220;
+localparam int unsigned CLA_0__CDBGCLATIMEMATCH_REG_ADDR                                                          = 32'h00002220;
+localparam int unsigned CLA_0__CDBGSIGNALMASK2LO_REG_OFFSET                                                       = 32'h00000228;
+localparam int unsigned CLA_0__CDBGSIGNALMASK2LO_REG_ADDR                                                         = 32'h00002228;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH2LO_REG_OFFSET                                                      = 32'h00000230;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH2LO_REG_ADDR                                                        = 32'h00002230;
+localparam int unsigned CLA_0__CDBGSIGNALMASK3LO_REG_OFFSET                                                       = 32'h00000238;
+localparam int unsigned CLA_0__CDBGSIGNALMASK3LO_REG_ADDR                                                         = 32'h00002238;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH3LO_REG_OFFSET                                                      = 32'h00000240;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH3LO_REG_ADDR                                                        = 32'h00002240;
+localparam int unsigned CLA_0__CDBGNODE0EAP2_REG_OFFSET                                                           = 32'h00000248;
+localparam int unsigned CLA_0__CDBGNODE0EAP2_REG_ADDR                                                             = 32'h00002248;
+localparam int unsigned CLA_0__CDBGNODE0EAP3_REG_OFFSET                                                           = 32'h00000250;
+localparam int unsigned CLA_0__CDBGNODE0EAP3_REG_ADDR                                                             = 32'h00002250;
+localparam int unsigned CLA_0__CDBGNODE1EAP2_REG_OFFSET                                                           = 32'h00000258;
+localparam int unsigned CLA_0__CDBGNODE1EAP2_REG_ADDR                                                             = 32'h00002258;
+localparam int unsigned CLA_0__CDBGNODE1EAP3_REG_OFFSET                                                           = 32'h00000260;
+localparam int unsigned CLA_0__CDBGNODE1EAP3_REG_ADDR                                                             = 32'h00002260;
+localparam int unsigned CLA_0__CDBGNODE2EAP2_REG_OFFSET                                                           = 32'h00000268;
+localparam int unsigned CLA_0__CDBGNODE2EAP2_REG_ADDR                                                             = 32'h00002268;
+localparam int unsigned CLA_0__CDBGNODE2EAP3_REG_OFFSET                                                           = 32'h00000270;
+localparam int unsigned CLA_0__CDBGNODE2EAP3_REG_ADDR                                                             = 32'h00002270;
+localparam int unsigned CLA_0__CDBGNODE3EAP2_REG_OFFSET                                                           = 32'h00000278;
+localparam int unsigned CLA_0__CDBGNODE3EAP2_REG_ADDR                                                             = 32'h00002278;
+localparam int unsigned CLA_0__CDBGNODE3EAP3_REG_OFFSET                                                           = 32'h00000280;
+localparam int unsigned CLA_0__CDBGNODE3EAP3_REG_ADDR                                                             = 32'h00002280;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP2LO_REG_OFFSET                                           = 32'h00000288;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP2LO_REG_ADDR                                             = 32'h00002288;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP3LO_REG_OFFSET                                           = 32'h00000290;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP3LO_REG_ADDR                                             = 32'h00002290;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP2LO_REG_OFFSET                                           = 32'h00000298;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP2LO_REG_ADDR                                             = 32'h00002298;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP3LO_REG_OFFSET                                           = 32'h000002A0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP3LO_REG_ADDR                                             = 32'h000022A0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP2LO_REG_OFFSET                                           = 32'h000002A8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP2LO_REG_ADDR                                             = 32'h000022A8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP3LO_REG_OFFSET                                           = 32'h000002B0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP3LO_REG_ADDR                                             = 32'h000022B0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP2LO_REG_OFFSET                                           = 32'h000002B8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP2LO_REG_ADDR                                             = 32'h000022B8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP3LO_REG_OFFSET                                           = 32'h000002C0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP3LO_REG_ADDR                                             = 32'h000022C0;
+localparam int unsigned CLA_0__CDBGSIGNALDELAYMUXSEL_REG_OFFSET                                                   = 32'h000002C8;
+localparam int unsigned CLA_0__CDBGSIGNALDELAYMUXSEL_REG_ADDR                                                     = 32'h000022C8;
+localparam int unsigned CLA_0__CDBGCLAXTRIGGERTIMESTRETCH_REG_OFFSET                                              = 32'h000002D8;
+localparam int unsigned CLA_0__CDBGCLAXTRIGGERTIMESTRETCH_REG_ADDR                                                = 32'h000022D8;
+localparam int unsigned CLA_0__CDBGCLATIMESTAMP_REG_OFFSET                                                        = 32'h000002F0;
+localparam int unsigned CLA_0__CDBGCLATIMESTAMP_REG_ADDR                                                          = 32'h000022F0;
+localparam int unsigned CLA_0__CDBGCLATIMESTAMPSYNC_REG_OFFSET                                                    = 32'h000002F8;
+localparam int unsigned CLA_0__CDBGCLATIMESTAMPSYNC_REG_ADDR                                                      = 32'h000022F8;
+localparam int unsigned CLA_0__CDBGCLATIMESTAMPCONFIG_REG_OFFSET                                                  = 32'h00000300;
+localparam int unsigned CLA_0__CDBGCLATIMESTAMPCONFIG_REG_ADDR                                                    = 32'h00002300;
+localparam int unsigned CLA_0__CDBGCLATIMESTAMPOFFSET_REG_OFFSET                                                  = 32'h00000308;
+localparam int unsigned CLA_0__CDBGCLATIMESTAMPOFFSET_REG_ADDR                                                    = 32'h00002308;
+localparam int unsigned CLA_0__CDBGSIGNALMASK0HI_REG_OFFSET                                                       = 32'h00000400;
+localparam int unsigned CLA_0__CDBGSIGNALMASK0HI_REG_ADDR                                                         = 32'h00002400;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH0HI_REG_OFFSET                                                      = 32'h00000408;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH0HI_REG_ADDR                                                        = 32'h00002408;
+localparam int unsigned CLA_0__CDBGSIGNALMASK1HI_REG_OFFSET                                                       = 32'h00000410;
+localparam int unsigned CLA_0__CDBGSIGNALMASK1HI_REG_ADDR                                                         = 32'h00002410;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH1HI_REG_OFFSET                                                      = 32'h00000418;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH1HI_REG_ADDR                                                        = 32'h00002418;
+localparam int unsigned CLA_0__CDBGSIGNALMASK2HI_REG_OFFSET                                                       = 32'h00000420;
+localparam int unsigned CLA_0__CDBGSIGNALMASK2HI_REG_ADDR                                                         = 32'h00002420;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH2HI_REG_OFFSET                                                      = 32'h00000428;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH2HI_REG_ADDR                                                        = 32'h00002428;
+localparam int unsigned CLA_0__CDBGSIGNALMASK3HI_REG_OFFSET                                                       = 32'h00000430;
+localparam int unsigned CLA_0__CDBGSIGNALMASK3HI_REG_ADDR                                                         = 32'h00002430;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH3HI_REG_OFFSET                                                      = 32'h00000438;
+localparam int unsigned CLA_0__CDBGSIGNALMATCH3HI_REG_ADDR                                                        = 32'h00002438;
+localparam int unsigned CLA_0__CDBGMUXSELHI_REG_OFFSET                                                            = 32'h00000440;
+localparam int unsigned CLA_0__CDBGMUXSELHI_REG_ADDR                                                              = 32'h00002440;
+localparam int unsigned CLA_0__CDBGTRANSITIONMASKHI_REG_OFFSET                                                    = 32'h00000448;
+localparam int unsigned CLA_0__CDBGTRANSITIONMASKHI_REG_ADDR                                                      = 32'h00002448;
+localparam int unsigned CLA_0__CDBGTRANSITIONFROMVALUEHI_REG_OFFSET                                               = 32'h00000450;
+localparam int unsigned CLA_0__CDBGTRANSITIONFROMVALUEHI_REG_ADDR                                                 = 32'h00002450;
+localparam int unsigned CLA_0__CDBGTRANSITIONTOVALUEHI_REG_OFFSET                                                 = 32'h00000458;
+localparam int unsigned CLA_0__CDBGTRANSITIONTOVALUEHI_REG_ADDR                                                   = 32'h00002458;
+localparam int unsigned CLA_0__CDBGONESCOUNTMASKHI_REG_OFFSET                                                     = 32'h00000460;
+localparam int unsigned CLA_0__CDBGONESCOUNTMASKHI_REG_ADDR                                                       = 32'h00002460;
+localparam int unsigned CLA_0__CDBGANYCHANGEHI_REG_OFFSET                                                         = 32'h00000468;
+localparam int unsigned CLA_0__CDBGANYCHANGEHI_REG_ADDR                                                           = 32'h00002468;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP0HI_REG_OFFSET                                           = 32'h00000470;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP0HI_REG_ADDR                                             = 32'h00002470;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP1HI_REG_OFFSET                                           = 32'h00000478;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP1HI_REG_ADDR                                             = 32'h00002478;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP0HI_REG_OFFSET                                           = 32'h00000480;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP0HI_REG_ADDR                                             = 32'h00002480;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP1HI_REG_OFFSET                                           = 32'h00000488;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP1HI_REG_ADDR                                             = 32'h00002488;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP0HI_REG_OFFSET                                           = 32'h00000490;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP0HI_REG_ADDR                                             = 32'h00002490;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP1HI_REG_OFFSET                                           = 32'h00000498;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP1HI_REG_ADDR                                             = 32'h00002498;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP0HI_REG_OFFSET                                           = 32'h000004A0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP0HI_REG_ADDR                                             = 32'h000024A0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP1HI_REG_OFFSET                                           = 32'h000004A8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP1HI_REG_ADDR                                             = 32'h000024A8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP2HI_REG_OFFSET                                           = 32'h000004B0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP2HI_REG_ADDR                                             = 32'h000024B0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP3HI_REG_OFFSET                                           = 32'h000004B8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE0EAP3HI_REG_ADDR                                             = 32'h000024B8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP2HI_REG_OFFSET                                           = 32'h000004C0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP2HI_REG_ADDR                                             = 32'h000024C0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP3HI_REG_OFFSET                                           = 32'h000004C8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE1EAP3HI_REG_ADDR                                             = 32'h000024C8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP2HI_REG_OFFSET                                           = 32'h000004D0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP2HI_REG_ADDR                                             = 32'h000024D0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP3HI_REG_OFFSET                                           = 32'h000004D8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE2EAP3HI_REG_ADDR                                             = 32'h000024D8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP2HI_REG_OFFSET                                           = 32'h000004E0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP2HI_REG_ADDR                                             = 32'h000024E0;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP3HI_REG_OFFSET                                           = 32'h000004E8;
+localparam int unsigned CLA_0__CDBGSIGNALSNAPSHOTNODE3EAP3HI_REG_ADDR                                             = 32'h000024E8;
+localparam int unsigned CLA_0__CDBGLFSR_REG_OFFSET                                                                = 32'h000004F0;
+localparam int unsigned CLA_0__CDBGLFSR_REG_ADDR                                                                  = 32'h000024F0;
+localparam int unsigned CLA_0__CDBGLFSRMASK_REG_OFFSET                                                            = 32'h000004F8;
+localparam int unsigned CLA_0__CDBGLFSRMASK_REG_ADDR                                                              = 32'h000024F8;
+localparam int unsigned CLA_0__CDBGTIMESTAMPCAPTURE_REG_OFFSET                                                    = 32'h00000500;
+localparam int unsigned CLA_0__CDBGTIMESTAMPCAPTURE_REG_ADDR                                                      = 32'h00002500;
+localparam int unsigned CLA_0__CDBGCOMPARE0LO_REG_OFFSET                                                          = 32'h00000508;
+localparam int unsigned CLA_0__CDBGCOMPARE0LO_REG_ADDR                                                            = 32'h00002508;
+localparam int unsigned CLA_0__CDBGCOMPARE0MASKLO_REG_OFFSET                                                      = 32'h00000510;
+localparam int unsigned CLA_0__CDBGCOMPARE0MASKLO_REG_ADDR                                                        = 32'h00002510;
+localparam int unsigned CLA_0__CDBGCOMPARE1LO_REG_OFFSET                                                          = 32'h00000518;
+localparam int unsigned CLA_0__CDBGCOMPARE1LO_REG_ADDR                                                            = 32'h00002518;
+localparam int unsigned CLA_0__CDBGCOMPARE1MASKLO_REG_OFFSET                                                      = 32'h00000520;
+localparam int unsigned CLA_0__CDBGCOMPARE1MASKLO_REG_ADDR                                                        = 32'h00002520;
+localparam int unsigned CLA_0__CDBGCOMPARE2LO_REG_OFFSET                                                          = 32'h00000528;
+localparam int unsigned CLA_0__CDBGCOMPARE2LO_REG_ADDR                                                            = 32'h00002528;
+localparam int unsigned CLA_0__CDBGCOMPARE2MASKLO_REG_OFFSET                                                      = 32'h00000530;
+localparam int unsigned CLA_0__CDBGCOMPARE2MASKLO_REG_ADDR                                                        = 32'h00002530;
+localparam int unsigned CLA_0__CDBGCOMPARE3LO_REG_OFFSET                                                          = 32'h00000538;
+localparam int unsigned CLA_0__CDBGCOMPARE3LO_REG_ADDR                                                            = 32'h00002538;
+localparam int unsigned CLA_0__CDBGCOMPARE3MASKLO_REG_OFFSET                                                      = 32'h00000540;
+localparam int unsigned CLA_0__CDBGCOMPARE3MASKLO_REG_ADDR                                                        = 32'h00002540;
+localparam int unsigned CLA_0__CDBGCOMPARE0HI_REG_OFFSET                                                          = 32'h00000548;
+localparam int unsigned CLA_0__CDBGCOMPARE0HI_REG_ADDR                                                            = 32'h00002548;
+localparam int unsigned CLA_0__CDBGCOMPARE0MASKHI_REG_OFFSET                                                      = 32'h00000550;
+localparam int unsigned CLA_0__CDBGCOMPARE0MASKHI_REG_ADDR                                                        = 32'h00002550;
+localparam int unsigned CLA_0__CDBGCOMPARE1HI_REG_OFFSET                                                          = 32'h00000558;
+localparam int unsigned CLA_0__CDBGCOMPARE1HI_REG_ADDR                                                            = 32'h00002558;
+localparam int unsigned CLA_0__CDBGCOMPARE1MASKHI_REG_OFFSET                                                      = 32'h00000560;
+localparam int unsigned CLA_0__CDBGCOMPARE1MASKHI_REG_ADDR                                                        = 32'h00002560;
+localparam int unsigned CLA_0__CDBGCOMPARE2HI_REG_OFFSET                                                          = 32'h00000568;
+localparam int unsigned CLA_0__CDBGCOMPARE2HI_REG_ADDR                                                            = 32'h00002568;
+localparam int unsigned CLA_0__CDBGCOMPARE2MASKHI_REG_OFFSET                                                      = 32'h00000570;
+localparam int unsigned CLA_0__CDBGCOMPARE2MASKHI_REG_ADDR                                                        = 32'h00002570;
+localparam int unsigned CLA_0__CDBGCOMPARE3HI_REG_OFFSET                                                          = 32'h00000578;
+localparam int unsigned CLA_0__CDBGCOMPARE3HI_REG_ADDR                                                            = 32'h00002578;
+localparam int unsigned CLA_0__CDBGCOMPARE3MASKHI_REG_OFFSET                                                      = 32'h00000580;
+localparam int unsigned CLA_0__CDBGCOMPARE3MASKHI_REG_ADDR                                                        = 32'h00002580;
+localparam int unsigned CLA_0__SCRATCH_REG_OFFSET                                                                 = 32'h00000FF8;
+localparam int unsigned CLA_0__SCRATCH_REG_ADDR                                                                   = 32'h00002FF8;
+
+
+//==============================================================================
+// Addresses for Address Map: dst[0]
+//==============================================================================
+
+
+localparam int unsigned DST_0__REG_MAP_BASE_ADDR                                                                  = 32'h00003000;
+localparam int unsigned DST_0__REG_MAP_SIZE                                                                       = 32'h00001000;
+
+
+localparam int unsigned DST_0__TRDSTCONTROL_REG_OFFSET                                                            = 32'h00000000;
+localparam int unsigned DST_0__TRDSTCONTROL_REG_ADDR                                                              = 32'h00003000;
+localparam int unsigned DST_0__TRDSTIMPL_REG_OFFSET                                                               = 32'h00000004;
+localparam int unsigned DST_0__TRDSTIMPL_REG_ADDR                                                                 = 32'h00003004;
+localparam int unsigned DST_0__TRDSTINSTFEATURES_REG_OFFSET                                                       = 32'h00000008;
+localparam int unsigned DST_0__TRDSTINSTFEATURES_REG_ADDR                                                         = 32'h00003008;
+localparam int unsigned DST_0__CDBGDEBUGTRACECFG_REG_OFFSET                                                       = 32'h000001A0;
+localparam int unsigned DST_0__CDBGDEBUGTRACECFG_REG_ADDR                                                         = 32'h000031A0;
+localparam int unsigned DST_0__SCRATCHLO_REG_OFFSET                                                               = 32'h00000FF8;
+localparam int unsigned DST_0__SCRATCHLO_REG_ADDR                                                                 = 32'h00003FF8;
+localparam int unsigned DST_0__SCRATCHHI_REG_OFFSET                                                               = 32'h00000FFC;
+localparam int unsigned DST_0__SCRATCHHI_REG_ADDR                                                                 = 32'h00003FFC;
 
 
 //==============================================================================
 // Default values for registers
 //==============================================================================
 
-localparam longint unsigned SMC_CLA_Trdstramcontrol_REG_DEFAULT                                                   = 32'h00000008;
-localparam longint unsigned SMC_CLA_Trdstramimpl_REG_DEFAULT                                                      = 32'h01003901;
-localparam longint unsigned SMC_CLA_Trdstramstartlow_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trdstramstarthigh_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trdstramlimitlow_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trdstramlimithigh_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trdstramwplow_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trdstramwphigh_REG_DEFAULT                                                    = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trdstramrplow_REG_DEFAULT                                                     = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trdstramrphigh_REG_DEFAULT                                                    = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trdstramdata_REG_DEFAULT                                                      = 32'h00000000;
-localparam longint unsigned SMC_CLA_TrDstSinkScratchLo_REG_DEFAULT                                                = 32'h00000000;
-localparam longint unsigned SMC_CLA_TrDstSinkScratchHi_REG_DEFAULT                                                = 32'h00000000;
-localparam longint unsigned SMC_CLA_Trfunnelcontrol_REG_DEFAULT                                                   = 32'h00000008;
-localparam longint unsigned SMC_CLA_Trfunnelimpl_REG_DEFAULT                                                      = 32'h00000801;
-localparam longint unsigned SMC_CLA_Trfunneldisinput_REG_DEFAULT                                                  = 32'h00000000;
-localparam longint unsigned SMC_CLA_TrFunnelScratchLo_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned SMC_CLA_TrFunnelScratchHi_REG_DEFAULT                                                 = 32'h00000000;
-localparam longint unsigned SMC_CLA_CDbgClaCounter0Cfg_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaCounter1Cfg_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaCounter2Cfg_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaCounter3Cfg_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMask0Lo_REG_DEFAULT                                                 = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMatch0Lo_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMask1Lo_REG_DEFAULT                                                 = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMatch1Lo_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_REG_DEFAULT                                           = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgEapStatus_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_REG_DEFAULT                                                 = 64'h0000000000001B00;
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_REG_DEFAULT                                                      = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgRsvd1_REG_DEFAULT                                                         = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgRsvd2_REG_DEFAULT                                                         = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgTransitionMaskLo_REG_DEFAULT                                              = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgTransitionFromValueLo_REG_DEFAULT                                         = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgTransitionToValueLo_REG_DEFAULT                                           = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgOnesCountMaskLo_REG_DEFAULT                                               = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgOnesCountValue_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgAnyChangeLo_REG_DEFAULT                                                   = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap0Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap1Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap0Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap1Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap0Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap1Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap0Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap1Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaTimeMatch_REG_DEFAULT                                                  = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMask2Lo_REG_DEFAULT                                                 = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMatch2Lo_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMask3Lo_REG_DEFAULT                                                 = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMatch3Lo_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_REG_DEFAULT                                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap2Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap3Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap2Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap3Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap2Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap3Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap2Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap3Lo_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_REG_DEFAULT                                             = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaXtriggerTimestretch_REG_DEFAULT                                        = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaTimestamp_REG_DEFAULT                                                  = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaTimestampSync_REG_DEFAULT                                              = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgClaTimestampConfig_REG_DEFAULT                                            = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CrScratchpad_REG_DEFAULT                                                      = 64'hBFBFBFBFBFBFBFBF;
-localparam longint unsigned SMC_CLA_CDbgSignalMask0Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMatch0Hi_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMask1Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMatch1Hi_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMask2Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMatch2Hi_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMask3Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalMatch3Hi_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_REG_DEFAULT                                                      = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgTransitionMaskHi_REG_DEFAULT                                              = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgTransitionFromValueHi_REG_DEFAULT                                         = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgTransitionToValueHi_REG_DEFAULT                                           = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgOnesCountMaskHi_REG_DEFAULT                                               = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgAnyChangeHi_REG_DEFAULT                                                   = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap0Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap1Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap0Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap1Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap0Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap1Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap0Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap1Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap2Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap3Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap2Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap3Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap2Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap3Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap2Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap3Hi_REG_DEFAULT                                     = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgLfsr_REG_DEFAULT                                                          = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgLfsrMask_REG_DEFAULT                                                      = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgTimestampCapture_REG_DEFAULT                                              = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare0Lo_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare0MaskLo_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare1Lo_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare1MaskLo_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare2Lo_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare2MaskLo_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare3Lo_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare3MaskLo_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare0Hi_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare0MaskHi_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare1Hi_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare1MaskHi_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare2Hi_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare2MaskHi_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare3Hi_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_CDbgCompare3MaskHi_REG_DEFAULT                                                = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_Scratch_REG_DEFAULT                                                           = 64'h0000000000000000;
-localparam longint unsigned SMC_CLA_Trdstcontrol_REG_DEFAULT                                                      = 32'h03000068;
-localparam longint unsigned SMC_CLA_Trdstimpl_REG_DEFAULT                                                         = 32'h41010101;
-localparam longint unsigned SMC_CLA_Trdstinstfeatures_REG_DEFAULT                                                 = 32'h40000000;
-localparam longint unsigned SMC_CLA_CDbgDebugTraceCfg_REG_DEFAULT                                                 = 32'h00102810;
-localparam longint unsigned SMC_CLA_TrDstScratchLo_REG_DEFAULT                                                    = 32'h00000000;
-localparam longint unsigned SMC_CLA_TrDstScratchHi_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramcontrol_REG_DEFAULT                                              = 32'h00000008;
+localparam longint unsigned DFD_DST_SINK_Trdstramimpl_REG_DEFAULT                                                 = 32'h01003901;
+localparam longint unsigned DFD_DST_SINK_Trdstramstartlow_REG_DEFAULT                                             = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramstarthigh_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramlimitlow_REG_DEFAULT                                             = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramlimithigh_REG_DEFAULT                                            = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramwplow_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramwphigh_REG_DEFAULT                                               = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramrplow_REG_DEFAULT                                                = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramrphigh_REG_DEFAULT                                               = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_Trdstramdata_REG_DEFAULT                                                 = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_ScratchLo_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned DFD_DST_SINK_ScratchHi_REG_DEFAULT                                                    = 32'h00000000;
+localparam longint unsigned DFD_FUNNEL_Trfunnelcontrol_REG_DEFAULT                                                = 32'h00000008;
+localparam longint unsigned DFD_FUNNEL_Trfunnelimpl_REG_DEFAULT                                                   = 32'h00000801;
+localparam longint unsigned DFD_FUNNEL_Trfunneldisinput_REG_DEFAULT                                               = 32'h00000000;
+localparam longint unsigned DFD_FUNNEL_ScratchLo_REG_DEFAULT                                                      = 32'h00000000;
+localparam longint unsigned DFD_FUNNEL_ScratchHi_REG_DEFAULT                                                      = 32'h00000000;
+localparam longint unsigned DFD_CLA_CDbgClaCounter0Cfg_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaCounter1Cfg_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaCounter2Cfg_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaCounter3Cfg_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMask0Lo_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch0Lo_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMask1Lo_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch1Lo_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_REG_DEFAULT                                           = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_REG_DEFAULT                                                 = 64'h0000000000001B00;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_REG_DEFAULT                                                      = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgRsvd1_REG_DEFAULT                                                         = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgRsvd2_REG_DEFAULT                                                         = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgTransitionMaskLo_REG_DEFAULT                                              = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgTransitionFromValueLo_REG_DEFAULT                                         = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgTransitionToValueLo_REG_DEFAULT                                           = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgOnesCountMaskLo_REG_DEFAULT                                               = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgOnesCountValue_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgAnyChangeLo_REG_DEFAULT                                                   = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap0Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap1Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap0Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap1Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap0Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap1Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap0Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap1Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaTimeMatch_REG_DEFAULT                                                  = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMask2Lo_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch2Lo_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMask3Lo_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch3Lo_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_REG_DEFAULT                                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap2Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap3Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap2Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap3Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap2Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap3Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap2Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap3Lo_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_REG_DEFAULT                                             = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaXtriggerTimestretch_REG_DEFAULT                                        = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaTimestamp_REG_DEFAULT                                                  = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampSync_REG_DEFAULT                                              = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_REG_DEFAULT                                            = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampOffset_REG_DEFAULT                                            = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMask0Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch0Hi_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMask1Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch1Hi_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMask2Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch2Hi_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMask3Hi_REG_DEFAULT                                                 = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch3Hi_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_REG_DEFAULT                                                      = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgTransitionMaskHi_REG_DEFAULT                                              = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgTransitionFromValueHi_REG_DEFAULT                                         = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgTransitionToValueHi_REG_DEFAULT                                           = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgOnesCountMaskHi_REG_DEFAULT                                               = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgAnyChangeHi_REG_DEFAULT                                                   = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap0Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap1Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap0Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap1Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap0Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap1Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap0Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap1Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap2Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap3Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap2Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap3Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap2Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap3Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap2Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap3Hi_REG_DEFAULT                                     = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgLfsr_REG_DEFAULT                                                          = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgLfsrMask_REG_DEFAULT                                                      = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgTimestampCapture_REG_DEFAULT                                              = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare0Lo_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare0MaskLo_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare1Lo_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare1MaskLo_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare2Lo_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare2MaskLo_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare3Lo_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare3MaskLo_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare0Hi_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare0MaskHi_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare1Hi_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare1MaskHi_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare2Hi_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare2MaskHi_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare3Hi_REG_DEFAULT                                                    = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_CDbgCompare3MaskHi_REG_DEFAULT                                                = 64'h0000000000000000;
+localparam longint unsigned DFD_CLA_Scratch_REG_DEFAULT                                                           = 64'h0000000000000000;
+localparam longint unsigned DFD_DST_Trdstcontrol_REG_DEFAULT                                                      = 32'h03000068;
+localparam longint unsigned DFD_DST_Trdstimpl_REG_DEFAULT                                                         = 32'h41010101;
+localparam longint unsigned DFD_DST_Trdstinstfeatures_REG_DEFAULT                                                 = 32'h40000000;
+localparam longint unsigned DFD_DST_CDbgDebugTraceCfg_REG_DEFAULT                                                 = 32'h00102810;
+localparam longint unsigned DFD_DST_ScratchLo_REG_DEFAULT                                                         = 32'h00000000;
+localparam longint unsigned DFD_DST_ScratchHi_REG_DEFAULT                                                         = 32'h00000000;
 
 
 
@@ -453,1493 +497,1508 @@ localparam longint unsigned SMC_CLA_TrDstScratchHi_REG_DEFAULT                  
 // Bit Fields for Address Map: smc_cla
 //==============================================================================
 
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMACTIVE_MASK                                               = 32'h1;
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMACTIVE_SHIFT                                              = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMACTIVE_MASK                                          = 32'h1;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMACTIVE_SHIFT                                         = 0;
 
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMENABLE_MASK                                               = 32'h2;
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMENABLE_SHIFT                                              = 1;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMENABLE_MASK                                          = 32'h2;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMENABLE_SHIFT                                         = 1;
 
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMEMPTY_MASK                                                = 32'h8;
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMEMPTY_SHIFT                                               = 3;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMEMPTY_MASK                                           = 32'h8;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMEMPTY_SHIFT                                          = 3;
 
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMMODE_MASK                                                 = 32'h10;
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMMODE_SHIFT                                                = 4;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMMODE_MASK                                            = 32'h10;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMMODE_SHIFT                                           = 4;
 
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMSTOPONWRAP_MASK                                           = 32'h100;
-localparam int unsigned SMC_CLA_Trdstramcontrol_TRDSTRAMSTOPONWRAP_SHIFT                                          = 8;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMSTOPONWRAP_MASK                                      = 32'h100;
+localparam int unsigned DFD_DST_SINK_Trdstramcontrol_TRDSTRAMSTOPONWRAP_SHIFT                                     = 8;
 
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMVERMAJOR_MASK                                                = 32'hF;
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMVERMAJOR_SHIFT                                               = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMVERMAJOR_MASK                                           = 32'hF;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMVERMAJOR_SHIFT                                          = 0;
 
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMVERMINOR_MASK                                                = 32'hF0;
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMVERMINOR_SHIFT                                               = 4;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMVERMINOR_MASK                                           = 32'hF0;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMVERMINOR_SHIFT                                          = 4;
 
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMCOMPTYPE_MASK                                                = 32'hF00;
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMCOMPTYPE_SHIFT                                               = 8;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMCOMPTYPE_MASK                                           = 32'hF00;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMCOMPTYPE_SHIFT                                          = 8;
 
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMHASSRAM_MASK                                                 = 32'h1000;
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMHASSRAM_SHIFT                                                = 12;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMHASSRAM_MASK                                            = 32'h1000;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMHASSRAM_SHIFT                                           = 12;
 
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMHASSMEM_MASK                                                 = 32'h2000;
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMHASSMEM_SHIFT                                                = 13;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMHASSMEM_MASK                                            = 32'h2000;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMHASSMEM_SHIFT                                           = 13;
 
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMVENDORFRAMELENGTH_MASK                                       = 32'hF000000;
-localparam int unsigned SMC_CLA_Trdstramimpl_TRDSTRAMVENDORFRAMELENGTH_SHIFT                                      = 24;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMVENDORFRAMELENGTH_MASK                                  = 32'hF000000;
+localparam int unsigned DFD_DST_SINK_Trdstramimpl_TRDSTRAMVENDORFRAMELENGTH_SHIFT                                 = 24;
 
-localparam int unsigned SMC_CLA_Trdstramstartlow_RSVD10_MASK                                                      = 32'h3;
-localparam int unsigned SMC_CLA_Trdstramstartlow_RSVD10_SHIFT                                                     = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramstartlow_RSVD10_MASK                                                 = 32'h3;
+localparam int unsigned DFD_DST_SINK_Trdstramstartlow_RSVD10_SHIFT                                                = 0;
 
-localparam int unsigned SMC_CLA_Trdstramstartlow_TRDSTRAMSTARTLOW_MASK                                            = 32'hFFFFFFFC;
-localparam int unsigned SMC_CLA_Trdstramstartlow_TRDSTRAMSTARTLOW_SHIFT                                           = 2;
+localparam int unsigned DFD_DST_SINK_Trdstramstartlow_TRDSTRAMSTARTLOW_MASK                                       = 32'hFFFFFFFC;
+localparam int unsigned DFD_DST_SINK_Trdstramstartlow_TRDSTRAMSTARTLOW_SHIFT                                      = 2;
 
-localparam int unsigned SMC_CLA_Trdstramstarthigh_TRDSTRAMSTARTHIGH_MASK                                          = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_Trdstramstarthigh_TRDSTRAMSTARTHIGH_SHIFT                                         = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramstarthigh_TRDSTRAMSTARTHIGH_MASK                                     = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_SINK_Trdstramstarthigh_TRDSTRAMSTARTHIGH_SHIFT                                    = 0;
 
-localparam int unsigned SMC_CLA_Trdstramlimitlow_RSVD10_MASK                                                      = 32'h3;
-localparam int unsigned SMC_CLA_Trdstramlimitlow_RSVD10_SHIFT                                                     = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramlimitlow_RSVD10_MASK                                                 = 32'h3;
+localparam int unsigned DFD_DST_SINK_Trdstramlimitlow_RSVD10_SHIFT                                                = 0;
 
-localparam int unsigned SMC_CLA_Trdstramlimitlow_TRDSTRAMLIMITLOW_MASK                                            = 32'hFFFFFFFC;
-localparam int unsigned SMC_CLA_Trdstramlimitlow_TRDSTRAMLIMITLOW_SHIFT                                           = 2;
+localparam int unsigned DFD_DST_SINK_Trdstramlimitlow_TRDSTRAMLIMITLOW_MASK                                       = 32'hFFFFFFFC;
+localparam int unsigned DFD_DST_SINK_Trdstramlimitlow_TRDSTRAMLIMITLOW_SHIFT                                      = 2;
 
-localparam int unsigned SMC_CLA_Trdstramlimithigh_TRDSTRAMLIMITHIGH_MASK                                          = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_Trdstramlimithigh_TRDSTRAMLIMITHIGH_SHIFT                                         = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramlimithigh_TRDSTRAMLIMITHIGH_MASK                                     = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_SINK_Trdstramlimithigh_TRDSTRAMLIMITHIGH_SHIFT                                    = 0;
 
-localparam int unsigned SMC_CLA_Trdstramwplow_TRDSTRAMWRAP_MASK                                                   = 32'h1;
-localparam int unsigned SMC_CLA_Trdstramwplow_TRDSTRAMWRAP_SHIFT                                                  = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramwplow_TRDSTRAMWRAP_MASK                                              = 32'h1;
+localparam int unsigned DFD_DST_SINK_Trdstramwplow_TRDSTRAMWRAP_SHIFT                                             = 0;
 
-localparam int unsigned SMC_CLA_Trdstramwplow_TRDSTRAMWPLOW_MASK                                                  = 32'hFFFFFFFC;
-localparam int unsigned SMC_CLA_Trdstramwplow_TRDSTRAMWPLOW_SHIFT                                                 = 2;
+localparam int unsigned DFD_DST_SINK_Trdstramwplow_TRDSTRAMWPLOW_MASK                                             = 32'hFFFFFFFC;
+localparam int unsigned DFD_DST_SINK_Trdstramwplow_TRDSTRAMWPLOW_SHIFT                                            = 2;
 
-localparam int unsigned SMC_CLA_Trdstramwphigh_TRDSTRAMWPHIGH_MASK                                                = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_Trdstramwphigh_TRDSTRAMWPHIGH_SHIFT                                               = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramwphigh_TRDSTRAMWPHIGH_MASK                                           = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_SINK_Trdstramwphigh_TRDSTRAMWPHIGH_SHIFT                                          = 0;
 
-localparam int unsigned SMC_CLA_Trdstramrplow_RSVD10_MASK                                                         = 32'h3;
-localparam int unsigned SMC_CLA_Trdstramrplow_RSVD10_SHIFT                                                        = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramrplow_RSVD10_MASK                                                    = 32'h3;
+localparam int unsigned DFD_DST_SINK_Trdstramrplow_RSVD10_SHIFT                                                   = 0;
 
-localparam int unsigned SMC_CLA_Trdstramrplow_TRDSTRAMRPLOW_MASK                                                  = 32'hFFFFFFFC;
-localparam int unsigned SMC_CLA_Trdstramrplow_TRDSTRAMRPLOW_SHIFT                                                 = 2;
+localparam int unsigned DFD_DST_SINK_Trdstramrplow_TRDSTRAMRPLOW_MASK                                             = 32'hFFFFFFFC;
+localparam int unsigned DFD_DST_SINK_Trdstramrplow_TRDSTRAMRPLOW_SHIFT                                            = 2;
 
-localparam int unsigned SMC_CLA_Trdstramrphigh_TRDSTRAMRPHIGH_MASK                                                = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_Trdstramrphigh_TRDSTRAMRPHIGH_SHIFT                                               = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramrphigh_TRDSTRAMRPHIGH_MASK                                           = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_SINK_Trdstramrphigh_TRDSTRAMRPHIGH_SHIFT                                          = 0;
 
-localparam int unsigned SMC_CLA_Trdstramdata_TRDSTRAMDATA_MASK                                                    = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_Trdstramdata_TRDSTRAMDATA_SHIFT                                                   = 0;
+localparam int unsigned DFD_DST_SINK_Trdstramdata_TRDSTRAMDATA_MASK                                               = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_SINK_Trdstramdata_TRDSTRAMDATA_SHIFT                                              = 0;
 
-localparam int unsigned SMC_CLA_TrDstSinkScratchLo_DATA_MASK                                                      = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_TrDstSinkScratchLo_DATA_SHIFT                                                     = 0;
+localparam int unsigned DFD_DST_SINK_ScratchLo_DATA_MASK                                                          = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_SINK_ScratchLo_DATA_SHIFT                                                         = 0;
 
-localparam int unsigned SMC_CLA_TrDstSinkScratchHi_DATA_MASK                                                      = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_TrDstSinkScratchHi_DATA_SHIFT                                                     = 0;
+localparam int unsigned DFD_DST_SINK_ScratchHi_DATA_MASK                                                          = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_SINK_ScratchHi_DATA_SHIFT                                                         = 0;
 
-localparam int unsigned SMC_CLA_Trfunnelcontrol_TRFUNNELACTIVE_MASK                                               = 32'h1;
-localparam int unsigned SMC_CLA_Trfunnelcontrol_TRFUNNELACTIVE_SHIFT                                              = 0;
+localparam int unsigned DFD_FUNNEL_Trfunnelcontrol_TRFUNNELACTIVE_MASK                                            = 32'h1;
+localparam int unsigned DFD_FUNNEL_Trfunnelcontrol_TRFUNNELACTIVE_SHIFT                                           = 0;
 
-localparam int unsigned SMC_CLA_Trfunnelcontrol_TRFUNNELENABLE_MASK                                               = 32'h2;
-localparam int unsigned SMC_CLA_Trfunnelcontrol_TRFUNNELENABLE_SHIFT                                              = 1;
+localparam int unsigned DFD_FUNNEL_Trfunnelcontrol_TRFUNNELENABLE_MASK                                            = 32'h2;
+localparam int unsigned DFD_FUNNEL_Trfunnelcontrol_TRFUNNELENABLE_SHIFT                                           = 1;
 
-localparam int unsigned SMC_CLA_Trfunnelcontrol_TRFUNNELEMPTY_MASK                                                = 32'h8;
-localparam int unsigned SMC_CLA_Trfunnelcontrol_TRFUNNELEMPTY_SHIFT                                               = 3;
+localparam int unsigned DFD_FUNNEL_Trfunnelcontrol_TRFUNNELEMPTY_MASK                                             = 32'h8;
+localparam int unsigned DFD_FUNNEL_Trfunnelcontrol_TRFUNNELEMPTY_SHIFT                                            = 3;
 
-localparam int unsigned SMC_CLA_Trfunnelimpl_TRFUNNELVERMAJOR_MASK                                                = 32'hF;
-localparam int unsigned SMC_CLA_Trfunnelimpl_TRFUNNELVERMAJOR_SHIFT                                               = 0;
+localparam int unsigned DFD_FUNNEL_Trfunnelimpl_TRFUNNELVERMAJOR_MASK                                             = 32'hF;
+localparam int unsigned DFD_FUNNEL_Trfunnelimpl_TRFUNNELVERMAJOR_SHIFT                                            = 0;
 
-localparam int unsigned SMC_CLA_Trfunnelimpl_TRFUNNELVERMINOR_MASK                                                = 32'hF0;
-localparam int unsigned SMC_CLA_Trfunnelimpl_TRFUNNELVERMINOR_SHIFT                                               = 4;
+localparam int unsigned DFD_FUNNEL_Trfunnelimpl_TRFUNNELVERMINOR_MASK                                             = 32'hF0;
+localparam int unsigned DFD_FUNNEL_Trfunnelimpl_TRFUNNELVERMINOR_SHIFT                                            = 4;
 
-localparam int unsigned SMC_CLA_Trfunnelimpl_TRFUNNELCOMPTYPE_MASK                                                = 32'hF00;
-localparam int unsigned SMC_CLA_Trfunnelimpl_TRFUNNELCOMPTYPE_SHIFT                                               = 8;
+localparam int unsigned DFD_FUNNEL_Trfunnelimpl_TRFUNNELCOMPTYPE_MASK                                             = 32'hF00;
+localparam int unsigned DFD_FUNNEL_Trfunnelimpl_TRFUNNELCOMPTYPE_SHIFT                                            = 8;
 
-localparam int unsigned SMC_CLA_Trfunneldisinput_TRFUNNELDISINPUT_MASK                                            = 32'hFFFF;
-localparam int unsigned SMC_CLA_Trfunneldisinput_TRFUNNELDISINPUT_SHIFT                                           = 0;
+localparam int unsigned DFD_FUNNEL_Trfunneldisinput_TRFUNNELDISINPUT_MASK                                         = 32'hFFFF;
+localparam int unsigned DFD_FUNNEL_Trfunneldisinput_TRFUNNELDISINPUT_SHIFT                                        = 0;
 
-localparam int unsigned SMC_CLA_TrFunnelScratchLo_DATA_MASK                                                       = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_TrFunnelScratchLo_DATA_SHIFT                                                      = 0;
+localparam int unsigned DFD_FUNNEL_ScratchLo_DATA_MASK                                                            = 32'hFFFFFFFF;
+localparam int unsigned DFD_FUNNEL_ScratchLo_DATA_SHIFT                                                           = 0;
 
-localparam int unsigned SMC_CLA_TrFunnelScratchHi_DATA_MASK                                                       = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_TrFunnelScratchHi_DATA_SHIFT                                                      = 0;
+localparam int unsigned DFD_FUNNEL_ScratchHi_DATA_MASK                                                            = 32'hFFFFFFFF;
+localparam int unsigned DFD_FUNNEL_ScratchHi_DATA_SHIFT                                                           = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter0Cfg_COUNTER_MASK                                               = 64'hFFFF;
-localparam     int unsigned SMC_CLA_CDbgClaCounter0Cfg_COUNTER_SHIFT                                              = 0;
+localparam longint unsigned DFD_CLA_CDbgClaCounter0Cfg_COUNTER_MASK                                               = 64'hFFFF;
+localparam     int unsigned DFD_CLA_CDbgClaCounter0Cfg_COUNTER_SHIFT                                              = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter0Cfg_TARGET_MASK                                                = 64'hFFFF0000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter0Cfg_TARGET_SHIFT                                               = 16;
+localparam longint unsigned DFD_CLA_CDbgClaCounter0Cfg_TARGET_MASK                                                = 64'hFFFF0000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter0Cfg_TARGET_SHIFT                                               = 16;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter0Cfg_RESETONTARGET_MASK                                         = 64'h100000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter0Cfg_RESETONTARGET_SHIFT                                        = 32;
+localparam longint unsigned DFD_CLA_CDbgClaCounter0Cfg_RESETONTARGET_MASK                                         = 64'h100000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter0Cfg_RESETONTARGET_SHIFT                                        = 32;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter0Cfg_UPPERCOUNTER_MASK                                          = 64'hFFFE00000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter0Cfg_UPPERCOUNTER_SHIFT                                         = 33;
+localparam longint unsigned DFD_CLA_CDbgClaCounter0Cfg_UPPERCOUNTER_MASK                                          = 64'hFFFE00000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter0Cfg_UPPERCOUNTER_SHIFT                                         = 33;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter0Cfg_UPPERTARGET_MASK                                           = 64'h7FFF000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter0Cfg_UPPERTARGET_SHIFT                                          = 48;
+localparam longint unsigned DFD_CLA_CDbgClaCounter0Cfg_UPPERTARGET_MASK                                           = 64'h7FFF000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter0Cfg_UPPERTARGET_SHIFT                                          = 48;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter0Cfg_RSVD_MASK                                                  = 64'h8000000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter0Cfg_RSVD_SHIFT                                                 = 63;
+localparam longint unsigned DFD_CLA_CDbgClaCounter0Cfg_RSVD_MASK                                                  = 64'h8000000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter0Cfg_RSVD_SHIFT                                                 = 63;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter1Cfg_COUNTER_MASK                                               = 64'hFFFF;
-localparam     int unsigned SMC_CLA_CDbgClaCounter1Cfg_COUNTER_SHIFT                                              = 0;
+localparam longint unsigned DFD_CLA_CDbgClaCounter1Cfg_COUNTER_MASK                                               = 64'hFFFF;
+localparam     int unsigned DFD_CLA_CDbgClaCounter1Cfg_COUNTER_SHIFT                                              = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter1Cfg_TARGET_MASK                                                = 64'hFFFF0000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter1Cfg_TARGET_SHIFT                                               = 16;
+localparam longint unsigned DFD_CLA_CDbgClaCounter1Cfg_TARGET_MASK                                                = 64'hFFFF0000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter1Cfg_TARGET_SHIFT                                               = 16;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter1Cfg_RESETONTARGET_MASK                                         = 64'h100000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter1Cfg_RESETONTARGET_SHIFT                                        = 32;
+localparam longint unsigned DFD_CLA_CDbgClaCounter1Cfg_RESETONTARGET_MASK                                         = 64'h100000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter1Cfg_RESETONTARGET_SHIFT                                        = 32;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter1Cfg_UPPERCOUNTER_MASK                                          = 64'hFFFE00000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter1Cfg_UPPERCOUNTER_SHIFT                                         = 33;
+localparam longint unsigned DFD_CLA_CDbgClaCounter1Cfg_UPPERCOUNTER_MASK                                          = 64'hFFFE00000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter1Cfg_UPPERCOUNTER_SHIFT                                         = 33;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter1Cfg_UPPERTARGET_MASK                                           = 64'h7FFF000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter1Cfg_UPPERTARGET_SHIFT                                          = 48;
+localparam longint unsigned DFD_CLA_CDbgClaCounter1Cfg_UPPERTARGET_MASK                                           = 64'h7FFF000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter1Cfg_UPPERTARGET_SHIFT                                          = 48;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter1Cfg_RSVD_MASK                                                  = 64'h8000000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter1Cfg_RSVD_SHIFT                                                 = 63;
+localparam longint unsigned DFD_CLA_CDbgClaCounter1Cfg_RSVD_MASK                                                  = 64'h8000000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter1Cfg_RSVD_SHIFT                                                 = 63;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter2Cfg_COUNTER_MASK                                               = 64'hFFFF;
-localparam     int unsigned SMC_CLA_CDbgClaCounter2Cfg_COUNTER_SHIFT                                              = 0;
+localparam longint unsigned DFD_CLA_CDbgClaCounter2Cfg_COUNTER_MASK                                               = 64'hFFFF;
+localparam     int unsigned DFD_CLA_CDbgClaCounter2Cfg_COUNTER_SHIFT                                              = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter2Cfg_TARGET_MASK                                                = 64'hFFFF0000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter2Cfg_TARGET_SHIFT                                               = 16;
+localparam longint unsigned DFD_CLA_CDbgClaCounter2Cfg_TARGET_MASK                                                = 64'hFFFF0000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter2Cfg_TARGET_SHIFT                                               = 16;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter2Cfg_RESETONTARGET_MASK                                         = 64'h100000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter2Cfg_RESETONTARGET_SHIFT                                        = 32;
+localparam longint unsigned DFD_CLA_CDbgClaCounter2Cfg_RESETONTARGET_MASK                                         = 64'h100000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter2Cfg_RESETONTARGET_SHIFT                                        = 32;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter2Cfg_UPPERCOUNTER_MASK                                          = 64'hFFFE00000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter2Cfg_UPPERCOUNTER_SHIFT                                         = 33;
+localparam longint unsigned DFD_CLA_CDbgClaCounter2Cfg_UPPERCOUNTER_MASK                                          = 64'hFFFE00000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter2Cfg_UPPERCOUNTER_SHIFT                                         = 33;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter2Cfg_UPPERTARGET_MASK                                           = 64'h7FFF000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter2Cfg_UPPERTARGET_SHIFT                                          = 48;
+localparam longint unsigned DFD_CLA_CDbgClaCounter2Cfg_UPPERTARGET_MASK                                           = 64'h7FFF000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter2Cfg_UPPERTARGET_SHIFT                                          = 48;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter2Cfg_RSVD_MASK                                                  = 64'h8000000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter2Cfg_RSVD_SHIFT                                                 = 63;
+localparam longint unsigned DFD_CLA_CDbgClaCounter2Cfg_RSVD_MASK                                                  = 64'h8000000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter2Cfg_RSVD_SHIFT                                                 = 63;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter3Cfg_COUNTER_MASK                                               = 64'hFFFF;
-localparam     int unsigned SMC_CLA_CDbgClaCounter3Cfg_COUNTER_SHIFT                                              = 0;
+localparam longint unsigned DFD_CLA_CDbgClaCounter3Cfg_COUNTER_MASK                                               = 64'hFFFF;
+localparam     int unsigned DFD_CLA_CDbgClaCounter3Cfg_COUNTER_SHIFT                                              = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter3Cfg_TARGET_MASK                                                = 64'hFFFF0000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter3Cfg_TARGET_SHIFT                                               = 16;
+localparam longint unsigned DFD_CLA_CDbgClaCounter3Cfg_TARGET_MASK                                                = 64'hFFFF0000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter3Cfg_TARGET_SHIFT                                               = 16;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter3Cfg_RESETONTARGET_MASK                                         = 64'h100000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter3Cfg_RESETONTARGET_SHIFT                                        = 32;
+localparam longint unsigned DFD_CLA_CDbgClaCounter3Cfg_RESETONTARGET_MASK                                         = 64'h100000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter3Cfg_RESETONTARGET_SHIFT                                        = 32;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter3Cfg_UPPERCOUNTER_MASK                                          = 64'hFFFE00000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter3Cfg_UPPERCOUNTER_SHIFT                                         = 33;
+localparam longint unsigned DFD_CLA_CDbgClaCounter3Cfg_UPPERCOUNTER_MASK                                          = 64'hFFFE00000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter3Cfg_UPPERCOUNTER_SHIFT                                         = 33;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter3Cfg_UPPERTARGET_MASK                                           = 64'h7FFF000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter3Cfg_UPPERTARGET_SHIFT                                          = 48;
+localparam longint unsigned DFD_CLA_CDbgClaCounter3Cfg_UPPERTARGET_MASK                                           = 64'h7FFF000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter3Cfg_UPPERTARGET_SHIFT                                          = 48;
 
-localparam longint unsigned SMC_CLA_CDbgClaCounter3Cfg_RSVD_MASK                                                  = 64'h8000000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCounter3Cfg_RSVD_SHIFT                                                 = 63;
+localparam longint unsigned DFD_CLA_CDbgClaCounter3Cfg_RSVD_MASK                                                  = 64'h8000000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCounter3Cfg_RSVD_SHIFT                                                 = 63;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap0_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap0_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap0_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap0_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap1_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap1_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap1_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap1_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap0_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap0_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap0_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap0_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap1_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap1_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap1_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap1_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap0_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap0_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap0_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap0_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap1_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap1_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap1_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap1_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap0_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap0_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap0_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap0_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap1_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap1_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap1_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap1_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMask0Lo_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMask0Lo_VALUE_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMask0Lo_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMask0Lo_VALUE_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMatch0Lo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMatch0Lo_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch0Lo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMatch0Lo_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMask1Lo_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMask1Lo_VALUE_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMask1Lo_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMask1Lo_VALUE_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMatch1Lo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMatch1Lo_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch1Lo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMatch1Lo_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_SIGNAL0SELECT_MASK                                    = 64'h7F;
-localparam     int unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_SIGNAL0SELECT_SHIFT                                   = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_SIGNAL0SELECT_MASK                                    = 64'h7F;
+localparam     int unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_SIGNAL0SELECT_SHIFT                                   = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_POSEDGESIGNAL0_MASK                                   = 64'h80;
-localparam     int unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_POSEDGESIGNAL0_SHIFT                                  = 7;
+localparam longint unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_POSEDGESIGNAL0_MASK                                   = 64'h80;
+localparam     int unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_POSEDGESIGNAL0_SHIFT                                  = 7;
 
-localparam longint unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_SIGNAL1SELECT_MASK                                    = 64'h7F00;
-localparam     int unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_SIGNAL1SELECT_SHIFT                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_SIGNAL1SELECT_MASK                                    = 64'h7F00;
+localparam     int unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_SIGNAL1SELECT_SHIFT                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_POSEDGESIGNAL1_MASK                                   = 64'h8000;
-localparam     int unsigned SMC_CLA_CDbgSignalEdgeDetectCfg_POSEDGESIGNAL1_SHIFT                                  = 15;
+localparam longint unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_POSEDGESIGNAL1_MASK                                   = 64'h8000;
+localparam     int unsigned DFD_CLA_CDbgSignalEdgeDetectCfg_POSEDGESIGNAL1_SHIFT                                  = 15;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE0EAP0_MASK                                                  = 64'h1;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE0EAP0_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE0EAP0_MASK                                                  = 64'h1;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE0EAP0_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE0EAP1_MASK                                                  = 64'h2;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE0EAP1_SHIFT                                                 = 1;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE0EAP1_MASK                                                  = 64'h2;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE0EAP1_SHIFT                                                 = 1;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE0EAP2_MASK                                                  = 64'h4;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE0EAP2_SHIFT                                                 = 2;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE0EAP2_MASK                                                  = 64'h4;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE0EAP2_SHIFT                                                 = 2;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE0EAP3_MASK                                                  = 64'h8;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE0EAP3_SHIFT                                                 = 3;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE0EAP3_MASK                                                  = 64'h8;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE0EAP3_SHIFT                                                 = 3;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE1EAP0_MASK                                                  = 64'h10;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE1EAP0_SHIFT                                                 = 4;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE1EAP0_MASK                                                  = 64'h10;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE1EAP0_SHIFT                                                 = 4;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE1EAP1_MASK                                                  = 64'h20;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE1EAP1_SHIFT                                                 = 5;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE1EAP1_MASK                                                  = 64'h20;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE1EAP1_SHIFT                                                 = 5;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE1EAP2_MASK                                                  = 64'h40;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE1EAP2_SHIFT                                                 = 6;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE1EAP2_MASK                                                  = 64'h40;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE1EAP2_SHIFT                                                 = 6;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE1EAP3_MASK                                                  = 64'h80;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE1EAP3_SHIFT                                                 = 7;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE1EAP3_MASK                                                  = 64'h80;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE1EAP3_SHIFT                                                 = 7;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE2EAP0_MASK                                                  = 64'h100;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE2EAP0_SHIFT                                                 = 8;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE2EAP0_MASK                                                  = 64'h100;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE2EAP0_SHIFT                                                 = 8;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE2EAP1_MASK                                                  = 64'h200;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE2EAP1_SHIFT                                                 = 9;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE2EAP1_MASK                                                  = 64'h200;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE2EAP1_SHIFT                                                 = 9;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE2EAP2_MASK                                                  = 64'h400;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE2EAP2_SHIFT                                                 = 10;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE2EAP2_MASK                                                  = 64'h400;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE2EAP2_SHIFT                                                 = 10;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE2EAP3_MASK                                                  = 64'h800;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE2EAP3_SHIFT                                                 = 11;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE2EAP3_MASK                                                  = 64'h800;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE2EAP3_SHIFT                                                 = 11;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE3EAP0_MASK                                                  = 64'h1000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE3EAP0_SHIFT                                                 = 12;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE3EAP0_MASK                                                  = 64'h1000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE3EAP0_SHIFT                                                 = 12;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE3EAP1_MASK                                                  = 64'h2000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE3EAP1_SHIFT                                                 = 13;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE3EAP1_MASK                                                  = 64'h2000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE3EAP1_SHIFT                                                 = 13;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE3EAP2_MASK                                                  = 64'h4000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE3EAP2_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE3EAP2_MASK                                                  = 64'h4000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE3EAP2_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE3EAP3_MASK                                                  = 64'h8000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE3EAP3_SHIFT                                                 = 15;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE3EAP3_MASK                                                  = 64'h8000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE3EAP3_SHIFT                                                 = 15;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_RSVD3116_MASK                                                   = 64'hFFFF0000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_RSVD3116_SHIFT                                                  = 16;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_RSVD3116_MASK                                                   = 64'hFFFF0000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_RSVD3116_SHIFT                                                  = 16;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE0EAP0W2C_MASK                                               = 64'h100000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE0EAP0W2C_SHIFT                                              = 32;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE0EAP0W2C_MASK                                               = 64'h100000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE0EAP0W2C_SHIFT                                              = 32;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE0EAP1W2C_MASK                                               = 64'h200000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE0EAP1W2C_SHIFT                                              = 33;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE0EAP1W2C_MASK                                               = 64'h200000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE0EAP1W2C_SHIFT                                              = 33;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE0EAP2W2C_MASK                                               = 64'h400000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE0EAP2W2C_SHIFT                                              = 34;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE0EAP2W2C_MASK                                               = 64'h400000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE0EAP2W2C_SHIFT                                              = 34;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE0EAP3W2C_MASK                                               = 64'h800000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE0EAP3W2C_SHIFT                                              = 35;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE0EAP3W2C_MASK                                               = 64'h800000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE0EAP3W2C_SHIFT                                              = 35;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE1EAP0W2C_MASK                                               = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE1EAP0W2C_SHIFT                                              = 36;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE1EAP0W2C_MASK                                               = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE1EAP0W2C_SHIFT                                              = 36;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE1EAP1W2C_MASK                                               = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE1EAP1W2C_SHIFT                                              = 37;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE1EAP1W2C_MASK                                               = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE1EAP1W2C_SHIFT                                              = 37;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE1EAP2W2C_MASK                                               = 64'h4000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE1EAP2W2C_SHIFT                                              = 38;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE1EAP2W2C_MASK                                               = 64'h4000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE1EAP2W2C_SHIFT                                              = 38;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE1EAP3W2C_MASK                                               = 64'h8000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE1EAP3W2C_SHIFT                                              = 39;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE1EAP3W2C_MASK                                               = 64'h8000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE1EAP3W2C_SHIFT                                              = 39;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE2EAP0W2C_MASK                                               = 64'h10000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE2EAP0W2C_SHIFT                                              = 40;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE2EAP0W2C_MASK                                               = 64'h10000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE2EAP0W2C_SHIFT                                              = 40;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE2EAP1W2C_MASK                                               = 64'h20000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE2EAP1W2C_SHIFT                                              = 41;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE2EAP1W2C_MASK                                               = 64'h20000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE2EAP1W2C_SHIFT                                              = 41;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE2EAP2W2C_MASK                                               = 64'h40000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE2EAP2W2C_SHIFT                                              = 42;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE2EAP2W2C_MASK                                               = 64'h40000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE2EAP2W2C_SHIFT                                              = 42;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE2EAP3W2C_MASK                                               = 64'h80000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE2EAP3W2C_SHIFT                                              = 43;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE2EAP3W2C_MASK                                               = 64'h80000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE2EAP3W2C_SHIFT                                              = 43;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE3EAP0W2C_MASK                                               = 64'h100000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE3EAP0W2C_SHIFT                                              = 44;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE3EAP0W2C_MASK                                               = 64'h100000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE3EAP0W2C_SHIFT                                              = 44;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE3EAP1W2C_MASK                                               = 64'h200000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE3EAP1W2C_SHIFT                                              = 45;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE3EAP1W2C_MASK                                               = 64'h200000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE3EAP1W2C_SHIFT                                              = 45;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE3EAP2W2C_MASK                                               = 64'h400000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE3EAP2W2C_SHIFT                                              = 46;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE3EAP2W2C_MASK                                               = 64'h400000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE3EAP2W2C_SHIFT                                              = 46;
 
-localparam longint unsigned SMC_CLA_CDbgEapStatus_NODE3EAP3W2C_MASK                                               = 64'h800000000000;
-localparam     int unsigned SMC_CLA_CDbgEapStatus_NODE3EAP3W2C_SHIFT                                              = 47;
+localparam longint unsigned DFD_CLA_CDbgEapStatus_NODE3EAP3W2C_MASK                                               = 64'h800000000000;
+localparam     int unsigned DFD_CLA_CDbgEapStatus_NODE3EAP3W2C_SHIFT                                              = 47;
 
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_CURRENTNODE_MASK                                            = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgClaCtrlStatus_CURRENTNODE_SHIFT                                           = 0;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_CURRENTNODE_MASK                                            = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgClaCtrlStatus_CURRENTNODE_SHIFT                                           = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_ENABLEEAP_MASK                                              = 64'h20;
-localparam     int unsigned SMC_CLA_CDbgClaCtrlStatus_ENABLEEAP_SHIFT                                             = 5;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_ENABLEEAP_MASK                                              = 64'h20;
+localparam     int unsigned DFD_CLA_CDbgClaCtrlStatus_ENABLEEAP_SHIFT                                             = 5;
 
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_ENABLECLA_MASK                                              = 64'h40;
-localparam     int unsigned SMC_CLA_CDbgClaCtrlStatus_ENABLECLA_SHIFT                                             = 6;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_ENABLECLA_MASK                                              = 64'h40;
+localparam     int unsigned DFD_CLA_CDbgClaCtrlStatus_ENABLECLA_SHIFT                                             = 6;
 
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_CLACHAINLOOPDELAY_MASK                                      = 64'h3F80;
-localparam     int unsigned SMC_CLA_CDbgClaCtrlStatus_CLACHAINLOOPDELAY_SHIFT                                     = 7;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_CLACHAINLOOPDELAY_MASK                                      = 64'h3F80;
+localparam     int unsigned DFD_CLA_CDbgClaCtrlStatus_CLACHAINLOOPDELAY_SHIFT                                     = 7;
 
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_DISABLEGLOBALCLOCKHALT_MASK                                 = 64'h4000;
-localparam     int unsigned SMC_CLA_CDbgClaCtrlStatus_DISABLEGLOBALCLOCKHALT_SHIFT                                = 14;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_DISABLEGLOBALCLOCKHALT_MASK                                 = 64'h4000;
+localparam     int unsigned DFD_CLA_CDbgClaCtrlStatus_DISABLEGLOBALCLOCKHALT_SHIFT                                = 14;
 
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_DISABLELOCALCLOCKHALT_MASK                                  = 64'h8000;
-localparam     int unsigned SMC_CLA_CDbgClaCtrlStatus_DISABLELOCALCLOCKHALT_SHIFT                                 = 15;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_DISABLELOCALCLOCKHALT_MASK                                  = 64'h8000;
+localparam     int unsigned DFD_CLA_CDbgClaCtrlStatus_DISABLELOCALCLOCKHALT_SHIFT                                 = 15;
 
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_RSVD6216_MASK                                               = 64'h7FFFFFFFFFFF0000;
-localparam     int unsigned SMC_CLA_CDbgClaCtrlStatus_RSVD6216_SHIFT                                              = 16;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_RSVD6216_MASK                                               = 64'h7FFFFFFFFFFF0000;
+localparam     int unsigned DFD_CLA_CDbgClaCtrlStatus_RSVD6216_SHIFT                                              = 16;
 
-localparam longint unsigned SMC_CLA_CDbgClaCtrlStatus_CLALOCK_MASK                                                = 64'h8000000000000000;
-localparam     int unsigned SMC_CLA_CDbgClaCtrlStatus_CLALOCK_SHIFT                                               = 63;
+localparam longint unsigned DFD_CLA_CDbgClaCtrlStatus_CLALOCK_MASK                                                = 64'h8000000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaCtrlStatus_CLALOCK_SHIFT                                               = 63;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_DBMMODE_MASK                                                     = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_DBMMODE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_DBMMODE_MASK                                                     = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_DBMMODE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_DBMID_MASK                                                       = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_DBMID_SHIFT                                                      = 2;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_DBMID_MASK                                                       = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_DBMID_SHIFT                                                      = 2;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_FINEGRAINTIME_MASK                                               = 64'h100;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_FINEGRAINTIME_SHIFT                                              = 8;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_FINEGRAINTIME_MASK                                               = 64'h100;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_FINEGRAINTIME_SHIFT                                              = 8;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_RSVD159_MASK                                                     = 64'hFE00;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_RSVD159_SHIFT                                                    = 9;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_RSVD159_MASK                                                     = 64'hFE00;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_RSVD159_SHIFT                                                    = 9;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG0_MASK                                                  = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG0_SHIFT                                                 = 16;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG0_MASK                                                  = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG0_SHIFT                                                 = 16;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG1_MASK                                                  = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG1_SHIFT                                                 = 22;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG1_MASK                                                  = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG1_SHIFT                                                 = 22;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG2_MASK                                                  = 64'h3F0000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG2_SHIFT                                                 = 28;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG2_MASK                                                  = 64'h3F0000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG2_SHIFT                                                 = 28;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG3_MASK                                                  = 64'hFC00000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG3_SHIFT                                                 = 34;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG3_MASK                                                  = 64'hFC00000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG3_SHIFT                                                 = 34;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG4_MASK                                                  = 64'h3F0000000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG4_SHIFT                                                 = 40;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG4_MASK                                                  = 64'h3F0000000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG4_SHIFT                                                 = 40;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG5_MASK                                                  = 64'hFC00000000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG5_SHIFT                                                 = 46;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG5_MASK                                                  = 64'hFC00000000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG5_SHIFT                                                 = 46;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG6_MASK                                                  = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG6_SHIFT                                                 = 52;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG6_MASK                                                  = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG6_SHIFT                                                 = 52;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG7_MASK                                                  = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelLo_MUXSELSEG7_SHIFT                                                 = 58;
+localparam longint unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG7_MASK                                                  = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelLo_MUXSELSEG7_SHIFT                                                 = 58;
 
-localparam longint unsigned SMC_CLA_CDbgRsvd1_VALUE_MASK                                                          = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgRsvd1_VALUE_SHIFT                                                         = 0;
+localparam longint unsigned DFD_CLA_CDbgRsvd1_VALUE_MASK                                                          = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgRsvd1_VALUE_SHIFT                                                         = 0;
 
-localparam longint unsigned SMC_CLA_CDbgRsvd2_VALUE_MASK                                                          = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgRsvd2_VALUE_SHIFT                                                         = 0;
+localparam longint unsigned DFD_CLA_CDbgRsvd2_VALUE_MASK                                                          = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgRsvd2_VALUE_SHIFT                                                         = 0;
 
-localparam longint unsigned SMC_CLA_CDbgTransitionMaskLo_VALUE_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgTransitionMaskLo_VALUE_SHIFT                                              = 0;
+localparam longint unsigned DFD_CLA_CDbgTransitionMaskLo_VALUE_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgTransitionMaskLo_VALUE_SHIFT                                              = 0;
 
-localparam longint unsigned SMC_CLA_CDbgTransitionFromValueLo_VALUE_MASK                                          = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgTransitionFromValueLo_VALUE_SHIFT                                         = 0;
+localparam longint unsigned DFD_CLA_CDbgTransitionFromValueLo_VALUE_MASK                                          = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgTransitionFromValueLo_VALUE_SHIFT                                         = 0;
 
-localparam longint unsigned SMC_CLA_CDbgTransitionToValueLo_VALUE_MASK                                            = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgTransitionToValueLo_VALUE_SHIFT                                           = 0;
+localparam longint unsigned DFD_CLA_CDbgTransitionToValueLo_VALUE_MASK                                            = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgTransitionToValueLo_VALUE_SHIFT                                           = 0;
 
-localparam longint unsigned SMC_CLA_CDbgOnesCountMaskLo_VALUE_MASK                                                = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgOnesCountMaskLo_VALUE_SHIFT                                               = 0;
+localparam longint unsigned DFD_CLA_CDbgOnesCountMaskLo_VALUE_MASK                                                = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgOnesCountMaskLo_VALUE_SHIFT                                               = 0;
 
-localparam longint unsigned SMC_CLA_CDbgOnesCountValue_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgOnesCountValue_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgOnesCountValue_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgOnesCountValue_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgAnyChangeLo_MASK_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgAnyChangeLo_MASK_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgAnyChangeLo_MASK_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgAnyChangeLo_MASK_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap0Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap0Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap0Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap0Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap1Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap1Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap1Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap1Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap0Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap0Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap0Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap0Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap1Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap1Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap1Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap1Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap0Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap0Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap0Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap0Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap1Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap1Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap1Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap1Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap0Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap0Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap0Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap0Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap1Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap1Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap1Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap1Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaTimeMatch_TIMEMATCHVAL_MASK                                            = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgClaTimeMatch_TIMEMATCHVAL_SHIFT                                           = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimeMatch_TIMEMATCHVAL_MASK                                            = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgClaTimeMatch_TIMEMATCHVAL_SHIFT                                           = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMask2Lo_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMask2Lo_VALUE_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMask2Lo_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMask2Lo_VALUE_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMatch2Lo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMatch2Lo_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch2Lo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMatch2Lo_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMask3Lo_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMask3Lo_VALUE_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMask3Lo_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMask3Lo_VALUE_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMatch3Lo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMatch3Lo_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch3Lo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMatch3Lo_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap2_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap2_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap2_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap2_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode0Eap3_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode0Eap3_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode0Eap3_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode0Eap3_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap2_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap2_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap2_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap2_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode1Eap3_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode1Eap3_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode1Eap3_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode1Eap3_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap2_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap2_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap2_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap2_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode2Eap3_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode2Eap3_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode2Eap3_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode2Eap3_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap2_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap2_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap2_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap2_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_DESTNODE_MASK                                                   = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_DESTNODE_SHIFT                                                  = 0;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_DESTNODE_MASK                                                   = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_DESTNODE_SHIFT                                                  = 0;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_ACTION0_MASK                                                    = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_ACTION0_SHIFT                                                   = 2;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_ACTION0_MASK                                                    = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_ACTION0_SHIFT                                                   = 2;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_ACTION1_MASK                                                    = 64'h3F00;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_ACTION1_SHIFT                                                   = 8;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_ACTION1_MASK                                                    = 64'h3F00;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_ACTION1_SHIFT                                                   = 8;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_LOGICALOP_MASK                                                  = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_LOGICALOP_SHIFT                                                 = 14;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_LOGICALOP_MASK                                                  = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_LOGICALOP_SHIFT                                                 = 14;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_EVENTTYPE0_MASK                                                 = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_EVENTTYPE0_SHIFT                                                = 16;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_EVENTTYPE0_MASK                                                 = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_EVENTTYPE0_SHIFT                                                = 16;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_EVENTTYPE1_MASK                                                 = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_EVENTTYPE1_SHIFT                                                = 22;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_EVENTTYPE1_MASK                                                 = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_EVENTTYPE1_SHIFT                                                = 22;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_CUSTOMACTION0_MASK                                              = 64'hF0000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_CUSTOMACTION0_SHIFT                                             = 28;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_CUSTOMACTION0_MASK                                              = 64'hF0000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_CUSTOMACTION0_SHIFT                                             = 28;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_CUSTOMACTION1_MASK                                              = 64'hF00000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_CUSTOMACTION1_SHIFT                                             = 32;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_CUSTOMACTION1_MASK                                              = 64'hF00000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_CUSTOMACTION1_SHIFT                                             = 32;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_CUSTOMACTION0ENABLE_MASK                                        = 64'h1000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_CUSTOMACTION0ENABLE_SHIFT                                       = 36;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_CUSTOMACTION1ENABLE_MASK                                        = 64'h2000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_CUSTOMACTION1ENABLE_SHIFT                                       = 37;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_EVENTTYPE2_SHIFT                                                = 38;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_EVENTTYPE2_MASK                                                 = 64'hFC000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_EVENTTYPE2_SHIFT                                                = 38;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_UDF_MASK                                                        = 64'hFF00000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_UDF_SHIFT                                                       = 44;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_UDF_MASK                                                        = 64'hFF00000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_UDF_SHIFT                                                       = 44;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_ACTION2_MASK                                                    = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_ACTION2_SHIFT                                                   = 52;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_ACTION2_MASK                                                    = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_ACTION2_SHIFT                                                   = 52;
 
-localparam longint unsigned SMC_CLA_CDbgNode3Eap3_ACTION3_MASK                                                    = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgNode3Eap3_ACTION3_SHIFT                                                   = 58;
+localparam longint unsigned DFD_CLA_CDbgNode3Eap3_ACTION3_MASK                                                    = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgNode3Eap3_ACTION3_SHIFT                                                   = 58;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap2Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap2Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap2Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap2Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap3Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap3Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap3Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap3Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap2Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap2Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap2Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap2Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap3Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap3Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap3Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap3Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap2Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap2Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap2Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap2Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap3Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap3Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap3Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap3Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap2Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap2Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap2Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap2Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap3Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap3Lo_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap3Lo_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap3Lo_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG0_MASK                                         = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG0_SHIFT                                        = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG0_MASK                                         = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG0_SHIFT                                        = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG1_MASK                                         = 64'hC;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG1_SHIFT                                        = 2;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG1_MASK                                         = 64'hC;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG1_SHIFT                                        = 2;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG2_MASK                                         = 64'h30;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG2_SHIFT                                        = 4;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG2_MASK                                         = 64'h30;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG2_SHIFT                                        = 4;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG3_MASK                                         = 64'hC0;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG3_SHIFT                                        = 6;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG3_MASK                                         = 64'hC0;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG3_SHIFT                                        = 6;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG4_MASK                                         = 64'h300;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG4_SHIFT                                        = 8;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG4_MASK                                         = 64'h300;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG4_SHIFT                                        = 8;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG5_MASK                                         = 64'hC00;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG5_SHIFT                                        = 10;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG5_MASK                                         = 64'hC00;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG5_SHIFT                                        = 10;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG6_MASK                                         = 64'h3000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG6_SHIFT                                        = 12;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG6_MASK                                         = 64'h3000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG6_SHIFT                                        = 12;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG7_MASK                                         = 64'hC000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG7_SHIFT                                        = 14;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG7_MASK                                         = 64'hC000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG7_SHIFT                                        = 14;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG8_MASK                                         = 64'h30000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG8_SHIFT                                        = 16;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG8_MASK                                         = 64'h30000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG8_SHIFT                                        = 16;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG9_MASK                                         = 64'hC0000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG9_SHIFT                                        = 18;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG9_MASK                                         = 64'hC0000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG9_SHIFT                                        = 18;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG10_MASK                                        = 64'h300000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG10_SHIFT                                       = 20;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG10_MASK                                        = 64'h300000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG10_SHIFT                                       = 20;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG11_MASK                                        = 64'hC00000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG11_SHIFT                                       = 22;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG11_MASK                                        = 64'hC00000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG11_SHIFT                                       = 22;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG12_MASK                                        = 64'h3000000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG12_SHIFT                                       = 24;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG12_MASK                                        = 64'h3000000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG12_SHIFT                                       = 24;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG13_MASK                                        = 64'hC000000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG13_SHIFT                                       = 26;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG13_MASK                                        = 64'hC000000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG13_SHIFT                                       = 26;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG14_MASK                                        = 64'h30000000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG14_SHIFT                                       = 28;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG14_MASK                                        = 64'h30000000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG14_SHIFT                                       = 28;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG15_MASK                                        = 64'hC0000000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_MUXSELSEG15_SHIFT                                       = 30;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG15_MASK                                        = 64'hC0000000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_MUXSELSEG15_SHIFT                                       = 30;
 
-localparam longint unsigned SMC_CLA_CDbgSignalDelayMuxSel_RSVD_MASK                                               = 64'hFFFFFFFF00000000;
-localparam     int unsigned SMC_CLA_CDbgSignalDelayMuxSel_RSVD_SHIFT                                              = 32;
+localparam longint unsigned DFD_CLA_CDbgSignalDelayMuxSel_RSVD_MASK                                               = 64'hFFFFFFFF00000000;
+localparam     int unsigned DFD_CLA_CDbgSignalDelayMuxSel_RSVD_SHIFT                                              = 32;
 
-localparam longint unsigned SMC_CLA_CDbgClaXtriggerTimestretch_XTRIGGER0STRETCH_MASK                              = 64'hFF;
-localparam     int unsigned SMC_CLA_CDbgClaXtriggerTimestretch_XTRIGGER0STRETCH_SHIFT                             = 0;
+localparam longint unsigned DFD_CLA_CDbgClaXtriggerTimestretch_XTRIGGER0STRETCH_MASK                              = 64'hFF;
+localparam     int unsigned DFD_CLA_CDbgClaXtriggerTimestretch_XTRIGGER0STRETCH_SHIFT                             = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaXtriggerTimestretch_XTRIGGER1STRETCH_MASK                              = 64'hFF00;
-localparam     int unsigned SMC_CLA_CDbgClaXtriggerTimestretch_XTRIGGER1STRETCH_SHIFT                             = 8;
+localparam longint unsigned DFD_CLA_CDbgClaXtriggerTimestretch_XTRIGGER1STRETCH_MASK                              = 64'hFF00;
+localparam     int unsigned DFD_CLA_CDbgClaXtriggerTimestretch_XTRIGGER1STRETCH_SHIFT                             = 8;
 
-localparam longint unsigned SMC_CLA_CDbgClaXtriggerTimestretch_RSVD_MASK                                          = 64'hFFFFFFFFFFFF0000;
-localparam     int unsigned SMC_CLA_CDbgClaXtriggerTimestretch_RSVD_SHIFT                                         = 16;
+localparam longint unsigned DFD_CLA_CDbgClaXtriggerTimestretch_RSVD_MASK                                          = 64'hFFFFFFFFFFFF0000;
+localparam     int unsigned DFD_CLA_CDbgClaXtriggerTimestretch_RSVD_SHIFT                                         = 16;
 
-localparam longint unsigned SMC_CLA_CDbgClaTimestamp_TIMESTAMP_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgClaTimestamp_TIMESTAMP_SHIFT                                              = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMPLOWER_MASK                                          = 64'hFF;
+localparam     int unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMPLOWER_SHIFT                                         = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaTimestampSync_TIMESTAMPSYNC_MASK                                       = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgClaTimestampSync_TIMESTAMPSYNC_SHIFT                                      = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMPUPPER_MASK                                          = 64'hFFFFFFFFFFFFFF00;
+localparam     int unsigned DFD_CLA_CDbgClaTimestamp_TIMESTAMPUPPER_SHIFT                                         = 8;
 
-localparam longint unsigned SMC_CLA_CDbgClaTimestampConfig_TSCAPTURE_MASK                                         = 64'h1;
-localparam     int unsigned SMC_CLA_CDbgClaTimestampConfig_TSCAPTURE_SHIFT                                        = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampSync_TIMESTAMPSYNC_MASK                                       = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampSync_TIMESTAMPSYNC_SHIFT                                      = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaTimestampConfig_DEBUGMARKER_MASK                                       = 64'h1FE;
-localparam     int unsigned SMC_CLA_CDbgClaTimestampConfig_DEBUGMARKER_SHIFT                                      = 1;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_RESYNC_MASK                                            = 64'h1;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_RESYNC_SHIFT                                           = 0;
 
-localparam longint unsigned SMC_CLA_CDbgClaTimestampConfig_TSSYNCOFFSET_MASK                                      = 64'h200;
-localparam     int unsigned SMC_CLA_CDbgClaTimestampConfig_TSSYNCOFFSET_SHIFT                                     = 9;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_DEBUGMARKER_MASK                                       = 64'h1FE;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_DEBUGMARKER_SHIFT                                      = 1;
 
-localparam longint unsigned SMC_CLA_CDbgClaTimestampConfig_TSSYNCRAW_MASK                                         = 64'h400;
-localparam     int unsigned SMC_CLA_CDbgClaTimestampConfig_TSSYNCRAW_SHIFT                                        = 10;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_TSCAPTURE_MASK                                         = 64'h200;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_TSCAPTURE_SHIFT                                        = 9;
 
-localparam longint unsigned SMC_CLA_CDbgClaTimestampConfig_RSVD1_MASK                                             = 64'hFFFFFFFFFFFFF800;
-localparam     int unsigned SMC_CLA_CDbgClaTimestampConfig_RSVD1_SHIFT                                            = 11;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampConfig_RSVD1_MASK                                             = 64'hFFFFFFFFFFFFFC00;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampConfig_RSVD1_SHIFT                                            = 10;
 
-localparam longint unsigned SMC_CLA_CrScratchpad_DATA_MASK                                                        = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CrScratchpad_DATA_SHIFT                                                       = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampOffset_OFFSET_MASK                                            = 64'hFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampOffset_OFFSET_SHIFT                                           = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMask0Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMask0Hi_VALUE_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgClaTimestampOffset_RSVD0_MASK                                             = 64'hFF00000000000000;
+localparam     int unsigned DFD_CLA_CDbgClaTimestampOffset_RSVD0_SHIFT                                            = 56;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMatch0Hi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMatch0Hi_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMask0Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMask0Hi_VALUE_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMask1Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMask1Hi_VALUE_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch0Hi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMatch0Hi_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMatch1Hi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMatch1Hi_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMask1Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMask1Hi_VALUE_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMask2Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMask2Hi_VALUE_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch1Hi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMatch1Hi_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMatch2Hi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMatch2Hi_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMask2Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMask2Hi_VALUE_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMask3Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMask3Hi_VALUE_SHIFT                                                 = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch2Hi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMatch2Hi_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalMatch3Hi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalMatch3Hi_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMask3Hi_VALUE_MASK                                                  = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMask3Hi_VALUE_SHIFT                                                 = 0;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_DBMMODE_MASK                                                     = 64'h3;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_DBMMODE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalMatch3Hi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalMatch3Hi_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_DBMID_MASK                                                       = 64'hFC;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_DBMID_SHIFT                                                      = 2;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_DBMMODE_MASK                                                     = 64'h3;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_DBMMODE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_RSVD158_MASK                                                     = 64'hFF00;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_RSVD158_SHIFT                                                    = 8;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_DBMID_MASK                                                       = 64'hFC;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_DBMID_SHIFT                                                      = 2;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG8_MASK                                                  = 64'h3F0000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG8_SHIFT                                                 = 16;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_RSVD158_MASK                                                     = 64'hFF00;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_RSVD158_SHIFT                                                    = 8;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG9_MASK                                                  = 64'hFC00000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG9_SHIFT                                                 = 22;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG8_MASK                                                  = 64'h3F0000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG8_SHIFT                                                 = 16;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG10_MASK                                                 = 64'h3F0000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG10_SHIFT                                                = 28;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG9_MASK                                                  = 64'hFC00000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG9_SHIFT                                                 = 22;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG11_MASK                                                 = 64'hFC00000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG11_SHIFT                                                = 34;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG10_MASK                                                 = 64'h3F0000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG10_SHIFT                                                = 28;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG12_MASK                                                 = 64'h3F0000000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG12_SHIFT                                                = 40;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG11_MASK                                                 = 64'hFC00000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG11_SHIFT                                                = 34;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG13_MASK                                                 = 64'hFC00000000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG13_SHIFT                                                = 46;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG12_MASK                                                 = 64'h3F0000000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG12_SHIFT                                                = 40;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG14_MASK                                                 = 64'h3F0000000000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG14_SHIFT                                                = 52;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG13_MASK                                                 = 64'hFC00000000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG13_SHIFT                                                = 46;
 
-localparam longint unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG15_MASK                                                 = 64'hFC00000000000000;
-localparam     int unsigned SMC_CLA_CDbgMuxSelHi_MUXSELSEG15_SHIFT                                                = 58;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG14_MASK                                                 = 64'h3F0000000000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG14_SHIFT                                                = 52;
 
-localparam longint unsigned SMC_CLA_CDbgTransitionMaskHi_VALUE_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgTransitionMaskHi_VALUE_SHIFT                                              = 0;
+localparam longint unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG15_MASK                                                 = 64'hFC00000000000000;
+localparam     int unsigned DFD_CLA_CDbgMuxSelHi_MUXSELSEG15_SHIFT                                                = 58;
 
-localparam longint unsigned SMC_CLA_CDbgTransitionFromValueHi_VALUE_MASK                                          = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgTransitionFromValueHi_VALUE_SHIFT                                         = 0;
+localparam longint unsigned DFD_CLA_CDbgTransitionMaskHi_VALUE_MASK                                               = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgTransitionMaskHi_VALUE_SHIFT                                              = 0;
 
-localparam longint unsigned SMC_CLA_CDbgTransitionToValueHi_VALUE_MASK                                            = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgTransitionToValueHi_VALUE_SHIFT                                           = 0;
+localparam longint unsigned DFD_CLA_CDbgTransitionFromValueHi_VALUE_MASK                                          = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgTransitionFromValueHi_VALUE_SHIFT                                         = 0;
 
-localparam longint unsigned SMC_CLA_CDbgOnesCountMaskHi_VALUE_MASK                                                = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgOnesCountMaskHi_VALUE_SHIFT                                               = 0;
+localparam longint unsigned DFD_CLA_CDbgTransitionToValueHi_VALUE_MASK                                            = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgTransitionToValueHi_VALUE_SHIFT                                           = 0;
 
-localparam longint unsigned SMC_CLA_CDbgAnyChangeHi_MASK_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgAnyChangeHi_MASK_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgOnesCountMaskHi_VALUE_MASK                                                = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgOnesCountMaskHi_VALUE_SHIFT                                               = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap0Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap0Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgAnyChangeHi_MASK_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgAnyChangeHi_MASK_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap1Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap1Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap0Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap0Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap0Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap0Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap1Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap1Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap1Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap1Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap0Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap0Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap0Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap0Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap1Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap1Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap1Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap1Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap0Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap0Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap0Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap0Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap1Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap1Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap1Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap1Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap0Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap0Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap2Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap2Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap1Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap1Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap3Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode0Eap3Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap2Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap2Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap2Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap2Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap3Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode0Eap3Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap3Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode1Eap3Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap2Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap2Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap2Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap2Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap3Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode1Eap3Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap3Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode2Eap3Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap2Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap2Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap2Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap2Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap3Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode2Eap3Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap3Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgSignalSnapshotNode3Eap3Hi_VALUE_SHIFT                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap2Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap2Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgLfsr_LFSRACTIVE_MASK                                                      = 64'h1;
-localparam     int unsigned SMC_CLA_CDbgLfsr_LFSRACTIVE_SHIFT                                                     = 0;
+localparam longint unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap3Hi_VALUE_MASK                                      = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgSignalSnapshotNode3Eap3Hi_VALUE_SHIFT                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgLfsr_LFSR_MASK                                                            = 64'hFFFFFFFFFFFFFFFE;
-localparam     int unsigned SMC_CLA_CDbgLfsr_LFSR_SHIFT                                                           = 1;
+localparam longint unsigned DFD_CLA_CDbgLfsr_LFSRACTIVE_MASK                                                      = 64'h1;
+localparam     int unsigned DFD_CLA_CDbgLfsr_LFSRACTIVE_SHIFT                                                     = 0;
 
-localparam longint unsigned SMC_CLA_CDbgLfsrMask_RSVD0_MASK                                                       = 64'h1;
-localparam     int unsigned SMC_CLA_CDbgLfsrMask_RSVD0_SHIFT                                                      = 0;
+localparam longint unsigned DFD_CLA_CDbgLfsr_LFSR_MASK                                                            = 64'hFFFFFFFFFFFFFFFE;
+localparam     int unsigned DFD_CLA_CDbgLfsr_LFSR_SHIFT                                                           = 1;
 
-localparam longint unsigned SMC_CLA_CDbgLfsrMask_MASK_MASK                                                        = 64'hFFFFFFFFFFFFFFFE;
-localparam     int unsigned SMC_CLA_CDbgLfsrMask_MASK_SHIFT                                                       = 1;
+localparam longint unsigned DFD_CLA_CDbgLfsrMask_RSVD0_MASK                                                       = 64'h1;
+localparam     int unsigned DFD_CLA_CDbgLfsrMask_RSVD0_SHIFT                                                      = 0;
 
-localparam longint unsigned SMC_CLA_CDbgTimestampCapture_TIMESTAMP_MASK                                           = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgTimestampCapture_TIMESTAMP_SHIFT                                          = 0;
+localparam longint unsigned DFD_CLA_CDbgLfsrMask_MASK_MASK                                                        = 64'hFFFFFFFFFFFFFFFE;
+localparam     int unsigned DFD_CLA_CDbgLfsrMask_MASK_SHIFT                                                       = 1;
 
-localparam longint unsigned SMC_CLA_CDbgCompare0Lo_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare0Lo_VALUE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgTimestampCapture_TIMESTAMP_MASK                                           = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgTimestampCapture_TIMESTAMP_SHIFT                                          = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare0MaskLo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare0MaskLo_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare0Lo_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare0Lo_VALUE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare1Lo_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare1Lo_VALUE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare0MaskLo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare0MaskLo_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare1MaskLo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare1MaskLo_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare1Lo_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare1Lo_VALUE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare2Lo_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare2Lo_VALUE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare1MaskLo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare1MaskLo_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare2MaskLo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare2MaskLo_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare2Lo_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare2Lo_VALUE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare3Lo_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare3Lo_VALUE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare2MaskLo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare2MaskLo_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare3MaskLo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare3MaskLo_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare3Lo_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare3Lo_VALUE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare0Hi_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare0Hi_VALUE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare3MaskLo_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare3MaskLo_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare0MaskHi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare0MaskHi_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare0Hi_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare0Hi_VALUE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare1Hi_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare1Hi_VALUE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare0MaskHi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare0MaskHi_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare1MaskHi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare1MaskHi_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare1Hi_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare1Hi_VALUE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare2Hi_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare2Hi_VALUE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare1MaskHi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare1MaskHi_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare2MaskHi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare2MaskHi_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare2Hi_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare2Hi_VALUE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare3Hi_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare3Hi_VALUE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare2MaskHi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare2MaskHi_VALUE_SHIFT                                                = 0;
 
-localparam longint unsigned SMC_CLA_CDbgCompare3MaskHi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_CDbgCompare3MaskHi_VALUE_SHIFT                                                = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare3Hi_VALUE_MASK                                                     = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare3Hi_VALUE_SHIFT                                                    = 0;
 
-localparam longint unsigned SMC_CLA_Scratch_DATA_MASK                                                             = 64'hFFFFFFFFFFFFFFFF;
-localparam     int unsigned SMC_CLA_Scratch_DATA_SHIFT                                                            = 0;
+localparam longint unsigned DFD_CLA_CDbgCompare3MaskHi_VALUE_MASK                                                 = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_CDbgCompare3MaskHi_VALUE_SHIFT                                                = 0;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTACTIVE_MASK                                                     = 32'h1;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTACTIVE_SHIFT                                                    = 0;
+localparam longint unsigned DFD_CLA_Scratch_DATA_MASK                                                             = 64'hFFFFFFFFFFFFFFFF;
+localparam     int unsigned DFD_CLA_Scratch_DATA_SHIFT                                                            = 0;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTENABLE_MASK                                                     = 32'h2;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTENABLE_SHIFT                                                    = 1;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTACTIVE_MASK                                                     = 32'h1;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTACTIVE_SHIFT                                                    = 0;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTTRACING_MASK                                                = 32'h4;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTTRACING_SHIFT                                               = 2;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTENABLE_MASK                                                     = 32'h2;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTENABLE_SHIFT                                                    = 1;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTEMPTY_MASK                                                      = 32'h8;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTEMPTY_SHIFT                                                     = 3;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTTRACING_MASK                                                = 32'h4;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTTRACING_SHIFT                                               = 2;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTMODE_MASK                                                   = 32'h70;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTMODE_SHIFT                                                  = 4;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTEMPTY_MASK                                                      = 32'h8;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTEMPTY_SHIFT                                                     = 3;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTCONTEXT_MASK                                                    = 32'h200;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTCONTEXT_SHIFT                                                   = 9;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTMODE_MASK                                                   = 32'h70;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTMODE_SHIFT                                                  = 4;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTTRIGGERENABLE_MASK                                          = 32'h800;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTTRIGGERENABLE_SHIFT                                         = 11;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTCONTEXT_MASK                                                    = 32'h200;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTCONTEXT_SHIFT                                                   = 9;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTSTALLOROVERFLOW_MASK                                        = 32'h1000;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTSTALLOROVERFLOW_SHIFT                                       = 12;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTTRIGGERENABLE_MASK                                          = 32'h800;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTTRIGGERENABLE_SHIFT                                         = 11;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTSTALLENA_MASK                                               = 32'h2000;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINSTSTALLENA_SHIFT                                              = 13;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTSTALLOROVERFLOW_MASK                                        = 32'h1000;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTSTALLOROVERFLOW_SHIFT                                       = 12;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINHIBITSRC_MASK                                                 = 32'h8000;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTINHIBITSRC_SHIFT                                                = 15;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTSTALLENA_MASK                                               = 32'h2000;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINSTSTALLENA_SHIFT                                              = 13;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTSYNCMODE_MASK                                                   = 32'h30000;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTSYNCMODE_SHIFT                                                  = 16;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINHIBITSRC_MASK                                                 = 32'h8000;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTINHIBITSRC_SHIFT                                                = 15;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTSYNCMAX_MASK                                                    = 32'hF00000;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTSYNCMAX_SHIFT                                                   = 20;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTSYNCMODE_MASK                                                   = 32'h30000;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTSYNCMODE_SHIFT                                                  = 16;
 
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTFORMAT_MASK                                                     = 32'h7000000;
-localparam int unsigned SMC_CLA_Trdstcontrol_TRDSTFORMAT_SHIFT                                                    = 24;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTSYNCMAX_MASK                                                    = 32'hF00000;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTSYNCMAX_SHIFT                                                   = 20;
 
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTVERMAJOR_MASK                                                      = 32'hF;
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTVERMAJOR_SHIFT                                                     = 0;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTFORMAT_MASK                                                     = 32'h7000000;
+localparam int unsigned DFD_DST_Trdstcontrol_TRDSTFORMAT_SHIFT                                                    = 24;
 
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTVERMINOR_MASK                                                      = 32'hF0;
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTVERMINOR_SHIFT                                                     = 4;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTVERMAJOR_MASK                                                      = 32'hF;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTVERMAJOR_SHIFT                                                     = 0;
 
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTCOMPTYPE_MASK                                                      = 32'hF00;
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTCOMPTYPE_SHIFT                                                     = 8;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTVERMINOR_MASK                                                      = 32'hF0;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTVERMINOR_SHIFT                                                     = 4;
 
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTPROTOCOLMAJOR_MASK                                                 = 32'hF0000;
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTPROTOCOLMAJOR_SHIFT                                                = 16;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTCOMPTYPE_MASK                                                      = 32'hF00;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTCOMPTYPE_SHIFT                                                     = 8;
 
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTPROTOCOLMINOR_MASK                                                 = 32'hF00000;
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTPROTOCOLMINOR_SHIFT                                                = 20;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTPROTOCOLMAJOR_MASK                                                 = 32'hF0000;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTPROTOCOLMAJOR_SHIFT                                                = 16;
 
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTVENDORFRAMELENGTH_MASK                                             = 32'hF000000;
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTVENDORFRAMELENGTH_SHIFT                                            = 24;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTPROTOCOLMINOR_MASK                                                 = 32'hF00000;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTPROTOCOLMINOR_SHIFT                                                = 20;
 
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTVENDORSTREAMLENGTH_MASK                                            = 32'h70000000;
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTVENDORSTREAMLENGTH_SHIFT                                           = 28;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTVENDORFRAMELENGTH_MASK                                             = 32'hF000000;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTVENDORFRAMELENGTH_SHIFT                                            = 24;
 
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTTIMESTAMPCONFIG_MASK                                               = 32'h80000000;
-localparam int unsigned SMC_CLA_Trdstimpl_TRDSTTIMESTAMPCONFIG_SHIFT                                              = 31;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTVENDORSTREAMLENGTH_MASK                                            = 32'h70000000;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTVENDORSTREAMLENGTH_SHIFT                                           = 28;
 
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTINSTNOADDRDIFF_MASK                                        = 32'h1;
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTINSTNOADDRDIFF_SHIFT                                       = 0;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTTIMESTAMPCONFIG_MASK                                               = 32'h80000000;
+localparam int unsigned DFD_DST_Trdstimpl_TRDSTTIMESTAMPCONFIG_SHIFT                                              = 31;
 
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTINSTNOTRAPADDR_MASK                                        = 32'h2;
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTINSTNOTRAPADDR_SHIFT                                       = 1;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTINSTNOADDRDIFF_MASK                                        = 32'h1;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTINSTNOADDRDIFF_SHIFT                                       = 0;
 
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTINSTENREPEATEDHISTORY_MASK                                 = 32'h100;
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTINSTENREPEATEDHISTORY_SHIFT                                = 8;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTINSTNOTRAPADDR_MASK                                        = 32'h2;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTINSTNOTRAPADDR_SHIFT                                       = 1;
 
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTSRCID_MASK                                                 = 32'hFFF0000;
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTSRCID_SHIFT                                                = 16;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTINSTENREPEATEDHISTORY_MASK                                 = 32'h100;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTINSTENREPEATEDHISTORY_SHIFT                                = 8;
 
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTSRCBITS_MASK                                               = 32'hF0000000;
-localparam int unsigned SMC_CLA_Trdstinstfeatures_TRDSTSRCBITS_SHIFT                                              = 28;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTSRCID_MASK                                                 = 32'hFFF0000;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTSRCID_SHIFT                                                = 16;
 
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_TRACESOURCEID_MASK                                              = 32'hF;
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_TRACESOURCEID_SHIFT                                             = 0;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTSRCBITS_MASK                                               = 32'hF0000000;
+localparam int unsigned DFD_DST_Trdstinstfeatures_TRDSTSRCBITS_SHIFT                                              = 28;
 
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_TRACEFRAMEFILLBYTE_MASK                                         = 32'hFF0;
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_TRACEFRAMEFILLBYTE_SHIFT                                        = 4;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_TRACESOURCEID_MASK                                              = 32'hF;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_TRACESOURCEID_SHIFT                                             = 0;
 
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_FRAMELENGHTINBYTES_MASK                                         = 32'hF000;
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_FRAMELENGHTINBYTES_SHIFT                                        = 12;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_TRACEFRAMEFILLBYTE_MASK                                         = 32'hFF0;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_TRACEFRAMEFILLBYTE_SHIFT                                        = 4;
 
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_FRAMEMODEENABLE_MASK                                            = 32'h100000;
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_FRAMEMODEENABLE_SHIFT                                           = 20;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_FRAMELENGHTINBYTES_MASK                                         = 32'hF000;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_FRAMELENGHTINBYTES_SHIFT                                        = 12;
 
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_FRAMECLOSUREMODE_MASK                                           = 32'h200000;
-localparam int unsigned SMC_CLA_CDbgDebugTraceCfg_FRAMECLOSUREMODE_SHIFT                                          = 21;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_FRAMEMODEENABLE_MASK                                            = 32'h100000;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_FRAMEMODEENABLE_SHIFT                                           = 20;
 
-localparam int unsigned SMC_CLA_TrDstScratchLo_DATA_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_TrDstScratchLo_DATA_SHIFT                                                         = 0;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_FRAMECLOSUREMODE_MASK                                           = 32'h200000;
+localparam int unsigned DFD_DST_CDbgDebugTraceCfg_FRAMECLOSUREMODE_SHIFT                                          = 21;
 
-localparam int unsigned SMC_CLA_TrDstScratchHi_DATA_MASK                                                          = 32'hFFFFFFFF;
-localparam int unsigned SMC_CLA_TrDstScratchHi_DATA_SHIFT                                                         = 0;
+localparam int unsigned DFD_DST_ScratchLo_DATA_MASK                                                               = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_ScratchLo_DATA_SHIFT                                                              = 0;
+
+localparam int unsigned DFD_DST_ScratchHi_DATA_MASK                                                               = 32'hFFFFFFFF;
+localparam int unsigned DFD_DST_ScratchHi_DATA_SHIFT                                                              = 0;
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1953,7 +2012,7 @@ typedef struct packed {
     logic [0:0]   rsvd_0 ;
     logic [0:0]   trdstramenable ;
     logic [0:0]   trdstramactive ;
-} smc_cla_trdstramcontrol_reg_t;
+} dfd_dst_sink_trdstramcontrol_reg_t;
 
 
 
@@ -1965,33 +2024,33 @@ typedef struct packed {
     logic [3:0]   trdstramcomptype ;
     logic [3:0]   trdstramverminor ;
     logic [3:0]   trdstramvermajor ;
-} smc_cla_trdstramimpl_reg_t;
+} dfd_dst_sink_trdstramimpl_reg_t;
 
 
 
 typedef struct packed {
     logic [29:0]   trdstramstartlow ;
     logic [1:0]   rsvd10 ;
-} smc_cla_trdstramstartlow_reg_t;
+} dfd_dst_sink_trdstramstartlow_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   trdstramstarthigh ;
-} smc_cla_trdstramstarthigh_reg_t;
+} dfd_dst_sink_trdstramstarthigh_reg_t;
 
 
 
 typedef struct packed {
     logic [29:0]   trdstramlimitlow ;
     logic [1:0]   rsvd10 ;
-} smc_cla_trdstramlimitlow_reg_t;
+} dfd_dst_sink_trdstramlimitlow_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   trdstramlimithigh ;
-} smc_cla_trdstramlimithigh_reg_t;
+} dfd_dst_sink_trdstramlimithigh_reg_t;
 
 
 
@@ -1999,44 +2058,44 @@ typedef struct packed {
     logic [29:0]   trdstramwplow ;
     logic [0:0]   rsvd_0 ;
     logic [0:0]   trdstramwrap ;
-} smc_cla_trdstramwplow_reg_t;
+} dfd_dst_sink_trdstramwplow_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   trdstramwphigh ;
-} smc_cla_trdstramwphigh_reg_t;
+} dfd_dst_sink_trdstramwphigh_reg_t;
 
 
 
 typedef struct packed {
     logic [29:0]   trdstramrplow ;
     logic [1:0]   rsvd10 ;
-} smc_cla_trdstramrplow_reg_t;
+} dfd_dst_sink_trdstramrplow_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   trdstramrphigh ;
-} smc_cla_trdstramrphigh_reg_t;
+} dfd_dst_sink_trdstramrphigh_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   trdstramdata ;
-} smc_cla_trdstramdata_reg_t;
+} dfd_dst_sink_trdstramdata_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   data ;
-} smc_cla_trdstsinkscratchlo_reg_t;
+} dfd_dst_sink_scratchlo_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   data ;
-} smc_cla_trdstsinkscratchhi_reg_t;
+} dfd_dst_sink_scratchhi_reg_t;
 
 
 
@@ -2045,7 +2104,7 @@ typedef struct packed {
     logic [0:0]   rsvd_0 ;
     logic [0:0]   trfunnelenable ;
     logic [0:0]   trfunnelactive ;
-} smc_cla_trfunnelcontrol_reg_t;
+} dfd_funnel_trfunnelcontrol_reg_t;
 
 
 
@@ -2053,25 +2112,25 @@ typedef struct packed {
     logic [3:0]   trfunnelcomptype ;
     logic [3:0]   trfunnelverminor ;
     logic [3:0]   trfunnelvermajor ;
-} smc_cla_trfunnelimpl_reg_t;
+} dfd_funnel_trfunnelimpl_reg_t;
 
 
 
 typedef struct packed {
     logic [15:0]   trfunneldisinput ;
-} smc_cla_trfunneldisinput_reg_t;
+} dfd_funnel_trfunneldisinput_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   data ;
-} smc_cla_trfunnelscratchlo_reg_t;
+} dfd_funnel_scratchlo_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   data ;
-} smc_cla_trfunnelscratchhi_reg_t;
+} dfd_funnel_scratchhi_reg_t;
 
 
 
@@ -2082,7 +2141,7 @@ typedef struct packed {
     logic [0:0]   resetontarget ;
     logic [15:0]   target ;
     logic [15:0]   counter ;
-} smc_cla_cdbgclacounter0cfg_reg_t;
+} dfd_cla_cdbgclacounter0cfg_reg_t;
 
 
 
@@ -2093,7 +2152,7 @@ typedef struct packed {
     logic [0:0]   resetontarget ;
     logic [15:0]   target ;
     logic [15:0]   counter ;
-} smc_cla_cdbgclacounter1cfg_reg_t;
+} dfd_cla_cdbgclacounter1cfg_reg_t;
 
 
 
@@ -2104,7 +2163,7 @@ typedef struct packed {
     logic [0:0]   resetontarget ;
     logic [15:0]   target ;
     logic [15:0]   counter ;
-} smc_cla_cdbgclacounter2cfg_reg_t;
+} dfd_cla_cdbgclacounter2cfg_reg_t;
 
 
 
@@ -2115,7 +2174,7 @@ typedef struct packed {
     logic [0:0]   resetontarget ;
     logic [15:0]   target ;
     logic [15:0]   counter ;
-} smc_cla_cdbgclacounter3cfg_reg_t;
+} dfd_cla_cdbgclacounter3cfg_reg_t;
 
 
 
@@ -2134,7 +2193,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode0eap0_reg_t;
+} dfd_cla_cdbgnode0eap0_reg_t;
 
 
 
@@ -2153,7 +2212,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode0eap1_reg_t;
+} dfd_cla_cdbgnode0eap1_reg_t;
 
 
 
@@ -2172,7 +2231,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode1eap0_reg_t;
+} dfd_cla_cdbgnode1eap0_reg_t;
 
 
 
@@ -2191,7 +2250,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode1eap1_reg_t;
+} dfd_cla_cdbgnode1eap1_reg_t;
 
 
 
@@ -2210,7 +2269,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode2eap0_reg_t;
+} dfd_cla_cdbgnode2eap0_reg_t;
 
 
 
@@ -2229,7 +2288,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode2eap1_reg_t;
+} dfd_cla_cdbgnode2eap1_reg_t;
 
 
 
@@ -2248,7 +2307,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode3eap0_reg_t;
+} dfd_cla_cdbgnode3eap0_reg_t;
 
 
 
@@ -2267,31 +2326,31 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode3eap1_reg_t;
+} dfd_cla_cdbgnode3eap1_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmask0lo_reg_t;
+} dfd_cla_cdbgsignalmask0lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmatch0lo_reg_t;
+} dfd_cla_cdbgsignalmatch0lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmask1lo_reg_t;
+} dfd_cla_cdbgsignalmask1lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmatch1lo_reg_t;
+} dfd_cla_cdbgsignalmatch1lo_reg_t;
 
 
 
@@ -2300,7 +2359,7 @@ typedef struct packed {
     logic [6:0]   signal1select ;
     logic [0:0]   posedgesignal0 ;
     logic [6:0]   signal0select ;
-} smc_cla_cdbgsignaledgedetectcfg_reg_t;
+} dfd_cla_cdbgsignaledgedetectcfg_reg_t;
 
 
 
@@ -2338,7 +2397,7 @@ typedef struct packed {
     logic [0:0]   node0eap2 ;
     logic [0:0]   node0eap1 ;
     logic [0:0]   node0eap0 ;
-} smc_cla_cdbgeapstatus_reg_t;
+} dfd_cla_cdbgeapstatus_reg_t;
 
 
 
@@ -2352,7 +2411,7 @@ typedef struct packed {
     logic [0:0]   enableeap ;
     logic [2:0]   rsvd_0 ;
     logic [1:0]   currentnode ;
-} smc_cla_cdbgclactrlstatus_reg_t;
+} dfd_cla_cdbgclactrlstatus_reg_t;
 
 
 
@@ -2369,133 +2428,133 @@ typedef struct packed {
     logic [0:0]   finegraintime ;
     logic [5:0]   dbmid ;
     logic [1:0]   dbmmode ;
-} smc_cla_cdbgmuxsello_reg_t;
+} dfd_cla_cdbgmuxsello_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgrsvd1_reg_t;
+} dfd_cla_cdbgrsvd1_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgrsvd2_reg_t;
+} dfd_cla_cdbgrsvd2_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgtransitionmasklo_reg_t;
+} dfd_cla_cdbgtransitionmasklo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgtransitionfromvaluelo_reg_t;
+} dfd_cla_cdbgtransitionfromvaluelo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgtransitiontovaluelo_reg_t;
+} dfd_cla_cdbgtransitiontovaluelo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgonescountmasklo_reg_t;
+} dfd_cla_cdbgonescountmasklo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgonescountvalue_reg_t;
+} dfd_cla_cdbgonescountvalue_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   mask ;
-} smc_cla_cdbganychangelo_reg_t;
+} dfd_cla_cdbganychangelo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode0eap0lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode0eap0lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode0eap1lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode0eap1lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode1eap0lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode1eap0lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode1eap1lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode1eap1lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode2eap0lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode2eap0lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode2eap1lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode2eap1lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode3eap0lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode3eap0lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode3eap1lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode3eap1lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   timematchval ;
-} smc_cla_cdbgclatimematch_reg_t;
+} dfd_cla_cdbgclatimematch_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmask2lo_reg_t;
+} dfd_cla_cdbgsignalmask2lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmatch2lo_reg_t;
+} dfd_cla_cdbgsignalmatch2lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmask3lo_reg_t;
+} dfd_cla_cdbgsignalmask3lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmatch3lo_reg_t;
+} dfd_cla_cdbgsignalmatch3lo_reg_t;
 
 
 
@@ -2514,7 +2573,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode0eap2_reg_t;
+} dfd_cla_cdbgnode0eap2_reg_t;
 
 
 
@@ -2533,7 +2592,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode0eap3_reg_t;
+} dfd_cla_cdbgnode0eap3_reg_t;
 
 
 
@@ -2552,7 +2611,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode1eap2_reg_t;
+} dfd_cla_cdbgnode1eap2_reg_t;
 
 
 
@@ -2571,7 +2630,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode1eap3_reg_t;
+} dfd_cla_cdbgnode1eap3_reg_t;
 
 
 
@@ -2590,7 +2649,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode2eap2_reg_t;
+} dfd_cla_cdbgnode2eap2_reg_t;
 
 
 
@@ -2609,7 +2668,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode2eap3_reg_t;
+} dfd_cla_cdbgnode2eap3_reg_t;
 
 
 
@@ -2628,7 +2687,7 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode3eap2_reg_t;
+} dfd_cla_cdbgnode3eap2_reg_t;
 
 
 
@@ -2647,55 +2706,55 @@ typedef struct packed {
     logic [5:0]   action1 ;
     logic [5:0]   action0 ;
     logic [1:0]   destnode ;
-} smc_cla_cdbgnode3eap3_reg_t;
+} dfd_cla_cdbgnode3eap3_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode0eap2lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode0eap2lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode0eap3lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode0eap3lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode1eap2lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode1eap2lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode1eap3lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode1eap3lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode2eap2lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode2eap2lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode2eap3lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode2eap3lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode3eap2lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode3eap2lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode3eap3lo_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode3eap3lo_reg_t;
 
 
 
@@ -2717,7 +2776,7 @@ typedef struct packed {
     logic [1:0]   muxselseg2 ;
     logic [1:0]   muxselseg1 ;
     logic [1:0]   muxselseg0 ;
-} smc_cla_cdbgsignaldelaymuxsel_reg_t;
+} dfd_cla_cdbgsignaldelaymuxsel_reg_t;
 
 
 
@@ -2725,83 +2784,84 @@ typedef struct packed {
     logic [47:0]   rsvd ;
     logic [7:0]   xtrigger1stretch ;
     logic [7:0]   xtrigger0stretch ;
-} smc_cla_cdbgclaxtriggertimestretch_reg_t;
+} dfd_cla_cdbgclaxtriggertimestretch_reg_t;
 
 
 
 typedef struct packed {
-    logic [63:0]   timestamp ;
-} smc_cla_cdbgclatimestamp_reg_t;
+    logic [55:0]   timestampupper ;
+    logic [7:0]   timestamplower ;
+} dfd_cla_cdbgclatimestamp_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   timestampsync ;
-} smc_cla_cdbgclatimestampsync_reg_t;
+} dfd_cla_cdbgclatimestampsync_reg_t;
 
 
 
 typedef struct packed {
-    logic [52:0]   rsvd1 ;
-    logic [0:0]   tssyncraw ;
-    logic [0:0]   tssyncoffset ;
-    logic [7:0]   debugmarker ;
+    logic [53:0]   rsvd1 ;
     logic [0:0]   tscapture ;
-} smc_cla_cdbgclatimestampconfig_reg_t;
+    logic [7:0]   debugmarker ;
+    logic [0:0]   resync ;
+} dfd_cla_cdbgclatimestampconfig_reg_t;
 
 
 
 typedef struct packed {
-    logic [63:0]   data ;
-} smc_cla_crscratchpad_reg_t;
-
-
-
-typedef struct packed {
-    logic [63:0]   value ;
-} smc_cla_cdbgsignalmask0hi_reg_t;
+    logic [7:0]   rsvd0 ;
+    logic [55:0]   offset ;
+} dfd_cla_cdbgclatimestampoffset_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmatch0hi_reg_t;
+} dfd_cla_cdbgsignalmask0hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmask1hi_reg_t;
+} dfd_cla_cdbgsignalmatch0hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmatch1hi_reg_t;
+} dfd_cla_cdbgsignalmask1hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmask2hi_reg_t;
+} dfd_cla_cdbgsignalmatch1hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmatch2hi_reg_t;
+} dfd_cla_cdbgsignalmask2hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmask3hi_reg_t;
+} dfd_cla_cdbgsignalmatch2hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalmatch3hi_reg_t;
+} dfd_cla_cdbgsignalmask3hi_reg_t;
+
+
+
+typedef struct packed {
+    logic [63:0]   value ;
+} dfd_cla_cdbgsignalmatch3hi_reg_t;
 
 
 
@@ -2817,255 +2877,255 @@ typedef struct packed {
     logic [7:0]   rsvd158 ;
     logic [5:0]   dbmid ;
     logic [1:0]   dbmmode ;
-} smc_cla_cdbgmuxselhi_reg_t;
+} dfd_cla_cdbgmuxselhi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgtransitionmaskhi_reg_t;
+} dfd_cla_cdbgtransitionmaskhi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgtransitionfromvaluehi_reg_t;
+} dfd_cla_cdbgtransitionfromvaluehi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgtransitiontovaluehi_reg_t;
+} dfd_cla_cdbgtransitiontovaluehi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgonescountmaskhi_reg_t;
+} dfd_cla_cdbgonescountmaskhi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   mask ;
-} smc_cla_cdbganychangehi_reg_t;
+} dfd_cla_cdbganychangehi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode0eap0hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode0eap0hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode0eap1hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode0eap1hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode1eap0hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode1eap0hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode1eap1hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode1eap1hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode2eap0hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode2eap0hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode2eap1hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode2eap1hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode3eap0hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode3eap0hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode3eap1hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode3eap1hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode0eap2hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode0eap2hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode0eap3hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode0eap3hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode1eap2hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode1eap2hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode1eap3hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode1eap3hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode2eap2hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode2eap2hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode2eap3hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode2eap3hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode3eap2hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode3eap2hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgsignalsnapshotnode3eap3hi_reg_t;
+} dfd_cla_cdbgsignalsnapshotnode3eap3hi_reg_t;
 
 
 
 typedef struct packed {
     logic [62:0]   lfsr ;
     logic [0:0]   lfsractive ;
-} smc_cla_cdbglfsr_reg_t;
+} dfd_cla_cdbglfsr_reg_t;
 
 
 
 typedef struct packed {
     logic [62:0]   mask ;
     logic [0:0]   rsvd0 ;
-} smc_cla_cdbglfsrmask_reg_t;
+} dfd_cla_cdbglfsrmask_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   timestamp ;
-} smc_cla_cdbgtimestampcapture_reg_t;
+} dfd_cla_cdbgtimestampcapture_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare0lo_reg_t;
+} dfd_cla_cdbgcompare0lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare0masklo_reg_t;
+} dfd_cla_cdbgcompare0masklo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare1lo_reg_t;
+} dfd_cla_cdbgcompare1lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare1masklo_reg_t;
+} dfd_cla_cdbgcompare1masklo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare2lo_reg_t;
+} dfd_cla_cdbgcompare2lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare2masklo_reg_t;
+} dfd_cla_cdbgcompare2masklo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare3lo_reg_t;
+} dfd_cla_cdbgcompare3lo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare3masklo_reg_t;
+} dfd_cla_cdbgcompare3masklo_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare0hi_reg_t;
+} dfd_cla_cdbgcompare0hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare0maskhi_reg_t;
+} dfd_cla_cdbgcompare0maskhi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare1hi_reg_t;
+} dfd_cla_cdbgcompare1hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare1maskhi_reg_t;
+} dfd_cla_cdbgcompare1maskhi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare2hi_reg_t;
+} dfd_cla_cdbgcompare2hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare2maskhi_reg_t;
+} dfd_cla_cdbgcompare2maskhi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare3hi_reg_t;
+} dfd_cla_cdbgcompare3hi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   value ;
-} smc_cla_cdbgcompare3maskhi_reg_t;
+} dfd_cla_cdbgcompare3maskhi_reg_t;
 
 
 
 typedef struct packed {
     logic [63:0]   data ;
-} smc_cla_scratch_reg_t;
+} dfd_cla_scratch_reg_t;
 
 
 
@@ -3087,7 +3147,7 @@ typedef struct packed {
     logic [0:0]   trdstinsttracing ;
     logic [0:0]   trdstenable ;
     logic [0:0]   trdstactive ;
-} smc_cla_trdstcontrol_reg_t;
+} dfd_dst_trdstcontrol_reg_t;
 
 
 
@@ -3101,7 +3161,7 @@ typedef struct packed {
     logic [3:0]   trdstcomptype ;
     logic [3:0]   trdstverminor ;
     logic [3:0]   trdstvermajor ;
-} smc_cla_trdstimpl_reg_t;
+} dfd_dst_trdstimpl_reg_t;
 
 
 
@@ -3113,7 +3173,7 @@ typedef struct packed {
     logic [5:0]   rsvd_0 ;
     logic [0:0]   trdstinstnotrapaddr ;
     logic [0:0]   trdstinstnoaddrdiff ;
-} smc_cla_trdstinstfeatures_reg_t;
+} dfd_dst_trdstinstfeatures_reg_t;
 
 
 
@@ -3124,19 +3184,19 @@ typedef struct packed {
     logic [3:0]   framelenghtinbytes ;
     logic [7:0]   traceframefillbyte ;
     logic [3:0]   tracesourceid ;
-} smc_cla_cdbgdebugtracecfg_reg_t;
+} dfd_dst_cdbgdebugtracecfg_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   data ;
-} smc_cla_trdstscratchlo_reg_t;
+} dfd_dst_scratchlo_reg_t;
 
 
 
 typedef struct packed {
     logic [31:0]   data ;
-} smc_cla_trdstscratchhi_reg_t;
+} dfd_dst_scratchhi_reg_t;
 
 
 

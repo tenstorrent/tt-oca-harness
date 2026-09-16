@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS scoreboard (6 item types)."""
+"""SMC OSS scoreboard."""
 
 from __future__ import annotations
 
@@ -310,7 +310,7 @@ class SmcScoreboard(uvm_subscriber):
         assert item.resolvable, f"reset not resolvable: {item}"
         # Post-release invariant: every one of the five sampled observables has
         # a fail-capable compare (rst_wdt_smc_clk_n included -- it is sampled
-        # and logged, so leaving it uncompared made a stuck WDT reset invisible;
+        # and logged, so leaving it uncompared would hide a stuck WDT reset;
         # [EXACT-EXPECTATION]). A sequence may override any single leg via
         # expect_<field> when its own contract says otherwise.
         for field in RESET_SAMPLE_FIELDS:
@@ -397,8 +397,8 @@ class SmcScoreboard(uvm_subscriber):
         # SETUP self-check ONLY. clk_ref_i / clk_smc_i / clk_periph_i are DUT
         # inputs driven by cocotb Clock(...) in smc_base_test._bring_up, so
         # these four asserts can only fail on a TB clock-generator / timing-
-        # randomization mistake -- never on wrong DUT RTL. They are kept for
-        # that purpose and are deliberately NOT presented as DUT evidence.
+        # randomization mistake -- never on wrong DUT RTL. They are NOT
+        # presented as DUT evidence.
         assert item.ref_rising_edges > 0
         assert item.smc_rising_edges > 0
         assert item.periph_rising_edges > 0
@@ -571,10 +571,10 @@ class SmcScoreboard(uvm_subscriber):
         #     seq_lib.smc_probe_positive_control.prove_gpio_pad_bus_probe (which
         #     proves a single-bit wrap-0 delta and restores the bus).
         #
-        # Resolvability alone is NOT a DUT-sensitive check: every retained SMC
-        # cocotb run is Verilator (2-state), where `value.is_resolvable` cannot be
-        # False, so `assert item.resolvable` has no FAIL-ON path in the evidence
-        # that exists. It is a precondition, not this check's contract.
+        # Resolvability alone is NOT a DUT-sensitive check: under Verilator
+        # (2-state) `value.is_resolvable` cannot be False, so
+        # `assert item.resolvable` has no FAIL-ON path there. It is a
+        # precondition, not this check's contract.
         assert item.resolvable, f"GPIO not resolvable: {item}"
         checked = ["resolvable"]
         observed_only = []
@@ -637,21 +637,18 @@ class SmcScoreboard(uvm_subscriber):
         #   external_active     -- smc_probe_positive_control.prove_axil_external_active_probe
         #                          (probe_positive_controls = ("axil_external_active",))
         #
-        # dtp_csr_active is DIFFERENT and is never asserted: tb_top.sv:1151 ties
+        # dtp_csr_active is DIFFERENT and is never asserted: tb_top ties
         # axil_dtp_csr_resp = '0', so there is no responder and an access there
-        # would wedge rather than complete, and the DTP CSR boundary is a
-        # recorded TB-policy deferral (hw/sys/smc/dv/README.md). It is listed in
+        # would wedge rather than complete. It is listed in
         # env.smc_probe_liveness.UNBACKABLE_PROBES: sampled and logged as
         # OBSERVED-ONLY, never checked evidence. Sequence-side idle helpers must
         # restrict themselves to AXIL_CHECKABLE_FIELDS for the same reason.
         #
-        # The rail below is what makes that paragraph true structurally rather
-        # than by nobody having written a setter yet: `expect_<field>` is refused
+        # The rail below enforces that structurally: `expect_<field>` is refused
         # for an unbackable probe BEFORE the compare branch, mirroring the
-        # `credit_probe` refusal on the ledger side
-        # (env/smc_probe_liveness.py). Without it, a future sequence setting
-        # `expect_dtp_csr_active` would silently exact-compare a probe whose
-        # responder tb_top.sv:1151 ties to zero.
+        # `credit_probe` refusal on the ledger side (env/smc_probe_liveness.py),
+        # so a sequence setting `expect_dtp_csr_active` cannot silently
+        # exact-compare a probe whose responder is tied to zero.
         checked = ["resolvable"]
         observed_only = []
         for field in AXIL_SAMPLE_FIELDS:
@@ -735,7 +732,9 @@ class SmcScoreboard(uvm_subscriber):
             )
         self._cov("sys_axi", (item.op.value, item.addr >> 12))
         if item.op is SmcSysAxiOp.READ and item.expected is not None:
-            mask = (1 << (item.length * 8)) - 1
+            # The mask spans the whole transfer, so a multi-beat burst read is
+            # compared over every beat rather than only the first.
+            mask = (1 << (item.transfer_bytes * 8)) - 1
             got = item.rdata & mask
             exp = item.expected & mask
             assert got == exp, f"SYS AXI read 0x{item.addr:014x} = 0x{got:x}, expected 0x{exp:x}"
@@ -830,7 +829,7 @@ class SmcScoreboard(uvm_subscriber):
         # books a protocol_vip coverage bin, is counted in
         # protocol_vip_checks_seen and can single-handedly satisfy check_phase's
         # minimum-activity gate -- exactly the shape the auto_evidence branch
-        # above was carved out to prevent ([NO-ALWAYS-PASS-CHECKER] /
+        # above exists to prevent ([NO-ALWAYS-PASS-CHECKER] /
         # [NO-ZERO-ACTIVITY-PASS]). Refusing it here, and not only at the
         # record_protocol_vip() call site, means no path can book one.
         assert not item.auto_evidence
@@ -867,7 +866,6 @@ class SmcScoreboard(uvm_subscriber):
             f"({item.min_fabric_accesses})"
         )
         if item.timeouts is not None:
-            assert item.timeouts >= 0
             # Every timeout counted by csr_read_bounded() is also an access, so
             # a recorded item must never report more timeouts than accesses.
             assert item.timeouts <= item.csr_accesses, (
@@ -896,7 +894,7 @@ class SmcScoreboard(uvm_subscriber):
             self.idle_legs_checked,
             self.idle_legs_observed_only,
         )
-        # Minimum-activity gate. Deliberately excludes
+        # Minimum-activity gate. Excludes
         # `protocol_vip_auto_stamps_seen` and `reset_raw_observations_seen`:
         # neither can fail, so neither may satisfy the gate on its own
         # ([NO-ZERO-ACTIVITY-PASS]).

@@ -1,0 +1,175 @@
+From 5a5388b22ea3fe84680b86566e23b46482a133cf Mon Sep 17 00:00:00 2001
+From: Alessandro Ottaviano <aottaviano@tenstorrent.com>
+Date: Fri, 4 Sep 2026 14:59:56 -0400
+Subject: [PATCH] Size iDMA generated width conversions explicitly
+
+---
+ src/backend/tpl/idma_backend.sv.tpl   |  2 +-
+ src/backend/tpl/idma_legalizer.sv.tpl | 14 ++++++------
+ src/db/idma_axi.yml                   | 10 ++++----
+ src/frontend/reg/tpl/idma_reg.sv.tpl  | 33 +++++++++++++++++----------
+ 4 files changed, 35 insertions(+), 24 deletions(-)
+
+diff --git a/src/backend/tpl/idma_backend.sv.tpl b/src/backend/tpl/idma_backend.sv.tpl
+index eaade4f..1fd3bee 100644
+--- a/src/backend/tpl/idma_backend.sv.tpl
++++ b/src/backend/tpl/idma_backend.sv.tpl
+@@ -561,7 +561,7 @@ _rsp_t ${protocol}_write_rsp_i,
+     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
+         // bypass the signals, assign their neutral values
+         assign idma_rsp.error     = 1'b0;
+-        assign idma_rsp.pld       = 1'b0;
++        assign idma_rsp.pld       = '0;
+         assign idma_rsp.last      = w_super_last;
+         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
+         assign eh_req_ready_o     = 1'b0;
+diff --git a/src/backend/tpl/idma_legalizer.sv.tpl b/src/backend/tpl/idma_legalizer.sv.tpl
+index 9ee966a..3fd077f 100644
+--- a/src/backend/tpl/idma_legalizer.sv.tpl
++++ b/src/backend/tpl/idma_legalizer.sv.tpl
+@@ -403,12 +403,12 @@ w_num_bytes_to_pb = w_page_num_bytes_to_pb;
+         // Legalize read transaction
+         //--------------------------------------
+         // more bytes remaining than we can read
+-        if (r_tf_q.length > r_num_bytes_possible) begin
++        if (r_tf_q.length > $bits(r_tf_q.length)'(r_num_bytes_possible)) begin
+             r_num_bytes = r_num_bytes_possible;
+             // calculate remainder
+-            r_tf_d.length = r_tf_q.length - r_num_bytes_possible;
++            r_tf_d.length = r_tf_q.length - $bits(r_tf_q.length)'(r_num_bytes_possible);
+             // next address
+-            r_tf_d.addr = r_tf_q.addr + r_num_bytes;
++            r_tf_d.addr = r_tf_q.addr + $bits(r_tf_q.addr)'(r_num_bytes);
+ 
+         // remaining bytes fit in one burst
+         end else begin
+@@ -422,12 +422,12 @@ w_num_bytes_to_pb = w_page_num_bytes_to_pb;
+         // Legalize write transaction
+         //--------------------------------------
+         // more bytes remaining than we can write
+-        if (w_tf_q.length > w_num_bytes_possible) begin
++        if (w_tf_q.length > $bits(w_tf_q.length)'(w_num_bytes_possible)) begin
+             w_num_bytes = w_num_bytes_possible;
+             // calculate remainder
+-            w_tf_d.length = w_tf_q.length - w_num_bytes_possible;
++            w_tf_d.length = w_tf_q.length - $bits(w_tf_q.length)'(w_num_bytes_possible);
+             // next address
+-            w_tf_d.addr = w_tf_q.addr + w_num_bytes;
++            w_tf_d.addr = w_tf_q.addr + $bits(w_tf_q.addr)'(w_num_bytes);
+ 
+         // remaining bytes fit in one burst
+         end else begin
+@@ -533,7 +533,7 @@ ${database[protocol]['legalizer_read_meta_channel']}
+         tailer:       OffsetWidth'(r_num_bytes + r_addr_offset),
+         shift:        opt_tf_q.read_shift,
+         decouple_aw:  opt_tf_q.decouple_aw,
+-        is_single:    r_num_bytes <= StrbWidth
++        is_single:    r_num_bytes <= page_len_t'(StrbWidth)
+     };
+ 
+     // Write meta channel and data path
+diff --git a/src/db/idma_axi.yml b/src/db/idma_axi.yml
+index 02c7f88..2fa442e 100644
+--- a/src/db/idma_axi.yml
++++ b/src/db/idma_axi.yml
+@@ -32,9 +32,10 @@ typedefs: |
+     `AXI_TYPEDEF_RESP_T(axi_rsp_t, axi_b_chan_t, axi_r_chan_t)
+ legalizer_read_meta_channel: |
+     r_req_o.ar_req.axi.ar_chan = '{
+-        id: opt_tf_q.axi_id,
++        id: $bits(r_req_o.ar_req.axi.ar_chan.id)'(opt_tf_q.axi_id),
+         addr: { r_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
+-        len: ((r_num_bytes + r_addr_offset - 'd1) >> OffsetWidth),
++        len: $bits(r_req_o.ar_req.axi.ar_chan.len)'(
++            (r_num_bytes + page_len_t'(r_addr_offset) - page_len_t'(1)) >> OffsetWidth),
+         size: axi_pkg::size_t'(OffsetWidth),
+         burst: opt_tf_q.src_axi_opt.burst,
+         lock: opt_tf_q.src_axi_opt.lock,
+@@ -46,9 +47,10 @@ legalizer_read_meta_channel: |
+     };
+ legalizer_write_meta_channel: |
+     w_req_o.aw_req.axi.aw_chan = '{
+-        id: opt_tf_q.axi_id,
++        id: $bits(w_req_o.aw_req.axi.aw_chan.id)'(opt_tf_q.axi_id),
+         addr: { w_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
+-        len: ((w_num_bytes + w_addr_offset - 'd1) >> OffsetWidth),
++        len: $bits(w_req_o.aw_req.axi.aw_chan.len)'(
++            (w_num_bytes + page_len_t'(w_addr_offset) - page_len_t'(1)) >> OffsetWidth),
+         size: axi_pkg::size_t'(OffsetWidth),
+         burst: opt_tf_q.dst_axi_opt.burst,
+         lock: opt_tf_q.dst_axi_opt.lock,
+diff --git a/src/frontend/reg/tpl/idma_reg.sv.tpl b/src/frontend/reg/tpl/idma_reg.sv.tpl
+index 3e67945..d8a64f0 100644
+--- a/src/frontend/reg/tpl/idma_reg.sv.tpl
++++ b/src/frontend/reg/tpl/idma_reg.sv.tpl
+@@ -97,7 +97,7 @@ module idma_${identifier} #(
+       dma_ctrl_rsp_o[i].ready =  ( read_happens && arb_ready[i] || ~read_happens && dma_ctrl_req_i[i].valid ) ;
+     end
+ 
+-    cnt_width_t [MaxNumStreams-1:0] next_id_re_temp;
++    logic [MaxNumStreams-1:0] next_id_re_temp;
+     assign next_id_re_temp[0] = dma_reg2hw[i].next_id_0.re;
+     assign next_id_re_temp[1] = dma_reg2hw[i].next_id_1.re;
+     assign next_id_re_temp[2] = dma_reg2hw[i].next_id_2.re;
+@@ -122,7 +122,7 @@ module idma_${identifier} #(
+         for (int c = 0; c < NumStreams; c++) begin
+             read_happens |= next_id_re_temp[c];
+             if (next_id_re_temp[c]) begin
+-                stream_idx_o = c;
++                stream_idx_o = stream_t'(c);
+             end
+         end
+         arb_valid[i] = read_happens;
+@@ -139,9 +139,12 @@ module idma_${identifier} #(
+       arb_dma_req[i]${sep}src_addr = dma_reg2hw[i].src_addr_low.q;
+       arb_dma_req[i]${sep}dst_addr = dma_reg2hw[i].dst_addr_low.q;
+ % else:
+-      arb_dma_req[i]${sep}length   = {dma_reg2hw[i].length_high.q,   dma_reg2hw[i].length_low.q};
+-      arb_dma_req[i]${sep}src_addr = {dma_reg2hw[i].src_addr_high.q, dma_reg2hw[i].src_addr_low.q};
+-      arb_dma_req[i]${sep}dst_addr = {dma_reg2hw[i].dst_addr_high.q, dma_reg2hw[i].dst_addr_low.q};
++      arb_dma_req[i]${sep}length   = $bits(arb_dma_req[i]${sep}length)'(
++          {dma_reg2hw[i].length_high.q, dma_reg2hw[i].length_low.q});
++      arb_dma_req[i]${sep}src_addr = $bits(arb_dma_req[i]${sep}src_addr)'(
++          {dma_reg2hw[i].src_addr_high.q, dma_reg2hw[i].src_addr_low.q});
++      arb_dma_req[i]${sep}dst_addr = $bits(arb_dma_req[i]${sep}dst_addr)'(
++          {dma_reg2hw[i].dst_addr_high.q, dma_reg2hw[i].dst_addr_low.q});
+ % endif
+ 
+       // Protocols
+@@ -171,12 +174,17 @@ module idma_${identifier} #(
+       arb_dma_req[i].d_req[${nd}].src_strides = dma_reg2hw[i].src_stride_${nd+2}_low.q;
+       arb_dma_req[i].d_req[${nd}].dst_strides = dma_reg2hw[i].dst_stride_${nd+2}_low.q;
+ % else:
+-      arb_dma_req[i].d_req[${nd}].reps = {dma_reg2hw[i].reps_${nd+2}_high.q,
+-                                      dma_reg2hw[i].reps_${nd+2}_low.q };
+-      arb_dma_req[i].d_req[${nd}].src_strides = {dma_reg2hw[i].src_stride_${nd+2}_high.q,
+-                                             dma_reg2hw[i].src_stride_${nd+2}_low.q};
+-      arb_dma_req[i].d_req[${nd}].dst_strides = {dma_reg2hw[i].dst_stride_${nd+2}_high.q,
+-                                             dma_reg2hw[i].dst_stride_${nd+2}_low.q};
++      arb_dma_req[i].d_req[${nd}].reps =
++          $bits(arb_dma_req[i].d_req[${nd}].reps)'(
++              {dma_reg2hw[i].reps_${nd+2}_high.q, dma_reg2hw[i].reps_${nd+2}_low.q});
++      arb_dma_req[i].d_req[${nd}].src_strides =
++          $bits(arb_dma_req[i].d_req[${nd}].src_strides)'(
++              {dma_reg2hw[i].src_stride_${nd+2}_high.q,
++               dma_reg2hw[i].src_stride_${nd+2}_low.q});
++      arb_dma_req[i].d_req[${nd}].dst_strides =
++          $bits(arb_dma_req[i].d_req[${nd}].dst_strides)'(
++              {dma_reg2hw[i].dst_stride_${nd+2}_high.q,
++               dma_reg2hw[i].dst_stride_${nd+2}_low.q});
+ % endif
+ % endfor
+ 
+@@ -199,7 +207,8 @@ module idma_${identifier} #(
+     cnt_width_t [MaxNumStreams-1:0] next_id_temp;
+     // observational registers
+     for (genvar c = 0; c < NumStreams; c++) begin : gen_hw2reg_connections
+-        assign dma_hw2reg[i].status[c]  = {midend_busy_i[c], busy_i[c]};
++        assign dma_hw2reg[i].status[c] =
++            $bits(dma_hw2reg[i].status[c])'({midend_busy_i[c], busy_i[c]});
+         assign next_id_temp[c] = next_id_i;
+         assign dma_hw2reg[i].done_id[c] = done_id_i[c];
+     end
+-- 
+2.26.2
+

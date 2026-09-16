@@ -282,7 +282,7 @@ static int test_stall_auto_mode(void) {
     if (wait_for_idle(1) != 0) return -1;
     if (configure_aes_ecb_enc_auto() != 0) return -1;
 
-    /* Operation 1: produce an output and intentionally do NOT read it. */
+    /* Operation 1: produce an output and do NOT read it. */
     printf("  Op1: generate output, do not read DATA_OUT\n");
     write_data_in(pt0);
     if (wait_for_output_valid(1) != 0) return -1;

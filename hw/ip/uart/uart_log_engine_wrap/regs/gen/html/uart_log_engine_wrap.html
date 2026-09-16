@@ -141,12 +141,13 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:20</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log Region Size. Specified in bytes. Needs to be a multiple of 16.</td></tr>
+<tr><td>19:0</td><td>LOG_REGION_SIZE</td><td>RW</td><td>0x0</td><td>Log region size in bytes. Supported values are at most 512 KiB and aligned<br>to 128 bytes (16 slots times the 8-byte fetch beat). If software programs a<br>larger value, RTL clamps the effective region to 512 KiB. For a value that is<br>not 128-byte aligned, RTL divides the effective region among the 16 slots and<br>rounds each slot&#x27;s transferable capacity down to complete 8-byte fetch beats.<br>A requested LOG_LEN above that capacity is clamped to the capacity.</td></tr>
 </table>
 <h3 id="LOG_REGION_ADDR">LOG_REGION_ADDR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High.</td></tr>
+<tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
+<tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
 <tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
 </table>
 <h3 id="LOG_WRITE_ADDR">LOG_WRITE_ADDR</h3>

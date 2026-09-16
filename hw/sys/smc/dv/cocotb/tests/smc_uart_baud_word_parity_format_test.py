@@ -16,6 +16,12 @@ from smc_base_test import smc_base_test
 class smc_uart_baud_word_parity_format_test(smc_base_test):
     """UART0 loopback divisor × frame-format sweep with masked RX check."""
 
+    required_evidence = (
+        "CHK-UART-BAUD-BASIC",
+        "CHK-UART-BAUD-FMT",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -25,10 +31,8 @@ class smc_uart_baud_word_parity_format_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
-            # Conservative stimulus floor: 1330-1373 accesses observed across
-            # the retained regression runs (per-combo LSR/RBR polls vary with
-            # timing), so the floor is set below the minimum observed. Literal
-            # here, not read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the per-combo LSR/RBR polls are timing-dependent.
             min_csr_accesses=1000,
             csr_accesses=seq.accesses,
             proxy=False,

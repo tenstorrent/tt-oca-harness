@@ -45,8 +45,8 @@
         rand uvm_reg_field STATUS_RPT_READ_LOCK;
         rand uvm_reg_field ROM_CTL_WRITE_LOCK;
         rand uvm_reg_field ROM_CTL_READ_LOCK;
-        rand uvm_reg_field SPI_CONFIG_EN_WRITE_LOCK;
-        rand uvm_reg_field SPI_CONFIG_EN_READ_LOCK;
+        rand uvm_reg_field SYSCLK_FREQ_MHZ_WRITE_LOCK;
+        rand uvm_reg_field SYSCLK_FREQ_MHZ_READ_LOCK;
         rand uvm_reg_field CHIPLET_PUBK_HASH0_WRITE_LOCK;
         rand uvm_reg_field CHIPLET_PUBK_HASH0_READ_LOCK;
         rand uvm_reg_field CHIPLET_PUBK_HASH1_WRITE_LOCK;
@@ -151,10 +151,10 @@
             this.ROM_CTL_WRITE_LOCK.configure(this, 1, 34, "W1S", 0, 'h0, 1, 1, 0);
             this.ROM_CTL_READ_LOCK = uvm_reg_field::type_id::create("ROM_CTL_READ_LOCK");
             this.ROM_CTL_READ_LOCK.configure(this, 1, 35, "W1S", 0, 'h0, 1, 1, 0);
-            this.SPI_CONFIG_EN_WRITE_LOCK = uvm_reg_field::type_id::create("SPI_CONFIG_EN_WRITE_LOCK");
-            this.SPI_CONFIG_EN_WRITE_LOCK.configure(this, 1, 36, "W1S", 0, 'h0, 1, 1, 0);
-            this.SPI_CONFIG_EN_READ_LOCK = uvm_reg_field::type_id::create("SPI_CONFIG_EN_READ_LOCK");
-            this.SPI_CONFIG_EN_READ_LOCK.configure(this, 1, 37, "W1S", 0, 'h0, 1, 1, 0);
+            this.SYSCLK_FREQ_MHZ_WRITE_LOCK = uvm_reg_field::type_id::create("SYSCLK_FREQ_MHZ_WRITE_LOCK");
+            this.SYSCLK_FREQ_MHZ_WRITE_LOCK.configure(this, 1, 36, "W1S", 0, 'h0, 1, 1, 0);
+            this.SYSCLK_FREQ_MHZ_READ_LOCK = uvm_reg_field::type_id::create("SYSCLK_FREQ_MHZ_READ_LOCK");
+            this.SYSCLK_FREQ_MHZ_READ_LOCK.configure(this, 1, 37, "W1S", 0, 'h0, 1, 1, 0);
             this.CHIPLET_PUBK_HASH0_WRITE_LOCK = uvm_reg_field::type_id::create("CHIPLET_PUBK_HASH0_WRITE_LOCK");
             this.CHIPLET_PUBK_HASH0_WRITE_LOCK.configure(this, 1, 38, "W1S", 0, 'h0, 1, 1, 0);
             this.CHIPLET_PUBK_HASH0_READ_LOCK = uvm_reg_field::type_id::create("CHIPLET_PUBK_HASH0_READ_LOCK");
@@ -229,6 +229,8 @@
         rand uvm_reg_field SPARE6_READ_LOCK;
         rand uvm_reg_field SPARE7_WRITE_LOCK;
         rand uvm_reg_field SPARE7_READ_LOCK;
+        rand uvm_reg_field SPARE8_WRITE_LOCK;
+        rand uvm_reg_field SPARE8_READ_LOCK;
         rand uvm_reg_field SPARE_LOCK_RSVD;
 
         function new(string name = "sep_efuse_map__LOCKS_SPARE");
@@ -268,8 +270,12 @@
             this.SPARE7_WRITE_LOCK.configure(this, 1, 14, "W1S", 0, 'h0, 1, 1, 0);
             this.SPARE7_READ_LOCK = uvm_reg_field::type_id::create("SPARE7_READ_LOCK");
             this.SPARE7_READ_LOCK.configure(this, 1, 15, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE8_WRITE_LOCK = uvm_reg_field::type_id::create("SPARE8_WRITE_LOCK");
+            this.SPARE8_WRITE_LOCK.configure(this, 1, 16, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE8_READ_LOCK = uvm_reg_field::type_id::create("SPARE8_READ_LOCK");
+            this.SPARE8_READ_LOCK.configure(this, 1, 17, "W1S", 0, 'h0, 1, 1, 0);
             this.SPARE_LOCK_RSVD = uvm_reg_field::type_id::create("SPARE_LOCK_RSVD");
-            this.SPARE_LOCK_RSVD.configure(this, 16, 16, "W1S", 0, 'h0, 1, 1, 0);
+            this.SPARE_LOCK_RSVD.configure(this, 14, 18, "W1S", 0, 'h0, 1, 1, 0);
         endfunction : build
     endclass : sep_efuse_map__LOCKS_SPARE
 
@@ -332,14 +338,11 @@
         `uvm_object_utils(sep_efuse_map__SIP_DIS)
         rand uvm_reg_field sep_debug;
         rand uvm_reg_field chiplet_dbg;
+        rand uvm_reg_field sep_fuse_dbg;
+        rand uvm_reg_field smc_fuse_dbg;
         rand uvm_reg_field debug_reserved_dbg1;
         rand uvm_reg_field sip_debug;
         rand uvm_reg_field debug_reserved_dbg2;
-        rand uvm_reg_field sep_fuse_test;
-        rand uvm_reg_field test_reserved_lo;
-        rand uvm_reg_field smc_fuse_test;
-        rand uvm_reg_field fuse_vendor_test;
-        rand uvm_reg_field test_reserved;
         rand uvm_reg_field func_reserved;
 
         function new(string name = "sep_efuse_map__SIP_DIS");
@@ -351,22 +354,16 @@
             this.sep_debug.configure(this, 1, 0, "W1S", 1, 'h0, 1, 1, 0);
             this.chiplet_dbg = uvm_reg_field::type_id::create("chiplet_dbg");
             this.chiplet_dbg.configure(this, 1, 1, "W1S", 1, 'h0, 1, 1, 0);
+            this.sep_fuse_dbg = uvm_reg_field::type_id::create("sep_fuse_dbg");
+            this.sep_fuse_dbg.configure(this, 1, 2, "W1S", 1, 'h0, 1, 1, 0);
+            this.smc_fuse_dbg = uvm_reg_field::type_id::create("smc_fuse_dbg");
+            this.smc_fuse_dbg.configure(this, 1, 3, "W1S", 1, 'h0, 1, 1, 0);
             this.debug_reserved_dbg1 = uvm_reg_field::type_id::create("debug_reserved_dbg1");
-            this.debug_reserved_dbg1.configure(this, 14, 2, "W1S", 1, 'h0, 1, 1, 0);
+            this.debug_reserved_dbg1.configure(this, 20, 4, "W1S", 1, 'h0, 1, 1, 0);
             this.sip_debug = uvm_reg_field::type_id::create("sip_debug");
-            this.sip_debug.configure(this, 1, 16, "W1S", 1, 'h0, 1, 1, 0);
+            this.sip_debug.configure(this, 1, 24, "W1S", 1, 'h0, 1, 1, 0);
             this.debug_reserved_dbg2 = uvm_reg_field::type_id::create("debug_reserved_dbg2");
-            this.debug_reserved_dbg2.configure(this, 15, 17, "W1S", 1, 'h0, 1, 1, 0);
-            this.sep_fuse_test = uvm_reg_field::type_id::create("sep_fuse_test");
-            this.sep_fuse_test.configure(this, 1, 32, "W1S", 1, 'h0, 1, 1, 0);
-            this.test_reserved_lo = uvm_reg_field::type_id::create("test_reserved_lo");
-            this.test_reserved_lo.configure(this, 4, 33, "W1S", 1, 'h0, 1, 1, 0);
-            this.smc_fuse_test = uvm_reg_field::type_id::create("smc_fuse_test");
-            this.smc_fuse_test.configure(this, 1, 37, "W1S", 1, 'h0, 1, 1, 0);
-            this.fuse_vendor_test = uvm_reg_field::type_id::create("fuse_vendor_test");
-            this.fuse_vendor_test.configure(this, 1, 38, "W1S", 1, 'h0, 1, 1, 0);
-            this.test_reserved = uvm_reg_field::type_id::create("test_reserved");
-            this.test_reserved.configure(this, 9, 39, "W1S", 1, 'h0, 1, 1, 0);
+            this.debug_reserved_dbg2.configure(this, 23, 25, "W1S", 1, 'h0, 1, 1, 0);
             this.func_reserved = uvm_reg_field::type_id::create("func_reserved");
             this.func_reserved.configure(this, 16, 48, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build
@@ -377,14 +374,11 @@
         `uvm_object_utils(sep_efuse_map__SYS_DIS)
         rand uvm_reg_field sep_debug;
         rand uvm_reg_field chiplet_dbg;
+        rand uvm_reg_field sep_fuse_dbg;
+        rand uvm_reg_field smc_fuse_dbg;
         rand uvm_reg_field debug_reserved_dbg1;
         rand uvm_reg_field sip_debug;
         rand uvm_reg_field debug_reserved_dbg2;
-        rand uvm_reg_field sep_fuse_test;
-        rand uvm_reg_field test_reserved_lo;
-        rand uvm_reg_field smc_fuse_test;
-        rand uvm_reg_field fuse_vendor_test;
-        rand uvm_reg_field test_reserved;
         rand uvm_reg_field func_reserved;
 
         function new(string name = "sep_efuse_map__SYS_DIS");
@@ -396,22 +390,16 @@
             this.sep_debug.configure(this, 1, 0, "W1S", 1, 'h0, 1, 1, 0);
             this.chiplet_dbg = uvm_reg_field::type_id::create("chiplet_dbg");
             this.chiplet_dbg.configure(this, 1, 1, "W1S", 1, 'h0, 1, 1, 0);
+            this.sep_fuse_dbg = uvm_reg_field::type_id::create("sep_fuse_dbg");
+            this.sep_fuse_dbg.configure(this, 1, 2, "W1S", 1, 'h0, 1, 1, 0);
+            this.smc_fuse_dbg = uvm_reg_field::type_id::create("smc_fuse_dbg");
+            this.smc_fuse_dbg.configure(this, 1, 3, "W1S", 1, 'h0, 1, 1, 0);
             this.debug_reserved_dbg1 = uvm_reg_field::type_id::create("debug_reserved_dbg1");
-            this.debug_reserved_dbg1.configure(this, 14, 2, "W1S", 1, 'h0, 1, 1, 0);
+            this.debug_reserved_dbg1.configure(this, 20, 4, "W1S", 1, 'h0, 1, 1, 0);
             this.sip_debug = uvm_reg_field::type_id::create("sip_debug");
-            this.sip_debug.configure(this, 1, 16, "W1S", 1, 'h0, 1, 1, 0);
+            this.sip_debug.configure(this, 1, 24, "W1S", 1, 'h0, 1, 1, 0);
             this.debug_reserved_dbg2 = uvm_reg_field::type_id::create("debug_reserved_dbg2");
-            this.debug_reserved_dbg2.configure(this, 15, 17, "W1S", 1, 'h0, 1, 1, 0);
-            this.sep_fuse_test = uvm_reg_field::type_id::create("sep_fuse_test");
-            this.sep_fuse_test.configure(this, 1, 32, "W1S", 1, 'h0, 1, 1, 0);
-            this.test_reserved_lo = uvm_reg_field::type_id::create("test_reserved_lo");
-            this.test_reserved_lo.configure(this, 4, 33, "W1S", 1, 'h0, 1, 1, 0);
-            this.smc_fuse_test = uvm_reg_field::type_id::create("smc_fuse_test");
-            this.smc_fuse_test.configure(this, 1, 37, "W1S", 1, 'h0, 1, 1, 0);
-            this.fuse_vendor_test = uvm_reg_field::type_id::create("fuse_vendor_test");
-            this.fuse_vendor_test.configure(this, 1, 38, "W1S", 1, 'h0, 1, 1, 0);
-            this.test_reserved = uvm_reg_field::type_id::create("test_reserved");
-            this.test_reserved.configure(this, 9, 39, "W1S", 1, 'h0, 1, 1, 0);
+            this.debug_reserved_dbg2.configure(this, 23, 25, "W1S", 1, 'h0, 1, 1, 0);
             this.func_reserved = uvm_reg_field::type_id::create("func_reserved");
             this.func_reserved.configure(this, 16, 48, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build
@@ -621,146 +609,23 @@
         endfunction : build
     endclass : sep_efuse_map__ROM_CTL
 
-    // reg - sep_efuse_map.SEP_SPI_CTRL_FIELD_EN
-    class sep_efuse_map__SEP_SPI_CTRL_FIELD_EN extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SEP_SPI_CTRL_FIELD_EN)
-        rand uvm_reg_field spi_control_field_en;
-        rand uvm_reg_field smu_pll_sysclk;
-        rand uvm_reg_field spi_control_field_en_rsvd;
+    // reg - sep_efuse_map.SYSCLK_FREQ_MHZ
+    class sep_efuse_map__SYSCLK_FREQ_MHZ extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__SYSCLK_FREQ_MHZ)
+        rand uvm_reg_field sysclk_freq_mhz;
+        rand uvm_reg_field rsvd;
 
-        function new(string name = "sep_efuse_map__SEP_SPI_CTRL_FIELD_EN");
+        function new(string name = "sep_efuse_map__SYSCLK_FREQ_MHZ");
             super.new(name, 32, UVM_NO_COVERAGE);
         endfunction : new
 
         virtual function void build();
-            this.spi_control_field_en = uvm_reg_field::type_id::create("spi_control_field_en");
-            this.spi_control_field_en.configure(this, 8, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.smu_pll_sysclk = uvm_reg_field::type_id::create("smu_pll_sysclk");
-            this.smu_pll_sysclk.configure(this, 11, 8, "RO", 1, 'h0, 1, 1, 0);
-            this.spi_control_field_en_rsvd = uvm_reg_field::type_id::create("spi_control_field_en_rsvd");
-            this.spi_control_field_en_rsvd.configure(this, 13, 19, "RO", 1, 'h0, 1, 1, 0);
+            this.sysclk_freq_mhz = uvm_reg_field::type_id::create("sysclk_freq_mhz");
+            this.sysclk_freq_mhz.configure(this, 11, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 21, 11, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
-    endclass : sep_efuse_map__SEP_SPI_CTRL_FIELD_EN
-
-    // reg - sep_efuse_map.SPI_DISCOVERY_CTRL
-    class sep_efuse_map__SPI_DISCOVERY_CTRL extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SPI_DISCOVERY_CTRL)
-        rand uvm_reg_field discovery;
-
-        function new(string name = "sep_efuse_map__SPI_DISCOVERY_CTRL");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.discovery = uvm_reg_field::type_id::create("discovery");
-            this.discovery.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__SPI_DISCOVERY_CTRL
-
-    // reg - sep_efuse_map.SPI_PHY_DQ_TIMING
-    class sep_efuse_map__SPI_PHY_DQ_TIMING extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SPI_PHY_DQ_TIMING)
-        rand uvm_reg_field dq_timing;
-
-        function new(string name = "sep_efuse_map__SPI_PHY_DQ_TIMING");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.dq_timing = uvm_reg_field::type_id::create("dq_timing");
-            this.dq_timing.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__SPI_PHY_DQ_TIMING
-
-    // reg - sep_efuse_map.SPI_PHY_DQS_TIMING
-    class sep_efuse_map__SPI_PHY_DQS_TIMING extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SPI_PHY_DQS_TIMING)
-        rand uvm_reg_field dqs_timing;
-
-        function new(string name = "sep_efuse_map__SPI_PHY_DQS_TIMING");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.dqs_timing = uvm_reg_field::type_id::create("dqs_timing");
-            this.dqs_timing.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__SPI_PHY_DQS_TIMING
-
-    // reg - sep_efuse_map.SPI_PHY_GATE_LPBK
-    class sep_efuse_map__SPI_PHY_GATE_LPBK extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SPI_PHY_GATE_LPBK)
-        rand uvm_reg_field gate_lpbk;
-
-        function new(string name = "sep_efuse_map__SPI_PHY_GATE_LPBK");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.gate_lpbk = uvm_reg_field::type_id::create("gate_lpbk");
-            this.gate_lpbk.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__SPI_PHY_GATE_LPBK
-
-    // reg - sep_efuse_map.SPI_PHY_DLL_SLAVE
-    class sep_efuse_map__SPI_PHY_DLL_SLAVE extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SPI_PHY_DLL_SLAVE)
-        rand uvm_reg_field dll_slave;
-
-        function new(string name = "sep_efuse_map__SPI_PHY_DLL_SLAVE");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.dll_slave = uvm_reg_field::type_id::create("dll_slave");
-            this.dll_slave.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__SPI_PHY_DLL_SLAVE
-
-    // reg - sep_efuse_map.SPI_PHY_DLL_MASTER
-    class sep_efuse_map__SPI_PHY_DLL_MASTER extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SPI_PHY_DLL_MASTER)
-        rand uvm_reg_field dll_master;
-
-        function new(string name = "sep_efuse_map__SPI_PHY_DLL_MASTER");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.dll_master = uvm_reg_field::type_id::create("dll_master");
-            this.dll_master.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__SPI_PHY_DLL_MASTER
-
-    // reg - sep_efuse_map.SPI_PHY_MISC
-    class sep_efuse_map__SPI_PHY_MISC extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SPI_PHY_MISC)
-        rand uvm_reg_field misc;
-
-        function new(string name = "sep_efuse_map__SPI_PHY_MISC");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.misc = uvm_reg_field::type_id::create("misc");
-            this.misc.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__SPI_PHY_MISC
-
-    // reg - sep_efuse_map.SPI_RB_VALID_TIME
-    class sep_efuse_map__SPI_RB_VALID_TIME extends uvm_reg;
-        `uvm_object_utils(sep_efuse_map__SPI_RB_VALID_TIME)
-        rand uvm_reg_field rb_valid_time;
-
-        function new(string name = "sep_efuse_map__SPI_RB_VALID_TIME");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.rb_valid_time = uvm_reg_field::type_id::create("rb_valid_time");
-            this.rb_valid_time.configure(this, 32, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_efuse_map__SPI_RB_VALID_TIME
+    endclass : sep_efuse_map__SYSCLK_FREQ_MHZ
 
     // reg - sep_efuse_map.CHIPLET_PUBK_HASH0
     class sep_efuse_map__CHIPLET_PUBK_HASH0 extends uvm_reg;
@@ -1089,6 +954,21 @@
         endfunction : build
     endclass : sep_efuse_map__spare7
 
+    // reg - sep_efuse_map.spare8
+    class sep_efuse_map__spare8 extends uvm_reg;
+        `uvm_object_utils(sep_efuse_map__spare8)
+        rand uvm_reg_field rsvd;
+
+        function new(string name = "sep_efuse_map__spare8");
+            super.new(name, 256, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.rsvd = uvm_reg_field::type_id::create("rsvd");
+            this.rsvd.configure(this, 256, 0, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_efuse_map__spare8
+
     // addrmap - sep_efuse_map
     class sep_efuse_map extends uvm_reg_block;
         `uvm_object_utils(sep_efuse_map)
@@ -1112,15 +992,7 @@
         rand sep_efuse_map__SYS_UID SYS_UID;
         rand sep_efuse_map__STATUS_RPT STATUS_RPT;
         rand sep_efuse_map__ROM_CTL ROM_CTL;
-        rand sep_efuse_map__SEP_SPI_CTRL_FIELD_EN SEP_SPI_CTRL_FIELD_EN;
-        rand sep_efuse_map__SPI_DISCOVERY_CTRL SPI_DISCOVERY_CTRL;
-        rand sep_efuse_map__SPI_PHY_DQ_TIMING SPI_PHY_DQ_TIMING;
-        rand sep_efuse_map__SPI_PHY_DQS_TIMING SPI_PHY_DQS_TIMING;
-        rand sep_efuse_map__SPI_PHY_GATE_LPBK SPI_PHY_GATE_LPBK;
-        rand sep_efuse_map__SPI_PHY_DLL_SLAVE SPI_PHY_DLL_SLAVE;
-        rand sep_efuse_map__SPI_PHY_DLL_MASTER SPI_PHY_DLL_MASTER;
-        rand sep_efuse_map__SPI_PHY_MISC SPI_PHY_MISC;
-        rand sep_efuse_map__SPI_RB_VALID_TIME SPI_RB_VALID_TIME;
+        rand sep_efuse_map__SYSCLK_FREQ_MHZ SYSCLK_FREQ_MHZ;
         rand sep_efuse_map__CHIPLET_PUBK_HASH0 CHIPLET_PUBK_HASH0;
         rand sep_efuse_map__CHIPLET_PUBK_HASH1 CHIPLET_PUBK_HASH1;
         rand sep_efuse_map__REQUIRED_SIGNERS REQUIRED_SIGNERS;
@@ -1142,6 +1014,7 @@
         rand sep_efuse_map__spare5 spare5;
         rand sep_efuse_map__spare6 spare6;
         rand sep_efuse_map__spare7 spare7;
+        rand sep_efuse_map__spare8 spare8;
 
         function new(string name = "sep_efuse_map");
             super.new(name);
@@ -1249,156 +1122,121 @@
 
             this.ROM_CTL.build();
             this.default_map.add_reg(this.ROM_CTL, 'h170);
-            this.SEP_SPI_CTRL_FIELD_EN = sep_efuse_map__SEP_SPI_CTRL_FIELD_EN::type_id::create("SEP_SPI_CTRL_FIELD_EN");
-            this.SEP_SPI_CTRL_FIELD_EN.configure(this);
+            this.SYSCLK_FREQ_MHZ = sep_efuse_map__SYSCLK_FREQ_MHZ::type_id::create("SYSCLK_FREQ_MHZ");
+            this.SYSCLK_FREQ_MHZ.configure(this);
 
-            this.SEP_SPI_CTRL_FIELD_EN.build();
-            this.default_map.add_reg(this.SEP_SPI_CTRL_FIELD_EN, 'h174);
-            this.SPI_DISCOVERY_CTRL = sep_efuse_map__SPI_DISCOVERY_CTRL::type_id::create("SPI_DISCOVERY_CTRL");
-            this.SPI_DISCOVERY_CTRL.configure(this);
-
-            this.SPI_DISCOVERY_CTRL.build();
-            this.default_map.add_reg(this.SPI_DISCOVERY_CTRL, 'h178);
-            this.SPI_PHY_DQ_TIMING = sep_efuse_map__SPI_PHY_DQ_TIMING::type_id::create("SPI_PHY_DQ_TIMING");
-            this.SPI_PHY_DQ_TIMING.configure(this);
-
-            this.SPI_PHY_DQ_TIMING.build();
-            this.default_map.add_reg(this.SPI_PHY_DQ_TIMING, 'h17c);
-            this.SPI_PHY_DQS_TIMING = sep_efuse_map__SPI_PHY_DQS_TIMING::type_id::create("SPI_PHY_DQS_TIMING");
-            this.SPI_PHY_DQS_TIMING.configure(this);
-
-            this.SPI_PHY_DQS_TIMING.build();
-            this.default_map.add_reg(this.SPI_PHY_DQS_TIMING, 'h180);
-            this.SPI_PHY_GATE_LPBK = sep_efuse_map__SPI_PHY_GATE_LPBK::type_id::create("SPI_PHY_GATE_LPBK");
-            this.SPI_PHY_GATE_LPBK.configure(this);
-
-            this.SPI_PHY_GATE_LPBK.build();
-            this.default_map.add_reg(this.SPI_PHY_GATE_LPBK, 'h184);
-            this.SPI_PHY_DLL_SLAVE = sep_efuse_map__SPI_PHY_DLL_SLAVE::type_id::create("SPI_PHY_DLL_SLAVE");
-            this.SPI_PHY_DLL_SLAVE.configure(this);
-
-            this.SPI_PHY_DLL_SLAVE.build();
-            this.default_map.add_reg(this.SPI_PHY_DLL_SLAVE, 'h188);
-            this.SPI_PHY_DLL_MASTER = sep_efuse_map__SPI_PHY_DLL_MASTER::type_id::create("SPI_PHY_DLL_MASTER");
-            this.SPI_PHY_DLL_MASTER.configure(this);
-
-            this.SPI_PHY_DLL_MASTER.build();
-            this.default_map.add_reg(this.SPI_PHY_DLL_MASTER, 'h18c);
-            this.SPI_PHY_MISC = sep_efuse_map__SPI_PHY_MISC::type_id::create("SPI_PHY_MISC");
-            this.SPI_PHY_MISC.configure(this);
-
-            this.SPI_PHY_MISC.build();
-            this.default_map.add_reg(this.SPI_PHY_MISC, 'h190);
-            this.SPI_RB_VALID_TIME = sep_efuse_map__SPI_RB_VALID_TIME::type_id::create("SPI_RB_VALID_TIME");
-            this.SPI_RB_VALID_TIME.configure(this);
-
-            this.SPI_RB_VALID_TIME.build();
-            this.default_map.add_reg(this.SPI_RB_VALID_TIME, 'h194);
+            this.SYSCLK_FREQ_MHZ.build();
+            this.default_map.add_reg(this.SYSCLK_FREQ_MHZ, 'h174);
             this.CHIPLET_PUBK_HASH0 = sep_efuse_map__CHIPLET_PUBK_HASH0::type_id::create("CHIPLET_PUBK_HASH0");
             this.CHIPLET_PUBK_HASH0.configure(this);
 
             this.CHIPLET_PUBK_HASH0.build();
-            this.default_map.add_reg(this.CHIPLET_PUBK_HASH0, 'h198);
+            this.default_map.add_reg(this.CHIPLET_PUBK_HASH0, 'h178);
             this.CHIPLET_PUBK_HASH1 = sep_efuse_map__CHIPLET_PUBK_HASH1::type_id::create("CHIPLET_PUBK_HASH1");
             this.CHIPLET_PUBK_HASH1.configure(this);
 
             this.CHIPLET_PUBK_HASH1.build();
-            this.default_map.add_reg(this.CHIPLET_PUBK_HASH1, 'h1b8);
+            this.default_map.add_reg(this.CHIPLET_PUBK_HASH1, 'h198);
             this.REQUIRED_SIGNERS = sep_efuse_map__REQUIRED_SIGNERS::type_id::create("REQUIRED_SIGNERS");
             this.REQUIRED_SIGNERS.configure(this);
 
             this.REQUIRED_SIGNERS.build();
-            this.default_map.add_reg(this.REQUIRED_SIGNERS, 'h1d8);
+            this.default_map.add_reg(this.REQUIRED_SIGNERS, 'h1b8);
             this.REQUIRED_ALGS = sep_efuse_map__REQUIRED_ALGS::type_id::create("REQUIRED_ALGS");
             this.REQUIRED_ALGS.configure(this);
 
             this.REQUIRED_ALGS.build();
-            this.default_map.add_reg(this.REQUIRED_ALGS, 'h1dc);
+            this.default_map.add_reg(this.REQUIRED_ALGS, 'h1bc);
             this.CHIPLET_PUBK_PQC_HASH0 = sep_efuse_map__CHIPLET_PUBK_PQC_HASH0::type_id::create("CHIPLET_PUBK_PQC_HASH0");
             this.CHIPLET_PUBK_PQC_HASH0.configure(this);
 
             this.CHIPLET_PUBK_PQC_HASH0.build();
-            this.default_map.add_reg(this.CHIPLET_PUBK_PQC_HASH0, 'h1e0);
+            this.default_map.add_reg(this.CHIPLET_PUBK_PQC_HASH0, 'h1c0);
             this.CHIPLET_PUBK_PQC_HASH1 = sep_efuse_map__CHIPLET_PUBK_PQC_HASH1::type_id::create("CHIPLET_PUBK_PQC_HASH1");
             this.CHIPLET_PUBK_PQC_HASH1.configure(this);
 
             this.CHIPLET_PUBK_PQC_HASH1.build();
-            this.default_map.add_reg(this.CHIPLET_PUBK_PQC_HASH1, 'h200);
+            this.default_map.add_reg(this.CHIPLET_PUBK_PQC_HASH1, 'h1e0);
             this.SIP_PUBK_PQC_HASH0 = sep_efuse_map__SIP_PUBK_PQC_HASH0::type_id::create("SIP_PUBK_PQC_HASH0");
             this.SIP_PUBK_PQC_HASH0.configure(this);
 
             this.SIP_PUBK_PQC_HASH0.build();
-            this.default_map.add_reg(this.SIP_PUBK_PQC_HASH0, 'h220);
+            this.default_map.add_reg(this.SIP_PUBK_PQC_HASH0, 'h200);
             this.SYS_PUBK_PQC_HASH = sep_efuse_map__SYS_PUBK_PQC_HASH::type_id::create("SYS_PUBK_PQC_HASH");
             this.SYS_PUBK_PQC_HASH.configure(this);
 
             this.SYS_PUBK_PQC_HASH.build();
-            this.default_map.add_reg(this.SYS_PUBK_PQC_HASH, 'h240);
+            this.default_map.add_reg(this.SYS_PUBK_PQC_HASH, 'h220);
             this.SIP_PUBK_HASH1 = sep_efuse_map__SIP_PUBK_HASH1::type_id::create("SIP_PUBK_HASH1");
             this.SIP_PUBK_HASH1.configure(this);
 
             this.SIP_PUBK_HASH1.build();
-            this.default_map.add_reg(this.SIP_PUBK_HASH1, 'h260);
+            this.default_map.add_reg(this.SIP_PUBK_HASH1, 'h240);
             this.SIP_PUBK_PQC_HASH1 = sep_efuse_map__SIP_PUBK_PQC_HASH1::type_id::create("SIP_PUBK_PQC_HASH1");
             this.SIP_PUBK_PQC_HASH1.configure(this);
 
             this.SIP_PUBK_PQC_HASH1.build();
-            this.default_map.add_reg(this.SIP_PUBK_PQC_HASH1, 'h280);
+            this.default_map.add_reg(this.SIP_PUBK_PQC_HASH1, 'h260);
             this.SEP_CHIPLET_ID = sep_efuse_map__SEP_CHIPLET_ID::type_id::create("SEP_CHIPLET_ID");
             this.SEP_CHIPLET_ID.configure(this);
 
             this.SEP_CHIPLET_ID.build();
-            this.default_map.add_reg(this.SEP_CHIPLET_ID, 'h2a0);
+            this.default_map.add_reg(this.SEP_CHIPLET_ID, 'h280);
             this.SEP_SIP_ID = sep_efuse_map__SEP_SIP_ID::type_id::create("SEP_SIP_ID");
             this.SEP_SIP_ID.configure(this);
 
             this.SEP_SIP_ID.build();
-            this.default_map.add_reg(this.SEP_SIP_ID, 'h2c0);
+            this.default_map.add_reg(this.SEP_SIP_ID, 'h2a0);
             this.SEP_SYS_ID = sep_efuse_map__SEP_SYS_ID::type_id::create("SEP_SYS_ID");
             this.SEP_SYS_ID.configure(this);
 
             this.SEP_SYS_ID.build();
-            this.default_map.add_reg(this.SEP_SYS_ID, 'h2e0);
+            this.default_map.add_reg(this.SEP_SYS_ID, 'h2c0);
             this.spare0 = sep_efuse_map__spare0::type_id::create("spare0");
             this.spare0.configure(this);
 
             this.spare0.build();
-            this.default_map.add_reg(this.spare0, 'h300);
+            this.default_map.add_reg(this.spare0, 'h2e0);
             this.spare1 = sep_efuse_map__spare1::type_id::create("spare1");
             this.spare1.configure(this);
 
             this.spare1.build();
-            this.default_map.add_reg(this.spare1, 'h320);
+            this.default_map.add_reg(this.spare1, 'h300);
             this.spare2 = sep_efuse_map__spare2::type_id::create("spare2");
             this.spare2.configure(this);
 
             this.spare2.build();
-            this.default_map.add_reg(this.spare2, 'h340);
+            this.default_map.add_reg(this.spare2, 'h320);
             this.spare3 = sep_efuse_map__spare3::type_id::create("spare3");
             this.spare3.configure(this);
 
             this.spare3.build();
-            this.default_map.add_reg(this.spare3, 'h360);
+            this.default_map.add_reg(this.spare3, 'h340);
             this.spare4 = sep_efuse_map__spare4::type_id::create("spare4");
             this.spare4.configure(this);
 
             this.spare4.build();
-            this.default_map.add_reg(this.spare4, 'h380);
+            this.default_map.add_reg(this.spare4, 'h360);
             this.spare5 = sep_efuse_map__spare5::type_id::create("spare5");
             this.spare5.configure(this);
 
             this.spare5.build();
-            this.default_map.add_reg(this.spare5, 'h3a0);
+            this.default_map.add_reg(this.spare5, 'h380);
             this.spare6 = sep_efuse_map__spare6::type_id::create("spare6");
             this.spare6.configure(this);
 
             this.spare6.build();
-            this.default_map.add_reg(this.spare6, 'h3c0);
+            this.default_map.add_reg(this.spare6, 'h3a0);
             this.spare7 = sep_efuse_map__spare7::type_id::create("spare7");
             this.spare7.configure(this);
 
             this.spare7.build();
-            this.default_map.add_reg(this.spare7, 'h3e0);
+            this.default_map.add_reg(this.spare7, 'h3c0);
+            this.spare8 = sep_efuse_map__spare8::type_id::create("spare8");
+            this.spare8.configure(this);
+
+            this.spare8.build();
+            this.default_map.add_reg(this.spare8, 'h3e0);
         endfunction : build
     endclass : sep_efuse_map
 

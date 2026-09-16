@@ -29,27 +29,27 @@ flow:
   an error rather than a silent skip.
 * *Profile-owned launch mechanics.* The shared `native` profile
   (`hw/common/dv/configs/profiles/native.toml`) supplies the UVM view's
-  contract: the simulator allowlist (VCS until the Xcelium UVM adapter is
-  signed off), the folded analyze+elaborate build, the bare `UVM` define,
-  assertions enabled, and `SIMULATION` kept on. DUT configs declare only
-  their own sources and incdirs.
+  contract: the simulator allowlist (VCS), the folded analyze+elaborate
+  build, the bare `UVM` define, assertions enabled, and `SIMULATION` kept
+  on. DUT configs declare only their own sources and incdirs.
 * *Simulator-owned UVM library.* The UVM base-class library comes from the
   simulator installation (the analyze stage precompiles it with a dedicated
   `vlogan -ntb_opts uvm` invocation before any user source); it is never
   vendored into the repository.
-* *One testbench top, two shapes.* The same `tb_top.sv` compiles as a
-  pin-level ported module for cocotb and as a self-contained harness under
-  the `UVM` define, with every TB signal declared exactly once (see the
-  walkthrough below).
+* *One testbench top, one core.* The same `tb_top.sv` compiles as a
+  framework-neutral core (interface instances, DUT, adapters) whose
+  instances both frameworks consume; the `UVM` define adds only the harness
+  block, and every TB signal is declared exactly once (see the walkthrough
+  below).
 * *One evidence model.* Checkers emit the `CHK-*`/`CHECKER_SUMMARY` grammar
   of <<shared-checker-model-contract>> in both frameworks; the SV side
   shares its mechanics through `ocah_checker_uvm_pkg`
   (`hw/common/dv/vip/ocah_checker/uvm/`). Run verdicts come from the
   `uvm-log` parse policy: `UVM_ERROR`/`UVM_FATAL` counts plus the pass
   banner, so a failing check is a failing run by construction.
-* *Coverage.* The `uvm` framework does not declare coverage stages yet;
-  `--cov` is rejected up front. Coverage wiring is a documented follow-up,
-  not an adopter task.
+* *Coverage.* The `uvm` framework declares no coverage stages, so `--cov`
+  is rejected before any stage runs; an adopter does not wire coverage
+  itself.
 
 [[shared-uvm-conventions]]
 === Normative Conventions
@@ -65,7 +65,9 @@ flow:
   extends `ocah_sequencer`, `<dut>_scoreboard` extends `ocah_scoreboard`, and
   invariant subscribers extend `ocah_subscriber`. The library owns the seed
   and knob accessors, the looped-scenario runner, the pass banner, and the
-  scoreboard feature registry, so a bench writes none of them.
+  scoreboard feature registry, so a bench writes none of them. The cocotb
+  twin is the Python package `ocah_lib` under the same directory, with
+  identical basenames (`OcahTest`, `OcahSequence`, ...).
 . *Two configuration levels.* `<dut>_test_cfg` (extends `ocah_test_cfg`) is
   the only object the seed touches: the base test fills it from the knobs,
   seeds it, and randomizes it once (clock and protocol timing included).
@@ -102,6 +104,14 @@ flow:
   its `*_sequence` API classes. A missing operation is added to the VIP API
   (where every DUT inherits it), never inlined as raw driver or virtual
   -interface manipulation in DUT code.
+. *One responder for every DUT-mastered AXI boundary.* The shared VIP slave
+  agent (`ocah_axi_slave_agent` / `OcahAxiSlaveAgent`) answers it:
+  edge-sampled through the clocking block, memory-backed, preloaded and
+  fault-programmed through `ocah_axi_slave_sequence`. A port the bench
+  flattens to pins attaches directly; a port that stays a request/response
+  struct inside `tb_top` is placed on an `ocah_axi_if` instance through
+  `ocah_axi_struct_bridge` and attaches the same way. No bench instantiates a
+  vendored simulation memory or a DUT-local terminator on such a boundary.
 . *Shared evidence mechanics.* Every checker extends
   `ocah_checker_uvm_pkg::ocah_checker`; protocol and DUT checkers carry only
   their own checks and identity, never a copy of the recording, severity
@@ -166,14 +176,14 @@ allowlist, and the VCS stage mechanics all come from
 `profiles/native.toml`. `run_dv.py --validate-configs` checks every listed
 path, including the manifest fragments.
 
-==== Step 2: Give the shared testbench top a UVM shape
+==== Step 2: Give the shared testbench top its UVM harness block
 
-The cocotb bench's `tb_top.sv` stays the single top for both frameworks:
-the default shape exposes the pin-level ANSI port list cocotb drives; the
-`UVM` shape replaces the ports with internal TB signals and appends a
-harness block at the end of the module — clock generation, shared-VIP
-interface instances, quiescent tie-offs, `uvm_config_db` publication, test
-inclusion, and `run_test()`:
+The bench's `tb_top.sv` stays the single top for both frameworks: a portless
+core instantiates the shared-VIP and DUT-local interfaces, the DUT, and the
+adapters, and both frameworks consume the same interface instances (cocotb
+through hierarchical handles, SV-UVM through `uvm_config_db`); the `UVM`
+define appends a harness block at the end of the module — clock generation,
+protocol SVA, `uvm_config_db` publication, test inclusion, and `run_test()`:
 
 [source,systemverilog]
 ----
@@ -197,11 +207,14 @@ inclusion, and `run_test()`:
 `endif
 ----
 
-Declare every TB signal exactly once: keep the signal list in a single
-include file expanded into both shapes through direction macros, the
-pattern of `hw/sys/dtp/dv/tb/dtp_tb_signal_list.svh` and its expansion in
-DTP's `tb_top.sv`. Hand-maintaining two declaration blocks in lockstep is
-the failure mode that pattern exists to remove.
+Declare every TB signal exactly once. In the interface-based core each TB
+net is one local declaration wired to an interface member (DTP's
+`tb_top.sv`). A bench whose cocotb realization binds a pin-level port list
+keeps that list in a single include file expanded into both shapes
+through direction macros, the pattern of
+`hw/sys/smu/dv/tb/smu_tb_signal_list.svh` and its expansion in SMU's
+`tb_top.sv`. Hand-maintaining two declaration blocks in lockstep is the
+failure mode both patterns exist to remove.
 
 ==== Step 3: Carry DUT-local controls in a TB interface
 
@@ -270,9 +283,11 @@ Give each implemented scenario its UVM binding:
 module = { cocotb = "<dut>_sanity_test", uvm = "<dut>_sanity_test" }
 ----
 
-A scenario without a `uvm` binding errors when selected under
-`--framework uvm`; during bring-up, group selections can ride
-`--skip-unimplemented` until the port is complete.
+A scenario that is cocotb-only by design declares it in the same map
+(`module = { cocotb = "<dut>_x_test", uvm = false }`); group selections skip
+it under `--framework uvm` with no flag. A scenario without any `uvm` entry
+errors when selected under `--framework uvm`; during bring-up, group
+selections can ride `--skip-unimplemented` until the port is complete.
 
 ==== Step 8: Run and verify
 
@@ -314,4 +329,4 @@ and is complete without it. Deployment-side guidance lives in
   adding a define to the DUT config.
 * *Run fails although the banner says PASSED* — the `uvm-log` policy also
   fails a run on any `UVM_ERROR` line and on missing required patterns; a
-  `CHK-* FAIL` reaches the verdict through `uvm_error` by design.
+  `CHK-* FAIL` reaches the verdict through `uvm_error`.

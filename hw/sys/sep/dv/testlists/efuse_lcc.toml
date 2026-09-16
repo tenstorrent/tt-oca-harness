@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
@@ -72,12 +72,16 @@ tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
-# eFuse program x write-lock on a legal spare field (never LC_STATE). RAND-REP:
-# unlocked program + write-lock reject every seed; spare index and bit offsets
-# from the run seed. Real fuse sense. Clear-after-program.
+# eFuse program x write-lock on every legal spare field (never LC_STATE).
+# RAND-REP: unlocked program + write-lock reject on SPARE0..SPARE7 every seed;
+# the seed selects only the bit offsets inside each spare. Real fuse sense.
+# Clear-after-program.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
+# No reseed: the walk visits SPARE0..SPARE7 every run, so slot coverage does not
+# depend on how many seeds CI draws. Only the bit offsets within each spare are
+# seed-selected.
 timeout_sec = 1800
 tags = ["efuse", "lock", "subsystem"]
 run_modes = ["no_cpu"]
@@ -96,9 +100,10 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# eFuse set-only shadow OR-merge on version / revoke / required-signer
-# fields (never LC_STATE). RANDCFG: every seed walks all five legal
-# set-only fields; word index and bit patterns come from the run seed.
+# eFuse shadow write-policy sweep: every periphs.adoc fuse-field row
+# except LC_STATE. RANDCFG: set-only rows OR-merge; SW-writable rows
+# overwrite. LOCK is both RDL windows after the other rows. Word index
+# and bit patterns come from the run seed.
 # Real fuse sense. Program x lock stays a different mechanism.
 name = "sep_efuse_set_only_monotonicity_test"
 module = "efuse.sep_efuse_set_only_monotonicity_test"
@@ -137,6 +142,17 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
+# Frontdoor RMA-SIP hashes drive both latch-enable events. The testbench force
+# reaches only the otherwise tied-low digest test_en input for scan-freeze.
+name = "sep_efuse_digest_latch_fault_test"
+module = "efuse.sep_efuse_digest_latch_fault_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "rma", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
 # Locked-field shadow access pulses sep_internal_interrupts[33]. RAND-REP:
 # write-lock and read-lock every seed. RANDCFG: which SPARE0..7 fields carry
 # write-lock, read-lock, and the unlocked contrast. Real fuse sense, LC_PROD.
@@ -147,6 +163,42 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["efuse", "interrupt", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
+# SECURE_TM shadow-write lock. The field map marks LOCKS/LOCKS_SPARE, LC_STATE,
+# SIP_DIS and SYS_DIS SECURE_TM_LOCK, so a shadow write to them is refused while
+# the latched TEST_EN strap is high. Each field takes the same seeded payload
+# twice: strap low, where it must land, and strap high, where the value must not
+# move and the locked-field interrupt must pulse. A SECURE_TM_UNLOCK spare stays
+# writable with the strap up, so the deny is the lock and not a dead write path.
+# Real fuse sense, LC_PROD, no_cpu.
+name = "sep_efuse_secure_tm_write_lock_test"
+module = "efuse.sep_locked_field_access_irq_path_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "interrupt", "lock", "secure_tm", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+secure_tm_lock"]
+
+[[tests]]
+# Both eFuse FSMs fail closed from an illegal state. read_state_q and
+# program_state_q are two bits whose legal encodings are 2'b01 and 2'b10; no
+# frontdoor stimulus can produce 2'b00 or 2'b11, so the recovery the RTL
+# asserts on them is unreachable without injection. Forces one illegal encoding
+# for one cycle, on each FSM, for both illegal values, and grades the recovery
+# on DUT outputs: back to idle, no command to the bank, error+done set,
+# and the read-back data is not the sensed control word. A live read precedes
+# and follows
+# the injections, so the refusal is not a dead block. Real fuse sense, LC_PROD.
+name = "sep_efuse_illegal_state_fail_closed_test"
+module = "efuse.sep_efuse_illegal_state_fail_closed_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "fault", "fail-closed", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 

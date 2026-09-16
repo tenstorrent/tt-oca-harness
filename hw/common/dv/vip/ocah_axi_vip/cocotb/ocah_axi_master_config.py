@@ -88,7 +88,9 @@ class OcahAxiMasterConfig:
     data_width: int = 32
     reset_active_level: bool = False
     max_burst_len: int = 256
-    # Sequence-level policy.
+    # Sequence-level policy. timeout_cycles has no consumer on the AXI4 master;
+    # the transaction bound is timeout_ns, and None selects the package default
+    # (DEFAULT_TIMEOUT_NS or +OCAH_AXI_TIMEOUT_NS).
     timeout_cycles: int = 1000
     timeout_ns: int | None = None
     raise_on_error: bool = True
@@ -118,7 +120,6 @@ class OcahAxiMasterConfig:
     def sequence_kwargs(self) -> dict:
         """Keyword arguments for `OcahAxiMasterSequence` construction."""
         return {
-            "timeout_cycles": self.timeout_cycles,
             "timeout_ns": self.timeout_ns,
             "raise_on_error": self.raise_on_error,
         }

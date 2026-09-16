@@ -1,0 +1,204 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= OCAH development guidelines
+:doctype: book
+:sectanchors:
+:sectlinks:
+:sectnums:
+:source-highlighter: highlight.js
+
+== Standards
+
+The OCAH design will follow industry or FOSS standards where appropriate:
+
+* SystemVerilog RTL
+* AMBA system buses
+* SystemRDL memory map
+* AsciiDoc documentation with Asciidoctor
+
+The hardware design is written in a synthesizable subset of
+SystemVerilog RTL language. The coding standards are adopted from the
+lowRISC organization and are also used in OpenTitan.
+
+System interconnect is implemented with AMBA standard buses. AXI4 and
+AXI4-lite is used for data interfaces and is generally configured with
+64-bit data and address. Control buses for accessing CSRs and other low
+speed sources are implemented with 32-bit APB.
+
+The system memory map and component CSRs (Control and Status
+Registers) are defined in SystemRDL. This is the single source of truth
+and all downstream representations are rendered from this source.
+Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
+SystemVerilog RTL.
+
+== Development Tools
+
+We aim primarily to use open source tools for the development of OCAH in
+order to eliminate commercial dependencies and enabling open-sourcing
+not only the design, but also the associated tools.
+
+The goal is to enable new adopters of OCAH to be able to immediately
+perform simulations and other analyses of the design using readily
+available free tools.
+
+For internal development and testing we will employ commercial tools to
+validate the OCAH design, proving readiness for chip deployment i.e.
+tapeout. This includes:
+
+* Design verification
+* lint tools for code quality
+* logic synthesis
+
+[[component-directory-organization]]
+== Component Directory Organization
+
+Every component under `hw/ip/<ip>/` and `hw/sys/<sys>/` shares the same base
+layout, whether it is a leaf IP or a full subsystem:
+
+[source]
+----
+<component>/
+├── README.md   Overview and quick-start pointer into doc/
+├── doc/        AsciiDoc chapters (architecture, interface, memmap, ...)
+├── rtl/        SystemVerilog RTL sources
+├── regs/       SystemRDL register/CSR definitions and generated collateral
+├── dv/         Testbenches and verification collateral
+└── lint/       Lint waiver files
+----
+
+Not every element is present everywhere -- `regs/` only exists where the
+component owns CSRs, and a small IP may have no `lint/` waivers to carry --
+but where an element exists, it is always at this location. The `regs/`
+directory's generated collateral layout is detailed in
+xref:ocah-integrator-guide:ROOT:index.adoc#address-map-collateral[the
+Integrator Guide], and the waiver conventions under `lint/` are in
+xref:workflows.adoc#linting[Linting].
+
+A subsystem (`hw/sys/<sys>/`) additionally carries the full-chip elements a
+leaf IP does not need on its own:
+
+* `synth/` -- synthesis and timing constraints
+* `cdc/`, `rdc/` -- clock- and reset-domain-crossing waivers
+* `bootrom/` -- immutable ROM firmware sources, where the subsystem has one
+* `build/` -- local build scratch, not checked in
+* `flow.mk` -- the subsystem's entry point into the shared lint/synth flows
+
+== Coding Conventions
+
+=== License headers
+
+Every hand-authored source file must carry an SPDX license header. Use the form appropriate to the file's comment syntax.
+
+For SystemVerilog (`.sv`, `.svh`, `.v`, `.vh`) and SystemRDL (`.rdl`):
+
+```systemverilog
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For Python, shell, Makefile, and YAML files:
+
+```makefile
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For C and C++ (`.c`, `.h`, `.cpp`, `.hpp`):
+
+```c
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
+```
+
+For AsciiDoc (`.adoc`), use line comments. Documentation and images are
+licensed under CC-BY-4.0:
+
+```asciidoc
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For JavaScript (`.js`), use line comments:
+
+```javascript
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
+
+The CC-BY-4.0 AsciiDoc header above is for hand-authored documentation. Generated
+register collateral under `hw/**/regs/gen/` -- including its `.adoc` and `.html`
+tables -- is a mechanical rendering of the Apache-2.0-licensed SystemRDL source it
+is generated from, not hand-authored documentation, so it keeps the Apache-2.0
+header across every emitted extension (`.sv`, `.c`, `.py`, `.adoc`, `.html`, ...)
+rather than switching to CC-BY-4.0 by file extension. `tools/regs/stamp_spdx.py`
+stamps this header uniformly; do not hand-edit it into CC-BY-4.0.
+
+=== Vendored code
+
+Third-party RTL and tools are vendored under `vendor/` via Bender `vendor_package` entries. Do not hand-edit files under `vendor/*/upstream/`; use `patches/` and local overlays instead. See the README for the full vendor workflow.
+
+When adding a new vendored dependency, confirm its license is Apache-2.0 compatible and note the dependency, source, version, and license in the pull request description.
+
+=== SystemVerilog Coding Guidelines
+
+The high level goals are:
+
+* avoid SystemVerilog constructs that are error prone or not consistently supported,
+particularly across open source tools
+* ensure that the code is tidy and easy to read
+* keep the code style consistent across the project's code base regardless of who authored it
+
+OCAH will _mostly_ follow the OpenTitan SystemVerilog coding rules
+defined by lowRISC group in
+https://github.com/lowRISC/style-guides/blob/master/VerilogCodingStyle.md[Verilog
+Coding Style]. That document is locally copied for convenience.
+
+This section highlights a few of the most important aspects as well as a
+few deviations from the OpenTitan rules. If there is a conflict between
+the two, the specification here takes precedence.
+
+* Use two spaces for indentation, matching the lowRISC style guide.
+* Use all upper case letters to name enums, constants (localparam), and
+parameters instead of UpperCamelCase.
+* As stated in the lowRISC guidelines, SystemVerilog Interfaces can be
+limited in terms of tool support, so we _highly discourage_ their use as
+they are not uniformly supported by open source tools. As an
+alternative, struct types can be used instead to bundle groups of input
+or output signals to make ports more abstract.
+* Finite State Machines (FSMs) are powerful sequence control constructs
+but can spiral out of control quickly. Consequences are difficult to
+understand "next state" logic and long timing paths. Separate the
+combinatorial "next state" logic from the sequential state update into
+distinct always blocks. *Do not* combine the two into a single clocked
+always block. Opt for a
+https://en.wikipedia.org/wiki/Moore_machine[Moore machine]
+implementation when possible to aid in timing closure. If you have
+complexity of more than ten states or so, use a microsequencer approach.
+This is more scalable and maintainable.
+
+There will be additional rules that apply to security sensitive
+components such as ciphers. These will be documented in more detail, but
+here is a summary for now:
+
+* FSM state encodings are one-hot with error checking
+* Error detection is implemented on storage elements and some bus and
+computational elements
+* Secret data is transferred and stored in secret-split fashion
+
+=== RTL Code Comments
+
+Include a description of the purpose and overall function of the module
+in the header.
+
+RTL code comments may be redundant or add little value to the code.
+Keep comments in the RTL as minimal as possible and, where possible,
+make the code self explanatory.
+
+Do not add a comment which describes the functionality of the code
+where the code is clear.
+
+If there is a tricky bit of code with some nuance, add a comment describing
+the overall goal or strategy of the code.

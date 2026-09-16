@@ -17,10 +17,6 @@
  * 3. Quad Dummy: SPEED=2, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
  * 4. Quad RX: SPEED=2, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
  * 5. CMDINVAL test: SPEED=2 + DIRECTION=3 (bidirectional) must fail
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_quad_spi_test STACK=sim
- *
  */
 
 #include <stdint.h>
