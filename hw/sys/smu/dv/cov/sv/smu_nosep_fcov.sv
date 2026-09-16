@@ -5,10 +5,9 @@
 // the feature list: the direct ID-converter path that replaces the crossbar
 // when SEP is absent, in each direction and for each channel.
 //
-// One passive, signal-driven module shared by tb_top and tb_wrapper_top.
-// sep_present_i states which elaboration the instance is in, so a SEP=0 point
-// cannot be credited by a SEP=1 run; the block bench ties it low and the
-// wrapper bench passes its own SEP parameter.
+// One passive, signal-driven module on the block bench, tb_top, the only
+// bench that elaborates SEP=0. sep_present_i states which elaboration the
+// instance is in, so a SEP=0 point cannot be credited by a SEP=1 run.
 //
 // Every point fires on a response handshake, so it needs traffic. The SEP OTP
 // error slave of the same build has no master on either elaboration (the

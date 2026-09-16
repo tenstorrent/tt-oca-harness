@@ -10,8 +10,9 @@
 // signal. The points here are driven by the map outputs and the inbound AXI
 // handshake, so a bin is hit because the DUT did the thing.
 //
-// One passive, signal-driven module in the shared tb_top. Every port is a
-// smu_tb_signal_list.svh signal.
+// One passive, signal-driven module instantiated by both benches. Every port
+// is a smu_tb_signal_list.svh signal, except axil_external_active_i, which
+// the wrapper bench reads from a window smu_wrapper keeps inside itself.
 //
 // Points must need stimulus beyond power-up and reset release. The map
 // outputs take whatever the fuses and straps leave at power-up, so a level

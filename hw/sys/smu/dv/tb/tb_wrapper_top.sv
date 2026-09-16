@@ -344,8 +344,7 @@ module smu_wrapper_uvm_top (
   input  wire  logic       tb_telemetry_afready,
   output logic             tb_telemetry_atready,
   output logic             tb_telemetry_afvalid,
-  // SMC boundary inputs the bench previously tied off, and the outputs they
-  // and the SMC CSRs drive.
+  // SMC boundary inputs, and the outputs they and the SMC CSRs drive.
   input  wire  logic [31:0] tb_smc_ext_interrupts,
   input  wire  logic [3:0]  tb_smc_ndmreset_request,
   input  wire  logic        tb_cfg_flr_pf_active,
@@ -1683,7 +1682,8 @@ module smu_wrapper_uvm_top (
   // Functional coverage (cov/sv/): the same modules tb_top.sv carries, on
   // this bench's names, plus smu_clk_fcov, which needs the hierarchical
   // clock and reset mirrors only this bench exposes. Every port is a signal
-  // of this module; no hierarchical reference is added for coverage.
+  // of this module; the one hierarchical reference, tb_axil_external_active,
+  // reads a window smu_wrapper keeps inside itself.
   // ------------------------------------------------------------------
   assign jtag_ptap_state_w = 32'(jtag_ptap_state);
 

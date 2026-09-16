@@ -17,10 +17,10 @@ needs a measured database first.
 (`smu_wrapper_uvm_top.u_dut`), a port counting once any of its bits has
 toggled, read from the run's `cov/merged.dat` by `cov/interface_toggle.py`;
 plus the `user` points
-|Numeric target |interface toggle 85 percent of the wrapper's ports (141 of
-165 = 85.5 percent on the `hosted` group when this chapter was written);
-`user` 95 percent effective (94 of 107 hit, 90.4 percent effective, at the
-same time). Neither is a runner gate: the runner grades the
+|Numeric target |interface toggle 85 percent of the wrapper's ports (114 of
+the 129 ports that carry a toggle point = 88.4 percent on the `hosted` group
+when this chapter was written; three more ports are constant); `user` 95
+percent effective (94 of 107 hit, 90.4 percent effective, at the same time). Neither is a runner gate: the runner grades the
 native families and the policy's `[[holes]]`, and the interface figure is
 reported beside them
 |===
@@ -65,17 +65,21 @@ that replaces the crossbar, in each direction
 `smu_wrapper_cov_scope.vlt`, which drops everything the wrapper instantiates
 at compile time -- the SMU block (graded on `--dut smu_block`), the SEP, SMC
 and DTP trees, the `hw/top` integration shells, vendored and generated RTL --
-so the toggle points that remain are the wrapper's ports |weekly `--cov` on
-the large runner (`regress.yml`). Nightly does not collect.
-|Public metric |`cov/interface_toggle.py <run dir>` folds the per-bit,
-per-edge toggle points whose hierarchy is exactly `smu_wrapper_uvm_top.u_dut`
+so the toggle points that remain are `smu_wrapper`'s own: its ports and the
+nets it declares between them |weekly `--cov` on the large runner
+(`regress.yml`). Nightly does not collect.
+|Public metric |`cov/interface_toggle.py <run dir>` keeps the per-bit,
+per-edge toggle points whose hierarchy is `smu_wrapper_uvm_top.u_dut` and
+whose name is in the port list of `hw/top/smu_wrapper.sv`, and folds them
 into one figure per port; every port is live because the single target
-elaborates SEP. `--list` names the ports that never toggled |on any finished
-`--cov` run of `--dut smu`, without a simulator
+elaborates SEP. `--list` names the ports that never toggled. It is run by
+hand on a finished database; no CI job invokes it |on any finished `--cov`
+run of `--dut smu`, without a simulator
 |Commercial |toggle / code / assertion databases under the licensed flow;
-`smu_cov_scope.hier` drops the same trees and collects toggle as
-`tgl(portsonly)` on `u_dut`, which is urg's own per-port view |not a public
-CI job; not a substitute for the public weekly
+`smu_wrapper_cov_scope.hier` drops the same trees and collects toggle as
+`tgl(portsonly)` on `u_dut`, which is urg's own per-port view (see
+`cov/config/vcs/README.md`) |not a public CI job and not yet measured; not a
+substitute for the public weekly
 |===
 
 The DUT is an integration shell, and an integration level is graded on its
@@ -118,9 +122,10 @@ ConfigError on the first run.
 Every `[[holes]]` row must carry:
 
 * `tool`, `metric_family` (the family that database holds: `user` and the
-wrapper's own `toggle` on `--dut smu`; line / expr / toggle / user on
+wrapper's own `toggle` on `--dut smu`; toggle and `user` on
 `--dut smu_block`), `hierarchy` or file selector
-* `category` (`out_of_scope` / `excluded` / `waived` / `open`)
+* `category` (one of the runner's hole categories, such as
+`missing_stimulus`, `config_disabled`, `out_of_scope` or `unreachable`)
 * `disposition`
 * `owner`
 * `review_date`

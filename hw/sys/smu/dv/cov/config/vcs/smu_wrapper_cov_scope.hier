@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// VCS coverage scope for the smu wrapper DUT, the `-cm_hier` counterpart of
-// ../verilator/smu_wrapper_cov_scope.vlt. VCS scopes by instance tree, so the
-// subsystems SMU integrates are named by the instance that contains each of
-// them; the Verilator file names the same trees by source path.
-//
-// The wrapper is graded on its interface. Everything under u_dut is internal
-// logic with an owner of its own -- the SMU block on the `--dut smu_block`
-// bench, SMC, DTP and SEP in their own packages -- so those trees are dropped
-// and toggle is collected on the ports of smu_wrapper only, `portsonly` being
-// urg's own per-port view: a port has toggled when any of its bits has.
+// VCS coverage scope for the smu wrapper DUT (`--dut smu`), the -cm_hier
+// counterpart of ../verilator/smu_wrapper_cov_scope.vlt. README.md beside
+// this file says what each line drops and why.
 
 -tree smu_wrapper_uvm_top 1
 -tree smu_wrapper_uvm_top.u_dut.u_smu
