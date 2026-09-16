@@ -390,24 +390,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_rresp_exokay"
 
 [[holes]]
-id = "fcov-smc-c_inbound_filter_admitted"
-title = "c inbound filter admitted"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_filt_fcov.c_inbound_filter_admitted"
-
-[[holes]]
 id = "fcov-smc-c_per_instance_default_matches_map"
 title = "c per instance default matches map"
 category = "missing_stimulus"
