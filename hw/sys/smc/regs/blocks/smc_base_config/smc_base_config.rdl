@@ -134,9 +134,6 @@ addrmap smc_base_config {
         } cg_hysteresis [29:24] = 0x1f;
     };
 
-    // AXI hang detector registers (one CTRL + one TIMEOUT_THRESHOLD per
-    // independent master). Fields are nibble-spaced so each maps to one hex
-    // character. irq_o is a direct combinational level (no status latch).
     reg HANG_DET_CTRL {
         desc = "AXI hang detector control.";
         field {

@@ -108,8 +108,8 @@ module axi_hang_detector #(
     end else if (!enable_i || !req_count_nonzero || any_completion) begin
       // Idle / making progress: (re)arm by loading the threshold.
       stall_cnt_q    <= threshold_i;
-      detect_armed_q <= (threshold_i != 20'd0);
-    end else if (stall_cnt_q != 20'd0) begin
+      detect_armed_q <= |threshold_i;
+    end else if (|stall_cnt_q) begin
       // Outstanding tx with no completion: count down toward the timeout.
       stall_cnt_q <= stall_cnt_q - 20'd1;
     end
