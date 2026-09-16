@@ -16,9 +16,11 @@ needs a measured database first.
 |Public metric |interface toggle: the `toggle_signal` family over the ports
 of `smu_wrapper` (`smu_wrapper_uvm_top.u_dut`), a port counting once any of
 its bits has toggled; plus the `user` points
-|Numeric target |interface toggle floor 50 percent (the
-`wrapper-interface-toggle` threshold in `smu_wrapper_coverage_policy.toml`,
-set from the measured `sep0_all` database); the plan works toward 85 percent
+|Numeric target |interface toggle floors per target in
+`smu_wrapper_coverage_policy.toml`: `wrapper-interface-toggle-no-sep` (45
+percent, measured 50.6 on `sep0_all`) and `wrapper-interface-toggle-sep-rtl`
+(set from the first measured `compile_smu_chiplet_sep_rtl` database); the plan
+works toward 85 percent on the sep_rtl target, where every port is live
 |===
 
 `cov/sv/` carries eleven cover-property modules, 115 points in all; the counts
@@ -62,10 +64,11 @@ that replaces the crossbar, in each direction
 runner derives `toggle_signal` from the toggle points |weekly `--cov` on the
 large runner (`regress.yml`). Nightly does not collect.
 |Public metric |`toggle_signal` scoped to `smu_wrapper_uvm_top.u_dut`: the
-ports of the wrapper, one point per port. The SEP-facing ports are
-`exclude_scope` holes on the no_sep target, which cannot drive them; the
-SEP=1 target grades them |the `wrapper-interface-toggle` threshold, evaluated
-on every `--cov` run of `--dut smu` and re-gradable with `--waive`
+ports of the wrapper, one point per port. The SEP-facing ports only move on
+the `compile_smu_chiplet_sep_rtl` target, which is therefore the target the
+metric is collected on; a no_sep database reports them as open holes rather
+than excluding them |one threshold per target, evaluated on every `--cov`
+run of `--dut smu` and re-gradable with `--waive`
 |Commercial |toggle / code / assertion databases under the licensed
 flow |not a public CI job; not a substitute for the public weekly
 |===
