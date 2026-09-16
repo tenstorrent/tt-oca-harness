@@ -2697,6 +2697,7 @@ args = [
   # +skip_fuse_sense: the shim CSR is read over J2A, no eFuse word is sensed.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -2718,6 +2719,7 @@ args = [
   # +skip_fuse_sense: the inbound window is opened over CSRs, no eFuse word is read.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
 # SMC-facing boundary signals against the SMC registers that own them.
