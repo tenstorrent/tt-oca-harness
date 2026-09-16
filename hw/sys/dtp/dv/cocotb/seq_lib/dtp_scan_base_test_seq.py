@@ -35,10 +35,6 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         self.stap_model = DtpStap3dcrModel()
 
     # --- temporal scan-control windows ----------------------------------------
-    def start_scan_window(self, signals) -> DtpScanControlWindowMonitor:
-        """Begin sampling named observables on every rising TCK edge."""
-        return DtpScanControlWindowMonitor(self.cfg.tb_if, signals).start()
-
     def check_scan_window(
         self,
         monitor: DtpScanControlWindowMonitor,

@@ -5,14 +5,18 @@
 // instruction-family evidence checker and the checked operations built on
 // the base virtual sequence (dtp_base_test_seq): bypass delay,
 // inverted/zero-length bypass, BSR loopback, decoded-IR compare, TMP_STATUS
-// reads. Every family helper records named CHK-* evidence through a
-// per-pass ocah_jtag_checker instead of bare asserts; finalize_family_checker()
-// rejects a pass with zero checks or a missing required ID, and cross-checks
-// the env scan builder's pin-level IR/DR reconstruction against the
-// sequence's own scan intent (CHK-SCAN-COUNT / CHK-SCAN-IR-LEN /
-// CHK-SCAN-DR-LEN / CHK-NONVAC). The basic-JTAG, debug-TDR, and
-// scan-network scenarios extend it; the cocotb twins are
-// seq_lib/dtp_jtag_base_test_seq.py and seq_lib/dtp_jtag_cmd_lib_seq.py.
+// reads, and the scan-control windows (the env dtp_scan_window_monitor
+// counts high samples of named dtp_scan_if observables once per TCK cycle
+// across one DR scan, so a scenario proves which host chain the loaded
+// instruction selects and that the TAP's strobes reach it). Every family
+// helper records named CHK-* evidence through a per-pass ocah_jtag_checker
+// instead of bare asserts; finalize_family_checker() rejects a pass with
+// zero checks or a missing required ID, and cross-checks the env scan
+// builder's pin-level IR/DR reconstruction against the sequence's own scan
+// intent (CHK-SCAN-COUNT / CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN / CHK-NONVAC).
+// The basic-JTAG, debug-TDR, and scan-network scenarios extend it; the
+// cocotb twins are seq_lib/dtp_jtag_base_test_seq.py and
+// seq_lib/dtp_jtag_cmd_lib_seq.py.
 //
 // test_cfg.family_checker_negative (+DTP_JTAG_FAMILY_CHECKER_NEGATIVE) is
 // the negative-validation hook: every integer family expectation is
@@ -28,6 +32,11 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   localparam int unsigned DtpBsrModelLen = 8;
   // TMP_STATUS TDR: bit 1 = persistence, bit 0 = BYPASS_ESCAPE arm.
   localparam int unsigned TmpStatusLen = 2;
+  // dtp_scan_if prefixes of the boundary-scan chain and the non-secure DFT
+  // host, and the evidence ID of the quiet host-select window.
+  localparam string BsrScanCtrl = "jtag_bsr";
+  localparam string DftScanCtrl = "jtag_dft";
+  localparam string NoHostSelectCheckId = "CHK-UNDEF-NO-SELECT";
 
   // Per-pass instruction-family evidence checker (created by
   // attach_family_checker, finalized by finalize_family_checker).
@@ -182,12 +191,141 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
                  64'h1 << int'(instr), $sformatf("ir=0x%02h", instr));
   endtask
 
-  // CHK-BSR-SELECT: the boundary-scan chain select observable after an IR
-  // load; scenarios assert the VPLAN-expected value for their instruction.
-  function void check_bsr_select(bit expected, string context_s);
-    family_check("CHK-BSR-SELECT", "jtag_bsr_select", 64'(scan_vif.jtag_bsr_select), 64'(expected),
+  // Sample one scan-domain observable and record it. TCK-domain observables
+  // settle on the falling edge that ends the last step and the driver idles
+  // TCK between items, so one system cycle later the sample is race-free
+  // and precedes any TCK edge.
+  task check_scan_observable(string check_id, string name, bit expected, string context_s = "");
+    if (scan_window == null)
+      `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
+    wait_sys_cycles(1);
+    family_check(check_id, name, 64'(scan_window.sample_scan_signal(name)), 64'(expected),
                  context_s);
+  endtask
+
+  // ------------------------------------------------------------------
+  // Scan-control windows (env dtp_scan_window_monitor).
+  // ------------------------------------------------------------------
+
+  // Begin counting high samples of the named observables once per TCK
+  // cycle (falling edge, all controls settled).
+  function void start_scan_window(string signals[$]);
+    if (scan_window == null)
+      `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
+    scan_window.start_window(signals);
   endfunction
+
+  // End the window; return the TCK-cycle count and per-signal high counts.
+  function void stop_scan_window(output int unsigned edges, output int unsigned counts[string]);
+    if (scan_window == null)
+      `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
+    scan_window.stop_window(edges, counts);
+  endfunction
+
+  // The four host scan-control observables of one chain prefix.
+  static function void scan_ctrl_signals(string prefix, ref string signals[$]);
+    signals.push_back({prefix, "_select"});
+    signals.push_back({prefix, "_capture_en"});
+    signals.push_back({prefix, "_shift_en"});
+    signals.push_back({prefix, "_update_en"});
+  endfunction
+
+  // Evidence IDs (select, strobes) of one chain's control window.
+  static function void scan_ctrl_check_ids(string prefix, output string select_id,
+                                           output string ctrl_id);
+    if (prefix == DftScanCtrl) begin
+      select_id = "CHK-DFT-SIB-SELECT";
+      ctrl_id   = "CHK-DFT-SCAN-CTRL";
+    end else begin
+      select_id = "CHK-BSR-SELECT";
+      ctrl_id   = "CHK-BSR-SCAN-CTRL";
+    end
+  endfunction
+
+  // The instruction-qualified host chain selects: boundary scan and the
+  // three iJTAG SIB hosts. The extended STAP host select follows every IR
+  // and DR scan path regardless of the instruction, so it is not one of
+  // them.
+  static function void host_selects(ref string signals[$]);
+    signals.push_back("jtag_bsr_select");
+    signals.push_back("jtag_dft_secure_select");
+    signals.push_back("jtag_dft_select");
+    signals.push_back("jtag_dfd_select");
+  endfunction
+
+  // DR scan from Run-Test/Idle while a window counts high samples of
+  // `signals`.
+  task shift_dr_windowed(input bit [63:0] pattern, input int unsigned width,
+                         input string signals[$], output bit [63:0] observed,
+                         output int unsigned edges, output int unsigned counts[string]);
+    start_scan_window(signals);
+    shift_dr(pattern, width, observed);
+    stop_scan_window(edges, counts);
+  endtask
+
+  // Judge one chain's control counts across a `width`-bit DR scan. The scan
+  // enters Shift-DR before its first bit, so the TAP's strobes pulse capture
+  // once, shift `width` times, and update once; a gated host shows none of
+  // them. Select is high only for the chain's own instruction.
+  function void check_scan_ctrl_counts(string prefix, int unsigned counts[string],
+                                       int unsigned width, dtp_scan_ctrl_expect_e mode,
+                                       string context_s);
+    string select_id, ctrl_id;
+    bit strobes = (mode != DTP_SCAN_CTRL_GATED);
+    string ctx = {mode.name(), " ", context_s};
+    scan_ctrl_check_ids(prefix, select_id, ctrl_id);
+    family_check(select_id, {prefix, "_select asserted"}, 64'(counts[{prefix, "_select"}] > 0),
+                 64'(mode == DTP_SCAN_CTRL_SELECTED), ctx);
+    family_check(ctrl_id, {prefix, "_capture_en pulses"}, 64'(counts[{prefix, "_capture_en"}]),
+                 64'(strobes), ctx);
+    family_check(ctrl_id, {prefix, "_shift_en pulses"}, 64'(counts[{prefix, "_shift_en"}]),
+                 strobes ? 64'(width) : 64'd0, ctx);
+    family_check(ctrl_id, {prefix, "_update_en pulses"}, 64'(counts[{prefix, "_update_en"}]),
+                 64'(strobes), ctx);
+  endfunction
+
+  // Record that a live window saw every counted observable stay low.
+  function void check_quiet_window(string check_id, int unsigned edges, int unsigned counts[string],
+                                   string context_s);
+    family_check(check_id, "window edges nonvacuous", 64'(edges > 0), 64'd1, context_s);
+    foreach (counts[name])
+    family_check(check_id, {name, " quiet"}, 64'(counts[name]), 64'd0, context_s);
+  endfunction
+
+  // Load an instruction and judge its DR scan under a boundary-scan control
+  // window. A boundary-scan instruction selects the looped-back chain
+  // (CHK-BSR-SELECT, CHK-BSR-LOOPBACK); any other instruction leaves the
+  // select low and scans the one-bit bypass register (CHK-BYPASS-DELAY).
+  // The TAP's strobes pulse either way (CHK-BSR-SCAN-CTRL). `counts` returns
+  // the window counts, including `extra_signals`.
+  task check_bsr_scan_ctrl_counts(input bit [IrWidth-1:0] instr, input bit [63:0] pattern,
+                                  input int unsigned width, input dtp_scan_ctrl_expect_e mode,
+                                  input string extra_signals[$],
+                                  output int unsigned counts[string]);
+    string signals[$];
+    bit [63:0] observed;
+    int unsigned edges;
+    string ctx;
+    load_ir(instr);
+    expect_decoded_instruction(jtag_instruction_e'(instr));
+    scan_ctrl_signals(BsrScanCtrl, signals);
+    foreach (extra_signals[i]) signals.push_back(extra_signals[i]);
+    shift_dr_windowed(pattern, width, signals, observed, edges, counts);
+    ctx = $sformatf("ir=0x%02h pattern=0x%0h width=%0d edges=%0d", instr, pattern, width, edges);
+    check_scan_ctrl_counts(BsrScanCtrl, counts, width, mode, ctx);
+    if (mode == DTP_SCAN_CTRL_SELECTED)
+      family_check("CHK-BSR-LOOPBACK", $sformatf("IR 0x%02h loopback", instr), observed & bit_mask(
+                   width), (pattern << 1) & bit_mask(width), ctx);
+    else check_bypass_tdo(instr, observed, pattern, width, 1'b0, ctx);
+  endtask
+
+  task check_bsr_scan_ctrl(input bit [IrWidth-1:0] instr, input bit [63:0] pattern,
+                           input int unsigned width = DtpBsrModelLen,
+                           input dtp_scan_ctrl_expect_e mode = DTP_SCAN_CTRL_SELECTED);
+    string no_extra[$];
+    int unsigned counts[string];
+    check_bsr_scan_ctrl_counts(instr, pattern, width, mode, no_extra, counts);
+  endtask
 
   // ------------------------------------------------------------------
   // One-bit bypass family (BYPASS encodings, INV_BYPASS, ZERO_LENGTH).
@@ -202,16 +340,42 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
     return 64'h1 | (inverted << 1);
   endfunction
 
-  // CHK-BYPASS-DELAY: one-bit bypass 1-TCK TDI-to-TDO latency.
+  // CHK-BYPASS-DELAY: the TDO of a one-bit bypass scan is TDI one TCK late.
+  function void check_bypass_tdo(bit [IrWidth-1:0] instr, bit [63:0] observed, bit [63:0] pattern,
+                                 int unsigned width, bit capture_bit = 1'b0, string context_s = "");
+    family_check("CHK-BYPASS-DELAY", $sformatf("bypass TDO for IR 0x%02h", instr),
+                 observed & bit_mask(width), ocah_jtag_checker::predict_bypass_tdo(
+                 pattern, width, capture_bit), $sformatf(
+                 "pattern=0x%0h width=%0d %s", pattern, width, context_s));
+  endfunction
+
+  // Load a one-bit bypass instruction, check its decode and 1-TCK
+  // TDI-to-TDO latency.
   task check_bypass_delay(input bit [IrWidth-1:0] instr, input bit [63:0] pattern,
                           input int unsigned width = 64, input bit capture_bit = 1'b0);
     bit [63:0] observed;
     load_ir(instr);
+    expect_decoded_instruction(jtag_instruction_e'(instr));
     shift_dr(pattern, width, observed);
-    family_check("CHK-BYPASS-DELAY", $sformatf("bypass TDO for IR 0x%02h", instr),
-                 observed & bit_mask(width), ocah_jtag_checker::predict_bypass_tdo(
-                 pattern, width, capture_bit), $sformatf("pattern=0x%0h width=%0d", pattern, width
-                 ));
+    check_bypass_tdo(instr, observed, pattern, width, capture_bit);
+  endtask
+
+  // Bypass-delay check with every instruction-qualified host select proven
+  // quiet across the scan (CHK-UNDEF-NO-SELECT).
+  task check_bypass_no_host_select(input bit [IrWidth-1:0] instr, input bit [63:0] pattern,
+                                   input int unsigned width = 64);
+    string selects[$];
+    bit [63:0] observed;
+    int unsigned edges;
+    int unsigned counts[string];
+    string ctx;
+    load_ir(instr);
+    expect_decoded_instruction(jtag_instruction_e'(instr));
+    host_selects(selects);
+    shift_dr_windowed(pattern, width, selects, observed, edges, counts);
+    ctx = $sformatf("ir=0x%02h width=%0d edges=%0d", instr, width, edges);
+    check_bypass_tdo(instr, observed, pattern, width, 1'b0, ctx);
+    check_quiet_window(NoHostSelectCheckId, edges, counts, ctx);
   endtask
 
   task check_bypass_patterns(input bit [IrWidth-1:0] instr, input int unsigned width = 64);

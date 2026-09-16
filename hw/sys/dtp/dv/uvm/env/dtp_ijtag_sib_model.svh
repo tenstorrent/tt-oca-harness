@@ -38,4 +38,55 @@ class dtp_ijtag_sib_model;
     chain_len = DtpIjtagSibCount;
   endfunction
 
+  // --- stored SIB bits across any instruction that scans the chain --------
+
+  // Stored SIB bits after Test-Logic-Reset: every SIB closed.
+  static function void closed(output bit stored[DtpIjtagSibCount]);
+    for (int unsigned i = 0; i < DtpIjtagSibCount; i++) stored[i] = 1'b0;
+  endfunction
+
+  // Inverse of pattern_bits: the scan value that stores `bits`.
+  static function bit [DtpIjtagSibCount-1:0] pattern_value(bit bits[DtpIjtagSibCount]);
+    bit [DtpIjtagSibCount-1:0] value = '0;
+    for (int unsigned i = 0; i < DtpIjtagSibCount; i++) value[DtpIjtagSibCount-1-i] = bits[i];
+    return value;
+  endfunction
+
+  // Capture-DR value of the chain: each SIB presents its stored bit, a
+  // gated SIB presents 0.
+  static function bit [DtpIjtagSibCount-1:0] capture_value(bit stored[DtpIjtagSibCount],
+                                                           sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+    bit g[DtpIjtagSibCount];
+    bit visible[DtpIjtagSibCount];
+    gates(d, g);
+    for (int unsigned i = 0; i < DtpIjtagSibCount; i++) visible[i] = stored[i] & ~g[i];
+    return pattern_value(visible);
+  endfunction
+
+  // Stored bits after Update-DR of a `width`-bit scan through the chain: the
+  // last three bits scanned in are resident in the SIBs; a gated SIB ignores
+  // the update and keeps its stored bit.
+  static function void update(ref bit stored[DtpIjtagSibCount], input bit [63:0] scan_value,
+                              input int unsigned width,
+                              input sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+    bit g[DtpIjtagSibCount];
+    bit tail[DtpIjtagSibCount];
+    if (width < DtpIjtagSibCount)
+      `uvm_fatal("dtp_ijtag_sib_model", $sformatf(
+                 "a chain scan needs at least %0d bits, got %0d", DtpIjtagSibCount, width))
+    pattern_bits(DtpIjtagSibCount'(scan_value >> (width - DtpIjtagSibCount)), tail);
+    gates(d, g);
+    for (int unsigned i = 0; i < DtpIjtagSibCount; i++) if (!g[i]) stored[i] = tail[i];
+  endfunction
+
+  // TDO of a `width`-bit DR scan through the chain, LSB first: the three
+  // captured SIB bits come out first, then the scanned-in value follows
+  // three TCK behind TDI (one stage per SIB).
+  static function bit [63:0] expected_dr_tdo(bit stored[DtpIjtagSibCount], bit [63:0] scan_value,
+                                             int unsigned width,
+                                             sep_lifecycle_ctrl_pkg::dbg_disable_t d);
+    bit [63:0] mask = (width >= 64) ? '1 : ((64'h1 << width) - 64'h1);
+    return ((scan_value << DtpIjtagSibCount) & mask) | 64'(capture_value(stored, d));
+  endfunction
+
 endclass : dtp_ijtag_sib_model

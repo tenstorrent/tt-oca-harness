@@ -73,21 +73,6 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   // --- temporal windows (env dtp_scan_window_monitor) -------------------------
-  // Begin counting high samples of the named observables once per TCK
-  // cycle (falling edge, all controls settled).
-  function void start_scan_window(string signals[$]);
-    if (scan_window == null)
-      `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
-    scan_window.start_window(signals);
-  endfunction
-
-  // End the window; return the TCK-cycle count and per-signal high counts.
-  function void stop_scan_window(output int unsigned edges, output int unsigned counts[string]);
-    if (scan_window == null)
-      `uvm_fatal(get_type_name(), "scan_window monitor not plumbed by the test")
-    scan_window.stop_window(edges, counts);
-  endfunction
-
   // Quiet signals must never pulse inside the window; active ones must.
   function void check_window_counts(int unsigned edges, int unsigned counts[string],
                                     string quiet[$], string active[$], string context_s);

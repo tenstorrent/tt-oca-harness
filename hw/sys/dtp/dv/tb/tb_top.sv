@@ -77,6 +77,9 @@ module dtp_uvm_top
   logic jtag_bsr_shift_en;
   logic jtag_bsr_capture_en;
   logic jtag_bsr_update_en;
+  logic jtag_bsr_run_test_idle;
+  logic jtag_bsr_test_logic_reset;
+  logic jtag_bsr_runbist;
   logic jtag_ijtag_select;
   logic jtag_ijtag_shift_en;
   logic jtag_ijtag_capture_en;
@@ -89,6 +92,9 @@ module dtp_uvm_top
   logic jtag_dft_shift_en;
   logic jtag_dft_capture_en;
   logic jtag_dft_update_en;
+  logic jtag_dft_run_test_idle;
+  logic jtag_dft_test_logic_reset;
+  logic jtag_dft_runbist;
   logic jtag_dfd_select;
   logic jtag_dfd_shift_en;
   logic jtag_dfd_capture_en;
@@ -359,6 +365,9 @@ module dtp_uvm_top
   assign jtag_bsr_shift_en   = jtag_bsr_host_scan_ctrl.shift_en;
   assign jtag_bsr_capture_en = jtag_bsr_host_scan_ctrl.capture_en;
   assign jtag_bsr_update_en  = jtag_bsr_host_scan_ctrl.update_en;
+  assign jtag_bsr_run_test_idle    = jtag_bsr_host_scan_ctrl.run_test_idle;
+  assign jtag_bsr_test_logic_reset = jtag_bsr_host_scan_ctrl.test_logic_reset;
+  assign jtag_bsr_runbist          = jtag_bsr_host_scan_ctrl.runbist;
   assign jtag_ijtag_select     = jtag_dft_host_scan_ctrl.select;
   assign jtag_ijtag_shift_en   = jtag_dft_host_scan_ctrl.shift_en;
   assign jtag_ijtag_capture_en = jtag_dft_host_scan_ctrl.capture_en;
@@ -371,6 +380,9 @@ module dtp_uvm_top
   assign jtag_dft_shift_en   = jtag_dft_host_scan_ctrl.shift_en;
   assign jtag_dft_capture_en = jtag_dft_host_scan_ctrl.capture_en;
   assign jtag_dft_update_en  = jtag_dft_host_scan_ctrl.update_en;
+  assign jtag_dft_run_test_idle    = jtag_dft_host_scan_ctrl.run_test_idle;
+  assign jtag_dft_test_logic_reset = jtag_dft_host_scan_ctrl.test_logic_reset;
+  assign jtag_dft_runbist          = jtag_dft_host_scan_ctrl.runbist;
   assign jtag_dfd_select     = jtag_dfd_host_scan_ctrl.select;
   assign jtag_dfd_shift_en   = jtag_dfd_host_scan_ctrl.shift_en;
   assign jtag_dfd_capture_en = jtag_dfd_host_scan_ctrl.capture_en;
@@ -967,6 +979,9 @@ module dtp_uvm_top
   assign u_scan_if.jtag_bsr_shift_en   = jtag_bsr_shift_en;
   assign u_scan_if.jtag_bsr_capture_en = jtag_bsr_capture_en;
   assign u_scan_if.jtag_bsr_update_en  = jtag_bsr_update_en;
+  assign u_scan_if.jtag_bsr_run_test_idle    = jtag_bsr_run_test_idle;
+  assign u_scan_if.jtag_bsr_test_logic_reset = jtag_bsr_test_logic_reset;
+  assign u_scan_if.jtag_bsr_runbist          = jtag_bsr_runbist;
 
   // Lifecycle debug disables and clock-stop requests: sequences drive the
   // named debug disables and the CLA clock-stop request vector through
@@ -1000,6 +1015,9 @@ module dtp_uvm_top
   assign u_scan_if.jtag_dft_shift_en          = jtag_dft_shift_en;
   assign u_scan_if.jtag_dft_capture_en        = jtag_dft_capture_en;
   assign u_scan_if.jtag_dft_update_en         = jtag_dft_update_en;
+  assign u_scan_if.jtag_dft_run_test_idle     = jtag_dft_run_test_idle;
+  assign u_scan_if.jtag_dft_test_logic_reset  = jtag_dft_test_logic_reset;
+  assign u_scan_if.jtag_dft_runbist           = jtag_dft_runbist;
   assign u_scan_if.jtag_dfd_select            = jtag_dfd_select;
   assign u_scan_if.jtag_dfd_shift_en          = jtag_dfd_shift_en;
   assign u_scan_if.jtag_dfd_capture_en        = jtag_dfd_capture_en;

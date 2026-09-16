@@ -97,7 +97,7 @@ selectable in the public testlists.
 |`dtp_jtag_zero_length_bypass_test` |`dtp_jtag_zero_length_bypass_test` |`ocah_jtag_vip` |IEEE 1838 zero-length bypass
 |`dtp_jtag_inv_bypass_test` |`dtp_jtag_inv_bypass_test` |`ocah_jtag_vip` |Inverted bypass
 |`dtp_jtag_trst_test` |`dtp_jtag_trst_test` |`ocah_jtag_vip` |TRST asynchronous TAP reset
-|`dtp_jtag_trst_por_independence_test` |`dtp_jtag_trst_test` |`ocah_jtag_vip` |POR-only TAP reset with TRST held high; proves POR and TRST independently force TLR
+|`dtp_jtag_trst_por_independence_test` |`dtp_jtag_trst_por_independence_test` |`ocah_jtag_vip` |POR-only TAP reset with TRST held high; proves POR and TRST independently force TLR
 |`dtp_jtag_tlr_reset_test` |`dtp_jtag_tlr_reset_test` |`ocah_jtag_vip` |Test-Logic-Reset behavior
 |`dtp_jtag_clamp_hold_test` |`dtp_jtag_clamp_hold_test` |`ocah_jtag_vip`, OCAH-local BSR model |CLAMP_HOLD TMP
 |`dtp_jtag_clamp_release_test` |`dtp_jtag_clamp_release_test` |`ocah_jtag_vip`, OCAH-local BSR model |CLAMP_RELEASE TMP
@@ -396,33 +396,34 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 
 *Test Coverage*:
 
-* All undefined/reserved IR encodings (e.g. range 0x10-0x17 and other unused opcodes) default to BYPASS
+* All undefined/reserved IR encodings (0x0F, 0x10-0x17, 0x2D-0x3C) decode as themselves and default to BYPASS
 * Each reserved opcode produces 1-bit bypass behavior (TDI -++>++ 1-bit delay -++>++ TDO)
-* No spurious TDR selection, no output changes, and no error conditions triggered
+* No instruction-qualified host chain select (boundary scan, secure DFT, non-secure DFT, DFD) rises across a reserved-opcode DR scan, and the debug-TDR pin outputs keep their reset image; the extended STAP host interface follows every scan path regardless of the instruction and is judged by the STAP scenarios
 * `undef_instr_cg` (each tested reserved opcode) and `bypass_fallback_cg` (undefined -++>++ BYPASS)
 
 *Test Procedure*:
 
 [arabic]
-. For each reserved encoding in 0x10-0x17 and any other unused opcode:
-a. Load the reserved IR value through `OcahJtagMasterDriver`.
-b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI delayed one TCK to TDO).
-. While iterating, confirm no other TDR is selected and no boundary/output side effects occur.
-. Verify no error/fault condition is raised for any reserved encoding.
+. For each reserved encoding:
+a. Load the reserved IR value through `OcahJtagMasterDriver` and confirm the decoded-instruction one-hot names it.
+b. Run a 64-bit DR scan with a known pattern under a scan-control window over the four instruction-qualified host selects: TDO is TDI delayed one TCK and every select counts zero pulses.
+c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior.
+. After the sweep, sample the debug-TDR pin outputs (clock-stop, boot-stall, IC_RESET slices) and confirm the reset image.
+. On a seeded sample of the reserved encodings, run the full directed-pattern bypass sweep.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`undef_bypass_fallback_chk` |Each reserved IR opcode selects the 1-bit BYPASS path
-|`undef_no_tdr_select_chk` |No functional TDR is selected and no outputs change for any reserved opcode
-|`undef_no_error_chk` |No error/fault condition is raised by any undefined encoding
+|`undef_bypass_fallback_chk` |Each reserved IR opcode decodes as itself (`CHK-IR-DECODE`) and selects the 1-bit BYPASS path (`CHK-BYPASS-DELAY`)
+|`undef_no_tdr_select_chk` |None of the four instruction-qualified host chain selects rises across a reserved-opcode DR scan, and the debug-TDR pin outputs keep their reset image afterwards (`CHK-UNDEF-NO-SELECT`)
+|`undef_no_error_chk` |The pass finalizes with zero failed or missing family checks and zero scoreboard/reference-model errors (`CHECKER_SUMMARY`, the `CHK-SB-*` records)
 |===
 
-*Evidence*: SV-UVM: the `bypass` and `ir_decode` scoreboard features (`CHK-SB-BYPASS`, `CHK-SB-IR-DECODE`). cocotb: the bypass-delay and pattern checks are plain assertions of the sequence (<<dtp-vplan-signoff-jtag-dispositions>>).
+*Evidence*: `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-UNDEF-NO-SELECT`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `bypass` and `ir_decode` scoreboard features (`CHK-SB-BYPASS`, `CHK-SB-IR-DECODE`).
 
-*Pass Criteria*: Every tested reserved/undefined IR encoding falls back to 1-bit BYPASS with no spurious TDR selection, output change, or error, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Every tested reserved/undefined IR encoding decodes as itself and falls back to 1-bit BYPASS with no host chain selected and the debug-TDR outputs unchanged, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -479,38 +480,35 @@ b. Run a DR scan with a known pattern and confirm 1-bit bypass behavior (TDI del
 
 *Test Coverage*:
 
-* RUNBIST (IR=0x02) accepted by the TAP and not redirected to BYPASS, with BIST executing during Run-Test/Idle and a result captured via DR
-* RUNBIST drives the non-secure DFT iJTAG instrument, gated by `dbg_disable_i.dft_nonsecure`
-* `dbg_disable_i.dft_nonsecure` does NOT suppress the RUNBIST instruction itself; it only gates the non-secure DFT SIB
-* With `dbg_disable_i.dft_nonsecure = 1`, the DFT SIB ignores open requests and the DFT instrument register cannot be updated
-* After clearing `dbg_disable_i.dft_nonsecure`, the DFT SIB is reachable again and writes succeed
+* RUNBIST (IR=0x02) decodes as itself and selects the iJTAG network as its data register: with every SIB closed that register is the three-SIB chain, so TDO trails TDI by three TCK with the SIB captures in the low bits
+* The non-secure DFT host's `runbist` scan-control field follows the RUNBIST instruction decode, whatever the DFT SIB state and the `dft_nonsecure` disable
+* `dbg_disable_i.dft_nonsecure` does NOT suppress the RUNBIST instruction itself; it holds the non-secure DFT SIB closed and silences that host's scan controls
+* After clearing `dbg_disable_i.dft_nonsecure`, the stored SIB open state is effective again and a RUNBIST scan drives the DFT host scan controls without reprogramming the SIB
 * `runbist_cg` (RUNBIST executed) and `runbist_security_cg` (ungated / DFT SIB gated / DFT SIB restored)
 
 *Test Procedure*:
 
 [arabic]
-. Load RUNBIST (IR=0x02) through `OcahJtagMasterDriver` and enter Run-Test/Idle to execute BIST.
-. Hold RTI for the required cycles, then Capture-DR/Shift-DR to read the BIST pass/fail result.
-. Security-gating scenario:
-a. Assert `dbg_disable_i.dft_nonsecure = 1`.
-b. Load RUNBIST and enter RTI; confirm the TAP accepts the instruction regardless of the disable.
-c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the DFT instrument register through the iJTAG path, and confirm the model register is unchanged (SIB forced closed).
-. Clear `dbg_disable_i.dft_nonsecure`; repeat the iJTAG DFT write and confirm the model register now updates (SIB accessible again).
+. Load RUNBIST (IR=0x02) through `OcahJtagMasterDriver`; confirm the decoded-instruction one-hot and the DFT host `runbist` strobe. Load BYPASS and confirm the strobe drops; reload RUNBIST.
+. Run directed and seeded 8-bit DR scans; compare each with the SIB-chain prediction (the SIB captures, then the pattern three TCK behind TDI) and confirm the responses are distinct and nonzero.
+. Open the non-secure DFT SIB through SELECT_IJTAG and reload RUNBIST. Under a scan-control window a RUNBIST DR scan shows the DFT host select high with one capture, eight shift, and one update strobe.
+. Assert `dbg_disable_i.dft_nonsecure = 1`; reload RUNBIST and confirm the decode and the `runbist` strobe are unchanged; the same window over a RUNBIST DR scan shows every DFT host scan control at zero.
+. Clear `dbg_disable_i.dft_nonsecure`; the window shows the DFT host select and strobes again without reprogramming the SIB.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`runbist_accept_chk` |RUNBIST is accepted by the TAP (not redirected to BYPASS) and BIST runs during RTI
-|`runbist_instr_ungated_chk` |`dbg_disable_i.dft_nonsecure` does not suppress the RUNBIST instruction itself
-|`dft_sib_gated_chk` |With `dbg_disable_i.dft_nonsecure` asserted, the DFT instrument register cannot be written
-|`dft_sib_restored_chk` |After the disable clears, the DFT SIB is reachable and the write succeeds
+|`runbist_accept_chk` |RUNBIST decodes as itself (`CHK-IR-DECODE`), raises the DFT host `runbist` strobe (`CHK-DFT-RUNBIST`), and its DR scan is the SIB chain: TDO three TCK behind TDI with the SIB captures in the low bits (`CHK-RUNBIST-DR-LEN`), distinct and nonzero across patterns (`CHK-RUNBIST-RESPONSE`)
+|`runbist_instr_ungated_chk` |With `dbg_disable_i.dft_nonsecure` asserted the RUNBIST decode and the DFT host `runbist` strobe are unchanged (`CHK-IR-DECODE`, `CHK-DFT-RUNBIST`)
+|`dft_sib_gated_chk` |With the disable asserted the DFT host select and its capture/shift/update strobes count zero across a RUNBIST DR scan (`CHK-DFT-SIB-SELECT`, `CHK-DFT-SCAN-CTRL`)
+|`dft_sib_restored_chk` |With the disable cleared the stored SIB open state is effective again: select high with one capture, N shift, and one update strobe across the scan (`CHK-DFT-SIB-SELECT`, `CHK-DFT-SCAN-CTRL`)
 |===
 
-*Evidence*: `CHK-RUNBIST-RESPONSE`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`. The gating rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+*Evidence*: `CHK-RUNBIST-RESPONSE`, `CHK-RUNBIST-DR-LEN`, `CHK-DFT-RUNBIST`, `CHK-DFT-SIB-SELECT`, `CHK-DFT-SCAN-CTRL`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` scoreboard feature.
 
-*Pass Criteria*: RUNBIST is always accepted and executes BIST while the non-secure DFT SIB is open only when `dbg_disable_i.dft_nonsecure` is clear, with zero scoreboard/reference-model errors.
+*Pass Criteria*: RUNBIST is always accepted with the SIB chain as its data register and the DFT host `runbist` strobe following its decode, and the non-secure DFT host scan controls follow a RUNBIST scan only while `dbg_disable_i.dft_nonsecure` is clear, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -525,34 +523,32 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 *Test Coverage*:
 
-* SAMPLE/PRELOAD (IR=0x03) captures live boundary pin state without disturbing functional outputs
-* Captured BSR values match the applied input stimulus
-* A new preload pattern is shifted in and retained in the BSR for a subsequent EXTEST
-* Update-DR under SAMPLE/PRELOAD does not drive pins (functional outputs unchanged)
+* SAMPLE/PRELOAD (IR=0x03) selects the boundary-scan chain; the bench has no boundary cells and loops the chain back, so a DR scan returns the pattern one TCK late
+* The chain's select is high across a SAMPLE/PRELOAD DR scan while the TAP's capture, shift, and update strobes pulse once, N times, and once
+* Under BYPASS the chain's select stays low while the same strobes pulse: only select is qualified by the instruction
 * `bsr_cg` (SAMPLE/PRELOAD operation) and `bsr_capture_cg` (captured vs expected)
 
 *Test Procedure*:
 
 [arabic]
-. Apply known values to the boundary-scan input pins via the OCAH-local BSR model.
-. Load SAMPLE/PRELOAD (IR=0x03) through `OcahJtagMasterDriver` and perform Capture-DR.
-. Shift out captured data and compare against the applied stimulus in the BSR reference model.
-. Shift in a new preload pattern and perform Update-DR.
-. Confirm functional outputs remain unchanged (SAMPLE/PRELOAD does not drive pins) and the preload pattern is retained for later EXTEST use.
+. Load SAMPLE/PRELOAD (IR=0x03) through `OcahJtagMasterDriver` and shift directed and seeded patterns; each returns retimed by one TCK through the looped-back chain.
+. Open a scan-control window across one N-bit SAMPLE/PRELOAD DR scan: `jtag_bsr_host_scan_ctrl_o.select` high, capture once, shift N times, update once.
+. Load BYPASS and repeat the window across a DR scan: select low, the strobes pulsing, TDO the one-bit bypass path.
+. Reload SAMPLE/PRELOAD and confirm the loopback again.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`sample_capture_chk` |Captured BSR values match the applied input stimulus
-|`preload_no_drive_chk` |Functional outputs are unchanged after Update-DR (no pin drive)
-|`preload_retain_chk` |Preloaded pattern is retained in the BSR for subsequent EXTEST
+|`sample_capture_chk` |Capture-DR strobes once and the looped-back chain returns the shifted pattern retimed by one TCK; the bench has no boundary cells, so pin capture itself is not observable (`CHK-BSR-SCAN-CTRL`, `CHK-BSR-LOOPBACK`)
+|`preload_no_drive_chk` |Under BYPASS the boundary-scan select stays low across a DR scan while the TAP's strobes pulse, so no boundary update can occur; the bench has no boundary cells, so pin drive itself is not observable (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BYPASS-DELAY`)
+|`preload_retain_chk` |Across a SAMPLE/PRELOAD DR scan the select is high with one capture, N shift, and one update strobe, the protocol a boundary register latches its preload on (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
 |===
 
-*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` scoreboard feature. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BYPASS-DELAY`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` and `bypass` scoreboard features. The boundary-cell pin behavior is dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
-*Pass Criteria*: SAMPLE captures live pin state matching stimulus while PRELOAD leaves outputs undisturbed and retains the loaded pattern, with zero scoreboard/reference-model errors.
+*Pass Criteria*: SAMPLE/PRELOAD selects the looped-back chain with the capture, shift, and update strobes of an N-bit scan and returns the pattern retimed by one TCK, while BYPASS leaves the select low, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -567,34 +563,33 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 *Test Coverage*:
 
-* EXTEST (IR=0x04) drives boundary-scan outputs from the BSR on Update-DR
-* `jtag_bsr_host_scan_ctrl_o` asserts the correct control fields during Capture-DR, Shift-DR, and Update-DR
-* Captured BSR input values match externally applied stimulus
-* Non-selected scan paths remain stable during EXTEST
+* EXTEST (IR=0x04) selects the boundary-scan chain; the bench has no boundary cells and loops the chain back, so a DR scan returns the pattern one TCK late
+* `jtag_bsr_host_scan_ctrl_o.select` is high across an EXTEST DR scan while its capture, shift, and update strobes pulse once, N times, and once
+* Under BYPASS the select stays low while the same strobes pulse: only select is qualified by the instruction
 * `bsr_cg` (EXTEST operation) and `bsr_data_cg` (output and capture patterns)
 
 *Test Procedure*:
 
 [arabic]
-. Load SAMPLE/PRELOAD (IR=0x03) and shift a known output pattern into the BSR via DR.
-. Load EXTEST (IR=0x04) and trigger Update-DR to drive the BSR outputs to the pins.
-. Confirm `jtag_bsr_host_scan_ctrl_o` asserts the appropriate control signals and that outputs follow the preloaded pattern.
-. Apply external stimulus on the BSR input pins through the OCAH-local BSR model.
-. Perform Capture-DR to latch pin values into the BSR, then shift them out and compare against the applied stimulus.
+. Load SAMPLE/PRELOAD (IR=0x03) and shift a known pattern through the looped-back chain.
+. Load EXTEST (IR=0x04) and shift directed and seeded patterns; each returns retimed by one TCK.
+. Open a scan-control window across one N-bit EXTEST DR scan: `jtag_bsr_host_scan_ctrl_o.select` high, capture once, shift N times, update once.
+. Load BYPASS and repeat the window across a DR scan: select low, the strobes pulsing, TDO the one-bit bypass path.
+. Reload EXTEST and confirm the loopback again.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`extest_output_drive_chk` |BSR outputs reflect the preloaded pattern after EXTEST Update-DR
-|`extest_capture_chk` |Captured BSR input values match the applied external stimulus
-|`extest_scan_ctrl_chk` |`jtag_bsr_host_scan_ctrl_o` fields assert correctly during Capture-DR, Shift-DR, Update-DR
+|`extest_output_drive_chk` |Across an EXTEST DR scan the chain select is high and Update-DR strobes once, the protocol a boundary register drives its pins on; the bench has no boundary cells, so pin drive itself is not observable (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
+|`extest_capture_chk` |Capture-DR strobes once and the looped-back chain returns the shifted pattern retimed by one TCK; the bench has no boundary cells, so pin capture itself is not observable (`CHK-BSR-SCAN-CTRL`, `CHK-BSR-LOOPBACK`)
+|`extest_scan_ctrl_chk` |`jtag_bsr_host_scan_ctrl_o`: select high across the EXTEST scan with capture once, shift N times, update once; under BYPASS select stays low while the same strobes pulse (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
 |===
 
-*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` and `bypass` scoreboard features. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` and `bypass` scoreboard features. The boundary-cell pin behavior is dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
-*Pass Criteria*: EXTEST drives outputs from the preloaded BSR and captures applied inputs correctly with proper scan-control assertion, with zero scoreboard/reference-model errors.
+*Pass Criteria*: EXTEST selects the looped-back chain with the capture, shift, and update strobes of an N-bit scan and returns the pattern retimed by one TCK, while BYPASS leaves the select low, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -609,34 +604,33 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 *Test Coverage*:
 
-* INTEST (IR=0x09) drives boundary-scan inputs into the internal core logic
-* Internal logic inputs receive the preloaded BSR pattern after Update-DR
-* Internal logic outputs are captured back into the BSR and read out correctly
-* BSR scan-control signals assert appropriately during INTEST
+* INTEST (IR=0x09) selects the boundary-scan chain; the bench has no boundary cells and loops the chain back, so a DR scan returns the pattern one TCK late
+* `jtag_bsr_host_scan_ctrl_o.select` is high across an INTEST DR scan while its capture, shift, and update strobes pulse once, N times, and once
+* Under BYPASS the select stays low while the same strobes pulse: only select is qualified by the instruction
 * `bsr_cg` (INTEST operation)
 
 *Test Procedure*:
 
 [arabic]
-. Load SAMPLE/PRELOAD (IR=0x03) and shift a known input pattern into the BSR via DR.
-. Load INTEST (IR=0x09) through `OcahJtagMasterDriver` and perform Update-DR.
-. Confirm the BSR drives the preloaded pattern onto the internal logic inputs via the OCAH-local BSR model.
-. Perform Capture-DR to latch the internal logic outputs into the BSR.
-. Shift out the captured values and verify they reflect the programmed internal observation points.
+. Load SAMPLE/PRELOAD (IR=0x03) and shift a known pattern through the looped-back chain.
+. Load INTEST (IR=0x09) through `OcahJtagMasterDriver` and shift directed and seeded patterns; each returns retimed by one TCK.
+. Open a scan-control window across one N-bit INTEST DR scan: `jtag_bsr_host_scan_ctrl_o.select` high, capture once, shift N times, update once.
+. Load BYPASS and repeat the window across a DR scan: select low, the strobes pulsing, TDO the one-bit bypass path.
+. Reload INTEST and confirm the loopback again.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`intest_input_drive_chk` |Internal logic inputs receive the preloaded BSR pattern
-|`intest_capture_chk` |Internal logic outputs are captured into the BSR correctly
-|`intest_scan_ctrl_chk` |BSR scan-control signals assert appropriately during INTEST
+|`intest_input_drive_chk` |Across an INTEST DR scan the chain select is high and Update-DR strobes once, the protocol a boundary register drives the core inputs on; the bench has no boundary cells, so the internal drive itself is not observable (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
+|`intest_capture_chk` |Capture-DR strobes once and the looped-back chain returns the shifted pattern retimed by one TCK; the bench has no boundary cells, so the internal capture itself is not observable (`CHK-BSR-SCAN-CTRL`, `CHK-BSR-LOOPBACK`)
+|`intest_scan_ctrl_chk` |`jtag_bsr_host_scan_ctrl_o`: select high across the INTEST scan with capture once, shift N times, update once; under BYPASS select stays low while the same strobes pulse (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
 |===
 
-*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` and `bypass` scoreboard features. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` and `bypass` scoreboard features. The boundary-cell pin behavior is dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
-*Pass Criteria*: INTEST applies the preloaded pattern to internal inputs and captures the internal outputs correctly, with zero scoreboard/reference-model errors.
+*Pass Criteria*: INTEST selects the looped-back chain with the capture, shift, and update strobes of an N-bit scan and returns the pattern retimed by one TCK, while BYPASS leaves the select low, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -693,33 +687,33 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 *Test Coverage*:
 
-* HIGHZ (IR=0x08) tristates all boundary-scan outputs (all `+_oen_o+` signals deassert)
-* A 1-bit bypass path is provided on DR during HIGHZ
-* Outputs resume normal active drive after exiting HIGHZ to a functional instruction
+* HIGHZ (IR=0x08) decodes as itself and scans the one-bit bypass register
+* The boundary-scan select stays low across a HIGHZ DR scan while the TAP's strobes pulse; the bench has no boundary cells and no boundary output enables (its only `+_oen_o+` ports are the TDO enables), so the tristate itself is not observable
+* A boundary-scan instruction loaded after HIGHZ re-selects the looped-back chain
 * `highz_cg` (HIGHZ engaged) and `bsr_oen_cg` (output enable deasserted)
 
 *Test Procedure*:
 
 [arabic]
-. Load EXTEST and drive known BSR outputs; confirm the outputs are actively driven.
-. Load HIGHZ (IR=0x08) through `OcahJtagMasterDriver`.
-. Observe the boundary output-enable controls and confirm all BSR `+_oen_o+` signals deassert (high-impedance).
-. Run a DR scan and verify the 1-bit bypass behavior during HIGHZ.
-. Load a different (safe/functional) instruction and confirm outputs return to the driven state.
+. Load EXTEST and confirm the loopback through the chain.
+. Load HIGHZ (IR=0x08) through `OcahJtagMasterDriver`; confirm the decoded-instruction one-hot and the 1-bit bypass behavior across the directed and seeded pattern classes.
+. Open a scan-control window across a 64-bit HIGHZ DR scan: `jtag_bsr_host_scan_ctrl_o.select` low, capture once, shift 64 times, update once, TDO the one-bit bypass path.
+. Load EXTEST: the same window shows select high across its scan and the loopback returns.
+. Load CLAMP and check its bypass path; load IDCODE; load HIGHZ again and check its bypass path.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`highz_oen_deassert_chk` |All BSR `+_oen_o+` signals deassert during HIGHZ
-|`highz_bypass_chk` |DR path is a 1-bit bypass during HIGHZ
-|`highz_recover_chk` |Outputs resume normal drive after exiting HIGHZ
+|`highz_oen_deassert_chk` |HIGHZ decodes as itself and leaves the boundary-scan select low across its DR scan while the TAP's strobes pulse; the bench has no boundary output enables to observe (`CHK-IR-DECODE`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`)
+|`highz_bypass_chk` |DR path is a 1-bit bypass during HIGHZ (`CHK-BYPASS-DELAY`)
+|`highz_recover_chk` |EXTEST loaded after HIGHZ re-selects the looped-back chain: select high across its scan and the loopback returns (`CHK-BSR-SELECT`, `CHK-BSR-LOOPBACK`)
 |===
 
-*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` and `bypass` scoreboard features. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` and `bypass` scoreboard features. The boundary-cell pin behavior is dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
-*Pass Criteria*: HIGHZ tristates every boundary output via `+_oen_o+` deassertion with a 1-bit DR bypass, and outputs recover on exit, with zero scoreboard/reference-model errors.
+*Pass Criteria*: HIGHZ decodes, scans the 1-bit bypass, and leaves the boundary-scan select low, and a boundary-scan instruction re-selects the chain afterwards, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -818,44 +812,42 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 *Test Coverage*:
 
 * Asynchronous TRST_N forces the TAP to Test-Logic-Reset from any state, independent of TCK
-* `jtag_ptap_state_o` transitions to TLR within one TCK edge of TRST_N assertion
+* `jtag_ptap_state_o` is Test-Logic-Reset as soon as TRST_N is low, before any TCK edge, and stays there through TCK cycles with TMS low, which would leave Test-Logic-Reset were the reset not holding the controller
 * IR resets to IDCODE on TRST and scan state is cleared
 * Normal operation resumes cleanly after TRST_N deassertion (Run-Test/Idle, IDCODE readable)
 * `trst_cg`: TRST asserted from different TAP states
-* Power-on reset path: `pwr_on_rst_ni` forces the TAP to TLR independent of TRST, confirming `jtag_trst_n = pwr_on_rst_ni AND trst_n` (either source resets the TAP)
+* Power-on reset path: `pwr_on_rst_ni` forces the TAP to TLR independent of TRST, confirming `jtag_trst_n = pwr_on_rst_ni AND trst_n` (either source resets the TAP); proven by `dtp_jtag_trst_por_independence_test` (0.13a)
 
 *Test Procedure*:
 
 [arabic]
-. Drive the TAP into a mid-operation non-reset state (e.g. Shift-DR) via `OcahJtagMasterDriver`.
-. Assert TRST_N asynchronously (independent of TCK).
-. Confirm `jtag_ptap_state_o` transitions to Test-Logic-Reset within one TCK edge and scan state is cleared.
-. Release TRST_N and verify the IR contains IDCODE.
-. Perform a normal DR scan to confirm IDCODE is readable and clean recovery to Run-Test/Idle.
-. With TRST_N deasserted, drive the TAP into a mid-operation state and assert `pwr_on_rst_ni`; confirm the TAP enters TLR with IR reset to IDCODE (POR path, independent of TRST).
-. Release `pwr_on_rst_ni` and verify clean recovery, confirming `jtag_trst_n = pwr_on_rst_ni AND trst_n`.
+. Drive the TAP into a mid-operation non-reset state (Run-Test/Idle, Shift-IR, Shift-DR, or a Capture state) via `OcahJtagMasterDriver`, with BYPASS or IDCODE loaded.
+. Assert TRST_N and sample `jtag_ptap_state_o` before any TCK edge: Test-Logic-Reset.
+. Hold TRST_N low for 2..8 TCK cycles with TMS low and confirm the TAP stays in Test-Logic-Reset.
+. Release TRST_N; one TMS-low step reaches Run-Test/Idle.
+. Perform a 32-bit DR scan with no IR load and confirm it reads IDCODE: the reset selected the device-identification register.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`trst_to_tlr_chk` |TAP immediately enters TLR on TRST_N assertion regardless of starting state
-|`trst_ir_idcode_chk` |IR resets to IDCODE after TRST and IDCODE is readable
-|`trst_recovery_chk` |Normal operation resumes after TRST_N deassertion
-|`por_to_tlr_chk` |`pwr_on_rst_ni` forces TLR (IR=IDCODE) independent of TRST, per `jtag_trst_n = pwr_on_rst_ni AND trst_n`
+|`trst_to_tlr_chk` |TAP is in TLR as soon as TRST_N is low, before any TCK edge (`CHK-TAP-TRST-ASYNC`), and stays there through TMS-low TCK cycles under the reset (`CHK-TAP-TRST-TLR`)
+|`trst_ir_idcode_chk` |After release a DR scan with no IR load reads IDCODE: the reset selected the device-identification register (`CHK-IDCODE-RAW`)
+|`trst_recovery_chk` |One TMS-low step after release reaches Run-Test/Idle and the DR scan completes (`CHK-TAP-STATE`, `CHK-IDCODE-RAW`)
+|`por_to_tlr_chk` |`pwr_on_rst_ni` forces TLR (IR=IDCODE) independent of TRST, per `jtag_trst_n = pwr_on_rst_ni AND trst_n`; proven by 0.13a (`CHK-TAP-POR-TLR`, `CHK-IDCODE-RECOVERY`)
 |===
 
-*Evidence*: `CHK-TAP-TRST-TLR`, `CHK-IDCODE-RAW`, `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-NONVAC`; SV-UVM adds the `idcode` scoreboard feature.
+*Evidence*: `CHK-TAP-TRST-ASYNC`, `CHK-TAP-TRST-TLR`, `CHK-IDCODE-RAW`, `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-NONVAC`; SV-UVM adds the `idcode` scoreboard feature.
 
-*Pass Criteria*: Asserting TRST_N or `pwr_on_rst_ni` from any state drives the TAP to TLR with IR reset to IDCODE and clean recovery afterward, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Asserting TRST_N from any state puts the TAP in TLR before any TCK edge and holds it there under TMS-low clocks, and after release a TMS-low step and a DR scan with no IR load read IDCODE, with zero scoreboard/reference-model errors.
 
 '''''
 
 [[sec-013a-dtp_jtag_trst_por_independence_test]]
 ===== 0.13a `dtp_jtag_trst_por_independence_test`
 
-*Source Module*: `dtp_jtag_trst_test`
+*Source Module*: `dtp_jtag_trst_por_independence_test`
 
 *BFM / Model*: `ocah_jtag_vip`
 
@@ -863,31 +855,31 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 *Test Coverage*:
 
-* `pwr_on_rst_ni` independently forces the primary TAP to Test-Logic-Reset while `trst_n` remains deasserted
-* IR reloads IDCODE after POR without relying on an explicit JTAG BFM reset
-* Normal TAP operation resumes after POR release
+* `pwr_on_rst_ni` independently forces the primary TAP to Test-Logic-Reset while `trst_n` remains deasserted and TCK idles
+* IR reloads IDCODE after POR without any TRST activity or JTAG BFM reset
+* Normal TAP operation resumes after POR release: one TMS-low step reaches Run-Test/Idle and a DR scan with no IR load reads IDCODE
 
 *Test Procedure*:
 
 [arabic]
-. Hold `trst_n` high and drive the TAP into a non-reset state.
-. Pulse `pwr_on_rst_ni` low and then release it.
-. Verify `jtag_ptap_state_o` enters Test-Logic-Reset and IR reloads IDCODE.
-. Perform an IDCODE DR scan after POR release to prove clean recovery.
+. Hold `trst_n` high and drive the TAP into a seeded non-reset state with BYPASS or IDCODE loaded.
+. Hold `pwr_on_rst_ni` low for 2..8 TCK periods with TCK idle; sample `jtag_ptap_state_o` (Test-Logic-Reset) and `trst_n` (high) during the pulse; release it.
+. Step TLR -++>++ Run-Test/Idle by one TMS-low cycle.
+. Perform a 32-bit DR scan with no IR load and no TRST activity; it reads IDCODE.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`por_independent_tlr_chk` |POR alone forces TLR with TRST held high
-|`por_idcode_reload_chk` |IDCODE is reloaded after POR
-|`por_recovery_scan_chk` |IDCODE scan succeeds after POR release
+|`por_independent_tlr_chk` |`jtag_ptap_state_o` is Test-Logic-Reset during the POR pulse with `trst_n` sampled high and no TCK edge (`CHK-TAP-POR-TLR`)
+|`por_idcode_reload_chk` |The DR scan after release, with no IR load, reads IDCODE: POR reloaded the device-identification register (`CHK-IDCODE-RECOVERY`)
+|`por_recovery_scan_chk` |TLR -++>++ RTI by one TMS-low step and the DR scan complete without any TRST activity (`CHK-IDCODE-RECOVERY`; SV-UVM `CHK-TAP-STATE`)
 |===
 
-*Evidence*: `CHK-IDCODE-RECOVERY`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-TAP-STATE` and the `idcode` scoreboard feature.
+*Evidence*: `CHK-TAP-POR-TLR`, `CHK-IDCODE-RECOVERY`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-TAP-STATE` and the `idcode` scoreboard feature.
 
-*Pass Criteria*: POR alone resets the TAP to TLR, reloads IDCODE, and allows a clean IDCODE scan after release, with zero scoreboard/reference-model errors.
+*Pass Criteria*: POR alone resets the TAP to TLR with TRST high, reloads IDCODE, and a TMS-low step plus a DR scan with no IR load read it back, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -903,33 +895,33 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 *Test Coverage*:
 
 * Entering Test-Logic-Reset (5x TMS=1) resets the instruction register to IDCODE
-* Non-hold-protected TDRs reset to their default values (DEBUG_CONTROL -++>++ 0x00, 3DCR with CONFIG_HOLD=0 -++>++ 0x0, IC_RESET with RESET_HOLD=0 -++>++ 0x0)
-* TDRs with HOLD=1 retain their values (verified separately)
+* Non-hold-protected TDRs return to their defaults: DEBUG_CONTROL to 0x00 and IC_RESET written with `reset_hold` = 1 to its all-ones default, with the clock-stop, boot-stall, and IC_RESET slice pin outputs following
+* TDRs written with `reset_hold` = 0 keep their values through TLR (`dtp_jtag_ic_reset_test`), and the 3DCR `config_hold` behavior is `dtp_3dcr_config_hold_test`
 * Normal IR/DR access resumes after stepping TLR -++>++ Run-Test/Idle
 * `tlr_reset_cg`: TLR-driven reset of IR and TDRs
 
 *Test Procedure*:
 
 [arabic]
-. Load various instructions and write non-default values into their TDRs through `OcahJtagMasterDriver`.
-. Drive the TAP to Test-Logic-Reset via at least five TMS=1 cycles.
-. Confirm the instruction register resets to IDCODE and read IDCODE back via DR scan.
-. Verify DEBUG_CONTROL TDR reset to 0x00, 3DCR (CONFIG_HOLD=0) reset to 0x0, and IC_RESET (RESET_HOLD=0) reset to 0x0.
-. Step from TLR to Run-Test/Idle and confirm normal IR/DR access resumes.
+. Write DEBUG_CONTROL (boot stall, its override, and the CLA clock-stop enable set) and IC_RESET (`reset_hold` = 1, every slice enable active) to non-default images through `OcahJtagMasterDriver` and confirm the pin outputs follow them; load BYPASS.
+. Drive the TAP to Test-Logic-Reset via 5..8 TMS=1 cycles from a seeded start state.
+. Perform a 32-bit DR scan with no IR load and confirm it reads IDCODE.
+. Verify the pin outputs are back at their reset values, DEBUG_CONTROL reads 0x00, and IC_RESET reads its all-ones default.
+. Load IDCODE by IR scan and read it back: normal IR/DR access has resumed.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`tlr_ir_idcode_chk` |IR loads IDCODE on entering TLR
-|`tlr_tdr_default_chk` |Non-HOLD TDRs (DEBUG_CONTROL, 3DCR, IC_RESET) reset to default values
-|`tlr_resume_chk` |Normal IR/DR access resumes after TLR -++>++ RTI
+|`tlr_ir_idcode_chk` |IR loads IDCODE on entering TLR (`CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`)
+|`tlr_tdr_default_chk` |After TLR DEBUG_CONTROL reads 0x00 and IC_RESET (written with `reset_hold` = 1) its all-ones default, with the stop_clks, cla_clock_stop_en, boot-stall, and IC_RESET slice pin outputs at their reset values; the programmed images were confirmed on the pins before the walk (`CHK-TLR-TDR-DEFAULT`)
+|`tlr_resume_chk` |IDCODE loaded by an IR scan after the TMS-driven TLR reads back through a DR scan (`CHK-TLR-RESUME`)
 |===
 
-*Evidence*: `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-NONVAC`; SV-UVM adds the `idcode` scoreboard feature. The TDR-default row of the checker table is dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+*Evidence*: `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TLR-TDR-DEFAULT`, `CHK-TLR-RESUME`, `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-NONVAC`; SV-UVM adds the `idcode` scoreboard feature.
 
-*Pass Criteria*: Entering TLR resets IR to IDCODE and clears all non-hold-protected TDRs to defaults while normal access resumes, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Entering TLR resets IR to IDCODE and returns DEBUG_CONTROL and the non-held IC_RESET image to their defaults on the TDRs and the pins while IR/DR access resumes, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -944,34 +936,34 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 *Test Coverage*:
 
-* CLAMP_HOLD (IR=0x0A) TMP instruction makes the clamp state persist across subsequent TAP operations
-* CLAMP_HOLD DR is 2 bits wide and drives the TMP controller into Persistence-On
-* BSR outputs remain clamped at their EXTEST-driven values regardless of subsequent IR changes (e.g. IDCODE, BYPASS)
-* TMP_STATUS reflects Persistence-On (TMP_STATUS.TMP_STATUS = 1)
+* CLAMP_HOLD (IR=0x0A) TMP instruction turns test-mode persistence on at its Update-IR
+* CLAMP_HOLD's data register is the one-bit bypass (its DR scan returns TDI one TCK late); the 2-bit register is TMP_STATUS, whose bit 1 reads the persistence back
+* Persistence survives an instruction switch to BYPASS, CLAMP_RELEASE clears it, and a TAP reset leaves it clear
+* The boundary register's hold through `chrst_n` while persistence is on is `dtp_jtag_tmp_status_chrst_n_in_persistence_test` (1.2); the bench has no boundary cells, so clamped pins are not observable
 * `tmp_cg` (CLAMP_HOLD engaged) and `clamp_persist_cg` (clamp across IR transitions)
 
 *Test Procedure*:
 
 [arabic]
-. Load EXTEST and drive known BSR outputs via the OCAH-local BSR model.
-. Load CLAMP_HOLD (IR=0x0A) through `OcahJtagMasterDriver` and perform a 2-bit DR scan.
-. Confirm the TMP controller enters Persistence-On.
-. Load a different instruction (e.g. IDCODE) and verify the BSR outputs remain clamped.
-. Read TMP_STATUS and verify TMP_STATUS = 1 (Persistence-On); return to BYPASS and confirm the clamp persists.
+. Shift a directed or seeded pattern through the looped-back chain under SAMPLE/PRELOAD.
+. Load CLAMP_HOLD (IR=0x0A) through `OcahJtagMasterDriver`; confirm its decode and that a 64-bit DR scan returns TDI one TCK late.
+. Read TMP_STATUS and confirm bit 1 (persistence) is 1.
+. Load BYPASS and read TMP_STATUS again: persistence 1.
+. Load CLAMP_RELEASE and read TMP_STATUS: persistence 0. After the sweep, reset the TAP and confirm persistence is 0.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`clamp_hold_dr_len_chk` |CLAMP_HOLD DR is exactly 2 bits wide
-|`clamp_hold_persist_chk` |BSR outputs stay clamped across subsequent IR changes
-|`clamp_hold_tmp_status_chk` |TMP_STATUS.TMP_STATUS reads 1 (Persistence-On)
+|`clamp_hold_dr_len_chk` |CLAMP_HOLD decodes as itself and scans the one-bit bypass register, TDI one TCK late; the 2-bit register is TMP_STATUS, read for the persistence bit (`CHK-IR-DECODE`, `CHK-BYPASS-DELAY`)
+|`clamp_hold_persist_chk` |Persistence survives an instruction switch to BYPASS and clears on CLAMP_RELEASE (`CHK-TMP-PERSIST`); the hold of the boundary register through `chrst_n` while persistence is on is `dtp_jtag_tmp_status_chrst_n_in_persistence_test` (1.2)
+|`clamp_hold_tmp_status_chk` |TMP_STATUS bit 1 reads 1 after CLAMP_HOLD, 0 after CLAMP_RELEASE, and 0 after a TAP reset (`CHK-TMP-PERSIST`)
 |===
 
-*Evidence*: `CHK-TMP-PERSIST`, `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` scoreboard feature.
+*Evidence*: `CHK-TMP-PERSIST`, `CHK-BYPASS-DELAY`, `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` scoreboard feature.
 
-*Pass Criteria*: CLAMP_HOLD enters Persistence-On via a 2-bit DR and holds the clamped outputs across IR changes with TMP_STATUS=1, with zero scoreboard/reference-model errors.
+*Pass Criteria*: CLAMP_HOLD decodes, scans the one-bit bypass, and turns persistence on, which BYPASS preserves and CLAMP_RELEASE or a TAP reset clears, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1028,34 +1020,33 @@ c. Seed the OCAH-local DFT model with a sentinel value, attempt to overwrite the
 
 *Test Coverage*:
 
-* EXTEST_TRAIN (IR=0x05) continuously drives a training pattern on AC boundary-scan outputs during Run-Test/Idle
-* Training pattern is launched every TCK cycle while in RTI
-* BSR scan-control signals assert per the EXTEST_TRAIN protocol timing
-* No unintended functional output changes outside the training sequence
+* EXTEST_TRAIN (IR=0x05) selects the boundary-scan chain; the bench has no AC boundary cells and loops the chain back, so a DR scan returns the pattern one TCK late
+* The chain's `run_test_idle` scan-control field, the strobe the AC training launches on, is high while the TAP is parked in Run-Test/Idle with EXTEST_TRAIN loaded, low in Test-Logic-Reset, and pulses once across a DR scan, on the return to Run-Test/Idle
+* Across an EXTEST_TRAIN DR scan the select is high with one capture, N shift, and one update strobe; under BYPASS the select stays low while the strobes pulse
 * `ac_bsr_cg`: EXTEST_TRAIN operation
 
 *Test Procedure*:
 
 [arabic]
-. Load SAMPLE/PRELOAD and shift the training pattern into the BSR via the OCAH-local BSR model.
-. Load EXTEST_TRAIN (IR=0x05) through `OcahJtagMasterDriver`.
-. Enter Run-Test/Idle and confirm the training pattern is driven on the AC boundary outputs every TCK cycle.
-. Monitor the BSR scan control for correct launch/capture timing assertion.
-. Exit by loading a different instruction and confirm no spurious functional output changes occurred.
+. Load SAMPLE/PRELOAD and shift a zero preload through the looped-back chain.
+. Load EXTEST_TRAIN (IR=0x05) through `OcahJtagMasterDriver` and shift directed, train, and seeded patterns; each returns retimed by one TCK.
+. Park in Run-Test/Idle with EXTEST_TRAIN loaded: `run_test_idle` high, `test_logic_reset` low, select low. Walk to Test-Logic-Reset: `run_test_idle` low, `test_logic_reset` high. Return to Run-Test/Idle.
+. Open a scan-control window across an EXTEST_TRAIN DR scan: select high, capture once, shift N times, update once, and `run_test_idle` pulses once.
+. Load BYPASS: the window shows select low while the strobes pulse. Exit through an EXTEST loopback.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`extest_train_pattern_chk` |Training pattern is continuously driven on AC BSR outputs during RTI
-|`extest_train_timing_chk` |BSR scan-control signals assert per EXTEST_TRAIN protocol timing
-|`extest_train_no_disturb_chk` |No unintended functional output changes outside the training sequence
+|`extest_train_pattern_chk` |The training launch strobe (`run_test_idle`) is high while parked in Run-Test/Idle with EXTEST_TRAIN loaded and low in Test-Logic-Reset, and the shifted pattern returns retimed by one TCK; the bench has no AC boundary cells, so the driven pattern itself is not observable (`CHK-BSR-RTI`, `CHK-BSR-LOOPBACK`)
+|`extest_train_timing_chk` |Across an EXTEST_TRAIN DR scan the select is high with one capture, N shift, and one update strobe, and `run_test_idle` pulses exactly once, on the return to Run-Test/Idle (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BSR-RTI`)
+|`extest_train_no_disturb_chk` |Under BYPASS the select stays low across a DR scan while the strobes pulse, so no boundary update can occur outside the training instruction; the bench has no boundary cells, so pin state itself is not observable (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BYPASS-DELAY`)
 |===
 
-*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds `CHK-BSR-SELECT` and the `ir_decode` scoreboard feature. The pin-level rows of the checker table are dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
+*Evidence*: `CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BSR-RTI`, `CHK-BYPASS-DELAY`, `CHK-IR-DECODE`, `CHK-SCAN-COUNT`, `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, `CHK-NONVAC`, `CHK-TAP-RESET-TLR`; SV-UVM adds the `ir_decode` and `bypass` scoreboard features. The boundary-cell pin behavior is dispositioned in <<dtp-vplan-signoff-jtag-dispositions>>.
 
-*Pass Criteria*: EXTEST_TRAIN continuously drives the training pattern on AC outputs each TCK with correct scan-control timing and no spurious functional changes, with zero scoreboard/reference-model errors.
+*Pass Criteria*: EXTEST_TRAIN selects the looped-back chain, its `run_test_idle` launch strobe follows the Run-Test/Idle parking state and pulses once per scan, and the scan controls carry the capture, shift, and update strobes of an N-bit scan, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -7137,11 +7128,11 @@ as `CHK-SB-IR-DECODE`, `CHK-SB-IDCODE`, and `CHK-SB-BYPASS`, and the
 |===
 |Row |Tests |Named evidence |Coverage points |Credit
 |F1.1 TAP state machine |`dtp_sanity_test` |SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO` required; `bypass` and `idcode` scoreboard features. cocotb: the state-visit and transition checks are plain assertions of the sequence (<<dtp-vplan-signoff-jtag-dispositions>>) |`c_state_*` (the sixteen states), `c_arc_*` (the thirty-two legal arcs) |YES
-|F1.2 TAP reset |`dtp_jtag_trst_test`, `dtp_jtag_trst_por_independence_test`, `dtp_jtag_tlr_reset_test` |`CHK-TAP-TRST-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-IDCODE-RAW`, `CHK-IDCODE-RECOVERY`, `CHK-TAP-RESET-TLR`, `CHK-TAP-STATE` |`c_smoke_reset_source_trst`, `c_smoke_reset_source_tms_to_tlr`, `c_reset_trst_from_active`, `c_reset_tms5_from_active` |YES
+|F1.2 TAP reset |`dtp_jtag_trst_test`, `dtp_jtag_trst_por_independence_test`, `dtp_jtag_tlr_reset_test` |`CHK-TAP-TRST-ASYNC`, `CHK-TAP-TRST-TLR`, `CHK-TAP-POR-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-TLR-IDCODE`, `CHK-TLR-TDR-DEFAULT`, `CHK-TLR-RESUME`, `CHK-IDCODE-RAW`, `CHK-IDCODE-RECOVERY`, `CHK-TAP-RESET-TLR`, `CHK-TAP-STATE` |`c_smoke_reset_source_trst`, `c_smoke_reset_source_tms_to_tlr`, `c_reset_trst_from_active`, `c_reset_tms5_from_active` |YES
 |F1.3 IDCODE |`dtp_jtag_idcode_test` |`CHK-IDCODE-MARKER`, `CHK-IDCODE-MANUFACTURER`, `CHK-IDCODE-PART-NUMBER`, `CHK-IDCODE-VERSION`, `CHK-IDCODE-RAW`, `CHK-IDCODE-STABLE`; `idcode` scoreboard feature |`c_smoke_idcode_default_after_reset`, `c_smoke_idcode_explicit_instruction`, `c_smoke_idcode_marker_1` |YES
-|F1.4 Instruction decode and BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |`CHK-BYPASS-00`, `CHK-BYPASS-3F`, `CHK-BYPASS-LATENCY`, `CHK-BYPASS-DELAY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-IR-DECODE`, `CHK-SCAN-DR-LEN` (the one-bit and zero-bit chain lengths); `ir_decode` and `bypass` scoreboard features. The undefined-instruction scenario records through the `bypass` feature on SV-UVM and through plain assertions on cocotb (<<dtp-vplan-signoff-jtag-dispositions>>) |`c_ir_opcode_*` (all sixty-four encodings), `c_ir_category_*`, `c_ir_behavior_enabled_instruction`, `c_ir_behavior_undefined_to_bypass` |YES
-|F1.5 Boundary-scan instructions |`dtp_jtag_sample_preload_test`, `dtp_jtag_extest_test`, `dtp_jtag_intest_test`, `dtp_jtag_clamp_test`, `dtp_jtag_highz_test`, `dtp_jtag_ac_extest_train_test`, `dtp_jtag_ac_extest_pulse_test` |`CHK-BSR-LOOPBACK`, `CHK-IR-DECODE`, `CHK-BYPASS-DELAY` (the CLAMP and HIGHZ bypass path), `CHK-BSR-SELECT` (SV-UVM), the scan cross-check IDs |The seven instructions' `c_ir_opcode_*` points; `cg_scan_boundary` on the commercial simulators |YES against the compact identity loopback (<<dtp-vplan-signoff-jtag-dispositions>>)
-|F1.6 RUNBIST and the TMP clamps |`dtp_jtag_runbist_test`, `dtp_jtag_clamp_hold_test`, `dtp_jtag_clamp_release_test` |`CHK-RUNBIST-RESPONSE`, `CHK-TMP-PERSIST`, `CHK-IR-DECODE`, `CHK-BSR-LOOPBACK` |The three instructions' `c_ir_opcode_*` points; `c_tmp_persistence_*` in `dtp_debug_tdr_fcov` |YES
+|F1.4 Instruction decode and BYPASS |`dtp_jtag_bypass_test`, `dtp_jtag_inv_bypass_test`, `dtp_jtag_zero_length_bypass_test`, `dtp_jtag_undef_instr_test` |`CHK-BYPASS-00`, `CHK-BYPASS-3F`, `CHK-BYPASS-LATENCY`, `CHK-BYPASS-DELAY`, `CHK-INV-BYPASS`, `CHK-ZLB-PASSTHROUGH`, `CHK-IR-DECODE`, `CHK-UNDEF-NO-SELECT`, `CHK-SCAN-DR-LEN` (the one-bit and zero-bit chain lengths); `ir_decode` and `bypass` scoreboard features |`c_ir_opcode_*` (all sixty-four encodings), `c_ir_category_*`, `c_ir_behavior_enabled_instruction`, `c_ir_behavior_undefined_to_bypass` |YES
+|F1.5 Boundary-scan instructions |`dtp_jtag_sample_preload_test`, `dtp_jtag_extest_test`, `dtp_jtag_intest_test`, `dtp_jtag_clamp_test`, `dtp_jtag_highz_test`, `dtp_jtag_ac_extest_train_test`, `dtp_jtag_ac_extest_pulse_test` |`CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`, `CHK-BSR-RTI` (the EXTEST_TRAIN launch strobe), `CHK-IR-DECODE`, `CHK-BYPASS-DELAY` (the CLAMP and HIGHZ bypass path), the scan cross-check IDs |The seven instructions' `c_ir_opcode_*` points; `cg_scan_boundary` on the commercial simulators |YES against the compact identity loopback (<<dtp-vplan-signoff-jtag-dispositions>>)
+|F1.6 RUNBIST and the TMP clamps |`dtp_jtag_runbist_test`, `dtp_jtag_clamp_hold_test`, `dtp_jtag_clamp_release_test` |`CHK-RUNBIST-RESPONSE`, `CHK-RUNBIST-DR-LEN`, `CHK-DFT-RUNBIST`, `CHK-DFT-SIB-SELECT`, `CHK-DFT-SCAN-CTRL`, `CHK-TMP-PERSIST`, `CHK-BYPASS-DELAY`, `CHK-IR-DECODE`, `CHK-BSR-LOOPBACK` |The three instructions' `c_ir_opcode_*` points; `c_tmp_persistence_*` in `dtp_debug_tdr_fcov` |YES
 |===
 
 The instruction encodings, TAP-state encodings, and IDCODE fields the checks
@@ -7179,10 +7170,7 @@ text, with where the behavior is proven and the scope of any waiver.
 |===
 |Checker |Realization |Disposition
 |`sanity_fsm_visit_chk`, `sanity_bypass_latency_chk`, `sanity_scan_path_chk` |cocotb: plain assertions of the sequence with no attached checker, so `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` does not reach them and any mismatch fails the pass directly. SV-UVM: `CHK-TAP-STATE`, `CHK-TAP-RESET-TLR`, `CHK-TAP-TLR-TMS5`, `CHK-TAP-GOTO`, `CHK-BYPASS-LATENCY`, and the `CHK-IDCODE-*` records through the env checker |Named evidence on the SV-UVM twin; the cocotb sequence records no named evidence
-|`undef_bypass_fallback_chk`, `undef_no_tdr_select_chk`, `undef_no_error_chk` |cocotb: the bypass-delay and pattern checks run as plain assertions. SV-UVM: the `bypass` scoreboard feature (`CHK-SB-BYPASS`) and checks tagged with the family IDs |Named evidence on the SV-UVM twin; the cocotb sequence records no named evidence
-|`runbist_instr_ungated_chk`, `dft_sib_gated_chk`, `dft_sib_restored_chk` |`dtp_jtag_runbist_test` proves acceptance (`CHK-IR-DECODE`) and a live response (`CHK-RUNBIST-RESPONSE`) and drives no disable; the `dft_nonsecure` gate is proven by `dtp_ijtag_dft_test` and the scan matrix |Credited under F3.2 and F3.6; the three rows are plan text without a realization in this test
-|`tlr_tdr_default_chk` |`dtp_jtag_tlr_reset_test` proves the IDCODE reload and the return to Run-Test/Idle; the IC_RESET hold behavior across Test-Logic-Reset is `dtp_jtag_ic_reset_test`, the DEBUG_CONTROL reset value is the debug-control scenarios, the 3DCR `config_hold` behavior is `dtp_3dcr_config_hold_test` |Credited under F2.2, F2.3, F2.4, and F3.5
-|`extest_output_drive_chk`, `extest_scan_ctrl_chk`, `intest_input_drive_chk`, `intest_scan_ctrl_chk`, `clamp_output_hold_chk`, `clamp_glitch_free_chk`, `highz_oen_deassert_chk`, `highz_recover_chk`, `preload_no_drive_chk`, `extest_train_pattern_chk`, `extest_train_timing_chk`, `extest_train_no_disturb_chk`, `extest_pulse_single_chk`, `extest_pulse_timing_chk` |The bench models no boundary cells: the BSR is the compact identity loopback of `DtpScanModel` (TB_ARCH, DUT-local model ownership). The scenarios prove instruction decode, chain length, and capture and shift through that loopback (`CHK-BSR-LOOPBACK`, `CHK-BSR-SELECT`) and the bypass path of CLAMP and HIGHZ; pin drive, output enables, and glitch-free transitions have no observable on this bench |Scoped waiver: boundary-cell pin behavior is outside this bench. The waiver covers exactly these fourteen rows and applies only while the bench has no boundary-cell model with pin observables
+|`extest_output_drive_chk`, `extest_capture_chk`, `intest_input_drive_chk`, `intest_capture_chk`, `clamp_output_hold_chk`, `clamp_glitch_free_chk`, `highz_oen_deassert_chk`, `highz_recover_chk`, `sample_capture_chk`, `preload_no_drive_chk`, `preload_retain_chk`, `extest_train_pattern_chk`, `extest_train_no_disturb_chk`, `extest_pulse_single_chk`, `extest_pulse_timing_chk` |The bench models no boundary cells: the BSR is the compact identity loopback of `DtpScanModel` (TB_ARCH, DUT-local model ownership). The scenarios prove instruction decode, the chain select and the TAP's capture/shift/update strobes across each scan (`CHK-BSR-SELECT`, `CHK-BSR-SCAN-CTRL`), the Run-Test/Idle launch strobe of EXTEST_TRAIN (`CHK-BSR-RTI`), and capture and shift through the loopback (`CHK-BSR-LOOPBACK`), plus the bypass path of CLAMP and HIGHZ; pin drive, output enables, and glitch-free transitions have no observable on this bench, and each row's text states the protocol evidence that stands in for them |Scoped waiver: boundary-cell pin behavior is outside this bench. The waiver covers exactly these fifteen rows and applies only while the bench has no boundary-cell model with pin observables
 |`inv_bypass_no_side_effect_chk` |No direct check; the `ir_decode` scoreboard feature and the bypass reference model bound what INV_BYPASS selects |Credited through the scoreboard features
 |===
 

@@ -529,6 +529,17 @@ typedef enum int unsigned {
   DTP_SCAN_IR = 1
 } dtp_scan_kind_e;
 
+// What a window over one host chain's scan controls shows across a DR scan:
+// SELECTED = select high and the TAP's capture/shift/update strobes pulse;
+// UNSELECTED = select low while the strobes pulse (the strobes are the
+// TAP's and only select is qualified by the instruction); GATED = the
+// chain's host holds select and every strobe low.
+typedef enum int unsigned {
+  DTP_SCAN_CTRL_SELECTED   = 0,
+  DTP_SCAN_CTRL_UNSELECTED = 1,
+  DTP_SCAN_CTRL_GATED      = 2
+} dtp_scan_ctrl_expect_e;
+
 // One data register of a downstream TAP.
 typedef struct {
   string       name;
