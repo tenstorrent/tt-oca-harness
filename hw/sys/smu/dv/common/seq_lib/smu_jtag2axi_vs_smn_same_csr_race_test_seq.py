@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI vs SMN concurrent write on the same CSR; no tear. SEP=0, no Force.
+"""JTAG2AXI vs SMN concurrent write on the same CSR; no tear. SEP=1, no Force.
 
 Concurrency is established, not assumed. The SMN writer is released only once
 the JTAG2AXI write's AW handshake has been seen on the DTP -> SMC debug port,

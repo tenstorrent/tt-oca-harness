@@ -1964,7 +1964,7 @@ contexts.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `hosted` and the three
+DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the three
 `cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
 budgets are sized for the standard runner. Nightly is not a merge gate; a red
 nightly run is a triage signal.
@@ -1973,7 +1973,7 @@ nightly run is a triage signal.
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The coverage regression the dashboard publishes. DTP `all` collects
-reference-only Verilator coverage; SEP `cpu_stub` and SMU `sep0_all` add
+reference-only Verilator coverage; SEP `cpu_stub` and SMU `hosted` add
 `--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
 runner, because their coverage-instrumented model builds exceed the standard
 runner's memory, and DTP reseeds three times on that runner. SMC `hosted` and
@@ -2028,7 +2028,7 @@ symlink.
 tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `cpu_stub` / `sep0_all` / `smoke`). Main protection
+regression group (`all` / `cpu_stub` / `hosted` / `smoke`). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke

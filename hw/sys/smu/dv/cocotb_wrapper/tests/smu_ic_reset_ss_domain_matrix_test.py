@@ -5,7 +5,7 @@
 Exercises SS_COLD0 (port 5) and SS_WARM0 (port 37) one at a time with mutual
 exclusion against fuse/warm/cool/cold and each other.
 
-Does NOT close ss_reset_complete handshake (input tied dead under SEP=0).
+Does NOT close ss_reset_complete handshake (input tied dead on this bench).
 """
 
 from __future__ import annotations

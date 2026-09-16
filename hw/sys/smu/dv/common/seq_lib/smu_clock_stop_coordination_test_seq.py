@@ -4,7 +4,7 @@
 
 DV-CARD:          SMU_ALL_006   ANCHOR: smu_clock_stop_coordination_test
 
-Allocated (SEP=0 bare tb_top):
+Allocated (wrapper):
   DTP-BOOT-STALL.S1 / S2
   DTP-IC-RESET.S1 / S3
   DTP-CLKSTOP-AGG.S1 / S2 / S3
@@ -243,7 +243,7 @@ class smu_clock_stop_coordination_test_seq:
         self._log(
             f"BASELINE: stop_clks={baseline_stop} stall_ovrd={baseline_stall_ovrd} "
             f"stall={baseline_stall} fuse_reset={baseline_fuse} "
-            f"cells=SEP=0,tb=bare"
+            f"cells=SEP=1,tb=wrapper"
         )
 
         # ------------------------------------------------------------------

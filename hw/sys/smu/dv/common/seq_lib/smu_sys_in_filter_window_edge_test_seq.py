@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR. SEP=0, no Force.
+"""SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR. SEP=1, no Force.
 
 With ALLOW_BURST set the filter compares page indices and ignores addr[11:0], so one page is
 the finest START/END step it resolves. The START edge is probed by re-programming the window

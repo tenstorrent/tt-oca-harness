@@ -1234,7 +1234,7 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
-# The fabric leaves as one group; every one is also in `sep0_all` and `all`.
+# The fabric leaves as one group; every one is also in `hosted` and `all`.
 [[groups]]
 name = "fabric"
 tests = [
@@ -2074,8 +2074,7 @@ args = [
 ]
 
 # P0 composition and bring-up leaves written against this DUT. They need no
-# firmware beyond the elaboration preloads, so the no-SEP ones also sit in
-# sep0_all. +xtrig_int_ct_mode states the XTRIG_INT_CT_MODE override the
+# firmware beyond the elaboration preloads, so they also sit in `hosted`. +xtrig_int_ct_mode states the XTRIG_INT_CT_MODE override the
 # wrapper testbench elaborates the DUT with; the Cfg decode compares the
 # elaborated value against it.
 [[tests]]
@@ -2345,7 +2344,7 @@ expected_count = 1
 # leaf here uses `elaboration` firmware (zero-filled preloads, no toolchain);
 # the SMC firmware smoke is in `smoke` for runs that have the toolchain.
 [[groups]]
-name = "smoke_sep0"
+name = "hosted_smoke"
 tests = [
   "smu_dtp_jtag_smoke_test",
   "smu_ext_boot_seq_gate_test",
@@ -2355,10 +2354,10 @@ tests = [
 # uses `elaboration` firmware, whose only products are zero-filled preload
 # images written by build_firmware.py in Python, so the group needs no RISC-V
 # toolchain and runs on a hosted runner.
-# .github/workflows/regress.yml selects it as `--dut smu --items sep0_all`;
+# .github/workflows/regress.yml selects it as `--dut smu --items hosted`;
 # keep that property when adding to it.
 [[groups]]
-name = "sep0_all"
+name = "hosted"
 tests = [
   "smu_axi_alias_remap_manager_scope_test",
   "smu_axi_atomic_operation_test",

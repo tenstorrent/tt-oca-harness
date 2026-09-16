@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: inbound filter instance independence (FAB_SMC_023 subset).
 
-SEP=0 honest scope (no sep_in / no Force):
+SEP=1 honest scope (no sep_in / no Force):
   S4  post-reset BlockByDefault DECERR on VERSION_LO (captured before CSR writes)
   S1  J2A program+readback on instances 0/1/7/14/15 (DECODE independence)
   S2  pairwise isolation: inst0 WDT page vs inst1 VERSION page + src_id
@@ -103,7 +103,7 @@ def _pack_cfg(*, allow_ns: bool, src_id: int) -> int:
 
 
 class smu_axi_filter_in_instance_matrix_test_seq:
-    """Inbound filter instance matrix S1–S5 on SEP=0 J2A + s_axi."""
+    """Inbound filter instance matrix S1–S5 on SEP=1 J2A + s_axi."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -447,5 +447,5 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         self._log(
             "CHK-FILTER-IN-INSTANCES-BASIC: "
             f"s1={self.s1_ok} s2={self.s2_ok} s3={self.s3_ok} "
-            f"s4={self.s4_ok} s5={self.s5_ok} (SEP=0 J2A+s_axi; no Force)"
+            f"s4={self.s4_ok} s5={self.s5_ok} (SEP=1 J2A+s_axi; no Force)"
         )

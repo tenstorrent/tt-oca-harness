@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SYS_IN inbound0 wide then shrink then clear. SEP=0, no Force."""
+"""SYS_IN inbound0 wide then shrink then clear. SEP=1, no Force."""
 
 from __future__ import annotations
 

@@ -12,7 +12,7 @@ BFM table), `docs/SMU_VPLAN.adoc` (what every enrolled test intends and
 checks), `docs/SMU_FCOV.adoc` (coverage intent), and the decision records
 under `hw/sys/smu/doc/dv/` (`SMU_FEATURE_LIST`, `SMU_SCOPE_TRACEABILITY`,
 `SMU_DEFERRED_DISPOSITION`, `SMU_RELEASE_MATRIX`, `SMU_COVERAGE_POLICY`,
-`SMU_SEP0_COMPONENT_SIGNOFF`). `docs/index.adoc` is the chapter set.
+`SMU_HOSTED_COMPONENT_SIGNOFF`). `docs/index.adoc` is the chapter set.
 
 ## What the bench is
 
@@ -104,13 +104,13 @@ python3 tools/dv/run_dv.py --dut smu --list
 
 # 1. PR gate. `.github/workflows/sim.yml` runs this on every hardware diff on a
 #    hosted runner (Verilator, no RISC-V toolchain): two toolchain-free leaves.
-python3 tools/dv/run_dv.py --dut smu --items smoke_sep0
+python3 tools/dv/run_dv.py --dut smu --items hosted_smoke
 
 # 2. Nightly and weekly. `.github/workflows/regress.yml` runs this as the
 #    release qualification set: 52 toolchain-free leaves, one seed nightly,
 #    three weekly with --cov on the large runner. Their `elaboration` firmware
 #    stage only writes zero-filled preload images (Python, no toolchain).
-python3 tools/dv/run_dv.py --dut smu --items sep0_all
+python3 tools/dv/run_dv.py --dut smu --items hosted
 
 # 3. The whole package: `all` adds the SEP firmware set (84 leaves). The
 #    firmware c_build stages build every image in the toolchain container
@@ -123,18 +123,18 @@ python3 tools/dv/run_dv.py --dut smu --items all
 
 `smoke` (the elaboration leaf plus `smu_smc_smoke_test` and
 `smu_sep_smoke_test`) needs the SMC and SEP firmware compiles and is the
-runner's default; `sim.yml` substitutes `smoke_sep0` for it on `smu`. The
+runner's default; `sim.yml` substitutes `hosted_smoke` for it on `smu`. The
 block bench is `python3 tools/dv/run_dv.py --dut smu_block --items all` (seven
 leaves, no toolchain; `nosep` is the five SEP=0 composition proofs); `sim.yml`
 runs its `smoke` group (one leaf) on every
 hardware PR, and `regress.yml` is the schedule of record for the rest.
 
-Groups (`testlists/wrapper.toml`): `build_smoke`, `smoke`, `smoke_sep0`,
-`sep0_all`, `all`, `fabric`, `smc_under_smu`, `dtp_under_smu`,
+Groups (`testlists/wrapper.toml`): `build_smoke`, `smoke`, `hosted_smoke`,
+`hosted`, `all`, `fabric`, `smc_under_smu`, `dtp_under_smu`,
 `needs_otp_stall`, `sep_real_fw`, `sep_lifecycle`, `sep_chain`,
 `sep_entropy`, `sep_probe`, `sep_rtl_only`, `sep_smc_sram_blocked`,
 `sep_smc_dual`, `all_with_sep_exec`. `build_smoke` ⊂ `smoke` ⊂ `all` and
-`sep0_all` ⊂ `all`; `sep0_all` and `smoke` are siblings.
+`hosted` ⊂ `all`; `hosted` and `smoke` are siblings.
 
 Results land under `build/runs/<timestamp>__<tool>__<label>/` with a per-test
 `result.json` and `results.xml`. `--seed` applies to a single item; a
@@ -304,7 +304,7 @@ feature reuses that IP bench's reference model and scoreboard through
 
 ## Enrollment
 
-`--dut smu` carries the regression: `all` is the enrolled set (84), `sep0_all`
+`--dut smu` carries the regression: `all` is the enrolled set (84), `hosted`
 is the toolchain-free subset the workflows run (52), and the rest of `all` is
 the SEP firmware set. The SEP=0 composition proofs are enrolled on `--dut smu_block`
 (`nosep`). Names outside both are classified in
