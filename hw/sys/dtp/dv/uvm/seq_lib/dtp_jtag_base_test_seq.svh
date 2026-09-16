@@ -165,7 +165,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
 
   // TAP reset with family evidence, ending in Run-Test/Idle (the VIP scan
   // contract starts IR/DR scans from RTI).
-  task reset_to_tlr();
+  virtual task reset_to_tlr();
     tap_reset_op();
     if (m_family != null) void'(m_family.check_reset_to_tlr(tb_vif.tap_state, "family TAP reset"));
     if (evidence != null)

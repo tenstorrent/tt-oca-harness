@@ -4949,29 +4949,29 @@ d. For the pipelined reads, confirm the first `pl_depth{plus}1` reads return the
 *Test Coverage*:
 
 * SELECT_IJTAG (IR=0x1A) with every SIB control bit driven to 0 yields the minimum-length scan chain
-* DR chain length equals the SIB-control bits only (3 bits for sec_dft, dft, dfd) with no instrument registers inserted
+* DR chain length equals the SIB-control bits only (3 bits for sec_dft, dft, dfd) with none of the bench's instrument stubs (4, 5, 6 bits behind sec_dft, dft, dfd) inserted
 * None of `jtag_dfd_host_scan_ctrl_o`, `jtag_dft_host_scan_ctrl_o`, `jtag_dft_secure_host_scan_ctrl_o` assert during Shift-DR
-* Closed SIBs bypass their downstream instruments so no instrument capture/update occurs
+* Closed SIBs bypass their downstream instruments so no instrument capture/update occurs, whatever disable mask is in force
 
 *Test Procedure*:
 
 [arabic]
-. Load SELECT_IJTAG (IR=0x1A) into the PTAP via `OcahJtagMasterDriver`.
-. Shift a SIB pattern with all three SIB bits = 0 and pulse Update-DR.
+. Load SELECT_IJTAG (IR=0x1A) into the PTAP via `OcahJtagMasterDriver` and program a seeded non-zero SIB pattern, so the all-off result is a transition from open SIBs.
+. Shift a composed SIB pattern with all three SIB bits = 0 and pulse Update-DR; check the captured bits against the SIB model.
 . Measure the active DR chain length.
-a. Shift a known marker pattern and count the bit delay through the chain.
-b. Verify the length equals the 3 SIB-control bits only (no instrument register widths added).
-. During Shift-DR, sample all three scan-control outputs and verify none asserts (instruments are bypassed).
-. Compare captured/update data against the OCAH-local iJTAG SIB model for the all-off configuration.
+a. Shift a seeded marker word ahead of the chain image and locate its MSB in the TDO stream.
+b. Verify the latency equals the 3 SIB-control bits only (no instrument register widths added).
+. Under a temporal window over the whole scan, verify no SIB select pulses (instruments are bypassed).
+. Repeat the all-off programming under a seeded per-SIB disable mask and verify the same outcome.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`sib_all_off_len_chk` |DR chain length equals SIB-control bits only with all instruments bypassed
-|`sib_all_off_ctrl_chk` |No DFD/DFT/secure-DFT scan-control output asserts during Shift-DR
-|`sib_all_off_data_chk` |Captured/update data matches the SIB reference model for the all-off path
+|`sib_all_off_len_chk` |`CHK-SCAN-LEN`: the marker latency through the SELECT_IJTAG chain equals the 3 SIB bits with every instrument stub bypassed
+|`sib_all_off_ctrl_chk` |`CHK-SCAN-WIN`: no DFD/DFT/secure-DFT `select` pulses during the observe scan, and a gated SIB's `shift_en`/`capture_en`/`update_en` stay quiet
+|`sib_all_off_data_chk` |`CHK-SCAN-CHAIN`: the captured SIB states (all 0) and the marker passthrough match the SIB reference model on every scan, including the transition from the seeded open set
 |===
 
 *Pass Criteria*: Chain length collapses to the SIB-control bits, all instrument scan controls stay inactive, and observed data matches the SIB reference model, with zero scoreboard/reference-model errors.
@@ -5036,34 +5036,34 @@ c. Verify chain length collapses to SIB bits only and no instrument scan control
 *Test Coverage*:
 
 * All 8 SIB on/off patterns (sec_dft x dft x dfd) walked exhaustively to close `ijtag_sib_pattern` coverage
-* Predicted chain length matches sum of (SIB bit {plus} instrument width when SIB ON and ungated, else SIB bit only)
+* Predicted chain length matches sum of (SIB bit {plus} instrument stub width when SIB ON and ungated, else SIB bit only); the stubs are 4, 5, 6 bits wide behind sec_dft, dft, dfd, so every open subset has a distinct length
 * Only enabled, ungated instruments receive their host scan-control assertions
 * Randomized per-SIB disables (`dft_secure`, `dft_nonsecure`, `dfd`) force gated SIBs closed regardless of scan pattern
-* Capture/update data tracks the SIB reference model across mixed configurations
+* Capture/update data tracks the SIB reference model across mixed configurations: a SIB captures its effective state, an open instrument stub captures the value the previous scan latched into it
 
 *Test Procedure*:
 
 [arabic]
 . Load SELECT_IJTAG (IR=0x1A) via `OcahJtagMasterDriver`.
 . Walk all 8 SIB patterns exhaustively:
-a. Shift each (sec_dft, dft, dfd) pattern; Update-DR.
-b. Measure chain length and verify it equals SIB bits plus the widths of enabled instruments.
-c. Verify scan-control outputs assert only for the enabled instruments.
-. For N additional randomized iterations (e.g., 20):
+a. Shift each (sec_dft, dft, dfd) pattern composed over the current chain, with seeded values for the instruments already open; Update-DR.
+b. Shift a seeded marker word ahead of the chain image, locate its MSB in the TDO stream, and verify the latency equals SIB bits plus the widths of enabled instruments.
+c. Under a temporal window over that scan, verify `select` pulses only for the enabled instruments.
+. For 16 additional randomized iterations:
 a. Drive a random per-SIB disable mask and a random SIB pattern; Update-DR.
 b. Verify gated SIBs (those with their `dbg_disable_i` field asserted) stay closed despite the requested pattern.
 c. Verify chain length accounts for forced-closed SIBs and only non-gated enabled instruments receive scan control.
-. Compare all captured/update data against the OCAH-local SIB model for each configuration.
+. Compare the captured bits of every scan against the OCAH-local SIB model for each configuration.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`sib_random_len_chk` |Chain length matches predicted SIB-bit {plus} ungated-instrument-width sum
-|`sib_random_ctrl_chk` |Scan control asserts only for enabled, ungated instruments
-|`sib_random_gate_chk` |Security-gated SIBs forced closed under random disable masks
-|`sib_random_data_chk` |Captured/update data matches SIB reference model across all patterns
+|`sib_random_len_chk` |`CHK-SCAN-LEN`: the marker latency through the SELECT_IJTAG chain matches the predicted SIB-bit {plus} ungated-instrument-width sum
+|`sib_random_ctrl_chk` |`CHK-SCAN-WIN`: `select` pulses only for enabled, ungated instruments; a closed SIB's `select` never pulses
+|`sib_random_gate_chk` |`CHK-SCAN-WIN` and `CHK-SCAN-CHAIN`: a gated SIB's `select`/`shift_en`/`capture_en`/`update_en` never pulse and it captures closed under random disable masks
+|`sib_random_data_chk` |`CHK-SCAN-CHAIN`: the captured SIB states and instrument registers, and the marker passthrough, match the SIB reference model on every scan
 |===
 
 *Pass Criteria*: All 8 SIB patterns plus randomized security combinations yield correct chain lengths, scan-control assertions, and gating behavior matching the reference model, with zero scoreboard/reference-model errors.
@@ -5402,29 +5402,32 @@ c. Clear the disable without reset and verify scan control and the data path are
 *Test Coverage*:
 
 * CONFIG_HOLD in both PTAP_3DCR and STAP 3DCR protects register contents across Test-Logic-Reset (TLR)
-* With CONFIG_HOLD=1, SELECT (PTAP) and SELECT/TMS_HOLD (STAP) survive a forced TLR
+* With CONFIG_HOLD=1, SELECT (PTAP) and SELECT/TMS_HOLD (STAP) survive a forced TLR; TRST clears them regardless
 * With CONFIG_HOLD=0, a TLR clears the affected 3DCR fields to 0
-* Configuration values are exercised through `OcahJtagMasterDriver` IR/DR scans against the STAP reference model
+* Configuration values are exercised through composed TAP_3DCR chain scans (`OcahJtagMasterDriver`) against the STAP reference model, for every STAP in a seeded order, with a seeded STAP SELECT so the retained selection is proved spliced and unspliced
 
 *Test Procedure*:
 
 [arabic]
-. Write PTAP_3DCR with CONFIG_HOLD=1, SELECT=1; Update-DR.
-. Write the STAP 3DCR with CONFIG_HOLD=1, SELECT=1, TMS_HOLD=1; Update-DR.
-. Force TLR (5x TMS=1).
-a. Read PTAP_3DCR and verify SELECT=1 preserved.
-b. Read the STAP 3DCR and verify SELECT=1 and TMS_HOLD=1 preserved.
-. Clear CONFIG_HOLD=0 in both PTAP and STAP 3DCRs; force TLR again.
-a. Read both 3DCRs and verify all bits cleared to 0.
+. Flush the chain; write PTAP_3DCR with CONFIG_HOLD=h, SELECT=1 and open the STAP's SIB; Update-DR.
+. Write the STAP 3DCR with CONFIG_HOLD=h, a seeded SELECT, TMS_HOLD=1; Update-DR.
+. Force TLR (5x TMS=1), or TRST for the TRST sub-case; the IR returns to IDCODE.
+. Reload TAP_3DCR with a composed IR scan (every IR scan shifts through the STAP chain).
+a. With the PTAP SELECT retained (h=1 across TLR), a maintain scan returns the chain: verify the captured PTAP SELECT=1 and CONFIG_HOLD=1.
+b. With the PTAP SELECT cleared (h=0, or TRST), TDO carries the PTAP 3DCR itself: verify both bits read 0 and that a marker shifted behind them arrives two bits later (the chain return would delay it by the chain length).
+. Re-select the PTAP and reopen the STAP's SIB; a maintain scan then carries the STAP 3DCR.
+a. h=1 across TLR: verify SELECT and TMS_HOLD read back as written.
+b. h=0 across TLR, or TRST: verify every STAP 3DCR field reads 0.
+. Repeat the three sub-cases (h=1+TLR, h=0+TLR, h=1+TRST) in a seeded order for every STAP.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`config_hold_preserve_chk` |CONFIG_HOLD=1 preserves PTAP SELECT and STAP SELECT/TMS_HOLD across TLR
-|`config_hold_clear_chk` |CONFIG_HOLD=0 lets TLR clear the 3DCR fields to 0
-|`config_hold_data_chk` |3DCR readback through `OcahJtagMasterDriver` matches the STAP reference model
+|`config_hold_preserve_chk` |`CHK-SCAN-CHAIN`: with CONFIG_HOLD=1 the maintain scans after TLR capture PTAP SELECT=1/CONFIG_HOLD=1 and the STAP's written SELECT/TMS_HOLD
+|`config_hold_clear_chk` |`CHK-SCAN-OBS` and `CHK-SCAN-CHAIN`: with CONFIG_HOLD=0 the PTAP 3DCR reads 0 over the TDR return path after TLR (marker position proves the path) and the reopened STAP 3DCR captures 0; TRST clears both regardless of CONFIG_HOLD
+|`config_hold_data_chk` |`CHK-SCAN-CHAIN`: every chain readback (PTAP 3DCR, SIB, STAP 3DCR fields) matches the STAP reference model's predicted capture after each reset
 |===
 
 *Pass Criteria*: CONFIG_HOLD=1 holds both 3DCRs across TLR while CONFIG_HOLD=0 allows TLR to clear them, matching the reference model, with zero scoreboard/reference-model errors.
@@ -5444,28 +5447,30 @@ a. Read both 3DCRs and verify all bits cleared to 0.
 
 * TMS_HOLD field in the STAP 3DCR sets the parked TMS value driven to a deselected STAP
 * TMS_HOLD=1 parks the deselected STAP TMS high (drives toward TLR); TMS_HOLD=0 parks it low (drives toward RTI)
-* Parked value is observed on the STAP TAP control output while the STAP is deselected (SELECT=0)
-* Both TMS_HOLD polarities are exercised through `OcahJtagMasterDriver` 3DCR scans
+* Parked value is observed on the STAP TAP control output (`jtag_stap_<x>_tms`) for a whole maintain scan while the STAP is deselected (SELECT=0); the deselected port never drives `tdo_oen`
+* Both TMS_HOLD polarities are exercised for every STAP, in a seeded order, through composed TAP_3DCR chain scans (`OcahJtagMasterDriver`)
 
 *Test Procedure*:
 
 [arabic]
-. Select a STAP via the 3DCR (SELECT=1, TMS_HOLD=1); Update-DR.
-. Deselect the STAP (SELECT=0, TMS_HOLD=1); Update-DR.
-a. Verify the STAP TAP control output drives TMS=1 (parked high toward TLR).
-. Repeat with TMS_HOLD=0:
-a. Select then deselect the STAP with TMS_HOLD=0; Update-DR.
-b. Verify the STAP TAP control output drives TMS=0 (parked low toward RTI).
-. Confirm the parked TMS tracks the configured TMS_HOLD against the STAP reference model.
+. Flush the chain, set the PTAP SELECT, and open the STAP's SIB; Update-DR.
+. Select the STAP via its 3DCR (SELECT=1, TMS_HOLD=h); Update-DR.
+. Deselect the STAP (SELECT=0, TMS_HOLD=h); Update-DR.
+. Under a temporal window over a maintain scan, count `jtag_stap_<x>_tms` and `jtag_stap_<x>_tdo_oen` high samples per TCK cycle.
+a. h=1: TMS is high on every cycle (parked high toward TLR).
+b. h=0: TMS is never high (parked low toward RTI).
+c. `tdo_oen` never pulses.
+. Compare the maintain scan's captured chain (SIB, SELECT=0, TMS_HOLD=h) against the STAP reference model.
+. Repeat for h in {1, 0} in a seeded order and for every STAP in a seeded order.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`tms_hold_high_chk` |Deselected STAP TMS parks high (TLR) when TMS_HOLD=1
-|`tms_hold_low_chk` |Deselected STAP TMS parks low (RTI) when TMS_HOLD=0
-|`tms_hold_data_chk` |Parked TMS value matches the STAP reference model for each polarity
+|`tms_hold_high_chk` |`CHK-SCAN-WIN`: with TMS_HOLD=1 the deselected STAP's TMS count equals the window's TCK count and `tdo_oen` stays quiet
+|`tms_hold_low_chk` |`CHK-SCAN-WIN`: with TMS_HOLD=0 the deselected STAP's TMS count is 0 and `tdo_oen` stays quiet
+|`tms_hold_data_chk` |`CHK-SCAN-CHAIN`: the maintain scan's captured 3DCR (SELECT=0, TMS_HOLD=h) matches the STAP reference model, which also supplies the expected parked polarity
 |===
 
 *Pass Criteria*: A deselected STAP parks its TMS at the configured TMS_HOLD value for both polarities, matching the reference model, with zero scoreboard/reference-model errors.

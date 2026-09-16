@@ -33,8 +33,12 @@
 // the decoded {tms,trst_n,tck} struct plus tdi/tdo -- effectively raw JTAG
 // pins.
 //
-// The BSR/iJTAG scan chains are looped back (scan_in = scan_out). Each STAP
-// host port loops its TDO back onto its TDI by default; the per-port
+// The BSR scan chain is looped back (scan_in = scan_out). Each iJTAG SIB
+// drives an instrument stub: a scan register of a distinct width (4, 5, 6
+// bits) that captures its own update register, so open-SIB subsets have
+// unique chain lengths and a value written through an open SIB reads back
+// on the next scan. Each STAP host port loops its TDO back onto its TDI by
+// default; the per-port
 // dtp_scan_if.stap_<x>_ds_en instead splices the downstream ocah_jtag_if
 // TAP behind the port, so the STAP-selection scenarios prove forwarding
 // against a real IEEE 1149.1 device. The JTAG2AXI and SMC/SEP OTP AXI-Lite
@@ -315,9 +319,10 @@ module dtp_uvm_top
   assign jtag_tdo_oen = jtag_ptap_client_tdo_oen;
 
   // ------------------------------------------------------------------
-  // STAP / iJTAG scan-chain loopback nets (zero-length passthrough)
+  // Scan-chain nets: boundary scan and the extended STAP scan loop
+  // scan_in <- scan_out (zero-length passthrough); each iJTAG host scan
+  // chain runs through an instrument stub.
   // ------------------------------------------------------------------
-  // Boundary scan + extended scan + iJTAG: loop scan_in <- scan_out.
   jtag_scan_ctrl_t jtag_bsr_host_scan_ctrl;
   jtag_scan_ctrl_t jtag_stap_host_scan_ctrl;
   jtag_scan_ctrl_t jtag_dfd_host_scan_ctrl;
@@ -326,8 +331,56 @@ module dtp_uvm_top
   logic bsr_scan_out;
   logic stap_host_scan_out;
   logic dfd_scan_out;
+  logic dfd_scan_in;
   logic dft_secure_scan_out;
+  logic dft_secure_scan_in;
   logic dft_scan_out;
+  logic dft_scan_in;
+
+  // iJTAG instrument stubs, one per SIB host chain. Distinct widths give
+  // every open-SIB subset a unique chain length; each stub captures its own
+  // update register, so the value shifted through an open SIB on one scan
+  // is the capture of the next. The widths are mirrored in the scan models
+  // (env/dtp_scan_ref_model.py, dtp_types.svh).
+  localparam int unsigned IjtagDftSecureInstrumentWidth = 4;
+  localparam int unsigned IjtagDftInstrumentWidth = 5;
+  localparam int unsigned IjtagDfdInstrumentWidth = 6;
+  logic [IjtagDftSecureInstrumentWidth-1:0] dft_secure_instrument_q;
+  logic [IjtagDftInstrumentWidth-1:0] dft_instrument_q;
+  logic [IjtagDfdInstrumentWidth-1:0] dfd_instrument_q;
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDftSecureInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dft_secure_instrument (
+    .scan_ctrl_i(jtag_dft_secure_host_scan_ctrl),
+    .scan_in_i  (dft_secure_scan_out),
+    .scan_out_o (dft_secure_scan_in),
+    .data_in_i  (dft_secure_instrument_q),
+    .data_out_o (dft_secure_instrument_q)
+  );
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDftInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dft_instrument (
+    .scan_ctrl_i(jtag_dft_host_scan_ctrl),
+    .scan_in_i  (dft_scan_out),
+    .scan_out_o (dft_scan_in),
+    .data_in_i  (dft_instrument_q),
+    .data_out_o (dft_instrument_q)
+  );
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDfdInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dfd_instrument (
+    .scan_ctrl_i(jtag_dfd_host_scan_ctrl),
+    .scan_in_i  (dfd_scan_out),
+    .scan_out_o (dfd_scan_in),
+    .data_in_i  (dfd_instrument_q),
+    .data_out_o (dfd_instrument_q)
+  );
 
   // STAP TAP host ports: tdi <- tdo loopback, or the attached downstream
   // TAP's TDO when the port's ds_en is set.
@@ -709,19 +762,19 @@ module dtp_uvm_top
     .jtag_stap_host_scan_in_i         (stap_host_scan_out),
     .jtag_stap_host_scan_out_o        (stap_host_scan_out),
 
-    // External DFD iJTAG scan (loopback)
+    // External DFD iJTAG scan (instrument stub)
     .jtag_dfd_host_scan_ctrl_o        (jtag_dfd_host_scan_ctrl),
-    .jtag_dfd_host_scan_in_i          (dfd_scan_out),
+    .jtag_dfd_host_scan_in_i          (dfd_scan_in),
     .jtag_dfd_host_scan_out_o         (dfd_scan_out),
 
-    // External secure DFT iJTAG scan (loopback)
+    // External secure DFT iJTAG scan (instrument stub)
     .jtag_dft_secure_host_scan_ctrl_o (jtag_dft_secure_host_scan_ctrl),
-    .jtag_dft_secure_host_scan_in_i   (dft_secure_scan_out),
+    .jtag_dft_secure_host_scan_in_i   (dft_secure_scan_in),
     .jtag_dft_secure_host_scan_out_o  (dft_secure_scan_out),
 
-    // External non-secure DFT iJTAG scan (loopback)
+    // External non-secure DFT iJTAG scan (instrument stub)
     .jtag_dft_host_scan_ctrl_o        (jtag_dft_host_scan_ctrl),
-    .jtag_dft_host_scan_in_i          (dft_scan_out),
+    .jtag_dft_host_scan_in_i          (dft_scan_in),
     .jtag_dft_host_scan_out_o         (dft_scan_out),
 
     // SMC fabric debug AXI manager -> shared AXI responder (flattened above)

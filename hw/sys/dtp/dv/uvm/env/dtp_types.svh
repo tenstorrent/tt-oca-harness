@@ -517,6 +517,15 @@ typedef enum int unsigned {
 } dtp_stap_e;
 
 localparam int unsigned DtpIjtagSibCount = 3;
+// Instrument stub widths behind each SIB (tb_top), dtp_ijtag_sib_e order:
+// every subset of open SIBs sums to a distinct chain length.
+localparam int unsigned DtpIjtagInstrumentWidths[DtpIjtagSibCount] = '{4, 5, 6};
+localparam int unsigned DtpIjtagChainLenMax = DtpIjtagSibCount + 4 + 5 + 6;
+// A latency-measuring scan shifts a marker word ahead of the chain's
+// maintain image; the marker's MSB is set, so the stream's highest set bit
+// lands at chain_len + DtpScanMarkerWidth - 1.
+localparam int unsigned DtpScanMarkerWidth = 16;
+localparam int unsigned DtpIjtagObserveScanWidth = 40;
 localparam int unsigned DtpStapCount = 4;
 localparam int unsigned DtpPtapIrWidth = DtpIrWidth;
 // IEEE 1149.1: a TAP's IR capture presents 01 in its two LSBs.
