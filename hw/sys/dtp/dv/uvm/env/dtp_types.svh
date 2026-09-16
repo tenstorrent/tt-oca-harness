@@ -118,6 +118,8 @@ localparam int unsigned DtpJtag2AxiCapsLen = 14;
 // Evidence ID of the per-pass geometry gate every JTAG2AXI scenario records.
 localparam string DtpJ2aGeometryCheckId = "CHK-J2A-GEOMETRY";
 localparam string DtpJ2aStatusBitCheckId = "CHK-J2A-STATUS-BIT";
+localparam string DtpJ2aErrRdataCheckId = "CHK-J2A-ERR-RDATA";
+localparam string DtpJ2aSeriesAddrCheckId = "CHK-J2A-SERIES-ADDR";
 // Reset-abort scenario evidence: the bridge observed mid-flight before the
 // reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
 // escaped write, and a recovered status.

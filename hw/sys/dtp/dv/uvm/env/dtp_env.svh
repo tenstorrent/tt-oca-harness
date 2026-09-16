@@ -17,7 +17,9 @@
 //   * one passive ocah_axi_env per observed port (monitor, reference model,
 //     scoreboard, evidence; monitor-only on the XTRIG CSR port, whose
 //     volatile status and reset-cleared selects the memory-shadow model
-//     cannot describe: the DTP scoreboard's xtrig_csr feature owns that);
+//     cannot describe: the DTP scoreboard's xtrig_csr feature owns that),
+//     each bridge port's stream also feeding a dtp_axi_read_history the
+//     JTAG2AXI sequences compare SINGLE_OP captures against;
 //   * one ocah_jtag_slave_agent per STAP host port as the downstream TAP the
 //     tests may splice behind it (dtp_scan_if.stap_<x>_ds_en; default keeps
 //     the wire loopback), with the device map from dtp_types;
@@ -71,6 +73,9 @@ class dtp_env extends ocah_env;
   ocah_axi_env    m_smc_axi_env;
   ocah_axi_config m_xtrig_axi_cfg;
   ocah_axi_env    m_xtrig_axi_env;
+
+  // Observed-read history per bridge port, keyed by target name.
+  dtp_axi_read_history m_axi_read_history[string];
 
   // Active shared-VIP AXI master: the XTRIG CSR AXI-Lite initiator.
   ocah_axi_master_config m_xtrig_master_cfg;
@@ -215,6 +220,13 @@ class dtp_env extends ocah_env;
     m_scan_window.scan_vif = scan_vif;
 
     m_scan_builder = ocah_jtag_scan_builder::type_id::create("m_scan_builder", this);
+
+    m_axi_read_history["smc_otp"] =
+        dtp_axi_read_history::type_id::create("m_smc_otp_read_history", this);
+    m_axi_read_history["sep_otp"] =
+        dtp_axi_read_history::type_id::create("m_sep_otp_read_history", this);
+    m_axi_read_history["smc_axi"] =
+        dtp_axi_read_history::type_id::create("m_smc_axi_read_history", this);
   endfunction
 
   // One reference model per scoreboard feature; each reads the TB
@@ -294,6 +306,7 @@ class dtp_env extends ocah_env;
     port_env.item_ap.connect(m_jtag2axi_req_ref_model.axi_export);
     port_env.item_ap.connect(m_jtag2axi_status_ref_model.axi_export);
     port_env.item_ap.connect(m_scoreboard.jtag2axi_req_observed_export);
+    port_env.item_ap.connect(m_axi_read_history[target].analysis_export);
   endfunction
 
   // One passive shared-VIP AXI observer: geometry, identity, evidence

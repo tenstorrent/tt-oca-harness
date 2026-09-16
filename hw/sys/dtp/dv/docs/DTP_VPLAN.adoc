@@ -217,9 +217,9 @@ selectable in the public testlists.
 |`dtp_jtag2axi_backpressure_abort_at_data_w_test` |`dtp_jtag2axi_backpressure_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Reset abort around data phase
 |`dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test` |`dtp_jtag2axi_cdc_clear_abort_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Narrow reset during transaction
 |`dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test` |`dtp_jtag2axi_cdc_clear_abort_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Back-to-back CDC reset recovery
-|`dtp_jtag2axi_decode_error_decerr_write_test` |`dtp_jtag2axi_decode_err_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |CTN default-slave write DECERR
-|`dtp_jtag2axi_decode_error_decerr_read_test` |`dtp_jtag2axi_decode_err_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |CTN default-slave read DECERR
-|`dtp_jtag2axi_decode_error_mixed_test` |`dtp_jtag2axi_decode_err_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |Mixed mapped/unmapped accesses
+|`dtp_jtag2axi_decode_error_decerr_write_test` |`dtp_jtag2axi_decode_err_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Bridge write DECERR handling, response injected by the responder, all three targets
+|`dtp_jtag2axi_decode_error_decerr_read_test` |`dtp_jtag2axi_decode_err_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Bridge read DECERR handling, response injected by the responder, all three targets
+|`dtp_jtag2axi_decode_error_mixed_test` |`dtp_jtag2axi_decode_err_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Interleaved clean and DECERR-faulted accesses on every bridge
 |`dtp_jtag2axi_series_corner_all_bridges_test` |`dtp_jtag2axi_series_corner_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Series corner cases across all bridges
 |`dtp_jtag2axi_dbg_disable_matrix_test` |`dtp_jtag2axi_dbg_disable_matrix_test` |`ocah_jtag_vip`, `ocah_axi_vip` |Debug-disable matrix over the three JTAG2AXI bridge gate fields
 |===
@@ -1771,8 +1771,8 @@ b. Confirm no writes landed outside the addressed range.
 *Test Coverage*:
 
 * A SERIES_DATA_INCR write stream with `size=2` (32-bit) whose base address is beat-aligned plus four bytes
-* AXI WSTRB and WDATA placed on the high 32-bit lanes of the 64-bit SMC fabric beat (`WSTRB=0xF0`, data in `[63:32]`)
-* Distinct 32-bit payload per address landing at `base+i*4` in the `OcahAxiSlaveAgent` subordinate (no low-lane aliasing)
+* AXI WSTRB and WDATA placed on the lanes each beat's address selects within the 64-bit SMC fabric beat: `WSTRB=0xF0` with data in `[63:32]` at +4, `WSTRB=0x0F` with data in `[31:0]` at +0, alternating as the address advances
+* Distinct 32-bit payload per address landing at `base+i*4` in the `OcahAxiSlaveAgent` subordinate (no low-lane aliasing); the low word beside the first beat holds a sentinel the stream never targets
 * Address advance of four bytes per beat, consistent with `AxSIZE=2`
 
 *Test Procedure*:
@@ -1780,13 +1780,14 @@ b. Confirm no writes landed outside the addressed range.
 [arabic]
 . Establish the series parameters:
 a. Choose a beat-aligned base, add four, set stride to four bytes, and choose a beat count N.
-b. Build a per-beat 32-bit data pattern and mirror each expected write in a reference memory at the size-aligned address.
+b. Build a per-beat 32-bit data pattern, mirror each expected write in a reference memory at the size-aligned address, and preload a sentinel in the low word of the first beat's 64-bit slot.
 . Issue the incrementing write series:
 a. Load SMC_AXI_SERIES_CTRL with `op=Write`, `size=2`, and the +4 base; Update-DR.
-b. For each beat i in 0..N-1: shift the i-th 32-bit payload through SERIES_DATA_INCR; Update-DR.
+b. For each beat i in 0..N-1: arm the strobe intent `0xF << (addr mod 8)` for `base+i*4`, then shift the i-th 32-bit payload through SERIES_DATA_INCR; Update-DR.
 c. After each Update-DR, wait for the corresponding AXI write handshake and confirm the responder holds the payload at `base+i*4`.
-. Verify SERIES_CTRL capture:
-a. Confirm status is OKAY and the captured address equals `base+N*4`.
+. Verify the stream footprint and the SERIES_CTRL capture:
+a. Confirm the sentinel word and every beat's word are unchanged after the stream.
+b. Confirm status is OKAY and the captured address equals `base+N*4`.
 
 *Checkers*:
 
@@ -1794,11 +1795,11 @@ a. Confirm status is OKAY and the captured address equals `base+N*4`.
 |===
 |Checker |Description
 |`smc_axi_wr_incr_narrow_status_chk` |Every beat returns OKAY after Busy
-|`smc_axi_wr_incr_narrow_lane_chk` |Each write uses the AXI byte lanes selected by the current address (`WSTRB=0xF0` at +4)
-|`smc_axi_wr_incr_narrow_data_chk` |Each size-aligned address holds its distinct 32-bit payload
+|`smc_axi_wr_incr_narrow_lane_chk` |`CHK-AXI-STRB`: each observed write's strobes equal the stimulus intent `0xF << (addr mod 8)` (`0xF0` at +4, `0x0F` at +0), and the sentinel word beside the stream is unchanged
+|`smc_axi_wr_incr_narrow_data_chk` |Each size-aligned address holds its distinct 32-bit payload, after its own beat and after the whole stream
 |===
 
-*Pass Criteria*: All N 32-bit incrementing writes complete with OKAY status, land on the address-selected AXI lanes, and each target address holds its expected data, with zero scoreboard/reference-model errors.
+*Pass Criteria*: All N 32-bit incrementing writes complete with OKAY status, drive the strobes of the address-selected AXI lanes, leave the sentinel untouched, and each target address holds its expected data, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1958,7 +1959,7 @@ a. Read back / inspect the `OcahAxiSlaveAgent` subordinate and compare every wri
 a. With all disables clear, issue one SMC_AXI_SINGLE_OP write (IR=0x28, op=0b10) and verify op = 0b00 (OKAY) and the `OcahAxiSlaveAgent` subordinate captured it.
 . Gate (per pass, twice):
 a. Assert `dbg_disable_i.smc_jtag2axi = 1` and settle four toggling TCK cycles.
-b. Preload a RAM sentinel at the gated address, load SMC_AXI_SINGLE_OP (IR=0x28), and shift a write request.
+b. Preload a RAM sentinel at the gated address, load SMC_AXI_SINGLE_OP (IR=0x28), and shift a full-strobe write request whose data differs from the sentinel.
 c. Verify no AW/W transaction is issued on `axi_smc_dbg_req_o` and the sentinel is unchanged.
 d. Clear the disable without reset; verify the sentinel is still unchanged (no delayed replay), then verify a legal write again completes with OKAY.
 
@@ -1968,7 +1969,7 @@ d. Clear the disable without reset; verify the sentinel is still unchanged (no d
 |===
 |Checker |Description
 |`smc_axi_gate_no_traffic_chk` |No AXI write appears on `axi_smc_dbg_req_o` while gated
-|`smc_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay)
+|`smc_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay); the gated request carries all-ones strobes, so a leaked write overwrites it
 |`smc_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
 
@@ -3497,18 +3498,18 @@ b. Update-DR to launch the AXI4 transaction on `axi_smc_dbg_req_o`.
 
 * JTAG2AXI single-op read through the SMC fabric AXI4 debug bridge (IR=0x28) targeting an error-generating region
 * AXI4 subordinate returns a non-OKAY read response (RRESP = SLVERR or DECERR) captured in op[1:0] (0b01 / 0b10)
-* Read-data field is ignored or held at the bridge-defined value when the response is non-OKAY
+* The read-data field returns the RDATA of the errored beat: the bridge latches the beat's data with its status, so the capture equals the word the subordinate drove on that beat and not the value preloaded in the slot
 * Bridge recovers: a following legal read returns correct data with OKAY
 
 *Test Procedure*:
 
 [arabic]
-. Configure the `ocah_axi_vip` AXI4 subordinate to return SLVERR or DECERR on reads to the error region.
+. Preload a nonzero word in the error slot and configure the `ocah_axi_vip` AXI4 subordinate to return SLVERR or DECERR on reads to the error region.
 . Load SMC_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x28):
 a. Shift in the error-region target address, data = 0, wstrb = 0, size, op = 0b01 (Read).
 b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 . Poll the op-status via Capture-DR/Shift-DR until not Busy.
-. Verify op[1:0] reflects the injected error code and that the read-data field is treated as invalid (ignored / defined value).
+. Verify op[1:0] reflects the injected error code and that the read-data field equals the RDATA the passive monitor observed on the errored beat, differing from the preloaded slot value.
 . Issue a single-op read to a known-good address holding a reference value; verify OKAY and matching read data, proving recovery.
 
 *Checkers*:
@@ -3516,12 +3517,12 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`smc_axi_err_single_rd_status_chk` |Op-status reports the injected SLVERR/DECERR read-response code
-|`smc_axi_err_single_rd_rdata_chk` |Returned read data is ignored/held to the defined value on error
-|`smc_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
+|`smc_axi_err_single_rd_status_chk` |`CHK-J2A-FAULT-STATUS`: op-status reports the injected SLVERR/DECERR read-response code
+|`smc_axi_err_single_rd_rdata_chk` |`CHK-J2A-ERR-RDATA`: returned read data equals the RDATA returned on the errored beat and differs from the preloaded slot value
+|`smc_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY (`CHK-AXI-RDATA`)
 |===
 
-*Pass Criteria*: The single read error is reported in the op-status, the read-data field is handled per spec, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The single read error is reported in the op-status, the read-data field carries the errored beat's RDATA, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -3657,9 +3658,9 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 *Test Coverage*:
 
 * JTAG2AXI incrementing-address read series through the SMC fabric AXI4 bridge, carried by SMC_AXI_SERIES_CTRL (IR=0x29) and SMC_AXI_SERIES_DATA_INCR (IR=0x2A)
-* One address in the auto-incrementing range returns SLVERR/DECERR mid-series
-* Good beats before the fault return reference data at their incremented addresses
-* SERIES_CTRL status matches the injected fault; bridge recovers afterward
+* One beat of the stream returns SLVERR/DECERR mid-series; SERIES_CTRL is programmed with each beat's absolute address, since the bridge admits `pipeline_depth+1` plain read pushes per programming, and every beat's SERIES_CTRL capture proves the auto-increment
+* Good beats return reference data at their addresses
+* The SERIES_CTRL capture after every beat holds the beat address plus one stride, and after the failing beat its status matches the injected fault; bridge recovers afterward
 
 *Test Procedure*:
 
@@ -3667,8 +3668,8 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 . Pre-load the `ocah_axi_vip` subordinate with reference data across the address range and configure a non-OKAY response at one address.
 . For each beat i: load SMC_AXI_SERIES_CTRL (IR=0x29) with op=0b01 (Read), size, and address base{plus}i*stride; Update-DR.
 . Shift SMC_AXI_SERIES_DATA_INCR (IR=0x2A) once to launch the read and wait for the AXI read handshake; shift it again to capture the returned beat.
-. After the faulting beat, capture SMC_AXI_SERIES_CTRL and read its status field.
-. Verify good beats return the reference data at their incremented addresses, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's read data treated as invalid, and the address progression matches the expected increment.
+. After every beat, capture SMC_AXI_SERIES_CTRL: its address field must equal base{plus}i*stride{plus}stride, and after the faulting beat its status field must carry the injected code.
+. Verify good beats return the reference data at their addresses, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's read data treated as invalid, and every capture's address matches the expected increment.
 . Issue a follow-up legal SMC_AXI_SINGLE_OP (IR=0x28) read; verify OKAY and correct data, proving recovery.
 
 *Checkers*:
@@ -3676,12 +3677,13 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`smc_axi_err_incr_rd_status_chk` |SERIES_CTRL status captured after the failing read beat carries the injected error code
-|`smc_axi_err_incr_rd_rdata_chk` |Good beats match the incremented-address reference data
+|`smc_axi_err_incr_rd_status_chk` |`CHK-J2A-FAULT-STATUS`: SERIES_CTRL status captured after the failing read beat carries the injected error code
+|`smc_axi_err_incr_rd_addr_chk` |`CHK-J2A-SERIES-ADDR`: the SERIES_CTRL capture after each beat holds that beat's address plus one stride (the launched read advances the address, errored or not)
+|`smc_axi_err_incr_rd_rdata_chk` |Good beats match the reference data at their addresses
 |`smc_axi_err_incr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
-*Pass Criteria*: Good beats match the expected incrementing-address references, the failing beat reports the injected error, and the bridge recovers, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Good beats match the expected references, every SERIES_CTRL capture shows the incremented address, the failing beat reports the injected error, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -3858,18 +3860,18 @@ b. Update-DR to launch the AXI4-Lite transaction on `axil_smc_otp_jtag_req_o`.
 
 * JTAG2AXI single-op read through the SMC OTP AXI4-Lite bridge (IR=0x1C) targeting an error region
 * AXI4-Lite subordinate returns a non-OKAY read response (SLVERR/DECERR) captured in op[1:0]
-* Read-data field is ignored or held at the bridge-defined value on a non-OKAY response
+* The read-data field returns the RDATA of the errored beat: the bridge latches the beat's data with its status, so the capture equals the word the subordinate drove on that beat and not the value preloaded in the slot
 * Bridge recovers: a following legal read returns correct data with OKAY
 
 *Test Procedure*:
 
 [arabic]
-. Configure the `ocah_axi_vip` AXI4-Lite subordinate to return SLVERR/DECERR on reads to the error region.
+. Preload a nonzero word in the error slot and configure the `ocah_axi_vip` AXI4-Lite subordinate to return SLVERR/DECERR on reads to the error region.
 . Load SMC_OTP_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x1C):
 a. Shift in the 32-bit error-region address, data = 0, wstrb = 0, op = 0b01 (Read).
 b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 . Poll the op-status until not Busy.
-. Verify op[1:0] reflects the injected error code and the read-data field is treated as invalid.
+. Verify op[1:0] reflects the injected error code and the read-data field equals the RDATA the passive monitor observed on the errored beat, differing from the preloaded slot value.
 . Issue a single-op read to a known-good address holding a reference value; verify OKAY and matching data, proving recovery.
 
 *Checkers*:
@@ -3877,12 +3879,12 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`smc_otp_axi_err_single_rd_status_chk` |Op-status reports the injected SLVERR/DECERR read-response code
-|`smc_otp_axi_err_single_rd_rdata_chk` |Returned read data is ignored/held to the defined value on error
-|`smc_otp_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
+|`smc_otp_axi_err_single_rd_status_chk` |`CHK-J2A-FAULT-STATUS`: op-status reports the injected SLVERR/DECERR read-response code
+|`smc_otp_axi_err_single_rd_rdata_chk` |`CHK-J2A-ERR-RDATA`: returned read data equals the RDATA returned on the errored beat and differs from the preloaded slot value
+|`smc_otp_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY (`CHK-AXI-RDATA`)
 |===
 
-*Pass Criteria*: The single read error is reported in the op-status, the read-data field is handled per spec, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The single read error is reported in the op-status, the read-data field carries the errored beat's RDATA, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4219,18 +4221,18 @@ b. Update-DR to launch the AXI4-Lite transaction on `axil_sep_otp_jtag_req_o`.
 
 * JTAG2AXI single-op read through the SEP OTP AXI4-Lite bridge (IR=0x22) targeting an error region
 * AXI4-Lite subordinate returns a non-OKAY read response (SLVERR/DECERR) captured in op[1:0]
-* Read-data field is ignored or held at the bridge-defined value on a non-OKAY response
+* The read-data field returns the RDATA of the errored beat: the bridge latches the beat's data with its status, so the capture equals the word the subordinate drove on that beat and not the value preloaded in the slot
 * Bridge recovers: a following legal read returns correct data with OKAY
 
 *Test Procedure*:
 
 [arabic]
-. Configure the `ocah_axi_vip` AXI4-Lite subordinate to return SLVERR/DECERR on reads to the error region.
+. Preload a nonzero word in the error slot and configure the `ocah_axi_vip` AXI4-Lite subordinate to return SLVERR/DECERR on reads to the error region.
 . Load SEP_OTP_AXI_SINGLE_OP via `OcahJtagMasterDriver` (IR=0x22):
 a. Shift in the 32-bit error-region address, data = 0, wstrb = 0, op = 0b01 (Read).
 b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 . Poll the op-status until not Busy.
-. Verify op[1:0] reflects the injected error code and the read-data field is treated as invalid.
+. Verify op[1:0] reflects the injected error code and the read-data field equals the RDATA the passive monitor observed on the errored beat, differing from the preloaded slot value.
 . Issue a single-op read to a known-good address holding a reference value; verify OKAY and matching data, proving recovery.
 
 *Checkers*:
@@ -4238,12 +4240,12 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`sep_otp_axi_err_single_rd_status_chk` |Op-status reports the injected SLVERR/DECERR read-response code
-|`sep_otp_axi_err_single_rd_rdata_chk` |Returned read data is ignored/held to the defined value on error
-|`sep_otp_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
+|`sep_otp_axi_err_single_rd_status_chk` |`CHK-J2A-FAULT-STATUS`: op-status reports the injected SLVERR/DECERR read-response code
+|`sep_otp_axi_err_single_rd_rdata_chk` |`CHK-J2A-ERR-RDATA`: returned read data equals the RDATA returned on the errored beat and differs from the preloaded slot value
+|`sep_otp_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY (`CHK-AXI-RDATA`)
 |===
 
-*Pass Criteria*: The single read error is reported in the op-status, the read-data field is handled per spec, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The single read error is reported in the op-status, the read-data field carries the errored beat's RDATA, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4743,40 +4745,36 @@ b. Sample the CDC controller and confirm it cycles through the IDLE / ISOLATE / 
 
 *Source Module*: `dtp_jtag2axi_decode_err_test`
 
-*BFM / Model*: `ocah_axi_vip`, OCAH-local XTRIG monitor
+*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
 
-*Objective*: CTN default-slave write DECERR
+*Objective*: Bridge write DECERR handling, response injected by the responder, all three targets
 
 *Test Coverage*:
 
-* CTN AXI-Lite xbar default-slave write DECERR path triggered by a write to an unmapped address
-* Xbar `+default_*_mst_port[_en]+` write-decode branch and default-slave response generation
-* No mapped CTN register receives a side effect from the unmapped write
-* Bridge recovers and accepts a subsequent legal mapped write
+* JTAG2AXI single-op write on each of the three bridges (SMC fabric AXI4, SMC OTP and SEP OTP AXI4-Lite) answered with DECERR by that target's `ocah_axi_vip` responder; the bridge ports leave the DTP straight into the responders, so the DTP boundary has no address decoder and no unmapped address, and an interconnect's decode-miss and default-slave behaviour is SoC-level verification
+* The write status captures DECERR in op[1:0] and the scoreboard classifies the observed DECERR as the armed response
+* The errored slot keeps its prior word (the responder drops an armed write beat)
+* Bridge recovers and accepts a subsequent legal write on every target
 
 *Test Procedure*:
 
 [arabic]
-. Issue an unmapped write:
-a. Drive a JTAG2AXI write to an address with no valid CTN xbar slave so it routes to the default DECERR slave.
-. Verify the error response and monitor:
-a. Confirm the write completion reports DECERR.
-b. Confirm the OCAH-local XTRIG monitor observes the decode miss / default-slave routing event.
-. Verify no side effects:
-a. Compare all mapped CTN register/memory contents against the reference model and confirm none changed.
-. Issue a follow-on legal mapped write and confirm it completes with OKAY and the expected value lands.
+. On each target's responder, arm a one-shot DECERR write response at a beat-aligned slot and record the slot's word.
+. Drive a JTAG2AXI single-op write to that slot on the bridge; poll the op-status until not Busy and confirm it reports DECERR.
+. Confirm the slot's word is unchanged.
+. Issue a follow-on legal write on the same bridge and confirm OKAY with the intent bytes landing in the responder memory.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`j2a_decerr_wr_status_chk` |Unmapped write reports DECERR via the default-slave path
-|`j2a_decerr_wr_mem_chk` |No mapped CTN register/memory side effect from the unmapped write
-|`j2a_decerr_wr_recovery_chk` |A subsequent legal mapped write completes with OKAY
+|`j2a_decerr_wr_status_chk` |The write status reports DECERR for the responder-injected response on every target, and `CHK-AXI-RESP-EXPECTED` classifies the observed DECERR as armed
+|`j2a_decerr_wr_mem_chk` |The errored slot's word is unchanged after the DECERR write
+|`j2a_decerr_wr_recovery_chk` |A subsequent legal write completes with OKAY and lands its bytes (`CHK-AXI-WMEM`)
 |===
 
-*Pass Criteria*: The unmapped write routes to the CTN xbar default DECERR slave and returns DECERR, no mapped register is disturbed, the XTRIG monitor witnesses the decode miss, and a follow-on legal write succeeds with zero scoreboard/reference-model errors.
+*Pass Criteria*: Every bridge reports the injected DECERR, no memory side effect lands at the errored slot, and a follow-on legal write succeeds on every target, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4785,39 +4783,35 @@ a. Compare all mapped CTN register/memory contents against the reference model a
 
 *Source Module*: `dtp_jtag2axi_decode_err_test`
 
-*BFM / Model*: `ocah_axi_vip`, OCAH-local XTRIG monitor
+*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
 
-*Objective*: CTN default-slave read DECERR
+*Objective*: Bridge read DECERR handling, response injected by the responder, all three targets
 
 *Test Coverage*:
 
-* CTN AXI-Lite xbar default-slave read DECERR path triggered by a read from an unmapped address
-* Xbar `+default_ar_mst_port[_en]+` read-decode branch and default-slave defined read-data response
-* No mapped CTN register receives a read-induced side effect (e.g., clear-on-read fields untouched)
-* Bridge recovers and accepts a subsequent legal mapped read
+* JTAG2AXI single-op read on each of the three bridges (SMC fabric AXI4, SMC OTP and SEP OTP AXI4-Lite) answered with DECERR by that target's `ocah_axi_vip` responder; the bridge ports leave the DTP straight into the responders, so the DTP boundary has no address decoder and no unmapped address, and an interconnect's decode-miss and default-slave behaviour is SoC-level verification
+* The read status captures DECERR in op[1:0], and the read-data field returns the RDATA of the errored beat (the bridge latches the beat's data with its status): the word the responder drove on that beat, not the preloaded slot value
+* Bridge recovers and accepts a subsequent legal read on every target
 
 *Test Procedure*:
 
 [arabic]
-. Issue an unmapped read:
-a. Drive a JTAG2AXI read from an address with no valid CTN xbar slave so it routes to the default DECERR slave.
-. Verify the error response and read data:
-a. Confirm the read completion reports DECERR with the defined default read-data value.
-b. Confirm the OCAH-local XTRIG monitor observes the read decode miss / default-slave routing event.
-. Verify no mapped read-side side effects against the reference model.
-. Issue a follow-on legal mapped read and confirm DECERR is not reported and the returned data matches the reference model.
+. On each target's responder, preload a nonzero word in a beat-aligned slot and arm a one-shot DECERR read response there.
+. Drive a JTAG2AXI single-op read of that slot on the bridge; poll the op-status until not Busy and confirm it reports DECERR.
+. Confirm the read-data field equals the RDATA the passive monitor observed on the errored beat and differs from the preloaded word.
+. Issue a follow-on legal read of a preloaded slot on the same bridge and confirm OKAY with matching data.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`j2a_decerr_rd_status_chk` |Unmapped read reports DECERR via the default-slave path
-|`j2a_decerr_rd_rdata_chk` |Returned read data matches the defined default-slave value
-|`j2a_decerr_rd_recovery_chk` |A subsequent legal mapped read returns correct data without DECERR
+|`j2a_decerr_rd_status_chk` |The read status reports DECERR for the responder-injected response on every target, and `CHK-AXI-RESP-EXPECTED` classifies the observed DECERR as armed
+|`j2a_decerr_rd_rdata_chk` |`CHK-J2A-ERR-RDATA`: returned read data equals the RDATA returned on the errored beat and differs from the preloaded slot value
+|`j2a_decerr_rd_recovery_chk` |A subsequent legal read returns the preloaded data with OKAY (`CHK-AXI-RDATA`)
 |===
 
-*Pass Criteria*: The unmapped read routes to the CTN xbar default DECERR slave and returns DECERR with defined read data, no mapped register side effect occurs, the XTRIG monitor witnesses the decode miss, and a follow-on legal read succeeds with zero scoreboard/reference-model errors.
+*Pass Criteria*: Every bridge reports the injected DECERR, the read-data field carries the errored beat's RDATA, and a follow-on legal read succeeds on every target, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4826,40 +4820,39 @@ b. Confirm the OCAH-local XTRIG monitor observes the read decode miss / default-
 
 *Source Module*: `dtp_jtag2axi_decode_err_test`
 
-*BFM / Model*: `ocah_axi_vip`, OCAH-local XTRIG monitor
+*BFM / Model*: `ocah_jtag_vip`, `ocah_axi_vip`
 
-*Objective*: Mixed mapped/unmapped accesses
+*Objective*: Interleaved clean and DECERR-faulted accesses on every bridge
 
 *Test Coverage*:
 
-* Alternating mapped and unmapped CTN xbar accesses for stable-path and default-path coverage in the same run
-* Both mapped (OKAY) and default-slave (DECERR) routing decisions exercised back to back
-* Ordering and per-access status preserved across the mapped/unmapped interleave
-* No cross-contamination: an unmapped access neither disturbs mapped state nor corrupts the status of an adjacent mapped access
+* The bridge AXI ports leave the DTP boundary straight into the bench responders, so there is no decoder or default subordinate at this level; each responder is configured to answer DECERR for one slot while the neighbouring slot stays clean
+* Clean (OKAY) and faulted (DECERR) accesses alternate back to back on each of the three bridges, reads and writes
+* Per-access status is preserved across the interleave
+* No cross-contamination: a faulted access neither disturbs the clean slot's data nor corrupts the status of the adjacent clean access
 
 *Test Procedure*:
 
 [arabic]
 . Build an interleaved access stream through the JTAG2AXI path:
-a. Alternate mapped accesses (valid CTN slave) with unmapped accesses (default DECERR slave), covering both reads and writes.
+a. Alternate accesses to a clean slot with accesses to the slot the responder is configured to fault with DECERR, covering both reads and writes.
 . Drive the stream and capture per-access outcomes:
-a. Confirm each mapped access completes with OKAY and the expected data/side effect.
-b. Confirm each unmapped access completes with DECERR via the default slave.
-c. Confirm the OCAH-local XTRIG monitor logs each decode decision in issue order.
+a. Confirm each clean access completes with OKAY and the expected data or side effect.
+b. Confirm each faulted access reports DECERR in the SINGLE_OP status.
 . Verify ordering and isolation:
-a. Confirm status and ordering are preserved across the interleave and that mapped register state is unaffected by the interleaved unmapped accesses.
+a. Confirm status is preserved across the interleave and that the clean slot's data is unaffected by the interleaved faulted accesses.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`j2a_mixed_status_chk` |Each mapped access reports OKAY and each unmapped access reports DECERR
-|`j2a_mixed_order_chk` |Per-access status and ordering preserved across the mapped/unmapped interleave
-|`j2a_mixed_isolation_chk` |Mapped register state and data unaffected by interleaved unmapped accesses
+|`j2a_mixed_status_chk` |Each clean access reports OKAY and each faulted access reports DECERR
+|`j2a_mixed_order_chk` |Per-access status preserved across the interleave
+|`j2a_mixed_isolation_chk` |Clean slot data unaffected by the interleaved faulted accesses
 |===
 
-*Pass Criteria*: The mapped/unmapped interleave exercises both the stable mapped path and the default DECERR path with correct per-access status, ordering is preserved, mapped state is uncontaminated, and the XTRIG monitor witnesses every decode decision with zero scoreboard/reference-model errors.
+*Pass Criteria*: The interleave exercises the clean path and the responder-injected DECERR path on every bridge with correct per-access status, and the clean slot's data is uncontaminated.
 
 '''''
 
@@ -4922,7 +4915,7 @@ d. For the pipelined reads, confirm the first `pl_depth{plus}1` reads return the
 *Test Coverage*:
 
 * Deterministic one-hot rows for `smc_jtag2axi`, `smc_otp_jtag2axi`, and `sep_otp_jtag2axi`, plus the all-clear and all-disabled boundary masks and seeded multi-hot masks
-* Per row and target: an allowed bridge completes a write+readback with real request activity; a blocked bridge shows zero request activity and an intact RAM sentinel, both while gated and after the disable is released (no delayed replay), then recovers with a sanctioned operation
+* Per row and target: an allowed bridge completes a write+readback with real request activity; a blocked bridge shows zero request activity from a counter snapshot taken before the gated TDR write, puts no transaction inside a scoreboard blocked window held across the disable release, and keeps its RAM sentinel intact both while gated and after the release (no delayed replay), then recovers with a sanctioned operation
 * Mixed rows prove unrelated-target isolation (an enabled bridge keeps working while another is gated)
 * Every checker-verified outcome samples its `dbg_disable_cg` cell; the test requires all six bridge cells and emits the JSON coverage artifact
 
@@ -4930,8 +4923,8 @@ d. For the pipelined reads, confirm the first `pl_depth{plus}1` reads return the
 
 [arabic]
 . For each row mask (one-hot per field, all-clear, all-disabled, seeded multi-hot): drive the full disable vector and settle four toggling TCK cycles.
-. For each bridge target under the row mask: if enabled, complete a write+readback with activity-counter evidence; if gated, preload a RAM sentinel, shift a write request, and verify zero request activity and the sentinel intact.
-. After each row with gated targets: clear all disables without reset, verify every sentinel is still intact (no delayed replay), then complete a sanctioned recovery write+readback per previously-gated target.
+. For each bridge target under the row mask: if enabled, complete a write+readback with activity-counter evidence; if gated, preload a RAM sentinel, snapshot the request counters, open a blocked window on the target's stream, shift a full-strobe write request, and verify the counters unchanged and the sentinel intact.
+. After each row with gated targets: clear all disables without reset, verify the counters are still unchanged from the pre-attempt snapshot, close each blocked window with zero transactions inside it, verify every sentinel is still intact (no delayed replay), then complete a sanctioned recovery write+readback per previously-gated target.
 . Emit the `dbg_disable_cg` JSON artifact and require all six bridge cells.
 
 *Checkers*:
@@ -4940,8 +4933,8 @@ d. For the pipelined reads, confirm the first `pl_depth{plus}1` reads return the
 |===
 |Checker |Description
 |`j2a_matrix_allow_chk` |An enabled bridge completes write+readback with real request activity
-|`j2a_matrix_block_chk` |A gated bridge produces zero request activity and leaves the RAM sentinel intact
-|`j2a_matrix_noreplay_chk` |Sentinels stay intact after the disables release (no delayed replay)
+|`j2a_matrix_block_chk` |A gated bridge's request counters are unchanged from the snapshot taken before its TDR write, and the RAM sentinel is intact
+|`j2a_matrix_noreplay_chk` |After the disables release the counters are still unchanged from that snapshot, the blocked window held across the release closes with zero monitored transactions, and the sentinels are intact (no delayed replay)
 |`j2a_matrix_recovery_chk` |A sanctioned operation succeeds on every previously-gated bridge
 |`j2a_matrix_isolation_chk` |Enabled bridges keep working while others are gated
 |===
