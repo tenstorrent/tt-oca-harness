@@ -203,6 +203,36 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "TB BSR scan loopback TDO (declared stub; pad BSR out of scope)",
         ),
     ],
+    "smu_dtp_scan_chain_boundary_test": [
+        (
+            "CHK-SMU-IJTAG-GATE",
+            "CHK-SMU-IJTAG-GATE",
+            "none of the three iJTAG host selects asserts over a whole IDCODE "
+            "IR+DR scan, counted on jtag_tck",
+        ),
+        (
+            "CHK-SMU-IJTAG-CHAIN",
+            "CHK-SMU-IJTAG-CHAIN",
+            "under SELECT_IJTAG the DR closed through the wrapper scan pins "
+            "returns each payload exactly IJTAG_SIB_COUNT+1 bits late, for "
+            "five directed and three seeded-random nonzero payloads",
+        ),
+        (
+            "CHK-SMU-IJTAG-SIB",
+            "CHK-SMU-IJTAG-SIB",
+            "Update-DR latches the SIB enables and the next Capture-DR reads "
+            "them back, for each SIB alone, all three, and none; the matching "
+            "host select asserts only while that SIB is open",
+        ),
+        (
+            "CHK-SMU-STAP-IO-SELECT",
+            "CHK-SMU-STAP-IO-SELECT",
+            "an unselected I/O STAP drives no TDO enable and its host TMS does "
+            "not follow the primary TAP; after a TAP_3DCR select the enable "
+            "covers exactly IR+DR TCKs, host TMS matches on every TCK, and the "
+            "extra STAP stays quiet",
+        ),
+    ],
     "smu_dtp_bsr_ijtag_scan_test": [
         ("CHK-DTP-BSR-EXTEST-SELECT", "CHK-DTP-BSR-EXTEST-SELECT", "EXTEST selects BSR TCK"),
     ],

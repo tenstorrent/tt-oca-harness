@@ -2251,6 +2251,27 @@ args = [
   "+sep_dtcm_hex=sep_dtcm_default.hex",
 ]
 
+# The iJTAG SIB hosts and the secondary TAPs at the wrapper pads. The bench
+# closes each scan loop, so the shift path this leaf measures leaves the
+# wrapper and comes back.
+[[tests]]
+name = "smu_dtp_scan_chain_boundary_test"
+module = "smu_dtp_scan_chain_boundary_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag", "no_sep", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
 # SMC-facing boundary signals against the SMC registers that own them.
 # port_table.adoc declares each one; the bench previously tied them off, so no
 # leaf had ever driven or observed them.
@@ -2342,6 +2363,7 @@ tests = [
   "smu_dtp_bsr_ijtag_scan_test",
   "smu_dtp_io_stap_smoke_test",
   "smu_dtp_jtag2axi_back_to_back_error_ok_test",
+  "smu_dtp_scan_chain_boundary_test",
   # Two leaves end in an SMC fabric SERIES INCR write, which returns zeros or
   # parks SERIES_CTRL in BUSY whenever the drawn jtag_period_ns /
   # smu_clk_period_ns ratio is under 4; both pin the ratio to >= 4 through
@@ -2480,8 +2502,9 @@ tests = [
   "smu_sram_auto_init_done_test",
   "smu_smc_fuse_sense_sequence_test",
   "smu_smc_boundary_io_test",
+  "smu_dtp_scan_chain_boundary_test",
 ]
-expected_count = 61
+expected_count = 62
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2581,8 +2604,9 @@ tests = [
   "smu_smc_fuse_sense_sequence_test",
   "smu_sep_fuse_sense_done_test",
   "smu_smc_boundary_io_test",
+  "smu_dtp_scan_chain_boundary_test",
 ]
-expected_count = 87
+expected_count = 88
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
