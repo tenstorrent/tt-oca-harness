@@ -13,6 +13,7 @@ from ..coverage_model import (
     CoverageDetails,
     CoverageObservation,
     stable_id,
+    toggle_signal_observations,
 )
 
 VERILATOR_METRIC_MAP = {
@@ -47,6 +48,7 @@ def parse_verilator_details(
     merged: Path,
 ) -> CoverageDetails:
     observations: list[CoverageObservation] = []
+    toggle_points: list[tuple[CoverageObservation, str]] = []
     warnings: list[str] = []
     if not merged.is_file():
         return CoverageDetails(
@@ -85,22 +87,25 @@ def parse_verilator_details(
                 "locator": native_locator,
             },
         )
-        observations.append(
-            CoverageObservation(
-                id=observation_id,
-                tool=tool,
-                metric_family=metric_family,
-                native_metric=native_metric,
-                native_locator=native_locator,
-                source=source,
-                line=line_number,
-                hierarchy=fields.get("h"),
-                count=count,
-                goal=1,
-                covered=count > 0,
-                category=metric_family,
-            )
+        observation = CoverageObservation(
+            id=observation_id,
+            tool=tool,
+            metric_family=metric_family,
+            native_metric=native_metric,
+            native_locator=native_locator,
+            source=source,
+            line=line_number,
+            hierarchy=fields.get("h"),
+            count=count,
+            goal=1,
+            covered=count > 0,
+            category=metric_family,
         )
+        observations.append(observation)
+        if metric_family == "toggle":
+            toggle_points.append((observation, fields.get("o", "")))
+
+    observations.extend(toggle_signal_observations(toggle_points, id_prefix="VLTCOV"))
 
     details = CoverageDetails(
         dut=dut,

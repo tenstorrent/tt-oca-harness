@@ -63,8 +63,15 @@ GRADE_WRITES = ("coverage-details.json", "policy-application.json", "summary.jso
 REPORT_FILES = ("coverage-details.raw.json", *GRADE_WRITES[:-1])
 
 # What the built run grades to under the policy below: two toggle points waived or open by
-# policy, four more uncovered points unclassified, and the toggle threshold missed.
-EXPECTED_METRICS = {"branch": 50.0, "expression": 66.6667, "line": 66.6667, "toggle": 60.0}
+# policy, four more uncovered points unclassified, and the toggle threshold missed. The six
+# toggle points are members of the one signal `scan_ctrl_i`, which some of them cover.
+EXPECTED_METRICS = {
+    "branch": 50.0,
+    "expression": 66.6667,
+    "line": 66.6667,
+    "toggle": 60.0,
+    "toggle_signal": 100.0,
+}
 EXPECTED_OVERALL = 57.1429
 EXPECTED_THRESHOLDS_MET = [True, False]
 EXPECTED_HOLES = {"accepted": 1, "open": 5, "native_point_count": 6, "hole_group_count": 2}

@@ -7,14 +7,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 DETAILS_SCHEMA_VERSION = 1
+TOGGLE_SIGNAL_METRIC = "toggle_signal"
 CLOSURE_METRICS = (
     "line",
     "condition",
     "toggle",
+    "toggle_signal",
     "branch",
     "fsm_state",
     "fsm_transition",
@@ -23,6 +27,7 @@ CLOSURE_METRICS = (
     "expression",
     "user",
 )
+_SIGNAL_SELECTION_RE = re.compile(r"[.\[].*$")
 
 
 def percentage(covered: int | None, total: int | None) -> float | None:
@@ -226,3 +231,70 @@ def metrics_from_observations(
             )
         )
     return records
+
+
+def toggle_signal_name(object_name: str) -> str:
+    """The declared variable behind a toggle point object.
+
+    Drops the `:<edge>` suffix and every `[index]` or `.member` selection, so
+    `sep_cpu_tcm_rsp.dccm_bank_dout[0][0]:0->1` and `clk_ref_i:1->0` name
+    `sep_cpu_tcm_rsp` and `clk_ref_i`.
+    """
+
+    return _SIGNAL_SELECTION_RE.sub("", object_name.rsplit(":", 1)[0])
+
+
+def toggle_signal_observations(
+    points: Iterable[tuple[CoverageObservation, str]],
+    *,
+    id_prefix: str,
+) -> list[CoverageObservation]:
+    """One `toggle_signal` observation per declared variable behind the given points.
+
+    Each pair is a toggle observation and that point's object name. The points sharing a
+    `(hierarchy, source, line, signal)` collapse into one observation whose count is their
+    sum and which is covered when any of them is covered; the points themselves are left
+    alone. Groups come back in first-seen order.
+    """
+
+    groups: dict[tuple[str | None, str | None, int | None, str], list[CoverageObservation]] = {}
+    for observation, object_name in points:
+        key = (
+            observation.hierarchy,
+            observation.source,
+            observation.line,
+            toggle_signal_name(object_name),
+        )
+        groups.setdefault(key, []).append(observation)
+
+    derived: list[CoverageObservation] = []
+    for (hierarchy, source, line, signal), members in groups.items():
+        native_locator = (
+            f"f={source or ''}|h={hierarchy or ''}|"
+            f"l={'' if line is None else line}|o={signal}|"
+            f"t={TOGGLE_SIGNAL_METRIC}|bits={len(members)}"
+        )
+        derived.append(
+            CoverageObservation(
+                id=stable_id(
+                    id_prefix,
+                    {
+                        "tool": members[0].tool,
+                        "metric": TOGGLE_SIGNAL_METRIC,
+                        "locator": native_locator,
+                    },
+                ),
+                tool=members[0].tool,
+                metric_family=TOGGLE_SIGNAL_METRIC,
+                native_metric=TOGGLE_SIGNAL_METRIC,
+                native_locator=native_locator,
+                source=source,
+                line=line,
+                hierarchy=hierarchy,
+                count=sum(member.count for member in members),
+                goal=1,
+                covered=any(member.covered for member in members),
+                category=TOGGLE_SIGNAL_METRIC,
+            )
+        )
+    return derived
