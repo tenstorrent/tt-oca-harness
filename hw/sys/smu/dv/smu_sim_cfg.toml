@@ -172,7 +172,10 @@ build_args = [
 policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.toml"
 
 [build.options]
-build_jobs = 8
+# The hosted CI runner has four vCPUs and 16 GB; the wrapper model (SEP with
+# the EL2, the four-core SMC and the DTP) is the largest Verilated model in the
+# tree, so the compile parallelism matches that runner instead of oversubscribing it.
+build_jobs = 4
 
 [frameworks.cocotb]
 # Wrapper flow keeps its own PyUVM tree so module names stay independent of
