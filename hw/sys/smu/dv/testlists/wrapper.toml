@@ -1386,6 +1386,38 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
+# The toolchain-free half of the SMC boot claim. Every `hosted` leaf loads the
+# zero-filled smc_rom_default.hex, so the SMC ROM read port is only ever
+# observed idle; smu_smc_smoke_test boots a real image but links it with the
+# RISC-V toolchain and so cannot run on a hosted runner. This entry loads the
+# checked-in eight-instruction stub instead, which stores the PASS magic into
+# SMC CPU_CTRL scratch0 -- the word tb_wrapper_top.sv derives smc_test_pass_o
+# from. Both +rom_hex and +smc_rom_hex name it: the OCAH loader takes the first
+# +rom_hex and smc_cpu_mem_dv prefers +smc_rom_hex, so neither can leave the
+# default image in place.
+[[tests]]
+name = "smu_smc_rom_boot_min_pass_test"
+module = "smu_smc_rom_boot_min_pass_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "boot", "cpu", "no_sep"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.rom.hex",
+  "+smc_rom_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.rom.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: SMC CPU boot to the stub's store; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
+]
+
 [[tests]]
 name = "smu_smc_reset_ctrl_test"
 module = "smu_smc_reset_ctrl_test"
@@ -1483,6 +1515,7 @@ tests = [
   "smu_ic_reset_ss_domain_matrix_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
+  "smu_smc_rom_boot_min_pass_test",
   "smu_smc_reset_ctrl_test",
   "smu_smc_wdt_sanity_test",
   "smu_smc_wdt_timeout_irq_test",
@@ -2438,6 +2471,7 @@ tests = [
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
+  "smu_smc_rom_boot_min_pass_test",
   "smu_smc_reset_ctrl_test",
   "smu_smc_wdt_sanity_test",
   "smu_smc_wdt_timeout_irq_test",
@@ -2462,7 +2496,7 @@ tests = [
   "smu_smc_peripheral_irq_test",
   "smu_sep_secure_tm_test",
 ]
-expected_count = 63
+expected_count = 64
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2542,6 +2576,7 @@ tests = [
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
+  "smu_smc_rom_boot_min_pass_test",
   "smu_smc_reset_ctrl_test",
   "smu_smc_wdt_sanity_test",
   "smu_smc_wdt_timeout_irq_test",
@@ -2571,7 +2606,7 @@ tests = [
   "smu_smc_peripheral_irq_test",
   "smu_sep_secure_tm_test",
 ]
-expected_count = 95
+expected_count = 96
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

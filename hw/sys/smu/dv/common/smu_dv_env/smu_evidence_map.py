@@ -584,6 +584,27 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "strap between those windows in both directions",
         ),
     ],
+    "smu_smc_rom_boot_min_pass_test": [
+        (
+            "CHK-SMC-ROM-BOOT-MAGIC",
+            "CHK-SMC-ROM-BOOT-MAGIC",
+            "SMC CPU_CTRL scratch0 reads the word the checked-in ROM stub stores, "
+            "so the fetch, the execution and the CSR write all landed",
+        ),
+        (
+            "CHK-SMC-ROM-BOOT-FETCH",
+            "CHK-SMC-ROM-BOOT-FETCH",
+            "the SMC ROM read counter advanced across the boot, so the instruction "
+            "stream came out of the ROM macro rather than a residual scratch image",
+        ),
+        (
+            "CHK-SMC-ROM-BOOT-CSR-VISIBLE",
+            "CHK-SMC-ROM-BOOT-CSR-VISIBLE",
+            "an external master reading SMC CPU_CTRL scratch0 at its architectural "
+            "address over the SMC fabric JTAG2AXI bridge sees the same magic, so the "
+            "store landed in the CSR and not only in a testbench mirror",
+        ),
+    ],
     "smu_smc_smoke_test": [
         (
             "CHK-SMC-FAB-DUAL-NET-S2",
