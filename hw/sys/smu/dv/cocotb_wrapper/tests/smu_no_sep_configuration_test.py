@@ -14,7 +14,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_no_sep_configuration_test(smu_base_test):
-    """SMU_005: SEP=0 lc_state no-LCC word only; the direct SMN->SMC path is not covered."""
+    """SMU_005: SEP=0 lc_state no-LCC word and SMC-to-external egress; SMN->SMC stays uncovered."""
 
     use_shared_env = True
 
