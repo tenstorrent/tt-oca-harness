@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_dma_sanity_test(smc_base_test):
     """Run DMA copy over output-fabric payload bytes and check the model."""
 
+    required_evidence = ("CHK-DMA-OUTPUT-FABRIC-TRAFFIC",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

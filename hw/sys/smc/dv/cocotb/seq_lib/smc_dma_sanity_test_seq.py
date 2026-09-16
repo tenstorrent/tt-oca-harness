@@ -1,11 +1,26 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""DMA source-to-destination payload check through the output-fabric responder."""
+"""DMA source-to-destination payload check through the output-fabric responder.
+
+The SYS_OUT responder is shared. The outbound filter this sequence programs
+passes every address, so the SMC CPU cluster's instruction fetches at address
+0 leave through the same port and complete on the same responder. The tb_top
+``tb_output_axi_*_count`` registers count every transaction that completes
+there, whatever issued it, so they cannot say that *this* sequence's traffic
+arrived. Which of those fetches land inside a sampled window is decided by the
+seeded clock periods, not by the DMA.
+
+The counts below therefore come from ``_OutputFabricWatch``, which attributes
+each SYS_OUT transaction to the address of its own address-channel handshake
+and counts per address. That is exact in both directions -- a read the DMA
+sent to the wrong address, or a second read of the same address, still fails --
+and it does not depend on what else is on the bus.
+"""
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
@@ -61,6 +76,55 @@ ONE_BYTE_DST_POISON = bytes(0xEE for _ in range(8))
 ONE_BYTE_DST_EXPECTED = ONE_BYTE_SRC_WORD[:1] + ONE_BYTE_DST_POISON[1:]
 
 
+class _OutputFabricWatch:
+    """Per-address tally of the transactions issued to the SYS_OUT responder.
+
+    A read transaction starts at its AR handshake and a write at its AW
+    handshake, and the address is on the channel in that cycle, so counting
+    there attributes every transaction to the address it names without needing
+    to pair a response back to a request while several are outstanding.
+    """
+
+    def __init__(self, dut) -> None:
+        self.dut = dut
+        self.stop = False
+        self.reads: dict[int, int] = {}
+        self.writes: dict[int, int] = {}
+
+    def _read(self, name: str) -> int | None:
+        value = getattr(self.dut, name).value
+        return int(value) if value.is_resolvable else None
+
+    def _accepted(self, channel: str) -> int | None:
+        valid = self._read(f"tb_output_axi_{channel}valid")
+        ready = self._read(f"tb_output_axi_{channel}ready")
+        if valid != 1 or ready != 1:
+            return None
+        return self._read(f"tb_output_axi_{channel}addr")
+
+    async def run(self) -> None:
+        while not self.stop:
+            await RisingEdge(self.dut.clk_smc_i)
+            await ReadOnly()
+            addr = self._accepted("ar")
+            if addr is not None:
+                self.reads[addr] = self.reads.get(addr, 0) + 1
+            addr = self._accepted("aw")
+            if addr is not None:
+                self.writes[addr] = self.writes.get(addr, 0) + 1
+
+    def snapshot(self) -> tuple[dict[int, int], dict[int, int]]:
+        return dict(self.reads), dict(self.writes)
+
+    def foreign_reads(self, owned: tuple[int, ...]) -> int:
+        """Transactions from other masters, reported so the bus stays visible."""
+        return sum(count for addr, count in self.reads.items() if addr not in owned)
+
+
+def _delta(now: dict[int, int], before: dict[int, int], addr: int) -> int:
+    return now.get(addr, 0) - before.get(addr, 0)
+
+
 class smc_dma_sanity_test_seq(SmcCsrSeq):
     """Program DMA and verify that output-fabric destination bytes match source."""
 
@@ -71,6 +135,8 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         self.start_id = 0
         self.done_id = 0
         self.one_byte_dst = -1
+        self.watch: _OutputFabricWatch | None = None
+        self.watcher = None
 
     def _ensure_model_region(self) -> None:
         if DMA_MODEL_REGION not in self.memory_model.regions:
@@ -149,6 +215,8 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
 
     async def body(self) -> None:
         self._ensure_model_region()
+        self.watch = _OutputFabricWatch(cocotb.top)
+        self.watcher = cocotb.start_soon(self.watch.run())
         await self._program_output_fabric_pass_all()
 
         # Preload DUT + golden via scoreboard update_golden (U1-3).
@@ -165,8 +233,7 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         # Baselined here, after every preload and golden-verify access, so the
         # deltas below are the DMA's own traffic plus the one post-copy read
         # this sequence issues.
-        start_writes = int(cocotb.top.tb_output_axi_write_count.value)
-        start_reads = int(cocotb.top.tb_output_axi_read_count.value)
+        base_reads, base_writes = self.watch.snapshot()
 
         baseline_done = await self.csr_read("DMA_DONE_0_BASELINE", DMA_CTRL_DONE_0)
         await self._program_dma()
@@ -190,19 +257,27 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         assert actual == DMA_PAYLOAD, (
             f"DMA copy mismatch: got {actual.hex()}, expected {DMA_PAYLOAD.hex()}"
         )
-        write_count = int(cocotb.top.tb_output_axi_write_count.value)
-        read_count = int(cocotb.top.tb_output_axi_read_count.value)
-        # Exact, because every access after the baseline above is accounted for:
-        # the DMA contributes one destination write and one source read, and this
-        # sequence contributes the single post-copy verification read.
-        assert write_count == start_writes + 1, (
-            f"DMA write did not reach the output responder: B responses went "
-            f"{start_writes} -> {write_count}, expected exactly one more"
+        reads, writes = self.watch.snapshot()
+        # Exact per address, because every access this sequence made after the
+        # baseline above is accounted for: the DMA reads the source word once
+        # and writes the destination word once, and this sequence reads the
+        # destination word once to verify it.
+        src_reads = _delta(reads, base_reads, DMA_SRC_ADDR)
+        dst_reads = _delta(reads, base_reads, DMA_DST_ADDR)
+        dst_writes = _delta(writes, base_writes, DMA_DST_ADDR)
+        assert dst_writes == 1, (
+            f"DMA write did not reach the output responder: {dst_writes} write "
+            f"transaction(s) addressed {DMA_DST_ADDR:#x} there, expected exactly one"
         )
-        assert read_count == start_reads + 2, (
-            f"DMA read did not reach the output responder: R beats went "
-            f"{start_reads} -> {read_count}, expected exactly two more (DMA source "
-            f"read + this sequence's post-copy read)"
+        assert src_reads == 1, (
+            f"DMA read did not reach the output responder: {src_reads} read "
+            f"transaction(s) addressed the source {DMA_SRC_ADDR:#x} there, "
+            f"expected exactly one"
+        )
+        assert dst_reads == 1, (
+            f"the post-copy verification read did not reach the output responder: "
+            f"{dst_reads} read transaction(s) addressed the destination "
+            f"{DMA_DST_ADDR:#x} there, expected exactly one"
         )
         # Self-check on this sequence's own golden verification, NOT evidence
         # about the DMA: all three checks are raised by `check_golden=True` reads
@@ -243,7 +318,7 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
             "one-byte poison equals the source byte; the copy would be invisible"
         )
 
-        writes_before = int(cocotb.top.tb_output_axi_write_count.value)
+        base_reads, base_writes = self.watch.snapshot()
         baseline_done = await self.csr_read("DMA_DONE_0_BASELINE_ONE_BYTE", DMA_CTRL_DONE_0)
         await self._program_dma(
             tag="_ONE_BYTE", src=ONE_BYTE_SRC_ADDR, dst=ONE_BYTE_DST_ADDR, length=1
@@ -261,9 +336,39 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
             f"{ONE_BYTE_SRC_WORD[0]:#04x} and bytes 1-7 must still carry the "
             f"poison {ONE_BYTE_DST_POISON[1]:#04x}"
         )
-        writes_after = int(cocotb.top.tb_output_axi_write_count.value)
-        assert writes_after == writes_before + 1, (
-            f"LENGTH=1 transfer produced B responses {writes_before} -> "
-            f"{writes_after} on the output responder, expected exactly one more"
+        reads, writes = self.watch.snapshot()
+        src_reads = _delta(reads, base_reads, ONE_BYTE_SRC_ADDR)
+        dst_reads = _delta(reads, base_reads, ONE_BYTE_DST_ADDR)
+        dst_writes = _delta(writes, base_writes, ONE_BYTE_DST_ADDR)
+        assert dst_writes == 1, (
+            f"the LENGTH=1 transfer addressed {ONE_BYTE_DST_ADDR:#x} with "
+            f"{dst_writes} write transaction(s) on the output responder, "
+            f"expected exactly one"
+        )
+        assert src_reads == 1, (
+            f"the LENGTH=1 transfer addressed its source {ONE_BYTE_SRC_ADDR:#x} "
+            f"with {src_reads} read transaction(s) on the output responder, "
+            f"expected exactly one"
+        )
+        assert dst_reads == 1, (
+            f"the LENGTH=1 verification read addressed {ONE_BYTE_DST_ADDR:#x} "
+            f"with {dst_reads} read transaction(s) on the output responder, "
+            f"expected exactly one"
         )
         self.one_byte_dst = int.from_bytes(actual, "little")
+        self.watch.stop = True
+        await RisingEdge(cocotb.top.clk_smc_i)
+        await self.watcher
+        cocotb.log.info(
+            "CHK-DMA-OUTPUT-FABRIC-TRAFFIC: both transfers addressed the SYS_OUT responder "
+            "exactly once per leg and direction (%#x read, %#x written and read back; %#x read, "
+            "%#x written and read back) while %d unrelated read transaction(s) from other "
+            "masters completed on the same responder",
+            DMA_SRC_ADDR,
+            DMA_DST_ADDR,
+            ONE_BYTE_SRC_ADDR,
+            ONE_BYTE_DST_ADDR,
+            self.watch.foreign_reads(
+                (DMA_SRC_ADDR, DMA_DST_ADDR, ONE_BYTE_SRC_ADDR, ONE_BYTE_DST_ADDR)
+            ),
+        )
