@@ -15,7 +15,7 @@ membership for `--dut smu` is `testlists/wrapper.toml`.
 |Field |Value
 |DUT |`--dut smu` → `hw/top/smu_wrapper.sv` under `smu_wrapper_uvm_top`, on its compile profile `compile_smu_chiplet` (alias `smu_wrapper`)
 |Spec / plan |`SMU_FEATURE_LIST.adoc` Features 1–7
-|Coverage intent |`smu_fcov.py` scenario bins + `TEST_EVIDENCE` tokens. Verilator toggle / FCOV is scoped to `--dut smu_block` (`SMU_COVERAGE_POLICY.adoc`)
+|Coverage intent |`smu_fcov.py` scenario bins + `TEST_EVIDENCE` tokens. Verilator toggle on the wrapper's ports plus the `cov/sv` FCOV points on `--dut smu`; toggle over the SMU block on `--dut smu_block` (`SMU_COVERAGE_POLICY.adoc`)
 |Checker |`SmuScoreboard` named `evidence=` / `expect_*` tokens + `results.xml`
 |CI |`.github/workflows/sim.yml` (PR gate) runs `hosted_smoke`; `.github/workflows/regress.yml` runs `hosted`
 |===
