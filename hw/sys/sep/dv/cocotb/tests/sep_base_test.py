@@ -228,6 +228,43 @@ class sep_base_test(uvm_test):
             return 0
 
     @staticmethod
+    def rd_known(sig, mask: int | None = None) -> int:
+        """Read a signal, raising if any bit selected by ``mask`` is not 0 or 1.
+
+        ``rd`` resolves unknown bits to zero per bit, which is right for a wide
+        probe but wrong wherever the *passing* branch is zero: ``rd(x) == 0``
+        then holds for an undriven, tied, or X node just as it does for a node
+        the device drove low. Use this instead at those compares.
+
+        ``mask`` selects the bits that must be known; the default is every bit
+        the signal carries. Passing a mask matters on a wide probe whose unused
+        lanes are legitimately X -- checking the whole word there would raise on
+        a healthy run.
+
+        Note for the reader: Verilator is built two-state here (no
+        ``--x-assign`` / ``--x-initial`` in sep_sim_cfg.toml), so uninitialised
+        bits read as 0 and this can only fire under VCS.
+        """
+        value = sig.value
+        bits = getattr(value, "binstr", None)
+        if bits is None:
+            # Fully resolved already: int() would not have raised.
+            return int(value)
+        unknown = [
+            i
+            for i, c in enumerate(reversed(bits))
+            if c not in "01" and (mask is None or (mask >> i) & 1)
+        ]
+        if unknown:
+            raise AssertionError(
+                f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
+                f"compare reads: binstr={bits!r}, unknown bit indices {unknown}. "
+                "A zero-expecting compare on an unknown node passes for free, so "
+                "it is raised here instead."
+            )
+        return int(bits, 2)
+
+    @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
         try:
             getattr(dut, name).value = value
