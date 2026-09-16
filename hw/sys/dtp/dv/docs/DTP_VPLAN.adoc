@@ -5534,21 +5534,22 @@ c. `tdo_oen` never pulses.
 *Test Coverage*:
 
 * CTP wire-OR mode (CONFIG.MODE=0) pulse synchronization with configurable pulse stretching
-* Output pulse width equals (STRETCH_MULT{plus}1) clock cycles for both a wide multiplier and the single-cycle minimum
+* Output pulse width equals (STRETCH_MULT{plus}1) clock cycles for a wide multiplier, the single-cycle minimum, and a seeded width in between
 * External CT_Req_in input synchronized into the `clk_i` domain before delivery
-* STATUS.BUSY accurately reflects pulse activity (asserts during the stretched pulse, clears after)
+* STATUS.BUSY reads 1 over the CSR path while a pulse of at least nine cycles (STRETCH_MULT >= 8, the CSR read latency bound) is active and 0 once it ends; the registered BUSY tracks the output enable cycle for cycle at every stretch
 * Internal cross-trigger pulse delivered to the CTM destination on an external trigger
 
 *Test Procedure*:
 
 [arabic]
-. Configure CTP[0] via `OcahAxiLiteMasterAgent`: CONFIG.MODE=0 (Wire-OR), CONFIG.INVERT=0, STRETCH_MULT=0x000F (16 clocks).
-. Drive a single-cycle internal cross-trigger request to CTP[0] (via CTM routing).
-a. Observe CT_Req_out on the CTP BFM; verify it asserts and remains asserted for exactly (STRETCH_MULT{plus}1) clock cycles.
-b. Read CTP[0] STATUS; verify BUSY=1 while the stretched pulse is active and BUSY=0 after it completes.
+. Configure a seeded CTP via `OcahAxiLiteMasterAgent`: CONFIG.MODE=0 (Wire-OR), CONFIG.INVERT=0, STRETCH_MULT=0x000F (16 clocks).
+. Drive a single-cycle internal cross-trigger request to the CTP (via CTM routing).
+a. Observe CT_Req_out on the CTP BFM; verify its enable asserts and remains asserted for exactly (STRETCH_MULT{plus}1) clock cycles.
+b. Measure the registered BUSY flop alongside the enable: the same width and the same first-rise cycle.
+c. Once the enable has risen and STRETCH_MULT >= 8, read CTP STATUS while the pulse is active and verify BUSY=1; after the pulse ends read STATUS and the busy flop and verify both are 0.
 . Drive a short CT_Req_in pulse from the CTP BFM (simulate an external trigger).
 a. Verify the input is synchronized to `clk_i` and the resulting internal cross-trigger pulse is delivered to the programmed CTM destination.
-. Reprogram STRETCH_MULT=0x0000 (1 clock), repeat the internal trigger, and verify a single-cycle output pulse with the same BUSY behavior.
+. Reprogram STRETCH_MULT=0x0000 (1 clock) and a seeded value 1..14, repeat the internal trigger, and verify the output width and the BUSY behavior for each.
 
 *Checkers*:
 
@@ -5556,9 +5557,9 @@ a. Verify the input is synchronized to `clk_i` and the resulting internal cross-
 |===
 |Checker |Description
 |`ctp_wire_or_csr_chk` |CONFIG/STRETCH_MULT writes read back the programmed route configuration
-|`ctp_wire_or_stretch_chk` |Output pulse width equals (STRETCH_MULT{plus}1) clocks for both multiplier values
+|`ctp_wire_or_stretch_chk` |Output enable width equals (STRETCH_MULT{plus}1) clocks for every multiplier value
 |`ctp_wire_or_sync_chk` |External CT_Req_in is synchronized to `clk_i` and delivered to the CTM destination
-|`ctp_wire_or_busy_chk` |STATUS.BUSY asserts during the stretched pulse and clears afterward
+|`ctp_wire_or_busy_chk` |STATUS.BUSY reads 1 while a pulse of STRETCH_MULT >= 8 is active and 0 after it ends; the registered BUSY has the enable's width (STRETCH_MULT{plus}1) and rises in the same cycle for every stretch
 |===
 
 *Pass Criteria*: Wire-OR pulse stretching, input synchronization, and BUSY tracking match the reference model for both stretch settings, with zero scoreboard/reference-model errors.
@@ -5577,31 +5578,30 @@ a. Verify the input is synchronized to `clk_i` and the resulting internal cross-
 *Test Coverage*:
 
 * CTP point-to-point 4-phase handshake (CONFIG.MODE=1) in both directions
-* Request path FSM sequences REQ_PHASE1-++>++REQ_PHASE2-++>++IDLE; response path sequences RESP_PHASE1-++>++RESP_PHASE2-++>++IDLE
-* STATUS register reflects live handshake state and STATUS.BUSY tracks the in-flight handshake
+* Request path: CT_Req_out asserts on the trigger, drops on CT_Ack_in, and the port idles once CT_Ack_in deasserts; response path: CT_Ack_out asserts on CT_Req_in and drops once it deasserts
+* STATUS reflects each handshake phase (BUSY, REQ_OUT, ACK_IN, REQ_IN, ACK_OUT) and STATUS.BUSY tracks the in-flight handshake on both sides
 * Internal cross-trigger delivered to the CTM destination on an external trigger
 
 *Test Procedure*:
 
 [arabic]
-. Configure CTP[0] via `OcahAxiLiteMasterAgent`: CONFIG.MODE=1 (Point-to-Point), CONFIG.INVERT=0.
-. Drive an internal cross-trigger request to CTP[0] (via CTM routing).
-a. Verify CT_Req_out asserts on the CTP BFM.
-b. Drive CT_Ack_in from the CTP BFM (simulate the external responder).
-c. Verify the handshake completes: CT_Req_out deasserts, CT_Ack_in deasserts, FSM returns to IDLE.
-. Read CTP[0] STATUS; verify BUSY=0 after completion.
+. Configure a seeded CTP via `OcahAxiLiteMasterAgent`: CONFIG.MODE=1 (Point-to-Point), CONFIG.INVERT=0.
+. Drive an internal cross-trigger request to the CTP (via CTM routing).
+a. Verify CT_Req_out asserts on the CTP BFM; read STATUS and verify BUSY=1 and REQ_OUT=1.
+b. Drive CT_Ack_in from the CTP BFM (simulate the external responder); verify CT_Req_out deasserts; read STATUS and verify ACK_IN=1, REQ_OUT=0, BUSY=1.
+c. Deassert CT_Ack_in; wait for the busy flop to clear and read STATUS; verify BUSY=0 and ACK_IN=0.
 . Drive CT_Req_in from the CTP BFM (simulate an external trigger).
-a. Verify CT_Ack_out asserts and the response-side handshake completes through RESP_PHASE1-++>++RESP_PHASE2-++>++IDLE.
-b. Verify the internal cross-trigger is delivered to the programmed CTM destination.
+a. Verify CT_Ack_out asserts and the internal cross-trigger is delivered to the programmed CTM destination; read STATUS and verify REQ_IN=1, ACK_OUT=1, BUSY=1.
+b. Deassert CT_Req_in; verify CT_Ack_out deasserts; wait for the busy flop to clear and read STATUS; verify BUSY=0, REQ_IN=0, ACK_OUT=0.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctp_p2p_handshake_chk` |Req/Ack 4-phase handshake completes in both directions
-|`ctp_p2p_fsm_chk` |FSM sequences through REQ_PHASE1/2 and RESP_PHASE1/2 back to IDLE
-|`ctp_p2p_busy_chk` |STATUS.BUSY asserts during and clears after each handshake
+|`ctp_p2p_handshake_chk` |Req/Ack 4-phase handshake completes in both directions at the pad level
+|`ctp_p2p_fsm_chk` |STATUS reflects each phase: REQ_OUT=1, then ACK_IN=1 with REQ_OUT=0 on the request side; REQ_IN=1 with ACK_OUT=1 on the response side; every field 0 once the handshake completes
+|`ctp_p2p_busy_chk` |STATUS.BUSY is 1 in every in-flight phase of both handshakes and 0 once the acknowledge (request side) or the request (response side) deasserts
 |`ctp_p2p_deliver_chk` |External trigger is delivered to the CTM destination
 |===
 
@@ -5621,34 +5621,35 @@ b. Verify the internal cross-trigger is delivered to the programmed CTM destinat
 *Test Coverage*:
 
 * CONFIG.RESET recovery from a P2P handshake deadlock (stalled external ack)
-* System reset (`rst_n_i`) clears all CTP register state back to defaults
-* No spurious GPIO/trigger activity asserted during either reset path
+* System reset (`rst_n_i`) landing on an active inverted wire-OR pulse clears all CTP register state back to defaults
+* No request, acknowledge, or busy activity while either reset holds or across its release
 * Normal operation resumes after recovery (a fresh handshake proceeds)
 
 *Test Procedure*:
 
 [arabic]
-. Configure CTP[0] in P2P mode and initiate a handshake.
+. Configure a seeded CTP in P2P mode and initiate a handshake.
 a. Stall the external CT_Ack_in on the CTP BFM to simulate a deadlock.
-b. Read STATUS; verify BUSY=1 (handshake stuck).
+b. Read STATUS; verify BUSY=1 and REQ_OUT=1 (handshake stuck).
 . Recover via CONFIG.RESET.
 a. Write CONFIG.RESET=1 via `OcahAxiLiteMasterAgent`.
-b. Verify the handshake is force-cleared: STATUS.BUSY=0 and CT_Req_out deasserts.
-c. Write CONFIG.RESET=0 to release; verify CTP returns to normal operation and a new handshake can proceed to completion.
-. Assert system reset (`rst_n_i`).
-a. Verify all CTP registers return to reset/default values on readback after release.
-b. Verify no spurious GPIO toggles occur during the reset window.
-. Reprogram a post-reset route and verify it operates correctly.
+b. Verify the handshake is force-cleared: CT_Req_out deasserts and STATUS reads BUSY=0 and REQ_OUT=0.
+c. Write CONFIG.RESET=0 to release; verify CTP returns to normal operation and a new handshake proceeds to completion through the route window.
+. Program a second CTP as inverted wire-OR with STRETCH_MULT=0xFFFF, route an internal CT to it, and pulse the source; verify its output enable is active.
+. Assert system reset (`rst_n_i`) while that pulse is active and watch every request/acknowledge output and every CTP busy flop from the first held cycle until after release.
+a. Verify CONFIG, STRETCH_MULT, and STATUS of every CTP and every `CT_SRC` select read their reset values after release.
+b. Verify zero activity on every watched output and busy flop across the reset window.
+. Reprogram a post-reset route on the reset CTP and verify it operates correctly.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctp_config_reset_chk` |CONFIG.RESET clears a stalled P2P handshake (BUSY=0, CT_Req_out deasserts)
-|`ctp_sys_reset_chk` |System reset returns all CTP CSRs to default values
-|`ctp_reset_no_spurious_chk` |No spurious GPIO/trigger activity during either reset
-|`ctp_reset_recovery_chk` |CTP resumes normal operation and a post-reset handshake completes
+|`ctp_config_reset_chk` |CONFIG.RESET clears a stalled P2P handshake: CT_Req_out deasserts and STATUS reads BUSY=0, REQ_OUT=0
+|`ctp_sys_reset_chk` |System reset returns CONFIG, STRETCH_MULT, and STATUS of all CTPs and every `CT_SRC` select to their reset values
+|`ctp_reset_no_spurious_chk` |The reset window (held cycles through release) records zero activity on every request/acknowledge output and CTP busy flop, the active stretched pulse included
+|`ctp_reset_recovery_chk` |CTP resumes normal operation: a post-config-reset handshake and a post-system-reset route both match the reference model
 |===
 
 *Pass Criteria*: CONFIG.RESET recovers from deadlock, system reset restores defaults with no spurious activity, and post-reset operation matches the reference model, with zero scoreboard/reference-model errors.
@@ -5668,20 +5669,18 @@ b. Verify no spurious GPIO toggles occur during the reset window.
 
 * Randomized CTP configuration across multiple CTP indices, both modes, and varied settings
 * MODE x INVERT x STRETCH_MULT combination coverage
-* INVERT correctly flips GPIO signal polarity in both Wire-OR and P2P modes
+* INVERT flips the pad polarity in both Wire-OR and P2P modes; the bench drives the request and acknowledge pads at the port's polarity
 * STRETCH_MULT respected in Wire-OR mode for each randomized value
 
 *Test Procedure*:
 
 [arabic]
-. For N iterations (e.g., 20):
-a. Randomly select a CTP index.
-b. Randomly choose a legal configuration: MODE (0/1), INVERT (0/1), STRETCH_MULT (random 16-bit).
-c. Write CONFIG and STRETCH_MULT via `OcahAxiLiteMasterAgent`.
-d. Drive a cross-trigger event (internal via CTM routing or external via the CTP BFM).
-e. Verify behavior matches the reference model for the configured mode and settings.
-f. Verify INVERT correctly inverts the GPIO signal polarity.
-. Compare the observed trigger routing/handshake stream against the software reference model across all iterations.
+. For N iterations:
+a. Randomly select a CTP index and an internal CT; the first two iterations take Wire-OR and P2P mode in turn so every pass records both, the rest draw the mode at random.
+b. Randomly choose a legal configuration: MODE (0/1), INVERT (0/1), STRETCH_MULT (0..7, so every pulse drains inside the route window).
+c. Write CONFIG and STRETCH_MULT via `OcahAxiLiteMasterAgent`; a P2P draw asserts CONFIG.RESET first so no request latched under a previous mode is pending.
+d. Route the internal CT to the CTP and pulse it inside an activity window over every output.
+e. Verify the window matches the reference model with no unselected output; wire-OR: the enable pulse width is (STRETCH_MULT{plus}1) and the data pad holds the static level INVERT selects; P2P: the request asserts at the port's active level, the acknowledge driven at the port's polarity releases it, and the request returns to its idle level.
 
 *Checkers*:
 
@@ -5689,9 +5688,9 @@ f. Verify INVERT correctly inverts the GPIO signal polarity.
 |===
 |Checker |Description
 |`ctp_rand_csr_chk` |Random CONFIG/STRETCH_MULT writes read back as programmed
-|`ctp_rand_mode_chk` |Observed behavior matches the configured Wire-OR or P2P mode
-|`ctp_rand_invert_chk` |INVERT flips GPIO polarity in both modes
-|`ctp_rand_route_chk` |Observed trigger routing matches the reference model across iterations
+|`ctp_rand_mode_chk` |Wire-OR draws: enable width (STRETCH_MULT{plus}1) and a quiet unselected set; P2P draws: request asserted, released by the acknowledge, idle again
+|`ctp_rand_invert_chk` |INVERT flips the pad levels: the wire-OR data pad holds the inverted static level while its enable pulses; the P2P request asserts low and idles high with the acknowledge driven low-active
+|`ctp_rand_route_chk` |Every draw's output window matches the CTM reference model with no unselected output firing
 |===
 
 *Pass Criteria*: All randomized configurations produce reference-model-matching behavior, including INVERT polarity and STRETCH_MULT timing, with zero scoreboard/reference-model errors.
@@ -5718,11 +5717,12 @@ f. Verify INVERT correctly inverts the GPIO signal polarity.
 
 [arabic]
 . Bring the XTRIG CSR path to idle after reset and disable all CTP routing.
-. Walk every CTP CSR field with deterministic values.
-a. Drive full-word and per-byte byte-enable writes through `OcahAxiLiteMasterAgent` to exercise the regblock byte-enable / masked-write conditions.
-b. Cover single-bit, all-ones, and reserved-bit patterns per field.
-. Read back each write and verify the defined field reflects the programmed value and that reserved bits behave as specified.
-. Verify no CTP CSR aliases another (each offset is independent) and that the resulting routing state matches the reference model.
+. Walk every CTP CONFIG and STRETCH_MULT with deterministic values, in seeded order.
+a. Write the field patterns, the all-ones word, and the inverted patterns through `OcahAxiLiteMasterAgent`, comparing the full readback word so reserved bits must read 0.
+b. Apply every byte strobe (0x1, 0x2, 0x4, 0x8) with a seeded word over a known base and compare the merged word; a strobed reserved lane leaves the register unchanged.
+c. Write all ones to STATUS and read it back unchanged.
+. Read the neighbouring CTP's CONFIG and STRETCH_MULT before and after each CTP's sweep and verify they are unchanged (no aliasing).
+. After the sweep, program one CTP as wire-OR with a seeded STRETCH_MULT, route an internal CT to it, and verify the route window, the reference model, and the pulse width.
 . Disable all CTP routing before test exit.
 
 *Checkers*:
@@ -5730,10 +5730,10 @@ b. Cover single-bit, all-ones, and reserved-bit patterns per field.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctp_csr_sweep_byteen_chk` |Per-byte byte-enable writes update only the addressed bytes
-|`ctp_csr_sweep_readback_chk` |Every programmed CSR field reads back its written value
-|`ctp_csr_sweep_reserved_chk` |Reserved bits and legal masks behave as specified
-|`ctp_csr_sweep_alias_chk` |No CTP CSR offset aliases another
+|`ctp_csr_sweep_byteen_chk` |Each byte strobe (0x1, 0x2, 0x4, 0x8) updates only the strobed lanes of CONFIG and STRETCH_MULT; a strobed reserved lane leaves the register unchanged
+|`ctp_csr_sweep_readback_chk` |Every full-word pattern reads back its defined fields with the reserved bits 0
+|`ctp_csr_sweep_reserved_chk` |All-ones and inverted patterns leave the reserved bits reading 0; a write to STATUS is ignored
+|`ctp_csr_sweep_alias_chk` |The neighbouring CTP's CONFIG and STRETCH_MULT are unchanged by the sweep; a routed pulse after the sweep matches the reference model with width (STRETCH_MULT{plus}1)
 |===
 
 *Pass Criteria*: Every CTP CSR field accepts and returns deterministic values across all byte-enable patterns with correct reserved-bit and routing behavior and no aliasing, with zero scoreboard/reference-model errors.
@@ -5874,31 +5874,32 @@ b. Verify ARVALID/ARADDR remain stable while ARREADY is low and the read returns
 
 *Test Coverage*:
 
-* Focused coverage of the XTRIG `axi_lite_demux` AW-lock release branch
-* AW/W arrival skew that holds the demux AW lock, then releases channels in varied order
-* Lock-release branch exercised after the locked write drains
-* Response ordering and final CSR contents preserved across the locked/released sequence
+* Two outstanding skewed writes through the shared AXI-Lite master: the second AW is presented while the first W is still pending
+* The demux's AW-before-W bookkeeping, mirrored from the crossbar as `xtrig_demux_w_pending` (the W-select queue holds the first AW's port), engages on the first AW and releases when its W passes; the second AW is held with AWREADY low meanwhile, counted by the bench stall counter `xtrig_axil_aw_stall_count` and by the VIP
+* The demux AW lock flag, mirrored as `xtrig_demux_aw_lock`, stays clear: it engages only when a master port refuses a fresh AW, and every register block and the error subordinate behind this crossbar accept an AW into an empty slot in the same cycle, so that branch is unreachable from the DTP boundary
+* Response ordering across the pair proven by distinguishable response codes (OKAY then DECERR) and by both readbacks
 
 *Test Procedure*:
 
 [arabic]
-. Configure the XTRIG AXI-Lite master in manual mode.
-. Skew AW/W arrival to hold the demux AW lock.
-a. Present AW (selecting a demux slave) while delaying W so the `axi_lite_demux` AW lock is held open.
-b. Confirm via the XTRIG monitor that the AW lock is engaged.
-. Release the channels in varied order (W-then-B, and across back-to-back writes) to exercise the AW-lock release branch.
-a. Verify the lock releases once the locked write completes and the demux is free for the next AW.
-. Verify response ordering and that final XTRIG CSR contents match the reference model.
+. Configure the XTRIG AXI-Lite master in manual mode and open an activity window over the two demux mirrors.
+. Issue an AW-first pair to two seeded CTP CONFIG registers: the first W delayed 4..8 cycles, BREADY deferred 1..4 cycles.
+a. Verify `xtrig_demux_w_pending` was 1 during the pair and is 0 at its end, and `xtrig_demux_aw_lock` stayed 0.
+b. Verify the second AW stalled (VIP stall cycles > 0) with AWVALID and AWADDR stable, and that the bench AW stall counter advanced by the same count.
+c. Verify both B responses are OKAY and both CONFIG readbacks match.
+. Issue a W-first pair to a CTM select register and an unmapped word (AW delayed 4..8 cycles).
+a. Verify the first B is OKAY and the second DECERR, in issue order, with the same demux-state and stall evidence.
+b. Verify the CTM select readback matches.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`xtrig_demux_aw_lock_engage_chk` |AW/W skew engages the `axi_lite_demux` AW lock
-|`xtrig_demux_aw_lock_release_chk` |The AW-lock release branch is exercised once the locked write completes
-|`xtrig_demux_order_chk` |Response ordering is preserved across the locked/released writes
-|`xtrig_demux_csr_chk` |Final XTRIG CSR contents match the programmed values
+|`xtrig_demux_aw_lock_engage_chk` |The first AW of the pair engages the demux's pending-W state (`xtrig_demux_w_pending`=1) and the second AW is held with AWREADY low until the first W passes (stall cycles > 0, AWVALID/AWADDR stable); the AW lock flag stays 0, that branch being unreachable behind subordinates that accept an AW into an empty slot
+|`xtrig_demux_aw_lock_release_chk` |The pending-W state releases once the first W passes (`xtrig_demux_w_pending`=0 at the end of the pair) and the bench AW stall counter equals the VIP's stall count
+|`xtrig_demux_order_chk` |With the pair's second write aimed at an unmapped word, the first B is OKAY and the second DECERR, in issue order, and both responses complete
+|`xtrig_demux_csr_chk` |Both CTP CONFIG readbacks and the CTM select readback match the programmed values
 |===
 
 *Pass Criteria*: The `axi_lite_demux` AW lock engages and releases correctly with preserved ordering and matching CSR contents, with zero scoreboard/reference-model errors.
@@ -5916,30 +5917,30 @@ a. Verify the lock releases once the locked write completes and the demux is fre
 
 *Test Coverage*:
 
-* Unmapped XTRIG reads routed to the xbar default DECERR slave (`+axi_lite_xbar.default_ar_mst_port[_en]+`)
-* RREADY held low so a second ARVALID must stay stable while ARREADY is low (`axi_lite_demux.ar_valid_stable` / `ar_stable`)
+* Unmapped XTRIG reads decoded to the crossbar's error subordinate, which answers DECERR with its response data word; the xbar's default-master-port path is disabled in this integration, so every decode error comes from the error subordinate
+* Two outstanding reads through the shared AXI-Lite master: the second AR is presented while RREADY is held on the first DECERR, and the demux, which admits one read in flight, holds it with ARREADY low (`axi_lite_demux.ar_valid_stable` / `ar_stable`) until the first response is accepted
 * Both unmapped reads return DECERR; no deadlock on the backpressured read path
 * Stable ARADDR and read data through the decode-backpressure window
 
 *Test Procedure*:
 
 [arabic]
-. Idle all manual AXI-Lite master outputs after reset; confirm the XTRIG xbar address map has no valid slave at `0x02B0` and above.
-. Issue an unmapped read to `0x02B0` and hold the DECERR response by keeping the master RREADY=0.
-. While the first response is held, issue a second unmapped read to `0x02F0`.
-a. Verify ARVALID remains asserted and ARADDR remains stable while ARREADY is low (read-stability assertions hit).
-. Release RREADY, allow the second AR to complete, and verify the second response is also DECERR.
-. Confirm via the XTRIG monitor that both reads returned DECERR with no deadlock and stable channel behavior throughout.
+. Idle all manual AXI-Lite master outputs after reset; the XTRIG crossbar address map has no subordinate at the unmapped base (the word after the last CTP window) and above.
+. Issue two unmapped reads at seeded offsets as one pair: hold the first DECERR response by keeping RREADY=0 for 4..8 cycles while the second AR is presented.
+a. Verify the second AR stalled (VIP AR stall cycles > 0) with ARVALID and ARADDR stable across the stall, and that the bench counter `xtrig_axil_ar_stall_count` advanced by the same count.
+b. Verify RVALID/RDATA/RRESP stayed stable across the hold.
+. Release RREADY, allow the second AR to complete, and verify both responses are DECERR carrying the error subordinate's data word.
+. Verify exactly two AR beats were accepted (ARVALID cycles minus stall cycles).
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`xtrig_read_decerr_chk` |Both unmapped reads return DECERR from the xbar default slave
-|`xtrig_read_ar_stable_chk` |ARVALID/ARADDR remain stable while ARREADY is low
-|`xtrig_read_default_ar_chk` |The xbar `+default_ar_mst_port[_en]+` read path receives real success hits
-|`xtrig_read_no_deadlock_chk` |The backpressured read path completes without deadlock
+|`xtrig_read_decerr_chk` |Both unmapped reads return DECERR
+|`xtrig_read_ar_stable_chk` |The second AR is held with ARREADY low while the first response is held (stall cycles > 0), ARVALID and ARADDR stay stable through the stall, the bench AR stall counter equals the VIP's count, and exactly two AR beats are accepted
+|`xtrig_read_default_ar_chk` |Each decode error is answered by the crossbar's error subordinate: the read data is its response word (`0xBADCAB1E`); the xbar default master port is disabled in this integration
+|`xtrig_read_no_deadlock_chk` |Both responses complete once RREADY is released, and RVALID/RDATA/RRESP hold stable across the RREADY-low window
 |===
 
 *Pass Criteria*: Both unmapped reads return DECERR with stable channels through the backpressure window and the xbar default-read and demux read-stability assertions covered, with zero scoreboard/reference-model errors.
@@ -5978,8 +5979,8 @@ b. Read each written register back and confirm only the source-input bit is set.
 a. Verify every selected CTP destination asserts the trigger simultaneously.
 b. Verify every non-selected destination port remains quiet.
 . Exercise wire-OR superposition:
-a. Program a second CLA source whose `CT_DST_SELECT` overlaps one of the same CTP destinations.
-b. Pulse both sources and verify the overlapped destination ORs the contributions while disjoint destinations track only their own source.
+a. Program one CTP output's `CT_DST_SELECT` with the source-input bit and a second CLA source-input bit.
+b. Pulse each source alone, then both in the same cycle: the shared destination fires for each, and the merged pulse has the single-source width (STRETCH_MULT{plus}1, two cycles) while every other destination stays quiet.
 
 *Checkers*:
 
@@ -5988,7 +5989,7 @@ b. Pulse both sources and verify the overlapped destination ORs the contribution
 |Checker |Description
 |`ctm_wire_or_cla_to_ctp_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
 |`ctm_wire_or_cla_to_ctp_route_chk` |All selected CTP destinations assert on the CLA pulse against the reference model
-|`ctm_wire_or_cla_to_ctp_or_chk` |Overlapping CLA sources OR together at the shared CTP destination
+|`ctm_wire_or_cla_to_ctp_or_chk` |Each of the two sources selected on the shared CTP output fires it alone; both pulsed in the same cycle produce one merged pulse of width (STRETCH_MULT{plus}1)
 |`ctm_wire_or_cla_to_ctp_nospur_chk` |No non-selected destination port toggles
 |===
 
@@ -6023,7 +6024,7 @@ b. Read each written register back and confirm only the source-input bit is set.
 . Observe the CLA destinations with the OCAH-local CTM monitor:
 a. Verify every selected CLA destination asserts simultaneously.
 b. Verify non-selected CLA destinations remain quiet.
-. Exercise wire-OR superposition with a second overlapping CTP source and confirm the shared CLA destination ORs the two contributions.
+. Exercise wire-OR superposition with a second CTP source selected on one CLA output: pulse each source alone, then both in the same cycle, and confirm the shared CLA destination fires for each and the merged pulse has the single-source width (two cycles, the internal CTP stretch).
 
 *Checkers*:
 
@@ -6032,7 +6033,7 @@ b. Verify non-selected CLA destinations remain quiet.
 |Checker |Description
 |`ctm_wire_or_ctp_to_cla_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
 |`ctm_wire_or_ctp_to_cla_route_chk` |All selected CLA destinations assert on the CTP pulse against the reference model
-|`ctm_wire_or_ctp_to_cla_or_chk` |Overlapping CTP sources OR together at the shared CLA destination
+|`ctm_wire_or_ctp_to_cla_or_chk` |Each of the two sources selected on the shared CLA output fires it alone; both pulsed in the same cycle produce one merged two-cycle pulse
 |`ctm_wire_or_ctp_to_cla_nospur_chk` |No non-selected CLA destination toggles
 |===
 
@@ -6067,7 +6068,7 @@ b. Read each written register back and confirm only the source-input bit is set.
 . Observe the destination CLA channels with the OCAH-local CTM monitor:
 a. Verify every selected destination CLA pulses.
 b. Verify the routing mask behavior: non-selected CLA channels stay idle and the source is not fed back to itself.
-. Exercise wire-OR superposition with a second CLA source sharing one destination and confirm OR behavior on the shared channel.
+. Exercise wire-OR superposition with a second CLA source selected on one destination channel: pulse each source alone, then both in the same cycle, and confirm the shared channel fires for each and the merged pulse has the single-source width (two cycles, the internal CTP stretch).
 
 *Checkers*:
 
@@ -6076,7 +6077,7 @@ b. Verify the routing mask behavior: non-selected CLA channels stay idle and the
 |Checker |Description
 |`ctm_wire_or_cla_to_cla_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
 |`ctm_wire_or_cla_to_cla_route_chk` |All selected destination CLA channels pulse against the reference model
-|`ctm_wire_or_cla_to_cla_or_chk` |Overlapping CLA sources OR together at the shared CLA destination
+|`ctm_wire_or_cla_to_cla_or_chk` |Each of the two sources selected on the shared CLA channel fires it alone; both pulsed in the same cycle produce one merged two-cycle pulse
 |`ctm_wire_or_cla_to_cla_noloop_chk` |No feedback loop or self-retrigger of the source CLA
 |===
 
@@ -6112,7 +6113,7 @@ b. Read each written register back and confirm only the source-input bit is set.
 a. Verify every selected destination CTP port pulses.
 b. Verify pulse width on each destination matches the reference model.
 c. Verify no feedback loop re-triggers the source.
-. Exercise wire-OR superposition with a second CTP source sharing one destination and confirm OR behavior.
+. Exercise wire-OR superposition with a second CTP source selected on one destination port: pulse each source alone, then both in the same cycle, and confirm the shared port fires for each and the merged pulse has the single-source width (STRETCH_MULT{plus}1, two cycles).
 
 *Checkers*:
 
@@ -6121,7 +6122,7 @@ c. Verify no feedback loop re-triggers the source.
 |Checker |Description
 |`ctm_wire_or_ctp_to_ctp_csr_chk` |CSR readback of each selected output's `CT_DST_SELECT` matches its programmed source-input bits
 |`ctm_wire_or_ctp_to_ctp_route_chk` |All selected destination CTP ports pulse against the reference model
-|`ctm_wire_or_ctp_to_ctp_width_chk` |Destination CTP pulse width matches the source pulse
+|`ctm_wire_or_ctp_to_ctp_width_chk` |Each of the two sources selected on the shared CTP port fires it alone; both pulsed in the same cycle produce one merged pulse of width (STRETCH_MULT{plus}1)
 |`ctm_wire_or_ctp_to_ctp_noloop_chk` |No feedback loop or self-retrigger of the source CTP
 |===
 
@@ -6308,31 +6309,31 @@ b. Verify no other CTP port observes the request and no feedback loop re-trigger
 
 *Test Coverage*:
 
-* System reset (`rst_n_i`) clears all CTM wire-OR routing registers to `0x0000_0000`
-* No spurious cross-trigger requests on any destination during or after reset
+* System reset (`rst_n_i`) clears all CTM wire-OR routing registers to `0x0000_0000` and every CTP CONFIG, STRETCH_MULT, and STATUS to its reset value
+* No request, acknowledge, or busy activity on any destination while the reset holds or across its release
 * CTM accepts new wire-OR configuration after reset and routes correctly
-* Pre-reset multicast routing and active trigger traffic do not survive the reset
+* Pre-reset multicast routing and the stretched pulses still active when the reset lands do not survive it
 
 *Test Procedure*:
 
 [arabic]
 . Establish pre-reset wire-OR state:
-a. Program one or more `+CT_SRC[N]_CONFIG_0+` with multi-bit `CT_DST_SELECT` masks via `OcahAxiLiteMasterAgent`.
-b. Drive source pulses and confirm the multicast destinations respond.
-. Assert system reset (`rst_n_i`) while wire-OR routes are active, then wait for reset deassertion.
+a. Program two CTP outputs with STRETCH_MULT=0xFFFF and select one CLA source on both `+CT_SRC[dst]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent`.
+b. Pulse the source and confirm both output enables are active and STATUS.BUSY reads 1.
+. Assert system reset (`rst_n_i`) while the stretched pulses are active and watch every request/acknowledge output and every CTP busy flop from the first held cycle until after release.
 . Verify clearing and quiescence:
-a. Read all `+CT_SRC[N]_CONFIG_0+` and confirm each is `0x0000_0000`.
-b. Confirm the OCAH-local CTM/CTP monitors observe no spurious trigger on any destination during or after reset.
-. Reconfigure a fresh wire-OR route post-reset, pulse the source, and verify correct multicast routing resumes.
+a. Read all `+CT_SRC[N]_CONFIG_0+` and confirm each is `0x0000_0000`; read every CTP CONFIG, STRETCH_MULT, and STATUS and confirm the reset values.
+b. Confirm zero activity on every watched output and busy flop across the reset window.
+. Reconfigure a fresh wire-OR route to two or three outputs post-reset, pulse the source, and verify correct multicast routing resumes.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_reset_wire_or_mode_csr_chk` |All `+CT_SRC[N]_CONFIG_0+` read back `0x0000_0000` after reset
-|`ctm_reset_wire_or_mode_nospur_chk` |No spurious trigger on any destination during or after reset
-|`ctm_reset_wire_or_mode_route_chk` |Post-reset wire-OR reconfiguration routes correctly against the reference model
+|`ctm_reset_wire_or_mode_csr_chk` |All `+CT_SRC[N]_CONFIG_0+` read back `0x0000_0000` and every CTP CONFIG, STRETCH_MULT, and STATUS reads its reset value after reset
+|`ctm_reset_wire_or_mode_nospur_chk` |The stretched pulses active when the reset lands are cleared: zero activity on every request/acknowledge output and CTP busy flop while the reset holds and across its release
+|`ctm_reset_wire_or_mode_route_chk` |Post-reset wire-OR reconfiguration to two or three outputs routes correctly against the reference model
 |===
 
 *Pass Criteria*: Reset clears all wire-OR routing state with no spurious destination toggles, and post-reset multicast routing matches the reference model, with zero scoreboard/reference-model errors.
@@ -6350,21 +6351,21 @@ b. Confirm the OCAH-local CTM/CTP monitors observe no spurious trigger on any de
 
 *Test Coverage*:
 
-* System reset (`rst_n_i`) clears all CTM point-to-point routing registers to `0x0000_0000`
-* In-flight point-to-point handshake state is cleared by reset
-* No spurious cross-trigger requests on any destination during or after reset
+* System reset (`rst_n_i`) clears all CTM point-to-point routing registers to `0x0000_0000` and every CTP CONFIG, STRETCH_MULT, and STATUS to its reset value
+* A point-to-point request still awaiting its acknowledge when the reset lands is cleared: CT_Req_out drops and STATUS reads BUSY=0, REQ_OUT=0
+* No request, acknowledge, or busy activity on any destination while the reset holds or across its release
 * A post-reset point-to-point transaction completes correctly
 
 *Test Procedure*:
 
 [arabic]
 . Establish pre-reset P2P state:
-a. Program one or more `+CT_SRC[N]_CONFIG_0+` with single-bit `CT_DST_SELECT` masks via `OcahAxiLiteMasterAgent`.
-b. Start a point-to-point handshake on a configured source.
-. Assert system reset (`rst_n_i`) mid-handshake, then wait for deassertion.
+a. Program a CTP output in P2P mode and select one CLA source on its `+CT_SRC[dst]_CONFIG_0+` via `OcahAxiLiteMasterAgent`.
+b. Pulse the source without driving the acknowledge; confirm CT_Req_out is asserted and STATUS reads BUSY=1, REQ_OUT=1.
+. Assert system reset (`rst_n_i`) with the request pending and watch every request/acknowledge output and every CTP busy flop from the first held cycle until after release.
 . Verify clearing and quiescence:
-a. Read all `+CT_SRC[N]_CONFIG_0+` and confirm each is `0x0000_0000`.
-b. Confirm the in-flight handshake state is cleared and the monitors observe no spurious trigger during or after reset.
+a. Read STATUS and confirm BUSY=0 and REQ_OUT=0; read all `+CT_SRC[N]_CONFIG_0+` and confirm each is `0x0000_0000`; read every CTP CONFIG, STRETCH_MULT, and STATUS and confirm the reset values.
+b. Confirm zero activity on every watched output and busy flop across the reset window.
 . Reprogram a single-bit P2P route post-reset, drive the source, and verify the transaction completes only at the selected destination.
 
 *Checkers*:
@@ -6372,9 +6373,9 @@ b. Confirm the in-flight handshake state is cleared and the monitors observe no 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_reset_p2p_mode_csr_chk` |All `+CT_SRC[N]_CONFIG_0+` read back `0x0000_0000` after reset
-|`ctm_reset_p2p_mode_nospur_chk` |No spurious trigger and no stale handshake state after reset
-|`ctm_reset_p2p_mode_route_chk` |Post-reset point-to-point transaction completes at the selected destination
+|`ctm_reset_p2p_mode_csr_chk` |All `+CT_SRC[N]_CONFIG_0+` read back `0x0000_0000` and every CTP CONFIG, STRETCH_MULT, and STATUS reads its reset value after reset
+|`ctm_reset_p2p_mode_nospur_chk` |The request pending when the reset lands is cleared (CT_Req_out low, STATUS BUSY=0 and REQ_OUT=0 afterwards) with zero activity on every request/acknowledge output and CTP busy flop across the reset window
+|`ctm_reset_p2p_mode_route_chk` |Post-reset point-to-point transaction completes at the selected destination against the reference model
 |===
 
 *Pass Criteria*: Reset clears all point-to-point routing and handshake state with no spurious activity, and a post-reset P2P transaction completes correctly, with zero scoreboard/reference-model errors.
@@ -6403,10 +6404,10 @@ b. Confirm the in-flight handshake state is cleared and the monitors observe no 
 . Establish a mixed pre-reset configuration:
 a. Program some sources with multi-bit (wire-OR) `CT_DST_SELECT` masks and others with single-bit (P2P) masks via `OcahAxiLiteMasterAgent`.
 b. Drive source pulses across both modes and confirm correct routing before reset.
-. Assert system reset (`rst_n_i`) while both route classes are active, then wait for deassertion.
+. Assert system reset (`rst_n_i`) with both route classes programmed and watch every request/acknowledge output and every CTP busy flop from the first held cycle until after release.
 . Verify clearing and quiescence:
-a. Read all `+CT_SRC[N]_CONFIG_0+` and confirm each is `0x0000_0000`.
-b. Confirm the monitors observe no spurious trigger on any destination during or after reset.
+a. Read all `+CT_SRC[N]_CONFIG_0+` and confirm each is `0x0000_0000`; read every CTP CONFIG, STRETCH_MULT, and STATUS and confirm the reset values.
+b. Confirm zero activity on every watched output and busy flop across the reset window.
 . Reprogram both a wire-OR and a point-to-point route post-reset, pulse the sources, and verify each routes correctly.
 
 *Checkers*:
@@ -6414,8 +6415,8 @@ b. Confirm the monitors observe no spurious trigger on any destination during or
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_reset_all_modes_csr_chk` |All `+CT_SRC[N]_CONFIG_0+` read back `0x0000_0000` after reset regardless of pre-reset mode
-|`ctm_reset_all_modes_nospur_chk` |No spurious trigger on any destination during or after reset
+|`ctm_reset_all_modes_csr_chk` |All `+CT_SRC[N]_CONFIG_0+` read back `0x0000_0000` and every CTP CONFIG, STRETCH_MULT, and STATUS reads its reset value after reset regardless of pre-reset mode
+|`ctm_reset_all_modes_nospur_chk` |Zero activity on every request/acknowledge output and CTP busy flop while the reset holds and across its release
 |`ctm_reset_all_modes_route_chk` |Post-reset wire-OR and P2P reconfiguration both route correctly against the reference model
 |===
 
@@ -6434,31 +6435,31 @@ b. Confirm the monitors observe no spurious trigger on any destination during or
 
 *Test Coverage*:
 
-* Randomized `CT_DST_SELECT` masks across all CTM sources spanning both wire-OR and P2P routing
-* Random source/destination pairs and trigger timing across CLA and CTP classes
+* Randomized routes across all CTM ports spanning both wire-OR and P2P: every selected output's `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT+` holds the source mask of the iteration
+* Random source/destination draws across CLA and CTP classes: a wire-OR iteration draws one or two sources and two to four outputs, a P2P iteration one source and one output
 * All observed routing matches the CTM reference model for every random configuration
-* No routing corruption or state leakage between successive random configurations
-* Wire-OR superposition correct whenever random masks overlap on a destination
+* No routing corruption or state leakage between successive random configurations (every route is programmed over cleared selects)
+* Wire-OR superposition: two sources selected on the same outputs and pulsed in the same cycle fire exactly the modelled outputs
 
 *Test Procedure*:
 
 [arabic]
-. For N iterations (e.g. 20):
-a. Generate random `CT_DST_SELECT` values for all CTM sources, mixing single-bit and multi-bit masks across CLA and CTP destinations.
-b. Write all `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back to confirm the programmed mask.
-c. Drive random cross-trigger requests on random source ports via the OCAH-local CTM/CTP BFMs with randomized timing.
-d. Verify each request appears at exactly its configured destinations and that overlapping destinations OR correctly.
-e. Confirm no residual routing carries over from the previous iteration's configuration.
+. For N iterations:
+a. Draw the mode, one or two sources (wire-OR) or one (P2P), and the outputs; the sources stay out of the output set.
+b. Clear every `+CT_SRC[N]_CONFIG_0+`, write the source mask into each selected output's register via `OcahAxiLiteMasterAgent`, and read each back to confirm it.
+c. Pulse the drawn sources in the same cycle via the OCAH-local CTM/CTP BFMs inside an activity window over every output.
+d. Verify the outputs that fired anywhere in the window are exactly the reference model's prediction for the pulsed sources, and that no unselected output fired.
+e. Verify every selected output is idle again at the end of the window.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_rand_all_scenarios_csr_chk` |Every randomized `CT_DST_SELECT` reads back as programmed
+|`ctm_rand_all_scenarios_csr_chk` |Every selected output's `CT_DST_SELECT` reads back the iteration's source mask
 |`ctm_rand_all_scenarios_route_chk` |All observed routing matches the reference model across iterations
-|`ctm_rand_all_scenarios_or_chk` |Overlapping random masks OR correctly at shared destinations
-|`ctm_rand_all_scenarios_noleak_chk` |No routing state leaks between successive configurations
+|`ctm_rand_all_scenarios_or_chk` |Two sources selected on the same outputs and pulsed in the same cycle fire exactly the modelled outputs (one merged pulse each) with no unselected output
+|`ctm_rand_all_scenarios_noleak_chk` |No unselected output fires and every selected output is idle at the end of each iteration's window
 |===
 
 *Pass Criteria*: Every random mixed-mode configuration routes exactly as modeled with correct wire-OR superposition and no inter-configuration leakage, with zero scoreboard/reference-model errors.
@@ -6476,29 +6477,29 @@ e. Confirm no residual routing carries over from the previous iteration's config
 
 *Test Coverage*:
 
-* Randomized multi-bit `CT_DST_SELECT` masks restricted to wire-OR (multicast) routing only
+* Randomized wire-OR (multicast) routing only: every iteration draws one or two sources and two to four outputs, and each selected output's `+CT_SRC[dst]_CONFIG_0.CT_DST_SELECT+` holds the source mask (a multi-bit register is a multi-source OR onto that output)
 * Random source pulses fan out to all selected destinations simultaneously
-* Wire-OR superposition correct when random masks overlap on shared destinations
+* Wire-OR superposition: two sources pulsed in the same cycle fire exactly the outputs that select them
 * Non-selected destinations remain quiet for every random configuration
 
 *Test Procedure*:
 
 [arabic]
 . For N iterations:
-a. Generate random `CT_DST_SELECT` values constrained to two or more set bits per active source (wire-OR-only).
-b. Write all active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
-c. Drive random source pulses via the OCAH-local CTM/CTP BFMs.
-d. Verify each pulse asserts every selected destination simultaneously and the routing mask is honored.
-e. Where random masks overlap, verify the shared destination ORs the contributing sources; verify non-selected destinations stay idle.
+a. Draw one or two sources and two to four outputs (sources outside the output set).
+b. Clear every `+CT_SRC[N]_CONFIG_0+`, write the source mask into each selected output's register via `OcahAxiLiteMasterAgent`, and read each back.
+c. Pulse the drawn sources in the same cycle via the OCAH-local CTM/CTP BFMs inside an activity window over every output.
+d. Verify the outputs that fired are exactly the reference model's prediction and that every selected destination asserted.
+e. Verify non-selected destinations stayed idle and the selected ones are idle again at the end of the window.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_rand_wire_or_only_csr_chk` |Every randomized multicast mask reads back as programmed
+|`ctm_rand_wire_or_only_csr_chk` |Every selected output's `CT_DST_SELECT` reads back the iteration's source mask
 |`ctm_rand_wire_or_only_route_chk` |All selected destinations assert per the reference model across iterations
-|`ctm_rand_wire_or_only_or_chk` |Overlapping random sources OR correctly at shared destinations
+|`ctm_rand_wire_or_only_or_chk` |Two sources selected on the same outputs and pulsed in the same cycle fire exactly the modelled outputs
 |`ctm_rand_wire_or_only_nospur_chk` |No non-selected destination toggles
 |===
 
@@ -6646,11 +6647,10 @@ e. Sample the source x destination coverage of the exercised CTP-to-CLA combinat
 
 [arabic]
 . Bring the XTRIG CSR path to idle and disable all CTM source routing.
-. Sweep the CTM routing CSR fields deterministically via `OcahAxiLiteMasterAgent`:
-a. Apply full-word writes, then per-byte-enable writes, then masked writes to `+CT_SRC[N]_CONFIG_0.CT_DST_SELECT+` to exercise each generated byte-enable and masked-write condition.
-b. Read back after each write and compare the defined destination-select field against the expected value.
-c. Confirm reserved bits remain zero and are not disturbed by adjacent writes.
-. For representative swept values, confirm the internal route decode matches the programmed `CT_DST_SELECT` via the OCAH-local CTM monitor.
+. Sweep every `+CT_SRC[N]_CONFIG_0+` deterministically via `OcahAxiLiteMasterAgent`:
+a. Apply the full-word patterns (single bits, the full select mask, a fixed and a seeded multi-bit mask, the all-ones word, and the inverted patterns, which drive reserved bits [31:26] to 1), then every byte strobe (0x1, 0x2, 0x4, 0x8) with a seeded word over a seeded base.
+b. Read back after each write and compare the full word: the defined field holds the expected value and the reserved bits read 0.
+. For two seeded output registers holding the seeded multi-bit select, pulse an input the select names and see the output fire per the reference model, then pulse an input it does not name and see the output stay quiet.
 . Disable all CTM source routing before test exit.
 
 *Checkers*:
@@ -6658,9 +6658,9 @@ c. Confirm reserved bits remain zero and are not disturbed by adjacent writes.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`ctm_rand_deterministic_csr_sweep_csr_chk` |Full-word, byte-enable, and masked-write readbacks match expected `CT_DST_SELECT` values
-|`ctm_rand_deterministic_csr_sweep_rsvd_chk` |Reserved bits read back zero and are undisturbed
-|`ctm_rand_deterministic_csr_sweep_route_chk` |Internal route decode tracks the programmed destination mask against the reference model
+|`ctm_rand_deterministic_csr_sweep_csr_chk` |Full-word and byte-strobe readbacks, compared as the full word, match the expected `CT_DST_SELECT` values
+|`ctm_rand_deterministic_csr_sweep_rsvd_chk` |Reserved bits [31:26] read 0 after the all-ones, inverted, and strobed writes
+|`ctm_rand_deterministic_csr_sweep_route_chk` |Two swept output registers holding a multi-bit select fire for an input the select names and stay quiet for one it does not, against the reference model
 |===
 
 *Pass Criteria*: Every byte-enable and masked-write condition in the CTM regblock is exercised and reads back correctly with reserved bits clear and route decode matching, with zero scoreboard/reference-model errors.

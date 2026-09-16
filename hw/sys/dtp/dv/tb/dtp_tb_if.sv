@@ -111,6 +111,22 @@ interface dtp_tb_if;
   logic [31:0] xtrig_axil_awvalid_count;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
+  // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID
+  // and ARVALID held while the crossbar keeps the matching READY low.
+  logic [31:0] xtrig_axil_aw_stall_count;
+  logic [31:0] xtrig_axil_ar_stall_count;
+
+  // XTRIG crossbar demux state behind the CSR port (driven by tb_top from
+  // the AXI-Lite demux of the cross-trigger network): the AW lock flag,
+  // which holds an AW presented to a master port whose AWREADY was low,
+  // and the W-pending flag, high from an accepted AW until its W beat
+  // passes the demux.
+  logic xtrig_demux_aw_lock;
+  logic xtrig_demux_w_pending;
+
+  // Registered BUSY of every external cross-trigger port (driven by tb_top
+  // from the CTP busy outputs); STATUS.BUSY reads the same flop.
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_busy;
 
   // JTAG2AXI bridge state per target for the reset-abort scenarios, sampled
   // by tb_top from the bridges' TCK-domain registers: the AXI FSM state

@@ -233,6 +233,8 @@ module dtp_uvm_top
   logic [31:0] xtrig_axil_awvalid_count;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
+  logic [31:0] xtrig_axil_aw_stall_count;
+  logic [31:0] xtrig_axil_ar_stall_count;
 
   // XTRIG CTM and CTP GPIO stimulus and observables, from dtp_xtrig_if.
   logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
@@ -688,6 +690,8 @@ module dtp_uvm_top
       xtrig_axil_awvalid_count   <= '0;
       xtrig_axil_wvalid_count    <= '0;
       xtrig_axil_arvalid_count   <= '0;
+      xtrig_axil_aw_stall_count  <= '0;
+      xtrig_axil_ar_stall_count  <= '0;
     end else begin
       smc_otp_axil_awvalid_count <=
                 smc_otp_axil_awvalid_count + {31'b0, smc_otp_axil_awvalid};
@@ -707,6 +711,10 @@ module dtp_uvm_top
                 xtrig_axil_wvalid_count + {31'b0, xtrig_axil_wvalid};
       xtrig_axil_arvalid_count <=
                 xtrig_axil_arvalid_count + {31'b0, xtrig_axil_arvalid};
+      xtrig_axil_aw_stall_count <=
+                xtrig_axil_aw_stall_count + {31'b0, xtrig_axil_awvalid & ~xtrig_axil_awready};
+      xtrig_axil_ar_stall_count <=
+                xtrig_axil_ar_stall_count + {31'b0, xtrig_axil_arvalid & ~xtrig_axil_arready};
     end
   end
 
@@ -1533,10 +1541,21 @@ module dtp_uvm_top
   assign u_xtrig_axil_if.rvalid   = xtrig_axil_rvalid;
   assign u_xtrig_axil_if.rready   = xtrig_axil_rready;
 
-  // XTRIG CSR request-activity pulse-counter mirrors for sequences.
-  assign u_tb_if.xtrig_axil_awvalid_count = xtrig_axil_awvalid_count;
-  assign u_tb_if.xtrig_axil_wvalid_count  = xtrig_axil_wvalid_count;
-  assign u_tb_if.xtrig_axil_arvalid_count = xtrig_axil_arvalid_count;
+  // XTRIG CSR request-activity pulse-counter and stall-counter mirrors for
+  // sequences.
+  assign u_tb_if.xtrig_axil_awvalid_count  = xtrig_axil_awvalid_count;
+  assign u_tb_if.xtrig_axil_wvalid_count   = xtrig_axil_wvalid_count;
+  assign u_tb_if.xtrig_axil_arvalid_count  = xtrig_axil_arvalid_count;
+  assign u_tb_if.xtrig_axil_aw_stall_count = xtrig_axil_aw_stall_count;
+  assign u_tb_if.xtrig_axil_ar_stall_count = xtrig_axil_ar_stall_count;
+
+  // XTRIG crossbar demux state (the single subordinate port's AXI-Lite
+  // demux) and the external CTP busy flops, sampled from the DUT.
+  assign u_tb_if.xtrig_demux_aw_lock   = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.lock_aw_valid_q;
+  assign u_tb_if.xtrig_demux_w_pending = ~u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.w_fifo_empty;
+  for (genvar ctp = 0; ctp < DEFAULT_NUM_CTP; ctp++) begin : gen_xtrig_ctp_busy
+    assign u_tb_if.xtrig_ctp_busy[ctp] = u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.busy_o;
+  end
 
   // Cross-trigger CTM/CTP pin surface: sequences drive the request-side
   // vectors and observe the DUT-driven vectors through dtp_xtrig_if (init

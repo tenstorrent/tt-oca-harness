@@ -56,8 +56,10 @@ from .ocah_axi_item import (
     OcahAxiLiteReadItem,
     OcahAxiLiteWriteItem,
     OcahAxiReadItem,
+    OcahAxiReadPairResult,
     OcahAxiReadResult,
     OcahAxiWriteItem,
+    OcahAxiWritePairResult,
     OcahAxiWriteResult,
 )
 from .ocah_axi_ref_model import (
@@ -232,6 +234,8 @@ __all__ = [
     "OcahAxiVipBackendError",
     "OcahAxiReadResult",
     "OcahAxiWriteResult",
+    "OcahAxiReadPairResult",
+    "OcahAxiWritePairResult",
     # AXI response code constants
     "OcahAxiProtocol",
     "RESP_OKAY",
