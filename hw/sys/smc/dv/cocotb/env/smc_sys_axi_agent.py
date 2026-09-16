@@ -13,7 +13,7 @@ from enum import Enum
 import cocotb
 from cocotb.handle import Immediate
 from cocotb.triggers import RisingEdge, with_timeout
-from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiMasterSequence, clear_profile
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -129,16 +129,34 @@ class SmcSysAxiItem(uvm_sequence_item):
         # AXI AxPROT. Default 0 (unprivileged); GPIO ACCESS_FILTER tests program
         # this to 1 (privileged).
         self.prot: int = 0
+        # AXI AxBURST encoding: 0 FIXED, 1 INCR, 2 WRAP. `length` picks AxSIZE,
+        # so a 1- or 2-byte access is a narrow transfer with the strobes the
+        # backend derives from the address.
+        self.burst: int = 1
+        # Beats in the burst: the transfer is `beats` x `length` bytes, so
+        # `beats` > 1 drives AxLEN = beats - 1 and `wdata` / `rdata` carry the
+        # whole burst little-endian, first beat in the low bytes.
+        self.beats: int = 1
+        # Channel timing for this access only (an ocah_axi_vip AxiTimingProfile).
+        # The driver arms it before the transaction and returns the master to
+        # the backend default after, so a profile never leaks into the next item.
+        self.timing = None
         # Stamped by the driver that actually drove this item (its `bus_name`),
         # so the scoreboard can keep a MEASURED per-port access tally. A test
         # never sets this: the point is that the count comes from the driver that
         # completed the access, not from the test that claims to have issued it.
         self.bus_name: str = ""
 
+    @property
+    def transfer_bytes(self) -> int:
+        """Bytes the whole transfer moves: one beat per `length` bytes."""
+        return self.length * self.beats
+
     def __str__(self) -> str:
         exp = "None" if self.expected is None else f"0x{self.expected:x}"
         return (
             f"{self.op.value} addr=0x{self.addr:014x} len={self.length} "
+            f"beats={self.beats} burst={self.burst} "
             f"wdata=0x{self.wdata:x} rdata=0x{self.rdata:x} exp={exp} "
             f"ok={self.resp_ok}"
         )
@@ -177,11 +195,23 @@ class SmcSysAxiDriver(uvm_driver):
             self.seq_item_port.item_done()
 
     async def _drive(self, item: SmcSysAxiItem) -> None:
+        """Drive one item, under its own channel timing when it carries one."""
+        if item.timing is None:
+            await self._drive_transfer(item)
+            return
+        self.axi.driver.set_timing(item.timing)
+        try:
+            await self._drive_transfer(item)
+        finally:
+            clear_profile(self.axi.driver)
+
+    async def _drive_transfer(self, item: SmcSysAxiItem) -> None:
         if item.op is SmcSysAxiOp.READ:
             event = self.axi.init_read(
                 address=item.addr,
-                length=item.length,
+                length=item.transfer_bytes,
                 size=self._axi_size(item.length),
+                burst=int(item.burst),
                 prot=int(item.prot),
             )
             resp = await self._timed_event(event, item, "read")
@@ -203,8 +233,9 @@ class SmcSysAxiDriver(uvm_driver):
         elif item.op is SmcSysAxiOp.WRITE:
             event = self.axi.init_write(
                 address=item.addr,
-                data=item.wdata.to_bytes(item.length, "little"),
+                data=item.wdata.to_bytes(item.transfer_bytes, "little"),
                 size=self._axi_size(item.length),
+                burst=int(item.burst),
                 prot=int(item.prot),
             )
             resp = await self._timed_event(event, item, "write")

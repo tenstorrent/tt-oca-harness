@@ -336,60 +336,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_internal_addr_low"
 
 [[holes]]
-id = "fcov-smc-c_sep_in_awburst_fixed"
-title = "c sep in awburst fixed"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_sep_in_awburst_fixed"
-
-[[holes]]
-id = "fcov-smc-c_sep_in_awburst_wrap"
-title = "c sep in awburst wrap"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_sep_in_awburst_wrap"
-
-[[holes]]
-id = "fcov-smc-c_sep_in_awsize_byte"
-title = "c sep in awsize byte"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_sep_in_awsize_byte"
-
-[[holes]]
 id = "fcov-smc-c_sep_in_wstrb_none"
 title = "c sep in wstrb none"
 category = "missing_stimulus"
@@ -462,24 +408,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_sys_out_rresp_decerr"
 
 [[holes]]
-id = "fcov-smc-c_ar_multi_beat"
-title = "c ar multi beat"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_ar_multi_beat"
-
-[[holes]]
 id = "fcov-smc-c_ar_stall"
 title = "c ar stall"
 category = "missing_stimulus"
@@ -496,24 +424,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_ar_stall"
-
-[[holes]]
-id = "fcov-smc-c_aw_multi_beat"
-title = "c aw multi beat"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_aw_multi_beat"
 
 [[holes]]
 id = "fcov-smc-c_aw_stall"
