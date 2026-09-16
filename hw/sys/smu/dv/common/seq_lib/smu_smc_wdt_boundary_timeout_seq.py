@@ -68,7 +68,7 @@ POLL_STEP = 32
 FIRST_TIMEOUT_BOUND = 65536
 SECOND_TIMEOUT_BOUND = 32768
 WARM_RESET_PATH = "u_smc.rst_warm_smc_clk_n"
-CPU_PATH = "u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu"
+CPU_PATH = "u_smc.u_smc_cpu_wrapper.u_smc_cpu"
 
 
 class smu_smc_wdt_boundary_timeout_seq:
