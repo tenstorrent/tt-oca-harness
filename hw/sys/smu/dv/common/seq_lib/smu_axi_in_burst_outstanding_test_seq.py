@@ -32,7 +32,12 @@ from seq_lib.smu_addr_map import (
     smc_addr,
 )
 from seq_lib.smu_axi_helpers import AXI_TIMEOUT_NS, make_smu_axi_master
-from seq_lib.smu_filter_helpers import PASS_ALL_END, await_smn_resp, program_inbound0_window
+from seq_lib.smu_filter_helpers import (
+    PASS_ALL_END,
+    await_smn_resp,
+    program_inbound0_window,
+    program_smc_aperture_local_alias,
+)
 from seq_lib.smu_jtag_helpers import DTP_DEFAULT_IDCODE, make_smu_jtag_tap
 from seq_lib.smu_tb_pins import smc_primary_reset
 
@@ -94,6 +99,8 @@ class smu_axi_in_burst_outstanding_test_seq:
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
+        # Route ext_in local addresses through the crossbar before opening the window.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
         await program_inbound0_window(jtag, 0, PASS_ALL_END, scoreboard=sb, tag="AXIIN_WIDE")
         return jtag
 
