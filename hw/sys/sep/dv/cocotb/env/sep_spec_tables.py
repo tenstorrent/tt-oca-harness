@@ -253,6 +253,56 @@ def esrc_fips_locked(reg: str) -> frozenset[str]:
         ) from exc
 
 
+_AON_TIMER_HJSON = (
+    _REPO
+    / "vendor"
+    / "lowRISC"
+    / "opentitan"
+    / "upstream"
+    / "hw"
+    / "ip"
+    / "aon_timer"
+    / "data"
+    / "aon_timer.hjson"
+)
+
+_HJSON_REG = re.compile(r'\{\s*name:\s*"([A-Z0-9_]+)"', re.S)
+_HJSON_REGWEN = re.compile(r'regwen:\s*"([A-Z0-9_]+)"')
+
+
+@lru_cache(maxsize=1)
+def aon_timer_regwen_map() -> dict[str, frozenset[str]]:
+    """Registers each aon_timer regwen gates, from ``aon_timer.hjson``.
+
+    The OpenTitan register specification is the authority for this lock map, and
+    ``aon_timer_reg_top.sv`` is generated from it. Reading the description keeps
+    the expectation off the generated RTL, so a hand-edit to ``src_regwen_i``
+    shows up as a disagreement instead of being adopted as the golden.
+    """
+    text = _AON_TIMER_HJSON.read_text(encoding="utf-8")
+    bounds = [(m.group(1), m.start()) for m in _HJSON_REG.finditer(text)]
+    out: dict[str, set[str]] = {}
+    for i, (reg, start) in enumerate(bounds):
+        end = bounds[i + 1][1] if i + 1 < len(bounds) else len(text)
+        gate = _HJSON_REGWEN.search(text[start:end])
+        if gate:
+            out.setdefault(gate.group(1), set()).add(reg)
+    if not out:
+        raise RuntimeError(
+            f"no regwen linkage parsed from {_AON_TIMER_HJSON}; a REGWEN scope "
+            "check built on an empty map would assert nothing"
+        )
+    return {k: frozenset(v) for k, v in out.items()}
+
+
+def aon_timer_regwen_gates(regwen: str) -> frozenset[str]:
+    """The registers one aon_timer regwen gates. Raises if it gates none."""
+    try:
+        return aon_timer_regwen_map()[regwen]
+    except KeyError as exc:
+        raise KeyError(f"{regwen!r} gates no register in aon_timer.hjson") from exc
+
+
 def _selftest() -> None:
     assert window("ABR").base == 0x1094_0000
     assert window("EPOOL").base == 0x1095_0000
@@ -278,6 +328,11 @@ def _selftest() -> None:
     assert esrc_fips_locked("CTRL") >= {"MODULE_ENABLE", "SHA256_WHITENING_ENABLE"}
     assert esrc_fips_locked("HEALTH_TEST_CTRL") >= {"ENABLE", "REPETITION_LIMIT"}
     assert "LOCK" not in locked.get("FIPS_LOCK", frozenset())
+    assert aon_timer_regwen_gates("WDOG_REGWEN") == frozenset(
+        {"WDOG_CTRL", "WDOG_BARK_THOLD", "WDOG_BITE_THOLD"}
+    )
+    assert "WDOG_COUNT" not in aon_timer_regwen_gates("WDOG_REGWEN")
+    assert "WKUP_THOLD_LO" not in aon_timer_regwen_gates("WDOG_REGWEN")
 
 
 _selftest()

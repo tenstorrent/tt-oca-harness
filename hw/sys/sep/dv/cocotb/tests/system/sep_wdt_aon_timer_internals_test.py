@@ -26,6 +26,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_spec_tables import aon_timer_regwen_gates
 from sep_base_test import sep_base_test
 from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
@@ -411,11 +412,24 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
 
         # CHK-REGWEN-SCOPE: the lock covers WDOG_CTRL / WDOG_BARK_THOLD /
-        # WDOG_BITE_THOLD only (aon_timer_reg_top.sv passes wdog_regwen_qs as
-        # src_regwen_i for those three registers and '0 for every other). The WKUP
-        # configuration and WDOG_COUNT must therefore still accept writes while the
-        # watchdog thresholds are locked -- a lock wired to the whole block would
-        # freeze the wakeup timer and the pet path with it.
+        # WDOG_BITE_THOLD only. The scope is read from the OpenTitan register
+        # description (aon_timer.hjson, the source aon_timer_reg_top.sv is
+        # generated from) via aon_timer_regwen_gates, not from the generated RTL,
+        # so a hand-edited src_regwen_i disagrees with this check instead of
+        # defining it. The WKUP configuration and WDOG_COUNT must therefore still
+        # accept writes while the watchdog thresholds are locked -- a lock wired to
+        # the whole block would freeze the wakeup timer and the pet path with it.
+        gated = aon_timer_regwen_gates("WDOG_REGWEN")
+        assert gated == {"WDOG_CTRL", "WDOG_BARK_THOLD", "WDOG_BITE_THOLD"}, (
+            f"CHK-REGWEN-SCOPE: aon_timer.hjson gates {sorted(gated)} behind "
+            "WDOG_REGWEN; this check walks the three watchdog configuration "
+            "registers and probes WKUP_THOLD_LO / WDOG_COUNT as ungated"
+        )
+        for ungated in ("WKUP_THOLD_LO", "WDOG_COUNT"):
+            assert ungated not in gated, (
+                f"CHK-REGWEN-SCOPE: {ungated} is gated by WDOG_REGWEN in "
+                "aon_timer.hjson, so probing it as still-writable is wrong"
+            )
         thold_val = self.cfg_wdt.postlock_wkup_thold
         await self.wdt.write(WKUP_THOLD_LO, thold_val)
         thold_rb = await self.wdt.read(WKUP_THOLD_LO)
