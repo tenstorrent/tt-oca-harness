@@ -22,16 +22,16 @@ import os
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_hash_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # DMA copy + inline SHA-256 + a software SHA-256 over 256 bytes; the run loop
 # early-exits on fw_done, so this is just an upper bound.
 _MAX_RUN_CYCLES = 3_000_000
@@ -56,9 +56,31 @@ class sep_dma_hash_test(sep_base_test):
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+        )
+
+        # The banner alone cannot tell a current image from a stale SHA-256-only
+        # one: both print it. The firmware scores SHA-384, the multi-chunk pass
+        # and the DIGEST_SWAP=0 comparison into its own error count, so gate on
+        # each leg's PASS line -- an image built before those legs existed
+        # reaches the PASS magic with three contracts never exercised.
+        console = self.sb.console_text()
+        for needle, what in (
+            ("PASS: SHA-384 digest matches", "the SHA-384 FIPS 180-4 vector"),
+            ("PASS: multi-chunk SHA-256 digest matches", "the multi-chunk SHA-256 pass"),
+            ("under DIGEST_SWAP=0 are the byte-reverse", "the DIGEST_SWAP=0 comparison"),
+        ):
+            assert needle in console, (
+                f"firmware console has no {needle!r} line, so {what} did not run "
+                f"or did not pass. Console was:\n{console}"
+            )
+        self.logger.info(
+            "CHK-SHA384 / CHK-MULTICHUNK / CHK-DIGEST-SWAP PASS: all three hash "
+            "legs reported passing in the firmware console"
         )

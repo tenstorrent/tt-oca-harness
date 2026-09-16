@@ -63,7 +63,7 @@ module prim_fifo_sync_parity #(
     // No error
     assign err_o = 1'b0;
 
-  // FIFO has space for a single element (and doesn't need proper counters)
+    // FIFO has space for a single element (and doesn't need proper counters)
   end else if (Depth == 1) begin : gen_singleton_fifo
 
     localparam int unsigned ParityWidth = Secure ? Width + 1 : Width;
@@ -143,14 +143,14 @@ module prim_fifo_sync_parity #(
       assign err_o = err_q;
     end
 
-  // Normal FIFO construction
+    // Normal FIFO construction
   end else begin : gen_normal_fifo
 
     localparam int unsigned PtrW = prim_util_pkg::vbits(Depth);
     localparam int unsigned ParityWidth = Secure ? Width + 1 : Width;
 
     logic [PtrW-1:0] fifo_wptr, fifo_rptr;
-    logic            fifo_incr_wptr, fifo_incr_rptr, fifo_empty;
+    logic fifo_incr_wptr, fifo_incr_rptr, fifo_empty;
     logic            fifo_ptr_err;
 
     // module under reset flag
@@ -229,7 +229,7 @@ module prim_fifo_sync_parity #(
 
     `OCAH_OT_ASSERT(depthShallNotExceedParamDepth, !empty |-> depth_o <= DepthW'(Depth))
     `OCAH_OT_ASSERT(OnlyRvalidWhenNotUnderRst_A, rvalid_o -> ~under_rst)
-  end // block: gen_normal_fifo
+  end  // block: gen_normal_fifo
 
 
   if (NeverClears) begin : gen_never_clears

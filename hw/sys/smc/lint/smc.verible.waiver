@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# The CIRCT memory-swap file intentionally bundles several macro modules.
+waive --rule=module-filename --regex="module OCAH4CORECluster_rom_ext " --location=".*hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/OCAH4CORECluster_mem_swaps\.sv$"
+
+# Generic testbench top name: the module identifies the driven block.
+waive --rule=module-filename --regex="module smc_uvm_top" --location=".*hw/sys/smc/dv/tb/tb_top\.sv$"
+

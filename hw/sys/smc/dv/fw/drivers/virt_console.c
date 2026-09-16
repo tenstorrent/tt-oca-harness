@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// C code (virt_console.c)
-
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -22,7 +20,7 @@ Lower 8 bits:
 Opcodes:
 0x0 : 24-bit payload is ASCII (lowest-order byte is first character)
 0x1 : 16-bit hex (little endian), presented as hex
-0x2 : 24-bit decimal, presented as decimal (not currently implemented)
+0x2 : 24-bit decimal, presented as decimal (no encoder in this driver)
 0x3-0x7 : reserved
 */
 

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_dtp_jtag2axi_abort_mid_op_test_seq import (
     smu_dtp_jtag2axi_abort_mid_op_test_seq,
 )
@@ -18,12 +17,10 @@ class smu_dtp_jtag2axi_abort_mid_op_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_dtp_jtag2axi_abort_mid_op_test "
-            "TierC JTAG2AXI-ABORT SEP=0 JTAG"
+            "DUT_TAG=BARE smu_dtp_jtag2axi_abort_mid_op_test TierC JTAG2AXI-ABORT SEP=0 JTAG"
         )
         seq = smu_dtp_jtag2axi_abort_mid_op_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok and seq.s4_ok, (
-            f"jtag2axi_abort incomplete s1={seq.s1_ok} s2={seq.s2_ok} "
-            f"s3={seq.s3_ok} s4={seq.s4_ok}"
+            f"jtag2axi_abort incomplete s1={seq.s1_ok} s2={seq.s2_ok} s3={seq.s3_ok} s4={seq.s4_ok}"
         )

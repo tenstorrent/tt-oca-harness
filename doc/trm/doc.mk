@@ -52,6 +52,7 @@ ocah-doc-trm-html: ocah-doc-trm-setup
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
 		$(OCAH_DOC_ANTORA_RELEASE_ARG) \
 		--attribute basedir="$(OCAH_TRM_DIR)" "$(OCAH_TRM_PLAYBOOK)"
+	$(call ocah_stage_dashboard_data,$(OCAH_TRM_BUILD)/html_antora)
 	@echo "Done: $(OCAH_TRM_BUILD)/html_antora/ocah-docs/latest/index.html"
 
 .PHONY: ocah-doc-trm-pdf

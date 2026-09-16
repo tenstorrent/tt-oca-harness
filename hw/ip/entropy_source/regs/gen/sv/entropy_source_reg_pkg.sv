@@ -40,14 +40,6 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         logic next;
-    } entropy_source__STATUS__RSVD__in_t;
-
-    typedef struct {
-        entropy_source__STATUS__RSVD__in_t RSVD;
-    } entropy_source__STATUS__in_t;
-
-    typedef struct {
-        logic next;
     } entropy_source__INTR_STATUS__HEALTH_TEST_FAILED__in_t;
 
     typedef struct {
@@ -98,7 +90,7 @@ package entropy_source_reg_pkg;
     } entropy_source__SHA256_STATUS__INPUT_COUNT__in_t;
 
     typedef struct {
-        logic [2:0] next;
+        logic [3:0] next;
     } entropy_source__SHA256_STATUS__OUTPUT_COUNT__in_t;
 
     typedef struct {
@@ -197,17 +189,7 @@ package entropy_source_reg_pkg;
     } entropy_source__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT__in_t;
 
     typedef struct {
-        logic [3:0] next;
-    } entropy_source__APT_PATTERN_COUNT_1BIT__TARGET_PATTERN__in_t;
-
-    typedef struct {
-        logic [9:0] next;
-    } entropy_source__APT_PATTERN_COUNT_1BIT__SAMPLES_PROCESSED__in_t;
-
-    typedef struct {
         entropy_source__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT__in_t PATTERN_COUNT;
-        entropy_source__APT_PATTERN_COUNT_1BIT__TARGET_PATTERN__in_t TARGET_PATTERN;
-        entropy_source__APT_PATTERN_COUNT_1BIT__SAMPLES_PROCESSED__in_t SAMPLES_PROCESSED;
     } entropy_source__APT_PATTERN_COUNT_1BIT__in_t;
 
     typedef struct {
@@ -215,54 +197,8 @@ package entropy_source_reg_pkg;
     } entropy_source__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT__in_t;
 
     typedef struct {
-        logic [3:0] next;
-    } entropy_source__APT_PATTERN_COUNT_2BIT__TARGET_PATTERN__in_t;
-
-    typedef struct {
-        logic [9:0] next;
-    } entropy_source__APT_PATTERN_COUNT_2BIT__SAMPLES_PROCESSED__in_t;
-
-    typedef struct {
         entropy_source__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT__in_t PATTERN_COUNT;
-        entropy_source__APT_PATTERN_COUNT_2BIT__TARGET_PATTERN__in_t TARGET_PATTERN;
-        entropy_source__APT_PATTERN_COUNT_2BIT__SAMPLES_PROCESSED__in_t SAMPLES_PROCESSED;
     } entropy_source__APT_PATTERN_COUNT_2BIT__in_t;
-
-    typedef struct {
-        logic [9:0] next;
-    } entropy_source__APT_PATTERN_COUNT_3BIT__PATTERN_COUNT__in_t;
-
-    typedef struct {
-        logic [3:0] next;
-    } entropy_source__APT_PATTERN_COUNT_3BIT__TARGET_PATTERN__in_t;
-
-    typedef struct {
-        logic [9:0] next;
-    } entropy_source__APT_PATTERN_COUNT_3BIT__SAMPLES_PROCESSED__in_t;
-
-    typedef struct {
-        entropy_source__APT_PATTERN_COUNT_3BIT__PATTERN_COUNT__in_t PATTERN_COUNT;
-        entropy_source__APT_PATTERN_COUNT_3BIT__TARGET_PATTERN__in_t TARGET_PATTERN;
-        entropy_source__APT_PATTERN_COUNT_3BIT__SAMPLES_PROCESSED__in_t SAMPLES_PROCESSED;
-    } entropy_source__APT_PATTERN_COUNT_3BIT__in_t;
-
-    typedef struct {
-        logic [9:0] next;
-    } entropy_source__APT_PATTERN_COUNT_4BIT__PATTERN_COUNT__in_t;
-
-    typedef struct {
-        logic [3:0] next;
-    } entropy_source__APT_PATTERN_COUNT_4BIT__TARGET_PATTERN__in_t;
-
-    typedef struct {
-        logic [9:0] next;
-    } entropy_source__APT_PATTERN_COUNT_4BIT__SAMPLES_PROCESSED__in_t;
-
-    typedef struct {
-        entropy_source__APT_PATTERN_COUNT_4BIT__PATTERN_COUNT__in_t PATTERN_COUNT;
-        entropy_source__APT_PATTERN_COUNT_4BIT__TARGET_PATTERN__in_t TARGET_PATTERN;
-        entropy_source__APT_PATTERN_COUNT_4BIT__SAMPLES_PROCESSED__in_t SAMPLES_PROCESSED;
-    } entropy_source__APT_PATTERN_COUNT_4BIT__in_t;
 
     typedef struct {
         logic swwel;
@@ -271,30 +207,6 @@ package entropy_source_reg_pkg;
     typedef struct {
         entropy_source__APT_PROPORTION_1BIT__LIMIT__in_t LIMIT;
     } entropy_source__APT_PROPORTION_1BIT__in_t;
-
-    typedef struct {
-        logic swwel;
-    } entropy_source__APT_PROPORTION_2BIT__LIMIT__in_t;
-
-    typedef struct {
-        entropy_source__APT_PROPORTION_2BIT__LIMIT__in_t LIMIT;
-    } entropy_source__APT_PROPORTION_2BIT__in_t;
-
-    typedef struct {
-        logic swwel;
-    } entropy_source__APT_PROPORTION_3BIT__LIMIT__in_t;
-
-    typedef struct {
-        entropy_source__APT_PROPORTION_3BIT__LIMIT__in_t LIMIT;
-    } entropy_source__APT_PROPORTION_3BIT__in_t;
-
-    typedef struct {
-        logic swwel;
-    } entropy_source__APT_PROPORTION_4BIT__LIMIT__in_t;
-
-    typedef struct {
-        entropy_source__APT_PROPORTION_4BIT__LIMIT__in_t LIMIT;
-    } entropy_source__APT_PROPORTION_4BIT__in_t;
 
     typedef struct {
         logic swwel;
@@ -316,42 +228,6 @@ package entropy_source_reg_pkg;
         entropy_source__MARKOV_TEST_COUNTS_0__COUNT_01__in_t COUNT_01;
         entropy_source__MARKOV_TEST_COUNTS_0__COUNT_10__in_t COUNT_10;
     } entropy_source__MARKOV_TEST_COUNTS_0__in_t;
-
-    typedef struct {
-        logic [15:0] next;
-    } entropy_source__MARKOV_TEST_COUNTS_1__COUNT_00__in_t;
-
-    typedef struct {
-        logic [15:0] next;
-    } entropy_source__MARKOV_TEST_COUNTS_1__COUNT_11__in_t;
-
-    typedef struct {
-        entropy_source__MARKOV_TEST_COUNTS_1__COUNT_00__in_t COUNT_00;
-        entropy_source__MARKOV_TEST_COUNTS_1__COUNT_11__in_t COUNT_11;
-    } entropy_source__MARKOV_TEST_COUNTS_1__in_t;
-
-    typedef struct {
-        logic [7:0] next;
-    } entropy_source__MARKOV_TEST_PROBABILITIES__PROB_01__in_t;
-
-    typedef struct {
-        logic [7:0] next;
-    } entropy_source__MARKOV_TEST_PROBABILITIES__PROB_10__in_t;
-
-    typedef struct {
-        logic [7:0] next;
-    } entropy_source__MARKOV_TEST_PROBABILITIES__PROB_00__in_t;
-
-    typedef struct {
-        logic [7:0] next;
-    } entropy_source__MARKOV_TEST_PROBABILITIES__PROB_11__in_t;
-
-    typedef struct {
-        entropy_source__MARKOV_TEST_PROBABILITIES__PROB_01__in_t PROB_01;
-        entropy_source__MARKOV_TEST_PROBABILITIES__PROB_10__in_t PROB_10;
-        entropy_source__MARKOV_TEST_PROBABILITIES__PROB_00__in_t PROB_00;
-        entropy_source__MARKOV_TEST_PROBABILITIES__PROB_11__in_t PROB_11;
-    } entropy_source__MARKOV_TEST_PROBABILITIES__in_t;
 
     typedef struct {
         logic swwel;
@@ -418,12 +294,10 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         logic next;
-        logic hwclr;
     } entropy_source__MAIN_SM_STATUS__ALERT__in_t;
 
     typedef struct {
         logic next;
-        logic hwclr;
     } entropy_source__MAIN_SM_STATUS__ERR__in_t;
 
     typedef struct {
@@ -812,7 +686,6 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         entropy_source__CTRL__in_t CTRL;
-        entropy_source__STATUS__in_t STATUS;
         entropy_source__INTR_STATUS__in_t INTR_STATUS;
         entropy_source__SHA256_STATUS__in_t SHA256_STATUS;
         entropy_source__FIFO_CTRL__in_t FIFO_CTRL;
@@ -825,16 +698,9 @@ package entropy_source_reg_pkg;
         entropy_source__REPETITION_TEST_COUNT__in_t REPETITION_TEST_COUNT;
         entropy_source__APT_PATTERN_COUNT_1BIT__in_t APT_PATTERN_COUNT_1BIT;
         entropy_source__APT_PATTERN_COUNT_2BIT__in_t APT_PATTERN_COUNT_2BIT;
-        entropy_source__APT_PATTERN_COUNT_3BIT__in_t APT_PATTERN_COUNT_3BIT;
-        entropy_source__APT_PATTERN_COUNT_4BIT__in_t APT_PATTERN_COUNT_4BIT;
         entropy_source__APT_PROPORTION_1BIT__in_t APT_PROPORTION_1BIT;
-        entropy_source__APT_PROPORTION_2BIT__in_t APT_PROPORTION_2BIT;
-        entropy_source__APT_PROPORTION_3BIT__in_t APT_PROPORTION_3BIT;
-        entropy_source__APT_PROPORTION_4BIT__in_t APT_PROPORTION_4BIT;
         entropy_source__APT_PROPORTION_LO__in_t APT_PROPORTION_LO;
         entropy_source__MARKOV_TEST_COUNTS_0__in_t MARKOV_TEST_COUNTS_0;
-        entropy_source__MARKOV_TEST_COUNTS_1__in_t MARKOV_TEST_COUNTS_1;
-        entropy_source__MARKOV_TEST_PROBABILITIES__in_t MARKOV_TEST_PROBABILITIES;
         entropy_source__RING_OSC_ENABLE__in_t RING_OSC_ENABLE;
         entropy_source__RING_OSC_TUNE__in_t RING_OSC_TUNE;
         entropy_source__RING_OSC_CTRL__in_t RING_OSC_CTRL;
@@ -885,10 +751,6 @@ package entropy_source_reg_pkg;
 
     typedef struct {
         logic value;
-    } entropy_source__CTRL__RESET__out_t;
-
-    typedef struct {
-        logic value;
     } entropy_source__CTRL__MODULE_ENABLE__out_t;
 
     typedef struct {
@@ -908,7 +770,6 @@ package entropy_source_reg_pkg;
     } entropy_source__CTRL__SHA256_WHITENING_ENABLE__out_t;
 
     typedef struct {
-        entropy_source__CTRL__RESET__out_t RESET;
         entropy_source__CTRL__MODULE_ENABLE__out_t MODULE_ENABLE;
         entropy_source__CTRL__AUTOTUNE_ENABLE__out_t AUTOTUNE_ENABLE;
         entropy_source__CTRL__BYPASS_ENTROPY_COMPRESSOR__out_t BYPASS_ENTROPY_COMPRESSOR;
@@ -930,6 +791,46 @@ package entropy_source_reg_pkg;
     } entropy_source__DEBUG_CTRL__out_t;
 
     typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__HEALTH_TEST_FAILED__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__FIFO_ERROR__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__FIFO_OVERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__FIFO_UNDERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__PERSISTENT_FAILURE__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__AUTOTUNE_FAIL__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__BIW_OBS_OVERFLOW__out_t;
+
+    typedef struct {
+        logic value;
+    } entropy_source__INTR_STATUS__NOISE_OBS_OVERFLOW__out_t;
+
+    typedef struct {
+        entropy_source__INTR_STATUS__HEALTH_TEST_FAILED__out_t HEALTH_TEST_FAILED;
+        entropy_source__INTR_STATUS__FIFO_ERROR__out_t FIFO_ERROR;
+        entropy_source__INTR_STATUS__FIFO_OVERFLOW__out_t FIFO_OVERFLOW;
+        entropy_source__INTR_STATUS__FIFO_UNDERFLOW__out_t FIFO_UNDERFLOW;
+        entropy_source__INTR_STATUS__PERSISTENT_FAILURE__out_t PERSISTENT_FAILURE;
+        entropy_source__INTR_STATUS__AUTOTUNE_FAIL__out_t AUTOTUNE_FAIL;
+        entropy_source__INTR_STATUS__BIW_OBS_OVERFLOW__out_t BIW_OBS_OVERFLOW;
+        entropy_source__INTR_STATUS__NOISE_OBS_OVERFLOW__out_t NOISE_OBS_OVERFLOW;
         logic intr;
     } entropy_source__INTR_STATUS__out_t;
 
@@ -1038,7 +939,7 @@ package entropy_source_reg_pkg;
     } entropy_source__FIFO_RDATA__external__out_t;
 
     typedef struct {
-        logic [7:0] value;
+        logic [2:0] value;
     } entropy_source__HEALTH_TEST_CTRL__ENABLE__out_t;
 
     typedef struct {
@@ -1078,30 +979,6 @@ package entropy_source_reg_pkg;
     typedef struct {
         entropy_source__APT_PROPORTION_1BIT__LIMIT__out_t LIMIT;
     } entropy_source__APT_PROPORTION_1BIT__out_t;
-
-    typedef struct {
-        logic [9:0] value;
-    } entropy_source__APT_PROPORTION_2BIT__LIMIT__out_t;
-
-    typedef struct {
-        entropy_source__APT_PROPORTION_2BIT__LIMIT__out_t LIMIT;
-    } entropy_source__APT_PROPORTION_2BIT__out_t;
-
-    typedef struct {
-        logic [9:0] value;
-    } entropy_source__APT_PROPORTION_3BIT__LIMIT__out_t;
-
-    typedef struct {
-        entropy_source__APT_PROPORTION_3BIT__LIMIT__out_t LIMIT;
-    } entropy_source__APT_PROPORTION_3BIT__out_t;
-
-    typedef struct {
-        logic [9:0] value;
-    } entropy_source__APT_PROPORTION_4BIT__LIMIT__out_t;
-
-    typedef struct {
-        entropy_source__APT_PROPORTION_4BIT__LIMIT__out_t LIMIT;
-    } entropy_source__APT_PROPORTION_4BIT__out_t;
 
     typedef struct {
         logic [15:0] value;
@@ -1342,9 +1219,6 @@ package entropy_source_reg_pkg;
         entropy_source__HEALTH_TEST_WINDOW_SIZE__out_t HEALTH_TEST_WINDOW_SIZE;
         entropy_source__MARKOV_TEST_PROB_THRESHOLDS__out_t MARKOV_TEST_PROB_THRESHOLDS;
         entropy_source__APT_PROPORTION_1BIT__out_t APT_PROPORTION_1BIT;
-        entropy_source__APT_PROPORTION_2BIT__out_t APT_PROPORTION_2BIT;
-        entropy_source__APT_PROPORTION_3BIT__out_t APT_PROPORTION_3BIT;
-        entropy_source__APT_PROPORTION_4BIT__out_t APT_PROPORTION_4BIT;
         entropy_source__APT_PROPORTION_LO__out_t APT_PROPORTION_LO;
         entropy_source__RING_OSC_ENABLE__out_t RING_OSC_ENABLE;
         entropy_source__RING_OSC_TUNE__out_t RING_OSC_TUNE;

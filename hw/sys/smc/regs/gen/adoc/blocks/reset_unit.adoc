@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -16,8 +16,6 @@
 | 0x60 | SS_RESET_COMPLETE | R a| -
 | 0x70 | SS_COLD_RESET_LOCK | RW a| -
 | 0x80 | SS_FORCE_TO_REF_CLK | RW a| -
-| 0x90 | STRAPS_LO | R a| -
-| 0x94 | STRAPS_HI | R a| -
 | 0xA8 | SYNC_REG | RW a| -
 | 0xB0 | ISOLATE_REQ_REG | RW a| -
 | 0xB4 | ISOLATE_REQ_PINEN_REG | RW a| -
@@ -28,7 +26,7 @@
 | 0xC8 | ISOLATE_REQ_FLR_RESET_COUNTER_VALUE | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -36,7 +34,7 @@
 Usage is integration-specific; see the adopter chiplet specification.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_CONFIG_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -44,21 +42,21 @@ Usage is integration-specific; see the adopter chiplet specification.
 cannot be written to again
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_COLD_RESET_N Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `reset_n_n0_scan` | RW | 0x0 a| Subsystem active low cold resets
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_WARM_RESET_N Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `reset_n_n0_scan` | RW | 0xFFFFFFFF a| Subsystem active low warm resets
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_CONFIG_HOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -66,7 +64,7 @@ cannot be written to again
 export compliance, SRAM repair, other fuse values, etc. are preserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_SRAM_HOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -74,7 +72,7 @@ export compliance, SRAM repair, other fuse values, etc. are preserved
 used to test and initialize during cold reset are preserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_CRITICAL_HOLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -82,14 +80,14 @@ used to test and initialize during cold reset are preserved
 subsystem specific registers are preserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_DEBUG_HOLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `debug_hold` | RW | 0x0 a| Used with warm_reset_n. Debug hold signal to ensure any debug registers are preserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_RESET_COMPLETE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -97,7 +95,7 @@ subsystem specific registers are preserved
 Bitwise write 1 to clear
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_COLD_RESET_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -105,52 +103,14 @@ Bitwise write 1 to clear
 cannot be written to again
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SS_FORCE_TO_REF_CLK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `force_ss_to_ref_clk_n` | RW | 0x0 a| Forces clock to be ref clk. The ensures reset reaches all FFs within a subsystem in same clock cycle
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.STRAPS_LO Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `straps` | R | 0x0 a| Strap value from GPIOs 0 - 31. Bit N holds the value latched on GPIO N.
-Bits 0 - 10, 16, 17, 24 and 27 - 31 have no strap assigned. Those GPIOs still
-latch their pad value here, but no strap function consumes it.
-Strap assignments in this range:
-* bit 11: CHIP_ID[3] - CHIP_ID is the I2C/I3C static address strap
-* bit 12: CHIP_ID[2] - CHIP_ID is the I2C/I3C static address strap
-* bit 13: BYPASS_SRAM_REPAIR - Bypass the memory repair process
-* bit 14: TEST_EN - Enable DFT test mode
-* bit 15: CHIP_ID[1] - CHIP_ID is the I2C/I3C static address strap
-* bit 18: BOOT_I2C - Default alternate boot channel is I3C0 and can be reconfigured to use I2C0
-* bit 19: BOOT_RECOVERY - Use I3C0 for BL1 boot image loading instead of the SPI channel
-* bit 20: BL0_PLLCLK - Use the PLL generated clock by default in BL0, and override to use the reference clock when this strap is asserted
-* bit 21: STATUS_RPT_DISABLE - Disable BL0 status reporting. It is on by default
-* bit 22: SPI_USE_FUSED_CONFIG - Use the SPI configuration values stored in the fuse field
-* bit 23: CHIP_ID[0] - CHIP_ID is the I2C/I3C static address strap
-* bit 25: PRIMARY_CHIPLET - The primary chiplet has this strap bonded out to identify it as the boot master
-* bit 26: SRAM_AUTO_ZERO_DISABLE - Disable auto zero of the SMC SRAM when asserted
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.STRAPS_HI Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:29 | `Reserved` | - | - a| Reserved
-| 28:0 | `straps` | R | 0x0 a| Strap value from GPIOs 32 - 60. Bit N holds the value latched on GPIO N+32.
-All bits other than those listed below have no strap assigned. Those GPIOs
-still latch their pad value here, but no strap function consumes it.
-GPIOs 61 - 64 cannot be strapped: they are unbonded (not packaged out) and lie
-outside this register, which ends at GPIO 60 (smc_pkg::NUM_BONDED_GPIO-1).
-Strap assignments in this range:
-* bit 22 (GPIO 54): MBIST_BYPASS - Ignore results of Power-On MBIST for boot
-* bit 26 (GPIO 58): ROTATE_UPDATE - Swaps primary and backup image in SEP BL0 ROM
-|===
-
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SYNC_REG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -158,21 +118,21 @@ Strap assignments in this range:
 | 0 | `sync` | RW | 0x0 a| Set to assert global sync bit
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ISOLATE_REQ_REG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_reg` | RW | 0x0 a| Isolate request. This prevents reset from being propagated to SS, keeping them alive in case of a cold reset
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ISOLATE_REQ_PINEN_REG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_pinen_reg` | RW | 0x0 a| Isolate request pin enable. This enables the external isolate request pin to have an effect on ss isolate requests
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ISOLATE_REQ_SMC_REG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -180,14 +140,14 @@ Strap assignments in this range:
 | 0 | `isolate_req_smc_reg` | RW | 0x0 a| Isolate request smc. Asserted once cfg_flr_pf_active is asserted, de-asserted by sw
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ISOLATE_REQ_SMCEN_REG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_smcen_reg` | RW | 0x0 a| Isolate request smc enable. This enables the FLR lock to have an effect on ss isolate requests
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ISOLATE_REQ_VIS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -199,14 +159,14 @@ Strap assignments in this range:
 | 0 | `isolate_req_pin` | R | 0x1 a| Visibility bit for isolate request pin
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ISOLATE_REQ_FLR_COUNTER_VALUE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `isolate_req_flr_counter_value` | RW | 0x0 a| Number of cycles post cfg_flr_pf_active assertion is waited until cool_reset_n is asserted
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ISOLATE_REQ_FLR_RESET_COUNTER_VALUE Register
 |===
 | Bits | Field | Access | Reset | Description

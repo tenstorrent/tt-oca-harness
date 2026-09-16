@@ -23,9 +23,10 @@ without needing any behavioral models or external clock input.
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, with_timeout
+from cocotb.triggers import RisingEdge
+
 from test.test_base import *
-from test.test_config import get_custom_config, ROConfig, DecorrelatorConfig, CompressorConfig
+from test.test_config import CompressorConfig, DecorrelatorConfig, ROConfig, get_custom_config
 
 
 @cocotb.test()
@@ -49,16 +50,16 @@ async def test_cl_integration_minimal(dut):
     # ========================================================================
     cfg = get_custom_config(
         ro=ROConfig(
-            inject_model=0,          # DISABLE RO model injection - use real ROs
-            auto_randomize=False      # No randomization needed
+            inject_model=0,  # DISABLE RO model injection - use real ROs
+            auto_randomize=False,  # No randomization needed
         ),
         decorrelator=DecorrelatorConfig(
-            checker_enable=False     # Disable decorrelator checker
+            checker_enable=False  # Disable decorrelator checker
         ),
         compressor=CompressorConfig(
-            checker_enable=False     # Disable compressor checker
+            checker_enable=False  # Disable compressor checker
         ),
-        fifo_error_monitor_enable=False     # Disable FIFO monitor for this test
+        fifo_error_monitor_enable=False,  # Disable FIFO monitor for this test
     )
 
     dut._log.info("=" * 80)
@@ -82,14 +83,16 @@ async def test_cl_integration_minimal(dut):
     dut._log.info("\n[PHASE 2] Verify APB interface")
 
     # Read COMPONENT_ID using symbolic name
-    component_id = await reg_rd(apb, 'COMPONENT_ID')
+    component_id = await reg_rd(apb, "COMPONENT_ID")
     dut._log.info(f"  Component ID (via register name) = 0x{component_id:08X}")
     assert component_id == 0x01000001, f"Expected 0x01000001, got 0x{component_id:08X}"
 
     # Read address 0x0 directly to confirm register mapping
     component_id_direct = await apb.read(0x0)
     dut._log.info(f"  Component ID (via addr 0x0) = 0x{component_id_direct:08X}")
-    assert component_id_direct == 0x01000001, f"Expected 0x01000001 at addr 0x0, got 0x{component_id_direct:08X}"
+    assert component_id_direct == 0x01000001, (
+        f"Expected 0x01000001 at addr 0x0, got 0x{component_id_direct:08X}"
+    )
 
     dut._log.info("  [OK] APB interface verified")
 
@@ -103,8 +106,8 @@ async def test_cl_integration_minimal(dut):
     # - SAMPLE_CLK_DIV[31:12] = 63: Sample clock divider (actual division = value + 1 = 64)
     #   This sets the decorrelator sampling rate to clk/64
     decorr_ctrl = (63 << 12) | 0xFFF
-    await reg_wr(apb, 'DECORRELATOR_CTRL', decorr_ctrl)
-    readback = await reg_rd(apb, 'DECORRELATOR_CTRL')
+    await reg_wr(apb, "DECORRELATOR_CTRL", decorr_ctrl)
+    readback = await reg_rd(apb, "DECORRELATOR_CTRL")
     dut._log.info(f"  DECORRELATOR_CTRL = 0x{readback:08X}")
     dut._log.info(f"    BYPASS[11:0] = 0x{readback & 0xFFF:03X} (all decorrelators bypassed)")
     dut._log.info(f"    SAMPLE_CLK_DIV[31:12] = {(readback >> 12) & 0xFFFFF} (div-64 sampling)")
@@ -122,12 +125,9 @@ async def test_cl_integration_minimal(dut):
     # This sequence forces the RO feedback loops to initialize to a known state
     # (disabled = 0), breaking any X propagation. When re-enabled, the ROs start
     # from a clean state and can oscillate normally.
-    #
-    # Note: This replaces the previous approach of using force/release on feedback
-    # signals, which is more invasive and harder to maintain.
 
     # Step 1: Disable all ring oscillators
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
 
     # Step 2: Wait for internal states to settle (100 APB clock cycles)
     for _ in range(100):
@@ -137,8 +137,8 @@ async def test_cl_integration_minimal(dut):
     # ENABLE[11:0] = 0xFFF: Enable 12 noise ring oscillators
     # SAMPLE_CLK_ENABLE[23:12] = 0xFFF: Enable 12 sample clock ring oscillators
     # Note: RING_OSC_CTRL defaults to 0xFFF (use internal sample clock ROs)
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00FFFFFF)
-    ring_osc_enable = await reg_rd(apb, 'RING_OSC_ENABLE')
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00FFFFFF)
+    ring_osc_enable = await reg_rd(apb, "RING_OSC_ENABLE")
     dut._log.info(f"  RING_OSC_ENABLE = 0x{ring_osc_enable:08X} (all 24 ROs enabled)")
     dut._log.info("  [OK] DUT configured (bypass decorrelator mode, internal sample clocks)")
 
@@ -155,17 +155,17 @@ async def test_cl_integration_minimal(dut):
             await RisingEdge(dut.apb.pclk)
 
         # Read FIFO_STATUS register (0x24)
-        fifo_status = await reg_rd(apb, 'FIFO_STATUS')
-        level = fifo_status & 0x7F           # bits[6:0]
-        wptr = (fifo_status >> 8) & 0x1F     # bits[12:8]
-        rptr = (fifo_status >> 16) & 0x1F    # bits[20:16]
+        fifo_status = await reg_rd(apb, "FIFO_STATUS")
+        level = fifo_status & 0x7F  # bits[6:0]
+        wptr = (fifo_status >> 8) & 0x1F  # bits[12:8]
+        rptr = (fifo_status >> 16) & 0x1F  # bits[20:16]
 
-        fifo_status_samples.append({'level': level, 'wptr': wptr, 'rptr': rptr})
+        fifo_status_samples.append({"level": level, "wptr": wptr, "rptr": rptr})
         dut._log.info(f"  Sample {sample_num}: LEVEL={level}, WPTR={wptr}, RPTR={rptr}")
 
     # Verify FIFO is being written
-    initial_level = fifo_status_samples[0]['level']
-    final_level = fifo_status_samples[-1]['level']
+    initial_level = fifo_status_samples[0]["level"]
+    final_level = fifo_status_samples[-1]["level"]
     dut._log.info(f"  FIFO level changed: {initial_level} -> {final_level}")
 
     # Check that FIFO level increased (or stayed high if already full)
@@ -173,26 +173,26 @@ async def test_cl_integration_minimal(dut):
     dut._log.info(f"  [OK] FIFO receiving data (level={final_level})")
 
     # Check that write pointer advanced (wrapped around is OK)
-    initial_wptr = fifo_status_samples[0]['wptr']
-    final_wptr = fifo_status_samples[-1]['wptr']
-    wptr_changed = (initial_wptr != final_wptr)
+    initial_wptr = fifo_status_samples[0]["wptr"]
+    final_wptr = fifo_status_samples[-1]["wptr"]
+    wptr_changed = initial_wptr != final_wptr
     dut._log.info(f"  Write pointer: {initial_wptr} -> {final_wptr} (changed={wptr_changed})")
     assert wptr_changed or final_level >= 60, "Write pointer not advancing and FIFO not full!"
-    dut._log.info(f"  [OK] Write pointer advancing")
+    dut._log.info("  [OK] Write pointer advancing")
 
     # Read pointer should stay at 0 (we haven't read from FIFO yet)
-    final_rptr = fifo_status_samples[-1]['rptr']
+    final_rptr = fifo_status_samples[-1]["rptr"]
     assert final_rptr == 0, f"Read pointer moved unexpectedly: {final_rptr}"
-    dut._log.info(f"  [OK] Read pointer stable at 0 (no FIFO reads)")
+    dut._log.info("  [OK] Read pointer stable at 0 (no FIFO reads)")
 
     # Read some FIFO data to verify it's not all zeros
-    dut._log.info(f"\n  Reading FIFO data to verify entropy values...")
+    dut._log.info("\n  Reading FIFO data to verify entropy values...")
     num_reads = min(10, final_level)  # Read up to 10 words or available FIFO level
     fifo_data = []
     zero_count = 0
 
     for i in range(num_reads):
-        data = await reg_rd(apb, 'FIFO_RDATA')
+        data = await reg_rd(apb, "FIFO_RDATA")
         fifo_data.append(data)
         if data == 0x00000000:
             zero_count += 1
@@ -201,10 +201,12 @@ async def test_cl_integration_minimal(dut):
 
     # Verify not all zeros
     assert zero_count < num_reads, f"All FIFO data is zero! ({zero_count}/{num_reads} reads)"
-    dut._log.info(f"  [OK] FIFO data verified: {num_reads} reads, {zero_count} zeros, {num_reads - zero_count} non-zero")
+    dut._log.info(
+        f"  [OK] FIFO data verified: {num_reads} reads, {zero_count} zeros, {num_reads - zero_count} non-zero"
+    )
 
     # Verify FIFO read pointer advanced
-    fifo_status_after_read = await reg_rd(apb, 'FIFO_STATUS')
+    fifo_status_after_read = await reg_rd(apb, "FIFO_STATUS")
     rptr_after = (fifo_status_after_read >> 16) & 0x1F
     assert rptr_after == num_reads, f"Read pointer mismatch: expected {num_reads}, got {rptr_after}"
     dut._log.info(f"  [OK] Read pointer advanced to {rptr_after} after {num_reads} reads")
@@ -268,16 +270,16 @@ async def test_cl_integration_minimal(dut):
     dut._log.info("CL INTEGRATION TEST: PASS")
     dut._log.info("=" * 80)
     dut._log.info("Summary:")
-    dut._log.info(f"  - APB interface: Working (verified 0x000 = 0x01000001)")
-    dut._log.info(f"  - Configuration: 2 APB writes (DECORRELATOR_CTRL, RING_OSC_ENABLE)")
-    dut._log.info(f"  - Clock source: Internal sample clock ROs (default)")
+    dut._log.info("  - APB interface: Working (verified 0x000 = 0x01000001)")
+    dut._log.info("  - Configuration: 2 APB writes (DECORRELATOR_CTRL, RING_OSC_ENABLE)")
+    dut._log.info("  - Clock source: Internal sample clock ROs (default)")
     dut._log.info(f"  - FIFO level: {initial_level} -> {final_level} (data path working)")
     dut._log.info(f"  - FIFO write pointer: {initial_wptr} -> {final_wptr} (advancing)")
     dut._log.info(f"  - FIFO read: {num_reads} words, {num_reads - zero_count} non-zero values")
     dut._log.info(f"  - FIFO read pointer: 0 -> {rptr_after} (correct)")
     dut._log.info(f"  - entropy_stream_vld_o: Toggling ({valid_count} pulses)")
     dut._log.info(f"  - entropy_stream_data_o: Changing ({unique_values} unique values)")
-    dut._log.info(f"  - Models used: NONE (real ring oscillators)")
+    dut._log.info("  - Models used: NONE (real ring oscillators)")
     dut._log.info("=" * 80)
 
     # Sample data for documentation
@@ -325,16 +327,16 @@ async def test_cl_integration_default_config(dut):
     # ========================================================================
     cfg = get_custom_config(
         ro=ROConfig(
-            inject_model=0,          # DISABLE RO model injection - use real ROs
-            auto_randomize=False      # No randomization needed
+            inject_model=0,  # DISABLE RO model injection - use real ROs
+            auto_randomize=False,  # No randomization needed
         ),
         decorrelator=DecorrelatorConfig(
-            checker_enable=False     # Disable decorrelator checker
+            checker_enable=False  # Disable decorrelator checker
         ),
         compressor=CompressorConfig(
-            checker_enable=False     # Disable compressor checker
+            checker_enable=False  # Disable compressor checker
         ),
-        fifo_error_monitor_enable=False     # Disable FIFO monitor for this test
+        fifo_error_monitor_enable=False,  # Disable FIFO monitor for this test
     )
 
     dut._log.info("=" * 80)
@@ -368,14 +370,16 @@ async def test_cl_integration_default_config(dut):
     dut._log.info("\n[PHASE 3] Verify APB interface")
 
     # Read COMPONENT_ID using symbolic name
-    component_id = await reg_rd(apb, 'COMPONENT_ID')
+    component_id = await reg_rd(apb, "COMPONENT_ID")
     dut._log.info(f"  Component ID (via register name) = 0x{component_id:08X}")
     assert component_id == 0x01000001, f"Expected 0x01000001, got 0x{component_id:08X}"
 
     # Read address 0x0 directly to confirm register mapping
     component_id_direct = await apb.read(0x0)
     dut._log.info(f"  Component ID (via addr 0x0) = 0x{component_id_direct:08X}")
-    assert component_id_direct == 0x01000001, f"Expected 0x01000001 at addr 0x0, got 0x{component_id_direct:08X}"
+    assert component_id_direct == 0x01000001, (
+        f"Expected 0x01000001 at addr 0x0, got 0x{component_id_direct:08X}"
+    )
 
     dut._log.info("  [OK] APB interface verified")
 
@@ -396,17 +400,17 @@ async def test_cl_integration_default_config(dut):
             await RisingEdge(dut.apb.pclk)
 
         # Read FIFO_STATUS register (0x24)
-        fifo_status = await reg_rd(apb, 'FIFO_STATUS')
-        level = fifo_status & 0x7F           # bits[6:0]
-        wptr = (fifo_status >> 8) & 0x1F     # bits[12:8]
-        rptr = (fifo_status >> 16) & 0x1F    # bits[20:16]
+        fifo_status = await reg_rd(apb, "FIFO_STATUS")
+        level = fifo_status & 0x7F  # bits[6:0]
+        wptr = (fifo_status >> 8) & 0x1F  # bits[12:8]
+        rptr = (fifo_status >> 16) & 0x1F  # bits[20:16]
 
-        fifo_status_samples.append({'level': level, 'wptr': wptr, 'rptr': rptr})
+        fifo_status_samples.append({"level": level, "wptr": wptr, "rptr": rptr})
         dut._log.info(f"  Sample {sample_num}: LEVEL={level}, WPTR={wptr}, RPTR={rptr}")
 
     # Verify FIFO is being written
-    initial_level = fifo_status_samples[0]['level']
-    final_level = fifo_status_samples[-1]['level']
+    initial_level = fifo_status_samples[0]["level"]
+    final_level = fifo_status_samples[-1]["level"]
     dut._log.info(f"  FIFO level changed: {initial_level} -> {final_level}")
 
     # Check that FIFO level increased (or stayed high if already full)
@@ -414,17 +418,17 @@ async def test_cl_integration_default_config(dut):
     dut._log.info(f"  [OK] FIFO receiving data (level={final_level})")
 
     # Check that write pointer advanced (wrapped around is OK)
-    initial_wptr = fifo_status_samples[0]['wptr']
-    final_wptr = fifo_status_samples[-1]['wptr']
-    wptr_changed = (initial_wptr != final_wptr)
+    initial_wptr = fifo_status_samples[0]["wptr"]
+    final_wptr = fifo_status_samples[-1]["wptr"]
+    wptr_changed = initial_wptr != final_wptr
     dut._log.info(f"  Write pointer: {initial_wptr} -> {final_wptr} (changed={wptr_changed})")
     assert wptr_changed or final_level >= 60, "Write pointer not advancing and FIFO not full!"
-    dut._log.info(f"  [OK] Write pointer advancing")
+    dut._log.info("  [OK] Write pointer advancing")
 
     # Read pointer should stay at 0 (we haven't read from FIFO)
-    final_rptr = fifo_status_samples[-1]['rptr']
+    final_rptr = fifo_status_samples[-1]["rptr"]
     assert final_rptr == 0, f"Read pointer moved unexpectedly: {final_rptr}"
-    dut._log.info(f"  [OK] Read pointer stable at 0 (no FIFO reads)")
+    dut._log.info("  [OK] Read pointer stable at 0 (no FIFO reads)")
 
     # ========================================================================
     # TEST SUMMARY
@@ -433,16 +437,16 @@ async def test_cl_integration_default_config(dut):
     dut._log.info("DEFAULT CONFIGURATION TEST: PASS")
     dut._log.info("=" * 80)
     dut._log.info("Summary:")
-    dut._log.info(f"  - APB interface: Working (verified 0x000 = 0x01000001)")
-    dut._log.info(f"  - Configuration writes: ZERO (pure defaults)")
-    dut._log.info(f"  - Decorrelator mode: Normal (with feedback loops)")
-    dut._log.info(f"  - Clock source: Internal sample clock ROs (default)")
-    dut._log.info(f"  - FIFO control path: WORKING")
+    dut._log.info("  - APB interface: Working (verified 0x000 = 0x01000001)")
+    dut._log.info("  - Configuration writes: ZERO (pure defaults)")
+    dut._log.info("  - Decorrelator mode: Normal (with feedback loops)")
+    dut._log.info("  - Clock source: Internal sample clock ROs (default)")
+    dut._log.info("  - FIFO control path: WORKING")
     dut._log.info(f"    * FIFO level: {initial_level} -> {final_level}")
     dut._log.info(f"    * Write pointer: {initial_wptr} -> {final_wptr} (advancing)")
     dut._log.info(f"    * Read pointer: {final_rptr} (stable)")
-    dut._log.info(f"  - Data path: Not verified (may contain X's in simulation)")
-    dut._log.info(f"  - Configuration: ALL DEFAULTS WORK FOR CONTROL PATH")
+    dut._log.info("  - Data path: Not verified (may contain X's in simulation)")
+    dut._log.info("  - Configuration: ALL DEFAULTS WORK FOR CONTROL PATH")
     dut._log.info("=" * 80)
     dut._log.info("\nNote: Control path (counters/pointers) independent of data values")
     dut._log.info("      Data may be X in simulation but FIFO control logic still functions")

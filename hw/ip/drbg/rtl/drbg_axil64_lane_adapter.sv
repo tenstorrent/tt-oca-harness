@@ -18,309 +18,310 @@
  *          unaligned accesses return AXI `SLVERR` and emit no downstream
  *          request.
  */
-module drbg_axil64_lane_adapter import drbg_pkg::*; import axi_pkg::*; #(
-    parameter type axil64_req_t = drbg_axil64_req_t,
-    parameter type axil64_rsp_t = drbg_axil64_resp_t,
-    parameter type axil32_req_t = drbg_axil32_req_t,
-    parameter type axil32_rsp_t = drbg_axil32_resp_t
+module drbg_axil64_lane_adapter
+  import drbg_pkg::*;
+  import axi_pkg::*;
+#(
+  parameter type axil64_req_t = drbg_axil64_req_t,
+  parameter type axil64_rsp_t = drbg_axil64_resp_t,
+  parameter type axil32_req_t = drbg_axil32_req_t,
+  parameter type axil32_rsp_t = drbg_axil32_resp_t
 ) (
-    // `wire` is fine on scalar logic; omit it on type-parameter ports
-    // (Xcelium *E,SVNSTP rejects `wire` + type parameters).
-    input  wire logic   clk_i,
-    input  wire logic   rst_ni,
+  // `wire` is fine on scalar logic; omit it on type-parameter ports
+  // (Xcelium *E,SVNSTP rejects `wire` + type parameters).
+  input  wire logic   clk_i,
+  input  wire logic   rst_ni,
 
-    input  axil64_req_t axil64_req_i,
-    output axil64_rsp_t axil64_rsp_o,
+  input  axil64_req_t axil64_req_i,
+  output axil64_rsp_t axil64_rsp_o,
 
-    output axil32_req_t axil32_req_o,
-    input  axil32_rsp_t axil32_rsp_i,
+  output axil32_req_t axil32_req_o,
+  input  axil32_rsp_t axil32_rsp_i,
 
-    output logic        unsupported_access_pulse_o,
-    output logic        forwarded_read_pulse_o,
-    output logic        forwarded_write_pulse_o
+  output logic        unsupported_access_pulse_o,
+  output logic        forwarded_read_pulse_o,
+  output logic        forwarded_write_pulse_o
 );
 
-    `include "prim_assert.sv"
+  `include "prim_assert.sv"
 
-    localparam logic [1:0] AXI_RESP_OKAY   = 2'b00;
-    localparam logic [1:0] AXI_RESP_SLVERR = 2'b10;
+  localparam logic [1:0] AXI_RESP_OKAY = 2'b00;
+  localparam logic [1:0] AXI_RESP_SLVERR = 2'b10;
 
-    typedef enum logic [2:0] {
-        StIdle,
-        StReadReq,
-        StReadWait,
-        StReadResp,
-        StWriteReq,
-        StWriteWait,
-        StWriteResp
-    } state_e;
+  typedef enum logic [2:0] {
+    StIdle,
+    StReadReq,
+    StReadWait,
+    StReadResp,
+    StWriteReq,
+    StWriteWait,
+    StWriteResp
+  } state_e;
 
-    state_e state_q, state_d;
+  state_e state_q, state_d;
 
-    localparam int unsigned axil64_req_width = $bits(axil64_req_t);
-    localparam int unsigned axil64_rsp_width = $bits(axil64_rsp_t);
-    localparam int unsigned axil32_req_width = $bits(axil32_req_t);
-    localparam int unsigned axil32_rsp_width = $bits(axil32_rsp_t);
+  localparam int unsigned axil64_req_width = $bits(axil64_req_t);
+  localparam int unsigned axil64_rsp_width = $bits(axil64_rsp_t);
+  localparam int unsigned axil32_req_width = $bits(axil32_req_t);
+  localparam int unsigned axil32_rsp_width = $bits(axil32_rsp_t);
 
-    logic [31:0]          aw_addr_q, aw_addr_d;
-    logic [2:0]           aw_prot_q, aw_prot_d;
-    logic [63:0]          w_data_q, w_data_d;
-    logic [7:0]           w_strb_q, w_strb_d;
-    logic                 aw_pending_q, aw_pending_d;
-    logic                 w_pending_q, w_pending_d;
+  logic [31:0] aw_addr_q, aw_addr_d;
+  logic [2:0] aw_prot_q, aw_prot_d;
+  logic [63:0] w_data_q, w_data_d;
+  logic [7:0] w_strb_q, w_strb_d;
+  logic aw_pending_q, aw_pending_d;
+  logic w_pending_q, w_pending_d;
 
-    logic [31:0]          req_addr_q, req_addr_d;
-    logic [2:0]           req_prot_q, req_prot_d;
-    logic [31:0]          req_wdata_q, req_wdata_d;
-    logic [3:0]           req_wstrb_q, req_wstrb_d;
-    logic                 req_lane_q, req_lane_d;
-    logic [31:0]          resp_rdata_q, resp_rdata_d;
-    logic [1:0]           resp_code_q, resp_code_d;
+  logic [31:0] req_addr_q, req_addr_d;
+  logic [2:0] req_prot_q, req_prot_d;
+  logic [31:0] req_wdata_q, req_wdata_d;
+  logic [3:0] req_wstrb_q, req_wstrb_d;
+  logic req_lane_q, req_lane_d;
+  logic [31:0] resp_rdata_q, resp_rdata_d;
+  logic [1:0] resp_code_q, resp_code_d;
 
-    function automatic logic read_supported(input logic [31:0] addr);
-        return addr[1:0] == 2'b00;
-    endfunction
+  function automatic logic read_supported(input logic [31:0] addr);
+    return addr[1:0] == 2'b00;
+  endfunction
 
-    function automatic logic write_supported(
-        input logic [31:0] addr,
-        input logic [7:0]  strb
-    );
-        if (addr[1:0] != 2'b00) begin
-            return 1'b0;
-        end
-        if (addr[2] == 1'b0) begin
-            return strb == 8'h0F;
-        end
-        return strb == 8'hF0;
-    endfunction
-
-    function automatic logic [31:0] lane_data(
-        input logic [63:0] data,
-        input logic        lane_sel
-    );
-        return lane_sel ? data[63:32] : data[31:0];
-    endfunction
-
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) begin
-            state_q      <= StIdle;
-            aw_pending_q <= 1'b0;
-            w_pending_q  <= 1'b0;
-            aw_addr_q    <= '0;
-            aw_prot_q    <= '0;
-            w_data_q     <= '0;
-            w_strb_q     <= '0;
-            req_addr_q   <= '0;
-            req_prot_q   <= '0;
-            req_wdata_q  <= '0;
-            req_wstrb_q  <= '0;
-            req_lane_q   <= 1'b0;
-            resp_rdata_q <= '0;
-            resp_code_q  <= AXI_RESP_OKAY;
-        end else begin
-            state_q      <= state_d;
-            aw_pending_q <= aw_pending_d;
-            w_pending_q  <= w_pending_d;
-            aw_addr_q    <= aw_addr_d;
-            aw_prot_q    <= aw_prot_d;
-            w_data_q     <= w_data_d;
-            w_strb_q     <= w_strb_d;
-            req_addr_q   <= req_addr_d;
-            req_prot_q   <= req_prot_d;
-            req_wdata_q  <= req_wdata_d;
-            req_wstrb_q  <= req_wstrb_d;
-            req_lane_q   <= req_lane_d;
-            resp_rdata_q <= resp_rdata_d;
-            resp_code_q  <= resp_code_d;
-        end
+  function automatic logic write_supported(input logic [31:0] addr, input logic [7:0] strb);
+    if (addr[1:0] != 2'b00) begin
+      return 1'b0;
     end
-
-    always_comb begin
-        logic aw_handshake;
-        logic w_handshake;
-        logic ar_handshake;
-        logic aw_pending_next;
-        logic w_pending_next;
-        logic [31:0] aw_addr_next;
-        logic [2:0]  aw_prot_next;
-        logic [63:0] w_data_next;
-        logic [7:0]  w_strb_next;
-
-        state_d      = state_q;
-        aw_pending_d = aw_pending_q;
-        w_pending_d  = w_pending_q;
-        aw_addr_d    = aw_addr_q;
-        aw_prot_d    = aw_prot_q;
-        w_data_d     = w_data_q;
-        w_strb_d     = w_strb_q;
-        req_addr_d   = req_addr_q;
-        req_prot_d   = req_prot_q;
-        req_wdata_d  = req_wdata_q;
-        req_wstrb_d  = req_wstrb_q;
-        req_lane_d   = req_lane_q;
-        resp_rdata_d = resp_rdata_q;
-        resp_code_d  = resp_code_q;
-
-        axil64_rsp_o = '0;
-        axil64_rsp_o.b.resp = AXI_RESP_OKAY;
-        axil64_rsp_o.r.resp = AXI_RESP_OKAY;
-
-        axil32_req_o = '0;
-
-        unsupported_access_pulse_o = 1'b0;
-        forwarded_read_pulse_o = 1'b0;
-        forwarded_write_pulse_o = 1'b0;
-
-        aw_handshake = 1'b0;
-        w_handshake = 1'b0;
-        ar_handshake = 1'b0;
-        aw_pending_next = aw_pending_q;
-        w_pending_next = w_pending_q;
-        aw_addr_next = aw_addr_q;
-        aw_prot_next = aw_prot_q;
-        w_data_next = w_data_q;
-        w_strb_next = w_strb_q;
-
-        case (state_q)
-            StIdle: begin
-                axil64_rsp_o.aw_ready =
-                    !aw_pending_q && !axil64_req_i.ar_valid;
-                axil64_rsp_o.w_ready =
-                    !w_pending_q && !axil64_req_i.ar_valid;
-                axil64_rsp_o.ar_ready =
-                    !aw_pending_q && !w_pending_q && !axil64_req_i.aw_valid && !axil64_req_i.w_valid;
-
-                aw_handshake = axil64_req_i.aw_valid && axil64_rsp_o.aw_ready;
-                w_handshake = axil64_req_i.w_valid && axil64_rsp_o.w_ready;
-                ar_handshake = axil64_req_i.ar_valid && axil64_rsp_o.ar_ready;
-
-                if (aw_handshake) begin
-                    aw_pending_next = 1'b1;
-                    aw_addr_next = axil64_req_i.aw.addr;
-                    aw_prot_next = axil64_req_i.aw.prot;
-                end
-
-                if (w_handshake) begin
-                    w_pending_next = 1'b1;
-                    w_data_next = axil64_req_i.w.data;
-                    w_strb_next = axil64_req_i.w.strb;
-                end
-
-                aw_pending_d = aw_pending_next;
-                w_pending_d = w_pending_next;
-                aw_addr_d = aw_addr_next;
-                aw_prot_d = aw_prot_next;
-                w_data_d = w_data_next;
-                w_strb_d = w_strb_next;
-
-                if (ar_handshake) begin
-                    req_addr_d = axil64_req_i.ar.addr;
-                    req_prot_d = axil64_req_i.ar.prot;
-                    req_lane_d = axil64_req_i.ar.addr[2];
-                    if (read_supported(axil64_req_i.ar.addr)) begin
-                        state_d = StReadReq;
-                    end else begin
-                        resp_rdata_d = '0;
-                        resp_code_d = AXI_RESP_SLVERR;
-                        unsupported_access_pulse_o = 1'b1;
-                        state_d = StReadResp;
-                    end
-                end else if (aw_pending_next && w_pending_next) begin
-                    req_addr_d = aw_addr_next;
-                    req_prot_d = aw_prot_next;
-                    req_lane_d = aw_addr_next[2];
-                    req_wdata_d = lane_data(w_data_next, aw_addr_next[2]);
-                    req_wstrb_d = aw_addr_next[2] ? w_strb_next[7:4] : w_strb_next[3:0];
-                    aw_pending_d = 1'b0;
-                    w_pending_d = 1'b0;
-                    if (write_supported(aw_addr_next, w_strb_next)) begin
-                        state_d = StWriteReq;
-                    end else begin
-                        resp_code_d = AXI_RESP_SLVERR;
-                        unsupported_access_pulse_o = 1'b1;
-                        state_d = StWriteResp;
-                    end
-                end
-            end
-
-            StReadReq: begin
-                axil32_req_o.ar_valid = 1'b1;
-                axil32_req_o.ar.addr = req_addr_q;
-                axil32_req_o.ar.prot = req_prot_q;
-                if (axil32_rsp_i.ar_ready) begin
-                    forwarded_read_pulse_o = 1'b1;
-                    state_d = StReadWait;
-                end
-            end
-
-            StReadWait: begin
-                axil32_req_o.r_ready = 1'b1;
-                if (axil32_rsp_i.r_valid) begin
-                    resp_rdata_d = axil32_rsp_i.r.data;
-                    resp_code_d = axil32_rsp_i.r.resp;
-                    state_d = StReadResp;
-                end
-            end
-
-            StReadResp: begin
-                axil64_rsp_o.r_valid = 1'b1;
-                axil64_rsp_o.r.data = req_lane_q ? {resp_rdata_q, 32'h0} : {32'h0, resp_rdata_q};
-                axil64_rsp_o.r.resp = resp_code_q;
-                if (axil64_req_i.r_ready) begin
-                    state_d = StIdle;
-                end
-            end
-
-            StWriteReq: begin
-                axil32_req_o.aw_valid = 1'b1;
-                axil32_req_o.aw.addr = req_addr_q;
-                axil32_req_o.aw.prot = req_prot_q;
-                axil32_req_o.w_valid = 1'b1;
-                axil32_req_o.w.data = req_wdata_q;
-                axil32_req_o.w.strb = req_wstrb_q;
-                if (axil32_rsp_i.aw_ready && axil32_rsp_i.w_ready) begin
-                    forwarded_write_pulse_o = 1'b1;
-                    state_d = StWriteWait;
-                end
-            end
-
-            StWriteWait: begin
-                axil32_req_o.b_ready = 1'b1;
-                if (axil32_rsp_i.b_valid) begin
-                    resp_code_d = axil32_rsp_i.b.resp;
-                    state_d = StWriteResp;
-                end
-            end
-
-            StWriteResp: begin
-                axil64_rsp_o.b_valid = 1'b1;
-                axil64_rsp_o.b.resp = resp_code_q;
-                if (axil64_req_i.b_ready) begin
-                    state_d = StIdle;
-                end
-            end
-
-            default: state_d = StIdle;
-        endcase
+    if (addr[2] == 1'b0) begin
+      return strb == 8'h0F;
     end
+    return strb == 8'hF0;
+  endfunction
 
-    `OCAH_OT_ASSERT_INIT(Axil64ReqWidthValid_A, axil64_req_width == $bits(drbg_axil64_req_t))
-    `OCAH_OT_ASSERT_INIT(Axil64RspWidthValid_A, axil64_rsp_width == $bits(drbg_axil64_resp_t))
-    `OCAH_OT_ASSERT_INIT(Axil32ReqWidthValid_A, axil32_req_width == $bits(drbg_axil32_req_t))
-    `OCAH_OT_ASSERT_INIT(Axil32RspWidthValid_A, axil32_rsp_width == $bits(drbg_axil32_resp_t))
-    `OCAH_OT_ASSERT(UnsupportedBlocksForwarding_A,
-        unsupported_access_pulse_o |-> !(forwarded_read_pulse_o || forwarded_write_pulse_o))
-    `OCAH_OT_ASSERT(ReadForwardingSinglePulse_A,
-        forwarded_read_pulse_o |-> state_q == StReadReq)
-    `OCAH_OT_ASSERT(WriteForwardingSinglePulse_A,
-        forwarded_write_pulse_o |-> state_q == StWriteReq)
-    `OCAH_OT_ASSERT_KNOWN(Axil64AwReadyKnown_A, axil64_rsp_o.aw_ready)
-    `OCAH_OT_ASSERT_KNOWN(Axil64WReadyKnown_A, axil64_rsp_o.w_ready)
-    `OCAH_OT_ASSERT_KNOWN(Axil64BValidKnown_A, axil64_rsp_o.b_valid)
-    `OCAH_OT_ASSERT_KNOWN(Axil64BRespKnown_A, axil64_rsp_o.b.resp)
-    `OCAH_OT_ASSERT_KNOWN(Axil64ArReadyKnown_A, axil64_rsp_o.ar_ready)
-    `OCAH_OT_ASSERT_KNOWN(Axil64RValidKnown_A, axil64_rsp_o.r_valid)
-    `OCAH_OT_ASSERT_KNOWN(Axil64RRespKnown_A, axil64_rsp_o.r.resp)
-    `OCAH_OT_ASSERT_KNOWN(Axil64RDataKnown_A, axil64_rsp_o.r.data)
+  function automatic logic [31:0] lane_data(input logic [63:0] data, input logic lane_sel);
+    return lane_sel ? data[63:32] : data[31:0];
+  endfunction
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q      <= StIdle;
+      aw_pending_q <= 1'b0;
+      w_pending_q  <= 1'b0;
+      aw_addr_q    <= '0;
+      aw_prot_q    <= '0;
+      w_data_q     <= '0;
+      w_strb_q     <= '0;
+      req_addr_q   <= '0;
+      req_prot_q   <= '0;
+      req_wdata_q  <= '0;
+      req_wstrb_q  <= '0;
+      req_lane_q   <= 1'b0;
+      resp_rdata_q <= '0;
+      resp_code_q  <= AXI_RESP_OKAY;
+    end else begin
+      state_q      <= state_d;
+      aw_pending_q <= aw_pending_d;
+      w_pending_q  <= w_pending_d;
+      aw_addr_q    <= aw_addr_d;
+      aw_prot_q    <= aw_prot_d;
+      w_data_q     <= w_data_d;
+      w_strb_q     <= w_strb_d;
+      req_addr_q   <= req_addr_d;
+      req_prot_q   <= req_prot_d;
+      req_wdata_q  <= req_wdata_d;
+      req_wstrb_q  <= req_wstrb_d;
+      req_lane_q   <= req_lane_d;
+      resp_rdata_q <= resp_rdata_d;
+      resp_code_q  <= resp_code_d;
+    end
+  end
+
+  always_comb begin
+    logic aw_handshake;
+    logic w_handshake;
+    logic ar_handshake;
+    logic aw_pending_next;
+    logic w_pending_next;
+    logic [31:0] aw_addr_next;
+    logic [2:0]  aw_prot_next;
+    logic [63:0] w_data_next;
+    logic [7:0]  w_strb_next;
+
+    state_d      = state_q;
+    aw_pending_d = aw_pending_q;
+    w_pending_d  = w_pending_q;
+    aw_addr_d    = aw_addr_q;
+    aw_prot_d    = aw_prot_q;
+    w_data_d     = w_data_q;
+    w_strb_d     = w_strb_q;
+    req_addr_d   = req_addr_q;
+    req_prot_d   = req_prot_q;
+    req_wdata_d  = req_wdata_q;
+    req_wstrb_d  = req_wstrb_q;
+    req_lane_d   = req_lane_q;
+    resp_rdata_d = resp_rdata_q;
+    resp_code_d  = resp_code_q;
+
+    axil64_rsp_o = '0;
+    axil64_rsp_o.b.resp = AXI_RESP_OKAY;
+    axil64_rsp_o.r.resp = AXI_RESP_OKAY;
+
+    axil32_req_o = '0;
+
+    unsupported_access_pulse_o = 1'b0;
+    forwarded_read_pulse_o = 1'b0;
+    forwarded_write_pulse_o = 1'b0;
+
+    aw_handshake = 1'b0;
+    w_handshake = 1'b0;
+    ar_handshake = 1'b0;
+    aw_pending_next = aw_pending_q;
+    w_pending_next = w_pending_q;
+    aw_addr_next = aw_addr_q;
+    aw_prot_next = aw_prot_q;
+    w_data_next = w_data_q;
+    w_strb_next = w_strb_q;
+
+    case (state_q)
+      StIdle: begin
+        axil64_rsp_o.aw_ready = !aw_pending_q;
+        axil64_rsp_o.w_ready  = !w_pending_q;
+        axil64_rsp_o.ar_ready = !aw_pending_q && !w_pending_q;
+
+        aw_handshake = axil64_req_i.aw_valid && axil64_rsp_o.aw_ready;
+        w_handshake = axil64_req_i.w_valid && axil64_rsp_o.w_ready;
+        ar_handshake = axil64_req_i.ar_valid && axil64_rsp_o.ar_ready;
+
+        if (aw_handshake) begin
+          aw_pending_next = 1'b1;
+          aw_addr_next = axil64_req_i.aw.addr;
+          aw_prot_next = axil64_req_i.aw.prot;
+        end
+
+        if (w_handshake) begin
+          w_pending_next = 1'b1;
+          w_data_next = axil64_req_i.w.data;
+          w_strb_next = axil64_req_i.w.strb;
+        end
+
+        aw_pending_d = aw_pending_next;
+        w_pending_d = w_pending_next;
+        aw_addr_d = aw_addr_next;
+        aw_prot_d = aw_prot_next;
+        w_data_d = w_data_next;
+        w_strb_d = w_strb_next;
+
+        if (ar_handshake) begin
+          req_addr_d = axil64_req_i.ar.addr;
+          req_prot_d = axil64_req_i.ar.prot;
+          req_lane_d = axil64_req_i.ar.addr[2];
+          if (read_supported(axil64_req_i.ar.addr)) begin
+            state_d = StReadReq;
+          end else begin
+            resp_rdata_d = '0;
+            resp_code_d = AXI_RESP_SLVERR;
+            unsupported_access_pulse_o = 1'b1;
+            state_d = StReadResp;
+          end
+        end else if (aw_pending_next && w_pending_next) begin
+          req_addr_d = aw_addr_next;
+          req_prot_d = aw_prot_next;
+          req_lane_d = aw_addr_next[2];
+          req_wdata_d = lane_data(w_data_next, aw_addr_next[2]);
+          req_wstrb_d = aw_addr_next[2] ? w_strb_next[7:4] : w_strb_next[3:0];
+          aw_pending_d = 1'b0;
+          w_pending_d = 1'b0;
+          if (write_supported(aw_addr_next, w_strb_next)) begin
+            state_d = StWriteReq;
+          end else begin
+            resp_code_d = AXI_RESP_SLVERR;
+            unsupported_access_pulse_o = 1'b1;
+            state_d = StWriteResp;
+          end
+        end
+      end
+
+      StReadReq: begin
+        axil32_req_o.ar_valid = 1'b1;
+        axil32_req_o.ar.addr = req_addr_q;
+        axil32_req_o.ar.prot = req_prot_q;
+        if (axil32_rsp_i.ar_ready) begin
+          forwarded_read_pulse_o = 1'b1;
+          state_d = StReadWait;
+        end
+      end
+
+      StReadWait: begin
+        axil32_req_o.r_ready = 1'b1;
+        if (axil32_rsp_i.r_valid) begin
+          resp_rdata_d = axil32_rsp_i.r.data;
+          resp_code_d = axil32_rsp_i.r.resp;
+          state_d = StReadResp;
+        end
+      end
+
+      StReadResp: begin
+        axil64_rsp_o.r_valid = 1'b1;
+        axil64_rsp_o.r.data = req_lane_q ? {resp_rdata_q, 32'h0} : {32'h0, resp_rdata_q};
+        axil64_rsp_o.r.resp = resp_code_q;
+        if (axil64_req_i.r_ready) begin
+          state_d = StIdle;
+        end
+      end
+
+      StWriteReq: begin
+        axil32_req_o.aw_valid = 1'b1;
+        axil32_req_o.aw.addr = req_addr_q;
+        axil32_req_o.aw.prot = req_prot_q;
+        axil32_req_o.w_valid = 1'b1;
+        axil32_req_o.w.data = req_wdata_q;
+        axil32_req_o.w.strb = req_wstrb_q;
+        if (axil32_rsp_i.aw_ready && axil32_rsp_i.w_ready) begin
+          forwarded_write_pulse_o = 1'b1;
+          state_d = StWriteWait;
+        end
+      end
+
+      StWriteWait: begin
+        axil32_req_o.b_ready = 1'b1;
+        if (axil32_rsp_i.b_valid) begin
+          resp_code_d = axil32_rsp_i.b.resp;
+          state_d = StWriteResp;
+        end
+      end
+
+      StWriteResp: begin
+        axil64_rsp_o.b_valid = 1'b1;
+        axil64_rsp_o.b.resp = resp_code_q;
+        if (axil64_req_i.b_ready) begin
+          state_d = StIdle;
+        end
+      end
+
+      default: state_d = StIdle;
+    endcase
+  end
+
+  `OCAH_OT_ASSERT_INIT(Axil64ReqWidthValid_A, axil64_req_width == $bits(drbg_axil64_req_t))
+  `OCAH_OT_ASSERT_INIT(Axil64RspWidthValid_A, axil64_rsp_width == $bits(drbg_axil64_resp_t))
+  `OCAH_OT_ASSERT_INIT(Axil32ReqWidthValid_A, axil32_req_width == $bits(drbg_axil32_req_t))
+  `OCAH_OT_ASSERT_INIT(Axil32RspWidthValid_A, axil32_rsp_width == $bits(drbg_axil32_resp_t))
+  `OCAH_OT_ASSERT(
+      UnsupportedBlocksForwarding_A,
+      unsupported_access_pulse_o |-> !(forwarded_read_pulse_o || forwarded_write_pulse_o))
+  `OCAH_OT_ASSERT(ReadForwardingSinglePulse_A, forwarded_read_pulse_o |-> state_q == StReadReq)
+  `OCAH_OT_ASSERT(WriteForwardingSinglePulse_A, forwarded_write_pulse_o |-> state_q == StWriteReq)
+  `OCAH_OT_ASSERT(StIdleAwReady_A, (state_q == StIdle) |-> (axil64_rsp_o.aw_ready == !aw_pending_q))
+  `OCAH_OT_ASSERT(StIdleWReady_A, (state_q == StIdle) |-> (axil64_rsp_o.w_ready == !w_pending_q))
+  `OCAH_OT_ASSERT(
+      StIdleArReady_A,
+      (state_q == StIdle) |-> (axil64_rsp_o.ar_ready == (!aw_pending_q && !w_pending_q)))
+  `OCAH_OT_ASSERT(
+      BusyHoldsChannelReadyLow_A,
+      (state_q != StIdle) |-> (!axil64_rsp_o.aw_ready && !axil64_rsp_o.w_ready && !axil64_rsp_o.ar_ready))
+  `OCAH_OT_ASSERT_KNOWN(Axil64AwReadyKnown_A, axil64_rsp_o.aw_ready)
+  `OCAH_OT_ASSERT_KNOWN(Axil64WReadyKnown_A, axil64_rsp_o.w_ready)
+  `OCAH_OT_ASSERT_KNOWN(Axil64BValidKnown_A, axil64_rsp_o.b_valid)
+  `OCAH_OT_ASSERT_KNOWN(Axil64BRespKnown_A, axil64_rsp_o.b.resp)
+  `OCAH_OT_ASSERT_KNOWN(Axil64ArReadyKnown_A, axil64_rsp_o.ar_ready)
+  `OCAH_OT_ASSERT_KNOWN(Axil64RValidKnown_A, axil64_rsp_o.r_valid)
+  `OCAH_OT_ASSERT_KNOWN(Axil64RRespKnown_A, axil64_rsp_o.r.resp)
+  `OCAH_OT_ASSERT_KNOWN(Axil64RDataKnown_A, axil64_rsp_o.r.data)
 
 endmodule : drbg_axil64_lane_adapter

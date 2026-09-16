@@ -3,9 +3,8 @@
 
 """Collect a DUT's native `run_dv.py` result.json into normalized dashboard result JSON.
 
-OSS dashboard collection consumes the normalized `result.json` that `run_dv.py` emits for every
-DUT. The older log/URG/JUnit scrapers were removed once every OSS flow emitted `result.json`; any
-private/historical importers live out-of-tree.
+Dashboard collection consumes only the normalized `result.json` that `run_dv.py` emits for every
+DUT.
 """
 
 from __future__ import annotations
@@ -17,11 +16,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from dashboard.schema import STATUS_FAIL, STATUS_PASS, STATUS_UNKNOWN, make_result, write_json
 from runlib.config import load_test_catalog
 from runlib.duts import resolve_dut
 from runlib.models import ConfigError, Flow, TestCatalog, TestEntry
 from runlib.paths import dut_runs_root, dv_root, repo_path, repo_root
+
+from dashboard.schema import STATUS_FAIL, STATUS_PASS, STATUS_UNKNOWN, make_result, write_json
 
 
 def _repo_rel(repo_root: Path, path: Path) -> str:
@@ -66,9 +66,7 @@ def _relative_to_recorded_root(
         return None
     absolute = path if path.is_absolute() else repo_root / path
     recorded_absolute = (
-        recorded_run_root
-        if recorded_run_root.is_absolute()
-        else repo_root / recorded_run_root
+        recorded_run_root if recorded_run_root.is_absolute() else repo_root / recorded_run_root
     )
     try:
         return absolute.relative_to(recorded_absolute)
@@ -82,8 +80,8 @@ def _relative_to_recorded_root(
         # root. Match the longest recorded-root suffix at the path's start.
         for index in range(len(recorded_parts)):
             suffix = recorded_parts[index:]
-            if path_parts[:len(suffix)] == suffix:
-                return Path(*path_parts[len(suffix):])
+            if path_parts[: len(suffix)] == suffix:
+                return Path(*path_parts[len(suffix) :])
         return None
     if recorded_run_root.is_absolute():
         return None
@@ -92,8 +90,8 @@ def _relative_to_recorded_root(
     # run root. Recover the suffix without depending on that worker's checkout.
     width = len(recorded_parts)
     for index in range(len(path_parts) - width, -1, -1):
-        if path_parts[index:index + width] == recorded_parts:
-            return Path(*path_parts[index + width:])
+        if path_parts[index : index + width] == recorded_parts:
+            return Path(*path_parts[index + width :])
     return None
 
 
@@ -349,7 +347,9 @@ def _native_timing(stages: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _native_failure_buckets(result: dict[str, Any], regression: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def _native_failure_buckets(
+    result: dict[str, Any], regression: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
     merged: dict[tuple[str, str], dict[str, Any]] = {}
     for stage in result.get("stages", []):
         for bucket in stage.get("failure_buckets") or []:
@@ -425,7 +425,9 @@ _PATH_ARTIFACT_KEYS = {
 }
 
 
-def _test_metadata(flow: Flow, catalog: TestCatalog, groups_by_test: dict[str, list[str]], item: str | None) -> dict[str, Any]:
+def _test_metadata(
+    flow: Flow, catalog: TestCatalog, groups_by_test: dict[str, list[str]], item: str | None
+) -> dict[str, Any]:
     if not item:
         return {"name": "", "module": "", "tags": [], "groups": [], "category": flow.name}
     test: TestEntry | None = catalog.tests.get(item)
@@ -496,12 +498,15 @@ def _test_detail_from_record(
     if not isinstance(item, str) or not item:
         return None, [], []
 
-    leaf = _read_leaf_result(
-        repo_root,
-        run_root,
-        record.get("result_json"),
-        recorded_run_root,
-    ) or {}
+    leaf = (
+        _read_leaf_result(
+            repo_root,
+            run_root,
+            record.get("result_json"),
+            recorded_run_root,
+        )
+        or {}
+    )
     merged = {**record, **{k: v for k, v in leaf.items() if v not in (None, "", [], {})}}
     meta = _test_metadata(flow, catalog, groups_by_test, item)
     recorded_artifacts = (
@@ -518,8 +523,7 @@ def _test_detail_from_record(
     if not junit_values:
         junit_values = _parser_junit_paths(parser)
     junit_paths = [
-        _artifact_text(repo_root, run_root, value, recorded_run_root)
-        for value in junit_values
+        _artifact_text(repo_root, run_root, value, recorded_run_root) for value in junit_values
     ]
     junit_paths = [path for path in junit_paths if path]
     if not junit_paths:
@@ -593,7 +597,11 @@ def _test_detail_from_record(
             "seed": detail.get("seed"),
             "attempt": detail.get("attempt"),
             "path": path,
-            "exists": bool((repo_root / path).is_file() if not Path(path).is_absolute() else Path(path).is_file()),
+            "exists": bool(
+                (repo_root / path).is_file()
+                if not Path(path).is_absolute()
+                else Path(path).is_file()
+            ),
         }
         for path in dict.fromkeys(junit_paths)
     ]
@@ -663,7 +671,11 @@ def _collect_test_details(
                 records.append(job)
     else:
         for stage in result.get("stages") or []:
-            if isinstance(stage, dict) and stage.get("name") in {"sim", "regress"} and stage.get("item"):
+            if (
+                isinstance(stage, dict)
+                and stage.get("name") in {"sim", "regress"}
+                and stage.get("item")
+            ):
                 record = dict(stage)
                 item = str(stage.get("item"))
                 result_json = run_root / item / "result.json"
@@ -705,7 +717,12 @@ def _collect_test_details(
         junit_entries.extend(layout_junit)
         warnings.extend(layout_warnings)
 
-    dedup_junit = list({(entry.get("item"), entry.get("seed"), entry.get("attempt"), entry.get("path")): entry for entry in junit_entries}.values())
+    dedup_junit = list(
+        {
+            (entry.get("item"), entry.get("seed"), entry.get("attempt"), entry.get("path")): entry
+            for entry in junit_entries
+        }.values()
+    )
     return details, dedup_junit, warnings
 
 
@@ -732,10 +749,14 @@ def _run_metadata(
     return {
         "run_dir": result.get("run_dir", _repo_rel(repo_root, run_root)),
         "result_json": _repo_rel(repo_root, result_path),
-        "run_json": _repo_rel(repo_root, run_root / "run.json") if (run_root / "run.json").is_file() else "",
+        "run_json": _repo_rel(repo_root, run_root / "run.json")
+        if (run_root / "run.json").is_file()
+        else "",
         "label": result.get("label", ""),
         "items": result.get("items") or [],
-        "stages": [stage.get("name") for stage in result.get("stages", []) if isinstance(stage, dict)],
+        "stages": [
+            stage.get("name") for stage in result.get("stages", []) if isinstance(stage, dict)
+        ],
         "tool": result.get("tool", ""),
         "tool_version": result.get("tool_version", ""),
         "tool_versions": result.get("tool_versions", {}),
@@ -757,7 +778,9 @@ def _run_metadata(
     }
 
 
-def _collect_native_result(repo_root: Path, flow: Flow, run_dir: Path | None) -> dict[str, Any] | None:
+def _collect_native_result(
+    repo_root: Path, flow: Flow, run_dir: Path | None
+) -> dict[str, Any] | None:
     """Consume a normalized `run_dv.py` result.json. Returns None if no native result exists."""
     path = _native_result_path(repo_root, flow, run_dir)
     if path is None:
@@ -803,12 +826,19 @@ def _collect_native_result(repo_root: Path, flow: Flow, run_dir: Path | None) ->
     if run_json_path.is_file():
         artifacts["run_json"] = _repo_rel(repo_root, run_json_path)
     if regression:
-        reg_artifacts = regression.get("artifacts") if isinstance(regression.get("artifacts"), dict) else {}
+        reg_artifacts = (
+            regression.get("artifacts") if isinstance(regression.get("artifacts"), dict) else {}
+        )
         if reg_artifacts.get("regression_json"):
             artifacts["regression_json"] = str(reg_artifacts["regression_json"])
-    sim_stages = [s for s in result.get("stages", []) if s.get("name") in {"sim", "regress"} and s.get("log")]
+    sim_stages = [
+        s for s in result.get("stages", []) if s.get("name") in {"sim", "regress"} and s.get("log")
+    ]
     # Prefer a failing test's log for triage, else the first run's log.
-    sim_stage = next((s for s in sim_stages if s.get("status") != STATUS_PASS), sim_stages[0] if sim_stages else None)
+    sim_stage = next(
+        (s for s in sim_stages if s.get("status") != STATUS_PASS),
+        sim_stages[0] if sim_stages else None,
+    )
     if sim_stage:
         artifacts["log"] = _artifact_text(
             repo_root,
@@ -841,8 +871,13 @@ def _collect_native_result(repo_root: Path, flow: Flow, run_dir: Path | None) ->
         duration_sec=timing["duration_sec"],
         tests_total=int(tests.get("total") or 0),
         tests_passing=int(tests.get("passing") or 0),
+        tests_completed=tests.get("completed")
+        if isinstance(tests.get("completed"), bool)
+        else None,
         coverage_percent=coverage.get("total_percent"),
-        coverage_breakdown={k.removesuffix("_percent"): v for k, v in (coverage.get("metrics") or {}).items()},
+        coverage_breakdown={
+            k.removesuffix("_percent"): v for k, v in (coverage.get("metrics") or {}).items()
+        },
         coverage_details=coverage,
         artifacts=artifacts,
         failure_buckets=_native_failure_buckets(result, regression),
@@ -872,11 +907,13 @@ def collect_flow_result(repo_root: Path, flow: Flow, run_dir: Path | None) -> di
         status=STATUS_UNKNOWN,
         tool=flow.default_tool,
         framework=flow.framework,
-        failure_buckets=[{
-            "signature": f"no run_dv.py result.json found for DUT `{flow.name}` "
-                         "(run the DUT first, or pass --run-dir)",
-            "count": 1,
-        }],
+        failure_buckets=[
+            {
+                "signature": f"no run_dv.py result.json found for DUT `{flow.name}` "
+                "(run the DUT first, or pass --run-dir)",
+                "count": 1,
+            }
+        ],
         source={"collector": "none"},
     )
 
@@ -957,13 +994,16 @@ def main(argv: list[str] | None = None) -> int:
             and (result.get("source") or {}).get("collector") == "run_dv-result"
             and collected_framework != args.framework
         ):
-            # Fail loudly on a mispaired run dir instead of publishing a run under the
-            # wrong framework view.
+            # A result.json that records a different framework is a mispaired --run-dir.
             raise ConfigError(
                 f"--framework {args.framework} was requested but the collected result.json "
                 f"records framework `{collected_framework}` — wrong --run-dir pairing?"
             )
-        output = Path(args.output).resolve() if args.output else dv_root(repo_root_path) / "reports" / "latest" / f"{flow.name}.result.json"
+        output = (
+            Path(args.output).resolve()
+            if args.output
+            else dv_root(repo_root_path) / "reports" / "latest" / f"{flow.name}.result.json"
+        )
         stage_coverage_artifacts(repo_root_path, result, output)
         write_json(result, output)
         print(f"Wrote result: {output}")

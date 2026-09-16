@@ -9,6 +9,7 @@ prestage hook can import it without cocotb.
 from __future__ import annotations
 
 from env.sep_efuse_image import SepEfuseImage
+
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 
@@ -20,9 +21,7 @@ class SepEfuseShadow(SepAxiRegDriver):
     def _addr(self, name: str, word_idx: int) -> int:
         fld = SepEfuseImage.field(name)
         if not 0 <= word_idx < fld.n_words:
-            raise ValueError(
-                f"{name} word {word_idx} out of range 0..{fld.n_words - 1}"
-            )
+            raise ValueError(f"{name} word {word_idx} out of range 0..{fld.n_words - 1}")
         return fld.shadow_addr + 4 * word_idx
 
     async def read_word(self, name: str, word_idx: int) -> int:

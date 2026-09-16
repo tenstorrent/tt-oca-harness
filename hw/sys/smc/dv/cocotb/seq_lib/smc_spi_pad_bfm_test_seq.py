@@ -20,6 +20,7 @@ from .smc_base_test_seq import smc_base_test_seq
 
 try:
     from ocah_spi_vip import OcahSepSpiFlash
+
     _SPI_VIP_AVAILABLE = True
 except Exception:  # noqa: BLE001
     OcahSepSpiFlash = None  # type: ignore[assignment]
@@ -69,9 +70,7 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
         self.preload_ok: bool = False
 
     async def body(self) -> None:
-        assert _SPI_VIP_AVAILABLE, (
-            "ocah_spi_vip / OcahSepSpiFlash unavailable on PYTHONPATH"
-        )
+        assert _SPI_VIP_AVAILABLE, "ocah_spi_vip / OcahSepSpiFlash unavailable on PYTHONPATH"
         dut = cocotb.top
         assert hasattr(dut, "tb_spi_enable"), "tb_spi_* pads not lifted"
         assert hasattr(dut, "tb_spi_miso_ext"), "tb_spi_miso_ext not present"
@@ -122,8 +121,7 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
 
         jedec = (b0 << 16) | (b1 << 8) | b2
         assert jedec == SPI_JEDEC_ID, (
-            f"SPI pad BFM JEDEC mismatch: got 0x{jedec:06X}, "
-            f"expected 0x{SPI_JEDEC_ID:06X}"
+            f"SPI pad BFM JEDEC mismatch: got 0x{jedec:06X}, expected 0x{SPI_JEDEC_ID:06X}"
         )
         self.observed_bytes = bytes([b0, b1, b2])
         cocotb.log.info(
@@ -147,8 +145,7 @@ class smc_spi_pad_bfm_test_seq(smc_base_test_seq):
         dut.tb_spi_cs_n.value = 1
         dut.tb_spi_clk.value = 0
         assert bytes(rd) == _PRELOAD, (
-            f"SPI pad BFM READ preload mismatch: got {bytes(rd).hex()}, "
-            f"expected {_PRELOAD.hex()}"
+            f"SPI pad BFM READ preload mismatch: got {bytes(rd).hex()}, expected {_PRELOAD.hex()}"
         )
         self.preload_ok = True
         cocotb.log.info(

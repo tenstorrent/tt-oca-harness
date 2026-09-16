@@ -31,6 +31,16 @@
 .equ SECURE_DMA_STATUS_REG_ADDR,                      0x10800050
 .equ SEP_CPU_CTRL_SEP_REGION_SIZE_REG_ADDR,           0x10A300D0
 
+/* SEP outbound egress filter, entry 0. Offsets and the open-window encoding
+ * match drivers/sep_outbound_filter.h: CONFIG @0x0, START @0x8, END @0x10;
+ * CONFIG = read|write|entry_enabled|allow_burst plus the reserved bit 32. */
+.equ OUTBOUND_FILTER_CTRL_BASE, 0x10A20000
+.equ FILTER_CONFIG_OFF,         0x0
+.equ FILTER_START_OFF,          0x8
+.equ FILTER_END_OFF,            0x10
+.equ FILTER_CFG_OPEN_LO,        0x01000013
+.equ FILTER_CFG_OPEN_HI,        0x1
+
 .section .text.init
 .align 4
 .global _start
@@ -41,6 +51,31 @@ _start:
 
     la      t0, trap_fail
     csrw    mtvec, t0
+
+    /*
+     * Open the outbound egress window over STDOUT before anything writes there.
+     * The SEP outbound filter is BlockByDefault=1, so an unopened window does
+     * not silently drop the store -- it isolates it and answers with an error,
+     * which the EL2 takes as a store access fault. Both the PASS routine and
+     * trap_fail report through STDOUT, so without this the image cannot report
+     * at all: it faults on the first mailbox write and lands in fail_hang with
+     * no verdict, whatever actually happened earlier.
+     *
+     * START/END before CONFIG so the entry enables over the final range.
+     */
+    li      t0, OUTBOUND_FILTER_CTRL_BASE
+    li      t1, STDOUT
+    sw      t1, FILTER_START_OFF(t0)
+    sw      zero, FILTER_START_OFF+4(t0)
+    li      t1, STDOUT
+    addi    t1, t1, 0xFF
+    sw      t1, FILTER_END_OFF(t0)
+    sw      zero, FILTER_END_OFF+4(t0)
+    li      t1, FILTER_CFG_OPEN_LO
+    sw      t1, FILTER_CONFIG_OFF(t0)
+    li      t1, FILTER_CFG_OPEN_HI
+    sw      t1, FILTER_CONFIG_OFF+4(t0)
+    fence
 
     /* Prove ROM-fetched code can access DCCM without DCCM firmware preload. */
     li      t0, DCCM_TEST_ADDR

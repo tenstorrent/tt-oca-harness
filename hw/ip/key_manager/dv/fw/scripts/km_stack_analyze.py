@@ -31,7 +31,7 @@ Soundness model
   tears down the caller frame first, so additive never under-counts).
 * The PicoRV32 IRQ handler switches to a dedicated IRQ stack before calling the
   C ISR (see crt0.s), so interrupts do not deepen the main stack and the ISR is
-  intentionally *not* part of the ``_start_init`` tree.
+  not part of the ``_start_init`` tree.
 * The ROM is required to have a fully *static* stack: any function containing a
   dynamic ``sp`` adjustment (``sub sp,sp,<reg>`` / ``add sp,sp,<reg>``, i.e. a
   VLA/alloca) is a hard error.  Replace VLAs with fixed-size or file-scope
@@ -66,11 +66,16 @@ _INSN_RE = re.compile(r"^\s*[0-9a-fA-F]+:\s+(\S+)(?:\s+(.*?))?\s*$")
 # A target operand may carry an objdump comment: "196 <sym+0xNN>" or with "# ..".
 _TARGET_RE = re.compile(r"<([^>+]+)(?:\+0x[0-9a-fA-F]+)?>")
 
-# GCC clone suffixes to strip when matching the dynamic-budget table.
+# GCC clone suffixes to strip when comparing function names.
 _CLONE_SUFFIX_RE = re.compile(r"\.(?:constprop|isra|part|lto_priv|cold)\.\d+$")
 
 _REGS = {
-    "zero", "ra", "sp", "gp", "tp", "fp",
+    "zero",
+    "ra",
+    "sp",
+    "gp",
+    "tp",
+    "fp",
     *(f"x{i}" for i in range(32)),
     *(f"t{i}" for i in range(0, 7)),
     *(f"a{i}" for i in range(0, 8)),
@@ -87,8 +92,8 @@ class Func:
 
     def __init__(self, name: str):
         self.name = name
-        self.frame = 0           # static frame bytes (>= 0)
-        self.dynamic = False     # has a runtime-sized sp adjustment
+        self.frame = 0  # static frame bytes (>= 0)
+        self.dynamic = False  # has a runtime-sized sp adjustment
         self.calls: set[str] = set()
         self.indirect: list[str] = []  # unresolved indirect CALLS (jalr ra)
         self.notes: list[str] = []
@@ -97,7 +102,9 @@ class Func:
 def disassemble(elf: str, objdump: str) -> str:
     out = subprocess.run(
         [objdump, "-d", "--no-show-raw-insn", elf],
-        check=True, capture_output=True, text=True,
+        check=True,
+        capture_output=True,
+        text=True,
     )
     return out.stdout
 
@@ -107,7 +114,7 @@ def parse(dis: str) -> tuple[dict[str, Func], list[str]]:
     funcs: dict[str, Func] = {}
     errors: list[str] = []
     cur: Func | None = None
-    cur_sp = 0   # cumulative sp delta from function entry (<= 0 inside frame)
+    cur_sp = 0  # cumulative sp delta from function entry (<= 0 inside frame)
 
     for line in dis.splitlines():
         m = _FUNC_RE.match(line)
@@ -211,7 +218,7 @@ def longest_path(funcs: dict[str, Func], root: str):
             cycles.append(name)
             return (0, [f"{name} (CYCLE)"])
         on_stack.add(name)
-        best_child = (0, [])
+        best_child: tuple[int, list[str]] = (0, [])
         for callee in f.calls:
             d, p = visit(callee)
             if d > best_child[0]:
@@ -226,15 +233,24 @@ def longest_path(funcs: dict[str, Func], root: str):
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("elf", help="linked ROM ELF to analyze")
-    ap.add_argument("--objdump", default="riscv64-unknown-elf-objdump",
-                    help="objdump binary (default: %(default)s)")
-    ap.add_argument("--root", action="append", default=None,
-                    help="root symbol(s) (default: _start_init)")
-    ap.add_argument("--limit", type=lambda s: int(s, 0), default=None,
-                    help="fail (exit 1) if worst case exceeds this many bytes")
+    ap.add_argument(
+        "--objdump",
+        default="riscv64-unknown-elf-objdump",
+        help="objdump binary (default: %(default)s)",
+    )
+    ap.add_argument(
+        "--root", action="append", default=None, help="root symbol(s) (default: _start_init)"
+    )
+    ap.add_argument(
+        "--limit",
+        type=lambda s: int(s, 0),
+        default=None,
+        help="fail (exit 1) if worst case exceeds this many bytes",
+    )
     ap.add_argument("--verbose", action="store_true", help="print the deepest path")
     args = ap.parse_args()
 
@@ -250,9 +266,11 @@ def main() -> int:
     dynamic = sorted(f.name for f in funcs.values() if f.dynamic)
     if dynamic:
         errors.append(
-            "dynamic (VLA/alloca) stack frame(s) found: " + ", ".join(dynamic)
+            "dynamic (VLA/alloca) stack frame(s) found: "
+            + ", ".join(dynamic)
             + ".  ROM must use fixed-size or file-scope 'static' buffers so the "
-            "stack stays statically bounded.")
+            "stack stays statically bounded."
+        )
 
     if errors:
         for e in errors:
@@ -272,21 +290,24 @@ def main() -> int:
             worst, worst_path, worst_root = d, p, r
 
     if all_cycles:
-        print(f"error: call-graph cycle(s) detected: {', '.join(sorted(set(all_cycles)))}",
-              file=sys.stderr)
+        print(
+            f"error: call-graph cycle(s) detected: {', '.join(sorted(set(all_cycles)))}",
+            file=sys.stderr,
+        )
         return 1
 
     # Indirect calls only matter if they lie on an analyzed (reachable) path.
-    indirect_err = [f"{name}: unresolved indirect call '{c}' (cannot bound stack)"
-                    for name in sorted(all_reachable)
-                    for c in funcs[name].indirect]
+    indirect_err = [
+        f"{name}: unresolved indirect call '{c}' (cannot bound stack)"
+        for name in sorted(all_reachable)
+        for c in funcs[name].indirect
+    ]
     if indirect_err:
         for e in indirect_err:
             print(f"error: {e}", file=sys.stderr)
         return 1
 
-    print(f"worst-case ROM main stack: {worst} bytes "
-          f"(root {worst_root}, {len(funcs)} functions)")
+    print(f"worst-case ROM main stack: {worst} bytes (root {worst_root}, {len(funcs)} functions)")
     if args.verbose:
         print("deepest path:")
         for step in worst_path:
@@ -299,12 +320,16 @@ def main() -> int:
 
     if args.limit is not None:
         if worst > args.limit:
-            print(f"error: worst case {worst} B exceeds budget {args.limit} B "
-                  f"(0x{args.limit:x}); raise ROM_KM_MAX_STACK_BYTES or reduce stack use",
-                  file=sys.stderr)
+            print(
+                f"error: worst case {worst} B exceeds budget {args.limit} B "
+                f"(0x{args.limit:x}); raise ROM_KM_MAX_STACK_BYTES or reduce stack use",
+                file=sys.stderr,
+            )
             return 1
-        print(f"within budget: {worst} B <= {args.limit} B "
-              f"(0x{args.limit:x}); headroom {args.limit - worst} B")
+        print(
+            f"within budget: {worst} B <= {args.limit} B "
+            f"(0x{args.limit:x}); headroom {args.limit - worst} B"
+        )
     return 0
 
 

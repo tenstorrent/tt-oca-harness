@@ -27,8 +27,7 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
             cla_clock_stop_en=cla_clock_stop_en,
         )
         self.log.info(
-            "%s write DEBUG_CONTROL=0x%02x boot_ovrd=%d boot_stall=%d "
-            "jtag_stop=%d cla_stop_en=%d",
+            "%s write DEBUG_CONTROL=0x%02x boot_ovrd=%d boot_stall=%d jtag_stop=%d cla_stop_en=%d",
             context,
             value,
             boot_stall_ovrd,
@@ -43,9 +42,13 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
 
         readback = await self.read_debug_control(shift_value=value)
         decoded = self.log_debug_control(f"{context} readback", readback)
-        self.assert_equal("DEBUG_CONTROL.boot_stall_ovrd", decoded["boot_stall_ovrd"], boot_stall_ovrd, context)
+        self.assert_equal(
+            "DEBUG_CONTROL.boot_stall_ovrd", decoded["boot_stall_ovrd"], boot_stall_ovrd, context
+        )
         self.assert_equal("DEBUG_CONTROL.boot_stall", decoded["boot_stall"], boot_stall, context)
-        self.assert_equal("DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], jtag_clock_stop, context)
+        self.assert_equal(
+            "DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], jtag_clock_stop, context
+        )
         self.assert_equal(
             "DEBUG_CONTROL.cla_clock_stop_en",
             decoded["cla_clock_stop_en"],
@@ -58,6 +61,10 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
 
         self.log_step(1, "Reset TAP and verify boot-stall reset value")
         await self.reset_tap()
+        # The DEBUG_CONTROL reset check below includes the live cla_clock_stop
+        # status bit, which mirrors the xtrig_clk_stop_req TB input: clear it
+        # explicitly instead of relying on one-time bring-up state.
+        await self.set_clk_stop_requests(0)
 
         reset_value = await self.read_debug_control()
         self.log_debug_control("After reset", reset_value)
@@ -66,7 +73,10 @@ class dtp_dbg_ctrl_boot_stall_test_seq(dtp_debug_tdr_base_test_seq):
         await self.expect_signal("jtag_boot_stall", 0)
 
         self.log_step(2, "Loop all boot_stall_ovrd / boot_stall combinations")
+        # Exhaustive 2x2 sweep in a seeded per-pass order: repeated loops
+        # exercise different combination transitions.
         combinations = [(0, 0), (0, 1), (1, 0), (1, 1)]
+        self.rng("boot_stall_order").shuffle(combinations)
         for idx, (boot_stall_ovrd, boot_stall) in enumerate(combinations, start=1):
             self.log_iteration(
                 idx,

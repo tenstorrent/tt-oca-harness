@@ -4,10 +4,10 @@
 = OCA UART 16550 Unit Tests (VCS)
 :sectnums:
 
-This document describes how to run the unit tests for the OCH UART 16550 Component using VCS.
+This document describes how to run the unit tests for the OCAH UART 16550 Component using VCS.
 
 First, make sure you have set up the environment as described in the main `README.adoc` file of the
-OCH repository:
+OCAH repository:
 
 ```bash
 pushd ../../../..

@@ -67,10 +67,16 @@ ocah-regen-regs-adoc: $(OCAH_REGEN_REG_ADOC)
 ocah-regen-regs-html: $(OCAH_REGEN_REG_HTML)
 
 ## Remove generated register collateral and transient register-generation stamps.
+## One `rm` per block so the recipe stays under ARG_MAX when the process
+## environment is large (GitLab sources the site setup script before this target).
 ## @param TARGET=smc Optional register block basename to clean
+define ocah_reg_clean_one
+	@rm -rf $(foreach path,$(call ocah_reg_clean_paths,$(1)),"$(path)")
+
+endef
 .PHONY: ocah-regen-regs-clean
 ocah-regen-regs-clean:
-	@rm -rf $(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(foreach path,$(call ocah_reg_clean_paths,$(block)),"$(path)"))
+	$(foreach block,$(OCAH_SELECTED_REG_BLOCKS),$(call ocah_reg_clean_one,$(block)))
 
 ## Refresh the committed vendored register RDLs from their upstream OpenTitan hjson.
 ## On-demand only: a clean checkout already has the RDLs and regen-regs never runs
@@ -80,8 +86,17 @@ ocah-regen-regs-clean:
 ## separate selector from TARGET, which classify.mk validates against top blocks.
 ocah_vhr_name = $(notdir $(basename $(call ocah_vhr_rdl,$(1))))
 OCAH_SELECTED_VENDOR_HJSON_RDLS = $(if $(RDL),$(foreach e,$(OCAH_VENDOR_HJSON_RDLS),$(if $(filter $(RDL),$(call ocah_vhr_name,$(e))),$(e))),$(OCAH_VENDOR_HJSON_RDLS))
+## Refresh the DFD RDLs from the vendored tt_hw_debug MMR spec yaml.
+## On-demand like ocah-regen-vendor-rdl: the RDLs are committed, so a clean
+## checkout needs no regen. Run after bumping the tt-hw-debug vendor drop.
+## @param CHECK=1 Report drift and fail instead of rewriting (for CI).
+.PHONY: ocah-regen-dfd-rdl
+ocah-regen-dfd-rdl: | $(OCAH_REG_UV_PREREQ)
+	cd "$(OCAH_ROOT)" && "$(OCAH_REG_PYTHON)" tools/regs/dfd_yaml_rdl.py \
+		$(if $(CHECK),--check,--write)
+
 .PHONY: ocah-regen-vendor-rdl
-ocah-regen-vendor-rdl: | uv-sync
+ocah-regen-vendor-rdl: | $(OCAH_REG_UV_PREREQ)
 	@$(foreach e,$(OCAH_SELECTED_VENDOR_HJSON_RDLS),\
 		echo "Exporting HJSON register description to RDL: $(call ocah_vhr_rdl,$(e))"; \
 		$(call ocah_vendor_hjson_rdl_regen,$(e)); )
@@ -99,4 +114,5 @@ OCAH_PHONY += \
   ocah-regen-regs-adoc \
   ocah-regen-regs-html \
   ocah-regen-regs-clean \
+  ocah-regen-dfd-rdl \
   ocah-regen-vendor-rdl

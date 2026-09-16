@@ -5,7 +5,7 @@
 ===== Architecture
 
 The Telemetry Receiver leverages a dual-buffer design for robust and
-continuous telemetry data capture from an ARM Trace Bus (ATB) source.
+continuous telemetry data capture from an Advanced Trace Bus (ATB) source.
 Its architecture brings together configurable register interfaces, full
 ATB compliance, intelligent buffering, and efficient message
 processing—balancing narrative clarity with compact organization.

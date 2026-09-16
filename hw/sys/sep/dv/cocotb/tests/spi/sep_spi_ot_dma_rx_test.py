@@ -10,7 +10,7 @@ watermark raises ``lsio_trigger``, which drains a chunk to SRAM via the DMA
 hardware handshake -- an SPI + DMA + fabric + memory datapath that is internal to
 bare ``sep`` (SPI-FIFO -> DMA).
 
-PARITY-PLUS over reference suite: the reference test clocks idle MISO (no flash model) and only
+Beyond the reference suite: the reference test clocks idle MISO (no flash model) and only
 checks "DMA done + no SPI error". Here the OSS flash BFM is preloaded with a known
 constant (0xA5) and the firmware value-checks every DMA-written SRAM word ==
 0xA5A5A5A5, so the SPI->DMA->SRAM data path is proven, not just completion. The
@@ -18,8 +18,8 @@ firmware is self-checking (returns its error count; start.S emits PASS/FAIL magi
 on the 0x8000_0000 mailbox), and the boot scoreboard gates on the PASS magic, the
 banner, and ICCM execution. A SRAM == 0xA5A5A5A5 result can only come from the
 BFM's preloaded flash over the SPI -> RX-FIFO -> lsio_trigger -> DMA path, so the
-firmware self-check alone proves the datapath end-to-end (verified: preloading a
-different byte makes the firmware report a SRAM mismatch and the test FAIL).
+firmware self-check alone proves the datapath end-to-end: a different preload
+byte makes the firmware report a SRAM mismatch and the run fails.
 """
 
 from __future__ import annotations
@@ -29,17 +29,17 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
 from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "spi_ot_dma_rx_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "spi_ot_dma_rx_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "spi_ot_dma_rx_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -78,7 +78,9 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             # build_phase, which resets it to the hello_world default).
             self.sb.expected_line = _BANNER
             await self.boot_firmware(
-                self.sb, _ITCM_HEX, _DTCM_HEX,
+                self.sb,
+                _ITCM_HEX,
+                _DTCM_HEX,
                 rst_vec=_ICCM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
@@ -87,15 +89,12 @@ class sep_spi_ot_dma_rx_test(sep_base_test):
             # Evidence is the firmware's own value-check (gated by the boot
             # scoreboard's fw_pass magic): SRAM == 0xA5A5A5A5 can ONLY come from
             # the BFM's preloaded flash streamed over MISO -> SPI RX FIFO ->
-            # lsio_trigger -> DMA -> SRAM, so a passing firmware run already
-            # proves the full SPI->DMA datapath end-to-end. We deliberately do NOT
-            # assert on flash.get_transactions(): the BFM's open-ended 0x03 READ
-            # (_do_read loops `while cs_n==0`) blocks awaiting a final SCK edge
-            # after the host stops clocking, so the transaction is served on the
-            # wire but never reaches _log_transaction -- an empty log is a BFM
-            # logging quirk, not a missing transaction (the SRAM data disproves
-            # that). Reading flash.read_memory() here is also meaningless (it just
-            # echoes the preload). The firmware self-check is the authoritative,
-            # stronger-than-reference checker.
+            # lsio_trigger -> DMA -> SRAM, so a passing firmware run proves the
+            # full SPI->DMA datapath end-to-end. flash.get_transactions() is not
+            # evidence here: the BFM's open-ended 0x03 READ (_do_read loops
+            # `while cs_n==0`) blocks awaiting a final SCK edge after the host
+            # stops clocking, so the transaction is served on the wire but never
+            # reaches _log_transaction. flash.read_memory() only echoes the
+            # preload.
         finally:
             await flash.stop()

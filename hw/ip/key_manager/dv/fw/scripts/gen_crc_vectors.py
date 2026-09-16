@@ -96,30 +96,33 @@ def _self_check() -> int:
     failures = 0
     got = crc8_rohc(b"123456789")
     if got != CRC8_ROHC_CHECK:
-        print(f"CRC-8/ROHC check value mismatch: got 0x{got:02X}, "
-              f"want 0x{CRC8_ROHC_CHECK:02X}", file=sys.stderr)
+        print(
+            f"CRC-8/ROHC check value mismatch: got 0x{got:02X}, want 0x{CRC8_ROHC_CHECK:02X}",
+            file=sys.stderr,
+        )
         failures += 1
     for s, want in CRC32C_GOLDEN:
         got = crc32c(s.encode())
         if got != want:
-            print(f"CRC-32C mismatch for {s!r}: got 0x{got:08X}, want 0x{want:08X}",
-                  file=sys.stderr)
+            print(
+                f"CRC-32C mismatch for {s!r}: got 0x{got:08X}, want 0x{want:08X}", file=sys.stderr
+            )
             failures += 1
     return failures
 
 
 def main() -> int:
     if _self_check():
-        print("refusing to emit vectors: model disagrees with published values",
-              file=sys.stderr)
+        print("refusing to emit vectors: model disagrees with published values", file=sys.stderr)
         return 1
 
     print("/* CRC-8/ROHC (init 0xFF, XorOut 0x00) - from gen_crc_vectors.py */")
     for name, data in CRC8_CASES:
         print(f"  /* {name} */ 0x{crc8_rohc(data):02X}u,")
 
-    print("\n/* CRC-32C Castagnoli - from gen_crc_vectors.py, "
-          "cross-checked against Go hash/crc32 */")
+    print(
+        "\n/* CRC-32C Castagnoli - from gen_crc_vectors.py, cross-checked against Go hash/crc32 */"
+    )
     for s, _ in CRC32C_GOLDEN:
         name = repr(s) if len(s) <= 12 else s[:20] + "..."
         print(f"  /* {name} */ 0x{crc32c(s.encode()):08X}u,")

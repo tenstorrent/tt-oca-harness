@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP AXI-Lite JTAG2AXI scenarios for GH issue #3211."""
+"""OTP AXI-Lite JTAG2AXI scenarios."""
 
 from __future__ import annotations
 
@@ -39,6 +39,15 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             cases.append((addr, size, data, self.full_wstrb(size)))
         cases.append((DEFAULT_OTP_ADDR + 0x80, 2, 0xA5A5_5A5A, 0x5))
         cases.append((DEFAULT_OTP_ADDR + 0xA0, 2, 0x5A5A_A5A5, 0xA))
+        # Seeded per-pass random cases on top of the deterministic sweep:
+        # every loop drives different address/size/data/strobe values.
+        rng = self.rng(f"{self.target}_directed_cases")
+        for _ in range(self.random_count):
+            size = rng.choice([0, 1, 2])
+            addr = self.random_target_aligned_addr(self.target, rng, size)
+            data = rng.getrandbits(32) & self.data_mask(size)
+            wstrb = rng.randint(1, self.target_full_wstrb(self.target, size))
+            cases.append((addr, size, data, wstrb))
         return cases
 
     async def run_single_write(self) -> None:
@@ -69,7 +78,8 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner(f"{self.target} SINGLE_OP Write With Readback")
         await self.reset_tap()
         addr = DEFAULT_OTP_ADDR + 0x100
-        data = 0xD00D_F00D
+        # Seeded per-pass payload: each loop verifies readback of different data.
+        data = self.rng(f"{self.target}_write_readback").getrandbits(32)
         write_status, _ = await self.write_target_single_and_check(
             self.target,
             addr,
@@ -99,7 +109,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         for idx in range(beats):
             addr = base + (idx * stride)
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            self.log_iteration(idx + 1, beats, "series incr write addr=0x%08x data=0x%x", addr, data)
+            self.log_iteration(
+                idx + 1, beats, "series incr write addr=0x%08x data=0x%x", addr, data
+            )
             before = await self.target_activity_counts(self.target)
             await self.series_data_incr(data, size=size, target=self.target, back_to_rti=True)
             await self.wait_for_target_activity(
@@ -136,7 +148,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 last_data,
             )
             before = await self.target_activity_counts(self.target)
-            await self.series_data_no_incr(last_data, size=size, target=self.target, back_to_rti=True)
+            await self.series_data_no_incr(
+                last_data, size=size, target=self.target, back_to_rti=True
+            )
             await self.wait_for_target_activity(
                 self.target,
                 before=before,
@@ -156,44 +170,31 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         await self.reset_tap()
         rng = self.rng(f"{self.target}.series_write_with_status")
         cfg = self.target_cfg(self.target)
-        size = cfg.default_size
-        stride = cfg.beat_bytes
-        base = self.random_target_aligned_addr(self.target, rng)
-        increments = [1, 0, 1, 1]
-        await self.jtag2axi_series_ctrl(
-            DtpJtag2AxiOp.WRITE,
-            base,
-            size=size,
-            target=self.target,
-            back_to_rti=True,
+        plan = self.arm_series_status_fault(
+            self.plan_series_status(self.target, rng), rng, read=False
         )
-        expected_addr = base
-        for idx, inc in enumerate(increments, start=1):
-            data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            self.log_iteration(idx, len(increments), "status write addr=0x%08x inc=%d", expected_addr, inc)
-            before = await self.target_activity_counts(self.target)
-            _, status_bit = await self.series_data_with_status(
-                data,
-                size=size,
-                increment=inc,
-                target=self.target,
-                back_to_rti=True,
-            )
-            await self.wait_for_target_activity(
-                self.target,
-                before=before,
-                read=False,
-                context=f"series_status.axi#{idx}",
-            )
-            self.assert_equal(f"series_status.status_bit#{idx}", status_bit, 0)
-            observed = self.read_target_mem_int(self.target, expected_addr, size)
-            self.assert_equal(f"series_status.mem#{idx}", observed, data)
-            expected_addr += stride if inc else 0
-            self.operation_count += 1
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=self.target)
-        self.assert_equal("series_status.status", status, DtpJtag2AxiStatus.SUCCESS)
-        self.assert_equal("series_status.addr_after", addr_after, expected_addr)
-        self.status = status
+        words = [
+            rng.getrandbits(cfg.data_width) & self.data_mask(plan.size) for _ in plan.increments
+        ]
+        self.log_step(
+            1,
+            "Write the with-status series; beat %d returns %s",
+            plan.fault_idx,
+            plan.expected.name,
+        )
+        await self.run_series_status_write(plan, words, context="series_status")
+        self.log_step(2, "Recover with a legal single write outside the stream")
+        self.status = await self.verify_target_recovery(
+            self.target,
+            addr=self.series_status_recovery_addr(plan),
+            data=rng.getrandbits(cfg.data_width),
+            read=False,
+            context="series_status",
+        )
+        self.operation_count += plan.beats + 1
+        self.emit_series_status_nonvacuity(
+            "series_write_incr_with_error", plan, self.operation_count
+        )
 
     async def run_random_ops(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP Randomized Writes")
@@ -204,7 +205,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         for idx in range(1, self.random_count + 1):
             addr = self.random_target_aligned_addr(self.target, rng)
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            self.log_iteration(idx, self.random_count, "random write addr=0x%08x data=0x%x", addr, data)
+            self.log_iteration(
+                idx, self.random_count, "random write addr=0x%08x data=0x%x", addr, data
+            )
             status, _ = await self.write_target_single_and_check(
                 self.target,
                 addr,
@@ -222,7 +225,8 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         addr = DEFAULT_OTP_ADDR + 0x200
-        data = 0xFACE_CAFE & self.data_mask(size)
+        # Seeded per-pass payload for baseline/gated/restore writes.
+        data = self.rng(f"{self.target}_write_gate").getrandbits(32) & self.data_mask(size)
         before = await self.target_activity_counts(self.target)
         await self.write_target_single_and_check(self.target, addr, data, context="gate.baseline")
         await self.expect_target_activity(
@@ -235,8 +239,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         # gate is repeatable, not a one-shot POR effect.
         for idx in (1, 2):
             bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
-            self.log_step(idx + 1, "Gate %s write with %s (pass %d)",
-                          self.target, cfg.dbg_disable_bit, idx)
+            self.log_step(
+                idx + 1, "Gate %s write with %s (pass %d)", self.target, cfg.dbg_disable_bit, idx
+            )
             await self.disable_debug_bits(cfg.dbg_disable_bit)
             # Preload a sentinel at the gated-attempt address: the blocked
             # write must leave memory untouched, both while gated and after
@@ -244,6 +249,11 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             gate_addr = addr + (idx * cfg.beat_bytes)
             sentinel = 0x5EA1_0000 | idx
             self.write_target_mem_int(self.target, gate_addr, sentinel, size)
+            # Snapshot BEFORE the gated attempt so a request pulse leaked at
+            # shift time is caught, then hold a blocked window across it: any
+            # monitored transaction inside the window fails (CHK-AXI-BLOCKED).
+            gate_before = await self.target_activity_counts(self.target)
+            self.scoreboard_begin_blocked(self.target)
             raw = pack_single_op(
                 DtpJtag2AxiOp.WRITE,
                 gate_addr,
@@ -254,18 +264,27 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             )
             await self.write_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"gate.{bit_name}.no_axi")
+            if self.axi_scoreboard is not None:
+                gate_after = await self.target_activity_counts(self.target)
+                self.axi_scoreboard.expect_no_activity(
+                    before=gate_before,
+                    after=gate_after,
+                    context=(
+                        f"gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=gated_attempt+8cyc"
+                    ),
+                )
             self.assert_equal(
                 f"gate.{bit_name}.sentinel",
                 self.read_target_mem_int(self.target, gate_addr, size),
                 sentinel,
             )
+            # Hold the blocked window ACROSS disable release: a bridge that
+            # queued the gated request and replays it once the gate re-opens
+            # is the exact leak this scenario must catch.
             await self.enable_all_debug()
             await self.wait_sys_cycles(8)
-            self.assert_equal(
-                f"gate.{bit_name}.sentinel_post_release",
-                self.read_target_mem_int(self.target, gate_addr, size),
-                sentinel,
-            )
+            self.scoreboard_end_blocked(self.target, context=f"gate.{bit_name}")
             before = await self.target_activity_counts(self.target)
             status, _ = await self.write_target_single_and_check(
                 self.target,
@@ -279,14 +298,49 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 read=False,
                 context=f"gate.{bit_name}.restore",
             )
+            if self.axi_scoreboard is not None:
+                # Exact-delta proof from BEFORE the gated attempt to AFTER the
+                # restore write: only the sanctioned restore write may appear
+                # (aw/w +1, ar +0). A delayed replay anywhere in the span
+                # makes aw >= +2 and fails.
+                final = await self.target_activity_counts(self.target)
+                expected_exact = {
+                    "aw": gate_before["aw"] + 1,
+                    "w": gate_before["w"] + 1,
+                    "ar": gate_before["ar"],
+                }
+                self.axi_scoreboard.expect_no_activity(
+                    before=expected_exact,
+                    after=final,
+                    context=(
+                        f"gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=exact_delta "
+                        f"sanctioned=restore_write(aw+1,w+1)"
+                    ),
+                )
             self.status = status
             self.operation_count += 1
+        if self.axi_scoreboard is not None:
+            # CHK-AXI-NONVAC: the same counters that stayed flat while gated
+            # demonstrably move for real traffic (baseline + both restores), so
+            # the no-activity evidence cannot pass on a dead or tied-off bus.
+            final = await self.target_activity_counts(self.target)
+            self.axi_scoreboard.expect_nonvacuous(
+                self.operation_count >= 2 and final["aw"] >= 3,
+                context=(
+                    f"gated_attempts={self.operation_count} aw_pulses={final['aw']} "
+                    f"expected_aw>=3 (baseline+2 restores)"
+                ),
+            )
 
     async def run_single_write_read(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP Single Write-Read")
         await self.reset_tap()
         addr = DEFAULT_OTP_ADDR + 0x300
-        data = DEFAULT_OTP_DATA
+        # Seeded per-pass payload: each loop writes and reads back different data.
+        data = self.rng(f"{self.target}_single_wr_rd").getrandbits(32) & self.data_mask(
+            self.target_cfg(self.target).default_size
+        )
         write_status, _ = await self.write_target_single_and_check(
             self.target,
             addr,
@@ -312,7 +366,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             if increment:
                 await self.series_data_incr(data, size=size, target=self.target, back_to_rti=True)
             else:
-                await self.series_data_no_incr(data, size=size, target=self.target, back_to_rti=True)
+                await self.series_data_no_incr(
+                    data, size=size, target=self.target, back_to_rti=True
+                )
             await self.wait_for_target_activity(
                 self.target,
                 before=before,
@@ -383,74 +439,31 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         await self.reset_tap()
         rng = self.rng(f"{self.target}.series_read_with_status")
         cfg = self.target_cfg(self.target)
-        size = cfg.default_size
-        stride = cfg.beat_bytes
-        base = self.random_target_aligned_addr(self.target, rng)
-        increments = [1, 0, 1, 1]
-        expected_by_addr = {}
-        addr = base
-        await self.jtag2axi_series_ctrl(
-            DtpJtag2AxiOp.WRITE,
-            base,
-            size=size,
-            target=self.target,
-            back_to_rti=True,
+        plan = self.plan_series_status(self.target, rng)
+        words = [
+            rng.getrandbits(cfg.data_width) & self.data_mask(plan.size) for _ in plan.increments
+        ]
+        self.log_step(1, "Write the with-status series without a fault")
+        await self.run_series_status_write(plan, words, context="series_wr_rd_status.write")
+        plan = self.arm_series_status_fault(plan, rng, read=True)
+        self.log_step(
+            2, "Read the series back; beat %d returns %s", plan.fault_idx, plan.expected.name
         )
-        for idx, inc in enumerate(increments, start=1):
-            data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
-            before = await self.target_activity_counts(self.target)
-            await self.series_data_with_status(
-                data,
-                size=size,
-                increment=inc,
-                target=self.target,
-                back_to_rti=True,
-            )
-            await self.wait_for_target_activity(
-                self.target,
-                before=before,
-                read=False,
-                context=f"series_wr_rd_status.write_axi#{idx}",
-            )
-            expected_by_addr[addr] = data
-            addr += stride if inc else 0
-        addr = base
-        for idx, inc in enumerate(increments, start=1):
-            await self.jtag2axi_series_ctrl(
-                DtpJtag2AxiOp.READ,
-                addr,
-                size=size,
-                target=self.target,
-                back_to_rti=True,
-            )
-            before = await self.target_activity_counts(self.target)
-            await self.series_data_with_status(
-                0,
-                size=size,
-                increment=inc,
-                target=self.target,
-                back_to_rti=True,
-            )
-            await self.wait_for_target_activity(
-                self.target,
-                before=before,
-                read=True,
-                context=f"series_wr_rd_status.read_axi#{idx}",
-            )
-            raw_data, status_bit = await self.series_data_with_status(
-                0,
-                size=size,
-                increment=0,
-                target=self.target,
-                back_to_rti=True,
-            )
-            self.assert_equal(f"series_wr_rd_status.status_bit#{idx}", status_bit, 0)
-            self.assert_equal(f"series_wr_rd_status.rdata#{idx}", raw_data, expected_by_addr[addr])
-            addr += stride if inc else 0
-            self.operation_count += 1
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=self.target)
-        self.assert_equal("series_wr_rd_status.addr_after", addr_after, addr)
-        self.status = status
+        await self.run_series_status_read(
+            plan, plan.final_words(words), context="series_wr_rd_status.read"
+        )
+        self.log_step(3, "Recover with a legal single read outside the stream")
+        self.status = await self.verify_target_recovery(
+            self.target,
+            addr=self.series_status_recovery_addr(plan),
+            data=rng.getrandbits(cfg.data_width),
+            read=True,
+            context="series_wr_rd_status",
+        )
+        self.operation_count += 2 * plan.beats + 1
+        self.emit_series_status_nonvacuity(
+            "series_write_read_incr_with_error", plan, self.operation_count
+        )
 
     async def run_read_random_ops(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP Randomized Reads")
@@ -462,7 +475,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             addr = self.random_target_aligned_addr(self.target, rng)
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
             self.write_target_mem_int(self.target, addr, data, size)
-            self.log_iteration(idx, self.random_count, "random read addr=0x%08x data=0x%x", addr, data)
+            self.log_iteration(
+                idx, self.random_count, "random read addr=0x%08x data=0x%x", addr, data
+            )
             status, _ = await self.read_target_single_and_check(
                 self.target,
                 addr,
@@ -479,7 +494,8 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         addr = DEFAULT_OTP_ADDR + 0x400
-        data = 0xABCD_EF01 & self.data_mask(size)
+        # Seeded per-pass payload for the baseline/restore reads.
+        data = self.rng(f"{self.target}_read_gate").getrandbits(32) & self.data_mask(size)
         self.write_target_mem_int(self.target, addr, data, size)
         before = await self.target_activity_counts(self.target)
         status, _ = await self.read_target_single_and_check(
@@ -499,13 +515,38 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         # gate is repeatable, not a one-shot POR effect.
         for idx in (1, 2):
             bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
-            self.log_step(idx + 1, "Gate %s read with %s (pass %d)",
-                          self.target, cfg.dbg_disable_bit, idx)
+            self.log_step(
+                idx + 1, "Gate %s read with %s (pass %d)", self.target, cfg.dbg_disable_bit, idx
+            )
             await self.disable_debug_bits(cfg.dbg_disable_bit)
-            raw = pack_single_op(DtpJtag2AxiOp.READ, addr + (idx * cfg.beat_bytes), size=size, target=cfg)
+            # Snapshot BEFORE the gated attempt and hold a blocked window
+            # across it: any monitored transaction inside the window fails
+            # (CHK-AXI-BLOCKED).
+            gate_before = await self.target_activity_counts(self.target)
+            self.scoreboard_begin_blocked(self.target)
+            raw = pack_single_op(
+                DtpJtag2AxiOp.READ, addr + (idx * cfg.beat_bytes), size=size, target=cfg
+            )
             await self.write_tdr(cfg.single_op_reg, raw)
-            await self.expect_no_target_activity(self.target, 8, context=f"read_gate.{bit_name}.no_axi")
+            await self.expect_no_target_activity(
+                self.target, 8, context=f"read_gate.{bit_name}.no_axi"
+            )
+            if self.axi_scoreboard is not None:
+                gate_after = await self.target_activity_counts(self.target)
+                self.axi_scoreboard.expect_no_activity(
+                    before=gate_before,
+                    after=gate_after,
+                    context=(
+                        f"read_gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=gated_attempt+8cyc"
+                    ),
+                )
+            # Hold the blocked window ACROSS disable release: a queued gated
+            # request replaying once the gate re-opens is the exact leak this
+            # scenario must catch.
             await self.enable_all_debug()
+            await self.wait_sys_cycles(8)
+            self.scoreboard_end_blocked(self.target, context=f"read_gate.{bit_name}")
             before = await self.target_activity_counts(self.target)
             status, _ = await self.read_target_single_and_check(
                 self.target,
@@ -519,12 +560,43 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 read=True,
                 context=f"read_gate.{bit_name}.restore",
             )
+            if self.axi_scoreboard is not None:
+                # Exact-delta proof from BEFORE the gated attempt to AFTER the
+                # restore read: only the sanctioned restore read may appear
+                # (ar +1, aw/w +0).
+                final = await self.target_activity_counts(self.target)
+                expected_exact = {
+                    "aw": gate_before["aw"],
+                    "w": gate_before["w"],
+                    "ar": gate_before["ar"] + 1,
+                }
+                self.axi_scoreboard.expect_no_activity(
+                    before=expected_exact,
+                    after=final,
+                    context=(
+                        f"read_gate.{bit_name} target={self.target} "
+                        f"source=tb_pulse_counters window=exact_delta "
+                        f"sanctioned=restore_read(ar+1)"
+                    ),
+                )
             self.status = status
             self.operation_count += 1
+        if self.axi_scoreboard is not None:
+            # CHK-AXI-NONVAC: the counters that stayed flat while gated
+            # demonstrably move for real traffic (baseline + both restores).
+            final = await self.target_activity_counts(self.target)
+            self.axi_scoreboard.expect_nonvacuous(
+                self.operation_count >= 2 and final["ar"] >= 3,
+                context=(
+                    f"gated_attempts={self.operation_count} ar_pulses={final['ar']} "
+                    f"expected_ar>=3 (baseline+2 restores)"
+                ),
+            )
 
     @staticmethod
     def unpack_series_value(raw: int, size: int) -> tuple[int, int]:
         from env.dtp_types import unpack_series_data
+
         return unpack_series_data(raw, size)
 
     async def body(self) -> None:

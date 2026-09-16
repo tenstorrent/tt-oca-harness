@@ -58,82 +58,74 @@ signal routing is local to the chiplet. The final extra STAP in the chain
 enables scan output lockup when `NUM_EXTRA_STAPS > 0`, providing additional
 output timing margin before the scan path returns to the PTAP.
 
-====== Feature Control Synchronization
+====== Debug Disable Synchronization
 
-The lifecycle feature control signals originate in the system clock domain and
-must be synchronized to the TCK domain before use. The interface unit implements
-64 individual 2-FF synchronizer chains, one per bit of the feature control
-vector. This per-bit synchronization approach breaks up the CDC timing path that
-would exist if the entire 64-bit vector were synchronized as a single unit.
+`dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is in the system clock
+domain and must be synchronized to TCK before use. The interface unit
+synchronizes each bit through a 2-FF chain whose reset value is 1 (fail-closed).
+The synchronized fields gate STAP and SIB selection and are forwarded to the
+PTAP for the JTAG2AXI bridges.
 
-The synchronized feature control bits determine security access levels for STAP
-and SIB selection. `feat_ctrl_i` is enable-polarity (1 = feature enabled). Each
-access point is enabled only when *all* of its listed enables are asserted, so
-it is disabled when *any* one of them is deasserted:
+Each field is active-high (1 = path disabled).
 
-[width="100%",cols="<20%,<40%,<40%",options="header"]
+[width="100%",cols="<40%,<60%",options="header"]
 |===
-|Access Point |Enabled When Feature Control Satisfies |Security Disable Signal
+|Access Point |Disable Field
 
 |I/O STAP
-|`sip_debug`
-|`!sip_debug`
+|`dbg_disable_i.stap_io`
 
 |SMC Debug STAP
-|`soc_debug \&\& ap_debug`
-|`!soc_debug \|\| !ap_debug`
+|`dbg_disable_i.stap_smc`
 
 |SEP Debug STAP
-|`sep_debug \&\& soc_debug \&\& ap_debug`
-|`!sep_debug \|\| !soc_debug \|\| !ap_debug`
+|`dbg_disable_i.stap_sep`
 
 |Extra STAPs
-|`ap_debug`
-|`!ap_debug`
+|`dbg_disable_i.stap_extra`
 
 |External STAP return path
-|`ap_debug`
-|`!ap_debug`
+|`dbg_disable_i.stap_host`
 
 |DFT Secure SIB
-|`fuse_test \&\& sep_debug \&\& soc_debug \&\& ap_debug`
-|`!fuse_test \|\| !sep_debug \|\| !soc_debug \|\| !ap_debug`
+|`dbg_disable_i.dft_secure`
 
 |DFT Non-Secure SIB
-|`soc_debug \&\& ap_debug`
-|`!soc_debug \|\| !ap_debug`
+|`dbg_disable_i.dft_nonsecure`
 
 |DFD SIB
-|`ap_debug`
-|`!ap_debug`
+|`dbg_disable_i.dfd`
+
+|SMC fabric JTAG2AXI
+|`dbg_disable_i.smc_jtag2axi`
+
+|SMC OTP JTAG2AXI
+|`dbg_disable_i.smc_otp_jtag2axi`
+
+|SEP OTP JTAG2AXI
+|`dbg_disable_i.sep_otp_jtag2axi`
 |===
 
 ===== iJTAG Network
 
 The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
-chains with differing security requirements. Each SIB gates access to a specific
-set of debug instruments based on the synchronized feature control signals, and
-requires *all* of the enables listed for it above.
+chains. Each SIB is gated by the corresponding synchronized debug-disable field.
 
 ====== DFT Secure Chain
 
-The DFT Secure chain is the most restrictive of the three: it is accessible only
-when fuse test, SEP debug, SOC debug, and AP debug are all enabled. This chain
-is ported out of the DTP for connection to tooling-generated DFT logic such as
-MBIST controllers and scan compression logic.
+The DFT Secure chain is gated by `dbg_disable_i.dft_secure`. This port is for
+security-sensitive DFT control.
 
 ====== DFT Non-Secure Chain
 
-The DFT Non-Secure chain requires both SOC debug and AP debug to be enabled.
-This chain provides access to DFT instrumentation that does not involve
-security-sensitive fuse or SEP operations.
+The DFT Non-Secure chain is gated by `dbg_disable_i.dft_nonsecure`. General DFT
+control is attached to this port.
 
 ====== DFD Chain
 
-The Debug Forensics Dump (DFD) chain requires AP debug to be enabled. The SIB
-gate itself is the least restrictive of the three; the resources reached through
-it are gated again inside the PTAP, where each JTAG2AXI bridge applies its own
-lifecycle condition. This chain grants access to:
+The Design-for-Debug (DFD) chain is gated by `dbg_disable_i.dfd`. The
+resources reached through it are gated again inside the PTAP, where each
+JTAG2AXI bridge is gated by its own disable input. This chain grants access to:
 
 * SMC AXI4 system fabric via JTAG2AXI bridge
 * SMC OTP controller via AXI-Lite-to-APB bridge

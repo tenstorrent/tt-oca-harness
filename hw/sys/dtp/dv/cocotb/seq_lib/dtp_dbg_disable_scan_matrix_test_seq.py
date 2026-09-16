@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Debug-disable matrix over the eight scan-side gate fields.
 
-One compact matrix instead of eight duplicate wrappers: deterministic one-hot
-rows, the all-clear and all-disabled boundary masks, and seeded multi-hot
-masks. Every row drives the full disable vector, then proves each resource's
+Deterministic one-hot rows, the all-clear and all-disabled boundary masks, and
+seeded multi-hot masks. Every row drives the full disable vector, then proves each resource's
 allowed/blocked outcome with temporal windows and chain readbacks, and only
 then samples the functional-coverage cell.
 """
@@ -104,7 +103,11 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             dbg_disable=mask,
             context=f"{context}.write_3dcrs",
         )
-        watch = [f"{self.stap_signal_prefix(name)}_{sig}" for name in STAP_ORDER for sig in ("tdo_oen", "tms")]
+        watch = [
+            f"{self.stap_signal_prefix(name)}_{sig}"
+            for name in STAP_ORDER
+            for sig in ("tdo_oen", "tms")
+        ]
         watch += list(HOST_SCAN_CONTROLS)
         window = self.start_scan_window(tuple(watch))
         captured = await self.stap_chain_maintain(dbg_disable=mask, context=f"{context}.observe")
@@ -124,11 +127,17 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
                 result = "no_forwarding+update_ignored"
             else:
                 assert tdo_oen > 0, f"{context}.{name}: tdo_oen never pulsed while enabled"
-                assert 0 < tms < edges, f"{context}.{name}: tms must follow live TMS ({tms}/{edges})"
+                assert 0 < tms < edges, (
+                    f"{context}.{name}: tms must follow live TMS ({tms}/{edges})"
+                )
                 result = "forwarding"
             self.fcov.sample_cell(
-                field, value, BLOCKED if value else ALLOWED,
-                mask=full, operation=f"stap_{name}_select_attempt", result=result,
+                field,
+                value,
+                BLOCKED if value else ALLOWED,
+                mask=full,
+                operation=f"stap_{name}_select_attempt",
+                result=result,
             )
 
         host_value = full["stap_host"]
@@ -145,8 +154,12 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             )
             host_result = "scan_controls_active"
         self.fcov.sample_cell(
-            "stap_host", host_value, BLOCKED if host_value else ALLOWED,
-            mask=full, operation="ext_stap_scan_attempt", result=host_result,
+            "stap_host",
+            host_value,
+            BLOCKED if host_value else ALLOWED,
+            mask=full,
+            operation="ext_stap_scan_attempt",
+            result=host_result,
         )
 
         self.check_stap_chain_readback(captured, dbg_disable=mask, context=f"{context}.readback")
@@ -167,16 +180,20 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             if 0 < hot < len(SCAN_FIELDS):
                 self.fcov.sample_aux("unrelated_isolation", context=label)
 
-        # The all_disabled row ran last: release everything without reset and
-        # prove no gated open attempt sticks (a delayed replay would show a
-        # SIB select pulse here), then a sanctioned all-clear row recovers.
+        # Delayed-replay proof (the check_stored_sib_across_gate pattern): a
+        # SIB's update register retains a sanctioned open through a gate, so
+        # close every SIB with a sanctioned write first, then attempt a fully
+        # gated open of all three, release without reset, and prove no select
+        # pulses (a gated open attempt that stuck would assert here).
+        all_gated = {field: 1 for field in SCAN_FIELDS}
         await self.set_dbg_disable_vector({})
-        quiet = tuple(f"{self.IJTAG_SIGNAL_PREFIX[name]}_select" for name in IJTAG_SIB_ORDER)
-        window = self.start_scan_window(quiet)
-        _, signals = await self.observe_ijtag_controls(0b000, context="release.observe")
-        self.check_scan_window(window, quiet=quiet, context="release.window")
-        for name in IJTAG_SIB_ORDER:
-            self.check_observable(signals, f"{self.IJTAG_SIGNAL_PREFIX[name]}_select", 0, context=f"release.{name}")
+        await self.program_ijtag_sibs(0b000, context="release.close")
+        await self.set_dbg_disable_vector(all_gated)
+        await self.program_ijtag_sibs(
+            0b111, dbg_disable=all_gated, context="release.gated_open_attempt"
+        )
+        await self.set_dbg_disable_vector({})
+        await self.check_ijtag_all_closed(context="release.observe")
         self.fcov.sample_aux("release_no_replay", context="post_all_disabled_release")
 
         await self.check_ijtag_row({}, context="recovery")
@@ -184,7 +201,7 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
         self.fcov.sample_aux("recovery", context="all_clear_after_all_disabled")
 
         self.fcov.require_cells(SCAN_FIELDS)
-        self.fcov.write_artifact(seed=self.random_seed())
+        self.fcov.write_artifact(seed=self.scenario_seed)
         self.log_summary(
             "Debug-disable scan matrix",
             rows=len(rows),

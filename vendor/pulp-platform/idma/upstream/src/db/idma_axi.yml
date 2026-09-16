@@ -32,9 +32,10 @@ typedefs: |
     `AXI_TYPEDEF_RESP_T(axi_rsp_t, axi_b_chan_t, axi_r_chan_t)
 legalizer_read_meta_channel: |
     r_req_o.ar_req.axi.ar_chan = '{
-        id: opt_tf_q.axi_id,
+        id: $bits(r_req_o.ar_req.axi.ar_chan.id)'(opt_tf_q.axi_id),
         addr: { r_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-        len: ((r_num_bytes + r_addr_offset - 'd1) >> OffsetWidth),
+        len: $bits(r_req_o.ar_req.axi.ar_chan.len)'(
+            (r_num_bytes + page_len_t'(r_addr_offset) - page_len_t'(1)) >> OffsetWidth),
         size: axi_pkg::size_t'(OffsetWidth),
         burst: opt_tf_q.src_axi_opt.burst,
         lock: opt_tf_q.src_axi_opt.lock,
@@ -46,9 +47,10 @@ legalizer_read_meta_channel: |
     };
 legalizer_write_meta_channel: |
     w_req_o.aw_req.axi.aw_chan = '{
-        id: opt_tf_q.axi_id,
+        id: $bits(w_req_o.aw_req.axi.aw_chan.id)'(opt_tf_q.axi_id),
         addr: { w_tf_q.addr[AddrWidth-1:OffsetWidth], {{OffsetWidth}{1'b0}} },
-        len: ((w_num_bytes + w_addr_offset - 'd1) >> OffsetWidth),
+        len: $bits(w_req_o.aw_req.axi.aw_chan.len)'(
+            (w_num_bytes + page_len_t'(w_addr_offset) - page_len_t'(1)) >> OffsetWidth),
         size: axi_pkg::size_t'(OffsetWidth),
         burst: opt_tf_q.dst_axi_opt.burst,
         lock: opt_tf_q.dst_axi_opt.lock,

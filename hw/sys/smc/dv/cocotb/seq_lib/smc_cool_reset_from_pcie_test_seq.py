@@ -12,19 +12,11 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 SMC_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR")
 SMCEN = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR")
-FLR_DELAY = smc_addr(
-    "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR"
-)
-FLR_HOLD = smc_addr(
-    "SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR"
-)
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR")
+FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 
-SMC_BIT = reset_unit_u32(
-    "RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm"
-)
+SMC_BIT = reset_unit_u32("RESET_UNIT__ISOLATE_REQ_SMC_REG__ISOLATE_REQ_SMC_REG_bm")
 
 # Hold of 0/1 never starts the FSM (reset_unit.adoc). Keep values small.
 _DELAY = 0x20
@@ -105,9 +97,7 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
             if (self._int(dut.tb_rst_cool_from_flr) & 1) == 0:
                 raise AssertionError("cool asserted with FLR counters still 0")
         self.zero_cnt_ok = True
-        cocotb.log.info(
-            "CHK-FLR-ZERO-CNT: SMC_REG=0x%x iso=0 cool stayed 1", smc1
-        )
+        cocotb.log.info("CHK-FLR-ZERO-CNT: SMC_REG=0x%x iso=0 cool stayed 1", smc1)
 
         dut.tb_cfg_flr_pf_active.value = 0
         await self.csr_write("SMC_REG_CLR", SMC_REG, 0)
@@ -140,9 +130,7 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
             if last_warm == 1:
                 break
         else:
-            raise AssertionError(
-                f"warm smc clk still 0 after FLR cool (last={last_warm})"
-            )
+            raise AssertionError(f"warm smc clk still 0 after FLR cool (last={last_warm})")
         warm = await self.csr_read("SCRATCH_POST", SCRATCH_COLD_WARM_0, expected=0)
         cocotb.log.info("CHK-FLR-WARM: SCRATCH_COLD_WARM_0=0x%x after FLR cool", warm)
 

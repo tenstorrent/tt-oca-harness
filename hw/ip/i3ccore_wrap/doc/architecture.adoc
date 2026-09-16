@@ -21,7 +21,7 @@ routing for a single I3C controller
 * *i3c*: Main I3C module containing HCI queues, control/status registers,
 controller/target FSMs, and physical layer interface
 
-Each I3C instance occupies 0x500 bytes of address space (11-bit addressing),
+Each I3C instance occupies 0x1000 bytes of address space (12-bit addressing),
 allowing software to access multiple controllers through a unified AXI4-Lite
 interface.
 
@@ -57,7 +57,7 @@ The I3C controller consists of the following major functional blocks:
                       |  (Main Controller)  |
                       +---------------------+
                       |                     |
-                      |   I3CCSR (Regist)   |
+                      |  I3CCSR (Register)  |
                       |                     |
                       +----------+----------+
                                  |
@@ -85,15 +85,18 @@ The I3C controller consists of the following major functional blocks:
 The I3CCSR module provides a comprehensive register interface organized into
 hierarchical sections:
 
-* *I3CBase* (0x00-0x6C): Core controller configuration including HC_CONTROL,
+* *I3CBase* (0x00-0x68): Core controller configuration including HC_CONTROL,
 PRESENT_STATE, INTR_STATUS, RESET_CONTROL, and section offset pointers
-* *PIOControl* (0x80-0xAC): Programmable I/O interface with command/response/data
+* *PIOControl* (0x80-0xB0): Programmable I/O interface with command/response/data
 ports and threshold configuration registers
-* *I3C_EC* (Extended Capabilities, 0x100+): Standby controller configuration,
-recovery interface, target transaction interface
-* *DAT* (0x300-0x3FC): Device Address Table with 128 entries mapping dynamic
-addresses to device characteristics
-* *DCT* (0x400-0x4FC): Device Configuration Table with device-specific parameters
+* *I3C_EC* (Extended Capabilities, 0x100-0x3A0): Secure Firmware Recovery
+Interface (0x100-0x168), Standby Controller Mode (0x180-0x1C0), Target
+Transaction Interface (0x200-0x290), SoC Management Interface (0x300-0x390),
+Controller Config (0x398-0x39C), and Termination (0x3A0)
+* *DAT* (0x400-0x7FF): Device Address Table, 128-entry address window
+(2 DWORDs per entry) mapping device indexes to dynamic addresses
+* *DCT* (0x800-0xFFF): Device Characteristic Table, 128-entry address window
+(4 DWORDs per entry) holding device-specific characteristics
 
 All registers are 32-bit aligned and accessed via a 12-bit address interface
 from the AXI4-Lite slave.
@@ -299,8 +302,8 @@ Queue (signaled by hardware queue depth tracking)
 data/space before starting transaction (prevents underflow/overflow)
 
 3. *FetchDAT*: Look up target device dynamic address from Device Address Table
-using dev_idx field from command descriptor. DAT provides 7-bit dynamic address,
-IBI enable status, and device characteristics pointer.
+using dev_idx field from command descriptor. DAT provides the dynamic address,
+IBI accept/reject configuration, and auto-command settings.
 
 4. *BroadcastAddr*: Transmit I3C broadcast address (0x7E) + Write bit + T-bit
 in Open-Drain mode. Purpose: Alert all targets that a transaction is starting
@@ -546,16 +549,16 @@ idle, reducing IBI response latency by up to milliseconds in active systems.
 
 1. *ReadTargetAddr*: Read 7-bit IBI source address from SDA
    * Verify address exists in DAT (valid target)
-   * Check DAT.IBI_EN flag (IBI enabled for this device)
+   * Check DAT.IBI_REJECT flag (IBIs from this device are NACKed when set)
 
 2. *Decision - Accept or Reject IBI*:
-   * *Accept (ACK)*: DAT.IBI_EN=1 AND IBI Queue not full
-   * *Reject (NACK)*: DAT.IBI_EN=0 OR IBI Queue full
+   * *Accept (ACK)*: DAT.IBI_REJECT=0 AND DAT.IBI_PAYLOAD=1 AND IBI Queue not full
+   * *Reject (NACK)*: DAT.IBI_REJECT=1 OR DAT.IBI_PAYLOAD=0 OR IBI Queue full
 
 3. *I3CDataRead* (if accepted): Receive optional IBI payload
-   * Payload length from DAT.IBI_PAYLOAD_SIZE (device-specific)
+   * DAT.IBI_PAYLOAD indicates the device sends a mandatory data byte
+     (e.g., sensor threshold value)
    * Maximum 255 bytes per I3C spec
-   * Some devices have mandatory data byte (e.g., sensor threshold value)
 
 4. *PushRxData*: Write IBI data to IBI FIFO in 4-byte chunks
 
@@ -574,7 +577,7 @@ idle, reducing IBI response latency by up to milliseconds in active systems.
 8. Software reads IBI descriptor from IBI_PORT and determines appropriate
 response (query target, send CCC, etc.)
 
-====== Common Command Code (CCC) Flow
+====== Common Command Codes (CCC) Flow
 
 Common Command Codes enable the controller to configure targets, query device
 information, and manage bus topology. CCCs are classified as broadcast
@@ -731,28 +734,34 @@ controller mode queue architecture.
 to bus available timer or immediate transmission capability during controller
 broadcast.
 
-====== Device Address Table (DAT) and Device Configuration Table (DCT)
+====== Device Address Table (DAT) and Device Characteristic Table (DCT)
 
-*DAT (Device Address Table)*: 128-entry table mapping device indexes to
-dynamic addresses. Each entry contains:
-* 7-bit dynamic address
-* Static address (for SETDASA correlation)
-* IBI enable flag
-* DCT index pointer
+*DAT (Device Address Table)*: 64-bit entries mapping device indexes to dynamic
+addresses. Each entry contains:
+* DYNAMIC_ADDRESS[23:16]: dynamic address; only the low 7 bits are driven onto
+the bus, hardware appends RnW and computes the ENTDAA parity bit
+* STATIC_ADDRESS[6:0]: static address (for SETDASA correlation)
+* IBI_REJECT[13]: NACK IBIs from this device (active high - clear to accept)
+* IBI_PAYLOAD[12]: device sends a mandatory data byte with its IBI
+* CRR_REJECT[14], TS[15], RING_ID[28:26], DEV_NACK_RETRY_CNT[30:29], DEVICE[31]
+* AUTOCMD_MASK/VALUE/MODE/HDR_CODE[58:32]: auto-command configuration
 
 Software populates DAT during device enumeration. Hardware reads DAT during
 command processing to translate dev_idx to target address.
 
-*DCT (Device Configuration Table)*: 128-entry table with device-specific
+*DCT (Device Characteristic Table)*: 128-bit entries with device-specific
 characteristics:
-* Bus Characteristics Register (BCR): Device role, limitations
-* Device Characteristics Register (DCR): Device type classification
-* Max Write Length (MWL) / Max Read Length (MRL)
-* IBI payload size
-* Push-Pull support flag
+* PID_HI[31:0] / PID_LO[47:32]: 48-bit Provisioned ID
+* DCR[71:64]: Device Characteristics Register - device type classification
+* BCR[79:72]: Bus Characteristics Register - device role, limitations
+* DYNAMIC_ADDRESS[103:96]: address assigned during ENTDAA
 
-DCT entries are typically populated from device GETPID/GETBCR/GETDCR CCC
-responses during initialization.
+Hardware populates DCT during ENTDAA from the PID/BCR/DCR each target emits.
+
+*Depth*: both tables expose a 128-entry address window, and DAT_SECTION_OFFSET /
+DCT_SECTION_OFFSET advertise TABLE_SIZE=127, but the physical memories are
+`DAT_DEPTH`/`DCT_DEPTH` = 16 entries deep (i3c_defines.svh). Only indexes 0-15
+are backed by storage.
 
 ====== PHY Layer and Clock Domain Crossing
 
@@ -766,9 +775,9 @@ across arbitrary system clock frequencies. Controller FSM generates precise
 SCL/SDA edges by counting system clock cycles derived from configured timing
 values.
 
-====== Recovery Mechanism (TCRI)
+====== Transfer Command Response Interface (TCRI)
 
-The MIPI TCRI v1.0 compliant recovery subsystem enables secure firmware download
+The MIPI TCRI v1.0 recovery subsystem enables secure firmware download
 and device recovery:
 
 *recovery_handler.sv*: Coordinates recovery flow state machine

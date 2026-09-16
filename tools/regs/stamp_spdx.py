@@ -48,7 +48,7 @@ def stamp_file(path: Path) -> bool:
     header = HEADERS[path.suffix]
     decl = _XML_DECL_RE.match(text) if path.suffix == ".xml" else None
     if decl:
-        text = text[: decl.end()] + header + text[decl.end():]
+        text = text[: decl.end()] + header + text[decl.end() :]
     else:
         text = header + text
     path.write_text(text, encoding="utf-8")

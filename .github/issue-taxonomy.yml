@@ -66,6 +66,8 @@ project:
 release:
   current: v0.5.0
   milestone_number: 22
+  target_release_to_milestone:
+    v0.5.0: "v0.5.0 (TT)"
   future_backlog:
     target_release: Future
     view: Future Backlog
@@ -99,6 +101,7 @@ protection:
     - 21
     - 23
     - 24
+    - 25
 
 classification:
   one_value_per_field:
@@ -136,3 +139,10 @@ curation:
   locked_value: Locked
   ambiguous_value: Needs review
   managed_value: Managed
+  # Last-resort PR reviewers. Ingest and the curator walk this list in
+  # listed order, skip the author, and request the first assignable
+  # collaborator.
+  reviewer_pool:
+    - aottavianoTT
+    - nbetikTT
+    - nboettcher-tenstorrent

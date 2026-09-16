@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle carrying the encrypted-payload class key.
+#
+# sep_efuse_class_key.toml is the TEST_DEV version of this file, used by
+# sep_firmware_encrypted_boot_test. That test picks TEST_DEV so a
+# signature failure cannot mask a decryption failure.
+#
+# sep_decryption_failure_terminal_test needs the opposite trade. Its stimulus is a
+# corrupted CIPHERTEXT, and the manifest is re-hashed and re-signed with the dev0
+# key afterwards (cocotb/env/sep_payload_mutate.py), so the signature is valid by
+# construction and cannot mask anything. PROD then buys the stronger precondition:
+# secure_boot_enabled() enforces the crypto chain from the LIFECYCLE rather than
+# from a manifest flag (manifest_load.c:278-288), so the run cannot silently
+# degrade to a non-secure boot in which the payload is never decrypted at all.
+#
+# CLASS_KEY is byte-identical to sep_efuse_class_key.toml: it is the KBKDF root
+# the ROM derives the payload AES key from, and it must stay equal to the key
+# pack_images.py encrypted with (configs/encrypted_boot_test.yaml
+# encryption_key_input) or the payload would decrypt to garbage for a reason this
+# testcase did not plant. It is a published test vector, not a device secret.
+#
+# SBOOT_DIS stays 0 so nothing can opt out of the crypto chain.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[CLASS_KEY]
+  [CLASS_KEY.fields.key]
+  value = 0x0000000000000000000000000000000054e01f1d0eb208a04dbd502a53bda99b

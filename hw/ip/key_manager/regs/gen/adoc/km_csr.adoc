@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -151,7 +151,7 @@
 | 0x4BC | OTP_SEP_SYS_ID_CPL_7 | R a| Dual-rail OTP readout word (value or complement half). Read-through from OTP port; no reset. Returns zero when the field's bit is set in either OTP_READ_LOCK or OTP_READ_LOCK_COLD.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .VERSION Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -161,21 +161,21 @@
 | 7:0 | `patch` | R | 0x0 a| Patch version number
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `rsvd` | R | 0x0 a| Reserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SOFT_RST_CODE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `code` | RW | 0x0 a| 32-bit reset code. Write 0x53525354 to trigger soft reset.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IRQ_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -194,7 +194,7 @@
 | 0 | `rom_parity_err` | RW | 0x0 a| ROM parity error detected. Sticky, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IRQ_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -213,14 +213,14 @@
 | 0 | `rom_parity_en` | RW | 0x0 a| Enable ROM parity error interrupt
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SCRAMBLER_KEY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `key` | RW | - a| Scrambler key value. Not readable when SCRAMBLER_CTRL.LOCK=1 (returns 0). No reset for security; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SCRAMBLER_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -229,14 +229,14 @@
 | 0 | `enable` | RW | 0x0 a| Enable SRAM scrambling. When 0, data passes through unmodified. Locked when LOCK=1 (security requirement).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SRAM_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `lock_bits` | RW | 0x0 a| One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IRQ_SET Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -255,14 +255,14 @@
 | 0 | `rom_parity_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SRAM_WRITE_LOCK_VIOLATION Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `violation_bits` | RW | 0x0 a| Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RECOVERABLE_ERR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -270,7 +270,7 @@
 | 0 | `recoverable_err` | RW | 0x0 a| 1 = recoverable fault occurred and was handled by ISR; 0 = clear. Write 1 to set, write 0 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BOOT_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -278,7 +278,7 @@
 | 0 | `cold_boot_done` | RW | 0x0 a| Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_LIFE_CYCLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -286,7 +286,7 @@
 | 7:0 | `value` | R | - a| 8-bit life cycle state from OTP. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_DEMOTION_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -295,7 +295,7 @@
 | 1:0 | `demote_1_value` | R | - a| 2-bit demotion 1 state from OTP. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SRAM_EXEC_MODE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -303,14 +303,14 @@
 | 0 | `enable` | RW | 0x0 a| Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IRQ_ENTRY_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `addr` | RW | 0x10 a| IRQ handler entry PC. Reset matches ROM vector at 0x10. When locked, SW writes do not update storage.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IRQ_ENTRY_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -318,7 +318,7 @@
 | 0 | `lock` | RW | 0x0 a| Write 1 to set; write 0 has no effect; sticky until reset.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .VUART_TX Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -327,7 +327,7 @@
 | 7:0 | `tx_byte` | RW | 0x0 a| Byte to transmit (write to send character to testbench)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .VUART_RX Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -336,7 +336,7 @@
 | 7:0 | `rx_byte` | R | 0x0 a| Received byte from testbench
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .VUART_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -346,518 +346,518 @@
 | 0 | `tx_ready` | R | 0x1 a| TX ready to accept data (always 1 in simulation)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TB_RESULT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `result` | RW | 0x0 a| Test result: 0=fail, 1=pass
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TB_SIGNATURE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `signature` | RW | 0x0 a| Completion signature value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TB_ERRCODE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `errcode` | RW | 0x0 a| Error code value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TB_SUBTEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `subtest` | RW | 0x0 a| Current subtest number
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TB_CMD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `cmd` | RW | 0x0 a| Command code (0=NOP, 1=ROM_PARITY_EN, 2=ROM_PARITY_DIS, 3=SRAM_PARITY_EN, 4=SRAM_PARITY_DIS)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TB_CMD_ARG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `arg` | RW | 0x0 a| Command argument value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TB_CMD_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `status` | RW | 0x0 a| Command status: 0=IDLE, 1=ACK, 0xFFFFFFFF=ERR
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TB_CMD_RESULT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `result` | R | 0x0 a| Command result value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DEBUG Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `magic` | R | 0xCAFEBEEF a| Magic constant: 0xCAFEBEEF
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHIPLET_UID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SIP_UID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SYS_UID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CLASS_KEY_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_READ_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -873,7 +873,7 @@
 | 0 | `life_cycle` | RW | 0x0 a| Lock OTP_LIFE_CYCLE reads (returns zero when locked)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_CHANGE_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -889,7 +889,7 @@
 | 0 | `life_cycle` | RW | 0x0 a| OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_READ_LOCK_COLD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -905,336 +905,336 @@
 | 0 | `life_cycle` | RW | 0x0 a| Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle \| OTP_READ_LOCK_COLD.life_cycle.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_CHIPLET_ID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SIP_ID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_VAL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_VAL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_VAL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_VAL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_VAL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_VAL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_VAL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_VAL_7 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_CPL_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_CPL_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_CPL_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_CPL_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_CPL_4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_CPL_5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_CPL_6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `value` | R | - a| 32-bit OTP word. No reset; power-up value undefined.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .OTP_SEP_SYS_ID_CPL_7 Register
 |===
 | Bits | Field | Access | Reset | Description

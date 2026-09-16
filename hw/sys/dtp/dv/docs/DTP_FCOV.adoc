@@ -9,15 +9,20 @@
 This document defines functional coverage intent for the OCAH open-source DTP
 testbench and its PyUVM/Verilator flow.
 
-Verilator does not compile SystemVerilog `covergroup`, `coverpoint`, or `cross`.
-The OCAH open-source path should therefore use Python-side coverage/observation counters in
-the PyUVM environment for public CI, while SV covergroups, assertion coverage,
-and full code coverage are collected with commercial simulators.
+Verilator does not compile SystemVerilog `covergroup`, `coverpoint`, or
+`cross`. Functional coverage is therefore collected by the SystemVerilog
+coverage modules under `hw/sys/dtp/dv/cov/sv/`, instantiated once in the
+shared `tb_top` so the same source serves the cocotb and SV-UVM flows. Each
+module carries two layers: labeled `cover property` points (always compiled;
+under Verilator they land in the coverage database as `user` points), and the
+same bins as SV covergroups under an `ifndef VERILATOR` guard for the
+commercial simulators. The debug-disable 22-cell contract additionally keeps
+its checker-gated Python ledger (`env/dtp_fcov.py`).
 
 [cols=",",options="header",]
 |===
 |Field |Value
-|Reference SPEC |`DTP_SPEC.adoc`
+|Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned)
 |Reference VPLAN |`DTP_VPLAN.adoc`
 |Open-source framework |PyUVM on cocotb
 |Open-source simulator |Verilator
@@ -28,7 +33,7 @@ and full code coverage are collected with commercial simulators.
 [cols=",,",options="header",]
 |===
 |Metric |Target |Open-Source Collection Path
-|Functional coverage |100% of selected scenario coverage intent |Python-side counters/coverage in `env/`
+|Functional coverage |100% of selected scenario coverage intent |`cover property` points in the `cov/sv/` coverage modules
 |Line/branch/FSM/condition coverage |Collected for signoff in commercial flow |VCS/Xcelium coverage databases
 |Toggle coverage |95% target in commercial flow |VCS/Xcelium coverage databases
 |Assertion coverage |100% of enabled assertions |Commercial flow
@@ -38,22 +43,22 @@ and full code coverage are collected with commercial simulators.
 
 [cols=",,",options="header",]
 |===
-|Category |Covergroup / Coverage Model |Collection Notes
-|TAP reset and IDCODE |`tap_smoke_cg` |Directed by `dtp_sanity_test`, `dtp_jtag_idcode_test`, and reset-focused Basic JTAG tests
-|JTAG instruction decode |`jtag_instruction_cg` |Basic JTAG instruction-decode sampling
-|TAP state traversal |`tap_state_cg` |Smoke and reset traversal coverage
-|JTAG2AXI single operations |`jtag2axi_single_op_cg` |Directed read/write SUCCESS coverage
-|JTAG2AXI responses |`jtag2axi_response_cg` |SUCCESS, SLVERR, DECERR, and BUSY_OR_FULL response bins
-|JTAG2AXI series/backpressure/CDC |`jtag2axi_robustness_cg` |Series, backpressure, CDC clear, and reset-abort bins
-|OTP bridges |`otp_jtag2axi_cg` |SMC OTP and SEP OTP JTAG2AXI bins
-|TMP and IC_RESET TDRs |`tmp_ic_reset_cg` |Python-side checks in `debug_tdr`
-|Debug control |`debug_control_cg` |Python-side checks in `debug_tdr`
-|Capability TDRs |`caps_tdr_cg` |Python-side checks in `debug_tdr`
-|STAP / 3DCR |`stap_3dcr_cg` |Scan-routing and debug-disable bins
-|iJTAG SIBs |`ijtag_sib_cg` |IEEE 1687 SIB selection bins
-|Cross-trigger CTP |`ctp_cg` |Requires functional CTP CSR behavior in the selected simulator
-|Cross-trigger CTM |`ctm_cg` |Requires functional CTM CSR behavior in the selected simulator
-|Debug-disable gating |`dbg_disable_cg` |Per-field 22-cell allowed/blocked contract, collected by the two `dbg_disable` matrix tests
+|Category |Covergroup / Coverage Model |Collection Point
+|TAP reset and IDCODE |`tap_smoke_cg` |`dtp_fcov` (`c_smoke_*`, reset bins)
+|JTAG instruction decode |`jtag_instruction_cg` |`dtp_fcov` (`c_ir_*`)
+|TAP state traversal |`tap_state_cg` |`dtp_fcov` (`c_state_*`, `c_arc_*`, `c_reset_*`)
+|JTAG2AXI single operations |`jtag2axi_single_op_cg` |`dtp_jtag2axi_fcov` (per-target op/size/wstrb/address bins)
+|JTAG2AXI responses |`jtag2axi_response_cg` |`dtp_jtag2axi_fcov` (per-target status/poll/recovery bins)
+|JTAG2AXI series/backpressure/CDC |`jtag2axi_robustness_cg` |`dtp_jtag2axi_fcov` (series, skew, reset-timing, CDC bins)
+|OTP bridges |`otp_jtag2axi_cg` |`dtp_jtag2axi_fcov` (SMC/SEP OTP op, response, series, gating bins)
+|TMP and IC_RESET TDRs |`tmp_ic_reset_cg` |`dtp_debug_tdr_fcov` (`c_tmp_*`, `c_ic_reset_*`)
+|Debug control |`debug_control_cg` |`dtp_debug_tdr_fcov` (boot-stall, clock-stop bins)
+|Capability TDRs |`caps_tdr_cg` |`dtp_debug_tdr_fcov` (`c_caps_*`)
+|STAP / 3DCR |`stap_3dcr_cg` |`dtp_scan_fcov` (`c_stap_*`, `c_3dcr_*`)
+|iJTAG SIBs |`ijtag_sib_cg` |`dtp_scan_fcov` (`c_sib_*`, `c_instrument_*`)
+|Cross-trigger CTP |`ctp_cg` |`dtp_xtrig_fcov` (`c_ctp_*`)
+|Cross-trigger CTM |`ctm_cg` |`dtp_xtrig_fcov` (`c_ctm_*`)
+|Debug-disable gating |`dbg_disable_cg` |Checker-gated 22-cell Python ledger in the two `dbg_disable` matrix tests, mirrored by `dtp_scan_fcov` field-value points
 |===
 
 === Coverage Definitions
@@ -86,9 +91,11 @@ through the Basic JTAG reset tests.
 |Disabled behavior |enabled instruction, disabled instruction to BYPASS, undefined to BYPASS
 |===
 
-The open-source Basic JTAG sequences sample instruction decode through the
-flattened `jtag_ptap_inst_decoded` observable after Update-IR. Standard JTAG
-driving uses `ocah_jtag_vip`.
+`dtp_fcov` samples the flattened `jtag_ptap_inst_decoded` observable at every
+completed IR scan (the edge after Update-IR): one labeled point per opcode,
+one per category from a one-mask-per-category partition of the decode, and
+behavior points that cross the committed opcode with the `dbg_disable`
+fields. Standard JTAG driving uses `ocah_jtag_vip`.
 
 ==== `tap_state_cg`
 
@@ -113,10 +120,12 @@ driving uses `ocah_jtag_vip`.
 |Operation |NOP, READ, WRITE
 |Size |Byte widths supported by the target
 |WSTRB |none, single byte, partial, all bytes
-|Address class |aligned, unaligned if supported, boundary, unmapped
+|Address class |aligned, memory-window boundary (unaligned and unmapped accesses are outside the bridge TDR and testbench address-map contract)
 |===
 
-SMC fabric READ and WRITE scenarios sample SUCCESS response status.
+`dtp_jtag2axi_fcov` samples every completed response from each bridge's own
+status, pending, and launched-operation registers, so the bins describe the
+exact operation including BUSY_OR_FULL polls.
 
 ==== `jtag2axi_response_cg`
 
@@ -133,7 +142,9 @@ SMC fabric READ and WRITE scenarios sample SUCCESS response status.
 ==== `jtag2axi_robustness_cg`
 
 *Description*: Covers series operations, backpressure, and CDC clear/abort
-paths.
+paths. Size-aligned narrow series transfers (`AxSIZE` smaller than the data
+bus, starting at a non-zero beat offset) are in contract for the SMC fabric
+series path.
 
 [cols=",",options="header",]
 |===
@@ -144,6 +155,24 @@ paths.
 |CDC recovery |clear, isolate, back-to-back reset
 |===
 
+==== `otp_jtag2axi_cg`
+
+*Description*: Covers the SMC OTP and SEP OTP JTAG2AXI bridge paths.
+
+[cols=",",options="header",]
+|===
+|Coverpoint |Bins
+|OTP target |SMC OTP, SEP OTP
+|Operation |READ, WRITE (and status-poll NOPs)
+|Response status |SUCCESS, SLVERR, DECERR
+|Series mode |INCR, NO_INCR, WITH_ERROR_STATUS
+|Security gating |gated attempt, release without replay, recovery
+|===
+
+Sampled per bridge by `dtp_jtag2axi_fcov` at the completed-response boundary;
+the gating bins follow the committed gated TDR accesses and the sticky
+per-target recovery history.
+
 ==== `tmp_ic_reset_cg`
 
 *Description*: Covers TMP_STATUS and IC_RESET debug TDR behavior.
@@ -152,17 +181,18 @@ paths.
 |===
 |Coverpoint |Bins
 |TMP persistence |reset/off, CLAMP_HOLD/on, chip-reset preserved, BYPASS_ESCAPE release
-|TMP read shift value |zero, preserve value, all 2-bit values
+|TMP read shift value |zero, persistence bit set, escape-arm bit set (the first two shifted TDO bits)
 |BYPASS escape |unarmed, armed, BYPASS double-load escape observed
 |IC_RESET slice |SMC, SEP, External
 |IC_RESET override |override disabled, override enabled, reset asserted, reset deasserted
 |IC_RESET hold |reset_hold=0 TLR preserve, reset_hold=1 TLR default restore, TRST default restore
-|IC_RESET pattern source |deterministic per-slice, seeded random enable/control pattern
+|IC_RESET pattern source |stimulus intent (test layer); the coverage module records the resulting slice, override, and hold behavior
 |===
 
-These bins are sampled through `+dtp_jtag_tmp_status_*+` and
-`dtp_jtag_ic_reset_test`. Coverage is sampled through decoded log/assertion helpers
-in `dtp_base_test_seq.py` and flattened IC_RESET outputs from `tb_top.sv`.
+`dtp_debug_tdr_fcov` samples these bins from the TMP unit's state and status
+registers, the BYPASS-escape pulse, the flattened IC_RESET outputs, and the
+first two TDO bits of each TMP_STATUS read; the `+dtp_jtag_tmp_status_*+` and
+`dtp_jtag_ic_reset_test` scenarios drive them.
 
 ==== `debug_control_cg`
 
@@ -176,13 +206,14 @@ in `dtp_base_test_seq.py` and flattened IC_RESET outputs from `tb_top.sv`.
 |JTAG clock stop |asserted, deasserted
 |CLA clock stop enable |disabled, enabled
 |CLA clock stop readback |no request, one request, multiple requests
-|Clock-stop request source |no request, each single request bit, multi-request masks, seeded random masks
+|Clock-stop request source |no request, each single request bit, multi-request masks (seeded randomization is stimulus intent, test layer)
 |Clock-stop output |JTAG-only, CLA-only, combined, released
 |===
 
-These bins are sampled through `+dtp_dbg_ctrl_clk_stop_*+` and
-`dtp_dbg_ctrl_boot_stall_test`. `stop_clks_o` checking polls across
-synchronizer/output latency.
+`dtp_debug_tdr_fcov` samples these bins from the boot-stall and clock-stop
+outputs plus the DEBUG_CONTROL stop contributions; the
+`+dtp_dbg_ctrl_clk_stop_*+` and `dtp_dbg_ctrl_boot_stall_test` scenarios
+drive them. `stop_clks_o` checking polls across synchronizer/output latency.
 
 ==== `caps_tdr_cg`
 
@@ -192,7 +223,7 @@ synchronizer/output latency.
 |===
 |Coverpoint |Bins
 |CAPS register |JTAG_CAPS, SMC_JTAG2AXI_CAPS, SMC_OTP_JTAG2AXI_CAPS, SEP_OTP_JTAG2AXI_CAPS
-|JTAG_CAPS fields |XTRIG counts, STAP/debug enables, IC_RESET counts, instruction enables, OCH version
+|JTAG_CAPS fields |XTRIG counts, STAP/debug enables, IC_RESET counts, instruction enables, OCAH version
 |JTAG2AXI bus type |AXI4 SMC fabric, AXI4-Lite SMC OTP, AXI4-Lite SEP OTP
 |JTAG2AXI geometry |address width, data width, read pipeline depth, write pipeline depth
 |Read stability |repeated reads stable
@@ -200,8 +231,13 @@ synchronizer/output latency.
 |Instruction switch side effect |read after IDCODE, read after BYPASS
 |===
 
-These bins are sampled through `dtp_dbg_jtag_caps_test` and the three
-`+dtp_dbg_*_jtag2axi_caps_test+` sequences.
+`dtp_debug_tdr_fcov` samples the capability accesses from the committed
+instruction decode, the write patterns from the shifted TDI stream, and the
+instruction-switch context from a two-stage committed-instruction history;
+`dtp_dbg_jtag_caps_test` and the three `+dtp_dbg_*_jtag2axi_caps_test+`
+sequences drive them. The parameter-derived field bins (JTAG_CAPS fields, bus
+type, geometry) are carried by the commercial covergroup on the per-register
+capture events.
 
 ==== `stap_3dcr_cg`
 
@@ -218,7 +254,7 @@ These bins are sampled through `dtp_dbg_jtag_caps_test` and the three
 
 ==== `ijtag_sib_cg`
 
-*Description*: Covers IEEE 1687 SIB network selection across the DFT Secure, DFT Non-Secure, and DFD (Debug Forensics Dump) chains.
+*Description*: Covers IEEE 1687 SIB network selection across the DFT Secure, DFT Non-Secure, and DFD (Design-for-Debug) chains.
 
 [cols=",",options="header",]
 |===
@@ -296,6 +332,10 @@ Sampling rules:
   the 6 cells of its three bridge fields, so a passing `dbg_disable` group
   run covers all 22 required cells. Each matrix also emits a JSON artifact
   under its `coverage/` directory recording the cells it hit.
+* `dtp_scan_fcov` additionally mirrors the field values as cover points
+  (`c_dbg_disable_<field>_{clear,set}`) so the merged coverage database
+  records field exercise; the checker-gated cells above remain the
+  contract.
 
 === VPLAN to FCOV Traceability
 
@@ -303,12 +343,13 @@ Sampling rules:
 |===
 |VPLAN Test / Group |Coverage
 |`dtp_sanity_test` |`tap_smoke_cg`, partial `tap_state_cg`
-|`basic_jtag` group |`tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR/iJTAG loopback observations
-|`dtp_jtag2axi_smc_axi_wr_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS write
-|`dtp_jtag2axi_smc_axi_rd_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS read
+|`basic_jtag` group |`tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR loopback observations
+|`dtp_jtag2axi_smc_axi_single_write_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS write
+|`dtp_jtag2axi_smc_axi_single_write_read_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS read
 |JTAG instruction scenarios |`jtag_instruction_cg`, `tap_state_cg`
 |`debug_tdr` group |`tmp_ic_reset_cg`, `debug_control_cg`, `caps_tdr_cg`, `jtag_instruction_cg`
 |JTAG2AXI robustness scenarios |`jtag2axi_robustness_cg`, `jtag2axi_response_cg`
+|JTAG2AXI OTP scenarios |`otp_jtag2axi_cg`
 |STAP / 3DCR scenarios |`stap_3dcr_cg`, `dbg_disable_cg`
 |iJTAG scenarios |`ijtag_sib_cg`, `dbg_disable_cg`
 |`dtp_scan_dbg_disable_matrix_test` |`dbg_disable_cg` scan-side cells (8 fields)
@@ -322,22 +363,29 @@ Sampling rules:
 [cols=",",options="header",]
 |===
 |Flow |Strategy
-|Verilator open-source CI |Python-side counters or coverage library in PyUVM agents/scoreboard
-|Commercial simulation |SV covergroups under commercial-only filelist or `ifndef VERILATOR` guard
+|Verilator open-source CI |Labeled `cover property` points in the `cov/sv/` modules; `run_dv.py --cov` collects them as `user` coverage in each test's `coverage.dat`, merges across tests and seeds (`cov_merge`), and reports through `cov_report` with `cov/config/verilator/coverage_policy.toml` applied
+|Per-group reporting |The DV dashboard ingests the merged run's `coverage-details.json` (policy dispositions included), keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`); no DTP-specific report script
+|Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer); both frameworks collect through the runner — `run_dv.py --cov --tool vcs` for cocotb, `run_dv.py --framework uvm --cov` for SV-UVM — with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`)
 |Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage
-|Closure triage |Add directed tests for reachable holes; use waiver/UNR review for structurally unreachable paths
+|Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file, each stating the structural reason the point cannot fire
 |===
 
-Python-side sampling should happen at transaction boundaries: completed IR scan,
-completed DR scan, completed JTAG2AXI response, CTP/CTM event, and
-debug-disable configuration change.
+Sampling happens at the documented transaction boundaries: completed IR scan,
+completed DR scan, completed JTAG2AXI response (each bridge's own status and
+launched-operation registers), CTP/CTM event, and debug-disable configuration
+change.
 
 === Exclusions and Limitations
 
 [cols=",",options="header",]
 |===
 |Item |Reason
-|SV covergroups in Verilator |Unsupported by the tool
+|SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the public flow
+|`jtag2axi_robustness_cg` reset-timing request-issued/data-phase/response-wait and CDC clear/isolate bins |A stall that outlasts the JTAG scan tail leaves the recovery write BUSY_OR_FULL, so the reset scenarios stall only after completion and these bins do not fire; they are hole entries in the coverage policy file
+|`jtag2axi_response_cg` poll long-wait bins |Settled-status polls never exceed three BUSY captures under the responder stall profile, so the long-wait bins do not fire; they are hole entries in the coverage policy file
+|Stimulus-intent bins (IC_RESET pattern source, seeded random request masks) |Test-layer randomization intent, not signal-observable; the modules record the resulting behavior instead
+|Invalid IDCODE marker, contradictory debug-disable outcomes |Checker failures in a passing run, never coverage bins
+|Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract
 |Static parameter toggles |Compile-time constants; not meaningful runtime coverage
 |Protocol-specific behavior without shared VIP support |Covered by OCAH-local DTP BFMs
 |===

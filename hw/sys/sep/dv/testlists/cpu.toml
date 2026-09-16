@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 #
 # Production Boot ROM firmware tests (sep_rom_non_secure_boot_test,
 # sep_rom_ot_{dma,pio,secure}_boot_test) are not defined here -- they live in
-# rom_fw.toml (different RTL target and firmware profile). They run in
-# the `all` and `rom_fw` groups, not `cpu`; this VPLAN grades ROM hardware
-# access only (see docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
+# rom_fw.toml (different RTL target and firmware profile). They run in the
+# `rom_fw` group only -- not `cpu`, and not `all`; this VPLAN grades ROM hardware
+# access only (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
 
 [[tests]]
 name = "sep_hello_world_test"
@@ -82,14 +82,18 @@ args = ["+skip_fuse_sense"]
 # (id == sep_internal_interrupts idx + 1) + real ISR claim + IP RW1C-clear
 # + one-hot isolation + no re-fire storm. mailbox via a real FIFO push;
 # others via INTR_TEST. cpu run mode; +skip_fuse_sense (no OTP read).
-# timeout_sec is 300 s because a passing seed finishes in ~80 s; an ISR that
-# never returns would otherwise sit until the 3600 s default.
+# timeout_sec: under VCS with the coverage build (-cm line+cond+tgl+fsm+branch+assert)
+# the firmware's bounded STORM_CHECK_ITERS delay loop (pic_irq_source_map_test.c)
+# dominates the run time, so the budget is not tightened. A tighter
+# budget does not catch a non-returning ISR either: wait_isr() bounds itself at
+# ISR_WAIT_ITERS and the ISR masks mie.meie after UNEXPECTED_CLAIM_MAX claims,
+# so a stuck ISR fails the walk by name rather than hanging to the budget.
 name = "sep_pic_irq_source_map_delivery_test"
 module = "cpu.sep_pic_irq_source_map_delivery_test"
 firmware = "pic_irq_source_map_test"
 seed = 1
 reseed = 3
-timeout_sec = 300
+timeout_sec = 1800
 tags = ["boot", "cpu", "interrupt", "pic", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
@@ -100,10 +104,13 @@ args = ["+skip_fuse_sense"]
 # drives the DMA (sep_dma.h) over the CPU LSU for SRAM->SRAM copies: CSR reset
 # values, CFG_REGWEN HW busy-lock, RANGE_REGWEN rw0c lock + range gating,
 # FIXED/INCR/WRAP address modes (per-mode golden image + neighbor), 1B/2B/4B
-# widths, STATUS.done RW1C, and one invalid-opcode error + recovery. Src/dst
-# offsets, copy length and fill seed come from the run seed (3 seeds). Distinct
-# from the Phase-1 DMA trio (hash/contention/spi-rx). cpu run mode;
-# +skip_fuse_sense (no OTP read). DMA & data movement (cpu-fw bucket).
+# widths, STATUS.done RW1C, one invalid-opcode error + recovery, and a
+# DMA-issued host-path command-integrity inject (exclusive host_path_err /
+# aggregator bit 41, CLEAR, recovery copy) and a fabric DECERR dest that
+# raises the same bit with the pin low. Src/dst offsets, copy length and
+# fill seed come from the run seed (3 seeds). Distinct from the DMA
+# trio (hash/contention/spi-rx). cpu run mode; +skip_fuse_sense (no OTP read).
+# DMA & data movement (cpu-fw bucket).
 name = "sep_dma_basic_test"
 module = "cpu.sep_dma_basic_test"
 firmware = "dma_basic_test"
@@ -115,13 +122,13 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# CPU debug-reset domain isolation (the reference suite clock reset_assertion_deassertion +
-# jtag_clock_independence). Pulses the EL2 debugger reset dbg_rstb_i (now a
-# controllable tb_top input -- was hardwired to rst_ni) with rst_ni held
-# released and proves sep_reset_n + sep_cpu_reset_n stay released (debug reset
-# is domain-isolated); a wdt_rst_ni contrast proves the observable is live so the
-# isolation check is non-vacuous. no_cpu; +skip_fuse_sense (reset-observable only,
-# no AXI/OTP). CPU complex.
+# Reset-observable baseline and liveness for the CPU complex. Checks both reset
+# observables are released at rest, then drops and restores the CPU observable
+# from a real warm-reset source so it is live rather than stuck at one.
+# dbg_rstb_i isolation is NOT proven here: in lsu_stub_all_live the pin has no
+# netlist path to either observable, so pulsing it would be a vacuous check.
+# Proving it needs a run mode where dbg_rstb_i reaches sep_cpu.
+# no_cpu; +skip_fuse_sense (reset-observable only, no AXI/OTP). CPU complex.
 name = "sep_cpu_dbg_reset_independence_test"
 module = "cpu.sep_cpu_dbg_reset_independence_test"
 seed = 1
@@ -151,10 +158,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # CPU IFU/LSU local-alias-remap (the reference suite's
 # sep_cpu_ifu_lsu_alias_remap_matrix_test). EL2 firmware uses SEP_LOCAL_BASE
-# reset 0xD000_0000 and the fixed 768 MiB window
-# (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE); REGION_SIZE is not programmed. Proves
-# the CPU-side IFU + LSU local-alias-remap
-# (sep_cpu.sv u_lsu/u_ifu_local_alias_remap): a fabric access to 0xD000_xxxx
+# reset 0xD000_0000 and the fixed 768 MiB window in memory_map.adoc;
+# REGION_SIZE is not programmed. Proves
+# the CPU-side IFU + LSU local-alias-remap:
+# a fabric access to 0xD000_xxxx
 # remaps to physical SRAM 0x1000_xxxx. MUST be cpu mode -- the no_cpu AXI splice
 # is post-remap and would bypass the remap. +skip_fuse_sense (the alias remap
 # does not depend on sensed OTP). CPU complex (real CPU IFU/LSU).
@@ -168,10 +175,10 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# PIC source 39 claim + mask for the token-comparator redundancy fault.
+# PIC source 40 claim + mask for the token-comparator redundancy fault.
 # Firmware arms the source and presents a SEC_DISABLE token; the host injects
-# a collapse on that comparator (tb port). Proves claim id 39, the
-# SEC_DISABLE sticky bit, and that masking meie[39] stops re-entry.
+# a collapse on that comparator (tb port). Proves claim id 40, the
+# SEC_DISABLE sticky bit, and that masking meie[40] stops re-entry.
 # +skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
 name = "sep_efuse_token_match_fault_pic_test"
 module = "efuse.sep_efuse_token_match_fault_pic_test"

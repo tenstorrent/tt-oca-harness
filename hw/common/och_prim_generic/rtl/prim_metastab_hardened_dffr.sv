@@ -6,10 +6,10 @@
 //
 //--------------------------------------------------
 module prim_metastab_hardened_dffr (
-    input i_CK,
-    input i_D,
-    input i_RN,
-    output wire o_Q
+  input i_CK,
+  input i_D,
+  input i_RN,
+  output wire o_Q
 );
   logic q_d;
   always_ff @(posedge i_CK or negedge i_RN) begin

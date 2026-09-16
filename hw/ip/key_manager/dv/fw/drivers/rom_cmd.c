@@ -115,8 +115,8 @@ rom_km_cmd_result_t rom_cmd_dispatch(uint8_t cmd_id, uint8_t cmd_seq, uint8_t pa
         if (vr.return_code != ROM_KM_RC_SUCCESS) return vr;
         return rom_cmd_engine_shred((const rom_km_cmd_engine_shred_args_t *)payload);
     case ROM_KM_CMD_KEY_LOAD:
-        /* Variable-length command: skip fixed-length pre-check per R-001.
-         * Length is validated inside rom_cmd_key_load against KEY_SIZE. */
+        /* Variable-length command: no fixed-length pre-check; the length is
+         * validated inside rom_cmd_key_load against KEY_SIZE. */
         return rom_cmd_key_load(payload_len, payload);
     case ROM_KM_CMD_ABR_SK_TRANSFER:
         vr = rom_cmd_validate_payload_length(payload_len, 1);
@@ -153,7 +153,7 @@ rom_km_cmd_result_t rom_cmd_rom_ver(void) {
 
 /**
  * @brief Handles SRAM version query.
- * @return Always returns failure (not implemented in ROM).
+ * @return Always failure: the ROM carries no SRAM firmware version.
  */
 rom_km_cmd_result_t rom_cmd_sram_ver(void) {
     return (rom_km_cmd_result_t){ROM_KM_RC_FAILURE, 0, 0};

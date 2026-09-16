@@ -166,7 +166,9 @@ deasserted synchronously relative to `clk_i`
 
 * *Baud Rate*: Serial data rate is determined by the divisor latch
 registers (DLL/DLM) and uses 16x oversampling
-* *Maximum Baud Rate*: Limited to `system_clock_frequency / 16`
+* *Maximum Baud Rate*: Limited to `system_clock_frequency / 32` - a
+divisor of `0` disables the transmitter and receiver, so the smallest
+usable divisor is `1`
 * *Data Frame*: Configurable start bit (always 1), 5-8 data bits,
 optional parity bit, 1-2 stop bits
 

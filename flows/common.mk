@@ -21,7 +21,7 @@ OCAH_FLOW_COMMON_DEFINES ?= -D SYNTHESIS=1
 OCAH_FLOW_TIMESCALE ?= 1ns/1ps
 
 # Discover per-block flow descriptors, including vendored IP overlays (e.g.
-# vendor/tenstorrent/aou-rtl/overlay/flow.mk).
+# vendor/tenstorrent/aou/overlay/flow.mk).
 OCAH_FLOW_MKS := $(wildcard $(OCAH_ROOT)/hw/sys/*/flow.mk $(OCAH_ROOT)/hw/ip/*/flow.mk $(OCAH_ROOT)/hw/ip/*/*/flow.mk $(OCAH_ROOT)/vendor/*/*/overlay/flow.mk)
 
 # Directory containing a given flow.mk.
@@ -66,5 +66,7 @@ ocah_flow_run = @$(foreach b,$(if $(strip $(BLOCK)),$(strip $(BLOCK)),$(OCAH_FLO
 	  [ -n "$$dir" ] || { echo "error: unknown flow target '$(b)' (known: $(OCAH_FLOW_TARGETS))" >&2; exit 1; }; \
 	  echo "==> $(b): $(1)"; \
 	  $(MAKE) -C "$$dir" -f flow.mk OCAH_ROOT="$(OCAH_ROOT)" $(2) $(1); } &&) true
+
+OCAH_UV_RUN := $(UV) --directory "$(OCAH_ROOT)" run --locked
 
 endif

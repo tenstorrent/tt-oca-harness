@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import List, Optional
 
 from cocotb.triggers import RisingEdge
 
@@ -34,8 +34,8 @@ class APBMonitor:
         self.pwdata = handle.pwdata if apb is not None else handle.pwdata_i
         self.prdata = handle.prdata if apb is not None else handle.prdata_o
         # APB4 signals (optional)
-        self.pready = getattr(handle, 'pready', None)
-        self.pslverr = getattr(handle, 'pslverr', None)
+        self.pready = getattr(handle, "pready", None)
+        self.pslverr = getattr(handle, "pslverr", None)
         self.transactions: List[APBTransaction] = []
         self._active: Optional[APBTransaction] = None
 

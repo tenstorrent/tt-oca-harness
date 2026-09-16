@@ -22,6 +22,9 @@ class FieldInfo:
     low: int
     reset: object  # int, or SignalNode when reset is hardware-driven
     sw: str
+    onwrite: str
+    onread: str
+    singlepulse: bool
 
 
 @dataclass
@@ -37,6 +40,19 @@ class RegInstInfo:
     regwidth: int
     type_name: str
     address: int
+
+
+def field_access_key(field_info: FieldInfo) -> tuple:
+    """Field identity and software-visible access properties, excluding reset."""
+    return (
+        field_info.name,
+        field_info.high,
+        field_info.low,
+        field_info.sw,
+        field_info.onwrite,
+        field_info.onread,
+        field_info.singlepulse,
+    )
 
 
 def path_minus_root(node) -> str:
@@ -124,14 +140,13 @@ class FieldCollector(RDLListener):
 
         fields = sorted(self.curr_reg_fields, key=lambda f: f.low)
 
-        # Same type must agree on field layout (reset may differ).
-        if fullname in self.regs and self.regs[fullname].fields != fields:
-            for i, existing in enumerate(self.regs[fullname].fields):
-                other = fields[i]
-                if (existing.name, existing.high, existing.low, existing.sw) != (
-                    other.name, other.high, other.low, other.sw,
-                ):
-                    raise ValueError(f"ERROR: register '{fullname}' already exists")
+        # Same type must agree on field layout and access (reset may differ).
+        if fullname in self.regs:
+            existing_fields = self.regs[fullname].fields
+            if [field_access_key(f) for f in existing_fields] != [
+                field_access_key(f) for f in fields
+            ]:
+                raise ValueError(f"ERROR: register '{fullname}' already exists")
 
         self.regs[fullname] = RegTypeInfo(
             address=node.raw_absolute_address,
@@ -142,13 +157,36 @@ class FieldCollector(RDLListener):
     def enter_Field(self, node):
         if self.under_target:
             reset = node.get_property("reset")
-            self.curr_reg_fields.append(FieldInfo(
-                name=node.get_path_segment(array_suffix="_{index:d}_"),
-                high=node.high,
-                low=node.low,
-                reset=0 if reset is None else reset,
-                sw=node.get_property("sw").name,
-            ))
+            onwrite = node.get_property("onwrite", default=None)
+            if onwrite is None:
+                onwrite = (
+                    "woset"
+                    if node.get_property("woset")
+                    else ("woclr" if node.get_property("woclr") else "")
+                )
+            else:
+                onwrite = onwrite.name
+            onread = node.get_property("onread", default=None)
+            if onread is None:
+                onread = (
+                    "rset"
+                    if node.get_property("rset")
+                    else ("rclr" if node.get_property("rclr") else "")
+                )
+            else:
+                onread = onread.name
+            self.curr_reg_fields.append(
+                FieldInfo(
+                    name=node.get_path_segment(array_suffix="_{index:d}_"),
+                    high=node.high,
+                    low=node.low,
+                    reset=0 if reset is None else reset,
+                    sw=node.get_property("sw").name,
+                    onwrite=onwrite,
+                    onread=onread,
+                    singlepulse=bool(node.get_property("singlepulse")),
+                )
+            )
 
 
 def build_struct_fields(fields: list[FieldInfo]) -> list[tuple[str, int]]:

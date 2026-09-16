@@ -17,7 +17,6 @@ import os
 import random
 
 import cocotb
-
 from ocah_axi_vip_harness import build_full_stack, start_clock_reset
 
 log = logging.getLogger("cocotb.tb.ocah_axi_id_match_test")
@@ -32,9 +31,7 @@ async def ocah_axi_id_match_test(dut) -> None:
 
     n_ops = int(os.environ.get("OCAH_AXI_ID_MATCH_OPS", "12"))
     if n_ops < 2:
-        raise ValueError(
-            f"OCAH_AXI_ID_MATCH_OPS must be >= 2 (ID-space corners); got {n_ops}"
-        )
+        raise ValueError(f"OCAH_AXI_ID_MATCH_OPS must be >= 2 (ID-space corners); got {n_ops}")
     checked = 0
     log.info("start: %d randomized ops plus directed ID corners and a burst", n_ops)
 
@@ -54,14 +51,16 @@ async def ocah_axi_id_match_test(dut) -> None:
         wres = await seq.write_result(addr, data, id=awid)
         log.info(
             "op %d: write addr=0x%08x data=0x%08x issued=0x%02x observed=%s",
-            index, addr, data, awid, wres.observed_id,
+            index,
+            addr,
+            data,
+            awid,
+            wres.observed_id,
         )
         assert wres.ok, f"write resp=0x{wres.resp:x}"
         assert wres.issued_id == awid
         assert wres.observed_id is not None, "BID capture miss on a completing write"
-        assert wres.observed_id == awid, (
-            f"BID 0x{wres.observed_id:x} != issued AWID 0x{awid:x}"
-        )
+        assert wres.observed_id == awid, f"BID 0x{wres.observed_id:x} != issued AWID 0x{awid:x}"
         assert wres.id_match is True
 
         backdoor = slave.sequence.read32(addr)
@@ -70,7 +69,11 @@ async def ocah_axi_id_match_test(dut) -> None:
         rres = await seq.read_result(addr, id=arid)
         log.info(
             "op %d: read  addr=0x%08x data=0x%08x issued=0x%02x observed=%s",
-            index, addr, rres.data, arid, rres.observed_id,
+            index,
+            addr,
+            rres.data,
+            arid,
+            rres.observed_id,
         )
         assert rres.ok, f"op {index}: read resp=0x{rres.resp:x} addr=0x{addr:08x}"
         assert rres.data == data, (
@@ -104,7 +107,9 @@ async def ocah_axi_id_match_test(dut) -> None:
     rres = await seq.burst_read_result(burst_base, 4, id=burst_id)
     log.info(
         "burst: base=0x%08x issued=0x%02x observed=%s words=%s",
-        burst_base, burst_id, rres.observed_id,
+        burst_base,
+        burst_id,
+        rres.observed_id,
         [f"0x{w:08x}" for w in rres.data_words],
     )
     assert list(rres.data_words) == words, (

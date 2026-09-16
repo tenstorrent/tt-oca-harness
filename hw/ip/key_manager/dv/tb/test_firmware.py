@@ -25,12 +25,13 @@ Usage:
     FW_TEST=my_test make run_fw
 """
 
-import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
-from pathlib import Path
 import os
 import random
 import sys
+from pathlib import Path
+
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge
 
 # Import generated register constants from PeakRDL
 # Add the registers directory to the path
@@ -40,30 +41,19 @@ if str(_registers_dir) not in sys.path:
 
 # Import KMCSR and mailbox register constants (from RDL-generated key_manager_reg)
 from key_manager_reg import (
-    KMCSR_TB_RESULT_REG_ADDR,
-    KMCSR_TB_SIGNATURE_REG_ADDR,
-    KMCSR_TB_ERRCODE_REG_ADDR,
-    KMCSR_TB_SUBTEST_REG_ADDR,
-    KMCSR_TB_CMD_REG_ADDR,
-    KMCSR_TB_CMD_ARG_REG_ADDR,
-    KMCSR_TB_CMD_STATUS_REG_ADDR,
-    KMCSR_TB_CMD_RESULT_REG_ADDR,
-    KMCSR_RECOVERABLE_ERR_REG_ADDR,
-    KMCSR_REG_MAP_BASE_ADDR,
-    KM_CSR_DEBUG_REG_REG_DEFAULT,
-    KM_CSR_OTP_READ_LOCK_REG_reg_t,
     MAILBOX_KM_KM_READ_DATA_REG_ADDR,
+    KM_CSR_OTP_READ_LOCK_REG_reg_t,
 )
 
 # Import SEP mailbox register offsets (relative to SEP mailbox base, from RDL-generated C header)
 from km_mailbox_sep_reg import (
-    SEP_WRITE_DATA_REG_OFFSET,
-    SEP_WRITE_SEPARATOR_REG_OFFSET,
+    SEP_CTRL_REG_OFFSET,
+    SEP_IRQ_ENABLE_REG_OFFSET,
+    SEP_IRQ_STATUS_REG_OFFSET,
     SEP_READ_DATA_REG_OFFSET,
     SEP_STATUS_REG_OFFSET,
-    SEP_IRQ_STATUS_REG_OFFSET,
-    SEP_IRQ_ENABLE_REG_OFFSET,
-    SEP_CTRL_REG_OFFSET,
+    SEP_WRITE_DATA_REG_OFFSET,
+    SEP_WRITE_SEPARATOR_REG_OFFSET,
 )
 
 # Signatures (must match test_common.h - these are test protocol constants, not registers)
@@ -94,30 +84,51 @@ TB_CMD_SEP_MBOX_CTRL_WRITE = 0x00000012  # Write SEP mailbox CTRL register
 TB_CMD_VUART_VERIFY = 0x00000013  # Verify VUART received expected string (arg = SRAM byte address of null-terminated string)
 TB_CMD_SEP_MBOX_IRQ_STATUS_READ = 0x00000014  # Read SEP mailbox IRQ_STATUS register
 TB_CMD_SEP_MBOX_IRQ_STATUS_WRITE = 0x00000015  # Write SEP mailbox IRQ_STATUS register (W1C)
-TB_CMD_DRBG_SET_NEXT_VALUE = 0x0000001A  # Set next 32-bit value for DRBG AXI-Stream (arg = value); result = 1
-TB_CMD_DRBG_GET_NEXT_VALUE = 0x0000001B   # Get value last set for DRBG (for verification); result = 32-bit value
+TB_CMD_DRBG_SET_NEXT_VALUE = (
+    0x0000001A  # Set next 32-bit value for DRBG AXI-Stream (arg = value); result = 1
+)
+TB_CMD_DRBG_GET_NEXT_VALUE = (
+    0x0000001B  # Get value last set for DRBG (for verification); result = 32-bit value
+)
 TB_CMD_DRBG_SET_SEED = 0x0000001C  # Set seed for deterministic DRBG (arg = 32-bit seed); result = 1
-TB_CMD_DRBG_STOP = 0x0000001D   # Stop sending DRBG data after current beat (TVALID held until TREADY); result = 1
+TB_CMD_DRBG_STOP = (
+    0x0000001D  # Stop sending DRBG data after current beat (TVALID held until TREADY); result = 1
+)
 TB_CMD_DRBG_START = 0x0000001E  # Resume sending DRBG data; result = 1
-TB_CMD_CHECK_RECOVERABLE_ERR = 0x0000001F  # Testbench samples recoverable_err; result = 1 if set, 0 if clear
-TB_CMD_CHECK_UNRECOVERABLE_RESTART = 0x00000020  # Ask TB: was CPU restarted due to unrecoverable fault? result = 1 if yes, 0 if no
-TB_CMD_OTP_WRITE = 0x00000021  # TB drives otp_data_i port with known pattern (read-through, no strobe); result = 1
+TB_CMD_CHECK_RECOVERABLE_ERR = (
+    0x0000001F  # Testbench samples recoverable_err; result = 1 if set, 0 if clear
+)
+TB_CMD_CHECK_UNRECOVERABLE_RESTART = (
+    0x00000020  # Ask TB: was CPU restarted due to unrecoverable fault? result = 1 if yes, 0 if no
+)
+TB_CMD_OTP_WRITE = (
+    0x00000021  # TB drives otp_data_i port with known pattern (read-through, no strobe); result = 1
+)
 TB_CMD_WIPE_TRIGGER = 0x00000022  # TB asserts wipe_state_i for one cycle; result = 1
 TB_CMD_SEP_MBOX_WRITE_SEPARATOR_WRITE = 0x00000023  # Write SEP mailbox WRITE_SEPARATOR register
 TB_CMD_KEY_SHARE_READ = 0x00000024  # Read key share word from hwif_out; arg=[11:8]=engine,[4]=share,[3:0]=word; result=32-bit value
 TB_CMD_GET_UNRECOVERABLE_FAULT_CODE = 0x00000025  # Get fault code captured from SEP mailbox before unrecoverable reset; result = 32-bit fault code
-TB_CMD_INJECT_SPURIOUS_IRQ = 0x00000026  # Force spurious IRQ bits into PicoRV32; arg = bitmask; result = 1
-TB_CMD_UNRECOVERABLE_WATCH_CTRL = 0x00000027  # Arm/disarm unrecoverable watcher; arg=1 arm, 0 disarm; result = 1
+TB_CMD_INJECT_SPURIOUS_IRQ = (
+    0x00000026  # Force spurious IRQ bits into PicoRV32; arg = bitmask; result = 1
+)
+TB_CMD_UNRECOVERABLE_WATCH_CTRL = (
+    0x00000027  # Arm/disarm unrecoverable watcher; arg=1 arm, 0 disarm; result = 1
+)
 TB_CMD_GET_CYCLE_COUNT = 0x00000028  # Snapshot current testbench cycle counter; result = cycles
 TB_CMD_KM_ASYNC_RESET = 0x00000029  # Pulse top-level async reset (cold_rst_n); result = 1
 TB_CMD_DRBG_TVALID_GLITCH = 0x0000002A  # One-shot: assert TVALID for 1 cycle then drop without TREADY (STREAM_ERR injection); result = 1
-TB_CMD_DRBG_QUEUE_BEAT = 0x0000002B    # Queue one DRBG beat: arg[3:0]=TSTRB; tdata from last SET_NEXT_VALUE; result = 1
-TB_CMD_KM_WARM_RESET = 0x0000002C      # Pulse warm_rst_n for MIN_RESET_CYCLES+2 cycles; result = 1
-TB_CMD_OTP_WRITE_CHANGED = 0x0000002D  # Drive changed 256-bit OTP patterns (triggers OTP_CHANGE IRQ); result = 1
-TB_CMD_OTP_WRITE_SIGINT = 0x0000002E   # Drive corrupted dual-rail on one 256-bit field (triggers OTP_SIGINT IRQ); arg = field's OTP_READ_LOCK bit position; result = 1
+TB_CMD_DRBG_QUEUE_BEAT = (
+    0x0000002B  # Queue one DRBG beat: arg[3:0]=TSTRB; tdata from last SET_NEXT_VALUE; result = 1
+)
+TB_CMD_KM_WARM_RESET = 0x0000002C  # Pulse warm_rst_n for MIN_RESET_CYCLES+2 cycles; result = 1
+TB_CMD_OTP_WRITE_CHANGED = (
+    0x0000002D  # Drive changed 256-bit OTP patterns (triggers OTP_CHANGE IRQ); result = 1
+)
+TB_CMD_OTP_WRITE_SIGINT = 0x0000002E  # Drive corrupted dual-rail on one 256-bit field (triggers OTP_SIGINT IRQ); arg = field's OTP_READ_LOCK bit position; result = 1
 TB_CMD_SEP_MBOX_DRAIN_CTRL = 0x0000002F  # Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); arg=1 arm, 0 disarm; result = 1
 TB_CMD_ABR_SK_LOAD = 0x00000030  # Inject shared-key into ABR reg block: arg=word_index (0-7); pre-fill tb_abr_sk_load_data via DRBG_SET_NEXT_VALUE then call with arg=0xFF to assert hwset; result = 1
 TB_CMD_ABR_SK_IRQ_STATUS_READ = 0x00000031  # Read ABR ML-KEM shared-key IRQ status (abr_mlkem_sharedkey_irq signal); result = 0 or 1
+TB_CMD_KM_MBOX_READ_DURING_SEP_FLUSH = 0x00000032  # SEP CTRL.FLUSH then KM READ_DATA AR on the flush-active cycle; result = 1 if R arrives
 # Testbench command status
 TB_STATUS_IDLE = 0x00000000
 TB_STATUS_ACK = 0x00000001
@@ -186,7 +197,7 @@ def drive_otp_idle(dut):
     """
     try:
         otp = dut.otp_data
-        otp.life_cycle.value = 0xF0        # {~4'd0, 4'd0}
+        otp.life_cycle.value = 0xF0  # {~4'd0, 4'd0}
         if hasattr(otp, "demotion_state_1"):
             otp.demotion_state_1.value = 0b10  # {~1'b0, 1'b0}
             otp.demotion_state_2.value = 0b10
@@ -300,8 +311,16 @@ class TestbenchCommandHandler:
     writes acknowledgments to TB_CMD_STATUS.
     """
 
-    def __init__(self, dut, kmcsr_regs, monitor=None, timeout_ref=None, current_cycles_ref=None,
-                 vuart_monitor=None, enable_unrecoverable_watch=False):
+    def __init__(
+        self,
+        dut,
+        kmcsr_regs,
+        monitor=None,
+        timeout_ref=None,
+        current_cycles_ref=None,
+        vuart_monitor=None,
+        enable_unrecoverable_watch=False,
+    ):
         """Initialize command handler and register all supported commands.
 
         Args:
@@ -312,13 +331,15 @@ class TestbenchCommandHandler:
             current_cycles_ref: Mutable list ``[int]`` holding the current cycle count.
             vuart_monitor: Optional VuartMonitor for VUART verification commands.
             enable_unrecoverable_watch: If True, arm the unrecoverable watcher
-                at startup (legacy unrecoverable tests).
+                at startup.
         """
         self.dut = dut
         self.regs = kmcsr_regs
         self.monitor = monitor
         self.timeout_ref = timeout_ref  # Reference to mutable timeout (list with single element)
-        self.current_cycles_ref = current_cycles_ref  # Reference to mutable cycle count (list with single element)
+        self.current_cycles_ref = (
+            current_cycles_ref  # Reference to mutable cycle count (list with single element)
+        )
         self.vuart_monitor = vuart_monitor  # Reference to VUART monitor for verification
         self._running = False
         self.commands_processed = 0
@@ -372,16 +393,25 @@ class TestbenchCommandHandler:
             TB_CMD_SEP_MBOX_DRAIN_CTRL: self._handle_sep_mbox_drain_ctrl,
             TB_CMD_ABR_SK_LOAD: self._handle_abr_sk_load,
             TB_CMD_ABR_SK_IRQ_STATUS_READ: self._handle_abr_sk_irq_status_read,
+            TB_CMD_KM_MBOX_READ_DURING_SEP_FLUSH: self._handle_km_mbox_read_during_sep_flush,
         }
-        self._outbound_drain_armed = False  # When armed, autonomously drain the SEP outbound FIFO (models the SEP)
-        self._unrecoverable_reset_done = False  # True after we saw unrecoverable_err and reset DUT (for unrecoverable tests)
-        self._captured_unrecov_fault_code = 0  # Fault code read from SEP mailbox before unrecoverable reset
+        self._outbound_drain_armed = (
+            False  # When armed, autonomously drain the SEP outbound FIFO (models the SEP)
+        )
+        self._unrecoverable_reset_done = (
+            False  # True after we saw unrecoverable_err and reset DUT (for unrecoverable tests)
+        )
+        self._captured_unrecov_fault_code = (
+            0  # Fault code read from SEP mailbox before unrecoverable reset
+        )
         # DRBG: deterministic "random" from fixed seed for reproducible tests
         self._drbg_rng = random.Random(0x9E37_79B9)  # Fixed seed for deterministic DRBG data
         self._drbg_next_value = self._drbg_rng.getrandbits(32)
         self._drbg_stop_pending = False  # Stop requested; wait for TREADY before cutting off
-        self._drbg_stopped = False       # Not sending (TVALID=0)
-        self._drbg_glitch_pending = False  # One-shot STREAM_ERR injection: assert TVALID 1 cycle then drop before TREADY
+        self._drbg_stopped = False  # Not sending (TVALID=0)
+        self._drbg_glitch_pending = (
+            False  # One-shot STREAM_ERR injection: assert TVALID 1 cycle then drop before TREADY
+        )
         self._drbg_beat_queue = []  # List of (value, tstrb) tuples queued by TB_CMD_DRBG_QUEUE_BEAT
 
     async def start(self):
@@ -428,7 +458,7 @@ class TestbenchCommandHandler:
 
     async def _handle_rom_parity_en(self, arg):
         """Enable ROM parity error injection."""
-        if hasattr(self.dut, 'rom_parity_err_inject'):
+        if hasattr(self.dut, "rom_parity_err_inject"):
             self.dut.rom_parity_err_inject.value = 1
             self.dut._log.info("[TB CMD] ROM parity error injection ENABLED")
             return 1
@@ -438,7 +468,7 @@ class TestbenchCommandHandler:
 
     async def _handle_rom_parity_dis(self, arg):
         """Disable ROM parity error injection."""
-        if hasattr(self.dut, 'rom_parity_err_inject'):
+        if hasattr(self.dut, "rom_parity_err_inject"):
             self.dut.rom_parity_err_inject.value = 0
             self.dut._log.info("[TB CMD] ROM parity error injection DISABLED")
             return 1
@@ -447,7 +477,7 @@ class TestbenchCommandHandler:
 
     async def _handle_sram_parity_en(self, arg):
         """Enable SRAM parity error injection."""
-        if hasattr(self.dut, 'sram_parity_err_inject'):
+        if hasattr(self.dut, "sram_parity_err_inject"):
             self.dut.sram_parity_err_inject.value = 1
             self.dut._log.info("[TB CMD] SRAM parity error injection ENABLED")
             return 1
@@ -457,13 +487,12 @@ class TestbenchCommandHandler:
 
     async def _handle_sram_parity_dis(self, arg):
         """Disable SRAM parity error injection."""
-        if hasattr(self.dut, 'sram_parity_err_inject'):
+        if hasattr(self.dut, "sram_parity_err_inject"):
             self.dut.sram_parity_err_inject.value = 0
             self.dut._log.info("[TB CMD] SRAM parity error injection DISABLED")
             return 1
         else:
             return 0
-
 
     async def _handle_sram_read_raw(self, arg):
         """Read raw SRAM data (before descrambling).
@@ -482,8 +511,9 @@ class TestbenchCommandHandler:
             SRAM_WORDS = 8192
 
             if arg >= SRAM_WORDS:
-                self.dut._log.error(f"[TB CMD] Invalid SRAM word address: {arg} "
-                                    f"(must be 0-{SRAM_WORDS - 1})")
+                self.dut._log.error(
+                    f"[TB CMD] Invalid SRAM word address: {arg} (must be 0-{SRAM_WORDS - 1})"
+                )
                 return 0
 
             physical_addr = arg
@@ -492,12 +522,15 @@ class TestbenchCommandHandler:
             # Firmware has already calculated the scrambled address if needed
             sram_value = int(self.dut.sram_mem[physical_addr].value)
 
-            self.dut._log.info(f"[TB CMD] SRAM raw read: physical_addr=0x{physical_addr:03X}, "
-                             f"data=0x{sram_value:08X}")
+            self.dut._log.info(
+                f"[TB CMD] SRAM raw read: physical_addr=0x{physical_addr:03X}, "
+                f"data=0x{sram_value:08X}"
+            )
             return sram_value
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SRAM read failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             return 0
 
@@ -513,18 +546,19 @@ class TestbenchCommandHandler:
         Returns:
             1 if successful, 0 on error
         """
-        from cocotb.triggers import RisingEdge, Timer
-        from cocotb.binary import BinaryValue
+        from cocotb.triggers import RisingEdge
 
         try:
             AXI_OKAY = 0b00
 
             data = arg & 0xFFFFFFFF
 
-            self.dut._log.info(f"[TB CMD] Writing 0x{data:08X} to SEP mailbox (offset 0x{SEP_WRITE_DATA_REG_OFFSET:03X})")
+            self.dut._log.info(
+                f"[TB CMD] Writing 0x{data:08X} to SEP mailbox (offset 0x{SEP_WRITE_DATA_REG_OFFSET:03X})"
+            )
 
             # Initialize SEP AXI signals if not already initialized
-            if not hasattr(self.dut, 'sep_awvalid'):
+            if not hasattr(self.dut, "sep_awvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -572,20 +606,21 @@ class TestbenchCommandHandler:
                     resp = int(self.dut.sep_bresp.value)
                     self.dut.sep_bready.value = 0
                     if resp == AXI_OKAY:
-                        self.dut._log.info(f"[TB CMD] SEP mailbox write successful")
+                        self.dut._log.info("[TB CMD] SEP mailbox write successful")
                         return 1
                     else:
                         self.dut._log.error(f"[TB CMD] SEP mailbox write error response: {resp}")
                         return 0
 
             # Timeout
-            self.dut._log.error(f"[TB CMD] SEP mailbox write timeout waiting for B response")
+            self.dut._log.error("[TB CMD] SEP mailbox write timeout waiting for B response")
             self.dut.sep_bready.value = 0
             return 0
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox write failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             # Clean up signals
             try:
@@ -625,7 +660,6 @@ class TestbenchCommandHandler:
             1 if successful, 0 on error
         """
         from cocotb.triggers import RisingEdge
-        from cocotb.binary import BinaryValue
 
         try:
             AXI_OKAY = 0b00
@@ -635,7 +669,7 @@ class TestbenchCommandHandler:
             self.dut._log.info(f"[TB CMD] Setting SEP mailbox IRQ_ENABLE to 0x{enable_value:08X}")
 
             # Initialize SEP AXI signals if not already initialized
-            if not hasattr(self.dut, 'sep_awvalid'):
+            if not hasattr(self.dut, "sep_awvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -669,7 +703,9 @@ class TestbenchCommandHandler:
                     self.dut.sep_wvalid.value = 0
 
             if not aw_done or not w_done:
-                self.dut._log.error(f"[TB CMD] SEP IRQ enable handshake timeout after {cycles} cycles")
+                self.dut._log.error(
+                    f"[TB CMD] SEP IRQ enable handshake timeout after {cycles} cycles"
+                )
                 self.dut.sep_awvalid.value = 0
                 self.dut.sep_wvalid.value = 0
                 self.dut.sep_bready.value = 0
@@ -683,20 +719,23 @@ class TestbenchCommandHandler:
                     resp = int(self.dut.sep_bresp.value)
                     self.dut.sep_bready.value = 0
                     if resp == AXI_OKAY:
-                        self.dut._log.info(f"[TB CMD] SEP mailbox IRQ_ENABLE set successfully")
+                        self.dut._log.info("[TB CMD] SEP mailbox IRQ_ENABLE set successfully")
                         return 1
                     else:
-                        self.dut._log.error(f"[TB CMD] SEP mailbox IRQ_ENABLE error response: {resp}")
+                        self.dut._log.error(
+                            f"[TB CMD] SEP mailbox IRQ_ENABLE error response: {resp}"
+                        )
                         return 0
 
             # Timeout
-            self.dut._log.error(f"[TB CMD] SEP mailbox IRQ_ENABLE timeout waiting for B response")
+            self.dut._log.error("[TB CMD] SEP mailbox IRQ_ENABLE timeout waiting for B response")
             self.dut.sep_bready.value = 0
             return 0
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox IRQ_ENABLE failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_awvalid.value = 0
@@ -722,10 +761,10 @@ class TestbenchCommandHandler:
         try:
             AXI_OKAY = 0b00
 
-            self.dut._log.info(f"[TB CMD] Reading from SEP mailbox READ_DATA")
+            self.dut._log.info("[TB CMD] Reading from SEP mailbox READ_DATA")
 
             # Initialize SEP AXI signals if not already initialized
-            if not hasattr(self.dut, 'sep_arvalid'):
+            if not hasattr(self.dut, "sep_arvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -750,7 +789,9 @@ class TestbenchCommandHandler:
             self.dut.sep_arvalid.value = 0
 
             if not ar_done:
-                self.dut._log.error(f"[TB CMD] SEP mailbox read AR handshake timeout after {cycles} cycles")
+                self.dut._log.error(
+                    f"[TB CMD] SEP mailbox read AR handshake timeout after {cycles} cycles"
+                )
                 return 0
 
             # Phase 2: R channel - data phase
@@ -773,13 +814,14 @@ class TestbenchCommandHandler:
                         return 0
 
             # Timeout
-            self.dut._log.error(f"[TB CMD] SEP mailbox read timeout waiting for R response")
+            self.dut._log.error("[TB CMD] SEP mailbox read timeout waiting for R response")
             self.dut.sep_rready.value = 0
             return 0
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox read failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_arvalid.value = 0
@@ -807,12 +849,12 @@ class TestbenchCommandHandler:
             AXI_SLVERR = 0b10
             AXI_DECERR = 0b11
 
-            self.dut._log.info(f"[TB CMD] Reading from SEP mailbox READ_DATA with response")
+            self.dut._log.info("[TB CMD] Reading from SEP mailbox READ_DATA with response")
 
             # Initialize SEP AXI signals if not already initialized
-            if not hasattr(self.dut, 'sep_arvalid'):
+            if not hasattr(self.dut, "sep_arvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
-                return (AXI_DECERR << 0)  # Return DECERR in response field
+                return AXI_DECERR << 0  # Return DECERR in response field
 
             # Phase 1: AR channel - address phase
             self.dut.sep_arvalid.value = 1
@@ -835,8 +877,10 @@ class TestbenchCommandHandler:
             self.dut.sep_arvalid.value = 0
 
             if not ar_done:
-                self.dut._log.error(f"[TB CMD] SEP mailbox read AR handshake timeout after {cycles} cycles")
-                return (AXI_DECERR << 0)  # Return DECERR
+                self.dut._log.error(
+                    f"[TB CMD] SEP mailbox read AR handshake timeout after {cycles} cycles"
+                )
+                return AXI_DECERR << 0  # Return DECERR
 
             # Phase 2: R channel - data phase
             self.dut.sep_rready.value = 1  # Ready to accept data
@@ -855,32 +899,39 @@ class TestbenchCommandHandler:
                     result = (data << 8) | resp
 
                     if resp == AXI_OKAY:
-                        self.dut._log.info(f"[TB CMD] SEP mailbox read successful: data=0x{data:08X}, resp={resp}")
+                        self.dut._log.info(
+                            f"[TB CMD] SEP mailbox read successful: data=0x{data:08X}, resp={resp}"
+                        )
                     elif resp == AXI_SLVERR:
-                        self.dut._log.info(f"[TB CMD] SEP mailbox read SLVERR: data=0x{data:08X}, resp={resp}")
+                        self.dut._log.info(
+                            f"[TB CMD] SEP mailbox read SLVERR: data=0x{data:08X}, resp={resp}"
+                        )
                     else:
-                        self.dut._log.info(f"[TB CMD] SEP mailbox read error: data=0x{data:08X}, resp={resp}")
+                        self.dut._log.info(
+                            f"[TB CMD] SEP mailbox read error: data=0x{data:08X}, resp={resp}"
+                        )
 
                     return result
 
             # Timeout
-            self.dut._log.error(f"[TB CMD] SEP mailbox read timeout waiting for R response")
+            self.dut._log.error("[TB CMD] SEP mailbox read timeout waiting for R response")
             await RisingEdge(self.dut.clk)
             self.dut.sep_rready.value = 0
-            return (AXI_DECERR << 0)  # Return DECERR on timeout
+            return AXI_DECERR << 0  # Return DECERR on timeout
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox read with response failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
-                if hasattr(self.dut, 'sep_arvalid'):
+                if hasattr(self.dut, "sep_arvalid"):
                     self.dut.sep_arvalid.value = 0
-                if hasattr(self.dut, 'sep_rready'):
+                if hasattr(self.dut, "sep_rready"):
                     self.dut.sep_rready.value = 0
             except:
                 pass
-            return (AXI_DECERR << 0)  # Return DECERR on error
+            return AXI_DECERR << 0  # Return DECERR on error
 
     async def _handle_sep_mbox_status_read(self, arg, quiet=False):
         """Read SEP mailbox STATUS register.
@@ -899,10 +950,10 @@ class TestbenchCommandHandler:
             AXI_OKAY = 0b00
 
             if not quiet:
-                self.dut._log.info(f"[TB CMD] Reading SEP mailbox STATUS register")
+                self.dut._log.info("[TB CMD] Reading SEP mailbox STATUS register")
 
             # Initialize SEP AXI signals if not already initialized
-            if not hasattr(self.dut, 'sep_arvalid'):
+            if not hasattr(self.dut, "sep_arvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -927,7 +978,9 @@ class TestbenchCommandHandler:
             self.dut.sep_arvalid.value = 0
 
             if not ar_done:
-                self.dut._log.error(f"[TB CMD] SEP mailbox STATUS read AR handshake timeout after {cycles} cycles")
+                self.dut._log.error(
+                    f"[TB CMD] SEP mailbox STATUS read AR handshake timeout after {cycles} cycles"
+                )
                 return 0
 
             # Phase 2: R channel - data phase
@@ -947,7 +1000,9 @@ class TestbenchCommandHandler:
                         status_value = int(self.dut.sep_rdata.value)
                         r_done = True
                     else:
-                        self.dut._log.error(f"[TB CMD] SEP mailbox STATUS read error response: {resp}")
+                        self.dut._log.error(
+                            f"[TB CMD] SEP mailbox STATUS read error response: {resp}"
+                        )
                         self.dut.sep_rready.value = 0
                         return 0
 
@@ -955,7 +1010,9 @@ class TestbenchCommandHandler:
             self.dut.sep_rready.value = 0
 
             if not r_done:
-                self.dut._log.error(f"[TB CMD] SEP mailbox STATUS read R handshake timeout after {cycles} cycles")
+                self.dut._log.error(
+                    f"[TB CMD] SEP mailbox STATUS read R handshake timeout after {cycles} cycles"
+                )
                 return 0
 
             if not quiet:
@@ -965,6 +1022,7 @@ class TestbenchCommandHandler:
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox STATUS read failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_arvalid.value = 0
@@ -992,7 +1050,7 @@ class TestbenchCommandHandler:
 
             self.dut._log.info("[TB CMD] Reading SEP mailbox IRQ_STATUS register")
 
-            if not hasattr(self.dut, 'sep_arvalid'):
+            if not hasattr(self.dut, "sep_arvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -1014,7 +1072,8 @@ class TestbenchCommandHandler:
 
             if not ar_done:
                 self.dut._log.error(
-                    "[TB CMD] SEP mailbox IRQ_STATUS read AR handshake timeout after %d cycles", cycles
+                    "[TB CMD] SEP mailbox IRQ_STATUS read AR handshake timeout after %d cycles",
+                    cycles,
                 )
                 return 0
 
@@ -1041,7 +1100,8 @@ class TestbenchCommandHandler:
 
             if not r_done:
                 self.dut._log.error(
-                    "[TB CMD] SEP mailbox IRQ_STATUS read R handshake timeout after %d cycles", cycles
+                    "[TB CMD] SEP mailbox IRQ_STATUS read R handshake timeout after %d cycles",
+                    cycles,
                 )
                 return 0
 
@@ -1051,6 +1111,7 @@ class TestbenchCommandHandler:
         except Exception as e:
             self.dut._log.error("[TB CMD] SEP mailbox IRQ_STATUS read failed: %s", e)
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_arvalid.value = 0
@@ -1082,7 +1143,7 @@ class TestbenchCommandHandler:
                 "[TB CMD] Writing 0x%08X to SEP mailbox IRQ_STATUS register (W1C)", write_value
             )
 
-            if not hasattr(self.dut, 'sep_awvalid'):
+            if not hasattr(self.dut, "sep_awvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -1115,7 +1176,8 @@ class TestbenchCommandHandler:
 
             if not aw_done or not w_done:
                 self.dut._log.error(
-                    "[TB CMD] SEP mailbox IRQ_STATUS write handshake timeout after %d cycles", cycles
+                    "[TB CMD] SEP mailbox IRQ_STATUS write handshake timeout after %d cycles",
+                    cycles,
                 )
                 self.dut.sep_awvalid.value = 0
                 self.dut.sep_wvalid.value = 0
@@ -1145,6 +1207,7 @@ class TestbenchCommandHandler:
         except Exception as e:
             self.dut._log.error("[TB CMD] SEP mailbox IRQ_STATUS write failed: %s", e)
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_awvalid.value = 0
@@ -1173,10 +1236,12 @@ class TestbenchCommandHandler:
 
             write_value = arg & 0xFFFFFFFF
 
-            self.dut._log.info(f"[TB CMD] Writing 0x{write_value:08X} to SEP mailbox STATUS register")
+            self.dut._log.info(
+                f"[TB CMD] Writing 0x{write_value:08X} to SEP mailbox STATUS register"
+            )
 
             # Initialize SEP AXI signals if not already initialized
-            if not hasattr(self.dut, 'sep_awvalid'):
+            if not hasattr(self.dut, "sep_awvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -1210,7 +1275,9 @@ class TestbenchCommandHandler:
                     self.dut.sep_wvalid.value = 0
 
             if not aw_done or not w_done:
-                self.dut._log.error(f"[TB CMD] SEP mailbox STATUS write handshake timeout after {cycles} cycles")
+                self.dut._log.error(
+                    f"[TB CMD] SEP mailbox STATUS write handshake timeout after {cycles} cycles"
+                )
                 self.dut.sep_awvalid.value = 0
                 self.dut.sep_wvalid.value = 0
                 self.dut.sep_bready.value = 0
@@ -1224,20 +1291,23 @@ class TestbenchCommandHandler:
                     resp = int(self.dut.sep_bresp.value)
                     self.dut.sep_bready.value = 0
                     if resp == AXI_OKAY:
-                        self.dut._log.info(f"[TB CMD] SEP mailbox STATUS write successful")
+                        self.dut._log.info("[TB CMD] SEP mailbox STATUS write successful")
                         return 1
                     else:
-                        self.dut._log.error(f"[TB CMD] SEP mailbox STATUS write error response: {resp}")
+                        self.dut._log.error(
+                            f"[TB CMD] SEP mailbox STATUS write error response: {resp}"
+                        )
                         return 0
 
             # Timeout
-            self.dut._log.error(f"[TB CMD] SEP mailbox STATUS write timeout waiting for B response")
+            self.dut._log.error("[TB CMD] SEP mailbox STATUS write timeout waiting for B response")
             self.dut.sep_bready.value = 0
             return 0
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox STATUS write failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_awvalid.value = 0
@@ -1260,7 +1330,7 @@ class TestbenchCommandHandler:
         """
         try:
             # Check if mbox_irq_to_sep signal exists
-            if not hasattr(self.dut, 'mbox_irq_to_sep'):
+            if not hasattr(self.dut, "mbox_irq_to_sep"):
                 self.dut._log.error("[TB CMD] mbox_irq_to_sep signal not found in testbench")
                 return 0
 
@@ -1272,6 +1342,7 @@ class TestbenchCommandHandler:
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox IRQ check failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             return 0
 
@@ -1297,7 +1368,7 @@ class TestbenchCommandHandler:
             self.dut._log.info(f"[TB CMD] Writing 0x{write_value:08X} to SEP mailbox CTRL register")
 
             # Initialize SEP AXI signals if not already initialized
-            if not hasattr(self.dut, 'sep_awvalid'):
+            if not hasattr(self.dut, "sep_awvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -1331,7 +1402,9 @@ class TestbenchCommandHandler:
                     self.dut.sep_wvalid.value = 0
 
             if not aw_done or not w_done:
-                self.dut._log.error(f"[TB CMD] SEP mailbox CTRL write handshake timeout after {cycles} cycles")
+                self.dut._log.error(
+                    f"[TB CMD] SEP mailbox CTRL write handshake timeout after {cycles} cycles"
+                )
                 self.dut.sep_awvalid.value = 0
                 self.dut.sep_wvalid.value = 0
                 self.dut.sep_bready.value = 0
@@ -1345,20 +1418,23 @@ class TestbenchCommandHandler:
                     resp = int(self.dut.sep_bresp.value)
                     self.dut.sep_bready.value = 0
                     if resp == AXI_OKAY:
-                        self.dut._log.info(f"[TB CMD] SEP mailbox CTRL write successful")
+                        self.dut._log.info("[TB CMD] SEP mailbox CTRL write successful")
                         return 1
                     else:
-                        self.dut._log.error(f"[TB CMD] SEP mailbox CTRL write error response: {resp}")
+                        self.dut._log.error(
+                            f"[TB CMD] SEP mailbox CTRL write error response: {resp}"
+                        )
                         return 0
 
             # Timeout
-            self.dut._log.error(f"[TB CMD] SEP mailbox CTRL write timeout waiting for B response")
+            self.dut._log.error("[TB CMD] SEP mailbox CTRL write timeout waiting for B response")
             self.dut.sep_bready.value = 0
             return 0
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox CTRL write failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_awvalid.value = 0
@@ -1367,6 +1443,103 @@ class TestbenchCommandHandler:
             except:
                 pass
             return 0
+
+    async def _handle_km_mbox_read_during_sep_flush(self, arg):
+        """Pulse SEP CTRL.FLUSH and issue a KM READ_DATA AR on the flush-active cycle.
+
+        The flush register bit is high for the cycle after the SEP write commits.
+        Driving KM AR so it handshakes on that cycle is the mailbox read/flush
+        overlap. Returns 1 if an R beat arrives within 32 cycles.
+        """
+        from cocotb.triggers import RisingEdge
+
+        SEP_CTRL_FLUSH = 0x4
+        R_TIMEOUT_CYCLES = 32
+
+        if not hasattr(self.dut, "tb_km_mbox_inject"):
+            self.dut._log.error("[TB CMD] KM mailbox inject signals not found")
+            raise RuntimeError("tb_km_mbox_inject missing")
+        if not hasattr(self.dut, "sep_awvalid"):
+            self.dut._log.error("[TB CMD] SEP AXI signals not found")
+            raise RuntimeError("sep_awvalid missing")
+
+        try:
+            self.dut.tb_km_mbox_inject.value = 1
+            self.dut.tb_km_arvalid.value = 0
+            self.dut.tb_km_rready.value = 0
+            self.dut.tb_km_araddr.value = MAILBOX_KM_KM_READ_DATA_REG_ADDR
+            self.dut.tb_km_arprot.value = 0
+
+            self.dut.sep_awvalid.value = 1
+            self.dut.sep_awaddr.value = SEP_CTRL_REG_OFFSET
+            self.dut.sep_awprot.value = 0
+            self.dut.sep_wvalid.value = 1
+            self.dut.sep_wdata.value = SEP_CTRL_FLUSH
+            self.dut.sep_wstrb.value = 0xF
+            self.dut.sep_bready.value = 1
+
+            max_cycles = 50
+            cycles = 0
+            aw_done = False
+            w_done = False
+            while cycles < max_cycles and (not aw_done or not w_done):
+                await RisingEdge(self.dut.clk)
+                cycles += 1
+                if not aw_done and int(self.dut.sep_awready.value) == 1:
+                    aw_done = True
+                    self.dut.sep_awvalid.value = 0
+                if not w_done and int(self.dut.sep_wready.value) == 1:
+                    w_done = True
+                    self.dut.sep_wvalid.value = 0
+
+            if not aw_done or not w_done:
+                self.dut._log.error("[TB CMD] SEP CTRL.FLUSH handshake timeout")
+                raise TimeoutError("SEP CTRL.FLUSH AW/W handshake")
+
+            # After AW/W: cycle 0 clr=0 (B typically valid), cycle 1 clr=1 empty=0.
+            # Take B on cycle 0; do not wait extra cycles or AR misses the flush window.
+            await RisingEdge(self.dut.clk)
+            if int(self.dut.sep_bvalid.value) == 1:
+                self.dut.sep_bready.value = 0
+            self.dut.tb_km_arvalid.value = 1
+            await RisingEdge(self.dut.clk)
+            ar_done = int(self.dut.tb_km_arready.value) == 1
+            fifo_clr = int(self.dut.tb_km_fifo_clr.value)
+            inbound_empty = int(self.dut.u_key_manager.u_mailbox.inbound_empty.value)
+            self.dut._log.info(
+                f"[TB CMD] KM READ_DATA AR handshake={ar_done} clr={fifo_clr} empty={inbound_empty}"
+            )
+            if not ar_done:
+                self.dut._log.error("[TB CMD] KM READ_DATA AR did not handshake on flush cycle")
+                raise TimeoutError("KM READ_DATA AR handshake")
+            if fifo_clr != 1:
+                self.dut._log.error("[TB CMD] KM READ_DATA AR handshake was not on fifo_clr")
+                raise TimeoutError("KM READ_DATA AR missed flush cycle")
+
+            self.dut.tb_km_arvalid.value = 0
+            self.dut.tb_km_rready.value = 1
+
+            for _ in range(R_TIMEOUT_CYCLES):
+                await RisingEdge(self.dut.clk)
+                if int(self.dut.tb_km_rvalid.value) == 1:
+                    resp = int(self.dut.tb_km_rresp.value)
+                    self.dut.tb_km_rready.value = 0
+                    self.dut._log.info(
+                        f"[TB CMD] KM READ_DATA R arrived during SEP flush, resp={resp}"
+                    )
+                    return 1
+
+            self.dut._log.error(
+                f"[TB CMD] KM READ_DATA R timeout ({R_TIMEOUT_CYCLES} cycles) after flush-overlap AR"
+            )
+            return 0
+        finally:
+            self.dut.tb_km_arvalid.value = 0
+            self.dut.tb_km_rready.value = 0
+            self.dut.tb_km_mbox_inject.value = 0
+            self.dut.sep_awvalid.value = 0
+            self.dut.sep_wvalid.value = 0
+            self.dut.sep_bready.value = 0
 
     async def _handle_sep_mbox_write_separator_write(self, arg):
         """Write SEP mailbox WRITE_SEPARATOR register.
@@ -1384,9 +1557,11 @@ class TestbenchCommandHandler:
 
             write_value = arg & 0xFFFFFFFF
 
-            self.dut._log.info(f"[TB CMD] Writing 0x{write_value:08X} to SEP mailbox WRITE_SEPARATOR register")
+            self.dut._log.info(
+                f"[TB CMD] Writing 0x{write_value:08X} to SEP mailbox WRITE_SEPARATOR register"
+            )
 
-            if not hasattr(self.dut, 'sep_awvalid'):
+            if not hasattr(self.dut, "sep_awvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return 0
 
@@ -1418,7 +1593,9 @@ class TestbenchCommandHandler:
                     self.dut.sep_wvalid.value = 0
 
             if not aw_done or not w_done:
-                self.dut._log.error(f"[TB CMD] SEP mailbox WRITE_SEPARATOR write handshake timeout after {cycles} cycles")
+                self.dut._log.error(
+                    f"[TB CMD] SEP mailbox WRITE_SEPARATOR write handshake timeout after {cycles} cycles"
+                )
                 self.dut.sep_awvalid.value = 0
                 self.dut.sep_wvalid.value = 0
                 self.dut.sep_bready.value = 0
@@ -1431,19 +1608,24 @@ class TestbenchCommandHandler:
                     resp = int(self.dut.sep_bresp.value)
                     self.dut.sep_bready.value = 0
                     if resp == AXI_OKAY:
-                        self.dut._log.info(f"[TB CMD] SEP mailbox WRITE_SEPARATOR write successful")
+                        self.dut._log.info("[TB CMD] SEP mailbox WRITE_SEPARATOR write successful")
                         return 1
                     else:
-                        self.dut._log.error(f"[TB CMD] SEP mailbox WRITE_SEPARATOR write error response: {resp}")
+                        self.dut._log.error(
+                            f"[TB CMD] SEP mailbox WRITE_SEPARATOR write error response: {resp}"
+                        )
                         return 0
 
-            self.dut._log.error(f"[TB CMD] SEP mailbox WRITE_SEPARATOR write timeout waiting for B response")
+            self.dut._log.error(
+                "[TB CMD] SEP mailbox WRITE_SEPARATOR write timeout waiting for B response"
+            )
             self.dut.sep_bready.value = 0
             return 0
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox WRITE_SEPARATOR write failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_awvalid.value = 0
@@ -1480,7 +1662,9 @@ class TestbenchCommandHandler:
             SRAM_WORDS = 8192
             SRAM_END = SRAM_BASE + SRAM_WORDS * 4 - 1
             if byte_addr < SRAM_BASE or byte_addr > SRAM_END:
-                self.dut._log.error(f"[TB CMD] Invalid SRAM address: 0x{byte_addr:08X} (must be 0x{SRAM_BASE:04X}-0x{SRAM_END:04X})")
+                self.dut._log.error(
+                    f"[TB CMD] Invalid SRAM address: 0x{byte_addr:08X} (must be 0x{SRAM_BASE:04X}-0x{SRAM_END:04X})"
+                )
                 return 0
 
             # Extract word address using same method as SRAM interface: bits [14:2]
@@ -1493,7 +1677,9 @@ class TestbenchCommandHandler:
             # Try to read string from SRAM
             expected_str = ""
             max_chars = 256
-            self.dut._log.info(f"[TB CMD] Reading string from SRAM byte_addr=0x{byte_addr:08X}, word_addr={word_addr}")
+            self.dut._log.info(
+                f"[TB CMD] Reading string from SRAM byte_addr=0x{byte_addr:08X}, word_addr={word_addr}"
+            )
 
             # Read up to 8 words (32 bytes) to get the string
             for word_idx in range(word_addr, min(word_addr + 8, SRAM_WORDS)):
@@ -1521,7 +1707,9 @@ class TestbenchCommandHandler:
                 self.dut._log.error("[TB CMD] Could not read expected string from SRAM")
                 return 0
 
-            self.dut._log.info(f"[TB CMD] Read expected string from SRAM: '{expected_str}' (length={len(expected_str)})")
+            self.dut._log.info(
+                f"[TB CMD] Read expected string from SRAM: '{expected_str}' (length={len(expected_str)})"
+            )
 
             # Get VUART output
             vuart_output = self.vuart_monitor.get_output()
@@ -1530,42 +1718,53 @@ class TestbenchCommandHandler:
             # Only compare the latest bytes sent on VUART (last N characters where N is expected string length)
             # This ensures we verify only what was just sent, not the entire test output
             if len(vuart_output) < expected_len:
-                self.dut._log.error(f"[TB CMD] VUART verification FAILED: VUART output length ({len(vuart_output)}) "
-                                  f"is less than expected string length ({expected_len})")
+                self.dut._log.error(
+                    f"[TB CMD] VUART verification FAILED: VUART output length ({len(vuart_output)}) "
+                    f"is less than expected string length ({expected_len})"
+                )
                 self.dut._log.error(f"[TB CMD] VUART output: '{vuart_output}'")
                 return 0
 
             # VUART monitor only captures printable characters (0x20-0x7E), not newlines or control chars
             # So we need to compare the expected string without newlines/control chars
             # Get the printable characters from expected string (strip newlines and control chars)
-            expected_printable = ''.join(c for c in expected_str if 0x20 <= ord(c) < 0x7F)
+            expected_printable = "".join(c for c in expected_str if 0x20 <= ord(c) < 0x7F)
             expected_printable_len = len(expected_printable)
 
             if len(vuart_output) < expected_printable_len:
-                self.dut._log.error(f"[TB CMD] VUART verification FAILED: VUART output length ({len(vuart_output)}) "
-                                  f"is less than expected printable string length ({expected_printable_len})")
+                self.dut._log.error(
+                    f"[TB CMD] VUART verification FAILED: VUART output length ({len(vuart_output)}) "
+                    f"is less than expected printable string length ({expected_printable_len})"
+                )
                 self.dut._log.error(f"[TB CMD] VUART output: '{vuart_output}'")
                 return 0
 
             # Get the last N printable characters from VUART output (where N is expected printable length)
             latest_vuart_output = vuart_output[-expected_printable_len:]
-            self.dut._log.info(f"[TB CMD] Comparing last {expected_printable_len} printable chars of VUART output: "
-                             f"'{latest_vuart_output}' against expected printable: '{expected_printable}'")
+            self.dut._log.info(
+                f"[TB CMD] Comparing last {expected_printable_len} printable chars of VUART output: "
+                f"'{latest_vuart_output}' against expected printable: '{expected_printable}'"
+            )
 
             # Check if the latest VUART output matches the expected printable string exactly
             if latest_vuart_output == expected_printable:
-                self.dut._log.info(f"[TB CMD] VUART verification PASSED: latest output matches expected string")
+                self.dut._log.info(
+                    "[TB CMD] VUART verification PASSED: latest output matches expected string"
+                )
                 return 1
             else:
-                self.dut._log.error(f"[TB CMD] VUART verification FAILED: expected printable '{expected_printable}' "
-                                  f"(length={expected_printable_len}), got latest output: '{latest_vuart_output}' "
-                                  f"(length={len(latest_vuart_output)})")
+                self.dut._log.error(
+                    f"[TB CMD] VUART verification FAILED: expected printable '{expected_printable}' "
+                    f"(length={expected_printable_len}), got latest output: '{latest_vuart_output}' "
+                    f"(length={len(latest_vuart_output)})"
+                )
                 self.dut._log.error(f"[TB CMD] Full VUART output length: {len(vuart_output)} chars")
                 return 0
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] VUART verify failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             return 0
 
@@ -1590,10 +1789,12 @@ class TestbenchCommandHandler:
 
             data = arg & 0xFFFFFFFF
 
-            self.dut._log.info(f"[TB CMD] Writing 0x{data:08X} to SEP mailbox (with response check)")
+            self.dut._log.info(
+                f"[TB CMD] Writing 0x{data:08X} to SEP mailbox (with response check)"
+            )
 
             # Initialize SEP AXI signals if not already initialized
-            if not hasattr(self.dut, 'sep_awvalid'):
+            if not hasattr(self.dut, "sep_awvalid"):
                 self.dut._log.error("[TB CMD] SEP AXI signals not found in testbench")
                 return AXI_DECERR
 
@@ -1640,17 +1841,20 @@ class TestbenchCommandHandler:
                 if int(self.dut.sep_bvalid.value) == 1:
                     resp = int(self.dut.sep_bresp.value)
                     self.dut.sep_bready.value = 0
-                    self.dut._log.info(f"[TB CMD] SEP mailbox write response: {resp} (0=OKAY, 2=SLVERR, 3=DECERR)")
+                    self.dut._log.info(
+                        f"[TB CMD] SEP mailbox write response: {resp} (0=OKAY, 2=SLVERR, 3=DECERR)"
+                    )
                     return resp
 
             # Timeout
-            self.dut._log.error(f"[TB CMD] SEP mailbox write timeout waiting for B response")
+            self.dut._log.error("[TB CMD] SEP mailbox write timeout waiting for B response")
             self.dut.sep_bready.value = 0
             return AXI_DECERR
 
         except Exception as e:
             self.dut._log.error(f"[TB CMD] SEP mailbox write with response failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
                 self.dut.sep_awvalid.value = 0
@@ -1672,22 +1876,22 @@ class TestbenchCommandHandler:
         Returns:
             AXI response code (0=OKAY, 2=SLVERR, 3=DECERR) packed in lower 8 bits
         """
-        from cocotb.triggers import RisingEdge, FallingEdge
+        from cocotb.triggers import FallingEdge, RisingEdge
 
         try:
             AXI_OKAY = 0b00
             AXI_SLVERR = 0b10
             AXI_DECERR = 0b11
 
-            self.dut._log.info(f"[TB CMD] Reading from KM mailbox READ_DATA (with response check)")
+            self.dut._log.info("[TB CMD] Reading from KM mailbox READ_DATA (with response check)")
 
             # Check if crossbar injection signals exist
-            if not hasattr(self.dut, 'tb_xbar_arvalid'):
+            if not hasattr(self.dut, "tb_xbar_arvalid"):
                 self.dut._log.error("[TB CMD] Crossbar injection signals not found in testbench")
                 return AXI_DECERR
 
             # Enable crossbar injection if not already enabled
-            if hasattr(self.dut, 'tb_xbar_inject'):
+            if hasattr(self.dut, "tb_xbar_inject"):
                 self.dut.tb_xbar_inject.value = 1
 
             # Phase 1: AR channel - address phase
@@ -1708,7 +1912,9 @@ class TestbenchCommandHandler:
                 ar_done = int(self.dut.tb_xbar_arready.value) == 1
 
             if not ar_done:
-                self.dut._log.error(f"[TB CMD] KM mailbox read AR handshake timeout after {cycles} cycles")
+                self.dut._log.error(
+                    f"[TB CMD] KM mailbox read AR handshake timeout after {cycles} cycles"
+                )
                 await FallingEdge(self.dut.clk)
                 self.dut.tb_xbar_arvalid.value = 0
                 return AXI_DECERR
@@ -1730,11 +1936,13 @@ class TestbenchCommandHandler:
                     resp = int(self.dut.tb_xbar_rresp.value)
                     await FallingEdge(self.dut.clk)
                     self.dut.tb_xbar_rready.value = 0
-                    self.dut._log.info(f"[TB CMD] KM mailbox read response: {resp} (0=OKAY, 2=SLVERR, 3=DECERR), data=0x{data:08X}")
+                    self.dut._log.info(
+                        f"[TB CMD] KM mailbox read response: {resp} (0=OKAY, 2=SLVERR, 3=DECERR), data=0x{data:08X}"
+                    )
                     return resp
 
             # Timeout
-            self.dut._log.error(f"[TB CMD] KM mailbox read timeout waiting for R response")
+            self.dut._log.error("[TB CMD] KM mailbox read timeout waiting for R response")
             await FallingEdge(self.dut.clk)
             self.dut.tb_xbar_rready.value = 0
             return AXI_DECERR
@@ -1742,11 +1950,12 @@ class TestbenchCommandHandler:
         except Exception as e:
             self.dut._log.error(f"[TB CMD] KM mailbox read with response failed: {e}")
             import traceback
+
             self.dut._log.error(traceback.format_exc())
             try:
-                if hasattr(self.dut, 'tb_xbar_arvalid'):
+                if hasattr(self.dut, "tb_xbar_arvalid"):
                     self.dut.tb_xbar_arvalid.value = 0
-                if hasattr(self.dut, 'tb_xbar_rready'):
+                if hasattr(self.dut, "tb_xbar_rready"):
                     self.dut.tb_xbar_rready.value = 0
             except:
                 pass
@@ -1786,7 +1995,9 @@ class TestbenchCommandHandler:
         """Set seed for deterministic DRBG (arg = 32-bit seed). Result = 1."""
         self._drbg_rng.seed(arg & 0xFFFFFFFF)
         self._drbg_next_value = self._drbg_rng.getrandbits(32)
-        self.dut._log.info(f"[TB CMD] DRBG seed set to 0x{arg & 0xFFFFFFFF:08X}, next value 0x{self._drbg_next_value:08X}")
+        self.dut._log.info(
+            f"[TB CMD] DRBG seed set to 0x{arg & 0xFFFFFFFF:08X}, next value 0x{self._drbg_next_value:08X}"
+        )
         return 1
 
     async def _handle_drbg_get_next_value(self, arg):
@@ -1836,7 +2047,9 @@ class TestbenchCommandHandler:
         the stopped state after the glitch; call DRBG_START to resume.
         Result = 1."""
         self._drbg_glitch_pending = True
-        self._drbg_stopped = True   # Quiesce normal traffic; driver will re-take control for the glitch
+        self._drbg_stopped = (
+            True  # Quiesce normal traffic; driver will re-take control for the glitch
+        )
         self.dut._log.info("[TB CMD] DRBG TVALID glitch armed (1-cycle TVALID, then drop)")
         return 1
 
@@ -1844,7 +2057,11 @@ class TestbenchCommandHandler:
         """Sample recoverable_err output from key_manager. Result = 1 if high, 0 if low."""
         await ClockCycles(self.dut.clk, 2)  # Allow combinational path to settle
         try:
-            val = int(self.dut.recoverable_err.value) if self.dut.recoverable_err.value.is_resolvable else 0
+            val = (
+                int(self.dut.recoverable_err.value)
+                if self.dut.recoverable_err.value.is_resolvable
+                else 0
+            )
             self.dut._log.info(f"[TB CMD] CHECK_RECOVERABLE_ERR: recoverable_err = {val}")
             return 1 if val else 0
         except Exception as e:
@@ -1855,7 +2072,9 @@ class TestbenchCommandHandler:
         """Firmware asks: was the CPU restarted due to an unrecoverable fault?
         Returns 1 if we had seen unrecoverable_err and reset the DUT, 0 otherwise."""
         result = 1 if self._unrecoverable_reset_done else 0
-        self.dut._log.info(f"[TB CMD] CHECK_UNRECOVERABLE_RESTART: restarted_after_unrecoverable = {result}")
+        self.dut._log.info(
+            f"[TB CMD] CHECK_UNRECOVERABLE_RESTART: restarted_after_unrecoverable = {result}"
+        )
         return result
 
     async def _handle_unrecoverable_watch_ctrl(self, arg):
@@ -1924,7 +2143,7 @@ class TestbenchCommandHandler:
         re-deposits every clock edge to keep the bits asserted until the
         unrecoverable watch loop clears them."""
         self._spurious_irq_bits = arg
-        if not hasattr(self, '_spurious_irq_task_running'):
+        if not hasattr(self, "_spurious_irq_task_running"):
             self._spurious_irq_task_running = False
         if arg and not self._spurious_irq_task_running:
             self._spurious_irq_task_running = True
@@ -1967,7 +2186,7 @@ class TestbenchCommandHandler:
         for name in OTP_DR_FIELDS:
             value = self._ramp_256(bases[name])
             if name == corrupt_field:
-                cpl = (((~value) & mask256) ^ 1)
+                cpl = ((~value) & mask256) ^ 1
                 getattr(otp_data, name).value = (cpl << 256) | (value & mask256)
             else:
                 getattr(otp_data, name).value = self._make_dr(value)
@@ -2043,7 +2262,7 @@ class TestbenchCommandHandler:
 
         arg selects the field by its OTP_READ_LOCK bit position, defaulting to
         chiplet_uid.  That field's value half is valid but its complement half
-        has bit 0 intentionally NOT inverted, which should trigger OTP_SIGINT in
+        has bit 0 NOT inverted, which should trigger OTP_SIGINT in
         hardware and an unrecoverable fault.  All other fields stay valid.
         """
         if not hasattr(self.dut, "otp_data"):
@@ -2066,9 +2285,7 @@ class TestbenchCommandHandler:
                 otp_data.demotion_state_1.value = 0b01
                 otp_data.demotion_state_2.value = 0b10
             else:
-                self.dut._log.error(
-                    "[TB CMD] OTP_WRITE_SIGINT: expected demotion_state_1/2 fields"
-                )
+                self.dut._log.error("[TB CMD] OTP_WRITE_SIGINT: expected demotion_state_1/2 fields")
                 return 0
 
             self._drive_otp_dr_fields(otp_data, OTP_PATTERN_BASE, corrupt_field=field)
@@ -2103,8 +2320,8 @@ class TestbenchCommandHandler:
         Returns the 32-bit value from the hwif_out flat arrays in the testbench.
         """
         engine = (arg >> 8) & 0xF
-        share  = (arg >> 4) & 0x1
-        word   = arg & 0xF
+        share = (arg >> 4) & 0x1
+        word = arg & 0xF
 
         engine_names = {
             0: "hmac",
@@ -2126,7 +2343,9 @@ class TestbenchCommandHandler:
             arr = getattr(self.dut, sig_name)
             val = int(arr[word].value)
         except Exception as e:
-            self.dut._log.warning(f"[TB CMD] KEY_SHARE_READ: failed to read {sig_name}[{word}]: {e}")
+            self.dut._log.warning(
+                f"[TB CMD] KEY_SHARE_READ: failed to read {sig_name}[{word}]: {e}"
+            )
             return 0
 
         self.dut._log.info(f"[TB CMD] KEY_SHARE_READ: {name} share{share}[{word}] = 0x{val:08X}")
@@ -2154,11 +2373,15 @@ class TestbenchCommandHandler:
             self.dut.tb_abr_sk_load_valid.value = 1
             await RisingEdge(self.dut.clk)
             self.dut.tb_abr_sk_load_valid.value = 0
-            self.dut._log.info("[TB CMD] ABR_SK_LOAD: pulsed tb_abr_sk_load_valid (hwset KEY_VALID)")
+            self.dut._log.info(
+                "[TB CMD] ABR_SK_LOAD: pulsed tb_abr_sk_load_valid (hwset KEY_VALID)"
+            )
         elif 0 <= arg <= 7:
             word_val = self._drbg_next_value
             self.dut.tb_abr_sk_load_data[arg].value = word_val
-            self.dut._log.info(f"[TB CMD] ABR_SK_LOAD: set tb_abr_sk_load_data[{arg}] = 0x{word_val:08X}")
+            self.dut._log.info(
+                f"[TB CMD] ABR_SK_LOAD: set tb_abr_sk_load_data[{arg}] = 0x{word_val:08X}"
+            )
         else:
             self.dut._log.warning(f"[TB CMD] ABR_SK_LOAD: invalid arg 0x{arg:X}")
             return 0
@@ -2190,6 +2413,7 @@ class TestbenchCommandHandler:
         only acts when no TB command is being processed (the handover tests
         issue no further SEP-mailbox commands after arming)."""
         from cocotb.triggers import ClockCycles
+
         while self._running:
             await ClockCycles(self.dut.clk, 5)
             if not self._outbound_drain_armed:
@@ -2232,6 +2456,7 @@ class TestbenchCommandHandler:
             # Use READ_WITH_RESP so empty-FIFO reads (SLVERR) can be ignored
             # without corrupting header parsing.
             from cocotb.triggers import ClockCycles
+
             fault_found = False
             last_status = 0
             AXI_OKAY = 0
@@ -2279,13 +2504,15 @@ class TestbenchCommandHandler:
                         f"(last status=0x{last_status:08X})"
                     )
             except Exception as e:
-                self.dut._log.error(f"[TB CMD] Failed while reading unrecoverable mailbox frame: {e}")
+                self.dut._log.error(
+                    f"[TB CMD] Failed while reading unrecoverable mailbox frame: {e}"
+                )
                 self._captured_unrecov_fault_code = 0
 
             self._unrecoverable_reset_done = True
             self._unrecoverable_watch_armed = False
             self.dut._log.info("[TB CMD] Unrecoverable error detected; resetting Key Manager")
-            if hasattr(self, '_spurious_irq_bits'):
+            if hasattr(self, "_spurious_irq_bits"):
                 self._spurious_irq_bits = 0
             await reset_dut(self.dut, cycles=20)
 
@@ -2294,9 +2521,13 @@ class TestbenchCommandHandler:
         while self._running:
             await RisingEdge(self.dut.clk)
             try:
-                if not hasattr(self.dut, 'drbg_tvalid'):
+                if not hasattr(self.dut, "drbg_tvalid"):
                     continue
-                tready = int(self.dut.drbg_tready.value) if self.dut.drbg_tready.value.is_resolvable else 0
+                tready = (
+                    int(self.dut.drbg_tready.value)
+                    if self.dut.drbg_tready.value.is_resolvable
+                    else 0
+                )
 
                 # One-shot STREAM_ERR injection: assert TVALID for one cycle then drop without TREADY.
                 # _drbg_glitch_pending is set by _handle_drbg_tvalid_glitch; _drbg_stopped is also
@@ -2310,7 +2541,9 @@ class TestbenchCommandHandler:
                     # Wait for the next rising edge, then drop TVALID unconditionally (protocol violation)
                     await RisingEdge(self.dut.clk)
                     self.dut.drbg_tvalid.value = 0
-                    self.dut._log.info("[DRBG glitch] TVALID asserted 1 cycle then dropped without TREADY (STREAM_ERR injected)")
+                    self.dut._log.info(
+                        "[DRBG glitch] TVALID asserted 1 cycle then dropped without TREADY (STREAM_ERR injected)"
+                    )
                     # Remain in _drbg_stopped=True state; firmware calls tb_drbg_start() to resume
                     continue
 
@@ -2333,12 +2566,9 @@ class TestbenchCommandHandler:
                             f"tstrb=0x{queued_tstrb:01X} "
                             f"(remaining={len(self._drbg_beat_queue)})"
                         )
-                        # Pre-stage the next beat's data immediately so it is stable
-                        # at the following rising edge.  Without this, the driver
-                        # would loop back to await RisingEdge before updating the
-                        # signals, and the RTL would sample the just-consumed beat's
-                        # data again on the very next cycle (causing byte-assembly
-                        # errors when partial-TSTRB beats are used back-to-back).
+                        # Pre-stage the next beat's data now: TVALID stays high, so the
+                        # RTL samples TDATA/TSTRB again at the very next rising edge and
+                        # must see the next beat there, not the consumed one.
                         if self._drbg_beat_queue:
                             nv, nt = self._drbg_beat_queue[0]
                             self.dut.drbg_tdata.value = nv
@@ -2509,14 +2739,18 @@ class CpuMemoryMonitor:
                 if mem_valid and not mem_ready:
                     self.mem_stuck_cycles += 1
                     if self.mem_stuck_cycles == 100:
-                        self.dut._log.error(f"[MONITOR] CPU memory transaction STUCK: valid=1 ready=0 addr=0x{mem_addr:08X} instr={mem_instr} for {self.mem_stuck_cycles} cycles")
+                        self.dut._log.error(
+                            f"[MONITOR] CPU memory transaction STUCK: valid=1 ready=0 addr=0x{mem_addr:08X} instr={mem_instr} for {self.mem_stuck_cycles} cycles"
+                        )
             else:
                 self.last_mem_state = mem_state
                 if mem_valid and not mem_ready:
                     self.mem_stuck_cycles = 1
                 else:
                     if self.mem_stuck_cycles > 0:
-                        self.dut._log.info(f"[MONITOR] CPU memory transaction completed after {self.mem_stuck_cycles} cycles")
+                        self.dut._log.info(
+                            f"[MONITOR] CPU memory transaction completed after {self.mem_stuck_cycles} cycles"
+                        )
                     self.mem_stuck_cycles = 0
         except (AttributeError, ValueError):
             pass
@@ -2536,12 +2770,18 @@ class CpuMemoryMonitor:
             # Track AXI state for stuck detection
             axi_state = (axi_awvalid, axi_awready, axi_wvalid, axi_wready, axi_bvalid, axi_bready)
             if axi_state == self.last_axi_state:
-                if (axi_awvalid and not axi_awready) or (axi_wvalid and not axi_wready) or (axi_bvalid and not axi_bready):
+                if (
+                    (axi_awvalid and not axi_awready)
+                    or (axi_wvalid and not axi_wready)
+                    or (axi_bvalid and not axi_bready)
+                ):
                     self.axi_stuck_cycles += 1
                     if self.axi_stuck_cycles == 100:
-                        self.dut._log.error(f"[MONITOR] AXI transaction STUCK: awvalid={axi_awvalid} awready={axi_awready} "
-                                           f"wvalid={axi_wvalid} wready={axi_wready} bvalid={axi_bvalid} bready={axi_bready} "
-                                           f"addr=0x{axi_awaddr:08X} data=0x{axi_wdata:08X}")
+                        self.dut._log.error(
+                            f"[MONITOR] AXI transaction STUCK: awvalid={axi_awvalid} awready={axi_awready} "
+                            f"wvalid={axi_wvalid} wready={axi_wready} bvalid={axi_bvalid} bready={axi_bready} "
+                            f"addr=0x{axi_awaddr:08X} data=0x{axi_wdata:08X}"
+                        )
             else:
                 self.last_axi_state = axi_state
                 self.axi_stuck_cycles = 0
@@ -2567,14 +2807,16 @@ async def test_firmware_generic(dut):
         # Try to find a default
         firmware_dir = Path(__file__).parent / "firmware"
         dut._log.error("No ROM_HEX_FILE specified!")
-        dut._log.error("Usage: TEST=test_firmware make run SIM_ARGS=\"+ROM_HEX_FILE=path/to/test.rom.hex\"")
+        dut._log.error(
+            'Usage: TEST=test_firmware make run SIM_ARGS="+ROM_HEX_FILE=path/to/test.rom.hex"'
+        )
         raise cocotb.result.TestFailure("ROM_HEX_FILE plusarg required")
 
     if not os.path.exists(rom_hex_file):
         raise cocotb.result.TestFailure(f"ROM hex file does not exist: {rom_hex_file}")
 
     # Extract test name from filename for logging
-    test_name = Path(rom_hex_file).stem.replace('.rom', '')
+    test_name = Path(rom_hex_file).stem.replace(".rom", "")
     dut._log.info(f"Running firmware test: {test_name}")
     dut._log.info(f"ROM file: {rom_hex_file}")
 
@@ -2587,7 +2829,9 @@ async def test_firmware_generic(dut):
     # Use lists to make timeout/cycle count mutable for testbench commands.
     max_cycles = [initial_timeout]
     current_cycles = [0]
-    dut._log.info(f"Initial timeout: {max_cycles[0]} cycles (firmware can adjust via TB_CMD_TIMEOUT_SET)")
+    dut._log.info(
+        f"Initial timeout: {max_cycles[0]} cycles (firmware can adjust via TB_CMD_TIMEOUT_SET)"
+    )
 
     # Get VUART print enable from plusargs (default disabled to save simulation time)
     # Exception: test_vuart always enables printing since it tests VUART functionality
@@ -2596,7 +2840,9 @@ async def test_firmware_generic(dut):
         vuart_print_enabled = True
         dut._log.info("VUART printing: FORCED ENABLED (test_vuart must test VUART functionality)")
     else:
-        dut._log.info(f"VUART printing: {'ENABLED' if vuart_print_enabled else 'DISABLED'} (use +VUART_PRINT=1 to enable)")
+        dut._log.info(
+            f"VUART printing: {'ENABLED' if vuart_print_enabled else 'DISABLED'} (use +VUART_PRINT=1 to enable)"
+        )
 
     # Start VUART monitor
     vuart = VuartMonitor(dut)
@@ -2644,20 +2890,24 @@ async def test_firmware_generic(dut):
 
     # Start testbench command handler (with monitor reference, timeout reference, and VUART monitor)
     tb_cmd_handler = TestbenchCommandHandler(
-        dut, kmcsr_regs, monitor=monitor, timeout_ref=max_cycles,
-        current_cycles_ref=current_cycles, vuart_monitor=vuart,
+        dut,
+        kmcsr_regs,
+        monitor=monitor,
+        timeout_ref=max_cycles,
+        current_cycles_ref=current_cycles,
+        vuart_monitor=vuart,
         enable_unrecoverable_watch=False,
     )
     await tb_cmd_handler.start()
 
     # Initialize parity injection signals if they exist
-    if hasattr(dut, 'rom_parity_err_inject'):
+    if hasattr(dut, "rom_parity_err_inject"):
         dut.rom_parity_err_inject.value = 0
-    if hasattr(dut, 'sram_parity_err_inject'):
+    if hasattr(dut, "sram_parity_err_inject"):
         dut.sram_parity_err_inject.value = 0
 
     # Initialize SEP AXI signals if they exist (for mailbox tests)
-    if hasattr(dut, 'sep_awvalid'):
+    if hasattr(dut, "sep_awvalid"):
         dut.sep_awvalid.value = 0
         dut.sep_awaddr.value = 0
         dut.sep_awprot.value = 0
@@ -2736,7 +2986,7 @@ async def test_firmware_generic(dut):
         dut._log.info(f"*** {test_name}: PASSED ***")
     else:
         if signature == TEST_FAIL_SIGNATURE:
-            dut._log.error(f"Firmware reported failure")
+            dut._log.error("Firmware reported failure")
         elif signature != TEST_PASS_SIGNATURE:
             dut._log.error(f"Unexpected signature: 0x{signature:08X}")
         if result != 1:

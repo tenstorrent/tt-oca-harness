@@ -57,8 +57,9 @@ module tlul_err_resp #(
   if (ReturnBlankResp) begin : gen_zero_resp
     assign tl_h_o_int.d_data = '0;
   end else begin : gen_err_resp
-    assign tl_h_o_int.d_data   = (mubi4_test_true_strict(err_instr_type)) ? DataWhenInstrError :
-                                                                            DataWhenError;
+    assign tl_h_o_int.d_data = (mubi4_test_true_strict(
+        err_instr_type
+    )) ? DataWhenInstrError : DataWhenError;
   end
   assign tl_h_o_int.d_source = err_source;
   assign tl_h_o_int.d_sink   = '0;

@@ -18,707 +18,781 @@
 //-----------------------------------------------------------------------------
 
 module sep_ip_integration
-    import sep_pkg::*;
-    import sep_crypto_pkg::*;
-    import sep_efuse_pkg::*;
-    import km_intf_pkg::*;
+  import sep_pkg::*;
+  import sep_crypto_pkg::*;
+  import sep_efuse_pkg::*;
+  import km_intf_pkg::*;
 #(
-    parameter int unsigned EXT_TRNG_NUM_AXIS = 2
+  parameter int unsigned EXT_TRNG_NUM_AXIS = sep_crypto_pkg::SEP_CRYPTO_EDN_ENDPOINT_COUNT,
+  parameter bit          ABR_MASKING_EN    = 1'b1
 ) (
-    input logic clk_i,
-    input logic rst_ni,
+  input logic clk_i,
+  input logic rst_ni,
 
-    // Test/DFT passthrough (used by the AXI extension error slave's test_i)
-    input logic test_en_i,
+  // Test/DFT passthrough (used by the AXI extension error slave's test_i)
+  input logic test_en_i,
 
-    // SRAM interface (from sep.sv)
-    input  sep_sram_req_t sep_sram_req,
-    output sep_sram_rsp_t sep_sram_rsp,
+  // SRAM interface (from sep.sv)
+  input  sep_sram_req_t sep_sram_req,
+  output sep_sram_rsp_t sep_sram_rsp,
 
-    // Boot ROM interface (from sep.sv)
-    input  sep_sram_req_t sep_boot_rom_req,
-    output sep_sram_rsp_t sep_boot_rom_rsp,
+  // Boot ROM interface (from sep.sv)
+  input  sep_sram_req_t sep_boot_rom_req,
+  output sep_sram_rsp_t sep_boot_rom_rsp,
 
-    // TCM interface (from sep.sv)
-    input  sep_cpu_tcm_req_t sep_cpu_tcm_req_i,
-    output sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_o,
+  // TCM interface (from sep.sv)
+  input  sep_cpu_tcm_req_t sep_cpu_tcm_req_i,
+  output sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_o,
 
-    // OTBN external SRAM interfaces (from prim_ram_1p_scr_ext inside OTBN,
-    // re-exposed at sep.sv's boundary)
-    input  sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req,
-    output sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp,
-    input  sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req,
-    output sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp,
+  // OTBN external SRAM interfaces (from prim_ram_1p_scr_ext inside OTBN,
+  // re-exposed at sep.sv's boundary)
+  input  sep_crypto_pka_imem_sram_req_t sep_crypto_pka_imem_sram_req,
+  output sep_crypto_pka_imem_sram_rsp_t sep_crypto_pka_imem_sram_rsp,
+  input  sep_crypto_pka_dmem_sram_req_t sep_crypto_pka_dmem_sram_req,
+  output sep_crypto_pka_dmem_sram_rsp_t sep_crypto_pka_dmem_sram_rsp,
 
-    // Adams Bridge SRAM channels (from sep.sv), packed as request/response structs
-    input  sep_crypto_pkg::abr_mem_req_t abr_mem_req_i,
-    output sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp_o,
+  // Adams Bridge SRAM channels (from sep.sv), packed as request/response structs
+  input  sep_crypto_pkg::abr_mem_req_t abr_mem_req_i,
+  output sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp_o,
 
-    // Key Manager ROM/SRAM memory interfaces (from sep.sv)
-    input  km_intf_pkg::km_rom_mem_req_t  km_rom_mem_req_i,
-    output km_intf_pkg::km_rom_mem_rsp_t  km_rom_mem_rsp_o,
-    input  km_intf_pkg::km_sram_mem_req_t km_sram_mem_req_i,
-    output km_intf_pkg::km_sram_mem_rsp_t km_sram_mem_rsp_o,
+  // Key Manager ROM/SRAM memory interfaces (from sep.sv)
+  input  km_intf_pkg::km_rom_mem_req_t  km_rom_mem_req_i,
+  output km_intf_pkg::km_rom_mem_rsp_t  km_rom_mem_rsp_o,
+  input  km_intf_pkg::km_sram_mem_req_t km_sram_mem_req_i,
+  output km_intf_pkg::km_sram_mem_rsp_t km_sram_mem_rsp_o,
 
-    // Efuse interfaces (from sep.sv)
-    input  sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_i,
-    output sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_o,
-    input  sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_i,
-    output sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_o,
+  // Efuse interfaces (from sep.sv)
+  input  sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_i,
+  output sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_o,
+  input  sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_i,
+  output sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_o,
 
-    // External TRNG AXI-Lite CSR interface (from sep.sv)
-    input  sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_i,
-    output sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_o,
+  // External TRNG AXI-Lite CSR interface (from sep.sv)
+  input  sep_pkg::sep_32_32_axil_req_t  ext_trng_axil_req_i,
+  output sep_pkg::sep_32_32_axil_resp_t ext_trng_axil_resp_o,
 
-    // External TRNG AXI-Stream (to sep.sv)
-    output ext_trng_axis_req_t ext_trng_axis_req_o [EXT_TRNG_NUM_AXIS-1:0],
-    input  ext_trng_axis_rsp_t ext_trng_axis_rsp_i [EXT_TRNG_NUM_AXIS-1:0],
+  // External TRNG AXI-Stream (to sep.sv)
+  output ext_trng_axis_req_t ext_trng_axis_req_o [EXT_TRNG_NUM_AXIS-1:0],
+  input  ext_trng_axis_rsp_t ext_trng_axis_rsp_i [EXT_TRNG_NUM_AXIS-1:0],
 
-    // External TRNG interrupt and alarm (to sep.sv)
-    output logic ext_trng_irq_o,
-    output logic ext_trng_alarm_o,
+  // External TRNG interrupt (to sep.sv)
+  output logic ext_trng_irq_o,
 
-    // AXI4 extension interface (from sep.sv)
-    input  sep_pkg::sep_32_64_6_12_axi_req_t  axi_extension_axi_req_i,
-    output sep_pkg::sep_32_64_6_12_axi_resp_t axi_extension_axi_resp_o,
+  // AXI4 extension interface (from sep.sv)
+  input  sep_pkg::sep_32_64_6_12_axi_req_t  axi_extension_axi_req_i,
+  output sep_pkg::sep_32_64_6_12_axi_resp_t axi_extension_axi_resp_o,
 
-    // eFuse debug bus (internal shim state, surfaced for DV visibility)
-    output logic [15:0] efuse_debug_bus_o
+  // eFuse debug bus (internal shim state, surfaced for DV visibility)
+  output logic [15:0] efuse_debug_bus_o
 );
 
-    /////////////////////////
-    // Signal Declarations //
-    /////////////////////////
+  /////////////////////////
+  // Signal Declarations //
+  /////////////////////////
 
-    sep_efuse_pkg::efuse_apb_req_t  efuse_model_otp_req;
-    sep_efuse_pkg::efuse_apb_resp_t efuse_model_otp_resp;
+  sep_efuse_pkg::efuse_apb_req_t  efuse_model_otp_req;
+  sep_efuse_pkg::efuse_apb_resp_t efuse_model_otp_resp;
 
-    /////////////////////
-    // eFuse SHIM      //
-    /////////////////////
+  /////////////////////
+  // eFuse SHIM      //
+  /////////////////////
 
-    efuse_interface_shim #(
-        .SHADOW_REG_BITS      (sep_efuse_pkg::SHADOW_REG_BITS),
-        .addr_t               (sep_efuse_pkg::addr_t),
-        .data_t               (sep_efuse_pkg::data_t),
-        .efuse_axil_req_t     (sep_efuse_pkg::efuse_axil_req_t),
-        .efuse_axil_resp_t    (sep_efuse_pkg::efuse_axil_resp_t),
-        .efuse_apb_req_t      (sep_efuse_pkg::efuse_apb_req_t),
-        .efuse_apb_resp_t     (sep_efuse_pkg::efuse_apb_resp_t),
-        .efuse_addr_byte_t    (sep_efuse_pkg::efuse_addr_byte_t),
-        .efuse_data_t         (sep_efuse_pkg::efuse_data_t),
-        .efuse_word_counter_t (sep_efuse_pkg::efuse_word_counter_t),
-        .fuse_command_req_t   (sep_efuse_pkg::fuse_command_req_t),
-        .fuse_command_resp_t  (sep_efuse_pkg::fuse_command_resp_t)
-    ) u_efuse_interface_shim (
-        .clk_i  (clk_i),
-        .rst_ni (rst_ni),
+  efuse_interface_shim #(
+    .SHADOW_REG_BITS      (sep_efuse_pkg::SHADOW_REG_BITS),
+    .addr_t               (sep_efuse_pkg::addr_t),
+    .data_t               (sep_efuse_pkg::data_t),
+    .efuse_axil_req_t     (sep_efuse_pkg::efuse_axil_req_t),
+    .efuse_axil_resp_t    (sep_efuse_pkg::efuse_axil_resp_t),
+    .efuse_apb_req_t      (sep_efuse_pkg::efuse_apb_req_t),
+    .efuse_apb_resp_t     (sep_efuse_pkg::efuse_apb_resp_t),
+    .efuse_addr_byte_t    (sep_efuse_pkg::efuse_addr_byte_t),
+    .efuse_data_t         (sep_efuse_pkg::efuse_data_t),
+    .efuse_word_counter_t (sep_efuse_pkg::efuse_word_counter_t),
+    .fuse_command_req_t   (sep_efuse_pkg::fuse_command_req_t),
+    .fuse_command_resp_t  (sep_efuse_pkg::fuse_command_resp_t)
+  ) u_efuse_interface_shim (
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
 
-        .fuse_bank_ctrl_req_i  (efuse_bank_ctrl_req_i),
-        .fuse_bank_ctrl_resp_o (efuse_bank_ctrl_resp_o),
+    .fuse_bank_ctrl_req_i  (efuse_bank_ctrl_req_i),
+    .fuse_bank_ctrl_resp_o (efuse_bank_ctrl_resp_o),
 
-        .fuse_command_req_i  (efuse_shim_command_req_i),
-        .fuse_command_resp_o (efuse_shim_command_resp_o),
+    .fuse_command_req_i  (efuse_shim_command_req_i),
+    .fuse_command_resp_o (efuse_shim_command_resp_o),
 
-        .efuse_model_otp_req_o  (efuse_model_otp_req),
-        .efuse_model_otp_resp_i (efuse_model_otp_resp),
+    .efuse_model_otp_req_o  (efuse_model_otp_req),
+    .efuse_model_otp_resp_i (efuse_model_otp_resp),
 
-        .debug_bus_o (efuse_debug_bus_o)
-    );
+    .debug_bus_o (efuse_debug_bus_o)
+  );
 
-    efuse_bank_model #(
-        .NumFuseByteWidth (sep_efuse_pkg::NumFuseByteWidth),
-        .IsSmcInstance    (1'b0),
-        .efuse_apb_req_t  (sep_efuse_pkg::efuse_apb_req_t),
-        .efuse_apb_resp_t (sep_efuse_pkg::efuse_apb_resp_t)
-    ) u_efuse_bank_model (
-        .clk_i  (clk_i),
-        .rst_ni (rst_ni),
+  efuse_bank_model #(
+    .NumFuseByteWidth (sep_efuse_pkg::NumFuseByteWidth),
+    .IsSmcInstance    (1'b0),
+    .efuse_apb_req_t  (sep_efuse_pkg::efuse_apb_req_t),
+    .efuse_apb_resp_t (sep_efuse_pkg::efuse_apb_resp_t)
+  ) u_efuse_bank_model (
+    .clk_i  (clk_i),
+    .rst_ni (rst_ni),
 
-        .apb_req_i  (efuse_model_otp_req),
-        .apb_resp_o (efuse_model_otp_resp),
+    .apb_req_i  (efuse_model_otp_req),
+    .apb_resp_o (efuse_model_otp_resp),
 
-        .hwif_out ()
-    );
+    .hwif_out ()
+  );
 
-    //////////////////////////
-    // SRAM External Module //
-    //////////////////////////
+  //////////////////////////
+  // SRAM External Module //
+  //////////////////////////
 
-    localparam int unsigned SRAM_N_ENTRIES  = 256 * 1024 / 8; // 256KB
-    localparam int unsigned SRAM_ADDR_WIDTH = $clog2(SRAM_N_ENTRIES);
-    localparam int unsigned SRAM_DATA_WIDTH = 64;
+  localparam int unsigned SRAM_N_ENTRIES = 256 * 1024 / 8;  // 256KB
+  localparam int unsigned SRAM_ADDR_WIDTH = $clog2(SRAM_N_ENTRIES);
+  localparam int unsigned SRAM_DATA_WIDTH = 64;
 
-    logic                       sram_macro_req;
-    logic                       sram_macro_write;
-    logic [SRAM_ADDR_WIDTH-1:0] sram_macro_addr;
-    logic [SRAM_DATA_WIDTH-1:0] sram_macro_wdata;
-    logic [SRAM_DATA_WIDTH-1:0] sram_macro_wmask;
-    logic [SRAM_DATA_WIDTH-1:0] sram_macro_rdata;
-    logic                       sram_macro_rvalid;
+  logic                       sram_macro_req;
+  logic                       sram_macro_write;
+  logic [SRAM_ADDR_WIDTH-1:0] sram_macro_addr;
+  logic [SRAM_DATA_WIDTH-1:0] sram_macro_wdata;
+  logic [SRAM_DATA_WIDTH-1:0] sram_macro_wmask;
+  logic [SRAM_DATA_WIDTH-1:0] sram_macro_rdata;
+  logic                       sram_macro_rvalid;
 
-    sep_sram_interface_shim #(
-        .SRAM_ADDR_WIDTH (SRAM_ADDR_WIDTH)
-    ) u_sep_sram_interface_shim (
-        .clk_i          (clk_i),
-        .rst_ni         (rst_ni),
-        .mem_req_i      (sep_sram_req),
-        .mem_rsp_o      (sep_sram_rsp),
-        .macro_req_o    (sram_macro_req),
-        .macro_write_o  (sram_macro_write),
-        .macro_addr_o   (sram_macro_addr),
-        .macro_wdata_o  (sram_macro_wdata),
-        .macro_wmask_o  (sram_macro_wmask),
-        .macro_rdata_i  (sram_macro_rdata),
-        .macro_rvalid_i (sram_macro_rvalid)
-    );
+  sep_sram_interface_shim #(
+    .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH)
+  ) u_sep_sram_interface_shim (
+    .clk_i          (clk_i),
+    .rst_ni         (rst_ni),
+    .mem_req_i      (sep_sram_req),
+    .mem_rsp_o      (sep_sram_rsp),
+    .macro_req_o    (sram_macro_req),
+    .macro_write_o  (sram_macro_write),
+    .macro_addr_o   (sram_macro_addr),
+    .macro_wdata_o  (sram_macro_wdata),
+    .macro_wmask_o  (sram_macro_wmask),
+    .macro_rdata_i  (sram_macro_rdata),
+    .macro_rvalid_i (sram_macro_rvalid)
+  );
 
-    prim_ram_1p_adv #(
-        .Depth       (SRAM_N_ENTRIES),
-        .Width       (SRAM_DATA_WIDTH),
-        .MemInitFile ("")
-    ) u_sep_sram (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_ni),
-        .req_i     (sram_macro_req),
-        .write_i   (sram_macro_write),
-        .addr_i    (sram_macro_addr),
-        .wdata_i   (sram_macro_wdata),
-        .wmask_i   (sram_macro_wmask),
-        .rdata_o   (sram_macro_rdata),
-        .rvalid_o  (sram_macro_rvalid),
-        .rerror_o  (),
-        .alert_o   (),
-        .cfg_i     ('0),
-        .cfg_rsp_o ()
-    );
+  prim_ram_1p_adv #(
+    .Depth       (SRAM_N_ENTRIES),
+    .Width       (SRAM_DATA_WIDTH),
+    .MemInitFile ("")
+  ) u_sep_sram (
+    .clk_i     (clk_i),
+    .rst_ni    (rst_ni),
+    .req_i     (sram_macro_req),
+    .write_i   (sram_macro_write),
+    .addr_i    (sram_macro_addr),
+    .wdata_i   (sram_macro_wdata),
+    .wmask_i   (sram_macro_wmask),
+    .rdata_o   (sram_macro_rdata),
+    .rvalid_o  (sram_macro_rvalid),
+    .rerror_o  (),
+    .alert_o   (),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
 
-    /////////////////////////
-    // ROM External Module //
-    /////////////////////////
+  /////////////////////////
+  // ROM External Module //
+  /////////////////////////
 
-    localparam int unsigned ROM_N_ENTRIES  = 16384; // 16K entries * 8B = 128KB
-    localparam int unsigned ROM_ADDR_WIDTH = $clog2(ROM_N_ENTRIES);
-    localparam int unsigned ROM_DATA_WIDTH = 64;
+  localparam int unsigned ROM_N_ENTRIES = 16384;  // 16K entries * 8B = 128KB
+  localparam int unsigned ROM_ADDR_WIDTH = $clog2(ROM_N_ENTRIES);
+  localparam int unsigned ROM_DATA_WIDTH = 64;
 
-    logic                      rom_macro_req;
-    logic [ROM_ADDR_WIDTH-1:0] rom_macro_addr;
-    logic [ROM_DATA_WIDTH-1:0] rom_macro_rdata;
+  logic                      rom_macro_req;
+  logic [ROM_ADDR_WIDTH-1:0] rom_macro_addr;
+  logic [ROM_DATA_WIDTH-1:0] rom_macro_rdata;
 
-    sep_rom_interface_shim #(
-        .ROM_ADDR_WIDTH (ROM_ADDR_WIDTH)
-    ) u_sep_rom_interface_shim (
-        .clk_i         (clk_i),
-        .rst_ni        (rst_ni),
-        .mem_req_i     (sep_boot_rom_req),
-        .mem_rsp_o     (sep_boot_rom_rsp),
-        .macro_req_o   (rom_macro_req),
-        .macro_addr_o  (rom_macro_addr),
-        .macro_rdata_i (rom_macro_rdata)
-    );
+  sep_rom_interface_shim #(
+    .ROM_ADDR_WIDTH(ROM_ADDR_WIDTH)
+  ) u_sep_rom_interface_shim (
+    .clk_i         (clk_i),
+    .rst_ni        (rst_ni),
+    .mem_req_i     (sep_boot_rom_req),
+    .mem_rsp_o     (sep_boot_rom_rsp),
+    .macro_req_o   (rom_macro_req),
+    .macro_addr_o  (rom_macro_addr),
+    .macro_rdata_i (rom_macro_rdata)
+  );
 
-    prim_rom #(
-        .Width       (ROM_DATA_WIDTH),
-        .Depth       (ROM_N_ENTRIES),
-        .MemInitFile ("")
-    ) u_sep_boot_rom (
-        .clk_i   (clk_i),
-        .rst_ni  (rst_ni),
-        .req_i   (rom_macro_req),
-        .addr_i  (rom_macro_addr),
-        .rdata_o (rom_macro_rdata),
-        .cfg_i   ('0)
-    );
+  prim_rom #(
+    .Width       (ROM_DATA_WIDTH),
+    .Depth       (ROM_N_ENTRIES),
+    .MemInitFile ("")
+  ) u_sep_boot_rom (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+    .req_i   (rom_macro_req),
+    .addr_i  (rom_macro_addr),
+    .rdata_o (rom_macro_rdata),
+    .cfg_i   ('0)
+  );
 
-    /////////////////////////
-    // TCM External Module //
-    /////////////////////////
+  /////////////////////////
+  // TCM External Module //
+  /////////////////////////
 
-    // sep_tcm_wrapper instantiates the VeeR EL2 ICCM/DCCM bank macros
-    // (ram_<depth>x39), generated by the core's RAM-generation flow like in
-    // upstream VeeR EL2's own reference testbench.
-    sep_tcm_wrapper u_sep_tcm_wrapper (
-        .tcm_req_i (sep_cpu_tcm_req_i),
-        .tcm_rsp_o (sep_cpu_tcm_rsp_o)
-    );
+  // sep_tcm_wrapper instantiates the VeeR EL2 ICCM/DCCM bank macros
+  // (ram_<depth>x39), generated by the core's RAM-generation flow like in
+  // upstream VeeR EL2's own reference testbench.
+  sep_tcm_wrapper u_sep_tcm_wrapper (
+    .tcm_req_i (sep_cpu_tcm_req_i),
+    .tcm_rsp_o (sep_cpu_tcm_rsp_o)
+  );
 
-    ////////////////////////////
-    // KM ROM External Module //
-    ////////////////////////////
+  ////////////////////////////
+  // KM ROM External Module //
+  ////////////////////////////
 
-    localparam int unsigned KM_ROM_DEPTH = 4096; // 4K words x 32b = 16KB
-    localparam int unsigned KM_ROM_AW    = $clog2(KM_ROM_DEPTH);
-    localparam int unsigned KM_ROM_WIDTH = 36;   // 32 data + 4 parity
+  localparam int unsigned KM_ROM_DEPTH = 4096;  // 4K words x 32b = 16KB
+  localparam int unsigned KM_ROM_AW = $clog2(KM_ROM_DEPTH);
+  localparam int unsigned KM_ROM_WIDTH = 36;  // 32 data + 4 parity
 
-    logic [KM_ROM_WIDTH-1:0] km_rom_rdata;
-    logic                    km_rom_rvalid;
+  logic [KM_ROM_WIDTH-1:0] km_rom_rdata;
+  logic                    km_rom_rvalid;
 
-    assign km_rom_mem_rsp_o.gnt    = 1'b1;
-    assign km_rom_mem_rsp_o.rvalid = km_rom_rvalid;
-    assign km_rom_mem_rsp_o.rdata  = km_rom_rdata[31:0];
-    assign km_rom_mem_rsp_o.parity = km_rom_rdata[35:32];
+  assign km_rom_mem_rsp_o.gnt    = 1'b1;
+  assign km_rom_mem_rsp_o.rvalid = km_rom_rvalid;
+  assign km_rom_mem_rsp_o.rdata  = km_rom_rdata[31:0];
+  assign km_rom_mem_rsp_o.parity = km_rom_rdata[35:32];
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin
-        if (!rst_ni) km_rom_rvalid <= 1'b0;
-        else km_rom_rvalid <= km_rom_mem_req_i.req;
-    end
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) km_rom_rvalid <= 1'b0;
+    else km_rom_rvalid <= km_rom_mem_req_i.req;
+  end
 
-    prim_rom #(
-        .Width       (KM_ROM_WIDTH),
-        .Depth       (KM_ROM_DEPTH),
-        .MemInitFile ("")
-    ) u_km_rom (
-        .clk_i   (clk_i),
-        .rst_ni  (rst_ni),
-        .req_i   (km_rom_mem_req_i.req),
-        .addr_i  (km_rom_mem_req_i.addr[KM_ROM_AW-1:0]),
-        .rdata_o (km_rom_rdata),
-        .cfg_i   ('0)
-    );
+  prim_rom #(
+    .Width       (KM_ROM_WIDTH),
+    .Depth       (KM_ROM_DEPTH),
+    .MemInitFile ("")
+  ) u_km_rom (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+    .req_i   (km_rom_mem_req_i.req),
+    .addr_i  (km_rom_mem_req_i.addr[KM_ROM_AW-1:0]),
+    .rdata_o (km_rom_rdata),
+    .cfg_i   ('0)
+  );
 
-    /////////////////////////////
-    // KM SRAM External Module //
-    /////////////////////////////
+  /////////////////////////////
+  // KM SRAM External Module //
+  /////////////////////////////
 
-    localparam int unsigned KM_SRAM_DEPTH = 8192; // 8K words x 32b = 32KB
-    localparam int unsigned KM_SRAM_AW    = $clog2(KM_SRAM_DEPTH);
-    localparam int unsigned KM_SRAM_WIDTH = 36;   // 32 data + 4 parity
+  localparam int unsigned KM_SRAM_DEPTH = 8192;  // 8K words x 32b = 32KB
+  localparam int unsigned KM_SRAM_AW = $clog2(KM_SRAM_DEPTH);
+  localparam int unsigned KM_SRAM_WIDTH = 36;  // 32 data + 4 parity
 
-    logic [KM_SRAM_WIDTH-1:0] km_sram_wdata;
-    logic [KM_SRAM_WIDTH-1:0] km_sram_wmask;
-    logic [KM_SRAM_WIDTH-1:0] km_sram_rdata;
+  logic [KM_SRAM_WIDTH-1:0] km_sram_wdata;
+  logic [KM_SRAM_WIDTH-1:0] km_sram_wmask;
+  logic [KM_SRAM_WIDTH-1:0] km_sram_rdata;
 
-    assign km_sram_wdata = {km_sram_mem_req_i.wparity, km_sram_mem_req_i.wdata};
+  assign km_sram_wdata = {km_sram_mem_req_i.wparity, km_sram_mem_req_i.wdata};
 
-    for (genvar b = 0; b < 4; b++) begin : gen_km_sram_wmask
-        assign km_sram_wmask[b*8+:8] = {8{km_sram_mem_req_i.be[b]}};
-    end
-    assign km_sram_wmask[35:32] = km_sram_mem_req_i.be;
+  for (genvar b = 0; b < 4; b++) begin : gen_km_sram_wmask
+    assign km_sram_wmask[b*8+:8] = {8{km_sram_mem_req_i.be[b]}};
+  end
+  assign km_sram_wmask[35:32] = km_sram_mem_req_i.be;
 
-    assign km_sram_mem_rsp_o.gnt     = 1'b1;
-    assign km_sram_mem_rsp_o.rdata   = km_sram_rdata[31:0];
-    assign km_sram_mem_rsp_o.rparity = km_sram_rdata[35:32];
+  assign km_sram_mem_rsp_o.gnt     = 1'b1;
+  assign km_sram_mem_rsp_o.rdata   = km_sram_rdata[31:0];
+  assign km_sram_mem_rsp_o.rparity = km_sram_rdata[35:32];
 
-    prim_ram_1p_adv #(
-        .Depth       (KM_SRAM_DEPTH),
-        .Width       (KM_SRAM_WIDTH),
-        .MemInitFile ("")
-    ) u_km_sram (
-        .clk_i    (clk_i),
-        .rst_ni   (rst_ni),
-        .req_i    (km_sram_mem_req_i.req),
-        .write_i  (km_sram_mem_req_i.we),
-        .addr_i   (km_sram_mem_req_i.addr[KM_SRAM_AW-1:0]),
-        .wdata_i  (km_sram_wdata),
-        .wmask_i  (km_sram_wmask),
-        .rdata_o  (km_sram_rdata),
-        .rvalid_o (km_sram_mem_rsp_o.rvalid),
-        .rerror_o (),
-        .alert_o  (),
-        .cfg_i    ('0),
-        .cfg_rsp_o()
-    );
+  prim_ram_1p_adv #(
+    .Depth       (KM_SRAM_DEPTH),
+    .Width       (KM_SRAM_WIDTH),
+    .MemInitFile ("")
+  ) u_km_sram (
+    .clk_i    (clk_i),
+    .rst_ni   (rst_ni),
+    .req_i    (km_sram_mem_req_i.req),
+    .write_i  (km_sram_mem_req_i.we),
+    .addr_i   (km_sram_mem_req_i.addr[KM_SRAM_AW-1:0]),
+    .wdata_i  (km_sram_wdata),
+    .wmask_i  (km_sram_wmask),
+    .rdata_o  (km_sram_rdata),
+    .rvalid_o (km_sram_mem_rsp_o.rvalid),
+    .rerror_o (),
+    .alert_o  (),
+    .cfg_i    ('0),
+    .cfg_rsp_o()
+  );
 
-    ////////////////////////////////
-    // OTBN IMEM External Module //
-    ////////////////////////////////
+  ////////////////////////////////
+  // OTBN IMEM External Module //
+  ////////////////////////////////
 
-    logic [sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0] otbn_imem_rdata;
+  logic [sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0] otbn_imem_rdata;
 
-    assign sep_crypto_pka_imem_sram_rsp.rdata   = otbn_imem_rdata;
-    assign sep_crypto_pka_imem_sram_rsp.q_valid = 1'b0;
+  assign sep_crypto_pka_imem_sram_rsp.rdata   = otbn_imem_rdata;
+  assign sep_crypto_pka_imem_sram_rsp.q_valid = 1'b0;
 
-    prim_ram_1p #(
-        .Width           (sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_WORD_WIDTH),
-        .Depth           (2**sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH),
-        .DataBitsPerMask (1)
-    ) u_otbn_imem_sram (
-        .clk_i    (sep_crypto_pka_imem_sram_req.clk),
-        .rst_ni   (rst_ni),
-        .req_i    (sep_crypto_pka_imem_sram_req.enable),
-        .write_i  (sep_crypto_pka_imem_sram_req.write),
-        .addr_i   (sep_crypto_pka_imem_sram_req.addr),
-        .wdata_i  (sep_crypto_pka_imem_sram_req.wdata),
-        .wmask_i  (sep_crypto_pka_imem_sram_req.wmask),
-        .rdata_o  (otbn_imem_rdata),
-        .cfg_i    ('0),
-        .cfg_rsp_o()
-    );
+  prim_ram_1p #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_WORD_WIDTH),
+    .Depth           (2**sep_crypto_pkg::SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH),
+    .DataBitsPerMask (1)
+  ) u_otbn_imem_sram (
+    .clk_i    (sep_crypto_pka_imem_sram_req.clk),
+    .rst_ni   (rst_ni),
+    .req_i    (sep_crypto_pka_imem_sram_req.enable),
+    .write_i  (sep_crypto_pka_imem_sram_req.write),
+    .addr_i   (sep_crypto_pka_imem_sram_req.addr),
+    .wdata_i  (sep_crypto_pka_imem_sram_req.wdata),
+    .wmask_i  (sep_crypto_pka_imem_sram_req.wmask),
+    .rdata_o  (otbn_imem_rdata),
+    .cfg_i    ('0),
+    .cfg_rsp_o()
+  );
 
-    ////////////////////////////////
-    // OTBN DMEM External Module //
-    ////////////////////////////////
+  ////////////////////////////////
+  // OTBN DMEM External Module //
+  ////////////////////////////////
 
-    logic [sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0] otbn_dmem_rdata;
+  logic [sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0] otbn_dmem_rdata;
 
-    assign sep_crypto_pka_dmem_sram_rsp.rdata = otbn_dmem_rdata;
+  assign sep_crypto_pka_dmem_sram_rsp.rdata = otbn_dmem_rdata;
 
-    prim_ram_1p #(
-        .Width           (sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_WORD_WIDTH),
-        .Depth           (2**sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH),
-        .DataBitsPerMask (1)
-    ) u_otbn_dmem_sram (
-        .clk_i    (sep_crypto_pka_dmem_sram_req.clk),
-        .rst_ni   (rst_ni),
-        .req_i    (sep_crypto_pka_dmem_sram_req.enable),
-        .write_i  (sep_crypto_pka_dmem_sram_req.write),
-        .addr_i   (sep_crypto_pka_dmem_sram_req.addr),
-        .wdata_i  (sep_crypto_pka_dmem_sram_req.wdata),
-        .wmask_i  (sep_crypto_pka_dmem_sram_req.wmask),
-        .rdata_o  (otbn_dmem_rdata),
-        .cfg_i    ('0),
-        .cfg_rsp_o()
-    );
+  prim_ram_1p #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_WORD_WIDTH),
+    .Depth           (2**sep_crypto_pkg::SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH),
+    .DataBitsPerMask (1)
+  ) u_otbn_dmem_sram (
+    .clk_i    (sep_crypto_pka_dmem_sram_req.clk),
+    .rst_ni   (rst_ni),
+    .req_i    (sep_crypto_pka_dmem_sram_req.enable),
+    .write_i  (sep_crypto_pka_dmem_sram_req.write),
+    .addr_i   (sep_crypto_pka_dmem_sram_req.addr),
+    .wdata_i  (sep_crypto_pka_dmem_sram_req.wdata),
+    .wmask_i  (sep_crypto_pka_dmem_sram_req.wmask),
+    .rdata_o  (otbn_dmem_rdata),
+    .cfg_i    ('0),
+    .cfg_rsp_o()
+  );
 
-    /////////////////////////////////
-    // Adams Bridge Memory Macros  //
-    /////////////////////////////////
-    // The ABR crypto engine (abr_top) lives in sep_crypto_abr_wrapper, under
-    // sep_crypto. Its 13-channel SRAM interface is threaded here as
-    // packed req/rsp structs (abr_mem_req_i / abr_mem_rsp_o, OTBN convention); this
-    // is the home for the technology macros. Each channel gets its own
-    // sep_abr_mem_1r1w / sep_abr_mem_1r1w_be instance driven straight off the
-    // request struct, reset from rst_ni. These macros hold no state across a reset --
-    // rst_ni only clears their output pipeline flops -- so they do not need abr_top's
-    // own (SEP-gated) reset; rst_ni releases earlier and stays released, and abr_top
-    // ignores stale pipeline data because it resets too.
-    //
-    // The `ifdef SEP_ABR_EN` below is the memory-side counterpart of the guard around
-    // u_sep_crypto_abr_wrapper_s3c_scan in sep_crypto.sv: when Adams Bridge is compiled
-    // out that file terminates the ABR AXI aperture with DECERR, and this file holds the
-    // memory response quiescent so sep.sv's mandatory port stays driven. Keep the two
-    // guards symmetric.
-    //
-    // Note that SEP_ABR_EN is defined for the WHOLE compilation by the `sep` Bender target
-    // (alongside the vendor's CALIPTRA) because `bender script flist-plus` hoists every
-    // define ahead of the source list, so every flow that pulls in the `sep` target takes
-    // this branch and builds the SRAMs.
+  /////////////////////////////////
+  // Adams Bridge Memory Macros  //
+  /////////////////////////////////
+  // The ABR crypto engine (abr_top) lives in sep_crypto_abr_wrapper, under
+  // sep_crypto. Its SRAM interface is threaded here as packed req/rsp structs
+  // (abr_mem_req_i / abr_mem_rsp_o, OTBN convention); this is the home for the
+  // technology macros. Every channel instantiates prim_ram_1r1w. Word-write
+  // channels tie the write mask all-ones. sig_z and pk expand wstrobe onto
+  // that mask (prim_ram_1r1w has no byte-write port). Reset comes from rst_ni.
+  //
+  // ABR_MASKING_EN must match the value given to sep_crypto_abr_wrapper / abr_top:
+  // when set, four extra coefficient banks hold the second DOM share; when
+  // clear those arrays are omitted and their rdata reads back 0.
+  //
+  // The `ifdef SEP_ABR_EN` below is the memory-side counterpart of the guard around
+  // u_sep_crypto_abr_wrapper_s3c_scan in sep_crypto.sv: when Adams Bridge is compiled
+  // out that file terminates the ABR AXI aperture with DECERR, and this file holds the
+  // memory response quiescent so sep.sv's mandatory port stays driven. Keep the two
+  // guards symmetric.
+  //
+  // Note that SEP_ABR_EN is defined for the WHOLE compilation by the `sep` Bender target
+  // (alongside the vendor's CALIPTRA) because `bender script flist-plus` hoists every
+  // define ahead of the source list, so every flow that pulls in the `sep` target takes
+  // this branch and builds the SRAMs.
 `ifdef SEP_ABR_EN
-    // Single-sourced with the abr_top instantiation in sep_crypto_abr_wrapper
-    // (sep_crypto.sv passes the same package parameters to that wrapper).
-    localparam bit          ABR_MEM_MASKING_EN   = sep_crypto_pkg::SEP_CRYPTO_ABR_MASKING_EN;
-    localparam int unsigned ABR_MEM_SRAM_LATENCY = sep_crypto_pkg::SEP_CRYPTO_ABR_SRAM_LATENCY;
+  // This file is compiled after the vendor packages, so depths can be taken from
+  // them directly; sep_crypto_pkg is compiled ahead of them and has to mirror the
+  // widths instead. The checks below pin the two together so a vendor geometry bump
+  // fails elaboration instead of silently truncating an address.
+  localparam int unsigned ABR_W1_DEPTH = abr_params_pkg::ABR_MEM_W1_DEPTH;
+  localparam int unsigned ABR_INST0_DEPTH = abr_params_pkg::ABR_MEM_INST0_DEPTH;
+  localparam int unsigned ABR_INST1_DEPTH = abr_params_pkg::ABR_MEM_INST1_DEPTH;
+  localparam int unsigned ABR_INST2_DEPTH = abr_params_pkg::ABR_MEM_INST2_DEPTH;
+  localparam int unsigned ABR_SK_DEPTH = abr_ctrl_pkg::SK_MEM_BANK_DEPTH;
+  localparam int unsigned ABR_SIGZ_DEPTH = abr_ctrl_pkg::SIG_Z_MEM_DEPTH;
+  localparam int unsigned ABR_PK_DEPTH = abr_ctrl_pkg::PK_MEM_DEPTH;
 
-    // This file is compiled after the vendor packages, so depths can be taken from
-    // them directly; sep_crypto_pkg is compiled ahead of them and has to mirror the
-    // widths instead. The checks below pin the two together so a vendor geometry bump
-    // fails elaboration instead of silently truncating an address.
-    localparam int unsigned ABR_W1_DEPTH    = abr_params_pkg::ABR_MEM_W1_DEPTH;
-    localparam int unsigned ABR_INST0_DEPTH = abr_params_pkg::ABR_MEM_INST0_DEPTH;
-    localparam int unsigned ABR_INST1_DEPTH = abr_params_pkg::ABR_MEM_INST1_DEPTH;
-    localparam int unsigned ABR_INST2_DEPTH = abr_params_pkg::ABR_MEM_INST2_DEPTH;
-    localparam int unsigned ABR_SK_DEPTH    = abr_ctrl_pkg::SK_MEM_BANK_DEPTH;
-    localparam int unsigned ABR_SIGZ_DEPTH  = abr_ctrl_pkg::SIG_Z_MEM_DEPTH;
-    localparam int unsigned ABR_PK_DEPTH    = abr_ctrl_pkg::PK_MEM_DEPTH;
+  // Address width each memory actually needs. The coefficient channels
+  // (INST0/INST1/INST2, plus masked twins) share one struct type sized to the
+  // widest of them (INST2), so the narrower ones are sliced down to these widths
+  // below; every other channel's struct field is already exact.
+  localparam int unsigned ABR_W1_ADDR_W = $clog2(ABR_W1_DEPTH);
+  localparam int unsigned ABR_INST0_ADDR_W = $clog2(ABR_INST0_DEPTH);
+  localparam int unsigned ABR_INST1_ADDR_W = $clog2(ABR_INST1_DEPTH);
+  localparam int unsigned ABR_INST2_ADDR_W = $clog2(ABR_INST2_DEPTH);
+  localparam int unsigned ABR_SK_ADDR_W = $clog2(ABR_SK_DEPTH);
+  localparam int unsigned ABR_SIGZ_ADDR_W = $clog2(ABR_SIGZ_DEPTH);
+  localparam int unsigned ABR_PK_ADDR_W = $clog2(ABR_PK_DEPTH);
 
-    // Address width each memory actually needs. The coefficient channels
-    // (INST0/INST1/INST2, plus masked twins) share one struct type sized to the
-    // widest of them (INST2), so the narrower ones are sliced down to these widths
-    // below; every other channel's struct field is already exact.
-    localparam int unsigned ABR_W1_ADDR_W    = $clog2(ABR_W1_DEPTH);
-    localparam int unsigned ABR_INST0_ADDR_W = $clog2(ABR_INST0_DEPTH);
-    localparam int unsigned ABR_INST1_ADDR_W = $clog2(ABR_INST1_DEPTH);
-    localparam int unsigned ABR_INST2_ADDR_W = $clog2(ABR_INST2_DEPTH);
-    localparam int unsigned ABR_SK_ADDR_W    = $clog2(ABR_SK_DEPTH);
-    localparam int unsigned ABR_SIGZ_ADDR_W  = $clog2(ABR_SIGZ_DEPTH);
-    localparam int unsigned ABR_PK_ADDR_W    = $clog2(ABR_PK_DEPTH);
-
-    // Memory-side counterpart of the g_abr_mem_* checks in sep_crypto_abr_wrapper:
-    // those pin the struct against the vendor parameters, this one pins it against the
-    // depths the SRAMs are actually built with. Every channel must match exactly --
-    // including INST2, which additionally sets the shared coefficient field width,
-    // so a mismatch there means the struct can no longer carry the address at all.
-    if (ABR_W1_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_W1_ADDR_W    ||
+  // Memory-side counterpart of the gen_abr_mem_* checks in sep_crypto_abr_wrapper:
+  // those pin the struct against the vendor parameters, this one pins it against the
+  // depths the SRAMs are actually built with. Every channel must match exactly --
+  // including INST2, which additionally sets the shared coefficient field width,
+  // so a mismatch there means the struct can no longer carry the address at all.
+  if (ABR_W1_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_W1_ADDR_W    ||
         ABR_INST0_ADDR_W != sep_crypto_pkg::SEP_CRYPTO_ABR_INST0_ADDR_W ||
         ABR_INST1_ADDR_W != sep_crypto_pkg::SEP_CRYPTO_ABR_INST1_ADDR_W ||
         ABR_INST2_ADDR_W != sep_crypto_pkg::SEP_CRYPTO_ABR_INST2_ADDR_W ||
         ABR_SK_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_SK_ADDR_W    ||
         ABR_SIGZ_ADDR_W  != sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_ADDR_W  ||
         ABR_PK_ADDR_W    != sep_crypto_pkg::SEP_CRYPTO_ABR_PK_ADDR_W)
-    begin : g_abr_mem_depth_check
-        $error({"ABR SRAM depths no longer match the SEP_CRYPTO_ABR_*_ADDR_W mirrors; an ",
-                "address bit would be dropped. Re-derive the mirrors in sep_crypto_pkg ",
-                "from abr_params_pkg / abr_ctrl_pkg."});
-    end
+    begin : gen_abr_mem_depth_check
+    $error(
+        {
+          "ABR SRAM depths no longer match the SEP_CRYPTO_ABR_*_ADDR_W mirrors; an ",
+          "address bit would be dropped. Re-derive the mirrors in sep_crypto_pkg ",
+          "from abr_params_pkg / abr_ctrl_pkg."
+        }
+    );
+  end
 
-    // w1_mem: 4-bit decomposed-w1 bits, own narrow addr/data fields.
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W),
-        .Depth       (ABR_W1_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
-    ) u_abr_w1_mem (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.w1_we),
-        .waddr_i (abr_mem_req_i.w1_waddr),
-        .wdata_i (abr_mem_req_i.w1_wdata),
-        .re_i    (abr_mem_req_i.w1_re),
-        .raddr_i (abr_mem_req_i.w1_raddr),
-        .rdata_o (abr_mem_rsp_o.w1_rdata)
+  // w1_mem: 4-bit decomposed-w1 bits, own narrow addr/data fields.
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W),
+    .Depth           (ABR_W1_DEPTH),
+    .DataBitsPerMask (1)
+  ) u_abr_w1_mem (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.w1_we),
+    .a_addr_i  (abr_mem_req_i.w1_waddr),
+    .a_wdata_i (abr_mem_req_i.w1_wdata),
+    .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_W1_DATA_W{1'b1}}),
+    .b_req_i   (abr_mem_req_i.w1_re),
+    .b_addr_i  (abr_mem_req_i.w1_raddr),
+    .b_rdata_o (abr_mem_rsp_o.w1_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
+
+  // Unmasked 96-bit coefficient banks. These four ride in the shared
+  // abr_mem_ch_req_t, so INST0/INST1 take the low ABR_INST*_ADDR_W address bits
+  // (the wrapper zero-extends them into the struct) while INST2, the widest,
+  // uses the whole field.
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+    .Depth           (ABR_INST0_DEPTH),
+    .DataBitsPerMask (1)
+  ) u_abr_mem_inst0_bank0 (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.mem_inst0_bank0.we),
+    .a_addr_i  (abr_mem_req_i.mem_inst0_bank0.waddr[ABR_INST0_ADDR_W-1:0]),
+    .a_wdata_i (abr_mem_req_i.mem_inst0_bank0.wdata),
+    .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+    .b_req_i   (abr_mem_req_i.mem_inst0_bank0.re),
+    .b_addr_i  (abr_mem_req_i.mem_inst0_bank0.raddr[ABR_INST0_ADDR_W-1:0]),
+    .b_rdata_o (abr_mem_rsp_o.mem_inst0_bank0_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
+
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+    .Depth           (ABR_INST0_DEPTH),
+    .DataBitsPerMask (1)
+  ) u_abr_mem_inst0_bank1 (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.mem_inst0_bank1.we),
+    .a_addr_i  (abr_mem_req_i.mem_inst0_bank1.waddr[ABR_INST0_ADDR_W-1:0]),
+    .a_wdata_i (abr_mem_req_i.mem_inst0_bank1.wdata),
+    .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+    .b_req_i   (abr_mem_req_i.mem_inst0_bank1.re),
+    .b_addr_i  (abr_mem_req_i.mem_inst0_bank1.raddr[ABR_INST0_ADDR_W-1:0]),
+    .b_rdata_o (abr_mem_rsp_o.mem_inst0_bank1_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
+
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+    .Depth           (ABR_INST1_DEPTH),
+    .DataBitsPerMask (1)
+  ) u_abr_mem_inst1 (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.mem_inst1.we),
+    .a_addr_i  (abr_mem_req_i.mem_inst1.waddr[ABR_INST1_ADDR_W-1:0]),
+    .a_wdata_i (abr_mem_req_i.mem_inst1.wdata),
+    .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+    .b_req_i   (abr_mem_req_i.mem_inst1.re),
+    .b_addr_i  (abr_mem_req_i.mem_inst1.raddr[ABR_INST1_ADDR_W-1:0]),
+    .b_rdata_o (abr_mem_rsp_o.mem_inst1_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
+
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+    .Depth           (ABR_INST2_DEPTH),
+    .DataBitsPerMask (1)
+  ) u_abr_mem_inst2 (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.mem_inst2.we),
+    .a_addr_i  (abr_mem_req_i.mem_inst2.waddr[ABR_INST2_ADDR_W-1:0]),
+    .a_wdata_i (abr_mem_req_i.mem_inst2.wdata),
+    .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+    .b_req_i   (abr_mem_req_i.mem_inst2.re),
+    .b_addr_i  (abr_mem_req_i.mem_inst2.raddr[ABR_INST2_ADDR_W-1:0]),
+    .b_rdata_o (abr_mem_rsp_o.mem_inst2_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
+
+  // Masked (second DOM share) twins of the four coefficient banks. They only exist
+  // when abr_top is built with masking; otherwise their read data reads back zero.
+  if (ABR_MASKING_EN) begin : gen_abr_masked_mem
+    prim_ram_1r1w #(
+      .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+      .Depth           (ABR_INST0_DEPTH),
+      .DataBitsPerMask (1)
+    ) u_abr_mem_inst0_bank0_masked (
+      .clk_a_i   (abr_mem_req_i.clk),
+      .clk_b_i   (abr_mem_req_i.clk),
+      .rst_a_ni  (rst_ni),
+      .rst_b_ni  (rst_ni),
+      .a_req_i   (abr_mem_req_i.mem_inst0_bank0_masked.we),
+      .a_addr_i  (abr_mem_req_i.mem_inst0_bank0_masked.waddr[ABR_INST0_ADDR_W-1:0]),
+      .a_wdata_i (abr_mem_req_i.mem_inst0_bank0_masked.wdata),
+      .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+      .b_req_i   (abr_mem_req_i.mem_inst0_bank0_masked.re),
+      .b_addr_i  (abr_mem_req_i.mem_inst0_bank0_masked.raddr[ABR_INST0_ADDR_W-1:0]),
+      .b_rdata_o (abr_mem_rsp_o.mem_inst0_bank0_masked_rdata),
+      .cfg_i     ('0),
+      .cfg_rsp_o ()
     );
 
-    // Unmasked 96-bit coefficient banks. These four ride in the shared
-    // abr_mem_ch_req_t, so INST0/INST1 take the low ABR_INST*_ADDR_W address bits
-    // (the wrapper zero-extends them into the struct) while INST2, the widest,
-    // uses the whole field.
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-        .Depth       (ABR_INST0_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
-    ) u_abr_mem_inst0_bank0 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.mem_inst0_bank0.we),
-        .waddr_i (abr_mem_req_i.mem_inst0_bank0.waddr[ABR_INST0_ADDR_W-1:0]),
-        .wdata_i (abr_mem_req_i.mem_inst0_bank0.wdata),
-        .re_i    (abr_mem_req_i.mem_inst0_bank0.re),
-        .raddr_i (abr_mem_req_i.mem_inst0_bank0.raddr[ABR_INST0_ADDR_W-1:0]),
-        .rdata_o (abr_mem_rsp_o.mem_inst0_bank0_rdata)
+    prim_ram_1r1w #(
+      .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+      .Depth           (ABR_INST0_DEPTH),
+      .DataBitsPerMask (1)
+    ) u_abr_mem_inst0_bank1_masked (
+      .clk_a_i   (abr_mem_req_i.clk),
+      .clk_b_i   (abr_mem_req_i.clk),
+      .rst_a_ni  (rst_ni),
+      .rst_b_ni  (rst_ni),
+      .a_req_i   (abr_mem_req_i.mem_inst0_bank1_masked.we),
+      .a_addr_i  (abr_mem_req_i.mem_inst0_bank1_masked.waddr[ABR_INST0_ADDR_W-1:0]),
+      .a_wdata_i (abr_mem_req_i.mem_inst0_bank1_masked.wdata),
+      .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+      .b_req_i   (abr_mem_req_i.mem_inst0_bank1_masked.re),
+      .b_addr_i  (abr_mem_req_i.mem_inst0_bank1_masked.raddr[ABR_INST0_ADDR_W-1:0]),
+      .b_rdata_o (abr_mem_rsp_o.mem_inst0_bank1_masked_rdata),
+      .cfg_i     ('0),
+      .cfg_rsp_o ()
     );
 
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-        .Depth       (ABR_INST0_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
-    ) u_abr_mem_inst0_bank1 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.mem_inst0_bank1.we),
-        .waddr_i (abr_mem_req_i.mem_inst0_bank1.waddr[ABR_INST0_ADDR_W-1:0]),
-        .wdata_i (abr_mem_req_i.mem_inst0_bank1.wdata),
-        .re_i    (abr_mem_req_i.mem_inst0_bank1.re),
-        .raddr_i (abr_mem_req_i.mem_inst0_bank1.raddr[ABR_INST0_ADDR_W-1:0]),
-        .rdata_o (abr_mem_rsp_o.mem_inst0_bank1_rdata)
+    prim_ram_1r1w #(
+      .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+      .Depth           (ABR_INST1_DEPTH),
+      .DataBitsPerMask (1)
+    ) u_abr_mem_inst1_masked (
+      .clk_a_i   (abr_mem_req_i.clk),
+      .clk_b_i   (abr_mem_req_i.clk),
+      .rst_a_ni  (rst_ni),
+      .rst_b_ni  (rst_ni),
+      .a_req_i   (abr_mem_req_i.mem_inst1_masked.we),
+      .a_addr_i  (abr_mem_req_i.mem_inst1_masked.waddr[ABR_INST1_ADDR_W-1:0]),
+      .a_wdata_i (abr_mem_req_i.mem_inst1_masked.wdata),
+      .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+      .b_req_i   (abr_mem_req_i.mem_inst1_masked.re),
+      .b_addr_i  (abr_mem_req_i.mem_inst1_masked.raddr[ABR_INST1_ADDR_W-1:0]),
+      .b_rdata_o (abr_mem_rsp_o.mem_inst1_masked_rdata),
+      .cfg_i     ('0),
+      .cfg_rsp_o ()
     );
 
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-        .Depth       (ABR_INST1_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
-    ) u_abr_mem_inst1 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.mem_inst1.we),
-        .waddr_i (abr_mem_req_i.mem_inst1.waddr[ABR_INST1_ADDR_W-1:0]),
-        .wdata_i (abr_mem_req_i.mem_inst1.wdata),
-        .re_i    (abr_mem_req_i.mem_inst1.re),
-        .raddr_i (abr_mem_req_i.mem_inst1.raddr[ABR_INST1_ADDR_W-1:0]),
-        .rdata_o (abr_mem_rsp_o.mem_inst1_rdata)
+    prim_ram_1r1w #(
+      .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
+      .Depth           (ABR_INST2_DEPTH),
+      .DataBitsPerMask (1)
+    ) u_abr_mem_inst2_masked (
+      .clk_a_i   (abr_mem_req_i.clk),
+      .clk_b_i   (abr_mem_req_i.clk),
+      .rst_a_ni  (rst_ni),
+      .rst_b_ni  (rst_ni),
+      .a_req_i   (abr_mem_req_i.mem_inst2_masked.we),
+      .a_addr_i  (abr_mem_req_i.mem_inst2_masked.waddr[ABR_INST2_ADDR_W-1:0]),
+      .a_wdata_i (abr_mem_req_i.mem_inst2_masked.wdata),
+      .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W{1'b1}}),
+      .b_req_i   (abr_mem_req_i.mem_inst2_masked.re),
+      .b_addr_i  (abr_mem_req_i.mem_inst2_masked.raddr[ABR_INST2_ADDR_W-1:0]),
+      .b_rdata_o (abr_mem_rsp_o.mem_inst2_masked_rdata),
+      .cfg_i     ('0),
+      .cfg_rsp_o ()
     );
+  end else begin : gen_abr_no_masked_mem
+    assign abr_mem_rsp_o.mem_inst0_bank0_masked_rdata = '0;
+    assign abr_mem_rsp_o.mem_inst0_bank1_masked_rdata = '0;
+    assign abr_mem_rsp_o.mem_inst1_masked_rdata       = '0;
+    assign abr_mem_rsp_o.mem_inst2_masked_rdata       = '0;
+  end
 
-    sep_abr_mem_1r1w #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-        .Depth       (ABR_INST2_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
-    ) u_abr_mem_inst2 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.mem_inst2.we),
-        .waddr_i (abr_mem_req_i.mem_inst2.waddr[ABR_INST2_ADDR_W-1:0]),
-        .wdata_i (abr_mem_req_i.mem_inst2.wdata),
-        .re_i    (abr_mem_req_i.mem_inst2.re),
-        .raddr_i (abr_mem_req_i.mem_inst2.raddr[ABR_INST2_ADDR_W-1:0]),
-        .rdata_o (abr_mem_rsp_o.mem_inst2_rdata)
-    );
+  // Secret-key memory, split into two 32-bit banks (even dwords in bank0, odd in
+  // bank1).
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
+    .Depth           (ABR_SK_DEPTH),
+    .DataBitsPerMask (1)
+  ) u_abr_sk_mem_bank0 (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.sk_bank0_we),
+    .a_addr_i  (abr_mem_req_i.sk_bank0_waddr),
+    .a_wdata_i (abr_mem_req_i.sk_bank0_wdata),
+    .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W{1'b1}}),
+    .b_req_i   (abr_mem_req_i.sk_bank0_re),
+    .b_addr_i  (abr_mem_req_i.sk_bank0_raddr),
+    .b_rdata_o (abr_mem_rsp_o.sk_bank0_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
 
-    // Masked (second DOM share) twins of the four coefficient banks. They only exist
-    // when abr_top is built with masking; otherwise their read data reads back zero.
-    if (ABR_MEM_MASKING_EN) begin : g_abr_masked_mem
-        sep_abr_mem_1r1w #(
-            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-            .Depth       (ABR_INST0_DEPTH),
-            .ReadLatency (ABR_MEM_SRAM_LATENCY)
-        ) u_abr_mem_inst0_bank0_masked (
-            .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (rst_ni),
-            .we_i    (abr_mem_req_i.mem_inst0_bank0_masked.we),
-            .waddr_i (abr_mem_req_i.mem_inst0_bank0_masked.waddr[ABR_INST0_ADDR_W-1:0]),
-            .wdata_i (abr_mem_req_i.mem_inst0_bank0_masked.wdata),
-            .re_i    (abr_mem_req_i.mem_inst0_bank0_masked.re),
-            .raddr_i (abr_mem_req_i.mem_inst0_bank0_masked.raddr[ABR_INST0_ADDR_W-1:0]),
-            .rdata_o (abr_mem_rsp_o.mem_inst0_bank0_masked_rdata)
-        );
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
+    .Depth           (ABR_SK_DEPTH),
+    .DataBitsPerMask (1)
+  ) u_abr_sk_mem_bank1 (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.sk_bank1_we),
+    .a_addr_i  (abr_mem_req_i.sk_bank1_waddr),
+    .a_wdata_i (abr_mem_req_i.sk_bank1_wdata),
+    .a_wmask_i ({sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W{1'b1}}),
+    .b_req_i   (abr_mem_req_i.sk_bank1_re),
+    .b_addr_i  (abr_mem_req_i.sk_bank1_raddr),
+    .b_rdata_o (abr_mem_rsp_o.sk_bank1_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
 
-        sep_abr_mem_1r1w #(
-            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-            .Depth       (ABR_INST0_DEPTH),
-            .ReadLatency (ABR_MEM_SRAM_LATENCY)
-        ) u_abr_mem_inst0_bank1_masked (
-            .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (rst_ni),
-            .we_i    (abr_mem_req_i.mem_inst0_bank1_masked.we),
-            .waddr_i (abr_mem_req_i.mem_inst0_bank1_masked.waddr[ABR_INST0_ADDR_W-1:0]),
-            .wdata_i (abr_mem_req_i.mem_inst0_bank1_masked.wdata),
-            .re_i    (abr_mem_req_i.mem_inst0_bank1_masked.re),
-            .raddr_i (abr_mem_req_i.mem_inst0_bank1_masked.raddr[ABR_INST0_ADDR_W-1:0]),
-            .rdata_o (abr_mem_rsp_o.mem_inst0_bank1_masked_rdata)
-        );
+  // Signature-z and public-key memories: wide rows written a dword at a time.
+  // wstrobe is ABR's one-bit-per-byte enable; prim_ram_1r1w has no byte-write
+  // port, so each strobe is expanded across its byte. Adopters with byte-write
+  // macros connect wstrobe directly.
+  if (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W !=
+            8 * sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W ||
+        sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W !=
+            8 * sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W) begin : gen_abr_wstrobe_width_check
+    $error("ABR sig_z / pk data widths must be 8 bits per wstrobe bit");
+  end
 
-        sep_abr_mem_1r1w #(
-            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-            .Depth       (ABR_INST1_DEPTH),
-            .ReadLatency (ABR_MEM_SRAM_LATENCY)
-        ) u_abr_mem_inst1_masked (
-            .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (rst_ni),
-            .we_i    (abr_mem_req_i.mem_inst1_masked.we),
-            .waddr_i (abr_mem_req_i.mem_inst1_masked.waddr[ABR_INST1_ADDR_W-1:0]),
-            .wdata_i (abr_mem_req_i.mem_inst1_masked.wdata),
-            .re_i    (abr_mem_req_i.mem_inst1_masked.re),
-            .raddr_i (abr_mem_req_i.mem_inst1_masked.raddr[ABR_INST1_ADDR_W-1:0]),
-            .rdata_o (abr_mem_rsp_o.mem_inst1_masked_rdata)
-        );
+  logic [sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W-1:0] abr_sig_z_wmask;
+  for (
+      genvar b = 0; b < sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_WSTRB_W; b++
+  ) begin : gen_abr_sig_z_wmask
+    assign abr_sig_z_wmask[b*8+:8] = {8{abr_mem_req_i.sig_z_wstrobe[b]}};
+  end
 
-        sep_abr_mem_1r1w #(
-            .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_MEM_DATA_W),
-            .Depth       (ABR_INST2_DEPTH),
-            .ReadLatency (ABR_MEM_SRAM_LATENCY)
-        ) u_abr_mem_inst2_masked (
-            .clk_i   (abr_mem_req_i.clk),
-            .rst_ni  (rst_ni),
-            .we_i    (abr_mem_req_i.mem_inst2_masked.we),
-            .waddr_i (abr_mem_req_i.mem_inst2_masked.waddr[ABR_INST2_ADDR_W-1:0]),
-            .wdata_i (abr_mem_req_i.mem_inst2_masked.wdata),
-            .re_i    (abr_mem_req_i.mem_inst2_masked.re),
-            .raddr_i (abr_mem_req_i.mem_inst2_masked.raddr[ABR_INST2_ADDR_W-1:0]),
-            .rdata_o (abr_mem_rsp_o.mem_inst2_masked_rdata)
-        );
-    end else begin : g_abr_no_masked_mem
-        assign abr_mem_rsp_o.mem_inst0_bank0_masked_rdata = '0;
-        assign abr_mem_rsp_o.mem_inst0_bank1_masked_rdata = '0;
-        assign abr_mem_rsp_o.mem_inst1_masked_rdata       = '0;
-        assign abr_mem_rsp_o.mem_inst2_masked_rdata       = '0;
-    end
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W),
+    .Depth           (ABR_SIGZ_DEPTH),
+    .DataBitsPerMask (8)
+  ) u_abr_sig_z_mem (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.sig_z_we),
+    .a_addr_i  (abr_mem_req_i.sig_z_waddr),
+    .a_wdata_i (abr_mem_req_i.sig_z_wdata),
+    .a_wmask_i (abr_sig_z_wmask),
+    .b_req_i   (abr_mem_req_i.sig_z_re),
+    .b_addr_i  (abr_mem_req_i.sig_z_raddr),
+    .b_rdata_o (abr_mem_rsp_o.sig_z_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
 
-    // Secret-key memory, split into two 32-bit banks (even dwords in bank0, odd in
-    // bank1).
-    //
-    // Write range checking is off on these two. abr_ctrl decodes the MLDSA_PRIVKEY_IN
-    // memory window as `api_sk_waddr inside {[31:PRIVKEY_NUM_DWORDS-1]}` and then
-    // subtracts 32, so dword 31 -- which is a register dword, and which the matching
-    // read decode correctly excludes by starting at 32 -- underflows to bank1 address
-    // 1023, past the 596-entry array. The array discards the write and every ABR test
-    // passes, but the write-side check would fire on every private-key load until the
-    // vendor window is fixed.
-    sep_abr_mem_1r1w #(
-        .Width             (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
-        .Depth             (ABR_SK_DEPTH),
-        .ReadLatency       (ABR_MEM_SRAM_LATENCY),
-        .EnWriteRangeCheck (1'b0)
-    ) u_abr_sk_mem_bank0 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.sk_bank0_we),
-        .waddr_i (abr_mem_req_i.sk_bank0_waddr),
-        .wdata_i (abr_mem_req_i.sk_bank0_wdata),
-        .re_i    (abr_mem_req_i.sk_bank0_re),
-        .raddr_i (abr_mem_req_i.sk_bank0_raddr),
-        .rdata_o (abr_mem_rsp_o.sk_bank0_rdata)
-    );
+  logic [sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W-1:0] abr_pk_wmask;
+  for (genvar b = 0; b < sep_crypto_pkg::SEP_CRYPTO_ABR_PK_WSTRB_W; b++) begin : gen_abr_pk_wmask
+    assign abr_pk_wmask[b*8+:8] = {8{abr_mem_req_i.pk_mem.wstrobe[b]}};
+  end
 
-    sep_abr_mem_1r1w #(
-        .Width             (sep_crypto_pkg::SEP_CRYPTO_ABR_SK_DATA_W),
-        .Depth             (ABR_SK_DEPTH),
-        .ReadLatency       (ABR_MEM_SRAM_LATENCY),
-        .EnWriteRangeCheck (1'b0)
-    ) u_abr_sk_mem_bank1 (
-        .clk_i   (abr_mem_req_i.clk),
-        .rst_ni  (rst_ni),
-        .we_i    (abr_mem_req_i.sk_bank1_we),
-        .waddr_i (abr_mem_req_i.sk_bank1_waddr),
-        .wdata_i (abr_mem_req_i.sk_bank1_wdata),
-        .re_i    (abr_mem_req_i.sk_bank1_re),
-        .raddr_i (abr_mem_req_i.sk_bank1_raddr),
-        .rdata_o (abr_mem_rsp_o.sk_bank1_rdata)
-    );
-
-    // Signature-z and public-key memories: wide rows written a dword at a time,
-    // hence the byte-enabled variant.
-    sep_abr_mem_1r1w_be #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_SIGZ_DATA_W),
-        .Depth       (ABR_SIGZ_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
-    ) u_abr_sig_z_mem (
-        .clk_i     (abr_mem_req_i.clk),
-        .rst_ni    (rst_ni),
-        .we_i      (abr_mem_req_i.sig_z_we),
-        .waddr_i   (abr_mem_req_i.sig_z_waddr),
-        .wdata_i   (abr_mem_req_i.sig_z_wdata),
-        .wstrobe_i (abr_mem_req_i.sig_z_wstrobe),
-        .re_i      (abr_mem_req_i.sig_z_re),
-        .raddr_i   (abr_mem_req_i.sig_z_raddr),
-        .rdata_o   (abr_mem_rsp_o.sig_z_rdata)
-    );
-
-    sep_abr_mem_1r1w_be #(
-        .Width       (sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W),
-        .Depth       (ABR_PK_DEPTH),
-        .ReadLatency (ABR_MEM_SRAM_LATENCY)
-    ) u_abr_pk_mem (
-        .clk_i     (abr_mem_req_i.clk),
-        .rst_ni    (rst_ni),
-        .we_i      (abr_mem_req_i.pk_mem.we),
-        .waddr_i   (abr_mem_req_i.pk_mem.waddr),
-        .wdata_i   (abr_mem_req_i.pk_mem.wdata),
-        .wstrobe_i (abr_mem_req_i.pk_mem.wstrobe),
-        .re_i      (abr_mem_req_i.pk_mem.re),
-        .raddr_i   (abr_mem_req_i.pk_mem.raddr),
-        .rdata_o   (abr_mem_rsp_o.pk_rdata)
-    );
+  prim_ram_1r1w #(
+    .Width           (sep_crypto_pkg::SEP_CRYPTO_ABR_PK_DATA_W),
+    .Depth           (ABR_PK_DEPTH),
+    .DataBitsPerMask (8)
+  ) u_abr_pk_mem (
+    .clk_a_i   (abr_mem_req_i.clk),
+    .clk_b_i   (abr_mem_req_i.clk),
+    .rst_a_ni  (rst_ni),
+    .rst_b_ni  (rst_ni),
+    .a_req_i   (abr_mem_req_i.pk_mem.we),
+    .a_addr_i  (abr_mem_req_i.pk_mem.waddr),
+    .a_wdata_i (abr_mem_req_i.pk_mem.wdata),
+    .a_wmask_i (abr_pk_wmask),
+    .b_req_i   (abr_mem_req_i.pk_mem.re),
+    .b_addr_i  (abr_mem_req_i.pk_mem.raddr),
+    .b_rdata_o (abr_mem_rsp_o.pk_rdata),
+    .cfg_i     ('0),
+    .cfg_rsp_o ()
+  );
 `else
-    // Adams Bridge compiled out (see above: not reached in any flow today). Hold the
-    // response quiescent so smu.sv's mandatory port is never left floating.
-    assign abr_mem_rsp_o = '0;
+  // Adams Bridge compiled out (see above: not reached in any flow today). Hold the
+  // response quiescent so smu.sv's mandatory port is never left floating.
+  assign abr_mem_rsp_o = '0;
 `endif  // SEP_ABR_EN
 
-    ///////////////
-    // SPI Logic //
-    ///////////////
 
-    sep_32_64_6_12_axi_req_t  cdns_xip_axi_req;
-    sep_32_64_6_12_axi_resp_t cdns_xip_axi_resp;
+  ///////////////
+  // SPI Logic //
+  ///////////////
 
-    //=========================================================================
-    // External TRNG -- terminated with a DECERR slave; entropy-stream/irq/
-    // alarm outputs are idled.
-    //=========================================================================
+  sep_32_64_6_12_axi_req_t  cdns_xip_axi_req;
+  sep_32_64_6_12_axi_resp_t cdns_xip_axi_resp;
 
-    prim_axi_lite_err_slv #(
-        .AXI_DATA_WIDTH (32),
-        .AXI_ADDR_WIDTH (32),
-        .axil_req_t     (sep_pkg::sep_32_32_axil_req_t),
-        .axil_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
-    ) u_ext_trng_axil_err_slv (
-        .clk_i       (clk_i),
-        .rst_ni      (rst_ni),
-        .axil_req_i  (ext_trng_axil_req_i),
-        .axil_resp_o (ext_trng_axil_resp_o)
-    );
+  //=========================================================================
+  // External TRNG -- terminated with a DECERR slave; entropy-stream/irq/
+  // alarm outputs are idled.
+  //=========================================================================
 
-    assign ext_trng_axis_req_o = '{default: '0};
-    assign ext_trng_irq_o      = 1'b0;
-    assign ext_trng_alarm_o    = 1'b0;
+  prim_axi_lite_err_slv #(
+    .AXI_DATA_WIDTH (32),
+    .AXI_ADDR_WIDTH (32),
+    .axil_req_t     (sep_pkg::sep_32_32_axil_req_t),
+    .axil_resp_t    (sep_pkg::sep_32_32_axil_resp_t)
+  ) u_ext_trng_axil_err_slv (
+    .clk_i       (clk_i),
+    .rst_ni      (rst_ni),
+    .axil_req_i  (ext_trng_axil_req_i),
+    .axil_resp_o (ext_trng_axil_resp_o)
+  );
 
-    //=========================================================================
-    // AXI Extension -- terminated with a DECERR slave, keeping the bus from
-    // hanging until an adopter connects a real peripheral here.
-    //=========================================================================
+  assign ext_trng_axis_req_o = '{default: '0};
+  assign ext_trng_irq_o      = 1'b0;
 
-    axi_err_slv #(
-        .AxiIdWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
-        .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
-        .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
-        .Resp       (axi_pkg::RESP_DECERR),
-        .RespWidth  (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
-        .RespData   ('0),
-        .ATOPs      (1'b0),
-        .MaxTrans   (2)
-    ) u_axi_extension_err_slv (
-        .clk_i      (clk_i),
-        .rst_ni     (rst_ni),
-        .test_i     (test_en_i),
-        .slv_req_i  (axi_extension_axi_req_i),
-        .slv_resp_o (axi_extension_axi_resp_o)
-    );
+  //=========================================================================
+  // AXI Extension -- terminated with a DECERR slave, keeping the bus from
+  // hanging until an adopter connects a real peripheral here.
+  //=========================================================================
+
+  axi_err_slv #(
+    .AxiIdWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
+    .axi_req_t  (sep_pkg::sep_32_64_6_12_axi_req_t),
+    .axi_resp_t (sep_pkg::sep_32_64_6_12_axi_resp_t),
+    .Resp       (axi_pkg::RESP_DECERR),
+    .RespWidth  (sep_pkg::SEP_32_64_6_12_DATA_WIDTH),
+    .RespData   ('0),
+    .ATOPs      (1'b0),
+    .MaxTrans   (2)
+  ) u_axi_extension_err_slv (
+    .clk_i      (clk_i),
+    .rst_ni     (rst_ni),
+    .test_i     (test_en_i),
+    .slv_req_i  (axi_extension_axi_req_i),
+    .slv_resp_o (axi_extension_axi_resp_o)
+  );
 
 endmodule

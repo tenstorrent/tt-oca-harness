@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# markdownlint config: relaxed to match this repo's actual Markdown style.
+# See flows/lint/markdownlint.mk for how this is invoked.
+default: true
+
+# Disabled like Ruff's E501/yamllint's line-length: many long lines here are
+# single tokens (URLs, table cells) that wrapping would only make worse.
+MD013: false
+
+# MD024/no-duplicate-heading: multiple per-block READMEs and CHANGELOGs
+# legitimately reuse section headings ("## Usage", "## Overview", etc.)
+# across sibling files; only flag duplicates within the same document.
+MD024:
+  siblings_only: true
+
+# MD025/single-title: the library's default front_matter_title heuristic
+# ("^\s*title\s*[:=]") misreads a `title:` field inside the .github/workflows
+# Copilot-agent *.md frontmatter -- config for that workflow, not a document
+# title -- as this document's H1, then flags the real one as a duplicate.
+MD025:
+  front_matter_title: ""
+
+# MD029/ol-prefix: several numbered steps in DV guides are followed by a
+# fenced code block that isn't indented under the list item, which per
+# CommonMark ends the list -- markdownlint then sees a fresh one-item list
+# and expects it to start at 1, regardless of style. Reindenting every such
+# code fence is a bigger doc rewrite than this lint-tooling change should
+# carry; leave ordered-list numbering as a hand-reviewed convention instead.
+MD029: false
+
+# MD036/no-emphasis-as-heading: bolded text is used deliberately as an inline
+# label (e.g. "**Purpose**: ...") throughout, not as a heading substitute.
+MD036: false
+
+# MD040/fenced-code-language: many fenced blocks here are plain command/log
+# output or ASCII diagrams with no applicable language, not omissions.
+MD040: false
+
+# MD041/first-line-heading: PR/issue templates and included partials
+# deliberately start with body content, not a document title.
+MD041: false
+
+# MD060/table-column-style: this repo mixes compact and aligned pipe-table
+# styles across existing tables; not worth a repo-wide table rewrite here.
+MD060: false

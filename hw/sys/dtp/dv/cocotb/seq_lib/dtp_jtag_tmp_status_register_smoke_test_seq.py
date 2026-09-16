@@ -23,7 +23,10 @@ class dtp_jtag_tmp_status_register_smoke_test_seq(dtp_debug_tdr_base_test_seq):
         self.assert_equal("TMP_STATUS.persistence after reset", decoded["persistence"], 0)
 
         self.log_step(2, "Read TMP_STATUS with several DR shift values")
+        # Exhaustive 2-bit sweep in a seeded per-pass order: repeated loops
+        # exercise different arm/clear interleavings of bypass_escape.
         shift_values = [0x0, 0x1, 0x2, 0x3]
+        self.rng("tmp_smoke_shift_order").shuffle(shift_values)
         for idx, shift_value in enumerate(shift_values, start=1):
             observed = await self.read_tmp_status(shift_value=shift_value)
             decoded = self.log_tmp_status(f"Shift-value sweep {idx}", observed)

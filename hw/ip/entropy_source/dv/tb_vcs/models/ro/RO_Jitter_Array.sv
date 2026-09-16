@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
 module RO_Jitter_Array #(
   parameter int N = 16,
@@ -19,8 +19,10 @@ module RO_Jitter_Array #(
 );
   genvar i;
   generate
-    for (i = 0; i < N; i++) begin : g_ro
-      RO_Jitter_Model #(.PROB_SCALE(PROB_SCALE)) u_ro (
+    for (i = 0; i < N; i++) begin : gen_ro
+      RO_Jitter_Model #(
+        .PROB_SCALE(PROB_SCALE)
+      ) u_ro (
         .clk_i            (clk_i),
         .rstn_i           (rstn_i),
         .cfg_enable_i     (enable_i[i]),  // Use per-lane enable from DUT
@@ -54,7 +56,9 @@ module RO_Jitter_Array #(
   // Instantiate dedicated RO_Jitter_Model for word32 generation
   // This reuses all existing bias/correlation/stuck-at logic
   // Enable continuously to produce bits every cycle
-  RO_Jitter_Model #(.PROB_SCALE(PROB_SCALE)) u_word32_gen (
+  RO_Jitter_Model #(
+    .PROB_SCALE(PROB_SCALE)
+  ) u_word32_gen (
     .clk_i            (clk_i),
     .rstn_i           (rstn_i),
     .cfg_enable_i     (cfg.word32_enable),       // Enable continuously when word32 mode active

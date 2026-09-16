@@ -9,7 +9,8 @@
 #   make BUILD_TYPE=debug        # debug build
 #   make RISCV_TOOLCHAIN=/path/to/bin   # explicit toolchain override
 #
-# Requires: riscv64-unknown-elf-gcc (and friends) on PATH, or RISCV_TOOLCHAIN set.
+# Requires: RISCV_TOOLCHAIN pointing at a picolibc-enabled
+# riscv64-unknown-elf-* bin dir, or scripts/docker-run.sh.
 
 # =============================================================================
 # CONFIGURATION
@@ -32,10 +33,11 @@ CONFIG := smc
 # =============================================================================
 
 # RISCV_TOOLCHAIN may be set externally (env var or make argument) to the
-# *directory* containing the toolchain binaries.  When empty the tools are
-# resolved from PATH, matching the convention used by hw/common/dv/fw/compile.mk
-# and hw/common/dv/fw/toolchain.mk.
+# *directory* containing the toolchain binaries. When empty, compiler-dependent
+# targets run through scripts/docker-run.sh run-here.
 RISCV_TOOLCHAIN ?=
+OCAH_ROOT ?= $(abspath $(CURDIR)/../../../../..)
+OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 
 ifneq ($(RISCV_TOOLCHAIN),)
   _TC_PREFIX := $(RISCV_TOOLCHAIN)/
@@ -235,14 +237,52 @@ ECC_HEX_FILE     := $(HEX_DIR)/$(TARGET).ecc.hex
 BIN64_FILE       := $(HEX_DIR)/$(TARGET).bin64
 MAP_FILE         := $(OUT_DIR)/$(TARGET).map
 DISASM_FILE      := $(DISASM_DIR)/$(TARGET).dis
+SYM_FILE         := $(HEX_DIR)/$(TARGET).sym
 
 # =============================================================================
 # BUILD RULES
 # =============================================================================
 
-.PHONY: all
-all: info $(ELF_FILE) $(BIN_FILE) $(HEX_FILE) $(PRELOAD_HEX_FILE) \
-     $(ECC_HEX_FILE) $(BIN64_FILE) $(DISASM_FILE) size
+.PHONY: all toolchain-images toolchain-images-build pack-images
+all:
+	$(MAKE) toolchain-images
+	$(MAKE) pack-images
+
+toolchain-images:
+	@if [ -n "$(RISCV_TOOLCHAIN)" ]; then \
+	  $(MAKE) toolchain-images-build; \
+	elif [ -x "$(OCAH_DOCKER_RUN)" ]; then \
+	  echo "[bootrom] RISCV_TOOLCHAIN is unset; building in the OCAH toolchain container"; \
+	  env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS \
+	    "$(OCAH_DOCKER_RUN)" run-here \
+	    $(MAKE) -C "$(CURDIR)" \
+	    BUILD_TYPE="$(BUILD_TYPE)" TARGET="$(TARGET)" CHIP_ARCH="$(CHIP_ARCH)" \
+	    ENABLE_RELEASE_PRINTS="$(ENABLE_RELEASE_PRINTS)" \
+	    ROM_PADDING_SELFTEST="$(ROM_PADDING_SELFTEST)" I3C_CORE="$(I3C_CORE)" \
+	    EXTRA_DEFINES="$(EXTRA_DEFINES)" \
+	    NONFREE_DRIVER_SOURCES="$(NONFREE_DRIVER_SOURCES)" \
+	    RISCV_PREFIX=riscv64-unknown-elf- toolchain-images-build; \
+	else \
+	  echo "error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset" >&2; \
+	  exit 1; \
+	fi
+
+toolchain-images-build: info $(ELF_FILE) $(BIN_FILE) $(HEX_FILE) \
+     $(DISASM_FILE) $(SYM_FILE) size
+
+pack-images:
+	@test -f "$(BIN_FILE)" && test -f "$(HEX_FILE)" || { \
+	  echo "error: ROM toolchain images are missing; run 'make toolchain-images' first" >&2; \
+	  exit 1; \
+	}
+	@echo "PRELOAD $(PRELOAD_HEX_FILE)"
+	@python3 $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py \
+	    $(HEX_FILE) --out_file $(PRELOAD_HEX_FILE)
+	@echo "ECC $(ECC_HEX_FILE)"
+	@python3 $(SCRIPTS_DIR)/gen_64b_ecc.py $(BIN_FILE) $(ECC_HEX_FILE)
+	@echo "BIN64 $(BIN64_FILE)"
+	@python3 $(SCRIPTS_DIR)/bin_to_64b.py \
+	    --input $(BIN_FILE) --output $(BIN64_FILE)
 
 .PHONY: info
 info:
@@ -328,6 +368,12 @@ $(BIN64_FILE): $(BIN_FILE) | $(HEX_DIR)
 	@echo "BIN64 $@"
 	@python3 $(SCRIPTS_DIR)/bin_to_64b.py --input $< --output $@
 
+# nm listing next to the images: the DV processor-state monitors symbolize
+# retired PCs from it.
+$(SYM_FILE): $(ELF_FILE) | $(HEX_DIR)
+	@echo "SYM $@"
+	@$(NM) -B -n $< > $@
+
 # -d (code sections) not -D (all sections): binutils 2.44 objdump aborts on -D
 # for this image's NOBITS/.stack layout, and disassembling data is noise anyway.
 $(DISASM_FILE): $(ELF_FILE) | $(DISASM_DIR)
@@ -387,7 +433,9 @@ help:
 	@echo "  make                         - release build"
 	@echo "  make BUILD_TYPE=debug        - debug build"
 	@echo "  make RISCV_TOOLCHAIN=/path   - explicit toolchain directory"
+	@echo "  (unset RISCV_TOOLCHAIN uses scripts/docker-run.sh run-here)"
 	@echo "  make clean                   - remove build/"
 	@echo "  make check                   - validate build environment"
 
-.PHONY: all info clean distclean debug release size memory check check-toolchain help
+.PHONY: all toolchain-images toolchain-images-build pack-images info clean \
+        distclean debug release size memory check check-toolchain help

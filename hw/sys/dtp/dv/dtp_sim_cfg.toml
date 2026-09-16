@@ -4,10 +4,9 @@
 schema_version = 1
 
 # Launch entry: selected by `--dut dtp`. Two frameworks share this config and one tb_top:
-# cocotb/PyUVM (default; open-source VIP — cocotbext-jtag for the JTAG TAP, cocotbext-axi for the
-# JTAG2AXI debug/OTP AXI targets; iJTAG/CTP/CTM stay on in-house BFMs) and SV-UVM
-# (`--framework uvm`, VCS; see the [frameworks.uvm] overlay at the bottom). Shared stage graph +
-# tool list come from profile = "native".
+# cocotb/PyUVM (default) and SV-UVM (`--framework uvm`, VCS; see the [frameworks.uvm] overlay at
+# the bottom); both bind the shared ocah_jtag_vip / ocah_axi_vip interfaces that tb_top
+# instantiates. Shared stage graph + tool list come from profile = "native".
 name = "dtp"
 profile = "native"
 default_framework = "cocotb"
@@ -22,7 +21,7 @@ kind = "clean"
 paths = ["{run_dir}", "hw/sys/dtp/dv/build"]
 
 [build]
-# Native build is driven by the Bender/filelist keys below; .core files are external-only.
+# Native build is driven by the Bender/filelist keys below.
 top_module = "dtp_uvm_top"
 top_file = "hw/sys/dtp/dv/tb/tb_top.sv"
 filelist = "hw/sys/dtp/dv/build/dtp_dut_compile.f"
@@ -38,7 +37,26 @@ common_bender_targets = [
 ]
 # DUT and simulation targets.
 bender_targets = ["dtp", "simulation"]
-incdirs = ["hw/sys/dtp/dv/tb"]
+incdirs = ["hw/common/assert"]
+# Shared TB interfaces, the shared protocol SVA checkers, and the flow-shared
+# functional-coverage modules (cov/sv/): this list feeds the cocotb/Verilator
+# filelist; the [frameworks.uvm.build] sources list (which replaces this one)
+# takes the VIP interfaces and checkers from the VIP manifests and repeats the
+# DTP entries.
+sources = [
+  "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
+]
 
 [frameworks.cocotb]
 # Uniform flow-first layout: cocotb env/seq_lib/tests live under cocotb/.
@@ -46,6 +64,10 @@ python_root = "hw/sys/dtp/dv/cocotb"
 test_dir = "hw/sys/dtp/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
+  # Generated SystemRDL Python headers of the cross-trigger IP; the XTRIG CSR map
+  # in cocotb/env/dtp_xtrig_types.py imports its offsets and field masks from them.
+  "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/py",
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/py",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
@@ -85,34 +107,55 @@ description = "PyUVM cross-trigger XTRIG, CTP, and CTM tests"
 timeout_sec = 1800
 args = []
 
-# OD-19: one [targets.<name>] merges the former [compile_targets]/[run_targets] split.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 [targets.default]
 description = "DTP cocotb target for public JTAG/JTAG2AXI smoke and coverage"
 build_dir = "hw/sys/dtp/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
 
 [targets.default.tools.verilator]
+# --assert evaluates the two-state protocol SVA (a failure prints %Error and
+# stops the run); --no-assert-case keeps the unique/priority-case checks of the
+# DUT and vendored RTL out of that set.
 flags = [
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
+  "--assert",
+  "--no-assert-case",
 ]
+
+[coverage.verilator]
+# Instrument line/branch (--coverage-line), expression, and SVL user coverage
+# (the dtp_fcov cover-property points); toggle instrumentation stays off to
+# keep per-test databases lean. Replaces the simulator-default `--coverage`
+# (which enables all forms including toggle). Matches the sep/smu DUT configs.
+# --output-groups 0 compiles the generated .cpp files one by one instead of
+# in --build-jobs groups. Verilator groups by file count, and on a
+# coverage-instrumented model one group can become a translation unit of
+# several hundred MB that a hosted runner cannot compile.
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
-# for both frameworks: +define+UVM (below) switches tb/tb_top.sv from the ported cocotb
-# shape to the self-contained SV-UVM shape, which `include`s uvm/tests/dtp_tests.sv.
+# for both frameworks: +define+UVM (below) adds the harness block of tb/tb_top.sv (clock
+# generator, uvm_config_db publication, run_test()), which `include`s uvm/tests/dtp_tests.sv.
 [frameworks.uvm]
-description = "DTP SV-UVM smoke flow (VCS)"
+description = "DTP SV-UVM flow (VCS)"
 
 [frameworks.uvm.build]
-# The shared VIP SV-UVM layers come from VIP-owned ordered manifests, expanded in listed order
-# AHEAD of this table's own incdirs/sources (dedup-merge) — never hand-copy VIP paths here.
-# Compile order stays load-bearing and explicit: the generated filelist emits the expanded
-# `sources` AFTER the bender filelist (DUT packages visible), then `top_file` last:
-#   ocah_jtag_vip manifest -> ocah_axi_vip manifest (each: interface -> collateral -> UVM pkg)
-#   -> dtp_tb_if -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
+# The shared framework library and the VIP SV-UVM layers come from their owned ordered
+# manifests, expanded in listed order AHEAD of this table's own incdirs/sources (dedup-merge)
+# — never hand-copy library or VIP paths here. Compile order stays load-bearing and explicit:
+# the generated filelist emits the expanded `sources` AFTER the bender filelist (DUT packages
+# visible), then `top_file` last:
+#   ocah_lib manifest -> ocah_jtag_vip manifest -> ocah_axi_vip manifest
+#   (each: evidence base -> interface -> collateral -> UVM pkg)
+#   -> dtp_tb_if, dtp_scan_if, dtp_xtrig_if -> generated CSR address maps -> dtp_env_pkg
+#   -> dtp_seq_lib_pkg -> tb_top.sv
+# dtp_env_pkg compiles before dtp_seq_lib_pkg: the scenario virtual sequences run on the
+# dtp_virtual_sequencer the env package declares.
 source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
   "hw/common/dv/vip/ocah_jtag_vip/uvm/sources.toml",
   "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
 ]
@@ -120,16 +163,29 @@ filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_compile.f"
 bender_filelist = "hw/sys/dtp/dv/build/uvm/dtp_uvm_bender.f"
 work_dir = "hw/sys/dtp/dv/build/uvm"
 incdirs = [
-  "hw/sys/dtp/dv/tb",
   "hw/common/assert",
+  # Generated SystemRDL SystemVerilog headers of the cross-trigger IP: field masks
+  # for the XTRIG CSR constants in uvm/env/dtp_types.svh.
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/svh",
+  "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/svh",
   "hw/sys/dtp/dv/uvm/env",
   "hw/sys/dtp/dv/uvm/seq_lib",
   "hw/sys/dtp/dv/uvm/tests",
 ]
 sources = [
+  "hw/sys/dtp/dv/cov/sv/dtp_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_jtag2axi_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_debug_tdr_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
+  "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
-  "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
+  "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
+  # Generated cross-trigger port address map (PeakRDL): the CSR offsets the DTP scoreboard
+  # predictor and the XTRIG sequences read; the Bender DUT layer carries only the regblock.
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
+  "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
 ]
 
 [frameworks.uvm.sim]
@@ -138,5 +194,5 @@ args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
 [frameworks.uvm.targets.default]
 description = "DTP SV-UVM default target"
 build_dir = "hw/sys/dtp/dv/build/uvm"
-# The bare `UVM` define (selects the SV-UVM shape of the shared tb_top.sv) comes from the
-# native profile's [frameworks.uvm] overlay — no per-DUT copy.
+# The bare `UVM` define (adds the SV-UVM harness block of the shared tb_top.sv) comes from
+# the native profile's [frameworks.uvm] overlay — no per-DUT copy.

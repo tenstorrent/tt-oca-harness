@@ -7,7 +7,7 @@
 ===== Overview
 
 The GPIO (General Purpose Input/Output) peripheral provides programmable
-digital I/O capabilities for the OCH system. It serves as a flexible
+digital I/O capabilities for the OCAH system. It serves as a flexible
 interface for configuration straps, general-purpose signaling, and
 bit-banging protocols. The peripheral features dual-mode operation
 supporting both register-driven control and LSIO (Low Speed

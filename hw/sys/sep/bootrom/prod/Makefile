@@ -1,36 +1,29 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-SHELL := /bin/bash
+SHELL := /usr/bin/env
+.SHELLFLAGS := bash -c
 #
-# OSS SEP Boot ROM (non-secure ROM boot test subset).
+# SEP Boot ROM.
 #
-# A trimmed copy of fw/sep/bootcode adapted for the OSS DV flow:
-#   * SPI is stubbed (src/sep_spi.c) -- the OSS `sep` DUT has no Cadence xSPI, so
-#     the ROM skips the SPI manifest and boots from the SMC-SRAM manifest path.
-#
-# The manifest+BL1 image the ROM boots (from the SMC-SRAM path) is built entirely
-# from source in this tree: bl1_pass_test (<sep>/dv/fw/tests/bl1_pass_test) is compiled and
-# packed by the real tt-boot-manifest packer from the tools/tt-boot-manifest
-# submodule, using configs/non_secure_boot_test.yaml, then rebased to the SMC-SRAM
-# base -> build/smc_mem.hex. The old flow that sed-rebased
-# fw/sep/bootcode/prebuilt/non_secure_boot.spi_preload is gone; nothing here
-# depends on the internal prebuilt blob.
-#
-# Code (.text) links to Boot ROM (ROM_BASE) -> loaded via +sep_boot_rom_hex.
-# Data (.rodata/.data/.bss) links to DCCM -> backdoor-loaded via the TCM responder.
+# SPI is stubbed (src/sep_spi.c): the `sep` DUT has no Cadence xSPI, so the ROM
+# skips the SPI manifest and boots from the SMC-SRAM manifest path.  The
+# manifest+BL1 image it boots is built from source here -- bl1_pass_test is
+# compiled and packed by tt-boot-manifest from configs/non_secure_boot_test.yaml,
+# then rebased to the SMC-SRAM base.
 #
 # Outputs (build/, gitignored):
-#   boot_rom.vmem     - 64-bit VMEM for the Boot ROM responder ($readmemh)
-#   boot_rom.itcm.hex - ROM .text as TCM-relative byte hex (legacy/optional)
-#   boot_rom.dtcm.hex - .rodata/.data/.bss as DCCM-relative byte hex
-#   smc_mem.hex       - manifest+BL1 image at SMC-SRAM base (+sep_smc_mem_hex)
+#   boot_rom.vmem     - 64-bit VMEM for the Boot ROM responder
+#   boot_rom.itcm.hex - ROM .text as TCM-relative byte hex
+#   boot_rom.dtcm.hex - .data/.bss as DCCM-relative byte hex
+#   smc_mem.hex       - manifest+BL1 image at the SMC-SRAM base
 #
-# Prereqs: riscv toolchain in PATH (default riscv64-unknown-elf-*). No picolibc.
-# The packer's Python dependencies come from the submodule's own pyproject.toml,
-# installed on demand by uv -- see PACK_RUN below.
-
-GCC_PREFIX ?= riscv64-unknown-elf
+# Prereqs: RISCV_TOOLCHAIN pointing at a picolibc-enabled toolchain bin dir, or
+# scripts/docker-run.sh. The packer's Python dependencies come from its
+# submodule's pyproject.toml, installed on demand by uv, and stay on the host.
+RISCV_TOOLCHAIN ?=
+RISCV_PREFIX ?= $(if $(wildcard $(RISCV_TOOLCHAIN)/riscv64-unknown-elf-gcc),riscv64-unknown-elf-,riscv-none-elf-)
+GCC_PREFIX ?= $(if $(strip $(RISCV_TOOLCHAIN)),$(patsubst %/,%,$(RISCV_TOOLCHAIN))/$(patsubst %-,%,$(RISCV_PREFIX)),riscv64-unknown-elf)
 
 # hw/sys/sep -- this ROM lives at <sep>/bootrom/prod, the DV tree is its sibling.
 SEP_ROOT := $(abspath $(CURDIR)/../..)
@@ -38,22 +31,28 @@ DV_ROOT  := $(SEP_ROOT)/dv
 
 OCAH_ROOT := $(abspath $(SEP_ROOT)/../../..)
 
-# Generated SEP register headers (sep.h umbrella, sep_addr.h, per-block headers),
-# emitted by the open register flow next to the RDL they come from
-# (`make ocah-regen-regs`). They used to be copies vendored into include/;
-# reading the generated ones instead is what keeps them from drifting away from
-# the RDL the RTL is built from. This build drives itself rather than going
-# through compile.mk, so it borrows that engine's include set verbatim.
+# Generated SEP register headers, read from the register flow's own output so
+# they cannot drift from the RDL the RTL is built from.
 include $(OCAH_ROOT)/hw/common/dv/fw/reg_includes.mk
 REG_INCLUDE_DIRS := $(call ocah_fw_nonfree_reg_includes,sep) $(call ocah_fw_reg_includes,sep)
 
 ROM_BASE  ?= 0x10040000
 DCCM_BASE ?= 0xC0040000
 
-# DCCM/SRAM scrub disabled for DV (backdoor preloads with correct ECC; the CPU
-# store loop is extremely slow in RTL sim). Matches the internal bootcode default.
-DCCM_SCRUB_BYTES ?= 0
+# Full DCCM. Reset does not clear it and explicit_memzero() misses temporaries
+# and spilled registers, so this scrub is what keeps key material off the stack.
+DCCM_SCRUB_BYTES ?= 0x20000
+
+# Off, and not for speed: rom_clear_ext_sram() runs before the manifest load and
+# would wipe the warm handler sep_scratch_7_test preloads at SRAM_BASE + 0x100.
+# Stays off until that preload can be staged after the cold-boot scrub.
 SRAM_SCRUB_BYTES ?= 0
+
+# MUST be 1 for release: the ICCM clear is what gives ICCM valid ECC, which on
+# silicon powers up random. With it off, only the ICCM words the BL1 load writes
+# have valid ECC -- not the rest of the image's last 64-bit fetch line when the
+# BL1 length is not 8-byte aligned. Off here because the clear costs ~1.8M cycles.
+ROM_ICCM_CLEAR_ENABLE ?= 0
 PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0
 BUILD_TYPE ?= test
@@ -106,9 +105,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/rsa_3072_app_otbn.o
 
 # The secure-boot path verifies the manifest signature on OTBN, so the ROM links
-# the same generated RSA-3072 OTBN application the fw test engine builds. The
-# app (IMEM/DMEM images + DMEM symbol offsets) is emitted by the shared engine
-# under <sep>/dv/fw/build/otbn/; the $(OTBN_APP_C) rule below regenerates it.
+# the generated RSA-3072 OTBN application; the $(OTBN_APP_C) rule regenerates it.
 OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
@@ -120,18 +117,17 @@ NONFREE_BOOTCODE_SOURCES ?=
 NONFREE_BOOTCODE_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(NONFREE_BOOTCODE_SOURCES)))
 OBJS += $(NONFREE_BOOTCODE_OBJS)
 
-# rv32im (no C) + no relax, matching the internal ROM build. zifencei is spelled
-# out because binutils >= 2.38 rejects fence.i (rom_handoff.c) without it.
+# rv32im (no C) + no relax. zifencei is spelled out because binutils >= 2.38
+# rejects fence.i without it.
 CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
-# The ROM itself is freestanding and links -nostdlib, but the generated register
-# headers close their packing checks with static_assert, i.e. <assert.h>. That is
-# not a freestanding header, and in the toolchain container it only resolves
-# through the picolibc spec file - hence the specs on the compile line only.
+# The generated register headers need <assert.h> for their packing checks, which
+# is not freestanding and only resolves through picolibc's spec file.
 CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
 	--specs=picolibc.specs \
 	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
+	-DROM_ICCM_CLEAR_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
 	-DBOOT_SPI_CONTROLLER_OT=$(BOOT_SPI_CONTROLLER_OT) \
 	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
@@ -143,28 +139,19 @@ LDFLAGS  := -nostdlib -Wl,--gc-sections -Wl,--no-relax -T $(LINK_DIR)/rom.ld $(C
 
 ROM_ELF_SECTIONS := --only-section=.text --only-section=.text.* --only-section=.metadata --only-section=.metadata.* \
 	--only-section=.rodata --only-section=.rodata.* --only-section=.srodata --only-section=.srodata.*
-# .rodata/.srodata are deliberately NOT here: link/rom.ld keeps read-only data in
-# the ROM image (VMA just past .text, e.g. 0x1004_4348) and ROM_ELF_SECTIONS above
-# already carries it. Claiming it for the DTCM image too made objcopy subtract
-# DCCM_BASE from a ROM address, wrapping negative (@FFFFFFFF5000_4348) and failing
-# the load with "$readmem file address beyond bounds of array".
+# .rodata is deliberately not here: its LMA is in ROM, so claiming it for the
+# DTCM image makes objcopy subtract DCCM_BASE from a ROM address and wrap.
 DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=.sdata --only-section=.sdata.* \
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
 
-.PHONY: all clean bl1_test ensure-pack-deps toolchain-images pack-images \
-        ot-toolchain-images ot-pio-toolchain-images
-all: toolchain-images pack-images
+.PHONY: all clean bl1_test ensure-pack-deps toolchain-images toolchain-images-build \
+        pack-images ot-toolchain-images ot-pio-toolchain-images
+all:
+	$(MAKE) toolchain-images
+	$(MAKE) pack-images
 
-# OpenTitan SPI-host ROM variants. Same sources, built with the OT transport
-# selected (boot_flash.h picks the driver on BOOT_SPI_CONTROLLER_OT) and each into
-# its own BUILD_DIR so the variants coexist instead of clobbering one another.
-# Named targets rather than raw knobs: the variant-to-directory mapping is the
-# thing that must not be got wrong, so it lives here and not in every caller.
-#
-# These build the ROM only. The packed flash image is transport- and
-# drain-agnostic -- the same manifest+BL1 bytes are what any of the three ROMs
-# read -- so it is built ONCE by `pack-images` into the default build/ and shared.
-# Packing it per variant would be pure duplication with three copies to drift.
+# OT SPI-host ROM variants, each into its own BUILD_DIR so they coexist. The
+# packed flash image is transport-agnostic, so `pack-images` builds it once.
 ot-toolchain-images:
 	$(MAKE) BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images
 ot-pio-toolchain-images:
@@ -176,20 +163,44 @@ ot-pio-toolchain-images:
 # container), while pack-images is pure Python and needs cryptography +
 # ruamel.yaml, which the container image does not carry. The companion's SEP
 # firmware build script drives the two halves this way.
-toolchain-images: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) bl1_test
+#
+# Direct `make toolchain-images` uses only an explicit RISCV_TOOLCHAIN on the
+# host. Otherwise it runs the compiler-dependent half in the OCAH container.
+OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
+
+toolchain-images:
+	@if [ -n "$(RISCV_TOOLCHAIN)" ]; then \
+	  $(MAKE) toolchain-images-build; \
+	elif [ -x "$(OCAH_DOCKER_RUN)" ]; then \
+	  echo "[bootrom] RISCV_TOOLCHAIN is unset; building in the OCAH toolchain container"; \
+	  env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS \
+	    "$(OCAH_DOCKER_RUN)" run-here \
+	    $(MAKE) -C "$(CURDIR)" \
+	    BUILD_DIR="$(BUILD_DIR)" ROM_BASE="$(ROM_BASE)" DCCM_BASE="$(DCCM_BASE)" \
+	    DCCM_SCRUB_BYTES="$(DCCM_SCRUB_BYTES)" SRAM_SCRUB_BYTES="$(SRAM_SCRUB_BYTES)" \
+	    ROM_ICCM_CLEAR_ENABLE="$(ROM_ICCM_CLEAR_ENABLE)" PMP_ENABLE="$(PMP_ENABLE)" \
+	    PMP_LOCK="$(PMP_LOCK)" BUILD_TYPE="$(BUILD_TYPE)" \
+	    BOOT_SPI_CONTROLLER_OT="$(BOOT_SPI_CONTROLLER_OT)" \
+	    BOOT_OT_SPI_USE_PIO="$(BOOT_OT_SPI_USE_PIO)" \
+	    BOOT_OT_SPI_PROFILE="$(BOOT_OT_SPI_PROFILE)" \
+	    NONFREE_ROOT="$(NONFREE_ROOT)" \
+	    NONFREE_BOOTCODE_SOURCES="$(NONFREE_BOOTCODE_SOURCES)" \
+	    RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf \
+	    toolchain-images-build; \
+	else \
+	  echo "error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset" >&2; \
+	  exit 1; \
+	fi
+
+toolchain-images-build: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) bl1_test
 pack-images: $(SMC_MEM_HEX)
 
 $(BUILD_DIR):
 	mkdir -p "$(BUILD_DIR)"
 
 # --- Rebuild on build-flag changes ---
-# Objects are keyed on source mtime only, but their content also depends on the
-# -D flags injected into CFLAGS/ASFLAGS. Without this, `make BOOT_OT_SPI_USE_PIO=1`
-# over an existing build dir finds every .o newer than its source, does nothing,
-# and hands back the PREVIOUS variant under the new name -- a ROM that boots and
-# passes, but is not the one asked for. Record the codegen-affecting flags in a
-# stamp, rewrite it only when they actually change (so unchanged builds stay
-# incremental), and make every object depend on it.
+# Objects are keyed on source mtime but their content depends on the -D flags, so
+# without this stamp a variant rebuild silently hands back the previous image.
 BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	PROFILE=$(BOOT_OT_SPI_PROFILE) BUILD_TYPE=$(BUILD_TYPE) \
 	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
@@ -213,7 +224,7 @@ $(FLAGS_STAMP): FORCE | $(BUILD_DIR)
 
 $(OBJS): $(FLAGS_STAMP)
 
-# Static version header (the internal build derives this from git; not needed here).
+# Static version header.
 $(BUILD_DIR)/bl0_version.h: | $(BUILD_DIR)
 	echo '#define BL0_VERSION "oss-nonsecure"' > "$@"
 
@@ -247,24 +258,16 @@ $(ELF): $(OBJS) $(LINK_DIR)/rom.ld
 	$(GCC_PREFIX)-objdump -d -S "$@" > "$(BUILD_DIR)/boot_rom.dis"
 	$(GCC_PREFIX)-nm -B -n "$@" > "$(BUILD_DIR)/boot_rom.sym"
 
-# Boot ROM responder image. elf-to-vmem.py selects allocatable sections by load
-# address (LMA): .text/.metadata/.rodata/.srodata reside in ROM, and .data's
-# initial image has a ROM LMA (AT> rom) even though it executes from DCCM, so it
-# lands in the ROM image and vector.S copies it to DCCM at boot.
+# Boot ROM responder image. elf-to-vmem.py selects sections by LMA, and .data's
+# LMA is in ROM (AT> rom), so its initial image lands here too.
 $(VMEM): $(ELF) $(ELF_TO_VMEM)
 	python3 $(ELF_TO_VMEM) --base $(ROM_BASE) -o "$@" "$(ELF)"
 
 $(ITCM_HEX): $(ELF)
 	$(GCC_PREFIX)-objcopy -O verilog "$(ELF)" $(ROM_ELF_SECTIONS) --change-addresses "-$(ROM_BASE)" "$@"
 
-# DCCM preload image. `objcopy -O verilog` emits by LOAD address, and .data's LMA is
-# in ROM (`AT> rom` in link/rom.ld) even though its VMA is DCCM -- so rebasing by
-# DCCM_BASE subtracted a DCCM base from a ROM address and wrapped negative
-# (@FFFFFFFF5000_4EA8), which fails the load with "$readmem file address beyond
-# bounds of array". Rebase by __data_load_start (= LOADADDR(.data), the symbol
-# link/rom.ld exports for exactly this) so the emitted addresses are DCCM-relative
-# offsets. .bss is NOLOAD and contributes no bytes; vector.S still performs the real
-# ROM->DCCM copy at boot, so this image only pre-stages identical content.
+# DCCM preload image. .data's LMA is in ROM, so rebase by __data_load_start;
+# DCCM_BASE would wrap negative and fail the load.
 $(DTCM_HEX): $(ELF)
 	set -e; \
 	data_lma=$$($(GCC_PREFIX)-nm "$(ELF)" | awk '$$3 == "__data_load_start" { print "0x"$$1 }'); \
@@ -277,16 +280,16 @@ $(DTCM_HEX): $(ELF)
 bl1_test:
 	$(MAKE) -C "$(BL1_TEST_DIR)" GCC_PREFIX=$(GCC_PREFIX)
 
+$(BL1_TEST_BIN):
+	@echo "error: BL1 image is missing; run 'make toolchain-images' first" >&2
+	@exit 1
+
 # The packer is the tt-boot-manifest repo, checked out as a submodule here rather
 # than copied in, so it tracks the upstream repo as that grows.
 TT_BOOT_MANIFEST_DIR := $(TOOLS_DIR)/tt-boot-manifest
 
-# uv installs the packer editable straight from the submodule, which means its
-# Python dependencies come from the submodule's own pyproject.toml -- no
-# requirements.txt to keep in sync and no pip3 install for a caller to forget.
-# --no-project keeps this off the repo-root uv project: the root lockfile must stay
-# resolvable in a checkout where submodules were never init'd, or every other uv
-# caller (lint, docs) breaks along with this one.
+# --no-project keeps this off the repo-root uv project: the root lockfile must
+# stay resolvable in a checkout where submodules were never init'd.
 PACK_RUN := uv run --no-project --with-editable "$(TT_BOOT_MANIFEST_DIR)" \
 	python -m tt_boot_manifest.pack_images
 
@@ -308,24 +311,15 @@ ensure-pack-deps:
 # manifest+BL1 -> raw image -> Verilog hex -> rebased to the SMC-SRAM base.
 # OCH_ROOT resolves the config's payload file_path; ROOT (signing keys) is unused
 # for the non-secure config (signature_type 0) so it points at a harmless dir.
-$(SMC_MEM_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
+$(SMC_MEM_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
 	OCH_ROOT="$(DV_ROOT)" ROOT="$(TOOLS_DIR)" \
 		$(PACK_RUN) --config "$(PACK_CONFIG)" --out "$(NS_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(NS_BOOT_BIN)" "$(NS_SPI_HEX)"
 	sed 's/@00000000/@$(SMC_SRAM_BASE)/' "$(NS_SPI_HEX)" > "$@"
 
 # --- signed (secure boot) SPI image ---
-# sep_rom_secure_boot_test and sep_rom_ot_secure_boot_test load this image to
-# exercise the RSA-3072 signature check. Same packer as the non-secure image; the
-# config just turns on secure_boot and names a signing key.
-#
-# key_digests.c pins slot 0 to the SHA-256 of the dev0 modulus, so only that exact
-# key produces an image the ROM will accept. It is a test key that ships in the
-# tt-boot-manifest repo, so the submodule brings it along and this builds with no
-# extra setup -- $ROOT is what the config resolves signing_key_file against.
-#
-# To move to a key of your own, generate one, regenerate the digest table with
-# tools/generate_key_digests.py, and commit both.
+# key_digests.c pins ROM key slot 0 to the SHA-256 of the dev0 modulus, so only
+# that key produces an image the ROM accepts. $ROOT resolves signing_key_file.
 SECURE_PACK_CONFIG := $(CURDIR)/configs/secure_boot_test.yaml
 SECURE_BOOT_BIN    := $(BUILD_DIR)/secure_boot.bin
 SECURE_SPI_HEX     := $(BUILD_DIR)/secure_boot.spi_preload
@@ -336,7 +330,7 @@ secure_boot_spi: $(SECURE_SPI_HEX)
 
 # Fail here with the reason rather than letting the packer die on a missing file
 # or, worse, letting the test start and stall waiting for an image nobody built.
-$(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
+$(SECURE_SPI_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
 	@test -f "$(SEP_SIGNING_KEY)" || { \
 	  echo "ERROR: secure boot image needs the dev0 signing key."; \
 	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
@@ -348,6 +342,26 @@ $(SECURE_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 	OCH_ROOT="$(DV_ROOT)" ROOT="$(abspath $(dir $(SEP_SIGNING_KEY))/../..)" \
 		$(PACK_RUN) --config "$(SECURE_PACK_CONFIG)" --out "$(SECURE_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(SECURE_BOOT_BIN)" "$@"
+
+# Encrypted variant of secure_boot_spi. The ROM derives its AES key from the
+# CLASS_KEY fuse, so the OTP must carry the config's encryption_key_input.
+ENCRYPTED_PACK_CONFIG := $(CURDIR)/configs/encrypted_boot_test.yaml
+ENCRYPTED_BOOT_BIN    := $(BUILD_DIR)/encrypted_boot.bin
+ENCRYPTED_SPI_HEX     := $(BUILD_DIR)/encrypted_boot.spi_preload
+
+.PHONY: encrypted_boot_spi
+encrypted_boot_spi: $(ENCRYPTED_SPI_HEX)
+
+$(ENCRYPTED_SPI_HEX): $(BL1_TEST_BIN) ensure-pack-deps | $(BUILD_DIR)
+	@test -f "$(SEP_SIGNING_KEY)" || { \
+	  echo "ERROR: encrypted boot image needs the dev0 signing key."; \
+	  echo "       Expected: $(SEP_SIGNING_KEY)"; \
+	  echo "       The packer rejects encrypted_payload=1 with secure_boot=0, so an"; \
+	  echo "       encrypted image is always a signed image."; \
+	  exit 1; }
+	OCH_ROOT="$(DV_ROOT)" ROOT="$(abspath $(dir $(SEP_SIGNING_KEY))/../..)" \
+		$(PACK_RUN) --config "$(ENCRYPTED_PACK_CONFIG)" --out "$(ENCRYPTED_BOOT_BIN)" -v
+	python3 "$(BIN_TO_SPI)" "$(ENCRYPTED_BOOT_BIN)" "$@"
 
 # Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
 # behind would let a stale OT image survive into the next run and boot silently.

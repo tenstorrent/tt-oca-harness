@@ -10,7 +10,7 @@ Drives product ports only:
 Under PROD (raw 0x1):
 
   * non-identity read / write → BLOCK (DECERR + 0xBADCAB1E)
-  * CHIPLET_ID / PACKAGE_ID read → ALLOW (not DECERR; timeout fails)
+  * JTAG_PUBLIC_IDENTITY read → ALLOW (not DECERR; timeout fails)
 
 Also records ``CHIP_CONFIG_LC_STATE`` over SEP_IN with an exact expected
 matching the packed ``tb_lc_state`` value. Full multi-state matrix lives in
@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
+from env.smc_sys_axi_agent import idle_axil_master_inputs
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 
 try:
@@ -30,17 +31,18 @@ except ImportError:  # pragma: no cover - cocotb version shim
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_jtag_lc_negative_test_seq import (
-    SMC_EFUSE_MAP_CHIPLET_ID,
+    SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY,
     SMC_EFUSE_MAP_LOCKS,
-    SMC_EFUSE_MAP_PACKAGE_ID,
     smc_efuse_jtag_lc_negative_test_seq,
 )
 from seq_lib.smc_jtag_vip_utils import check_cpu_jtag_pin_vip
+from smc_base_test import smc_base_test
 
 BLOCK_SIGNATURE = 0xBADCAB1E
 LC_PROD = 0x1
+# Non-restricted lifecycle state, the positive control for the PROD block.
+LC_TEST_DEV = 0x0
 RESP_OKAY = 0
 RESP_DECERR = 3
 
@@ -55,6 +57,13 @@ def pack_lc_state(raw: int) -> int:
 class smc_efuse_jtag_lc_negative_test(smc_base_test):
     """PROD JTAG eFuse deny paths + identity-read exception."""
 
+    required_evidence = (
+        "CHK-CPU-JTAG-DTMCS",
+        "CHK-CPU-JTAG-IDCODE",
+        "CHK-CPU-JTAG-SCAN-ACTIVITY",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -65,6 +74,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         packed = pack_lc_state(LC_PROD)
         dut.tb_lc_state.value = packed
 
+        idle_axil_master_inputs(dut, "ej_axi")
         self.ejm = OcahAxiLiteMasterAgent.from_prefix(
             dut,
             "ej_axi",
@@ -78,30 +88,61 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         # Negative: non-identity blocked; identity exception still allowed.
         await self._check_read("PROD", "NON_ID", SMC_EFUSE_MAP_LOCKS, expect_block=True)
         await self._check_read(
-            "PROD", "CHIPLET_ID", SMC_EFUSE_MAP_CHIPLET_ID, expect_block=False
-        )
-        await self._check_read(
-            "PROD", "PACKAGE_ID", SMC_EFUSE_MAP_PACKAGE_ID, expect_block=False
+            "PROD", "JTAG_PUBLIC_IDENTITY", SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY, expect_block=False
         )
         await self._check_write("PROD", SMC_EFUSE_MAP_LOCKS, expect_block=True)
+
+        # Positive control for the block above, in this same run and on the
+        # SAME address, with the lifecycle state the only thing that changed.
+        # Without it a DECERR from a wedged JTAG path, or an address that
+        # answers DECERR unconditionally, satisfies the PROD legs identically.
+        #
+        # "Allowed" is "not routed to the access-control error slave", not
+        # "OKAY": on this bench fuse sense has not completed on the JTAG path,
+        # so a permitted non-identity read answers SLVERR rather than returning
+        # map content. That is the same definition
+        # smc_efuse_jtag_lc_access_matrix_test uses.
+        dut.tb_lc_state.value = pack_lc_state(LC_TEST_DEV)
+        await ClockCycles(dut.clk_smc_i, 20)
+        _, dev_code = await self._read(SMC_EFUSE_MAP_LOCKS)
+        if dev_code is None:
+            self.errors.append("[TEST_DEV] NON_ID read TIMEOUT")
+        elif dev_code == RESP_DECERR:
+            self.errors.append(
+                f"[TEST_DEV] NON_ID read @0x{SMC_EFUSE_MAP_LOCKS:08x} still routed to the "
+                f"access-control error slave (resp=DECERR); the PROD block above is then "
+                f"not attributable to the lifecycle state"
+            )
+        else:
+            self.checks += 1
+            self.logger.info(
+                "JTAG eFuse read  [TEST_DEV] NON_ID @0x%08x -> resp=%s (not DECERR): the "
+                "same address that PROD blocked is reachable once the lifecycle state moves",
+                SMC_EFUSE_MAP_LOCKS,
+                dev_code,
+            )
+        dut.tb_lc_state.value = packed
+        await ClockCycles(dut.clk_smc_i, 20)
 
         # Secondary: CHIP_CONFIG mirror must match the driven packed state.
         lc_seq = _LcStateExactSeq("lc_state_exact", expected=packed)
         await self.start_seq(lc_seq, self.env.sys_axi_agent.sequencer)
 
-        assert not self.errors, (
-            "eFuse JTAG LC negative mismatch:\n" + "\n".join(self.errors)
-        )
+        assert not self.errors, "eFuse JTAG LC negative mismatch:\n" + "\n".join(self.errors)
 
         await check_cpu_jtag_pin_vip()
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
+            # Directed stimulus floor: the three PROD legs, the TEST_DEV
+            # positive control, and the LC-state CSR read. Literal here, not
+            # read from the sequence counters.
+            min_csr_accesses=5,
             csr_accesses=self.checks + lc_seq.accesses,
             proxy=False,
             details=(
                 "PROD JTAG eFuse: NON_ID/write BLOCK (DECERR+0xBADCAB1E); "
-                "CHIPLET_ID/PACKAGE_ID ALLOW via resp=OKAY "
+                "JTAG_PUBLIC_IDENTITY ALLOW via resp=OKAY "
                 "(identity rdata not scored on Verilator stub); "
                 "CHIP_CONFIG_LC_STATE exact; CPU JTAG pins checked"
             ),
@@ -125,22 +166,20 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             return None
         return _resp_code(event.data)
 
-    async def _check_read(
-        self, label: str, cls: str, addr: int, *, expect_block: bool
-    ) -> None:
-        self.checks += 1
+    async def _check_read(self, label: str, cls: str, addr: int, *, expect_block: bool) -> None:
         rdata, code = await self._read(addr)
         # Timeout on a claimed path is a hard fail ([TIMEOUT-MUST-FAIL]).
         if rdata is None or code is None:
             self.errors.append(
-                f"[{label}] {cls} read @0x{addr:08x} TIMEOUT "
-                f"(expect_block={expect_block})"
+                f"[{label}] {cls} read @0x{addr:08x} TIMEOUT (expect_block={expect_block})"
             )
             return
+        # Counted once the access came back, so the tally is completions rather
+        # than attempts and a run of timeouts cannot report a full count.
+        self.checks += 1
         blocked = code == RESP_DECERR
         self.logger.info(
-            "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s "
-            "blocked=%s (exp_block=%s)",
+            "JTAG eFuse read  [%s] %s @0x%08x -> rdata=0x%08x resp=%s blocked=%s (exp_block=%s)",
             label,
             cls,
             addr,
@@ -164,7 +203,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             return
         # ALLOW: response-code contract only. Verilator eFuse stub still
         # returns 0xBADCAB1E on the allow path — do not treat rdata as a
-        # chiplet/package identity golden (value proof deferred to sensed HW).
+        # chiplet/package identity golden (value proof needs sensed HW).
         if code != RESP_OKAY:
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW "
@@ -181,18 +220,16 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             )
 
     async def _check_write(self, label: str, addr: int, *, expect_block: bool) -> None:
-        self.checks += 1
         code = await self._write(addr, 0xA5A5_5A5A)
         if code is None:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} TIMEOUT "
-                f"(expect_block={expect_block})"
+                f"[{label}] write @0x{addr:08x} TIMEOUT (expect_block={expect_block})"
             )
             return
+        self.checks += 1
         blocked = code == RESP_DECERR
         self.logger.info(
-            "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s "
-            "(exp_block=%s)",
+            "JTAG eFuse write [%s] NON_ID @0x%08x -> resp=%s blocked=%s (exp_block=%s)",
             label,
             addr,
             code,
@@ -201,13 +238,10 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         )
         if expect_block and not blocked:
             self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but "
-                f"got resp={code}"
+                f"[{label}] write @0x{addr:08x} expected BLOCK (DECERR) but got resp={code}"
             )
         elif not expect_block and blocked:
-            self.errors.append(
-                f"[{label}] write @0x{addr:08x} expected ALLOW but was blocked"
-            )
+            self.errors.append(f"[{label}] write @0x{addr:08x} expected ALLOW but was blocked")
 
 
 class _LcStateExactSeq(smc_efuse_jtag_lc_negative_test_seq):

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -18,7 +18,7 @@
 | 0x28 | LOAD_CHECKSUM | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -26,7 +26,7 @@
 | 0 | `done` | RW | 0x0 a| OTBN has completed the operation.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -34,7 +34,7 @@
 | 0 | `done` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.done is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -42,7 +42,7 @@
 | 0 | `done` | W | 0x0 a| Write 1 to force !!INTR_STATE.done to 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -51,7 +51,7 @@
 | 0 | `fatal` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CMD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -65,7 +65,7 @@
 \| 0x1e  \| SEC_WIPE_IMEM \| Securely removes all contents from the instruction  memory. \|
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -78,7 +78,7 @@ recoverable errors.
 Writes are ignored if OTBN is not idle.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -98,7 +98,7 @@ All BUSY values represent an operation started by a write to the
 \| 0xFF  \| LOCKED             \| OTBN is locked as reaction to a fatal error, and must be reset to unlock it again. See also the section "Reaction to Fatal Errors". \|
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERR_BITS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -122,7 +122,7 @@ All BUSY values represent an operation started by a write to the
 | 0 | `bad_data_addr` | RW | 0x0 a| A `BAD_DATA_ADDR` error was observed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FATAL_ALERT_CAUSE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -137,14 +137,14 @@ All BUSY values represent an operation started by a write to the
 | 0 | `imem_intg_violation` | R | 0x0 a| A `IMEM_INTG_VIOLATION` error was observed.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INSN_CNT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `insn_cnt` | RW | 0x0 a| The number of executed instructions.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LOAD_CHECKSUM Register
 |===
 | Bits | Field | Access | Reset | Description

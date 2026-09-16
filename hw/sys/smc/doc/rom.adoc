@@ -4,161 +4,35 @@
 [[rom]]
 === Boot ROM
 
-The SMC Boot ROM provides the initial firmware that executes immediately after
-power-on reset, performing essential hardware initialization and system bring-up
-functions. The ROM contains the SMC Production ROM firmware, a minimal
-bootloader designed to establish a known good hardware state before
-transitioning control to more sophisticated firmware layers.
+The SMC maps a 128 KiB read-only region at `0xC004_0000` through
+`0xC005_FFFF`. The cold-reset CPU vector is `0xC004_0000`.
 
 ==== ROM Architecture
 
-The Boot ROM is implemented as a read-only memory region mapped at base address
-`0xC0040000` with a configurable size of up to 64KB. The ROM is accessed by the
-CPU cluster through an AXI-Lite interface, with read requests issued via the
-`rom_intf_req_o` signal and responses received through `rom_intf_rsp_i`. This
-interface provides the CPU with direct access to the ROM contents for
-instruction fetch and read-only data access during the boot sequence.
+In the current four-core implementation, the CPU reaches the ROM over its
+internal TileLink memory path. `smc_cpu_wrapper` converts that path to the
+macro-facing `smc_rom_intf_req_o` and `smc_rom_intf_rsp_i` interface. Requests carry a
+clock, enable, and 14-bit 64-bit-word address; the write controls are tied to
+read mode. Responses return one 64-bit word. The ROM macro boundary is not an
+AXI-Lite interface and is separate from the CPU MMIO AXI and SMC peripheral
+AXI-Lite paths.
 
-The ROM memory layout is organized into standard executable sections, with code
-residing in the `.text` section, read-only data in `.rodata`, and initialization
-routines in `.init`. Initialized data variables are stored in the `.data`
-section within ROM but are automatically copied to SRAM during the boot process,
-allowing the ROM to remain read-only while providing writable data space for the
-firmware. The detailed memory layout and section placement are defined in the
-linker script located at `hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld`, which
-specifies the exact address ranges and alignment requirements for each memory
-region.
-
-Within the SMC's memory hierarchy, the ROM serves as the primary boot source,
-providing the initial reset vector target for all CPU cores. The ROM operates
-independently of the cache hierarchy, ensuring deterministic boot behavior, and
-complements the scratchpad SRAM by providing persistent code storage while the
-SRAM provides runtime data and stack space for the boot firmware.
+The production ROM linker script,
+`hw/sys/smc/bootrom/prod/linker/smc/smc_rom.ld`, matches the 128 KiB hardware
+region. It places `.init`, `.fini`, constructor arrays, `.rodata`, `.text`, and
+ROM padding in that region. `.data`, `.tdata`, `.itim`, and `.lim` have runtime
+addresses in the SRAM region at `0xC006_0000` and load images in ROM. `.tbss`,
+`.bss`, the stack, and the heap occupy only SRAM.
 
 ==== ROM Hardware Configuration
 
-The ROM wrapper module (`OCAHSMCCluster_rom_wrapper`) provides hardware support
-for *memory bank configuration* and *endianness swapping*, enabling flexibility in
-ROM implementation and compatibility with different system requirements.
+`OCAH4CORECluster_mems` passes the 11-bit `rom_cfg_i` value unchanged to the
+ROM wrapper's `mem_cfg_i`, where it is cast to `prim_rom_pkg::rom_cfg_t` and
+forwarded to `prim_rom`. The OCAH logic assigns no repair or technology-specific
+meaning to those bits. The reference `smc_ip_integration.sv` ties the value to
+zero.
 
-*Memory bank configuration* is controlled through the `mem_cfg_i` input signal,
-which provides an 11-bit configuration value passed to the underlying ROM
-primitive. This configuration mechanism allows the ROM memory banks to be
-configured for different memory technologies, repair strategies, or
-foundry-specific requirements. The configuration follows the same pattern used
-by other memory components in the SMC, including cache tag and data arrays and
-scratchpad RAM banks, providing a consistent interface for memory configuration
-across the system.
-
-The ROM bank configuration can be controlled through shadow
-register values read from efuse data, similar to the endianness control, allowing
-bank swapping and memory configuration to be set during manufacturing or through
-efuse programming.
-
-*Endianness swapping* support enables the ROM to provide data in either
-little-endian or big-endian byte order, regardless of the native byte order
-stored in the ROM memory. The `rom_flip_endianness_i` control signal, when
-asserted, causes the ROM wrapper to perform byte-level swapping on 64-bit words
-read from the ROM before returning them to the CPU. The endianness flip function
-swaps byte pairs within each 64-bit word, transforming little-endian data to
-big-endian format and vice versa. This hardware-level byte swapping occurs
-transparently to the CPU, allowing the same ROM image to be used in systems with
-different endianness requirements without modifying the firmware image itself.
-
-The endianness control signal is derived from shadow register values read from
-efuse data during system initialization, allowing the endianness configuration to
-be set during manufacturing or through efuse programming. This configuration
-remains fixed throughout system operation, ensuring consistent ROM access behavior
-across all boot phases and runtime operation.
-
-==== ROM Boot Code
-
-The SMC Production ROM firmware implements a comprehensive boot sequence
-designed to initialize hardware components, read configuration data, and
-establish communication interfaces for multi-chiplet coordination. The boot code
-is organized into a structured multi-phase initialization process that
-progressively establishes system functionality.
-
-The boot sequence begins with Phase 0, which initializes POST (Power-On
-Self-Test) codes and the scratchpad memory system. POST codes provide external
-visibility into the boot progress, enabling debug and monitoring equipment to
-track initialization stages. The scratchpad initialization establishes the
-memory environment required for subsequent boot phases.
-
-*Phase 1:* focuses on reading hardware configuration through strap pins and efuse
-registers. Hardware straps, sampled from GPIO pins during power-on reset,
-determine fundamental system behavior including chiplet role (primary or
-secondary), boot mode selection, and feature enables. Efuse data provides
-device-specific configuration including I2C/I3C addresses, security settings,
-and chiplet identification. This configuration data drives all subsequent
-initialization decisions.
-
-For a secondary chiplet, Phase 1.5 performs PLL (Phase-Locked Loop)
-configuration to establish the primary system clock. The ROM firmware configures
-the PLL through AXI-Lite transactions, switching from the reference clock to the
-synthesized PLL output clock. This phase is conditional based on chiplet type
-detection and the `BL0_PLLCLK` strap configuration.
-
-*Phase 2:* handles SRAM setup and memory protection. The ROM establishes memory
-protection boundaries to prevent corruption of its own code and data regions,
-implementing defense-in-depth security measures. SRAM initialization may be
-performed by hardware auto-zero functionality or through software-based zeroing,
-depending on the `SRAM_AUTO_ZERO_DISABLE` strap setting.
-
-*Phase 3:* configures communication interfaces based on the chiplet role and boot mode.
-The ROM initializes I2C and I3C controllers, configuring them according to addresses
-read from efuse data. Interface selection logic determines which communication
-channels are enabled based on whether the chiplet is primary or secondary and the
-security state of the device.
-
-*Phase 4:* initializes the OCCP (Open Chiplet Communication Protocol) interface, which
-enables coordination between chiplets in a multi-chiplet system. The OCCP protocol
-provides a standardized command interface for boot image distribution, status
-reporting, and chiplet coordination. Successful OCCP initialization indicates that
-the ROM is ready to participate in system-level boot coordination.
-
-*Phase 5:* enters the OCCP command processing loop, where the ROM continuously processes
-commands received over the configured communication interfaces. This loop handles
-firmware image loading, manifest processing for secure boot scenarios, and
-coordination commands from primary chiplets. The ROM remains in this processing loop
-until it receives commands to transition control to subsequent bootloader stages or
-application firmware.
-
-The boot code is organized into several functional components. The boot sequence
-components, located in `fw/smc/prod_rom/boot/`, provide assembly-level startup code,
-trap handlers for exception processing, and SRAM initialization routines. Hardware
-drivers in `fw/smc/prod_rom/drivers/` implement interfaces to strap pin reading,
-efuse access, PLL configuration, and I2C/I3C peripheral control. Library components
-in `fw/smc/prod_rom/lib/` provide higher-level functionality including status
-reporting through ring buffers, security state detection, OCCP protocol
-implementation, and interface mapping logic.
-
-The ROM firmware is optimized for size, with the production release build
-occupying approximately 20KB of ROM space. Debug builds, which include console
-output and additional diagnostic capabilities, expand to approximately 960KB. The
-detailed boot architecture, protocol specifications, and implementation details are
-documented in the SMC ROM Boot Architecture Specification located at
-`fw/smc/prod_rom/specification/smc_rom.adoc`.
-
-==== Integration and Operation
-
-The ROM must be populated with a valid firmware image before the system initiates
-the boot sequence. The firmware image is typically programmed into the ROM memory
-during manufacturing or through a secure programming interface before the first
-power-on reset. The ROM contents remain fixed throughout system operation, ensuring
-a reliable and tamper-resistant boot source.
-
-The ROM firmware implements chiplet coordination functionality, distinguishing
-between primary and secondary chiplet roles based on hardware strap configuration.
-Primary chiplets act as boot masters, coordinating the initialization of secondary
-chiplets and distributing boot images across the multi-chiplet system. Secondary
-chiplets wait for coordination commands and boot images from the primary chiplet,
-enabling synchronized system bring-up.
-
-The OCCP protocol implementation enables secure and reliable communication between
-chiplets during the boot process. The protocol supports both secure and non-secure
-boot modes, with secure modes requiring manifest validation through coordination
-with the SEP (Security and Exception Processor) subsystem. The ROM protects its
-own memory regions from corruption through explicit access control checks,
-preventing unauthorized modification of boot code even in non-secure operational
-modes.
+On the response path, asserted `rom_flip_endianness_i` reverses the order of
+the eight bytes in each 64-bit ROM word; deasserted passes the word through
+unchanged. In `smc.sv`, this control comes from the ROM endianness bit in the
+eFuse shadow-register output.

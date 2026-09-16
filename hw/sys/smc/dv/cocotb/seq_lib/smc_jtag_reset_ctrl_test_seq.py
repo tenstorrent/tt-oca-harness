@@ -16,12 +16,8 @@ from .smc_addr_map import (
 from .smc_csr_seq_utils import SmcCsrSeq
 
 SS_WARM = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR")
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
-SS_WARM_RESET = reset_unit_u32(
-    "RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset"
-)
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
+SS_WARM_RESET = reset_unit_u32("RESET_UNIT__SS_WARM_RESET_N__RESET_N_N0_SCAN_reset")
 _WARM_PAT = 0xA5A55A5A
 _PIN_BOUND = 64
 _RECOVERY = 50_000
@@ -79,7 +75,8 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
         nbits = len(dut.tb_jtag_reset_ctrl.value)
         want_bits = jtag_smc_reset_ctrl_width()
         assert nbits == want_bits, (
-            f"jtag_reset_ctrl width {nbits} want {want_bits} from smc_pkg.sv"
+            f"jtag_reset_ctrl width {nbits} want {want_bits} from the DV-owned IC_RESET slice "
+            "table in smc_addr_map"
         )
 
         dut.rst_cool_ni.value = 1
@@ -93,12 +90,9 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
             dut.tb_ss0_warm_reset_n, "tb_ss0_warm_reset_n", 1, _PIN_BOUND, "IDLE_SS0"
         )
         await self.csr_write("SCRATCH_PRE", SCRATCH_COLD_WARM_0, _WARM_PAT)
-        pre = await self.csr_read(
-            "SCRATCH_PRE", SCRATCH_COLD_WARM_0, expected=_WARM_PAT
-        )
+        pre = await self.csr_read("SCRATCH_PRE", SCRATCH_COLD_WARM_0, expected=_WARM_PAT)
         cocotb.log.info(
-            "CHK-JTAG-RST-IDLE: packed=0 cool=1 ss0_warm=1 rst_cool_ni=1 flr=0 "
-            "scratch=0x%x",
+            "CHK-JTAG-RST-IDLE: packed=0 cool=1 ss0_warm=1 rst_cool_ni=1 flr=0 scratch=0x%x",
             pre,
         )
 
@@ -122,25 +116,17 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
             if last_warm == 1:
                 break
         else:
-            raise AssertionError(
-                f"warm smc clk still 0 after JTAG cool ovrd (last={last_warm})"
-            )
+            raise AssertionError(f"warm smc clk still 0 after JTAG cool ovrd (last={last_warm})")
         self.cool_ok = True
-        cocotb.log.info(
-            "CHK-JTAG-RST-COOL: rst_cool_no 1→0→1 via ovrd; rst_cool_ni=1 flr=0"
-        )
-        got = await self.csr_read(
-            "SCRATCH_POST", SCRATCH_COLD_WARM_0, expected=0
-        )
+        cocotb.log.info("CHK-JTAG-RST-COOL: rst_cool_no 1→0→1 via ovrd; rst_cool_ni=1 flr=0")
+        got = await self.csr_read("SCRATCH_POST", SCRATCH_COLD_WARM_0, expected=0)
         cocotb.log.info(
             "CHK-JTAG-RST-WARM-SCRATCH: pre=0x%x post=0x%x (cool clear)",
             pre,
             got,
         )
 
-        warm_csr = await self.csr_read(
-            "SS_WARM_PRE", SS_WARM, expected=SS_WARM_RESET
-        )
+        warm_csr = await self.csr_read("SS_WARM_PRE", SS_WARM, expected=SS_WARM_RESET)
         await self._await_bit(
             dut.tb_ss0_warm_reset_n, "tb_ss0_warm_reset_n", 1, _PIN_BOUND, "SS0_PRE"
         )
@@ -148,12 +134,10 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
         await self._await_bit(
             dut.tb_ss0_warm_reset_n, "tb_ss0_warm_reset_n", 0, _PIN_BOUND, "SS0_ASSERT"
         )
-        assert (self._bit(dut.tb_rst_cool_from_flr, "tb_rst_cool_from_flr") == 1), (
+        assert self._bit(dut.tb_rst_cool_from_flr, "tb_rst_cool_from_flr") == 1, (
             "cool dropped during SS0 warm ovrd"
         )
-        warm_hold = await self.csr_read(
-            "SS_WARM_HOLD", SS_WARM, expected=SS_WARM_RESET
-        )
+        warm_hold = await self.csr_read("SS_WARM_HOLD", SS_WARM, expected=SS_WARM_RESET)
         dut.tb_jtag_reset_ctrl.value = _pack(ss0_warm_ovrd=1, ss0_warm_val=1)
         await self._await_bit(
             dut.tb_ss0_warm_reset_n, "tb_ss0_warm_reset_n", 1, _PIN_BOUND, "SS0_VAL1"
@@ -167,6 +151,19 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
             "CHK-JTAG-RST-SS0: pin 1→0→1 CSR stayed 0x%x→0x%x (not SW write)",
             warm_csr,
             warm_hold,
+        )
+        # Positive control for the two driven leaves of the DV-owned bit layout:
+        # each moved its own reset pin (and the SS0 leaf left rst_cool_no
+        # released), which a wrong position or a swapped ovrd/val half cannot do.
+        cocotb.log.info(
+            "JTAG reset_ctrl layout: cool_reset_n ovrd/val bits %d/%d moved rst_cool_no; "
+            "ss_warm_reset_n[0] ovrd/val bits %d/%d moved ss0_warm_reset_n with rst_cool_no "
+            "held; slice width %d",
+            jtag_smc_reset_ctrl_bit("cool_reset_n_ovrd"),
+            jtag_smc_reset_ctrl_bit("cool_reset_n_val"),
+            jtag_smc_reset_ctrl_bit("ss_warm_reset_n_ovrd", 0),
+            jtag_smc_reset_ctrl_bit("ss_warm_reset_n_val", 0),
+            want_bits,
         )
         cocotb.log.info(
             "CHK-JTAG-RST-BASIC: cool=%s ss0=%s",

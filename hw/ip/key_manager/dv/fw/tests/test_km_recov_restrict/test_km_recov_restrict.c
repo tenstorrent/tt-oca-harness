@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_recov_restrict.c
- * @brief T063 - Command restriction during fault state test
+ * @brief Command restriction during fault state test
  *
  * Verifies the RECOVERABLE_ERR command filter in rom_msg_rx_process():
  *   1. Trigger a recoverable fault

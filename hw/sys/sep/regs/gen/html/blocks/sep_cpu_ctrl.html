@@ -33,14 +33,16 @@
 <tr><td>0x110</td><td><a href="#SMU_REGION_SIZE">SMU_REGION_SIZE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x140</td><td><a href="#SMC_FUSE_SENSE_STATUS">SMC_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x150</td><td><a href="#SEP_FUSE_SENSE_STATUS">SEP_FUSE_SENSE_STATUS</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x160</td><td><a href="#SEP_STRAPS">SEP_STRAPS</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x170</td><td><a href="#RAS_BANK_INFO">RAS_BANK_INFO</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x178</td><td><a href="#SEP_SW_DEBUG">SEP_SW_DEBUG</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x180</td><td><a href="#SEP_NMI_VEC">SEP_NMI_VEC</a></td><td>RW</td><td>NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI<br>interrupt is used for the WDT Bark interrupt.<br><br>WARNING: the reset value is a placeholder, not a usable handler. Firmware must<br>program this register with the address of its own NMI handler, and then set<br>SEP_NMI_VEC_LOCK, before enabling any NMI source (the WDT bark in particular).<br>If a bark arrives while the reset value is still in place, the CPU jumps to<br>0xC000_0100 in ICCM and executes whatever is there: arbitrary instructions if<br>the loaded image covers that location, or an uncorrectable ICCM ECC error<br>(which itself re-raises NMI) if it does not.</td></tr>
 <tr><td>0x188</td><td><a href="#SEP_NMI_VEC_LOCK">SEP_NMI_VEC_LOCK</a></td><td>RW</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed. The<br>NMI interrupt is used for the WDT Bark interrupt.</td></tr>
 <tr><td>0x190</td><td><a href="#EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</a></td><td>RW</td><td>Per-stream external TRNG source selection for crypto subsystem entropy muxes.</td></tr>
 <tr><td>0x198</td><td><a href="#EXT_TRNG_SRC_SEL_LOCK">EXT_TRNG_SRC_SEL_LOCK</a></td><td>RW</td><td>Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.</td></tr>
 <tr><td>0x1A0</td><td><a href="#KM_WIPE_CTRL">KM_WIPE_CTRL</a></td><td>RW</td><td>Key Manager emergency wipe control.</td></tr>
+<tr><td>0x1A8</td><td><a href="#DMA_BUS_ERR_STATUS">DMA_BUS_ERR_STATUS</a></td><td>R</td><td>Secure DMA bridge fault status. Each bit is latched in hardware and held<br>until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive<br>dedicated PIC sources.<br><br>Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without<br>resetting the DMA), so a bit read as set immediately after boot may describe<br>a fault from before that reset rather than a new one.</td></tr>
+<tr><td>0x1B0</td><td><a href="#DMA_BUS_ERR_CLEAR">DMA_BUS_ERR_CLEAR</a></td><td>W</td><td>Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse<br>to both latches. A fault arriving in the same cycle as the clear still<br>latches, so acknowledging cannot drop a concurrent fault.</td></tr>
+<tr><td>0x1B8</td><td><a href="#PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</a></td><td>R</td><td>Peripheral register-bridge fault status, one bit per block. Each bit latches<br>when a CPU access to that block&#x27;s registers returned a TL-UL error response<br>(unmapped or misaligned offset, or a RACL denial), and is held until the<br>matching PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also<br>received SLVERR synchronously.<br><br>All bits OR together into a single PIC source, so read this register to<br>identify which block faulted.<br><br>No bit is cleared by a CPU-only reset (the WDT resets the CPU without<br>resetting the peripherals), so a bit read as set immediately after boot may<br>describe a fault from before that reset rather than a new one.</td></tr>
+<tr><td>0x1C0</td><td><a href="#PERIPH_BUS_ERR_CLEAR">PERIPH_BUS_ERR_CLEAR</a></td><td>W</td><td>Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle<br>clear pulse to that block&#x27;s latch; bit order matches<br>PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block<br>cannot discard a fault another block raised between the status read and<br>this write. A fault arriving in the same cycle as its own clear still<br>latches.</td></tr>
 <tr><td>0x1000</td><td><a href="#SEP_VERSION_ID">SEP_VERSION_ID</a></td><td>R</td><td>-</td></tr>
 </table>
 <h2>Register Details:</h2>
@@ -188,20 +190,6 @@
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>sep_fuse_sense_done</td><td>R</td><td>0x0</td><td>This reg is used to indicate the fuse sense status of SEP.</td></tr>
 </table>
-<h3 id="SEP_STRAPS">SEP_STRAPS</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>bypass_mem_repair</td><td>R</td><td>0x0</td><td>straps for bypass_mem_repair -&gt; Used to indicate if the memory repair should be bypassed</td></tr>
-<tr><td>0</td><td>test_en</td><td>R</td><td>0x0</td><td>straps for test_en -&gt; Used to be latched by SEP and generate the secure_tm</td></tr>
-</table>
-<h3 id="RAS_BANK_INFO">RAS_BANK_INFO</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7:4</td><td>bank_instance</td><td>RW</td><td>0x0</td><td>Chiplet instance ID</td></tr>
-<tr><td>3:0</td><td>bank_chip</td><td>RW</td><td>0x0</td><td>Chiplet type ID</td></tr>
-</table>
 <h3 id="SEP_SW_DEBUG">SEP_SW_DEBUG</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -238,6 +226,43 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>wipe_state</td><td>RW</td><td>0x0</td><td>Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.</td></tr>
+</table>
+<h3 id="DMA_BUS_ERR_STATUS">DMA_BUS_ERR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>1</td><td>host_path_err</td><td>R</td><td>0x0</td><td>DMA-master-path fault: either the fabric returned a non-OKAY AXI response<br>to a DMA transfer, or a TL-UL command-integrity check failed on a command<br>issued by the DMA. The latter is a fault-detection event with no other<br>reporting path.</td></tr>
+<tr><td>0</td><td>reg_path_err</td><td>R</td><td>0x0</td><td>Register-path bus error: a CPU access to a Secure DMA register returned<br>a TL-UL error response (unmapped or misaligned offset, or a RACL denial).<br>The faulting access also received SLVERR synchronously.</td></tr>
+</table>
+<h3 id="DMA_BUS_ERR_CLEAR">DMA_BUS_ERR_CLEAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>0</td><td>clr</td><td>W</td><td>0x0</td><td>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</td></tr>
+</table>
+<h3 id="PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>wdt</td><td>R</td><td>0x0</td><td>Watchdog timer register bridge error.</td></tr>
+<tr><td>5</td><td>edn</td><td>R</td><td>0x0</td><td>EDN register bridge error (DRBG EDN path).</td></tr>
+<tr><td>4</td><td>csrng</td><td>R</td><td>0x0</td><td>CSRNG register bridge error (DRBG CSRNG path).</td></tr>
+<tr><td>3</td><td>otbn</td><td>R</td><td>0x0</td><td>OTBN register bridge error.</td></tr>
+<tr><td>2</td><td>kmac</td><td>R</td><td>0x0</td><td>KMAC register bridge error.</td></tr>
+<tr><td>1</td><td>hmac</td><td>R</td><td>0x0</td><td>HMAC register bridge error.</td></tr>
+<tr><td>0</td><td>aes</td><td>R</td><td>0x0</td><td>AES register bridge error.</td></tr>
+</table>
+<h3 id="PERIPH_BUS_ERR_CLEAR">PERIPH_BUS_ERR_CLEAR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>wdt</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</td></tr>
+<tr><td>5</td><td>edn</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.</td></tr>
+<tr><td>4</td><td>csrng</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.</td></tr>
+<tr><td>3</td><td>otbn</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.</td></tr>
+<tr><td>2</td><td>kmac</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.</td></tr>
+<tr><td>1</td><td>hmac</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.</td></tr>
+<tr><td>0</td><td>aes</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</td></tr>
 </table>
 <h3 id="SEP_VERSION_ID">SEP_VERSION_ID</h3>
 <table>

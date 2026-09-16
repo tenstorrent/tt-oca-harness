@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# PROD lifecycle with a rollback floor of 1.
+#
+# BL1_VERSION is the minimum security version SEP ROM will load, read as the
+# THERMOMETER COUNT of the 256-bit field rather than as its value
+# (manifest_crypto.c, popcount over 8 words). 0x1 is one bit, so the floor
+# is 1.
+#
+# The floor is 1 because this preload serves
+# sep_firmware_primary_invalid_security_version_test, where the PRIMARY must be
+# below the floor and the BACKUP at or above it. The shipped test image carries
+# security_version 0 in both slots (configs/secure_boot_test.yaml:65,130), so 1
+# is the smallest floor that can reject the primary at all, and putting the
+# backup at exactly 1 also covers the `manifest_ver == fuse_ver` ACCEPT boundary
+# -- the comparison is `manifest_ver < fuse_ver`, so equality must pass.
+#
+# sep_efuse_lc_prod_secver8.toml is the sibling with a floor of 8, used by the
+# terminal case where BOTH slots must be rejected.
+#
+# Everything else matches sep_efuse_lc_prod.toml: PROD so secure boot is
+# enforced, SBOOT_DIS clear so nothing opts out of it, and CHIPLET_PUBK_REVOKE 0
+# so no revocation verdict can preempt the rollback one.
+
+[LC_STATE]
+  [LC_STATE.fields.lc_state]
+  value = 0xE1   # PROD (raw=0x1)
+
+[BL1_VERSION]
+  [BL1_VERSION.fields.version]
+  value = 0x1    # thermometer count 1 -> minimum security version 1

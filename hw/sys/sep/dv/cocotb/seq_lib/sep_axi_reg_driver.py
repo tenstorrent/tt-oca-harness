@@ -5,8 +5,7 @@
 The OpenTitan crypto run-control drivers (AES/HMAC/KMAC/OTBN) and the CSRNG/EDN
 interrupt driver all issue the same single-beat 32-bit register read/write through
 the SEP AXI agent and fail on a non-OKAY response. This mixin holds that one
-``_wr`` / ``_rd`` pair so a fix to the response handling lives in one place
-instead of being copy-pasted per driver.
+``_wr`` / ``_rd`` pair so the response handling lives in one place.
 
 A subclass sets ``_DRIVER_TAG`` (used in the assert message and the
 ``SepAxiAccessSeq`` name) and inherits ``__init__`` / ``_wr`` / ``_rd``. The test
@@ -14,13 +13,14 @@ owns one instance: ``self.aes = SepAes(self)``. All accesses are 32-bit beats
 (``size=2``) via the wrapper's 64->32 dw-converter; a subclass that needs the
 full bus width can override ``_AXI_SIZE``.
 
-Named ``SepAxiRegDriver`` (not ``SepAxiDriver``) to avoid colliding with the
-cocotb AXI driver component ``SepAxiDriver(uvm_driver)`` in ``env.sep_axi_agent``.
+``SepAxiDriver(uvm_driver)`` in ``env.sep_axi_agent`` is the cocotb AXI driver
+component, a different class from this mixin.
 """
 
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 
@@ -39,8 +39,11 @@ class SepAxiRegDriver:
 
     async def _wr(self, addr: int, data: int) -> None:
         seq = SepAxiAccessSeq(
-            f"{self._DRIVER_TAG.lower()}_wr", op=SepAxiOp.WRITE,
-            addr=addr, wdata=data, size=self._AXI_SIZE,
+            f"{self._DRIVER_TAG.lower()}_wr",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            size=self._AXI_SIZE,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:
@@ -48,8 +51,10 @@ class SepAxiRegDriver:
 
     async def _rd(self, addr: int) -> int:
         seq = SepAxiAccessSeq(
-            f"{self._DRIVER_TAG.lower()}_rd", op=SepAxiOp.READ,
-            addr=addr, size=self._AXI_SIZE,
+            f"{self._DRIVER_TAG.lower()}_rd",
+            op=SepAxiOp.READ,
+            addr=addr,
+            size=self._AXI_SIZE,
         )
         await self.test.start_seq(seq)
         if not seq.resp_ok:

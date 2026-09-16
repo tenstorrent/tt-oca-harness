@@ -293,7 +293,7 @@ module log_engine_reg (
                 logic load_next;
             } LOG_REGION_ADDR_LO;
             struct {
-                logic [31:0] next;
+                logic [23:0] next;
                 logic load_next;
             } LOG_REGION_ADDR_HI;
         } LOG_REGION_ADDR;
@@ -358,7 +358,7 @@ module log_engine_reg (
                 logic [31:0] value;
             } LOG_REGION_ADDR_LO;
             struct {
-                logic [31:0] value;
+                logic [23:0] value;
             } LOG_REGION_ADDR_HI;
         } LOG_REGION_ADDR;
         struct {
@@ -469,12 +469,12 @@ module log_engine_reg (
     assign hwif_out.LOG_REGION_ADDR.LOG_REGION_ADDR_LO.value = field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_LO.value;
     // Field: log_engine.LOG_REGION_ADDR.LOG_REGION_ADDR_HI
     always_comb begin
-        automatic logic [31:0] next_c;
+        automatic logic [23:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value;
         load_next_c = '0;
         if(decoded_reg_strb.LOG_REGION_ADDR[1] && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            next_c = (field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value & ~decoded_wr_biten[23:0]) | (decoded_wr_data[23:0] & decoded_wr_biten[23:0]);
             load_next_c = '1;
         end
         field_combo.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.next = next_c;
@@ -482,7 +482,7 @@ module log_engine_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value <= 32'h0;
+            field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value <= 24'h0;
         end else begin
             if(field_combo.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.load_next) begin
                 field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value <= field_combo.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.next;
@@ -538,6 +538,7 @@ module log_engine_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.LOG_FETCH_ERR.value = field_storage.INTR_STATUS.LOG_FETCH_ERR.value;
     // Field: log_engine.INTR_STATUS.LOG_WRITE_ERR
     always_comb begin
         automatic logic [0:0] next_c;
@@ -563,6 +564,7 @@ module log_engine_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.LOG_WRITE_ERR.value = field_storage.INTR_STATUS.LOG_WRITE_ERR.value;
     assign hwif_out.INTR_STATUS.intr =
         |field_storage.INTR_STATUS.LOG_FETCH_ERR.value
         || |field_storage.INTR_STATUS.LOG_WRITE_ERR.value;
@@ -723,7 +725,8 @@ module log_engine_reg (
             readback_data_var[31:0] = field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_LO.value;
         end
         if(rd_mux_addr == 7'hc) begin
-            readback_data_var[31:0] = field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value;
+            readback_data_var[23:0] = field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value;
+            readback_data_var[31:24] = hwif_in.LOG_REGION_ADDR.RESERVED.next;
         end
         if(rd_mux_addr == 7'h10) begin
             readback_data_var[31:0] = field_storage.LOG_WRITE_ADDR.LOG_WRITE_ADDR.value;

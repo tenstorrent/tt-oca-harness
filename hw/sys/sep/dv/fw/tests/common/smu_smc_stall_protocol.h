@@ -93,9 +93,8 @@
  *   HALT    = value(0,0,false): fires action [0] mpc_debug_run_req's partner
  *             mpc_debug_HALT_req -- the VeeR MPC debug halt that actually stalls a
  *             RUNNING core. NOTE: action [3] i_cpu_halt_req does NOT halt a live
- *             core (sim-proven: core kept retiring, o_cpu_halt_status stayed 0),
+ *             core (the core keeps retiring and o_cpu_halt_status stays 0),
  *             so 004 halts via action [0] and resumes via the release actions [1]/[4]. */
-#define SMU_STALL_CLA_CDFDCSR_EXPECT 0x8000000000000000ULL
 #define SMU_STALL_CLA_CTRLSTATUS_EXPECT 0x60
 #define SMU_STALL_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define SMU_STALL_CLA_EAP1_RELEASE 0x144FBFC000ULL

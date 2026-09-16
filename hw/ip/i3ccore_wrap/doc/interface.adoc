@@ -16,7 +16,7 @@ including In-Band Interrupts, Common Command Codes, and device recovery.
 ===== Description and Features
 
 * *MIPI Specification Compliance*: Full compliance with I3C Basic v1.0/v1.1.1,
-I3C HCI v1.2, and TCRI v1.0 (Recovery) specifications
+I3C HCI v1.2, and TCRI v1.0 recovery specifications
 * *Dual Operating Modes*: Configurable as active controller, secondary
 controller, or I3C target with runtime mode switching
 * *High-Speed Operation*: Push-Pull mode up to 12.5 MHz, Open-Drain mode for
@@ -31,7 +31,7 @@ including dynamic address assignment (SETDASA, SETNEWDA), device
 configuration (SETMWL, SETMRL), and device queries (GETPID, GETSTATUS)
 * *I2C Backward Compatibility*: Standard-mode (100 kbaud), Fast-mode (400 kbaud),
 and Fast-mode Plus (1 Mbaud) support for legacy I2C devices
-* *Device Recovery (TCRI)*: MIPI TCRI v1.0 compliant recovery handler with
+* *Transfer Command Response Interface (TCRI)*: MIPI TCRI v1.0 recovery handler with
 firmware download and peripheral reset capabilities
 * *Multi-Instance Support*: Up to 6 independent I3C controller instances with
 unified register interface

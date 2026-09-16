@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+# Facts the tt_hw_debug MMR spec yaml cannot supply, consumed by dfd_yaml_rdl.py.
+#
+# Every entry here is an assertion, re-checked on each run: an entry that no
+# longer describes the vendor drop is a hard error, not a silent carry-forward.
+# A vendor bump therefore either passes clean or names the exact stale line.
+
+# Block layout of the composite aperture. Not a vendor fact: mmrs.sv derives the
+# block indices from parameters that smc_dfd_wrap supplies, so these counts are
+# asserted against that instantiation rather than against the vendor tree.
+block_map:
+  assert_from: hw/sys/smc/rtl/smc_dfd/rtl/smc_dfd_wrap.sv
+  assert_module: dfd_top_cla_dst_apb
+  num_cla_inst: 1
+  num_dst_inst: 1
+
+# Registers present in the spec yaml but absent from <blk>_mmr_pkg.svh, i.e. the
+# spec describes them but this drop does not build them. The map models what the
+# RTL implements, so they stay out of it: the RDL also feeds the C headers, the
+# Python model and the docs, and an entry here would offer firmware a register
+# that no read decoder answers. smc_register_test walks every mapped register, so
+# one that does not exist is a guaranteed failure however the bus reports it.
+# Asserted: still in the yaml, and still absent from the svh.
+exclude:
+  cla:
+    - c_custom_example
+  ntr:
+    - c_custom_example
+
+# The reverse gap: built by the RTL but missing from the spec yaml. Geometry is
+# taken from the svh, which is also what the entry is asserted against.
+# Asserted: still absent from the yaml, and still present in the svh at this
+# offset with these field bounds.
+extra_regs: {}
+
+# Fields the block rewrites after every software write: live counters, write and
+# read pointers, the timestamp. Their RTL is shaped like ordinary rw config, so
+# the yaml reports them writable and a generated map would too -- smc_register_test
+# flags each one on write-read-back. Pinned read-only by hand.
+#
+# The yaml's own HW_WRITE cannot stand in for this list: 35 other fields carry
+# HW_WRITE and are legitimately rw.
+#
+# Asserted: register and field still exist, and the yaml still reports the field
+# sw-writable (an upstream change to read-only makes the pin redundant).
+hw_owned:
+  dst_sink:
+    trDstRamWPHigh: [trDstRamWPHigh]
+  cla:
+    c_dbg_cla_counter0_cfg: [counter, upper_counter, rsvd]
+    c_dbg_cla_counter1_cfg: [counter, upper_counter, rsvd]
+    c_dbg_cla_counter2_cfg: [counter, upper_counter, rsvd]
+    c_dbg_cla_counter3_cfg: [counter, upper_counter, rsvd]
+    c_dbg_cla_timestamp: [timestamp_upper, timestamp_lower]

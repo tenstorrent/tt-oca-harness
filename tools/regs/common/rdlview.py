@@ -44,12 +44,24 @@ def first_addrmap_name(root) -> str:
     if not children:
         return getattr(root, "inst_name", None) or getattr(root, "type_name", None) or "registers"
     node = children[0]
-    return getattr(node, "type_name", None) or getattr(node, "inst_name", None) or node.get_path_segment()
+    return (
+        getattr(node, "type_name", None)
+        or getattr(node, "inst_name", None)
+        or node.get_path_segment()
+    )
 
 
 def sw_access(node) -> str:
-    r = "R" if (getattr(node, "is_sw_readable", False) or getattr(node, "has_sw_readable", False)) else ""
-    w = "W" if (getattr(node, "is_sw_writable", False) or getattr(node, "has_sw_writable", False)) else ""
+    r = (
+        "R"
+        if (getattr(node, "is_sw_readable", False) or getattr(node, "has_sw_readable", False))
+        else ""
+    )
+    w = (
+        "W"
+        if (getattr(node, "is_sw_writable", False) or getattr(node, "has_sw_writable", False))
+        else ""
+    )
     return r + w or "-"
 
 
@@ -65,7 +77,9 @@ def reset_value(node) -> str:
 def desc_adoc(text: str | None) -> str:
     if not text:
         return "-"
-    return "\n".join(line.strip().replace("|", r"\|") for line in text.replace("\r\n", "\n").split("\n"))
+    return "\n".join(
+        line.strip().replace("|", r"\|") for line in text.replace("\r\n", "\n").split("\n")
+    )
 
 
 def desc_html(node) -> str:
@@ -89,7 +103,9 @@ def bit_ranges(reg: RegNode) -> list[Field]:
         if bit in by_msb:
             lsb, f = by_msb[bit]
             bits = f"{bit}:{lsb}" if bit != lsb else str(bit)
-            out.append(Field(bits, f.inst_name, sw_access(f), reset_value(f), f.get_property("desc") or ""))
+            out.append(
+                Field(bits, f.inst_name, sw_access(f), reset_value(f), f.get_property("desc") or "")
+            )
             bit = lsb - 1
             continue
         start = bit
@@ -139,7 +155,9 @@ class Collector(RDLListener):
             else:
                 name = f"{enclosing.get_path_segment(array_suffix='')}[{count}].{node.inst_name}"
             addr = f"0x{base:X} - 0x{last:X}"
-            self.arrays.setdefault(name, (count, f"0x{base:X}", f"0x{stride:X}" if stride else None))
+            self.arrays.setdefault(
+                name, (count, f"0x{base:X}", f"0x{stride:X}" if stride else None)
+            )
         else:
             name = node.inst_name
             addr = f"0x{node.absolute_address:X}"
@@ -148,7 +166,16 @@ class Collector(RDLListener):
         if key in self.seen:
             return
         self.seen.add(key)
-        self.regs.append(Reg(name, addr, sw_access(node), node.get_property("desc") or "", node.get_path(), bit_ranges(node)))
+        self.regs.append(
+            Reg(
+                name,
+                addr,
+                sw_access(node),
+                node.get_property("desc") or "",
+                node.get_path(),
+                bit_ranges(node),
+            )
+        )
 
 
 def collect(root) -> Collector:
@@ -165,7 +192,12 @@ def write_adoc(root, out: str):
         "",
     ]
     if data.arrays:
-        lines += ["[NOTE]", "======", "*Register Arrays:* This register map contains the following register arrays:", ""]
+        lines += [
+            "[NOTE]",
+            "======",
+            "*Register Arrays:* This register map contains the following register arrays:",
+            "",
+        ]
         for name, (count, base, stride) in data.arrays.items():
             lines.append(f"* *{name}*: {count} registers")
             lines.append(f"  ** Base Address: {base}")
@@ -173,12 +205,25 @@ def write_adoc(root, out: str):
                 lines.append(f"  ** Address Increment: {stride} per register")
             lines.append("")
         lines.append("======\n")
-    lines += ['[cols="1,1,1,3", options="header"]', ".Register Map", "|===", "| Address | Name | Access | Description"]
+    lines += [
+        '[cols="1,4,1,6", options="header"]',
+        ".Register Map",
+        "|===",
+        "| Address | Name | Access | Description",
+    ]
     lines += [f"| {r.addr} | {r.name} | {r.access} a| {desc_adoc(r.desc)}" for r in data.regs]
     lines.append("|===\n")
     for r in data.regs:
-        lines += ['[cols="1,1,1,1,3", options="header"]', f".{r.name} Register", "|===", "| Bits | Field | Access | Reset | Description"]
-        lines += [f"| {f.bits} | `{f.name}` | {f.access} | {f.reset} a| {desc_adoc(f.desc)}" for f in r.fields]
+        lines += [
+            '[cols="1,3,1,1,6", options="header"]',
+            f".{r.name} Register",
+            "|===",
+            "| Bits | Field | Access | Reset | Description",
+        ]
+        lines += [
+            f"| {f.bits} | `{f.name}` | {f.access} | {f.reset} a| {desc_adoc(f.desc)}"
+            for f in r.fields
+        ]
         lines.append("|===\n")
     Path(out).write_text("\n".join(lines))
 
@@ -201,22 +246,38 @@ def write_html(root, out: str, title: str | None = None):
         lines += ["<p><strong>Register Arrays:</strong></p>", "<ul>"]
         for name, (count, base, stride) in data.arrays.items():
             extra = f", stride {escape(stride)}" if stride else ""
-            lines.append(f"<li><strong>{escape(name)}</strong>: {count} registers, base {escape(base)}{extra}</li>")
+            lines.append(
+                f"<li><strong>{escape(name)}</strong>: {count} registers, base {escape(base)}{extra}</li>"
+            )
         lines.append("</ul>")
-    lines += ["<h2>Register List:</h2>", "<table>", "<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>"]
+    lines += [
+        "<h2>Register List:</h2>",
+        "<table>",
+        "<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>",
+    ]
     for r in data.regs:
         anchor = escape(r.name.replace("[", "_").replace("]", "_"))
-        lines.append(f'<tr><td>{escape(r.addr)}</td><td><a href="#{anchor}">{escape(r.name)}</a></td><td>{escape(r.access)}</td><td>{desc_html_text(r.desc)}</td></tr>')
+        lines.append(
+            f'<tr><td>{escape(r.addr)}</td><td><a href="#{anchor}">{escape(r.name)}</a></td><td>{escape(r.access)}</td><td>{desc_html_text(r.desc)}</td></tr>'
+        )
     lines += ["</table>", "<h2>Register Details:</h2>"]
     for r in data.regs:
         anchor = escape(r.name.replace("[", "_").replace("]", "_"))
-        lines += [f'<h3 id="{anchor}">{escape(r.name)}</h3>', "<table>", "<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>"]
+        lines += [
+            f'<h3 id="{anchor}">{escape(r.name)}</h3>',
+            "<table>",
+            "<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>",
+        ]
         for f in r.fields:
-            lines.append(f"<tr><td>{escape(f.bits)}</td><td>{escape(f.name)}</td><td>{escape(f.access)}</td><td>{escape(f.reset)}</td><td>{desc_html_text(f.desc)}</td></tr>")
+            lines.append(
+                f"<tr><td>{escape(f.bits)}</td><td>{escape(f.name)}</td><td>{escape(f.access)}</td><td>{escape(f.reset)}</td><td>{desc_html_text(f.desc)}</td></tr>"
+            )
         lines.append("</table>")
     lines.append("</div>")
     Path(out).write_text("\n".join(lines))
 
 
 def desc_html_text(text: str | None) -> str:
-    return "<br>".join(escape(line.strip()) for line in (text or "-").replace("\r\n", "\n").split("\n"))
+    return "<br>".join(
+        escape(line.strip()) for line in (text or "-").replace("\r\n", "\n").split("\n")
+    )

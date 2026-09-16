@@ -8,9 +8,9 @@ Simple test to verify compilation and basic register read/write functionality.
 """
 
 import cocotb
+from basic_sanity import basic_sanity_test
 from cocotb.triggers import with_timeout
 
-from basic_sanity import basic_sanity_test
 
 @cocotb.test()
 async def basic_sanity(dut):

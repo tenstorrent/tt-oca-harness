@@ -1,14 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
 [[tests]]
 name = "sep_axi_smoke_test"
-module = "system.sep_axi_smoke_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "system.sep_axi_smoke_test", uvm = "sep_axi_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "system", "ci"]
@@ -27,29 +28,12 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# Fabric decode-error / negative response (the reference suite\'s sep_cpu_lsu_negative_matrix_test # + sep_cpu_ifu_invalid_target_test +
-# sep_fabric_xbar_error_closure_test ). The CPU-LSU AXI master reads
-# an unmapped local address -> exact DECERR (allow_timeout=False so a wedge fails),
-# while a known-mapped CSR on the same bus returns OKAY + value. COVERED_STRONGER:
-# asserts the exact spec response vs the reference suite's any-non-OKAY/timeout-tolerated check.
-# no_cpu (host drives the CPU-LSU splice); +skip_fuse_sense (decode is independent
-# of OTP/entropy).
-name = "sep_fabric_decode_error_response_test"
-module = "system.sep_fabric_decode_error_response_test"
-seed = 1
-reseed = 3
-timeout_sec = 1800
-tags = ["fabric", "decode", "negative", "system", "subsystem"]
-run_modes = ["no_cpu"]
-target = "lsu_stub_all_live"
-args = ["+skip_fuse_sense"]
-
-[[tests]]
 # Simultaneous multi-source interrupt fan-in + anti-alias (the reference suite
 # sep_irq_extended_connectivity_test). Host asserts a CROSS-IP set (HMAC/KMAC/CSRNG/
-# EDN INTR_TEST -> sep_internal_interrupts bits 15/18/21/25) AT ONCE and proves the
-# OR-packing assembles exactly those bits with no neighbor alias in [8:31] -- the
-# mailbox-8->1-truncation bug class, re-run for the crypto/KM region. Distinct from
+# EDN INTR_TEST -> sep_internal_interrupts bits 17/20/23/27, per sep.sv) AT ONCE and
+# proves the OR-packing assembles exactly those bits, with no neighbor alias and no
+# unresolved bit in [8:33] -- the mailbox-8->1-truncation bug class, re-run for the
+# crypto/KM region. Distinct from
 # `sep_irq_ip_to_aggregator_test` (one source at a time). Reuses that test's
 # sep_internal_interrupts_probe_o mirror.
 # no_cpu (aggregator read via probe); +skip_fuse_sense (INTR_TEST is functional-state
@@ -70,7 +54,7 @@ args = ["+skip_fuse_sense"]
 # alias-remap / AP-STEE output-remap / inbound+outbound filter config banks on the CPU-LSU
 # master: field R/W + 64-bit upper word + FILTER write-once-set lock (FILTER_CONFIG locked[63];
 # alias-remap valid[63] is plain R/W, not woset) + RO data_bus_width=3 + non-vacuity anchor.
-# CSR layer only (functional translation / outbound enforcement infra-gated). no_cpu; +skip_fuse_sense.
+# CSR layer only; the live translation and outbound drop are on sep_fabric_output_remap_datapath_proxy_test. no_cpu; +skip_fuse_sense.
 name = "sep_fabric_remap_filter_csr_bank_test"
 module = "system.sep_fabric_remap_filter_csr_bank_test"
 seed = 1
@@ -108,15 +92,29 @@ args = ["+skip_fuse_sense"]
 # depth model, WIRQT write-threshold IRQ + IRQP gate + W1C, read-empty (0xFEEDDEAD+SLVERR+
 # ERROR_FLAGS.read_error read-clear + eirq W1C), write-full (SLVERR+write_error), CTRL flush.
 # TX-only. Round-trip readback + read-threshold need a peer-side WRITE to the INBOUND
-# aperture (inbound_mailbox_0 @ 0x10A0_0800, port1); a clean VCS repro proved that
-# external smn_inbound can fill it and CPU-LSU can pop the value through outbound_mailbox_0.
-# Keep this rep scoped to the reference suite TX mailbox-data intent; put peer-path closure in a
-# separate fabric/mailbox testcase if it becomes permanent.
-# Distinct from #8 (->PIC->CPU delivery). no_cpu; +skip_fuse_sense (local mailbox, no OTP dep).
+# aperture (inbound_mailbox_0 @ 0x10A0_0800, port1), which external smn_inbound can fill
+# and CPU-LSU can pop through outbound_mailbox_0; that peer path is outside this rep.
+# Distinct from sep_mailbox_plic_test (->PIC->CPU delivery). no_cpu; +skip_fuse_sense
+# (local mailbox, no OTP dep).
 name = "sep_axil_mailbox_iface_rand_test"
 module = "system.sep_axil_mailbox_iface_rand_test"
 seed = 1
 reseed = 3
+timeout_sec = 1800
+tags = ["mailbox", "axil_mailbox", "fifo", "interrupt", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The peer half of the mailbox that the TX rep above cannot reach. The external
+# SMN master writes the inbound aperture to fill the receive FIFO, which closes
+# the data round-trip readback and the read threshold (RIRQT), and grades the
+# fabric.adoc contract that a 4-byte READ_DATA at either half pops one whole
+# entry -- so two reads consume two entries rather than reassembling one.
+name = "sep_mailbox_peer_rx_rirqt_test"
+module = "system.sep_mailbox_peer_rx_rirqt_test"
+seed = 1
 timeout_sec = 1800
 tags = ["mailbox", "axil_mailbox", "fifo", "interrupt", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -130,8 +128,12 @@ args = ["+skip_fuse_sense"]
 # entropy) -- then pulse one engine's SW_RESET_N (0x1080_3000, active-low) and prove the
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
 # clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
-# address returns DECERR on read (HMAC CFG write also DECERR) while AES DATA_OUT_0 stays OKAY; after release
-# DIGEST_0 is OKAY at reset. Drain-before-reset is not claimed. no_cpu; +skip_fuse_sense
+# address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
+# DIGEST_0 is OKAY at reset. Drain-before-reset IS claimed on the HMAC path:
+# CHK-DRAIN-ORDER (reset waits for both AXI-Lite paths to drain),
+# CHK-HOST-DRAIN (reads accepted before the request resolve OKAY) and
+# CHK-DRAIN-ARRIVAL (a read arriving mid-drain also resolves). The other three
+# accelerator domains are not claimed. no_cpu; +skip_fuse_sense
 # (entropy/crypto independent of OTP lifecycle).
 name = "sep_crypto_per_ip_reset_isolation_test"
 module = "system.sep_crypto_per_ip_reset_isolation_test"
@@ -161,6 +163,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+esrc_noise_force"]
 
 [[tests]]
+# Shared TRNG-reset recovery contract: populate the entropy pool, quiesce
+# AES/KMAC/OTBN/KM, reset ESRC+CSRNG+EDN, prove the pool scrubbed stale/partial
+# data while its AXI responder stayed live, verify external-source selection and
+# CSR passthrough remain outside reset, reinitialize the complete entropy chain,
+# observe fresh pool progress, then release consumers.
+name = "sep_trng_reset_recovery_test"
+module = "system.sep_trng_reset_recovery_test"
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "trng", "entropy", "isolation", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+esrc_noise_force"]
+
+[[tests]]
 # Inbound-filter per-entry RULE matrix (the reference suite's
 # sep_inbound_filter_blockbydefault_test +
 # sep_inbound_filter_programming_ownership_test +
@@ -169,9 +186,12 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # non-allowed->DECERR (block-by-default), and read_en/write_en gating. Walks entry 0
 # and 7 x two windows x rw/r/w (match-all src_id=0) plus entry 0 / window 0
 # source-ID match and mismatch, then allow_burst deny/allow on AR and AW
-# of the scratch window. Distinct from
+# of the scratch window, then entry 15 same-page allow_burst=1 granule,
+# page-bound, and FILTER_CONFIG.locked. Distinct from
 # `sep_lcc_uvm_inbound_filter_gating_test` (global sep_debug skip gate). no_cpu + ext SMN master; REAL PROD fuse sense.
-# CHK-OWNERSHIP keeps CFG outside every allow window (firmware must not allow-list CFG).
+# CHK-OWNERSHIP keeps inbound CFG, outbound CFG, remap banks, and
+# SEP_GLOBAL_BASE_ADDR / SEP_REGION_SIZE outside every allow window
+# (firmware must not allow-list them).
 name = "sep_fabric_inbound_filter_rule_matrix_test"
 module = "system.sep_fabric_inbound_filter_rule_matrix_test"
 seed = 1
@@ -205,6 +225,11 @@ args = ["+skip_fuse_sense"]
 # sep_irq_ip_to_aggregator_test): host injects each CSRNG/EDN INTR_TEST and watches
 # the mapped aggregate bit (tb_top sep_internal_interrupts_probe_o, observation-only
 # XMR mirror) go 0->1->0, plus the IP INTR_STATE RW1C contract and one-hot isolation.
+# Then one through-adapter SLVERR on the DMA register hole and on the
+# HMAC, KMAC and OTBN CSR gaps. Those latch DMA_BUS_ERR_STATUS /
+# PERIPH_BUS_ERR_STATUS and bits 40 / 42; each matching CLEAR write returns
+# them. This leaf does not start a DMA transfer, so it does not prove
+# host_path_err / bit 41.
 # no_cpu (host drives AXI); +skip_fuse_sense (INTR_TEST is independent of OTP/entropy).
 name = "sep_irq_ip_to_aggregator_test"
 module = "system.sep_irq_ip_to_aggregator_test"
@@ -233,9 +258,13 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # reset_ctrl CSR + WDT sanity, combined (the reference suite\'s sep_reset_ctrl_csr_test +
-# wdt_sanity_test): SW_RESET_N=0x1E + per-IP reset-wire clears, bad-address D-bus
-# NMI x2, WDT bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
+# wdt_sanity_test): SW_RESET_N=0x3E plus the per-IP and shared TRNG reset-wire
+# clears, bad-address D-bus NMI x2, WDT
+# bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
 # wdt_timer_rst_req_o output (tb_top probe). cpu run mode; +skip_fuse_sense.
+# JTAG-holds OTBN/AES/HMAC/KMAC across rst_ni release and fuse sense so they
+# never raise crypto edn_req, then releases them; the firmware then probes the
+# four per-IP reset wires and the shared TRNG reset across ESRC, CSRNG and EDN.
 name = "sep_reset_wdt_sanity_test"
 module = "cpu.sep_reset_wdt_sanity_test"
 firmware = "reset_wdt_sanity_test"
@@ -248,8 +277,8 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # CLOCK_GATE_CTRL placeholder representative. sep_cpu_ctrl implements
 # pka_cg_enable[0:0] only; RTL does not consume it. Proves storage plus
-# AES/HMAC/OTBN/SW_DEBUG CSRs still OKAY with the bit 0 and 1 (stub-const,
-# not a live per-IP gate). no_cpu / +skip_fuse_sense.
+# AES/HMAC/OTBN/SW_DEBUG CSRs reading the same value with the bit 0 and 1
+# (stub-const, not a live per-IP gate). no_cpu / +skip_fuse_sense.
 name = "sep_clock_gate_control_test"
 module = "system.sep_clock_gate_control_test"
 seed = 1
@@ -290,13 +319,16 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # CSR reset / RW / RO / reserved sweep over the generated SystemRDL export.
 # RANDCFG: block order and complement-vs-ones order from the run seed.
-# Every reset-eligible register and every write-safe register is walked
-# in one invocation; TOUCH_BLOCKS picks one storage RW per
-# other major IP (write x, compare with mask, restore).
+# Reset walk is the inventory after reasoned skips (not every OFFSET
+# symbol). Full-mask write-lands is 19 registers (8 scratch-cold +
+# 8 scratch-warm + 3 CPU_CTRL); 32 inbound START/END use the wrap model.
+# The masked storage touch covers every register that is plain storage and
+# whose write has no side effect, entropy complex CSRs included.
 # no_cpu; +skip_fuse_sense (CSR storage, no OTP dep).
 name = "sep_reg_bit_bash_rand_test"
 module = "system.sep_reg_bit_bash_rand_test"
 seed = 1
+reseed = 3
 timeout_sec = 3600
 tags = ["csr", "register", "system", "subsystem"]
 run_modes = ["no_cpu"]
@@ -307,13 +339,141 @@ args = ["+skip_fuse_sense"]
 # Intra-block dead-space decode on CSR windows larger than REG_MAP_SIZE
 # (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI).
 # An access past allocated size must be refused and must not change a
-# live register. Hard FAILED until RTL refuses the wrap; do not XFAIL.
+# live register; do not XFAIL. CHK-DEADSPACE-BURST asserts the same refusal
+# on a later beat of a burst that ends past the window's extent.
 # no_cpu; +skip_fuse_sense.
 name = "sep_fabric_deadspace_decode_test"
 module = "system.sep_fabric_deadspace_decode_test"
 seed = 1
 timeout_sec = 1800
 tags = ["fabric", "decode", "negative", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Reserved rows of hw/sys/sep/doc/memory_map.adoc must be refused. Walks the
+# gaps BETWEEN block windows; sep_fabric_deadspace_decode_test walks the dead
+# tail INSIDE a window. Expectation is spec-derived; the crossbar decode table
+# is logged as a cross-check, never used to build the expectation.
+name = "sep_axi_map_refuse_test"
+module = "system.sep_axi_map_refuse_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Narrow-write byte masking and memory-window readback. Every AxSIZE at every
+# legal lane offset on every seed; the seed varies staged data only. The
+# window compare is the only checker that catches a read-mask defect, which
+# returns a correct response with zeroed data.
+name = "sep_axi_strobe_window_test"
+module = "system.sep_axi_strobe_window_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "strobe", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Partial-lane read determinism. A read narrower than the 64-bit beat only
+# obligates the responder to drive the addressed byte lanes (a 32-bit CSR
+# leaves RDATA[63:32] undriven; a narrow-ARSIZE beat leaves every
+# non-addressed lane undriven), so the value handed back must be a pure
+# function of the addressed lanes: exact against an independent golden and
+# identical on re-read around a checked disturbing access. Complements
+# sep_axi_strobe_window_test (write-side masking): here the read extraction
+# is on trial. All 36 byte-run slices + all 14 aligned narrow-ARSIZE cells +
+# the all-zeros/all-ones CSR patterns run on every seed.
+name = "sep_axi_partial_lane_read_test"
+module = "system.sep_axi_partial_lane_read_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["fabric", "axi", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# AXI channel ordering, swept over the whole write-safe register inventory:
+# the three legal AW/W orderings at every register, crossed with the three
+# transfer sizes on the scratch words. Each block terminates AXI at its own
+# register adapter, so the ordering contract has to hold at each of them. An
+# adapter that latches its pending-write flag on AW accept answers OKAY while
+# dropping the data, so the cell compares the readback, not the response, and
+# a follow-on write to a second register in the block catches a stale flag
+# committing the next write to the wrong target.
+name = "sep_axi_order_sweep_test"
+module = "system.sep_axi_order_sweep_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# All three AW/W/AR orderings at a drbg_axil64_lane_adapter port. The
+# fabric-driven leaves below reach the DUT's own adapters but can present only
+# the aw-then-ar ordering: the crossbar delivers W one cycle after AW and
+# re-serializes to that order whatever the master presents, which
+# CHK-CONCURRENT-CAL measures at both ends. This leaf drives a TB-owned second
+# instance of the same module at its port, so every legal ordering is
+# presentable to the cycle and the vehicle's own reset clears a wedge between
+# cells. It grades the MODULE; the leaves below grade the integration.
+name = "sep_drbg_axil_adapter_port_arbitration_test"
+module = "system.sep_drbg_axil_adapter_port_arbitration_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_drbg_axil_concurrent_csrng_aw_then_ar_test"
+module = "system.sep_drbg_axil_concurrent_csrng_aw_then_ar_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_drbg_axil_concurrent_edn_aw_then_ar_test"
+module = "system.sep_drbg_axil_concurrent_edn_aw_then_ar_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# The same sweep driven from the SMN inbound master. m_axi reaches the same
+# eleven IP block adapters through the inbound filter, so an adapter that
+# mishandles a channel ordering has to be caught from both TB-driven buses.
+# The walk opens allow windows first, and does not sweep the sixteen
+# INBOUND_FILTER_CTRL blocks: those CSRs gate the access in flight, so writing
+# them would measure filter reprogramming. They stay swept on s_axi.
+name = "sep_axi_order_sweep_m_axi_test"
+module = "system.sep_axi_order_sweep_m_axi_test"
+seed = 1
+reseed = 3
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

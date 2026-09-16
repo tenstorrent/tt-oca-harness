@@ -4,8 +4,8 @@
 
 """Generate a flat Python register header from a SystemRDL register space.
 
-Emits address/offset constants, per-register `_REG_DEFAULT` values, and
-(when enabled) `ctypes.Structure`/`Union` bitfield classes with `rsvd_N` gaps.
+Emits address/offset constants, reset values, field-access metadata, and optional
+`ctypes.Structure`/`Union` bitfield classes with `rsvd_N` gaps.
 
 Registers wider than 64 bits, or blocks with `--bitfields none`, get constants
 only (no ctypes classes).
@@ -18,13 +18,13 @@ import os
 import sys
 from pathlib import Path
 
-from systemrdl import RDLCompiler, RDLCompileError, RDLWalker
+from systemrdl import RDLCompileError, RDLCompiler, RDLWalker
 from systemrdl.node import AddressableNode, MemNode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.regcollect import FieldCollector, build_struct_fields, compute_default  # noqa: E402
 
-SCRIPT_VERSION = "r2026-07-16"
+SCRIPT_VERSION = "r2026-08-30"
 
 CTYPE_BY_WIDTH = {8: "c_uint8", 16: "c_uint16", 32: "c_uint32", 64: "c_uint64"}
 
@@ -52,16 +52,22 @@ class PyListener(FieldCollector):
             return
         name = node.get_path_segment()
         if self.shorten_names or node.parent == self.root:
-            def_name = node.get_path_segment(array_suffix="_{index:d}_").upper() \
-                if self.shorten_names else name.upper()
+            def_name = (
+                node.get_path_segment(array_suffix="_{index:d}_").upper()
+                if self.shorten_names
+                else name.upper()
+            )
         else:
             def_name = self.def_name(node)
 
         if node.parent == self.root:
             # Top-level addrmap base is 0 in the spec; use the lowest child address.
             base = min(
-                (c.absolute_address for c in node.children(unroll=True)
-                 if isinstance(c, AddressableNode)),
+                (
+                    c.absolute_address
+                    for c in node.children(unroll=True)
+                    if isinstance(c, AddressableNode)
+                ),
                 default=0,
             )
             size = node.size - base
@@ -74,12 +80,16 @@ class PyListener(FieldCollector):
 
     def enter_Regfile(self, node):
         if self.under_target:
-            self.addr_lines.append(self.const(self.def_name(node) + "_REG_FILE_BASE_ADDR", node.absolute_address))
+            self.addr_lines.append(
+                self.const(self.def_name(node) + "_REG_FILE_BASE_ADDR", node.absolute_address)
+            )
             self.addr_lines.append(self.const(self.def_name(node) + "_REG_FILE_SIZE", node.size))
 
     def enter_Mem(self, node):
         if self.under_target:
-            self.addr_lines.append(self.const(self.def_name(node) + "_MEM_BASE_ADDR", node.absolute_address))
+            self.addr_lines.append(
+                self.const(self.def_name(node) + "_MEM_BASE_ADDR", node.absolute_address)
+            )
             self.addr_lines.append(self.const(self.def_name(node) + "_MEM_SIZE", node.size))
 
     def enter_Reg(self, node):
@@ -101,7 +111,9 @@ class PyListener(FieldCollector):
             self.addr_lines.append(self.const(fullname + "_REG_ADDR", node.absolute_address))
 
 
-def render_registers(regs: dict, bitfields_enabled: bool) -> tuple[str, set[str]]:
+def render_registers(
+    regs: dict, bitfields_enabled: bool, field_access_enabled: bool
+) -> tuple[str, set[str]]:
     """Emit defaults and optional ctypes classes; return text and used ctypes names."""
     lines: list[str] = []
     used_ctypes: set[str] = set()
@@ -114,6 +126,23 @@ def render_registers(regs: dict, bitfields_enabled: bool) -> tuple[str, set[str]
         digits = -(reg.regwidth // -4)
         default_line = f"{reg_name}_REG_DEFAULT = 0x{default:0{digits}X}"
         lines.append(default_line)
+        if field_access_enabled:
+            lines.append(f"{reg_name}_REG_FIELD_ACCESS = (")
+            lines.extend(
+                "    "
+                + repr(
+                    (
+                        field.name,
+                        field.sw,
+                        field.onwrite,
+                        field.onread,
+                        field.singlepulse,
+                    )
+                )
+                + ","
+                for field in reg.fields
+            )
+            lines.extend((")", ""))
 
         if not bitfields_enabled:
             continue
@@ -167,18 +196,31 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input_rdl_file")
     parser.add_argument("output_py_file")
-    parser.add_argument("-u", "--udp_rdl_file", required=True,
-                        help="PeakRDL UDP RDL file (./regblock_udps.rdl)")
+    parser.add_argument(
+        "-u", "--udp_rdl_file", required=True, help="PeakRDL UDP RDL file (./regblock_udps.rdl)"
+    )
     parser.add_argument("-t", "--top", help="address map to use as the top")
-    parser.add_argument("-a", "--addrmap",
-                        help="address map (instance name) for which to generate output")
-    parser.add_argument("-i", "--incdir", action="append",
-                        help="directory to search for included files")
-    parser.add_argument("-s", "--shorten_names", action="store_true",
-                        help="use shorter constant names")
+    parser.add_argument(
+        "-a", "--addrmap", help="address map (instance name) for which to generate output"
+    )
+    parser.add_argument(
+        "-i", "--incdir", action="append", help="directory to search for included files"
+    )
+    parser.add_argument(
+        "-s", "--shorten_names", action="store_true", help="use shorter constant names"
+    )
     parser.add_argument("--addr_width", default=32, help="width of address bus")
-    parser.add_argument("--bitfields", choices=["none", "ltoh"], default="ltoh",
-                        help="emit ctypes classes (ltoh) or only constants (none)")
+    parser.add_argument(
+        "--bitfields",
+        choices=["none", "ltoh"],
+        default="ltoh",
+        help="emit ctypes classes (ltoh) or only constants (none)",
+    )
+    parser.add_argument(
+        "--field-access",
+        action="store_true",
+        help="emit per-field software access and side-effect metadata",
+    )
     args = parser.parse_args()
 
     rdlc = RDLCompiler()
@@ -192,7 +234,11 @@ def main():
     listener = PyListener(root, args)
     RDLWalker(unroll=True).walk(root, listener)
 
-    reg_text, used_ctypes = render_registers(listener.regs, args.bitfields != "none")
+    reg_text, used_ctypes = render_registers(
+        listener.regs,
+        args.bitfields != "none",
+        args.field_access,
+    )
 
     lines = [
         "# SPDX-License-Identifier: Apache-2.0",
@@ -201,8 +247,10 @@ def main():
         "# Auto-generated register header - do not edit by hand.",
         f"# Generated by {os.path.basename(sys.argv[0])} ({SCRIPT_VERSION}) "
         f"from {os.path.basename(args.input_rdl_file)}.",
-        "",
     ]
+    if args.field_access:
+        lines.append("# *_REG_FIELD_ACCESS entries are: field, sw, onwrite, onread, singlepulse.")
+    lines.append("")
     if used_ctypes:
         lines.append(f"from ctypes import {', '.join(sorted(used_ctypes))}")
         lines.append("")

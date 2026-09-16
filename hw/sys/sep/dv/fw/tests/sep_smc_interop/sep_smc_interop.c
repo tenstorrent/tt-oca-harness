@@ -41,31 +41,39 @@ __attribute__((noinline, used)) void sep_smc_interop_fail_loop(void) {
 
 /* SEP inbound filters over the mailbox window (must cover BOTH ports so the SMC pushes at
  * the SMC-facing port 0x10A00800 reach the mailbox). filter0 secure, filter1 non-secure. */
-#define SEP_INBOUND_FILTER0_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) /* 0x10A21000 */
-#define SEP_INBOUND_FILTER_STRIDE 0x20u
-#define SEP_FILTER_CONFIG_OFFSET 0x00u
-#define SEP_FILTER_START_OFFSET 0x08u
-#define SEP_FILTER_END_OFFSET 0x10u
-#define SEP_MBOX_INBOUND_START 0x0000000010A00000ULL
-#define SEP_MBOX_INBOUND_END 0x0000000010A0084FULL
+#define SEP_INBOUND_FILTER0_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)
+#define SEP_INBOUND_FILTER_STRIDE OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
+#define SEP_FILTER_CONFIG_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define SEP_FILTER_START_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define SEP_FILTER_END_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define SEP_MBOX_INBOUND_START ((uint64_t)OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define SEP_MBOX_INBOUND_END \
+    ((uint64_t)(OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR + \
+                OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_SIZE - 1u))
 /* allow_burst=0 on these sub-4KB inbound filters so the byte-granular END (0x10A0084F) stores
  * EXACTLY -- allow_burst=1 rounds a same-page window up to 0x..FFF, as smc_sep_xbar shows. */
 #define SEP_MBOX_INBOUND_CFG 0x0000000100030013ULL    /* read/write/enable/src_id=3          */
 #define SEP_MBOX_INBOUND_CFG_NS 0x0000000100030113ULL /* + allow_ns (non-secure)             */
 
 /* SEP-local mailbox port (OUTBOUND_MAILBOX_0) absolute register addresses. */
-#define SEP_LOCAL_MBOX_WDATA (SEP_LOCAL_MBOX_BASE + MBOX_WRITE_DATA_OFFSET) /* 0x10A00000 */
-#define SEP_LOCAL_MBOX_RDATA (SEP_LOCAL_MBOX_BASE + MBOX_READ_DATA_OFFSET)  /* 0x10A00008 */
-#define SEP_LOCAL_MBOX_STATUS (SEP_LOCAL_MBOX_BASE + MBOX_STATUS_OFFSET)    /* 0x10A00010 */
-#define SEP_LOCAL_MBOX_RIRQT (SEP_LOCAL_MBOX_BASE + MBOX_RIRQT_OFFSET)      /* 0x10A00028 */
-#define SEP_LOCAL_MBOX_IRQS (SEP_LOCAL_MBOX_BASE + MBOX_IRQS_OFFSET)        /* 0x10A00030 */
-#define SEP_LOCAL_MBOX_IRQEN (SEP_LOCAL_MBOX_BASE + MBOX_IRQEN_OFFSET)      /* 0x10A00038 */
-#define SEP_LOCAL_MBOX_IRQP (SEP_LOCAL_MBOX_BASE + MBOX_IRQP_OFFSET)        /* 0x10A00040 */
+#define SEP_LOCAL_MBOX_WDATA OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR
+#define SEP_LOCAL_MBOX_RDATA OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR
+#define SEP_LOCAL_MBOX_STATUS OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
+#define SEP_LOCAL_MBOX_RIRQT OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR
+#define SEP_LOCAL_MBOX_IRQS OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR
+#define SEP_LOCAL_MBOX_IRQEN OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR
+#define SEP_LOCAL_MBOX_IRQP OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR
 
 /*
  * Write a 64-bit filter field as two 32-bit stores. The SEP CPU is RV32; a WRITE_REG64 to a
- * CSR whose upper half lands off-map faults (that is what wedged the previous 002 firmware),
- * so program every 64-bit filter/aperture field with explicit 32-bit CSR writes.
+ * CSR whose upper half lands off-map faults, so program every 64-bit filter/aperture field
+ * with explicit 32-bit CSR writes.
  */
 static inline void wr_filter_field32(uint32_t addr, uint64_t val) {
     WRITE_REG(addr + 0x0u, (uint32_t)(val & 0xFFFFFFFFu));
@@ -124,9 +132,9 @@ static int run_interop_sequence(void) {
     }
 
     /* Gate on the SMC "up" marker BEFORE the first SMC-scratch write: POLL (read) scratch2 for
-     * SMC_UP, exactly like smu_smc_stall_sep polls INIT_RELEASE_OK. This is what keeps the READY
-     * publish below from racing the just-released SMC clearing/initing its own scratch (the race
-     * that wedged the sep_axi_in write). On timeout, publish a fail marker and stop. */
+     * SMC_UP, exactly like smu_smc_stall_sep polls INIT_RELEASE_OK, so the READY publish below
+     * cannot race the just-released SMC clearing/initing its own scratch. On timeout, publish a
+     * fail marker and stop. */
     if (sep_smc_scratch_wait(SEP_INTEROP_SMC_SCRATCH2_ALIAS, SEP_INTEROP_SMC_UP,
                              SEP_INTEROP_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(SEP_INTEROP_SMC_SCRATCH12_ALIAS, SEP_INTEROP_TEST_FAIL);

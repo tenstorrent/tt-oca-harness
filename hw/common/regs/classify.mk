@@ -7,7 +7,7 @@
 
 # C header omits bitfield structs (peakrdl can't represent >64-bit registers);
 # address/mask defines only.
-OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
+OCAH_REG_NO_BITFIELDS ?= key_manager oca_i3c_wrap smc smc_efuse_map sep_efuse_map
 
 # The Python header has its own list because the reason above is a peakrdl
 # c-header limitation, not a general one: rdlpyhdr.py drops just the registers it
@@ -17,31 +17,32 @@ OCAH_REG_NO_BITFIELDS ?= key_manager smc smc_efuse_map sep_efuse_map
 # is on and this list stays empty until some block proves otherwise.
 OCAH_REG_NO_BITFIELDS_PY ?=
 
+# Python field-access metadata is opt-in because generic register walkers are
+# its only consumers. It carries sw/onwrite/onread/singlepulse from the RDL.
+OCAH_REG_PY_FIELD_ACCESS_BLOCKS ?= hw/ip/entropy_source
+
 # A top is composite when its resolved RDL sits next to a regs/blocks/ dir: each
 # sub-block is generated on its own, the top keeps only its address view. Reading
 # the resolved RDL means an overlay variant reusing a canonical top inherits this.
 ocah_reg_is_composite = $(wildcard $(dir $(OCAH_REG_RDL_$(call ocah_reg_key,$(1))))blocks)
 
-# Reserve an address window only: C header, but no SV RTL and no docs.
-OCAH_REG_PLACEHOLDER_BLOCKS ?= oca_i3c_wrap
 # Register RTL authored outside regblock: excluded from SV only, still docs + C header.
 # The vendored OpenTitan blocks (aes/hmac/kmac/otbn/csrng/edn/secure_dma/
 # spi_controller/aon_timer) get their reg RTL from upstream reggen, not peakrdl.
-# efuse_bank is simulation-only and its committed RTL carries a hand edit the
-# generator cannot express; the file itself documents it.
 # pll_wrap/pvt_wrap are free-tree DV register models (hw/sys/smc/dv/models/regs)
 # whose real RTL is the vendor PLL/PVT IP, not regblock: only their addrmap_pkg is
 # committed. The nonfree overlay also lists them (EXTRA below), but they must be in
 # the free base too so the peakrdl-only regen-diff gate -- which never reads nonfree
 # -- is self-consistent and does not emit uncommitted <blk>_reg[_pkg].sv.
+# oca_i3c_wrap describes the same map as the SMC top sees it (HCI fields
+# expanded), while its register RTL comes from the vendored i3c-core.
 OCAH_REG_NO_RTL_BLOCKS ?= \
   aes hmac kmac otbn \
   csrng edn secure_dma spi_controller sep_external \
   smc_efuse_map sep_efuse_map \
   clint plic debug_module wdt bus_error_unit misc_wrap \
   el2_pic aon_timer dfd smc_cla dma_ctrl \
-  efuse_bank \
-  pll_wrap pvt_wrap
+  pll_wrap pvt_wrap oca_i3c_wrap
 # Overlay append hook (e.g. the nonfree DV-shim sub-blocks whose RTL is the
 # vendor's, not regblock's): set before this file so the open default is kept.
 OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
@@ -68,9 +69,9 @@ OCAH_REG_RAL_SUB_BLOCKS ?= \
   sep_efuse_map spi_controller \
   sep_cpu_ctrl sep_reset_ctrl sep_scratch sep_lifecycle_ctrl el2_pic
 OCAH_REG_RAL_LEAF_BLOCKS ?= \
-  hw/common/axi/axi_alias_remap/regs/alias_remap \
-  hw/common/axi/axi_filter/regs/filter_ctrl \
-  hw/common/axi/output_remap \
+  hw/ip/axi_alias_remap/regs/alias_remap \
+  hw/ip/axi_filter/regs/filter_ctrl \
+  hw/ip/output_remap \
   hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap \
   hw/ip/efuse/regs/efuse_interface_ctrl \
   hw/ip/efuse/regs/efuse_mmr \
@@ -111,6 +112,7 @@ OCAH_REG_ERR_CHECK_BLOCKS ?= \
 OCAH_REG_ERR_CHECK_BLOCKS += $(OCAH_REG_ERR_CHECK_BLOCKS_EXTRA)
 
 ocah_reg_has_json = $(filter $(1),$(OCAH_REG_JSON_BLOCKS))
+ocah_reg_has_py_field_access = $(filter $(1),$(OCAH_REG_PY_FIELD_ACCESS_BLOCKS))
 ocah_reg_leaf_has_ral = $(filter $(1),$(OCAH_REG_RAL_LEAF_BLOCKS))
 ocah_reg_ral_blocks = $(filter $(OCAH_REG_RAL_SUB_BLOCKS),$(call ocah_reg_ch_blocks,$(1)))
 
@@ -124,8 +126,8 @@ ocah_reg_ral_blocks = $(filter $(OCAH_REG_RAL_SUB_BLOCKS),$(call ocah_reg_ch_blo
 OCAH_REG_RAL_MODEL_hw_ip_axi_lite_mailbox_unit_regs_axil_mailbox_sep_wrap ?= axil_mailbox
 
 # Local sub-blocks of a composite top: the regs/blocks/<sub>/ basenames (a pure
-# glob, no addrmap scan). C keeps placeholders; docs drop them; SV also drops
-# RTL-elsewhere blocks (applied at materialization below).
+# glob, no addrmap scan). C and docs take them all; SV drops the RTL-elsewhere
+# blocks (applied at materialization below).
 ocah_reg_ch_blocks_scan = $(notdir $(patsubst %/,%,$(wildcard $(call ocah_reg_root,$(1))/regs/blocks/*/)))
 
 # Composite tops vs plain leaves (the lists the rules in rules.mk loop over).
@@ -136,6 +138,8 @@ OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(O
 # wrapper/top RDLs that include sibling blocks by bare filename. The relocated
 # OpenTitan overlay blocks hmac/kmac/otbn (like edn) pull the shared
 # opentitan_udps.rdl fragment by bare include, so they need the catalog too.
+# smc_cla is a leaf but composes the six generated dfd_<blk> RDLs, which live in
+# the tt-hw-debug overlay include dir the catalog already globs.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   edn \
   hmac \
@@ -146,10 +150,18 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   otbn \
   sep_external \
   smc \
+  smc_cla \
   telemetry_receiver_wrap \
   uart_log_engine_wrap \
   uart_wrap
 OCAH_REG_INCDIR_BLOCKS ?= $(sort $(OCAH_REG_CATALOG_SEARCH_BLOCKS) $(foreach b,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(call ocah_reg_name,$(b))))
+
+# Per-block -I addition for the vendored i3c-core MIPI HCI map.
+# oca_i3c_wrap `include "registers.rdl"`; put the vendor dir first on its path
+# (file-backed EXTRA_SEARCH defaults to the local regs/ dir, which has no
+# registers.rdl of its own).
+OCAH_REG_EXTRA_SEARCH_hw_ip_i3ccore_wrap_regs_oca_i3c_wrap += \
+  $(OCAH_ROOT)/vendor/chipsalliance/i3c-core/upstream/src/rdl
 
 # Blocks in scope: TARGET=<name> selects one, else all.
 ocah_reg_block_by_name = $(strip $(foreach block,$(OCAH_REG_BLOCKS),$(if $(filter $(1),$(notdir $(block))),$(block))))
@@ -171,9 +183,11 @@ $(foreach block,$(OCAH_REG_BLOCKS),$(eval $(call ocah_reg_classify_vars,$(block)
 
 # Per-output-class sub-block lists for composite tops. SUBDOC/SUBSV reference the
 # prior line's var, escaped ($$) so they expand at eval time (after it is assigned).
+# SUBDOC currently mirrors SUBCH; it stays a separate var so a doc-only exclusion
+# has a place to go without threading a new list through out.mk.
 define ocah_reg_classify_composite_vars
 OCAH_REG_SUBCH_$(call ocah_reg_key,$(1)) := $(call ocah_reg_ch_blocks_scan,$(1))
-OCAH_REG_SUBDOC_$(call ocah_reg_key,$(1)) := $$(filter-out $$(OCAH_REG_PLACEHOLDER_BLOCKS),$$(OCAH_REG_SUBCH_$(call ocah_reg_key,$(1))))
+OCAH_REG_SUBDOC_$(call ocah_reg_key,$(1)) := $$(OCAH_REG_SUBCH_$(call ocah_reg_key,$(1)))
 OCAH_REG_SUBSV_$(call ocah_reg_key,$(1)) := $$(filter-out $$(OCAH_REG_NO_RTL_BLOCKS),$$(OCAH_REG_SUBDOC_$(call ocah_reg_key,$(1))))
 endef
 $(foreach block,$(OCAH_REG_COMPOSITE_BLOCK_IDS),$(eval $(call ocah_reg_classify_composite_vars,$(block))))

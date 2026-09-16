@@ -3,12 +3,10 @@
 /*
  * smc_sep_xbar  --  shared protocol contract (single source of truth).
  *
- * Included by both firmwares (SEP consumer + SMC producer) and parsed by the
- * cocotb checker so DUT stimulus and DV expectations share one contract. Every
- * value is a plain integer/hex #define for the Python parser.
+ * Included by both firmwares (SEP consumer + SMC producer). Python goldens
+ * derive CSR facts independently from PeakRDL; they do not parse this header.
  *
- * Force-free SEP-driven bootstrap (pivoted 2026-07-20 off the ext_in launch, which
- * segfaults VCS on a CPU_CTRL write -- see B-EXTIN-CPUCTRL-WRITE): the real SEP CPU boots
+ * Force-free SEP-driven bootstrap: the real SEP CPU boots
  * from its own fuse/reset, opens its outbound egress window, polls SMC SRAM for the exact
  * preload cookie, then re-vectors + releases the four SMC cores over the SEP->SMC alias
  * (sep_smc_bringup.h). The TB issues no reset/CSR/vector force. Then the two firmwares run
@@ -47,7 +45,11 @@
 #define XBAR_SEP_PASS 0x5E9A600Du       /* SEP: saw DONE, datapath complete */
 
 /* ---- SMC->SEP command channel (SEP cold scratch0 at SEP-local 0x10802000, via SMU xbar) ---- */
+#ifdef OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
+#define XBAR_SEP_SHARED_ADDR OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+#else
 #define XBAR_SEP_SHARED_ADDR 0x10802000u
+#endif
 #define XBAR_SMC_TO_SEP_CMD 0xC001CAFEu
 #define XBAR_SMC_TO_SEP_DONE 0xD0E0F00Du
 
@@ -75,7 +77,6 @@
 
 /* CLA node0 EAP CSR values (verbatim, matching the 004 real-CLA release; satisfies the SV
  * "Real CLA boot" liveness monitor at smc_chiplet_wrap_uvm_top.sv:805). */
-#define XBAR_CLA_CDFDCSR_EXPECT 0x8000000000000000ULL
 #define XBAR_CLA_CTRLSTATUS_EXPECT 0x60
 #define XBAR_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define XBAR_CLA_EAP1_RELEASE 0x144FBFC000ULL
@@ -84,9 +85,15 @@
 /* SEP-local CPU_CTRL status CSRs (bit0). The SEP FW must observe the SMC's fuse-sense-done
  * (sep.sv:842 smc_fuse_sense_done_i -> this CSR) == 1 BEFORE its first sep_axi_in CPU_CTRL
  * write, so the SEP never drives the SMC before the SMC's fuse sense has completed. */
-#define XBAR_SMC_FUSE_STATUS_ADDR 0x10A30140u /* SEP CPU_CTRL SMC_FUSE_SENSE_STATUS */
-#define XBAR_SEP_FUSE_STATUS_ADDR 0x10A30150u /* SEP CPU_CTRL SEP_FUSE_SENSE_STATUS */
+#ifdef OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR
+#define XBAR_SMC_FUSE_STATUS_ADDR OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR
+#define XBAR_SEP_FUSE_STATUS_ADDR OCH_SEP_TOP_SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_BASE_ADDR
+#define XBAR_FUSE_SENSE_DONE_MASK SEP_CPU_CTRL__SMC_FUSE_SENSE_STATUS__SMC_FUSE_SENSE_DONE_bm
+#else
+#define XBAR_SMC_FUSE_STATUS_ADDR 0x10A30140u
+#define XBAR_SEP_FUSE_STATUS_ADDR 0x10A30150u
 #define XBAR_FUSE_SENSE_DONE_MASK 0x1u
+#endif
 
 /* ---- CHK-SETUP readback goldens (every programmed aperture/filter is read back & compared) ----
  */
@@ -95,12 +102,21 @@
 #define XBAR_SEP_OUTBOUND_START 0x0000000040000000ULL /* SEP outbound egress filter */
 #define XBAR_SEP_OUTBOUND_END 0x00000000800000FFULL
 #define XBAR_SEP_OUTBOUND_CFG 0x0000000101000013ULL
-#define XBAR_SEP_INBOUND_START 0x0000000010802000ULL /* SEP inbound filter rule0/rule1 */
+#ifdef OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
+#define XBAR_SEP_INBOUND_START \
+    ((unsigned long long)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
+#define XBAR_SEP_INBOUND_END \
+    ((unsigned long long)(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) + 7u))
+#define XBAR_SMC_OUTBOUND_START XBAR_SEP_INBOUND_START
+#define XBAR_SMC_OUTBOUND_END XBAR_SEP_INBOUND_END
+#else
+#define XBAR_SEP_INBOUND_START 0x0000000010802000ULL
 #define XBAR_SEP_INBOUND_END 0x000000001080203FULL
+#define XBAR_SMC_OUTBOUND_START 0x0000000010802000ULL
+#define XBAR_SMC_OUTBOUND_END 0x000000001080203FULL
+#endif
 #define XBAR_SEP_INBOUND_CFG0 0x0000000100030013ULL
 #define XBAR_SEP_INBOUND_CFG1 0x0000000100030113ULL
-#define XBAR_SMC_OUTBOUND_START 0x0000000010802000ULL /* SMC outbound egress filter */
-#define XBAR_SMC_OUTBOUND_END 0x000000001080203FULL
 #define XBAR_SMC_OUTBOUND_CFG 0x0000000100030013ULL
 /* SMC CPU_CTRL RESET_CTRL post-pulse readback: default value (pulse_start bits self-clear). */
 #define XBAR_SMC_RESET_CTRL_DEFAULT 0x0000010Fu

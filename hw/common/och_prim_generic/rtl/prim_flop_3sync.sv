@@ -6,9 +6,9 @@
 //
 //--------------------------------------------------
 module prim_flop_3sync (
-    input i_CK,
-    input i_D,
-    output wire o_Q
+  input i_CK,
+  input i_D,
+  output wire o_Q
 );
 
   logic q_d, q_dd, q_ddd;

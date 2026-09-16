@@ -6,10 +6,10 @@
 //
 //--------------------------------------------------
 module prim_flop_2sync_s (
-    input i_CK,
-    i_D,
-    i_SN,
-    output wire o_Q
+  input i_CK,
+  i_D,
+  i_SN,
+  output wire o_Q
 );
 
   logic q_d_inv, q_dd_inv;

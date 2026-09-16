@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 
-module tlul_err import tlul_pkg::*; (
+module tlul_err
+  import tlul_pkg::*;
+(
   input clk_i,
   input rst_ni,
 
@@ -14,11 +16,11 @@ module tlul_err import tlul_pkg::*; (
 
   `include "prim_assert.sv"
 
-  localparam int IW  = $bits(tl_i.a_source);
+  localparam int IW = $bits(tl_i.a_source);
   localparam int SZW = $bits(tl_i.a_size);
-  localparam int DW  = $bits(tl_i.a_data);
-  localparam int MW  = $bits(tl_i.a_mask);
-  localparam int SubAW = $clog2(DW/8);
+  localparam int DW = $bits(tl_i.a_data);
+  localparam int MW = $bits(tl_i.a_mask);
+  localparam int SubAW = $clog2(DW / 8);
 
   logic opcode_allowed, a_config_allowed;
 
@@ -29,8 +31,9 @@ module tlul_err import tlul_pkg::*; (
 
   // An instruction type transaction cannot be write
   logic instr_wr_err;
-  assign instr_wr_err = prim_mubi_pkg::mubi4_test_true_strict(tl_i.a_user.instr_type) &
-                        (op_full | op_partial);
+  assign instr_wr_err = prim_mubi_pkg::mubi4_test_true_strict(
+      tl_i.a_user.instr_type
+  ) & (op_full | op_partial);
 
   logic instr_type_err;
   assign instr_type_err = prim_mubi_pkg::mubi4_test_invalid(tl_i.a_user.instr_type);
@@ -60,13 +63,13 @@ module tlul_err import tlul_pkg::*; (
 
     if (tl_i.a_valid) begin
       unique case (tl_i.a_size)
-        'h0: begin // 1 Byte
+        'h0: begin  // 1 Byte
           addr_sz_chk  = 1'b1;
           mask_chk     = ~|(tl_i.a_mask & ~mask);
           fulldata_chk = |(tl_i.a_mask & mask);
         end
 
-        'h1: begin // 2 Byte
+        'h1: begin  // 2 Byte
           addr_sz_chk  = ~tl_i.a_address[0];
           // check inactive lanes if lower 2B, check a_mask[3:2], if uppwer 2B, a_mask[1:0]
           mask_chk     = (tl_i.a_address[1]) ? ~|(tl_i.a_mask & 4'b0011)
@@ -74,13 +77,13 @@ module tlul_err import tlul_pkg::*; (
           fulldata_chk = (tl_i.a_address[1]) ? &tl_i.a_mask[3:2] : &tl_i.a_mask[1:0] ;
         end
 
-        'h2: begin // 4 Byte
+        'h2: begin  // 4 Byte
           addr_sz_chk  = ~|tl_i.a_address[SubAW-1:0];
           mask_chk     = 1'b1;
           fulldata_chk = &tl_i.a_mask[3:0];
         end
 
-        default: begin // else
+        default: begin  // else
           addr_sz_chk  = 1'b0;
           mask_chk     = 1'b0;
           fulldata_chk = 1'b0;
@@ -89,9 +92,7 @@ module tlul_err import tlul_pkg::*; (
     end
   end
 
-  assign a_config_allowed = addr_sz_chk
-                          & mask_chk
-                          & (op_get | op_partial | fulldata_chk) ;
+  assign a_config_allowed = addr_sz_chk & mask_chk & (op_get | op_partial | fulldata_chk);
 
   // Only 32 bit data width for current tlul_err
   `OCAH_OT_ASSERT_INIT(dataWidthOnly32_A, DW == 32)

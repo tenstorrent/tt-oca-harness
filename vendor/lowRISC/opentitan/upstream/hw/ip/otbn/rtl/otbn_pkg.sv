@@ -18,8 +18,14 @@ package otbn_pkg;
   parameter int ExtHWLEN = HWLEN * 39 / 32;
   parameter int ExtQWLEN = QWLEN * 39 / 32;
 
+  // Output width of OTBN's Bivium URND
+  parameter int UrndLen = 389;
+
   // Width of base (32b) data path with added integrity bits
   parameter int BaseIntgWidth = 39;
+
+  // Width of the base (32b) integrity part.
+  parameter int BaseEccWidth = BaseIntgWidth - 32;
 
   // Number of 32-bit words per WLEN / HWLEN / QWLEN
   parameter int BaseWordsPerWLEN  = WLEN / 32;
@@ -40,6 +46,9 @@ package otbn_pkg;
 
   // Number of Wide Data Registers (WDRs)
   parameter int NWdr = 2 ** WdrAw;
+
+  // Number of shares used inside the mask accelerator
+  parameter int NumShares = 2;
 
   // Width of entropy input
   parameter int EdnDataWidth = 256;
@@ -67,6 +76,23 @@ package otbn_pkg;
 
   // Number of vector chunk processing elements
   parameter int NVecProc = VLEN / VChunkLEN;
+
+  // A type to split a base word into integrity and data bits.
+  typedef struct packed {
+    logic [BaseEccWidth-1:0] intg;
+    logic [31:0]             word;
+  } otbn_base_intg_word_t;
+
+  // A wide register (WDR or WSR) split into base words with integrity and data each.
+  typedef otbn_base_intg_word_t [BaseWordsPerWLEN-1:0] otbn_wide_intg_word_t;
+
+  // A type to select bits from URND to secure wipe a full WSR.
+  localparam int unsigned IsprRndRsvdWidth = UrndLen - ExtWLEN;
+
+  typedef struct packed {
+    logic [IsprRndRsvdWidth-1:0] rsvd;
+    logic [ExtWLEN-1:0]          urnd;
+  } otbn_ispr_urnd_t;
 
   // Toplevel constants ============================================================================
 
@@ -107,6 +133,7 @@ package otbn_pkg;
   //
   // Note: These errors are duplicated in other places. If updating them here, update those too.
   typedef struct packed {
+    logic mai_error;
     logic fatal_software;
     logic lifecycle_escalation;
     logic illegal_bus_access;
@@ -173,6 +200,7 @@ package otbn_pkg;
   // organised to include every software error (including 'call_stack', which actually gets fed in
   // from the base register file)
   typedef struct packed {
+    logic mai_error;
     logic fatal_software;
     logic bad_internal_state;
     logic reg_intg_violation;
@@ -186,6 +214,7 @@ package otbn_pkg;
 
   // All the error signals that can be generated somewhere inside otbn_core
   typedef struct packed {
+    logic mai_error;
     logic fatal_software;
     logic bad_internal_state;
     logic reg_intg_violation;
@@ -385,53 +414,79 @@ package otbn_pkg;
   typedef enum logic [CsrNumWidth-1:0] {
     // Address ranges follow the RISC-V Privileged Specification v1.11
     // 0x7C0-0x7FF Custom read/write
-    CsrFg0         = 12'h7C0,
-    CsrFg1         = 12'h7C1,
-    CsrFlags       = 12'h7C8,
-    CsrMod0        = 12'h7D0,
-    CsrMod1        = 12'h7D1,
-    CsrMod2        = 12'h7D2,
-    CsrMod3        = 12'h7D3,
-    CsrMod4        = 12'h7D4,
-    CsrMod5        = 12'h7D5,
-    CsrMod6        = 12'h7D6,
-    CsrMod7        = 12'h7D7,
-    CsrRndPrefetch = 12'h7D8,
+    CsrFg0            = 12'h7C0,
+    CsrFg1            = 12'h7C1,
+    CsrFlags          = 12'h7C8,
+    CsrMod0           = 12'h7D0,
+    CsrMod1           = 12'h7D1,
+    CsrMod2           = 12'h7D2,
+    CsrMod3           = 12'h7D3,
+    CsrMod4           = 12'h7D4,
+    CsrMod5           = 12'h7D5,
+    CsrMod6           = 12'h7D6,
+    CsrMod7           = 12'h7D7,
+    CsrRndPrefetch    = 12'h7D8,
+    // CsrKmacIfStatus   = 12'h7d9,
+    // CsrKmacIntr       = 12'h7da,
+    // CsrKmacCfg        = 12'h7db,
+    // CsrKmacMsgSend    = 12'h7dc,
+    // CsrKmacCmd        = 12'h7dd,
+    // CsrKmacByteStrobe = 12'h7de,
+    CsrMaiCtrl        = 12'h7e0,
 
     // 0xFC0-0xFFF Custom read-only
     CsrRnd         = 12'hFC0,
-    CsrUrnd        = 12'hFC1
+    CsrUrnd        = 12'hFC1,
+    // CsrKmacStatus  = 12'hfc2,
+    // CsrKmacError   = 12'hfc3,
+    CsrMaiStatus   = 12'hfca
   } csr_e;
 
   // Wide Special Purpose Registers (WSRs)
-  parameter int NWsr = 8; // Number of WSRs
+  parameter int NWsr = 16; // Number of WSRs
   parameter int WsrNumWidth = $clog2(NWsr);
   typedef enum logic [WsrNumWidth-1:0] {
-    WsrMod    = 'd0,
-    WsrRnd    = 'd1,
-    WsrUrnd   = 'd2,
-    WsrAcc    = 'd3,
-    WsrKeyS0L = 'd4,
-    WsrKeyS0H = 'd5,
-    WsrKeyS1L = 'd6,
-    WsrKeyS1H = 'd7
+    WsrMod        = 'd0,
+    WsrRnd        = 'd1,
+    WsrUrnd       = 'd2,
+    WsrAcc        = 'd3,
+    WsrKeyS0L     = 'd4,
+    WsrKeyS0H     = 'd5,
+    WsrKeyS1L     = 'd6,
+    WsrKeyS1H     = 'd7,
+    // WsrKmacDataS0 = 'd8,
+    // WsrKmacDataS1 = 'd9,
+    WsrMaiResS0   = 'd10,
+    WsrMaiResS1   = 'd11,
+    WsrMaiIn0S0   = 'd12,
+    WsrMaiIn0S1   = 'd13,
+    WsrMaiIn1S0   = 'd14,
+    WsrMaiIn1S1   = 'd15
   } wsr_e;
 
   // Internal Special Purpose Registers (ISPRs)
   // CSRs and WSRs have some overlap into what they map into. ISPRs are the actual registers in the
   // design which CSRs and WSRs are mapped on to.
-  parameter int NIspr = 9;
+  parameter int NIspr = 17;
   parameter int IsprNumWidth = $clog2(NIspr);
   typedef enum logic [IsprNumWidth-1:0] {
-    IsprMod    = 'd0,
-    IsprRnd    = 'd1,
-    IsprAcc    = 'd2,
-    IsprFlags  = 'd3,
-    IsprUrnd   = 'd4,
-    IsprKeyS0L = 'd5,
-    IsprKeyS0H = 'd6,
-    IsprKeyS1L = 'd7,
-    IsprKeyS1H = 'd8
+    IsprMod       = 'd0,
+    IsprRnd       = 'd1,
+    IsprAcc       = 'd2,
+    IsprFlags     = 'd3,
+    IsprUrnd      = 'd4,
+    IsprKeyS0L    = 'd5,
+    IsprKeyS0H    = 'd6,
+    IsprKeyS1L    = 'd7,
+    IsprKeyS1H    = 'd8,
+    IsprMaiResS0  = 'd9,
+    IsprMaiResS1  = 'd10,
+    IsprMaiIn0S0  = 'd11,
+    IsprMaiIn0S1  = 'd12,
+    IsprMaiIn1S0  = 'd13,
+    IsprMaiIn1S1  = 'd14,
+    IsprMaiCtrl   = 'd15,
+    IsprMaiStatus = 'd16
   } ispr_e;
 
   typedef logic [$clog2(NFlagGroups)-1:0] flag_group_t;
@@ -600,7 +655,7 @@ package otbn_pkg;
   } ispr_bignum_predec_t;
 
   typedef struct packed {
-    logic                  op_en;
+    logic                  mac_en;
     logic                  is_vec;
     logic                  is_mod;
     logic                  is_lane;
@@ -616,6 +671,7 @@ package otbn_pkg;
     logic                  mul_add_en;
     logic                  c_add_en;
     logic                  add_mod_en;
+    logic [VLEN/QWLEN-1:0] acc_qw_sel;
     logic                  acc_merger_en;
     logic                  mul_shift_en;
     logic                  mul_merger_en;
@@ -624,13 +680,12 @@ package otbn_pkg;
   } mac_bignum_predec_t;
 
   typedef struct packed {
-    logic       tmp_wr_en_raw;
-    logic       tmp_clear_en;
-    logic       c_wr_en_raw;
-    logic       c_clear_en;
-    logic [1:0] acc_qw_sel;
-    logic       acc_wr_en_raw;
-    logic       acc_clear_en;
+    logic tmp_wr_en_raw;
+    logic tmp_clear_en;
+    logic c_wr_en_raw;
+    logic c_clear_en;
+    logic acc_wr_en_raw;
+    logic acc_clear_en;
   } mac_bignum_contrl_t;
 
   typedef struct packed {
@@ -717,38 +772,39 @@ package otbn_pkg;
   } otbn_state_e;
 
   // States for start_stop_controller
-  // Encoding generated with:
-  // Encoding generated with:
-  // $ ./util/design/sparse-fsm-encode.py -d 3 -m 9 -n 7 \
-  //      -s 573771984 --language=sv
+  // Encoding generated at commit 8e0414b5fc using Python 3.10.19 with:
+  // $ ./util/design/sparse-fsm-encode.py --language=sv \
+  //     --seed 573771984 --distance 3 --states 10 --bits 8
   //
   // Hamming distance histogram:
   //
   //  0: --
   //  1: --
   //  2: --
-  //  3: |||||||||||||||||||| (44.44%)
-  //  4: |||||||||||||||||| (41.67%)
-  //  5: | (2.78%)
-  //  6: | (2.78%)
-  //  7: ||| (8.33%)
+  //  3: |||||||||||||||||||| (31.11%)
+  //  4: |||||||||||||||||||| (31.11%)
+  //  5: |||||||||||| (20.00%)
+  //  6: |||||||| (13.33%)
+  //  7: || (4.44%)
+  //  8: --
   //
   // Minimum Hamming distance: 3
   // Maximum Hamming distance: 7
   // Minimum Hamming weight: 1
   // Maximum Hamming weight: 6
   //
-  localparam int StateStartStopWidth = 7;
+  localparam int StateStartStopWidth = 8;
   typedef enum logic [StateStartStopWidth-1:0] {
-    OtbnStartStopStateInitial             = 7'b1010011,
-    OtbnStartStopStateHalt                = 7'b1111001,
-    OtbnStartStopStateUrndRefresh         = 7'b0000110,
-    OtbnStartStopStateRunning             = 7'b1001000,
-    OtbnStartStopSecureWipeWdrUrnd        = 7'b0101100,
-    OtbnStartStopSecureWipeAccModBaseUrnd = 7'b0010000,
-    OtbnStartStopSecureWipeAllZero        = 7'b0110101,
-    OtbnStartStopSecureWipeComplete       = 7'b0001011,
-    OtbnStartStopStateLocked              = 7'b1101111
+    OtbnStartStopStateInitial             = 8'b10100111,
+    OtbnStartStopStateHalt                = 8'b00000001,
+    OtbnStartStopStateUrndRefresh         = 8'b11110010,
+    OtbnStartStopStateRunning             = 8'b01110111,
+    OtbnStartStopSecureWipeWdrUrnd        = 8'b10010000,
+    OtbnStartStopSecureWipeAccModBaseUrnd = 8'b10001110,
+    OtbnStartStopSecureWipeExtIsprsUrnd   = 8'b00110100,
+    OtbnStartStopSecureWipeAllZero        = 8'b01111000,
+    OtbnStartStopSecureWipeComplete       = 8'b10101001,
+    OtbnStartStopStateLocked              = 8'b01101101
   } otbn_start_stop_state_e;
 
 // Encoding generated with:
@@ -778,12 +834,9 @@ typedef enum logic [StateScrambleCtrlWidth-1:0] {
 } scramble_ctrl_state_e;
 
   // URNG PRNG default seed.
-  // These parameters have been generated with
-  // $ ./util/design/gen-lfsr-seed.py --width 256 --seed 2840984437 --prefix "Urnd"
-  parameter int UrndPrngWidth = 256;
-  typedef logic [UrndPrngWidth-1:0] urnd_prng_seed_t;
+  typedef prim_trivium_pkg::trivium_lfsr_seed_t urnd_prng_seed_t;
   parameter urnd_prng_seed_t RndCnstUrndPrngSeedDefault =
-      256'h84ddfadaf7e1134d70aa1c59de6197ff25a4fe335d095f1e2cba89acbe4a07e9;
+      urnd_prng_seed_t'(prim_trivium_pkg::RndCnstTriviumLfsrSeedDefault);
 
   parameter otp_ctrl_pkg::otbn_key_t RndCnstOtbnKeyDefault =
       128'h14e8cecae3040d5e12286bb3cc113298;
@@ -809,4 +862,34 @@ typedef enum logic [StateScrambleCtrlWidth-1:0] {
     256'h7c95a23a_ef177de6_d65c418f_daa96a70_5929c83d_fafb9f37_8a4436af_a5a71d13,
     256'hcf48c07e_42d0eb67_c29b3863_9a28e72c_b880f3ee_9e246571_00c6f9c4_4f305e4a
   };
+
+  // Encoding generated at commit 2f740b6f5b using Python 3.10.19 with:
+  // $ ./util/design/sparse-fsm-encode.py --language=sv \
+  //     --seed 2298832222 --distance 3 --states 4 --bits 5
+  //
+  // Hamming distance histogram:
+  //
+  //  0: --
+  //  1: --
+  //  2: --
+  //  3: |||||||||||||||||||| (66.67%)
+  //  4: |||||||||| (33.33%)
+  //  5: --
+  //
+  // Minimum Hamming distance: 3
+  // Maximum Hamming distance: 4
+  // Minimum Hamming weight: 1
+  // Maximum Hamming weight: 4
+  //
+  localparam int MaskOpWidth = 5;
+  typedef enum logic [MaskOpWidth-1:0] {
+    SecAdd      = 5'b10111,
+    SecAddMod   = 5'b01100,
+    ArithToBool = 5'b01011,
+    BoolToArith = 5'b10000
+  } mask_op_e;
+
+  // Width of randomness required by the mask accelerator
+  localparam int unsigned MaRndLen = 32'd322;
+
 endpackage

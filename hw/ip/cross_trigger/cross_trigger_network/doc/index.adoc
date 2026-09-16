@@ -6,7 +6,7 @@
 
 ==== Overview
 
-OCH supports generating and sinking cross triggers between chiplets in a SiP as
+OCAH supports generating and sinking cross triggers between chiplets in a SiP as
 specified in the Open Chiplet Cross Triggering (OCCT) specification. A Cross
 Trigger Port (CTP) module serves as the signaling interface between the chiplet
 core logic and the I/O pads, while a Cross Trigger Matrix (CTM) module

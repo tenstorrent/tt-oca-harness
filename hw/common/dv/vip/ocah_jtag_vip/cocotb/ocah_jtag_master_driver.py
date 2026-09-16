@@ -73,10 +73,7 @@ def _logic_int(signal, default: int = 0) -> int:
 
 
 async def _timer(value: float | int, unit: str) -> None:
-    try:
-        await Timer(value, unit=unit)  # cocotb 2.x
-    except TypeError:
-        await Timer(value, units=unit)  # cocotb 1.9.x compatibility
+    await Timer(value, unit=unit)
 
 
 class _JtagIntfProxy:
@@ -117,14 +114,12 @@ class OcahJtagMasterDriver:
         tap_type: str = "ptap",
         signal_map: dict[str, str] | None = None,
         time_unit: str = "ns",
-        timeout_cycles: int = 10_000,
         trst_active_high: bool = False,
     ) -> None:
         self.name = name
         self.tap_type = tap_type
         self.log = logging.getLogger(name)
         self._time_unit = time_unit
-        self._timeout_cycles = int(timeout_cycles)
         # IEEE 1149.1 TRST* is active-low by default. Some TBs (e.g. SMC CPU
         # TAP ``*_reset``) expose an active-high reset; invert drive polarity.
         self._trst_active_high = bool(trst_active_high)
@@ -204,6 +199,7 @@ class OcahJtagMasterDriver:
             def __getattr__(self, signal_name: str):
                 return getattr(dut, f"{prefix}_{signal_name}")
 
+        assert trst_signal is not None
         return cls(
             _PrefixedNamespace(),
             name=name,
@@ -252,7 +248,7 @@ class OcahJtagMasterDriver:
             driver.add_device(device.to_backend())
         return driver
 
-    def _drive_trst(self, asserted: bool) -> None:
+    def _drive_trst(self, *, asserted: bool) -> None:
         """Drive the optional TRST/reset net with configured polarity."""
         if not hasattr(self.bus, "trst"):
             return
@@ -282,10 +278,6 @@ class OcahJtagMasterDriver:
             raise TypeError("add_device expects OcahJtagDevice")
         self._devices.append(device)
 
-    async def reset_finished(self) -> None:
-        """Compatibility hook for cocotbext-style reset flows."""
-        await _timer(0, self._time_unit)
-
     async def reset_tap(self, cycles: int = 10) -> None:
         """Drive the TAP to Test-Logic-Reset deterministically."""
         cycles = max(int(cycles), 5)
@@ -298,25 +290,64 @@ class OcahJtagMasterDriver:
         self._current_instruction = None
         self._stats_resets += 1
 
-    async def step_tms(self, tms: int) -> int:
-        """Drive one raw TMS cycle and return sampled TDO."""
-        return await self._cycle(int(tms) & 0x1, 0)
+    async def step(self, tms: int, tdi: int = 0) -> int:
+        """Drive one TCK cycle with ``tms``/``tdi`` and return the sampled TDO.
 
-    async def tms_step(self, tms: int) -> int:
-        """Alias for `step_tms()` matching the public plan wording."""
-        return await self.step_tms(tms)
+        The tracked TAP state follows the TMS bit, so a scan shifted one bit
+        at a time stays in step with ``get_current_state()``.
+        """
+        return await self._cycle(int(tms) & 0x1, int(tdi) & 0x1)
+
+    async def step_tms(self, tms: int) -> int:
+        """Drive one TCK cycle with TDI low and return the sampled TDO."""
+        return await self.step(tms, 0)
+
+    def sync_model(self, state: OcahJtagState | str, *, instruction: int | None = None) -> None:
+        """Declare the TAP state after movement this driver did not drive.
+
+        A power-on reset or a reset pin outside the bound TAP moves the
+        controller without a TCK cycle on this bus; the bench declares the
+        resulting state here so ``goto_state()`` plans from the true
+        controller state. ``instruction`` is the IR content after the
+        movement; ``None`` records it as unknown.
+        """
+        self._state = coerce_jtag_state(state)
+        self._current_instruction = instruction
+        self.log.debug("%s: sync_model state=%s", self.name, self._state.name)
+
+    async def assert_trst(self, *, tck_cycles: int = 1) -> None:
+        """Assert the bound TRST net and run ``tck_cycles`` TCK cycles with TMS high.
+
+        The tracked state becomes Test-Logic-Reset and the tracked instruction
+        is cleared.
+        """
+        await self._trst_level(asserted=True, tck_cycles=tck_cycles)
+
+    async def release_trst(self, *, tck_cycles: int = 0) -> None:
+        """Release the bound TRST net, then run ``tck_cycles`` TCK cycles with TMS high."""
+        await self._trst_level(asserted=False, tck_cycles=tck_cycles)
+
+    async def _trst_level(self, *, asserted: bool, tck_cycles: int) -> None:
+        if not hasattr(self.bus, "trst"):
+            raise OcahJtagMasterDriverError(f"{self.name}: no TRST net is bound")
+        self._drive_trst(asserted=asserted)
+        for _ in range(max(int(tck_cycles), 0)):
+            await self._cycle(1, 0)
+        if asserted:
+            self._state = OcahJtagState.TEST_LOGIC_RESET
+            self._current_instruction = None
+            self._stats_resets += 1
+        self.log.debug("%s: trst asserted=%s tck_cycles=%d", self.name, asserted, int(tck_cycles))
 
     async def goto_state(self, state) -> None:
         """Navigate to a TAP state using a shortest TMS path."""
         target = coerce_jtag_state(state)
         path = jtag_tms_path(self._state, target)
-        self.log.debug("%s: goto_state %s -> %s path=%s", self.name, self._state.name, target.name, path)
+        self.log.debug(
+            "%s: goto_state %s -> %s path=%s", self.name, self._state.name, target.name, path
+        )
         for tms in path:
             await self.step_tms(tms)
-
-    async def move_to_state(self, state) -> None:
-        """Backward-compatible alias for `goto_state()`."""
-        await self.goto_state(state)
 
     async def random_tms_walk(self, cycles: int, rng: Random) -> OcahJtagState:
         """Drive a reproducible random TMS walk."""
@@ -335,7 +366,9 @@ class OcahJtagMasterDriver:
         await self.goto_state(target)
         return target
 
-    async def shift_ir(self, value: int, width: int | None = None, *, back_to_rti: bool = False) -> int:
+    async def shift_ir(
+        self, value: int, width: int | None = None, *, back_to_rti: bool = False
+    ) -> int:
         """Shift an integer into IR and return captured TDO bits."""
         width = self._ir_width if width is None else int(width)
         if width <= 0:
@@ -442,7 +475,9 @@ class OcahJtagMasterDriver:
         try:
             return self._devices[int(index)]
         except IndexError as exc:
-            raise OcahJtagMasterDriverError(f"{self.name}: no JTAG device registered at index {index}") from exc
+            raise OcahJtagMasterDriverError(
+                f"{self.name}: no JTAG device registered at index {index}"
+            ) from exc
 
     async def _shift_bits(self, value: int, width: int, *, end_tms: int) -> int:
         captured = 0

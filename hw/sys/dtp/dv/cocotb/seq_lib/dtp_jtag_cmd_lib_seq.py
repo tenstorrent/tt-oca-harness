@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Composable JTAG command library for future DTP random/stress tests."""
+"""Composable JTAG command library; operations execute through a parent DTP sequence."""
 
 from __future__ import annotations
 
@@ -32,7 +32,9 @@ class dtp_jtag_cmd_lib_seq:
     ) -> int:
         """Run one random BYPASS scan and return the pattern used."""
         pattern = self.parent.random_pattern(width, rng)
-        self.log.info("Random BYPASS op instr=0x%02x width=%d pattern=0x%x", int(instr), width, pattern)
+        self.log.info(
+            "Random BYPASS op instr=0x%02x width=%d pattern=0x%x", int(instr), width, pattern
+        )
         await self.parent.check_bypass_delay(instr, pattern, width)
         return pattern
 
@@ -45,6 +47,8 @@ class dtp_jtag_cmd_lib_seq:
     ) -> int:
         """Run one random scan-loopback operation and return the pattern used."""
         pattern = self.parent.random_pattern(width, rng)
-        self.log.info("Random loopback op instr=0x%02x width=%d pattern=0x%x", int(instr), width, pattern)
+        self.log.info(
+            "Random loopback op instr=0x%02x width=%d pattern=0x%x", int(instr), width, pattern
+        )
         await self.parent.check_loopback_scan(instr, pattern, width)
         return pattern

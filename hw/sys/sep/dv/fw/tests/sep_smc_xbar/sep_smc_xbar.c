@@ -12,9 +12,9 @@
 /*
  * smc_sep_xbar  --  SEP (consumer/producer) firmware.
  *
- * Force-free SEP-DRIVEN bring-up (pivoted off ext_in, which segfaults VCS on a CPU_CTRL
- * write -- see B-EXTIN-CPUCTRL-WRITE): the real SEP CPU opens its outbound egress window,
- * polls SMC SRAM for the exact preload cookie, then re-vectors + releases the four SMC cores
+ * Force-free SEP-DRIVEN bring-up (no ext_in traffic to CPU_CTRL): the real SEP CPU opens its
+ * outbound egress window, polls SMC SRAM for the exact preload cookie, then re-vectors +
+ * releases the four SMC cores
  * over the SEP->SMC alias (sep_smc_bringup helpers). It then runs the fixed-alias
  * bidirectional datapath: SEP->SMC store/load of the correlated word at the dedicated
  * scratch8 alias (proves both remap stages), and the SMC->SEP command/DONE channel via the
@@ -39,10 +39,16 @@
 #define SMC_TO_SEP_FILTER_CONFIG 0x0000000100030013ULL
 #define SMC_TO_SEP_NS_FILTER_CONFIG 0x0000000100030113ULL
 /* Local filter-register offsets (prefixed to avoid clashing with sep_outbound_filter.h). */
-#define XBAR_FILT_CFG_OFF 0x0u
-#define XBAR_FILT_START_OFF 0x8u
-#define XBAR_FILT_END_OFF 0x10u
-#define XBAR_FILT_STRIDE 0x20u
+#define XBAR_FILT_CFG_OFF \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define XBAR_FILT_START_OFF \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define XBAR_FILT_END_OFF \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define XBAR_FILT_STRIDE OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
 
 static volatile int g_xbar_status;
 

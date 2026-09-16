@@ -6,98 +6,98 @@
 // The external interface is mostly not EL2-specific, which means the EL2 core can be replaced with another core relatively easily and transparently to other modules
 
 module sep_cpu (
-    input logic clk_i,
-    input logic rst_ni,
-    input logic dbg_rstb_i,  // EL2 debugger reset
+  input logic clk_i,
+  input logic rst_ni,
+  input logic dbg_rstb_i,  // EL2 debugger reset
 
-    input  logic jtag_tck,    // JTAG clk
-    input  logic jtag_tms,    // JTAG TMS
-    input  logic jtag_tdi,    // JTAG tdi
-    input  logic jtag_trst_n, // JTAG Reset
-    output logic jtag_tdo,    // JTAG TDO
-    output logic jtag_tdoEn,  // JTAG Test Data Output enable
+  input  logic jtag_tck,    // JTAG clk
+  input  logic jtag_tms,    // JTAG TMS
+  input  logic jtag_tdi,    // JTAG tdi
+  input  logic jtag_trst_n, // JTAG Reset
+  output logic jtag_tdo,    // JTAG TDO
+  output logic jtag_tdoEn,  // JTAG Test Data Output enable
 
-    // external MPC halt/run interface
-    input  logic mpc_debug_halt_req, // Async halt request
-    input  logic mpc_debug_run_req,  // Async run request
-    input  logic mpc_reset_run_req,  // Run/halt after reset
-    output logic mpc_debug_halt_ack, // Halt ack
-    output logic mpc_debug_run_ack,  // Run ack
-    output logic debug_brkpt_status, // debug breakpoint
+  // external MPC halt/run interface
+  input  logic mpc_debug_halt_req, // Async halt request
+  input  logic mpc_debug_run_req,  // Async run request
+  input  logic mpc_reset_run_req,  // Run/halt after reset
+  output logic mpc_debug_halt_ack, // Halt ack
+  output logic mpc_debug_run_ack,  // Run ack
+  output logic debug_brkpt_status, // debug breakpoint
 
-    input  logic i_cpu_halt_req,      // Async halt req to CPU
-    output logic o_cpu_halt_ack,      // core response to halt
-    output logic o_cpu_halt_status,   // 1'b1 indicates core is halted
-    output logic o_debug_mode_status, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-    input  logic i_cpu_run_req,       // Async restart req to CPU
-    output logic o_cpu_run_ack,       // Core response to run req
+  input  logic i_cpu_halt_req,      // Async halt req to CPU
+  output logic o_cpu_halt_ack,      // core response to halt
+  output logic o_cpu_halt_status,   // 1'b1 indicates core is halted
+  output logic o_debug_mode_status, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+  input  logic i_cpu_run_req,       // Async restart req to CPU
+  output logic o_cpu_run_ack,       // Core response to run req
 
-    // Excluding from coverage as usage is determined by the integrator of the VeeR core.
-    // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
-    input logic test_en_i,  // DFT test-enable
+  // Excluding from coverage as usage is determined by the integrator of the VeeR core.
+  // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
+  input logic test_en_i,  // DFT test-enable
 
-    // DMI port for uncore
-    input  logic        dmi_core_enable,
-    input  logic        dmi_uncore_enable,
-    output logic        dmi_uncore_en,
-    output logic        dmi_uncore_wr_en,
-    output logic [ 6:0] dmi_uncore_addr,
-    output logic [31:0] dmi_uncore_wdata,
-    input  logic [31:0] dmi_uncore_rdata,
-    output logic        dmi_active,
+  // DMI port for uncore
+  input  logic        dmi_core_enable,
+  input  logic        dmi_uncore_enable,
+  output logic        dmi_uncore_en,
+  output logic        dmi_uncore_wr_en,
+  output logic [6:0]  dmi_uncore_addr,
+  output logic [31:0] dmi_uncore_wdata,
+  input  logic [31:0] dmi_uncore_rdata,
+  output logic        dmi_active,
 
-    // These values should be tied to constants in the top level or sourced from a CSR
-    input logic [31:1] nmi_vec,  // PC to jump to @ NMI
-    input logic [31:1] jtag_id,
+  // These values should be tied to constants in the top level or sourced from a CSR
+  input logic [31:1] nmi_vec,  // PC to jump to @ NMI
+  input logic [31:1] jtag_id,
 
-    // IRQs
-    input logic                       nmi_int,
-    input logic                       timer_int,
-    input logic                       soft_int,
-    input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
+  // IRQs
+  input logic                       nmi_int,
+  input logic                       timer_int,
+  input logic                       soft_int,
+  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
 
-    output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
+  output sep_pkg::sep_cpu_trace_t sep_cpu_trace,
 
-    output logic iccm_ecc_single_error,
-    output logic iccm_ecc_double_error,
-    output logic dccm_ecc_single_error,
-    output logic dccm_ecc_double_error,
+  output logic iccm_ecc_single_error,
+  output logic iccm_ecc_double_error,
+  output logic dccm_ecc_single_error,
+  output logic dccm_ecc_double_error,
 
-    output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
-    output logic dec_tlu_perfcnt1,
-    output logic dec_tlu_perfcnt2,
-    output logic dec_tlu_perfcnt3,
+  output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
+  output logic dec_tlu_perfcnt1,
+  output logic dec_tlu_perfcnt2,
+  output logic dec_tlu_perfcnt3,
 
-  `ifdef RV_LOCKSTEP_ENABLE
-    input  logic disable_corruption_detection_i,
-    input  logic lockstep_err_injection_en_i,
-    output logic corruption_detected_o,
-  `endif
+  // Unconditional: the VeeR wrapper's lockstep ports only exist under
+  // RV_LOCKSTEP_ENABLE, but this module's do not, so the hierarchy above keeps one
+  // port footprint regardless of the define.
+  input  sep_pkg::sep_lockstep_ctrl_t   lockstep_ctrl_i,
+  output sep_pkg::sep_lockstep_status_t lockstep_status_o,
 
-    // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
-    output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
-    input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
+  // TCM (ICCM/DCCM) memory interface - routed to sep_wrapper for macro instantiation
+  output sep_pkg::sep_cpu_tcm_req_t sep_cpu_tcm_req_o,
+  input  sep_pkg::sep_cpu_tcm_rsp_t sep_cpu_tcm_rsp_i,
 
-    // AXI interfaces (IFU split into ROM and SRAM via internal demux)
-    output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
-    input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
+  // AXI interfaces (IFU split into ROM and SRAM via internal demux)
+  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_rom_axi_req_o,
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_rom_axi_resp_i,
 
-    output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
-    input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
+  output sep_pkg::sep_32_64_3_12_axi_req_t      ifu_sram_axi_req_o,
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     ifu_sram_axi_resp_i,
 
-    output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
-    input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
+  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_rom_axi_req_o,
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_rom_axi_resp_i,
 
-    output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
-    input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
+  output sep_pkg::sep_32_64_3_12_axi_req_t      lsu_xbar_axi_req_o,
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     lsu_xbar_axi_resp_i,
 
-    output sep_pkg::sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
-    input  sep_pkg::sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
+  output sep_pkg::sep_32_64_3_12_axi_req_t      dbg_axi_req_o,
+  input  sep_pkg::sep_32_64_3_12_axi_resp_t     dbg_axi_resp_i,
 
-    input  sep_pkg::sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
-    output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t      cpu_tcm_axi_req_i,
+  output sep_pkg::sep_32_64_6_12_axi_resp_t     cpu_tcm_axi_resp_o,
 
-    input  logic [31:0]                 sep_local_base_addr_i
+  input  logic [31:0]                 sep_local_base_addr_i
 );
 
   import el2_pkg::el2_param_t;
@@ -139,16 +139,16 @@ module sep_cpu (
   logic mpc_reset_run_req_sync;
 
   prim_sync2r #(
-      .WIDTH (1)
+    .WIDTH(1)
   ) u_mpc_reset_run_req_sync (
-      .i_clk     (clk_i),
-      .i_d       (mpc_reset_run_req),
-      .i_reset_n (dbg_rstb_i),
-      .o_q       (mpc_reset_run_req_sync)
+    .i_clk     (clk_i),
+    .i_d       (mpc_reset_run_req),
+    .i_reset_n (dbg_rstb_i),
+    .o_q       (mpc_reset_run_req_sync)
   );
 
   el2_veer_wrapper #(
-    .RESET_VEC (och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
+    .RESET_VEC(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
   ) el2_veer_wrapper (
     .clk       (clk_i),
     .rst_l     (rst_ni),
@@ -225,11 +225,11 @@ module sep_cpu (
     .dec_tlu_perfcnt2 (dec_tlu_perfcnt2),
     .dec_tlu_perfcnt3 (dec_tlu_perfcnt3),
 
-      `ifdef RV_LOCKSTEP_ENABLE
-    .disable_corruption_detection_i (disable_corruption_detection_i),
-    .lockstep_err_injection_en_i    (lockstep_err_injection_en_i),
-    .corruption_detected_o          (corruption_detected_o),
-      `endif
+`ifdef RV_LOCKSTEP_ENABLE
+    .disable_corruption_detection_i (lockstep_ctrl_i.disable_corruption_detection),
+    .lockstep_err_injection_en_i    (lockstep_ctrl_i.err_injection_en),
+    .corruption_detected_o          (lockstep_status_o.corruption_detected),
+`endif
 
     // Memory macro interfaces
     .el2_icache_export (el2_mem_if.veer_icache_src),
@@ -392,6 +392,18 @@ module sep_cpu (
     .dma_axi_rlast   (cpu_tcm_axi_resp_o.r.last)
   );
 
+  //////////////////////////////
+  // Lockstep (when not built) //
+  //////////////////////////////
+
+`ifndef RV_LOCKSTEP_ENABLE
+  // No VeeR lockstep ports to bind to; keep this module's own ports well-defined.
+  assign lockstep_status_o = '0;
+
+  logic unused_lockstep_ctrl;
+  assign unused_lockstep_ctrl = |lockstep_ctrl_i;
+`endif
+
   ///////////////////////////////////////////
   // SB/DBG AXI ID Width Conversion Logic //
   ///////////////////////////////////////////
@@ -466,47 +478,47 @@ module sep_cpu (
 
   // LSU Bus Remap
   axi_window_remap #(
-      .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
-      .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
-      .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
+    .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
+    .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
+    .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
   ) u_lsu_local_alias_remap (
-      .slv_req_i          (lsu_axi_req_raw),
-      .slv_resp_o         (lsu_axi_resp_raw),
-      .mst_req_o          (lsu_axi_req),
-      .mst_resp_i         (lsu_axi_resp),
-      .local_alias_base_i (sep_local_base_addr_i),
-      .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
-      .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
+    .slv_req_i          (lsu_axi_req_raw),
+    .slv_resp_o         (lsu_axi_resp_raw),
+    .mst_req_o          (lsu_axi_req),
+    .mst_resp_i         (lsu_axi_resp),
+    .local_alias_base_i (sep_local_base_addr_i),
+    .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
+    .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
   );
 
   // IFU Bus Remap
   axi_window_remap #(
-      .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
-      .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
-      .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
+    .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
+    .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
+    .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
   ) u_ifu_local_alias_remap (
-      .slv_req_i          (ifu_axi_req_raw),
-      .slv_resp_o         (ifu_axi_resp_raw),
-      .mst_req_o          (ifu_axi_req),
-      .mst_resp_i         (ifu_axi_resp),
-      .local_alias_base_i (sep_local_base_addr_i),
-      .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
-      .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
+    .slv_req_i          (ifu_axi_req_raw),
+    .slv_resp_o         (ifu_axi_resp_raw),
+    .mst_req_o          (ifu_axi_req),
+    .mst_resp_i         (ifu_axi_resp),
+    .local_alias_base_i (sep_local_base_addr_i),
+    .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
+    .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
   );
 
   // DBG Bus Remap
   axi_window_remap #(
-      .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
-      .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
-      .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
+    .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
+    .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
+    .AXI_ADDR_WIDTH (sep_pkg::SEP_32_64_3_12_ADDR_WIDTH)
   ) u_dbg_local_alias_remap (
-      .slv_req_i          (dbg_axi_req_raw),
-      .slv_resp_o         (dbg_axi_resp_raw),
-      .mst_req_o          (dbg_axi_req_o),
-      .mst_resp_i         (dbg_axi_resp_i),
-      .local_alias_base_i (sep_local_base_addr_i),
-      .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
-      .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
+    .slv_req_i          (dbg_axi_req_raw),
+    .slv_resp_o         (dbg_axi_resp_raw),
+    .mst_req_o          (dbg_axi_req_o),
+    .mst_resp_i         (dbg_axi_resp_i),
+    .local_alias_base_i (sep_local_base_addr_i),
+    .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
+    .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
   );
 
   ///////////////////

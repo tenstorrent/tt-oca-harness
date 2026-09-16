@@ -8,13 +8,20 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cg_dft_reset_bringup_test_seq import smc_cg_dft_reset_bringup_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_cg_dft_reset_bringup_test(smc_base_test):
-    """LIVE/CONNECTIVITY DFT test_en_i bypass + Zeroer reset-override (Skill 1.5)."""
+    """LIVE/CONNECTIVITY DFT test_en_i bypass + Zeroer reset-override."""
+
+    required_evidence = (
+        "CHK-DFT-BYPASS-FREE-RUN",
+        "CHK-NONVAC",
+        "CHK-RESET-OVERRIDE-FREE-RUN",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
@@ -28,6 +35,9 @@ class smc_cg_dft_reset_bringup_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Directed stimulus floor: 2 SEP_IN AXI CLOCK_GATE_CONTROL
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=2,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

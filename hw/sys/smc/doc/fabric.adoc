@@ -241,9 +241,27 @@ privilege enforcement.
 
 .. rubric:: Traffic Filtering
 
-The filtering system (filter_ctrl.rdl`) provides security control for
+The filtering system (`filter_ctrl.rdl`) provides security control for
 both inbound and outbound traffic, examining transaction attributes to
 enforce access policies.
+
+The SMC inbound and outbound filters are instances of the same
+`axi_filter_wrap` block used by SEP, and share its decode algorithm:
+entry priority, the match conditions, the address range granule and its
+widening direction, and the response returned to a blocked initiator.
+That algorithm is documented once with the IP.
+
+ifdef::backend-html5[]
+See xref:ip:axi_filter/doc/index.adoc[AXI Traffic Filter].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See <<axi-traffic-filter>>.
+endif::backend-pdf[]
+
+Both SMC filters have 16 entries, carry 56-bit addresses on a 64-bit data
+bus, and enable NS and source ID matching. They differ in how they treat
+traffic that matches no entry: the inbound filter blocks it, and the
+outbound filter permits it.
 
 ==== Inbound Filtering
 
@@ -321,18 +339,24 @@ non-secure access. This filtering is implemented in both inbound and
 outbound traffic filters.
 
 Each filter entry in the 16 inbound and 16 outbound filter instances
-includes an `allow_ns` configuration field that determines whether
-non-secure accesses are permitted:
+includes an `allow_ns` configuration field. It is an equality test
+against the transaction's NS bit, not a permission grant, so an entry
+covers one security state only:
 
-* When `allow_ns = 0`: Only secure accesses (`prot[1] = 0`) are allowed
-  through the filter
-* When `allow_ns = 1`: Both secure and non-secure accesses are allowed
+* When `allow_ns = 0`: the entry matches secure transactions
+  (`prot[1] = 0`) only
+* When `allow_ns = 1`: the entry matches non-secure transactions
+  (`prot[1] = 1`) only
+
+Covering both security states over one address range therefore takes two
+entries. An entry whose `allow_ns` does not match the transaction does
+not deny it; the transaction falls through to the remaining entries, as
+described in the AXI Traffic Filter decode section referenced above.
 
 This filtering occurs in `axi_filter_wrap`, where each transaction's
-`aw.prot[1]` (write) or `ar.prot[1]` (read) is checked against the
-filter's `allow_ns` configuration. Transactions that fail the protection
-check are routed to an error slave, which returns a decode error
-response.
+`aw.prot[1]` (write) or `ar.prot[1]` (read) is compared against the
+filter's `allow_ns` configuration. Transactions that no entry admits are
+routed to an error slave, which returns a decode error response.
 
 ===== Full 3-Bit Protection Matching (AXI-Lite)
 
@@ -406,8 +430,8 @@ CPU accesses to its own resources out through the output fabric.
 
 After global-aperture reconfiguration, software may use global addresses
 for accesses that leave the local SMC view. Global address derivation
-requires knowledge of the chiplet ID or chiplet BAR, both provisioned in
-fuses and available to firmware.
+requires the chiplet-global aperture base, which firmware reads from the
+`GLOBAL_BASE` CSR described above.
 
 ===== Outbound Traffic Flow
 
@@ -449,7 +473,7 @@ include::ip:partial$axi_alias_remap/regs/gen/html/alias_remap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../common/axi/axi_alias_remap/regs/gen/adoc/alias_remap.adoc[]
+include::../../../ip/axi_alias_remap/regs/gen/adoc/alias_remap.adoc[]
 endif::backend-pdf[]
 
 ===== Output Remap Registers
@@ -466,7 +490,7 @@ include::ip:partial$output_remap/regs/gen/html/output_remap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../common/axi/output_remap/regs/gen/adoc/output_remap.adoc[]
+include::../../../ip/output_remap/regs/gen/adoc/output_remap.adoc[]
 endif::backend-pdf[]
 
 ===== Inbound Traffic Filter Control Registers
@@ -483,7 +507,7 @@ include::ip:partial$axi_filter/regs/gen/html/filter_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../common/axi/axi_filter/regs/gen/adoc/filter_ctrl.adoc[]
+include::../../../ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc[]
 endif::backend-pdf[]
 
 ===== Outbound Traffic Filter Control Registers

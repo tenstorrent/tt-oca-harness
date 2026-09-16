@@ -66,7 +66,7 @@
 <h3 id="CREDIT_EXPIRED">CREDIT_EXPIRED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>MAX_CYCLES_EXPIRED</td><td>RW</td><td>0x0</td><td>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.<br>If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not recieved a count credit pulse in a while, and is likely not syncing properly with the primary.<br>This register can also be used to determine the clock skew between the primary and secondary.<br>If PRIMARY, this field is always 0.</td></tr>
+<tr><td>31:0</td><td>MAX_CYCLES_EXPIRED</td><td>RW</td><td>0x0</td><td>Maximum number of clock cycles since a count credit expired (SECONDARY only). To reset the value of this register, write anything to it.<br>If this number is very high (exact value depends on clock speed and credit value), this indicates that the secondary has not received a count credit pulse in a while, and is likely not syncing properly with the primary.<br>This register can also be used to determine the clock skew between the primary and secondary.<br>If PRIMARY, this field is always 0.</td></tr>
 </table>
 <h3 id="TIMER_GPIO_ENABLE">TIMER_GPIO_ENABLE</h3>
 <table>

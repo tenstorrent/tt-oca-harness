@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import RisingEdge
-
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import (
@@ -21,9 +20,7 @@ from .smc_addr_map import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-SCRATCH_COLD_WARM_0 = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR"
-)
+SCRATCH_COLD_WARM_0 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR")
 
 _THR = 0x10
 _AR_BOUND = 256
@@ -80,8 +77,7 @@ class smc_hang_detector_sys_timeout_test_seq(SmcCsrSeq):
             if last_v == 1 and last_r == 1:
                 return
         raise AssertionError(
-            f"{label}: SYS_IN AR handshake never completed "
-            f"last valid={last_v} ready={last_r}"
+            f"{label}: SYS_IN AR handshake never completed last valid={last_v} ready={last_r}"
         )
 
     async def _hold_sys_read_until(self, dut, name: str, after_ar) -> None:
@@ -90,9 +86,7 @@ class smc_hang_detector_sys_timeout_test_seq(SmcCsrSeq):
         child = _SysInReadSeq(name, SCRATCH_COLD_WARM_0)
         child.cfg = self.cfg
         child.env = self.env
-        task = cocotb.start_soon(
-            child.start(self.env.sys_in_axi_agent.sequencer)
-        )
+        task = cocotb.start_soon(child.start(self.env.sys_in_axi_agent.sequencer))
         try:
             await self._await_ar_accept(dut, _AR_BOUND, f"{name}_AR")
             await after_ar()
@@ -110,9 +104,7 @@ class smc_hang_detector_sys_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("HANG_SEP_OFF", HANG_DET_SEP_AXI_CTRL, 0)
         await self.csr_write("HANG_DATA_OFF", HANG_DET_DATA_ACCEL_CTRL, 0)
         await self.csr_write("HANG_SYS_THR", HANG_DET_SYS_AXI_TIMEOUT, _THR)
-        thr = await self.csr_read(
-            "HANG_SYS_THR_RB", HANG_DET_SYS_AXI_TIMEOUT, expected=_THR
-        )
+        thr = await self.csr_read("HANG_SYS_THR_RB", HANG_DET_SYS_AXI_TIMEOUT, expected=_THR)
         assert (thr & HANG_DET_THR_VALUE) == _THR, (
             f"SYS threshold readback 0x{thr:x} want 0x{_THR:x}"
         )
@@ -134,9 +126,7 @@ class smc_hang_detector_sys_timeout_test_seq(SmcCsrSeq):
 
         async def _expect_fire() -> None:
             cocotb.log.info("CHK-HANG-SYS-TIMEOUT-AR: SYS_IN AR accepted under r_hold")
-            await self._await_irq(
-                dut, "tb_axi_hang_irq_sys", 1, _IRQ_BOUND, "SYS_TIMEOUT_FIRE"
-            )
+            await self._await_irq(dut, "tb_axi_hang_irq_sys", 1, _IRQ_BOUND, "SYS_TIMEOUT_FIRE")
             assert self._bit(dut.tb_axi_hang_irq, "tb_axi_hang_irq") == 1
             assert self._bit(dut.tb_axi_hang_irq_sep, "tb_axi_hang_irq_sep") == 0
             assert self._bit(dut.tb_axi_hang_irq_data, "tb_axi_hang_irq_data") == 0
@@ -146,9 +136,7 @@ class smc_hang_detector_sys_timeout_test_seq(SmcCsrSeq):
             )
 
         await self._hold_sys_read_until(dut, "SYS_STALL_RD", _expect_fire)
-        await self._await_irq(
-            dut, "tb_axi_hang_irq_sys", 0, _IRQ_BOUND, "SYS_TIMEOUT_DROP"
-        )
+        await self._await_irq(dut, "tb_axi_hang_irq_sys", 0, _IRQ_BOUND, "SYS_TIMEOUT_DROP")
         assert self._bit(dut.tb_axi_hang_irq, "tb_axi_hang_irq") == 0
         self.drop_ok = True
         cocotb.log.info("CHK-HANG-SYS-TIMEOUT-DROP: sys=0 OR=0 after R completion")

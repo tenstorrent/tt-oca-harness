@@ -8,7 +8,11 @@ include $(FLOW_DIR)/../../../flows/preamble.mk
 
 FLOW_DESIGN := smu
 FLOW_BENDER_TARGETS := -t idma_rtl -t dtp -t sep -t smc -t sep_el2
+FLOW_VERILATOR_WAIVERS := \
+	hw/sys/sep/lint/sep.verilator.vlt \
+	hw/sys/smc/lint/smc.verilator.vlt
 
 include $(OCAH_ROOT)/flows/common.mk
 include $(OCAH_ROOT)/flows/lint/slang.mk
+include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk

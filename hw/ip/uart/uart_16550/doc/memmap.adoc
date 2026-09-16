@@ -23,7 +23,7 @@ access to baud rate configuration registers.
 [width="100%",cols="15%,15%,15%,55%",options="header",]
 |=======================================================================
 |Offset |Register Name |Access |Description
-|0x00 |RBR/THR |R/W |Receiver Buffer Register (Read) / Transmitter
+|0x00 |RBR/THR |RW |Receiver Buffer Register (Read) / Transmitter
 Holding Register (Write) when DLAB=0
 
 |0x00 |DLL |RW |Divisor Latch Low Register when DLAB=1
@@ -32,7 +32,7 @@ Holding Register (Write) when DLAB=0
 
 |0x04 |DLM |RW |Divisor Latch High Register when DLAB=1
 
-|0x08 |IIR/FCR |R/W |Interrupt Identification Register (Read) / FIFO
+|0x08 |IIR/FCR |RW |Interrupt Identification Register (Read) / FIFO
 Control Register (Write)
 
 |0x0C |LCR |RW |Line Control Register

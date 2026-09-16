@@ -18,14 +18,33 @@
 
 static int arr[INT_POW];
 
+/* Scratch for merge(), in .bss rather than on the stack.
+ *
+ * merge() used two VLAs, int L[n1] and int R[n2], whose combined length is the
+ * span being merged. The top-level merge for the largest size class spans
+ * ARRAY_SIZES-1 = 2048 elements, i.e. 8192 bytes of VLA in a single frame,
+ * against __stack_size = 4K (toolchain.mk). The 1024 class needs 4096 bytes,
+ * the whole stack, before counting the recursion frames beneath it. So the
+ * three largest size classes ran off the bottom of the stack.
+ *
+ * Nothing caught it: mergesort never checks that the array came back sorted
+ * and calls test_pass unconditionally, so corrupting whatever lies below the
+ * stack produced a green run.
+ *
+ * INT_POW is the allocated length of arr[], so it is an upper bound on any
+ * span merge() can be asked to handle.
+ */
+static int merge_lo[INT_POW];
+static int merge_hi[INT_POW];
+
 // Merge function to merge two halves
 void merge(int arr[], int l, int m, int r) {
     int i, j, k;
     int n1 = m - l + 1;
     int n2 = r - m;
 
-    // Create temp arrays
-    int L[n1], R[n2];
+    int *L = merge_lo;
+    int *R = merge_hi;
 
     // Copy data to temp arrays L[] and R[]
     for (i = 0; i < n1; i++) L[i] = arr[l + i];
@@ -82,6 +101,36 @@ void fill_array(int arr[], int size) {
     }
 }
 
+/* Require the array to be non-decreasing, and its element sum to be unchanged.
+ *
+ * Ordering alone is satisfied by a sort that drops or duplicates elements, so
+ * the sum carried in from before the sort is what makes this a permutation
+ * check rather than a monotonicity check. */
+static void check_sorted(int arr[], int size, int expect_sum, int size_log, int iter) {
+    int sum = 0;
+
+    for (int i = 0; i < size; i++) {
+        sum += arr[i];
+        if (i > 0 && arr[i - 1] > arr[i]) {
+            simputs("[ERROR] merge_sort left the array out of order\n");
+            simputshex32("  size_log = ", (uint32_t)size_log);
+            simputshex32("  iter     = ", (uint32_t)iter);
+            simputshex32("  index    = ", (uint32_t)i);
+            simputshex32("  prev     = ", (uint32_t)arr[i - 1]);
+            simputshex32("  this     = ", (uint32_t)arr[i]);
+            test_fail(0);
+        }
+    }
+    if (sum != expect_sum) {
+        simputs("[ERROR] merge_sort did not preserve the elements\n");
+        simputshex32("  size_log = ", (uint32_t)size_log);
+        simputshex32("  iter     = ", (uint32_t)iter);
+        simputshex32("  sum before = ", (uint32_t)expect_sum);
+        simputshex32("  sum after  = ", (uint32_t)sum);
+        test_fail(0);
+    }
+}
+
 int main() {
 
     if (metal_cpu_get_current_hartid() == 0) {
@@ -93,9 +142,14 @@ int main() {
             for (int i = 0; i < N_ITER; i++) {
                 // Measure the time taken for merge sort
                 fill_array(arr, size);
+                int expect_sum = 0;
+                for (int j = 0; j < size; j++) {
+                    expect_sum += arr[j];
+                }
                 start_subsequence();
                 merge_sort(arr, 0, size - 1);
                 end_subsequence();
+                check_sorted(arr, size, expect_sum, size_log, i);
             }
             end_counter();
         }

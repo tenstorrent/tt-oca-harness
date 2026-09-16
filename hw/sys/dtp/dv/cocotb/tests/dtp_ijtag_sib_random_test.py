@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_ijtag_sib_random_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_ijtag_scan_test_seq import dtp_ijtag_scan_test_seq
 
@@ -15,7 +14,6 @@ class dtp_ijtag_sib_random_test(dtp_base_test):
             dtp_ijtag_scan_test_seq,
             "sib_random",
             scenario="sib_random",
-            specific_env="DTP_IJTAG_SIB_RANDOM_TEST_LOOPS",
-            group_env="DTP_SCAN_TEST_LOOPS",
+            specific_knob="DTP_IJTAG_SIB_RANDOM_TEST_LOOPS",
+            group_knob="DTP_SCAN_TEST_LOOPS",
         )
-

@@ -6,17 +6,24 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cpu_ctrl_map_depth_test_seq import smc_cpu_ctrl_map_depth_test_seq
 from seq_lib.smc_cpu_vip_utils import (
     check_cpu_bfm_observability,
     check_cpu_firmware_boot_contract,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_cpu_sanity_test(smc_base_test):
     """Run CPU-control CSR map coverage and optional firmware boot contract."""
+
+    required_evidence = (
+        "CHK-CPU-BFM-OBSERVABILITY",
+        "CHK-CPU-CTRL-MAP-DEPTH",
+        "CHK-CPU-CTRL-MAP-LIVE",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 
@@ -29,11 +36,14 @@ class smc_cpu_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
+            # Directed stimulus floor: 5 SEP_IN AXI CPU-control accesses.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=5,
             csr_accesses=seq.accesses,
             proxy=not boot_checked,
             details=(
                 "CPU firmware boot PASS contract checked"
-                if boot_checked else
-                f"CPU firmware boot infra armed but not promoted ({boot['reason']})"
+                if boot_checked
+                else f"CPU firmware boot infra armed but not promoted ({boot['reason']})"
             ),
         )

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from seq_lib.smu_axi_xbar_structure_test_seq import smu_axi_xbar_structure_test_seq
 from smu_base_test import smu_base_test
 
@@ -13,6 +12,8 @@ from smu_base_test import smu_base_test
 @pyuvm.test()
 class smu_axi_xbar_structure_test(smu_base_test):
     """gen_no_sep IW converters present; smu_axi_xbar not elaborated."""
+
+    use_shared_env = True
 
     async def run_scenario(self) -> None:
         seq = smu_axi_xbar_structure_test_seq(self)

@@ -6,27 +6,27 @@ One real DRBG/ESRC/EDN stream feeds TWO real entropy sinks concurrently:
 the KM AXIS endpoint (real KM firmware rom_main pulls the DRBG sampler)
 and the AES native crypto-EDN leg (ECB-256 reseed+encrypt). KM and AES are driven as a
 TRUE cocotb fork so both contend at the EDN arbiter in the same window. The CHK5 proof
-is BIT-EXACT and genbits-anchored (stronger than the reference suite):
+is BIT-EXACT and genbits-anchored:
 
   * AES (per-sink ROUTING, golden): each AES post-adapter beat == the next word on the
     AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], tb_top axis1_*).
     The drbg_axis_edn_adapter is round-robin, so this in-order equality holds because
     AES is the ONLY active crypto sink (OTBN/KMAC parked -> never request -> AES is
     granted every word in order). This is exactly the reference suite's AXIS1 routing proof.
-  * Genbits chain (stronger than the reference suite): every AXIS1 word AND every KM AXIS word must be
+  * Genbits chain: every AXIS1 word AND every KM AXIS word must be
     a member of the CHK4 CTR_DRBG genbits-golden word multiset (report() tally, with
     removal) -- proving the one verified DRBG stream PARTITIONS into the two sinks.
     the reference suite treats the AXIS1 tap as its own golden; here it is anchored back to the
     bit-exact CTR_DRBG genbits.
   * KM (membership): rom_main's pull ORDER is firmware-driven (not order-predictable),
     so KM is scored bit-exact MEMBERSHIP (each KM word is a genbits-golden word) rather
-    than order -- still far stronger than observe.
+    than order.
 
 Consumption is bounded to a single CSRNG Generate (<= cfg.glen=32 genbits blocks) so
 the CHK4 genbits golden (one Generate per seed) stays bit-exact -- the genbits-word
 pool the membership tally draws from must cover all consumed words. 1 keygen + 2 AES
-blocks + KM boot ~ 24 blocks (< 32). The budget is measured (per-keygen ~6-7
-blocks) and noted at the constants.
+blocks + KM boot ~ 24 blocks (< 32); the per-consumer block costs are at the
+constants.
 
 Checkers:
   CHK1..CHK4  bit-exact golden (decorrelator / compressor / seed / CTR_DRBG genbits)
@@ -45,7 +45,7 @@ Checkers:
               like the reference suite it evidences overlap, not strict same-cycle arbiter contention).
   CSRNG/EDN error/recoverable-alert regs stay zero; AES STATUS no alert.
 
-Remaining delta vs the reference suite (documented): per-sink bit-exact for >1 CONCURRENT crypto sink
+Delta vs the reference suite: per-sink bit-exact for >1 CONCURRENT crypto sink
 (e.g. AES+KMAC at once) would need the reference suite's full per-endpoint arbiter-assignment trace
 (the round-robin reorder); the scoreboard rejects >1 golden crypto sink. KM bit-exact
 ORDER needs controlled KM firmware (rom_main is firmware-driven); KM here is bit-exact
@@ -61,18 +61,22 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_aes_golden import aes256_ecb_encrypt_words
+from sep_base_test import sep_base_test
 from seq_lib.sep_aes_seq import SepAes
-from seq_lib.sep_km_mailbox_seq import SepKmMailbox, KM_DEST_AES
-from seq_lib.sep_sw_reset_seq import SepSwReset
+from seq_lib.sep_km_mailbox_seq import KM_DEST_AES, SepKmMailbox
 
 # AES SW-key path key + plaintext for the entropy-pulling encrypt loop (values
 # are arbitrary -- this test exercises the entropy datapath, not a key contract).
 AES_KEY = (
-    0x0F0E0D0C, 0x0B0A0908, 0x07060504, 0x03020100,
-    0x1F1E1D1C, 0x1B1A1918, 0x17161514, 0x13121110,
+    0x0F0E0D0C,
+    0x0B0A0908,
+    0x07060504,
+    0x03020100,
+    0x1F1E1D1C,
+    0x1B1A1918,
+    0x17161514,
+    0x13121110,
 )
 AES_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 
@@ -102,26 +106,25 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # --- Boot the real KM firmware on real entropy -------------------------
         image = self.select_efuse_image(lc_raw=0x1)  # LC_PROD (KM reads OTP at boot)
         self.write_efuse_image(image)
-        await self.bring_up_no_cpu()
+        await self.bring_up_no_cpu(park=("otbn", "kmac", "hmac"))
 
-        self.swrst = SepSwReset(self)  # shadow tracks the HW reset default (0x1E)
         self.km = SepKmMailbox(self)
         self.aes = SepAes(self)
 
-        # Park OTBN/KMAC/HMAC so KM + AES are the only entropy sinks. Leave AES
-        # RELEASED (default SW_RESET_N=0x1E) so its masking-PRNG reseed is served as
-        # EDN starts (real_sink_aes ordering), making AES a live crypto-EDN consumer.
-        await self.swrst.park("otbn", "kmac", "hmac")
+        # OTBN/KMAC/HMAC JTAG-held across rst_ni release, then parked in SW_RESET_N. AES stays released so its
+        # masking-PRNG reseed is served as EDN starts, making AES a live
+        # crypto-EDN consumer.
 
         # Strict entropy bring-up. CHK1..CHK4 bit-exact golden anchors the one DRBG.
         # KM = "membership" (each KM AXIS word is a genbits-golden word; rom_main pull
         # order is firmware-driven so not order-scored) and AES = "golden" (bit-exact
         # per-sink ROUTING: each AES post-adapter beat == the next AXIS1 pre-adapter
         # word -- the single-active-crypto-sink in-order case). Both are chained to the
-        # CHK4 genbits golden in report(). STRONGER than observe, and than the reference suite (which
-        # treats the AXIS1 tap as its own golden; here AXIS1 is anchored to genbits).
+        # CHK4 genbits golden in report() (the reference suite treats the AXIS1 tap as
+        # its own golden; here AXIS1 is anchored to genbits).
         await self.bring_up_entropy(
-            strict=True, score_km="membership", score_sinks={"aes": "golden"})
+            strict=True, score_km="membership", score_sinks={"aes": "golden"}
+        )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
         self.logger.info("real entropy flowing; releasing KM firmware (rom_main)")
@@ -156,7 +159,8 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
                     assert ct == golden, (
                         "AES block-0 ciphertext != AES-256-ECB golden:\n"
                         f"  ct    ={[hex(w) for w in ct]}\n"
-                        f"  golden={[hex(w) for w in golden]}")
+                        f"  golden={[hex(w) for w in golden]}"
+                    )
                 else:
                     assert any(w != 0 for w in ct), f"AES all-zero ciphertext (block {i})"
 
@@ -166,9 +170,9 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # coroutine). Bounded to one CSRNG Generate so the CHK4 golden stays bit-exact.
         km_task = cocotb.start_soon(km_arm())
         aes_task = cocotb.start_soon(aes_arm())
-        await km_task            # join (aes runs concurrently meanwhile)
-        await aes_task           # join + re-raise any AES-arm assertion
-        self.logger.info("CHK-AESKAT block-0 ciphertext == AES-256-ECB golden")
+        await km_task  # join (aes runs concurrently meanwhile)
+        await aes_task  # join + re-raise any AES-arm assertion
+        self.logger.info("CHK-AESKAT PASS: block-0 ciphertext == AES-256-ECB golden")
 
         # Both sinks consumed entropy DURING the concurrent fork (not just one) --
         # evidences overlap (the OSS analog of the reference suite's fork count_good/ack-advance
@@ -178,13 +182,19 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         aes_after = self._aes_beats()
         assert km_after > km_before, (
             f"KM AXIS did not consume entropy during the concurrent fork "
-            f"(beats {km_before}->{km_after})")
+            f"(beats {km_before}->{km_after})"
+        )
         assert aes_after > aes_before, (
             f"AES crypto-EDN did not consume entropy during the concurrent fork "
-            f"(beats {aes_before}->{aes_after})")
+            f"(beats {aes_before}->{aes_after})"
+        )
         self.logger.info(
-            "CHK-CONCUR KM+AES both advanced during the concurrent fork: KM %d->%d, "
-            "AES %d->%d", km_before, km_after, aes_before, aes_after)
+            "CHK-CONCUR PASS: KM+AES both advanced during the concurrent fork: KM %d->%d, AES %d->%d",
+            km_before,
+            km_after,
+            aes_before,
+            aes_after,
+        )
 
         # --- EOT: both sinks scored, entropy health ----------------------------
         await self.aes.check_status_clean("EOT")
@@ -197,4 +207,5 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         assert self.drbg_sb.report()
         self.logger.info(
             "CHK1..CHK4 bit-exact + CHK5_aes per-sink ROUTING (AES==AXIS1) + CHK5_km/"
-            "CHK5_axis1 genbits-membership + entropy alerts zero (bit-exact, > reference suite)")
+            "CHK5_axis1 genbits-membership + entropy alerts zero (bit-exact, > reference suite)"
+        )

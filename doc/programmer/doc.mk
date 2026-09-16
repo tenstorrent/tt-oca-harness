@@ -47,6 +47,7 @@ ocah-doc-programmer-pdf: ocah-doc-programmer-setup
 	@mkdir -p "$(OCAH_PROGRAMMER_BUILD)/latex" "$(OCAH_PROGRAMMER_DIST)"
 	@rm -rf "$(OCAH_PROGRAMMER_SRC)/assets" && ln -s ../assets "$(OCAH_PROGRAMMER_SRC)/assets"
 	@cd "$(OCAH_PROGRAMMER_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
+		$(OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS) \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
 		-o "$(OCAH_PROGRAMMER_BUILD)/latex/$(OCAH_PROGRAMMER_PDF)" src/index.adoc

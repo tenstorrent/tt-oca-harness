@@ -5,8 +5,8 @@
  * WDT BITE Before BARK Test
  *
  * When BITE_THOLD < BARK_THOLD, prove count reaches BITE without the bark
- * interrupt bit setting (bite ordering). Cocotb remains sep_hello_test; the
- * FAIL-ON path is the firmware count/INTR observe below.
+ * interrupt bit setting (bite ordering). The FAIL-ON path is the firmware
+ * count/INTR observe below.
  *
  ******************************************************************************/
 

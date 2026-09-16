@@ -15,7 +15,7 @@ from cocotb.utils import get_sim_time
 from cocotbext.axi import AxiBus, AxiLiteBus
 
 from .ocah_axi_item import OcahAxiItem
-from .ocah_axi_results import RESP_OKAY
+from .ocah_axi_types import RESP_OKAY
 
 __all__ = ["OcahAxiMonitor", "OcahAxiLiteMonitor"]
 
@@ -124,7 +124,12 @@ class _BaseMonitor:
         """Return monitor transaction counts."""
         writes = sum(1 for item in self._history if item.is_write)
         reads = sum(1 for item in self._history if item.is_read)
-        return {"items": len(self._history), "write_transactions": writes, "read_transactions": reads}
+        return {
+            "items": len(self._history),
+            "write_transactions": writes,
+            "read_transactions": reads,
+            "callback_errors": self.callback_errors,
+        }
 
     def get_request_activity(self) -> dict[str, int]:
         """Return request-channel VALID-high CYCLE counts since start.
@@ -362,8 +367,7 @@ class OcahAxiMonitor(_BaseMonitor):
                 else:
                     self._record_orphan(
                         "B",
-                        f"bid=0x{bid:x} bresp={_sig_int(b, 'bresp', RESP_OKAY)} "
-                        f"time={_now_ns()}ns",
+                        f"bid=0x{bid:x} bresp={_sig_int(b, 'bresp', RESP_OKAY)} time={_now_ns()}ns",
                     )
 
             if _handshake(ar, "arvalid", "arready"):

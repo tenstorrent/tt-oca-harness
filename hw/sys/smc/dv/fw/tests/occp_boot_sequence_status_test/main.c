@@ -5,9 +5,10 @@
  * OCCP Boot Sequence Status Codes Test
  *
  * **SPECIFICATION COMPLIANCE TEST**
- * This test validates boot sequence status code generation specified in smc_rom.adoc:
+ * This test validates the boot sequence status codes the ROM reports
+ * (hw/sys/smc/bootrom/prod/doc/status-coordination.adoc):
  *
- * Specification Requirements (Section 10.3.1 - Boot Sequence Status Codes):
+ * Boot sequence status codes:
  * - SMC_STATUS_ROM_STARTED (0x001): ROM started
  * - SMC_STATUS_BOOT_START (0x010): Boot sequence started / Config read
  * - SMC_STATUS_RECOVERY_MODE (0x020): Recovery mode detected
@@ -18,9 +19,6 @@
  * - SMC_STATUS_COORDINATION_ACTIVE (0x040): Coordination active
  * - SMC_STATUS_BOOT_COMPLETE (0x050): Boot sequence completed successfully
  * - SMC_STATUS_UNEXPECTED_EXIT (0x0FF): Unexpected exit from main loop
- *
- * **PRIMARY GOAL**: Find bugs/discrepancies between specification and implementation
- * per CLAUDE.md mission-critical objective.
  *
  * **TEST STRATEGY:**
  * 1. Query ROM status ring buffer for boot sequence status codes
@@ -47,12 +45,6 @@
 #define SMC_STATUS_COORDINATION_ACTIVE 0x040
 #define SMC_STATUS_BOOT_COMPLETE 0x050
 #define SMC_STATUS_UNEXPECTED_EXIT 0x0FF
-
-//  // Status message format constants
-//  #define SMC_STATUS_FW_ID_SMC_BL0        0x3
-//  #define SMC_STATUS_TYPE_STATUS          0x0
-//  #define SMC_STATUS_TYPE_WARNING         0x1
-//  #define SMC_STATUS_TYPE_ERROR           0x2
 
 typedef struct {
     uint32_t status_code;
@@ -275,7 +267,7 @@ static bool test_boot_sequence_status_coverage(boot_status_test_context_t *ctx) 
     if (required_missing > 0) {
         simputs("CRITICAL FAILURE: Essential boot status codes are missing\n");
         simputs("This indicates the ROM is not following the specification\n");
-        simputs("for boot sequence status reporting (Section 10.3.1)\n");
+        simputs("for boot sequence status reporting\n");
         test_passed = false;
     } else {
         simputs("SUCCESS: All required boot status codes are present\n");
@@ -364,7 +356,6 @@ static bool test_status_message_format_compliance(boot_status_test_context_t *ct
                         } else if (expected_code == SMC_STATUS_RECOVERY_MODE) {
                             if (msg_type != SMC_STATUS_TYPE_WARNING) {
                                 simputs("WARNING: Recovery mode not marked as warning\n");
-                                // Don't fail test for this, but note it
                             }
                         } else {
                             if (msg_type != SMC_STATUS_TYPE_STATUS) {
@@ -410,15 +401,12 @@ static bool test_boot_sequence_timing_verification(boot_status_test_context_t *c
     bool test_passed = true;
 
     // Check logical dependencies
-    bool rom_started = ctx->status_codes[0].found; // ROM_STARTED
-    bool boot_start = ctx->status_codes[1].found;  // BOOT_START
-    bool occp_init_failed =
-        ctx->status_codes[6].found; // CORRECTED: Was 5, OCCP_INIT_FAILED is now at index 6
-    bool occp_ready = ctx->status_codes[7].found; // CORRECTED: Was 6, OCCP_READY is now at index 7
-    bool boot_complete =
-        ctx->status_codes[9].found; // CORRECTED: Was 8, BOOT_COMPLETE is now at index 9
-    bool unexpected_exit =
-        ctx->status_codes[10].found; // CORRECTED: Was 9, UNEXPECTED_EXIT is now at index 10
+    bool rom_started = ctx->status_codes[0].found;      // ROM_STARTED
+    bool boot_start = ctx->status_codes[1].found;       // BOOT_START
+    bool occp_init_failed = ctx->status_codes[6].found; // OCCP_INIT_FAILED
+    bool occp_ready = ctx->status_codes[7].found;       // OCCP_READY
+    bool boot_complete = ctx->status_codes[9].found;    // BOOT_COMPLETE
+    bool unexpected_exit = ctx->status_codes[10].found; // UNEXPECTED_EXIT
 
     simputs("\n**BOOT SEQUENCE LOGIC VERIFICATION**:\n");
 
@@ -449,7 +437,7 @@ static bool test_boot_sequence_timing_verification(boot_status_test_context_t *c
     // BOOT_COMPLETE should indicate successful boot
     if (!boot_complete) {
         simputs("WARNING: BOOT_COMPLETE status missing - ROM may still be in progress\n");
-        // Don't fail test for this - ROM might still be running
+        // BOOT_COMPLETE is optional: the ROM is still in its OCCP command loop while this runs
         simputs("  (This may be expected if ROM is still in OCCP command loop)\n");
     } else {
         simputs(" BOOT_COMPLETE: Boot sequence completion detected\n");
@@ -472,12 +460,12 @@ static bool test_boot_sequence_timing_verification(boot_status_test_context_t *c
 
 static bool test_specification_compliance(boot_status_test_context_t *ctx) {
     simputs("\n=== Test 4: Specification Compliance Analysis ===\n");
-    simputs("**CRITICAL BUG DETECTION per CLAUDE.md mission**\n");
+    simputs("**SPECIFICATION COMPLIANCE ANALYSIS**\n");
 
     bool test_passed = true;
 
     simputs("ANALYZING ROM BOOT STATUS REPORTING COMPLIANCE:\n");
-    simputs("1. Specification defines 11 boot sequence status codes (Section 10.3.1)\n");
+    simputs("1. The ROM specification defines the boot sequence status codes\n");
     simputs("2. ROM should generate these at appropriate boot phases\n");
     simputs("3. Status codes provide observability into boot progression\n");
 
@@ -637,7 +625,7 @@ static bool test_active_status_generation(boot_status_test_context_t *ctx) {
 
 static void run_boot_status_test_suite(boot_status_test_context_t *ctx) {
     simputs("=== Boot Sequence Status Codes Test Suite ===\n");
-    simputs("Mission: Detect bugs/discrepancies in boot status reporting per CLAUDE.md\n");
+    simputs("Mission: Detect discrepancies in boot status reporting\n");
     simputs("Target: Verify ROM generates specified boot sequence status codes\n");
 
     // Collect all boot status messages from ROM
@@ -686,12 +674,11 @@ int main(void) {
     static test_context_t occp_ctx = {0};
     static boot_status_test_context_t test_ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP Boot Sequence Status Codes Test ===\n");
     simputs("Mission: Verify ROM generates all specified boot sequence status codes\n");
-    simputs("Coverage: All 11 boot sequence status codes from Section 10.3.1\n");
+    simputs("Coverage: all boot sequence status codes in expected_boot_codes\n");
 
     if (!initialize_interface(&occp_ctx)) {
         simputs("FAIL: Interface initialization failed\n");
@@ -712,7 +699,7 @@ int main(void) {
 
     finalize_test_results(&test_ctx);
 
-    // Add detailed summary statistics like other comprehensive tests
+    // Summary statistics
     simputs("\n=== Final Test Results Summary ===\n");
     simputshex32("Tests passed: ", test_ctx.passed_tests);
     simputshex32("Tests non-passed: ", test_ctx.total_tests - test_ctx.passed_tests);

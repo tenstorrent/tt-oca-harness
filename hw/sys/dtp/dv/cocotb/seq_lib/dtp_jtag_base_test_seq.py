@@ -1,29 +1,168 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG-focused base sequence helpers for DTP tests."""
+"""JTAG-focused base sequence helpers for DTP tests.
+
+Besides TAP navigation and the instruction-family checks, this layer owns the
+scan-control windows: a window counts high samples of named ``dtp_scan_if``
+observables on every rising TCK edge across one DR scan, so a scenario proves
+which host chain the loaded instruction selects and that the TAP's strobes
+reach it. The SV-UVM twin is ``uvm/seq_lib/dtp_jtag_base_test_seq.svh``.
+"""
 
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable
 
+import cocotb
+from env.dtp_jtag_item import DtpJtagItem
 from env.dtp_scan_model import DtpScanModel
+from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor
 from env.dtp_tap_device import DTP_BSR_MODEL_LEN
-from env.dtp_types import DtpJtagInstr, DtpTapFsm, DtpTapState
-from ocah_jtag_vip import OcahJtagChecker
+from env.dtp_tb_if import JTAG_SIGNAL_MAP
+from env.dtp_types import (
+    DTP_IR_WIDTH,
+    DtpJtagInstr,
+    DtpScanCtrlExpect,
+    DtpTapFsm,
+    DtpTapState,
+)
+from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
+from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
+# Host scan-control fields every chain exposes on dtp_scan_if, by suffix.
+SCAN_CTRL_SUFFIXES: tuple[str, ...] = ("select", "capture_en", "shift_en", "update_en")
+# dtp_scan_if prefixes of the boundary-scan chain and the non-secure DFT host.
+BSR_SCAN_CTRL = "jtag_bsr"
+DFT_SCAN_CTRL = "jtag_dft"
+# The instruction-qualified host chain selects: boundary scan and the three
+# iJTAG SIB hosts. The extended STAP host select follows every IR and DR
+# scan path regardless of the instruction, so it is not one of them.
+HOST_SELECTS: tuple[str, ...] = (
+    "jtag_bsr_select",
+    "jtag_dft_secure_select",
+    "jtag_dft_select",
+    "jtag_dfd_select",
+)
+# Evidence IDs (select, strobes) of each chain's control window, and of the
+# quiet host-select window.
+SCAN_CTRL_CHECK_IDS: dict[str, tuple[str, str]] = {
+    BSR_SCAN_CTRL: ("CHK-BSR-SELECT", "CHK-BSR-SCAN-CTRL"),
+    DFT_SCAN_CTRL: ("CHK-DFT-SIB-SELECT", "CHK-DFT-SCAN-CTRL"),
+}
+NO_HOST_SELECT_CHECK_ID = "CHK-UNDEF-NO-SELECT"
+
 
 class dtp_jtag_base_test_seq(dtp_base_test_seq):
-    """Helpers for TAP FSM navigation, scan loopback, and BYPASS checks."""
+    """Helpers for TAP FSM navigation, scan loopback, BYPASS, and scan-control checks."""
 
     # Optional shared-VIP checker; when attached, TAP resets and every raw TMS
-    # step also emit reference-model named evidence (issue tt-oca-hw#3296).
+    # step also emit reference-model named evidence.
     tap_checker: OcahJtagChecker | None = None
+    # Optional passive scan monitor; when started, load_ir/shift_dr record the
+    # sequence's own scan intent so finalize can cross-check the pin-level
+    # reconstruction (CHK-SCAN-COUNT / CHK-SCAN-IR-LEN / CHK-SCAN-DR-LEN).
+    family_monitor: OcahJtagMasterMonitor | None = None
+    _family_negative: bool = False
 
     def attach_tap_checker(self, checker: OcahJtagChecker) -> None:
         """Route TAP reset/state navigation through VIP reference-model evidence."""
         self.tap_checker = checker
+
+    # --- instruction-family evidence checker ---------------------------------
+    async def attach_family_checker(
+        self,
+        required_ids: set[str],
+        *,
+        use_monitor: bool = True,
+    ) -> OcahJtagChecker:
+        """Create the per-instruction evidence checker for this sequence pass.
+
+        Every family helper (loopback, bypass delay, IR decode, TMP persist)
+        then records named ``CHK-*`` evidence instead of bare asserts, and
+        ``finalize_family_checker()`` rejects a pass with zero checks or a
+        missing required ID. With ``use_monitor`` a passive pin-level scan
+        monitor independently reconstructs every IR/DR scan for cross-checks;
+        disable it only for sequences whose scans go through driver-level TDR
+        ops the sequence cannot count.
+
+        DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 is the documented negative-
+        validation hook: every integer family expectation is corrupted so the
+        run must FAIL, proving the evidence path gates pass/fail end to end.
+        """
+        checker = OcahJtagChecker(
+            name=f"{self.get_name()}.checker",
+            raise_on_error=False,
+            required_ids=set(required_ids),
+            logger=cocotb.log,
+        )
+        self.attach_tap_checker(checker)
+        self._family_negative = OcahKnobs.is_set("DTP_JTAG_FAMILY_CHECKER_NEGATIVE")
+        if self._family_negative:
+            self.log.warning("NEGATIVE VALIDATION: family checker expectations will be corrupted")
+        self._expected_ir_widths: list[int] = []
+        self._expected_dr_widths: list[int] = []
+        if use_monitor:
+            self.family_monitor = OcahJtagMasterMonitor(
+                self.cfg.tb_if.jtag,
+                name=f"{self.get_name()}.monitor",
+                signal_map=JTAG_SIGNAL_MAP,
+            )
+            await self.family_monitor.start()
+        return checker
+
+    def family_check(
+        self,
+        check_id: str,
+        name: str,
+        observed: int,
+        expected: int,
+        *,
+        context: str = "",
+    ) -> None:
+        """Record one named family comparison; plain assert when unattached."""
+        if self.tap_checker is None:
+            self.assert_equal(name, observed, expected, context)
+            return
+        if self._family_negative and isinstance(expected, int):
+            expected = expected ^ 1
+        self.tap_checker.expect_equal(
+            check_id, observed, expected, context=f"{name} {context}".strip()
+        )
+
+    async def finalize_family_checker(self) -> None:
+        """Cross-check monitored scans against sequence intent and finalize."""
+        checker = self.tap_checker
+        assert checker is not None, "family checker was never attached"
+        if self.family_monitor is not None:
+            await self.family_monitor.stop()
+            ir_items = self.family_monitor.get_ir_transactions()
+            dr_items = self.family_monitor.get_dr_transactions()
+            checker.expect_equal(
+                "CHK-SCAN-COUNT",
+                (len(ir_items), len(dr_items)),
+                (len(self._expected_ir_widths), len(self._expected_dr_widths)),
+                context="monitored (ir, dr) scans vs sequence-issued scans",
+            )
+            if len(ir_items) == len(self._expected_ir_widths) and len(dr_items) == len(
+                self._expected_dr_widths
+            ):
+                for idx, (item, width) in enumerate(
+                    zip(ir_items, self._expected_ir_widths), start=1
+                ):
+                    checker.check_scan_length(item, expected_width=width, context=f"ir_scan#{idx}")
+                for idx, (item, width) in enumerate(
+                    zip(dr_items, self._expected_dr_widths), start=1
+                ):
+                    checker.check_scan_length(item, expected_width=width, context=f"dr_scan#{idx}")
+            checker.expect_true(
+                "CHK-NONVAC",
+                len(ir_items) > 0 and len(dr_items) > 0,
+                context=f"ir_scans={len(ir_items)} dr_scans={len(dr_items)}",
+            )
+        checker.finalize()
 
     def record_tap_state(self, observed: int, expected: DtpTapState) -> None:
         """Check the observed DUT TAP state and record the visit."""
@@ -58,6 +197,17 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         item = await super().load_ir(instr, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
             self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        if self.family_monitor is not None:
+            self._expected_ir_widths.append(DTP_IR_WIDTH)
+        return item
+
+    async def shift_ir(self, value: int, width: int, *, back_to_rti: bool = True):
+        """Shift a raw IR value, keeping the attached TAP checker in sync."""
+        item = await super().shift_ir(value, width, back_to_rti=back_to_rti)
+        if back_to_rti and self.tap_checker is not None:
+            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        if self.family_monitor is not None:
+            self._expected_ir_widths.append(width)
         return item
 
     async def shift_dr(self, value: int, width: int, *, back_to_rti: bool = True):
@@ -65,6 +215,8 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         item = await super().shift_dr(value, width, back_to_rti=back_to_rti)
         if back_to_rti and self.tap_checker is not None:
             self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        if self.family_monitor is not None:
+            self._expected_dr_widths.append(width)
         return item
 
     async def goto_run_test_idle(self) -> None:
@@ -140,9 +292,12 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             return
 
         expected = self.decoded_mask(instr)
-        assert item.decoded == expected, (
-            f"decoded instruction mismatch: expected 0x{expected:016x}, "
-            f"got 0x{item.decoded:016x}"
+        self.family_check(
+            "CHK-IR-DECODE",
+            "decoded instruction",
+            item.decoded,
+            expected,
+            context=f"ir=0x{int(instr):02x}",
         )
 
     @classmethod
@@ -150,7 +305,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         """Expected LSB-first TDO for a one-bit bypass register."""
         if width <= 0:
             return 0
-        shifted = (pattern & cls._bit_mask(max(width - 1, 0))) << 1
+        shifted = (pattern & cls.bit_mask(max(width - 1, 0))) << 1
         return (capture_bit & 0x1) | shifted
 
     @classmethod
@@ -158,8 +313,28 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         """Expected LSB-first TDO for the inverted one-bit bypass register."""
         if width <= 0:
             return 0
-        inverted = (~pattern) & cls._bit_mask(max(width - 1, 0))
+        inverted = (~pattern) & cls.bit_mask(max(width - 1, 0))
         return 0x1 | (inverted << 1)
+
+    def check_bypass_tdo(
+        self,
+        instr: DtpJtagInstr | int,
+        observed: int,
+        pattern: int,
+        width: int,
+        *,
+        capture_bit: int = 0,
+        context: str = "",
+    ) -> None:
+        """Record CHK-BYPASS-DELAY: the TDO of a one-bit bypass scan is TDI one TCK late."""
+        expected = self.expected_bypass_tdo(pattern, width, capture_bit=capture_bit)
+        self.family_check(
+            "CHK-BYPASS-DELAY",
+            f"bypass TDO for IR 0x{int(instr):02x}",
+            observed & self.bit_mask(width),
+            expected,
+            context=f"pattern=0x{pattern:x} width={width} {context}".strip(),
+        )
 
     async def check_bypass_delay(
         self,
@@ -169,16 +344,25 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         *,
         capture_bit: int = 0,
     ) -> None:
-        """Load a one-bit bypass instruction and check 1-TCK TDI-to-TDO delay."""
+        """Load a one-bit bypass instruction, check its decode and 1-TCK TDI-to-TDO delay."""
         await self.load_ir(instr)
+        await self.expect_decoded_instruction(instr)
         item = await self.shift_dr(pattern, width)
-        expected = self.expected_bypass_tdo(pattern, width, capture_bit=capture_bit)
-        observed = item.result & self._bit_mask(width)
-        assert observed == expected, (
-            f"bypass TDO mismatch for IR 0x{int(instr):02x}: "
-            f"expected 0x{expected:0{(width + 3) // 4}x}, "
-            f"got 0x{observed:0{(width + 3) // 4}x}"
-        )
+        self.check_bypass_tdo(instr, item.result, pattern, width, capture_bit=capture_bit)
+
+    async def check_bypass_no_host_select(
+        self,
+        instr: DtpJtagInstr | int,
+        pattern: int,
+        width: int = 64,
+    ) -> None:
+        """Bypass-delay check with every instruction-qualified host select quiet across the scan."""
+        await self.load_ir(instr)
+        await self.expect_decoded_instruction(instr)
+        item, edges, counts = await self.shift_dr_windowed(pattern, width, HOST_SELECTS)
+        context = f"ir=0x{int(instr):02x} width={width} edges={edges}"
+        self.check_bypass_tdo(instr, item.result, pattern, width, context=context)
+        self.check_quiet_window(NO_HOST_SELECT_CHECK_ID, edges, counts, context=context)
 
     async def check_bypass_patterns(
         self,
@@ -204,10 +388,13 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         await self.load_ir(DtpJtagInstr.INV_BYPASS)
         item = await self.shift_dr(pattern, width)
         expected = self.expected_inverted_bypass_tdo(pattern, width)
-        observed = item.result & self._bit_mask(width)
-        assert observed == expected, (
-            f"inverted bypass TDO mismatch: expected 0x{expected:0{(width + 3) // 4}x}, "
-            f"got 0x{observed:0{(width + 3) // 4}x}"
+        observed = item.result & self.bit_mask(width)
+        self.family_check(
+            "CHK-INV-BYPASS",
+            "inverted bypass TDO",
+            observed,
+            expected,
+            context=f"pattern=0x{pattern:x} width={width}",
         )
 
     async def check_inverted_bypass_patterns(
@@ -232,11 +419,14 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         """Load ZERO_LENGTH_BYPASS and check direct TDI-to-TDO pass-through."""
         await self.load_ir(DtpJtagInstr.ZERO_LENGTH_BYPASS)
         item = await self.shift_dr(pattern, width)
-        expected = pattern & self._bit_mask(width)
-        observed = item.result & self._bit_mask(width)
-        assert observed == expected, (
-            f"zero-length bypass mismatch: expected 0x{expected:0{(width + 3) // 4}x}, "
-            f"got 0x{observed:0{(width + 3) // 4}x}"
+        expected = pattern & self.bit_mask(width)
+        observed = item.result & self.bit_mask(width)
+        self.family_check(
+            "CHK-ZLB-PASSTHROUGH",
+            "zero-length bypass TDO",
+            observed,
+            expected,
+            context=f"pattern=0x{pattern:x} width={width}",
         )
 
     async def check_zero_length_bypass_patterns(
@@ -264,7 +454,13 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         await self.load_ir(instr)
         await self.expect_decoded_instruction(instr)
         item = await self.shift_dr(pattern, width)
-        model.assert_loopback(item.result, pattern, f"IR 0x{int(instr):02x}")
+        self.family_check(
+            "CHK-BSR-LOOPBACK",
+            f"IR 0x{int(instr):02x} loopback",
+            item.result & model.mask,
+            model.loopback_expected(pattern),
+            context=f"pattern=0x{pattern:x} width={width}",
+        )
 
     async def check_loopback_patterns(
         self,
@@ -280,3 +476,128 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             random_count=random_count,
         ):
             await self.check_loopback_scan(instr, pattern, width)
+
+    # --- scan-control windows --------------------------------------------------
+    def start_scan_window(self, signals: Iterable[str]) -> DtpScanControlWindowMonitor:
+        """Begin sampling named scan observables on every rising TCK edge."""
+        return DtpScanControlWindowMonitor(self.cfg.tb_if, signals).start()
+
+    @staticmethod
+    def scan_ctrl_signals(prefix: str) -> tuple[str, ...]:
+        """The four host scan-control observables of one chain prefix."""
+        return tuple(f"{prefix}_{suffix}" for suffix in SCAN_CTRL_SUFFIXES)
+
+    async def shift_dr_windowed(
+        self,
+        value: int,
+        width: int,
+        signals: tuple[str, ...],
+    ) -> tuple[DtpJtagItem, int, dict[str, int]]:
+        """Shift DR from Run-Test/Idle while a window counts high samples of ``signals``."""
+        window = self.start_scan_window(signals)
+        item = await self.shift_dr(value, width)
+        edges, counts = window.stop()
+        self.log.info("DR scan width=%d window edges=%d counts=%s", width, edges, counts)
+        return item, edges, counts
+
+    def check_scan_ctrl_counts(
+        self,
+        prefix: str,
+        counts: dict[str, int],
+        *,
+        width: int,
+        mode: DtpScanCtrlExpect,
+        context: str,
+    ) -> None:
+        """Judge one chain's control counts across a ``width``-bit DR scan.
+
+        The scan enters Shift-DR before its first bit, so the TAP's strobes
+        pulse capture once, shift ``width`` times, and update once; a gated
+        host shows none of them. Select is high only for the chain's own
+        instruction.
+        """
+        select_id, ctrl_id = SCAN_CTRL_CHECK_IDS[prefix]
+        strobes = mode is not DtpScanCtrlExpect.GATED
+        expected = {
+            "capture_en": int(strobes),
+            "shift_en": width if strobes else 0,
+            "update_en": int(strobes),
+        }
+        self.family_check(
+            select_id,
+            f"{prefix}_select asserted",
+            int(counts[f"{prefix}_select"] > 0),
+            int(mode is DtpScanCtrlExpect.SELECTED),
+            context=f"{mode.value} {context}",
+        )
+        for suffix, value in expected.items():
+            self.family_check(
+                ctrl_id,
+                f"{prefix}_{suffix} pulses",
+                counts[f"{prefix}_{suffix}"],
+                value,
+                context=f"{mode.value} {context}",
+            )
+
+    def check_quiet_window(
+        self,
+        check_id: str,
+        edges: int,
+        counts: dict[str, int],
+        *,
+        context: str,
+    ) -> None:
+        """Record that a live window saw every counted observable stay low."""
+        self.family_check(check_id, "window edges nonvacuous", int(edges > 0), 1, context=context)
+        for name, count in counts.items():
+            self.family_check(check_id, f"{name} quiet", count, 0, context=context)
+
+    async def check_bsr_scan_ctrl(
+        self,
+        instr: DtpJtagInstr | int,
+        pattern: int,
+        width: int = DTP_BSR_MODEL_LEN,
+        *,
+        mode: DtpScanCtrlExpect = DtpScanCtrlExpect.SELECTED,
+        extra_signals: tuple[str, ...] = (),
+    ) -> dict[str, int]:
+        """Load an instruction and judge its DR scan under a boundary-scan control window.
+
+        A boundary-scan instruction selects the looped-back chain
+        (CHK-BSR-SELECT, CHK-BSR-LOOPBACK); any other instruction leaves the
+        select low and scans the one-bit bypass register (CHK-BYPASS-DELAY).
+        The TAP's strobes pulse either way (CHK-BSR-SCAN-CTRL). Returns the
+        window counts, including ``extra_signals``.
+        """
+        await self.load_ir(instr)
+        await self.expect_decoded_instruction(instr)
+        signals = self.scan_ctrl_signals(BSR_SCAN_CTRL) + tuple(extra_signals)
+        item, edges, counts = await self.shift_dr_windowed(pattern, width, signals)
+        context = f"ir=0x{int(instr):02x} pattern=0x{pattern:x} width={width} edges={edges}"
+        self.check_scan_ctrl_counts(BSR_SCAN_CTRL, counts, width=width, mode=mode, context=context)
+        if mode is DtpScanCtrlExpect.SELECTED:
+            model = DtpScanModel(width)
+            self.family_check(
+                "CHK-BSR-LOOPBACK",
+                f"IR 0x{int(instr):02x} loopback",
+                item.result & model.mask,
+                model.loopback_expected(pattern),
+                context=context,
+            )
+        else:
+            self.check_bypass_tdo(instr, item.result, pattern, width, context=context)
+        return counts
+
+    async def check_scan_observable(
+        self,
+        check_id: str,
+        name: str,
+        expected: int,
+        *,
+        context: str = "",
+    ) -> None:
+        """Sample one scan-domain observable through the driver and record it."""
+        item = await self.sample_observables()
+        if name not in item.signals:
+            raise KeyError(f"{name} is not exposed by the DTP JTAG driver")
+        self.family_check(check_id, name, item.signals[name], expected, context=context)

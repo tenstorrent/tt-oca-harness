@@ -19,7 +19,7 @@ SMC fabric filtering.
 |Address Range |0xC003_8000 - 0xC003_81FF (512 bytes)
 |Control Interface |AXI4-Lite (9-bit address space, 64-bit data width)
 |Data Interface |AXI4 Master (56-bit address, 64-bit data, 4-bit ID)
-|Channel Support |Multiple independent concurrent transfer channels
+|Stream Support |Register map exposes 16 stream banks; SMC instantiates 1
 |Security |Integration with SMC fabric filtering mechanisms
 |=====================================================================
 
@@ -50,7 +50,7 @@ The DMA controller supports the following configuration parameters:
 interfaces (must be ≥ 1)
 
 |NUM_CTRL_STREAMS |1 |Number of control streams per interface (must be ≥
-1)
+1, maximum 16). SMC fixes this at 1; see <<dma-stream-support>>
 
 |NUM_MST_INTERFACES |1 |Number of independent AXI master interfaces
 (must be ≥ 1)
@@ -103,6 +103,37 @@ conditions
 |Configuration Lock |Protection against modification during active
 transfers
 |=======================================================================
+
+[[dma-stream-support]]
+===== Stream Support
+
+A stream is an independent transfer-ID and status-tracking context in the
+frontend. The `dma_ctrl` register map reserves banks for 16 streams:
+`NEXT_ID_0` through `NEXT_ID_15`, `STATUS_0` through `STATUS_15`, and
+`DONE_0` through `DONE_15`. Streams do not have private transfer
+descriptors. There is a single set of `SRC_ADDRESS`, `DST_ADDRESS`,
+`LENGTH`, stride, and repetition registers shared by every stream;
+reading `NEXT_ID_n` launches a transfer built from those shared registers
+and tags it with stream index n.
+
+SMC instantiates the DMA with `NUM_CTRL_STREAMS = 1`, so only stream 0 is
+functional. Streams 1 through 15 cannot be used.
+
+`NUM_CTRL_STREAMS` does not size the register file. The register file is
+always generated with all 16 stream banks, and every bank decodes
+normally regardless of the parameter. The parameter gates only the logic
+behind the banks, so with `NUM_CTRL_STREAMS = 1` the effect is:
+
+* Reading `NEXT_ID_1` through `NEXT_ID_15` does *not* start a transfer.
+The access completes with no bus error and returns 0, which is the same
+value `NEXT_ID` returns for a command that was not set up correctly.
+Software cannot distinguish a dropped request from a rejected one by the
+returned value.
+* `STATUS_1` through `STATUS_15` and `DONE_1` through `DONE_15` are tied
+to 0 and never update.
+
+Software must use `NEXT_ID_0`, `STATUS_0`, and `DONE_0` exclusively and
+treat the remaining banks as reserved.
 
 ===== Transfer Descriptor Support
 
@@ -325,6 +356,11 @@ repetition counts. This enables efficient handling of both linear and 2D
 data movement patterns.
 
 ==== Detailed Register Map
+
+NOTE: The register map below covers all 16 stream banks because the
+register file is generated at the maximum stream count. With
+`NUM_CTRL_STREAMS = 1`, only the `_0` bank of `NEXT_ID`, `STATUS`, and
+`DONE` has any effect; see <<dma-stream-support>>.
 
 ifdef::backend-html5[]
 ++++

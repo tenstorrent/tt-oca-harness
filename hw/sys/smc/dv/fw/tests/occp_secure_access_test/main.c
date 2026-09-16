@@ -100,9 +100,6 @@ static void validate_smc_status_buffer_for_secure_access(test_context_t *ctx,
 #define NUM_RANDOM_OPERATIONS 2 // Number of random read/write operations
 #define NUM_VALID_CONTROL_OPS 2 // Number of valid operations for control
 
-// TODO: double check this when OCCP spec is defined
-#define OCCP_READ_ERROR_CODE 0x1
-
 static uint64_t generate_random_invalid_address_below(void) {
     // Generate random address below allowed range (0xC0000000 to 0xC005FFFF)
     uint64_t range = OCCP_TEST_BASE_ADDR - INVALID_ADDR_BELOW_START;
@@ -206,7 +203,7 @@ static bool test_boundary_cases(test_context_t *ctx) {
     }
 
     // Test address just below allowed range with random offset
-    uint64_t random_offset_below = get_random_int() % 0x20; // 0-7 offset
+    uint64_t random_offset_below = get_random_int() % 0x20; // 0-31 offset
     uint64_t addr_below = (OCCP_TEST_BASE_ADDR - 1 - random_offset_below) & 0xfffffffc;
     simputshex32("Boundary test: Address just below range (0x", addr_below);
     simputshex32(" offset: ", random_offset_below);
@@ -244,7 +241,7 @@ static bool test_boundary_cases(test_context_t *ctx) {
     // above the range is only invalid in secure mode
     if (is_secure_mode()) {
         // Test address at/above upper boundary with random offset
-        uint64_t random_offset_above = get_random_int() % 0x20; // 0-7 offset
+        uint64_t random_offset_above = get_random_int() % 0x20; // 0-31 offset
         uint64_t addr_above = (OCCP_TEST_UPPER_ADDR + random_offset_above) & 0xfffffffc;
         simputshex32("Boundary test: Address at/above upper boundary (0x", addr_above);
         simputshex32(" offset: ", random_offset_above);
@@ -323,7 +320,7 @@ static bool test_boundary_cases(test_context_t *ctx) {
 
     // Test valid boundary addresses inside the allowed range
     // Test address at start of valid range with random offset
-    uint64_t random_offset_start = (get_random_int() % 0x20) & 0xfffffffc; // 0-7 offset
+    uint64_t random_offset_start = (get_random_int() % 0x20) & 0xfffffffc; // 0-31 offset
     uint64_t addr_valid_start = OCCP_TEST_BASE_ADDR + random_offset_start;
     simputshex32("Boundary test: Valid address at start of range (0x", addr_valid_start);
     simputshex32(" offset: ", random_offset_start);
@@ -358,7 +355,7 @@ static bool test_boundary_cases(test_context_t *ctx) {
     }
 
     // Test address just before end of valid range with random offset
-    uint64_t random_offset_end = get_random_int() % 0x20; // 0-7 offset
+    uint64_t random_offset_end = get_random_int() % 0x20; // 0-31 offset
     uint64_t addr_valid_end = (OCCP_TEST_UPPER_ADDR - 8 - len - random_offset_end) &
                               0xfffffffc; // Ensure we don't exceed boundary
     simputshex32("Boundary test: Valid address near end of range (0x", addr_valid_end);

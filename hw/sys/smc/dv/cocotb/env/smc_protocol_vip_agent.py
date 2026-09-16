@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC protocol VIP agent.
 
-The current public OSS SMC top does not expose every protocol pad/responder.
-This agent provides positive protocol-intent evidence for proxy/depth tests:
-sequences still own the real SEP_IN AXI accesses, while this agent emits a
-checked protocol transaction record to the scoreboard.
+The public OSS SMC top does not expose every protocol pad/responder. This agent
+provides positive protocol-intent evidence for proxy/depth tests: sequences own
+the real SEP_IN AXI accesses, while this agent emits a checked protocol
+transaction record to the scoreboard.
 """
 
 from __future__ import annotations
@@ -17,8 +17,6 @@ from pyuvm import (
     uvm_driver,
     uvm_sequencer,
 )
-
-from .smc_protocol_vip_item import SmcProtocolVipItem
 
 
 class SmcProtocolVipDriver(uvm_driver):

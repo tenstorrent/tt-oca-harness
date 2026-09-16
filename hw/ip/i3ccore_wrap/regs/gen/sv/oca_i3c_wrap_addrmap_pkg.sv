@@ -6,14 +6,700 @@
 package oca_i3c_wrap_addrmap_pkg;
 
 localparam longint unsigned OCA_I3C_WRAP_BASE_ADDR = 64'h0;
-localparam longint unsigned OCA_I3C_WRAP_SIZE = 64'h500;
+localparam longint unsigned OCA_I3C_WRAP_SIZE = 64'h6000;
 
-localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_BASE_ADDR = 64'h0;
-localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_SIZE = 64'h500;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_SIZE = 64'h1000;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_STRIDE = 64'h1000;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_TOTAL_SIZE = 64'h6000;
 
-localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_BASE_ADDR = 64'h0;
-localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CCSR_WINDOW_SIZE = 64'h500;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_SIZE = 64'h6C;
 
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h80 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_SIZE = 64'h34;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h100 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SIZE = 64'h2A4;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h100 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_SIZE = 64'h6C;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h180 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_SIZE = 64'h44;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h200 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_SIZE = 64'h94;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h300 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SIZE = 64'h94;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h398 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_SIZE = 64'h8;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_DAT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h400 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_DAT_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_DAT_SIZE = 64'h400;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_DCT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h800 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_DCT_NUM = 64'h6;
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_DCT_SIZE = 64'h800;
+
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_HCI_VERSION_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h4 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CONTROL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_CONTROLLER_DEVICE_ADDR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h8 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_CONTROLLER_DEVICE_ADDR_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CAPABILITIES_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hC + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_HC_CAPABILITIES_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_RESET_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h10 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_RESET_CONTROL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_PRESENT_STATE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h14 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_PRESENT_STATE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h20 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_STATUS_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h24 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_STATUS_ENABLE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_SIGNAL_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h28 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_SIGNAL_ENABLE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h2C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INTR_FORCE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DAT_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h30 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DAT_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DCT_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h34 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DCT_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_RING_HEADERS_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h38 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_RING_HEADERS_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_PIO_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h3C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_PIO_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_EXT_CAPS_SECTION_OFFSET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h40 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_EXT_CAPS_SECTION_OFFSET_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INT_CTRL_CMDS_EN_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h4C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_INT_CTRL_CMDS_EN_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_IBI_NOTIFY_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h58 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_IBI_NOTIFY_CTRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_IBI_DATA_ABORT_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h5C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_IBI_DATA_ABORT_CTRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_BASE_LO_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h60 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_BASE_LO_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_BASE_HI_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h64 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_BASE_HI_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_SG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h68 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3CBASE_DEV_CTX_SG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_COMMAND_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h80 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_COMMAND_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RESPONSE_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h84 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RESPONSE_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_TX_DATA_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h88 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_TX_DATA_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RX_DATA_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h88 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_RX_DATA_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_IBI_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h8C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_IBI_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_QUEUE_THLD_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h90 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_QUEUE_THLD_CTRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_DATA_BUFFER_THLD_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h94 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_DATA_BUFFER_THLD_CTRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_QUEUE_SIZE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h98 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_QUEUE_SIZE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_ALT_QUEUE_SIZE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h9C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_ALT_QUEUE_SIZE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hA0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hA4 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_STATUS_ENABLE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hA8 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hAC + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_INTR_FORCE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'hB0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_PIOCONTROL_PIO_CONTROL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h100 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h104 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_0_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h108 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_1_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h10C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_2_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h110 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_PROT_CAP_3_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h114 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_0_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h118 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_1_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h11C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_2_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h120 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_3_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h124 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_4_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h128 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_5_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h12C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_ID_RESERVED_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h130 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_0_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h134 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_STATUS_1_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h138 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_DEVICE_RESET_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h13C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_CTRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h140 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_RECOVERY_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_HW_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h144 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_HW_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h148 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_0_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h14C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_CTRL_1_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h150 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_0_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h154 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_1_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h158 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_2_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h15C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_3_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h160 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_STATUS_4_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h164 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_RESERVED_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h168 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SECFWRECOVERYIF_INDIRECT_FIFO_DATA_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h180 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h184 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h188 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h18C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CAPABILITIES_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h190 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_CHAR_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h194 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h198 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_CHAR_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h19C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_PID_LO_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1A0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1A4 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRTUAL_DEVICE_PID_LO_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1A8 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_SIGNAL_ENABLE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1AC + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_INTR_FORCE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1B0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_GETCAPS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1B4 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_CCC_CONFIG_RSTACT_PARAMS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1B8 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_VIRT_DEVICE_ADDR_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1BC + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MWL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h1C0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_STDBYCTRLMODE_STBY_CR_MRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h200 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h204 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_CONTROL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h208 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RESET_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h20C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RESET_CONTROL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h210 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DESC_QUEUE_DEPTH_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h214 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DESC_QUEUE_DEPTH_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DATA_QUEUE_DEPTH_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h218 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DATA_QUEUE_DEPTH_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_QUEUE_DEPTH_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h21C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_QUEUE_DEPTH_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h220 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h224 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_ENABLE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h228 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_INTERRUPT_FORCE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h22C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CTRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h230 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h234 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_ENABLE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_FORCE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h238 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_INTR_FORCE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE0_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h23C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE0_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE1_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h240 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE1_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h244 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE2_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h248 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE3_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE4_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h24C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE4_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE5_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h250 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_TE5_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h254 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_FRAMING_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h258 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_PEC_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h25C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_LENGTH_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h260 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_READONLY_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h264 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_UNSUPPORTED_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h268 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_RX_FIFO_OVERFLOW_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h26C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TARGET_ERR_CNT_RI_INDIRECT_FIFO_OVERFLOW_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RX_DESC_QUEUE_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h270 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RX_DESC_QUEUE_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RX_DATA_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h274 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_RX_DATA_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TX_DESC_QUEUE_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h278 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TX_DESC_QUEUE_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TX_DATA_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h27C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_TX_DATA_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_PORT_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h280 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_PORT_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_SIZE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h284 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_SIZE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_QUEUE_SIZE_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h288 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_IBI_QUEUE_SIZE_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_THLD_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h28C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_QUEUE_THLD_CTRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h290 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h300 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h304 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_CONTROL_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h308 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_STATUS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_CFG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h30C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_CFG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h310 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_REC_INTF_REG_W1C_ACCESS_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h314 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_2_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h318 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_RSVD_3_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_CONF_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h31C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_CONF_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h320 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_PAD_ATTR_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h324 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_2_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h328 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_SOC_MGMT_FEATURE_3_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_R_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h32C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_R_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_F_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h330 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_F_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h334 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h338 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_DAT_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_DAT_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h33C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_DAT_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h340 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h344 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_OD_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h348 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_INIT_OD_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h34C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HIGH_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h350 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_OD_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h354 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_OD_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h358 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_LOW_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h35C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h360 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_STA_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h364 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HD_RSTA_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h368 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h36C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STA_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h370 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h374 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_SU_STO_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_DS_OD_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h378 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_DS_OD_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h37C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h380 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_FREE_I2C_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_AVAL_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h384 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_AVAL_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_IDLE_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h388 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_IDLE_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h38C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_HDR_TIMEOUT_EN_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h390 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_SOCMGMTIF_T_HDR_TIMEOUT_REG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h398 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_EXTCAP_HEADER_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_CONTROLLER_CONFIG_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h39C + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_CTRLCFG_CONTROLLER_CONFIG_NUM = 64'h6;
+function automatic longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TERMINATION_EXTCAP_HEADER_BASE_ADDR(input int unsigned i3c_csr_idx);
+    return 64'h3A0 + (i3c_csr_idx * 64'h1000);
+endfunction
+localparam longint unsigned OCA_I3C_WRAP_I3C_CSR_I3C_EC_TERMINATION_EXTCAP_HEADER_NUM = 64'h6;
 
 
 endpackage

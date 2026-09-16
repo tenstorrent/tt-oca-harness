@@ -15,18 +15,18 @@ from pyuvm import uvm_sequence_item
 
 
 class DtpJtagOp(Enum):
-    RESET = "reset"            # await JTAG auto-reset (TRST) completion
-    RESET_FSM = "reset_fsm"    # drive TAP to Test-Logic-Reset
-    TMS_STEP = "tms_step"      # drive one raw TMS cycle and sample DUT TAP state
-    SHIFT_IR = "shift_ir"      # shift a raw IR value -> captured previous IR bits
-    SHIFT_DR = "shift_dr"      # shift a raw DR value -> captured TDO bits
-    SET_TRST = "set_trst"      # directly drive TRST_N and optionally tick TCK
-    PULSE_POR = "pulse_por"    # pulse pwr_on_rst_ni and sample TAP state
-    SAMPLE = "sample"          # sample exposed DUT observables
-    READ = "read"             # read a TDR by name -> result
-    WRITE = "write"           # write a TDR by name with value
-    J2A_WRITE = "j2a_write"    # JTAG2AXI single write (addr, data)
-    J2A_READ = "j2a_read"      # JTAG2AXI single read (addr) -> status, rdata
+    RESET = "reset"  # await JTAG auto-reset (TRST) completion
+    RESET_FSM = "reset_fsm"  # drive TAP to Test-Logic-Reset
+    TMS_STEP = "tms_step"  # drive one raw TMS cycle and sample DUT TAP state
+    SHIFT_IR = "shift_ir"  # shift a raw IR value -> captured previous IR bits
+    SHIFT_DR = "shift_dr"  # shift a raw DR value -> captured TDO bits
+    SET_TRST = "set_trst"  # directly drive TRST_N and optionally tick TCK
+    PULSE_POR = "pulse_por"  # pulse pwr_on_rst_ni and sample TAP state
+    SAMPLE = "sample"  # sample exposed DUT observables
+    READ = "read"  # read a TDR by name -> result
+    WRITE = "write"  # write a TDR by name with value
+    J2A_WRITE = "j2a_write"  # JTAG2AXI single write (addr, data)
+    J2A_READ = "j2a_read"  # JTAG2AXI single read (addr) -> status, rdata
 
 
 class DtpJtagItem(uvm_sequence_item):
@@ -45,11 +45,13 @@ class DtpJtagItem(uvm_sequence_item):
         self.axi_wstrb: int = 0xFF
         self.axi_size: int = 3
         # Results (filled in by the driver)
-        self.result: int = 0      # raw TDR read value
-        self.decoded: int = 0     # raw decoded instruction one-hot value
+        self.result: int = 0  # raw TDR read value
+        # TAP state sampled with the reset pin asserted and no TCK edge since.
+        self.reset_state: int = 0
+        self.decoded: int = 0  # raw decoded instruction one-hot value
         self.signals: dict[str, int] = {}
-        self.status: int = 0      # JTAG2AXI capture status
-        self.rdata: int = 0       # JTAG2AXI read data
+        self.status: int = 0  # JTAG2AXI capture status
+        self.rdata: int = 0  # JTAG2AXI read data
 
     def __str__(self) -> str:
         return (

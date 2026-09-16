@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap Round 4: SMC_XVISOR_REMAP full sweep (TC_SMC_P1CG_20).
+"""SMC_XVISOR_REMAP full sweep (TC_SMC_P1CG_20).
 
 RTL exposes an 8-entry hypervisor remap table (PeakRDL map
-SMC_XVISOR_REMAP_0..7, ATTRS-only per entry). This is a direct sibling of
-the already-covered ALIAS_REMAP and MMODE_REMAP tables, but no prior
-P0/P1 test reached it. Strict reads (each requiring an OKAY AXI response)
-prove per-entry CSR decode + reset invariants without any BFM/firmware.
+SMC_XVISOR_REMAP_0..7, ATTRS-only per entry), a sibling of the ALIAS_REMAP and
+MMODE_REMAP tables. Strict reads (each requiring an OKAY AXI response) prove
+per-entry CSR decode + reset invariants without any BFM/firmware.
 """
 
 from __future__ import annotations
@@ -57,6 +56,4 @@ class smc_xvisor_remap_test_seq(SmcCsrSeq):
                 addr,
                 expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
             )
-        assert self.accesses == len(XVISOR_REMAP_ATTRS_ADDRS), (
-            "XVISOR_REMAP sweep count mismatch"
-        )
+        assert self.accesses == len(XVISOR_REMAP_ATTRS_ADDRS), "XVISOR_REMAP sweep count mismatch"

@@ -18,26 +18,38 @@ Offsets and reset values follow the generated map
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from pyuvm import uvm_sequence
+from sep_reg_meta import SEP_CPU_CTRL, sym
 
 SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 
 # Non-zero reset value, so a successful read proves the block actually decoded
 # rather than returning zeros from an unmapped address.
-LOCAL_BASE_ADDR_ADDR = SEP_CPU_CTRL_BASE + 0x0C8
-LOCAL_BASE_ADDR_EXP = 0xD000_0000
+LOCAL_BASE_ADDR_ADDR = SEP_CPU_CTRL.addr("SEP_LOCAL_BASE_ADDR")
+LOCAL_BASE_ADDR_EXP = SEP_CPU_CTRL.reset32("SEP_LOCAL_BASE_ADDR")
 
 # (name, addr, pattern, implemented-field mask)
 WRITE_READBACK = [
-    ("SEP_SW_DEBUG",  SEP_CPU_CTRL_BASE + 0x178, 0xDEAD_BEEF, 0xFFFF_FFFF),
+    (
+        "SEP_SW_DEBUG",
+        SEP_CPU_CTRL.addr("SEP_SW_DEBUG"),
+        0xDEAD_BEEF,
+        SEP_CPU_CTRL.mask32("SEP_SW_DEBUG"),
+    ),
     # nmi_vec is [31:1]; bit 0 is reserved and reads back as zero.
-    ("SEP_NMI_VEC",   SEP_CPU_CTRL_BASE + 0x180, 0x0BAD_C0DE, 0xFFFF_FFFE),
-    ("RAS_BANK_INFO", SEP_CPU_CTRL_BASE + 0x170, 0x0000_00A5, 0x0000_00FF),
-    ("PKA_CTRL",      SEP_CPU_CTRL_BASE + 0x020, 0x0000_0007, 0x0000_0007),
+    (
+        "SEP_NMI_VEC",
+        SEP_CPU_CTRL.addr("SEP_NMI_VEC"),
+        0x0BAD_C0DE,
+        SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
+    ),
+    (
+        "PKA_CTRL",
+        SEP_CPU_CTRL.addr("PKA_CTRL"),
+        0x0000_0007,
+        SEP_CPU_CTRL.mask32("PKA_CTRL"),
+    ),
 ]
 
 

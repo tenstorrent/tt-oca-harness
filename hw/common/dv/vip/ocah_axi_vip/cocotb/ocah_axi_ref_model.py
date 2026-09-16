@@ -20,7 +20,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from .ocah_axi_results import RESP_EXOKAY, RESP_OKAY
+from .ocah_axi_types import RESP_EXOKAY, RESP_OKAY
 
 _SUCCESS_RESPS = (RESP_OKAY, RESP_EXOKAY)
 
@@ -164,9 +164,7 @@ class OcahAxiRefModel:
         """
         lo = int(address)
         hi = lo + int(nbytes)
-        return any(
-            region.blocked and region.overlaps(lo, hi) for region in self._regions
-        )
+        return any(region.blocked and region.overlaps(lo, hi) for region in self._regions)
 
     # ------------------------------------------------------------------
     # Prediction (stateful; update order: resolve resp, then commit memory)

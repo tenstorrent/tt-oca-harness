@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-import typing as t
 
-import cocotb
-from cocotb.triggers import RisingEdge, FallingEdge, Timer
+from cocotb.triggers import RisingEdge
 
 
 class APBMaster:
@@ -31,8 +29,8 @@ class APBMaster:
         self.pwdata = handle.pwdata if apb is not None else handle.pwdata_i
         self.prdata = handle.prdata if apb is not None else handle.prdata_o
         # APB4 signals (may not be present on all DUTs)
-        self.pready = getattr(handle, 'pready', None)
-        self.pslverr = getattr(handle, 'pslverr', None)
+        self.pready = getattr(handle, "pready", None)
+        self.pslverr = getattr(handle, "pslverr", None)
 
     async def initialize_bus(self) -> None:
         """Drive APB control lines to idle."""

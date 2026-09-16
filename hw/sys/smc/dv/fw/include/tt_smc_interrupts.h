@@ -12,7 +12,7 @@ extern "C" {
 
 // SMC CPU interrupt map (4-core config: NUM_EXT_INTERRUPTS=256, NUM_CPU_INTERRUPTS=328)
 //
-// cpu_interrupts_o layout (hw/smc/smc_base.sv):
+// cpu_interrupts_o layout (hw/sys/smc/rtl/smc_base.sv):
 //   [255:0]   ext_interrupts_i            -> PLIC IDs   1-256
 //   [287:256] peripheral_interrupts_i     -> PLIC IDs 257-288
 //   [319:288] mailbox_interrupts[31:0]    -> PLIC IDs 289-320
@@ -67,11 +67,12 @@ extern "C" {
 // (~rst_ext_wdt_ni, active-low inverted before routing)
 #define SEP_WDT_INTERRUPT_ID (283)
 
-// Temperature: peripheral_interrupts[27] = cpu_interrupts_o[283] -> PLIC ID 284
-#define TEMP_INTERRUPT_ID (284)
+// Locked field access: peripheral_interrupts[27] = cpu_interrupts_o[283] -> PLIC ID 284
+#define LOCKED_FIELD_ACCESS_INTERRUPT_ID (284)
 
-// Locked field access: peripheral_interrupts[28] = cpu_interrupts_o[284] -> PLIC ID 285
-#define LOCKED_FIELD_ACCESS_INTERRUPT_ID (285)
+// AXI hang detector: peripheral_interrupts[30] = cpu_interrupts_o[286] -> PLIC ID 287
+// One line shared by all three detectors (sys_axi, sep_axi, data_accel).
+#define AXI_HANG_DETECTOR_INTERRUPT_ID (287)
 
 // SMC inbound mailbox: cpu_interrupts_o[319:288] -> PLIC IDs 289-320
 #define MAILBOX_0_INTERRUPT_ID (289)

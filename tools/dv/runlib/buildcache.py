@@ -3,10 +3,10 @@
 
 """Build acceleration knobs, object cache, and a fingerprinted build cache.
 
-All behavior here is opt-in via the DUT `[build.options]` and `[build.cache]` config tables so a
-contributor controls the full stack:
+All behavior here is opt-in via the DUT `[build.options]` config table so a contributor controls
+the full stack:
 
-`[build.options]` carries simulator-neutral knobs (OD-19 folded the former `[build.cache]` in here):
+`[build.options]` carries simulator-neutral knobs:
 
 - build acceleration — parallel build (`build_jobs`) and dev-time `cflags` (e.g. ``-O0``).
   Tool-specific acceleration, such as Verilator `output_split` and `ccache`, lives under
@@ -14,8 +14,10 @@ contributor controls the full stack:
 - fingerprinted build cache — `cache_enabled` partitions the build directory by an input
   fingerprint so different configs do not clobber each other and an unchanged config reuses its
   build; `rebuild` forces a clean build; `cache_key_extra` folds extra strings into the
-  fingerprint. Within one fingerprint dir, the tool's own dependency tracking handles incremental
-  source edits.
+  fingerprint. The fingerprint covers the build arguments, the filelist text and a content
+  digest over the sources the bender filelist names, so an RTL or testbench edit moves the
+  build into a fresh directory; `rebuild` (``--rebuild``) forces a clean build of the current
+  one through the cocotb runner's ``always`` flag on every simulator.
 """
 
 from __future__ import annotations
@@ -55,7 +57,9 @@ def effective_build_jobs(options: dict[str, Any], jobs: int) -> int:
     return jobs if jobs and jobs > 1 else 0
 
 
-def option_build_args(options: dict[str, Any], verilator_cfg: dict[str, Any], jobs: int) -> list[str]:
+def option_build_args(
+    options: dict[str, Any], verilator_cfg: dict[str, Any], jobs: int
+) -> list[str]:
     """Translate shared options plus `[build.verilator]` into Verilator build arguments."""
     extra: list[str] = []
     build_jobs = effective_build_jobs(options, jobs)
@@ -71,7 +75,9 @@ def option_build_args(options: dict[str, Any], verilator_cfg: dict[str, Any], jo
     return extra
 
 
-def apply_option_env(options: dict[str, Any], env: dict[str, str], verilator_cfg: dict[str, Any] | None = None) -> dict[str, str]:
+def apply_option_env(
+    options: dict[str, Any], env: dict[str, str], verilator_cfg: dict[str, Any] | None = None
+) -> dict[str, str]:
     """Enable ccache as Verilator's object cache when requested (Verilator-only)."""
     cfg = verilator_cfg or {}
     if bool(cfg.get("ccache", False)):
@@ -115,23 +121,31 @@ def vcs_build_args(options: dict[str, Any], vcs_cfg: dict[str, Any], jobs: int) 
     return extra
 
 
-def xcelium_build_args(options: dict[str, Any], xcelium_cfg: dict[str, Any], jobs: int) -> list[str]:
+def xcelium_build_args(
+    options: dict[str, Any], xcelium_cfg: dict[str, Any], jobs: int
+) -> list[str]:
     """Translate `[build.options]` + `[build.xcelium]` into Xcelium elaboration (xmelab/xrun) flags.
 
-    - ``build_jobs`` -> ``-mce -mce_build_thread_count <N>`` (multi-core build)  [Verilator: --build-jobs; VCS: -j]
     - ``cflags``     -> ``-Wcxx,<flag>``                                          [Verilator/VCS: -CFLAGS]
-    - ``ccache`` / ``output_split`` -> ignored; Xcelium uses multi-core + incremental elaboration
+    - ``ccache`` / ``output_split`` -> ignored; Xcelium uses incremental elaboration
     Xcelium-only (`[build.xcelium]`):
-    - ``mce`` (bool)        -> force ``-mce`` even without a thread count
+    - ``mce`` (bool)        -> ``-mce``, and ``build_jobs`` then sets its thread count
     - ``opt_level``         -> raw optimization flag passthrough
     - ``extra_args``        -> appended verbatim
+
+    ``build_jobs`` does not reach Xcelium on its own. On Verilator and VCS it is
+    a build-time knob (``--build-jobs`` / ``-j``); the nearest Xcelium option is
+    ``-mce``, which turns on the Multi-Core Engine for the *simulation* and so
+    makes ``xmsim`` check out an ``Xcelium_Multi_Core`` feature instead of
+    ``Xcelium_Single_Core``. A single-core entitlement cannot run under ``-mce``,
+    so only ``[build.xcelium] mce`` requests it.
     """
     extra: list[str] = []
-    build_jobs = effective_build_jobs(options, jobs)
-    if build_jobs > 0:
-        extra += ["-mce", "-mce_build_thread_count", str(build_jobs)]
-    elif bool(xcelium_cfg.get("mce", False)):
+    if bool(xcelium_cfg.get("mce", False)):
         extra.append("-mce")
+        build_jobs = effective_build_jobs(options, jobs)
+        if build_jobs > 0:
+            extra += ["-mce_build_thread_count", str(build_jobs)]
 
     opt = str(xcelium_cfg.get("opt_level", "")).strip()
     if opt:
@@ -152,7 +166,15 @@ def binary_version(binary: str, version_args: list[str], root: Path) -> str:
     version = "unknown"
     if shutil.which(binary):
         try:
-            proc = subprocess.run([binary, *version_args], cwd=root, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=10)
+            proc = subprocess.run(
+                [binary, *version_args],
+                cwd=root,
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=10,
+            )
             line = proc.stdout.strip().splitlines()[0] if proc.stdout.strip() else ""
             version = line or "unknown"
         except (OSError, subprocess.SubprocessError):
@@ -173,7 +195,14 @@ def xcelium_version(root: Path) -> str:
     return binary_version("xrun", ["-version"], root)
 
 
-def build_fingerprint(*, build_args: list[str], top_module: str, tool_version: str, filelist_text: str, extra: list[str]) -> str:
+def build_fingerprint(
+    *,
+    build_args: list[str],
+    top_module: str,
+    tool_version: str,
+    filelist_text: str,
+    extra: list[str],
+) -> str:
     """Stable 12-hex digest over the declared build inputs (not per-seed)."""
     hasher = hashlib.sha256()
     for part in (top_module, tool_version, filelist_text, *build_args, *extra):

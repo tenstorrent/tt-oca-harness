@@ -28,7 +28,10 @@ class dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq(dtp_debug_tdr_base_tes
         )
 
         self.log_step(2, "Pulse chip reset while keeping TAP accessible")
-        await self.pulse_system_reset()
+        # Seeded per-pass pulse width: repeated loops vary how long rst_n_i
+        # stays low relative to the free-running TCK.
+        reset_cycles = self.rng("tmp_chrst_pulse").randint(3, 12)
+        await self.pulse_system_reset(cycles=reset_cycles)
 
         self.log_step(3, "Confirm Persistence-On survives the chip reset pulse")
         after = await self.read_tmp_status()

@@ -102,12 +102,12 @@
     // addrmap - el2_pic
     class el2_pic extends uvm_reg_block;
         `uvm_object_utils(el2_pic)
-        rand el2_pic__meipl meipl[32];
-        rand el2_pic__meip meip[2];
-        rand el2_pic__meie meie[32];
+        rand el2_pic__meipl meipl[256];
+        rand el2_pic__meip meip[8];
+        rand el2_pic__meie meie[256];
         rand el2_pic__mpiccfg mpiccfg;
-        rand el2_pic__meigwctrl meigwctrl[32];
-        rand el2_pic__meigwclr meigwclr[32];
+        rand el2_pic__meigwctrl meigwctrl[256];
+        rand el2_pic__meigwclr meigwclr[256];
 
         function new(string name = "el2_pic");
             super.new(name);
@@ -120,7 +120,7 @@
                 this.meipl[i0].configure(this);
                 
                 this.meipl[i0].build();
-                this.default_map.add_reg(this.meipl[i0], 'h4 + i0*'h4);
+                this.default_map.add_reg(this.meipl[i0], 'h0 + i0*'h4);
             end
             foreach(this.meip[i0]) begin
                 this.meip[i0] = el2_pic__meip::type_id::create($sformatf("meip[%0d]", i0));
@@ -134,7 +134,7 @@
                 this.meie[i0].configure(this);
                 
                 this.meie[i0].build();
-                this.default_map.add_reg(this.meie[i0], 'h2004 + i0*'h4);
+                this.default_map.add_reg(this.meie[i0], 'h2000 + i0*'h4);
             end
             this.mpiccfg = el2_pic__mpiccfg::type_id::create("mpiccfg");
             this.mpiccfg.configure(this);
@@ -146,14 +146,14 @@
                 this.meigwctrl[i0].configure(this);
                 
                 this.meigwctrl[i0].build();
-                this.default_map.add_reg(this.meigwctrl[i0], 'h4004 + i0*'h4);
+                this.default_map.add_reg(this.meigwctrl[i0], 'h4000 + i0*'h4);
             end
             foreach(this.meigwclr[i0]) begin
                 this.meigwclr[i0] = el2_pic__meigwclr::type_id::create($sformatf("meigwclr[%0d]", i0));
                 this.meigwclr[i0].configure(this);
                 
                 this.meigwclr[i0].build();
-                this.default_map.add_reg(this.meigwclr[i0], 'h5004 + i0*'h4);
+                this.default_map.add_reg(this.meigwclr[i0], 'h5000 + i0*'h4);
             end
         endfunction : build
     endclass : el2_pic

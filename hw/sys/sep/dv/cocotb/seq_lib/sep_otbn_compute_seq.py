@@ -13,14 +13,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from env.sep_seeded_rng import SepSeededRng
+
 from seq_lib.sep_otbn_seq import SepOtbn
 
 # DMEM: [0]=a, [4]=b, [8]=result. Base in x6.
 _LUI_X6 = 0x00000337
 _ADDI_X6 = 0x00030313
-_LW_A = 0x00032503   # lw x10, 0(x6)
-_LW_B = 0x00432583   # lw x11, 4(x6)
-_SW_R = 0x00C32423   # sw x12, 8(x6)
+_LW_A = 0x00032503  # lw x10, 0(x6)
+_LW_B = 0x00432583  # lw x11, 4(x6)
+_SW_R = 0x00C32423  # sw x12, 8(x6)
 _ECALL = 0x00000073
 # add/xor/and x12, x10, x11
 _ADD = 0x00B50633
@@ -86,12 +87,21 @@ class SepOtbnComputeCfg:
 class SepOtbnCompute(SepOtbn):
     """Load a compute program, stage DMEM operands, execute, read the result."""
 
-    async def run_cell(self, op: str, a: int, b: int) -> tuple[int, int]:
+    async def run_cell(self, op: str, a: int, b: int, expect: int) -> tuple[int, int]:
         await self.load_program(otbn_compute_prog(op))
         await self.write_dmem(0, a)
         await self.write_dmem(4, b)
-        await self.write_dmem(8, 0)
+        # Seed the result word with the golden's exact complement rather than 0.
+        # An `and`/`xor` golden can legitimately be 0, so a zero seed lets a
+        # program that never stores its result pass the comparison. The
+        # complement can never equal the golden, so the sentinel readback below
+        # is a real missing-store detector.
+        sentinel = expect ^ 0xFFFF_FFFF
+        await self.write_dmem(8, sentinel)
         await self.execute()
         err = await self.read_errbits()
         result = await self.read_dmem(8)
+        assert result != sentinel, (
+            f"OTBN {op} left DMEM[8] at the sentinel 0x{sentinel:08x}: no result stored"
+        )
         return err, result

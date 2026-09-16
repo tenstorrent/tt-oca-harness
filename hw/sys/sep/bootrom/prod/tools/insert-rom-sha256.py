@@ -137,9 +137,7 @@ def find_elf_file_offset(elf_path, gcc_prefix, symbol_vma):
 
 
 def main():
-    ap = argparse.ArgumentParser(
-        description="Insert SHA-256 hash of ICCM content into ROM ELF"
-    )
+    ap = argparse.ArgumentParser(description="Insert SHA-256 hash of ICCM content into ROM ELF")
     ap.add_argument("input", help="Input ELF path (boot_rom.elf)")
     ap.add_argument(
         "--gcc-prefix",
@@ -148,9 +146,7 @@ def main():
     )
     ap.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
     group = ap.add_mutually_exclusive_group()
-    group.add_argument(
-        "--verify", action="store_true", help="Verify the hash embedded in the ELF"
-    )
+    group.add_argument("--verify", action="store_true", help="Verify the hash embedded in the ELF")
     group.add_argument("-o", "--output", help="Output ELF path (may be same as input)")
 
     args = ap.parse_args()
@@ -158,9 +154,7 @@ def main():
     level = logging.INFO
     if args.verbose:
         level = logging.DEBUG
-    logging.basicConfig(
-        level=level, format="insert-rom-sha256: %(levelname)s: %(message)s"
-    )
+    logging.basicConfig(level=level, format="insert-rom-sha256: %(levelname)s: %(message)s")
 
     elf_path = args.input
     if not os.path.exists(elf_path):
@@ -177,9 +171,7 @@ def main():
     # Step 2: Find the file offset for this symbol.
     file_offset = find_elf_file_offset(elf_path, args.gcc_prefix, sym_vma)
     if file_offset is None:
-        logging.error(
-            "Could not find PROGBITS section containing symbol VMA 0x%x", sym_vma
-        )
+        logging.error("Could not find PROGBITS section containing symbol VMA 0x%x", sym_vma)
         return 1
 
     # Step 3: Extract ICCM binary and compute hash.
@@ -226,9 +218,7 @@ def main():
         with open(args.output, "wb") as f:
             f.write(elf_data)
 
-        logging.info(
-            "Patched %s at offset 0x%x: %s", args.output, file_offset, hash_str
-        )
+        logging.info("Patched %s at offset 0x%x: %s", args.output, file_offset, hash_str)
     else:
         logging.info("ICCM hash: %s", hash_str)
 

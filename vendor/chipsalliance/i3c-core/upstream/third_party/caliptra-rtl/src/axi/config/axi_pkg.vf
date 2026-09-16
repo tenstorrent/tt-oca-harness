@@ -1,3 +1,0 @@
-+incdir+${CALIPTRA_ROOT}/src/axi/rtl
-${CALIPTRA_ROOT}/src/axi/rtl/axi_pkg.sv
-${CALIPTRA_ROOT}/src/axi/rtl/axi_if.sv

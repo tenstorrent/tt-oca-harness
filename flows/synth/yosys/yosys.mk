@@ -35,11 +35,20 @@ ifdef FLOW_DESIGN
 OCAH_SYNTH_DIR := build/synth/$(TECH)
 OCAH_SYNTH_FLIST := $(OCAH_SYNTH_DIR)/$(FLOW_DESIGN).f
 
+# The prim_assert.sv shim is yosys-only and must win the +incdir search against
+# the vendored OpenTitan copy it delegates to, so it has to come first. It also
+# has to stay off every other flow's flist: the customer IP packager flattens all
+# include dirs into one directory, where the two files collide on basename.
+# Bender drops an include_dirs-only source group, so prepend the dir here rather
+# than gating it on a Bender target.
+OCAH_YOSYS_ASSERT_INCDIR := $(OCAH_ROOT)/hw/common/assert/yosys
+
 ## Synthesize this one block with yosys + yosys-slang.
 .PHONY: ocah-synth
 ocah-synth:
 	@mkdir -p $(OCAH_SYNTH_DIR)
 	$(call ocah_eda_flist,$(FLOW_BENDER_TARGETS),$(OCAH_SYNTH_FLIST))
+	@sed -i '1i +incdir+$(OCAH_YOSYS_ASSERT_INCDIR)' $(OCAH_SYNTH_FLIST)
 	$(call ocah_eda_docker_run, env PDK=$(TECH) PROJ_NAME=$(FLOW_DESIGN) TOP_DESIGN=$(FLOW_DESIGN) SV_FLIST=$(OCAH_SYNTH_FLIST) OUT_DIR=$(OCAH_SYNTH_DIR) TIMESCALE=$(OCAH_FLOW_TIMESCALE) yosys -c $(OCAH_YOSYS_SYNTH_TCL))
 
 endif

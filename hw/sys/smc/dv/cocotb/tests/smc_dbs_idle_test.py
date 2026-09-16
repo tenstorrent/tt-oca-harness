@@ -1,19 +1,32 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GitHub Project P0 alias for DBS/DFD/ECC diagnostic precheck."""
+"""P0 alias for the DBS/DFD/ECC diagnostic precheck."""
 
 from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_diagnostic_vip_utils import check_diagnostic_observability
 from seq_lib.smc_ecc_dfd_dbs_sanity_test_seq import smc_ecc_dfd_dbs_sanity_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_dbs_idle_test(smc_base_test):
-    """Run the DBS/DFD/ECC proxy scenario tracked by the P0 project issue."""
+    """Run the DBS/DFD/ECC diagnostic proxy scenario."""
+
+    required_evidence = (
+        "CHK-DIAG-AXIL-ACTIVE",
+        "CHK-DIAG-AXIL-IDLE",
+        "CHK-DIAG-CSR-COUNT",
+        "CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX",
+        "CHK-DIAG-CSR-DFX_DEBUG_CTRL",
+        "CHK-DIAG-CSR-NDMRESET_PROCESS",
+        "CHK-DIAG-NDMRESET-CLUSTER-COUNT-BOUNDS",
+        "CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO",
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+    )
+    min_evidence = 9
 
     auto_protocol_vip = False
 
@@ -24,6 +37,9 @@ class smc_dbs_idle_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.DIAGNOSTIC,
             type(self).__name__,
+            # Directed stimulus floor: 6 SEP_IN AXI DBS diagnostic CSR reads.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=6,
             csr_accesses=seq.accesses,
             proxy=True,
             details="DBS idle diagnostic CSR surface and bounded fault observability checked",

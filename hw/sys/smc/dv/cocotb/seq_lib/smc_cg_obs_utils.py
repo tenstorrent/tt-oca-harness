@@ -1,19 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared LIVE observation helpers for SMC clock-gating cocotb sequences."""
+"""Shared LIVE observation helpers for SMC clock-gating cocotb sequences.
+
+Logging policy: every record this module emits goes through ``cocotb.log``.
+A module-level ``logging.getLogger(__name__)`` is **not** captured by the
+cocotb/pyuvm runner, so the ``CHK-*`` / ``STEP`` / ``FENCE`` records written
+through one never reach the kept log -- an evidence token that exists only in
+the Python process cannot be re-verified by an audit
+(``[EVIDENCE-TOKEN-CONDITIONAL]``). No module-level logger belongs here.
+"""
 
 from __future__ import annotations
-
-import logging
 
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer
 from cocotb.utils import get_sim_time
 
 from . import smc_addr_map as _addr
-from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 
-_LOG = logging.getLogger(__name__)
+# Re-exported: callers do `import smc_cg_obs_utils as cg` then `cg.PASS_ALL_CONFIG`.
+from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG as PASS_ALL_CONFIG
 
 # Authoritative addresses / field masks (generated headers via smc_addr_map).
 CLOCK_GATE_CONTROL = _addr.CLOCK_GATE_CONTROL
@@ -63,16 +69,16 @@ def sample_bit(dut, name: str) -> int:
 def mark_fence(fence: list[tuple[str, int]], term: str) -> None:
     t = int(get_sim_time(units="ns"))
     fence.append((term, t))
-    _LOG.info("FENCE %s @ %dns", term, t)
+    cocotb.log.info("FENCE %s @ %dns", term, t)
 
 
 def emit_chk(chk_seen: dict[str, str], name: str, line: str) -> None:
-    _LOG.info("%s", line)
+    cocotb.log.info("%s", line)
     chk_seen[name] = line
 
 
 def log_step(step_id: str, msg: str) -> None:
-    _LOG.info("STEP %s: %s", step_id, msg)
+    cocotb.log.info("STEP %s: %s", step_id, msg)
 
 
 async def count_gated_rising(dut, gated_clk_name: str, smc_cycles: int) -> int:
@@ -102,9 +108,7 @@ async def count_gated_rising(dut, gated_clk_name: str, smc_cycles: int) -> int:
     return edges["n"]
 
 
-async def count_enabled_at_smc_rise(
-    dut, gated_clk_name: str, smc_cycles: int
-) -> int:
+async def count_enabled_at_smc_rise(dut, gated_clk_name: str, smc_cycles: int) -> int:
     """Count how many of ``smc_cycles`` successive clk_smc rising edges sample gated==1.
 
     Same-domain free-running gated clocks (test_en bypass / disable_cg) sample 1
@@ -232,8 +236,31 @@ async def wait_gated_off(
             last_toggle_at = cyc + idle_observe
     diag = " ".join(f"{n}={sample_bit(dut, n)}" for n in diag_names)
     raise AssertionError(
-        f"TIMEOUT waiting {gated_clk_name} off: last_toggle_at={last_toggle_at} "
-        f"hyst={hyst} {diag}"
+        f"TIMEOUT waiting {gated_clk_name} off: last_toggle_at={last_toggle_at} hyst={hyst} {diag}"
+    )
+
+
+async def wait_enabled(
+    dut,
+    gated_clk_name: str,
+    *,
+    timeout_smc: int,
+    diag_names: tuple[str, ...] = (),
+) -> int:
+    """Wait until a gated clock samples enabled again; return the cycle it did.
+
+    The event-driven counterpart to :func:`wait_gated_off`, for the settle
+    between driving a bypass/enable and starting a counted window. Expiry is a
+    FAILURE with the last observed state of ``diag_names``, never a pass
+    ([TIMEOUT-MUST-FAIL]), so it cannot be used as a blind delay.
+    """
+    for cyc in range(timeout_smc):
+        if await count_gated_rising(dut, gated_clk_name, 1) > 0:
+            return cyc + 1
+    diag = " ".join(f"{n}={sample_bit(dut, n)}" for n in diag_names)
+    raise AssertionError(
+        f"TIMEOUT waiting {gated_clk_name} to become enabled within "
+        f"{timeout_smc} smc cycle(s): {diag}"
     )
 
 
@@ -267,5 +294,35 @@ async def measure_regate_delay(
 
 
 def assert_fence_order(fence: list[tuple[str, int]], expected: list[str]) -> None:
+    """Structural record only: the term order equals the source order.
+
+    In a straight-line body the recorded order equals ``expected`` by
+    construction, so this cannot fail on any RTL -- it is a bookkeeping
+    restatement, not a proof. A sequence whose non-vacuity token rests on the
+    fence must use :func:`assert_fence_progress` (which adds the DUT-time
+    claim) and pair it with a measured contrast in the same token
+    (``[NO-ALWAYS-PASS-CHECKER]``).
+    """
     order = [t for t, _ in fence]
     assert order == expected, f"NONVAC fence order wrong: {order} expected {expected}"
+
+
+def assert_fence_progress(fence: list[tuple[str, int]], expected: list[str]) -> list[int]:
+    """Fence order **plus** strictly increasing simulation timestamps.
+
+    Unlike :func:`assert_fence_order`, the timestamp leg is a claim about the
+    run and not about the source text: it fails if two phases were recorded at
+    the same simulation time, i.e. if a phase completed without the DUT
+    advancing (a gater that never gates, an activity window that consumed no
+    time, a wait that returned immediately). Returns the timestamps so the
+    caller can carry them in its evidence token.
+    """
+    assert_fence_order(fence, expected)
+    times = [t for _, t in fence]
+    for prev, nxt in zip(times, times[1:]):
+        assert nxt > prev, (
+            f"NONVAC fence timestamps are not strictly increasing: {fence} -- a "
+            f"phase was recorded at the same simulation time as its "
+            f"predecessor, so no DUT time elapsed between them"
+        )
+    return times

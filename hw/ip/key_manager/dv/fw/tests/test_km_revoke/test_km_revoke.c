@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_revoke.c
- * @brief T055 - Key revocation test
+ * @brief Key revocation test
  *
  * Boots the KM firmware, generates a key, verifies it is usable via
  * transfer, then revokes it and confirms the handle is invalidated.

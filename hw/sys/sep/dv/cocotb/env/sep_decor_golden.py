@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP DRBG entropy-decorrelator golden model.
 
-The model mirrors ``hw/ip/entropy_source/rtl/entropy_decorrelator.sv``.
+Independent model of the 12-lane 29-stage XOR-feedback decorrelator
+in ``hw/ip/entropy_source/doc/architecture.adoc``.
 
 The decorrelator reduces serial correlation in ring-oscillator noise. Each of
 12 lanes owns a 29-bit shift register (a prime length) with MSB->LSB XOR
@@ -20,23 +21,30 @@ Transform per lane, per clock:
          new_bit  = noise_bit ^ feedback
          ff_stage = ((ff_stage << 1) | new_bit) & 0x1FFFFFFF
 
-Smoke config (documented per task): sample_clk_div=7 (i.e. /8 downsample,
+Smoke config: sample_clk_div=7 (i.e. /8 downsample,
 one byte every 8 cycles), byte_mask=0xFF, bypass=0.
 """
 
 MAX_LANES = 12
 SR_LENGTH = 29
-SR_MASK = (1 << SR_LENGTH) - 1          # 0x1FFFFFFF
-FEEDBACK_SHIFT = SR_LENGTH - 1          # 28
-SAMPLE_SHIFT = SR_LENGTH - 8           # 21
+SR_MASK = (1 << SR_LENGTH) - 1  # 0x1FFFFFFF
+FEEDBACK_SHIFT = SR_LENGTH - 1  # 28
+SAMPLE_SHIFT = SR_LENGTH - 8  # 21
 
 
 class _Lane:
     """Per-lane decorrelator state."""
 
     __slots__ = (
-        "ff_stage", "clk_divider", "sample_clk_div", "byte_mask",
-        "bypass", "enable", "output_byte", "output_valid", "sample_count",
+        "ff_stage",
+        "clk_divider",
+        "sample_clk_div",
+        "byte_mask",
+        "bypass",
+        "enable",
+        "output_byte",
+        "output_valid",
+        "sample_count",
     )
 
     def __init__(self):
@@ -68,7 +76,6 @@ class SepDecorGolden:
         if lane < 0 or lane >= MAX_LANES:
             return
         L = self._lanes[lane]
-        # memset(0) then set fields
         L.ff_stage = 0
         L.output_byte = 0
         L.sample_clk_div = sample_clk_div & 0xFFFFFFFF
@@ -129,8 +136,7 @@ class SepDecorGolden:
         L.ff_stage = ((L.ff_stage << 1) | new_bit) & SR_MASK
 
     def step_all(self, noise_bits_12):
-        """Step all 12 lanes; noise_bits_12 is a packed int, bit i -> lane i.
-        """
+        """Step all 12 lanes; noise_bits_12 is a packed int, bit i -> lane i."""
         bits = noise_bits_12 & 0xFFFFFFFF
         for i in range(MAX_LANES):
             self.step(i, (bits >> i) & 1)
@@ -190,13 +196,13 @@ class SepDecorGolden:
 # =============================================================================
 # Self-test (run with plain `python3 sep_decor_golden.py`, NO cocotb/sim).
 # =============================================================================
-def _independent_oracle_step(ff_stage, clk_divider, sample_clk_div,
-                             byte_mask, bypass, noise_bit, sample_after_shift=False):
-    """Independent re-implementation of the C step, returning the new state.
+def _independent_oracle_step(
+    ff_stage, clk_divider, sample_clk_div, byte_mask, bypass, noise_bit, sample_after_shift=False
+):
+    """Independent re-implementation of the per-clock step, returning the new state.
 
-    This is intentionally written from scratch (not calling the class) so it
-    serves as an oracle. ``sample_after_shift=True`` deliberately breaks the
-    non-blocking ordering to prove the ordering matters.
+    It does not call the class, so it serves as an oracle. ``sample_after_shift=True``
+    inverts the sample/shift order so the self-test can show the ordering matters.
     """
     output_valid = 0
     output_byte = 0
@@ -207,7 +213,7 @@ def _independent_oracle_step(ff_stage, clk_divider, sample_clk_div,
         # divider reload handled by caller
 
     if not sample_after_shift:
-        # ---- C-correct ordering: SAMPLE then SHIFT ----
+        # ---- RTL ordering: SAMPLE then SHIFT ----
         if clk_divider == 0:
             raw = (ff_stage >> SAMPLE_SHIFT) & 0xFF
             output_byte = raw & byte_mask
@@ -257,25 +263,59 @@ def _selftest():
 
     for ln in range(MAX_LANES):
         vc = valid_cycles[ln]
-        # First valid at cyc 0 (clk_divider starts at 0 since reload==7 but
-        # init sets clk_divider=sample_clk_div=7 -> first sample after 7 decrements).
         assert len(vc) >= 2, f"lane {ln}: too few valid pulses ({len(vc)})"
         deltas = [vc[k + 1] - vc[k] for k in range(len(vc) - 1)]
-        assert all(d == 8 for d in deltas), (
-            f"lane {ln}: valid cadence not /8: deltas={deltas}")
+        assert all(d == 8 for d in deltas), f"lane {ln}: valid cadence not /8: deltas={deltas}"
     # With init clk_divider=7, first sample is at cycle 7, then every 8.
     for ln in range(MAX_LANES):
         assert valid_cycles[ln][0] == 7, (
-            f"lane {ln}: first valid at {valid_cycles[ln][0]}, expected 7")
+            f"lane {ln}: first valid at {valid_cycles[ln][0]}, expected 7"
+        )
 
     # --- Test 2: hand-traced oracle for a SHORT known ~40-bit noise pattern ---
     # Drive lane 0 with a known noise sequence; compare class vs independent
     # oracle state cycle by cycle, including the first sampled byte.
     noise_pattern = [
-        1, 0, 1, 1, 0, 0, 1, 0, 1, 1,
-        1, 0, 0, 1, 0, 1, 0, 0, 1, 1,
-        0, 1, 1, 0, 1, 0, 1, 1, 0, 0,
-        1, 1, 0, 0, 1, 0, 1, 0, 1, 1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
     ]  # 40 bits
     g = SepDecorGolden()
     g.init(0, sample_clk_div=7, bypass=0, byte_mask=0xFF)
@@ -288,14 +328,18 @@ def _selftest():
     for cyc, nb in enumerate(noise_pattern):
         g.step(0, nb)
         o_ff, o_div, o_valid, o_byte = _independent_oracle_step(
-            o_ff, o_div, 7, 0xFF, 0, nb, sample_after_shift=False)
+            o_ff, o_div, 7, 0xFF, 0, nb, sample_after_shift=False
+        )
         assert g.get_sr(0) == o_ff, (
-            f"cyc {cyc}: class ff_stage {g.get_sr(0):#x} != oracle {o_ff:#x}")
+            f"cyc {cyc}: class ff_stage {g.get_sr(0):#x} != oracle {o_ff:#x}"
+        )
         assert g.output_valid(0) == o_valid, (
-            f"cyc {cyc}: valid mismatch class={g.output_valid(0)} oracle={o_valid}")
+            f"cyc {cyc}: valid mismatch class={g.output_valid(0)} oracle={o_valid}"
+        )
         if o_valid:
             assert g.get_output(0) == o_byte, (
-                f"cyc {cyc}: byte mismatch class={g.get_output(0):#x} oracle={o_byte:#x}")
+                f"cyc {cyc}: byte mismatch class={g.get_output(0):#x} oracle={o_byte:#x}"
+            )
             if first_sample is None:
                 first_sample = o_byte
                 first_sample_cyc = cyc
@@ -306,7 +350,8 @@ def _selftest():
     # cycles 0..6), masked to bits [28:21]. With only 7 bits shifted in, the
     # top bits are still 0, so the first byte must be 0x00.
     assert first_sample == 0x00, (
-        f"first sampled byte {first_sample:#x} != 0x00 (only 7 bits shifted, top bits 0)")
+        f"first sampled byte {first_sample:#x} != 0x00 (only 7 bits shifted, top bits 0)"
+    )
 
     # --- Test 3: prove the non-blocking ordering MATTERS ---
     # Build a pattern long enough that the sampled byte is nonzero, then show
@@ -327,7 +372,8 @@ def _selftest():
     wrong_bytes = []
     for nb in long_pattern:
         w_ff, w_div, w_valid, w_byte = _independent_oracle_step(
-            w_ff, w_div, 7, 0xFF, 0, nb, sample_after_shift=True)
+            w_ff, w_div, 7, 0xFF, 0, nb, sample_after_shift=True
+        )
         if w_valid:
             wrong_bytes.append(w_byte)
 
@@ -335,7 +381,8 @@ def _selftest():
         "sample-before-shift and sample-after-shift produced identical byte "
         "streams -- ordering test is not discriminating!\n"
         f"  correct={[hex(b) for b in correct_bytes]}\n"
-        f"  wrong  ={[hex(b) for b in wrong_bytes]}")
+        f"  wrong  ={[hex(b) for b in wrong_bytes]}"
+    )
 
     # --- Test 4: get_all_outputs framing (lane0 in [7:0]) ---
     f = SepDecorGolden()
@@ -346,7 +393,8 @@ def _selftest():
     for i in range(MAX_LANES):
         lane_byte = (packed >> (i * 8)) & 0xFF
         assert lane_byte == ((0x10 + i) & 0xFF), (
-            f"framing: lane {i} byte {lane_byte:#x} != {0x10 + i:#x}")
+            f"framing: lane {i} byte {lane_byte:#x} != {0x10 + i:#x}"
+        )
     assert (packed & 0xFF) == 0x10, "lane0 must occupy bits [7:0]"
 
     print("DECOR GOLDEN SELFTEST PASS")

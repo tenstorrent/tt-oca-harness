@@ -13,10 +13,9 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
-from env.sep_efuse_image import SepEfuseImage, SEP_FUSE_SENSE_STATUS
+from env.sep_efuse_image import SEP_FUSE_SENSE_STATUS, SepEfuseImage
+from pyuvm import uvm_sequence
 
 
 class sep_efuse_shadow_check_seq(uvm_sequence):

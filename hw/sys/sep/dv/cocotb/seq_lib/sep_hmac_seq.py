@@ -7,7 +7,7 @@ MSG FIFO, waits for done, and reads the digest -- mirroring the reference suite
 sep_km_hmac_sideload_kat_test_seq op helpers (RAL there; direct AXI here, like
 SepAes/SepOtbn). 32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
 
-HMAC register map (base 0x1091_1000; vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_reg_pkg.sv):
+HMAC register map (base from the generated SEP header; offsets from hmac.adoc):
   INTR_STATE @ 0x000 (RW1C: bit0 hmac_done, bit2 hmac_err)
   CFG        @ 0x010   CMD @ 0x014   STATUS @ 0x018   ERR_CODE @ 0x01C
   KEY_0..31  @ 0x024..0x0A0   DIGEST_0..7 @ 0x0A4..0x0C0
@@ -19,24 +19,23 @@ write-only and read back zero.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 from dataclasses import dataclass
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from sep_reg_meta import HMAC, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 HMAC_BASE = sym("HMAC_REG_MAP_BASE_ADDR")
-HMAC_INTR_STATE = HMAC_BASE + 0x000
-HMAC_CFG = HMAC_BASE + 0x010
-HMAC_CMD = HMAC_BASE + 0x014
-HMAC_STATUS = HMAC_BASE + 0x018
-HMAC_ERR_CODE = HMAC_BASE + 0x01C
-HMAC_KEY_0 = HMAC_BASE + 0x024
-HMAC_DIGEST_0 = HMAC_BASE + 0x0A4
-HMAC_MSG_FIFO = HMAC_BASE + 0x1000
+HMAC_INTR_STATE = HMAC.addr("INTR_STATE")
+HMAC_CFG = HMAC.addr("CFG")
+HMAC_CMD = HMAC.addr("CMD")
+HMAC_STATUS = HMAC.addr("STATUS")
+HMAC_ERR_CODE = HMAC.addr("ERR_CODE")
+HMAC_KEY_0 = sym("HMAC_KEY_0__REG_ADDR")
+HMAC_DIGEST_0 = sym("HMAC_DIGEST_0__REG_ADDR")
+HMAC_MSG_FIFO = sym("HMAC_MSG_FIFO_MEM_BASE_ADDR")
 HMAC_NUM_PUBLIC_KEY = 32
 
 # CFG keyed HMAC-SHA256, 256-bit key (vendor/lowRISC/opentitan/overlay/regs/hmac/regs/gen/adoc/hmac.adoc): hmac_en[0]=1, sha_en[1]=1,
@@ -52,29 +51,52 @@ HMAC_CMD_HASH_START = 1 << 0
 HMAC_CMD_HASH_PROCESS = 1 << 1
 
 HMAC_STATUS_FIFO_FULL = 1 << 2
+# STATUS.hmac_idle: set while the core holds no in-flight message. Taken from
+# the generated block, so a field move cannot leave a stale literal here.
+HMAC_STATUS_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
 HMAC_INTR_DONE = 1 << 0
 HMAC_INTR_ERR = 1 << 2
 
-# CFG field encodings (prim_sha2_pkg.sv digest_mode_e / key_length_e, one-hot;
-# hmac.sv CFG layout: hmac_en[0] sha_en[1] endian_swap[2] digest_swap[3]
-# key_swap[4] digest_size[8:5] key_length[14:9]).
-HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}      # SHA2_256/384/512
+# CFG field encodings (hmac.adoc digest_size / key_length, one-hot).
+HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}  # SHA2_256/384/512
 HMAC_KEY_LENGTH = {128: 0x1, 256: 0x2, 384: 0x4, 512: 0x8, 1024: 0x10}
-# Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.sv:265-277).
+# Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.adoc).
 HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
-# Illegal keyed combo: SHA-256 supports keys up to 512-bit only (hmac.sv:819).
-HMAC_ILLEGAL_KEYED = {(256, 1024)}
+# SHA-2 block size per digest size, in bits. hmac.adoc: "the key length cannot
+# be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to
+# 512-bit for SHA-2 256."
+HMAC_BLOCK_BITS = {256: 512, 384: 1024, 512: 1024}
+# Keyed cells the register specification blocks, derived from that rule rather
+# than listed: hmac.adoc states a start with KEY_LENGTH = Key_1024 while
+# DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". Deriving
+# it keeps the legal set the specification's, not the design's -- an RTL bound
+# that disagreed with the block-size rule would now drive a cell this set calls
+# legal.
+HMAC_ILLEGAL_KEYED = {
+    (sha_bits, key_bits)
+    for sha_bits in HMAC_DIGEST_SIZE
+    for key_bits in HMAC_KEY_LENGTH
+    if key_bits > HMAC_BLOCK_BITS[sha_bits]
+}
+assert HMAC_ILLEGAL_KEYED == {(256, 1024)}, HMAC_ILLEGAL_KEYED
 
 
-def build_cfg(*, hmac_en: bool, sha_bits: int, key_bits: int | None = None,
-              endian_swap: int = 0, digest_swap: int = 0, key_swap: int = 0) -> int:
+def build_cfg(
+    *,
+    hmac_en: bool,
+    sha_bits: int,
+    key_bits: int | None = None,
+    endian_swap: int = 0,
+    digest_swap: int = 0,
+    key_swap: int = 0,
+) -> int:
     """Build the HMAC CFG word for a SHA-2 variant / mode / key-length.
 
     ``sha_bits`` in {256,384,512}; ``key_bits`` in {128,256,384,512,1024} for keyed
-    HMAC (pass None for plain SHA). Reproduces the hand-picked HMAC_CFG_* constants
-    above (verified: keyed-256 -> 0x423, plain-256 -> 0x22).
+    HMAC (pass None for plain SHA). Reproduces the HMAC_CFG_* constants above
+    (keyed-256 -> 0x423, plain-256 -> 0x22).
     """
-    cfg = int(bool(hmac_en)) | (1 << 1)               # sha_en always 1
+    cfg = int(bool(hmac_en)) | (1 << 1)  # sha_en always 1
     cfg |= (endian_swap & 1) << 2
     cfg |= (digest_swap & 1) << 3
     cfg |= (key_swap & 1) << 4
@@ -91,14 +113,14 @@ class SepHmacCfg:
     programming (CFG + key) and the golden expectation (env/sep_hmac_golden).
 
     The SW-key byte convention (``key_word_rev``/``key_be``/``msg_be``/
-    ``digest_swap``) is pinned once at directed bring-up (OT DV key_swap=0 =>
-    KEY_0 first, big-endian per word; distinct from the keymgr sideload path).
+    ``digest_swap``) follows OT DV key_swap=0: KEY_0 first, big-endian per word
+    (distinct from the keymgr sideload path).
     """
 
-    sha_bits: int                    # 256/384/512
-    hmac_en: bool                    # True = keyed HMAC, False = plain SHA
-    key_bits: int | None             # 128/256/384/512/1024 (keyed) or None (plain)
-    key_words: list[int]             # SW key words (len = key_bits/32); [] for plain
+    sha_bits: int  # 256/384/512
+    hmac_en: bool  # True = keyed HMAC, False = plain SHA
+    key_bits: int | None  # 128/256/384/512/1024 (keyed) or None (plain)
+    key_words: list[int]  # SW key words (len = key_bits/32); [] for plain
     msg_words: list[int]
     key_word_rev: bool = False
     key_be: bool = True
@@ -106,16 +128,23 @@ class SepHmacCfg:
     digest_swap: bool = False
 
     def cfg_word(self) -> int:
-        return build_cfg(hmac_en=self.hmac_en, sha_bits=self.sha_bits,
-                         key_bits=self.key_bits,
-                         digest_swap=1 if self.digest_swap else 0)
+        return build_cfg(
+            hmac_en=self.hmac_en,
+            sha_bits=self.sha_bits,
+            key_bits=self.key_bits,
+            digest_swap=1 if self.digest_swap else 0,
+        )
 
     def golden_kwargs(self) -> dict:
         return dict(
-            hmac_en=self.hmac_en, sha_bits=self.sha_bits, msg_words=self.msg_words,
+            hmac_en=self.hmac_en,
+            sha_bits=self.sha_bits,
+            msg_words=self.msg_words,
             key_words=self.key_words if self.hmac_en else None,
-            key_word_rev=self.key_word_rev, key_be=self.key_be,
-            msg_be=self.msg_be, digest_swap=self.digest_swap,
+            key_word_rev=self.key_word_rev,
+            key_be=self.key_be,
+            msg_be=self.msg_be,
+            digest_swap=self.digest_swap,
         )
 
 
@@ -155,7 +184,7 @@ class SepHmac(SepAxiRegDriver):
         """Run one keyed HMAC over msg_words; return the 8 DIGEST words (word0=MSB).
 
         start -> push message words to MSG_FIFO -> process -> wait done -> read
-        DIGEST -> W1C the done event and assert it cleared (RW1C contract, §7).
+        DIGEST -> W1C the done event and assert it cleared (RW1C contract).
         """
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
@@ -167,8 +196,9 @@ class SepHmac(SepAxiRegDriver):
         # W1C the done event and prove it clears (RW1C).
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
         post = await self._rd(HMAC_INTR_STATE)
-        assert (post & HMAC_INTR_DONE) == 0, \
+        assert (post & HMAC_INTR_DONE) == 0, (
             f"HMAC INTR_STATE.hmac_done not cleared by W1C (0x{post:08x})"
+        )
         return digest
 
     async def configure_sha256(self) -> None:
@@ -186,7 +216,7 @@ class SepHmac(SepAxiRegDriver):
         """Run one SHA-256 over msg_words; return the 8 DIGEST words (word0=MSB).
 
         start -> push message words -> process -> wait done -> read DIGEST -> W1C
-        the done event and assert it cleared (RW1C, §7). DIGEST then HOLDS."""
+        the done event and assert it cleared (RW1C). DIGEST then HOLDS."""
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
             await self._wait_fifo_space()
@@ -196,8 +226,9 @@ class SepHmac(SepAxiRegDriver):
         digest = await self.read_digest()
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
         post = await self._rd(HMAC_INTR_STATE)
-        assert (post & HMAC_INTR_DONE) == 0, \
+        assert (post & HMAC_INTR_DONE) == 0, (
             f"HMAC INTR_STATE.hmac_done not cleared by W1C (0x{post:08x})"
+        )
         return digest
 
     async def configure(self, cfg_word: int) -> None:
@@ -215,20 +246,33 @@ class SepHmac(SepAxiRegDriver):
 
         Returns the DIGEST words for the SHA-2 variant (8/12/16). start -> push
         message -> process -> wait done -> read DIGEST -> W1C the done event and
-        assert it cleared (RW1C, §7)."""
+        assert it cleared (RW1C)."""
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
             await self._wait_fifo_space()
             await self._wr(HMAC_MSG_FIFO, word & 0xFFFF_FFFF)
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_PROCESS)
         await self._wait_done()
-        digest = [await self._rd(HMAC_DIGEST_0 + i * 4)
-                  for i in range(HMAC_DIGEST_WORDS[sha_bits])]
+        digest = [await self._rd(HMAC_DIGEST_0 + i * 4) for i in range(HMAC_DIGEST_WORDS[sha_bits])]
         await self._wr(HMAC_INTR_STATE, HMAC_INTR_DONE)
         post = await self._rd(HMAC_INTR_STATE)
-        assert (post & HMAC_INTR_DONE) == 0, \
+        assert (post & HMAC_INTR_DONE) == 0, (
             f"HMAC INTR_STATE.hmac_done not cleared by W1C (0x{post:08x})"
+        )
         return digest
+
+    async def wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
+        """Poll STATUS until hmac_idle. A caller that has just released this
+        domain from reset needs the core to be accepting again before it can
+        attribute a refusal to anything other than the core being busy."""
+        for i in range(timeout):
+            if await self._rd(HMAC_STATUS) & HMAC_STATUS_IDLE:
+                self.log.info("HMAC idle (%s) after %d polls", tag, i)
+                return
+            if i and i % 500 == 0:
+                self.log.info("HMAC wait_idle (%s): poll %d", tag, i)
+            await ClockCycles(cocotb.top.clk_i, poll_cycles)
+        raise AssertionError(f"HMAC did not reach STATUS.hmac_idle ({tag})")
 
     async def _wait_fifo_space(self, *, timeout: int = 2_000, poll_cycles: int = 10) -> None:
         for _ in range(timeout):

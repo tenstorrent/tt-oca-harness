@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Default SMC eFuse contents for DV runs.
+#
+# Consumed by generate_efuse_preload.py together with ../efuse_schema.toml.
+# Every block the schema declares must appear here, with `write_locked`,
+# `read_locked`, and one `value` per field.
+#
+# Values are the unprogrammed state (0) except where a real default is needed.
+#
+# OCCP_TRANSPORT_TIMEOUT is 0 here. The ROM treats 0 as "not programmed"
+# and substitutes its own 10000-cycle default (bootrom/prod/lib/src/occp.c).
+# randomize_efuse.py is what overrides it per run.
+
+[LOCKS]
+    write_locked = "False"
+    read_locked = "False"
+    [LOCKS.fields.lock_entries]
+    value = 0x0
+
+[JTAG_PUBLIC_IDENTITY]
+    write_locked = "False"
+    read_locked = "True"
+    [JTAG_PUBLIC_IDENTITY.fields.value]
+    value = 0x0
+
+[I2C_I3C_ID]
+    write_locked = "False"
+    read_locked = "False"
+    [I2C_I3C_ID.fields.interface_id]
+    value = 0x0
+
+[SMC_CONFIG]
+    write_locked = "False"
+    read_locked = "False"
+    [SMC_CONFIG.fields.smc_config]
+    value = 0x0
+
+[OCCP_TRANSPORT_TIMEOUT]
+    write_locked = "False"
+    read_locked = "False"
+    [OCCP_TRANSPORT_TIMEOUT.fields.transport_timeout]
+    value = 0x0
+
+[SPARE]
+    write_locked = "False"
+    read_locked = "False"
+    [SPARE.fields.spare_data]
+    value = 0x0

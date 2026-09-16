@@ -12,12 +12,12 @@ module prim_dffsxq (
   output wire o_Q
 );
 
-logic q_d;
-always_ff @(posedge i_CK or negedge i_SN) begin
-  q_d <= ~i_SN ? 1'b1 : i_D;
-end
+  logic q_d;
+  always_ff @(posedge i_CK or negedge i_SN) begin
+    q_d <= ~i_SN ? 1'b1 : i_D;
+  end
 
-assign o_Q = q_d;
+  assign o_Q = q_d;
 
 endmodule
 

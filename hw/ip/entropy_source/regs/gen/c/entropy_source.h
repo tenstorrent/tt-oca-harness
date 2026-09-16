@@ -37,10 +37,10 @@ typedef union {
 } entropy_source__COMPONENT_ID_t;
 
 // reg - entropy_source::CTRL
-#define ENTROPY_SOURCE__CTRL__RESET_bm 0x1
-#define ENTROPY_SOURCE__CTRL__RESET_bp 0
-#define ENTROPY_SOURCE__CTRL__RESET_bw 1
-#define ENTROPY_SOURCE__CTRL__RESET_reset 0x0
+#define ENTROPY_SOURCE__CTRL__RSVD0_bm 0x1
+#define ENTROPY_SOURCE__CTRL__RSVD0_bp 0
+#define ENTROPY_SOURCE__CTRL__RSVD0_bw 1
+#define ENTROPY_SOURCE__CTRL__RSVD0_reset 0x0
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bm 0x2
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bp 1
 #define ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bw 1
@@ -63,7 +63,7 @@ typedef union {
 #define ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_reset 0x1
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t RESET :1;
+        uint32_t RSVD0 :1;
         uint32_t MODULE_ENABLE :1;
         uint32_t :2;
         uint32_t AUTOTUNE_ENABLE :1;
@@ -77,19 +77,6 @@ typedef union {
     } f;
     uint32_t w;
 } entropy_source__CTRL_t;
-
-// reg - entropy_source::STATUS
-#define ENTROPY_SOURCE__STATUS__RSVD_bm 0x1
-#define ENTROPY_SOURCE__STATUS__RSVD_bp 0
-#define ENTROPY_SOURCE__STATUS__RSVD_bw 1
-#define ENTROPY_SOURCE__STATUS__RSVD_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t RSVD :1;
-        uint32_t :31;
-    } f;
-    uint32_t w;
-} entropy_source__STATUS_t;
 
 // reg - entropy_source::DEBUG_CTRL
 #define ENTROPY_SOURCE__DEBUG_CTRL__SELECT_SIGNAL_bm 0xff
@@ -283,17 +270,17 @@ typedef union {
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_bp 4
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_bw 4
 #define ENTROPY_SOURCE__SHA256_STATUS__INPUT_COUNT_reset 0x0
-#define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bm 0x700
+#define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bm 0xf00
 #define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bp 8
-#define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bw 3
+#define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_bw 4
 #define ENTROPY_SOURCE__SHA256_STATUS__OUTPUT_COUNT_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t BUSY :1;
         uint32_t :3;
         uint32_t INPUT_COUNT :4;
-        uint32_t OUTPUT_COUNT :3;
-        uint32_t :21;
+        uint32_t OUTPUT_COUNT :4;
+        uint32_t :20;
     } f;
     uint32_t w;
 } entropy_source__SHA256_STATUS_t;
@@ -355,9 +342,9 @@ typedef union {
 } entropy_source__FIFO_RDATA_t;
 
 // reg - entropy_source::HEALTH_TEST_CTRL
-#define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bm 0xff
+#define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bm 0x7
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bp 0
-#define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bw 8
+#define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_bw 3
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__ENABLE_reset 0x7
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_bm 0xff00
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_bp 8
@@ -365,7 +352,8 @@ typedef union {
 #define ENTROPY_SOURCE__HEALTH_TEST_CTRL__REPETITION_LIMIT_reset 0x19
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t ENABLE :8;
+        uint32_t ENABLE :3;
+        uint32_t :5;
         uint32_t REPETITION_LIMIT :8;
         uint32_t :16;
     } f;
@@ -433,20 +421,10 @@ typedef union {
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT_bp 0
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT_bw 16
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__PATTERN_COUNT_reset 0x0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__TARGET_PATTERN_bm 0xf0000
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__TARGET_PATTERN_bp 16
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__TARGET_PATTERN_bw 4
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__TARGET_PATTERN_reset 0x0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__SAMPLES_PROCESSED_bm 0x3ff00000
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__SAMPLES_PROCESSED_bp 20
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__SAMPLES_PROCESSED_bw 10
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_1BIT__SAMPLES_PROCESSED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t PATTERN_COUNT :16;
-        uint32_t TARGET_PATTERN :4;
-        uint32_t SAMPLES_PROCESSED :10;
-        uint32_t :2;
+        uint32_t :16;
     } f;
     uint32_t w;
 } entropy_source__APT_PATTERN_COUNT_1BIT_t;
@@ -456,71 +434,13 @@ typedef union {
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT_bp 0
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT_bw 16
 #define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__PATTERN_COUNT_reset 0x0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__TARGET_PATTERN_bm 0xf0000
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__TARGET_PATTERN_bp 16
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__TARGET_PATTERN_bw 4
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__TARGET_PATTERN_reset 0x0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__SAMPLES_PROCESSED_bm 0x3ff00000
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__SAMPLES_PROCESSED_bp 20
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__SAMPLES_PROCESSED_bw 10
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_2BIT__SAMPLES_PROCESSED_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t PATTERN_COUNT :16;
-        uint32_t TARGET_PATTERN :4;
-        uint32_t SAMPLES_PROCESSED :10;
-        uint32_t :2;
+        uint32_t :16;
     } f;
     uint32_t w;
 } entropy_source__APT_PATTERN_COUNT_2BIT_t;
-
-// reg - entropy_source::APT_PATTERN_COUNT_3BIT
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__PATTERN_COUNT_bm 0x3ff
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__PATTERN_COUNT_bp 0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__PATTERN_COUNT_bw 10
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__PATTERN_COUNT_reset 0x0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__TARGET_PATTERN_bm 0x3c00
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__TARGET_PATTERN_bp 10
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__TARGET_PATTERN_bw 4
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__TARGET_PATTERN_reset 0x0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__SAMPLES_PROCESSED_bm 0x3ff00000
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__SAMPLES_PROCESSED_bp 20
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__SAMPLES_PROCESSED_bw 10
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_3BIT__SAMPLES_PROCESSED_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t PATTERN_COUNT :10;
-        uint32_t TARGET_PATTERN :4;
-        uint32_t :6;
-        uint32_t SAMPLES_PROCESSED :10;
-        uint32_t :2;
-    } f;
-    uint32_t w;
-} entropy_source__APT_PATTERN_COUNT_3BIT_t;
-
-// reg - entropy_source::APT_PATTERN_COUNT_4BIT
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__PATTERN_COUNT_bm 0x3ff
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__PATTERN_COUNT_bp 0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__PATTERN_COUNT_bw 10
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__PATTERN_COUNT_reset 0x0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__TARGET_PATTERN_bm 0x3c00
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__TARGET_PATTERN_bp 10
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__TARGET_PATTERN_bw 4
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__TARGET_PATTERN_reset 0x0
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__SAMPLES_PROCESSED_bm 0x3ff00000
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__SAMPLES_PROCESSED_bp 20
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__SAMPLES_PROCESSED_bw 10
-#define ENTROPY_SOURCE__APT_PATTERN_COUNT_4BIT__SAMPLES_PROCESSED_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t PATTERN_COUNT :10;
-        uint32_t TARGET_PATTERN :4;
-        uint32_t :6;
-        uint32_t SAMPLES_PROCESSED :10;
-        uint32_t :2;
-    } f;
-    uint32_t w;
-} entropy_source__APT_PATTERN_COUNT_4BIT_t;
 
 // reg - entropy_source::APT_PROPORTION_1BIT
 #define ENTROPY_SOURCE__APT_PROPORTION_1BIT__LIMIT_bm 0xffff
@@ -534,45 +454,6 @@ typedef union {
     } f;
     uint32_t w;
 } entropy_source__APT_PROPORTION_1BIT_t;
-
-// reg - entropy_source::APT_PROPORTION_2BIT
-#define ENTROPY_SOURCE__APT_PROPORTION_2BIT__LIMIT_bm 0x3ff
-#define ENTROPY_SOURCE__APT_PROPORTION_2BIT__LIMIT_bp 0
-#define ENTROPY_SOURCE__APT_PROPORTION_2BIT__LIMIT_bw 10
-#define ENTROPY_SOURCE__APT_PROPORTION_2BIT__LIMIT_reset 0x80
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t LIMIT :10;
-        uint32_t :22;
-    } f;
-    uint32_t w;
-} entropy_source__APT_PROPORTION_2BIT_t;
-
-// reg - entropy_source::APT_PROPORTION_3BIT
-#define ENTROPY_SOURCE__APT_PROPORTION_3BIT__LIMIT_bm 0x3ff
-#define ENTROPY_SOURCE__APT_PROPORTION_3BIT__LIMIT_bp 0
-#define ENTROPY_SOURCE__APT_PROPORTION_3BIT__LIMIT_bw 10
-#define ENTROPY_SOURCE__APT_PROPORTION_3BIT__LIMIT_reset 0x40
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t LIMIT :10;
-        uint32_t :22;
-    } f;
-    uint32_t w;
-} entropy_source__APT_PROPORTION_3BIT_t;
-
-// reg - entropy_source::APT_PROPORTION_4BIT
-#define ENTROPY_SOURCE__APT_PROPORTION_4BIT__LIMIT_bm 0x3ff
-#define ENTROPY_SOURCE__APT_PROPORTION_4BIT__LIMIT_bp 0
-#define ENTROPY_SOURCE__APT_PROPORTION_4BIT__LIMIT_bw 10
-#define ENTROPY_SOURCE__APT_PROPORTION_4BIT__LIMIT_reset 0x20
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t LIMIT :10;
-        uint32_t :22;
-    } f;
-    uint32_t w;
-} entropy_source__APT_PROPORTION_4BIT_t;
 
 // reg - entropy_source::APT_PROPORTION_LO
 #define ENTROPY_SOURCE__APT_PROPORTION_LO__LIMIT_bm 0xffff
@@ -603,50 +484,6 @@ typedef union {
     } f;
     uint32_t w;
 } entropy_source__MARKOV_TEST_COUNTS_0_t;
-
-// reg - entropy_source::MARKOV_TEST_COUNTS_1
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_00_bm 0xffff
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_00_bp 0
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_00_bw 16
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_00_reset 0x0
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_11_bm 0xffff0000
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_11_bp 16
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_11_bw 16
-#define ENTROPY_SOURCE__MARKOV_TEST_COUNTS_1__COUNT_11_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t COUNT_00 :16;
-        uint32_t COUNT_11 :16;
-    } f;
-    uint32_t w;
-} entropy_source__MARKOV_TEST_COUNTS_1_t;
-
-// reg - entropy_source::MARKOV_TEST_PROBABILITIES
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_01_bm 0xff
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_01_bp 0
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_01_bw 8
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_01_reset 0x0
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_10_bm 0xff00
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_10_bp 8
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_10_bw 8
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_10_reset 0x0
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_00_bm 0xff0000
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_00_bp 16
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_00_bw 8
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_00_reset 0x0
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_11_bm 0xff000000
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_11_bp 24
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_11_bw 8
-#define ENTROPY_SOURCE__MARKOV_TEST_PROBABILITIES__PROB_11_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t PROB_01 :8;
-        uint32_t PROB_10 :8;
-        uint32_t PROB_00 :8;
-        uint32_t PROB_11 :8;
-    } f;
-    uint32_t w;
-} entropy_source__MARKOV_TEST_PROBABILITIES_t;
 
 // reg - entropy_source::RING_OSC_ENABLE
 #define ENTROPY_SOURCE__RING_OSC_ENABLE__ENABLE_bm 0xfff
@@ -1380,7 +1217,7 @@ typedef union {
 typedef struct __attribute__ ((__packed__)) {
     entropy_source__COMPONENT_ID_t COMPONENT_ID;
     entropy_source__CTRL_t CTRL;
-    entropy_source__STATUS_t STATUS;
+    uint8_t RESERVED_8_b[0x4];
     entropy_source__DEBUG_CTRL_t DEBUG_CTRL;
     entropy_source__INTR_STATUS_t INTR_STATUS;
     entropy_source__INTR_ENABLE_t INTR_ENABLE;
@@ -1399,18 +1236,13 @@ typedef struct __attribute__ ((__packed__)) {
     uint8_t RESERVED_48_4f[0x8];
     entropy_source__APT_PATTERN_COUNT_1BIT_t APT_PATTERN_COUNT_1BIT;
     entropy_source__APT_PATTERN_COUNT_2BIT_t APT_PATTERN_COUNT_2BIT;
-    entropy_source__APT_PATTERN_COUNT_3BIT_t APT_PATTERN_COUNT_3BIT;
-    entropy_source__APT_PATTERN_COUNT_4BIT_t APT_PATTERN_COUNT_4BIT;
+    uint8_t RESERVED_58_5f[0x8];
     entropy_source__APT_PROPORTION_1BIT_t APT_PROPORTION_1BIT;
-    entropy_source__APT_PROPORTION_2BIT_t APT_PROPORTION_2BIT;
-    entropy_source__APT_PROPORTION_3BIT_t APT_PROPORTION_3BIT;
-    entropy_source__APT_PROPORTION_4BIT_t APT_PROPORTION_4BIT;
+    uint8_t RESERVED_64_6f[0xc];
     entropy_source__APT_PROPORTION_LO_t APT_PROPORTION_LO;
     uint8_t RESERVED_74_7f[0xc];
     entropy_source__MARKOV_TEST_COUNTS_0_t MARKOV_TEST_COUNTS_0;
-    entropy_source__MARKOV_TEST_COUNTS_1_t MARKOV_TEST_COUNTS_1;
-    entropy_source__MARKOV_TEST_PROBABILITIES_t MARKOV_TEST_PROBABILITIES;
-    uint8_t RESERVED_8c_8f[0x4];
+    uint8_t RESERVED_84_8f[0xc];
     entropy_source__RING_OSC_ENABLE_t RING_OSC_ENABLE;
     entropy_source__RING_OSC_TUNE_t RING_OSC_TUNE;
     entropy_source__RING_OSC_CTRL_t RING_OSC_CTRL;

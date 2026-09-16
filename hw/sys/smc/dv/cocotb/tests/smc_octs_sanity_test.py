@@ -6,14 +6,17 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_avsbus_status_depth_test_seq import smc_avsbus_status_depth_test_seq
 from seq_lib.smc_sideband_vip_utils import check_sideband_observability
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
 class smc_octs_sanity_test(smc_base_test):
     """Run sideband status decode as the public OCTS bounded checker."""
+
+    required_evidence = ("CHK-SIDEBAND-OBSERVABILITY",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 
@@ -24,6 +27,11 @@ class smc_octs_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.SIDEBAND,
             type(self).__name__,
+            # Directed stimulus floor: 5 SEP_IN AXI AVS status/config CSR
+            # accesses. Written out here, not read from `seq.accesses`: a floor
+            # that shrinks with the sequence cannot catch a sequence that
+            # silently stops short.
+            min_csr_accesses=5,
             csr_accesses=seq.accesses,
             proxy=True,
             details=(

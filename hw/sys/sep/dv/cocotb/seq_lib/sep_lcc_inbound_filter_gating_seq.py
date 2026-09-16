@@ -28,15 +28,14 @@ the test). Offsets mirror ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecy
 
 from __future__ import annotations
 
-from pyuvm import uvm_sequence
-
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from env.sep_lcc_golden import LCC_DEMOTE_1, LCC_DEMOTE_2, LCC_FEAT_CTRL
+from pyuvm import uvm_sequence
 
 # SEP-local lifecycle-controller block. The LCC register map lives in
 # env.sep_lcc_golden (single source of truth).
-DEMOTE_BIT = 0x1                        # DEMOTE.demote (field [0:0])
-DEMOTE_LOCK_BIT = 0x2                   # DEMOTE.lock (field [1:1])
+DEMOTE_BIT = 0x1  # DEMOTE.demote (field [0:0])
+DEMOTE_LOCK_BIT = 0x2  # DEMOTE.lock (field [1:1])
 DEMOTE_FIELD_MASK = DEMOTE_BIT | DEMOTE_LOCK_BIT
 
 
@@ -78,7 +77,7 @@ class SepLccDemoteSeq(uvm_sequence):
     """Write DEMOTE_{1,2} on the CONTROL bus and read it back.
 
     The two demote registers act independently, each on its own debug group:
-    DEMOTE_1 relaxes DBG_1 ([15:0]) and DEMOTE_2 relaxes DBG_2 ([31:16]). Which
+    DEMOTE_1 relaxes DBG_1 ([23:0]) and DEMOTE_2 relaxes DBG_2 ([47:24]). Which
     register this sequence drives is therefore load-bearing, not a detail -- so
     it is a parameter rather than being baked into the class.
 
@@ -88,15 +87,19 @@ class SepLccDemoteSeq(uvm_sequence):
     reject can require the pre-write value. Exposes ``demote`` and ``lock``.
     """
 
-    def __init__(self, group: int = 1, value: int = DEMOTE_BIT, *,
-                 expected: int | None = None, name: str | None = None) -> None:
+    def __init__(
+        self,
+        group: int = 1,
+        value: int = DEMOTE_BIT,
+        *,
+        expected: int | None = None,
+        name: str | None = None,
+    ) -> None:
         super().__init__(name or f"lcc_demote{group}_seq")
         assert group in (1, 2), f"demote group must be 1 or 2, got {group}"
         self.group = group
         self.value = value & DEMOTE_FIELD_MASK
-        self.expected = (
-            self.value if expected is None else expected & DEMOTE_FIELD_MASK
-        )
+        self.expected = self.value if expected is None else expected & DEMOTE_FIELD_MASK
         self.addr = LCC_DEMOTE_1 if group == 1 else LCC_DEMOTE_2
         self.demote: int | None = None
         self.lock: int | None = None
@@ -140,8 +143,9 @@ class SepExtAxiProbeSeq(uvm_sequence):
     DECERR response code, not by a timeout.
     """
 
-    def __init__(self, addr: int, *, allow_timeout: bool = False,
-                 name: str = "ext_axi_probe_seq") -> None:
+    def __init__(
+        self, addr: int, *, allow_timeout: bool = False, name: str = "ext_axi_probe_seq"
+    ) -> None:
         super().__init__(name)
         self.addr = addr
         self.allow_timeout = allow_timeout

@@ -21,7 +21,7 @@ def repo_root(start: Path) -> Path:
 
 
 def dv_root(root: Path) -> Path:
-    """Return the DV infrastructure root: the repository root in the greenfield layout."""
+    """Return the DV infrastructure root (the repository root)."""
     return root
 
 
@@ -30,7 +30,7 @@ def configs_root(root: Path) -> Path:
 
 
 def dv_path(root: Path, text: str | None) -> Path:
-    """Resolve a greenfield-shaped DV path through the active DV root."""
+    """Resolve a DV-root-relative path through the active DV root; absolute paths pass through."""
     if not text:
         return dv_root(root)
     path = Path(text).expanduser()

@@ -4,12 +4,15 @@
 ifndef ocah_format_clang_format_mk
 ocah_format_clang_format_mk := 1
 
-OCAH_FORMAT_C_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_FORMAT_C_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
-# Path to format, scoped by filesystem rather than by block. Not named PATH=,
+# Path to format, scoped by filesystem or by block. Not named PATH=,
 # which would override the shell's own command-search PATH.
+ifneq ($(BLOCK),)
+FORMAT_C_PATH ?= hw/sys/$(BLOCK)
+else
 FORMAT_C_PATH ?= hw
+endif
 
 # Git submodules carry upstream code, which must not be reformatted: it would show
 # up as local modifications in the submodule and collide with the next update.
@@ -24,21 +27,29 @@ ocah_format_c_files = $(shell find $(OCAH_ROOT)/$(FORMAT_C_PATH) \( -name '*.c' 
 
 ocah_format_c_check_files = @[ -n "$(strip $(ocah_format_c_files))" ] || { echo "error: no .c/.h/.cpp files under $(FORMAT_C_PATH)" >&2; exit 1; }
 
+ifndef OCAH_CLANG_FORMAT_SKIP_UV
+CLANG_FORMAT := $(OCAH_UV_RUN) clang-format
+else
+CLANG_FORMAT := clang-format
+endif
+
 ## @section Format (clang-format)
 
 ## Format C/C++ sources in place with clang-format (style: .clang-format).
 ## @param FORMAT_C_PATH=hw/sys/smc Optional path to scope formatting; default hw
+## @param BLOCK=smu Shorthand for the above, for consistency (FORMAT_C_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-c
 ocah-format-c:
 	$(ocah_format_c_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked clang-format -style=file -i $(ocah_format_c_files)
+	$(CLANG_FORMAT) -style=file -i $(ocah_format_c_files)
 
 ## Check C/C++ formatting without modifying files (CI-friendly: exit 0 clean, 1 would-reformat).
 ## @param FORMAT_C_PATH=hw/sys/smc Optional path to scope the check; default hw
+## @param BLOCK=smu Shorthand for the above, for consistency (FORMAT_C_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-c-check
 ocah-format-c-check:
 	$(ocah_format_c_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked clang-format -style=file --dry-run --Werror $(ocah_format_c_files)
+	$(CLANG_FORMAT) -style=file --dry-run --Werror $(ocah_format_c_files)
 
 OCAH_PHONY += ocah-format-c ocah-format-c-check
 

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /* Copyright (c) 2017-2018  SiFive Inc. All rights reserved.
@@ -27,7 +27,7 @@
    *       currently executing.  This is probably 0 on an embedded system
    *       because they tend to not be dynamically portable.  As such, newlib
    *       ignores this argument.
-   *   a2: a pointer to a function that must be run after the envirnoment has
+   *   a2: a pointer to a function that must be run after the environment has
    *       been initialized, but before user code can be expected to be run.
    *       If this is 0 then there is no function to be run. */
 _start:
@@ -63,7 +63,7 @@ _start:
 
   /* Embedded systems frequently require relocating the data segment before C
    * code can be run -- for example, the data segment may exist in flash upon
-   * boot and then need to get relocated into a non-persistant writable memory
+   * boot and then need to get relocated into a non-persistent writable memory
    * before C code can execute.  If this is the case we do so here.  This step
    * is optional: if the METAL provides an environment in which this relocation
    * is not necessary then it must simply set metal_segment_data_source_start to

@@ -71,8 +71,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Add byte-wise odd parity to a KM ROM hex file.")
     parser.add_argument("input", type=Path)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--depth", type=int, default=4096,
-                        help="ROM depth in words (default: 4096 = 16 KB, the key_manager ROM size)")
+    parser.add_argument(
+        "--depth",
+        type=int,
+        default=4096,
+        help="ROM depth in words (default: 4096 = 16 KB, the key_manager ROM size)",
+    )
     parser.add_argument("--default-word", type=lambda x: int(x, 0), default=NOP)
     args = parser.parse_args()
 
@@ -80,7 +84,9 @@ def main() -> None:
         print(f"ERROR: input file not found: {args.input}", file=sys.stderr)
         sys.exit(1)
 
-    write_parhex(build_words(parse_verilog_hex(args.input), args.depth, args.default_word), args.output)
+    write_parhex(
+        build_words(parse_verilog_hex(args.input), args.depth, args.default_word), args.output
+    )
     print(f"[add_rom_parity] {args.input} -> {args.output} ({args.depth} words)")
 
 

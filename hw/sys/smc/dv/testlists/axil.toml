@@ -6,7 +6,7 @@ name = "smc_axil_idle_test"
 module = "smc_axil_idle_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "axil", "pyuvm"]
+tags = ["ci", "axil", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -14,14 +14,21 @@ name = "smc_axil_burst_idle_test"
 module = "smc_axil_burst_idle_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
-# smc_macro_axil_routing_test → testlists/deferred.toml (rtl_placeholder / dtp)
+[[tests]]
+name = "smc_axil_downstream_concurrency_test"
+module = "smc_axil_downstream_concurrency_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil", "pyuvm"]
+run_modes = ["smoke"]
 
 [[groups]]
 name = "axil"
 tests = [
     "smc_axil_idle_test",
     "smc_axil_burst_idle_test",
+    "smc_axil_downstream_concurrency_test",
 ]

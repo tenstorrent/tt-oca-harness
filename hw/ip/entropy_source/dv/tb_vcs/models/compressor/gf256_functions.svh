@@ -34,68 +34,65 @@
 //   Binary: 0001_1011 = x^4 + x^3 + x + 1
 //   Full:   x^8 + x^4 + x^3 + x + 1
 //------------------------------------------------------------------------------
-function automatic logic [7:0] gf256_mult(
-    input logic [7:0] a,
-    input logic [7:0] b
-);
-    localparam logic [7:0] POLY = 8'h1B;  // AES primitive polynomial
+function automatic logic [7:0] gf256_mult(input logic [7:0] a, input logic [7:0] b);
+  localparam logic [7:0] POLY = 8'h1B;  // AES primitive polynomial
 
-    logic [7:0] p;          // Product accumulator
-    logic [7:0] a_shifted;  // Shifted copy of 'a'
-    logic       hi_bit;     // High bit for reduction check
+  logic [7:0] p;          // Product accumulator
+  logic [7:0] a_shifted;  // Shifted copy of 'a'
+  logic       hi_bit;     // High bit for reduction check
 
-    // Initialize
-    p = 8'h00;
-    a_shifted = a;
+  // Initialize
+  p = 8'h00;
+  a_shifted = a;
 
-    // Process each bit of b (unrolled for clarity and synthesis)
-    // Bit 0
-    if (b[0]) p = p ^ a_shifted;
-    hi_bit = a_shifted[7];
-    a_shifted = a_shifted << 1;
-    if (hi_bit) a_shifted = a_shifted ^ POLY;
+  // Process each bit of b (unrolled for clarity and synthesis)
+  // Bit 0
+  if (b[0]) p = p ^ a_shifted;
+  hi_bit = a_shifted[7];
+  a_shifted = a_shifted << 1;
+  if (hi_bit) a_shifted = a_shifted ^ POLY;
 
-    // Bit 1
-    if (b[1]) p = p ^ a_shifted;
-    hi_bit = a_shifted[7];
-    a_shifted = a_shifted << 1;
-    if (hi_bit) a_shifted = a_shifted ^ POLY;
+  // Bit 1
+  if (b[1]) p = p ^ a_shifted;
+  hi_bit = a_shifted[7];
+  a_shifted = a_shifted << 1;
+  if (hi_bit) a_shifted = a_shifted ^ POLY;
 
-    // Bit 2
-    if (b[2]) p = p ^ a_shifted;
-    hi_bit = a_shifted[7];
-    a_shifted = a_shifted << 1;
-    if (hi_bit) a_shifted = a_shifted ^ POLY;
+  // Bit 2
+  if (b[2]) p = p ^ a_shifted;
+  hi_bit = a_shifted[7];
+  a_shifted = a_shifted << 1;
+  if (hi_bit) a_shifted = a_shifted ^ POLY;
 
-    // Bit 3
-    if (b[3]) p = p ^ a_shifted;
-    hi_bit = a_shifted[7];
-    a_shifted = a_shifted << 1;
-    if (hi_bit) a_shifted = a_shifted ^ POLY;
+  // Bit 3
+  if (b[3]) p = p ^ a_shifted;
+  hi_bit = a_shifted[7];
+  a_shifted = a_shifted << 1;
+  if (hi_bit) a_shifted = a_shifted ^ POLY;
 
-    // Bit 4
-    if (b[4]) p = p ^ a_shifted;
-    hi_bit = a_shifted[7];
-    a_shifted = a_shifted << 1;
-    if (hi_bit) a_shifted = a_shifted ^ POLY;
+  // Bit 4
+  if (b[4]) p = p ^ a_shifted;
+  hi_bit = a_shifted[7];
+  a_shifted = a_shifted << 1;
+  if (hi_bit) a_shifted = a_shifted ^ POLY;
 
-    // Bit 5
-    if (b[5]) p = p ^ a_shifted;
-    hi_bit = a_shifted[7];
-    a_shifted = a_shifted << 1;
-    if (hi_bit) a_shifted = a_shifted ^ POLY;
+  // Bit 5
+  if (b[5]) p = p ^ a_shifted;
+  hi_bit = a_shifted[7];
+  a_shifted = a_shifted << 1;
+  if (hi_bit) a_shifted = a_shifted ^ POLY;
 
-    // Bit 6
-    if (b[6]) p = p ^ a_shifted;
-    hi_bit = a_shifted[7];
-    a_shifted = a_shifted << 1;
-    if (hi_bit) a_shifted = a_shifted ^ POLY;
+  // Bit 6
+  if (b[6]) p = p ^ a_shifted;
+  hi_bit = a_shifted[7];
+  a_shifted = a_shifted << 1;
+  if (hi_bit) a_shifted = a_shifted ^ POLY;
 
-    // Bit 7
-    if (b[7]) p = p ^ a_shifted;
-    // No shift needed after last bit
+  // Bit 7
+  if (b[7]) p = p ^ a_shifted;
+  // No shift needed after last bit
 
-    return p;
+  return p;
 endfunction
 
 //------------------------------------------------------------------------------
@@ -111,18 +108,15 @@ endfunction
 // Returns:
 //   y = (a * b) + c in GF(2^8)
 //------------------------------------------------------------------------------
-function automatic logic [7:0] gf256_muladd(
-    input logic [7:0] a,
-    input logic [7:0] b,
-    input logic [7:0] c
-);
-    logic [7:0] product;
+function automatic logic [7:0] gf256_muladd(input logic [7:0] a, input logic [7:0] b,
+                                            input logic [7:0] c);
+  logic [7:0] product;
 
-    // Multiply in GF(2^8)
-    product = gf256_mult(a, b);
+  // Multiply in GF(2^8)
+  product = gf256_mult(a, b);
 
-    // Add (XOR) in GF(2^8)
-    return product ^ c;
+  // Add (XOR) in GF(2^8)
+  return product ^ c;
 endfunction
 
 //------------------------------------------------------------------------------
@@ -136,64 +130,64 @@ endfunction
 
 // AES MixColumns test vectors
 initial begin
-    logic [7:0] test_result;
+  logic [7:0] test_result;
 
-    // Test 1: Basic multiplication
-    test_result = gf256_mult(8'h02, 8'h03);
-    assert (test_result == 8'h06) else
-        $error("GF256_MULT: 0x02 * 0x03 failed, got 0x%02X, expected 0x06", test_result);
+  // Test 1: Basic multiplication
+  test_result = gf256_mult(8'h02, 8'h03);
+  assert (test_result == 8'h06)
+  else $error("GF256_MULT: 0x02 * 0x03 failed, got 0x%02X, expected 0x06", test_result);
 
-    // Test 2: Multiplication with reduction
-    test_result = gf256_mult(8'h02, 8'h87);
-    assert (test_result == 8'h0E) else
-        $error("GF256_MULT: 0x02 * 0x87 failed, got 0x%02X, expected 0x0E", test_result);
+  // Test 2: Multiplication with reduction
+  test_result = gf256_mult(8'h02, 8'h87);
+  assert (test_result == 8'h0E)
+  else $error("GF256_MULT: 0x02 * 0x87 failed, got 0x%02X, expected 0x0E", test_result);
 
-    // Test 3: AES MixColumns known value
-    test_result = gf256_mult(8'h53, 8'hCA);
-    assert (test_result == 8'h01) else
-        $error("GF256_MULT: 0x53 * 0xCA failed, got 0x%02X, expected 0x01", test_result);
+  // Test 3: AES MixColumns known value
+  test_result = gf256_mult(8'h53, 8'hCA);
+  assert (test_result == 8'h01)
+  else $error("GF256_MULT: 0x53 * 0xCA failed, got 0x%02X, expected 0x01", test_result);
 
-    // Test 4: Multiplication by zero
-    test_result = gf256_mult(8'h00, 8'hFF);
-    assert (test_result == 8'h00) else
-        $error("GF256_MULT: 0x00 * 0xFF failed, got 0x%02X, expected 0x00", test_result);
+  // Test 4: Multiplication by zero
+  test_result = gf256_mult(8'h00, 8'hFF);
+  assert (test_result == 8'h00)
+  else $error("GF256_MULT: 0x00 * 0xFF failed, got 0x%02X, expected 0x00", test_result);
 
-    // Test 5: Multiply-add
-    test_result = gf256_muladd(8'h02, 8'h03, 8'h01);
-    assert (test_result == 8'h07) else
-        $error("GF256_MULADD: (0x02 * 0x03) + 0x01 failed, got 0x%02X, expected 0x07", test_result);
+  // Test 5: Multiply-add
+  test_result = gf256_muladd(8'h02, 8'h03, 8'h01);
+  assert (test_result == 8'h07)
+  else $error("GF256_MULADD: (0x02 * 0x03) + 0x01 failed, got 0x%02X, expected 0x07", test_result);
 
-    // Test 6: Multiply-add with zero product
-    test_result = gf256_muladd(8'h00, 8'hFF, 8'hAA);
-    assert (test_result == 8'hAA) else
-        $error("GF256_MULADD: (0x00 * 0xFF) + 0xAA failed, got 0x%02X, expected 0xAA", test_result);
+  // Test 6: Multiply-add with zero product
+  test_result = gf256_muladd(8'h00, 8'hFF, 8'hAA);
+  assert (test_result == 8'hAA)
+  else $error("GF256_MULADD: (0x00 * 0xFF) + 0xAA failed, got 0x%02X, expected 0xAA", test_result);
 
-    // Test 7: Multiply-add AES example
-    test_result = gf256_muladd(8'h53, 8'hCA, 8'h00);
-    assert (test_result == 8'h01) else
-        $error("GF256_MULADD: (0x53 * 0xCA) + 0x00 failed, got 0x%02X, expected 0x01", test_result);
+  // Test 7: Multiply-add AES example
+  test_result = gf256_muladd(8'h53, 8'hCA, 8'h00);
+  assert (test_result == 8'h01)
+  else $error("GF256_MULADD: (0x53 * 0xCA) + 0x00 failed, got 0x%02X, expected 0x01", test_result);
 
-    // Test 8: Commutativity of multiplication
-    test_result = gf256_mult(8'h12, 8'h34);
-    assert (test_result == gf256_mult(8'h34, 8'h12)) else
-        $error("GF256_MULT: Commutativity failed");
+  // Test 8: Commutativity of multiplication
+  test_result = gf256_mult(8'h12, 8'h34);
+  assert (test_result == gf256_mult(8'h34, 8'h12))
+  else $error("GF256_MULT: Commutativity failed");
 
-    // Test 9: Identity element (multiply by 1)
-    test_result = gf256_mult(8'h57, 8'h01);
-    assert (test_result == 8'h57) else
-        $error("GF256_MULT: Identity element failed, got 0x%02X, expected 0x57", test_result);
+  // Test 9: Identity element (multiply by 1)
+  test_result = gf256_mult(8'h57, 8'h01);
+  assert (test_result == 8'h57)
+  else $error("GF256_MULT: Identity element failed, got 0x%02X, expected 0x57", test_result);
 
-    // Test 10: Distributive property: a*(b+c) = a*b + a*c
-    logic [7:0] lhs, rhs;
-    lhs = gf256_mult(8'h12, 8'h34 ^ 8'h56);
-    rhs = gf256_mult(8'h12, 8'h34) ^ gf256_mult(8'h12, 8'h56);
-    assert (lhs == rhs) else
-        $error("GF256_MULT: Distributive property failed");
+  // Test 10: Distributive property: a*(b+c) = a*b + a*c
+  logic [7:0] lhs, rhs;
+  lhs = gf256_mult(8'h12, 8'h34 ^ 8'h56);
+  rhs = gf256_mult(8'h12, 8'h34) ^ gf256_mult(8'h12, 8'h56);
+  assert (lhs == rhs)
+  else $error("GF256_MULT: Distributive property failed");
 
-    $display("[GF256] All test vectors passed successfully!");
+  $display("[GF256] All test vectors passed successfully!");
 end
 
-`endif // GF256_ENABLE_ASSERTIONS
+`endif  // GF256_ENABLE_ASSERTIONS
 
 //------------------------------------------------------------------------------
 // Additional utility functions (optional)
@@ -201,20 +195,17 @@ end
 
 // Check if value is zero in GF(2^8)
 function automatic logic gf256_is_zero(input logic [7:0] a);
-    return (a == 8'h00);
+  return (a == 8'h00);
 endfunction
 
 // Check if value is one (identity) in GF(2^8)
 function automatic logic gf256_is_one(input logic [7:0] a);
-    return (a == 8'h01);
+  return (a == 8'h01);
 endfunction
 
 // GF(2^8) addition (just XOR, but explicit for clarity)
-function automatic logic [7:0] gf256_add(
-    input logic [7:0] a,
-    input logic [7:0] b
-);
-    return a ^ b;
+function automatic logic [7:0] gf256_add(input logic [7:0] a, input logic [7:0] b);
+  return a ^ b;
 endfunction
 
 //------------------------------------------------------------------------------
@@ -238,4 +229,4 @@ endfunction
 //   y = (0x00 * 0xFF) + 0xAA = 0xAA
 //------------------------------------------------------------------------------
 
-`endif // GF256_FUNCTIONS_SVH
+`endif  // GF256_FUNCTIONS_SVH

@@ -6,56 +6,54 @@
 //
 //-----------------------------------------------------------------------------
 
-module efuse_bank_model
-# (
-    parameter int unsigned NumFuseByteWidth = 12,
-    parameter bit IsSmcInstance = 1'b0,
-    parameter type efuse_apb_req_t = logic,
-    parameter type efuse_apb_resp_t = logic
-)
-(
-    // Global Interface
-    input logic                   clk_i,
-    input logic                   rst_ni,
+module efuse_bank_model #(
+  parameter int unsigned NumFuseByteWidth = 12,
+  parameter bit IsSmcInstance = 1'b0,
+  parameter type efuse_apb_req_t = logic,
+  parameter type efuse_apb_resp_t = logic
+) (
+  // Global Interface
+  input logic                   clk_i,
+  input logic                   rst_ni,
 
-    // APB Register Interface
-    input  efuse_apb_req_t   apb_req_i,
-    output efuse_apb_resp_t  apb_resp_o,
+  // APB Register Interface
+  input  efuse_apb_req_t   apb_req_i,
+  output efuse_apb_resp_t  apb_resp_o,
 
-    output efuse_bank_reg_pkg::efuse_bank__out_t hwif_out
+  output efuse_bank_reg_pkg::efuse_bank__out_t hwif_out
 );
 
-// Sim-only failure injection for efuse program operations. Used to test that
-// firmware handles programming errors correctly.
-//
-// Two injection modes (configured via plusargs):
-//   Count mode   (+{sep,smc}_efuse_prog_fail_count=N)  -- fail the first N
-//                writes after each reset, then stop.
-//   Percent mode (+{sep,smc}_efuse_prog_fail_percent=N) -- fail roughly N%
-//                of writes at random, using a seeded PRNG.
-//                Seed: +{sep,smc}_efuse_prog_fail_seed (default 0x1badf00d).
-//
-// A "failure" zeroes the write data: efuse bits are write-one-to-set, so the
-// program silently does nothing. The bank reports no error -- like real OTP,
-// the failure is only visible via the shim's PROGRAM_READ_BACK compare.
-//
-// Both the count and PRNG state reset to their configured values on every rst_ni.
-logic prog_fail_act;
+  // Sim-only failure injection for efuse program operations. Used to test that
+  // firmware handles programming errors correctly.
+  //
+  // Two injection modes (configured via plusargs):
+  //   Count mode   (+{sep,smc}_efuse_prog_fail_count=N)  -- fail the first N
+  //                writes after each reset, then stop.
+  //   Percent mode (+{sep,smc}_efuse_prog_fail_percent=N) -- fail roughly N%
+  //                of writes at random, using a seeded PRNG.
+  //                Seed: +{sep,smc}_efuse_prog_fail_seed (default 0x1badf00d).
+  //
+  // A "failure" zeroes the write data: efuse bits are write-one-to-set, so the
+  // program silently does nothing. The bank reports no error -- like real OTP,
+  // the failure is only visible via the shim's PROGRAM_READ_BACK compare.
+  //
+  // Both the count and PRNG state reset to their configured values on every rst_ni.
+  logic prog_fail_act;
 
-// Config, sampled once from plusargs.
-int unsigned prog_fail_count_cfg;
-int unsigned prog_fail_percent;
-int unsigned prog_fail_seed;
+  // Config, sampled once from plusargs.
+  int unsigned prog_fail_count_cfg;
+  int unsigned prog_fail_percent;
+  int unsigned prog_fail_seed;
 
-// Working state, re-armed from config on every reset.
-int unsigned prog_fail_count_q;
-logic [31:0] prog_fail_lfsr_q;
+  // Working state, re-armed from config on every reset.
+  int unsigned prog_fail_count_q;
+  logic [31:0] prog_fail_lfsr_q;
 
-logic        wr_setup;
-logic        prog_fail_now;
-logic [31:0] prog_fail_lfsr_next;
+  logic        wr_setup;
+  logic        prog_fail_now;
+  logic [31:0] prog_fail_lfsr_next;
 
-initial begin
+  initial begin
     string pfx;
     logic  seed_given;
     pfx = IsSmcInstance ? "smc_" : "sep_";
@@ -67,49 +65,49 @@ initial begin
     seed_given = $value$plusargs({pfx, "efuse_prog_fail_seed=%d"}, prog_fail_seed);
     if (prog_fail_percent > 100) prog_fail_percent = 100;
     if ((prog_fail_count_cfg != 0) || (prog_fail_percent != 0)) begin
-        $display("[efuse_bank_model:%s] program fail injection count=%0d percent=%0d seed=0x%08x%s",
-                 IsSmcInstance ? "SMC" : "SEP", prog_fail_count_cfg, prog_fail_percent,
-                 prog_fail_seed, seed_given ? " (plusarg)" : " (default)");
+      $display("[efuse_bank_model:%s] program fail injection count=%0d percent=%0d seed=0x%08x%s",
+               IsSmcInstance ? "SMC" : "SEP", prog_fail_count_cfg, prog_fail_percent,
+               prog_fail_seed, seed_given ? " (plusarg)" : " (default)");
     end
-end
+  end
 
-// The bank macro samples pwdata in the APB setup cycle (penable=0), so the
-// fail/pass decision is made combinationally then and the data zeroed in the
-// same cycle. pwdata is ignored during the access cycle.
-assign wr_setup = apb_req_i.psel & apb_req_i.pwrite & ~apb_req_i.penable;
+  // The bank macro samples pwdata in the APB setup cycle (penable=0), so the
+  // fail/pass decision is made combinationally then and the data zeroed in the
+  // same cycle. pwdata is ignored during the access cycle.
+  assign wr_setup = apb_req_i.psel & apb_req_i.pwrite & ~apb_req_i.penable;
 
-always_comb begin
+  always_comb begin
     prog_fail_lfsr_next = (prog_fail_lfsr_q * 32'd1664525) + 32'd1013904223;
     if (prog_fail_count_q != 0) begin
-        prog_fail_now = 1'b1;
+      prog_fail_now = 1'b1;
     end else if (prog_fail_percent != 0) begin
-        prog_fail_now = ((prog_fail_lfsr_next % 100) < prog_fail_percent);
+      prog_fail_now = ((prog_fail_lfsr_next % 100) < prog_fail_percent);
     end else begin
-        prog_fail_now = 1'b0;
+      prog_fail_now = 1'b0;
     end
-end
+  end
 
-always_ff @(posedge clk_i or negedge rst_ni) begin
+  always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
-        prog_fail_count_q <= prog_fail_count_cfg;
-        prog_fail_lfsr_q  <= prog_fail_seed;
+      prog_fail_count_q <= prog_fail_count_cfg;
+      prog_fail_lfsr_q  <= prog_fail_seed;
     end else if (wr_setup) begin
-        if (prog_fail_count_q != 0) begin
-            prog_fail_count_q <= prog_fail_count_q - 1;
-        end else if (prog_fail_percent != 0) begin
-            prog_fail_lfsr_q <= prog_fail_lfsr_next;
-        end
-        if (prog_fail_now) begin
-            $display("[efuse_bank_model:%s] injected program failure at paddr 0x%0h",
-                     IsSmcInstance ? "SMC" : "SEP", apb_req_i.paddr);
-        end
+      if (prog_fail_count_q != 0) begin
+        prog_fail_count_q <= prog_fail_count_q - 1;
+      end else if (prog_fail_percent != 0) begin
+        prog_fail_lfsr_q <= prog_fail_lfsr_next;
+      end
+      if (prog_fail_now) begin
+        $display("[efuse_bank_model:%s] injected program failure at paddr 0x%0h",
+                 IsSmcInstance ? "SMC" : "SEP", apb_req_i.paddr);
+      end
     end
-end
+  end
 
-assign prog_fail_act = wr_setup & prog_fail_now;
+  assign prog_fail_act = wr_setup & prog_fail_now;
 
-// Bank Macro
-efuse_bank_reg u_efuse_bank_reg (
+  // Bank Macro
+  efuse_bank_reg u_efuse_bank_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 
@@ -126,37 +124,40 @@ efuse_bank_reg u_efuse_bank_reg (
     .s_apb_pslverr(apb_resp_o.pslverr),
 
     .hwif_out(hwif_out)
-);
+  );
 
-// Sim-only OTP image preload, deposited into the register storage at time 0
-// so fuse data is valid before the first clock edge. It survives reset, and so
-// do words programmed at run time: the EFUSE_BANK_REG.dout field carries no
-// reset value in hw/ip/efuse/regs/efuse_bank.rdl, so the generated storage
-// process in hw/ip/efuse/regs/gen/sv/efuse_bank_reg.sv has no reset branch --
-// a fuse holds its state across every reset. $readmemh cannot target the
-// unpacked struct array directly, hence the scratch array. Image selected by
-// +smc_efuse_hex / +sep_efuse_hex (default out/sep_efuse.hex).
-initial begin
+  // Sim-only OTP image preload. The plusarg is a path sampled at time 0;
+  // $readmemh waits for rst_ni so the testbench can write that file after the
+  // simulator starts (per-run seed). Silicon has fuse contents from power-on;
+  // the preload must land before fuse sense, which starts well after reset
+  // release. EFUSE_BANK_REG.dout has no reset, so the image and later programs
+  // survive every reset. $readmemh cannot target the unpacked struct array,
+  // hence the scratch array. Selected by +smc_efuse_hex / +sep_efuse_hex
+  // (default out/sep_efuse.hex).
+  initial begin
     string img;
     logic [31:0] otp_preload_mem [1024];
     for (int unsigned i = 0; i < 1024; i++) otp_preload_mem[i] = '0;
     if (IsSmcInstance) begin
-        if ($value$plusargs("smc_efuse_hex=%s", img)) begin
-            $readmemh(img, otp_preload_mem);
-            $display("[efuse_bank_model:SMC] loaded %s", img);
-        end
+      if ($value$plusargs("smc_efuse_hex=%s", img)) begin
+        wait (rst_ni);
+        $readmemh(img, otp_preload_mem);
+        $display("[efuse_bank_model:SMC] loaded %s", img);
+      end
     end else begin
-        if ($value$plusargs("sep_efuse_hex=%s", img)) begin
-            $readmemh(img, otp_preload_mem);
-            $display("[efuse_bank_model:SEP] loaded %s", img);
-        end else begin
-            $readmemh("out/sep_efuse.hex", otp_preload_mem);
-            $display("[efuse_bank_model:SEP] loaded out/sep_efuse.hex");
-        end
+      if ($value$plusargs("sep_efuse_hex=%s", img)) begin
+        wait (rst_ni);
+        $readmemh(img, otp_preload_mem);
+        $display("[efuse_bank_model:SEP] loaded %s", img);
+      end else begin
+        wait (rst_ni);
+        $readmemh("out/sep_efuse.hex", otp_preload_mem);
+        $display("[efuse_bank_model:SEP] loaded out/sep_efuse.hex");
+      end
     end
     for (int unsigned i = 0; i < 1024; i++) begin
-        u_efuse_bank_reg.field_storage.EFUSE_BANK_REG[i].dout.value = otp_preload_mem[i];
+      u_efuse_bank_reg.field_storage.EFUSE_BANK_REG[i].dout.value = otp_preload_mem[i];
     end
-end
+  end
 
-endmodule: efuse_bank_model
+endmodule : efuse_bank_model

@@ -1,12 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+[[revision-history]]
 = Revision History
-:doctype: book
-:sectanchors:
-:sectlinks:
-:sectnums:
-:source-highlighter: highlight.js
+
+== Document history
 
 This document tracks major revisions and updates to the OCAH Integrator Guide.
 
@@ -23,4 +21,14 @@ descriptions, and cross-guide references with the current tree.
 compile-time defines that apply across OCAH, starting with `SIMULATION`: how to
 set it, the testbench hooks and models it enables, and the flows it must not
 reach.
+|0.0.4 |2026-08-31 |Ben Melton |Documented the SMU IC_RESET TDR slice layout
+(SMC, SEP, external) and marked the external slice as adopter-defined.
+|0.0.5 |2026-09-02 |Alessandro Ottaviano |Consolidated immutable ROM FW
+integration guidance, including the generic weak-symbol override method and
+SMC, SEP, and Key Manager ROM FW integration sections.
+|0.0.6 |2026-09-10 |Ben Melton |Documented the external TRNG aperture as a
+full-window AXI-Lite passthrough whose intra-aperture decode (SLVERR on
+unmapped offsets, no aliasing onto live registers) is an adopter constraint.
+|0.0.7 |2026-09-11 |Alessandro Ottaviano |Noted that `smc_ext_interrupts_i` is
+an active-high level or a pulse long enough to be sampled on `clk_smc`.
 |=======================================================================

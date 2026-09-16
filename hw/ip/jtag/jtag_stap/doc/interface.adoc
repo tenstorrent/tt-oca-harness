@@ -17,7 +17,7 @@
 |shift_i |Input |1 |Shift control from PTAP
 |update_i |Input |1 |Update control from PTAP
 |tms_i |Input |1 |TMS from PTAP
-|security_disable_i |Input |1 |Security lockout override (lifecycle control)
+|security_disable_i |Input |1 |Active-high disable (1 = STAP locked out)
 |stap_tdi_o |Output |1 |TDI to downstream TAP
 |stap_tdo_i |Input |1 |TDO from downstream TAP
 |stap_tms_o |Output |1 |TMS to downstream TAP (or parked value when disabled)

@@ -6,17 +6,16 @@ Thin DUT-local wrapper that builds the shared ``ocah_axi_vip`` reference models
 and scoreboard for the three JTAG2AXI targets, publishes them through the env
 cfg for sequences, and finalizes once in ``check_phase``. The shared classes own
 all comparison and evidence mechanics; this component owns only lifecycle,
-stream routing, and DTP policy (issue #3295).
+stream routing, and DTP policy.
 
 Opt-in: tests set ``use_axi_scoreboard = True`` (see ``dtp_base_test``); the
-component stays inert otherwise so existing jtag2axi tests are unaffected.
+component stays inert otherwise.
 """
 
 from __future__ import annotations
 
-from pyuvm import ConfigDB, uvm_component
-
 from ocah_axi_vip import OcahAxiRefModel, OcahAxiScoreboard
+from pyuvm import ConfigDB, uvm_component
 
 from .dtp_types import get_jtag2axi_target
 

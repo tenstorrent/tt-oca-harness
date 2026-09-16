@@ -6,25 +6,42 @@
 
 The SEP integrates a VeeR EL2 core with a built-in
 **Programmable Interrupt Controller (PIC)**. All maskable external interrupt
-sources feed a single `extintsrc_req` bus; the core's `meipl`, `meie`, and
-`meigwctrl` CSRs configure priority, enable, and gateway polarity per source.
+sources feed a single `extintsrc_req` bus; the memory-mapped `meipl`, `meie`,
+and `meigwctrl` registers configure priority, enable, and gateway polarity per
+source.
 
 The PIC base address is `0xC008_0000`; its register layout is described in the
 <<sep-pic-registers,Register Interfaces>> section below.
 
 Interrupt source IDs are **1-based** inside the PIC. Source 0 is permanently
-tied to zero inside the core. Firmware programs source `N` by writing the
-`meipl[N]` and `meie[N]` CSR entries and reading/clearing `meip[N]`.
+tied to zero inside the core. Firmware programs source `N` through the
+per-source arrays, each indexed at an offset of `N * 4` from its region base:
+`meipl` at PIC base `+0x0000`, `meie` at `+0x2000`, `meigwctrl` at `+0x4000`
+and `meigwclr` at `+0x5000`. Pending status is the exception -- `meip` at
+`+0x1000` is a bitmap rather than a per-source array, so source `N` is bit
+`N % 32` of `meip[N / 32]`.
+
+Each per-source array carries an entry 0, so that the array index is the source
+ID and no off-by-one applies: `meipl[7]` is source 7. That entry is reserved and
+has no hardware behind it -- the PIC decodes the address but ties the register
+off, so `+0x0000`, `+0x2000`, `+0x4000` and `+0x5000` read as zero and discard
+writes. It appears in the RDL, the generated headers and the UVM RAL only to
+preserve the indexing; firmware must never program it.
+
+NOTE: Register tests that walk the whole PIC map must skip index 0 of `meipl`,
+`meie`, `meigwctrl` and `meigwclr`. The register model declares those entries
+read-write like every other element, but the hardware treats them as reserved,
+so a read-write check on them fails.
 
 // Canonical SEP interrupt documentation: maintain this section with RTL changes.
 // Other guides should xref <<sep-cpu-interrupt-vector-map>>.
 [[sep-cpu-interrupt-vector-map]]
 ==== SEP CPU Interrupt Vector Map
 
-The PIC supports 255 external sources. Slots 1–39 are individually assigned to
+The PIC supports 255 external sources. Slots 1–43 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
 SEP-internal blocks (crypto engines, DMA, entropy) and cross-block sources
-(SMC mailboxes, SPI). Slots 40–255 are reserved for chip-level external inputs
+(SMC mailboxes, SPI). Slots 44–255 are reserved for chip-level external inputs
 passed in at the SEP block boundary.
 
 [width="100%",cols="10%,35%,55%",options="header",]
@@ -162,7 +179,10 @@ not here; see <<sep-non-pic-paths>>.
 
 |`33`
 |Crypto alert
-|Aggregated crypto subsystem alert (fault)
+|Combined OpenTitan crypto alert. SEP has no `alert_handler`; each
+accelerator has its own `prim_alert_receiver` channel(s) with ping
+disabled, and those pulses plus integrity-fails share this source. See
+<<sep-crypto-alert-policy>>.
 
 |`34`
 |Locked field access
@@ -185,14 +205,47 @@ not here; see <<sep-non-pic-paths>>.
 |Entropy pool FIFO fill-path stall (fault: EDN not making progress)
 
 |`39`
+|Entropy pool pointer fault
+|Entropy pool FIFO read/write pointer integrity fault (fault). The pool's
+pointer-integrity check is not built in the current configuration, so this
+source is tied to zero and never asserts; the slot is assigned anyway so that
+enabling the check later does not renumber the map. When live it is
+level-sensitive and holds until a `TRNG_ENTROPY_CLEAR` pool scrub resets the
+pointers; there is no write-one-to-clear, so firmware must mask the source or
+scrub the pool rather than acknowledge it.
+
+|`40`
 |Token match fault
 |eFuse token comparator redundancy fault (fault). The OR of the three sticky
 `TOKEN_MATCH_FAULT` bits. Those bits are software-read-only and clear only on
-reset, so this source stays asserted. Firmware must mask PIC source 39 after
+reset, so this source stays asserted. Firmware must mask PIC source 40 after
 it has observed the fault; there is no write-one-to-clear, and an unmasked
 handler re-enters.
 
-|`[40–255]`
+|`41`
+|DMA register-path bus error
+|A CPU access to a Secure DMA register returned a TL-UL error response
+(unmapped or misaligned offset, or a RACL denial). The faulting access also
+received SLVERR synchronously. Latched and held until firmware writes
+`DMA_BUS_ERR_CLEAR.clr`; unlike PIC source 40 this source is clearable, so
+firmware acknowledges it rather than masking it.
+
+|`42`
+|DMA host-path integrity/bus fault
+|Either the fabric returned a non-OKAY AXI response to a DMA transfer, or a
+TL-UL command-integrity check failed on a command issued by the DMA. The
+integrity case is a fault-detection event with no other reporting path.
+Cleared by the same `DMA_BUS_ERR_CLEAR.clr` write.
+
+|`43`
+|Peripheral register-bridge fault
+|The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
+CSRNG, EDN and the watchdog timer. Read `PERIPH_BUS_ERR_STATUS` to identify
+which block faulted, and clear that block's bit in `PERIPH_BUS_ERR_CLEAR`;
+clears are per-block so acknowledging one cannot discard another block's
+fault. See <<sep-crypto-bridge-faults>>.
+
+|`[44–255]`
 |Reserved (external band)
 |Chip-level external interrupt inputs
 |=======================================================================
@@ -200,7 +253,9 @@ handler re-enters.
 [[sep-non-pic-paths]]
 ==== Non-PIC Interrupt Paths
 
-Three CPU interrupt pins bypass the EL2 PIC entirely.
+Three CPU interrupt pins bypass the EL2 PIC entirely. The core also reports its
+own memory errors through a path that is neither a pin nor a PIC source; see
+<<sep-memory-error-reporting>>.
 
 ===== NMI — Watchdog Timer Bark
 
@@ -212,13 +267,116 @@ runtime modification of the vector once locked.
 The NMI is non-maskable: it cannot be suppressed by `mstatus.MIE` or any PIC
 configuration register.
 
-===== Timer and Software Interrupts (TBD)
+===== Timer and Software Interrupts
 
-The `timer_int` and `soft_int` pins of the VeeR EL2 core are both tied to zero
-at the SMU integration boundary; external CLINT-style delivery is not yet
-routed. The VeeR core contains independent internal timers that generate
-standard RISC-V `mip.MTIP` and `mip.MSIP` interrupts without requiring an
-external signal; those remain functional.
+The `timer_int` and `soft_int` pins of the VeeR EL2 core are tied to zero at
+the SMU integration boundary. There is no external CLINT-style delivery path.
+The VeeR core contains independent internal timers that generate standard RISC-V
+`mip.MTIP` and `mip.MSIP` interrupts without requiring an external signal.
+
+[[sep-memory-error-reporting]]
+===== Memory ECC Errors
+
+The ICCM and DCCM are SECDED-protected. Neither reaches the PIC: the core
+reports these errors itself, correctable ones as a local interrupt and
+uncorrectable ones as a synchronous trap. No PIC register affects either, and
+there is no PIC source to enable or mask.
+
+The SEP core is configured without an I-cache, so the I-cache parity counter
+`MICECT` (`0x7F0`) never increments. Only the two tightly-coupled-memory
+counters below are live.
+
+====== Correctable (single-bit) errors
+
+Hardware corrects the data and the access is retried, so no data is lost and no
+trap is taken. Each protected memory has a counter CSR:
+
+[width="100%",cols="20%,15%,65%",options="header",]
+|=======================================================================
+|CSR |Address |Counts
+
+|`MICCMECT`
+|`0x7F1`
+|ICCM single-bit corrections
+
+|`MDCCMECT`
+|`0x7F2`
+|DCCM single-bit corrections
+|=======================================================================
+
+Bits `[26:0]` are the running count. Bits `[31:27]` hold a threshold exponent:
+the counter raises a request once the count reaches 2^threshold^. A written
+threshold above 26 is clamped to 26. The requests from both counters are ORed
+into `mip[30]` (`MCEIP`) and delivered when `mie[30]` (`MCEIE`) and
+`mstatus.MIE` are both set, with `mcause` = `0x8000_001E`.
+
+Firmware is expected to:
+
+. *Program a threshold before enabling the interrupt.* Counters and thresholds
+both reset to zero, and a zero threshold raises the request on the very first
+corrected error, so enabling `MCEIE` without programming a threshold delivers
+an interrupt on error one.
+. *Enable* `mie[30]`. It is clear at reset. Until firmware sets it, corrected
+errors are counted silently and nothing is delivered -- which is the state
+today, as no SEP firmware enables it.
+. *Clear the counter in the handler.* Read both counters to attribute the
+error, then write the one that tripped. `MCEIP` is level-held and has no
+write-one-to-clear: it follows the threshold comparator directly, so returning
+without dropping the count below the threshold re-enters the handler
+immediately. To clear the count while keeping threshold `N`, write `N << 27`.
+
+The threshold trades interrupt rate against detection latency. A low threshold
+reports a degrading SRAM early at the cost of an interrupt per error; a high one
+lets transient flips accumulate before firmware is told.
+
+====== Uncorrectable (double-bit) errors
+
+These cannot be masked and have no enable bit. The access returned no valid
+data, so the core traps on the instruction that hit the error:
+
+[width="100%",cols="35%,20%,45%",options="header",]
+|=======================================================================
+|Access |`mcause` |Trap
+
+|Instruction fetch from ICCM
+|`0x0000_0001`
+|Instruction access fault
+
+|Load from DCCM
+|`0x0000_0005`
+|Load access fault
+
+|Store to DCCM
+|`0x0000_0007`
+|Store access fault
+
+|DCCM access on the fast-interrupt path
+|`0xF000_1000`
+|NMI, taken through `SEP_NMI_VEC` like the watchdog bark
+|=======================================================================
+
+`mcause` alone does not identify these as memory failures -- a bad pointer and a
+failing SRAM both raise a load access fault. `MSCAUSE` (`0x7FF`) is what
+separates them: on an access fault, `mscause` = `1` means uncorrectable ECC.
+A handler that does not read `MSCAUSE` cannot distinguish a software bug from
+failing hardware.
+
+Firmware is expected to treat these as fatal for the affected context. The
+faulting access cannot be completed, and retrying it re-reads the same corrupted
+location, so the handler must not resume the trapping instruction. Reset or
+quarantine the affected memory rather than attempting recovery in place.
+
+An uncorrectable error on an externally initiated (DMA) access to either memory
+is not a CPU trap at all. It is returned as an error response on that
+transaction, and the initiator is responsible for reporting it.
+
+====== Debug bus mirror
+
+The ICCM and DCCM single- and double-bit error signals are also mirrored onto
+`ext_debug_bus_o[367:364]`, most significant first: ICCM single, ICCM double,
+DCCM single, DCCM double. These are single-cycle pulses with no latch and no
+handshake, provided for external trace and bring-up observability. They are not
+a delivery path, so software must not rely on sampling them; use the CSRs above.
 
 
 [[sep-pic-registers]]
@@ -232,3 +390,7 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<sep-detailed-register-map>>.
 endif::backend-pdf[]
+
+The per-source arrays in that table are listed from index 0. Index 0 is the
+reserved entry described in <<sep-interrupts>>: it exists so the array index
+equals the interrupt source ID, and the first programmable source is index 1.

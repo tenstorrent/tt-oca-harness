@@ -4,8 +4,8 @@
 
 OSS port combining the reference suite ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
 Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
-  * verifies SW_RESET_N default 0x1E and that pulsing each crypto IP's reset bit
-    clears that IP's probe CSR (the reset wire reached the IP);
+  * verifies SW_RESET_N default 0x3E and that pulsing each crypto/TRNG reset bit
+    clears the corresponding probe CSRs;
   * proves a write + a read to an unmapped fabric gap each raise a D-bus-error
     NMI (count == 2);
   * exercises the WDT bark -> NMI, pet, disable-freeze, and re-bark; then lets the
@@ -18,6 +18,11 @@ output ``wdt_timer_rst_req_o`` (brought out in tb_top): after the firmware PASSe
 request, which the cocotb side must see -- the WDT's headline safety function.
 
 No fuse data is read, so the testlist entry uses ``+skip_fuse_sense``.
+JTAG-holds OTBN/AES/HMAC/KMAC across ``rst_ni`` release and fuse sense so they
+never raise crypto ``edn_req`` while the fabric is opening, then drops the
+override. The hold must not outlast sense: the firmware probes each engine's
+reset wire, and a held engine's registers are unreachable, so the probe write
+traps instead of landing.
 """
 
 from __future__ import annotations
@@ -28,16 +33,16 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "reset_wdt_sanity_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "reset_wdt_sanity_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "reset_wdt_sanity_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -60,11 +65,15 @@ class sep_reset_wdt_sanity_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,
             progress_every=_PROGRESS_EVERY,
+            park=("otbn", "aes", "hmac", "kmac"),
+            release_park=True,
         )
 
         # The firmware PASS gates the reset_ctrl + WDT bark/pet/disable/re-bark

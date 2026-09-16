@@ -92,9 +92,7 @@ class OcahJtagSlaveEngine:
         if "IDCODE" in device.regs:
             self._idcode_opcode = device.regs["IDCODE"].opcode
 
-        self.values: dict[str, int] = {
-            reg.name: 0 for reg in device.regs.values()
-        }
+        self.values: dict[str, int] = {reg.name: 0 for reg in device.regs.values()}
         self.updates: list[OcahJtagSlaveUpdate] = []
 
         self._state = OcahJtagState.TEST_LOGIC_RESET
@@ -202,9 +200,7 @@ class OcahJtagSlaveEngine:
                 time_ns=time_ns,
             )
         )
-        self.log.info(
-            "%s: Update-DR latched %s = 0x%x", self.name, reg.name, value
-        )
+        self.log.info("%s: Update-DR latched %s = 0x%x", self.name, reg.name, value)
 
     def _select_reset_instruction(self) -> None:
         if self._idcode_opcode is not None:
@@ -279,6 +275,14 @@ class OcahJtagSlaveDriver:
     def clear_updates(self) -> None:
         self.engine.clear_updates()
 
+    def device_state(self) -> OcahJtagState:
+        """The device's current TAP controller state."""
+        return self.engine.state
+
+    def active_instruction(self) -> int:
+        """The instruction currently selecting the device's data register."""
+        return self.engine.active_instruction
+
     def get_statistics(self) -> dict[str, Any]:
         return {
             "state": self.engine.state.name,
@@ -316,10 +320,7 @@ class OcahJtagSlaveDriver:
             await ReadOnly()
             tms = _logic_int(self._intf.tms)
             tdi = _logic_int(self._intf.tdi)
-            in_reset = (
-                hasattr(self._intf, "trst")
-                and _logic_int(self._intf.trst, 1) == 0
-            )
+            in_reset = hasattr(self._intf, "trst") and _logic_int(self._intf.trst, 1) == 0
             if in_reset:
                 self.engine.reset()
             else:

@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_ctm_rand_cla_to_ctp_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
 
@@ -15,6 +14,6 @@ class dtp_ctm_rand_cla_to_ctp_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "ctm_rand_cla_to_ctp",
             scenario="ctm_rand_cla_to_ctp",
-            specific_env="DTP_CTM_RAND_CLA_TO_CTP_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_CTM_RAND_CLA_TO_CTP_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

@@ -7,7 +7,7 @@ as ``tb_cpu_jtag_*``:
 
 * ``OcahJtagMasterDriver`` / ``OcahJtagDevice`` provide bus bind + register map.
 * Active-high ``tb_cpu_jtag_reset`` is driven only by this wrapper — it is
-  intentionally NOT exposed as bus ``trst`` because ``cocotbext-jtag`` assumes
+  NOT exposed as bus ``trst`` because ``cocotbext-jtag`` assumes
   IEEE active-low TRST polarity.
 * Runtime IR/DR scans use ``OcahJtagMasterDriver`` bit-bang only (no ``JTAGDriver``).
   cocotbext-jtag's GatedClock + RX FSM desyncs after long DMI idle sequences
@@ -21,7 +21,6 @@ from typing import Optional
 
 import cocotb
 from cocotb.triggers import Timer
-
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver, OcahJtagMasterDriverError
 
 # IEEE 1149.1 / RISC-V Debug Spec opcodes (5-bit IR).
@@ -34,7 +33,6 @@ _DMI_DR_WIDTH = 41
 # `tb_top.sv` JEP106 + part-number + version composition.
 EXPECTED_CPU_TAP_IDCODE = 0x10CA0555
 
-# Keep historical SMC error name.
 SmcJtagTapError = OcahJtagMasterDriverError
 
 
@@ -167,8 +165,7 @@ class SmcJtagTap:
             )
         if check and captured != self._expected_idcode:
             raise SmcJtagTapError(
-                f"{self.name}: IDCODE 0x{captured:08X} != expected "
-                f"0x{self._expected_idcode:08X}"
+                f"{self.name}: IDCODE 0x{captured:08X} != expected 0x{self._expected_idcode:08X}"
             )
         return captured
 
@@ -185,9 +182,7 @@ class SmcJtagTap:
 
     async def shift_dr(self, value: Optional[int] = None, *, width: int = 32) -> int:
         tap = self._ensure()
-        return int(
-            await tap.shift_dr(0 if value is None else int(value), width, back_to_rti=True)
-        )
+        return int(await tap.shift_dr(0 if value is None else int(value), width, back_to_rti=True))
 
     async def bypass(self) -> None:
         await self.shift_ir(_BYPASS_OPCODE)
@@ -302,9 +297,7 @@ class SmcJtagTap:
                 f"{self.name}: DMI write 0x{addr:02X}=0x{data:08X} status={status}"
             )
         if status == 3:
-            raise SmcJtagTapError(
-                f"{self.name}: DMI write 0x{addr:02X}=0x{data:08X} still busy"
-            )
+            raise SmcJtagTapError(f"{self.name}: DMI write 0x{addr:02X}=0x{data:08X} still busy")
 
     async def read_dmstatus(self) -> int:
         """Activate DM (dmactive + ack CDC) then read dmstatus (DMI 0x11)."""
@@ -325,21 +318,39 @@ class SmcJtagTap:
                 int(cocotb.top.tb_cpu_debug_dmactive.value),
                 int(cocotb.top.tb_cpu_debug_dmactive_ack.value),
             )
-        except Exception:  # noqa: BLE001 - probe optional on older elaborations
+        except Exception:  # noqa: BLE001 - tb_cpu_debug_dmactive* probes are optional
             pass
+        # Both polls below raise on expiry: a debug module that never leaves
+        # reset, or is absent, must fail the smoke test rather than be logged
+        # as a pass ([TIMEOUT-MUST-FAIL]).
+        _DM_POLLS = 16
         dmcontrol = 0
-        for _ in range(16):
+        for _ in range(_DM_POLLS):
             dmcontrol = await self.dmi_read(0x10, abits=abits, idle=idle)
             if dmcontrol & 0x1:
                 break
             await self._idle_tck(idle * 20)
+        else:
+            raise AssertionError(
+                f"{self.name}: DMCONTROL.dmactive never set after {_DM_POLLS} "
+                f"DMI reads of 0x10 (last readback 0x{dmcontrol:08X}). The "
+                f"debug module is not active, so every later DMI result in "
+                f"this scenario is meaningless."
+            )
         cocotb.log.info("%s: dmcontrol readback=0x%08X", self.name, dmcontrol)
         dmstatus = 0
-        for _ in range(16):
+        for _ in range(_DM_POLLS):
             dmstatus = await self.dmi_read(0x11, abits=abits, idle=idle)
             if (dmstatus & 0xF) != 0:
                 break
             await self._idle_tck(idle * 20)
+        else:
+            raise AssertionError(
+                f"{self.name}: DMSTATUS.version stayed 0 after {_DM_POLLS} DMI "
+                f"reads of 0x11 (last readback 0x{dmstatus:08X}). Version 0 is "
+                f"'no debug module present' in the RISC-V debug spec, so this "
+                f"is not a slow bring-up -- there is nothing answering."
+            )
         version = dmstatus & 0xF
         cocotb.log.info(
             "%s: dmstatus=0x%08X (version=%d authenticated=%d abits=%d idle=%d)",

@@ -3,4 +3,4 @@
 //
 // Standard sequencer over ocah_jtag_item; no custom arbitration.
 
-typedef uvm_sequencer #(ocah_jtag_item) ocah_jtag_master_sequencer;
+typedef uvm_sequencer#(ocah_jtag_item) ocah_jtag_master_sequencer;

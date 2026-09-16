@@ -6,11 +6,11 @@
 //
 //--------------------------------------------------
 module prim_clock_or2 (
-    input  in0_i,
-    input  in1_i,
-    output out_o
+  input  in0_i,
+  input  in1_i,
+  output out_o
 );
 
-assign out_o = in0_i | in1_i;
+  assign out_o = in0_i | in1_i;
 
 endmodule

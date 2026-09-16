@@ -24,7 +24,7 @@ from ocah_checker import OcahChecker
 
 from .ocah_axi_item import OcahAxiItem
 from .ocah_axi_ref_model import OcahAxiRefModel
-from .ocah_axi_results import RESP_EXOKAY, RESP_OKAY
+from .ocah_axi_types import RESP_EXOKAY, RESP_OKAY
 
 CHK_RESP = "CHK-AXI-RESP"
 CHK_RESP_EXPECTED = "CHK-AXI-RESP-EXPECTED"
@@ -163,12 +163,9 @@ class OcahAxiScoreboard:
             # Nothing may arrive after the summary was emitted; the owning
             # environment must halt monitors before finalizing.
             self._error(
-                f"transaction observed after finalize(): "
-                f"{self._item_context(item, stream)}"
+                f"transaction observed after finalize(): {self._item_context(item, stream)}"
             )
-            raise AssertionError(
-                f"{self.name}: transaction observed after finalize()"
-            )
+            raise AssertionError(f"{self.name}: transaction observed after finalize()")
         state = self._stream(stream)
         state.items += 1
         arrival_seq = self._event_seq
@@ -181,8 +178,7 @@ class OcahAxiScoreboard:
         if state.blocked_window_start is not None:
             state.blocked_window_hits += 1
             self._error(
-                f"transaction observed inside blocked window: "
-                f"{self._item_context(item, stream)}"
+                f"transaction observed inside blocked window: {self._item_context(item, stream)}"
             )
             violated = True
 
@@ -279,9 +275,7 @@ class OcahAxiScoreboard:
                 if prediction is not None
                 else tuple([RESP_OKAY] * len(observed_resps))
             )
-            self.evidence.expect_equal(
-                CHK_RESP, observed_resps, expected_resps, context=context
-            )
+            self.evidence.expect_equal(CHK_RESP, observed_resps, expected_resps, context=context)
             state.checks += 1
 
         if (
@@ -516,8 +510,7 @@ class OcahAxiScoreboard:
                 bytes(dut_bytes),
                 bytes(expected),
                 context=(
-                    f"{context} addr=0x{int(address):x} len={int(length)} "
-                    f"source=intent"
+                    f"{context} addr=0x{int(address):x} len={int(length)} source=intent"
                 ).strip(),
             )
         model = self._stream(stream).model or self.model
@@ -528,9 +521,7 @@ class OcahAxiScoreboard:
             check_id,
             bytes(dut_bytes),
             model.read_bytes(address, length),
-            context=(
-                f"{context} addr=0x{int(address):x} len={int(length)} source=model"
-            ).strip(),
+            context=(f"{context} addr=0x{int(address):x} len={int(length)} source=model").strip(),
         )
 
     # ------------------------------------------------------------------
@@ -638,9 +629,7 @@ class OcahAxiScoreboard:
 
         if self.errors:
             joined = "\n".join(self.errors)
-            raise AssertionError(
-                f"{self.name}: {len(self.errors)} scoreboard error(s):\n{joined}"
-            )
+            raise AssertionError(f"{self.name}: {len(self.errors)} scoreboard error(s):\n{joined}")
         self.evidence.finalize()
 
     # ------------------------------------------------------------------

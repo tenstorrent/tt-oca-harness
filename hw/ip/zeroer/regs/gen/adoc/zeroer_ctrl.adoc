@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -10,21 +10,21 @@
 | 0x10 | CTRL_STATUS | RW a| Writing this register will trigger start of zeroer
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DEST_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `DEST_ADDR` | RW | 0x0 a| Byte address to write zeros to
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SIZE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `SIZE` | RW | 0x0 a| Size in bytes of zeros to write
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description

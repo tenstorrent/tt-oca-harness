@@ -48,8 +48,8 @@ signal.
 
 The following diagram illustrates the STAP architecture and the details of the
 3DCR register. The green colored flops are optional, each configured via
-parameters. The red AND gate and nets implement security access lockout when the
-chiplet is not in the correct lifecycle state.
+parameters. The red AND gate and nets implement debug disable when
+`security_disable_i` is asserted.
 
 image::stap_module_diagram.drawio.svg[STAP Module Diagram,scaledwidth=90.0%]
 
@@ -60,24 +60,24 @@ loopback configuration. The register outputs feed back to the data inputs,
 allowing the register to retain its configuration across scan operations while
 still being scannable for updates.
 
-[width="100%",cols="<10%,<20%,<60%,<10%",options="header"]
+[width="100%",cols="2,2,1,7",options="header"]
 |===
-|Bit |Field |Description |Reset
+|Bit |Field |Reset |Description
 
 |2
 |TMS-Hold
-|Defines the parked TMS value when the STAP is disabled. When `stap_sel=0`, the host TMS output is driven with this static value rather than following the client TMS input.
 |0
+|Defines the parked TMS value when the STAP is disabled. When `stap_sel=0`, the host TMS output is driven with this static value rather than following the client TMS input.
 
 |1
 |Select (stap_sel)
-|Enables the STAP scan interface. When `stap_sel=1`, the STAP routes scan data through the downstream TAP. When `stap_sel=0`, the STAP acts as a simple 3-bit TDR and the downstream TAP's TMS is held at the TMS-Hold value.
 |0
+|Enables the STAP scan interface. When `stap_sel=1`, the STAP routes scan data through the downstream TAP. When `stap_sel=0`, the STAP acts as a simple 3-bit TDR and the downstream TAP's TMS is held at the TMS-Hold value.
 
 |0
 |Config-Hold
-|Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by `trst_n AND (config_hold OR scan_reset)`, protecting configuration when `config_hold=1`. TRST assertion always resets the register regardless of this bit.
 |0
+|Prevents reset of the 3DCR register when the TAP enters Test-Logic-Reset state. The register is reset by `trst_n AND (config_hold OR scan_reset)`, protecting configuration when `config_hold=1`. TRST assertion always resets the register regardless of this bit.
 |===
 
 ===== STAP Types
@@ -98,30 +98,27 @@ additional STAPs closer to their point of use.
 |Extended STAP Scan Interface |Provides the ability to add STAPs external to the DTP closer to their point of use.
 |===
 
-===== Security Lockout
+===== Debug Disable
 
-The security lockout feature prevents unauthorized access to debug TAPs based on
-chiplet lifecycle state. The `security_disable_i` input controls three aspects
-of STAP operation:
+The `security_disable_i` input is active-high (1 = STAP disabled). When it is
+asserted, three aspects of STAP operation are blocked:
 
 [width="100%",cols="<30%,<70%",options="header"]
 |===
-|Signal |Security Lockout Behavior
+|Signal |Behavior when asserted
 
 |`stap_sel` (internal)
-|When `security_disable_i=0` (debug disabled), `stap_sel` is forced to 0 regardless of the 3DCR Select bit value. This prevents routing scan data through the downstream TAP.
+|Forced to 0 regardless of the 3DCR Select bit, so scan data is not routed through the downstream TAP.
 
 |`host_tdo_o`
-|When `security_disable_i=0`, `host_tdo_o` is forced to 0. This prevents any data from leaking out of the downstream TAP even if the TAP is inadvertently accessed.
+|Forced to 0, so the downstream TAP cannot leak data on the host TDO even if it is accessed.
 
 |`client_reg_scan_ctrl.update_en`
-|When `security_disable_i=0`, the 3DCR register update enable signal is forced to 0. This prevents modification of the STAP configuration when lifecycle state restricts debug access, ensuring the configuration cannot be altered to bypass security controls.
+|Forced to 0, so the 3DCR cannot be updated while the STAP is disabled.
 |===
 
-This triple gating approach ensures that STAP selection, TDO output, and
-configuration updates are all blocked when the chiplet lifecycle state restricts
-debug access. The gating logic is implemented combinationally at the module
-output, preventing any timing-dependent bypass paths.
+STAP selection, host TDO, and 3DCR updates are all blocked combinationally at
+the module output, so there is no timing-dependent bypass of the disable.
 
 ===== Lockup Latches
 

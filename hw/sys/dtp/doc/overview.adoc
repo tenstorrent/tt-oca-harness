@@ -32,6 +32,8 @@ The DTP serves as the central hub for:
 * Configurable instruction register
 * Support for standard instructions (BYPASS, IDCODE, EXTEST, etc.)
 * Optional JTAG-to-AXI bridges for register access
+* Per-path debug-disable inputs that gate STAPs, iJTAG SIBs, and JTAG2AXI
+  bridges
 
 *Cross Trigger Network*
 
@@ -61,7 +63,7 @@ The DTP serves as the central hub for:
 |Feature |Specification
 |JTAG Standard |IEEE 1149.1-2013
 |iJTAG Standard |IEEE 1687-2014
-|Cross Trigger Protocol |OCH Cross Trigger v1.0
+|Cross Trigger Protocol |OCAH Cross Trigger v1.0
 |CSR Interface |AXI4-Lite (32-bit)
 |Debug AXI Interface |AXI4 (configurable width)
 |Maximum CTPs |32

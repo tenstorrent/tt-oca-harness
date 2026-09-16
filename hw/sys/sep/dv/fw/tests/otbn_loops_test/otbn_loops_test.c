@@ -4,8 +4,8 @@
 /*
  * OTBN Nested Loops Test
  *
- * This test validates OTBN's nested loop functionality by executing a complex
- * loop structure and verifying both the mathematical result and instruction count.
+ * This test validates OTBN's nested loop functionality by executing a nested
+ * loop structure and verifying the retired instruction count (INSN_CNT).
  *
  * Test algorithm:
  * - Initialize accumulator x2 = 0, inner loop count x3 = 3
@@ -16,7 +16,7 @@
  * - Expected result: 4×(10+3×1) = 52
  * - Expected instruction count: 28 (most complex INSN_CNT test in OpenTitan)
  *
- * Test vectors derived from OpenTitan's loops.s test, adapted for OCH platform.
+ * Test vectors derived from OpenTitan's loops.s test, adapted for OCAH platform.
  */
 
 #include <stdio.h>
@@ -38,7 +38,7 @@
 #define OTBN_CMD_SEC_WIPE_DMEM 0xC3
 #define OTBN_CMD_SEC_WIPE_IMEM 0x1E
 
-// Base address for OTBN in the OCH SEP memory map
+// Base address for OTBN in the OCAH SEP memory map
 #define OTBN_BASE_ADDR OCH_SEP_TOP_OTBN_BASE_ADDR
 
 // OTBN memory window offsets (relative to OTBN_BASE_ADDR)

@@ -1,0 +1,30 @@
+--- a/hw/ip/otbn/rtl/otbn.sv
++++ b/hw/ip/otbn/rtl/otbn.sv
+@@ -1536,14 +1536,17 @@
+     u_tlul_adapter_sram_imem.u_reqfifo,
+     gen_alert_tx[AlertFatalIdx].u_prim_alert_sender.alert_req_i
+   )
+-  `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(
+-    OtbnMaiInputCntAlertCheck_A,
+-    u_otbn_core.gen_mai.u_otbn_mai.u_prim_count_input_word_select,
+-    gen_alert_tx[AlertFatalIdx].u_prim_alert_sender.alert_req_i
+-  )
+-  `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(
+-    OtbnMaiOutputCntAlertCheck_A,
+-    u_otbn_core.gen_mai.u_otbn_mai.u_prim_count_output_word_select,
+-    gen_alert_tx[AlertFatalIdx].u_prim_alert_sender.alert_req_i
+-  )
++
++  if (!FeatStubMai) begin : gen_mai_alert_asserts
++    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(
++      OtbnMaiInputCntAlertCheck_A,
++      u_otbn_core.gen_mai.u_otbn_mai.u_prim_count_input_word_select,
++      gen_alert_tx[AlertFatalIdx].u_prim_alert_sender.alert_req_i
++    )
++    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(
++      OtbnMaiOutputCntAlertCheck_A,
++      u_otbn_core.gen_mai.u_otbn_mai.u_prim_count_output_word_select,
++      gen_alert_tx[AlertFatalIdx].u_prim_alert_sender.alert_req_i
++    )
++  end
+ endmodule

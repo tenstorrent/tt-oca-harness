@@ -8,9 +8,11 @@ description = "OCAH register generation environment"
 requires-python = ">=3.11,<3.14"
 dependencies = [
   "clang-format==14.0.6",
+  "codespell==2.4.3",
   "ghp-import>=2.1.0",  # temporary: GitHub Pages deploy; see doc/gh-pages.mk
   "hjson>=3.1.0",
   "mako>=1.3.12",
+  "mypy==1.18.1",  # 1.19+ requires pathspec>=1.0.0, which conflicts with tclint's pathspec==0.11.2 pin
   "peakrdl>=1.4.0",
   "peakrdl-cheader>=1.1.0",
   "peakrdl-html>=2.12.2",
@@ -19,9 +21,17 @@ dependencies = [
   "peakrdl-rawheader>=0.2.4",
   "peakrdl-regblock>=1.2.0",
   "peakrdl-systemrdl>=1.0.1",
+  "pre-commit==4.5.1",  # 4.6+ requires Git 2.31; supported environments include Git 2.26
+  "pyelftools>=0.33",
+  "ruff==0.16.5",
   "semantic-version>=2.10.0",
+  "shellcheck-py==0.11.0.1",  # wraps the shellcheck binary; see shfmt-py below for the formatter half
+  "shfmt-py==4.1.0",  # wraps the shfmt binary; no lint rules of its own, pairs with shellcheck-py
   "systemrdl-compiler>=1.32.2",
   "tclint==0.4.2",
+  "tomllint==0.3.6",  # syntax-only: catches malformed DV testlist/sim-config TOML, no style rules
+  "types-pyyaml>=6.0.12.20260815",
+  "yamllint==1.37.1",  # 1.38+ requires pathspec>=1.0.0, which conflicts with tclint's pathspec==0.11.2 pin
 ]
 
 [dependency-groups]
@@ -37,3 +47,80 @@ ocah-dv = { workspace = true }
 
 [tool.uv.workspace]
 members = ["hw/common/dv"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = [
+  ".claude",
+  "*.md",
+  "nonfree",
+  "vendor",
+  "**/build",
+  "**/build_ot",
+  "**/build_ot_pio",
+  "**/regs/gen/py",
+  "hw/sys/sep/bootrom/prod/tools/tt-boot-manifest",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/dv/tb_vcs/**/*.py" = ["E722", "E741", "F403", "F405", "F841"]
+"**/cocotb/**/*.py" = ["E402"]
+"hw/ip/i3ccore_wrap/dv/tb/*.py" = ["E402"]
+"hw/ip/key_manager/dv/tb/test_firmware.py" = ["E402", "E722", "F841"]
+"hw/ip/entropy_source/dv/cocotb/test_entropy_source.py" = ["F403", "F405"]
+# sep_reg_meta must import before sep_reg (it puts regs/gen/py on sys.path as
+# a side effect); isort's alphabetical sort would put sep_reg first and break it.
+"hw/sys/sep/dv/cocotb/env/sep_efuse_image.py" = ["I001"]
+"hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py" = ["I001"]
+
+[tool.mypy]
+python_version = "3.11"
+# Lenient: most first-party Python here is loosely-typed DV/cocotb code, not a
+# fully-annotated library. Mirrors the internal SOC team's own mypy config
+# rather than demanding annotation coverage this codebase doesn't have yet.
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+explicit_package_bases = true
+# cocotb/cocotbext/pyuvm etc. live in the separate `dv` dependency group (see
+# hw/common/dv/), not this environment; treat their absence as expected
+# rather than an error on every DV file that imports them.
+ignore_missing_imports = true
+exclude = '''(?x)^(
+  vendor/
+  | nonfree/
+  | .*/regs/gen/py/
+  | .*/build(_ot|_ot_pio)?/
+)'''
+
+[tool.codespell]
+# - regs/gen is generated from the .rdl sources next to it; a typo fix there
+#   is reverted by the next `regen-regs` run, so the real fix belongs upstream.
+# - chipyard_generated_files/crossbars/ot_pkg mirror flows/lint/verible.mk's
+#   own excludes: generated or OpenTitan-origin RTL this repo doesn't hand-edit.
+# - integration collateral is a symlink index over sources covered here or
+#   intentionally skipped at their canonical generated/vendor locations.
+# - dv/fw/include/metal and dv/fw/tests/coremark* are upstream SiFive Metal
+#   HAL and EEMBC CoreMark sources, copied in rather than hand-maintained here.
+skip = """\
+vendor,nonfree,.git,\
+*/integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
+*/regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
+*/dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
+*.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,uv.lock,*.lock\
+"""
+# interruptor(s): the RISC-V CLINT spec spells out the acronym as
+# "Core-Local INTerruptor", matching every other occurrence in doc/; not the
+# "interrupter" spelling codespell's dictionary otherwise prefers.
+ignore-words-list = """\
+STAP,stap,STAPs,staps,EDN,edn,OT,hart,Hart,THRE,thre,WEL,DED,ded,\
+inout,Inout,ist,wit,dout,oen,chainIn,LockIn,DAA,clen,aack,thi,pres,te,\
+Dum,ND,nd,RUNN,ASSIGNIN,Synopsys,synopsys,unsecure,Unsecure,UNSECURE,\
+interruptor,Interruptor,interruptors,Interruptors,\
+SpecField,specfield\
+"""

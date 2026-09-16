@@ -180,13 +180,13 @@ latency.
 The IDCODE instruction accesses a TDR containing device identification
 information.
 
-[cols="<,<,<,<",options="header"]
+[cols="2,2,1,7",options="header"]
 |===
-|Bits |Field |Description |Access
-|31:28 |si_rev |Silicon revision |RO
-|27:12 |part_num |Chiplet model ID |RO
-|11:1 |mfr_id |JEDEC-assigned manufacturer ID, encoded into 11 bits |RO
-|0 |marker |Marker bit, always 1 |RO
+|Bits |Field |Access |Description
+|31:28 |si_rev |R |Silicon revision
+|27:12 |part_num |R |Chiplet model ID
+|11:1 |mfr_id |R |JEDEC-assigned manufacturer ID, encoded into 11 bits
+|0 |marker |R |Marker bit, always 1
 |===
 
 To access the IDCODE TDR:
@@ -203,14 +203,14 @@ To access the IDCODE TDR:
 The DEBUG_CONTROL instruction accesses a TDR defining general control bits for
 debug and control of the design.
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header"]
+[width="100%",cols="2,2,1,1,6",options="header"]
 |===
-|Bits |Field |Description |Access |Reset
-|4 |cla_clock_stop |When set, indicates that a CLA in the chiplet attempted to stop the clocks. Note that the clocks will actually have been stopped only when _cla_clock_stop_en_ is set. |RO |0
-|3 |jtag_clock_stop |When set, stops all clocks in the chiplet. This is wired to the functional clock gaters on all of the PLLs in the chiplet. This bit is active high. |R/W |0
-|2 |cla_clock_stop_en |When set, enables the CLAs to stop the clocks in the design. This bit indicates that an external debugger is connected and ready to do debug or scan dump operations after the CLA stops the clocks. This bit is intended to protect against unintentional CLA clock stops in the field due to incorrect CLA programming. This bit is active high. |R/W |0
-|1 |boot_stall_ovrd |When set, overrides the boot stall signal to the internals of the part to use the value from boot_stall in this TDR instead. This bit is active high. |R/W |0
-|0 |boot_stall |When boot_stall_override is set, the value in this bit is used for boot stall. This bit is active high: setting to 1 causes boot stall. |R/W |0
+|Bits |Field |Access |Reset |Description
+|4 |cla_clock_stop |R |0 |When set, indicates that a CLA in the chiplet attempted to stop the clocks. Note that the clocks will actually have been stopped only when _cla_clock_stop_en_ is set.
+|3 |jtag_clock_stop |RW |0 |When set, stops all clocks in the chiplet. This is wired to the functional clock gaters on all of the PLLs in the chiplet. This bit is active high.
+|2 |cla_clock_stop_en |RW |0 |When set, enables the CLAs to stop the clocks in the design. This bit indicates that an external debugger is connected and ready to do debug or scan dump operations after the CLA stops the clocks. This bit is intended to protect against unintentional CLA clock stops in the field due to incorrect CLA programming. This bit is active high.
+|1 |boot_stall_ovrd |RW |0 |When set, overrides the boot stall signal to the internals of the part to use the value from boot_stall in this TDR instead. This bit is active high.
+|0 |boot_stall |RW |0 |When boot_stall_override is set, the value in this bit is used for boot stall. This bit is active high: setting to 1 causes boot stall.
 |===
 
 To access the DEBUG_CONTROL TDR:
@@ -227,28 +227,28 @@ To access the DEBUG_CONTROL TDR:
 The JTAG_CAPS instruction accesses a read-only TDR reporting the DTP version
 number and general configuration parameters for the DTP.
 
-[width="100%",cols="<20%,<20%,<20%,<20%,20%",options="header"]
+[width="100%",cols="2,2,1,7",options="header"]
 |===
-|Bits |Field |Description |Access |
-|59:54 |num_xtrig_int_ct |The number of internal cross trigger signals. |RO |
-|53:48 |num_xtrig_ctp |The number of Cross Trigger Ports. |RO |
-|47:44 |num_xtra_stap |The number of additional DTP STAP interfaces. |RO |
-|43 |stap_io_en |The STAP interface for chiplet-to-chiplet connectivity is enabled. |RO |
-|42 |sep_dbg_en |The SEP STAP interface enabled. |RO |
-|41 |smc_dbg_en |The SMC JTAG2AXI interface is enabled. |RO |
-|40:33 |num_smc_ic_rst |The number of SMC IC_RESET override ports. |RO |
-|32:25 |num_sep_ic_rst |The number of SEP IC_RESET override ports. |RO |
-|24:17 |num_ext_ic_rst |The number of external IC_RESET override ports. |RO |
-|16 |ic_rst_inst_en |The IC_RESET instruction is enabled. |RO |
-|15 |tmp_inst_en |The TMP controller functionality and instructions are enabled. |RO |
-|14 |runbist_inst_en |The RUNBIST instruction is enabled. |RO |
-|13 |highz_inst_en |The HIGHZ instruction is enabled. |RO |
-|12 |clamp_inst_en |The CLAMP instruction is enabled. |RO |
-|11 |intest_inst_en |The INTEST instruction is enabled. |RO |
-|10 |extest_pulse_en |The EXTEST_PULSE instruction is enabled. |RO |
-|9 |extest_train_en |The EXTEST_TRAIN instruction is enabled. |RO |
-|8 |bsr_inst_en |All mandatory boundary scan instructions are enabled. |RO |
-|7:0 |och_ver |The MAJOR version number of the DTP IP. |RO |
+|Bits |Field |Access |Description
+|59:54 |num_xtrig_int_ct |R |The number of internal cross trigger signals.
+|53:48 |num_xtrig_ctp |R |The number of Cross Trigger Ports.
+|47:44 |num_xtra_stap |R |The number of additional DTP STAP interfaces.
+|43 |stap_io_en |R |The STAP interface for chiplet-to-chiplet connectivity is enabled.
+|42 |sep_dbg_en |R |The SEP STAP interface enabled.
+|41 |smc_dbg_en |R |The SMC JTAG2AXI interface is enabled.
+|40:33 |num_smc_ic_rst |R |The number of SMC IC_RESET override ports.
+|32:25 |num_sep_ic_rst |R |The number of SEP IC_RESET override ports.
+|24:17 |num_ext_ic_rst |R |The number of external IC_RESET override ports.
+|16 |ic_rst_inst_en |R |The IC_RESET instruction is enabled.
+|15 |tmp_inst_en |R |The TMP controller functionality and instructions are enabled.
+|14 |runbist_inst_en |R |The RUNBIST instruction is enabled.
+|13 |highz_inst_en |R |The HIGHZ instruction is enabled.
+|12 |clamp_inst_en |R |The CLAMP instruction is enabled.
+|11 |intest_inst_en |R |The INTEST instruction is enabled.
+|10 |extest_pulse_en |R |The EXTEST_PULSE instruction is enabled.
+|9 |extest_train_en |R |The EXTEST_TRAIN instruction is enabled.
+|8 |bsr_inst_en |R |All mandatory boundary scan instructions are enabled.
+|7:0 |och_ver |R |The MAJOR version number of the DTP IP.
 |===
 
 To access the JTAG_CAPS TDR:
@@ -318,11 +318,11 @@ _TMP_STATUS_ instructions have the same behavior as the _BYPASS_ instruction,
 and the _CH_RESET_N_ signal always responds to every POR, TRST, or TLR event,
 i.e. it is an exact copy of the _RESET_N_ signal.
 
-[width="100%",cols="34%,<33%,33%",options="header"]
+[width="100%",cols="3,1,6",options="header"]
 |===
-|*Bit* |*Description* |*Reset*
-|Bypass Escape |Whenever this bit is set, the TMP controller will transition to the _PERSISTENCE_OFF_ state when the TAP controller enters the _UPDATE_IR_ state after the _BYPASS_ instruction has been selected. |1
-|TMP Status |This bit is set when the TMP controller is in the Persistence-On state. |0
+|*Bit* |*Reset* |*Description*
+|Bypass Escape |1 |Whenever this bit is set, the TMP controller will transition to the _PERSISTENCE_OFF_ state when the TAP controller enters the _UPDATE_IR_ state after the _BYPASS_ instruction has been selected.
+|TMP Status |0 |This bit is set when the TMP controller is in the Persistence-On state.
 |===
 
 ===== 3DIC Support
@@ -342,11 +342,11 @@ The PTAP has a 2-bit _3DCR_ register that is accessed with the _TAP_3DCR_
 instruction. This register provides an option to bypass all STAPs in the scan
 chain.
 
-[width="100%",cols="34%,<33%,33%",options="header"]
+[width="100%",cols="3,1,6",options="header"]
 |===
-|*Bit* |*Description* |*Reset*
-|Config Hold |When this bit is set, the PTAP TLR state does not reset this TDR, and it will hold its current state until TRST is asserted. |0
-|Select |When this bit is unset, the PTAP's top-level STAP scan interface is completely bypassed. |0
+|*Bit* |*Reset* |*Description*
+|Config Hold |0 |When this bit is set, the PTAP TLR state does not reset this TDR, and it will hold its current state until TRST is asserted.
+|Select |0 |When this bit is unset, the PTAP's top-level STAP scan interface is completely bypassed.
 |===
 
 When STAP support is disabled, the TAP_3DCR instruction has the same behavior as
@@ -363,7 +363,8 @@ slices:
 * *SEP slice*: driven by the `ic_reset_sep_t` struct type and gated by
   `IC_RESET_SEP_ENABLE`. Sized from `$bits(ic_reset_sep_t)`.
 * *External slice* (nearest TDO): driven by the `ic_reset_ext_t` struct type and
-  gated by `IC_RESET_EXT_ENABLE`. Sized from `$bits(ic_reset_ext_t)`.
+  gated by `IC_RESET_EXT_ENABLE`. Sized from `$bits(ic_reset_ext_t)`. The
+  instantiator supplies this type; the PTAP does not name the external ports.
 
 Each slice's struct must contain `.ovrd` and `.val` sub-structs of identical
 width (checked via an elaboration-time assertion in `jtag_ptap`). Within
@@ -380,12 +381,12 @@ its corresponding struct type when the matching enable parameter is set
 
 The TDR has the following structure:
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header"]
+[width="100%",cols="2,2,1,1,6",options="header"]
 |===
-|Bits |Field |Description |Access |Reset
-|2*n+2 |reset_control |The controlled, active-low reset value driven while _reset_enable_ is 0 (i.e. while JTAG override is active). |R/W |1
-|2*n+1 |reset_enable |Active-LOW per IEEE 1149.1 §17: 1 (default) ⇒ JTAG override DISABLED (upstream reset passes through); 0 ⇒ JTAG override ENABLED (the port is driven by _reset_control_). The "enable" in the IEEE name refers to "enabling the controlled reset state", not the override mechanism. |R/W |1
-|0 |reset_hold |When 0, TLR will *not* reset the _reset_enable_ and _reset_control_ bits. TRST/POR will always reset all bits. |R/W |1
+|Bits |Field |Access |Reset |Description
+|2*n+2 |reset_control |RW |1 |The controlled, active-low reset value driven while _reset_enable_ is 0 (i.e. while JTAG override is active).
+|2*n+1 |reset_enable |RW |1 |Active-LOW per IEEE 1149.1 §17: 1 (default) ⇒ JTAG override DISABLED (upstream reset passes through); 0 ⇒ JTAG override ENABLED (the port is driven by _reset_control_). The "enable" in the IEEE name refers to "enabling the controlled reset state", not the override mechanism.
+|0 |reset_hold |RW |1 |When 0, TLR will *not* reset the _reset_enable_ and _reset_control_ bits. TRST/POR will always reset all bits.
 |===
 
 [IMPORTANT]
@@ -420,14 +421,14 @@ is enabled, the iJTAG network is selected for scan.
 This is a private instruction that accesses a read-only TDR reporting the
 configuration parameters for the given JTAG2AXI debugging instrument.
 
-[width="100%",cols="<20%,<20%,<20%,<20%,20%",options="header"]
+[width="100%",cols="2,2,1,7",options="header"]
 |===
-|Bits |Field |Description |Access |
-|13:12 |rd_pl_depth |The depth of the transaction read queue where 0 indicates only a single outstanding transaction allowed at any given time. |RO |
-|11:10 |wr_pl_depth |The depth of the transaction write queue where 0 indicates only a single outstanding transaction allowed at any given time. |RO |
-|9:7 |data_size |The size of AxDATA in powers-of-2 bytes. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits) |RO |
-|6:1 |addr_size |The size of AxADDR in bits. |RO |
-|0 |bus_type |The type of the AXI bus. 0: AXI4 1: AXI4-Lite |RO |
+|Bits |Field |Access |Description
+|13:12 |rd_pl_depth |R |The depth of the transaction read queue where 0 indicates only a single outstanding transaction allowed at any given time.
+|11:10 |wr_pl_depth |R |The depth of the transaction write queue where 0 indicates only a single outstanding transaction allowed at any given time.
+|9:7 |data_size |R |The size of AxDATA in powers-of-2 bytes. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|6:1 |addr_size |R |The size of AxADDR in bits.
+|0 |bus_type |R |The type of the AXI bus. 0: AXI4 1: AXI4-Lite
 |===
 
 ====== *_AXI_SINGLE_OP
@@ -439,16 +440,17 @@ shifted in for each transaction, this instruction is most useful for sparse
 accesses. This instruction uses semantics very similar to the RISC-V DTM DMI
 instruction.
 
-image::jtag2axi_single_op.png[AXI Single Op Instruction Diagram,scaledwidth=90.0%]
+.AXI Single OP Instruction layout with size==3 and addr_size==51.
+image::jtag2axi_single_op.svg[AXI Single OP Instruction layout with size==3 and addr_size==51,scaledwidth=90.0%]
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header"]
+[width="100%",cols="2,2,1,1,6",options="header"]
 |===
-|Bits |Field |Description |Access |Reset
-|(...) +: addr_size |address |Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value. |R/W |0
-|(...) +: 8*(2**data_size) |data |The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write. |R/W |0
-|5 +: (2**data_size) |wstrb |The byte strobes for a write transaction. This value is driven on WSTRB[7:0] when the transaction is a write. On a Capture-DR, this field holds the previous value. |R/W |0
-|(...) +: $bits(size) |size |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits) |R/W |0
-|1:0 |op |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status. 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. |R/W |0
+|Bits |Field |Access |Reset |Description
+|(...) +: addr_size |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value.
+|(...) +: 8*(2**data_size) |data |RW |0 |The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.
+|5 +: (2**data_size) |wstrb |RW |0 |The byte strobes for a write transaction. This value is driven on WSTRB[7:0] when the transaction is a write. On a Capture-DR, this field holds the previous value.
+|(...) +: $bits(size) |size |RW |0 |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status. 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.
 |===
 
 ====== *_AXI_SERIES_CTRL
@@ -463,16 +465,17 @@ is used when an external debugger wants to either:
 Using the series instructions instead of the AXI_SINGLE_OP instruction is much
 more time efficient for these use cases.
 
-image::jtag2axi_series_ctrl.png[AXI Series Control Instruction Diagram,scaledwidth=90.0%]
+.AXI Series Control Instruction layout with addr_size==51.
+image::jtag2axi_series_ctrl.svg[AXI Series Control Instruction layout with addr_size==51,scaledwidth=90.0%]
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header"]
+[width="100%",cols="2,2,1,1,6",options="header"]
 |===
-|Bits |Field |Description |Access |Reset
-|(...) +: 1 |reset |Reset the pending error flags reported in op. |R/W |0
-|(...) +: addr_size |address |Address used for AXI access. In Update-DR the AXI transaction is issued. |R/W |0
-|(...) +: 2 |pl_depth |pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and (wr/rd)_pl_depth field read from the JTAG_CAPS register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2'b00: There are no pending transactions 2'b01: There is at least one pending transaction |R/W |0
-|(...) +: $bits(size) |size |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits) |R/W |0
-|1:0 |op |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved When the debugger reads this field, it means the following: 0: All previous operations completed successfully and returned an OKAY status. 1: At least one previous operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset. |R/W |0
+|Bits |Field |Access |Reset |Description
+|(...) +: 1 |reset |RW |0 |Reset the pending error flags reported in op.
+|(...) +: addr_size |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued.
+|(...) +: 2 |pl_depth |RW |0 |pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and (wr/rd)_pl_depth field read from the JTAG_CAPS register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2'b00: There are no pending transactions 2'b01: There is at least one pending transaction
+|(...) +: $bits(size) |size |RW |0 |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved When the debugger reads this field, it means the following: 0: All previous operations completed successfully and returned an OKAY status. 1: At least one previous operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.
 |===
 
 ====== *_AXI_SERIES_DATA_INCR
@@ -490,14 +493,26 @@ This allows the debugger to load or dump contiguous regions of address space.
 Note that this is a variable-length data register. The length is n bits where
 n = 8*(2**AXI_SERIES_CTRL.size).
 
-image::jtag2axi_series_data_incr0.png[AXI Series Data INCR Diagram (size 0),scaledwidth=90.0%]
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+and Capture-DR returns the payload from those lanes.
 
-image::jtag2axi_series_data_incr1-2-3.png[AXI Series Data INCR Diagram (sizes 1-3),scaledwidth=90.0%]
+.AXISeriesDataIncr when AXISeriesCtrl.size==0.
+image::jtag2axi_series_data_incr0.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header"]
+.AXISeriesDataIncr when AXISeriesCtrl.size==1.
+image::jtag2axi_series_data_incr1.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+
+.AXISeriesDataIncr when AXISeriesCtrl.size==2.
+image::jtag2axi_series_data_incr2.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+
+.AXISeriesDataIncr when AXISeriesCtrl.size==3.
+image::jtag2axi_series_data_incr3.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==3,scaledwidth=90.0%]
+
+[width="100%",cols="2,2,1,1,6",options="header"]
 |===
-|Bits |Field |Description |Access |Reset
-|n-1:0 |data |Data value to read/write. The read data is from the previous read access. |R/W |0
+|Bits |Field |Access |Reset |Description
+|n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
 |===
 
 ====== *_AXI_SERIES_DATA_NO_INCR
@@ -513,14 +528,26 @@ This is useful for repeated polling or triggering.
 Note that this is a variable-length data register. The length is n bits where
 n = 8*(2**AXI_SERIES_CTRL.size).
 
-image::jtag2axi_series_data_noincr0-1.png[AXI Series Data NO_INCR Diagram (sizes 0-1),scaledwidth=90.0%]
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+and Capture-DR returns the payload from those lanes.
 
-image::jtag2axi_series_data_noincr2-3.png[AXI Series Data NO_INCR Diagram (sizes 2-3),scaledwidth=90.0%]
+.AXISeriesDataNoIncr when AXISeriesCtrl.size==0.
+image::jtag2axi_series_data_incr0.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header"]
+.AXISeriesDataNoIncr when AXISeriesCtrl.size==1.
+image::jtag2axi_series_data_incr1.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+
+.AXISeriesDataNoIncr when AXISeriesCtrl.size==2.
+image::jtag2axi_series_data_incr2.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+
+.AXISeriesDataNoIncr when AXISeriesCtrl.size==3.
+image::jtag2axi_series_data_incr3.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==3,scaledwidth=90.0%]
+
+[width="100%",cols="2,2,1,1,6",options="header"]
 |===
 |Bits |Field |Description |Access |Reset
-|n-1:0 |data |Data value to read/write. The read data is from the previous read access. |R/W |0
+|n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
 |===
 
 ====== *_AXI_SERIES_DATA_WITH_ERROR_STATUS
@@ -536,47 +563,46 @@ during a block operation.
 Note that this is a variable-length data register. The length is n+1 bits where
 n = 8*(2**AXI_SERIES_CTRL.size).
 
-image::jtag2axi_series_data_error0-1.png[AXI Series Data With Error Status (sizes 0-1),scaledwidth=90.0%]
+The data field is the logical transfer payload. The bridge places that payload
+on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+and Capture-DR returns the payload from those lanes.
 
-image::jtag2axi_series_data_error2-3.png[AXI Series Data With Error Status (sizes 2-3),scaledwidth=90.0%]
+.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0.
+image::jtag2axi_series_data_error0.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0,scaledwidth=90.0%]
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header"]
+.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1.
+image::jtag2axi_series_data_error1.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+
+.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2.
+image::jtag2axi_series_data_error2.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+
+.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3.
+image::jtag2axi_series_data_error3.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3,scaledwidth=90.0%]
+
+[width="100%",cols="2,2,1,1,6",options="header"]
 |===
-|Bits |Field |Description |Access |Reset
-|n |increment/status |The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed". |R/W |0
-|n-1:0 |data |Data value to read/write. The read data is from the previous read access. |R/W |0
+|Bits |Field |Access |Reset |Description
+|n |increment/status |RW |0 |The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".
+|n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
 |===
 
-===== Security and Lifecycle Control
+===== Debug Disable
 
-The PTAP integrates with the chiplet lifecycle controller through the
-`feat_ctrl_i` input signal to enforce security policies on debug interfaces.
-This 64-bit feature control vector originates from the SEP eFuse controller and
-determines which debug features are accessible based on the current lifecycle
-state. `feat_ctrl_i` is enable-polarity (1 = feature enabled).
+The PTAP has three per-bridge debug-disable inputs. The JTAG interface unit
+synchronizes those bits to TCK and presents them here as ready-to-gate signals.
+Each input is active-high: when it is 1, the corresponding `jtag2axi` instance
+blocks AXI transaction generation.
 
-The PTAP derives three independent security disable signals from the feature
-control vector. Each bridge is enabled only when *all* of its listed enables are
-asserted, so it is disabled when *any* one of them is deasserted:
-
-[width="100%",cols="<25%,<37%,<38%",options="header"]
+[width="100%",cols="<40%,<60%",options="header"]
 |===
-|Debug Interface |Enabled When Feature Control Satisfies |Security Disable Signal
+|Debug Interface |Disable Input
 
 |SMC Fabric JTAG2AXI
-|`feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug`
-|`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`smc_jtag2axi_security_disable_i`
 
 |SMC OTP JTAG2AXIL
-|`feat_ctrl_i.fuse_test \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug`
-|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`smc_otp_jtag2axi_security_disable_i`
 
 |SEP OTP JTAG2AXIL
-|`feat_ctrl_i.fuse_test \&\& feat_ctrl_i.sep_debug \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug`
-|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`sep_otp_jtag2axi_security_disable_i`
 |===
-
-Each derived security disable signal feeds into the corresponding `jtag2axi`
-module instance. When a debug interface is disabled by lifecycle state, the
-JTAG2AXI module blocks all AXI transaction generation, preventing unauthorized
-access to memory-mapped debug registers and system resources.

@@ -27,6 +27,11 @@ module otbn
   parameter bit SecMuteUrnd = 1'b0,
   // Skip URND re-seed at the start of an operation. Useful for SCA only.
   parameter bit SecSkipUrndReseedAtStart = 1'b0,
+  // Masking accelerator interface will not randomize operand start indexes.
+  parameter bit SecFixMaiOpSeq = 1'b0,
+
+  // Masking accelerator is not present. Useful for resource-bound targets only.
+  parameter bit FeatStubMai = 1'b0,
 
   // Compile-time permutation for URND permutation in BN MAC
   parameter bn_mac_urnd_perm_t RndCnstBnMacUrndPerm = RndCnstBnMacUrndPermDefault,
@@ -957,6 +962,7 @@ module otbn
   assign hw2reg.err_bits.illegal_bus_access.d = err_bits_q.illegal_bus_access;
   assign hw2reg.err_bits.lifecycle_escalation.d = err_bits_q.lifecycle_escalation;
   assign hw2reg.err_bits.fatal_software.d = err_bits_q.fatal_software;
+  assign hw2reg.err_bits.mai_software_error.d = err_bits_q.mai_error;
 
   assign err_bits_clear = reg2hw.err_bits.bad_data_addr.qe & is_not_running_q;
   assign err_bits_d = err_bits_clear ? '0 : err_bits;
@@ -981,7 +987,8 @@ module otbn
                                     reg2hw.err_bits.bad_internal_state,
                                     reg2hw.err_bits.illegal_bus_access,
                                     reg2hw.err_bits.lifecycle_escalation,
-                                    reg2hw.err_bits.fatal_software};
+                                    reg2hw.err_bits.fatal_software,
+                                    reg2hw.err_bits.mai_software_error};
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
@@ -1070,12 +1077,8 @@ module otbn
   logic [EdnDataWidth-1:0] edn_rnd_data;
   logic edn_rnd_fips, edn_rnd_err;
 
-  logic edn_urnd_req, edn_urnd_ack;
-  logic [EdnDataWidth-1:0] edn_urnd_data;
-
-  // These synchronize the data coming from EDN and stack the 32 bit EDN words to achieve an
-  // internal entropy width of 256 bit.
-
+  // This EDN request module synchronizes the data coming from EDN and stack the 32 bit EDN words
+  // to achieve an internal entropy width of 256 bit.
   prim_edn_req #(
     .EnRstChks(1'b1),
     .OutWidth(EdnDataWidth),
@@ -1096,24 +1099,28 @@ module otbn
     .edn_i      ( edn_rnd_i )
   );
 
-  prim_edn_req #(
-    .EnRstChks(1'b1),
-    .OutWidth(EdnDataWidth)
-  ) u_prim_edn_urnd_req (
-    .clk_i,
-    .rst_ni     ( rst_n         ),
-    .req_chk_i  ( 1'b1          ),
-    .req_i      ( edn_urnd_req  ),
-    .ack_o      ( edn_urnd_ack  ),
-    .data_o     ( edn_urnd_data ),
-    .fips_o     (               ), // unused
-    .err_o      (               ), // unused
-    .clk_edn_i,
-    .rst_edn_ni,
-    .edn_o      ( edn_urnd_o    ),
-    .edn_i      ( edn_urnd_i    )
-  );
+  edn_pkg::edn_req_t edn_urnd_req;
+  edn_pkg::edn_rsp_t edn_urnd_rsp;
 
+  // Synchronize the data from the EDN network to the main clock of OTBN.
+  prim_sync_reqack_data #(
+    .Width(edn_pkg::ENDPOINT_BUS_WIDTH + 32'd1),
+    .EnRstChks(1'b1),
+    .DataSrc2Dst(1'b0),
+    .DataReg(1'b0)
+  ) u_prim_sync_reqack_data_urnd (
+    .clk_src_i (clk_i),
+    .rst_src_ni(rst_n),
+    .clk_dst_i (clk_edn_i),
+    .rst_dst_ni(rst_edn_ni),
+    .req_chk_i (1'b1),
+    .src_req_i (edn_urnd_req.edn_req),
+    .src_ack_o (edn_urnd_rsp.edn_ack),
+    .dst_req_o (edn_urnd_o.edn_req),
+    .dst_ack_i (edn_urnd_i.edn_ack),
+    .data_i    ({edn_urnd_i.edn_fips,   edn_urnd_i.edn_bus  }),
+    .data_o    ({edn_urnd_rsp.edn_fips, edn_urnd_rsp.edn_bus})
+  );
 
   // OTBN Core =================================================================
 
@@ -1135,6 +1142,8 @@ module otbn
     .ImemSizeByte(ImemSizeByte),
     .RndCnstUrndPrngSeed(RndCnstUrndPrngSeed),
     .SecMuteUrnd(SecMuteUrnd),
+    .SecFixMaiOpSeq(SecFixMaiOpSeq),
+    .FeatStubMai(FeatStubMai),
     .SecSkipUrndReseedAtStart(SecSkipUrndReseedAtStart),
     .RndCnstBnMacUrndPerm(RndCnstBnMacUrndPerm)
   ) u_otbn_core (
@@ -1170,9 +1179,8 @@ module otbn
     .edn_rnd_fips_i              (edn_rnd_fips),
     .edn_rnd_err_i               (edn_rnd_err),
 
-    .edn_urnd_req_o              (edn_urnd_req),
-    .edn_urnd_ack_i              (edn_urnd_ack),
-    .edn_urnd_data_i             (edn_urnd_data),
+    .edn_urnd_o                  (edn_urnd_req),
+    .edn_urnd_i                  (edn_urnd_rsp),
 
     .insn_cnt_o                  (insn_cnt),
     .insn_cnt_clear_i            (insn_cnt_clear),
@@ -1236,7 +1244,8 @@ module otbn
     illegal_insn:         core_err_bits.illegal_insn,
     call_stack:           core_err_bits.call_stack,
     bad_insn_addr:        core_err_bits.bad_insn_addr,
-    bad_data_addr:        core_err_bits.bad_data_addr
+    bad_data_addr:        core_err_bits.bad_data_addr,
+    mai_error:            core_err_bits.mai_error
   };
 
   // An error signal going down into the core to show that it should locally escalate. In
@@ -1527,4 +1536,17 @@ module otbn
     u_tlul_adapter_sram_imem.u_reqfifo,
     gen_alert_tx[AlertFatalIdx].u_prim_alert_sender.alert_req_i
   )
+
+  if (!FeatStubMai) begin : gen_mai_alert_asserts
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(
+      OtbnMaiInputCntAlertCheck_A,
+      u_otbn_core.gen_mai.u_otbn_mai.u_prim_count_input_word_select,
+      gen_alert_tx[AlertFatalIdx].u_prim_alert_sender.alert_req_i
+    )
+    `OCAH_OT_ASSERT_PRIM_COUNT_ERROR_TRIGGER_ALERT_IN(
+      OtbnMaiOutputCntAlertCheck_A,
+      u_otbn_core.gen_mai.u_otbn_mai.u_prim_count_output_word_select,
+      gen_alert_tx[AlertFatalIdx].u_prim_alert_sender.alert_req_i
+    )
+  end
 endmodule

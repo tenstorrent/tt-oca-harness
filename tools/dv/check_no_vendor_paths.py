@@ -37,16 +37,9 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
-# ---------------------------------------------------------------------------
-# Python 3.11+ stdlib TOML support; fall back to graceful error otherwise.
-# ---------------------------------------------------------------------------
-try:
-    import tomllib  # type: ignore[import]
-except ImportError:
-    tomllib = None  # type: ignore[assignment]
-
 try:
     import yaml  # type: ignore[import]
+
     _HAS_YAML = True
 except ImportError:
     _HAS_YAML = False
@@ -63,23 +56,27 @@ _DEFAULT_CONFIG = _SCRIPT_DIR / "check_no_vendor_paths.yaml"
 # Data types
 # ---------------------------------------------------------------------------
 
+
 class ForbiddenPrefix(NamedTuple):
     prefix: str
     description: str
 
 
 class Violation(NamedTuple):
-    path: str           # The forbidden path token found
+    path: str  # The forbidden path token found
     matched_prefix: str
-    source_file: str    # Filelist or source file that contained this token
-    source_line: int    # 1-based line number in source_file
+    source_file: str  # Filelist or source file that contained this token
+    source_line: int  # 1-based line number in source_file
 
 
 # ---------------------------------------------------------------------------
 # Config loading
 # ---------------------------------------------------------------------------
 
-def _load_config(config_path: Path, target: str | None) -> tuple[list[ForbiddenPrefix], list[str], list[str]]:
+
+def _load_config(
+    config_path: Path, target: str | None
+) -> tuple[list[ForbiddenPrefix], list[str], list[str]]:
     """Return (forbidden_prefixes, allowed_prefixes, checked_extensions)."""
     if not config_path.exists():
         _die(f"Config file not found: {config_path}")
@@ -89,17 +86,17 @@ def _load_config(config_path: Path, target: str | None) -> tuple[list[ForbiddenP
         with config_path.open() as fh:
             raw = yaml.safe_load(fh) or {}
     else:
-        # Fallback: very small inline YAML parser for the simple list-of-dicts
-        # structure used here.  This only handles the specific shape of the
-        # config file to avoid a hard yaml dependency.
+        # Fallback parser: handles only the list-of-dicts shape of check_no_vendor_paths.yaml.
         raw = _minimal_yaml_load(config_path)
 
     forbidden: list[ForbiddenPrefix] = []
     for entry in raw.get("forbidden_prefixes", []):
-        forbidden.append(ForbiddenPrefix(
-            prefix=entry["prefix"],
-            description=entry.get("description", ""),
-        ))
+        forbidden.append(
+            ForbiddenPrefix(
+                prefix=entry["prefix"],
+                description=entry.get("description", ""),
+            )
+        )
 
     # Build per-target allowlist
     allowed: list[str] = []
@@ -108,15 +105,22 @@ def _load_config(config_path: Path, target: str | None) -> tuple[list[ForbiddenP
             if isinstance(tgt_entry, dict) and tgt_entry.get("target") == target:
                 allowed.extend(tgt_entry.get("allow", []))
 
-    extensions: list[str] = raw.get("checked_extensions", [
-        ".sv", ".v", ".vp", ".svh", ".vh",
-    ])
+    extensions: list[str] = raw.get(
+        "checked_extensions",
+        [
+            ".sv",
+            ".v",
+            ".vp",
+            ".svh",
+            ".vh",
+        ],
+    )
     return forbidden, allowed, extensions
 
 
 def _minimal_yaml_load(path: Path) -> dict:
     """Extremely minimal YAML loader for the specific config shape."""
-    # This is intentionally limited; install PyYAML for full support.
+    # Handles only the shape of check_no_vendor_paths.yaml; PyYAML is used when importable.
     lines = path.read_text().splitlines()
     result: dict = {
         "forbidden_prefixes": [],
@@ -137,19 +141,27 @@ def _minimal_yaml_load(path: Path) -> dict:
             key, _, rest = stripped.partition(":")
             key = key.strip()
             rest = rest.strip()
-            if key in ("forbidden_prefixes", "per_target_allowlist",
-                       "checked_extensions", "filelist_path_directives"):
+            if key in (
+                "forbidden_prefixes",
+                "per_target_allowlist",
+                "checked_extensions",
+                "filelist_path_directives",
+            ):
                 current_section = key
                 current_item = None
             continue
 
         # List items under a section
         if current_section == "forbidden_prefixes" and stripped.startswith("- prefix:"):
-            prefix_val = stripped[len("- prefix:"):].strip().strip('"').strip("'")
+            prefix_val = stripped[len("- prefix:") :].strip().strip('"').strip("'")
             current_item = {"prefix": prefix_val, "description": ""}
             result["forbidden_prefixes"].append(current_item)
-        elif current_section == "forbidden_prefixes" and stripped.startswith("description:") and current_item:
-            desc = stripped[len("description:"):].strip().strip('"').strip("'")
+        elif (
+            current_section == "forbidden_prefixes"
+            and stripped.startswith("description:")
+            and current_item
+        ):
+            desc = stripped[len("description:") :].strip().strip('"').strip("'")
             current_item["description"] = desc
         elif current_section == "checked_extensions" and stripped.startswith("- "):
             ext = stripped[2:].strip().strip('"').strip("'")
@@ -169,8 +181,15 @@ def _minimal_yaml_load(path: Path) -> dict:
 
 _FILELIST_PATH_PREFIXES = ("+incdir+", "-f ", "-F ")
 _FLAG_PREFIXES = (
-    "+define+", "-Wno-", "--", "-sv", "-cc", "-Wall",
-    "+timescale", "+librescan", "+notimingcheck",
+    "+define+",
+    "-Wno-",
+    "--",
+    "-sv",
+    "-cc",
+    "-Wall",
+    "+timescale",
+    "+librescan",
+    "+notimingcheck",
 )
 
 
@@ -192,7 +211,7 @@ def _extract_path_tokens(line: str) -> list[str]:
 
     # +incdir+<path>[+<path>...]
     if stripped.startswith("+incdir+"):
-        rest = stripped[len("+incdir+"):]
+        rest = stripped[len("+incdir+") :]
         for part in rest.split("+"):
             p = part.strip()
             if p:
@@ -272,7 +291,10 @@ def _collect_filelist_paths(
 # Directory scanner
 # ---------------------------------------------------------------------------
 
-def _collect_dir_paths(scan_dir: Path, checked_extensions: list[str]) -> list[tuple[str, Path, int]]:
+
+def _collect_dir_paths(
+    scan_dir: Path, checked_extensions: list[str]
+) -> list[tuple[str, Path, int]]:
     """Return (path, source_file, 0) for every file in scan_dir with a checked extension."""
     results: list[tuple[str, Path, int]] = []
     for root, _dirs, files in os.walk(scan_dir):
@@ -287,6 +309,7 @@ def _collect_dir_paths(scan_dir: Path, checked_extensions: list[str]) -> list[tu
 # Violation detection
 # ---------------------------------------------------------------------------
 
+
 def _check_tokens(
     tokens: list[tuple[str, Path, int]],
     forbidden: list[ForbiddenPrefix],
@@ -299,12 +322,14 @@ def _check_tokens(
             continue
         for fp in forbidden:
             if fp.prefix in path_token:
-                violations.append(Violation(
-                    path=path_token,
-                    matched_prefix=fp.prefix,
-                    source_file=str(source_file),
-                    source_line=source_line,
-                ))
+                violations.append(
+                    Violation(
+                        path=path_token,
+                        matched_prefix=fp.prefix,
+                        source_file=str(source_file),
+                        source_line=source_line,
+                    )
+                )
                 break  # Report the first matched prefix per token
     return violations
 
@@ -312,6 +337,7 @@ def _check_tokens(
 # ---------------------------------------------------------------------------
 # Reporting
 # ---------------------------------------------------------------------------
+
 
 def _report(violations: list[Violation], quiet: bool, verbose: bool) -> None:
     if not violations:
@@ -346,6 +372,7 @@ def _summary_line(violations: list[Violation], quiet: bool) -> None:
 # Utilities
 # ---------------------------------------------------------------------------
 
+
 def _die(msg: str) -> None:
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(2)
@@ -354,6 +381,7 @@ def _die(msg: str) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -364,29 +392,35 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument(
-        "--filelist", metavar="FILE",
+        "--filelist",
+        metavar="FILE",
         help="Path to a .f filelist to scan (follows -f sub-filelists recursively).",
     )
     source.add_argument(
-        "--scan-dir", metavar="DIR",
+        "--scan-dir",
+        metavar="DIR",
         help="Recursively scan a directory tree for source files with checked extensions.",
     )
     parser.add_argument(
-        "--config", metavar="FILE",
+        "--config",
+        metavar="FILE",
         default=str(_DEFAULT_CONFIG),
         help="Path to the YAML config file (default: %(default)s).",
     )
     parser.add_argument(
-        "--target", metavar="TARGET",
+        "--target",
+        metavar="TARGET",
         default=None,
         help="Named target for per-target allowlist overrides defined in the config.",
     )
     parser.add_argument(
-        "--quiet", action="store_true",
+        "--quiet",
+        action="store_true",
         help="Suppress per-violation detail; print only a summary line. Useful for CI.",
     )
     parser.add_argument(
-        "--verbose", action="store_true",
+        "--verbose",
+        action="store_true",
         help="Print every file checked, not just violations.",
     )
     return parser.parse_args(argv)
@@ -414,8 +448,9 @@ def main(argv: list[str] | None = None) -> int:
         tokens = _collect_dir_paths(scan_dir, checked_extensions)
 
     if args.verbose and not args.quiet:
-        print(f"Checking {len(tokens)} path token(s) against "
-              f"{len(forbidden)} forbidden prefix(es)...")
+        print(
+            f"Checking {len(tokens)} path token(s) against {len(forbidden)} forbidden prefix(es)..."
+        )
         for path_token, source_file, source_line in tokens:
             loc = f"{source_file}:{source_line}" if source_line else str(source_file)
             print(f"  [check] {path_token}  (from {loc})")

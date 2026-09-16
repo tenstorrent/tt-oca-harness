@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// SMC Verilator coverage scope. Passed to Verilator at compile time from
+// [coverage.verilator].build_args in smc_sim_cfg.toml, so what it drops never
+// enters the coverage database. Edit then `--rebuild`.
+//
+// This is the Verilator counterpart of SEP's cov/config/vcs/sep_cov_scope.hier
+// and it follows the same rule SEP measured: scope has to be applied at
+// COMPILE time. A report-time filter prunes the pages and still grades the
+// whole database.
+//
+// MECHANISM NOTE: Verilator's `coverage_off` takes `-file` (with globs) only.
+// There is no `-module` form -- `coverage_off -module "prim_rom"` is a syntax
+// error. VCS scopes by hierarchy, so the .hier file next door names instance
+// trees for the same intent; the two files must be kept in step by hand.
+//
+// GLOB NOTE: the pattern is matched against the path as Verilator OPENED the
+// file, not the absolute path it records in the generated code. The filelist
+// is absolute but files reached through `+incdir+` are opened relative, so a
+// pattern must cover both forms. `*vendor/*` matches either; `*/vendor/*`
+// matches only the absolute form and silently leaves the rest instrumented.
+// Never put a `/` straight after the leading `*`.
+//
+// DO NOT add hw/sys/smc/dv/cov/sv/* here. Those files carry the
+// OCAH_FCOV_COVER points that populate the `user` metric family; excluding
+// them would delete the functional coverage this flow exists to collect.
+
+`verilator_config
+
+// ---------------------------------------------------------------------------
+// Testbench code. Not the DUT, must not be scored.
+// ---------------------------------------------------------------------------
+// tb_top.sv is the TB body itself (SEP drops the same thing with
+// `-tree sep_uvm_top 1`). The cov/sv modules it instantiates are separate
+// files and stay instrumented.
+coverage_off -file "*hw/sys/smc/dv/tb/tb_top.sv"
+coverage_off -file "*hw/sys/smc/dv/tb/smc_tb_if.sv"
+coverage_off -file "*hw/sys/smc/dv/tb/verilator_stubs/*"
+// DV collateral bound into smc_ip_integration: counters, FW mailbox, ECC
+// inject hook, image backdoors.
+coverage_off -file "*hw/sys/smc/dv/models/*"
+
+// ---------------------------------------------------------------------------
+// Chipyard-generated CPU cluster.
+// ---------------------------------------------------------------------------
+// Generated third-party RTL that only the CPU-reaching tests exercise; the
+// same argument SEP used to drop `sep_uvm_top.u_dut.u_sep.sep_cpu`.
+// VCS equivalent: -tree smc_uvm_top.u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
+coverage_off -file "*chipyard_generated_files/*"
+
+// ---------------------------------------------------------------------------
+// Vendored third-party RTL.
+// ---------------------------------------------------------------------------
+// Third-party RTL:
+// pulp-platform axi + common_cells, chipsalliance i3c-core, lowRISC prims,
+// tt-hw-debug trace/mmr. None of it is SMC-level DV's to close, and leaving it
+// in makes the headline number a statement about other projects' code.
+coverage_off -file "*vendor/*"
+
+// IP blocks and shared primitives SMC integrates carry their own DV packages
+// and their own coverage; SMC grades the integration it owns (rtl/, regs/ and
+// the cov/sv points), the same rule the SMU and DTP scopes apply.
+coverage_off -file "*hw/ip/*"
+coverage_off -file "*hw/common/*"
+
+// KNOWN GAP: this line drops chipsalliance/i3c-core and lowRISC/opentitan,
+// but not vendor/pulp-platform/** or vendor/tenstorrent/tt-hw-debug/**, which
+// stay instrumented. No file pattern reaches them; `*pulp-platform/*` and
+// `*tt-hw-debug/*` are inert here, so do not add them back. The scoped
+// denominator is therefore larger than a complete vendor exclusion would
+// give. ../vcs/README.md carries the measurement method.

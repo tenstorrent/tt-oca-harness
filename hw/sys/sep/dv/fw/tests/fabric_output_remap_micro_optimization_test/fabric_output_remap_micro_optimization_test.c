@@ -4,9 +4,9 @@
 /*
  * fabric_output_remap_micro_optimization_test
  *
- * Strategy: Micro boundary-case fill-in; focus on the last untouched toggle bits
+ * Strategy: Micro boundary cases; fine-grained toggle bits
  *
- * Focus on finest boundary conditions and untouched corner cases
+ * Focus on the finest boundary conditions and corner cases
  */
 
 #include "sep_test_common.h"
@@ -15,13 +15,13 @@
 // Micro boundary and anomaly scenarios
 #define MICRO_REMAP_SCENARIOS 12
 
-// Boundary values - focus on untouched edges
-#define ADDR_BOUNDARY_EDGE_LOW 0x7FFFFFFE // 32-bit boundary - 2
+// Boundary values at the 32-bit edges
+#define ADDR_BOUNDARY_EDGE_LOW 0x7FFFFFFE  // 32-bit boundary - 2
 #define ADDR_BOUNDARY_EDGE_HIGH 0x80000001 // 32-bit boundary + 1
-#define OFFSET_MICRO_PATTERN_1 0x00000003 // micro offset patterns
-#define OFFSET_MICRO_PATTERN_2 0x0000000C // micro offset patterns
-#define SIZE_MICRO_BURST_1 0x1 // 1-byte minimum burst
-#define SIZE_MICRO_BURST_2 0x3 // 3-byte unaligned
+#define OFFSET_MICRO_PATTERN_1 0x00000003  // micro offset patterns
+#define OFFSET_MICRO_PATTERN_2 0x0000000C  // micro offset patterns
+#define SIZE_MICRO_BURST_1 0x1             // 1-byte minimum burst
+#define SIZE_MICRO_BURST_2 0x3             // 3-byte unaligned
 
 static int test_micro_boundary_edge_cases(void) {
     printf("Starting micro boundary edge case tests...\n");
@@ -61,7 +61,7 @@ static int test_offset_calculation_corners(void) {
     uint32_t corner_offsets[] = {
         0x00000001, 0x00000002, 0x00000007, // small offsets
         0x0000000F, 0x0000001F, 0x0000003F, // nibble boundaries
-        0x000000FF, 0x000001FF, 0x000003FF // byte boundaries
+        0x000000FF, 0x000001FF, 0x000003FF  // byte boundaries
     };
 
     for (int i = 0; i < sizeof(corner_offsets) / sizeof(uint32_t); i++) {
@@ -171,7 +171,6 @@ int main(void) {
     printf("Output Remap Micro-Optimization Test\n");
     printf("Focus: boundary-case and residual field-toggle coverage\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_output_remap_micro_optimization_test");
         return TEST_FAIL;

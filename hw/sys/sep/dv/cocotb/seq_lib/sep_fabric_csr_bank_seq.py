@@ -5,12 +5,12 @@
 Combined-per-group CSR R/W sweep over the SEP "System block" fabric banks, driven
 over the CPU-LSU AXI master (no_cpu). Proves field R/W + 64-bit upper-word access +
 the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_width
-field. RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
+field. The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
 NOT write-once-set -- only the filter locked bit is woset. CSR layer only --
 live remap translation and outbound-filter drop are not claimed here.
 
-All banks need the fabric clocks ungated first (CLOCK_GATE_CTRL); the existing
-sep_address_map_seq already does this with the same value.
+All banks need the fabric clocks ungated first (CLOCK_GATE_CTRL);
+sep_address_map_seq writes the same value.
 
 Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
   Local-master alias-remap : base 0x10A1_0000, stride 0x20, 16 regions
@@ -18,8 +18,8 @@ Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
       REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[62], valid[63]=R/W)
   AP   output-remap        : base 0x10A1_0200, stride 0x08; REGION_ATTRS +0x00 (64b)
   STEE output-remap        : base 0x10A1_0300, stride 0x08; REGION_ATTRS +0x00 (64b)
-  Inbound  filter          : base 0x10A2_1000, stride 0x20, 8 entries
-  Outbound filter          : base 0x10A2_0000, stride 0x20, 16 entries
+  Inbound  filter          : base 0x10A2_1000, stride 0x20, 16 entries
+  Outbound filter          : base 0x10A2_0000, stride 0x20, 32 entries
       FILTER_CONFIG +0x00 (64b): read_allowed[0] write_allowed[1] entry_enabled[4] allow_ns[8]
       data_bus_width[14:12]=RO 3, src_id[19:16] group_id[23:20] allow_burst[24],
       locked[63]=woset.  START_ADDR +0x08, END_ADDR +0x10.
@@ -31,9 +31,16 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from sep_reg_meta import (
+    INBOUND_FILTER_CTRL_0,
+    LOCAL_MASTER_ALIAS_REMAP_CTRL_0,
+    SEP_CPU_CTRL,
+    indexed_block_count,
+    sym,
+)
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
-from sep_reg_meta import SEP_CPU_CTRL, sym
 
 # --- fabric clock ungate ------------------------------------------------------
 # Derived from the generated SystemRDL export, never hardcoded.
@@ -46,52 +53,69 @@ CLOCK_GATE_UNGATE = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 # --- alias-remap (local master) -----------------------------------------------
 ALIAS_BASE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
-ALIAS_STRIDE = 0x20
-ALIAS_START = 0x00          # 64-bit, lo/hi at +0/+4
-ALIAS_END = 0x08            # 64-bit, 4KB-aligned ([11:0] masked)
-ALIAS_ATTRS = 0x10          # 64-bit; valid = bit 63 (hi word bit 31)
+ALIAS_STRIDE = sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - ALIAS_BASE
+ALIAS_START = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_START")
+ALIAS_END = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_END")
+ALIAS_ATTRS = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
 
 # --- AP / STEE output-remap ---------------------------------------------------
 AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
-REMAP_STRIDE = 0x08
-REMAP_ATTRS = 0x00          # 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
+REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
+REMAP_ATTRS = 0x00  # 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
 
 # --- inbound / outbound filter config -----------------------------------------
 INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 OUTFILT_BASE = sym("OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
-FILTER_STRIDE = 0x20
-FILTER_CONFIG = 0x00        # lo = fields, hi (+4) bit 31 = locked (woset)
+FILTER_STRIDE = sym("INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - INFILT_BASE
+# Per-entry FILTER_* offsets (64-bit START/END as lo/hi 32-bit words). Both SEP
+# filters are instances of the same axi_filter_wrap block (hw/sys/sep/doc/fabric.adoc), so
+# one per-entry layout describes the inbound and the outbound bank; only the
+# inbound block is exported as a register block, and it is the source here.
+FILTER_START_ADDR = INBOUND_FILTER_CTRL_0.offset("START_ADDR")
+FILTER_END_ADDR = INBOUND_FILTER_CTRL_0.offset("END_ADDR")
+FILTER_CONFIG = INBOUND_FILTER_CTRL_0.offset("FILTER_CONFIG")
 
-WOSET_HI_BIT = 31           # remap valid[63] (R/W) and filter locked[63] (woset) both at hi[31]
+# remap valid[63] (R/W) and filter locked[63] (woset) both sit in the hi word.
+WOSET_HI_BIT = LOCAL_MASTER_ALIAS_REMAP_CTRL_0.field_lsb("REGION_REGION_ATTRS", "valid") - 32
 
 # axi_pkg response codes (a locked filter entry rejects a further write with SLVERR).
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
-# FILTER_CONFIG field positions (lo word).
-F_READ_ALLOWED = 1 << 0
-F_WRITE_ALLOWED = 1 << 1
-F_ENTRY_ENABLED = 1 << 4
-F_ALLOW_NS = 1 << 8
-DBW_LSB, DBW_MASK, DBW_RO_VAL = 12, 0x7, 3      # data_bus_width [14:12] RO == 3
-F_SRC_ID_LSB = 16
-F_GROUP_ID_LSB = 20
-F_ALLOW_BURST = 1 << 24
+# FILTER_CONFIG field positions (lo word), from the generated bitfield.
+F_READ_ALLOWED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "read_allowed")
+F_WRITE_ALLOWED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "write_allowed")
+F_ENTRY_ENABLED = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "entry_enabled")
+F_ALLOW_NS = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_ns")
+_DBW_MASK = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "data_bus_width")
+DBW_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "data_bus_width")
+DBW_MASK = _DBW_MASK >> DBW_LSB
+DBW_RO_VAL = (INBOUND_FILTER_CTRL_0.reset32("FILTER_CONFIG") >> DBW_LSB) & DBW_MASK
+F_SRC_ID_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "src_id")
+F_GROUP_ID_LSB = INBOUND_FILTER_CTRL_0.field_lsb("FILTER_CONFIG", "group_id")
+F_ALLOW_BURST = INBOUND_FILTER_CTRL_0.field_mask("FILTER_CONFIG", "allow_burst")
 
 # A representative RW pattern across the writable FILTER_CONFIG fields (NOT touching
 # the RO data_bus_width [14:12]). src_id=0x5, group_id=0xA.
 FILTER_RW_PATTERN = (
-    F_READ_ALLOWED | F_WRITE_ALLOWED | F_ENTRY_ENABLED | F_ALLOW_NS
-    | (0x5 << F_SRC_ID_LSB) | (0xA << F_GROUP_ID_LSB) | F_ALLOW_BURST
+    F_READ_ALLOWED
+    | F_WRITE_ALLOWED
+    | F_ENTRY_ENABLED
+    | F_ALLOW_NS
+    | (0x5 << F_SRC_ID_LSB)
+    | (0xA << F_GROUP_ID_LSB)
+    | F_ALLOW_BURST
 )
-FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF   # compare RW fields, exclude RO
+FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF  # compare RW fields, exclude RO
 
 # Bank sizes (entries) for index randomization.
 ALIAS_REGIONS = 16
 REMAP_REGIONS = 16
-INFILT_ENTRIES = 8
-OUTFILT_ENTRIES = 16
+# Both banks are RDL arrays; take the counts from the export so this sweep and
+# the filter-rule sweep cannot disagree about how many entries exist.
+INFILT_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
+OUTFILT_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 
 
 class SepFabricCsrCfg:
@@ -114,23 +138,28 @@ class SepFabricCsrCfg:
         rng = SepSeededRng(seed)
         self.alias_rw_region = rng.randrange(ALIAS_REGIONS)
         self.alias_valid_region = rng.choice(
-            [i for i in range(ALIAS_REGIONS) if i != self.alias_rw_region])
+            [i for i in range(ALIAS_REGIONS) if i != self.alias_rw_region]
+        )
         self.ap_region = rng.randrange(REMAP_REGIONS)
         self.stee_region = rng.randrange(REMAP_REGIONS)
         self.infilt_fields_entry = rng.randrange(INFILT_ENTRIES)
         self.infilt_lock_entry = rng.choice(
-            [i for i in range(INFILT_ENTRIES) if i != self.infilt_fields_entry])
+            [i for i in range(INFILT_ENTRIES) if i != self.infilt_fields_entry]
+        )
         self.outfilt_fields_entry = rng.randrange(OUTFILT_ENTRIES)
         self.outfilt_lock_entry = rng.choice(
-            [i for i in range(OUTFILT_ENTRIES) if i != self.outfilt_fields_entry])
+            [i for i in range(OUTFILT_ENTRIES) if i != self.outfilt_fields_entry]
+        )
         # Masked-random field values (read back exactly). REGION_START/END are both
         # 4KB-aligned (low 12 bits masked in RTL); START must be nonzero for NONVAC.
-        self.start_lo = (rng.getrandbits(32) & ~0xFFF & 0xFFFF_FFFF) or 0x1000  # 4KB-aligned, nonzero
-        self.start_hi = rng.getrandbits(24)                            # addr[55:32]
-        self.end_lo = rng.getrandbits(32) & ~0xFFF & 0xFFFF_FFFF       # 4KB-aligned
-        self.attrs_lo = rng.getrandbits(32) & 0xFFFF_F000              # remap offset [31:12]
-        self.ap_lo = rng.getrandbits(32) & 0xFFF0_0000                 # offset [31:20]
-        self.ap_hi = rng.getrandbits(24)                               # offset [55:32]
+        self.start_lo = (
+            rng.getrandbits(32) & ~0xFFF & 0xFFFF_FFFF
+        ) or 0x1000  # 4KB-aligned, nonzero
+        self.start_hi = rng.getrandbits(24)  # addr[55:32]
+        self.end_lo = rng.getrandbits(32) & ~0xFFF & 0xFFFF_FFFF  # 4KB-aligned
+        self.attrs_lo = rng.getrandbits(32) & 0xFFFF_F000  # remap offset [31:12]
+        self.ap_lo = rng.getrandbits(32) & 0xFFF0_0000  # offset [31:20]
+        self.ap_hi = rng.getrandbits(24)  # offset [55:32]
         self.stee_lo = rng.getrandbits(32) & 0xFFF0_0000
         self.stee_hi = rng.getrandbits(24)
         # Random legal FILTER_CONFIG RW fields (never the RO data_bus_width [14:12]).
@@ -142,11 +171,13 @@ class SepFabricCsrCfg:
         self.filter_pattern = p & FILTER_RW_MASK
 
     def summary(self) -> str:
-        return (f"seed={self.seed} alias_rw=r{self.alias_rw_region} valid=r{self.alias_valid_region} "
-                f"ap=r{self.ap_region} stee=r{self.stee_region} "
-                f"infilt_fields=e{self.infilt_fields_entry} infilt_lock=e{self.infilt_lock_entry} "
-                f"outfilt_fields=e{self.outfilt_fields_entry} outfilt_lock=e{self.outfilt_lock_entry} "
-                f"filter_pattern=0x{self.filter_pattern:08x}")
+        return (
+            f"seed={self.seed} alias_rw=r{self.alias_rw_region} valid=r{self.alias_valid_region} "
+            f"ap=r{self.ap_region} stee=r{self.stee_region} "
+            f"infilt_fields=e{self.infilt_fields_entry} infilt_lock=e{self.infilt_lock_entry} "
+            f"outfilt_fields=e{self.outfilt_fields_entry} outfilt_lock=e{self.outfilt_lock_entry} "
+            f"filter_pattern=0x{self.filter_pattern:08x}"
+        )
 
 
 class SepFabricCsrBank(SepAxiRegDriver):
@@ -174,8 +205,12 @@ class SepFabricCsrBank(SepAxiRegDriver):
         the clear-attempt must not raise; the proof is the read-back value.
         """
         seq = SepAxiAccessSeq(
-            "fab_wr_tol", op=SepAxiOp.WRITE, addr=addr, wdata=data,
-            size=self._AXI_SIZE, allow_unverified_write_resp=True,
+            "fab_wr_tol",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data,
+            size=self._AXI_SIZE,
+            allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
         return seq.resp_code
@@ -190,10 +225,12 @@ class SepFabricCsrBank(SepAxiRegDriver):
             clear write with SLVERR and the bit stays set.
         """
         cur = await self._rd(hi_addr)
-        await self._wr(hi_addr, cur | (1 << bit))          # set (OKAY)
+        await self._wr(hi_addr, cur | (1 << bit))  # set (OKAY)
         after_set = (await self._rd(hi_addr) >> bit) & 1
         # Attempt to clear (tolerant: a locked entry rejects this with SLVERR).
-        clear_resp = await self._wr_tolerant(hi_addr, (cur | (1 << bit)) & ~(1 << bit) & 0xFFFF_FFFF)
+        clear_resp = await self._wr_tolerant(
+            hi_addr, (cur | (1 << bit)) & ~(1 << bit) & 0xFFFF_FFFF
+        )
         after_clear = (await self._rd(hi_addr) >> bit) & 1
         return after_set, after_clear, clear_resp
 

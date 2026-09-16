@@ -61,6 +61,8 @@
     `OCAH_ASSERT_AT_RESET(AtReset_``__name``, __prop, __rst)                           \
     `OCAH_ASSERT_FINAL(Final_``__name``, __prop)
 
+// Keep macro headers on one physical line for synthesis elaboration.
+// verilog_format: off
 `define OCAH_ASSERT(__name, __prop, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
 `ifdef OCAH_INC_ASSERT                                                                                 \
   __name: assert property (@(posedge __clk) disable iff ((__rst) !== '0) (__prop))                \
@@ -108,3 +110,4 @@
       `OCAH_ASSERT_ERROR(__name)                                                                                    \
     end                                                                                                             \
 `endif
+// verilog_format: on

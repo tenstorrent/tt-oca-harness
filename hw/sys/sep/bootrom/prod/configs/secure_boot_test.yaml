@@ -1,30 +1,28 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# OCH SEP Secure Boot Test — manifest config for tt-boot-manifest.
+# OCAH SEP Secure Boot Test — manifest config for tt-boot-manifest.
 #
-# disable_checks: OCH SEP uses ICCM at 0xC0000000,
+# disable_checks: OCAH SEP uses ICCM at 0xC0000000,
 # so we must disable the built-in address range validation.
 meta:
   disable_checks: true
 
-# Produces a signed SPI image for testing C13.10 secure boot validation:
+# BL1 executes from SEP ICCM, so the packer must validate the BL1 entry point
+# against ICCM's window rather than its default.
+platform:
+  sep_iram_base: 0xC0000000
+  sep_iram_size: 0x00040000
+
+# Produces a signed SPI image for testing secure boot validation:
 #   - RSA-3072 signature (PKCS#1 v1.5 + SHA-256)
-#   - dev0 test key (slot 0)
-#   - No payload encryption (encrypted_payload: 0)
+#   - dev0 test key, ROM key slot 0; the key digest must match key_digests.c
+#   - No payload encryption
 #   - BL1 payload = bl1_pass_test
-#
-# Usage:
-#   python3 -m tt_boot_manifest.pack_images \
-#       --config fw/sep/bootcode/configs/secure_boot_test.yaml \
-#       --out fw/sep/bootcode/build/secure_boot.spi_preload
-#
-# Key: tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem (submodule)
-# Key digest (SHA-256 of modulus) must match key_digests.c slot 0.
 
 primary:
   manifest:
-    description: "OCH SEP secure boot test - signed BL1"
+    description: "OCAH SEP secure boot test - signed BL1"
     timestamp: 946702799
     content_version:
       major: 1
@@ -68,15 +66,15 @@ primary:
     version_major: 1
     version_minor: 0
   payload_images:
-    - load_addr: 0x10020000  # SRAM upper half (IFU + LSU accessible)
+    - load_addr: 0xC0000000  # SEP ICCM base (IFU fetches BL1 here)
       type: 'SEPBL1'
       version: 1
       offset: 0x1000
-      description: "OCH SEP BL1 test (bl1_pass_test)"
-      entry_point: 0x01000000  # tt-boot-manifest subtracts SEP_IRAM_BASE (0x01000000), result = 0
+      description: "OCAH SEP BL1 test (bl1_pass_test)"
+      entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
-    description: "SPI TLV for OCH SEP (keep_default_init)"
+    description: "SPI TLV for OCAH SEP (keep_default_init)"
     flags:
       keep_default_init: 1
     spi_freq: 25
@@ -93,7 +91,7 @@ primary:
 
 backup:
   manifest:
-    description: "OCH SEP secure boot test - backup"
+    description: "OCAH SEP secure boot test - backup"
     timestamp: 946702799
     content_version:
       major: 1
@@ -133,15 +131,15 @@ backup:
     version_major: 1
     version_minor: 0
   payload_images:
-    - load_addr: 0x10020000  # SRAM upper half
+    - load_addr: 0xC0000000  # SEP ICCM base
       type: 'SEPBL1'
       version: 1
       offset: 0x1000
-      description: "OCH SEP BL1 test - backup"
-      entry_point: 0x01000000  # tt-boot-manifest subtracts SEP_IRAM_BASE (0x01000000), result = 0
+      description: "OCAH SEP BL1 test - backup"
+      entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
-    description: "SPI TLV for OCH SEP backup (keep_default_init)"
+    description: "SPI TLV for OCAH SEP backup (keep_default_init)"
     flags:
       keep_default_init: 1
     spi_freq: 25

@@ -9,9 +9,10 @@ Low-priority tests for auxiliary features:
 """
 
 import cocotb
-from cocotb.triggers import RisingEdge, ClockCycles
+from cocotb.triggers import ClockCycles
+
 from test.test_base import *
-from test.test_config import get_custom_config, DecorrelatorConfig
+from test.test_config import DecorrelatorConfig, get_custom_config
 
 
 @cocotb.test()
@@ -31,30 +32,30 @@ async def test_5_1_downsample_rate_configuration(dut):
     Test Plan: TEST_PLAN.txt Suite 5, Test 5.1
     """
 
-    dut._log.info("\n" + "="*80)
+    dut._log.info("\n" + "=" * 80)
     dut._log.info("TEST 5.1: Downsample Rate Configuration (RATE=63)")
-    dut._log.info("="*80 + "\n")
+    dut._log.info("=" * 80 + "\n")
 
     # Test with downsample rate = 63 (1-in-64 downsampling)
     rate = 63
     description = "1-in-64 downsampling"
 
-    dut._log.info(f"Test Configuration:")
+    dut._log.info("Test Configuration:")
     dut._log.info(f"  DOWNSAMPLE_RATE = {rate}")
     dut._log.info(f"  Description: {description}")
-    dut._log.info(f"  Expected: Drop first 63 samples, then push every 64th sample\n")
+    dut._log.info("  Expected: Drop first 63 samples, then push every 64th sample\n")
 
     # ====================================================================
     # TEST CONFIGURATION
     # ====================================================================
     cfg = get_custom_config(
         decorrelator=DecorrelatorConfig(
-            bypass_mask=0x0,           # All lanes decorrelate
-            sample_clk_div=63          # Divide by 64
+            bypass_mask=0x0,  # All lanes decorrelate
+            sample_clk_div=63,  # Divide by 64
         ),
-        decorrelator_samples=200,      # Collect more samples for downsample testing
-        downsample_rate=rate,          # Test downsample rate = 63
-        fifo_verification_enable=True  # Enable FIFO verification
+        decorrelator_samples=200,  # Collect more samples for downsample testing
+        downsample_rate=rate,  # Test downsample rate = 63
+        fifo_verification_enable=True,  # Enable FIFO verification
     )
 
     # ====================================================================
@@ -72,7 +73,7 @@ async def test_5_1_downsample_rate_configuration(dut):
     await program_dut_registers(dut, apb, cfg)
 
     # Verify CTRL.DOWNSAMPLE_RATE was written correctly
-    ctrl_val = await reg_rd(apb, 'CTRL')
+    ctrl_val = await reg_rd(apb, "CTRL")
     actual_rate = (ctrl_val >> 16) & 0x3FF
     assert actual_rate == rate, f"DOWNSAMPLE_RATE mismatch: wrote {rate}, read {actual_rate}"
     dut._log.info(f"  CTRL.DOWNSAMPLE_RATE = {actual_rate} (verified)")
@@ -90,21 +91,22 @@ async def test_5_1_downsample_rate_configuration(dut):
     # PHASE 4: FIFO READOUT VERIFICATION WITH DOWNSAMPLE
     # ====================================================================
     dut._log.info(f"[PHASE 4] FIFO Readout Verification (rate={rate})")
-    await verify_fifo_readout(dut, apb, golden_queue, cfg.decorrelator_samples,
-                              downsample_rate=cfg.downsample_rate)
+    await verify_fifo_readout(
+        dut, apb, golden_queue, cfg.decorrelator_samples, downsample_rate=cfg.downsample_rate
+    )
     dut._log.info("  FIFO verification passed\n")
 
     # ====================================================================
     # PHASE 5: VERIFY SAMPLE RATE REDUCTION
     # ====================================================================
-    dut._log.info(f"[PHASE 5] Sample Rate Reduction Verification")
+    dut._log.info("[PHASE 5] Sample Rate Reduction Verification")
 
     # Disable ROs to freeze FIFO
-    await reg_wr(apb, 'RING_OSC_ENABLE', 0x00000000)
+    await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
     await ClockCycles(dut.apb.pclk, 10)
 
     # Check final FIFO level
-    fifo_status = await reg_rd(apb, 'FIFO_STATUS')
+    fifo_status = await reg_rd(apb, "FIFO_STATUS")
     fifo_level = fifo_status & 0x7F
 
     # Calculate expected FIFO entries based on downsampling
@@ -117,12 +119,15 @@ async def test_5_1_downsample_rate_configuration(dut):
 
     dut._log.info(f"  FIFO level: {fifo_level}")
     dut._log.info(f"  Expected range: {expected_min} to {expected_max}")
-    dut._log.info(f"  Calculation: ({cfg.decorrelator_samples} - {rate}) / {rate + 1} ≈ {expected_fifo}")
+    dut._log.info(
+        f"  Calculation: ({cfg.decorrelator_samples} - {rate}) / {rate + 1} ≈ {expected_fifo}"
+    )
 
     # Verify FIFO level is in expected range
-    assert expected_min <= fifo_level <= expected_max, \
+    assert expected_min <= fifo_level <= expected_max, (
         f"FIFO level {fifo_level} outside expected range [{expected_min}, {expected_max}]"
-    dut._log.info(f"  [PASS] FIFO level within expected range\n")
+    )
+    dut._log.info("  [PASS] FIFO level within expected range\n")
 
     # ====================================================================
     # PHASE 6: CHECKER VERIFICATION
@@ -134,13 +139,13 @@ async def test_5_1_downsample_rate_configuration(dut):
     # ========================================================================
     # FINAL TEST SUMMARY
     # ========================================================================
-    dut._log.info("\n" + "="*80)
+    dut._log.info("\n" + "=" * 80)
     dut._log.info("TEST 5.1 SUMMARY")
-    dut._log.info("="*80)
+    dut._log.info("=" * 80)
     dut._log.info(f"[PASS] DOWNSAMPLE_RATE={rate} ({description}) - VERIFIED")
-    dut._log.info(f"[PASS] CSR read/write functionality - VERIFIED")
+    dut._log.info("[PASS] CSR read/write functionality - VERIFIED")
     dut._log.info(f"[PASS] Sample rate reduction (~{rate + 1}x) - VERIFIED")
-    dut._log.info(f"[PASS] FIFO level matches expected downsampled count - VERIFIED")
-    dut._log.info(f"[PASS] All checkers (DECOR, COMP, FIFO) - PASSED")
+    dut._log.info("[PASS] FIFO level matches expected downsampled count - VERIFIED")
+    dut._log.info("[PASS] All checkers (DECOR, COMP, FIFO) - PASSED")
     dut._log.info("\n[PASS] test_5_1_downsample_rate_configuration: Test completed successfully!")
-    dut._log.info("="*80 + "\n")
+    dut._log.info("=" * 80 + "\n")

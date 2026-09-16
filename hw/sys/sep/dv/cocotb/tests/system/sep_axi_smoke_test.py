@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_smoke_seq import sep_axi_smoke_seq
 

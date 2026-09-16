@@ -223,7 +223,6 @@ module entropy_source_reg (
     typedef struct {
         logic COMPONENT_ID;
         logic CTRL;
-        logic STATUS;
         logic DEBUG_CTRL;
         logic INTR_STATUS;
         logic INTR_ENABLE;
@@ -239,16 +238,9 @@ module entropy_source_reg (
         logic REPETITION_TEST_COUNT;
         logic APT_PATTERN_COUNT_1BIT;
         logic APT_PATTERN_COUNT_2BIT;
-        logic APT_PATTERN_COUNT_3BIT;
-        logic APT_PATTERN_COUNT_4BIT;
         logic APT_PROPORTION_1BIT;
-        logic APT_PROPORTION_2BIT;
-        logic APT_PROPORTION_3BIT;
-        logic APT_PROPORTION_4BIT;
         logic APT_PROPORTION_LO;
         logic MARKOV_TEST_COUNTS_0;
-        logic MARKOV_TEST_COUNTS_1;
-        logic MARKOV_TEST_PROBABILITIES;
         logic RING_OSC_ENABLE;
         logic RING_OSC_TUNE;
         logic RING_OSC_CTRL;
@@ -318,7 +310,6 @@ module entropy_source_reg (
         is_valid_rw = '1; // No valid RW check
         decoded_reg_strb.COMPONENT_ID = cpuif_req_masked & (cpuif_addr == 9'h0) & !cpuif_req_is_wr;
         decoded_reg_strb.CTRL = cpuif_req_masked & (cpuif_addr == 9'h4);
-        decoded_reg_strb.STATUS = cpuif_req_masked & (cpuif_addr == 9'h8) & !cpuif_req_is_wr;
         decoded_reg_strb.DEBUG_CTRL = cpuif_req_masked & (cpuif_addr == 9'hc);
         decoded_reg_strb.INTR_STATUS = cpuif_req_masked & (cpuif_addr == 9'h10);
         decoded_reg_strb.INTR_ENABLE = cpuif_req_masked & (cpuif_addr == 9'h14);
@@ -335,16 +326,9 @@ module entropy_source_reg (
         decoded_reg_strb.REPETITION_TEST_COUNT = cpuif_req_masked & (cpuif_addr == 9'h44) & !cpuif_req_is_wr;
         decoded_reg_strb.APT_PATTERN_COUNT_1BIT = cpuif_req_masked & (cpuif_addr == 9'h50) & !cpuif_req_is_wr;
         decoded_reg_strb.APT_PATTERN_COUNT_2BIT = cpuif_req_masked & (cpuif_addr == 9'h54) & !cpuif_req_is_wr;
-        decoded_reg_strb.APT_PATTERN_COUNT_3BIT = cpuif_req_masked & (cpuif_addr == 9'h58) & !cpuif_req_is_wr;
-        decoded_reg_strb.APT_PATTERN_COUNT_4BIT = cpuif_req_masked & (cpuif_addr == 9'h5c) & !cpuif_req_is_wr;
         decoded_reg_strb.APT_PROPORTION_1BIT = cpuif_req_masked & (cpuif_addr == 9'h60);
-        decoded_reg_strb.APT_PROPORTION_2BIT = cpuif_req_masked & (cpuif_addr == 9'h64);
-        decoded_reg_strb.APT_PROPORTION_3BIT = cpuif_req_masked & (cpuif_addr == 9'h68);
-        decoded_reg_strb.APT_PROPORTION_4BIT = cpuif_req_masked & (cpuif_addr == 9'h6c);
         decoded_reg_strb.APT_PROPORTION_LO = cpuif_req_masked & (cpuif_addr == 9'h70);
         decoded_reg_strb.MARKOV_TEST_COUNTS_0 = cpuif_req_masked & (cpuif_addr == 9'h80) & !cpuif_req_is_wr;
-        decoded_reg_strb.MARKOV_TEST_COUNTS_1 = cpuif_req_masked & (cpuif_addr == 9'h84) & !cpuif_req_is_wr;
-        decoded_reg_strb.MARKOV_TEST_PROBABILITIES = cpuif_req_masked & (cpuif_addr == 9'h88) & !cpuif_req_is_wr;
         decoded_reg_strb.RING_OSC_ENABLE = cpuif_req_masked & (cpuif_addr == 9'h90);
         decoded_reg_strb.RING_OSC_TUNE = cpuif_req_masked & (cpuif_addr == 9'h94);
         decoded_reg_strb.RING_OSC_CTRL = cpuif_req_masked & (cpuif_addr == 9'h98);
@@ -428,10 +412,6 @@ module entropy_source_reg (
     //--------------------------------------------------------------------------
     typedef struct {
         struct {
-            struct {
-                logic next;
-                logic load_next;
-            } RESET;
             struct {
                 logic next;
                 logic load_next;
@@ -577,7 +557,7 @@ module entropy_source_reg (
         } FIFO_CTRL;
         struct {
             struct {
-                logic [7:0] next;
+                logic [2:0] next;
                 logic load_next;
             } ENABLE;
             struct {
@@ -613,24 +593,6 @@ module entropy_source_reg (
                 logic load_next;
             } LIMIT;
         } APT_PROPORTION_1BIT;
-        struct {
-            struct {
-                logic [9:0] next;
-                logic load_next;
-            } LIMIT;
-        } APT_PROPORTION_2BIT;
-        struct {
-            struct {
-                logic [9:0] next;
-                logic load_next;
-            } LIMIT;
-        } APT_PROPORTION_3BIT;
-        struct {
-            struct {
-                logic [9:0] next;
-                logic load_next;
-            } LIMIT;
-        } APT_PROPORTION_4BIT;
         struct {
             struct {
                 logic [15:0] next;
@@ -884,9 +846,6 @@ module entropy_source_reg (
         struct {
             struct {
                 logic value;
-            } RESET;
-            struct {
-                logic value;
             } MODULE_ENABLE;
             struct {
                 logic value;
@@ -997,7 +956,7 @@ module entropy_source_reg (
         } FIFO_CTRL;
         struct {
             struct {
-                logic [7:0] value;
+                logic [2:0] value;
             } ENABLE;
             struct {
                 logic [7:0] value;
@@ -1026,21 +985,6 @@ module entropy_source_reg (
                 logic [15:0] value;
             } LIMIT;
         } APT_PROPORTION_1BIT;
-        struct {
-            struct {
-                logic [9:0] value;
-            } LIMIT;
-        } APT_PROPORTION_2BIT;
-        struct {
-            struct {
-                logic [9:0] value;
-            } LIMIT;
-        } APT_PROPORTION_3BIT;
-        struct {
-            struct {
-                logic [9:0] value;
-            } LIMIT;
-        } APT_PROPORTION_4BIT;
         struct {
             struct {
                 logic [15:0] value;
@@ -1247,29 +1191,6 @@ module entropy_source_reg (
     } field_storage_t;
     field_storage_t field_storage;
 
-    // Field: entropy_source.CTRL.RESET
-    always_comb begin
-        automatic logic [0:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.CTRL.RESET.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.CTRL && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.CTRL.RESET.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
-            load_next_c = '1;
-        end
-        field_combo.CTRL.RESET.next = next_c;
-        field_combo.CTRL.RESET.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.CTRL.RESET.value <= 1'h0;
-        end else begin
-            if(field_combo.CTRL.RESET.load_next) begin
-                field_storage.CTRL.RESET.value <= field_combo.CTRL.RESET.next;
-            end
-        end
-    end
-    assign hwif_out.CTRL.RESET.value = field_storage.CTRL.RESET.value;
     // Field: entropy_source.CTRL.MODULE_ENABLE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1456,6 +1377,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.HEALTH_TEST_FAILED.value = field_storage.INTR_STATUS.HEALTH_TEST_FAILED.value;
     // Field: entropy_source.INTR_STATUS.FIFO_ERROR
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1481,6 +1403,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.FIFO_ERROR.value = field_storage.INTR_STATUS.FIFO_ERROR.value;
     // Field: entropy_source.INTR_STATUS.FIFO_OVERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1506,6 +1429,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.FIFO_OVERFLOW.value = field_storage.INTR_STATUS.FIFO_OVERFLOW.value;
     // Field: entropy_source.INTR_STATUS.FIFO_UNDERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1531,6 +1455,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.FIFO_UNDERFLOW.value = field_storage.INTR_STATUS.FIFO_UNDERFLOW.value;
     // Field: entropy_source.INTR_STATUS.PERSISTENT_FAILURE
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1556,6 +1481,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.PERSISTENT_FAILURE.value = field_storage.INTR_STATUS.PERSISTENT_FAILURE.value;
     // Field: entropy_source.INTR_STATUS.AUTOTUNE_FAIL
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1581,6 +1507,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.AUTOTUNE_FAIL.value = field_storage.INTR_STATUS.AUTOTUNE_FAIL.value;
     // Field: entropy_source.INTR_STATUS.BIW_OBS_OVERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1606,6 +1533,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.BIW_OBS_OVERFLOW.value = field_storage.INTR_STATUS.BIW_OBS_OVERFLOW.value;
     // Field: entropy_source.INTR_STATUS.NOISE_OBS_OVERFLOW
     always_comb begin
         automatic logic [0:0] next_c;
@@ -1631,6 +1559,7 @@ module entropy_source_reg (
             end
         end
     end
+    assign hwif_out.INTR_STATUS.NOISE_OBS_OVERFLOW.value = field_storage.INTR_STATUS.NOISE_OBS_OVERFLOW.value;
     assign hwif_out.INTR_STATUS.intr =
         |field_storage.INTR_STATUS.HEALTH_TEST_FAILED.value
         || |field_storage.INTR_STATUS.FIFO_ERROR.value
@@ -2084,12 +2013,12 @@ module entropy_source_reg (
     assign hwif_out.FIFO_RDATA.req_is_wr = decoded_req_is_wr;
     // Field: entropy_source.HEALTH_TEST_CTRL.ENABLE
     always_comb begin
-        automatic logic [7:0] next_c;
+        automatic logic [2:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.HEALTH_TEST_CTRL.ENABLE.value;
         load_next_c = '0;
         if(decoded_reg_strb.HEALTH_TEST_CTRL && decoded_req_is_wr && !(hwif_in.HEALTH_TEST_CTRL.ENABLE.swwel)) begin // SW write
-            next_c = (field_storage.HEALTH_TEST_CTRL.ENABLE.value & ~decoded_wr_biten[7:0]) | (decoded_wr_data[7:0] & decoded_wr_biten[7:0]);
+            next_c = (field_storage.HEALTH_TEST_CTRL.ENABLE.value & ~decoded_wr_biten[2:0]) | (decoded_wr_data[2:0] & decoded_wr_biten[2:0]);
             load_next_c = '1;
         end
         field_combo.HEALTH_TEST_CTRL.ENABLE.next = next_c;
@@ -2097,7 +2026,7 @@ module entropy_source_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.HEALTH_TEST_CTRL.ENABLE.value <= 8'h7;
+            field_storage.HEALTH_TEST_CTRL.ENABLE.value <= 3'h7;
         end else begin
             if(field_combo.HEALTH_TEST_CTRL.ENABLE.load_next) begin
                 field_storage.HEALTH_TEST_CTRL.ENABLE.value <= field_combo.HEALTH_TEST_CTRL.ENABLE.next;
@@ -2245,75 +2174,6 @@ module entropy_source_reg (
         end
     end
     assign hwif_out.APT_PROPORTION_1BIT.LIMIT.value = field_storage.APT_PROPORTION_1BIT.LIMIT.value;
-    // Field: entropy_source.APT_PROPORTION_2BIT.LIMIT
-    always_comb begin
-        automatic logic [9:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.APT_PROPORTION_2BIT.LIMIT.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.APT_PROPORTION_2BIT && decoded_req_is_wr && !(hwif_in.APT_PROPORTION_2BIT.LIMIT.swwel)) begin // SW write
-            next_c = (field_storage.APT_PROPORTION_2BIT.LIMIT.value & ~decoded_wr_biten[9:0]) | (decoded_wr_data[9:0] & decoded_wr_biten[9:0]);
-            load_next_c = '1;
-        end
-        field_combo.APT_PROPORTION_2BIT.LIMIT.next = next_c;
-        field_combo.APT_PROPORTION_2BIT.LIMIT.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.APT_PROPORTION_2BIT.LIMIT.value <= 10'h80;
-        end else begin
-            if(field_combo.APT_PROPORTION_2BIT.LIMIT.load_next) begin
-                field_storage.APT_PROPORTION_2BIT.LIMIT.value <= field_combo.APT_PROPORTION_2BIT.LIMIT.next;
-            end
-        end
-    end
-    assign hwif_out.APT_PROPORTION_2BIT.LIMIT.value = field_storage.APT_PROPORTION_2BIT.LIMIT.value;
-    // Field: entropy_source.APT_PROPORTION_3BIT.LIMIT
-    always_comb begin
-        automatic logic [9:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.APT_PROPORTION_3BIT.LIMIT.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.APT_PROPORTION_3BIT && decoded_req_is_wr && !(hwif_in.APT_PROPORTION_3BIT.LIMIT.swwel)) begin // SW write
-            next_c = (field_storage.APT_PROPORTION_3BIT.LIMIT.value & ~decoded_wr_biten[9:0]) | (decoded_wr_data[9:0] & decoded_wr_biten[9:0]);
-            load_next_c = '1;
-        end
-        field_combo.APT_PROPORTION_3BIT.LIMIT.next = next_c;
-        field_combo.APT_PROPORTION_3BIT.LIMIT.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.APT_PROPORTION_3BIT.LIMIT.value <= 10'h40;
-        end else begin
-            if(field_combo.APT_PROPORTION_3BIT.LIMIT.load_next) begin
-                field_storage.APT_PROPORTION_3BIT.LIMIT.value <= field_combo.APT_PROPORTION_3BIT.LIMIT.next;
-            end
-        end
-    end
-    assign hwif_out.APT_PROPORTION_3BIT.LIMIT.value = field_storage.APT_PROPORTION_3BIT.LIMIT.value;
-    // Field: entropy_source.APT_PROPORTION_4BIT.LIMIT
-    always_comb begin
-        automatic logic [9:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.APT_PROPORTION_4BIT.LIMIT.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.APT_PROPORTION_4BIT && decoded_req_is_wr && !(hwif_in.APT_PROPORTION_4BIT.LIMIT.swwel)) begin // SW write
-            next_c = (field_storage.APT_PROPORTION_4BIT.LIMIT.value & ~decoded_wr_biten[9:0]) | (decoded_wr_data[9:0] & decoded_wr_biten[9:0]);
-            load_next_c = '1;
-        end
-        field_combo.APT_PROPORTION_4BIT.LIMIT.next = next_c;
-        field_combo.APT_PROPORTION_4BIT.LIMIT.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.APT_PROPORTION_4BIT.LIMIT.value <= 10'h20;
-        end else begin
-            if(field_combo.APT_PROPORTION_4BIT.LIMIT.load_next) begin
-                field_storage.APT_PROPORTION_4BIT.LIMIT.value <= field_combo.APT_PROPORTION_4BIT.LIMIT.next;
-            end
-        end
-    end
-    assign hwif_out.APT_PROPORTION_4BIT.LIMIT.value = field_storage.APT_PROPORTION_4BIT.LIMIT.value;
     // Field: entropy_source.APT_PROPORTION_LO.LIMIT
     always_comb begin
         automatic logic [15:0] next_c;
@@ -2533,9 +2393,6 @@ module entropy_source_reg (
         end else if(hwif_in.MAIN_SM_STATUS.ALERT.next) begin // stickybit
             next_c = '1;
             load_next_c = '1;
-        end else if(hwif_in.MAIN_SM_STATUS.ALERT.hwclr) begin // HW Clear
-            next_c = '0;
-            load_next_c = '1;
         end
         field_combo.MAIN_SM_STATUS.ALERT.next = next_c;
         field_combo.MAIN_SM_STATUS.ALERT.load_next = load_next_c;
@@ -2560,9 +2417,6 @@ module entropy_source_reg (
             load_next_c = '1;
         end else if(hwif_in.MAIN_SM_STATUS.ERR.next) begin // stickybit
             next_c = '1;
-            load_next_c = '1;
-        end else if(hwif_in.MAIN_SM_STATUS.ERR.hwclr) begin // HW Clear
-            next_c = '0;
             load_next_c = '1;
         end
         field_combo.MAIN_SM_STATUS.ERR.next = next_c;
@@ -3406,15 +3260,12 @@ module entropy_source_reg (
             readback_data_var[31:28] = 4'h0;
         end
         if(rd_mux_addr == 9'h4) begin
-            readback_data_var[0] = field_storage.CTRL.RESET.value;
+            readback_data_var[0] = 1'h0;
             readback_data_var[1] = field_storage.CTRL.MODULE_ENABLE.value;
             readback_data_var[4] = field_storage.CTRL.AUTOTUNE_ENABLE.value;
             readback_data_var[8] = field_storage.CTRL.BYPASS_ENTROPY_COMPRESSOR.value;
             readback_data_var[25:16] = field_storage.CTRL.DOWNSAMPLE_RATE.value;
             readback_data_var[28] = field_storage.CTRL.SHA256_WHITENING_ENABLE.value;
-        end
-        if(rd_mux_addr == 9'h8) begin
-            readback_data_var[0] = hwif_in.STATUS.RSVD.next;
         end
         if(rd_mux_addr == 9'hc) begin
             readback_data_var[7:0] = field_storage.DEBUG_CTRL.SELECT_SIGNAL.value;
@@ -3443,7 +3294,7 @@ module entropy_source_reg (
         if(rd_mux_addr == 9'h1c) begin
             readback_data_var[0] = hwif_in.SHA256_STATUS.BUSY.next;
             readback_data_var[7:4] = hwif_in.SHA256_STATUS.INPUT_COUNT.next;
-            readback_data_var[10:8] = hwif_in.SHA256_STATUS.OUTPUT_COUNT.next;
+            readback_data_var[11:8] = hwif_in.SHA256_STATUS.OUTPUT_COUNT.next;
         end
         if(rd_mux_addr == 9'h20) begin
             readback_data_var[0] = field_storage.FIFO_CTRL.ENABLE.value;
@@ -3458,7 +3309,7 @@ module entropy_source_reg (
             readback_data_var = hwif_in.FIFO_RDATA.rd_data;
         end
         if(rd_mux_addr == 9'h30) begin
-            readback_data_var[7:0] = field_storage.HEALTH_TEST_CTRL.ENABLE.value;
+            readback_data_var[2:0] = field_storage.HEALTH_TEST_CTRL.ENABLE.value;
             readback_data_var[15:8] = field_storage.HEALTH_TEST_CTRL.REPETITION_LIMIT.value;
         end
         if(rd_mux_addr == 9'h34) begin
@@ -3476,35 +3327,12 @@ module entropy_source_reg (
         end
         if(rd_mux_addr == 9'h50) begin
             readback_data_var[15:0] = hwif_in.APT_PATTERN_COUNT_1BIT.PATTERN_COUNT.next;
-            readback_data_var[19:16] = hwif_in.APT_PATTERN_COUNT_1BIT.TARGET_PATTERN.next;
-            readback_data_var[29:20] = hwif_in.APT_PATTERN_COUNT_1BIT.SAMPLES_PROCESSED.next;
         end
         if(rd_mux_addr == 9'h54) begin
             readback_data_var[15:0] = hwif_in.APT_PATTERN_COUNT_2BIT.PATTERN_COUNT.next;
-            readback_data_var[19:16] = hwif_in.APT_PATTERN_COUNT_2BIT.TARGET_PATTERN.next;
-            readback_data_var[29:20] = hwif_in.APT_PATTERN_COUNT_2BIT.SAMPLES_PROCESSED.next;
-        end
-        if(rd_mux_addr == 9'h58) begin
-            readback_data_var[9:0] = hwif_in.APT_PATTERN_COUNT_3BIT.PATTERN_COUNT.next;
-            readback_data_var[13:10] = hwif_in.APT_PATTERN_COUNT_3BIT.TARGET_PATTERN.next;
-            readback_data_var[29:20] = hwif_in.APT_PATTERN_COUNT_3BIT.SAMPLES_PROCESSED.next;
-        end
-        if(rd_mux_addr == 9'h5c) begin
-            readback_data_var[9:0] = hwif_in.APT_PATTERN_COUNT_4BIT.PATTERN_COUNT.next;
-            readback_data_var[13:10] = hwif_in.APT_PATTERN_COUNT_4BIT.TARGET_PATTERN.next;
-            readback_data_var[29:20] = hwif_in.APT_PATTERN_COUNT_4BIT.SAMPLES_PROCESSED.next;
         end
         if(rd_mux_addr == 9'h60) begin
             readback_data_var[15:0] = field_storage.APT_PROPORTION_1BIT.LIMIT.value;
-        end
-        if(rd_mux_addr == 9'h64) begin
-            readback_data_var[9:0] = field_storage.APT_PROPORTION_2BIT.LIMIT.value;
-        end
-        if(rd_mux_addr == 9'h68) begin
-            readback_data_var[9:0] = field_storage.APT_PROPORTION_3BIT.LIMIT.value;
-        end
-        if(rd_mux_addr == 9'h6c) begin
-            readback_data_var[9:0] = field_storage.APT_PROPORTION_4BIT.LIMIT.value;
         end
         if(rd_mux_addr == 9'h70) begin
             readback_data_var[15:0] = field_storage.APT_PROPORTION_LO.LIMIT.value;
@@ -3512,16 +3340,6 @@ module entropy_source_reg (
         if(rd_mux_addr == 9'h80) begin
             readback_data_var[15:0] = hwif_in.MARKOV_TEST_COUNTS_0.COUNT_01.next;
             readback_data_var[31:16] = hwif_in.MARKOV_TEST_COUNTS_0.COUNT_10.next;
-        end
-        if(rd_mux_addr == 9'h84) begin
-            readback_data_var[15:0] = hwif_in.MARKOV_TEST_COUNTS_1.COUNT_00.next;
-            readback_data_var[31:16] = hwif_in.MARKOV_TEST_COUNTS_1.COUNT_11.next;
-        end
-        if(rd_mux_addr == 9'h88) begin
-            readback_data_var[7:0] = hwif_in.MARKOV_TEST_PROBABILITIES.PROB_01.next;
-            readback_data_var[15:8] = hwif_in.MARKOV_TEST_PROBABILITIES.PROB_10.next;
-            readback_data_var[23:16] = hwif_in.MARKOV_TEST_PROBABILITIES.PROB_00.next;
-            readback_data_var[31:24] = hwif_in.MARKOV_TEST_PROBABILITIES.PROB_11.next;
         end
         if(rd_mux_addr == 9'h90) begin
             readback_data_var[11:0] = field_storage.RING_OSC_ENABLE.ENABLE.value;

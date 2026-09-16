@@ -10,7 +10,6 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-
 DETAILS_SCHEMA_VERSION = 1
 CLOSURE_METRICS = (
     "line",
@@ -73,9 +72,7 @@ class MetricRecord:
             self.raw_percent = percentage(self.covered, self.total)
         if self.effective_percent is None:
             effective_total = (
-                max((self.total or 0) - self.excluded, 0)
-                if self.total is not None
-                else None
+                max((self.total or 0) - self.excluded, 0) if self.total is not None else None
             )
             self.effective_percent = percentage(self.covered, effective_total)
 
@@ -144,9 +141,7 @@ class CoverageDetails:
         )
 
     def holes(self) -> list[CoverageObservation]:
-        return [
-            observation for observation in self.observations if not observation.covered
-        ]
+        return [observation for observation in self.observations if not observation.covered]
 
     def holes_summary(self, sample_limit: int = 100) -> dict[str, Any]:
         holes = self.holes()
@@ -158,9 +153,7 @@ class CoverageDetails:
         for hole in holes:
             by_metric[hole.metric_family] = by_metric.get(hole.metric_family, 0) + 1
             by_category[hole.category] = by_category.get(hole.category, 0) + 1
-            by_disposition[hole.disposition] = (
-                by_disposition.get(hole.disposition, 0) + 1
-            )
+            by_disposition[hole.disposition] = by_disposition.get(hole.disposition, 0) + 1
             by_status[hole.status] = by_status.get(hole.status, 0) + 1
             if hole.policy_id:
                 logical_ids.add(hole.policy_id)
@@ -193,9 +186,7 @@ class CoverageDetails:
             "policy_fingerprint": self.policy_fingerprint,
             "comparison_key": self.comparison_key,
             "metrics": [metric.to_dict() for metric in self.metrics],
-            "observations": [
-                observation.to_dict() for observation in self.observations
-            ],
+            "observations": [observation.to_dict() for observation in self.observations],
             "holes_summary": self.holes_summary(),
             "thresholds": self.thresholds,
             "policy_application": self.policy_application,
@@ -208,9 +199,9 @@ def metrics_from_observations(
 ) -> list[MetricRecord]:
     groups: dict[tuple[str, str], list[CoverageObservation]] = {}
     for observation in observations:
-        groups.setdefault(
-            (observation.metric_family, observation.native_metric), []
-        ).append(observation)
+        groups.setdefault((observation.metric_family, observation.native_metric), []).append(
+            observation
+        )
 
     records: list[MetricRecord] = []
     for (metric_family, native_metric), points in sorted(groups.items()):

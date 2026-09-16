@@ -11,8 +11,20 @@ include::threat_model.adoc[leveloffset=0]
 include::attack_countermeasures.adoc[leveloffset=0]
 include::overview.adoc[leveloffset=0]
 include::fabric.adoc[leveloffset=0]
+
+// Shared AXI fabric IP. The traffic filter decode is common to SEP and SMC, so
+// it is included once here (SEP is the first subsystem in the TRM) and
+// hw/sys/smc/doc/fabric.adoc cross-references it instead of including it again.
+ifdef::backend-html5[]
+include::ip:axi_filter/doc/index.adoc[leveloffset=0]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../../../ip/axi_filter/doc/index.adoc[leveloffset=0]
+endif::backend-pdf[]
+
 include::memory_map.adoc[leveloffset=0]
 include::cpu.adoc[leveloffset=0]
+include::rom.adoc[leveloffset=0]
 include::interrupts.adoc[leveloffset=0]
 include::crypto.adoc[leveloffset=0]
 include::periphs.adoc[leveloffset=0]

@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_efuse_km_coexist.c
- * @brief KM CPU eFuse mux-coexistence driver (eFuse Suite 10.3).
+ * @brief KM CPU eFuse mux-coexistence driver.
  *
  * Runs as the KM ROM image in the SEP UVM testbench. After boot it announces
  * readiness over the mailbox, then FREE-RUNS a tight loop writing an incrementing

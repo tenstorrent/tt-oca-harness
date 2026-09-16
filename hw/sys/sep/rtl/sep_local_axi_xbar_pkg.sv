@@ -17,10 +17,10 @@ package sep_local_axi_xbar_pkg;
   // ===========================================================================
   // Fabric Parameters
   // ===========================================================================
-  localparam int unsigned NumInputs     = 5;
-  localparam int unsigned NumOutputs    = 10;
-  localparam int unsigned NumAddrRules  = 15;
-  localparam int unsigned MaxInputIdW   = 3;
+  localparam int unsigned NumInputs = 5;
+  localparam int unsigned NumOutputs = 10;
+  localparam int unsigned NumAddrRules = 15;
+  localparam int unsigned MaxInputIdW = 3;
   localparam int unsigned XbarOutputIdW = 6;
 
   // ===========================================================================
@@ -121,15 +121,15 @@ package sep_local_axi_xbar_pkg;
   // Output: cpu_tcm
   localparam logic [31:0] CPU_TCM_ICCM_BASE = 32'hc0000000;
   localparam logic [31:0] CPU_TCM_ICCM_SIZE = 32'h40000;
-  localparam logic [32:0] CPU_TCM_ICCM_END  = 33'hc0040000;
+  localparam logic [32:0] CPU_TCM_ICCM_END = 33'hc0040000;
   localparam logic [31:0] CPU_TCM_DCCM_BASE = 32'hc0040000;
   localparam logic [31:0] CPU_TCM_DCCM_SIZE = 32'h20000;
-  localparam logic [32:0] CPU_TCM_DCCM_END  = 33'hc0060000;
+  localparam logic [32:0] CPU_TCM_DCCM_END = 33'hc0060000;
 
   // Output: sram
   localparam logic [31:0] SRAM_MAIN_BASE = 32'h10000000;
   localparam logic [31:0] SRAM_MAIN_SIZE = 32'h40000;
-  localparam logic [32:0] SRAM_MAIN_END  = 33'h10040000;
+  localparam logic [32:0] SRAM_MAIN_END = 33'h10040000;
 
   // Output: dma_csr
   localparam logic [31:0] DMA_CSR_MAIN_BASE =
@@ -152,74 +152,74 @@ package sep_local_axi_xbar_pkg;
   // Output: sep_reset_ctrl
   localparam logic [31:0] SEP_RESET_CTRL_MAIN_BASE = 32'h10803000;
   localparam logic [31:0] SEP_RESET_CTRL_MAIN_SIZE = 32'h8;
-  localparam logic [32:0] SEP_RESET_CTRL_MAIN_END  = 33'h10803008;
+  localparam logic [32:0] SEP_RESET_CTRL_MAIN_END = 33'h10803008;
 
   // Output: sep_crypto
   localparam logic [31:0] SEP_CRYPTO_MAIN_BASE = 32'h10900000;
   localparam logic [31:0] SEP_CRYPTO_MAIN_SIZE = 32'h50000;
-  localparam logic [32:0] SEP_CRYPTO_MAIN_END  = 33'h10950000;
+  localparam logic [32:0] SEP_CRYPTO_MAIN_END = 33'h10950000;
 
   // Output: sep_system_peripherals
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_SCRATCH_REGION_BASE = 32'h10802000;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_SCRATCH_REGION_SIZE = 32'h100;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_SCRATCH_REGION_END  = 33'h10802100;
+  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_SCRATCH_REGION_END = 33'h10802100;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_CSR_REGION_BASE = 32'h10a00000;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_CSR_REGION_SIZE = 32'h60000;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_CSR_REGION_END  = 33'h10a60000;
+  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_CSR_REGION_END = 33'h10a60000;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_REMAP_REGION_BASE = 32'h11000000;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_REMAP_REGION_SIZE = 32'h1000000;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_REMAP_REGION_END  = 33'h12000000;
+  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_REMAP_REGION_END = 33'h12000000;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_CHIPLET_BASE = 32'h0;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_CHIPLET_SIZE = 32'h10000000;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_CHIPLET_END  = 33'h10000000;
+  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_CHIPLET_END = 33'h10000000;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_SMU_BASE = 32'h40000000;
   localparam logic [31:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_SMU_SIZE = 32'h80000000;
-  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_SMU_END  = 33'hc0000000;
+  localparam logic [32:0] SEP_SYSTEM_PERIPHERALS_EXTERNAL_SMU_END = 33'hc0000000;
 
   // Output: sep_io
   localparam logic [31:0] SEP_IO_MAIN_BASE = 32'h10b00000;
   localparam logic [31:0] SEP_IO_MAIN_SIZE = 32'hfffff;
-  localparam logic [32:0] SEP_IO_MAIN_END  = 33'h10bfffff;
+  localparam logic [32:0] SEP_IO_MAIN_END = 33'h10bfffff;
 
   // Output: entropy_fifo
   localparam logic [31:0] ENTROPY_FIFO_MAIN_BASE = 32'h10950000;
   localparam logic [31:0] ENTROPY_FIFO_MAIN_SIZE = 32'h10000;
-  localparam logic [32:0] ENTROPY_FIFO_MAIN_END  = 33'h10960000;
+  localparam logic [32:0] ENTROPY_FIFO_MAIN_END = 33'h10960000;
 
   // Output: sep_external
   localparam logic [31:0] SEP_EXTERNAL_MAIN_BASE = 32'h20000000;
   localparam logic [31:0] SEP_EXTERNAL_MAIN_SIZE = 32'h20000000;
-  localparam logic [32:0] SEP_EXTERNAL_MAIN_END  = 33'h40000000;
+  localparam logic [32:0] SEP_EXTERNAL_MAIN_END = 33'h40000000;
 
   // ===========================================================================
   // Crossbar Configuration
   // ===========================================================================
   localparam axi_pkg::xbar_cfg_t XbarCfg = '{
-    NoSlvPorts:         NumInputs,
-    NoMstPorts:         NumOutputs,
-    MaxMstTrans:        4,
-    MaxSlvTrans:        4,
-    FallThrough:        1'b0,
-    LatencyMode:        axi_pkg::CUT_ALL_PORTS,
-    PipelineStages:     1,
-    AxiIdWidthSlvPorts: MaxInputIdW,
-    AxiIdUsedSlvPorts:  MaxInputIdW,
-    UniqueIds:          1'b0,
-    AxiAddrWidth:       XbarAddrWidth,
-    AxiDataWidth:       XbarDataWidth,
-    NoAddrRules:        NumAddrRules,
-    SelHashIds:         1'b0
+      NoSlvPorts: NumInputs,
+      NoMstPorts: NumOutputs,
+      MaxMstTrans: 4,
+      MaxSlvTrans: 4,
+      FallThrough: 1'b0,
+      LatencyMode: axi_pkg::CUT_ALL_PORTS,
+      PipelineStages: 1,
+      AxiIdWidthSlvPorts: MaxInputIdW,
+      AxiIdUsedSlvPorts: MaxInputIdW,
+      UniqueIds: 1'b0,
+      AxiAddrWidth: XbarAddrWidth,
+      AxiDataWidth: XbarDataWidth,
+      NoAddrRules: NumAddrRules,
+      SelHashIds: 1'b0
   };
 
   // ===========================================================================
   // Connectivity Matrix
   // ===========================================================================
   localparam bit [NumInputs-1:0][NumOutputs-1:0] Connectivity = '{
-    0: 10'b0000000010,  // ifu_sram
-    1: 10'b1111111110,  // lsu
-    2: 10'b1111111110,  // dbg
-    3: 10'b1011111011,  // dma
-    4: 10'b1110101110  // ext
+      0: 10'b0000000010,  // ifu_sram
+      1: 10'b1111111110,  // lsu
+      2: 10'b1111111110,  // dbg
+      3: 10'b1011111011,  // dma
+      4: 10'b1110101110  // ext
   };
 
 endpackage : sep_local_axi_xbar_pkg

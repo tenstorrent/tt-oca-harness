@@ -1,0 +1,139 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[boot-flow]]
+== Boot flow
+
+The assembly entry path runs before any stack or writable global data is used.
+After the C runtime is ready, hart 0 runs Phase 0 through Phase 5.
+Other harts remain in the runtime's `wfi` loop.
+
+[[detailed-boot-flow]]
+.Detailed boot flow
+[plantuml]
+....
+@startuml
+start
+:Reset enters _enter at 0xC0040000;
+:Clear integer registers;
+:Conditionally zero SRAM with AXI zeroer;
+:Run strong MBIST check;
+if (MBIST result permits boot?) then (no)
+  :Record scratch 15 status;
+  :WFI forever;
+  stop
+endif
+:Run strong memory-repair check;
+if (Repair result permits boot?) then (no)
+  :Record scratch 15 status;
+  :WFI forever;
+  stop
+endif
+:Initialize gp and early mtvec;
+:Clear coordination scratch 8, 9, 11, 13, 14;
+:Select per-hart stack and enter _start;
+if (Hart 0?) then (yes)
+  :Copy initialized data, clear BSS,\nand run constructors;
+else (no)
+  :Skip runtime initialization;
+endif
+:Call no-op hart-synchronization hook;
+if (Hart 0?) then (yes)
+  :Continue to main;
+else (no)
+  :Enter secondary_main WFI loop;
+  stop
+endif
+:Phase 0 - initialize POST, status, and coordination;
+:Publish status-buffer offset and ready;
+:Publish SEP-safe SRAM range and SRAM ready;
+:Set POST phase 2;
+:Read eFuses and straps, then set POST phase 1;
+if (Lifecycle encoding and value valid?) then (no)
+  :Record invalid lifecycle;
+  :WFI forever;
+  stop
+endif
+:Call weak PLL hook if BL0_PLLCLK is set;
+:Phase 2 - record SRAM setup state;
+:Phase 3 - initialize interface map;
+:Phase 4 - initialize OCCP transports;
+if (All configured transports initialized?) then (no)
+  :Record OCCP initialization failure;
+  :WFI forever;
+  stop
+endif
+:Phase 5 - process OCCP commands;
+if (ExecuteImage accepted?) then (yes)
+  :Respond and jump;
+  stop
+elseif (AuthenticateImage accepted?) then (yes)
+  :Respond, publish manifest, WFI forever;
+  stop
+else
+  :Continue command loop;
+endif
+@enduml
+....
+
+=== Assembly early boot
+
+`_enter` performs these operations in order:
+
+. Clear general-purpose registers `x1` through `x31`.
+. Call `__metal_sram_init_early`.
+. Call the strong `__metal_mbist_early_check` implementation.
+. Call the strong `__metal_memory_repair_check` implementation.
+. Establish `gp`.
+. Install `early_trap_vector` in `mtvec`.
+. Clear coordination scratch registers 8, 9, 11, 13, and 14 while preserving scratch register 15.
+. Establish a 16-byte-aligned stack for the current hart and call `_start`.
+
+On hart 0, the C runtime copies initialized data from ROM, clears BSS, and
+initializes TLS and constructors.
+Other harts skip that initialization.
+Every hart calls `__metal_synchronize_harts`, whose implementation linked into
+the production ROM FW is a no-op, and then disables its interrupt sources.
+Hart 0 calls `main`; the other harts enter the `secondary_main` `wfi` loop.
+
+Unused ROM is filled with the 32-bit `EBREAK` instruction.
+Once the early trap vector is installed, a breakpoint whose `mepc` lies in the linker-defined padding range writes `0xBADF00D0` to scratch register 15 and loops.
+Other early traps write `0xFFFFFFFF` to scratch register 0 and loop.
+
+=== C boot phases
+
+.Phase 0 -- initialization
+Initializes POST tracking, the software OCCP status word, both status ring buffers, and scratch coordination.
+Status initialization publishes the SEP ring-buffer offset, sets the
+status-buffer-ready bit, and emits its initial ring-buffer marker.
+The main flow then publishes the SEP-safe SRAM range and sets the
+SRAM-initialized bit.
+After publishing that state, the implementation writes POST phase 2 before it
+starts the phase 1 strap and eFuse work.
+
+.Phase 1 -- straps, eFuses, and lifecycle
+Caches the eFuse and strap fields used by the ROM.
+The ROM validates the differential lifecycle encoding and halts on an invalid encoding or unsupported lifecycle value.
+If `BL0_PLLCLK` is set, it calls `smc_pll_init`; the open implementation is a weak hook that returns success without programming a PLL.
+
+.Phase 2 -- SRAM state
+Records the SRAM setup phase again after phase 1 completes.
+The actual conditional zeroing and memory-health checks have already completed in assembly.
+
+.Phase 3 -- interface map
+Marks I2C0, I2C1, I3C0, I3C1, and I3C3 enabled in the software map.
+The current ROM uses one common map for all strap roles.
+OCCP initialization currently configures that same fixed set directly rather
+than querying the software map.
+
+.Phase 4 -- OCCP ready
+Initializes the fixed target-interface set, updates the OCCP interface status, and drives status GPIO 58 high on success or low on failure.
+Any initialization error is fatal to the C boot flow.
+
+.Phase 5 -- OCCP processing
+Enters the non-returning command loop described in <<occp-command-processing>>.
+The ROM FW emits the `SMC_STATUS_BOOT_COMPLETE` ring-buffer value when the loop
+is entered, but it does not set POST boot phase 6 at that point. POST phase 6
+is set only before an accepted `ExecuteImage` transfers control.
+Direct execution or authenticated handoff terminates command processing as
+described in <<occp-protocol>>.

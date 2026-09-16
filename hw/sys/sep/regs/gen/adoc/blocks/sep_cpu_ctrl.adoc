@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -28,8 +28,6 @@
 | 0x110 | SMU_REGION_SIZE | RW a| -
 | 0x140 | SMC_FUSE_SENSE_STATUS | R a| -
 | 0x150 | SEP_FUSE_SENSE_STATUS | R a| -
-| 0x160 | SEP_STRAPS | R a| -
-| 0x170 | RAS_BANK_INFO | RW a| -
 | 0x178 | SEP_SW_DEBUG | RW a| -
 | 0x180 | SEP_NMI_VEC | RW a| NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI
 interrupt is used for the WDT Bark interrupt.
@@ -46,10 +44,38 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0x190 | EXT_TRNG_SRC_SEL | RW a| Per-stream external TRNG source selection for crypto subsystem entropy muxes.
 | 0x198 | EXT_TRNG_SRC_SEL_LOCK | RW a| Lock the TRNG source selection. Once locked, EXT_TRNG_SRC_SEL cannot be changed until reset.
 | 0x1A0 | KM_WIPE_CTRL | RW a| Key Manager emergency wipe control.
+| 0x1A8 | DMA_BUS_ERR_STATUS | R a| Secure DMA bridge fault status. Each bit is latched in hardware and held
+until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive
+dedicated PIC sources.
+
+Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without
+resetting the DMA), so a bit read as set immediately after boot may describe
+a fault from before that reset rather than a new one.
+| 0x1B0 | DMA_BUS_ERR_CLEAR | W a| Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse
+to both latches. A fault arriving in the same cycle as the clear still
+latches, so acknowledging cannot drop a concurrent fault.
+| 0x1B8 | PERIPH_BUS_ERR_STATUS | R a| Peripheral register-bridge fault status, one bit per block. Each bit latches
+when a CPU access to that block's registers returned a TL-UL error response
+(unmapped or misaligned offset, or a RACL denial), and is held until the
+matching PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also
+received SLVERR synchronously.
+
+All bits OR together into a single PIC source, so read this register to
+identify which block faulted.
+
+No bit is cleared by a CPU-only reset (the WDT resets the CPU without
+resetting the peripherals), so a bit read as set immediately after boot may
+describe a fault from before that reset rather than a new one.
+| 0x1C0 | PERIPH_BUS_ERR_CLEAR | W a| Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle
+clear pulse to that block's latch; bit order matches
+PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block
+cannot discard a fault another block raised between the status read and
+this write. A fault arriving in the same cycle as its own clear still
+latches.
 | 0x1000 | SEP_VERSION_ID | R a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CLOCK_GATE_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -57,14 +83,14 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `pka_cg_enable` | RW | 0x0 a| Reserved - PKA clock-gate enable, not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REFERENCE_COUNTER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `rc` | RW | 0x0 a| SEP REFERENCE COUNTER, counting after deassert of cold reset
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_INTERRUPT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -72,7 +98,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | R | 0x0 a| Reserved - timeout interrupt status not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PKA_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -82,7 +108,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `pka_dpa_disable` | RW | 0x0 a| Reserved - disable DPA countermeasures in PKA, not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_DMA Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -90,7 +116,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_SYS_IN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -98,7 +124,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_MAILBOX_INBOUND Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -106,7 +132,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_MAILBOX_OUTBOUND Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -114,7 +140,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_ENTROPY_WRITE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -122,7 +148,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_ENTROPY_READ Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -130,7 +156,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_FILTER_OUT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -138,7 +164,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_ALIAS_REMAP Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -146,7 +172,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -154,7 +180,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_CLEAR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -162,7 +188,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | W | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_MODE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -170,7 +196,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `reserved` | W | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_TEST_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -183,7 +209,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 25:0 | `Reserved` | - | - a| Reserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_GLOBAL_BASE_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -191,7 +217,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 55:0 | `addr` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_LOCAL_BASE_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -199,7 +225,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 55:0 | `addr` | RW | 0xD0000000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_REGION_SIZE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -207,7 +233,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 31:0 | `size` | RW | 0x1000000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMU_GLOBAL_BASE_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -215,7 +241,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 55:0 | `addr` | RW | 0x80000000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMU_REGION_SIZE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -223,7 +249,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 | 31:0 | `size` | RW | 0x40000000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMC_FUSE_SENSE_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -232,7 +258,7 @@ NMI interrupt is used for the WDT Bark interrupt.
 When this is 1, it is safe to send requests to the SMC.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_FUSE_SENSE_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -240,25 +266,7 @@ When this is 1, it is safe to send requests to the SMC.
 | 0 | `sep_fuse_sense_done` | R | 0x0 a| This reg is used to indicate the fuse sense status of SEP.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.SEP_STRAPS Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `bypass_mem_repair` | R | 0x0 a| straps for bypass_mem_repair -> Used to indicate if the memory repair should be bypassed
-| 0 | `test_en` | R | 0x0 a| straps for test_en -> Used to be latched by SEP and generate the secure_tm
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.RAS_BANK_INFO Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:8 | `Reserved` | - | - a| Reserved
-| 7:4 | `bank_instance` | RW | 0x0 a| Chiplet instance ID
-| 3:0 | `bank_chip` | RW | 0x0 a| Chiplet type ID
-|===
-
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_SW_DEBUG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -266,7 +274,7 @@ When this is 1, it is safe to send requests to the SMC.
 | 31:0 | `sep_sw_debug` | RW | 0x0 a| software writtable debug information. This reg is routed to CLA
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_NMI_VEC Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -278,7 +286,7 @@ see the register description for the required programming order.
 | 0 | `rsvd` | R | 0x0 a| Reserved, bit 0 is always 0 (aligned)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_NMI_VEC_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -287,7 +295,7 @@ see the register description for the required programming order.
 The NMI interrupt is used for the WDT Bark interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EXT_TRNG_SRC_SEL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -297,7 +305,7 @@ The NMI interrupt is used for the WDT Bark interrupt.
 0 = internal DRBG output, 1 = external TRNG (default).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EXT_TRNG_SRC_SEL_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -305,7 +313,7 @@ The NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `lock` | RW | 0x0 a| Lock TRNG source selection. Once set, cannot be cleared by software.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KM_WIPE_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -313,7 +321,57 @@ The NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `wipe_state` | RW | 0x0 a| Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
+.DMA_BUS_ERR_STATUS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:2 | `Reserved` | - | - a| Reserved
+| 1 | `host_path_err` | R | 0x0 a| DMA-master-path fault: either the fabric returned a non-OKAY AXI response
+to a DMA transfer, or a TL-UL command-integrity check failed on a command
+issued by the DMA. The latter is a fault-detection event with no other
+reporting path.
+| 0 | `reg_path_err` | R | 0x0 a| Register-path bus error: a CPU access to a Secure DMA register returned
+a TL-UL error response (unmapped or misaligned offset, or a RACL denial).
+The faulting access also received SLVERR synchronously.
+|===
+
+[cols="1,3,1,1,6", options="header"]
+.DMA_BUS_ERR_CLEAR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:1 | `Reserved` | - | - a| Reserved
+| 0 | `clr` | W | 0x0 a| Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.
+|===
+
+[cols="1,3,1,1,6", options="header"]
+.PERIPH_BUS_ERR_STATUS Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:7 | `Reserved` | - | - a| Reserved
+| 6 | `wdt` | R | 0x0 a| Watchdog timer register bridge error.
+| 5 | `edn` | R | 0x0 a| EDN register bridge error (DRBG EDN path).
+| 4 | `csrng` | R | 0x0 a| CSRNG register bridge error (DRBG CSRNG path).
+| 3 | `otbn` | R | 0x0 a| OTBN register bridge error.
+| 2 | `kmac` | R | 0x0 a| KMAC register bridge error.
+| 1 | `hmac` | R | 0x0 a| HMAC register bridge error.
+| 0 | `aes` | R | 0x0 a| AES register bridge error.
+|===
+
+[cols="1,3,1,1,6", options="header"]
+.PERIPH_BUS_ERR_CLEAR Register
+|===
+| Bits | Field | Access | Reset | Description
+| 63:7 | `Reserved` | - | - a| Reserved
+| 6 | `wdt` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.
+| 5 | `edn` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.
+| 4 | `csrng` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.
+| 3 | `otbn` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.
+| 2 | `kmac` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.
+| 1 | `hmac` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.
+| 0 | `aes` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.
+|===
+
+[cols="1,3,1,1,6", options="header"]
 .SEP_VERSION_ID Register
 |===
 | Bits | Field | Access | Reset | Description

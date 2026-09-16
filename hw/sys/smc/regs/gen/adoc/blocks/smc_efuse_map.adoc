@@ -6,121 +6,112 @@
 *Register Arrays:* This register map contains the following register arrays:
 
 * *I2C_I3C_ID[9]*: 9 registers
-  ** Base Address: 0x8AC
+  ** Base Address: 0x28
   ** Address Increment: 0x8 per register
 
-* *RESERVED[65]*: 65 registers
-  ** Base Address: 0xAFC
-  ** Address Increment: 0x4 per register
+* *SPARE[28]*: 28 registers
+  ** Base Address: 0x80
+  ** Address Increment: 0x20 per register
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
 | 0x0 | LOCKS | RW a| Lock controls for each fuse field. When write locked, the corresponding field is not
 programmable. When read locked, the shadow register is not readable.
-| 0x8 | CHIPLET_ID | RW a| Chiplet ID register
-| 0x28 | PACKAGE_ID | RW a| Package ID register
-| 0x48 | BIRA | RW a| Built-In Repair Analysis data
-| 0x848 | CLUSTER | RW a| CPU cluster configuration
-| 0x888 | FABRIC | RW a| Fabric configuration
-| 0x8A8 | SOP_TOPOLOGY | RW a| System on Package topology
-| 0x8AC - 0x8EC | I2C_I3C_ID[9] | RW a| I2C/I3C interface ID
-| 0x8F4 | I2C_CLOCK_GATING | RW a| I2C clock gating control
-| 0x8F8 | I3C_DISABLE | RW a| I3C interface disable control
-| 0x8FC | PLL_AND_SENSOR | RW a| PLL and sensor configuration
-| 0xAFC - 0xBFC | RESERVED[65] | RW a| Reserved register
+| 0x8 | JTAG_PUBLIC_IDENTITY | RW a| JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range
+are admitted while JTAG access to every other fuse field is blocked. Encoding
+is adopter-defined; the harness does not interpret or consume the value. The
+slot-0 read lock still hides the bits when set.
+| 0x28 - 0x68 | I2C_I3C_ID[9] | RW a| I2C/I3C interface ID
+| 0x70 | SMC_CONFIG | RW a| SMC boot and configuration controls sourced from fuse. Only the low word carries
+assigned bits, so firmware reads it as a single 32-bit access.
+| 0x78 | OCCP_TRANSPORT_TIMEOUT | RW a| OCCP transport timeout in the low word; upper word reserved.
+| 0x80 - 0x3E0 | SPARE[28] | RW a| Individually lockable 256-bit spare region, reserved for fields assigned after the
+RTL is frozen. Each element has its own write/read lock pair in LOCKS.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LOCKS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:26 | `unused_lock_bits` | RW | 0x0 a| Unused lock bits for future expansion.
-| 25 | `reserved_read_lock` | RW | 0x0 a| Reserved read lock. When set, reserved field is not readable.
-| 24 | `reserved_write_lock` | RW | 0x0 a| Reserved write lock. When set, reserved field is not writable.
-| 23 | `spi_config_read_lock` | RW | 0x0 a| SPI config read lock. When set, SPI config field is not readable.
-| 22 | `spi_config_write_lock` | RW | 0x0 a| SPI config write lock. When set, SPI config field is not writable.
-| 21 | `spi_ctrl_field_enable_read_lock` | RW | 0x0 a| SPI control field enable read lock. When set, SPI control field is not readable.
-| 20 | `spi_ctrl_field_enable_write_lock` | RW | 0x0 a| SPI control field enable write lock. When set, SPI control field is not writable.
-| 19 | `pll_and_sensor_read_lock` | RW | 0x0 a| PLL and sensor read lock. When set, PLL and sensor field is not readable.
-| 18 | `pll_and_sensor_write_lock` | RW | 0x0 a| PLL and sensor write lock. When set, PLL and sensor field is not writable.
-| 17 | `i3c_disable_read_lock` | RW | 0x0 a| I3C disable read lock. When set, I3C disable field is not readable.
-| 16 | `i3c_disable_write_lock` | RW | 0x0 a| I3C disable write lock. When set, I3C disable field is not writable.
-| 15 | `i2c_clock_gating_read_lock` | RW | 0x0 a| I2C clock gating read lock. When set, I2C clock gating field is not readable.
-| 14 | `i2c_clock_gating_write_lock` | RW | 0x0 a| I2C clock gating write lock. When set, I2C clock gating field is not writable.
-| 13 | `i2c_i3c_id_read_lock` | RW | 0x0 a| I2C/I3C ID read lock. When set, I2C/I3C ID field is not readable.
-| 12 | `i2c_i3c_id_write_lock` | RW | 0x0 a| I2C/I3C ID write lock. When set, I2C/I3C ID field is not writable.
-| 11 | `sop_topology_read_lock` | RW | 0x0 a| SOP topology read lock. When set, SOP topology field is not readable.
-| 10 | `sop_topology_write_lock` | RW | 0x0 a| SOP topology write lock. When set, SOP topology field is not writable.
-| 9 | `fabric_read_lock` | RW | 0x0 a| Fabric read lock. When set, fabric field is not readable.
-| 8 | `fabric_write_lock` | RW | 0x0 a| Fabric write lock. When set, fabric field is not writable.
-| 7 | `cluster_read_lock` | RW | 0x0 a| Cluster read lock. When set, cluster field is not readable.
-| 6 | `cluster_write_lock` | RW | 0x0 a| Cluster write lock. When set, cluster field is not writable.
-| 5 | `bira_dis_read_lock` | RW | 0x0 a| BIRA disable read lock. When set, BIRA field is not readable.
-| 4 | `bira_dis_write_lock` | RW | 0x0 a| BIRA disable write lock. When set, BIRA field is not writable.
-| 3 | `package_id_read_lock` | RW | 0x0 a| Package ID read lock. When set, package ID field is not readable.
-| 2 | `package_id_write_lock` | RW | 0x0 a| Package ID write lock. When set, package ID field is not writable.
-| 1 | `chiplet_id_read_lock` | RW | 0x0 a| Chiplet ID read lock. When set, chiplet ID field is not readable.
-| 0 | `chiplet_id_write_lock` | RW | 0x0 a| Chiplet ID write lock. When set, chiplet ID field is not writable.
+| 63 | `spare27_read_lock` | RW | 0x0 a| Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.
+| 62 | `spare27_write_lock` | RW | 0x0 a| Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.
+| 61 | `spare26_read_lock` | RW | 0x0 a| Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.
+| 60 | `spare26_write_lock` | RW | 0x0 a| Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.
+| 59 | `spare25_read_lock` | RW | 0x0 a| Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.
+| 58 | `spare25_write_lock` | RW | 0x0 a| Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.
+| 57 | `spare24_read_lock` | RW | 0x0 a| Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.
+| 56 | `spare24_write_lock` | RW | 0x0 a| Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.
+| 55 | `spare23_read_lock` | RW | 0x0 a| Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.
+| 54 | `spare23_write_lock` | RW | 0x0 a| Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.
+| 53 | `spare22_read_lock` | RW | 0x0 a| Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.
+| 52 | `spare22_write_lock` | RW | 0x0 a| Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.
+| 51 | `spare21_read_lock` | RW | 0x0 a| Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.
+| 50 | `spare21_write_lock` | RW | 0x0 a| Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.
+| 49 | `spare20_read_lock` | RW | 0x0 a| Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.
+| 48 | `spare20_write_lock` | RW | 0x0 a| Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.
+| 47 | `spare19_read_lock` | RW | 0x0 a| Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.
+| 46 | `spare19_write_lock` | RW | 0x0 a| Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.
+| 45 | `spare18_read_lock` | RW | 0x0 a| Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.
+| 44 | `spare18_write_lock` | RW | 0x0 a| Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.
+| 43 | `spare17_read_lock` | RW | 0x0 a| Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.
+| 42 | `spare17_write_lock` | RW | 0x0 a| Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.
+| 41 | `spare16_read_lock` | RW | 0x0 a| Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.
+| 40 | `spare16_write_lock` | RW | 0x0 a| Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.
+| 39 | `spare15_read_lock` | RW | 0x0 a| Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.
+| 38 | `spare15_write_lock` | RW | 0x0 a| Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.
+| 37 | `spare14_read_lock` | RW | 0x0 a| Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.
+| 36 | `spare14_write_lock` | RW | 0x0 a| Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.
+| 35 | `spare13_read_lock` | RW | 0x0 a| Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.
+| 34 | `spare13_write_lock` | RW | 0x0 a| Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.
+| 33 | `spare12_read_lock` | RW | 0x0 a| Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.
+| 32 | `spare12_write_lock` | RW | 0x0 a| Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.
+| 31 | `spare11_read_lock` | RW | 0x0 a| Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.
+| 30 | `spare11_write_lock` | RW | 0x0 a| Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.
+| 29 | `spare10_read_lock` | RW | 0x0 a| Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.
+| 28 | `spare10_write_lock` | RW | 0x0 a| Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.
+| 27 | `spare9_read_lock` | RW | 0x0 a| Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.
+| 26 | `spare9_write_lock` | RW | 0x0 a| Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.
+| 25 | `spare8_read_lock` | RW | 0x0 a| Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.
+| 24 | `spare8_write_lock` | RW | 0x0 a| Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.
+| 23 | `spare7_read_lock` | RW | 0x0 a| Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.
+| 22 | `spare7_write_lock` | RW | 0x0 a| Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.
+| 21 | `spare6_read_lock` | RW | 0x0 a| Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.
+| 20 | `spare6_write_lock` | RW | 0x0 a| Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.
+| 19 | `spare5_read_lock` | RW | 0x0 a| Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.
+| 18 | `spare5_write_lock` | RW | 0x0 a| Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.
+| 17 | `spare4_read_lock` | RW | 0x0 a| Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.
+| 16 | `spare4_write_lock` | RW | 0x0 a| Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.
+| 15 | `spare3_read_lock` | RW | 0x0 a| Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.
+| 14 | `spare3_write_lock` | RW | 0x0 a| Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.
+| 13 | `spare2_read_lock` | RW | 0x0 a| Spare 2 read lock (slot 6). When set, SPARE[2] is not readable.
+| 12 | `spare2_write_lock` | RW | 0x0 a| Spare 2 write lock (slot 6). When set, SPARE[2] is not writable.
+| 11 | `spare1_read_lock` | RW | 0x0 a| Spare 1 read lock (slot 5). When set, SPARE[1] is not readable.
+| 10 | `spare1_write_lock` | RW | 0x0 a| Spare 1 write lock (slot 5). When set, SPARE[1] is not writable.
+| 9 | `spare0_read_lock` | RW | 0x0 a| Spare 0 read lock (slot 4). When set, SPARE[0] is not readable.
+| 8 | `spare0_write_lock` | RW | 0x0 a| Spare 0 write lock (slot 4). When set, SPARE[0] is not writable.
+| 7 | `occp_transport_timeout_read_lock` | RW | 0x0 a| OCCP transport timeout read lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not readable.
+| 6 | `occp_transport_timeout_write_lock` | RW | 0x0 a| OCCP transport timeout write lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not writable.
+| 5 | `smc_config_read_lock` | RW | 0x0 a| SMC config read lock (slot 2). When set, SMC_CONFIG is not readable.
+| 4 | `smc_config_write_lock` | RW | 0x0 a| SMC config write lock (slot 2). When set, SMC_CONFIG is not writable.
+| 3 | `i2c_i3c_id_read_lock` | RW | 0x0 a| I2C/I3C ID read lock (slot 1). When set, no I2C_I3C_ID element is readable.
+| 2 | `i2c_i3c_id_write_lock` | RW | 0x0 a| I2C/I3C ID write lock (slot 1). When set, no I2C_I3C_ID element is writable.
+| 1 | `jtag_public_identity_read_lock` | RW | 0x0 a| JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.
+| 0 | `jtag_public_identity_write_lock` | RW | 0x0 a| JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.CHIPLET_ID Register
+[cols="1,3,1,1,6", options="header"]
+.JTAG_PUBLIC_IDENTITY Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `chiplet_id_value` | RW | 0x0 a| Chiplet ID stored in fuse, divided into 8 words and defined as follows:
-[1:0]: Serial number of the chiplet. The format is flexible and could include time info of manufacture, (x, y) coordinates on the wafer, and a counter for example;
-[3]: Chiplet Design Version. The format is flexible and the word bits could be defined as reserved[31:16], major[15:8], minor[7:0] for example;[127:96]: Chiplet Design ID;
-[4]: Chiplet User ID. When TT assembles the package, we assign TT’s ID (32’b0);
-[5]: Chiplet User Group ID;
-[7:6]: Reserved for extension.
+| 255:0 | `value` | RW | 0x0 a| Opaque payload. Encoding is adopter-defined; the harness does not interpret
+it.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.PACKAGE_ID Register
-|===
-| Bits | Field | Access | Reset | Description
-| 255:0 | `package_id_value` | RW | 0x0 a| Package ID stored in fuse, divided into 8 words. The same value gets provisioned into SMCs in all chiplets of the same package. Words are defined as follows:
-[1:0]: Serial number of the package;
-[2]: Package Design Version, e.g. A1Q1/…​;
-[3]: Package Design ID;
-[4]: Package User ID, e.g. if it’s TT who assembles the system, use TT’s GROUP_ID (32’b0);
-[5]: Package User Group ID;
-[7:6]: Reserved for extension
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.BIRA Register
-|===
-| Bits | Field | Access | Reset | Description
-| 16383:0 | `repair_data` | RW | 0x0 a| 16KB memory repair data for SMC and SEP SRAMs
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.CLUSTER Register
-|===
-| Bits | Field | Access | Reset | Description
-| 511:0 | `cluster_config` | RW | 0x0 a| 512-bit fuses reserved for CPU cluster configuration
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.FABRIC Register
-|===
-| Bits | Field | Access | Reset | Description
-| 255:0 | `fabric_config` | RW | 0x0 a| 256-bit fuses reserved for fabric configuration
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.SOP_TOPOLOGY Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `topology_serial` | RW | 0x0 a| Serial number of topology configuration
-|===
-
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .I2C_I3C_ID[9] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -129,30 +120,29 @@ programmable. When read locked, the shadow register is not readable.
 * Provisional ID mode: [63:0] full ID
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.I2C_CLOCK_GATING Register
+[cols="1,3,1,1,6", options="header"]
+.SMC_CONFIG Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `clock_gating_config` | RW | 0x0 a| I2C clock gating configuration
+| 63:16 | `config_rsvd_high` | RW | 0x0 a| Reserved for future configuration bits.
+| 15 | `dft_ignore_error` | RW | 0x0 a| When set, boot continues despite a reported memory repair or MBIST failure.
+| 14:8 | `config_rsvd_mid` | RW | 0x0 a| Reserved for future configuration bits.
+| 7 | `sram_auto_zero_disable` | RW | 0x0 a| When set, boot skips the SRAM auto-zero initialisation pass.
+| 6:1 | `config_rsvd_low` | RW | 0x0 a| Reserved for future configuration bits.
+| 0 | `rom_flip_endianness` | RW | 0x0 a| When set, the ROM interface swaps byte order on instruction fetch.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.I3C_DISABLE Register
+[cols="1,3,1,1,6", options="header"]
+.OCCP_TRANSPORT_TIMEOUT Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `disable_config` | RW | 0x0 a| I3C interface disable configuration
+| 63:32 | `timeout_rsvd` | RW | 0x0 a| Reserved for extension of the timeout encoding.
+| 31:0 | `timeout` | RW | 0x0 a| Transport timeout value consumed by the boot ROM OCCP driver.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.PLL_AND_SENSOR Register
+[cols="1,3,1,1,6", options="header"]
+.SPARE[28] Register
 |===
 | Bits | Field | Access | Reset | Description
-| 4095:0 | `pll_sensor_config` | RW | 0x0 a| 4KB fuses reserved for PLL and sensor configuration
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.RESERVED[65] Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `reserved_data` | RW | 0x0 a| Reserved for future use
+| 255:0 | `rsvd` | RW | 0x0 a| Spare fuse bits for future use.
 |===

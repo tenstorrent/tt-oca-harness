@@ -44,10 +44,10 @@ PROB_SCALE = 1_000_000
 def xorshift32(s: int) -> int:
     """Advance the 32-bit xorshift PRNG.
 
-        s ^= s << 13;
-        s ^= s >> 17;
-        s ^= s << 5;
-        if (s == 0) s = 1;   /* Avoid zero state */
+    s ^= s << 13;
+    s ^= s >> 17;
+    s ^= s << 5;
+    if (s == 0) s = 1;   /* Avoid zero state */
     """
     s ^= (s << 13) & 0xFFFFFFFF
     s ^= s >> 17
@@ -80,12 +80,12 @@ def parse_mode(mode: str) -> _LaneCfg:
     if m == "stuck1":
         return _LaneCfg(stuck_en=1, stuck_val=1)
     if m.startswith("bias"):
-        nn = int(m[len("bias"):])
+        nn = int(m[len("bias") :])
         if not 0 <= nn <= 100:
             raise ValueError(f"biasNN percent out of range [0,100]: {mode}")
         return _LaneCfg(p_bias=nn * 10_000, p_corr=0)
     if m.startswith("corr"):
-        nn = int(m[len("corr"):])
+        nn = int(m[len("corr") :])
         if not 0 <= nn <= 100:
             raise ValueError(f"corrNN percent out of range [0,100]: {mode}")
         return _LaneCfg(p_bias=500_000, p_corr=nn * 10_000)
@@ -247,8 +247,9 @@ if __name__ == "__main__":
         g.configure(mode)
         ones = 0
         for _ in range(N):
-            if g.bit(0, g._cfg[0].p_bias, g._cfg[0].p_corr,
-                     g._cfg[0].stuck_en, g._cfg[0].stuck_val):
+            if g.bit(
+                0, g._cfg[0].p_bias, g._cfg[0].p_corr, g._cfg[0].stuck_en, g._cfg[0].stuck_val
+            ):
                 ones += 1
         return ones / N
 
@@ -292,13 +293,16 @@ if __name__ == "__main__":
     print("  (4) stuck-at ............... PASS")
 
     # (5) reproducibility: same seed+mode -> identical step_all() stream.
-    g1 = SepNoiseGolden(); g1.configure("bias80", seed_base=0xCAFEBABE)
-    g2 = SepNoiseGolden(); g2.configure("bias80", seed_base=0xCAFEBABE)
+    g1 = SepNoiseGolden()
+    g1.configure("bias80", seed_base=0xCAFEBABE)
+    g2 = SepNoiseGolden()
+    g2.configure("bias80", seed_base=0xCAFEBABE)
     stream1 = [g1.step_all() for _ in range(5000)]
     stream2 = [g2.step_all() for _ in range(5000)]
     assert stream1 == stream2, "reproducibility: identical config produced different streams"
     # Different seed_base -> different stream (sanity that seed actually matters)
-    g3 = SepNoiseGolden(); g3.configure("bias80", seed_base=0x0BADF00D)
+    g3 = SepNoiseGolden()
+    g3.configure("bias80", seed_base=0x0BADF00D)
     stream3 = [g3.step_all() for _ in range(5000)]
     assert stream1 != stream3, "seed_base had no effect on the stream"
     print("  (5) reproducibility ........ PASS")

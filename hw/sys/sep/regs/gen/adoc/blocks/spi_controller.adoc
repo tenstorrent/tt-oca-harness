@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -20,7 +20,7 @@
 | 0x34 | EVENT_ENABLE | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -31,7 +31,7 @@ EVENT_ENABLE register occurs.
 | 0 | `ERROR` | R | 0x0 a| Error Interrupt. Asserted when any bit in the ERROR_STATUS register is set.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -41,7 +41,7 @@ EVENT_ENABLE register occurs.
 | 0 | `ERROR` | RW | 0x0 a| Error Interrupt Enable.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -53,7 +53,7 @@ Interrupt and writing `0` releases it.
 writing `0` releases it.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -76,7 +76,7 @@ an interrupt when the depth of the RX FIFO reaches
 RX_WATERMARK words (32b each).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -114,7 +114,7 @@ are currently in the TX FIFO.  When active, this result may
 be an overestimate due to synchronization delays.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CFG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -156,14 +156,14 @@ factor of (CLKDIV+1) relative to the core clock frequency.  The
 period of sck, T(sck) then becomes `2*(CLK_DIV+1)*T(core)`
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CSID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `CSID` | RW | 0x0 a| Chip Select ID
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CMD Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -185,7 +185,7 @@ and transmitting or receiving data from the device.
 
 For read or write segments, this field controls the
 number of 1-byte bursts to transmit and or receive in
-this command segment.  The number of cyles required
+this command segment.  The number of cycles required
 to send or received a byte will depend on !!COMMAND.SPEED.
 For dummy segments, (!!COMMAND.DIRECTION == 0), this register
 controls the number of dummy cycles to issue.
@@ -193,21 +193,21 @@ The number of bytes (or dummy cycles) in the segment will be
 equal to !!COMMAND.LEN + 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RXDATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RXDATA` | R | 0x0 a| SPI Received Data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TXDATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `TXDATA` | W | 0x0 a| SPI Transmit Data.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERROR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -231,7 +231,7 @@ interrupt whenever a command is issued while busy (i.e. a 1 is
 when !!STATUS.READY is not asserted.)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERROR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -253,7 +253,7 @@ speed
 | 0 | `CMDBUSY` | RW | 0x0 a| Indicates a write to !!COMMAND when !!STATUS.READY = 0.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EVENT_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description

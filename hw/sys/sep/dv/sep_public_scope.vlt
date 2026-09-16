@@ -9,8 +9,8 @@
 // pragmas already present in the AXI fabric cells (rr_arb_tree, lzc, axi_demux) are
 // silently disabled on public signals, so Verilator cannot break the false
 // combinational ready/valid SCCs in axi_demux / axi_burst_splitter / id_fifo. The
-// result is a model-wide input-combinational (ICO) settle blow-up (~3.2M-entry Input
-// region, 951 SCCs, 2574 ICO triggers) that wedges the Verilator runtime.
+// result is a model-wide input-combinational (ICO) settle blow-up that wedges
+// the Verilator runtime.
 //
 // The SEP cocotb env only drives the tb top sep_uvm_top (root handle + its top-level
 // ports: clocks/reset/boot controls + the flat s_axi_* bus). The CPU-LSU splice is
@@ -19,14 +19,16 @@
 // needs public exposure of sep_uvm_top ONLY -- not the DUT fabric internals.
 //
 // Scoping public_flat_rw to sep_uvm_top (instead of the whole design) lets the fabric
-// split_var pragmas activate again: SCCs 951 -> 61, ICO Input region 3.2M -> ~160K
-// (20x), ICO triggers 2574 -> ~27, and sep_axi_smoke_test runs to completion
-// (PASS, ~130s) instead of wedging at the 1800s timeout. No DUT/fabric RTL change is
-// required.
+// split_var pragmas activate again, and the model runs instead of wedging. No
+// DUT/fabric RTL change is required.
 //
 // This file must be paired with dropping the runner's global --public-flat-rw (see
 // the repo-controlled cocotb runner wrapper in the SEP DV flow).
 public_flat_rw -module "sep_uvm_top" -var "*"
+
+// The shared AXI VIP interface on the SEP->SMC boundary (rom_boot target):
+// cocotb binds the slave agent to its members.
+public_flat_rw -module "ocah_axi_if" -var "*"
 
 // sep_wrapper DUT: tb_backdoor_mem in sep_uvm_top writes the real
 // memory macro arrays (default-fill patterns + firmware/image loads). Those XMR writes
@@ -39,14 +41,15 @@ public_flat_rw -module "prim_ram_1p"  -var "mem"
 public_flat_rw -module "prim_rom"     -var "mem"
 public_flat_rw -module "ram_16384x39" -var "ram_core"
 
-// NOTE (main #3417, ABR CSR block): do NOT add an abr_wrapper_key_reg public line here
-// -- it does NOT help (it only trades one tool-v5.046 codegen bug for another). Also,
-// no comment line here may START with the word "verilator" -- the .vlt lexer treats
+// +sep_cold_scratch7 deposits the warm-handler address into
+// sep_scratch_reg.field_storage before the CPU fetches. The CPU owns the
+// system-CSR AXI frontdoor during firmware boot, so the testbench has no
+// independent path for this timed write. The XMR deposit requires public write
+// access to the leaf register storage, which sits outside the fabric AXI
+// ready/valid combinational cones.
+public_flat_rw -module "sep_scratch_reg" -var "field_storage"
+
+// Do not add abr_wrapper_key_reg to this public list. The PeakRDL block is on
+// the Bender filelist and tests reach it frontdoor. Also, no comment line here
+// may START with the word "verilator" -- the .vlt lexer treats
 // "// verilator ..." as a metacomment directive and errors out.
-//   The generated abr_wrapper_key_reg does not build under the tool (v5.046): sep_crypto
-//   ties its hwif_in struct to '0, and the tool either (a) const-folds that and emits
-//   invalid C++ ("0U.__PVT__KEY[5U]..."), or (b) if the module is public, emits a
-//   mismatched nested-struct aggregate init. Bug (a)'s only fix (public) triggers (b).
-//   RESOLVED for OSS DV by SWAPPING IN A SHIM instead: sep_sim_cfg.toml excludes the
-//   generated block and compiles shims/crypto/abr_wrapper_key_reg_stub.sv (both tools,
-//   for model parity). VCS builds the real block fine; this is the DV-side unblock.

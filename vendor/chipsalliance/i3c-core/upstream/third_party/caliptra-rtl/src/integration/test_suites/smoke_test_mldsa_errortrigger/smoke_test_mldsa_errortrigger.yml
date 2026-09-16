@@ -1,5 +1,0 @@
----
-seed: ${PLAYBOOK_RANDOM_SEED}
-plusargs:
-- '+FW_TESTNAME=smoke_test_abr_errortrigger'
-testname: smoke_test_abr_errortrigger

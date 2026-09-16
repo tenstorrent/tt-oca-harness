@@ -12,9 +12,8 @@
 /**
  * Release AES from software reset.
  *
- * The sep_reset_ctrl SW_RESET_N register defaults to 0 (all IPs held in
- * software reset). This function writes 1 to the aes_sw_rst_n bit to
- * release the AES module so it can accept operations.
+ * Sets the aes_sw_rst_n bit of sep_reset_ctrl SW_RESET_N, preserving the
+ * other reset bits, so the AES module can accept operations.
  *
  * Call this once at the start of main(), after sep_outbound_filter_init().
  *

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = OCAH Architecture & Design
@@ -9,11 +9,6 @@
 :source-highlighter: highlight.js
 
 // For PDF backend, we include inline every subsection of a subsystem's documentation through its index.adoc. For HTML backend (webpage), we let the user use the navigation sidebar. Navigation sidebar is defined in `doc/trm/modules/ROOT/nav.adoc`
-
-This section provides an overview of the OCAH architecture including its
-subsystem composition, power and clock domains, reset hierarchy, and memory
-map. Subsequent chapters provide detailed microarchitectural documentation
-for each subsystem.
 
 [[ocah-architecture]]
 == OCAH Architecture
@@ -315,10 +310,32 @@ The reset hierarchy within the SMU proceeds as follows:
   infrastructure.
 
 . *Debug reset overrides.* The DTP provides JTAG IC_RESET controls that can
-  override cold, cool, and core reset domains independently for debug
-  scenarios. These are wired through the SMU to the SMC's
-  `rst_{cold,cool,core}_override_ni` / `rst_{cold,cool,core}_override_en_i`
-  ports.
+  override the fuse, cold, cool, warm, and per-subsystem reset domains
+  independently for debug scenarios. These are wired through the SMU into the
+  SMC reset unit and the SEP reset controller. The DTP JTAG chapter states the
+  programming order these overrides require.
+
+[[ocah-ic-reset]]
+==== IC_RESET TDR
+
+The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
+slices on the scan chain from TDI to TDO, followed by a single `reset_hold`
+bit nearest TDO:
+
+* *SMC slice* (nearest TDI). Fuse, cold, cool, and warm resets, plus cold and
+  warm resets for each of the 32 managed subsystems. The SMU consumes this
+  slice internally.
+* *SEP slice.* SEP main reset and the TRNG, KMAC, HMAC, AES, OTBN, and Key
+  Manager resets. Present when SEP is instantiated; omitted otherwise. The
+  SMU consumes this slice internally.
+* *External slice.* Reset overrides for logic outside the SMU. The ports in
+  this slice are adopter-defined: the integrator supplies the slice type and
+  routes the SMU output to that logic. OCAH does not name the external bits.
+  The default type is a single-override stub.
+
+Each port carries an override-enable bit and an active-low reset value. The
+Integrator Guide records the SMU port map, including how to size the external
+slice.
 
 For the detailed reset controller design, sequencing FSM, reset register
 interface, and clock-reset interaction, refer to the Clock and Reset Management
@@ -369,5 +386,20 @@ endif::backend-html5[]
 include::smn.placeholder.adoc[]
 
 // AOU
-// TODO remove adoc below and follow SMC example
-include::aou.placeholder.adoc[]
+[[axi-over-ucie-bridge]]
+ifdef::backend-pdf[]
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/MAS/index.adoc[leveloffset=0]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+// The MAS's own internal cross-references (e.g. "see Section 6.4") now land
+// in the Integrator Guide and Programmer's Guide, not this chapter, because
+// their content was split by audience across three products. For PDF,
+// everything is one include tree, so the vendored source's own same-file
+// defaults (integration.adoc/software-operation.adoc) resolve directly. For
+// HTML, each product is a separate Antora component, so the same reference
+// has to name the sibling component's page instead.
+:aou-integration-xref: ocah-integrator-guide:ROOT:aou.adoc
+:aou-software-xref: ocah-programmer-guide:ROOT:index.adoc
+include::aou:partial$index.adoc[leveloffset=0]
+endif::backend-html5[]

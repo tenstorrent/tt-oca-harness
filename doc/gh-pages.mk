@@ -16,10 +16,10 @@ OCAH_DOC_SITE_URL ?=
 
 ## Build the combined multi-book site (Home + every book, one Antora run).
 .PHONY: ocah-doc-combined-html
-ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-contributing-setup ocah-doc-home-setup 
+ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-starting-setup ocah-doc-home-setup
 	@command -v npx >/dev/null 2>&1 || { \
 		echo "error: node/npx is required to build the Antora site."; \
-		echo "install Node.js, or run: ./scripts/docker-run.sh doc-html combined"; \
+		echo "install Node.js, or run: ./scripts/docker-run.sh doc-html all"; \
 		exit 1; \
 	}
 	@echo "Building combined OCAH documentation site (Antora, Home + books) with node $$(node --version 2>/dev/null)"
@@ -55,6 +55,7 @@ ocah-doc-stage-ghpages: ocah-doc-combined-html
 	else \
 		echo "warning: Application Notes PDF not found at $(OCAH_APPNOTES_DIST)/$(OCAH_APPNOTES_PDF), skipping -- run: ./scripts/docker-run.sh doc-pdf appnotes"; \
 	fi
+	$(call ocah_stage_dashboard_data,$(OCAH_GHPAGES_DIR))
 	@echo "Staged GitHub Pages tree at $(OCAH_GHPAGES_DIR)"
 	@echo "Note: Datasheet PDFs (SMU/DTP/SEP/SMC/AOU) have no build pipeline yet -- those Downloads links will 404 until that content and a PDF build step exist."
 

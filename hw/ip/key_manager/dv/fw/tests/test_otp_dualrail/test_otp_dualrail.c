@@ -6,11 +6,8 @@
  * @file test_otp_dualrail.c
  * @brief Dual-rail integrity verification test for OTP readout fields.
  *
- * Verifies that `rom_otp_read_*()` correctly detects a valid dual-rail
- * encoding (passes integrity check) and that the software-level complement
- * verify in the driver returns -1 when the hardware gives back zeroes for a
- * locked field (which is fine — locked zeroes are NOT a sigint from firmware's
- * perspective; the hardware sigint path is separate).
+ * Verifies that `rom_otp_read_*()` accepts a valid dual-rail encoding on every
+ * 256-bit field and that the seven fields decode to distinct values.
  *
  * Subtests:
  *   1. Valid pattern: all seven 256-bit fields pass dual-rail integrity.

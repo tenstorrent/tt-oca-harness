@@ -64,8 +64,8 @@ as passwords. We have tokens:
 ** Digest SEC_DIS_TOKEN_DIGEST in hardware gates (global)
 
 The separate security disable token SEC_DIS_TOKEN overrides the entire
-LC control mechanism; the resulting feature control follows the SEC_DIS /
-SECURE_TM rules in the Lifecycle Controller chapter. This feature is an
+LC control mechanism; the resulting feature control follows the SEC_DIS
+rules in the Lifecycle Controller chapter. This feature is an
 _emergency fallback_ intended to enable A0 silicon debugging and shall
 be permanently disabled in subsequent A1/B0 revisions via metal mask
 only ECO.
@@ -143,7 +143,7 @@ Either one raises a redundancy fault, which may indicate a tampering
 attack. The fault forces the error code onto all six output bits, so
 every downstream feature gate fails closed, and it sets the sticky bit
 for that token in the `TOKEN_MATCH_FAULT` register. The three sticky bits are
-combined into a single interrupt to the SEP CPU on PIC source 39; see
+combined into a single interrupt to the SEP CPU on PIC source 40; see
 ifdef::backend-html5[]
 xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
 endif::backend-html5[]
@@ -153,7 +153,7 @@ endif::backend-pdf[]
 for the full slot map. Firmware reads the register to identify which
 comparators faulted. The fault bits are software-read-only and clear only on
 reset, so a fault cannot be hidden by retrying with a valid token and the PIC
-source stays asserted. Firmware must mask PIC source 39 after it has observed
+source stays asserted. Firmware must mask PIC source 40 after it has observed
 the fault; there is no write-one-to-clear that drops the line, and an unmasked
 handler re-enters.
 
@@ -180,4 +180,4 @@ Error = 6’b111111
 
 A token match does not by itself change the life cycle state. It
 authorizes a change, and the state is then updated by one of two paths
-described in _Fuse Controller (OTP)_ in this chapter.
+described in _OTP fuse controller_ in this chapter.

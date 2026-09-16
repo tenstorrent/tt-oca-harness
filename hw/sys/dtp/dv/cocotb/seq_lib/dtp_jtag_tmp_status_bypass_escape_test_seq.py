@@ -26,7 +26,9 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_step(2, "Arm BYPASS_ESCAPE and verify bit 0 is retained")
         await self.write_tmp_status(0x1)
         for idx, shift_value in enumerate([0x1, 0x3], start=1):
-            self.log_iteration(idx, 2, "Read armed TMP_STATUS with shift_value=0b%02b", shift_value)
+            self.log_iteration(
+                idx, 2, "Read armed TMP_STATUS with shift_value=0b%s", format(shift_value, "02b")
+            )
             armed = await self.read_tmp_status(shift_value=shift_value)
             decoded_armed = self.log_tmp_status("Armed readback", armed)
             self.assert_equal(
@@ -52,10 +54,13 @@ class dtp_jtag_tmp_status_bypass_escape_test_seq(dtp_debug_tdr_base_test_seq):
         )
 
         self.log_step(5, "Check normal BYPASS scan routing after escape")
-        await self.check_bypass_delay(DtpJtagInstr.BYPASS_3F, 0xA5A5, width=16)
+        # Seeded per-pass pattern: repeated loops shift different data through
+        # the recovered BYPASS path instead of one constant.
+        bypass_pattern = self.rng("tmp_bypass_escape").getrandbits(16)
+        await self.check_bypass_delay(DtpJtagInstr.BYPASS_3F, bypass_pattern, width=16)
         self.log_summary(
             "TMP BYPASS_ESCAPE complete",
             held=f"0b{held:02b}",
             released=f"0b{released:02b}",
-            bypass_pattern="0xA5A5",
+            bypass_pattern=f"0x{bypass_pattern:04x}",
         )

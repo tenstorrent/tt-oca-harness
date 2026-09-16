@@ -48,9 +48,7 @@ class smc_base_test_seq(uvm_sequence):
                 await RisingEdge(clk)
                 if int(sig.value):
                     return
-            raise AssertionError(
-                f"{name} never asserted within {max_cycles} smc clocks"
-            )
+            raise AssertionError(f"{name} never asserted within {max_cycles} smc clocks")
 
         await _wait_high(dut.tb_fuse_sense_done, "tb_fuse_sense_done")
         # Prefer the delayed fuse_reset (matches CPU/mem-init pipe) when present.
@@ -59,7 +57,7 @@ class smc_base_test_seq(uvm_sequence):
         if hasattr(dut, "tb_rst_warm_smc_clk_n"):
             await _wait_high(dut.tb_rst_warm_smc_clk_n, "tb_rst_warm_smc_clk_n")
         else:
-            # Legacy fallback when TB probes are absent.
+            # Fallback when the TB probes are absent.
             await ClockCycles(clk, 64)
 
     async def body(self) -> None:

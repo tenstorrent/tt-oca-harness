@@ -1,0 +1,316 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# DTP Verilator coverage policy: hole dispositions for the functional
+# coverage points collected by the cov/sv modules. Reference-only: no
+# [[thresholds]] are set here.
+
+schema_version = 1
+dut = "dtp"
+scope_epoch = "dtp-fcov-v1"
+
+[[holes]]
+id = "fcov-smc_axi-reset_timing_request_issued"
+title = "smc_axi reset timing request issued"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the request stalled on the bus."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_axi_reset_timing_request_issued"
+
+[[holes]]
+id = "fcov-smc_axi-reset_timing_data_phase"
+title = "smc_axi reset timing data phase"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the W beat outstanding."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_axi_reset_timing_data_phase"
+
+[[holes]]
+id = "fcov-smc_axi-reset_timing_response_wait"
+title = "smc_axi reset timing response wait"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands while awaiting the response."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_axi_reset_timing_response_wait"
+
+[[holes]]
+id = "fcov-smc_axi-cdc_clear"
+title = "smc_axi cdc clear"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC clear after a mid-flight request abort."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_axi_cdc_clear"
+
+[[holes]]
+id = "fcov-smc_axi-cdc_isolate"
+title = "smc_axi cdc isolate"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC isolation after a mid-flight data abort."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_axi_cdc_isolate"
+
+[[holes]]
+id = "fcov-smc_otp-reset_timing_request_issued"
+title = "smc_otp reset timing request issued"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the request stalled on the bus."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_otp_reset_timing_request_issued"
+
+[[holes]]
+id = "fcov-smc_otp-reset_timing_data_phase"
+title = "smc_otp reset timing data phase"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the W beat outstanding."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_otp_reset_timing_data_phase"
+
+[[holes]]
+id = "fcov-smc_otp-reset_timing_response_wait"
+title = "smc_otp reset timing response wait"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands while awaiting the response."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_otp_reset_timing_response_wait"
+
+[[holes]]
+id = "fcov-smc_otp-cdc_clear"
+title = "smc_otp cdc clear"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC clear after a mid-flight request abort."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_otp_cdc_clear"
+
+[[holes]]
+id = "fcov-smc_otp-cdc_isolate"
+title = "smc_otp cdc isolate"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC isolation after a mid-flight data abort."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_otp_cdc_isolate"
+
+[[holes]]
+id = "fcov-sep_otp-reset_timing_request_issued"
+title = "sep_otp reset timing request issued"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the request stalled on the bus."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_sep_otp_reset_timing_request_issued"
+
+[[holes]]
+id = "fcov-sep_otp-reset_timing_data_phase"
+title = "sep_otp reset timing data phase"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands with the W beat outstanding."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_sep_otp_reset_timing_data_phase"
+
+[[holes]]
+id = "fcov-sep_otp-reset_timing_response_wait"
+title = "sep_otp reset timing response wait"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: reset lands while awaiting the response."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_sep_otp_reset_timing_response_wait"
+
+[[holes]]
+id = "fcov-sep_otp-cdc_clear"
+title = "sep_otp cdc clear"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC clear after a mid-flight request abort."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_sep_otp_cdc_clear"
+
+[[holes]]
+id = "fcov-sep_otp-cdc_isolate"
+title = "sep_otp cdc isolate"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Sampled only by the reset-abort leaves, which drive the system reset while the bridge is mid-flight and fail on the bridge defect (the FSM stays in AXI_WAIT_BRESP after an AXI-side reset until a TAP reset). Point: CDC isolation after a mid-flight data abort."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1330", "https://github.com/tenstorrent/tt-oca-harness/issues/1953"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_sep_otp_cdc_isolate"
+
+[[holes]]
+id = "fcov-smc_axi-poll-long-wait"
+title = "smc_axi poll long wait"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1335"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_axi_poll_long_wait"
+
+[[holes]]
+id = "fcov-smc_otp-poll-long-wait"
+title = "smc_otp poll long wait"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1335"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_smc_otp_poll_long_wait"
+
+[[holes]]
+id = "fcov-sep_otp-poll-long-wait"
+title = "sep_otp poll long wait"
+category = "needs_review"
+disposition = "review"
+status = "open"
+confidence = "high"
+rationale = "Settled-status polls never exceed three BUSY captures even with sixteen-scan responder stalls, so the long-wait poll bins have no reachable stimulus."
+owner = "dtp-dv"
+reviewer = "dtp-dv"
+date = "2026-08-29"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/1335"]
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "dtp_uvm_top.u_dtp_jtag2axi_fcov.c_sep_otp_poll_long_wait"
