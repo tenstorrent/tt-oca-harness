@@ -90,27 +90,29 @@ changes nothing and warns about nothing.
 [[smu-fcov-points]]
 === Functional Coverage Points
 
-`cov/sv/` carries 11 modules of labelled cover-property points, 120 in all,
+`cov/sv/` carries 11 modules of labelled cover-property points, 115 in all,
 each declared through the `OCAH_FCOV_COVER` macro. Under `--cov` they land in
 the `user` metric family of the native coverage database, so they reach
 `cov_merge`, `cov_report` and the coverage policy.
 
-The block bench `tb/tb_top.sv` instantiates ten of them; the wrapper bench
-`tb/tb_wrapper_top.sv` instantiates all eleven. `smu_clk_fcov.sv` is the one
-the block bench does not carry: it reads clock mirrors only the wrapper bench
-publishes. Point counts below are the declarations in each file, counted from
+The block bench `tb/tb_top.sv` instantiates nine of them and the wrapper bench
+`tb/tb_wrapper_top.sv` ten. `smu_clk_fcov.sv` and `smu_alias_fcov.sv` are
+wrapper-bench only: one reads clock mirrors, the other boundary probes, that
+only that bench publishes. `smu_nosep_fcov.sv` is block-bench only: its points
+exist without SEP, and the wrapper elaborates SEP. Point counts below are the
+declarations in each file, counted from
 the source; how many of them *elaborate* on a given target is lower wherever a
 `g_sep` guard removes one, and that number needs a run rather than a count.
 
 [cols="2,1,4",options="header",]
 |===
 |Module |Points |Intent it makes real
-|`smu_xbar_fcov.sv` |26 |Window programming and reprogramming, inbound AXI handshake, all four response encodings, forwarded versus not-forwarded routing
+|`smu_xbar_fcov.sv` |25 |Window programming and reprogramming, inbound AXI handshake, all four response encodings, inbound traffic not forwarded outbound
 |`smu_boot_fcov.sv` |21 |Reset-release edges, boot-stall sources and release, lifecycle broadcast, fuse sense, SRAM auto-init
 |`smu_rst_fcov.sv` |17 |Cold-reset assertion and release, per-domain reset order, power-good
 |`smu_dbg_fcov.sv` |13 |JTAG2AXI debug paths, security-disable, TAP state
 |`smu_ext_fcov.sv` |10 |External boot-sequence gate and the external AXI boundary
-|`smu_nosep_fcov.sv` |8 |The SEP=0 composition: what the boundary presents with no SEP elaborated
+|`smu_nosep_fcov.sv` |4 |The SEP=0 composition: the direct converter path that replaces the crossbar, in each direction
 |`smu_dtp_fcov.sv` |7 |Cross-trigger ports and XTRIG mode
 |`smu_lc_fcov.sv` |6 |Lifecycle state broadcast and demotion
 |`smu_alias_fcov.sv` |6 |Alias and remap manager scope at the SMU boundary
