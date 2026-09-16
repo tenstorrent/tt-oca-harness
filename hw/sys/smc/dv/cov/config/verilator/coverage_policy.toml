@@ -264,24 +264,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_write_unlocked_field_updated"
 
 [[holes]]
-id = "fcov-smc-c_axil_concurrent_masters"
-title = "c axil concurrent masters"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_axil_concurrent_masters"
-
-[[holes]]
 id = "fcov-smc-c_axil_dtp_csr_active"
 title = "c axil dtp csr active"
 category = "missing_stimulus"
