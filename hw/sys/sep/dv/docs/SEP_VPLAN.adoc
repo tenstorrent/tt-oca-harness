@@ -2611,7 +2611,7 @@ the injection point is real logic and is golden-checked.
 |CHK-CELL
 |Per cell: the digest equals the golden, the done interrupt sets and clears on write-one-to-clear, and the error status is clean.
 |CHK-RAND-REP
-|Every legal cell ran, each producing a distinct digest. The matrix is derived from the generated digest-size and key-length banks minus `HMAC_ILLEGAL_KEYED`, which is the single source of truth for legality, so the sequence and this walk cannot drift apart. As on the AES sweep, the key and message are re-drawn per cell, so distinctness alone does not prove the cells programmed different variants — the per-cell golden compare is what proves that.
+|Every legal cell ran, each producing a distinct digest. The matrix is derived from the generated digest-size and key-length banks minus `HMAC_ILLEGAL_KEYED`, which the sequence computes from the register specification's block-size rule (`hmac.adoc`: the key length cannot exceed the block size, 512-bit for SHA-2 256) rather than from the engine's own bound. It is the single source of truth for legality, so the sequence and this walk cannot drift apart. As on the AES sweep, the key and message are re-drawn per cell, so distinctness alone does not prove the cells programmed different variants — the per-cell golden compare is what proves that.
 |SKIP-ILLEGAL-KEYED
 |Each digest-size / key-length pair the engine rejects as `invalid_config` is named in the log with its reason, rather than being dropped silently from the matrix. A declaration, not a checker: no negative cell is driven, so nothing here provokes `ERR_CODE`.
 |CHK-ERR

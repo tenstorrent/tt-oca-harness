@@ -62,8 +62,23 @@ HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}  # SHA2_256/384/512
 HMAC_KEY_LENGTH = {128: 0x1, 256: 0x2, 384: 0x4, 512: 0x8, 1024: 0x10}
 # Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.adoc).
 HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
-# Illegal keyed combo: SHA-256 supports keys up to 512-bit only (hmac.sv:819).
-HMAC_ILLEGAL_KEYED = {(256, 1024)}
+# SHA-2 block size per digest size, in bits. hmac.adoc: "the key length cannot
+# be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to
+# 512-bit for SHA-2 256."
+HMAC_BLOCK_BITS = {256: 512, 384: 1024, 512: 1024}
+# Keyed cells the register specification blocks, derived from that rule rather
+# than listed: hmac.adoc states a start with KEY_LENGTH = Key_1024 while
+# DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". Deriving
+# it keeps the legal set the specification's, not the design's -- an RTL bound
+# that disagreed with the block-size rule would now drive a cell this set calls
+# legal.
+HMAC_ILLEGAL_KEYED = {
+    (sha_bits, key_bits)
+    for sha_bits in HMAC_DIGEST_SIZE
+    for key_bits in HMAC_KEY_LENGTH
+    if key_bits > HMAC_BLOCK_BITS[sha_bits]
+}
+assert HMAC_ILLEGAL_KEYED == {(256, 1024)}, HMAC_ILLEGAL_KEYED
 
 
 def build_cfg(
