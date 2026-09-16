@@ -4609,7 +4609,7 @@ specification does not state which list is normative.
 |CHK-READ-FAILCLOSED
 |One edge after the illegal encoding the read interface issues no bank command, reports done and not busy with the error set, and does not return the sensed control-word value. The state register's value is logged, not asserted, for the reason given below.
 |CHK-PROGRAM-FAILCLOSED
-|One edge after the illegal encoding the program interface issues no bank command, reports done and not busy with the error set, and does not return the sensed control-word value -- the same retirement the read leg grades. The state register's value is logged, not asserted: no document states its encodings, so an expected value taken from the enum would only show the design agreeing with itself.
+|One edge after the illegal encoding the program interface issues no bank command, reports done and not busy with the error set, and does not return the sensed control-word value -- the same retirement the read leg grades. The state register's value is logged, not asserted: no document states its encodings, so an expected value taken from the enum would only show the design agreeing with itself. The error term is attributable only on the FIRST program injection: `error_o` is cleared by the next request, not by a status write, and the program leg injects into an idle window with no request in between — so a later injection finds the previous one's error still latched. The leaf asserts a clear `error_o` before the first injection and logs the carry-over on a later one, whose verdict then rests on `done` and on the data mismatch.
 |CHK-READ-ERR-CLEAR-SUCCESS
 |A read that completes normally reports done, not busy, and no error.
 |CHK-READ-ERR-TIMEOUT
