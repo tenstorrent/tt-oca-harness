@@ -319,10 +319,10 @@ module smc_dfd_wrap #(
   prim_sync3r #(
     .WIDTH(REF_CNT_W)
   ) u_ref_cnt_sync (
-    .clk_i      (clk_gated_i),
-    .rst_ni  (rst_primary_ni),
-    .d_i        (ref_cnt_gray_q),
-    .q_o        (ref_cnt_gray_sync)
+    .clk_i  (clk_gated_i),
+    .rst_ni (rst_primary_ni),
+    .d_i    (ref_cnt_gray_q),
+    .q_o    (ref_cnt_gray_sync)
   );
 
   prim_gray2bin #(
