@@ -504,6 +504,7 @@ module sep_fcov (
   logic [7:0] km_rsp_cmd_q;      // echoed cmd_id (payload word 2)
   logic [7:0] km_rsp_rc_q;       // rc (payload word 3)
   logic       km_rsp_is_cmd_q;   // outbound header resp_id was RESP_CMD
+  logic [7:0] km_rsp_len_q;      // declared RESP payload_len, from the header
 
   // Generate succeeded: the response frame echoed CMD_KEY_GENERATE with rc 0
   // and a non-null handle. Nothing here is inferred from silence.
@@ -511,12 +512,20 @@ module sep_fcov (
       (km_rsp_cmd_q == KmCmdGenerate) && (km_rsp_rc_q == 8'h00) && (rd_data[7:0] != 8'h00);
   // Score dest/cmd on a RESP_CMD payload, not on inbound WRITE_DATA.
   // Transfer dest is RETURN_ARG dest_engine[15:8] of a success frame.
-  // Host-cmd sample is word 4 so rc is already latched. Success only,
-  // except CMD_SRAM_VER whose defined result is not success.
-  wire km_host_cmd_seen = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
-      (km_rsp_idx_q == 9'd4) &&
-      ((km_rsp_cmd_q == KmCmdSramVer) ? (km_rsp_rc_q != 8'h00)
-                                      : (km_rsp_rc_q == 8'h00));
+  //
+  // Completion is the LAST payload word, taken from the header's declared
+  // payload_len rather than a fixed word 4. A RESP_CMD is valid at
+  // payload_len 3 -- [cmd_seq, cmd_id, rc] with no return arg -- so an
+  // arg-less command such as CMD_SRAM_EXEC ends a word early and a fixed
+  // index can never see it complete.
+  wire km_rsp_last = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
+      (km_rsp_idx_q == 9'(km_rsp_len_q));
+  // On a 3-word frame the rc is being read on this very cycle, so it is not
+  // latched yet; take it off the bus in that case.
+  wire [7:0] km_rsp_rc_now = (km_rsp_idx_q == 9'd3) ? rd_data[7:0] : km_rsp_rc_q;
+  wire km_host_cmd_seen = km_rsp_last &&
+      ((km_rsp_cmd_q == KmCmdSramVer) ? (km_rsp_rc_now != 8'h00)
+                                      : (km_rsp_rc_now == 8'h00));
   wire km_xfer_scored = km_rd_data && km_rsp_arm_q && km_rsp_is_cmd_q &&
       (km_rsp_idx_q == 9'd4) && (km_rsp_cmd_q == KmCmdTransfer) &&
       (km_rsp_rc_q == 8'h00);
@@ -859,6 +868,7 @@ module sep_fcov (
       km_rsp_idx_q      <= '0;
       km_rsp_arm_q      <= 1'b0;
       km_rsp_is_cmd_q   <= 1'b0;
+      km_rsp_len_q      <= '0;
       dma_copy_q        <= 1'b0;
       dma_hs_q          <= 1'b0;
       dma_hash_q        <= 1'b0;
@@ -1040,10 +1050,13 @@ module sep_fcov (
       // would shift a later word onto index 4 and false-hit cp_generate.
       if (km_rd_data && km_rsp_arm_q) begin
         km_rsp_idx_q <= km_rsp_idx_q + 9'd1;
-        if (km_rsp_idx_q == 9'd0) km_rsp_is_cmd_q <= (rd_data[15:8] == KmRespCmd);
+        if (km_rsp_idx_q == 9'd0) begin
+          km_rsp_is_cmd_q <= (rd_data[15:8] == KmRespCmd);
+          km_rsp_len_q    <= rd_data[23:16];
+        end
         if (km_rsp_idx_q == 9'd2) km_rsp_cmd_q <= rd_data[7:0];
         if (km_rsp_idx_q == 9'd3) km_rsp_rc_q <= rd_data[7:0];
-        if (km_rsp_idx_q >= 9'd4) km_rsp_arm_q <= 1'b0;
+        if (km_rsp_idx_q >= 9'(km_rsp_len_q)) km_rsp_arm_q <= 1'b0;
       end
 
       if (dma_copy_go) begin
