@@ -3,6 +3,14 @@
 
 = Memory Map and Register Reference
 :description: SEP address regions and generated register tables.
+ifdef::backend-html5[]
+:sep-crypto-access-ref: xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]
+:sep-drbg-architecture-ref: xref:ip:drbg/doc/index.adoc[Architecture]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:sep-crypto-access-ref: <<crypto-single-beat-only,Single-Beat Access Only>>
+:sep-drbg-architecture-ref: <<drbg-deterministic-random-bit-generator,Architecture>>
+endif::backend-pdf[]
 
 [[sep-memory-map]]
 
@@ -14,7 +22,7 @@ chiplet-global base programmed in `SEP_GLOBAL_BASE_ADDR`; SEP CPU
 software uses either direct internal addresses (`0x1000_0000`,
 `0x1080_0000`, and so on) or the local alias view described below.
 
-[cols="<,<,<,<,<",options="header",]
+[cols="<20%,<20%,<10%,<15%,<35%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
 |0x0000_0000 |0x1000_0000 |256 MB |External |External to chiplet, but not in SMU (SMC, DTP, etc).
@@ -47,7 +55,7 @@ chiplet-global SEP aperture configured by `SEP_GLOBAL_BASE_ADDR` /
 `SEP_REGION_SIZE` controls the SMU xbar and inbound global-to-local
 remap.
 
-[cols="<,<,<,<,<",options="header",]
+[cols="<20%,<20%,<10%,<15%,<35%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
 |0xC000_0000 |0xC003_FFFF |256 kB |ICCM |Tightly Coupled Instruction SRAM
@@ -79,9 +87,9 @@ no register must return SLVERR and must not alias onto a live register. See the
 Integrator Guide.
 
 The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
-single-beat transactions only; see <<crypto-single-beat-only>>.
+single-beat transactions only; see {sep-crypto-access-ref}.
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header",]
+[width="100%",cols="<20%,<20%,<10%,<15%,<35%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
 |0x1000_0000 |0x1000_FFFF |64 kB |SRAM |Scratch SRAM
@@ -230,7 +238,7 @@ endif::backend-pdf[]
 === DRBG
 
 The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
-(see <<drbg-deterministic-random-bit-generator,Architecture>>). Their register maps are reported here.
+(see {sep-drbg-architecture-ref}). Their register maps are reported here.
 
 ifdef::backend-html5[]
 ++++

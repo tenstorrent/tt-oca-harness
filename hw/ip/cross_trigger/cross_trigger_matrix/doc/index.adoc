@@ -22,7 +22,13 @@ The `NUM_CT_SRC` and `NUM_CT_DST` parameters in
 26 each. The RTL derives the following localparams from the generated
 register map:
 
-[cols="<20%,<12%,<68%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTM configuration constants" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<24,<10,<66",options="header",role="port-reference"]
 |===
 |Constant |Value |Description
 
@@ -35,6 +41,12 @@ register map:
 |Number of CT_Dst input ports (sized by the `CT_DST_SELECT` field width in the
 register map).
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 These values cannot be overridden at instantiation. Resizing the matrix
 requires changing the SystemRDL parameters and regenerating the register map.

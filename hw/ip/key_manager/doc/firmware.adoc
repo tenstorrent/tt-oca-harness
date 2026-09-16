@@ -61,21 +61,16 @@ command execution. Header validation, sequence checking, command
 decoding, payload-length checking, and payload CRC checking all occur
 before a command handler is allowed to act on the payload.
 
+Packet diagrams show each 32-bit word from bit 31 (most significant) on the
+left to bit 0 (least significant) on the right. Field widths are proportional
+to their bit counts; reserved fields are shaded grey. Word offsets start at
+zero within the message or payload shown. In the message layouts, `n` is
+`PAYLOAD_LEN`.
+
 All command messages use the following container format.
 
 .Command Message
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-8+^| `HEADER_CRC8[31:24]`
-8+^| `PAYLOAD_LEN[23:16]`
-8+^| `COMMAND_ID[15:8]`
-8+^| `CMD_SEQ_NUM[7:0]`
-32+^| `PAYLOAD_WORD[0][31:0]`
-32+^| `...`
-32+^| `PAYLOAD_WORD[n-1][31:0]`
-32+^| `PAYLOAD_CRC32[31:0]`
-|===
+image::km_packet_command_message.svg["Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: COMMAND_ID; bits 7 to 0: CMD_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32.",width=544]
 
 .Message Field Description
 [cols="<22%,<78%",options="header"]
@@ -92,7 +87,7 @@ All command messages use the following container format.
 The rest of this section describes all valid commands and their payloads.
 
 .KM Command Summary
-[cols="^15%,<40%,<45%",options="header"]
+[cols="^10%,<40%,<50%",options="header"]
 |===
 | ID | Command | Purpose
 | `0x00` | `CMD_HW_VER` | Request KM hardware version.
@@ -129,14 +124,7 @@ This command has a `RESP_CMD` response with a return code of _success_,
 and a return argument containing the version of the hardware.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-8+^| `RESERVED`
-8+^| `HW_MAJOR_REV[23:16]`
-8+^| `HW_MINOR_REV[15:8]`
-8+^| `HW_PATCH_REV[7:0]`
-|===
+image::km_packet_hw_version.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: HW_MAJOR_REV; bits 15 to 8: HW_MINOR_REV; bits 7 to 0: HW_PATCH_REV.",width=544]
 
 [[km-cmd-rom-ver]]
 === 0x01 - CMD_ROM_VER
@@ -155,14 +143,7 @@ This command has a `RESP_CMD` response with a return code of _success_,
 and a return argument containing the version of the ROM firmware.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-8+^| `RESERVED`
-8+^| `ROM_MAJOR_REV[23:16]`
-8+^| `ROM_MINOR_REV[15:8]`
-8+^| `ROM_PATCH_REV[7:0]`
-|===
+image::km_packet_rom_version.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: ROM_MAJOR_REV; bits 15 to 8: ROM_MINOR_REV; bits 7 to 0: ROM_PATCH_REV.",width=544]
 
 [[km-cmd-sram-ver]]
 === 0x02 - CMD_SRAM_VER
@@ -192,14 +173,7 @@ response with a return code of _success_, and a return argument
 containing the version of the SRAM firmware.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-8+^| `RESERVED`
-8+^| `SRAM_MAJOR_REV[23:16]`
-8+^| `SRAM_MINOR_REV[15:8]`
-8+^| `SRAM_PATCH_REV[7:0]`
-|===
+image::km_packet_sram_version.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: SRAM_MAJOR_REV; bits 15 to 8: SRAM_MINOR_REV; bits 7 to 0: SRAM_PATCH_REV.",width=544]
 
 [[km-cmd-stat]]
 === 0x03 - CMD_STAT
@@ -218,11 +192,7 @@ This command has a `RESP_CMD` response with a return code of _success_,
 and a return argument containing the KM status information.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-32+^| `KM_STATUS[31:0]`
-|===
+image::km_packet_status.svg["Word 0: bits 31 to 0: KM_STATUS.",width=544]
 
 .KM_STATUS Payload
 [cols="^15%,<25%,<60%",options="header"]
@@ -330,12 +300,7 @@ for sending its own ready message to the SEP.
 *Payload*
 
 .CMD_SRAM_LOAD_EXEC Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-16+^| `RESERVED`
-16+^| `FW_WORDS[15:0]`
-|===
+image::km_packet_sram_load_exec.svg["Word 0: bits 31 to 16: RESERVED; bits 15 to 0: FW_WORDS.",width=544]
 
 .CMD_SRAM_LOAD_EXEC Payload Fields
 [cols="^15%,<25%,<60%",options="header"]
@@ -411,14 +376,7 @@ The size of the requested key in multiples of 32-bit words (equal to
 `REQ_SIZE+1`), as well as the valid destinations for the key.
 
 .Command Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-25+^| `RESERVED`
-7+^| `REQ_SIZE[6:0]`
-24+^| `RESERVED`
-8+^| `DEST_VALID[7:0]`
-|===
+image::km_packet_key_generate_payload.svg["Word 0: bits 31 to 7: RESERVED; bits 6 to 0: REQ_SIZE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID.",width=544]
 
 .DEST_VALID Payload
 [cols="^15%,<25%,<60%",options="header"]
@@ -454,15 +412,7 @@ destinations. The granted size must always be equivalent to the requested
 size.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-8+^| `RESERVED`
-8+^| `DEST_VALID[23:16]`
-1+^| `RESERVED`
-7+^| `REQ_SIZE[14:8]`
-8+^| `KEY_HANDLE[7:0]`
-|===
+image::km_packet_key_result.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: DEST_VALID; bit 15: RESERVED; bits 14 to 8: REQ_SIZE; bits 7 to 0: KEY_HANDLE.",width=544]
 
 [[km-cmd-key-revoke]]
 === 0x23 - CMD_KEY_REVOKE
@@ -477,12 +427,7 @@ handle.
 The handle for the key to invalidate.
 
 .Command Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `RESERVED`
-8+^| `KEY_HANDLE[7:0]`
-|===
+image::km_packet_key_handle.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE.",width=544]
 
 *Response*
 
@@ -499,12 +444,7 @@ return code of _success_, and a return argument containing the handle of
 the revoked key.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `RESERVED`
-8+^| `KEY_HANDLE[7:0]`
-|===
+image::km_packet_key_handle.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE.",width=544]
 
 [[km-cmd-key-transfer]]
 === 0x24 - CMD_KEY_TRANSFER
@@ -522,14 +462,7 @@ The handle of the key to transfer in the KPV and the bitmask of the
 destination crypto engines.
 
 .Command Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `RESERVED`
-8+^| `KEY_HANDLE[7:0]`
-24+^| `RESERVED`
-8+^| `DEST_ENGINE[7:0]`
-|===
+image::km_packet_key_transfer_payload.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE.",width=544]
 
 .DEST_ENGINE Payload
 [cols="^15%,<25%,<60%",options="header"]
@@ -561,13 +494,7 @@ return code of _success_, and a return argument containing the key handle
 and a bitfield of the crypto engines to which the key was transferred.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-16+^| `RESERVED`
-8+^| `DEST_ENGINE[15:8]`
-8+^| `KEY_HANDLE[7:0]`
-|===
+image::km_packet_key_transfer_result.svg["Word 0: bits 31 to 16: RESERVED; bits 15 to 8: DEST_ENGINE; bits 7 to 0: KEY_HANDLE.",width=544]
 
 .DEST_ENGINE Payload
 [cols="^15%,<25%,<60%",options="header"]
@@ -597,12 +524,7 @@ number of engines may be selected.
 A bitfield indicating the crypto engines to purge.
 
 .Command Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `RESERVED`
-8+^| `DEST_ENGINE[7:0]`
-|===
+image::km_packet_engine_mask.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE.",width=544]
 
 .DEST_ENGINE Payload
 [cols="^15%,<25%,<60%",options="header"]
@@ -633,12 +555,7 @@ return code of _success_, and a return argument indicating the crypto
 engines that were purged.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `RESERVED`
-8+^| `DEST_ENGINE[7:0]`
-|===
+image::km_packet_engine_mask.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_ENGINE.",width=544]
 
 .DEST_ENGINE Payload
 [cols="^15%,<25%,<60%",options="header"]
@@ -669,17 +586,7 @@ key size is `KEY_SIZE+1`) and the valid destinations for the key,
 followed by the key material itself.
 
 .Command Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-25+^| `RESERVED`
-7+^| `KEY_SIZE[6:0]`
-24+^| `RESERVED`
-8+^| `DEST_VALID[7:0]`
-32+^| `KEY_DATA[0][31:0]`
-32+^| `...`
-32+^| `KEY_DATA[KEY_SIZE][31:0]`
-|===
+image::km_packet_key_load_payload.svg["Word 0: bits 31 to 7: RESERVED; bits 6 to 0: KEY_SIZE. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID. Word 2: bits 31 to 0: KEY_DATA[0]. Intermediate words omitted. Word KEY_SIZE + 2: bits 31 to 0: KEY_DATA[KEY_SIZE].",width=544]
 
 .DEST_VALID Payload
 [cols="^15%,<25%,<60%",options="header"]
@@ -710,7 +617,7 @@ The return argument is the fixed header-word index of the offending field
 `KEY_DATA` position.
 
 .CMD_KEY_LOAD Validation Order
-[cols="^10%,<55%,^15%,^20%",options="header"]
+[cols="^10%,<55%,^20%,^15%",options="header"]
 |===
 | Step | Check | Return Code | Return Arg
 | 1 | `PAYLOAD_LEN < 3` (cannot parse `KEY_SIZE`/`DEST_VALID`) | _invalid_arg_ | `0`
@@ -743,15 +650,7 @@ key-management command with no distinction from a `CMD_KEY_GENERATE`
 handle.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-8+^| `RESERVED`
-8+^| `DEST_VALID[23:16]`
-1+^| `RESERVED`
-7+^| `REQ_SIZE[14:8]`
-8+^| `KEY_HANDLE[7:0]`
-|===
+image::km_packet_key_result.svg["Word 0: bits 31 to 24: RESERVED; bits 23 to 16: DEST_VALID; bit 15: RESERVED; bits 14 to 8: REQ_SIZE; bits 7 to 0: KEY_HANDLE.",width=544]
 
 [[km-cmd-abr-sk-transfer]]
 === 0x27 - CMD_ABR_SK_TRANSFER
@@ -776,12 +675,7 @@ key-management command.
 The valid crypto engine destinations for the captured key.
 
 .Command Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `RESERVED`
-8+^| `DEST_VALID[7:0]`
-|===
+image::km_packet_destination_mask.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: DEST_VALID.",width=544]
 
 .DEST_VALID Payload
 [cols="^15%,<25%,<60%",options="header"]
@@ -811,12 +705,7 @@ If the request is granted, the command returns `RESP_CMD` _success_ with a
 return argument containing the handle of the newly stored key.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `RESERVED`
-8+^| `KEY_HANDLE[7:0]`
-|===
+image::km_packet_key_handle.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: KEY_HANDLE.",width=544]
 
 [[km-cmd-otp-read-lock-cold]]
 === 0x28 - CMD_OTP_READ_LOCK_COLD
@@ -847,12 +736,7 @@ word returns _invalid_len_ rather than _invalid_arg_, because the length
 check precedes any inspection of the argument.
 
 .Command Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-23+^| `RESERVED`
-^| `SsI` | `SiI` | `cI` | `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
-|===
+image::km_packet_otp_read_locks.svg["Word 0: bits 31 to 9: RESERVED; bit 8: SsI; bit 7: SiI; bit 6: cI; bit 5: CK; bit 4: SU; bit 3: SiU; bit 2: cU; bit 1: D; bit 0: LC.",width=544]
 
 .LOCK_BITS Field Encoding
 [cols="^10%,<20%,<70%",options="header"]
@@ -884,29 +768,13 @@ and returns `RESP_CMD` _success_ with `return_arg` = the resulting
 `OTP_READ_LOCK_COLD` register value after the write.
 
 .RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-23+^| `RESERVED`
-^| `SsI` | `SiI` | `cI` | `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
-|===
+image::km_packet_otp_read_locks.svg["Word 0: bits 31 to 9: RESERVED; bit 8: SsI; bit 7: SiI; bit 6: cI; bit 5: CK; bit 4: SU; bit 3: SiU; bit 2: cU; bit 1: D; bit 0: LC.",width=544]
 
 [[km-firmware-response-message-reference]]
 == Response Message Reference
 
 .Response Message
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-8+^| `HEADER_CRC8[31:24]`
-8+^| `PAYLOAD_LEN[23:16]`
-8+^| `RESPONSE_ID[15:8]`
-8+^| `RESP_SEQ_NUM[7:0]`
-32+^| `PAYLOAD_WORD[0][31:0]`
-32+^| `...`
-32+^| `PAYLOAD_WORD[n-1][31:0]`
-32+^| `PAYLOAD_CRC32[31:0]`
-|===
+image::km_packet_response_message.svg["Word 0: bits 31 to 24: HEADER_CRC8; bits 23 to 16: PAYLOAD_LEN; bits 15 to 8: RESPONSE_ID; bits 7 to 0: RESP_SEQ_NUM. Word 1: bits 31 to 0: PAYLOAD_WORD[0]. Intermediate words omitted. Word n: bits 31 to 0: PAYLOAD_WORD[n-1]. Word n + 1: bits 31 to 0: PAYLOAD_CRC32.",width=544]
 
 The KM sends response messages to the SEP using the exact same basic
 message container format as command messages.
@@ -916,7 +784,7 @@ sequence numbers of command messages. There is also no direct
 relationship between command IDs and response IDs.
 
 .KM Response Summary
-[cols="^15%,<35%,<50%",options="header"]
+[cols="^10%,<40%,<50%",options="header"]
 |===
 | ID | Response | Trigger
 | `0x00` | `RESP_CMD` | Reply to every direct SEP command.
@@ -940,17 +808,7 @@ The sequence number from the source command, the source command ID, a
 signed 8-bit return code, and an optional argument.
 
 .Response Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `RESERVED`
-8+^| `CMD_SEQ_NUM[7:0]`
-24+^| `RESERVED`
-8+^| `COMMAND_ID[7:0]`
-24+^| `RESERVED`
-8+^| `RETURN_CODE[7:0]`
-32+^| `RETURN_ARG[31:0] (Optional)`
-|===
+image::km_packet_response_payload.svg["Word 0: bits 31 to 8: RESERVED; bits 7 to 0: CMD_SEQ_NUM. Word 1: bits 31 to 8: RESERVED; bits 7 to 0: COMMAND_ID. Word 2: bits 31 to 8: RESERVED; bits 7 to 0: RETURN_CODE. Word 3: bits 31 to 0: RETURN_ARG (optional).",width=544]
 
 .Return Codes
 [cols="^10%,<18%,<52%,<20%",options="header"]
@@ -1019,12 +877,7 @@ full payload word. Only `[7:0]` is meaningful; because every code is negative,
 `[31:8]` reads as all ones rather than zero.
 
 .Response Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `SIGN_EXTENSION`
-8+^| `FAULT_CODE[7:0]`
-|===
+image::km_packet_fault_code.svg["Word 0: bits 31 to 8: SIGN_EXTENSION; bits 7 to 0: FAULT_CODE.",width=544]
 
 .Fault Codes
 [cols="^12%,<28%,<60%",options="header"]
@@ -1052,12 +905,7 @@ full payload word. Only `[7:0]` is meaningful; because every code is negative,
 `[31:8]` reads as all ones rather than zero.
 
 .Response Payload
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-24+^| `SIGN_EXTENSION`
-8+^| `FAULT_CODE[7:0]`
-|===
+image::km_packet_fault_code.svg["Word 0: bits 31 to 8: SIGN_EXTENSION; bits 7 to 0: FAULT_CODE.",width=544]
 
 .Fault Codes
 [cols="^12%,<28%,<60%",options="header"]
@@ -1462,8 +1310,7 @@ with random words sourced from the DRBG.
 .. Using inline assembly, enable & lock the SRAM scrambler then restart
 CPU execution (jump to address 0).
 . On a cold boot, initialize the warm-persistent SRAM region
-(xref:ip:key_manager/doc/architecture.adoc#rom-warm-persist-region[ROM warm
-persist region]). A warm boot leaves it intact.
+(<<rom-warm-persist-region,ROM warm persist region>>). A warm boot leaves it intact.
 . Initialize the KPV scrambler, enable it, and lock it.
 . If wiping is enabled — a weak predicate, on by default, that block-level
 tests override to preserve state across a restart — then:

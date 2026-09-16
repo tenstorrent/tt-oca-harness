@@ -5,7 +5,13 @@
 
 === Signal Interface
 
-[width="100%",cols="<34%,<33%,<33%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP signal interface" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<30,<12,<58",options="header",role="port-reference"]
 |===
 |Name |Direction |Description
 |mode |input |Indicates the operational mode of the CTP. 0 for wire-OR and 1 for peer-to-peer. The value at reset should be 0.
@@ -25,6 +31,12 @@
 |ct_ack_out_dout_en |output |Enables the output driver for the _CT_Ack_out_ pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it is disabled.
 |ct_ack_out_dout |output |The output data to drive on the _CT_Ack_out_ pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls this signal. In wire-OR mode it is unused.
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Dependencies
 

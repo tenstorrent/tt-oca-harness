@@ -354,7 +354,7 @@ that fails closed (forces `feat_ctrl_o = 0`) on any non-complementary
 codeword, guarding the LC_STATE path against fault injection (e.g. laser
 or FIB modification).
 
-[width="100%",cols="<34%,<33%,<33%",options="header",]
+[width="100%",cols="<22%,<16%,<62%",options="header",]
 |=======================================================================
 |LC State Name |Encoding |Description
 |TEST_DEV |4’b0000 a|
@@ -437,7 +437,13 @@ bits `[23:0]` (local debug) -- gated by Demotion 1, and *DBG_2* -- bits `[47:24]
 profile in <<feature-control-table>> refers to these sub-groups as
 SIP_DIS.DBG_1 / DBG_2 and SYS_DIS.DBG_1 / DBG_2.
 
-[width="100%",cols="<8%,<13%,<22%,<57%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="lifecycle-table-scroll" role="region" aria-label="Feature disable vector" tabindex="0">
+++++
+endif::backend-html5[]
+
+[width="100%",cols="<8%,<13%,<22%,<57%",role="lifecycle-table",options="header",]
 |=======================================================================
 |DIS bit index |Feature Category |Feature Name |Feature Description (`1'b1` disables the feature; `1'b0` enables it)
 
@@ -460,6 +466,12 @@ forwarded downstream. See <<adopter-extension>>.
 
 |48-63 |function |_Reserved_ |Available for adopter-defined functional feature gating. See <<adopter-extension>>.
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 [[dis-vector-ownership]]
 === DIS Vector Ownership: Predecessor-Programs-Disables
@@ -517,7 +529,7 @@ vectors. At *SiP-owner* access (RMA_SIP) only SIP_DIS applies; at
 creator has full access and no predecessor has authority to restrict them. The
 SEC_DIS override sits on top of this; see <<feat-ctrl-overrides-and-gates>>.
 
-[width="100%",cols="<30%,<70%",options="header",]
+[width="100%",cols="<26%,<74%",options="header",]
 |=======================================================================
 |LC state |Applicable DIS vectors
 
@@ -579,9 +591,15 @@ feature is enabled and False (F) indicates that it is disabled. The disable vect
 (SIP_DIS / SYS_DIS), defined above, act as masks: a bit value of 1'b0 enables
 the corresponding feature, and 1'b1 disables it.
 
+ifdef::backend-html5[]
+++++
+<div class="lifecycle-table-scroll" role="region" aria-label="Per-LC-state feature control profile" tabindex="0">
+++++
+endif::backend-html5[]
+
 [[feature-control-table]]
 .Per-LC-state feature control profile
-[width="100%",cols="<13%,^7%,^11%,<47%,<22%",options="header",]
+[width="100%",cols="<17%,^10%,^12%,<35%,<26%",role="lifecycle-table lifecycle-table-wide",options="header",]
 |===
 |LC_STATE |SEC_DIS |DEMOTE (1 / 2) |Feature Control: \{DBG_1 / DBG_2 / Function} |Description
 
@@ -619,6 +637,12 @@ the corresponding feature, and 1'b1 disables it.
 |1 |-- |T / T / T
 |===
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 In the DEMOTE column, a dash means demotion has no effect in that state, and X
 means it is irrelevant because SEC_DIS forces all features on. Demotion acts in
 TEST_DEV and PROD: in TEST_DEV a demotion forces its debug group fully open
@@ -648,7 +672,13 @@ Class 2 (scannable for test coverage but *never* scan-dumpable) are each split b
 protection rationale -- *a* for confidentiality and *b* for integrity. Class 3 is
 everything else.
 
-[width="100%",cols="<9%,<30%,^11%,^13%,<37%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="lifecycle-table-scroll" role="region" aria-label="Asset classes and scan-chain treatment" tabindex="0">
+++++
+endif::backend-html5[]
+
+[width="100%",cols="<17%,<25%,^10%,^12%,<36%",role="lifecycle-table lifecycle-table-wide",options="header",]
 |=======================================================================
 |Class
 |Asset Examples
@@ -708,6 +738,12 @@ array.
 |Yes (gated)
 |*General scan chains.* Scannable and scan-dumpable when permitted by the `*_DBG` feature control bits (the scope's local gate -- `SEP_DBG` or `CHIPLET_DBG` -- plus the `SIP_DBG` debug-access path; see <<multiple-security-domains>>) and the LC state. `secure_tm` plays no part here: these chains hold no secret, so both command classes are admitted whenever the chain is reachable.
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 [[secure-tm-vs-scandump]]
 === `secure_tm` and the Secure Scan Chain
@@ -803,7 +839,13 @@ own SIB, which the feature control bits gate in the same way; what distinguishes
 it is that reaching it never permits a dump, because the DFT controller admits
 only test commands there and only while `secure_tm = 1`.
 
-[width="100%",cols="<20%,<26%,<28%,<26%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="lifecycle-table-scroll" role="region" aria-label="Feature-bit to scan-chain mapping" tabindex="0">
+++++
+endif::backend-html5[]
+
+[width="100%",cols="<18%,<20%,<27%,<35%",role="lifecycle-table",options="header",]
 |=======================================================================
 |Asset Class |Scan Chain |Dump Gate |Notes
 
@@ -818,6 +860,12 @@ with the shadow secrets disconnected (2a) and the OTP write-enables tied inactiv
 
 |3 (general logic) |Per-scope general chains |Local scope `*_DBG` bit (`SEP_DBG`, `CHIPLET_DBG`) + `SIP_DBG` access path + LC state |Coarse-grained: a scope's general logic is scan-dumpable only when its local `*_DBG` bit enables it, the `SIP_DBG` debug-access path is open, and the LC state permits.
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 Reserved-bit ranges available for adopter-defined scan chains (see
 <<adopter-extension>>):
@@ -861,7 +909,7 @@ rather than a substitute for it. Because the composition is an AND, partial burn
 *fail safe*: `SEP_DBG` left open while `CHIPLET_DBG` is burned closed grants
 nothing.
 
-[width="100%",cols="<44%,<26%,<30%",options="header",]
+[width="100%",cols="<30%,<20%,<50%",options="header",]
 |=======================================================================
 |DTP path |Gating |Notes
 

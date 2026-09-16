@@ -10,7 +10,13 @@ interface of a CTP module:
 
 image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
 
-[width="100%",cols="<34%,<33%,<33%",options="header",]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTN cross-trigger port interface" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<30,<12,<58",options="header",role="port-reference"]
 |=======================================================================
 |Name |Direction |Description
 |mode |input |Indicates the operational mode of the CTP. 0 for wire-OR
@@ -69,6 +75,12 @@ wire-OR mode it is disabled.
 pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls
 this signal. In wire-OR mode it is unused.
 |=======================================================================
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Cross Trigger Matrix (CTM)
 

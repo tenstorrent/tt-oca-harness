@@ -272,7 +272,7 @@ write permissions and a write-once lock bit. See <<sep-traffic-filter-decode>>
 for the SEP filter instances and {axi-traffic-filter-ref} for the entry
 registers and the decode algorithm used to program them.
 
-[width="100%",cols="<50%,<50%",options="header",]
+[width="100%",cols="<20%,<80%",options="header",]
 |=======================================================================
 |Mailbox Type |Description
 |ISS |Uses fabric source ID to qualify incoming transactions. Legal

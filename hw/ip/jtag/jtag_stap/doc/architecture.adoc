@@ -15,7 +15,7 @@ chiplet as the PTAP.
 The STAP implementation consists of three main components integrated within a
 single module:
 
-[width="100%",cols="<35%,<50%,<15%",options="header"]
+[width="100%",cols="<30%,<52%,<18%",options="header"]
 |===
 |Module |Purpose |Conditional
 
@@ -64,7 +64,7 @@ loopback configuration. The register outputs feed back to the data inputs,
 allowing the register to retain its configuration across scan operations while
 still being scannable for updates.
 
-[width="100%",cols="2,2,1,7",options="header"]
+[width="100%",cols="6,20,9,65",options="header"]
 |===
 |Bit |Field |Reset |Description
 
@@ -92,7 +92,7 @@ from top to bottom. In addition to the STAPs integrated into the DTP, the STAP
 scan chain is ported out of the DTP so that the chiplet integrator may add
 additional STAPs closer to their point of use.
 
-[width="100%",cols="<50%,<50%",options="header"]
+[width="100%",cols="<30%,<70%",options="header"]
 |===
 |Purpose |Description
 |STAP to Next Chiplet |This STAP forwards JTAG to the next chiplet in the SiP.
@@ -107,7 +107,7 @@ additional STAPs closer to their point of use.
 The `security_disable_i` input is active-high (1 = STAP disabled). When it is
 asserted, three aspects of STAP operation are blocked:
 
-[width="100%",cols="<30%,<70%",options="header"]
+[width="100%",cols="<40%,<60%",options="header"]
 |===
 |Signal |Behavior when asserted
 

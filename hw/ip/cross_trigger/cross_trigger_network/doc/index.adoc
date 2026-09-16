@@ -28,7 +28,13 @@ The CTN serves four purposes:
 
 == Configuration Parameters
 
-[cols="<28%,<12%,<12%,<48%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTN configuration parameters" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<28,<12,<12,<48",options="header",role="port-reference"]
 |===
 |Parameter |Range |Default |Description
 
@@ -52,6 +58,12 @@ The CTN serves four purposes:
 |`'0`
 |Operating mode per internal CTP: 0 = pulse/wire-OR, 1 = handshake/P2P.
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: assets

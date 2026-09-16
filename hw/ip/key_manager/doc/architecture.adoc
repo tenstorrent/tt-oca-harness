@@ -70,7 +70,7 @@ image::SEP_Key_Manager.png[SEP_Key_Manager,scaledwidth=90.0%]
 
 == Parameters
 
-[cols="<25%,<15%,<15%,<45%",options="header"]
+[cols="<30%,<18%,<10%,<42%",options="header"]
 |===
 |Parameter |Type |Default |Description
 |`ROM_SIZE_BYTES` |`int unsigned` |16384 |Size of the KM boot ROM in bytes (16 KB).
@@ -85,7 +85,7 @@ The KM CPU addresses its internal peripherals through a flat 32-bit address spac
 
 Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.
 
-[cols="<25%,<25%,<50%",options="header"]
+[cols="<32%,<18%,<50%",options="header"]
 |===
 |Address Range |Component |Description
 |`0x0000_0000` – `0x0000_3FFF` |ROM |16 KB boot ROM (read-only, parity-protected).
@@ -110,7 +110,7 @@ distinct reset domains. This split allows the SEP host to recover the KM
 CPU and volatile state without disturbing non-volatile configuration or
 forcing a full power-on style reset of the subsystem.
 
-[cols="<20%,<15%,<15%,<50%",options="header"]
+[cols="<22%,<16%,<22%,<40%",options="header"]
 |===
 |Input port |Polarity |Synchronicity |Integration tie-off (SEP)
 |`cold_rst_ni` |Active-low |Asynchronous |SEP system cold reset (`sep_reset_n`).
@@ -155,7 +155,7 @@ is asserted.
 
 The two output resets are distributed across the KM components as follows:
 
-[cols="<25%,<75%",options="header"]
+[cols="<30%,<70%",options="header"]
 |===
 |Reset domain |Components
 |Cold only (`rst_cold_aasd_no`)
@@ -297,7 +297,7 @@ The 32-bit memory map of the KM subsystem is shown below. KM only
 consumes the bottom 4MB of address space leaving the remaining space
 unallocated.
 
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header",]
+[width="100%",cols="<22%,<22%,<8%,<14%,<34%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
 |0x0000_0000 |0x0000_3FFF |16 kB |KM ROM |Key Manager Program ROM
@@ -359,7 +359,7 @@ the KM drives into ABR, and one shared-key output ABR drives back into the KM.
 *Seed sideload inputs (KM → ABR).* The four seed inputs carry key material the
 KM side-loads into ABR:
 
-[cols="<32%,<10%,<58%",options="header"]
+[cols="<30%,<15%,<55%",options="header"]
 |===
 |Interface |Width |Description
 |ML-DSA seed |256-bit |Seed for ML-DSA key generation.
@@ -1036,7 +1036,7 @@ power up with random (undefined) values.
 
 The sampler hardware is implemented as a five-state FSM in `km_drbg_sampler`. The states and their transitions are summarised in the table below.
 
-[cols="<20%,<80%",options="header"]
+[cols="<25%,<75%",options="header"]
 |===
 |State |Description
 |`StIdle` |No active request. If a CPU read arrives for the DATA register and a prefetched word is available, the FSM returns the prefetched value and transitions to `StRespond`. Otherwise it advances to `StRequest`.
@@ -1098,7 +1098,7 @@ is delivered to the KMCSR as dual-rail complementary values (`{~value, value}`)
 and decoded within the KMCSR, which continuously verifies the complement
 relationship.
 
-[cols="2,1,3", options="header"]
+[cols="<40%,<15%,<45%", options="header"]
 |===
 |Register |Width |Contents
 |`OTP_LIFE_CYCLE` |8-bit |Differential-encoded life-cycle state `{~lc[3:0], lc[3:0]}`.
@@ -1383,7 +1383,7 @@ chaining state (`rs1`) and the next input unit (`rs2`) — and writes the
 updated chaining state to `rd`.
 
 .CRC Accelerator Instructions
-[cols="<30%,^10%,^12%,^12%,<36%",options="header"]
+[cols="<28%,^17%,^12%,^14%,<29%",options="header"]
 |===
 | Instruction | `funct7` | `funct3` | opcode | Input unit
 | CRC-32C word update | `7'b0101100` | `3'b000` | `custom0` | `rs2[31:0]`, four bytes little-endian

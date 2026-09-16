@@ -20,7 +20,13 @@ The CTM routing implements a two-stage combinatorial path followed by output
 registration. Each of the 26 CT_Src output ports is driven by a dedicated
 `ctm_src_selector` module that performs the following operation:
 
-[width="100%",cols="<50%,<50%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTM routing stages" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<28,<72",options="header",role="port-reference"]
 |===
 |Stage |Operation
 
@@ -34,6 +40,12 @@ registration. Each of the 26 CT_Src output ports is driven by a dedicated
 |The combinatorial result is registered on `clk_i` rising edge: `ct_src_o <= ct_src_comb`
 |===
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 This architecture allows each CT_Src output to combine pulses from multiple
 CT_Dst inputs through OR-aggregation. Multiple CT_Src outputs can source from
 the same CT_Dst input, enabling broadcast distribution. The register stage
@@ -44,7 +56,7 @@ input pulses arrive simultaneously.
 
 CTM ports are indexed as follows:
 
-[cols="<,<",options="header"]
+[cols="<30,<70",options="header"]
 |===
 |Port Index |Description
 |0 to N-1 |External CTPs (NUM_CTP)

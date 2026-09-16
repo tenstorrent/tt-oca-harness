@@ -19,7 +19,12 @@ determined solely by the LC state, the DIS vectors, and the SEC_DIS
 override. SECURE_TM is instead a coercion -- it forces the part into a
 configuration in which no secret is present and no fuse can be
 programmed. It has four uses, defined normatively in the Life Cycle
-Controller chapter, _`secure_tm` and the Secure Scan Chain_:
+ifdef::backend-html5[]
+Controller chapter, xref:sep:lifecycle_controller.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain]:
+endif::backend-html5[]
+ifdef::backend-pdf[]
+Controller chapter, <<secure-tm-vs-scandump,`secure_tm` and the Secure Scan Chain>>:
+endif::backend-pdf[]
 
 . On the dedicated secure scan chain, a *test* command is admitted only
 while SECURE_TM = 1. At SECURE_TM = 0 no command is admitted on that

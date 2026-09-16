@@ -29,7 +29,7 @@ selection, host TDO, and 3DCR updates are blocked.
 Three timing parameters are available to optimise the STAP for different
 physical topologies, particularly die-boundary crossings.
 
-[width="100%",cols="<30%,<15%,<15%,<40%",options="header"]
+[width="100%",cols="<30%,<10%,<10%,<50%",options="header"]
 |===
 |Parameter |Type |Default |Description
 

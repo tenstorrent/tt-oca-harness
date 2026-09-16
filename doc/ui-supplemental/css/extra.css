@@ -683,6 +683,24 @@
     word-break: break-word;
 }
 
+.lifecycle-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.lifecycle-table-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .lifecycle-table-scroll table.lifecycle-table {
+    min-width: 680px;
+}
+
+.doc .lifecycle-table-scroll table.lifecycle-table-wide {
+    min-width: 774px;
+}
+
 /* ========================================
    PORT REFERENCE TABLES
    Scoped to .port-reference role only; no global selectors.

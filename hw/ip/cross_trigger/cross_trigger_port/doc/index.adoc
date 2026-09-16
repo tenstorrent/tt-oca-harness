@@ -34,7 +34,13 @@ Two inter-chiplet signalling schemes are supported:
 The CTP has no build-time parameters. All operational settings are
 programmed at runtime through the AXI-Lite CSR interface:
 
-[cols="<20%,<80%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP configuration registers" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<28,<72",options="header",role="port-reference"]
 |===
 |Register |Description
 |`MODE` |Select wire-OR (0) or point-to-point (1) signalling.
@@ -42,6 +48,12 @@ programmed at runtime through the AXI-Lite CSR interface:
 |`INVERT` |Signal polarity inversion for GPIO adaptation.
 |`RESET` |Handshake state machine reset.
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 See the
 ifdef::backend-html5[]

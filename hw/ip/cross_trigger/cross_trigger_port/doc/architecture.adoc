@@ -16,7 +16,13 @@ image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
 The CTP core instantiates four specialized submodules for different aspects of
 cross-trigger operation:
 
-[width="100%",cols="<30%,<70%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP submodule hierarchy" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<34,<66",options="header",role="port-reference"]
 |===
 |Module |Purpose
 
@@ -32,6 +38,12 @@ cross-trigger operation:
 |`ctp_handshake_ctrl`
 |Implements sender and receiver state machines for Point-to-Point mode four-phase handshaking protocol
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === Wire-OR Mode
 
@@ -112,7 +124,13 @@ require synchronization to prevent metastability. The `ctp_synchronizer` module
 implements three independent 2-FF synchronizer chains using the
 `prim_flop_2sync` primitive:
 
-[width="100%",cols="<35%,<30%,<35%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP signal synchronization" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<28,<20,<52",options="header",role="port-reference"]
 |===
 |Signal |Used In Mode |Synchronization Purpose
 
@@ -128,6 +146,12 @@ implements three independent 2-FF synchronizer chains using the
 |Point-to-Point
 |Synchronizes acknowledge signal from remote receiver before sender FSM
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 After synchronization, an optional inversion is applied if the `INVERT`
 configuration bit is set. This allows adaptation to GPIO pads with different
@@ -145,7 +169,13 @@ the system clock domain on synchronized GPIO inputs.
 
 *Sender State Machine:*
 
-[width="100%",cols="<25%,<25%,<25%,<25%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP sender state transitions" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<28,<22,<28,<22",options="header",role="port-reference"]
 |===
 |Current State |Condition |Next State |Output Actions
 
@@ -170,9 +200,21 @@ the system clock domain on synchronized GPIO inputs.
 |Force `ct_req_out=0`
 |===
 
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+
 *Receiver State Machine:*
 
-[width="100%",cols="<30%,<25%,<25%,<20%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="port-reference-scroll" role="region" aria-label="CTP receiver state transitions" tabindex="0">
+++++
+endif::backend-html5[]
+
+[cols="<27,<20,<27,<26",options="header",role="port-reference"]
 |===
 |Current State |Condition |Next State |Output Actions
 
@@ -196,6 +238,12 @@ the system clock domain on synchronized GPIO inputs.
 |Remain in state
 |Continue waiting
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 The `ct_dst` output pulse is generated for a single clock cycle when the
 receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is

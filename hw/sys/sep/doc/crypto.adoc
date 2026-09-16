@@ -5,9 +5,17 @@
 :description: SEP cryptographic accelerators, entropy sources, and key management.
 ifdef::backend-html5[]
 :sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
+:sep-reset-controller-ref: xref:sep:periphs.adoc#sep-reset-controller[SEP Reset Controller]
+:sep-trng-reset-ref: xref:sep:periphs.adoc#sep-trng-reset[Resetting the TRNG]
+:sep-interrupt-map-ref: xref:sep:interrupts.adoc#sep-cpu-interrupt-vector-map[SEP CPU Interrupt Vector Map]
+:sep-lifecycle-controller-ref: xref:sep:lifecycle_controller.adoc#life-cycle-controller-lcc-life-cycle-controller-lcc[Life Cycle Controller (LCC)]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
+:sep-reset-controller-ref: <<sep-reset-controller>>
+:sep-trng-reset-ref: <<sep-trng-reset>>
+:sep-interrupt-map-ref: <<sep-cpu-interrupt-vector-map>>
+:sep-lifecycle-controller-ref: <<life-cycle-controller-lcc-life-cycle-controller-lcc>>
 endif::backend-pdf[]
 
 [[cryptographic-subsystem]]
@@ -56,7 +64,7 @@ Each accelerator has its own software-controllable reset. The SEP Reset
 Controller drains and isolates both its host and Key Manager paths before
 asserting reset; a Key Manager reset similarly drains all of its key paths. The
 entropy source, CSRNG, and EDN share one coordinated reset. See
-<<sep-reset-controller>> and <<sep-trng-reset>>.
+{sep-reset-controller-ref} and {sep-trng-reset-ref}.
 
 [[sep-crypto-alert-policy]]
 == OpenTitan Alert Termination
@@ -68,7 +76,7 @@ and pulses `alert_o` when the handshake starts; a malformed encoding raises
 `integ_fail_o`. Alert ping is disabled (`ping_req_i` tied 0); `ping_ok_o` is
 unused.
 
-PIC sources are in <<sep-cpu-interrupt-vector-map>>. A receiver's pulse and
+PIC sources are in {sep-interrupt-map-ref}. A receiver's pulse and
 integrity-fail stay per-block at the receiver. The table shows which of those,
 the native error IRQs, and the bridge faults are OR'd onto a PIC source and
 which are not.
@@ -297,7 +305,7 @@ ML-DSA is the post-quantum signature path intended for secure boot: each owner
 may be provisioned with an ML-DSA root public key alongside its classical key,
 with `REQUIRED_SIGNERS` selecting which owners must sign and `REQUIRED_ALGS`
 selecting, per owner, which of the two algorithms it must sign with (see
-<<life-cycle-controller-lcc-life-cycle-controller-lcc>>). SEP ROM does not use
+{sep-lifecycle-controller-ref}). SEP ROM does not use
 this path today -- it verifies a single classical RSA-3072 signature, and
 combined classical + PQC signing is deferred to a later release.
 
@@ -334,7 +342,7 @@ macros versus nine, plus a second NTT. That choice changes ABR internal behavior
 
 ABR has no alert channel -- it is the only crypto accelerator that reports faults
 solely by interrupt (Adams Bridge error and notification in
-<<sep-cpu-interrupt-vector-map>>), plus a gated ML-KEM shared-key interrupt
+{sep-interrupt-map-ref}), plus a gated ML-KEM shared-key interrupt
 consumed directly by the Key Manager. Whether the block is present in a build is
 controlled by `SEP_ABR_EN`, which always implies the vendored RTL's `CALIPTRA`
 define; when it is absent, both the crypto crossbar port and the Key Manager key
@@ -350,7 +358,7 @@ Consult the https://github.com/chipsalliance/adams-bridge[Adams Bridge
 documentation] for the authoritative core functionality of the IP. Its CSRs are
 defined by the vendored Caliptra register package rather than by an OCAH PeakRDL
 source, so unlike the other accelerators they do not appear in
-<<sep-detailed-register-map>>.
+{sep-register-map}.
 
 [[true-random-number-generator-trng-true-random-number-generator-trng]]
 == True Random Number Generator (TRNG)
@@ -412,7 +420,7 @@ one per sink domain:
 * endpoint `[2]` feeds the fabric-level entropy-pool FIFO (`u_entropy_fifo` in
   `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates three
   dedicated interrupts (`entropy_pool_low`, `entropy_pool_fill_stall`, and
-  `entropy_pool_err`) listed in <<sep-cpu-interrupt-vector-map>>.
+  `entropy_pool_err`) listed in {sep-interrupt-map-ref}.
 
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so
@@ -436,7 +444,7 @@ required by the TRNG reset coordinator.
 
 The Key Manager stream is not behind a post-mux adapter and is not scrubbed.
 The SEP host must keep the Key Manager idle before asserting the TRNG reset;
-see <<sep-trng-reset>>. After release, firmware fully reinitializes ESRC, CSRNG,
+see {sep-trng-reset-ref}. After release, firmware fully reinitializes ESRC, CSRNG,
 and EDN and waits for fresh entropy progress before releasing consumers. The
 post-mux adapters reset even when an external source is selected, so an
 external stream is interrupted and cleanly restarted; the external TRNG CSR
@@ -474,30 +482,9 @@ integer width
 |=======================================================================
 
 
-ifdef::backend-html5[]
-xref:ip:entropy_source/doc/index.adoc[Entropy Source]
-endif::backend-html5[]
 ifdef::backend-pdf[]
 include::../../../ip/entropy_source/doc/architecture.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-ifdef::backend-html5[]
-xref:ip:drbg/doc/index.adoc[DRBG]
-endif::backend-html5[]
-ifdef::backend-pdf[]
 include::../../../ip/drbg/doc/architecture.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-ifdef::backend-html5[]
-xref:ip:key_manager/doc/index.adoc[Key Manager]
-endif::backend-html5[]
-ifdef::backend-pdf[]
 include::../../../ip/key_manager/doc/architecture.adoc[leveloffset=+2]
-endif::backend-pdf[]
-
-ifdef::backend-html5[]
-xref:ip:key_manager/doc/index.adoc#key-manager-km-firmware[Key Manager Firmware]
-endif::backend-html5[]
-ifdef::backend-pdf[]
 include::../../../ip/key_manager/doc/firmware.adoc[leveloffset=+2]
 endif::backend-pdf[]
