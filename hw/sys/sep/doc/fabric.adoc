@@ -4,6 +4,15 @@
 = SEP Interconnect
 :description: SEP internal fabric, external interfaces, address remapping, and mailboxes.
 
+ifdef::backend-html5[]
+:feature-control-vector-ref: xref:sep:lifecycle_controller.adoc#feature-control-vector-definition[Disable Vector Format (SIP_DIS / SYS_DIS)]
+:axi-traffic-filter-ref: xref:ip:axi_filter/doc/index.adoc#axi-traffic-filter[AXI Traffic Filter]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:feature-control-vector-ref: <<feature-control-vector-definition>>
+:axi-traffic-filter-ref: <<axi-traffic-filter>>
+endif::backend-html5[]
+
 [[sep-interconnect]]
 
 The interconnect of SEP components and subsystems is done with a
@@ -156,13 +165,13 @@ entry.
 
 The inbound filter is bypassed in its entirety, admitting all inbound
 traffic, while SEP-scope debug is enabled; see
-<<feature-control-vector-definition>> for the `SEP_DBG` control. The
+{feature-control-vector-ref} for the `SEP_DBG` control. The
 outbound filter has no bypass and is always in effect.
 
 The decode algorithm -- entry priority, the match conditions, the
 address range granule and its widening direction, and the response
 returned to a blocked initiator -- is common to SEP and SMC. It is
-documented once with the IP in <<axi-traffic-filter>>.
+documented once with the IP in {axi-traffic-filter-ref}.
 
 [[address-remapping]]
 === Address Remapping
@@ -260,7 +269,7 @@ enabled entry over its aperture is unreachable from the fabric, and
 reprogramming an entry retypes that mailbox at run time. An entry pairs an
 address range with the qualification criteria below, plus separate read and
 write permissions and a write-once lock bit. See <<sep-traffic-filter-decode>>
-for the SEP filter instances and <<axi-traffic-filter>> for the entry
+for the SEP filter instances and {axi-traffic-filter-ref} for the entry
 registers and the decode algorithm used to program them.
 
 [width="100%",cols="<50%,<50%",options="header",]

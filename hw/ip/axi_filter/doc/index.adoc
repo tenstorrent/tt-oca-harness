@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[axi-traffic-filter]]
 = AXI Traffic Filter
 :description: Common AXI address and attribute filter (`axi_filter_wrap`) used on the inbound and outbound paths of SEP and SMC — instances, decode algorithm, address granule and blocked-transaction behaviour.
+
+[[axi-traffic-filter,AXI Traffic Filter]]
 
 The AXI traffic filter (`axi_filter_wrap`) is the common address and
 attribute filter used on the inbound and outbound AXI paths of both SEP
