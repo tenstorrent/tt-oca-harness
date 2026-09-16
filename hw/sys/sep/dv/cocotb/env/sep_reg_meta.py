@@ -790,7 +790,9 @@ def _selftest() -> int:
     # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
     # that is NOT software-usable (mask 0x0). If the generator ever renames the
     # field, or the exclusion regex stops matching it, these disagree and fail.
-    for name in _TYPE_ALIAS:
+    # The alias table also carries entries for other blocks, so this walk takes
+    # the SEP_CPU_CTRL instances by their shared type rather than the whole table.
+    for name in (n for n, t in _TYPE_ALIAS.items() if t == "TIMEOUT_COUNT"):
         if cpu.mask32(name) != 0x0:
             failures.append(f"{name}: implemented mask {hex(cpu.mask32(name))} != 0x0")
         if cpu.mask32_all(name) != 0x1:
@@ -865,10 +867,10 @@ def _selftest() -> int:
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (1921, 1763, 158):
+    if (walk.export, walk.inventory, walk.nometa) != (1921, 1764, 157):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 1921/1763/158"
+            f"{walk.nometa} != 1921/1764/157"
         )
     if walk.inventory < 100:
         failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")
