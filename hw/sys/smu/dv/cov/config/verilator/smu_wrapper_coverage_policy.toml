@@ -113,7 +113,7 @@ target = "compile_smu_chiplet_sep_rtl"
 scope = "smu_wrapper_uvm_top.u_dut"
 metric_family = "toggle_signal"
 population = "effective"
-minimum_percent = 0.0
+minimum_percent = 40.0
 
 [[thresholds]]
 id = "wrapper-interface-toggle-no-sep"

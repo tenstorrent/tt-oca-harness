@@ -19,7 +19,8 @@ its bits has toggled; plus the `user` points
 |Numeric target |interface toggle floors per target in
 `smu_wrapper_coverage_policy.toml`: `wrapper-interface-toggle-no-sep` (45
 percent, measured 50.6 on `sep0_all`) and `wrapper-interface-toggle-sep-rtl`
-(set from the first measured `compile_smu_chiplet_sep_rtl` database); the plan
+(40 percent, measured 45.8 on the two firmware-free leaves and 57.2 on
+`all_with_sep_exec`); the plan
 works toward 85 percent on the sep_rtl target, where every port is live
 |===
 
