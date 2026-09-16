@@ -202,6 +202,148 @@ def abr_off(name: str) -> int:
         raise KeyError(f"{name!r} missing from abr_reg.rdl") from exc
 
 
+_ESRC_RDL = _REPO / "hw" / "ip" / "entropy_source" / "regs" / "entropy_source.rdl"
+
+_RDL_REG = re.compile(r"^\s*reg\s+([A-Za-z_]\w*)\s*\{", re.M)
+_RDL_FIELD = re.compile(r"field\s*\{(?P<body>[^{}]*)\}\s*(?P<name>[A-Za-z_]\w*)\s*\[", re.S)
+
+
+@lru_cache(maxsize=1)
+def esrc_fips_locked_fields() -> dict[str, frozenset[str]]:
+    """Fields FIPS_LOCK.LOCK freezes, keyed by register, from ``entropy_source.rdl``.
+
+    The certified-configuration inventory is the set of fields the RDL marks
+    ``swwel``; FIPS_LOCK's own block documents it in those terms. The generated
+    Python and C exports drop ``swwel``, so the property is read from the RDL
+    source, as ``abr_offsets`` reads ``abr_reg.rdl``.
+
+    This is the DV-side expectation of what must freeze. It is deliberately not
+    taken from ``entropy_source.sv``: the RTL is hand-written and maintained
+    separately from this file, so a lock the RTL adds or drops on its own shows
+    up here as a disagreement instead of being copied into the expectation.
+    """
+    text = _ESRC_RDL.read_text(encoding="utf-8")
+    bounds = [(m.group(1), m.start()) for m in _RDL_REG.finditer(text)]
+    out: dict[str, frozenset[str]] = {}
+    for i, (reg, start) in enumerate(bounds):
+        end = bounds[i + 1][1] if i + 1 < len(bounds) else len(text)
+        locked = {
+            f.group("name")
+            for f in _RDL_FIELD.finditer(text[start:end])
+            if "swwel" in f.group("body")
+        }
+        if locked:
+            out[reg] = frozenset(locked)
+    if not out:
+        raise RuntimeError(
+            f"no swwel fields parsed from {_ESRC_RDL}; the walked lock set would "
+            "be empty and every post-lock check would pass without poking anything"
+        )
+    return out
+
+
+def esrc_fips_locked(reg: str) -> frozenset[str]:
+    """The FIPS-locked fields of one register. Raises if the register locks none."""
+    try:
+        return esrc_fips_locked_fields()[reg]
+    except KeyError as exc:
+        raise KeyError(
+            f"{reg!r} has no swwel field in entropy_source.rdl; it is not part of "
+            "the certified-configuration inventory FIPS_LOCK freezes"
+        ) from exc
+
+
+_AON_TIMER_HJSON = (
+    _REPO
+    / "vendor"
+    / "lowRISC"
+    / "opentitan"
+    / "upstream"
+    / "hw"
+    / "ip"
+    / "aon_timer"
+    / "data"
+    / "aon_timer.hjson"
+)
+
+_HJSON_REG = re.compile(r'\{\s*name:\s*"([A-Z0-9_]+)"', re.S)
+_HJSON_REGWEN = re.compile(r'regwen:\s*"([A-Z0-9_]+)"')
+
+
+@lru_cache(maxsize=1)
+def aon_timer_regwen_map() -> dict[str, frozenset[str]]:
+    """Registers each aon_timer regwen gates, from ``aon_timer.hjson``.
+
+    The OpenTitan register specification is the authority for this lock map, and
+    ``aon_timer_reg_top.sv`` is generated from it. Reading the description keeps
+    the expectation off the generated RTL, so a hand-edit to ``src_regwen_i``
+    shows up as a disagreement instead of being adopted as the golden.
+    """
+    text = _AON_TIMER_HJSON.read_text(encoding="utf-8")
+    bounds = [(m.group(1), m.start()) for m in _HJSON_REG.finditer(text)]
+    out: dict[str, set[str]] = {}
+    for i, (reg, start) in enumerate(bounds):
+        end = bounds[i + 1][1] if i + 1 < len(bounds) else len(text)
+        gate = _HJSON_REGWEN.search(text[start:end])
+        if gate:
+            out.setdefault(gate.group(1), set()).add(reg)
+    if not out:
+        raise RuntimeError(
+            f"no regwen linkage parsed from {_AON_TIMER_HJSON}; a REGWEN scope "
+            "check built on an empty map would assert nothing"
+        )
+    return {k: frozenset(v) for k, v in out.items()}
+
+
+def aon_timer_regwen_gates(regwen: str) -> frozenset[str]:
+    """The registers one aon_timer regwen gates. Raises if it gates none."""
+    try:
+        return aon_timer_regwen_map()[regwen]
+    except KeyError as exc:
+        raise KeyError(f"{regwen!r} gates no register in aon_timer.hjson") from exc
+
+
+# AON timer wakeup prescaler. OpenTitan "AON Timer Technical Specification",
+# Wakeup timer section: "The number of cycles per tick is one more than the
+# 12-bit WKUP_CTRL.prescaler field."
+#
+# DV-owned transcription. The rate is stated in neither aon_timer.rdl nor
+# aon_timer.hjson -- both describe the field only as "Pre-scaler value for
+# wakeup timer count" -- so it is carried here rather than read back from
+# aon_timer_core.sv, which is the datapath under test.
+AON_TIMER_PRESCALE_OFFSET = 1
+
+
+def aon_timer_wkup_ticks_per_count(prescaler: int) -> int:
+    """clk_aon ticks per wakeup-counter increment at this prescaler value."""
+    if prescaler < 0:
+        raise ValueError(f"prescaler must be non-negative, got {prescaler}")
+    return prescaler + AON_TIMER_PRESCALE_OFFSET
+
+
+# AMBA AXI byte-lane mapping (IHI 0022, "Data read and write structure" /
+# narrow transfers): on a data bus of W bytes, a transfer is carried on the byte
+# lanes selected by the low bits of the address, and WSTRB bit n asserts byte
+# lane n. A 32-bit access on a 64-bit bus therefore uses lanes 0-3 when
+# address[2] is 0 and lanes 4-7 when it is 1. Alignment is the protocol's, not
+# any one adapter's: address[1:0] must be 0 for a 32-bit transfer.
+#
+# DV-owned, so a lane adapter that disagreed with AMBA is driven with a
+# protocol-legal access and answers for itself, rather than defining what legal
+# means.
+AXI_BUS_BYTES = 8
+
+
+def axi_lane_strobe(addr: int, access_bytes: int = 4, bus_bytes: int = AXI_BUS_BYTES) -> int:
+    """WSTRB for an aligned ``access_bytes`` transfer at ``addr`` on the bus."""
+    if access_bytes <= 0 or bus_bytes % access_bytes:
+        raise ValueError(f"{access_bytes}-byte access does not divide a {bus_bytes}-byte bus")
+    if addr % access_bytes:
+        raise ValueError(f"0x{addr:x} is not aligned for a {access_bytes}-byte AXI transfer")
+    lane = addr % bus_bytes
+    return ((1 << access_bytes) - 1) << lane
+
+
 def _selftest() -> None:
     assert window("ABR").base == 0x1094_0000
     assert window("EPOOL").base == 0x1095_0000
@@ -220,6 +362,24 @@ def _selftest() -> None:
     name0, name1 = mldsa_name_words()
     assert name0 == 0x44534D4C
     assert name1 == 0x3837412D
+    locked = esrc_fips_locked_fields()
+    # A parse that silently matched nothing would empty the post-lock walk.
+    assert len(locked) >= 10, locked
+    assert sum(len(v) for v in locked.values()) >= 30
+    assert esrc_fips_locked("CTRL") >= {"MODULE_ENABLE", "SHA256_WHITENING_ENABLE"}
+    assert esrc_fips_locked("HEALTH_TEST_CTRL") >= {"ENABLE", "REPETITION_LIMIT"}
+    assert "LOCK" not in locked.get("FIPS_LOCK", frozenset())
+    assert aon_timer_regwen_gates("WDOG_REGWEN") == frozenset(
+        {"WDOG_CTRL", "WDOG_BARK_THOLD", "WDOG_BITE_THOLD"}
+    )
+    assert "WDOG_COUNT" not in aon_timer_regwen_gates("WDOG_REGWEN")
+    assert "WKUP_THOLD_LO" not in aon_timer_regwen_gates("WDOG_REGWEN")
+    assert aon_timer_wkup_ticks_per_count(0) == 1
+    assert aon_timer_wkup_ticks_per_count(24) == 25
+    assert axi_lane_strobe(0x0) == 0x0F
+    assert axi_lane_strobe(0x4) == 0xF0
+    assert axi_lane_strobe(0x8) == 0x0F
+    assert axi_lane_strobe(0xC) == 0xF0
 
 
 _selftest()

@@ -437,7 +437,7 @@ ran.
 [cols="2,3,3",options="header"]
 |===
 |Stand-in |Where it is |Tests on its scope
-|`+esrc_noise_force` |`tb/tb_wrapper_top.sv` (the `force` block under `ifndef SMU_NO_SEP`), driver `common/seq_lib/esrc_noise.py` |`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test`
+|`+esrc_noise_force` |`tb/tb_wrapper_top.sv` (the `force` block in the SEP observation section), driver `common/seq_lib/esrc_noise.py` |`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test`
 |`+skip_fuse_sense` with the shadow preload |per-test `args` of 82 `testlists/wrapper.toml` entries and every `[run_modes.*]` of `smu_block_sim_cfg.toml`; live only under the `SIMULATION` define |every `--dut smu` leaf except the five boot-stall leaves and `smu_sep_lcc_flow_test`, which sense; load-bearing for the reset, boot-gate and OTP leaves named below
 |`abr_reg.sv` pass/fail waiver |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` |every `--dut smu` leaf
 |Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (`bsr_scan_loop`), `tb/tb_top.sv` (five host scan chains) |`smu_dtp_bsr_extest_loopback_test`

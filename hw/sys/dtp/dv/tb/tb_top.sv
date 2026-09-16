@@ -33,8 +33,12 @@
 // the decoded {tms,trst_n,tck} struct plus tdi/tdo -- effectively raw JTAG
 // pins.
 //
-// The BSR/iJTAG scan chains are looped back (scan_in = scan_out). Each STAP
-// host port loops its TDO back onto its TDI by default; the per-port
+// The BSR scan chain is looped back (scan_in = scan_out). Each iJTAG SIB
+// drives an instrument stub: a scan register of a distinct width (4, 5, 6
+// bits) that captures its own update register, so open-SIB subsets have
+// unique chain lengths and a value written through an open SIB reads back
+// on the next scan. Each STAP host port loops its TDO back onto its TDI by
+// default; the per-port
 // dtp_scan_if.stap_<x>_ds_en instead splices the downstream ocah_jtag_if
 // TAP behind the port, so the STAP-selection scenarios prove forwarding
 // against a real IEEE 1149.1 device. The JTAG2AXI and SMC/SEP OTP AXI-Lite
@@ -77,6 +81,9 @@ module dtp_uvm_top
   logic jtag_bsr_shift_en;
   logic jtag_bsr_capture_en;
   logic jtag_bsr_update_en;
+  logic jtag_bsr_run_test_idle;
+  logic jtag_bsr_test_logic_reset;
+  logic jtag_bsr_runbist;
   logic jtag_ijtag_select;
   logic jtag_ijtag_shift_en;
   logic jtag_ijtag_capture_en;
@@ -89,6 +96,9 @@ module dtp_uvm_top
   logic jtag_dft_shift_en;
   logic jtag_dft_capture_en;
   logic jtag_dft_update_en;
+  logic jtag_dft_run_test_idle;
+  logic jtag_dft_test_logic_reset;
+  logic jtag_dft_runbist;
   logic jtag_dfd_select;
   logic jtag_dfd_shift_en;
   logic jtag_dfd_capture_en;
@@ -223,6 +233,8 @@ module dtp_uvm_top
   logic [31:0] xtrig_axil_awvalid_count;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
+  logic [31:0] xtrig_axil_aw_stall_count;
+  logic [31:0] xtrig_axil_ar_stall_count;
 
   // XTRIG CTM and CTP GPIO stimulus and observables, from dtp_xtrig_if.
   logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
@@ -309,9 +321,10 @@ module dtp_uvm_top
   assign jtag_tdo_oen = jtag_ptap_client_tdo_oen;
 
   // ------------------------------------------------------------------
-  // STAP / iJTAG scan-chain loopback nets (zero-length passthrough)
+  // Scan-chain nets: boundary scan and the extended STAP scan loop
+  // scan_in <- scan_out (zero-length passthrough); each iJTAG host scan
+  // chain runs through an instrument stub.
   // ------------------------------------------------------------------
-  // Boundary scan + extended scan + iJTAG: loop scan_in <- scan_out.
   jtag_scan_ctrl_t jtag_bsr_host_scan_ctrl;
   jtag_scan_ctrl_t jtag_stap_host_scan_ctrl;
   jtag_scan_ctrl_t jtag_dfd_host_scan_ctrl;
@@ -320,8 +333,56 @@ module dtp_uvm_top
   logic bsr_scan_out;
   logic stap_host_scan_out;
   logic dfd_scan_out;
+  logic dfd_scan_in;
   logic dft_secure_scan_out;
+  logic dft_secure_scan_in;
   logic dft_scan_out;
+  logic dft_scan_in;
+
+  // iJTAG instrument stubs, one per SIB host chain. Distinct widths give
+  // every open-SIB subset a unique chain length; each stub captures its own
+  // update register, so the value shifted through an open SIB on one scan
+  // is the capture of the next. The widths are mirrored in the scan models
+  // (env/dtp_scan_ref_model.py, dtp_types.svh).
+  localparam int unsigned IjtagDftSecureInstrumentWidth = 4;
+  localparam int unsigned IjtagDftInstrumentWidth = 5;
+  localparam int unsigned IjtagDfdInstrumentWidth = 6;
+  logic [IjtagDftSecureInstrumentWidth-1:0] dft_secure_instrument_q;
+  logic [IjtagDftInstrumentWidth-1:0] dft_instrument_q;
+  logic [IjtagDfdInstrumentWidth-1:0] dfd_instrument_q;
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDftSecureInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dft_secure_instrument (
+    .scan_ctrl_i(jtag_dft_secure_host_scan_ctrl),
+    .scan_in_i  (dft_secure_scan_out),
+    .scan_out_o (dft_secure_scan_in),
+    .data_in_i  (dft_secure_instrument_q),
+    .data_out_o (dft_secure_instrument_q)
+  );
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDftInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dft_instrument (
+    .scan_ctrl_i(jtag_dft_host_scan_ctrl),
+    .scan_in_i  (dft_scan_out),
+    .scan_out_o (dft_scan_in),
+    .data_in_i  (dft_instrument_q),
+    .data_out_o (dft_instrument_q)
+  );
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDfdInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dfd_instrument (
+    .scan_ctrl_i(jtag_dfd_host_scan_ctrl),
+    .scan_in_i  (dfd_scan_out),
+    .scan_out_o (dfd_scan_in),
+    .data_in_i  (dfd_instrument_q),
+    .data_out_o (dfd_instrument_q)
+  );
 
   // STAP TAP host ports: tdi <- tdo loopback, or the attached downstream
   // TAP's TDO when the port's ds_en is set.
@@ -359,6 +420,9 @@ module dtp_uvm_top
   assign jtag_bsr_shift_en   = jtag_bsr_host_scan_ctrl.shift_en;
   assign jtag_bsr_capture_en = jtag_bsr_host_scan_ctrl.capture_en;
   assign jtag_bsr_update_en  = jtag_bsr_host_scan_ctrl.update_en;
+  assign jtag_bsr_run_test_idle    = jtag_bsr_host_scan_ctrl.run_test_idle;
+  assign jtag_bsr_test_logic_reset = jtag_bsr_host_scan_ctrl.test_logic_reset;
+  assign jtag_bsr_runbist          = jtag_bsr_host_scan_ctrl.runbist;
   assign jtag_ijtag_select     = jtag_dft_host_scan_ctrl.select;
   assign jtag_ijtag_shift_en   = jtag_dft_host_scan_ctrl.shift_en;
   assign jtag_ijtag_capture_en = jtag_dft_host_scan_ctrl.capture_en;
@@ -371,6 +435,9 @@ module dtp_uvm_top
   assign jtag_dft_shift_en   = jtag_dft_host_scan_ctrl.shift_en;
   assign jtag_dft_capture_en = jtag_dft_host_scan_ctrl.capture_en;
   assign jtag_dft_update_en  = jtag_dft_host_scan_ctrl.update_en;
+  assign jtag_dft_run_test_idle    = jtag_dft_host_scan_ctrl.run_test_idle;
+  assign jtag_dft_test_logic_reset = jtag_dft_host_scan_ctrl.test_logic_reset;
+  assign jtag_dft_runbist          = jtag_dft_host_scan_ctrl.runbist;
   assign jtag_dfd_select     = jtag_dfd_host_scan_ctrl.select;
   assign jtag_dfd_shift_en   = jtag_dfd_host_scan_ctrl.shift_en;
   assign jtag_dfd_capture_en = jtag_dfd_host_scan_ctrl.capture_en;
@@ -623,6 +690,8 @@ module dtp_uvm_top
       xtrig_axil_awvalid_count   <= '0;
       xtrig_axil_wvalid_count    <= '0;
       xtrig_axil_arvalid_count   <= '0;
+      xtrig_axil_aw_stall_count  <= '0;
+      xtrig_axil_ar_stall_count  <= '0;
     end else begin
       smc_otp_axil_awvalid_count <=
                 smc_otp_axil_awvalid_count + {31'b0, smc_otp_axil_awvalid};
@@ -642,6 +711,10 @@ module dtp_uvm_top
                 xtrig_axil_wvalid_count + {31'b0, xtrig_axil_wvalid};
       xtrig_axil_arvalid_count <=
                 xtrig_axil_arvalid_count + {31'b0, xtrig_axil_arvalid};
+      xtrig_axil_aw_stall_count <=
+                xtrig_axil_aw_stall_count + {31'b0, xtrig_axil_awvalid & ~xtrig_axil_awready};
+      xtrig_axil_ar_stall_count <=
+                xtrig_axil_ar_stall_count + {31'b0, xtrig_axil_arvalid & ~xtrig_axil_arready};
     end
   end
 
@@ -697,19 +770,19 @@ module dtp_uvm_top
     .jtag_stap_host_scan_in_i         (stap_host_scan_out),
     .jtag_stap_host_scan_out_o        (stap_host_scan_out),
 
-    // External DFD iJTAG scan (loopback)
+    // External DFD iJTAG scan (instrument stub)
     .jtag_dfd_host_scan_ctrl_o        (jtag_dfd_host_scan_ctrl),
-    .jtag_dfd_host_scan_in_i          (dfd_scan_out),
+    .jtag_dfd_host_scan_in_i          (dfd_scan_in),
     .jtag_dfd_host_scan_out_o         (dfd_scan_out),
 
-    // External secure DFT iJTAG scan (loopback)
+    // External secure DFT iJTAG scan (instrument stub)
     .jtag_dft_secure_host_scan_ctrl_o (jtag_dft_secure_host_scan_ctrl),
-    .jtag_dft_secure_host_scan_in_i   (dft_secure_scan_out),
+    .jtag_dft_secure_host_scan_in_i   (dft_secure_scan_in),
     .jtag_dft_secure_host_scan_out_o  (dft_secure_scan_out),
 
-    // External non-secure DFT iJTAG scan (loopback)
+    // External non-secure DFT iJTAG scan (instrument stub)
     .jtag_dft_host_scan_ctrl_o        (jtag_dft_host_scan_ctrl),
-    .jtag_dft_host_scan_in_i          (dft_scan_out),
+    .jtag_dft_host_scan_in_i          (dft_scan_in),
     .jtag_dft_host_scan_out_o         (dft_scan_out),
 
     // SMC fabric debug AXI manager -> shared AXI responder (flattened above)
@@ -967,6 +1040,9 @@ module dtp_uvm_top
   assign u_scan_if.jtag_bsr_shift_en   = jtag_bsr_shift_en;
   assign u_scan_if.jtag_bsr_capture_en = jtag_bsr_capture_en;
   assign u_scan_if.jtag_bsr_update_en  = jtag_bsr_update_en;
+  assign u_scan_if.jtag_bsr_run_test_idle    = jtag_bsr_run_test_idle;
+  assign u_scan_if.jtag_bsr_test_logic_reset = jtag_bsr_test_logic_reset;
+  assign u_scan_if.jtag_bsr_runbist          = jtag_bsr_runbist;
 
   // Lifecycle debug disables and clock-stop requests: sequences drive the
   // named debug disables and the CLA clock-stop request vector through
@@ -1000,6 +1076,9 @@ module dtp_uvm_top
   assign u_scan_if.jtag_dft_shift_en          = jtag_dft_shift_en;
   assign u_scan_if.jtag_dft_capture_en        = jtag_dft_capture_en;
   assign u_scan_if.jtag_dft_update_en         = jtag_dft_update_en;
+  assign u_scan_if.jtag_dft_run_test_idle     = jtag_dft_run_test_idle;
+  assign u_scan_if.jtag_dft_test_logic_reset  = jtag_dft_test_logic_reset;
+  assign u_scan_if.jtag_dft_runbist           = jtag_dft_runbist;
   assign u_scan_if.jtag_dfd_select            = jtag_dfd_select;
   assign u_scan_if.jtag_dfd_shift_en          = jtag_dfd_shift_en;
   assign u_scan_if.jtag_dfd_capture_en        = jtag_dfd_capture_en;
@@ -1462,10 +1541,21 @@ module dtp_uvm_top
   assign u_xtrig_axil_if.rvalid   = xtrig_axil_rvalid;
   assign u_xtrig_axil_if.rready   = xtrig_axil_rready;
 
-  // XTRIG CSR request-activity pulse-counter mirrors for sequences.
-  assign u_tb_if.xtrig_axil_awvalid_count = xtrig_axil_awvalid_count;
-  assign u_tb_if.xtrig_axil_wvalid_count  = xtrig_axil_wvalid_count;
-  assign u_tb_if.xtrig_axil_arvalid_count = xtrig_axil_arvalid_count;
+  // XTRIG CSR request-activity pulse-counter and stall-counter mirrors for
+  // sequences.
+  assign u_tb_if.xtrig_axil_awvalid_count  = xtrig_axil_awvalid_count;
+  assign u_tb_if.xtrig_axil_wvalid_count   = xtrig_axil_wvalid_count;
+  assign u_tb_if.xtrig_axil_arvalid_count  = xtrig_axil_arvalid_count;
+  assign u_tb_if.xtrig_axil_aw_stall_count = xtrig_axil_aw_stall_count;
+  assign u_tb_if.xtrig_axil_ar_stall_count = xtrig_axil_ar_stall_count;
+
+  // XTRIG crossbar demux state (the single subordinate port's AXI-Lite
+  // demux) and the external CTP busy flops, sampled from the DUT.
+  assign u_tb_if.xtrig_demux_aw_lock   = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.lock_aw_valid_q;
+  assign u_tb_if.xtrig_demux_w_pending = ~u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.w_fifo_empty;
+  for (genvar ctp = 0; ctp < DEFAULT_NUM_CTP; ctp++) begin : gen_xtrig_ctp_busy
+    assign u_tb_if.xtrig_ctp_busy[ctp] = u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.busy_o;
+  end
 
   // Cross-trigger CTM/CTP pin surface: sequences drive the request-side
   // vectors and observe the DUT-driven vectors through dtp_xtrig_if (init
