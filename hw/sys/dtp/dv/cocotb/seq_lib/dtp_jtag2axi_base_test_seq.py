@@ -4,9 +4,16 @@
 
 from __future__ import annotations
 
+import dataclasses
+import random
+from dataclasses import dataclass
+
+import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
+from env.dtp_tap_device import unpack_jtag2axi_caps
 from env.dtp_types import (
+    JTAG2AXI_TARGETS,
     SMC_DBG_AXSIZE_8B,
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
@@ -19,16 +26,133 @@ from env.dtp_types import (
     unpack_series_data,
     unpack_single_op,
 )
+from ocah_jtag_vip import OcahJtagChecker
 from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
 AXI_MEM_SIZE = 2**16
 AXI_BEAT_BYTES = 8
+GEOMETRY_CHECK_ID = "CHK-J2A-GEOMETRY"
+STATUS_BIT_CHECK_ID = "CHK-J2A-STATUS-BIT"
+STATUS_BIT_NEGATIVE_KNOB = "DTP_J2A_STATUS_BIT_NEGATIVE"
+AXI_RESP_SLVERR = 2
+AXI_RESP_DECERR = 3
+# Increment flag per beat of the WITH_ERROR_STATUS streams: the second beat
+# re-writes the held address.
+SERIES_STATUS_INCREMENTS = (1, 0, 1, 1)
+
+
+@dataclass(frozen=True)
+class DtpSeriesStatusPlan:
+    """One WITH_ERROR_STATUS series: its geometry and the beat that carries the fault.
+
+    The status bit a shift returns belongs to the previous beat, so
+    ``expected_status_bit(shift)`` is 1 only for the shift after the fault
+    beat; ``fault_idx`` is ``None`` for a clean stream.
+    """
+
+    target: str
+    base: int
+    size: int
+    stride: int
+    increments: tuple[int, ...]
+    fault_idx: int | None
+    expected: DtpJtag2AxiStatus
+
+    @property
+    def beats(self) -> int:
+        return len(self.increments)
+
+    def addr(self, idx: int) -> int:
+        return self.base + self.stride * sum(self.increments[:idx])
+
+    @property
+    def final_addr(self) -> int:
+        return self.addr(self.beats)
+
+    @property
+    def span(self) -> int:
+        """Bytes from ``base`` through the slot the trailing shift touches."""
+        return self.final_addr - self.base + self.stride
+
+    @property
+    def fault_addr(self) -> int:
+        if self.fault_idx is None:
+            raise ValueError("a clean stream has no fault beat")
+        return self.addr(self.fault_idx)
+
+    def is_fault(self, idx: int) -> bool:
+        return self.fault_idx is not None and idx == self.fault_idx
+
+    def expected_status_bit(self, shift: int) -> int:
+        return int(self.is_fault(shift - 1))
+
+    def beat_resp_name(self, idx: int) -> str:
+        return self.expected.name if self.is_fault(idx) else "OKAY"
+
+    def first_visit_beats(self) -> tuple[int, ...]:
+        """Beats whose address no earlier beat touched; a one-shot fault fires on the first access."""
+        seen: set[int] = set()
+        first: list[int] = []
+        for idx in range(self.beats):
+            if self.addr(idx) not in seen:
+                seen.add(self.addr(idx))
+                first.append(idx)
+        return tuple(first)
+
+    def final_words(self, words: list[int]) -> list[int]:
+        """The word each beat's address holds after the stream: the last one written there."""
+        last: dict[int, int] = {}
+        for idx, data in enumerate(words):
+            last[self.addr(idx)] = data
+        return [last[self.addr(idx)] for idx in range(self.beats)]
 
 
 class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     """Helpers for DTP JTAG2AXI single-operation and series-operation tests."""
+
+    async def pre_body(self) -> None:
+        """Gate every pass on the DUT publishing the geometry the DV table holds."""
+        await super().pre_body()
+        await self.verify_bridge_geometry()
+
+    async def verify_bridge_geometry(self) -> None:
+        """Compare each bridge's ``*_JTAG2AXI_CAPS`` fields with ``JTAG2AXI_TARGETS``.
+
+        Records ``CHK-J2A-GEOMETRY`` per bridge and fails the pass on a mismatch,
+        before any bridge request is packed with the table's field widths.
+        ``DTP_J2A_GEOMETRY_NEGATIVE=1`` corrupts the expected address size so the
+        run must FAIL, proving the gate rejects a wrong table end to end.
+        """
+        checker = OcahJtagChecker(
+            name=f"{self.get_name()}.geometry",
+            raise_on_error=False,
+            required_ids={GEOMETRY_CHECK_ID},
+            logger=cocotb.log,
+        )
+        negative = OcahKnobs.is_set("DTP_J2A_GEOMETRY_NEGATIVE")
+        if negative:
+            self.log.warning("NEGATIVE VALIDATION: geometry gate expectations will be corrupted")
+        await self.reset_tap()
+        for cfg in JTAG2AXI_TARGETS.values():
+            value = await self.read_tdr(cfg.caps_reg)
+            observed = unpack_jtag2axi_caps(value)
+            self.log.info(
+                "GEOMETRY %s raw=0x%04x bus_type=%d addr_size=%d data_size=%d",
+                cfg.caps_reg,
+                value,
+                observed["bus_type"],
+                observed["addr_size"],
+                observed["data_size"],
+            )
+            checker.expect_equal(
+                GEOMETRY_CHECK_ID,
+                (observed["bus_type"], observed["addr_size"], observed["data_size"]),
+                (cfg.bus_type, cfg.addr_width ^ int(negative), cfg.data_size),
+                context=f"{cfg.caps_reg} (bus_type, addr_size, data_size)",
+            )
+        checker.finalize()
 
     async def jtag2axi_write(
         self,
@@ -319,11 +443,13 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
     def clear_target_backpressure(self, target: str) -> None:
         self.target_responder(target).disable_backpressure()
 
+    def target_mem_size(self, target: str) -> int:
+        return int(self.cfg.axi_mem_size if target == "smc_axi" else self.cfg.otp_axil_mem_size)
+
     def random_target_aligned_addr(self, target: str, rng, size: int | None = None) -> int:
         cfg = self.target_cfg(target)
         align = cfg.beat_bytes if size is None else max(cfg.beat_bytes, self.size_bytes(size))
-        mem_size = self.cfg.axi_mem_size if target == "smc_axi" else self.cfg.otp_axil_mem_size
-        max_addr = mem_size - align
+        max_addr = self.target_mem_size(target) - align
         return rng.randrange(0, (max_addr // align) + 1) * align
 
     def read_target_mem_int(self, target: str, addr: int, size: int) -> int:
@@ -617,7 +743,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         data: int,
         read: bool,
         context: str,
-    ) -> None:
+    ) -> DtpJtag2AxiStatus:
         """Verify an OKAY access after an error/reset path to catch stuck state."""
         cfg = self.target_cfg(target)
         size = cfg.default_size
@@ -649,6 +775,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
                 expected=intent,
             )
         self.assert_equal(f"{context}.recovery_status", status, DtpJtag2AxiStatus.SUCCESS)
+        return DtpJtag2AxiStatus(status)
 
     async def verify_not_stuck_busy(
         self,
@@ -786,6 +913,177 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             back_to_rti=back_to_rti,
         )
         return unpack_series_data(result, size, with_status=True)
+
+    # --- WITH_ERROR_STATUS streams ---------------------------------------------
+    def plan_series_status(self, target: str, rng: random.Random) -> DtpSeriesStatusPlan:
+        """Choose a clean WITH_ERROR_STATUS stream whose footprint fits the target window."""
+        cfg = self.target_cfg(target)
+        plan = DtpSeriesStatusPlan(
+            target=target,
+            base=0,
+            size=cfg.default_size,
+            stride=cfg.beat_bytes,
+            increments=SERIES_STATUS_INCREMENTS,
+            fault_idx=None,
+            expected=DtpJtag2AxiStatus.SUCCESS,
+        )
+        base = min(
+            self.random_target_aligned_addr(target, rng), self.target_mem_size(target) - plan.span
+        )
+        return dataclasses.replace(plan, base=base)
+
+    def arm_series_status_fault(
+        self, plan: DtpSeriesStatusPlan, rng: random.Random, *, read: bool
+    ) -> DtpSeriesStatusPlan:
+        """Arm a random SLVERR or DECERR on a random first-visit beat of the stream.
+
+        ``DTP_J2A_STATUS_BIT_NEGATIVE=1`` keeps the expectation but leaves the
+        responder unarmed, so the fault beat's checks must fail.
+        """
+        fault_idx = rng.choice(plan.first_visit_beats())
+        resp = rng.choice((AXI_RESP_SLVERR, AXI_RESP_DECERR))
+        armed = dataclasses.replace(
+            plan, fault_idx=fault_idx, expected=self.axi_resp_to_jtag_status(resp)
+        )
+        if OcahKnobs.is_set(STATUS_BIT_NEGATIVE_KNOB):
+            self.log.warning(
+                "NEGATIVE VALIDATION: fault beat %d at 0x%x left unarmed; "
+                "the fault beat's checks must fail",
+                fault_idx,
+                armed.fault_addr,
+            )
+        else:
+            self.configure_target_error(
+                plan.target, armed.fault_addr, resp, read=read, write=not read
+            )
+        return armed
+
+    @staticmethod
+    def series_status_recovery_addr(plan: DtpSeriesStatusPlan) -> int:
+        """An aligned slot outside the stream's footprint for the recovery access."""
+        return plan.base - plan.stride if plan.base >= plan.stride else plan.base + plan.span
+
+    def check_series_status_bit(
+        self, plan: DtpSeriesStatusPlan, shift: int, observed: int, *, context: str
+    ) -> None:
+        """Judge the WITH_ERROR_STATUS bit returned by ``shift`` (1 = the previous beat failed)."""
+        expected = plan.expected_status_bit(shift)
+        name = f"{context}.status_bit#{shift}"
+        detail = f"addr=0x{plan.addr(shift):x}"
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            scoreboard.expect_equal(
+                STATUS_BIT_CHECK_ID,
+                observed,
+                expected,
+                context=f"{name} target={plan.target} {detail}",
+            )
+        self.assert_equal(name, observed, expected, detail)
+
+    async def _series_status_shift(
+        self, plan: DtpSeriesStatusPlan, shift: int, data: int, *, read: bool, context: str
+    ) -> tuple[int, int]:
+        """One shift of a WITH_ERROR_STATUS stream; the shift past the last beat holds the address."""
+        increment = plan.increments[shift] if shift < plan.beats else 0
+        before = await self.target_activity_counts(plan.target)
+        rdata, status_bit = await self.series_data_with_status(
+            data, size=plan.size, increment=increment, target=plan.target, back_to_rti=True
+        )
+        await self.wait_for_target_activity(
+            plan.target, before=before, read=read, context=f"{context}.axi#{shift}"
+        )
+        self.check_series_status_bit(plan, shift, status_bit, context=context)
+        return rdata, status_bit
+
+    async def run_series_status_write(
+        self, plan: DtpSeriesStatusPlan, words: list[int], *, context: str
+    ) -> None:
+        """Drive one WITH_ERROR_STATUS write stream and judge every shift.
+
+        Each shift returns the previous beat's status bit and a trailing shift
+        returns the last beat's. The responder drops the fault beat, so that
+        slot keeps its prior word. The SERIES_CTRL capture must show the
+        pattern's final address.
+        """
+        target = plan.target
+        fault_before = 0
+        if plan.fault_idx is not None:
+            fault_before = self.read_target_mem_int(target, plan.fault_addr, plan.size)
+        await self.jtag2axi_series_ctrl(
+            DtpJtag2AxiOp.WRITE, plan.base, size=plan.size, target=target, back_to_rti=True
+        )
+        for idx, (data, increment) in enumerate(zip(words, plan.increments, strict=True)):
+            addr = plan.addr(idx)
+            self.log_iteration(
+                idx + 1,
+                plan.beats,
+                "with-status write addr=0x%08x inc=%d data=0x%x resp=%s",
+                addr,
+                increment,
+                data,
+                plan.beat_resp_name(idx),
+            )
+            await self._series_status_shift(plan, idx, data, read=False, context=context)
+            observed = self.read_target_mem_int(target, addr, plan.size)
+            if plan.is_fault(idx):
+                self.assert_equal(
+                    f"{context}.mem_dropped#{idx}", observed, fault_before, f"addr=0x{addr:x}"
+                )
+            else:
+                self.assert_equal(f"{context}.mem#{idx}", observed, data, f"addr=0x{addr:x}")
+        await self._series_status_shift(plan, plan.beats, 0, read=False, context=context)
+        _, addr_after, _, _, _ = await self.read_series_ctrl(size=plan.size, target=target)
+        self.assert_equal(f"{context}.addr_after", addr_after, plan.final_addr)
+
+    async def run_series_status_read(
+        self, plan: DtpSeriesStatusPlan, expected: list[int], *, context: str
+    ) -> None:
+        """Drive one WITH_ERROR_STATUS read stream from a single SERIES_CTRL preload.
+
+        Every shift launches a read and returns the previous read's word and
+        status bit, so shift k judges read k-1 and a trailing shift judges the
+        last beat. The fault beat's word is not judged: the responder returns
+        no valid data with an error response.
+        """
+        target = plan.target
+        await self.jtag2axi_series_ctrl(
+            DtpJtag2AxiOp.READ, plan.base, size=plan.size, target=target, back_to_rti=True
+        )
+        for shift in range(plan.beats + 1):
+            if shift < plan.beats:
+                self.log_iteration(
+                    shift + 1,
+                    plan.beats,
+                    "with-status read addr=0x%08x inc=%d resp=%s",
+                    plan.addr(shift),
+                    plan.increments[shift],
+                    plan.beat_resp_name(shift),
+                )
+            rdata, _ = await self._series_status_shift(plan, shift, 0, read=True, context=context)
+            beat = shift - 1
+            if beat >= 0 and not plan.is_fault(beat):
+                self.assert_equal(
+                    f"{context}.rdata#{beat}", rdata, expected[beat], f"addr=0x{plan.addr(beat):x}"
+                )
+        _, addr_after, _, _, _ = await self.read_series_ctrl(size=plan.size, target=target)
+        self.assert_equal(f"{context}.addr_after", addr_after, plan.final_addr)
+
+    def emit_series_status_nonvacuity(
+        self, label: str, plan: DtpSeriesStatusPlan, operations: int
+    ) -> None:
+        """CHK-AXI-NONVAC: the stream ran and a real bus response consumed its fault credit."""
+        scoreboard = self.axi_scoreboard
+        if scoreboard is None:
+            return
+        unconsumed = scoreboard.unconsumed_credits()
+        scoreboard.expect_nonvacuous(
+            operations >= plan.beats and plan.fault_idx is not None and unconsumed == 0,
+            context=(
+                f"scenario={label} target={plan.target} operations={operations} "
+                f"fault_beat={plan.fault_idx} resp={plan.expected.name} "
+                f"credits_unconsumed={unconsumed}"
+            ),
+        )
 
     # --- AXI activity helpers -------------------------------------------------
     async def axi_activity_counts(self) -> dict[str, int]:

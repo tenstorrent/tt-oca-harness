@@ -48,6 +48,9 @@ module smu_wrapper_uvm_top (
   output logic [1:0]  lcc_demote_state_2_o,
   output logic [63:0] lcc_feat_ctrl_o,
   output logic [15:0] lcc_dbg_disable_o,     // to DTP
+  // The one dbg_disable path field the DTP specification ties to the SMC
+  // fabric JTAG2AXI bridge, read by its spec name rather than by bit position.
+  output logic        lcc_dbg_disable_smc_jtag2axi_o,
   output logic [7:0]  smc_lc_state_in_o,     // as SMC receives it
   // DTP JTAG2AXI traffic into the SMC. dbg_disable.smc_jtag2axi stops the
   // bridge from launching a transaction at all (jtag2axi.sv: the update is
@@ -55,6 +58,7 @@ module smu_wrapper_uvm_top (
   // tells "debug is gated" from "the signal merely says so".
   output logic [31:0] dtp_smc_dbg_aw_count_o,
   output logic [31:0] dtp_smc_dbg_ar_count_o,
+  output logic [31:0] dtp_smc_dbg_b_count_o,
   input  wire logic clk_ref_i,
   input  wire logic clk_periph_i,
   input  wire logic clk_sep_wdt_i,
@@ -271,7 +275,7 @@ module smu_wrapper_uvm_top (
   output logic [15:0] smu_axi_out_aw_ready_cycles_o,
   output logic [15:0] smu_axi_out_w_valid_cycles_o,
   output logic [15:0] smu_axi_out_w_ready_cycles_o,
-  output logic [31:0] ext_mailbox_interrupts_o,
+  output logic [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts_o,
   // SEP run-gate / IFU bring-up probes (keep nets visible under VCS)
   output logic [15:0] sep_cla_custom_o,
   output logic        sep_mpc_reset_run_o,
@@ -321,9 +325,11 @@ module smu_wrapper_uvm_top (
 
 `ifdef SMU_NO_SEP
   localparam int unsigned SEP_ENABLED = 0;
+  localparam bit SEP_PRESENT = 1'b0;
   localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::NoSepCfg;
 `else
   localparam int unsigned SEP_ENABLED = 1;
+  localparam bit SEP_PRESENT = 1'b1;
   localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::DefaultCfg;
 `endif
 
@@ -367,17 +373,15 @@ module smu_wrapper_uvm_top (
     };
   assign jtag_ptap_tdi = jtag_tdi;
 `ifndef SMU_NO_SEP
-  assign lcc_demote_state_1_o = u_dut.u_smu.lcc_demote_state_1_o;
-  assign lcc_demote_state_2_o = u_dut.u_smu.lcc_demote_state_2_o;
   assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.sep_crypto
         .u_sep_lifecycle_ctrl.feat_ctrl_o);
   assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
+  assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
 `else
-  assign lcc_demote_state_1_o = '0;
-  assign lcc_demote_state_2_o = '0;
   assign lcc_feat_ctrl_o      = '0;
   assign lcc_dbg_disable_o    = '0;
+  assign lcc_dbg_disable_smc_jtag2axi_o = 1'b0;
   assign smc_lc_state_in_o    = '0;
 `endif
 
@@ -385,6 +389,7 @@ module smu_wrapper_uvm_top (
     if (!rst_cold_ni) begin
       dtp_smc_dbg_aw_count_o <= '0;
       dtp_smc_dbg_ar_count_o <= '0;
+      dtp_smc_dbg_b_count_o  <= '0;
     end else begin
       if (u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid &&
                 u_dut.u_smu.dtp_axi_smc_dbg_resp.aw_ready) begin
@@ -393,6 +398,9 @@ module smu_wrapper_uvm_top (
       if (u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid &&
                 u_dut.u_smu.dtp_axi_smc_dbg_resp.ar_ready) begin
         dtp_smc_dbg_ar_count_o <= dtp_smc_dbg_ar_count_o + 32'd1;
+      end
+      if (u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid && u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready) begin
+        dtp_smc_dbg_b_count_o <= dtp_smc_dbg_b_count_o + 32'd1;
       end
     end
   end
@@ -545,7 +553,7 @@ module smu_wrapper_uvm_top (
   );
 
   wire [smc_pkg::NUM_GPIO_WRAPS-1:0] gpio_pad_io;
-  logic [31:0] ext_mailbox_interrupts;
+  logic [smc_pkg::NUM_MAILBOXES-1:0] ext_mailbox_interrupts;
   logic [31:0] smc_scratch_0_q;
   logic        rst_cold_stable_ref_clk_n;
   prim_jtag_pkg::jtag_scan_ctrl_t bsr_ctrl_w;
@@ -559,6 +567,15 @@ module smu_wrapper_uvm_top (
   logic        sep_reset_n;
   sep_pkg::sep_cpu_trace_t sep_cpu_trace;
   logic                    secure_tm_req;
+
+  // Boundary outputs observed only by the cov/sv functional-coverage modules.
+  logic skip_mem_repair_w;
+  logic [31:0] ss_config_w;
+  smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_w [31:0];
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_out_dout_w, ctp_req_in_dout_w;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_w, ctp_ack_out_dout_w;
+  logic [31:0] jtag_ptap_state_w;
+  logic [31:0] smu_axi_in_awvalid_count, smu_axi_out_awvalid_count;
 
   assign secure_tm_req = 1'b0;
   // ------------------------------------------------------------------
@@ -631,6 +648,25 @@ module smu_wrapper_uvm_top (
   assign powergood_o   = powergood_i;
   assign rst_cold_n_o  = rst_cold_stable_ref_clk_n;
   assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
+
+  // prim_rom's noXOnCsI is never disabled (its reset argument is '0), so on a
+  // four-state simulator it fires on the X that req_i carries before reset.
+  // The wrapper elaborates sep_ip_integration on both profiles, so the two SEP
+  // ROMs are present even with SEP disabled. Hold the three checks off until
+  // the SMC primary reset has released and one SMC clock edge has sampled a
+  // known req_i, then re-arm them so a later X still fails.
+`ifndef VERILATOR
+  initial begin
+    $assertoff(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    $assertoff(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
+    $assertoff(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
+    wait (rst_primary_smc_clk_n === 1'b1);
+    @(posedge clk_smu_i);
+    $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    $asserton(0, u_dut.u_sep_ip_integration.u_sep_boot_rom.noXOnCsI);
+    $asserton(0, u_dut.u_sep_ip_integration.u_km_rom.noXOnCsI);
+  end
+`endif
 
   // powergood_stable is the SMC reset controller's stretched and synchronized
   // view of powergood_i (smc_reset_ctrl.sv), so it rises only once the DUT's own
@@ -1381,19 +1417,19 @@ module smu_wrapper_uvm_top (
     .xtrig_ctm_dst_ack_o (xtrig_ctm_dst_ack),
     .xtrig_clk_stop_req_i (xtrig_clk_stop_req),
 
-    .xtrig_ctp_req_out_dout_o (),
+    .xtrig_ctp_req_out_dout_o (ctp_req_out_dout_w),
     .xtrig_ctp_req_out_dout_en_o (),
     .xtrig_ctp_req_out_din_i ('0),
     .xtrig_ctp_req_out_din_en_o (),
-    .xtrig_ctp_req_in_dout_o (),
+    .xtrig_ctp_req_in_dout_o (ctp_req_in_dout_w),
     .xtrig_ctp_req_in_dout_en_o (),
     .xtrig_ctp_req_in_din_i ('0),
     .xtrig_ctp_req_in_din_en_o (),
-    .xtrig_ctp_ack_in_dout_o (),
+    .xtrig_ctp_ack_in_dout_o (ctp_ack_in_dout_w),
     .xtrig_ctp_ack_in_dout_en_o (),
     .xtrig_ctp_ack_in_din_i ('0),
     .xtrig_ctp_ack_in_din_en_o (),
-    .xtrig_ctp_ack_out_dout_o (),
+    .xtrig_ctp_ack_out_dout_o (ctp_ack_out_dout_w),
     .xtrig_ctp_ack_out_dout_en_o (),
     .xtrig_ctp_ack_out_din_i ('0),
     .xtrig_ctp_ack_out_din_en_o (),
@@ -1432,7 +1468,7 @@ module smu_wrapper_uvm_top (
     .smc_ext_interrupts_i ('0),
     .smc_fuse_sense_done_o,
     .smc_fuse_reset_n_delayed_o,
-    .skip_mem_repair_o (),
+    .skip_mem_repair_o (skip_mem_repair_w),
     .ext_boot_seq_done_i (ext_boot_seq_done_i),
     .lc_state_o (lc_state),
     .lc_sigint_err_o (lc_sigint_err_o),
@@ -1443,8 +1479,8 @@ module smu_wrapper_uvm_top (
     .cfg_flr_pf_active_i (1'b0),
     .isolate_req_o (),
     .ss_reset_complete_i ('1),
-    .ss_config_o (),
-    .ss_reset_ctrl_o (),
+    .ss_config_o (ss_config_w),
+    .ss_reset_ctrl_o (ss_reset_ctrl_w),
     .sync_irq_o (),
 
     .smc_disable_sram_auto_init_i (smc_disable_sram_auto_init),
@@ -1466,8 +1502,8 @@ module smu_wrapper_uvm_top (
 
     .sep_cpu_trace_o (sep_cpu_trace),
     .sep_ext_interrupts_i ('0),
-    .lcc_demote_state_1_o (),
-    .lcc_demote_state_2_o (),
+    .lcc_demote_state_1_o (lcc_demote_state_1_o),
+    .lcc_demote_state_2_o (lcc_demote_state_2_o),
     .sep_fuse_dft_disable_o (),
     .smc_fuse_dft_disable_o (),
     .sep_fuse_sense_done_o,
@@ -1483,6 +1519,334 @@ module smu_wrapper_uvm_top (
     // SEP CPU lockstep control/status
     .sep_lockstep_ctrl_i (sep_lockstep_ctrl_i),
     .sep_lockstep_status_o (sep_lockstep_status_o)
+  );
+
+  // ------------------------------------------------------------------
+  // Functional coverage (cov/sv/): the same modules tb_top.sv carries, on
+  // this bench's names, plus smu_clk_fcov, which needs the hierarchical
+  // clock and reset mirrors only this bench exposes. Every port is a signal
+  // of this module; no hierarchical reference is added for coverage.
+  // ------------------------------------------------------------------
+  assign jtag_ptap_state_w = 32'(jtag_ptap_state);
+
+  always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
+    if (!rst_cold_ni) begin
+      smu_axi_in_awvalid_count  <= '0;
+      smu_axi_out_awvalid_count <= '0;
+    end else begin
+      if (ext_in_awvalid && ext_in_awready) begin
+        smu_axi_in_awvalid_count <= smu_axi_in_awvalid_count + 32'd1;
+      end
+      if (axi_out_aw_fire) begin
+        smu_axi_out_awvalid_count <= smu_axi_out_awvalid_count + 32'd1;
+      end
+    end
+  end
+
+  // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
+  smu_boot_fcov #(
+    .SepPresent(SEP_PRESENT)
+  ) u_smu_boot_fcov (
+    .clk_ref_i                   (clk_ref_i),
+    .clk_smu_i                   (clk_smu_i),
+    .powergood_i                 (powergood_i),
+    .rst_cold_ni                 (rst_cold_ni),
+    .ext_boot_seq_done_i         (ext_boot_seq_done_i),
+    .rst_cold_stable_ref_clk_ni  (rst_cold_stable_ref_clk_no),
+    .rst_primary_ref_clk_ni      (rst_primary_ref_clk_no),
+    .rst_primary_smc_clk_ni      (rst_primary_smc_clk_n_o),
+    .rst_primary_periph_clk_ni   (rst_primary_periph_clk_no),
+    .init_mem_done_i             (smc_init_mem_done_o),
+    .fuse_sense_done_i           (smc_fuse_sense_done_o),
+    .fuse_reset_n_delayed_i      (smc_fuse_reset_n_delayed_o),
+    .jtag_boot_stall_ovrd_i      (jtag_boot_stall_ovrd),
+    .jtag_boot_stall_i           (jtag_boot_stall),
+    .gpio_boot_stall_drive_i     (gpio_boot_stall_drive_i),
+    .lc_state_i                  (lc_state_o),
+    .lc_sigint_err_i             (lc_sigint_err_o),
+    .lcc_demote_state_1_i        (lcc_demote_state_1_o),
+    .lcc_demote_state_2_i        (lcc_demote_state_2_o)
+  );
+
+  // smu_wrapper does not bring the SMC AXI-Lite external window to its
+  // boundary, so that activity port is tied off here.
+  // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
+  smu_xbar_fcov #(
+    .SepPresent(SEP_PRESENT)
+  ) u_smu_xbar_fcov (
+    .clk_smu_i                (clk_smu_i),
+    .rst_cold_ni              (rst_cold_ni),
+    .sep_global_base_i        (sep_global_base_o),
+    .sep_region_size_i        (sep_region_size_o),
+    .smc_global_base_i        (smc_global_base_o),
+    .smc_region_size_i        (smc_region_size_o),
+    .s_axi_awvalid_i          (ext_in_awvalid),
+    .s_axi_awready_i          (ext_in_awready),
+    .s_axi_wvalid_i           (ext_in_wvalid),
+    .s_axi_wready_i           (ext_in_wready),
+    .s_axi_wlast_i            (ext_in_wlast),
+    .s_axi_bvalid_i           (ext_in_bvalid),
+    .s_axi_bready_i           (ext_in_bready),
+    .s_axi_bresp_i            (ext_in_bresp),
+    .s_axi_arvalid_i          (ext_in_arvalid),
+    .s_axi_arready_i          (ext_in_arready),
+    .s_axi_rvalid_i           (ext_in_rvalid),
+    .s_axi_rready_i           (ext_in_rready),
+    .s_axi_rlast_i            (ext_in_rlast),
+    .s_axi_rresp_i            (ext_in_rresp),
+    .axi_in_awvalid_count_i   (smu_axi_in_awvalid_count),
+    .axi_out_awvalid_count_i  (smu_axi_out_awvalid_count),
+    .axil_external_active_i   (1'b0)
+  );
+
+  // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
+  smu_rst_fcov #(
+    .SepPresent(SEP_PRESENT)
+  ) u_smu_rst_fcov (
+    .clk_ref_i                   (clk_ref_i),
+    .clk_smu_i                   (clk_smu_i),
+    .clk_periph_i                (clk_periph_i),
+    .powergood_i                 (powergood_i),
+    .rst_cold_ni                 (rst_cold_ni),
+    .ext_boot_seq_done_i         (ext_boot_seq_done_i),
+    .rst_cold_stable_ref_clk_ni  (rst_cold_stable_ref_clk_no),
+    .rst_primary_ref_clk_ni      (rst_primary_ref_clk_no),
+    .rst_primary_smc_clk_ni      (rst_primary_smc_clk_n_o),
+    .rst_primary_periph_clk_ni   (rst_primary_periph_clk_no),
+    .smc_rst_ni                  (obs_smc_rst_n_o),
+    .dtp_rst_ni                  (obs_dtp_rst_n_o),
+    .sep_rst_ni                  (obs_sep_rst_n_o),
+    .xbar_rst_ni                 (obs_xbar_rst_n_o),
+    .fuse_sense_done_i           (smc_fuse_sense_done_o),
+    .sep_fuse_sense_done_i       (sep_fuse_sense_done_o),
+    .fuse_reset_n_delayed_i      (smc_fuse_reset_n_delayed_o),
+    .skip_mem_repair_i           (skip_mem_repair_w),
+    .init_mem_done_i             (smc_init_mem_done_o),
+    .disable_sram_auto_init_i    (smc_disable_sram_auto_init),
+    .jtag_ptap_state_i           (jtag_ptap_state_w)
+  );
+
+  // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
+  smu_clk_fcov #(
+    .SepPresent(SEP_PRESENT)
+  ) u_smu_clk_fcov (
+    .clk_smu_i               (clk_smu_i),
+    .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
+    .smc_clk_i               (obs_smc_clk_o),
+    .dtp_clk_i               (obs_dtp_clk_o),
+    .sep_clk_i               (obs_sep_clk_o),
+    .xbar_clk_i              (obs_xbar_clk_o),
+    .smc_rst_ni              (obs_smc_rst_n_o),
+    .dtp_rst_ni              (obs_dtp_rst_n_o),
+    .sep_rst_ni              (obs_sep_rst_n_o),
+    .xbar_rst_ni             (obs_xbar_rst_n_o),
+    .tel_clk_i               (obs_smc_tel_clk_o),
+    .sep_wdt_clk_i           (obs_sep_wdt_clk_o)
+  );
+
+  smu_lc_fcov u_smu_lc_fcov (
+    .clk_smu_i                (clk_smu_i),
+    .rst_cold_ni              (rst_cold_ni),
+    .rst_primary_smc_clk_ni   (rst_primary_smc_clk_n_o),
+    .lc_state_i               (lc_state_o),
+    .lcc_demote_state_1_i     (lcc_demote_state_1_o),
+    .lcc_demote_state_2_i     (lcc_demote_state_2_o),
+    .sep_global_base_i        (sep_global_base_o),
+    .sep_region_size_i        (sep_region_size_o),
+    .sep_fuse_sense_done_i    (sep_fuse_sense_done_o)
+  );
+
+  smu_dtp_fcov u_smu_dtp_fcov (
+    .clk_smu_i                  (clk_smu_i),
+    .rst_cold_ni                (rst_cold_ni),
+    .rst_primary_smc_clk_ni     (rst_primary_smc_clk_n_o),
+    .jtag_ic_reset_ext_ovrd_i   (jtag_ic_reset_ext_ovrd),
+    .jtag_ic_reset_ext_ctrl_n_i (jtag_ic_reset_ext_ctrl_n),
+    .ctp_req_out_dout_i         (ctp_req_out_dout_w),
+    .ctp_req_in_dout_i          (ctp_req_in_dout_w),
+    .ctp_ack_in_dout_i          (ctp_ack_in_dout_w),
+    .ctp_ack_out_dout_i         (ctp_ack_out_dout_w)
+  );
+
+  // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
+  smu_ext_fcov #(
+    .SepPresent(SEP_PRESENT)
+  ) u_smu_ext_fcov (
+    .clk_smu_i                (clk_smu_i),
+    .rst_cold_ni              (rst_cold_ni),
+    .rst_primary_smc_clk_ni   (rst_primary_smc_clk_n_o),
+    .fuse_sense_done_i        (smc_fuse_sense_done_o),
+    .s_axi_awvalid_i          (ext_in_awvalid),
+    .s_axi_awready_i          (ext_in_awready),
+    .s_axi_awid_i             (ext_in_awid),
+    .axi_out_aw_valid_i       (smu_axi_out_req.aw_valid),
+    .axi_out_aw_ready_i       (smu_axi_out_resp.aw_ready),
+    .axi_out_aw_id_i          (smu_axi_out_req.aw.id),
+    .smc_efuse_bank_ctrl_awvalid_i (u_dut.smc_efuse_bank_ctrl_req.aw_valid),
+    .smc_efuse_bank_ctrl_arvalid_i (u_dut.smc_efuse_bank_ctrl_req.ar_valid),
+    .smc_efuse_bank_ctrl_bvalid_i  (u_dut.smc_efuse_bank_ctrl_resp.b_valid),
+    .smc_efuse_bank_ctrl_bready_i  (u_dut.smc_efuse_bank_ctrl_req.b_ready),
+    .smc_efuse_bank_ctrl_rvalid_i  (u_dut.smc_efuse_bank_ctrl_resp.r_valid),
+    .smc_efuse_bank_ctrl_rready_i  (u_dut.smc_efuse_bank_ctrl_req.r_ready),
+    .sep_efuse_bank_ctrl_awvalid_i (u_dut.sep_efuse_bank_ctrl_req.aw_valid),
+    .sep_efuse_bank_ctrl_arvalid_i (u_dut.sep_efuse_bank_ctrl_req.ar_valid),
+    .sep_efuse_bank_ctrl_bvalid_i  (u_dut.sep_efuse_bank_ctrl_resp.b_valid),
+    .sep_efuse_bank_ctrl_bready_i  (u_dut.sep_efuse_bank_ctrl_req.b_ready),
+    .sep_efuse_bank_ctrl_rvalid_i  (u_dut.sep_efuse_bank_ctrl_resp.r_valid),
+    .sep_efuse_bank_ctrl_rready_i  (u_dut.sep_efuse_bank_ctrl_req.r_ready),
+    .ext_mailbox_interrupts_i (ext_mailbox_interrupts),
+    .ss_config_i              (ss_config_w),
+    .ss_reset_ctrl_i          (ss_reset_ctrl_w),
+    .smc_shadow_regs_i        (smc_shadow_regs)
+  );
+
+  // ------------------------------------------------------------------
+  // P1 families. The three DTP debug bridges and the cross-trigger
+  // clock-stop inputs are nets inside `smu`, so they are read here and the
+  // cov/sv modules take plain wires.
+  // ------------------------------------------------------------------
+  smu_clkstop_fcov u_smu_clkstop_fcov (
+    .clk_smu_i               (clk_smu_i),
+    .rst_primary_smc_clk_ni  (rst_primary_smc_clk_n_o),
+    .dtp_clk_stop_req_ext_i  (u_dut.u_smu.dtp_xtrig_clk_stop_req[8:1]),
+    .jtag_clock_stop_i       (u_dut.u_smu.u_dtp.jtag_clock_stop),
+    .dtp_stop_clks_i         (dtp_stop_clks_o)
+  );
+
+  // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
+  smu_dbg_fcov #(
+    .SepPresent(SEP_PRESENT)
+  ) u_smu_dbg_fcov (
+    .clk_smu_i                   (clk_smu_i),
+    .rst_primary_smc_clk_ni      (rst_primary_smc_clk_n_o),
+    .smc_dbg_awvalid_i           (u_dut.u_smu.dtp_axi_smc_dbg_req.aw_valid),
+    .smc_dbg_arvalid_i           (u_dut.u_smu.dtp_axi_smc_dbg_req.ar_valid),
+    .smc_dbg_bvalid_i            (u_dut.u_smu.dtp_axi_smc_dbg_resp.b_valid),
+    .smc_dbg_bready_i            (u_dut.u_smu.dtp_axi_smc_dbg_req.b_ready),
+    .smc_dbg_bresp_i             (u_dut.u_smu.dtp_axi_smc_dbg_resp.b.resp),
+    .smc_dbg_rvalid_i            (u_dut.u_smu.dtp_axi_smc_dbg_resp.r_valid),
+    .smc_dbg_rready_i            (u_dut.u_smu.dtp_axi_smc_dbg_req.r_ready),
+    .smc_dbg_rlast_i             (u_dut.u_smu.dtp_axi_smc_dbg_resp.r.last),
+    .smc_dbg_rresp_i             (u_dut.u_smu.dtp_axi_smc_dbg_resp.r.resp),
+    .smc_otp_bvalid_i            (u_dut.u_smu.dtp_axil_smc_otp_jtag_resp.b_valid),
+    .smc_otp_bready_i            (u_dut.u_smu.dtp_axil_smc_otp_jtag_req.b_ready),
+    .smc_otp_bresp_i             (u_dut.u_smu.dtp_axil_smc_otp_jtag_resp.b.resp),
+    .smc_otp_rvalid_i            (u_dut.u_smu.dtp_axil_smc_otp_jtag_resp.r_valid),
+    .smc_otp_rready_i            (u_dut.u_smu.dtp_axil_smc_otp_jtag_req.r_ready),
+    .smc_otp_rresp_i             (u_dut.u_smu.dtp_axil_smc_otp_jtag_resp.r.resp),
+    .sep_otp_bvalid_i            (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.b_valid),
+    .sep_otp_bready_i            (u_dut.u_smu.dtp_axil_sep_otp_jtag_req.b_ready),
+    .sep_otp_bresp_i             (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.b.resp),
+    .sep_otp_rvalid_i            (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.r_valid),
+    .sep_otp_rready_i            (u_dut.u_smu.dtp_axil_sep_otp_jtag_req.r_ready),
+    .sep_otp_rresp_i             (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.r.resp),
+    .dbg_disable_smc_jtag2axi_i  (u_dut.u_smu.sep_dbg_disable.smc_jtag2axi),
+    .dbg_disable_smc_otp_i       (u_dut.u_smu.sep_dbg_disable.smc_otp_jtag2axi),
+    .dbg_disable_sep_otp_i       (u_dut.u_smu.sep_dbg_disable.sep_otp_jtag2axi)
+  );
+
+  smu_nosep_fcov u_smu_nosep_fcov (
+    .clk_smu_i          (clk_smu_i),
+    .rst_cold_ni        (rst_cold_ni),
+    .sep_present_i      (SEP_ENABLED[0]),
+    .ext_in_bvalid_i    (ext_in_bvalid),
+    .ext_in_bready_i    (ext_in_bready),
+    .ext_in_bresp_i     (ext_in_bresp),
+    .ext_in_rvalid_i    (ext_in_rvalid),
+    .ext_in_rready_i    (ext_in_rready),
+    .ext_in_rlast_i     (ext_in_rlast),
+    .ext_in_rresp_i     (ext_in_rresp),
+    .axi_out_bvalid_i   (smu_axi_out_resp.b_valid),
+    .axi_out_bready_i   (smu_axi_out_req.b_ready),
+    .axi_out_bresp_i    (smu_axi_out_resp.b.resp),
+    .axi_out_rvalid_i   (smu_axi_out_resp.r_valid),
+    .axi_out_rready_i   (smu_axi_out_req.r_ready),
+    .axi_out_rlast_i    (smu_axi_out_resp.r.last),
+    .axi_out_rresp_i    (smu_axi_out_resp.r.resp),
+    .sep_otp_rvalid_i   (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.r_valid),
+    .sep_otp_rready_i   (u_dut.u_smu.dtp_axil_sep_otp_jtag_req.r_ready),
+    .sep_otp_rresp_i    (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.r.resp),
+    .sep_otp_rdata_i    (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.r.data)
+  );
+
+  // The SEP-to-SMC alias remap port and the crossbar SEP initiator port are
+  // inside the SEP=1 generate branch, so the no-SEP profile ties the alias
+  // observation nets off and the points stay unhit there.
+  logic alias_awvalid_w, alias_awready_w, alias_arvalid_w, alias_arready_w;
+  logic alias_bvalid_w, alias_bready_w, alias_rvalid_w, alias_rready_w, alias_rlast_w;
+  logic [55:0] alias_awaddr_w, alias_araddr_w;
+  logic [55:0] alias_remapped_awaddr_w, alias_remapped_araddr_w;
+  logic xbar_sep_out_awvalid_w, xbar_sep_out_awready_w;
+  logic xbar_sep_out_arvalid_w, xbar_sep_out_arready_w;
+  logic [55:0] xbar_sep_out_awaddr_w, xbar_sep_out_araddr_w;
+
+`ifndef SMU_NO_SEP
+  assign alias_awvalid_w = u_dut.u_smu.sep_ext_to_smc_axi_req.aw_valid;
+  assign alias_awready_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.aw_ready;
+  assign alias_awaddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req.aw.addr);
+  assign alias_arvalid_w = u_dut.u_smu.sep_ext_to_smc_axi_req.ar_valid;
+  assign alias_arready_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.ar_ready;
+  assign alias_araddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req.ar.addr);
+  assign alias_bvalid_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.b_valid;
+  assign alias_bready_w = u_dut.u_smu.sep_ext_to_smc_axi_req.b_ready;
+  assign alias_rvalid_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.r_valid;
+  assign alias_rready_w = u_dut.u_smu.sep_ext_to_smc_axi_req.r_ready;
+  assign alias_rlast_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.r.last;
+  assign alias_remapped_awaddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req_local.aw.addr);
+  assign alias_remapped_araddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req_local.ar.addr);
+  assign xbar_sep_out_awvalid_w = u_dut.u_smu.gen_sep.sep_out_xbar_req.aw_valid;
+  assign xbar_sep_out_awready_w = u_dut.u_smu.gen_sep.sep_out_xbar_resp.aw_ready;
+  assign xbar_sep_out_awaddr_w = 56'(u_dut.u_smu.gen_sep.sep_out_xbar_req.aw.addr);
+  assign xbar_sep_out_arvalid_w = u_dut.u_smu.gen_sep.sep_out_xbar_req.ar_valid;
+  assign xbar_sep_out_arready_w = u_dut.u_smu.gen_sep.sep_out_xbar_resp.ar_ready;
+  assign xbar_sep_out_araddr_w = 56'(u_dut.u_smu.gen_sep.sep_out_xbar_req.ar.addr);
+`else
+  assign alias_awvalid_w = 1'b0;
+  assign alias_awready_w = 1'b0;
+  assign alias_awaddr_w = '0;
+  assign alias_arvalid_w = 1'b0;
+  assign alias_arready_w = 1'b0;
+  assign alias_araddr_w = '0;
+  assign alias_bvalid_w = 1'b0;
+  assign alias_bready_w = 1'b0;
+  assign alias_rvalid_w = 1'b0;
+  assign alias_rready_w = 1'b0;
+  assign alias_rlast_w = 1'b0;
+  assign alias_remapped_awaddr_w = '0;
+  assign alias_remapped_araddr_w = '0;
+  assign xbar_sep_out_awvalid_w = 1'b0;
+  assign xbar_sep_out_awready_w = 1'b0;
+  assign xbar_sep_out_awaddr_w = '0;
+  assign xbar_sep_out_arvalid_w = 1'b0;
+  assign xbar_sep_out_arready_w = 1'b0;
+  assign xbar_sep_out_araddr_w = '0;
+`endif
+
+  // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
+  smu_alias_fcov #(
+    .SepPresent(SEP_PRESENT)
+  ) u_smu_alias_fcov (
+    .clk_smu_i                 (clk_smu_i),
+    .rst_primary_smc_clk_ni    (rst_primary_smc_clk_n_o),
+    .alias_awvalid_i           (alias_awvalid_w),
+    .alias_awready_i           (alias_awready_w),
+    .alias_awaddr_i            (alias_awaddr_w),
+    .alias_arvalid_i           (alias_arvalid_w),
+    .alias_arready_i           (alias_arready_w),
+    .alias_araddr_i            (alias_araddr_w),
+    .alias_bvalid_i            (alias_bvalid_w),
+    .alias_bready_i            (alias_bready_w),
+    .alias_rvalid_i            (alias_rvalid_w),
+    .alias_rready_i            (alias_rready_w),
+    .alias_rlast_i             (alias_rlast_w),
+    .alias_remapped_awaddr_i   (alias_remapped_awaddr_w),
+    .alias_remapped_araddr_i   (alias_remapped_araddr_w),
+    .xbar_sep_out_awvalid_i    (xbar_sep_out_awvalid_w),
+    .xbar_sep_out_awready_i    (xbar_sep_out_awready_w),
+    .xbar_sep_out_awaddr_i     (xbar_sep_out_awaddr_w),
+    .xbar_sep_out_arvalid_i    (xbar_sep_out_arvalid_w),
+    .xbar_sep_out_arready_i    (xbar_sep_out_arready_w),
+    .xbar_sep_out_araddr_i     (xbar_sep_out_araddr_w)
   );
 
 endmodule : smu_wrapper_uvm_top

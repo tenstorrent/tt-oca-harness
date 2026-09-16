@@ -191,6 +191,17 @@ module smu_uvm_top
   logic [31:0] smc_size_w;
   jtag_tap_pkg::jtag_ic_reset_default_t jtag_ic_reset_ext;
 
+  // SEP eFuse bank-control shim: SEP=0 holds it idle, but the port is taken
+  // to a net so the cov/sv boundary points have something to read.
+  sep_efuse_pkg::efuse_axil_req_t sep_efuse_bank_ctrl_req;
+
+  // Boundary outputs observed only by the cov/sv functional-coverage modules.
+  logic skip_mem_repair_w, sep_fuse_sense_done_w;
+  logic [31:0] ss_config_w;
+  smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_w [31:0];
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_out_dout_w, ctp_req_in_dout_w;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_w, ctp_ack_out_dout_w;
+
   // Scan / STAP loopbacks
   jtag_scan_ctrl_t bsr_ctrl, stap_scan_ctrl, dfd_ctrl, dft_sec_ctrl, dft_ctrl;
   logic bsr_out, stap_scan_out, dfd_out, dft_sec_out, dft_out;
@@ -395,19 +406,19 @@ module smu_uvm_top
     .xtrig_ctm_dst_req_i         (xtrig_ctm_dst_req),
     .xtrig_ctm_dst_ack_o         (xtrig_dst_ack_w),
     .xtrig_clk_stop_req_i        (xtrig_clk_stop_req),
-    .xtrig_ctp_req_out_dout_o    (),
+    .xtrig_ctp_req_out_dout_o    (ctp_req_out_dout_w),
     .xtrig_ctp_req_out_dout_en_o (),
     .xtrig_ctp_req_out_din_i     (ctp_z),
     .xtrig_ctp_req_out_din_en_o  (),
-    .xtrig_ctp_req_in_dout_o     (),
+    .xtrig_ctp_req_in_dout_o     (ctp_req_in_dout_w),
     .xtrig_ctp_req_in_dout_en_o  (),
     .xtrig_ctp_req_in_din_i      (ctp_z),
     .xtrig_ctp_req_in_din_en_o   (),
-    .xtrig_ctp_ack_in_dout_o     (),
+    .xtrig_ctp_ack_in_dout_o     (ctp_ack_in_dout_w),
     .xtrig_ctp_ack_in_dout_en_o  (),
     .xtrig_ctp_ack_in_din_i      (ctp_z),
     .xtrig_ctp_ack_in_din_en_o   (),
-    .xtrig_ctp_ack_out_dout_o    (),
+    .xtrig_ctp_ack_out_dout_o    (ctp_ack_out_dout_w),
     .xtrig_ctp_ack_out_dout_en_o (),
     .xtrig_ctp_ack_out_din_i     (ctp_z),
     .xtrig_ctp_ack_out_din_en_o  (),
@@ -450,7 +461,7 @@ module smu_uvm_top
     .smc_ext_interrupts_i        ('0),
     .smc_fuse_sense_done_o,
     .smc_fuse_reset_n_delayed_o,
-    .skip_mem_repair_o           (),
+    .skip_mem_repair_o           (skip_mem_repair_w),
     .ext_boot_seq_done_i         (ext_boot_seq_done_i),
     .lc_state_o                  (lc_state_o),
     .lc_sigint_err_o             (lc_sigint_err_o),
@@ -460,8 +471,8 @@ module smu_uvm_top
     .cfg_flr_pf_active_i         (1'b0),
     .isolate_req_o               (),
     .ss_reset_complete_i         ('0),
-    .ss_config_o                 (),
-    .ss_reset_ctrl_o             (),
+    .ss_config_o                 (ss_config_w),
+    .ss_reset_ctrl_o             (ss_reset_ctrl_w),
     .sync_irq_o                  (),
     .smc_rom_intf_req_o          (smc_rom_req),
     .smc_rom_intf_rsp_i          (smc_rom_rsp),
@@ -496,7 +507,7 @@ module smu_uvm_top
     .sep_boot_rom_rsp_i          ('0),
     .sep_cpu_tcm_req_o           (),
     .sep_cpu_tcm_rsp_i           ('0),
-    .sep_efuse_bank_ctrl_req_o   (),
+    .sep_efuse_bank_ctrl_req_o   (sep_efuse_bank_ctrl_req),
     .sep_efuse_bank_ctrl_resp_i  ('0),
     .sep_efuse_shim_command_req_o(),
     .sep_efuse_shim_command_resp_i('0),
@@ -516,7 +527,7 @@ module smu_uvm_top
     .lcc_demote_state_2_o        (lcc_demote_state_2_o),
     .sep_fuse_dft_disable_o      (),
     .smc_fuse_dft_disable_o      (),
-    .sep_fuse_sense_done_o       (),
+    .sep_fuse_sense_done_o       (sep_fuse_sense_done_w),
     .clk_sep_wdt_i               (clk_smu_i),
     .secure_tm_req_i             (secure_tm_req),
     .i3c_dat_mem_src_i           (i3c_dat_src),
@@ -535,6 +546,19 @@ module smu_uvm_top
   // Peripheral-domain reset: the smu top does not forward SMC's
   // rst_primary_periph_clk_no output, so observe it hierarchically.
   assign rst_primary_periph_clk_no = u_dut.u_smc.rst_primary_periph_clk_no;
+
+  // prim_rom's noXOnCsI is never disabled (its reset argument is '0), so on a
+  // four-state simulator it fires on the X that req_i carries before reset.
+  // Hold it off until the SMC primary reset has released and one SMC clock
+  // edge has sampled a known req_i, then re-arm it so a later X still fails.
+`ifndef VERILATOR
+  initial begin
+    $assertoff(0, u_smc_cpu_mem.rom_mem.mem.noXOnCsI);
+    wait (rst_primary_smc_clk_no === 1'b1);
+    @(posedge clk_smu_i);
+    $asserton(0, u_smc_cpu_mem.rom_mem.mem.noXOnCsI);
+  end
+`endif
 
   // WDT isolate clamp: observe only.
   assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
@@ -566,7 +590,10 @@ module smu_uvm_top
   // Every port below is a smu_tb_signal_list.svh signal; the modules read
   // no DUT hierarchy.
   // ------------------------------------------------------------------
-  smu_boot_fcov u_smu_boot_fcov (
+  // This bench is SEP=0, so the SEP-only points are not elaborated.
+  smu_boot_fcov #(
+      .SepPresent (1'b0)
+  ) u_smu_boot_fcov (
     .clk_ref_i                   (clk_ref_i),
     .clk_smu_i                   (clk_smu_i),
     .powergood_i                 (powergood_i),
@@ -588,7 +615,10 @@ module smu_uvm_top
     .lcc_demote_state_2_i        (lcc_demote_state_2_o)
   );
 
-  smu_xbar_fcov u_smu_xbar_fcov (
+  // This bench is SEP=0, so the SEP-only points are not elaborated.
+  smu_xbar_fcov #(
+      .SepPresent (1'b0)
+  ) u_smu_xbar_fcov (
     .clk_smu_i                (clk_smu_i),
     .rst_cold_ni              (rst_cold_ni),
     .sep_global_base_i        (sep_global_base_o),
@@ -612,6 +642,163 @@ module smu_uvm_top
     .axi_in_awvalid_count_i   (smu_axi_in_awvalid_count),
     .axi_out_awvalid_count_i  (smu_axi_out_awvalid_count),
     .axil_external_active_i   (tb_axil_external_active)
+  );
+
+  // Bare `smu` exposes neither the per-block resets nor the DUT-internal
+  // clock mirrors the wrapper bench has, so those ports are tied off here and
+  // the points that need them fire only on tb_wrapper_top.
+  // This bench is SEP=0, so the SEP-only points are not elaborated.
+  smu_rst_fcov #(
+      .SepPresent (1'b0)
+  ) u_smu_rst_fcov (
+    .clk_ref_i                   (clk_ref_i),
+    .clk_smu_i                   (clk_smu_i),
+    .clk_periph_i                (clk_periph_i),
+    .powergood_i                 (powergood_i),
+    .rst_cold_ni                 (rst_cold_ni),
+    .ext_boot_seq_done_i         (ext_boot_seq_done_i),
+    .rst_cold_stable_ref_clk_ni  (rst_cold_stable_ref_clk_no),
+    .rst_primary_ref_clk_ni      (rst_primary_ref_clk_no),
+    .rst_primary_smc_clk_ni      (rst_primary_smc_clk_no),
+    .rst_primary_periph_clk_ni   (rst_primary_periph_clk_no),
+    .smc_rst_ni                  (rst_primary_smc_clk_no),
+    .dtp_rst_ni                  (1'b0),
+    .sep_rst_ni                  (1'b0),
+    .xbar_rst_ni                 (1'b0),
+    .fuse_sense_done_i           (smc_fuse_sense_done_o),
+    .sep_fuse_sense_done_i       (sep_fuse_sense_done_w),
+    .fuse_reset_n_delayed_i      (smc_fuse_reset_n_delayed_o),
+    .skip_mem_repair_i           (skip_mem_repair_w),
+    .init_mem_done_i             (smc_init_mem_done_o),
+    .disable_sram_auto_init_i    (1'b0),
+    .jtag_ptap_state_i           (jtag_ptap_state)
+  );
+
+  smu_lc_fcov u_smu_lc_fcov (
+    .clk_smu_i                (clk_smu_i),
+    .rst_cold_ni              (rst_cold_ni),
+    .rst_primary_smc_clk_ni   (rst_primary_smc_clk_no),
+    .lc_state_i               (lc_state_o),
+    .lcc_demote_state_1_i     (lcc_demote_state_1_o),
+    .lcc_demote_state_2_i     (lcc_demote_state_2_o),
+    .sep_global_base_i        (sep_global_base_o),
+    .sep_region_size_i        (sep_region_size_o),
+    .sep_fuse_sense_done_i    (sep_fuse_sense_done_w)
+  );
+
+  smu_dtp_fcov u_smu_dtp_fcov (
+    .clk_smu_i                  (clk_smu_i),
+    .rst_cold_ni                (rst_cold_ni),
+    .rst_primary_smc_clk_ni     (rst_primary_smc_clk_no),
+    .jtag_ic_reset_ext_ovrd_i   (jtag_ic_reset_ext_ovrd),
+    .jtag_ic_reset_ext_ctrl_n_i (jtag_ic_reset_ext_ctrl_n),
+    .ctp_req_out_dout_i         (ctp_req_out_dout_w),
+    .ctp_req_in_dout_i          (ctp_req_in_dout_w),
+    .ctp_ack_in_dout_i          (ctp_ack_in_dout_w),
+    .ctp_ack_out_dout_i         (ctp_ack_out_dout_w)
+  );
+
+  // This bench is SEP=0, so the SEP-only points are not elaborated.
+  smu_ext_fcov #(
+      .SepPresent (1'b0)
+  ) u_smu_ext_fcov (
+    .clk_smu_i                (clk_smu_i),
+    .rst_cold_ni              (rst_cold_ni),
+    .rst_primary_smc_clk_ni   (rst_primary_smc_clk_no),
+    .fuse_sense_done_i        (smc_fuse_sense_done_o),
+    .s_axi_awvalid_i          (s_axi_awvalid),
+    .s_axi_awready_i          (s_axi_awready),
+    .s_axi_awid_i             (s_axi_awid),
+    .axi_out_aw_valid_i       (smu_axi_out_req.aw_valid),
+    .axi_out_aw_ready_i       (smu_axi_out_resp.aw_ready),
+    .axi_out_aw_id_i          (smu_axi_out_req.aw.id),
+    .smc_efuse_bank_ctrl_awvalid_i (smc_efuse_bank_ctrl_req.aw_valid),
+    .smc_efuse_bank_ctrl_arvalid_i (smc_efuse_bank_ctrl_req.ar_valid),
+    .smc_efuse_bank_ctrl_bvalid_i  (smc_efuse_bank_ctrl_resp.b_valid),
+    .smc_efuse_bank_ctrl_bready_i  (smc_efuse_bank_ctrl_req.b_ready),
+    .smc_efuse_bank_ctrl_rvalid_i  (smc_efuse_bank_ctrl_resp.r_valid),
+    .smc_efuse_bank_ctrl_rready_i  (smc_efuse_bank_ctrl_req.r_ready),
+    .sep_efuse_bank_ctrl_awvalid_i (sep_efuse_bank_ctrl_req.aw_valid),
+    .sep_efuse_bank_ctrl_arvalid_i (sep_efuse_bank_ctrl_req.ar_valid),
+    .sep_efuse_bank_ctrl_bvalid_i  (1'b0),
+    .sep_efuse_bank_ctrl_bready_i  (sep_efuse_bank_ctrl_req.b_ready),
+    .sep_efuse_bank_ctrl_rvalid_i  (1'b0),
+    .sep_efuse_bank_ctrl_rready_i  (sep_efuse_bank_ctrl_req.r_ready),
+    .ext_mailbox_interrupts_i (ext_mailbox_interrupts),
+    .ss_config_i              (ss_config_w),
+    .ss_reset_ctrl_i          (ss_reset_ctrl_w),
+    .smc_shadow_regs_i        (smc_shadow_regs)
+  );
+
+  // ------------------------------------------------------------------
+  // P1 families. The three DTP debug bridges and the cross-trigger
+  // clock-stop inputs are nets inside `smu`, so they are flattened here and
+  // the cov/sv modules take plain wires. The SEP-side alias remap port and
+  // the crossbar SEP initiator port exist only in a SEP=1 elaboration, so
+  // this SEP=0 bench carries no smu_alias_fcov instance.
+  // ------------------------------------------------------------------
+  smu_clkstop_fcov u_smu_clkstop_fcov (
+    .clk_smu_i               (clk_smu_i),
+    .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
+    .dtp_clk_stop_req_ext_i  (u_dut.dtp_xtrig_clk_stop_req[8:1]),
+    .jtag_clock_stop_i       (u_dut.u_dtp.jtag_clock_stop),
+    .dtp_stop_clks_i         (dtp_stop_clks_o)
+  );
+
+  // This bench is SEP=0, so the SEP-only points are not elaborated.
+  smu_dbg_fcov #(
+      .SepPresent (1'b0)
+  ) u_smu_dbg_fcov (
+    .clk_smu_i                   (clk_smu_i),
+    .rst_primary_smc_clk_ni      (rst_primary_smc_clk_no),
+    .smc_dbg_awvalid_i           (u_dut.dtp_axi_smc_dbg_req.aw_valid),
+    .smc_dbg_arvalid_i           (u_dut.dtp_axi_smc_dbg_req.ar_valid),
+    .smc_dbg_bvalid_i            (u_dut.dtp_axi_smc_dbg_resp.b_valid),
+    .smc_dbg_bready_i            (u_dut.dtp_axi_smc_dbg_req.b_ready),
+    .smc_dbg_bresp_i             (u_dut.dtp_axi_smc_dbg_resp.b.resp),
+    .smc_dbg_rvalid_i            (u_dut.dtp_axi_smc_dbg_resp.r_valid),
+    .smc_dbg_rready_i            (u_dut.dtp_axi_smc_dbg_req.r_ready),
+    .smc_dbg_rlast_i             (u_dut.dtp_axi_smc_dbg_resp.r.last),
+    .smc_dbg_rresp_i             (u_dut.dtp_axi_smc_dbg_resp.r.resp),
+    .smc_otp_bvalid_i            (u_dut.dtp_axil_smc_otp_jtag_resp.b_valid),
+    .smc_otp_bready_i            (u_dut.dtp_axil_smc_otp_jtag_req.b_ready),
+    .smc_otp_bresp_i             (u_dut.dtp_axil_smc_otp_jtag_resp.b.resp),
+    .smc_otp_rvalid_i            (u_dut.dtp_axil_smc_otp_jtag_resp.r_valid),
+    .smc_otp_rready_i            (u_dut.dtp_axil_smc_otp_jtag_req.r_ready),
+    .smc_otp_rresp_i             (u_dut.dtp_axil_smc_otp_jtag_resp.r.resp),
+    .sep_otp_bvalid_i            (u_dut.dtp_axil_sep_otp_jtag_resp.b_valid),
+    .sep_otp_bready_i            (u_dut.dtp_axil_sep_otp_jtag_req.b_ready),
+    .sep_otp_bresp_i             (u_dut.dtp_axil_sep_otp_jtag_resp.b.resp),
+    .sep_otp_rvalid_i            (u_dut.dtp_axil_sep_otp_jtag_resp.r_valid),
+    .sep_otp_rready_i            (u_dut.dtp_axil_sep_otp_jtag_req.r_ready),
+    .sep_otp_rresp_i             (u_dut.dtp_axil_sep_otp_jtag_resp.r.resp),
+    .dbg_disable_smc_jtag2axi_i  (u_dut.sep_dbg_disable.smc_jtag2axi),
+    .dbg_disable_smc_otp_i       (u_dut.sep_dbg_disable.smc_otp_jtag2axi),
+    .dbg_disable_sep_otp_i       (u_dut.sep_dbg_disable.sep_otp_jtag2axi)
+  );
+
+  smu_nosep_fcov u_smu_nosep_fcov (
+    .clk_smu_i          (clk_smu_i),
+    .rst_cold_ni        (rst_cold_ni),
+    .sep_present_i      (1'b0),
+    .ext_in_bvalid_i    (s_axi_bvalid),
+    .ext_in_bready_i    (s_axi_bready),
+    .ext_in_bresp_i     (s_axi_bresp),
+    .ext_in_rvalid_i    (s_axi_rvalid),
+    .ext_in_rready_i    (s_axi_rready),
+    .ext_in_rlast_i     (s_axi_rlast),
+    .ext_in_rresp_i     (s_axi_rresp),
+    .axi_out_bvalid_i   (smu_axi_out_resp.b_valid),
+    .axi_out_bready_i   (smu_axi_out_req.b_ready),
+    .axi_out_bresp_i    (smu_axi_out_resp.b.resp),
+    .axi_out_rvalid_i   (smu_axi_out_resp.r_valid),
+    .axi_out_rready_i   (smu_axi_out_req.r_ready),
+    .axi_out_rlast_i    (smu_axi_out_resp.r.last),
+    .axi_out_rresp_i    (smu_axi_out_resp.r.resp),
+    .sep_otp_rvalid_i   (u_dut.dtp_axil_sep_otp_jtag_resp.r_valid),
+    .sep_otp_rready_i   (u_dut.dtp_axil_sep_otp_jtag_req.r_ready),
+    .sep_otp_rresp_i    (u_dut.dtp_axil_sep_otp_jtag_resp.r.resp),
+    .sep_otp_rdata_i    (u_dut.dtp_axil_sep_otp_jtag_resp.r.data)
   );
 
 `ifdef UVM

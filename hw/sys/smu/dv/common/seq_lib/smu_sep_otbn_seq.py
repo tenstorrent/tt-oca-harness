@@ -3,21 +3,23 @@
 """Real SEP DV OTBN CSR firmware under the OSS SMU wrapper.
 
 Boots hw/sys/sep/dv/fw/tests/sep_smu_otbn, which writes five OTBN CSRs
-(INTR_ENABLE, INTR_STATE, ERR_BITS, INSN_CNT, LOAD_CHECKSUM) and parks.
+(INTR_ENABLE, INTR_STATE, ERR_BITS, INSN_CNT, LOAD_CHECKSUM), reads INTR_ENABLE
+back, and parks in its pass loop only if the readback matches what it wrote.
 
-WHAT THIS PROVES, precisely. Reaching the pass loop means those five writes
-completed without taking a store access fault: the SEP outbound fabric is
-BlockByDefault=1, so a write that missed every filter window would be isolated
-and answered with an error, the EL2 would trap, and the image would spin in its
-trap handler instead of parking. That is a real reachability claim about the
-OTBN register aperture through the SEP fabric.
+WHAT THIS PROVES, precisely. OTBN sits at 0x1090_0000, inside the SEP's own
+peripheral region, so these five accesses travel the SEP-internal fabric; the
+outbound filter, whose only open window is the STDOUT mailbox, never sees them.
+Reaching the pass loop means two things about that internal path: no access
+took a store fault (crt0 installs a trap handler that parks elsewhere), and the
+INTR_ENABLE write both arrived and stuck, since the image compares the value it
+read back against the value it wrote and branches to its fail loop on a
+mismatch. A write silently absorbed by a default slave is therefore caught
+rather than assumed.
 
-WHAT IT DOES NOT PROVE. The firmware's own pass/fail branch is vacuous: it keys
-off `g_otbn_status`, a file-scope `volatile int` that nothing ever assigns, so
-it is zero and the fail branch is unreachable. The fail-loop symbol is watched
-so that a firmware which assigns the variable is classified without a sequence
-change; a PASS from this test carries no OTBN functional content.
-There is no IMEM/DMEM load and no EXECUTE; the firmware header says as much.
+WHAT IT DOES NOT PROVE. Nothing about OTBN functionality, and nothing about the
+SEP outbound fabric: there is no IMEM/DMEM load and no EXECUTE, the other four
+writes are observed only through the absence of a fault, and no transaction is
+counted at the OTBN aperture itself.
 
 This image needs no entropy: it does not touch AES masking or the Key Manager.
 """

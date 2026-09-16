@@ -77,6 +77,78 @@ timeout_sec = 1800
 tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_address_map_region_decode_test"
+module = "smc_address_map_region_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_peripheral_instance_decode_test"
+module = "smc_peripheral_instance_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sys_axi_in_port_test"
+module = "smc_sys_axi_in_port_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_in_axi_flow_control_test"
+module = "smc_sep_in_axi_flow_control_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_sep_in_axi_shape_test"
+module = "smc_sep_in_axi_shape_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dual_base_addressing_test"
+module = "smc_dual_base_addressing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_region_size_plic_clint_beu_decode_test"
+module = "smc_region_size_plic_clint_beu_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_address_window_top_decode_test"
+module = "smc_address_window_top_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_alias_remap_spare_block_decode_test"
+module = "smc_alias_remap_spare_block_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "i3c_depth"
 tests = [

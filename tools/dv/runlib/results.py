@@ -69,7 +69,9 @@ def git_info(root: Path) -> dict[str, str]:
     return {
         "commit": command_text(["git", "rev-parse", "HEAD"], root),
         "branch": command_text(["git", "rev-parse", "--abbrev-ref", "HEAD"], root),
-        "dirty": "true" if command_text(["git", "status", "--porcelain"], root) else "false",
+        "dirty": "true"
+        if command_text(["git", "status", "--porcelain", "--untracked-files=no"], root)
+        else "false",
     }
 
 

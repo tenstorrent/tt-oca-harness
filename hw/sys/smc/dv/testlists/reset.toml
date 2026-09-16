@@ -142,6 +142,30 @@ timeout_sec = 1800
 tags = ["ci", "reset", "pyuvm"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_reset_sync_edge_test"
+module = "smc_reset_sync_edge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_primary_reset_scope_test"
+module = "smc_primary_reset_scope_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cold_boot_chain_order_test"
+module = "smc_cold_boot_chain_order_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "reset", "boot", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "reset"
 tests = [

@@ -54,15 +54,7 @@ PLACEHOLDER = re.compile(r"<[^>]+>")
 # Tokens a card declares that the leaf's cocotb shape never emits, with the
 # reason. An entry is removed when the card or the leaf is corrected; the test
 # fails if an entry stops being declared or starts being required.
-PLAN_CODE_MISMATCH: dict[str, dict[str, str]] = {
-    "smc_input_output_fabric_wr_rd_test": {
-        "CHK-ALIAS-REMAP-RESET-DEFAULT": (
-            "the card attributes this compare to smc_input_output_fabric_wr_rd_test_seq.py, "
-            "the sequence smc_input_fabric_axi_wr_rd_test drives; this leaf runs no "
-            "alias-remap compare"
-        ),
-    },
-}
+PLAN_CODE_MISMATCH: dict[str, dict[str, str]] = {}
 
 # Set when the list was introduced. `PLAN_CODE_MISMATCH` may lose entries,
 # never gain them: a new mismatch is fixed on the card or in the leaf.

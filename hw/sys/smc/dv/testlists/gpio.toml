@@ -91,6 +91,22 @@ tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_gpio_pad_input_readback_test"
+module = "smc_gpio_pad_input_readback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "gpio", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_external_window_pad_ctrl_decode_test"
+module = "smc_external_window_pad_ctrl_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "gpio", "decode", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_gpio_intf_full_sweep_test"
 module = "smc_gpio_intf_full_sweep_test"
 seed = 1

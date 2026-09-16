@@ -1,0 +1,427 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMU wrapper (`--dut smu`) Verilator coverage policy.
+#
+# GENERATED from a measured run: the [[holes]] below are the `user` points the
+# graded run left unhit, each carried with a category, a rationale, an owner
+# and an expiry. Regenerate them from a fresh coverage-details.json rather
+# than editing them by hand; this header is the only part written by a person.
+# They were measured from the no_sep target of `--dut smu --items sep0_all
+# --cov`.
+#
+# No [[thresholds]] are set here. A floor on the `user` family is set only
+# from a measured weekly `--cov` database, by the SMU DV owner, together with
+# `max_unclassified_points` -- see SMU_COVERAGE_POLICY.adoc. The effective
+# percentage is still reported, just not gated.
+#
+# ONE POLICY, TWO TARGETS. [coverage.verilator].policy_file is resolved per
+# tool, not per target, so this one file grades both
+# compile_smu_chiplet_no_sep and compile_smu_chiplet_sep_rtl. An accepted
+# waiver whose selector matches a COVERED point is a hard ConfigError, so the
+# holes are generated from the no_sep run -- the target CI gates -- and a
+# point that can only fire with SEP present must not exist on that
+# elaboration. The `g_sep` generate blocks in cov/sv/*_fcov.sv are what makes
+# that true: tb_wrapper_top.sv passes SepPresent = 1'b0 under
+# `ifdef SMU_NO_SEP, so those points are never elaborated there, never enter
+# the no_sep database, and are never named here. Grading a sep_rtl run
+# against this file therefore cannot conflict; it is not gated and may show a
+# lower effective percentage.
+#
+# Three mechanisms, do not confuse them:
+#
+#   smu_wrapper_cov_scope.vlt  `coverage_off` -> the point never enters the
+#                              database. Structural OUT, by source file.
+#   SepPresent                 the `g_sep` generate blocks described above.
+#                              Structural OUT, by elaboration.
+#   [[holes]] here             the point exists and is not hit, carried with a
+#                              rationale, an owner and a review date. Its
+#                              selectors include `hierarchy`, which the .vlt
+#                              cannot express.
+#
+# Two DUTs share this DV root, so the policy is named per DUT rather than
+# discovered at cov/config/verilator/coverage_policy.toml; the block bench
+# carries smu_block_coverage_policy.toml.
+
+schema_version = 1
+dut = "smu"
+scope_epoch = "smu-fcov-v1"
+
+[[holes]]
+id = "fcov-smu-c_boot_stall_both_sources"
+title = "c boot stall both sources"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_boot_fcov.c_boot_stall_both_sources"
+
+[[holes]]
+id = "fcov-smu-c_lc_sigint_err"
+title = "c lc sigint err"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_boot_fcov.c_lc_sigint_err"
+
+[[holes]]
+id = "fcov-smu-c_outbound_id_width_10"
+title = "c outbound id width 10"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-EXT-SMN.S4:outbound_id_width_10)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_ext_fcov.c_outbound_id_width_10"
+
+[[holes]]
+id = "fcov-smu-c_smc_efuse_bank_ctrl_request_observed"
+title = "c smc efuse bank ctrl request observed"
+category = "config_disabled"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_ext_fcov.c_smc_efuse_bank_ctrl_request_observed"
+
+[[holes]]
+id = "fcov-smu-c_smc_efuse_bank_ctrl_response_returned"
+title = "c smc efuse bank ctrl response returned"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-EFUSE-SHIM-SMC.S1:smc_efuse_bank_ctrl_response_returned)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_ext_fcov.c_smc_efuse_bank_ctrl_response_returned"
+
+[[holes]]
+id = "fcov-smu-c_nosep_direct_path_active_and_otp_errslv_present"
+title = "c nosep direct path active and otp errslv present"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (INT-SEP0-COMPOSITION:nosep_direct_path_active_and_otp_errslv_present)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_nosep_fcov.c_nosep_direct_path_active_and_otp_errslv_present"
+
+[[holes]]
+id = "fcov-smu-c_nosep_smc_to_ext_write"
+title = "c nosep smc to ext write"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-NOSEP.S1:nosep_smc_to_ext_write)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_nosep_fcov.c_nosep_smc_to_ext_write"
+
+[[holes]]
+id = "fcov-smu-c_sep0_otp_read_data_badcab1e"
+title = "c sep0 otp read data badcab1e"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-SEPOTP-ERRSLV.S1:sep0_otp_read_data_badcab1e)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_nosep_fcov.c_sep0_otp_read_data_badcab1e"
+
+[[holes]]
+id = "fcov-smu-c_sep0_otp_read_decerr"
+title = "c sep0 otp read decerr"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-SEPOTP-ERRSLV.S1:sep0_otp_read_decerr)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_nosep_fcov.c_sep0_otp_read_decerr"
+
+[[holes]]
+id = "fcov-smu-c_smc_to_ext_traffic_ok_while_sep_otp_decerrs"
+title = "c smc to ext traffic ok while sep otp decerrs"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (INT-SEP0-COMPOSITION:smc_to_ext_traffic_ok_while_sep_otp_decerrs)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_nosep_fcov.c_smc_to_ext_traffic_ok_while_sep_otp_decerrs"
+
+[[holes]]
+id = "fcov-smu-c_cold_reset_async_assert_without_clock"
+title = "c cold reset async assert without clock"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-RST-COLD.S1:cold_reset_async_assert_without_clock)"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_rst_fcov.c_cold_reset_async_assert_without_clock"
+
+[[holes]]
+id = "fcov-smu-c_axi_in_ar_stall"
+title = "c axi in ar stall"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axi_in_ar_stall"
+
+[[holes]]
+id = "fcov-smu-c_axi_in_aw_stall"
+title = "c axi in aw stall"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axi_in_aw_stall"
+
+[[holes]]
+id = "fcov-smu-c_axi_in_bresp_exokay"
+title = "c axi in bresp exokay"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axi_in_bresp_exokay"
+
+[[holes]]
+id = "fcov-smu-c_axi_in_bresp_slverr"
+title = "c axi in bresp slverr"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axi_in_bresp_slverr"
+
+[[holes]]
+id = "fcov-smu-c_axi_in_rresp_exokay"
+title = "c axi in rresp exokay"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axi_in_rresp_exokay"
+
+[[holes]]
+id = "fcov-smu-c_axi_in_rresp_slverr"
+title = "c axi in rresp slverr"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axi_in_rresp_slverr"
+
+[[holes]]
+id = "fcov-smu-c_axil_external_active"
+title = "c axil external active"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_axil_external_active"
+
+[[holes]]
+id = "fcov-smu-c_map_smc_size_reprogrammed"
+title = "c map smc size reprogrammed"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_map_smc_size_reprogrammed"
+
+[[holes]]
+id = "fcov-smu-c_map_smc_size_zero"
+title = "c map smc size zero"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_map_smc_size_zero"
+
+[[holes]]
+id = "fcov-smu-c_route_inbound_forwarded"
+title = "c route inbound forwarded"
+category = "missing_stimulus"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-11"
+expires = "2026-12-10"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_route_inbound_forwarded"
+

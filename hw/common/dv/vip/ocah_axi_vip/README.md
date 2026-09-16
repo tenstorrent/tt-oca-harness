@@ -451,7 +451,7 @@ replay of failures.
 | Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`); `allow_timeout=True` returns `RESP_TIMEOUT` | — |
 | Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
 | Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --tool vcs --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, graded by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
-| Simulators and protocols | Verilator (cocotb selftests) and VCS (SV-UVM selftests); AXI4 and AXI4-Lite | Xcelium; AXI-Stream; AXI5-only features |
+| Simulators and protocols | Verilator, VCS, and Xcelium (cocotb selftests); VCS (SV-UVM selftests); AXI4 and AXI4-Lite | SV-UVM on Xcelium (the runner's SV-UVM flow is VCS-only); AXI-Stream; AXI5-only features |
 
 ---
 

@@ -33,8 +33,9 @@ class smc_i3c_to_fabric_test(smc_base_test):
         "CHK-I3C-CLOCK-GATE-RW",
         "CHK-I3C0-HC-CONTROL-BUS-ENABLE",
         "CHK-I3C0-HCI-VERSION",
+        "CHK-I3C0-PADS-RESOLVABLE",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 

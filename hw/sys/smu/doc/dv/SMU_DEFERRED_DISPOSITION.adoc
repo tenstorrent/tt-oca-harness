@@ -1,0 +1,592 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-deferred-disposition]]
+== SMU deferred and OUT disposition
+
+This chapter has two parts. The table below is the catalog of every SMU test
+name classified deferred or OUT, and none of those names is in the hosted
+credit set `hosted`; <<smu-bench-standins>> is the record of every
+stand-in, force, skip and waiver on a proof path of an enrolled test. The
+table first. Two kinds of name are in it. Thirteen have a test body and are
+enrolled in `testlists/wrapper.toml`; their bucket says which group holds
+them and why that group is not credit. The rest have no test body in this
+tree and are not reportable as PASS. Enrolled names outside `hosted` that
+carry neither classification — the lifecycle, debug-gating, chain and
+elaboration leaves — are not in this table: each is carded in
+`SMU_VPLAN.adoc` and enrolled in a named group of `testlists/wrapper.toml`.
+
+Buckets:
+
+* `SEP1-enrolled` — has a body and runs in the wrapper `all` group on the `sep_rtl` profile with real SEP instruction retirement (`sep_real_fw`, or `smoke` for the SEP smoke). Not `hosted` credit, and no CI workflow schedules those groups.
+* `SEP1-blocked` — has a body, enrolled in `sep_smc_sram_blocked` outside `all`: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction.
+* `OUT-until-SEP1` — no body; needs real SEP instruction retirement under SMU and SEP=1 TB ports.
+* `child-TB-owned` — protocol or CPU depth belongs to the SMC, SEP, or DTP TB.
+* `waived` — superseded, toggle-as-pass, stimulus-pin gap, or leftover catalog name.
+
+Enrolled names outside this catalog:
+
+* The JTAG2AXI / OTP / filter set in `hosted` is recorded in `SMU_HOSTED_COMPONENT_SIGNOFF.adoc`, which also records ATOP reject as OUT.
+* `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are enrolled in `hosted` (`testlists/wrapper.toml`).
+
+[cols="3,2,5",options="header"]
+|===
+|Name |Bucket |Constraint
+|smu_sep_smoke_test
+|SEP1-enrolled
+|Enrolled in `all`, `smoke`, `sep_rtl_only`, `all_with_sep_exec`.
+|smu_sep_sanity_test
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
+|smu_sep_spi_test
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
+|smu_sep_modules_test
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
+|smu_sep_dma_test
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
+|smu_sep_efuse_test
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
+|smu_sep_wdt_test
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
+|smu_sep_aes_test
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
+|smu_sep_otbn_test
+|SEP1-enrolled
+|Enrolled in `all`, `sep_real_fw`, `all_with_sep_exec`.
+|smu_sep_wdt_strict_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_aes_strict_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_otbn_strict_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_smc_xbar_programmable_addr_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_wdt_reset_to_smc_test
+|SEP1-blocked
+|Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
+|smu_sep_spi_bridge_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_external_decode_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_external_irq_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_alias_mailbox_interrupt_probe_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_ext_axi_combined_probe_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_km_otbn_memory_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_debug_bus_test
+|SEP1-blocked
+|Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
+|smu_sep_lc_handoff_test
+|SEP1-blocked
+|Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
+|smu_cla_sep_cpu_debug_test
+|SEP1-blocked
+|Enrolled in `sep_smc_sram_blocked` and `sep_smc_dual`, not in `all`.
+|smu_fuse_sense_handshake_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_lifecycle_security_handoff_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_feat_ctrl_monitor_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_cla_sep_cpu_debug_control_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_filter_rule_matrix_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_filter_skip_wire_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_ap_stee_output_remap_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_ap_stee_remap_region_matrix_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_outbound_demux_decode_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_outbound_demux_full_decode_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_smc_alias_remap_consistency_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_smc_egress_unfiltered_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_smc_addr_route_bug_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_spi_mux_ctrl_wire_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_wdt_cdc_path_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_ic_reset_sep_ext_slice_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_memory_integrity_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_otbn_execute_flow_probe_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_sep_interrupt_error_recovery_matrix_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smc_sep_interoperability_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smc_sep_xbar_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_bidirect_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smc_sep_interoperability_strict_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smc_sep_xbar_strict_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_bidirect_strict_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_smc_stall_sep_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_interop_negative_recovery_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smu_interop_functional_coverage_bins_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smc_sep_interaction_test
+|child-TB-owned
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
+|smc_sep_multi_cmd_test
+|child-TB-owned
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
+|smc_sep_service_req_test
+|child-TB-owned
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
+|smc_sep_error_recovery_test
+|child-TB-owned
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
+|smc_sep_seq_validation_test
+|child-TB-owned
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
+|smc_sep_notification_test
+|child-TB-owned
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
+|smc_sep_fw_request_test
+|child-TB-owned
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
+|smc_sep_bidirectional_test
+|child-TB-owned
+|Modeled SEP-facing BFM. Dual-firmware proof belongs to the SEP/SMC child TBs, not hosted.
+|smu_dtp_sep_debug_enhanced_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smu_xtrig_protocol_monitor_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smu_rom_scratch_readback_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smu_rom_interop_enhanced_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smc_sep_negative_comprehensive_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smc_sep_stress_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smu_memrepair_mbist_boot_reset_test
+|OUT-until-SEP1
+|Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
+|smu_axi_xbar_address_decode_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_axi_xbar_connectivity_matrix_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_axi_crossbar_performance_test
+|waived
+|The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
+|smu_fabric_smc_dtp_cross_domain_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_fabric_id_remap_stress_test
+|waived
+|The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
+|smu_ext_axi_global_addr_smoke_test
+|waived
+|The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
+|smu_smc_external_axil_path_test
+|waived
+|The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
+|smu_smc_cpu_traffic_smoke_test
+|child-TB-owned
+|SMC CPU / PLIC / chiplet depth belongs to the SMC testbench.
+|smc_cpu_sanity_test
+|child-TB-owned
+|SMC CPU / PLIC / chiplet depth belongs to the SMC testbench.
+|smc_cpu_multicore_sanity_test
+|child-TB-owned
+|SMC CPU / PLIC / chiplet depth belongs to the SMC testbench.
+|smc_plic_sanity_test
+|child-TB-owned
+|SMC CPU / PLIC / chiplet depth belongs to the SMC testbench.
+|smc_chiplet_sanity_test
+|child-TB-owned
+|SMC CPU / PLIC / chiplet depth belongs to the SMC testbench.
+|smc_cpu_traffic_sep_plus_ext_axi_test
+|child-TB-owned
+|SMC CPU / PLIC / chiplet depth belongs to the SMC testbench.
+|smu_wrapper_port_toggle_test
+|waived
+|Toggle sweep. Forbidden as sole pass criteria; commercial-simulator-only.
+|smu_wrapper_axi_toggle_test
+|waived
+|Toggle sweep. Forbidden as sole pass criteria; commercial-simulator-only.
+|smu_wrapper_internal_toggle_test
+|waived
+|Toggle sweep. Forbidden as sole pass criteria; commercial-simulator-only.
+|smu_wrapper_memory_toggle_test
+|waived
+|Toggle sweep. Forbidden as sole pass criteria; commercial-simulator-only.
+|smu_u_smc_interface_toggle_test
+|waived
+|Toggle sweep. Forbidden as sole pass criteria; commercial-simulator-only.
+|smu_signal_path_verification_test
+|waived
+|Toggle sweep. Forbidden as sole pass criteria; commercial-simulator-only.
+|smu_dft_lifecycle_matrix_test
+|child-TB-owned
+|DTP-under-SMU depth beyond the enrolled dtp.toml slice. Child DTP TB owns protocol completeness.
+|smu_dtp_xtrigger_smc_cla_test
+|waived
+|No product pin or frontdoor stimulus exists for cross-trigger glue injection.
+|smu_dtp_clock_stop_smc_cla_test
+|child-TB-owned
+|DTP-under-SMU depth beyond the enrolled dtp.toml slice. Child DTP TB owns protocol completeness.
+|smu_dtp_sep_stap_reset_smoke_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_dtp_basic_verification_test
+|child-TB-owned
+|DTP-under-SMU depth beyond the enrolled dtp.toml slice. Child DTP TB owns protocol completeness.
+|smu_dtp_jtag2axi_signal_toggle_test
+|waived
+|Toggle sweep. Forbidden as sole pass criteria; commercial-simulator-only.
+|smu_ctm_channel_matrix_test
+|waived
+|Superseded by an enrolled near-relative, or toggle-as-pass OUT. Do not re-enroll this name.
+|smu_dtp_feat_ctrl_gated_jtag2axi_test
+|waived
+|Superseded by an enrolled near-relative, or toggle-as-pass OUT. Do not re-enroll this name.
+|smu_dtp_feat_ctrl_gated_stap_test
+|waived
+|Superseded by an enrolled near-relative, or toggle-as-pass OUT. Do not re-enroll this name.
+|smc_efuse_secure_tm_test
+|waived
+|Superseded by an enrolled near-relative, or toggle-as-pass OUT. Do not re-enroll this name.
+|smu_wrapper_pin_matrix
+|waived
+|Superseded by an enrolled near-relative, or toggle-as-pass OUT. Do not re-enroll this name.
+|smu_dtp_dual_cpu_bringup_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_dtp_dual_cpu_jtag2axi_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_dtp_jtag2axi_sep_otp_path_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smu_dtp_sep_ic_reset_hold_test
+|OUT-until-SEP1
+|Needs real SEP instruction retirement and SEP=1 TB ports.
+|smc_cpu_traffic_ext_axi_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smc_efuse_reg_sanity_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smc_efuse_secure_tm_force_test
+|OUT-until-SEP1
+|No product pin or frontdoor stimulus drives `secure_tm_i`; needs the SEP=1 lifecycle controller.
+|smc_reset_unit_wdt_scratch_test
+|OUT-until-SEP1
+|No product pin or frontdoor stimulus produces the WDT reset pulse; needs the SEP=1 lifecycle controller.
+|smc_wdt_scratch_double_pulse_test
+|OUT-until-SEP1
+|No product pin or frontdoor stimulus produces the WDT double pulse; needs the SEP=1 lifecycle controller.
+|smu_cross_trigger_matrix_test
+|OUT-until-SEP1
+|No product pin or frontdoor stimulus drives the full CTM matrix; needs the SEP=1 lifecycle controller.
+|smu_dtp_csr_access_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_dtp_dtm_local_axi_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_dtp_feat_ctrl_gate_matrix_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_dtp_otp_debug_access_test
+|OUT-until-SEP1
+|No product pin or frontdoor stimulus walks the OTP lifecycle; needs the SEP=1 lifecycle controller.
+|smu_dtp_otp_sep0_err_slv_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_feat_ctrl_flip_mid_jtag2axi_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_feat_ctrl_partial_bit_corner_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_hier_ctn_vs_jtag2axi_concurrent_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_lifecycle_debug_policy_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_macro_axil_pll_pvt_route_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_octs_timer_count_csr_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_smc_dtp_jtag2axi_security_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_smc_global_base_remap_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smu_telemetry_atb_handshake_test
+|OUT-until-SEP1
+|Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
+|smc_wdt_ip0_isolate_clamp_test
+|waived
+|The clamp mux in `smc_4core_cpu` (`wdt_reset_raw` gated by `cluster_boundary_isolate`) has no product pre-clamp observe or inject pin, and frontdoor reset/WDT programming cannot contrast clamp against passthrough on WDOGIP0.
+|smu_dtp_clock_stop_smc_cla_loop_test
+|waived
+|No product pin or frontdoor stimulus exists for CLA feedback injection.
+|smu_xtrig_ctm_four_phase_test
+|waived
+|Product-pin remap is enrolled as `smu_xtrig_ctm_remap_test`; the full four-phase CTM handshake needs DTP-driven `src_req` or `dst_ack`, which no product pin or frontdoor provides.
+|smu_cla_and_xtrig_concurrent_test
+|waived
+|No product pin or frontdoor stimulus exists for concurrent CLA and CTM injection.
+|smu_clock_stop_jtag_vs_cla_fb_race_test
+|waived
+|No product pin or frontdoor stimulus exists for CLA feedback injection.
+|OTP-vs-fabric concurrency on the MAP shadow word
+|waived
+|`smu_otp_vs_fabric_map_race_test` carries a `_race_` name it does not earn, and this row is the reason it keeps it. Both writers are JTAG2AXI bridges behind the one TAP, so their DR shifts are serialised by construction and the OTP op has completed before the fabric write can be issued; the enrolled test therefore claims back-to-back coherence, not overlap, and says so in its header and plan entry. Genuine overlap needs a second, independent master on the shadow-map word, which the wrapper's product interfaces do not provide. Not renamed here because the name is carried by the testlist, the evidence map, the feature list and the plan anchor, and the rename would ride inside a branch already this large; it belongs in a standalone change.
+|===
+
+[[smu-bench-standins]]
+=== Bench stand-ins and exceptions
+
+A stand-in is anything that answers in place of the mechanism a claim is
+about: a testbench force, a simulation-only path selected by a plusarg, a
+configuration waiver, a loopback where a chain would be, a compiled-in
+substitute for a product cell, or a model inside the product composition.
+Six sit on proof paths of enrolled SMU tests. Each has one entry of six
+fields. The first three -- the claim that is accepted with the stand-in in
+place, why the real path cannot be used, and the exact scope -- are filled
+from the tree. The last three -- approver, approval date against a revision,
+and review or expiry date -- are filled by a person; until they are, the entry
+is a declaration and clears nothing, and every test on its scope is graded as
+if the stand-in were undeclared. `pending` in those fields means exactly that.
+Each entry describes the tree at this branch's head, not an older revision:
+the stand-ins and the entries that declare them move in the same commits, so a
+hash written into this file is stale the moment the file is edited. What makes
+an entry checkable instead is the command in <<smu-standin-recheck>> -- one per
+entry, each naming a string a reader can see for themselves. An approver fills
+the `Date, revision` field with the revision they checked and the command they
+ran.
+
+[cols="2,3,3",options="header"]
+|===
+|Stand-in |Where it is |Tests on its scope
+|`+esrc_noise_force` |`tb/tb_wrapper_top.sv` (the `force` block under `ifndef SMU_NO_SEP`), driver `common/seq_lib/esrc_noise.py` |`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test`
+|`+skip_fuse_sense` with the shadow preload |per-test `args` of 82 `testlists/wrapper.toml` entries and every `[run_modes.*]` of `smu_block_sim_cfg.toml`; live only under the `SIMULATION` define |every `--dut smu` leaf except the five boot-stall leaves and `smu_sep_lcc_flow_test`, which sense; load-bearing for the reset, boot-gate and OTP leaves named below
+|`abr_reg.sv` pass/fail waiver |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` |every `--dut smu` leaf
+|Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (`bsr_scan_loop`), `tb/tb_top.sv` (five host scan chains) |`smu_dtp_bsr_extest_loopback_test`
+|`prim_sync2` / `prim_sync3` stand-ins |`[build].stubs` of both sim configs, from `hw/sys/smc/dv/tb/verilator_stubs/` |every leaf on Verilator; reset and boot-gate observes downstream
+|eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves
+|===
+
+[[smu-standin-recheck]]
+==== Re-confirming a stand-in
+
+Each row names one command and the string it prints when the entry above is
+still true of the tree in front of you. None of them needs a stored run: the
+first four are static reads of the tree, the last two print at time zero of any
+run of the named group. A row that prints nothing is an entry that has gone
+stale, and the entry -- not the run -- is what needs the edit.
+
+[cols="2,3,3",options="header"]
+|===
+|Stand-in |Command |Expected
+
+|`+esrc_noise_force`
+|`grep -c '\"+esrc_noise_force\",' hw/sys/smu/dv/testlists/wrapper.toml`
+|`3` -- the three entries the *Scope* field names, and no fourth.
+
+|`+skip_fuse_sense` with the shadow preload
+|`grep -c '\"+skip_fuse_sense\",' hw/sys/smu/dv/testlists/wrapper.toml`
+|`82` of the 88 entries, leaving the six the *Scope* field excludes.
+
+|`abr_reg.sv` pass/fail waiver
+|`grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml hw/sys/smu/dv/smu_block_sim_cfg.toml`
+|The `extra_ignore_patterns` line in the first file and no hit in the second.
+
+|Scan-chain loopbacks
+|`grep -n 'host_scan_in_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv hw/sys/smu/dv/tb/tb_top.sv`
+|The wrapper binds only `jtag_bsr_host_scan_in_i` to `bsr_scan_loop` and ties the other four to `1'b0`; the block bench binds all five to their own `*_out` net.
+
+|`prim_sync2` / `prim_sync3` stand-ins
+|`grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml hw/sys/smu/dv/smu_block_sim_cfg.toml`, then any run's `hdl_compile.log`
+|Both files list the two stubs, and the compile log names them ahead of the Bender filelist.
+
+|eFuse models in the product composition
+|`run_dv.py --dut smu --items hosted_smoke`, then `grep -n 'fuse sense'` in that run's test log
+|`Skipping fuse sense` or `Not skipping fuse sense` at time zero, which says which path the run took.
+|===
+
+==== `+esrc_noise_force`
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The decorrelator, health tests, CSRNG and EDN run end to end on testbench-driven noise, and the SEP firmware brings that stack up and consumes its output. The ring-oscillator noise source itself is not proven: `esrc_noise_active_o` is the forced node and tracks the driven bit by construction, so the first checkpoint of `smu_sep_entropy_test` is a check of the force having taken, not of the source.
+|Why the real path cannot be used
+|The ESRC ring oscillators rely on `#delay` feedback, which Verilator ignores, so the twelve noise lanes never toggle and no entropy is produced. The SEP DV bench takes the same exception at the same node.
+|Scope
+|Only under `+esrc_noise_force`; only the twelve `dcor.noise_i` lanes (`gen_ecmplx[0..11].u_generator.u_decorrelator.noise_i`), re-forced every `clk_smu_i` edge from `esrc_noise_ext_i`, which `SmuEsrcNoiseDriver` drives with twelve 16-bit LFSRs from the fixed seed `0xACE1`; every downstream tap is observe-only. The plusarg is carried by three `testlists/wrapper.toml` entries: `smu_sep_entropy_test` (its verdict requires `esrc_noise_took_o`), `smu_sep_modules_test` (its `entropy` stage), and `smu_sep_aes_test` (a prerequisite outside its AES-128 known-answer claim). The SEP bench's `+sep_crypto_edn_force` has no counterpart here.
+|Approver
+|pending
+|Date, revision
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
+|Review or expiry
+|pending
+|===
+
+==== `+skip_fuse_sense` with the shadow preload
+
+[cols="1,4"]
+|===
+|Claim accepted
+|On the leaves that pass it, the SMC eFuse shadow registers -- and on the `sep_rtl` profile the SEP ones -- hold the image the preload file supplies, and the sense FSM that would have earned that image from the eFuse macro is skipped. The consumers of the sensed image are under test on those leaves: the lifecycle controller, `lc_state` at the SMC and `dbg_disable` at the DTP, the OTP word the JTAG2AXI leaves read, and the reset and boot state downstream of the fuse-reset release. The sense FSM is not. The five boot-stall leaves (`smu_boot_stall_jtag_cold_reset_matrix_test`, `smu_boot_stall_vs_ic_reset_priority_test`, `smu_clock_stop_coordination_test` S1/S2, `smu_dft_dtp_boot_stall_test`, `smu_dft_gpio_boot_stall_test`) are not on this scope: they run without the plusarg, so the `smc_fuse_reset_n_delayed_o` release they gate is the SMC eFuse controller's own sense completion against the `+smc_efuse_hex` image, and their gate claim is judged on that run. `smu_smc_reset_ctrl_test`, `smu_ext_boot_seq_gate_test` and `smu_smc_smoke_test` read the reset and boot state downstream of the release the boot-stall leaves prove; the OTP leaves (`smu_dtp_otp_smc_map_rw_test`, `smu_dtp_otp_smc_complete_rw_test`, `smu_dtp_otp_smc_series_error_test`, `smu_otp_vs_fabric_map_race_test`) compare against a shadow word that was preloaded. The lifecycle leaves (`sep_lifecycle`, `sep_chain`) declare their `+sep_shadow_reg_preload` image as the stimulus, so for them the preload is setup, not a stand-in. `smu_sep_lcc_flow_test` is not on this scope either: it runs without the plusarg, the SEP shadow registers it observes are the SEP eFuse controller's own sense of the `+sep_efuse_hex` image, and its sense claim is judged on that run.
+|Why the real path cannot be used
+|On the block bench `tb/tb_top.sv` ties the eFuse shim command and bank-controller responses to zero, so no sense can complete and primary reset would never release. On the wrapper the real path is available -- `hw/top/smc_ip_integration.sv` instantiates `efuse_interface_shim` and `efuse_bank_model`, and the boot-stall leaves use it -- so for the remaining wrapper leaves the skip is a run-time and stimulus convenience: the SMC sense of the 768-word image takes 2280-2330 `clk_smu` after primary reset release on Verilator, and the preloaded shadow image, not a sensed one, is the value the OTP and lifecycle leaves declare as their input.
+|Scope
+|`testlists/wrapper.toml`: 82 of 88 entries carry `+skip_fuse_sense` and `+smc_shadow_reg_preload=hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload` in their own `args`, each above a one-line reason; the `sep_rtl` entries other than `smu_sep_lcc_flow_test` add `+sep_shadow_reg_preload=assets/default_sep_efuse_shadow_reg.preload`, and the lifecycle leaves name their own image. The `[run_modes.*]` tables of `smu_sim_cfg.toml` carry no eFuse plusarg. `smu_block_sim_cfg.toml` `[run_modes.smoke]`, `[smc]`, `[dtp]`, `[fabric]` still pass both, for the block-bench reason above. The plusarg is live only when the `SIMULATION` define is set (`hw/common/dv/configs/profiles/native.toml` sets it on every target); a build without it senses. `tb/tb_wrapper_top.sv` exports the SEP shadow registers' `sim_skip_fuse_sense` flag as `sep_fuse_sense_skipped_o`, and the SMC shadow registers print `Skipping fuse sense` or `Not skipping fuse sense` at time zero, so a log tells which path ran.
+|Approver
+|pending
+|Date, revision
+|pending
+|Review or expiry
+|pending
+|===
+
+==== `abr_reg.sv` pass/fail waiver
+
+[cols="1,4"]
+|===
+|Claim accepted
+|A `$error` raised from `abr_reg.sv` -- the PeakRDL external write/read acknowledge assertions of the SEP ABR register block -- is not a verdict on any enrolled SMU claim, so a log line naming that file does not fail the run.
+|Why the real path cannot be used
+|No enrolled test exercises the ABR datapath; the assertion fires at time zero and again after reset release, before and independent of any stimulus, on the `sep_rtl` profile. Fixing the acknowledge timing is an RTL matter outside this package.
+|Scope
+|`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns = ['abr_reg\.sv']`: every `--dut smu` run on every profile, the whole file, not only the time-zero report. The block config carries no such waiver. It sits beside a broader configuration fact that is not a waiver but belongs in the same review: every Verilator target of both sim configs compiles with `+define+ASSERTS_OFF`, so no DUT SystemVerilog assertion is a checker on any run this package records; every enrolled verdict is a Python compare, and the immediate `$error` this pattern silences is the one assertion class that survives the define. In the logs of the CI nightly `hosted` run the pattern matches nothing, so there the waiver is inert; the `sep_rtl` profile it was written for has no run at a clean revision (the `all` group is unscheduled), so there it is unmeasured. It stays in force for any future line.
+|Approver
+|pending
+|Date, revision
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
+|Review or expiry
+|pending
+|===
+
+==== Scan-chain loopbacks
+
+[cols="1,4"]
+|===
+|Claim accepted
+|A bit shifted out of the DTP's BSR host scan port returns on its scan input one TCK later, so `smu_dtp_bsr_extest_loopback_test` proves the DTP's EXTEST decode, its scan-control gating and the IEEE 1149.1 TDO retimer against a zero-length testbench chain. It does not prove a boundary-scan register, pad cells, or the STAP and DFD host chains.
+|Why the real path cannot be used
+|The wrapper has no boundary-scan cells and no adopter DFD or DFT scan chains; those host ports terminate at pads the open-source tree does not model.
+|Scope
+|`tb/tb_wrapper_top.sv` wires `jtag_bsr_host_scan_out_o` to `jtag_bsr_host_scan_in_i` through `bsr_scan_loop` and ties the STAP, DFD, DFT and DFT-secure host `scan_in` ports to `1'b0`. `tb/tb_top.sv` loops all five host chains (`bsr_out`, `stap_scan_out`, `dfd_out`, `dft_sec_out`, `dft_out`) the same way. One enrolled test reads the loop: `smu_dtp_bsr_extest_loopback_test` (`BSR_EXTEST_TDO_MATCH`), whose plan entry declares `STUB:DECLARED BSR_TB_SCAN_LOOPBACK` with the same limits; `smu_dtp_bsr_ijtag_scan_test` reads the `.select` gate only and compares no TDO bit.
+|Approver
+|pending
+|Date, revision
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
+|Review or expiry
+|pending
+|===
+
+==== `prim_sync2` / `prim_sync3` stand-ins
+
+[cols="1,4"]
+|===
+|Claim accepted
+|Every synchroniser output the bench observes on Verilator is produced by a two- or three-stage flop pipe that starts at a defined `0` with no reset, not by the `och_prim` cells the product elaborates; the product cells are on no Verilator proof path. The claims downstream -- power-good stability, primary and cold reset release, the boot-stall gate, `i2c_enable` into the LSIO mux -- are accepted as proven over the stand-in's behaviour.
+|Why the real path cannot be used
+|The product `prim_sync2` / `prim_sync3` start with X on the first stage and the wrapper port exposes no `rst_ni` to clear it, so on a four-state view the X persists into every consumer; the stand-ins add `initial '0` on each stage and change nothing else about the pipe.
+|Scope
+|`smu_sim_cfg.toml` and `smu_block_sim_cfg.toml` `[build].stubs` list `hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv` and `prim_sync3.sv`; the runner emits them ahead of the Bender filelist so Verilator's first-definition-wins picks them, and drops them on VCS. Every leaf of both benches compiles them in. Downstream observes on this bench: `obs_powergood_stable_o`, `obs_powergood_stable_low_seen_o`, the reset-release observes of `smu_smc_reset_ctrl_test` and `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five boot-stall leaves. No control run with the product cells has been made on this composition; issues #1164 and #1165 hold the shared shim inventory and the removal plan the closing of this entry depends on.
+|Approver
+|pending
+|Date, revision
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
+|Review or expiry
+|pending
+|===
+
+==== eFuse models in the product composition
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The OTP word the JTAG2AXI OTP leaves read and write, and the eFuse image the SEP lifecycle controller consumes, are answered by `efuse_bank_model` behind `efuse_interface_shim` inside the wrapper's IP integration, not by eFuse macros. Command decode, series and single-op sequencing, error responses and the shadow-register path through the shim are DUT logic and are proven; the macro's storage, sense timing and programming are not.
+|Why the real path cannot be used
+|The eFuse macro is a technology cell outside the open-source tree; the composition instantiates the model in its place for every simulator.
+|Scope
+|`hw/top/smc_ip_integration.sv` instantiates `u_efuse_interface_shim` (`efuse_interface_shim`) and `u_efuse_bank_model` (`efuse_bank_model`); `hw/top/sep_ip_integration.sv` instantiates the same pair for the SEP. Both are part of the DUT compile on every profile, so every wrapper leaf elaborates them; they are load-bearing for `smu_dtp_otp_smc_map_rw_test`, `smu_dtp_otp_smc_complete_rw_test`, `smu_dtp_otp_smc_series_error_test`, `smu_dtp_ptap_otp_instr_scan_test`, `smu_otp_vs_fabric_map_race_test`, `smu_sep_efuse_test`, and the `sep_lifecycle` and `sep_chain` leaves. On the block bench `tb/tb_top.sv` ties the shim responses to zero instead, which is what makes `smu_dtp_jtag2axi_abort_mid_op_test`'s hung SINGLE_OP observable there. The BFM table in `hw/sys/smu/dv/docs/SMU_TB_ARCH.adoc` names both models.
+|Approver
+|pending
+|Date, revision
+|pending; describes this branch head -- re-confirm with <<smu-standin-recheck>>
+|Review or expiry
+|pending
+|===

@@ -51,8 +51,9 @@
     .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
 
     // The KM SRAM is a memory, not a register block, so the generated register
-    // header carries no symbol for it. Its base is km_intf_pkg.sv
-    // SRAM_BASE_ADDR and its lock granularity is SRAM_LOCK_REGION_BYTES.
+    // header carries no symbol for it. Base 0x8000 and 1 KB lock regions:
+    // km_csr.rdl SRAM_LOCK (region 0 = 0x8000-0x83FF) and
+    // hw/ip/key_manager/doc/architecture.adoc.
     .equ KM_SRAM_BASE, 0x00008000
 
     .section .text

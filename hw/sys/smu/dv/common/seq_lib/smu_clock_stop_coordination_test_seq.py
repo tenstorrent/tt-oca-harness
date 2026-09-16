@@ -4,11 +4,15 @@
 
 DV-CARD:          SMU_ALL_006   ANCHOR: smu_clock_stop_coordination_test
 
-Allocated (SEP=0 bare tb_top):
+Allocated (wrapper):
   DTP-BOOT-STALL.S1 / S2
   DTP-IC-RESET.S1 / S3
   DTP-CLKSTOP-AGG.S1 / S2 / S3
 No Force/deposit. DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are out of scope for this card.
+
+The SMC eFuse sense runs for real on the wrapper. BOOT-STALL.S1 samples the
+held fuse_reset only after smc_fuse_sense_done_o has risen for the cold reset,
+and BOOT-STALL.S2 bounds the release by the gate path, not the sense latency.
 """
 
 from __future__ import annotations
@@ -18,6 +22,12 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from cocotb.utils import get_sim_time
 from ocah_jtag_vip import OcahJtagState
 
+from seq_lib.smu_fuse_gate_helpers import (
+    FUSE_GATE_HOLD_CYCLES,
+    FUSE_GATE_RELEASE_BOUND_CYCLES,
+    FUSE_SENSE_BOUND_CYCLES,
+    assert_hold_window_covers,
+)
 from seq_lib.smu_jtag_helpers import (
     DBG_CLA_CLOCK_STOP_BIT,
     SMU_IC_RESET_DEFAULT,
@@ -117,6 +127,30 @@ class smu_clock_stop_coordination_test_seq:
             f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect} name={name}"
         )
 
+    async def _wait_rise(
+        self,
+        signal,
+        *,
+        clk,
+        bound: int,
+        label: str,
+        name: str,
+    ) -> int:
+        """0 -> 1 within ``bound``; a signal already 1 is a failure (no transition seen)."""
+        first = self._sample(signal, name)
+        if first != 0:
+            self._timeout_paths.append(f"{label}: bound={bound} NOT-OBSERVED first=0x{first:x}")
+            raise AssertionError(
+                f"{label}: {name} already {first} before the wait: no 0->1 observed"
+            )
+        for cycle in range(1, bound + 1):
+            await RisingEdge(clk)
+            if self._sample(signal, name) == 1:
+                self._timeout_paths.append(f"{label}: bound={bound} ok cycles={cycle}")
+                return cycle
+        self._timeout_paths.append(f"{label}: bound={bound} EXPIRED last=0x0")
+        raise AssertionError(f"TIMEOUT {label}: bound={bound} last_state=0 expect=1 name={name}")
+
     async def _wait_eq_hold(
         self,
         signal,
@@ -177,16 +211,39 @@ class smu_clock_stop_coordination_test_seq:
             name="rst_primary_smc_clk_no",
         )
         dut.xtrig_clk_stop_req.value = 0
+        # No stall at bring-up: the sense completes, then the release follows
+        # it within the gate path.
+        sense_cycles = await self._wait_rise(
+            dut.smc_fuse_sense_done_o,
+            clk=dut.clk_smu_i,
+            bound=FUSE_SENSE_BOUND_CYCLES,
+            label="s1_fuse_sense_done",
+            name="smc_fuse_sense_done_o",
+        )
+        release_cycles = await self._wait_rise(
+            dut.smc_fuse_reset_n_delayed_o,
+            clk=dut.clk_smu_i,
+            bound=FUSE_GATE_RELEASE_BOUND_CYCLES,
+            label="s1_fuse_release_after_sense",
+            name="smc_fuse_reset_n_delayed_o",
+        )
+        assert_hold_window_covers(release_cycles, label="s1 release-after-sense", log=cocotb.log)
+        self._log(
+            f"FUSE-SENSE bring-up: smc_fuse_sense_done_o rose after {sense_cycles} clk_smu, "
+            f"smc_fuse_reset_n_delayed_o {release_cycles} clk_smu later @{self._sim_ns():.3f}ns"
+        )
         baseline_stop = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
         baseline_stall_ovrd = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         baseline_stall = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
         baseline_fuse = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         if baseline_stop != 0:
             raise AssertionError(f"baseline dtp_stop_clks_o={baseline_stop} expect 0")
+        if baseline_fuse != 1:
+            raise AssertionError(f"baseline fuse_reset={baseline_fuse} expect 1 after sense-done")
         self._log(
             f"BASELINE: stop_clks={baseline_stop} stall_ovrd={baseline_stall_ovrd} "
             f"stall={baseline_stall} fuse_reset={baseline_fuse} "
-            f"cells=SEP=0,tb=bare"
+            f"cells=SEP=1,tb=wrapper"
         )
 
         # ------------------------------------------------------------------
@@ -215,6 +272,17 @@ class smu_clock_stop_coordination_test_seq:
         dut.rst_cold_ni.value = 0
         await ClockCycles(dut.clk_ref_i, 64)
         dut.rst_cold_ni.value = 1
+        # Arm the sense-done observation at the release itself: the flag reads 0
+        # in reset, and the settle below can outlast the whole sense.
+        sense_done = cocotb.start_soon(
+            self._wait_rise(
+                dut.smc_fuse_sense_done_o,
+                clk=dut.clk_smu_i,
+                bound=FUSE_SENSE_BOUND_CYCLES,
+                label="s2_fuse_sense_done_after_cold",
+                name="smc_fuse_sense_done_o",
+            )
+        )
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         await self._wait_eq(
             smc_primary_reset(dut),
@@ -224,21 +292,29 @@ class smu_clock_stop_coordination_test_seq:
             label="s2_primary_after_cold",
             name="rst_primary_smc_clk_no",
         )
-        # Held fuse_reset across sticky stall (must stay 0).
+        # The cold reset restarted the sense. Only once it has completed is a
+        # low fuse_reset the stall gate: hold it at 0 for the whole window
+        # (bound == hold, so a single 1 expires the wait).
+        sense_cycles = await sense_done
+        self._log(
+            f"FUSE-SENSE cold+stall: smc_fuse_sense_done_o rose after {sense_cycles} clk_smu "
+            f"@{self._sim_ns():.3f}ns fuse_reset="
+            f"{self._sample(dut.smc_fuse_reset_n_delayed_o, 'smc_fuse_reset_n_delayed_o')}"
+        )
         await self._wait_eq_hold(
             dut.smc_fuse_reset_n_delayed_o,
             0,
             clk=dut.clk_smu_i,
-            bound=self.BOUND_CYCLES,
-            label="s2_fuse_held_stable",
+            bound=FUSE_GATE_HOLD_CYCLES,
+            label="s2_fuse_held_after_sense",
             name="smc_fuse_reset_n_delayed_o",
-            hold=16,
+            hold=FUSE_GATE_HOLD_CYCLES,
         )
         fuse_held = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S1",
             "observed",
-            f"consumer samples boot=held fuse_reset={fuse_held} "
+            f"consumer samples boot=held fuse_reset={fuse_held} sense_done=1 "
             f"ovrd={self._sample(dut.jtag_boot_stall_ovrd, 'jtag_boot_stall_ovrd')} "
             f"stall={self._sample(dut.jtag_boot_stall, 'jtag_boot_stall')}",
         )
@@ -285,15 +361,45 @@ class smu_clock_stop_coordination_test_seq:
             "set",
             "assert observation DEBUG_CONTROL=0 (clear stall/ovrd)",
         )
+        sense_before_clear = self._sample(dut.smc_fuse_sense_done_o, "smc_fuse_sense_done_o")
+        fuse_before_clear = self._sample(
+            dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o"
+        )
+        if sense_before_clear != 1 or fuse_before_clear != 0:
+            raise AssertionError(
+                f"BOOT-STALL.S2 precondition: sense_done={sense_before_clear} "
+                f"fuse_reset={fuse_before_clear} before the clear (expect 1 / 0)"
+            )
         await jtag.write("DEBUG_CONTROL", 0)
-        await ClockCycles(dut.clk_smu_i, self.SETTLE)
-        await self._wait_eq(
+        # The sense is already done, so the rise below is the gate opening:
+        # bound it by the gate path, then require it to stay open.
+        release_cycles = await self._wait_rise(
+            dut.smc_fuse_reset_n_delayed_o,
+            clk=dut.clk_smu_i,
+            bound=FUSE_GATE_RELEASE_BOUND_CYCLES,
+            label="s3_fuse_release_after_clear",
+            name="smc_fuse_reset_n_delayed_o",
+        )
+        # The S1 hold above asserted fuse_reset stayed 0 for FUSE_GATE_HOLD_CYCLES
+        # while the stall was on. That is evidence only if a gate ignoring the
+        # stall would have released inside the window -- which is exactly the
+        # latency just measured, so check the two against each other.
+        assert_hold_window_covers(
+            release_cycles, label="s3 release-after-stall-clear", log=cocotb.log
+        )
+        await self._wait_eq_hold(
             dut.smc_fuse_reset_n_delayed_o,
             1,
             clk=dut.clk_smu_i,
-            bound=self.BOUND_CYCLES,
-            label="s3_fuse_release",
+            bound=FUSE_GATE_HOLD_CYCLES,
+            label="s3_fuse_release_stable",
             name="smc_fuse_reset_n_delayed_o",
+            hold=FUSE_GATE_HOLD_CYCLES,
+        )
+        self._log(
+            f"FUSE-GATE stall clear: smc_fuse_reset_n_delayed_o released {release_cycles} clk_smu "
+            f"after the clear (bound {FUSE_GATE_RELEASE_BOUND_CYCLES}) and held 1 for "
+            f"{FUSE_GATE_HOLD_CYCLES} clk_smu @{self._sim_ns():.3f}ns"
         )
         fuse_rel = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         self._mark_lifecycle(
@@ -547,14 +653,19 @@ class smu_clock_stop_coordination_test_seq:
         )
 
         # ------------------------------------------------------------------
-        # S8 DTP-CLKSTOP-AGG.S3 — port[0] SMC reserved handshake
+        # S8 DTP-CLKSTOP-AGG.S3 — port[0] reserved for the SMC
         # ------------------------------------------------------------------
+        # Only the reserved-port property is attested here: the TB clock-stop
+        # request pins land on DTP[8:1] and leave DTP[0] untouched. DTP[0] is
+        # the SMC's clocks_stopped_by_cla, which this bench has no way to
+        # provoke (the SMC runs the default ROM and the CLA event has no CSR
+        # path), so its level is logged, not compared.
         self._mark_step(
             "S8",
-            "ACTION/RESPONSE/EFFECT DTP-CLKSTOP-AGG.S3: port[0] reserved for "
-            "SMC participates in SMC CLA handshake (CONNECTIVITY)",
+            "ACTION/RESPONSE/EFFECT DTP-CLKSTOP-AGG.S3: port[0] is reserved for "
+            "the SMC; TB clock-stop requests land on DTP[8:1] and do not reach DTP[0]",
         )
-        self._log("COVERAGE DTP-CLKSTOP-AGG.S3 cells: port0=smc_reserved,smc_cla=handshake")
+        self._log("COVERAGE DTP-CLKSTOP-AGG.S3 cells: port0=smc_reserved")
         cla_en = pack_debug_control(cla_clock_stop_en=1)
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
@@ -566,6 +677,9 @@ class smu_clock_stop_coordination_test_seq:
         en_o = self._sample(dut.dtp_cla_clock_stop_en, "dtp_cla_clock_stop_en")
         if en_o != 1:
             raise AssertionError(f"CLKSTOP-AGG.S3 handshake en fail: dtp_cla_clock_stop_en={en_o}")
+        dtp0_before = (
+            self._sample(smu_scope(dut).dtp_xtrig_clk_stop_req, "dtp_xtrig_clk_stop_req") & 0x1
+        )
         # Drive TB xtrig[0]=1; must appear at DTP[1], NOT DTP[0]
         dut.xtrig_clk_stop_req.value = 0x1
         await RisingEdge(dut.clk_smu_i)
@@ -577,10 +691,10 @@ class smu_clock_stop_coordination_test_seq:
         )
         dtp0 = dtp_req & 0x1
         dtp_hi = (dtp_req >> 1) & 0xFF
-        if dtp0 != smc_fb:
+        if dtp0 != dtp0_before:
             raise AssertionError(
-                f"CLKSTOP-AGG.S3 port0 not SMC-reserved: dtp0={dtp0} "
-                f"smc_fb={smc_fb} dtp_req=0x{dtp_req:x}"
+                f"CLKSTOP-AGG.S3 port0 not SMC-reserved: TB xtrig[0] moved DTP[0] "
+                f"{dtp0_before}->{dtp0} dtp_req=0x{dtp_req:x}"
             )
         if dtp_hi != 0x1:
             raise AssertionError(
@@ -589,8 +703,8 @@ class smu_clock_stop_coordination_test_seq:
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
             "observed",
-            f"consumer samples port0=smc_reserved dtp0={dtp0} smc_fb={smc_fb} "
-            f"DTP[8:1]=0x{dtp_hi:x} en={en_o} smc_cla=handshake",
+            f"consumer samples port0=smc_reserved dtp0={dtp0} (before={dtp0_before}) "
+            f"DTP[8:1]=0x{dtp_hi:x} en={en_o}; SMC clocks_stopped_by_cla={smc_fb} (logged only)",
         )
         dut.xtrig_clk_stop_req.value = 0
         await jtag.write("DEBUG_CONTROL", 0)
@@ -605,24 +719,18 @@ class smu_clock_stop_coordination_test_seq:
         )
         dtp_idle = await self._wait_eq(
             smu_scope(dut).dtp_xtrig_clk_stop_req,
-            smc_fb & 0x1,  # only SMC fb bit may remain; upper bits 0
+            dtp0_before,  # DTP[8:1] back to 0; DTP[0] as it was before the drive
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
             label="s8_port0_idle",
             name="dtp_xtrig_clk_stop_req",
         )
-        # Upper bits must be 0; port0 still equals SMC fb
         if ((dtp_idle >> 1) & 0xFF) != 0:
             raise AssertionError(
                 f"CLKSTOP-AGG.S3 checked_cleared upper bits live: dtp=0x{dtp_idle:x}"
             )
-        if (dtp_idle & 0x1) != (
-            self._sample(
-                smu_scope(dut).tdr_dbg_ctrl_clocks_stopped_by_cla,
-                "tdr_dbg_ctrl_clocks_stopped_by_cla",
-            )
-        ):
-            raise AssertionError("CLKSTOP-AGG.S3 checked_cleared port0/SMC fb mismatch")
+        if (dtp_idle & 0x1) != dtp0_before:
+            raise AssertionError("CLKSTOP-AGG.S3 checked_cleared DTP[0] moved with the TB pins")
         self._mark_lifecycle(
             "CHK-DTP-CLKSTOP-AGG-S3",
             "checked_cleared",
@@ -630,15 +738,14 @@ class smu_clock_stop_coordination_test_seq:
         )
         self._check_lifecycle("CHK-DTP-CLKSTOP-AGG-S3")
         detail_c3 = (
-            f"port0=smc_reserved smc_cla=handshake dtp0={dtp0} "
-            f"smc_fb={smc_fb} DTP[8:1]=0x{dtp_hi:x} "
-            f"cells=port0=smc_reserved,smc_cla=handshake"
+            f"port0=smc_reserved dtp0={dtp0} unchanged from {dtp0_before} "
+            f"DTP[8:1]=0x{dtp_hi:x} cells=port0=smc_reserved"
         )
         self._log(f"CHK-DTP-CLKSTOP-AGG-S3: PASS ({detail_c3})")
         sb.expect_eq(
             "CHK-DTP-CLKSTOP-AGG-S3 port0 SMC reserved",
-            (dtp0, dtp_hi, en_o),
-            (smc_fb, 0x1, 1),
+            (dtp0 == dtp0_before, dtp_hi, en_o),
+            (True, 0x1, 1),
             evidence="CHK-DTP-CLKSTOP-AGG-S3",
         )
 

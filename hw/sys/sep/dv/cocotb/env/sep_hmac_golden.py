@@ -9,11 +9,11 @@ against RFC 4231 Test
 Case 1, so a transcription error fails loudly rather than silently agreeing with
 a broken DUT.
 
-Register byte/word/endian convention (the structural RTL contract the reference suite
-sep_km_hmac_sideload_kat_test_seq pins as key_word_rev=1, key_be=1, msg_be=0):
-  * KEY: the hmac_wrapper packs KEY_SHARE[i] into key[i*32+:32], but hmac_core
-    consumes secret_key_i[1023:768] for a 256-bit key, so the effective key WORD
-    order is REVERSED ([7..0]); each 32-bit word is big-endian (key_be).
+Register byte/word/endian convention (defaults key_word_rev=1, key_be=1,
+msg_be=0):
+  * KEY: KEY_SHARE0[7] is the most-significant 32-bit word of the 256-bit
+    sideload key and KEY_SHARE0[0] is the least-significant; each word is
+    big-endian on the byte lane.
   * MSG: pushed to MSG_FIFO as 32-bit words, consumed little-endian per word
     (msg_be=0).
   * DIGEST: CFG.digest_swap=0 -> {DIGEST_0..DIGEST_7} with DIGEST_0 as the most-
@@ -52,7 +52,7 @@ def hmac_sha256_words(
     ``key_words`` = the 8 KM-delivered 256-bit key words (KEY_SHARE order).
     ``msg_words`` = the message as MSG_FIFO 32-bit words. Returns the 8 DIGEST
     words (DIGEST_0 = most-significant), directly comparable to the engine's
-    DIGEST_0..7 read-back. Defaults are the RTL-pinned convention.
+    DIGEST_0..7 read-back. Defaults: key_word_rev=1, key_be=1, msg_be=0.
     """
     assert len(key_words) == 8, "256-bit key = 8 words"
     key = _words_to_bytes(key_words, word_rev=key_word_rev, big_endian=key_be)
@@ -65,8 +65,8 @@ def hmac_sha256_words(
 # The standalone SW-key breadth test (HMAC SHA-variant breadth) covers all three SHA-2 variants in
 # both keyed-HMAC and plain-SHA modes. Map the CFG.digest_size selection (by SHA
 # output bit-width) to the stdlib hash constructor and the count of valid 32-bit
-# DIGEST_* words the engine exposes (hmac.sv:265-277): SHA-256 -> 8, SHA-384 ->
-# 12, SHA-512 -> 16.
+# DIGEST_* words the engine exposes: SHA-2 digest length / 32 (FIPS 180-4).
+# SHA-256 -> 8, SHA-384 -> 12, SHA-512 -> 16.
 _SHA2 = {
     256: (hashlib.sha256, 8),
     384: (hashlib.sha384, 12),

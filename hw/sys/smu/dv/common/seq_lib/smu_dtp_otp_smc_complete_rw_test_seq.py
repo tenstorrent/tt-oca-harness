@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP J2A MAP RESERVED walk + shadow match. SEP=0, no Force. Not BIRA or LOCKS."""
+"""OTP J2A MAP SPARE walk + shadow match. SEP=1, no Force. Not LOCKS."""
 
 from __future__ import annotations
 
@@ -19,16 +19,15 @@ from seq_lib.smu_jtag_helpers import (
     require_jtag_tdo_resolved,
     shadow_map_word32,
 )
+from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
-RESERVED_SYM = "SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR"
-# Spaced indices at 8-byte-aligned addresses: RESERVED[0] is 0xC0007AFC
-# (addr[2]=1), so odd indices align like BIRA (0xC0007048).
-RESERVED_IDX = (1, 9, 17)
+RESERVED_SYM = "SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR"
+# Three distinct SPARE entries; all are 8-byte-aligned (stride 0x20).
+RESERVED_IDX = (1, 2, 3)
 PATTERNS = (0xA11C_E001, 0xB22D_F112, 0xC33E_0223)
 REWRITE0 = 0xD44F_1334
-SEP0_LC_STATE = 0xF0
 OTP_POLL = 128
 MASK32 = 0xFFFF_FFFF
 
@@ -38,12 +37,9 @@ def _reserved_addrs() -> tuple[int, ...]:
     end = MAP_BASE + MAP_SIZE
     for addr in addrs:
         if not (MAP_BASE <= addr < end):
-            raise RuntimeError(f"RESERVED 0x{addr:08x} not in MAP [0x{MAP_BASE:08x}, 0x{end:08x})")
+            raise RuntimeError(f"SPARE 0x{addr:08x} not in MAP [0x{MAP_BASE:08x}, 0x{end:08x})")
         if addr & 7:
-            raise RuntimeError(
-                f"RESERVED 0x{addr:08x} is not 8-byte aligned "
-                "(fabric 4B read of RESERVED[0] returned 0)"
-            )
+            raise RuntimeError(f"SPARE 0x{addr:08x} is not 8-byte aligned")
     return addrs
 
 
@@ -51,7 +47,7 @@ RESERVED_ADDRS = _reserved_addrs()
 
 
 class smu_dtp_otp_smc_complete_rw_test_seq:
-    """OTP+fabric+shadow MAP walk on RESERVED words; gate open on SEP=0."""
+    """OTP+fabric+shadow MAP walk on SPARE words; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -137,9 +133,9 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         sigint = self._sample_int("lc_sigint_err_o") & 1
         if gate != 0:
             raise AssertionError(f"OTP J2A still gated after TCK sync: security_disable={gate}")
-        if lc != SEP0_LC_STATE:
+        if lc != LC_STATE_NO_LCC:
             raise AssertionError(
-                f"lc_state_o=0x{lc:02x} want 0x{SEP0_LC_STATE:02x} "
+                f"lc_state_o=0x{lc:02x} want 0x{LC_STATE_NO_LCC:02x} "
                 "(PROD would steer eFuse JTAG demux to err_slv)"
             )
         if sigint != 0:
@@ -149,7 +145,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
         sb.expect_eq(
             "CHK-OTP-COMPLETE-GATE-OPEN",
             (gate, lc, sigint),
-            (0, SEP0_LC_STATE, 0),
+            (0, LC_STATE_NO_LCC, 0),
         )
 
         for addr, pat, idx in zip(RESERVED_ADDRS, PATTERNS, RESERVED_IDX):

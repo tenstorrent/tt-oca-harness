@@ -2,8 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_no_sep_configuration_test (SMU_005).
 
-Proves SEP=0 lc_state_o==8'hf0 only. The direct SMN→SMC path is not covered: SYS_IN
-BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC hit under SEP=0.
+Proves that on SEP=0 lc_state_o carries the no-LCC word of
+``seq_lib.smu_lifecycle_table`` and nothing else. The direct SMN→SMC path is
+not covered: SYS_IN BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC
+hit under SEP=0.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ import time
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
-SEP0_LC_STATE = 0xF0
+from seq_lib.smu_lifecycle_table import LC_STATE_NO_LCC
 
 
 class smu_no_sep_configuration_test_seq:
@@ -60,25 +62,28 @@ class smu_no_sep_configuration_test_seq:
                 f"SEP=0 aperture not tied off: base=0x{sep_base:x} size=0x{sep_size:x}"
             )
 
-        self._mark_step("S2", "LC STATE: sample lc_state_o == 8'hf0 for >=16 clk_smu cycles")
+        self._mark_step(
+            "S2",
+            f"LC STATE: sample lc_state_o == 0x{LC_STATE_NO_LCC:02x} for >=16 clk_smu cycles",
+        )
         stable = 0
         for _ in range(self.LC_STABLE_CYCLES):
             await RisingEdge(dut.clk_smu_i)
             last_lc = self._sample(dut.lc_state_o, "lc_state_o") & 0xFF
-            if last_lc != SEP0_LC_STATE:
+            if last_lc != LC_STATE_NO_LCC:
                 self._timeout_paths.append(
                     f"s2_lc_stable: bound={self.LC_STABLE_CYCLES} EXPIRED last=0x{last_lc:02x}"
                 )
                 raise AssertionError(
-                    f"lc_state_o != 0x{SEP0_LC_STATE:02x} at stable sample {stable}: "
+                    f"lc_state_o != 0x{LC_STATE_NO_LCC:02x} at stable sample {stable}: "
                     f"0x{last_lc:02x}"
                 )
             stable += 1
         self._timeout_paths.append(
-            f"s2_lc_stable: bound={self.LC_STABLE_CYCLES} ok last=0x{SEP0_LC_STATE:02x}"
+            f"s2_lc_stable: bound={self.LC_STABLE_CYCLES} ok last=0x{LC_STATE_NO_LCC:02x}"
         )
         chk_lc = (
-            f"CHK-SEP0-LC: lc_state_o == 8'hf0 sampled stable for "
+            f"CHK-SEP0-LC: lc_state_o == 0x{LC_STATE_NO_LCC:02x} sampled stable for "
             f">={self.LC_STABLE_CYCLES} clk_smu_i cycles (samples={stable})"
         )
         self._log(chk_lc)

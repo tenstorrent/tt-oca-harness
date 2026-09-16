@@ -14,8 +14,13 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_conti_test(smc_base_test):
     """Alternating I2C write/read pairs on shared pads."""
 
-    required_evidence = ("CHK-I2C-P0-CONTI",)
-    min_evidence = 1
+    required_evidence = (
+        "CHK-I2C-P0-CONTI",
+        "CHK-I2C-P0-CONTI-P0",
+        "CHK-I2C-P0-CONTI-P1",
+        "CHK-I2C-P0-CONTI-P2",
+    )
+    min_evidence = 4
 
     auto_protocol_vip = False
 

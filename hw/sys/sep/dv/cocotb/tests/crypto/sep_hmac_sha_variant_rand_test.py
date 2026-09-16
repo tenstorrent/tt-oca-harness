@@ -21,9 +21,9 @@ of truth for BOTH the DUT programming (CFG + key) AND the golden. The required
 discrete cells are WALKED DETERMINISTICALLY in one invocation (every legal
 {sha_bits x mode x key_bits} cell), so a single seed never skips a required cell;
 the seed only randomizes the legal continuous knobs (key + message content/
-length). The SHA-256 x Key_1024 keyed cell is illegal
-(`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv` key-length check)
-and excluded.
+length). The SHA-256 x Key_1024 keyed cell is illegal -- hmac.adoc states the key length
+cannot exceed the block size, 512-bit for SHA-2 256 -- and is excluded by the
+block-size rule the sequence derives, not by a hand-listed pair.
 
 Checkers:
   CHK-CONV     SW-key register convention pinned on SHA-256 keyed-256 from the IP
@@ -52,9 +52,10 @@ from seq_lib.sep_hmac_seq import (
 )
 
 # Derived, not hand-kept: the full digest-size x key-length product minus the
-# combinations hmac.sv rejects as invalid_config. HMAC_ILLEGAL_KEYED in the
-# sequence is the single source of truth for legality, so a change there moves
-# both the stimulus and this matrix together.
+# combinations the register specification blocks. HMAC_ILLEGAL_KEYED in the
+# sequence derives those from hmac.adoc's block-size rule and is the single
+# source of truth for legality, so a change there moves both the stimulus and
+# this matrix together.
 KEYED_MATRIX = {
     sha_bits: [k for k in HMAC_KEY_LENGTH if (sha_bits, k) not in HMAC_ILLEGAL_KEYED]
     for sha_bits in HMAC_DIGEST_SIZE
@@ -116,8 +117,9 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         )
         for sha_bits, key_bits in EXCLUDED_KEYED:
             self.logger.info(
-                "SKIP-ILLEGAL-KEYED: SHA-%d with a %d-bit key is rejected by the "
-                "engine as invalid_config (hmac.sv), so it is not a keyed cell. "
+                "SKIP-ILLEGAL-KEYED: SHA-%d with a %d-bit key exceeds the SHA-2 "
+                "block size, which hmac.adoc says blocks the start and signals an "
+                "error, so it is not a keyed cell. "
                 "Declared, not driven: no negative cell provokes ERR_CODE here",
                 sha_bits,
                 key_bits,

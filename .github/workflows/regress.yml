@@ -105,14 +105,27 @@ jobs:
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
             timeout: 240
           - dut: smu
-            # `sep0_all` is the enrolled SEP=0 release set: every leaf compiles
-            # under the no-SEP profile with `elaboration` firmware, so there is
-            # no c_compile / RISC-V toolchain stage on hosted runners. `smu` is
-            # now the wrapper DUT; the bare block bench is `smu_block` and holds
-            # two leaves only (hw/sys/smu/dv/testlists/all.toml). `smu`'s own
-            # `all` is not usable here -- it carries the SEP=1 firmware set,
-            # which needs the toolchain container.
-            items: sep0_all
+            # `hosted` is the enrolled toolchain-free release set: every leaf
+            # uses `elaboration` firmware, whose only products are zero-filled
+            # preload images written in Python, so there is no RISC-V toolchain
+            # stage on hosted runners. `smu` is the wrapper DUT on its single
+            # compile profile (real SEP); the bare block bench is `smu_block`
+            # (hw/sys/smu/dv/testlists/all.toml). `smu`'s own `all` is not
+            # usable here -- it carries the SEP firmware set, which needs the
+            # toolchain container.
+            items: hosted
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 90
+          - dut: smu_block
+            # The bare `smu #(.SEP(0))` bench. `all` is its cocotb leaves --
+            # the SEP=0 composition proofs plus the two JTAG leaves that cannot
+            # run on the wrapper -- with no firmware stage, so it runs on the
+            # hosted runner; sim.yml gates only the `smoke` leaf, so the
+            # scheduled tiers are where the abort-mid-op leaf executes. Budget:
+            # two 1800 s leaves in parallel plus build headroom.
+            items: all
             reseed: 1
             coverage: false
             runner: ubuntu-latest
@@ -189,9 +202,10 @@ jobs:
         # Three policies key off it, all in this matrix:
         #   - dtp reseeds three times only on the larger runner; at
         #     --sim-jobs 4 the three-seed `all` needs about nine hours.
-        #   - sep and smu collect coverage only on the larger runner; their
-        #     coverage-instrumented model builds exceed the standard
-        #     runner's memory.
+        #   - sep, smu and smu_block collect coverage only on the larger
+        #     runner; the sep and smu coverage-instrumented model builds
+        #     exceed the standard runner's memory, and smu_block is the same
+        #     SMU model without the wrapper, so it shares the gate.
         #   - sim-jobs follows the runner core count (the action's `nproc`).
         # Every coverage block sets --output-groups 0: Verilator otherwise
         # concatenates the generated .cpp files into --build-jobs groups by
@@ -199,8 +213,8 @@ jobs:
         # became a 243 MB translation unit the compiler never finished; the
         # same shape fits the sep/smu runner deaths. Per-file compilation is
         # verified on smc (46-minute build on six cores, 12 MB database per
-        # leaf), so smc collects coverage here; sep and smu keep their
-        # larger-runner gate until one weekly run confirms the standard
+        # leaf), so smc collects coverage here; sep, smu and smu_block keep
+        # their larger-runner gate until one weekly run confirms the standard
         # runner's memory suffices for them too. The cross_trigger benches
         # are small enough to collect coverage on the standard runner.
         include:
@@ -217,7 +231,13 @@ jobs:
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
             timeout: 330
           - dut: smu
-            items: sep0_all
+            items: hosted
+            reseed: 3
+            coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            timeout: 180
+          - dut: smu_block
+            items: all
             reseed: 3
             coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}

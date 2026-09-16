@@ -59,6 +59,7 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
   protected task run_wire_or_route_class(string name, int unsigned input_port,
                                          bit [31:0] output_mask, int unsigned overlap_input,
                                          int unsigned overlap_output);
+    bit [31:0] predicted;
     `uvm_info(get_type_name(), {"CTM wire-OR routing ", name}, UVM_LOW)
     verify_route(input_port, output_mask, CtpModeWireOr, {"wire_or.", name, ".main"});
     // Two sources selected into one destination: either firing input
@@ -68,9 +69,12 @@ class dtp_ctm_route_test_seq extends dtp_xtrig_base_test_seq;
                                   CtpModeWireOr);
     configure_ctp_mode_for_port(overlap_input, CtpModeWireOr, 16'd1);
     program_ctm_src(overlap_output, (32'd1 << input_port) | (32'd1 << overlap_input));
+    predicted = ctm_model.route((32'd1 << input_port) | (32'd1 << overlap_input));
+    start_activity_window();
     drive_input_port(input_port, CtpModeWireOr);
     drive_input_port(overlap_input, CtpModeWireOr);
-    check_output_mask(32'd1 << overlap_output, CtpModeWireOr, {"wire_or.", name, ".overlap"});
+    check_output_mask(32'd1 << overlap_output, CtpModeWireOr, predicted, {
+                      "wire_or.", name, ".overlap"});
   endtask
 
   protected task run_wire_or_cla_to_ctp();

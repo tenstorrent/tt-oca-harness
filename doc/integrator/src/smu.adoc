@@ -489,11 +489,9 @@ completion.
 
 **Repair Data:**
 
-Repair data is stored in the eFuse BIRA shadow register as a 16-kilobit
-`repair_data` field. The eFuse controller reads this data during fuse sensing
-and makes it available through shadow registers. The external memory repair
-controller must read repair data from `shadow_regs_o` and apply it to SRAM
-arrays according to your memory architecture.
+The SMC fuse map does not allocate storage for repair data. Your external memory
+repair controller must source it from wherever your manufacturing flow keeps it
+and apply it to SRAM arrays according to your memory architecture.
 
 **Status Monitoring:**
 
