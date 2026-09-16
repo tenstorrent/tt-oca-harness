@@ -1151,12 +1151,6 @@ addrmap entropy_source {
              NOISE_OBS_STATUS               NOISE_OBS_STATUS                   @0x174;
     external NOISE_OBS_RDATA                NOISE_OBS_RDATA                    @0x178;
 
-    // INTR_ENABLE masks the interrupt output only; it is applied in the RTL
-    // (irq_o = |(INTR_STATUS & INTR_ENABLE)). The status bits latch whether or
-    // not the interrupt is enabled and are cleared only by W1C. See
-    // hw/ip/uart/log_engine/regs/log_engine.rdl for why the mask is not bound
-    // here with the SystemRDL `enable` property.
-
 };
 
 `endif
