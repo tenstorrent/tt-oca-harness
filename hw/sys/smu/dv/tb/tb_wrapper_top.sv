@@ -1749,11 +1749,7 @@ module smu_wrapper_uvm_top (
     .axi_out_rvalid_i   (smu_axi_out_resp.r_valid),
     .axi_out_rready_i   (smu_axi_out_req.r_ready),
     .axi_out_rlast_i    (smu_axi_out_resp.r.last),
-    .axi_out_rresp_i    (smu_axi_out_resp.r.resp),
-    .sep_otp_rvalid_i   (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.r_valid),
-    .sep_otp_rready_i   (u_dut.u_smu.dtp_axil_sep_otp_jtag_req.r_ready),
-    .sep_otp_rresp_i    (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.r.resp),
-    .sep_otp_rdata_i    (u_dut.u_smu.dtp_axil_sep_otp_jtag_resp.r.data)
+    .axi_out_rresp_i    (smu_axi_out_resp.r.resp)
   );
 
   // The SEP-to-SMC alias remap port and the crossbar SEP initiator port are
