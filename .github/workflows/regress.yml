@@ -255,7 +255,7 @@ jobs:
             # `hosted` feeds the coverage dashboard and a graded expected
             # failure must not count there; no coverage for the same reason.
             # One seed: each leaf is a directed reproducer. The budget is the
-            # model build plus five short leaves.
+            # model build plus two short leaves.
             items: rtl_issue
             label: rtl_issue
             reseed: 1
