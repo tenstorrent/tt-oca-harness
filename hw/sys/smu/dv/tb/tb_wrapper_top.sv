@@ -294,8 +294,9 @@ module smu_wrapper_uvm_top (
   output logic [15:0] sep_cla_at_release_o,
   // SMU_ALL_001 compose / clk-domain / lifecycle observe surface
   output logic [7:0]  lc_state_o,
-  // Hierarchical SEP lifecycle source (for lc_state=from_sep identity).
-  // Under SMU_NO_SEP this is tied off; checkers must not treat that as from_sep.
+  // Hierarchical SEP lifecycle source (for lc_state=from_sep identity). This
+  // bench elaborates SEP, so the tap is live; the SEP=0 composition is proved
+  // on --dut smu_block, whose testlists/nosep.toml holds those leaves.
   output logic [7:0]  obs_sep_lc_state_o,
   // Compile-time present flags, diagnostic only: SMU_ALL_001 proves presence
   // from the hierarchical clk/rst identity observes below.
@@ -389,15 +390,9 @@ module smu_wrapper_uvm_top (
   output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_out_din_en
 );
 
-`ifdef SMU_NO_SEP
-  localparam int unsigned SEP_ENABLED = 0;
-  localparam bit SEP_PRESENT = 1'b0;
-  localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::NoSepCfg;
-`else
   localparam int unsigned SEP_ENABLED = 1;
   localparam bit SEP_PRESENT = 1'b1;
   localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::DefaultCfg;
-`endif
 
   // Same override tb_top.sv applies: exercise the most-significant configured
   // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
@@ -438,18 +433,11 @@ module smu_wrapper_uvm_top (
         tck: jtag_tck
     };
   assign jtag_ptap_tdi = jtag_tdi;
-`ifndef SMU_NO_SEP
   assign lcc_feat_ctrl_o = 64'(u_dut.u_smu.gen_sep.u_sep.sep_crypto
         .u_sep_lifecycle_ctrl.feat_ctrl_o);
   assign lcc_dbg_disable_o    = 16'(u_dut.u_smu.sep_dbg_disable);
   assign lcc_dbg_disable_smc_jtag2axi_o = u_dut.u_smu.sep_dbg_disable.smc_jtag2axi;
   assign smc_lc_state_in_o    = 8'(u_dut.u_smu.sep_lc_state);
-`else
-  assign lcc_feat_ctrl_o      = '0;
-  assign lcc_dbg_disable_o    = '0;
-  assign lcc_dbg_disable_smc_jtag2axi_o = 1'b0;
-  assign smc_lc_state_in_o    = '0;
-`endif
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
@@ -490,7 +478,6 @@ module smu_wrapper_uvm_top (
   //   * downstream taps observe, never drive.
   // The SEP TB's +sep_crypto_edn_force, which grants OTBN's EDN handshakes
   // directly and bypasses the chain, has no counterpart here.
-`ifndef SMU_NO_SEP
   logic [11:0] esrc_noise_d;
   assign esrc_noise_d = esrc_noise_ext_i;
   assign esrc_noise_o = esrc_noise_d;
@@ -527,12 +514,7 @@ module smu_wrapper_uvm_top (
     end
   end
   `undef SMU_ESRC_NOISE_FORCE
-`else
-  assign esrc_noise_o        = '0;
-  assign esrc_noise_active_o = 1'b0;
-`endif
 
-`ifndef SMU_NO_SEP
   assign drbg_seed_valid_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
         .u_drbg_s3c_scan.u_csrng_seed_adapter.seed_queue_valid_o;
   assign drbg_es_ack_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng
@@ -554,22 +536,9 @@ module smu_wrapper_uvm_top (
       if (esrc_noise_o[0] && esrc_noise_active_o) esrc_noise_took_o <= 1'b1;
     end
   end
-`else
-  assign drbg_seed_valid_o  = 1'b0;
-  assign drbg_es_ack_o      = 1'b0;
-  assign drbg_genbits_vld_o = 1'b0;
-  assign drbg_seed_valid_seen_o = 1'b0;
-  assign drbg_es_ack_seen_o     = 1'b0;
-  assign drbg_genbits_seen_o    = 1'b0;
-  assign esrc_noise_took_o      = 1'b0;
-`endif
 
   assign ic_reset_smc_ovrd_o = 68'(u_dut.u_smu.jtag_smc_reset_ctrl.ovrd);
-`ifndef SMU_NO_SEP
   assign ic_reset_sep_ovrd_any_o = |u_dut.u_smu.jtag_sep_reset_ctrl.ovrd;
-`else
-  assign ic_reset_sep_ovrd_any_o = 1'b0;
-`endif
 
   assign jtag_tdo      = jtag_ptap_tdo;
   assign jtag_tdo_oen  = jtag_ptap_tdo_oen;
@@ -838,11 +807,7 @@ module smu_wrapper_uvm_top (
     end
   end
   assign obs_powergood_stable_low_seen_o = obs_powergood_stable_low_seen_q;
-`ifndef SMU_NO_SEP
   assign sep_reset_n = u_dut.u_smu.gen_sep.u_sep.sep_reset_n;
-`else
-  assign sep_reset_n = 1'b1;
-`endif
   assign sep_reset_n_o = sep_reset_n;
   assign ext_mailbox_interrupts_o = ext_mailbox_interrupts;
   assign lc_state_o = lc_state;
@@ -860,7 +825,6 @@ module smu_wrapper_uvm_top (
   assign obs_dtp_rst_n_o = u_dut.u_smu.u_dtp.rst_n_i;
   assign obs_smc_tel_clk_o = u_dut.u_smu.u_smc.clk_telemetry_i;
 
-`ifndef SMU_NO_SEP
   assign obs_compose_sep_present_o = 1'b1;
   assign obs_compose_xbar_present_o = 1'b1;
   assign obs_sep_clk_o = u_dut.u_smu.gen_sep.u_sep.clk_i;
@@ -877,17 +841,6 @@ module smu_wrapper_uvm_top (
   assign sep_fuse_sense_skipped_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
         .u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
         .sim_skip_fuse_sense;
-`else
-  assign obs_compose_sep_present_o = 1'b0;
-  assign obs_compose_xbar_present_o = 1'b0;
-  assign obs_sep_clk_o = 1'b0;
-  assign obs_xbar_clk_o = 1'b0;
-  assign obs_sep_rst_n_o = 1'b0;
-  assign obs_xbar_rst_n_o = 1'b0;
-  assign obs_sep_wdt_clk_o = 1'b0;
-  assign obs_sep_lc_state_o = 8'h00;
-  assign sep_fuse_sense_skipped_o = 1'b0;
-`endif
 
   assign smc_scratch_0_o =
         u_dut.u_smu.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[0];
@@ -919,7 +872,6 @@ module smu_wrapper_uvm_top (
 
   // Observe SEP run-gate nets. Use ifdef (not generate-if) so the no-SEP
   // compile never resolves gen_sep hierarchy XMRs.
-`ifndef SMU_NO_SEP
   assign sep_cla_custom_o =
         16'(u_dut.u_smu.cla_ext_action_custom);
   assign sep_mpc_reset_run_o =
@@ -974,23 +926,6 @@ module smu_wrapper_uvm_top (
       sep_cpu_rst_ni_q <= sep_cpu_rst_ni_o;
     end
   end
-`else
-  assign sep_cla_custom_o         = '0;
-  assign sep_mpc_reset_run_o      = 1'b0;
-  assign sep_mpc_debug_run_o      = 1'b0;
-  assign sep_cpu_run_req_o        = 1'b0;
-  assign sep_halt_status_o        = 1'b0;
-  assign sep_debug_mode_o         = 1'b0;
-  assign sep_boot_rom_req_count_o = '0;
-  assign sep_cpu_rst_ni_o         = 1'b0;
-  assign sep_dbg_rstb_o           = 1'b0;
-  assign sep_mod_rst_ni_o         = 1'b0;
-  assign sep_cpu_clk_count_o      = '0;
-  assign sep_rungate_at_release_valid_o = 1'b0;
-  assign sep_mpc_reset_run_at_release_o = 1'b0;
-  assign sep_mpc_xz_at_release_o        = 1'b0;
-  assign sep_cla_at_release_o           = '0;
-`endif
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
@@ -1037,7 +972,6 @@ module smu_wrapper_uvm_top (
     end
   end
 
-`ifndef SMU_NO_SEP
   // ------------------------------------------------------------------
   // SEP ICCM/DCCM backdoor: time-zero image load + write-count evidence.
   //
@@ -1267,30 +1201,10 @@ module smu_wrapper_uvm_top (
     $readmemh(boot_rom_path, u_dut.u_sep_ip_integration.u_sep_boot_rom.mem);
     $display("[smu_wrapper_uvm_top] loaded SEP boot ROM from %s", boot_rom_path);
   end
-`else
-  // No SEP instance in this profile: no TCM to load or count, no SMN path.
-  assign sep_iccm_write_count_o  = '0;
-  assign sep_dccm_write_count_o  = '0;
-  assign sep_smn_out_aw_count_o  = '0;
-  assign sep_xbar_global_base_o  = '0;
-  assign sep_xbar_region_size_o  = '0;
-  assign sep_xbar_in_aw_count_o  = '0;
-  assign sep_xbar_in_aw_user_o   = '0;
-  assign sep_xbar_in_aw_addr_o   = '0;
-  assign sep_ap_remap_offset0_o  = '0;
-  assign sep_stee_remap_offset0_o = '0;
-  assign sep_ap_csr_aw_count_o   = '0;
-  assign sep_ap_reg0_aw_count_o  = '0;
-  assign sep_csr_aw_count_o      = '0;
-  assign sep_csr_last_aw_addr_o  = '0;
-  assign sep_csr_errslv_aw_count_o = '0;
-`endif
 
   // ------------------------------------------------------------------
-  // DTP / JTAG observation taps -- SEP-independent, so outside the
-  // `ifndef SMU_NO_SEP` block above: that block's `else` re-drives only the
-  // sep_* observables, and a pin left inside it reads a constant 0 under
-  // +define+SMU_NO_SEP.
+  // DTP / JTAG observation taps -- SEP-independent, and kept in their own
+  // block so they stay separate from the sep_* observables above.
   // ------------------------------------------------------------------
   assign rst_cold_stable_ref_clk_no = rst_cold_stable_ref_clk_n;
   assign jtag_boot_stall          = smu_scope_boot_stall_val;
@@ -1921,7 +1835,6 @@ module smu_wrapper_uvm_top (
   logic xbar_sep_out_arvalid_w, xbar_sep_out_arready_w;
   logic [55:0] xbar_sep_out_awaddr_w, xbar_sep_out_araddr_w;
 
-`ifndef SMU_NO_SEP
   assign alias_awvalid_w = u_dut.u_smu.sep_ext_to_smc_axi_req.aw_valid;
   assign alias_awready_w = u_dut.u_smu.sep_ext_to_smc_axi_resp.aw_ready;
   assign alias_awaddr_w = 56'(u_dut.u_smu.sep_ext_to_smc_axi_req.aw.addr);
@@ -1941,27 +1854,6 @@ module smu_wrapper_uvm_top (
   assign xbar_sep_out_arvalid_w = u_dut.u_smu.gen_sep.sep_out_xbar_req.ar_valid;
   assign xbar_sep_out_arready_w = u_dut.u_smu.gen_sep.sep_out_xbar_resp.ar_ready;
   assign xbar_sep_out_araddr_w = 56'(u_dut.u_smu.gen_sep.sep_out_xbar_req.ar.addr);
-`else
-  assign alias_awvalid_w = 1'b0;
-  assign alias_awready_w = 1'b0;
-  assign alias_awaddr_w = '0;
-  assign alias_arvalid_w = 1'b0;
-  assign alias_arready_w = 1'b0;
-  assign alias_araddr_w = '0;
-  assign alias_bvalid_w = 1'b0;
-  assign alias_bready_w = 1'b0;
-  assign alias_rvalid_w = 1'b0;
-  assign alias_rready_w = 1'b0;
-  assign alias_rlast_w = 1'b0;
-  assign alias_remapped_awaddr_w = '0;
-  assign alias_remapped_araddr_w = '0;
-  assign xbar_sep_out_awvalid_w = 1'b0;
-  assign xbar_sep_out_awready_w = 1'b0;
-  assign xbar_sep_out_awaddr_w = '0;
-  assign xbar_sep_out_arvalid_w = 1'b0;
-  assign xbar_sep_out_arready_w = 1'b0;
-  assign xbar_sep_out_araddr_w = '0;
-`endif
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_alias_fcov #(

@@ -2439,8 +2439,8 @@ Two things are worth reading before the entries:
 
 *Test Coverage*:
 
-* `SmuWrapperElaborationSeq` takes the `+expected_sep=0` branch (`_run_legacy_no_sep`), which is a different check set from the SEP=1 branch of the same module.
-* `sep_enabled_o` (the compile-time `SMU_NO_SEP` define) is compared against `+expected_sep` from the testlist -- two independent inputs, so a testlist entry pointing this leaf at the wrong build fails.
+* `SmuWrapperElaborationSeq` asserts `+expected_sep` is 1 before it runs: the wrapper's one compile profile elaborates SEP, so a testlist entry claiming otherwise fails rather than silently selecting a different check set.
+* `sep_enabled_o` (the bench's compile-time `SEP_ENABLED` parameter) is compared against `+expected_sep` from the testlist -- two independent inputs, so a testlist entry pointing this leaf at the wrong build fails.
 * The sequence drives its own `powergood_i` deassertion and observes `obs_powergood_stable_o` -- the DUT synchronizer output, not an echo of `powergood_i` -- go 1 -> 0 -> 1 around it. The leading high is required before the deassertion, so the low is a response and not the power-up value of a bench that initialises every node to 0; a run that never deasserts `powergood_i` expires the bounded wait for the low and fails.
 * Cold reset is asserted and released over several randomised hold lengths and the propagation is observed each time.
 * No SEP is instantiated in this profile, so nothing here carries SEP, lifecycle or crypto credit.

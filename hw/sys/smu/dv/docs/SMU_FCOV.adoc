@@ -133,11 +133,10 @@ third that is easy to confuse with them.
 * A `[[holes]]` entry is the opposite case: the point exists, is not hit, and
   is carried with a category, a rationale, an owner and an expiry.
 
-`tb_wrapper_top.sv` passes `SepPresent = 1'b0` only under the `SMU_NO_SEP`
-define, which the wrapper's compile profile `compile_smu_chiplet` does not set:
-it elaborates SEP=1, so on the wrapper `SepPresent` is `1'b1` and every `g_sep`
-point exists. The block bench passes `1'b0` unconditionally, because it
-hardcodes SEP=0, and it is where the SEP=0 composition proofs
+`tb_wrapper_top.sv` passes `SepPresent = 1'b1` unconditionally: the wrapper
+has one compile profile, `compile_smu_chiplet`, and it elaborates SEP, so every
+`g_sep` point exists there. The block bench passes `1'b0` unconditionally,
+because it hardcodes SEP=0, and it is where the SEP=0 composition proofs
 (`testlists/nosep.toml`) run.
 
 The `g_sep` guards still matter on the block bench: an accepted waiver whose
