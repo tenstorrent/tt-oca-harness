@@ -46,7 +46,7 @@ OTP_POLL = 128
 
 
 class smu_smc_dtp_jtag2axi_smoke_test_seq:
-    """SMC fabric J2A smoke; gate already open on SEP=0."""
+    """SMC fabric J2A smoke; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test

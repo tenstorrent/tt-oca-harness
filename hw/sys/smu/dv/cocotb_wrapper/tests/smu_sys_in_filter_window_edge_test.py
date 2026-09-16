@@ -19,7 +19,7 @@ class smu_sys_in_filter_window_edge_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_sys_in_filter_window_edge_test TierA SYS-IN page-edge SEP=0 J2A+s_axi"
+            "DUT_TAG=WRAPPER smu_sys_in_filter_window_edge_test TierA SYS-IN page-edge SEP=1 J2A+s_axi"
         )
         seq = smu_sys_in_filter_window_edge_test_seq(self)
         await seq.run()

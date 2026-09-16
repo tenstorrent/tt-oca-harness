@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_axi_prot_encoding_decode_test — SMU Tier A AxPROT S9 (SEP=0 J2A + s_axi)."""
+"""smu_axi_prot_encoding_decode_test — SMU Tier A AxPROT S9 (SEP=1 J2A + s_axi)."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class smu_axi_prot_encoding_decode_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_axi_prot_encoding_decode_test TierA S9 SEP=0 J2A")
+        self.logger.info("DUT_TAG=WRAPPER smu_axi_prot_encoding_decode_test TierA S9 SEP=1 J2A")
         seq = smu_axi_prot_encoding_decode_test_seq(self)
         await seq.run()
         assert seq.matrix_ok, "S9 AxPROT matrix incomplete"

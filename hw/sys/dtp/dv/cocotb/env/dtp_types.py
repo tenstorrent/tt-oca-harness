@@ -286,6 +286,28 @@ class DtpJtag2AxiStatus(IntEnum):
     BUSY_OR_FULL = 3
 
 
+class DtpJtag2AxiFsmState(IntEnum):
+    """Bridge AXI FSM state as the TB interface samples it (``jtag2axi.sv`` ``axi_state_e``)."""
+
+    IDLE = 0
+    SEND_ADDR_W = 1
+    SEND_DATA_W = 2
+    WAIT_BRESP = 3
+    SEND_ADDR_R = 4
+    WAIT_RDATA = 5
+    UPDATE_STATUS = 6
+
+
+# Reset-abort scenario evidence: the bridge observed mid-flight before the
+# reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
+# escaped write, and a recovered status.
+ABORT_MIDFLIGHT_CHECK_ID = "CHK-J2A-ABORT-MIDFLIGHT"
+ABORT_FSM_CHECK_ID = "CHK-J2A-ABORT-FSM"
+CDC_CLEAR_CHECK_ID = "CHK-J2A-CDC-CLEAR"
+ABORT_ESCAPE_CHECK_ID = "CHK-J2A-ABORT-ESCAPE"
+ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
+
+
 def size_field_bits(data_width: int) -> int:
     """Width of the JTAG2AXI ``size`` field for a bridge data width.
 
