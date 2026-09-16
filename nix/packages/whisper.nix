@@ -33,7 +33,7 @@ in stdenv.mkDerivation {
     repo = "whisper";
     rev = version;
     # Should only need to update the hash here after updating submodule CI
-    sha256 = "sha256-SGAUDprd0aRM7kt1T8oV/oKLvUkVdAYVZUEj6DJ8BQo=";
+    sha256 = "sha256-tL/wT2VD+QIjbzJi7bietpEwGsrm7fNCEUolVA5jros=";
   };
 
   buildInputs = [
