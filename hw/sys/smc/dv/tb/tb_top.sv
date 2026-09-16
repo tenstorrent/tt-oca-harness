@@ -1445,35 +1445,35 @@ module smc_uvm_top
 
     // Hierarchical CPU debug (pre-isolate-clamp PC + boundary isolate).
     assign tb_cpu_wb_pc0 =
-        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[0];
     assign tb_cpu_wb_pc1 =
-        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[1];
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[1];
     assign tb_cpu_wb_pc2 =
-        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[2];
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[2];
     assign tb_cpu_wb_pc3 =
-        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[3];
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[3];
     // Core 0's tile domain carries no suffix; 1-3 are _1.._3
     // (OCAH4CORECluster_DigitalTop.sv:3975-4218).
-    assign tb_cpu_mcause0 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    assign tb_cpu_mcause0 = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr.reg_mcause;
-    assign tb_cpu_mcause1 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    assign tb_cpu_mcause1 = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr.reg_mcause;
-    assign tb_cpu_mcause2 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    assign tb_cpu_mcause2 = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr.reg_mcause;
-    assign tb_cpu_mcause3 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    assign tb_cpu_mcause3 = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr.reg_mcause;
-    assign tb_cpu_mepc0 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    assign tb_cpu_mepc0 = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr.reg_mepc;
-    assign tb_cpu_mepc1 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    assign tb_cpu_mepc1 = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr.reg_mepc;
-    assign tb_cpu_mepc2 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    assign tb_cpu_mepc2 = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr.reg_mepc;
-    assign tb_cpu_mepc3 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+    assign tb_cpu_mepc3 = u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu
         .u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr.reg_mepc;
     assign tb_cpu_cluster_isolate =
-        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.cluster_boundary_isolate;
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.cluster_boundary_isolate;
 `define SMC_CPU_WRAP u_dut.u_smc.u_smc_cpu_wrapper
-`define SMC_CPU      `SMC_CPU_WRAP.gen_4core_cpu.u_smc_cpu
+`define SMC_CPU      `SMC_CPU_WRAP.u_smc_cpu
 `define SMC_CPU_CTRL `SMC_CPU_WRAP.u_smc_cpu_ctrl_wrap
 `define SMC_L2_ISO   `SMC_CPU.u_l2_frontend_axi_isolate
 `define SMC_MMIO_ISO `SMC_CPU.u_mmio_axi_isolate
@@ -1498,13 +1498,13 @@ module smc_uvm_top
 `undef SMC_CPU
 `undef SMC_CPU_WRAP
     assign tb_cpu_debug_dmactive =
-        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactive;
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactive;
     assign tb_cpu_debug_dmactive_ack =
-        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactiveAck;
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.debug_dmactiveAck;
 
     // Hart 0 retirement record (Rocket CSR trace bundle), masked while the
     // core is in reset.
-    `define SMC_HART0_CSR u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    `define SMC_HART0_CSR u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
     assign tb_cpu_core_reset_n = u_dut.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
     assign tb_cpu_trace_valid  = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_valid : 1'b0;
     assign tb_cpu_trace_pc     = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_iaddr : '0;
@@ -1542,8 +1542,8 @@ module smc_uvm_top
 
     // PLIC and CLINT live inside the generated cluster; the names below are
     // the generated ones (MTIMECMP is `pad`, contexts are numbered 0..7).
-    `define SMC_PLIC u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.plic_domain.plic
-    `define SMC_CLINT u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.clint_domain.clint
+    `define SMC_PLIC u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.plic_domain.plic
+    `define SMC_CLINT u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.clint_domain.clint
     assign tb_plic_meip = {`SMC_PLIC.auto_int_out_6_0, `SMC_PLIC.auto_int_out_4_0,
                            `SMC_PLIC.auto_int_out_2_0, `SMC_PLIC.auto_int_out_0_0};
     assign tb_plic_seip = {`SMC_PLIC.auto_int_out_7_0, `SMC_PLIC.auto_int_out_5_0,
@@ -1573,10 +1573,10 @@ module smc_uvm_top
 
     // Per-core direct interrupt pins. The generate loop is unrolled in the
     // generated cluster, so the four tiles are four named instances.
-    `define SMC_CORE0 u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core
-    `define SMC_CORE1 u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core
-    `define SMC_CORE2 u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core
-    `define SMC_CORE3 u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core
+    `define SMC_CORE0 u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core
+    `define SMC_CORE1 u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core
+    `define SMC_CORE2 u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core
+    `define SMC_CORE3 u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core
     assign tb_core_mtip = {`SMC_CORE3.io_interrupts_mtip, `SMC_CORE2.io_interrupts_mtip,
                            `SMC_CORE1.io_interrupts_mtip, `SMC_CORE0.io_interrupts_mtip};
     assign tb_core_msip = {`SMC_CORE3.io_interrupts_msip, `SMC_CORE2.io_interrupts_msip,
@@ -2664,13 +2664,13 @@ module smc_uvm_top
     assign dut_scratch2 = u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[2];
     assign bfm_scratch2 = u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[2];
     assign dut_wb_pc0 =
-        u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
+        u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[0];
     assign bfm_wb_pc0 =
-        u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
+        u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.u_smc_cpu.wb_reg_pc_raw[0];
 
     // Hart 0 retirement record per instance, masked while that core is in reset.
-    `define SMC_DUT_HART0_CSR u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
-    `define SMC_BFM_HART0_CSR u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    `define SMC_DUT_HART0_CSR u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    `define SMC_BFM_HART0_CSR u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
     assign dut_cpu_core_reset_n = u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
     assign dut_cpu_trace_valid  = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_valid : 1'b0;
     assign dut_cpu_trace_pc     = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_iaddr : '0;
