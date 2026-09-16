@@ -6,8 +6,8 @@ SHELL := /usr/bin/env
 #
 # SEP Boot ROM.
 #
-# SPI is stubbed (src/sep_spi.c): the `sep` DUT has no Cadence xSPI, so the ROM
-# skips the SPI manifest and boots from the SMC-SRAM manifest path.  The
+# SPI is stubbed (src/sep_spi.c): the `sep` DUT has no integrated xSPI controller,
+# so the ROM skips the SPI manifest and boots from the SMC-SRAM manifest path. The
 # manifest+BL1 image it boots is built from source here -- bl1_pass_test is
 # compiled and packed by tt-boot-manifest from configs/non_secure_boot_test.yaml,
 # then rebased to the SMC-SRAM base.
@@ -57,9 +57,9 @@ PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0
 BUILD_TYPE ?= test
 
-# SPI flash transport selection. 0 = Cadence xSPI (default, memory-mapped XIP),
-# 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is dropped
-# by --gc-sections at link time.
+# SPI flash transport selection. 0 = integrated xSPI controller (memory-mapped
+# XIP), 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is
+# dropped by --gc-sections at link time.
 BOOT_SPI_CONTROLLER_OT ?= 0
 # OpenTitan RX-FIFO drain method (used only when BOOT_SPI_CONTROLLER_OT=1):
 # 0 = secure DMA (default), 1 = CPU programmed I/O.
@@ -109,10 +109,8 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
-# Optional extra sources injected by a nonfree overlay build (absolute .c paths).
-# Their strong symbols override the weak stubs in src/ at link time (e.g. a
-# companion-supplied SPI controller driver overriding the weak src/sep_spi.c
-# stub). Same pattern as the SMC prod ROM's NONFREE_DRIVER_SOURCES.
+# Optional extra source paths. Their strong symbols override weak stubs in src/,
+# such as an SPI controller driver replacing src/sep_spi.c.
 NONFREE_BOOTCODE_SOURCES ?=
 NONFREE_BOOTCODE_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(NONFREE_BOOTCODE_SOURCES)))
 OBJS += $(NONFREE_BOOTCODE_OBJS)
@@ -122,7 +120,7 @@ OBJS += $(NONFREE_BOOTCODE_OBJS)
 CC_ABI   := -march=rv32im_zicsr_zifencei -mabi=ilp32
 # The generated register headers need <assert.h> for their packing checks, which
 # is not freestanding and only resolves through picolibc's spec file.
-CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
+CFLAGS   := -Os -g -gdwarf-4 -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
 	--specs=picolibc.specs \
 	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
@@ -132,7 +130,7 @@ CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections 
 	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
 	$(CC_ABI)
-ASFLAGS  := -x assembler-with-cpp -mno-relax -I$(INCLUDE_DIR) $(REG_INCLUDE_DIRS) \
+ASFLAGS  := -x assembler-with-cpp -g -gdwarf-4 -mno-relax -I$(INCLUDE_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) \
 	$(CC_ABI)
 LDFLAGS  := -nostdlib -Wl,--gc-sections -Wl,--no-relax -T $(LINK_DIR)/rom.ld $(CC_ABI)
@@ -158,14 +156,10 @@ ot-pio-toolchain-images:
 	$(MAKE) BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 \
 		toolchain-images
 
-# Split by tool dependency so callers can run each half in the right environment:
-# toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
-# container), while pack-images is pure Python and needs cryptography +
-# ruamel.yaml, which the container image does not carry. The companion's SEP
-# firmware build script drives the two halves this way.
-#
-# Direct `make toolchain-images` uses only an explicit RISCV_TOOLCHAIN on the
-# host. Otherwise it runs the compiler-dependent half in the OCAH container.
+# Split by dependency: toolchain-images requires the RISC-V/picolibc toolchain,
+# while pack-images requires host Python packages absent from the toolchain
+# container. Callers must run each target in its required environment.
+# Direct toolchain builds use RISCV_TOOLCHAIN or scripts/docker-run.sh.
 OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 
 toolchain-images:
