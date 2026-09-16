@@ -416,8 +416,7 @@ class _CpuIsolateFlushSeq(output_fabric_pass_all_cfg_seq):
             id=2,
         )
         assert result.data == expected, (
-            f"L2 recovery read returned 0x{result.data:016x}, "
-            f"expected 0x{expected:016x}"
+            f"L2 recovery read returned 0x{result.data:016x}, expected 0x{expected:016x}"
         )
         self.contracts.add("l2_read_recovered")
 
