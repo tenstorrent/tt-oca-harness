@@ -39,8 +39,11 @@ class smu_no_sep_configuration_test_seq:
     """SMU_005: SEP=0 lc_state composition and SMC-to-external egress."""
 
     LC_STABLE_CYCLES = 16
-    EXPECTED_TIMEOUT_PATHS = 3
+    EXPECTED_TIMEOUT_PATHS = 2
     EGRESS_POLL_CYCLES = 2000
+    # The block bench counts outbound AW handshakes above the DUT; there is no
+    # read counter, so the read leg is proven by the pattern coming back.
+    EGRESS_WRITE_COUNTER = "smu_axi_out_awvalid_count"
 
     def __init__(self, test) -> None:
         self.test = test
@@ -97,15 +100,14 @@ class smu_no_sep_configuration_test_seq:
         idcode = await jtag.read_idcode()
         sb.expect_eq("CHK-SEP0-EGRESS-TAP idcode", idcode, DTP_DEFAULT_IDCODE)
 
-        wr_base = self._sample(dut.smu_axi_out_write_count_o, "smu_axi_out_write_count_o")
-        rd_base = self._sample(dut.smu_axi_out_read_count_o, "smu_axi_out_read_count_o")
+        wr_base = self._sample(getattr(dut, self.EGRESS_WRITE_COUNTER), self.EGRESS_WRITE_COUNTER)
 
         st_wr, _ = await jtag2axi_single_write(
             jtag, EXT_EGRESS_ADDR, EXT_EGRESS_PATTERN, wstrb=0xFF, require_complete=True
         )
         sb.expect_eq("CHK-SEP0-EGRESS-WR status", st_wr, J2A_STATUS_SUCCESS)
         wr_count = await self._await_counter(
-            "smu_axi_out_write_count_o", baseline=wr_base, label="s3_egress_write_count"
+            self.EGRESS_WRITE_COUNTER, baseline=wr_base, label="s3_egress_write_count"
         )
         sb.expect_eq("CHK-SEP0-EGRESS-WR left the chiplet", wr_count, wr_base + 1)
 
@@ -117,13 +119,7 @@ class smu_no_sep_configuration_test_seq:
             EXT_EGRESS_PATTERN,
             evidence="CHK-SEP0-EGRESS",
         )
-        rd_count = await self._await_counter(
-            "smu_axi_out_read_count_o", baseline=rd_base, label="s3_egress_read_count"
-        )
-        self._log(
-            f"CHK-SEP0-EGRESS: write_count {wr_base}->{wr_count} read_count "
-            f"{rd_base}->{rd_count} data=0x{int(rdata):016x}"
-        )
+        self._log(f"CHK-SEP0-EGRESS: write_count {wr_base}->{wr_count} data=0x{int(rdata):016x}")
 
     async def run(self) -> None:
         dut = self.dut

@@ -279,24 +279,6 @@ metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_clkstop_fcov.c_stop_clks_released"
 
 [[holes]]
-id = "fcov-smu_block-c_jtag2axi_write_reaches_smc_csr"
-title = "c jtag2axi write reaches smc csr"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_dbg_fcov.c_jtag2axi_write_reaches_smc_csr"
-
-[[holes]]
 id = "fcov-smu_block-c_smc_otp_read_response_returned"
 title = "c smc otp read response returned"
 category = "config_disabled"
@@ -333,24 +315,6 @@ metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_dbg_fcov.c_smc_otp_write_response_returned"
 
 [[holes]]
-id = "fcov-smu_block-c_inbound_id_width_8"
-title = "c inbound id width 8"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_ext_fcov.c_inbound_id_width_8"
-
-[[holes]]
 id = "fcov-smu_block-c_mailbox_irq_out_width_32"
 title = "c mailbox irq out width 32"
 category = "config_disabled"
@@ -367,24 +331,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_ext_fcov.c_mailbox_irq_out_width_32"
-
-[[holes]]
-id = "fcov-smu_block-c_outbound_id_width_10"
-title = "c outbound id width 10"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-EXT-SMN.S4:outbound_id_width_10)"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_ext_fcov.g_nosep.c_outbound_id_width_10"
 
 [[holes]]
 id = "fcov-smu_block-c_smc_efuse_bank_ctrl_response_returned"
@@ -405,24 +351,6 @@ metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_ext_fcov.c_smc_efuse_bank_ctrl_response_returned"
 
 [[holes]]
-id = "fcov-smu_block-c_nosep_ext_to_smc_read"
-title = "c nosep ext to smc read"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_nosep_fcov.c_nosep_ext_to_smc_read"
-
-[[holes]]
 id = "fcov-smu_block-c_nosep_ext_to_smc_write"
 title = "c nosep ext to smc write"
 category = "config_disabled"
@@ -439,24 +367,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_nosep_fcov.c_nosep_ext_to_smc_write"
-
-[[holes]]
-id = "fcov-smu_block-c_nosep_smc_to_ext_write"
-title = "c nosep smc to ext write"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-NOSEP.S1:nosep_smc_to_ext_write)"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_nosep_fcov.c_nosep_smc_to_ext_write"
 
 [[holes]]
 id = "fcov-smu_block-c_cold_reset_async_assert_without_clock"
@@ -531,24 +441,6 @@ metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_rst_fcov.c_reset_release_after_boot_seq_done"
 
 [[holes]]
-id = "fcov-smu_block-c_axi_in_ar_accept"
-title = "c axi in ar accept"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_ar_accept"
-
-[[holes]]
 id = "fcov-smu_block-c_axi_in_ar_stall"
 title = "c axi in ar stall"
 category = "missing_stimulus"
@@ -567,24 +459,6 @@ metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_ar_stall"
 
 [[holes]]
-id = "fcov-smu_block-c_axi_in_aw_accept"
-title = "c axi in aw accept"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_aw_accept"
-
-[[holes]]
 id = "fcov-smu_block-c_axi_in_aw_stall"
 title = "c axi in aw stall"
 category = "missing_stimulus"
@@ -601,24 +475,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_aw_stall"
-
-[[holes]]
-id = "fcov-smu_block-c_axi_in_bresp_decerr"
-title = "c axi in bresp decerr"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_bresp_decerr"
 
 [[holes]]
 id = "fcov-smu_block-c_axi_in_bresp_exokay"
@@ -675,42 +531,6 @@ metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_bresp_slverr"
 
 [[holes]]
-id = "fcov-smu_block-c_axi_in_r_last"
-title = "c axi in r last"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_r_last"
-
-[[holes]]
-id = "fcov-smu_block-c_axi_in_rresp_decerr"
-title = "c axi in rresp decerr"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_rresp_decerr"
-
-[[holes]]
 id = "fcov-smu_block-c_axi_in_rresp_exokay"
 title = "c axi in rresp exokay"
 category = "missing_stimulus"
@@ -729,24 +549,6 @@ metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_rresp_exokay"
 
 [[holes]]
-id = "fcov-smu_block-c_axi_in_rresp_okay"
-title = "c axi in rresp okay"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_rresp_okay"
-
-[[holes]]
 id = "fcov-smu_block-c_axi_in_rresp_slverr"
 title = "c axi in rresp slverr"
 category = "missing_stimulus"
@@ -763,24 +565,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_rresp_slverr"
-
-[[holes]]
-id = "fcov-smu_block-c_axi_in_w_last"
-title = "c axi in w last"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_axi_in_w_last"
 
 [[holes]]
 id = "fcov-smu_block-c_axil_external_active"
@@ -835,40 +619,3 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_map_smc_size_zero"
-
-[[holes]]
-id = "fcov-smu_block-c_no_route_ext_in_to_ext_out"
-title = "c no route ext in to ext out"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_no_route_ext_in_to_ext_out"
-
-[[holes]]
-id = "fcov-smu_block-c_route_inbound_not_forwarded"
-title = "c route inbound not forwarded"
-category = "config_disabled"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "hit on another elaboration or bench of this DUT; the stimulus that reaches it does not run on the graded configuration"
-owner = "smu-dv"
-reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_xbar_fcov.c_route_inbound_not_forwarded"
-
