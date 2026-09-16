@@ -1444,6 +1444,23 @@ args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
+[[tests]]
+name = "smu_periph_ext_window_test"
+module = "smu_periph_ext_window_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "efuse", "no_sep", "smc", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the shim CSR is read over J2A, no eFuse word is sensed.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+]
+
 [[groups]]
 name = "smc_under_smu"
 tests = [
@@ -1452,6 +1469,7 @@ tests = [
   "smu_i3c_mem_port_connectivity_test",
   "smu_ic_reset_ss_domain_matrix_test",
   "smu_no_sep_configuration_test",
+  "smu_periph_ext_window_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
   "smu_smc_reset_ctrl_test",
@@ -2258,6 +2276,7 @@ tests = [
   "smu_jtag_reset_override_test",
   "smu_no_sep_configuration_test",
   "smu_otp_vs_fabric_map_race_test",
+  "smu_periph_ext_window_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
@@ -2277,7 +2296,7 @@ tests = [
   "smu_sram_auto_init_done_test",
   "smu_smc_fuse_sense_sequence_test",
 ]
-expected_count = 58
+expected_count = 59
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2358,6 +2377,7 @@ tests = [
   "smu_jtag_reset_override_test",
   "smu_no_sep_configuration_test",
   "smu_otp_vs_fabric_map_race_test",
+  "smu_periph_ext_window_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
@@ -2382,7 +2402,7 @@ tests = [
   "smu_smc_fuse_sense_sequence_test",
   "smu_sep_fuse_sense_done_test",
 ]
-expected_count = 91
+expected_count = 92
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
