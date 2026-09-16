@@ -210,15 +210,14 @@ done
 
 # --- compat pages: HTML-only redirects for old fragment URLs. Staged into
 #     ip/pages/ so the old URL path still resolves; absent from PDF assembly. ---
-COMPAT="$DOC/trm/compat"
 for ip in $IP_PAGE_OWNERS; do
-  src="$COMPAT/ip/$ip/doc"
+  src="$DOC/trm/ip/$ip/doc"
   dst="$MOD/ip/pages/$ip/doc"
   [ -d "$src" ] && stage_adoc_tree "$src" "$dst"
 done
 # DTP port_table compat page (old dtp/pages/port_table.adoc path).
-if [ -f "$COMPAT/dtp/port_table.adoc" ]; then
-  cp -f "$COMPAT/dtp/port_table.adoc" "$MOD/dtp/pages/port_table.adoc"
+if [ -f "$DOC/trm/dtp/port_table.adoc" ]; then
+  cp -f "$DOC/trm/dtp/port_table.adoc" "$MOD/dtp/pages/port_table.adoc"
 fi
 
 # --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
