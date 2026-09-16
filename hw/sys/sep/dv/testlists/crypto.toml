@@ -91,7 +91,11 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 name = "sep_drbg_gen_segmentation_test"
 module = "crypto.sep_drbg_gen_segmentation_test"
 seed = 1
-timeout_sec = 1800
+# The leaf waits for two completed Generate commands so a golden-compared block
+# lands after a trailing Update boundary. At the measured rate that is about
+# 2.2 ms of sim against 1.4 ms for one command, so the ceiling is raised with
+# margin for a slow seed.
+timeout_sec = 3600
 tags = ["drbg", "entropy", "crypto", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"

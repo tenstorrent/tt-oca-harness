@@ -38,6 +38,15 @@ from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 # so a command still spans multiple beats (glen=1 would make every beat a
 # boundary and hide an off-by-one in the countdown).
 SEGMENTATION_GLEN = 4
+# Poll window for completed Generate commands. Sized from the measured rate --
+# about one command per 1.1 ms of sim at glen=4 -- so two commands have room to
+# land with margin. Two is the floor the Update-boundary claim needs.
+POLL_ITERATIONS = 1200
+POLL_CYCLES = 200
+# Two completed commands is the floor: the trailing Update fires after the last
+# block of a command, so one command never puts a golden-compared block on the
+# far side of a boundary.
+MIN_COMPLETED_COMMANDS = 2
 
 
 @pyuvm.test()
@@ -77,15 +86,28 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         # Keep draining until several Generate commands have had time to finish.
         # At glen=4 the usual block budget spans multiple commands, so this is
         # about letting them land, not about stretching the run.
+        #
+        # The window must cover at least TWO completed commands, not one. The
+        # trailing CTR_DRBG Update fires after the last block of a command, so a
+        # run that completes a single command never compares a golden-predicted
+        # block on the far side of an Update boundary -- which is the contract
+        # CHK1..CHK4 claim to hold across. Measured rate is about one command per
+        # 1.1 ms of sim at this glen, entropy-limited rather than demand-limited
+        # (the FIFO drain above is already running), so the bound is time.
         sb = self.drbg_sb
-        target_blocks = SEGMENTATION_GLEN * 5
-        for _ in range(400):
+        # Exit as soon as the boundary claim is satisfiable -- two completed
+        # commands, and the blocks they carry. A higher block target is not worth
+        # waiting for: at the measured rate it is several more milliseconds of
+        # sim for no extra contract, and the loop would burn the whole window
+        # every run.
+        target_blocks = SEGMENTATION_GLEN * MIN_COMPLETED_COMMANDS
+        for _ in range(POLL_ITERATIONS):
             if (
                 sb.results["CHK4_genbits"].dut_items >= target_blocks
-                and sum(sb.completed_generate_lengths().values()) >= 2
+                and sum(sb.completed_generate_lengths().values()) >= MIN_COMPLETED_COMMANDS
             ):
                 break
-            await ClockCycles(cocotb.top.clk_i, 200)
+            await ClockCycles(cocotb.top.clk_i, POLL_CYCLES)
 
         await self.check_entropy_alerts_zero()
         await self.stop_fifo_drain()
@@ -100,6 +122,20 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
             f"{sb.open_generate_remaining()} left in the open command). gen_last was never "
             f"seen asserted, so this test did not exercise what it exists for."
         )
+        # Two completed commands are what puts a golden-compared block after an
+        # Update boundary. One command leaves the trailing Update unobserved: its
+        # only effect is on state nothing reads out again, so an Update that ran
+        # wrongly or did not run at all produces the same PASS. If this fires,
+        # the window was not the limit and the claim needs narrowing instead --
+        # do not raise the bound further without checking the rate in the log.
+        assert completed >= MIN_COMPLETED_COMMANDS, (
+            f"only {completed} Generate command(s) completed in "
+            f"{POLL_ITERATIONS * POLL_CYCLES} cycles, so no genbits block was "
+            f"compared across a trailing CTR_DRBG Update boundary "
+            f"({sb.results['CHK4_genbits'].dut_items} genbits observed). "
+            f"CHK1..CHK4 claim bit-exactness across that boundary and this run "
+            f"cannot support it."
+        )
         # Every completed command must be exactly glen blocks. report() also
         # checks this against legal_gen_lengths; assert here so the failure names
         # the segmentation contract directly rather than a generic scoreboard error.
@@ -109,10 +145,10 @@ class sep_drbg_gen_segmentation_test(sep_base_test):
         )
         self.logger.info(
             "CHK4-SEGMENTATION PASS: %d Generate command(s) completed, each exactly "
-            "%d blocks; trailing CTR_DRBG Update exercised %d time(s)",
+            "%d blocks, so at least one golden-compared block landed after a "
+            "trailing Update boundary",
             completed,
             SEGMENTATION_GLEN,
-            completed,
         )
 
         # Bit-exactness across those Update boundaries is the actual regression
