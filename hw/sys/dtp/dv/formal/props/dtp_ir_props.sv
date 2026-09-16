@@ -138,31 +138,43 @@ module dtp_ir_props
 
   // The selects of the registers with state of their own; the bypass select stands apart.
   logic [14:0] reg_selects;
-  assign reg_selects = {inv_byp_sel_i, idcode_sel_i, tap_3dcr_sel_i,
-                        tmp_status_sel_i, ic_reset_sel_i, debug_ctrl_sel_i, caps_sel_i,
-                        smc_otp_caps_sel_i, sep_otp_caps_sel_i, smc_caps_sel_i,
-                        smc_otp_j2a_sel_i, sep_otp_j2a_sel_i, smc_j2a_sel_i,
-                        bsr_sel_i, ijtag_sel_i};
+  assign reg_selects = {
+    inv_byp_sel_i,
+    idcode_sel_i,
+    tap_3dcr_sel_i,
+    tmp_status_sel_i,
+    ic_reset_sel_i,
+    debug_ctrl_sel_i,
+    caps_sel_i,
+    smc_otp_caps_sel_i,
+    sep_otp_caps_sel_i,
+    smc_caps_sel_i,
+    smc_otp_j2a_sel_i,
+    sep_otp_j2a_sel_i,
+    smc_j2a_sel_i,
+    bsr_sel_i,
+    ijtag_sel_i
+  };
 
   // The register a DR scan reads at TDO under each instruction.
   logic tdr_route;
   always_comb begin
-    if (|(inst_bits & BYPASS_USERS_MASK))       tdr_route = byp_scan_out_i;
-    else if (inst_i[IDCODE_INSTR])              tdr_route = idcode_scan_out_i;
-    else if (inst_i[INV_BYPASS_INSTR])          tdr_route = inv_byp_scan_out_i;
-    else if (inst_i[TAP_3DCR_INSTR])            tdr_route = tap_3dcr_scan_out_i;
-    else if (inst_i[TMP_STATUS_INSTR])          tdr_route = tmp_status_scan_out_i;
-    else if (inst_i[IC_RESET_INSTR])            tdr_route = ic_reset_scan_out_i;
-    else if (inst_i[DEBUG_CONTROL_INSTR])       tdr_route = debug_ctrl_scan_out_i;
-    else if (inst_i[JTAG_CAPS_INSTR])           tdr_route = caps_scan_out_i;
+    if (|(inst_bits & BYPASS_USERS_MASK)) tdr_route = byp_scan_out_i;
+    else if (inst_i[IDCODE_INSTR]) tdr_route = idcode_scan_out_i;
+    else if (inst_i[INV_BYPASS_INSTR]) tdr_route = inv_byp_scan_out_i;
+    else if (inst_i[TAP_3DCR_INSTR]) tdr_route = tap_3dcr_scan_out_i;
+    else if (inst_i[TMP_STATUS_INSTR]) tdr_route = tmp_status_scan_out_i;
+    else if (inst_i[IC_RESET_INSTR]) tdr_route = ic_reset_scan_out_i;
+    else if (inst_i[DEBUG_CONTROL_INSTR]) tdr_route = debug_ctrl_scan_out_i;
+    else if (inst_i[JTAG_CAPS_INSTR]) tdr_route = caps_scan_out_i;
     else if (inst_i[SMC_OTP_JTAG2AXI_CAPS_INSTR]) tdr_route = smc_otp_caps_scan_out_i;
     else if (inst_i[SEP_OTP_JTAG2AXI_CAPS_INSTR]) tdr_route = sep_otp_caps_scan_out_i;
-    else if (inst_i[SMC_JTAG2AXI_CAPS_INSTR])   tdr_route = smc_caps_scan_out_i;
-    else if (|(inst_bits & SMC_OTP_AXI_MASK))   tdr_route = smc_otp_j2a_scan_out_i;
-    else if (|(inst_bits & SEP_OTP_AXI_MASK))   tdr_route = sep_otp_j2a_scan_out_i;
-    else if (|(inst_bits & SMC_AXI_MASK))       tdr_route = smc_j2a_scan_out_i;
-    else if (|(inst_bits & BSR_MASK))           tdr_route = bsr_scan_in_i;
-    else                                        tdr_route = ijtag_scan_in_i;
+    else if (inst_i[SMC_JTAG2AXI_CAPS_INSTR]) tdr_route = smc_caps_scan_out_i;
+    else if (|(inst_bits & SMC_OTP_AXI_MASK)) tdr_route = smc_otp_j2a_scan_out_i;
+    else if (|(inst_bits & SEP_OTP_AXI_MASK)) tdr_route = sep_otp_j2a_scan_out_i;
+    else if (|(inst_bits & SMC_AXI_MASK)) tdr_route = smc_j2a_scan_out_i;
+    else if (|(inst_bits & BSR_MASK)) tdr_route = bsr_scan_in_i;
+    else tdr_route = ijtag_scan_in_i;
   end
 
   // Each TDR is selected exactly while the DR path is selected under its own instruction.

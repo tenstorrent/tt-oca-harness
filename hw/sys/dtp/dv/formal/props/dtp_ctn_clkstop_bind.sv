@@ -5,7 +5,7 @@
 // signals reach the property module through this port list only; the RTL carries no properties.
 
 bind ctn_clock_stop_ctrl dtp_ctn_clkstop_props #(
-  .NUM_CLK_STOP_REQ (NUM_CLK_STOP_REQ)
+  .NUM_CLK_STOP_REQ(NUM_CLK_STOP_REQ)
 ) u_dtp_ctn_clkstop_props (
   .clk_i             (clk_i),
   .rst_ni            (rst_ni),

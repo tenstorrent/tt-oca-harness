@@ -79,7 +79,7 @@ module dtp_ctn_csr_props
 
   // Address of the write and of the read in flight, recorded at the address handshake.
   logic [31:0] wr_addr_q, rd_addr_q;
-  logic        wr_pending_q, rd_pending_q;
+  logic wr_pending_q, rd_pending_q;
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       wr_addr_q    <= '0;
@@ -135,15 +135,20 @@ module dtp_ctn_csr_props
 
   // Every crossbar master port carries a request only while the subordinate port does, and only
   // the port the address map names.
+  logic aw_mapped, ar_mapped;
+  int unsigned aw_port, ar_port;
+  assign aw_mapped = req_i.aw_valid && mapped(req_i.aw.addr);
+  assign ar_mapped = req_i.ar_valid && mapped(req_i.ar.addr);
+  assign aw_port   = port_of(req_i.aw.addr);
+  assign ar_port   = port_of(req_i.ar.addr);
+
   logic aw_routed_alone, ar_routed_alone;
   always_comb begin
     aw_routed_alone = 1'b1;
     ar_routed_alone = 1'b1;
     for (int unsigned p = 0; p < NUM_MST; p++) begin
-      aw_routed_alone &= !mst_req_i[p].aw_valid ||
-                         (req_i.aw_valid && mapped(req_i.aw.addr) && port_of(req_i.aw.addr) == p);
-      ar_routed_alone &= !mst_req_i[p].ar_valid ||
-                         (req_i.ar_valid && mapped(req_i.ar.addr) && port_of(req_i.ar.addr) == p);
+      aw_routed_alone &= !mst_req_i[p].aw_valid || (aw_mapped && aw_port == p);
+      ar_routed_alone &= !mst_req_i[p].ar_valid || (ar_mapped && ar_port == p);
     end
   end
 

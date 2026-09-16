@@ -5,7 +5,7 @@
 // reach the property module through this port list only; the RTL carries no properties.
 
 bind jtag_ptap dtp_reset_props #(
-  .NUM_IC_RESET (NUM_IC_RESET)
+  .NUM_IC_RESET(NUM_IC_RESET)
 ) u_dtp_reset_props (
   .tck_i              (client_tap_ctrl_i.tck),
   .client_trst_ni     (client_tap_ctrl_i.trst_n),

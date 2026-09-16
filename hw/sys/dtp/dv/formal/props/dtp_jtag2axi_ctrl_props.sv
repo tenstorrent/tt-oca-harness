@@ -60,20 +60,20 @@ module dtp_jtag2axi_ctrl_props #(
 );
 
   // axi_state_e encodings of jtag2axi.
-  localparam logic [2:0] IDLE          = 3'd0;
-  localparam logic [2:0] SEND_ADDR_W   = 3'd1;
-  localparam logic [2:0] SEND_DATA_W   = 3'd2;
-  localparam logic [2:0] WAIT_BRESP    = 3'd3;
-  localparam logic [2:0] SEND_ADDR_R   = 3'd4;
-  localparam logic [2:0] WAIT_RDATA    = 3'd5;
+  localparam logic [2:0] IDLE = 3'd0;
+  localparam logic [2:0] SEND_ADDR_W = 3'd1;
+  localparam logic [2:0] SEND_DATA_W = 3'd2;
+  localparam logic [2:0] WAIT_BRESP = 3'd3;
+  localparam logic [2:0] SEND_ADDR_R = 3'd4;
+  localparam logic [2:0] WAIT_RDATA = 3'd5;
   localparam logic [2:0] UPDATE_STATUS = 3'd6;
 
-  localparam logic [1:0] OP_READ  = 2'b01;
+  localparam logic [1:0] OP_READ = 2'b01;
   localparam logic [1:0] OP_WRITE = 2'b10;
 
   localparam logic [1:0] STATUS_SUCCESS = 2'b00;
-  localparam logic [1:0] STATUS_SLVERR  = 2'b01;
-  localparam logic [1:0] STATUS_DECERR  = 2'b10;
+  localparam logic [1:0] STATUS_SLVERR = 2'b01;
+  localparam logic [1:0] STATUS_DECERR = 2'b10;
 
   localparam logic [1:0] OUTSTANDING_MAX = 2'b11;
 

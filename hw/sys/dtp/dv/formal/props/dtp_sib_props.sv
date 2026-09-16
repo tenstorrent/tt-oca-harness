@@ -14,8 +14,7 @@
 
 `include "ocah_fv_macros.svh"
 
-module dtp_sib_props
-#(
+module dtp_sib_props #(
   parameter int unsigned NUM_SIBS = 3
 ) (
   input logic                tck_i,                // ptap_ijtag_host_scan_ctrl.tck

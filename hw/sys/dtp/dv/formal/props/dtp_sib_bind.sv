@@ -6,7 +6,7 @@
 // reach the property module through this port list only; the RTL carries no properties.
 
 bind jtag_intf_unit dtp_sib_props #(
-  .NUM_SIBS (3)
+  .NUM_SIBS(3)
 ) u_dtp_sib_props (
   .tck_i               (ptap_ijtag_host_scan_ctrl.tck),
   .rst_ni              (ptap_ijtag_host_scan_ctrl.rst_n),
