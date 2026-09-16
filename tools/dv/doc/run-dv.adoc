@@ -565,12 +565,12 @@ given and is dropped otherwise, so a two-token flag stays intact.
 
 [source,toml]
 ----
-[formal.apps.fpv.sby]
+[formal.apps.tap_fpv.sby]
 cwd = "formal/fpv/sby"
 script = "dtp.sby"
-args = ["bmc", "cover"]
+args = ["tap_bmc", "tap_cover"]
 
-[formal.apps.fpv.<tool>]
+[formal.apps.tap_fpv.<tool>]
 argv = ["{binary}", ["-depth", "{proof_depth}"], "{script}", "{formal_args}"]
 ----
 
@@ -666,8 +666,8 @@ a `formal` object:
 "formal": {
   "grader": "sby-summary",
   "tasks": [
-    {"name": "bmc", "mode": "bmc", "status": "PASS", "return_code": 0,
-     "workdir": "hw/sys/dtp/dv/build/runs/<run>/stages/formal/dtp_fpv_bmc",
+    {"name": "tap_bmc", "mode": "bmc", "status": "PASS", "return_code": 0,
+     "workdir": "hw/sys/dtp/dv/build/runs/<run>/stages/formal/dtp_tap_fpv_tap_bmc",
      "proven": 11, "failed": 0, "inconclusive": 0, "covered": 0, "unreached": 0}
   ],
   "proven": 11, "failed": 0, "inconclusive": 0, "covered": 6, "unreached": 0
@@ -970,7 +970,8 @@ and solver requirements; a pip-only `sby` without a solver runs `bmc` and
 python3 tools/dv/run_dv.py --list                              # the `dtp fv` row: the formal view and its tools
 python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run   # the planned stages and the rendered sby command
 python3 tools/dv/run_dv.py --dut dtp --mode formal             # the `smoke` group: dtp_tap_fpv
-python3 tools/dv/run_dv.py --dut dtp --mode formal --items dtp_tap_fpv --app fpv
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items fpv # every item of the plan
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items dtp_tap_fpv --app tap_fpv
 ----
 
 The `flist` stage writes the Bender filelist the task file reads through its
@@ -978,7 +979,8 @@ The `flist` stage writes the Bender filelist the task file reads through its
 one `sby` invocation from the app's `cwd`, the directory holding the task
 file. Under `<run>/stages/formal/` the run leaves `logs/<item>.log`, the
 replay script `scripts/formal.<item>.sh`, the `env/` snapshot, and one work
-directory per task, `<item>_<task>/`, holding the model, the engine log, the
+directory per task, `<item>_<task>/` (`dtp_tap_fpv_tap_bmc` for the TAP
+block's `bmc` task), holding the model, the engine log, the
 `status` file, the JUnit report, and on a counterexample
 `engine_0/trace.vcd`; a reached cover writes its trace the same way inside
 the `cover` task's directory. The console ends with the item status and the
@@ -1050,8 +1052,8 @@ and on licensed backends alike. The rules a contributor meets first:
   `asm_`, or `cov_` (Attaching a property module, Labels).
 * *Reset and clocks.* An `asm_initial_reset` holds the reset in the first
   cycle; a DUT clocked on both edges of one clock models its clocks explicitly
-  under `multiclock on` with an environment module for the free asynchronous
-  resets (Reset and history, Clock modelling).
+  under `multiclock on` with an environment module that asserts and then
+  releases the asynchronous resets (Reset and history, Clock modelling).
 * *Layout.* `<dut-dv-root>/formal/props/` holds the property and bind files,
   `formal/<app>/sby/` the task file and the reset environment,
   `formal/build/` the generated filelist and work directories (Layout under

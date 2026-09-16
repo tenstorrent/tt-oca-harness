@@ -88,9 +88,14 @@ vendor/**/Bender.lock
 # build/log trees, and cached cycle counts (e.g. hw/ip/key_manager/dv/tb).
 **/dv/tb/rtl.f
 **/dv/tb/tb.f
+**/dv/tb/i3ccore_filelist.f
 **/dv/tb/sim/
 **/dv/tb/cycle_counts/
 **/dv/tb/ucli.key
+
+# Local bring-up notes: these record host-specific tool paths and license
+# server settings, so they stay on the machine that produced them.
+**/BRINGUP_STATUS.md
 
 # Nonfree EDA flow bridge and transient outputs at the harness root:
 # block_flow_customizations is a symlink into nonfree/ (created by
@@ -100,6 +105,7 @@ vendor/**/Bender.lock
 /customer_smu.f
 /sim_build_xrun/
 /sim_build/
+/hw/ip/i3ccore_wrap/dv/tb/sim_build/
 /flow_runs/
 /flow_runs_*.tar.gz
 /packaged_ip/
