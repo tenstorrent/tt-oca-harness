@@ -1,0 +1,56 @@
+{
+  "aggregate": {
+    "flows": {
+      "failing": 1,
+      "pass_rate": 0.0,
+      "passing": 0,
+      "total": 1,
+      "unknown": 0
+    },
+    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/jenkins-out/dashboard-data/history.json",
+    "history_points": 1,
+    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/jenkins-out/dashboard-data/summary.json",
+    "tests": {
+      "failing": 1,
+      "incomplete_runs": 0,
+      "pass_rate": 50.0,
+      "passing": 1,
+      "skipped": 0,
+      "total": 2,
+      "unknown": 0
+    }
+  },
+  "errors": [
+    "dtp: runner rc=1",
+    "dtp: native status=FAIL",
+    "dtp: normalized status=FAIL"
+  ],
+  "generated_at": "2026-09-16T23:47:27.352849+00:00",
+  "git": {
+    "commit": "66ec016ab49edf19f044fc222fe3e3ffee681349",
+    "requested_ref": "66ec016ab49edf19f044fc222fe3e3ffee681349"
+  },
+  "jenkins": {
+    "build_number": "1",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/just_for_test/1/",
+    "job_name": "tt-oca-harness/dtp/just_for_test",
+    "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/just_for_test/"
+  },
+  "matrix": [
+    {
+      "collector_rc": 0,
+      "framework": "cocotb",
+      "group": "smoke",
+      "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/jenkins-out/runs/dtp/result.json",
+      "native_status": "FAIL",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/jenkins-out/dashboard-data/dtp.result.json",
+      "normalized_status": "FAIL",
+      "profile": "dtp",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/jenkins-out/runs/dtp",
+      "runner_rc": 1,
+      "tool": "vcs"
+    }
+  ],
+  "schema_version": 1,
+  "status": "FAIL"
+}
