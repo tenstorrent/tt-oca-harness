@@ -425,3 +425,332 @@ tool = "verilator"
 metric_family = "user"
 hierarchy = "smu_wrapper_uvm_top.u_smu_xbar_fcov.c_route_inbound_forwarded"
 
+
+# Toggle: SEP-facing ports of the wrapper on the SEP=0 target. The subsystem is
+# absent from this elaboration, so these ports are tied off and no bit of them
+# can toggle; they are graded on the SEP=1 target. Ports that a terminator does
+# drive on SEP=0 (the *_resp / *_rsp groups with covered bits) are not listed.
+
+[[holes]]
+id = "toggle-smu-sep0-sep_external_req"
+title = "sep external req toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_external_req faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 508
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 376
+
+[[holes]]
+id = "toggle-smu-sep0-sep_cpu_tcm_rsp"
+title = "sep cpu tcm rsp toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_cpu_tcm_rsp faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 468
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 364
+
+[[holes]]
+id = "toggle-smu-sep0-sep_ext_interrupts_i"
+title = "sep ext interrupts i toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_ext_interrupts_i faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 424
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 249
+
+[[holes]]
+id = "toggle-smu-sep0-sep_sram_req"
+title = "sep sram req toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_sram_req faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 224
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 359
+
+[[holes]]
+id = "toggle-smu-sep0-sep_boot_rom_req"
+title = "sep boot rom req toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_boot_rom_req faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 224
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 361
+
+[[holes]]
+id = "toggle-smu-sep0-sep_efuse_bank_ctrl_req"
+title = "sep efuse bank ctrl req toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_efuse_bank_ctrl_req faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 222
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 341
+
+[[holes]]
+id = "toggle-smu-sep0-sep_cpu_trace_o"
+title = "sep cpu trace o toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_cpu_trace_o faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 208
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 245
+
+[[holes]]
+id = "toggle-smu-sep0-sep_crypto_pka_imem_sram_req"
+title = "sep crypto pka imem sram req toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_crypto_pka_imem_sram_req faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 186
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 366
+
+[[holes]]
+id = "toggle-smu-sep0-sep_global_base_o"
+title = "sep global base o toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_global_base_o faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 112
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 182
+
+[[holes]]
+id = "toggle-smu-sep0-sep_region_size_o"
+title = "sep region size o toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_region_size_o faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 112
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 183
+
+[[holes]]
+id = "toggle-smu-sep0-sep_crypto_pka_imem_sram_rsp"
+title = "sep crypto pka imem sram rsp toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_crypto_pka_imem_sram_rsp faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 80
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 367
+
+[[holes]]
+id = "toggle-smu-sep0-sep_efuse_shim_command_resp"
+title = "sep efuse shim command resp toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_efuse_shim_command_resp faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 68
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 344
+
+[[holes]]
+id = "toggle-smu-sep0-sep_efuse_shim_command_req"
+title = "sep efuse shim command req toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_efuse_shim_command_req faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 52
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 343
+
+[[holes]]
+id = "toggle-smu-sep0-sep_efuse_debug_bus_o"
+title = "sep efuse debug bus o toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_efuse_debug_bus_o faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 32
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 278
+
+[[holes]]
+id = "toggle-smu-sep0-sep_io_spi_req_o"
+title = "sep io spi req o toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_io_spi_req_o faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 30
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 238
+
+[[holes]]
+id = "toggle-smu-sep0-sep_lockstep_ctrl_i"
+title = "sep lockstep ctrl i toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_lockstep_ctrl_i faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 4
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 246
+
+[[holes]]
+id = "toggle-smu-sep0-sep_lockstep_status_o"
+title = "sep lockstep status o toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_lockstep_status_o faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 2
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 247
+
+[[holes]]
+id = "toggle-smu-sep0-sep_fuse_sense_done_o"
+title = "sep fuse sense done o toggle on the SEP=0 target"
+category = "config_disabled"
+disposition = "exclude_scope"
+status = "accepted"
+confidence = "high"
+rationale = "smu_wrapper.sv port sep_fuse_sense_done_o faces the SEP subsystem, which the no_sep target does not elaborate, so nothing drives or consumes it and no bit toggles on this target"
+owner = "smu-dv"
+reviewer = "smu-dv"
+date = "2026-09-15"
+expected_matches = 2
+[[holes.native]]
+tool = "verilator"
+metric_family = "toggle"
+hierarchy = "smu_wrapper_uvm_top.u_dut"
+line = 259
