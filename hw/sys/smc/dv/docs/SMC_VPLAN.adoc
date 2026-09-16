@@ -112,6 +112,7 @@ verifying the block behind the port.
 |`smc_alias_remap_spare_block_decode_test` |The alias-remap array ends, the two spare register blocks and the four end mailbox halves decode as separate storage.
 |`smc_axi_error_response_depth_test` |Run bounded invalid-address probes plus recovery read.
 |`smc_axil_burst_idle_test` |Run the SMC OSS AXI-Lite burst idle scenario.
+|`smc_axil_downstream_concurrency_test` |Two downstream AXI-Lite manager ports carry interleaved outstanding accesses at once, each window answering with its own response code and data.
 |`smc_axil_idle_test` |SMC OSS PyUVM AXI-Lite master idle test.
 |`smc_cpu_to_sep_axi_test` |Run the CPU-control to SEP-facing CSR reachability precheck.
 |`smc_deadspace_decode_test` |Probe wrap-period offsets past PeakRDL SIZE and watch live CSRs.
@@ -121,12 +122,14 @@ verifying the block behind the port.
 |`smc_input_fabric_axi_wr_rd_test` |Run the input/output fabric CSR precheck over SEP_IN AXI.
 |`smc_input_output_fabric_wr_rd_test` |Run output-fabric write/read through JTAG AXI with responder checks.
 |`smc_local_fabric_csr_depth_test` |Run a representative local-fabric CSR sweep.
-|`smc_output_fabric_slverr_inject_test` |OKAY WR/RD, one-shot SLVERR read from the responder, OKAY readback; SYS_OUT monitor.
+|`smc_output_fabric_slverr_inject_test` |OKAY WR/RD, then the responder's one-shot SLVERR and DECERR on both directions carried back to the manager unchanged, and an OKAY recovery.
 |`smc_output_fabric_wr_rd_responder_test` |Drive JTAG AXI through output fabric; scoreboard checks memory golden.
 |`smc_output_filter_remap_security_test` |Verify output filter allows reads and blocks writes at protocol level.
 |`smc_peripheral_instance_decode_test` |Every declared peripheral block reads a non-zero generated reset, multi-instance blocks at their first and last instance.
 |`smc_region_size_plic_clint_beu_decode_test` |The PLIC offset folds onto the local window at the 16 MiB `REGION_SIZE` reset; at 256 MiB the PLIC, CLINT and four BEUs decode.
 |`smc_remap_cla_test` |ALIAS_REMAP address translation, remap-table reset sweep, CLA window.
+|`smc_sep_in_axi_flow_control_test` |SEP_IN keeps writes and reads outstanding while the manager holds BREADY and RREADY low; every access still returns its own address's word.
+|`smc_sep_in_axi_shape_test` |Narrow AxSIZE with byte strobes, a multi-beat INCR burst, and the FIXED and WRAP bursts the data-width converter rejects.
 |`smc_sys_axi_in_port_test` |With inbound filter entry 0 admitting, `sys_axi_in` carries a read of a non-zero generated reset and a write both ports read back.
 |`smc_sys_out_aw_w_split_test` |Discriminate a SYS_OUT write hang: AW vs W at both ends.
 |`smc_xvisor_remap_test` |Hypervisor remap table (0xC001_4000) sweep.
@@ -860,6 +863,8 @@ Drive `smc_avsbus_status_depth_test_seq`. Each checker below is a named compare 
 *Test Coverage*:
 
 * DMA source-to-destination payload check through the output-fabric responder.
+* A second descriptor with LENGTH = 1 separates "the programmed length was honoured" from "a whole 64-bit beat was copied": the destination word's upper seven bytes must still read the poison this leg wrote.
+* The SYS_OUT responder is shared, and the pass-all outbound filter this sequence programs lets other masters' traffic complete on it, so each leg's traffic is counted per address from the address-channel handshake of its own transaction rather than from the responder's global transaction counters.
 
 *Test Procedure*:
 
@@ -871,11 +876,11 @@ Drive `smc_dma_sanity_test_seq`. Each checker below is a named compare the DUT c
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-DMA-OUTPUT-FABRIC-TRAFFIC` |Per leg and per address: exactly one read transaction at the source, one write transaction at the destination and one verification read at the destination reached the SYS_OUT responder. A transaction sent to the wrong address, or a second one at the same address, fails. The number of transactions other masters completed on the same responder is printed on the same line as reported, not asserted
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`, `per_ip`, `coverage_closure`, `depth`.
+*Pass Criteria*: both copies match their expected destination words, the LENGTH = 1 leg leaves the destination's upper seven bytes at the poison, and each leg addressed the SYS_OUT responder exactly once per direction. Enrolled in: `all`, `hosted`, `per_ip`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-014-smc_octs_dual_sync_test]]
@@ -1519,11 +1524,14 @@ Drive `smc_local_fabric_csr_depth_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI), ocah_jtag_vip
 
-*Objective*: OKAY WR/RD, one-shot SLVERR read from the responder, OKAY readback; SYS_OUT monitor.
+*Objective*: OKAY WR/RD, then the SYS_OUT responder's one-shot SLVERR and DECERR on both directions, each carried back to the manager unchanged, and an OKAY recovery on the same address.
 
 *Test Coverage*:
 
-* SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR through the slave agent's one-shot fault.
+* SMC OSS U1-2/U1-3/U6-2: SYS_OUT error responses through the slave agent's one-shot faults.
+* The outbound fabric is a conduit: an error the subordinate raises is the subordinate's verdict, and the fabric's obligation is to hand the requesting manager the same encoding, neither downgraded nor swallowed. Each injected code is observed on the SYS_OUT wire by the passive monitor and required of the manager, so a fabric that rewrote it fails.
+* The response code is an exact expectation on each access, so a DECERR is not satisfied by a SLVERR.
+* The errored accesses leave the stored word untouched, and the OKAY write/read pair that follows on the same address shows no error state was latched.
 
 *Test Procedure*:
 
@@ -1535,11 +1543,11 @@ Drive `smc_output_fabric_slverr_inject_test_seq`. Each checker below is a named 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-SYS-OUT-ERROR-CODES` |Each injected response code -- read SLVERR, write SLVERR, write DECERR and read DECERR -- was counted exactly once on the SYS_OUT wire by the passive monitor and received by the JTAG-AXI manager with the same encoding, and the OKAY write/read pair that follows on the same address completed normally
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `hosted`, `per_ip`, `coverage_closure`, `depth`.
+*Pass Criteria*: the OKAY path completes and is booked against the memory model, each injected error reaches the manager with the encoding it had on the SYS_OUT wire, the stored word is untouched by the errored accesses, and the following OKAY write/read pair completes normally. Enrolled in: `all`, `hosted`, `per_ip`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-033-smc_output_fabric_wr_rd_responder_test]]
@@ -1939,11 +1947,12 @@ Drive `smc_region_size_plic_clint_beu_decode_test_seq` on the SEP_IN AXI sequenc
 * The scratch word written over SYS_IN is read back over SEP_IN and then over SYS_IN, so the same storage is shown reachable from the system port and from SEP_IN; the scratch register is restored to 0 with a readback.
 * The access counts are the measured ones, not declarations: the sequence requires its own SEP_IN count to equal exactly the expected number and requires the scoreboard's completed SYS_IN AXI count to equal exactly four.
 * The pre-admit SYS_IN read is issued with the error response tolerated and its response is reported, not asserted: the specification leaves the reset state of the sixteen inbound entries to the chiplet integration, so no verdict is claimed on it.
+* The inbound filter decides each direction from its own request, with block-by-default when nothing matches, so the write and read channels of the port are driven together: four interleaved passes go out as one outstanding group, SEP_IN seeds the read sources and reads the write targets back, and the filter is observed admitting both directions in the same cycle.
 * Every inbound port of this bench carries an agent, so the "unused port tied idle" cell cannot be driven here.
 
 *Test Procedure*:
 
-Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_IN accesses issued as one-shots on the SYS_IN sequencer: pre-admit read, program and read back entry 0, SYS_IN read of `VERSION_LO`, SYS_IN scratch write, SEP_IN and SYS_IN readbacks, restore the scratch word and the filter entry, then require both access counts exactly. The leaf requires both SYS_IN read values to have been captured and books a protocol-VIP record carrying the measured SEP_IN and SYS_IN counts against their floors.
+Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_IN accesses issued as one-shots on the SYS_IN sequencer: pre-admit read, program and read back entry 0, SYS_IN read of `VERSION_LO`, SYS_IN scratch write, SEP_IN and SYS_IN readbacks, the interleaved write/read group over `sys_axi_in` with its seeds, readbacks and restores under a clocked observer on the filter decision, restore the scratch word and the filter entry, then require both access counts exactly. The leaf requires both SYS_IN read values to have been captured and books a protocol-VIP record carrying the measured SEP_IN and SYS_IN counts against their floors.
 
 *Checkers*:
 
@@ -1954,9 +1963,111 @@ Drive `smc_sys_axi_in_port_test_seq` on the SEP_IN AXI sequencer, with the SYS_I
 |`CHK-SYS-AXI-IN-WRITE` |A `sys_axi_in` write of the scratch pattern was read back exactly over SEP_IN and over `sys_axi_in`, and the scoreboard had completed exactly the expected number of SYS_IN and SEP_IN accesses
 |`CHK-SYS-AXI-IN-NOT-CLOSED` |A recorded gap, not a compare: the unused-port-tied-idle cell, with the reason -- every inbound port of this bench carries an agent and none is tied to zero. Logged unconditionally
 |`CHK-SYS-AXI-IN-PORT` |Ledger line in the leaf: the SYS_IN read value, the scratch readback and the SEP_IN access count, logged after the leaf requires both SYS_IN reads to have been captured. The compares are the sequence's and the scoreboard's
+|`CHK-SYS-AXI-IN-DUPLEX` |The interleaved write/read group over `sys_axi_in`: every read returned the word SEP_IN seeded and the write targets held the last pass, and the inbound filter was observed admitting both directions in at least one cycle -- both filter hits set with neither isolate -- so a run whose two channels never overlapped fails
 |===
 
 *Pass Criteria*: the admitted `sys_axi_in` read matches the generated reset, the scratch write reads back exactly over both ports, the filter entry and the scratch register are restored, and the measured SEP_IN and SYS_IN access counts equal the expected ones. The pre-admit response and the tied-idle cell are recorded, not claimed. Enrolled in: `all`.
+
+'''''
+
+
+[[sec-194-smc_sep_in_axi_shape_test]]
+===== 194 `smc_sep_in_axi_shape_test`
+
+*Source Module*: `smc_sep_in_axi_shape_test`
+
+*BFM / Model*: SEP_IN AXI driver (`ocah_axi_vip` AXI4 master), no external VIP
+
+*Objective*: The transfer shapes the 64-to-32-bit conversion chain on the SEP_IN path has to resolve: narrow AxSIZE with byte strobes, a multi-beat INCR burst, and the FIXED and WRAP burst types the data-width converter rejects.
+
+*Test Coverage*:
+
+* AxSIZE below the bus width is a narrow transfer whose byte strobes select the lanes. A one-byte write at offset 0 and a two-byte write at offset 2 must each leave the rest of the word alone, so the readback is the merge of the three writes and not any one of them.
+* Narrow reads return the addressed lanes of the same word, so the strobe placement is shown on both directions.
+* An AxLEN=1 INCR burst is split into consecutive single-beat accesses: the two beats land in two consecutive scratch registers, are read back individually and again as one two-beat burst read, so a beat dropped, merged or reordered fails an exact compare.
+* FIXED and WRAP multi-beat bursts are not supported by the data-width converter, which raises `aw_throw_error` for both and answers through its `axi_err_slv` with SLVERR. The response code is an exact expectation, and both target registers must still hold the values the INCR burst left, so a converter that errored the response while still writing is caught.
+* Both scratch registers are restored to zero before the sequence ends.
+
+*Test Procedure*:
+
+Drive `smc_sep_in_axi_shape_test_seq` on the SEP_IN AXI sequencer: seed a scratch word, overwrite one byte and then one half of it with narrow writes and read the merge back, read the same lanes narrowly, place a two-beat INCR burst across two scratch registers and read it back per register and as one burst, issue the FIXED and the WRAP burst and require SLVERR with both registers unchanged, then restore both registers. The leaf requires the scoreboard's exact-value compare count to have reached its floor.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-IN-NARROW-STROBES` |The seeded word, the word after the one-byte write and the word after the two-byte write are exact scoreboard compares, as are the narrow reads of the same lanes; a strobe the fabric ignored or widened fails one of them
+|`CHK-SEP-IN-BURST-INCR` |The two beats of the AxLEN=1 INCR write are read back from their own registers and again as one AxLEN=1 read, all exact compares
+|`CHK-SEP-IN-BURST-UNSUPPORTED` |The FIXED and the WRAP burst each answered SLVERR exactly -- the scoreboard holds the access to that code, so another error code fails -- and both registers still read the values the INCR burst left
+|===
+
+*Pass Criteria*: every narrow and burst readback matches its exact expectation, the two rejected burst types answer SLVERR without changing either register, and the scoreboard books at least the expected number of value compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-195-smc_sep_in_axi_flow_control_test]]
+===== 195 `smc_sep_in_axi_flow_control_test`
+
+*Source Module*: `smc_sep_in_axi_flow_control_test`
+
+*BFM / Model*: SEP_IN AXI driver (`ocah_axi_vip` AXI4 master) with a per-access `AxiTimingProfile` holding the response channels back
+
+*Objective*: With several SEP_IN transactions outstanding and the manager holding BREADY and RREADY low, every access is still answered with the data of the address it was issued for, and the design keeps its response channels stable across the wait.
+
+*Test Coverage*:
+
+* AMBA IHI 0022 A3.2.1: a transfer completes only when VALID and READY are both asserted, VALID may not be withdrawn before that, and the channel's payload stays stable across the wait. B and R are driven by the design, so their stability under the manager's backpressure is the design's obligation and is sampled every cycle the manager holds READY low.
+* Three write passes over the eight scratch registers go out as one outstanding group with BREADY held, each pass carrying its own word, so the individual readbacks also show that writes to one address took effect in the order they were issued.
+* Four read passes over the same registers go out as one outstanding group with RREADY held, each compared against that address's word, so an access that was dropped, merged, reordered or mis-routed returns the wrong word.
+* The stalled-cycle counts are asserted non-zero for all four channels. They are the measurement that the backpressure happened, not the claim: a run whose timing profile stopped reaching the bus fails rather than passing on traffic that never stalled.
+
+*Test Procedure*:
+
+Drive `smc_sep_in_axi_flow_control_test_seq` on the SEP_IN AXI sequencer with a clocked observer on the SEP_IN handshake lines: issue the write group under a BREADY hold, read each register back individually, issue the read group under an RREADY hold, restore the registers, then require the observer's violation list to be empty and every channel to have stalled at least once. The leaf requires the scoreboard's exact-value compare count to have reached its floor.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-IN-FLOW-CONTROL` |Every outstanding write and read completed with the word of the address it named -- the individual readbacks show the last write pass to each address, the read group repeats the same expectation from deeper in the pipeline -- and every one of the four channels was observed stalled at least once
+|`CHK-SEP-IN-RESP-STABLE` |Across every cycle in which the manager held BREADY or RREADY low, BVALID and RVALID stayed asserted and BRESP/BID and RDATA/RRESP/RLAST/RID did not change. A withdrawn VALID or a changed payload is recorded and fails the run
+|===
+
+*Pass Criteria*: every access in both outstanding groups returns its own address's word, no response channel withdrew VALID or moved its payload while READY was low, all four channels stalled at least once, and the scoreboard books at least the expected number of value compares. Enrolled in: `all`, `hosted`.
+
+'''''
+
+[[sec-196-smc_axil_downstream_concurrency_test]]
+===== 196 `smc_axil_downstream_concurrency_test`
+
+*Source Module*: `smc_axil_downstream_concurrency_test`
+
+*BFM / Model*: SEP_IN AXI driver (`ocah_axi_vip` AXI4 master); the eFuse-bank window is backed by the eFuse-bank model and the mandatory external window by the reference integration's AXI-Lite error slave
+
+*Objective*: The three downstream AXI-Lite manager ports are independent branches: with accesses to two of the windows outstanding at once, both ports are active in the same cycle and each access is answered by its own window.
+
+*Test Coverage*:
+
+* The two windows answer differently in both response code and data -- the eFuse shim register with OKAY and its generated reset, the mandatory external window with the terminator's DECERR and zero data -- so a crossed route fails on the response code and on the data rather than only on a count.
+* The eFuse half is compared by the scoreboard against the generated reset; the external half is required to carry the terminator's zero data, which a neighbouring responder answering in its place would not.
+* The cycles in which two of the three activity probes were high together are counted and required to be non-zero, so a group the fabric serialised after all fails instead of passing.
+* The SEP_IN monitor attributes a response beat to the last address it saw accepted, which cannot name the transaction while two reads are outstanding; both addresses of the group are registered with it for that reason, and the per-access verdict is the scoreboard's exact expected response code.
+
+*Test Procedure*:
+
+Drive `smc_axil_downstream_concurrency_test_seq` on the SEP_IN AXI sequencer with a clocked observer on the three downstream activity probes: issue sixteen eFuse-shim reads alternated with sixteen external-window reads as one outstanding group, then require each external read to carry zero data, each eFuse read to have answered OKAY, and at least one cycle with two ports active together. The leaf requires the scoreboard's exact-value compare count to have reached its floor.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AXIL-DOWNSTREAM-CONCURRENCY` |Every eFuse-shim read answered OKAY with the generated reset and every external-window read answered DECERR with zero data while both accesses were outstanding together, and two downstream manager ports were observed active in the same cycle at least once. The per-probe active-cycle counts are printed on the same line as reported, not asserted
+|===
+
+*Pass Criteria*: every access is answered by its own window with that window's response code and data, at least one cycle had two downstream manager ports active together, and the scoreboard books at least the expected number of value compares. Enrolled in: `all`, `axil`, `hosted`, `per_ip`, `pyuvm`.
 
 '''''
 
