@@ -70,6 +70,11 @@ configured I/O pad. For I/O pads that do have explicit open-drain control, the
 request data signal should connect to the output-enable control pin of the I/O
 pad, and the output data signal of the I/O pin should be driven statically low.
 
+Because the pad data is static in this mode, the `STATUS` register does not
+show the pulse: `REQ_OUT` reads 0 whether or not the pad is being pulled, and
+`ACK_OUT`, which reports an output this mode never drives, reads the value of
+the `INVERT` bit. `BUSY` reports the stretched pulse.
+
 image::ctp_wireor_diagram.png[CTP Wire-OR Mode Diagram,scaledwidth=90.0%]
 
 Any number of chiplets may have their _CT_Req_out_ pads interconnected as shown
@@ -202,3 +207,7 @@ The `ct_dst` output pulse is generated for a single clock cycle when the
 receiver state machine transitions from IDLE to ACK_ASSERTED. The busy signal is
 asserted whenever either state machine is not in its IDLE state, indicating an
 active cross-trigger transfer.
+
+`CONFIG.RESET` drives `reset_i` and returns only the sender state machine to
+IDLE. The receiver state machine has no reset arc: it leaves ACK_ASSERTED and
+WAIT_REQ_DEASSERT only when the synchronized request falls.

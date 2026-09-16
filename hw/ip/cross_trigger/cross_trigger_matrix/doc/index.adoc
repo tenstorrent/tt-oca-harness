@@ -44,6 +44,10 @@ committing when the upper word is written so that a mask spanning the word
 boundary never takes effect half-programmed. At or below 32 destinations,
 including the DTP's 26, the register is a single word with immediate writes.
 
+The register block decodes address bits 7:2 only. Within the 512-byte window
+the cross trigger network maps for it, addresses 0x100 to 0x1FF alias 0x000 to
+0x0FF.
+
 ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]

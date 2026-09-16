@@ -203,7 +203,7 @@ transactions to the CTM and external CTPs based on address decoding.
 |CTM
 |0x0000 - 0x01FF
 |512 bytes
-|Cross Trigger Matrix configuration registers (26 sources × 2 config registers)
+|Cross Trigger Matrix configuration registers (26 sources × 2 config registers); the block decodes address bits 7:2 only, so 0x0100 - 0x01FF aliases 0x0000 - 0x00FF
 
 |CTP[0]
 |0x0200 - 0x020F
@@ -274,11 +274,11 @@ with CSR interface, and 10 internal CTPs using only the
 
 Internal CTPs reuse the cross_trigger_port_core GPIO interface but connect to
 logical signals rather than physical pads. The `INT_CT_MODE` parameter bits are
-inverted before use: `MODE_WIRE_OR = ~INT_CT_MODE[i]`. This means
-`INT_CT_MODE[i]=0` selects Point-to-Point mode, while `INT_CT_MODE[i]=1` selects
-Wire-OR mode.
+inverted before use: `MODE_WIRE_OR = ~INT_CT_MODE[i]`, so `INT_CT_MODE[i]=0`
+selects Wire-OR (pulse) mode and `INT_CT_MODE[i]=1` selects Point-to-Point
+(handshake) mode.
 
-*Wire-OR Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):*
+*Wire-OR Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):*
 
 [width="100%",cols="<30%,<70%",options="header"]
 |===
@@ -294,7 +294,7 @@ Wire-OR mode.
 |Unused (tied to constants)
 |===
 
-*Point-to-Point Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):*
+*Point-to-Point Mode (INT_CT_MODE[i]=1, internal MODE_WIRE_OR=0):*
 
 [width="100%",cols="<30%,<70%",options="header"]
 |===
@@ -354,7 +354,7 @@ visibility and chiplet clock gating control.
 
 |`stop_clks_o`
 |1
-|Registered functional halt (JTAG OR CLA requests), drives chiplet clock gating
+|Functional halt (JTAG OR CLA requests), synchronized and registered, drives chiplet clock gating
 |===
 
 The aggregation logic operates as follows:
@@ -362,15 +362,19 @@ The aggregation logic operates as follows:
 1. **CLA OR-Tree**: All CLA request inputs are OR-reduced combinationally:
    `cla_clk_stop_req = |clk_stop_req_i`
 2. **Combined Request**: JTAG and CLA requests are OR-combined:
-   `clk_stop_req_combined = jtag_clock_stop_i | cla_clk_stop_req`
-3. **Output Registration**: The combined request is registered on the rising
-   edge of `clk_i`: `stop_clks_o <= clk_stop_req_combined`
+   `clk_stop_req_async = jtag_clock_stop_i | cla_clk_stop_req`
+3. **Synchronization**: The combined request passes through a two-flop
+   synchronizer (`prim_flop_2sync`) clocked by `clk_i`, because both sources
+   arrive from other clock domains.
+4. **Output Registration**: The synchronized request is registered on the
+   rising edge of `clk_i`: `stop_clks_o <= clk_stop_req_synced`. A change on
+   either source reaches `stop_clks_o` three `clk_i` cycles later.
 
-The registered `stop_clks_o` output prevents glitches from propagating to the
-chiplet's functional clock gating logic. The combinatorial `cla_clock_stop_o`
-output provides immediate visibility of CLA activity to the JTAG interface,
-allowing debuggers to distinguish between JTAG-initiated and CLA-initiated clock
-stops.
+The synchronized and registered `stop_clks_o` output prevents glitches from
+propagating to the chiplet's functional clock gating logic. The combinatorial
+`cla_clock_stop_o` output provides immediate visibility of CLA activity to the
+JTAG interface, allowing debuggers to distinguish between JTAG-initiated and
+CLA-initiated clock stops.
 
 ===== Port Indexing
 

@@ -13,9 +13,9 @@ separate for DEBUG_CONTROL readback.
 
 * *JTAG `jtag_clock_stop`*: The JTAG Interface Unit captures the DEBUG_CONTROL
   `jtag_clock_stop` bit and drives it into the Cross Trigger Network (CTN) clock
-  stop controller. It is OR-combined with CLA clock-stop requests to form the
-  registered DTP `stop_clks_o` output that connects to chiplet functional clock
-  gating.
+  stop controller. It is OR-combined with CLA clock-stop requests, and the
+  result is synchronized and registered into the DTP `stop_clks_o` output that
+  connects to chiplet functional clock gating.
 * *Exported `cla_clock_stop_en`*: The DEBUG_CONTROL `cla_clock_stop_en` bit is
   exported at the DTP top level for downstream use (for example SMC/CLA debug
   policy). It is not used inside the CTN `stop_clks_o` aggregation.
@@ -30,9 +30,10 @@ At a high level, the architecture is:
 1. The JTAG Interface Unit captures DEBUG_CONTROL bits. The `jtag_clock_stop`
    bit is routed to the CTN clock stop controller; `cla_clock_stop_en` is
    exported at the DTP boundary.
-2. The CTN OR-reduces `xtrig_clk_stop_req_i` for `cla_clock_stop` status and
-   combines that aggregate with `jtag_clock_stop` for the registered
-   `stop_clks_o` output.
+2. The CTN OR-reduces `xtrig_clk_stop_req_i` for `cla_clock_stop` status,
+   combines that aggregate with `jtag_clock_stop`, and synchronizes and
+   registers the result as the `stop_clks_o` output, three `clk_i` cycles
+   after either source changes.
 3. The `cla_clock_stop` status is fed back into the DEBUG_CONTROL readback path
    so software or a debugger can observe whether any CLA clock-stop source is
    active.

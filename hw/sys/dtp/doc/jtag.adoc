@@ -135,10 +135,13 @@ each field to the named path.
 
 A disabled path remains observable only where required for control and readback;
 its host-visible scan or debug access is clamped or bypassed so the disabled
-path cannot be used to reach downstream secure logic. For a JTAG2AXI bridge this
-means its TDR update registers are not latched, buffered requests are dropped,
-and the AXI state machine is held in idle, so no AXI traffic can be generated at
-all.
+path cannot be used to reach downstream secure logic. For a JTAG2AXI bridge the
+disable acts at the IDLE state of its request machine: while the disable is
+asserted, TDR updates are not latched, the machine does not leave IDLE for a
+new request, and once it is in IDLE the request buffers and the outstanding-read
+counters are cleared. A transaction that is in flight when the
+disable asserts completes its AXI handshake and its status update first; the
+bridge issues no further transaction after it.
 
 The STAP and iJTAG fields are applied in `jtag_intf_unit`; the three JTAG2AXI
 fields are applied in `jtag_ptap`.

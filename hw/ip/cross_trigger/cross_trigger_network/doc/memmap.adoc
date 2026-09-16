@@ -10,6 +10,9 @@ Trigger Port (CTP) registers into a unified address space:
 * 0x0000 - 0x01FF: Cross Trigger Matrix (CTM) - 512 bytes
 * 0x0200 - 0x02FF: Cross Trigger Ports (CTP[0-15]) - 16 bytes each
 
+The CTM register block decodes address bits 7:2 only, so the upper half of its
+window (0x0100 - 0x01FF) aliases the lower half (0x0000 - 0x00FF).
+
 The CTN itself has no register block of its own: it decodes the AXI-Lite CSR
 interface onto the CTM and CTP blocks it instantiates. The base addresses above
 come from `cross_trigger_network_pkg`, and the register content of each window

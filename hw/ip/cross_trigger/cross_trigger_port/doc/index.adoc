@@ -33,7 +33,8 @@ through the AXI-Lite interface:
 * **MODE** - Wire-OR (0) or Point-to-Point (1) mode selection
 * **STRETCH_MULT** - 16-bit pulse stretch multiplier for Wire-OR mode
 * **INVERT** - Signal polarity inversion for GPIO adaptation
-* **RESET** - Handshake state machine reset control
+* **RESET** - Sender state machine reset control; the receiver state machine
+  has no reset arc
 
 Refer to the register documentation for detailed CSR field descriptions.
 
