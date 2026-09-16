@@ -210,42 +210,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_bank_ctrl_write"
 
 [[holes]]
-id = "fcov-smc-c_locks_cleared_access_permitted"
-title = "c locks cleared access permitted"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half (SMC-EFUSE-LOCKS.S1:locks-cleared-access-permitted)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_locks_cleared_access_permitted"
-
-[[holes]]
-id = "fcov-smc-c_read_unlocked_field_returned"
-title = "c read unlocked field returned"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half (SMC-EFUSE-LOCKS.S3:read-unlocked-field-returned)"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_read_unlocked_field_returned"
-
-[[holes]]
 id = "fcov-smc-c_write_unlocked_field_updated"
 title = "c write unlocked field updated"
 category = "missing_stimulus"
