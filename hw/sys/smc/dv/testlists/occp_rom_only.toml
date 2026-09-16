@@ -389,7 +389,9 @@ name = "smc_occp_interface_unlatch_test"
 module = "smc_occp_rom_only_test"
 target = "dual"
 seed = 1
-timeout_sec = 7200
+# Verilator reaches about 4% of +rom_test_timeout in 7200 s, so this family's default
+# wall-clock bound kills the run while the exchange is still advancing.
+timeout_sec = 21600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_interface_unlatch_test", mode = "occp_rom_only" }
@@ -408,7 +410,8 @@ name = "smc_occp_ring_buffer_stress_test"
 module = "smc_occp_rom_only_test"
 target = "dual"
 seed = 1
-timeout_sec = 7200
+# Same wall-clock reason as smc_occp_interface_unlatch_test above.
+timeout_sec = 21600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
 firmware = { name = "occp_ring_buffer_stress_test", mode = "occp_rom_only" }
