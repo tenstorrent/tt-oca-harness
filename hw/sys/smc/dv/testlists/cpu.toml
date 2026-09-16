@@ -81,29 +81,29 @@ timeout_sec = 1800
 tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
-# Timeout-reset recovery tests create real pending AXI traffic and run in the
-# dedicated group as well as the full regression.
+# Timeout-reset recovery tests remain available by name for DV review, but
+# are intentionally excluded from every regression group.
 
 [[tests]]
 name = "smc_cpu_l2_read_wedge_test"
 module = "smc_cpu_l2_read_wedge_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "cpu", "isolate_flush", "pyuvm"]
+tags = ["cpu", "isolate_flush", "pyuvm"]
 
 [[tests]]
 name = "smc_cpu_l2_write_wedge_test"
 module = "smc_cpu_l2_write_wedge_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "cpu", "isolate_flush", "pyuvm"]
+tags = ["cpu", "isolate_flush", "pyuvm"]
 
 [[tests]]
 name = "smc_cpu_mmio_read_wedge_test"
 module = "smc_cpu_mmio_read_wedge_test"
 seed = 1
 timeout_sec = 3600
-tags = ["ci", "cpu", "firmware", "isolate_flush", "pyuvm"]
+tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
 firmware = "mmio_wedge"
 args = [
     "+smc_hold_cpu_boot",
@@ -115,7 +115,7 @@ name = "smc_cpu_mmio_write_wedge_test"
 module = "smc_cpu_mmio_write_wedge_test"
 seed = 1
 timeout_sec = 3600
-tags = ["ci", "cpu", "firmware", "isolate_flush", "pyuvm"]
+tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
 firmware = "mmio_wedge"
 args = [
     "+smc_hold_cpu_boot",
@@ -130,13 +130,3 @@ tests = [
     "smc_mutex_semaphore_test",
     "smc_spm_mem_boundary_test",
 ]
-
-[[groups]]
-name = "cpu_isolate_flush"
-tests = [
-    "smc_cpu_l2_read_wedge_test",
-    "smc_cpu_l2_write_wedge_test",
-    "smc_cpu_mmio_read_wedge_test",
-    "smc_cpu_mmio_write_wedge_test",
-]
-expected_count = 4

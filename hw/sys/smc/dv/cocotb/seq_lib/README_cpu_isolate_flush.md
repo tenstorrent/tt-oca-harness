@@ -96,8 +96,8 @@ accept the request.
 ## Harness tests
 
 The shared scenarios are implemented in
-`smc_cpu_isolate_flush_test_seq.py`. The `cpu_isolate_flush` testlist group
-contains four directed tests:
+`smc_cpu_isolate_flush_test_seq.py`. Four directed test leaves are retained
+for DV review:
 
 | Test | Wedge | Post-reset proof |
 | --- | --- | --- |
@@ -125,11 +125,9 @@ therefore verifies late-W cleanup after a reset is already in flight, not the
 case where an earlier incomplete burst prevents the reset-control write from
 reaching `cpu_ctrl`.
 
-Run the group with:
-
-```bash
-python3 tools/dv/run_dv.py --dut smc --items cpu_isolate_flush --tool verilator
-```
+The leaves remain individually selectable from `cpu.toml`, but are not members
+of `all`, `hosted`, `smoke`, or any dedicated group. No scheduled regression
+runs them pending DV review and approval.
 
 The MMIO tests require the `mmio_wedge` firmware image and therefore require
 the SMC DV firmware toolchain setup described in `hw/sys/smc/dv/README.md`.

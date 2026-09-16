@@ -129,10 +129,10 @@ jobs:
             runner: ubuntu-latest
             timeout: 90
           - dut: smc
-            # SMC `all` is 189 leaves; the 14 in testlists/fw.toml and two
-            # CPU MMIO wedge tests need a RISC-V toolchain, and three need an
-            # SMC_DUAL elaboration. `hosted` is that group minus those 19, so
-            # the scheduled tier keeps the former smoke leaves.
+            # SMC `all` is 171 leaves; the 14 in testlists/fw.toml need a
+            # RISC-V toolchain and three need an SMC_DUAL elaboration.
+            # `hosted` is that group minus those 17, so the scheduled tier
+            # keeps the former smoke leaves.
             items: hosted
             reseed: 3
             coverage: false

@@ -72,7 +72,7 @@ module axi_isolate #(
   input  axi_resp_t mst_resp_i,
   /// Isolate master port from slave port
   input  logic      isolate_i,
-  /// Force recovery while isolated; valid only while `isolate_i` is asserted
+  /// Force recovery, valid only while isolating
   input  logic      flush_i,
   /// Master port is isolated from slave port
   output logic      isolated_o
