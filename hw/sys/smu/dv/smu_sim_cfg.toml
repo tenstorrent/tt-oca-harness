@@ -32,8 +32,19 @@ format = "toml_list"
 # Waive abr_reg.sv external wr/rd_ack $error. On the wrapper SEP=1 profile the
 # ABR datapath is not meaningfully exercised; the assertion fires at t=0 and
 # again after reset release (e.g. 8 ns), so waive by file (not only "at time 0").
+#
+# Every other PeakRDL-regblock external-ack check fires once at time 0 on a
+# four-state simulator: the check is an immediate assertion in the `else`
+# branch of the reset always_ff, and the first clock edge sees `arst_n` = X.
+# It is generated code, so it cannot be gated in the tree, and $assertoff
+# races the time-0 evaluation. Ignore exactly the time-0 fire; the same
+# assertion failing at any later time stays a hard fail.
 [pass_fail]
-extra_ignore_patterns = ['abr_reg\.sv']
+extra_ignore_patterns = [
+  'abr_reg\.sv',
+  'assert_bad_ext_(wr|rd)_ack: at time 0 [a-z]s$',
+]
+extra_hard_fail_patterns = ['assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]']
 
 [native.stages.clean]
 kind = "clean"
