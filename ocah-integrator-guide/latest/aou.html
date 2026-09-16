@@ -2086,17 +2086,9 @@ and capture.</p></td>
 instance of <span class="monospaced">AOU_SOC_GFMUX_LVT</span>) that selects the reset source for
 <span class="monospaced">AOU_CORE</span>:</p>
 </div>
-<div class="literalblock">
+<div class="imageblock kroki">
 <div class="content">
-<pre>                          TIEL_DFT_MODESCAN
-                                |
-                              I_SEL
-                         +-------------+
-  ~r_sw_reset &amp; I_RESETN |  I_A        |
-  (functional SW reset)  |   GFMUX     |---&gt; w_DFTED_sw_resetn ---&gt; AOU_CORE.I_RESETN
-                         |  I_B        |
-  AOU_SOC_BUF(1'b0)     |             |
-  (scan bypass: low)     +-------------+</pre>
+<img src="_images/gen_aou_modescan.png-157f7b056a3f607013fc365006d9f424de7eac76.svg" alt="gen_aou_modescan.png">
 </div>
 </div>
 <div class="ulist">
@@ -3215,26 +3207,9 @@ the test list.</p>
 </div>
 <div class="sect3">
 <h4 id="aou-ig-architecture"><a class="anchor" href="#aou-ig-architecture"></a><a class="link" href="#aou-ig-architecture">7.1 Architecture</a></h4>
-<div class="literalblock">
+<div class="imageblock kroki">
 <div class="content">
-<pre>                      AXI SI                              AXI MI
-  +------------------+             +------------------+             +------------------+
-  | cocotb AxiMaster |  --------&gt;  |  AOU_CORE_TOP    |  --------&gt;  | cocotb AxiRam    |
-  | s_axi_d1 (512b)  |      .      |  u_dut1          |             | m_axi_d1 (512b)  |
-  +------------------+      .      |  (AXI 512b)      |             +------------------+
-  +------------------+      .      +------------------+
-  | cocotb ApbMaster |..APB.......         |     ^
-  | apb1 (32b)       |     FDI 32B (256b)  |     | FDI 32B (256b)
-  +------------------+                     v     |
-                                 +------------------+             +------------------+
-  +------------------+           |  AOU_CORE_TOP    |  --------&gt;  | cocotb AxiRam    |
-  | cocotb AxiMaster |  -------&gt; |  u_dut2          |             | m_axi_d2 (256b)  |
-  | s_axi_d2 (256b)  |      .    |  (AXI 256b)      |             +------------------+
-  +------------------+      .    +------------------+
-  +------------------+      .            ^
-  | cocotb ApbMaster |..APB....          |
-  | apb2 (32b)       |                   |
-  +------------------+    fdi_flit_decoder x2 (gated by FDI_LOG)</pre>
+<img src="_images/gen_aou_dataflow.png-4097fc46aeacb27ed1aa4da34de3e21bbdd66dce.svg" alt="gen_aou_dataflow.png">
 </div>
 </div>
 <div class="paragraph">
@@ -3509,14 +3484,9 @@ UVM-based.</p>
 single file&#8201;&#8212;&#8201;there is no separate register spreadsheet or
 hand-maintained IP-XACT register map.</p>
 </div>
-<div class="literalblock">
+<div class="imageblock kroki">
 <div class="content">
-<pre>csr/aou-core.rdl  ──(peakrdl)──&gt;  IP-XACT register map   (INTEG/ipxact/gen/)
-                   ──(peakrdl)──&gt;  C header                (DOC/csr/)
-                   ──(peakrdl)──&gt;  Markdown                (DOC/csr/)
-                   ──(peakrdl)──&gt;  Interactive HTML         (DOC/csr/html/)
-                   ──(peakrdl)──&gt;  UVM register model      (INTEG/uvm/)
-                   ──(systemrdl-compiler, runtime)──&gt;  CSR reset readback test (VERIF/)</pre>
+<img src="_images/gen_aou_register_generation.png-6521c5d0cf15cb8ddfca45bfd50cfceeb724e25c.svg" alt="gen_aou_register_generation.png">
 </div>
 </div>
 <div class="paragraph">
