@@ -384,7 +384,7 @@ expected_matches = 1
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
-hierarchy = "smu_uvm_top.u_smu_ext_fcov.c_outbound_id_width_10"
+hierarchy = "smu_uvm_top.u_smu_ext_fcov.g_nosep.c_outbound_id_width_10"
 
 [[holes]]
 id = "fcov-smu_block-c_smc_efuse_bank_ctrl_response_returned"

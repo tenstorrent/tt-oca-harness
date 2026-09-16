@@ -674,7 +674,9 @@ module smu_uvm_top
     .jtag_ptap_state_i           (jtag_ptap_state)
   );
 
-  smu_lc_fcov u_smu_lc_fcov (
+  smu_lc_fcov #(
+      .SepPresent (1'b0)
+  ) u_smu_lc_fcov (
     .clk_smu_i                (clk_smu_i),
     .rst_cold_ni              (rst_cold_ni),
     .rst_primary_smc_clk_ni   (rst_primary_smc_clk_no),

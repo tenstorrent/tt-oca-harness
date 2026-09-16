@@ -1807,7 +1807,9 @@ module smu_wrapper_uvm_top (
     .sep_wdt_clk_i           (obs_sep_wdt_clk_o)
   );
 
-  smu_lc_fcov u_smu_lc_fcov (
+  smu_lc_fcov #(
+    .SepPresent(SEP_PRESENT)
+  ) u_smu_lc_fcov (
     .clk_smu_i                (clk_smu_i),
     .rst_cold_ni              (rst_cold_ni),
     .rst_primary_smc_clk_ni   (rst_primary_smc_clk_n_o),
