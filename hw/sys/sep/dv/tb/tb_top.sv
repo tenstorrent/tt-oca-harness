@@ -1660,8 +1660,11 @@ module sep_uvm_top
     assign otbn_dmem_write_count_o = otbn_dmem_wr_cnt_q;
     // KM SRAM word 0: peek the real macro array. The KM SRAM is one unscrambled
     // prim_ram_1p_adv (sep_ip_integration.u_km_sram) addressed by word index
-    // within the 32 KB km_intf_pkg SRAM window, so km_intf_pkg::SRAM_BASE_ADDR
-    // (0x0000_8000) + 0 is mem[0]. Both KM ROM images store their word there.
+    // within the 32 KB SRAM window the Key Manager specification places at
+    // 0x0000_8000, so base + 0 is mem[0]. Both KM ROM images store their word
+    // there. The index is a hierarchical path and does not depend on that base:
+    // a firmware store to the wrong window leaves mem[0] untouched and the
+    // word0 compare in sep_km_mem_smoke_test fails.
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
 
