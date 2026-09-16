@@ -2,13 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Cross-Trigger Matrix
-:description: CTM — 26×26 AND-OR crossbar for cross-trigger pulse routing, architecture and interface.
+:description: CTM — AND-OR crossbar for cross-trigger pulse routing, configured as 26×26 in the DTP.
 
 [[cross-trigger-matrix]]
 
-The Cross Trigger Matrix (CTM) is a 26×26 AND-OR crossbar that aggregates and
+The Cross Trigger Matrix (CTM) is an AND-OR crossbar that aggregates and
 statically routes cross-trigger pulses between all sources (CTPs, CLAs,
 internal devices) and sinks under AXI-Lite CSR control.
+The current DTP configuration uses 26 input ports and 26 output ports.
 
 == Overview
 
@@ -16,7 +17,10 @@ The CTM is compatible with both wire-OR and point-to-point CTPs. Typical
 connections include Core Logic Analyzers (CLAs) and Cross Trigger Ports (CTPs).
 Each device connected to the CTM acts as both a source and a sink.
 
-The register map dimensions define the matrix size as localparams:
+The `NUM_CT_SRC` and `NUM_CT_DST` parameters in
+`regs/cross_trigger_matrix.rdl` define the matrix dimensions and default to
+26 each. The RTL derives the following localparams from the generated
+register map:
 
 [cols="<20%,<12%,<68%",options="header"]
 |===
@@ -33,7 +37,8 @@ register map).
 |===
 
 These values cannot be overridden at instantiation. Resizing the matrix
-requires regenerating the SystemRDL register map. The CTM takes the AXI-Lite
+requires changing the SystemRDL parameters and regenerating the register map.
+The CTM takes the AXI-Lite
 request and response types as module parameters, which the CTN overrides to
 match its own crossbar.
 
