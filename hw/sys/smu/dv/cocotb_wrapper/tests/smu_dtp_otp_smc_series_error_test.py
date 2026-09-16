@@ -13,14 +13,14 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dtp_otp_smc_series_error_test(smu_base_test):
-    """OTP J2A series NO_INCR + MAP-CTRL hole SLVERR; gate tied open on SEP=0."""
+    """OTP J2A series NO_INCR + MAP-CTRL hole SLVERR; gate open on the SEP=1 wrapper."""
 
     use_shared_env = True
 
     async def run_scenario(self) -> None:
         self.logger.info(
             "DUT_TAG=WRAPPER smu_dtp_otp_smc_series_error_test "
-            "TierC DTP-OTP-SMC-SERIES-ERROR SEP=0 JTAG"
+            "TierC DTP-OTP-SMC-SERIES-ERROR SEP=1 JTAG"
         )
         seq = smu_dtp_otp_smc_series_error_test_seq(self)
         await seq.run()

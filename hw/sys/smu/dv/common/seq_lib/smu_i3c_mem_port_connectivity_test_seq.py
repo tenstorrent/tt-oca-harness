@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """FAB_SMC_031 — AXI4-Lite local peripheral delivery (UART/I2C/GPIO/I3C/AVSBus).
 
-SEP=0 honest scope (no sep_in / no Force):
+SEP=1 honest scope (no sep_in / no Force):
   S1  J2A read at each peripheral destination; status must not be DECERR.
 
 Delivery goes over the JTAG2AXI frontdoor to the PeakRDL destinations

@@ -90,15 +90,16 @@ jobs:
             runner: ubuntu-latest
           - dut: sep
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
-          # `smu` carries the SMU regression (smu_wrapper.sv); `smu_block` is the
-          # bare block bench, down to the two leaves that cannot run on `smu`.
-          # Both are gated here so neither rots. `items` defaults to `smoke`
-          # below; `smu` overrides it because its own `smoke` group reaches the
-          # SEP=1 firmware tests, and this runner has Verilator and nothing
-          # else -- `smoke_sep0` is the toolchain-free equivalent.
+          # `smu` carries the SMU regression (smu_wrapper.sv, one compile
+          # profile with the real SEP); `smu_block` is the bare smu #(.SEP(0))
+          # bench with the SEP=0 composition proofs and the leaves that cannot
+          # run on `smu`. Both are gated here so neither rots. `items` defaults
+          # to `smoke` below; `smu` overrides it because its own `smoke` group
+          # reaches the firmware tests, and this runner has Verilator and
+          # nothing else -- `hosted_smoke` is the toolchain-free equivalent.
           - dut: smu
             runner: ubuntu-latest
-            items: smoke_sep0
+            items: hosted_smoke
           - dut: smu_block
             runner: ubuntu-latest
           - dut: smc

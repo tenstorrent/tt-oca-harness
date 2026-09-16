@@ -7,7 +7,8 @@ schema_version = 1
 # technology-specific interfaces tied off rather than attached to the
 # open-source IP integration. SEP=0 is hardcoded in tb/tb_top.sv.
 #
-# It carries the two leaves that cannot run on `--dut smu` and the SV-UVM
+# It carries the SEP=0 composition proofs (testlists/nosep.toml), the two
+# leaves that cannot run on `--dut smu`, and the SV-UVM
 # view, whose harness is the `UVM` shape of this TB. testlists/all.toml records
 # why each is here.
 #
@@ -17,12 +18,24 @@ schema_version = 1
 # bottom). Shared stage graph + tool list come from profile = "native".
 name = "smu_block"
 profile = "native"
-description = "Bare smu #(.SEP(0)) block bench: the two leaves that cannot run on --dut smu, plus the SV-UVM view"
+description = "Bare smu #(.SEP(0)) block bench: the SEP=0 composition proofs, the two leaves that cannot run on --dut smu, plus the SV-UVM view"
 default_framework = "cocotb"
 
 [testlist]
 path = "testlists/all.toml"
 format = "toml_list"
+
+# The PeakRDL-regblock external-ack checks are immediate assertions in the
+# `else` branch of each register block's reset always_ff. On a four-state
+# simulator the first clock edge at time 0 sees `arst_n` = X, takes that
+# branch and evaluates X operands, so every regblock in the bench prints one
+# `Error:` line at time 0 that the runner's fail pattern matches. The check is
+# generated, so it cannot be gated in the tree, and $assertoff races the
+# time-0 evaluation. Ignore exactly the time-0 fire; the same assertion
+# failing at any later time stays a hard fail.
+[pass_fail]
+extra_ignore_patterns = ['assert_bad_ext_(wr|rd)_ack: at time 0 [a-z]s$']
+extra_hard_fail_patterns = ['assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]']
 
 [native.stages.clean]
 kind = "clean"
@@ -70,10 +83,7 @@ common_bender_targets = [
 # (padring/pad/SPI/DLL-PHY sim models, OTBN tracer) are in the SMU SEP=0
 # `smu_uvm_top` hierarchy. Mirrors smu_sim_cfg.toml.
 bender_targets = ["smu", "smc", "dtp", "sep", "sep_el2"]
-# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
-# (upstream OT leaves ASSUME live under VERILATOR and breaks on sha3pad `##[1:$]`).
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
@@ -258,7 +268,6 @@ filelist = "hw/sys/smu/dv/build/uvm_block/smu_block_uvm_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/uvm_block/smu_block_uvm_bender.f"
 work_dir = "hw/sys/smu/dv/build/uvm_block"
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
   "hw/common/assert",
   "hw/sys/dtp/dv/uvm/env",

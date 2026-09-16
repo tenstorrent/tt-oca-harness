@@ -176,15 +176,18 @@ module smc_ip_integration (
     localparam int unsigned ExtGpioCtrlNum    = 65;
     localparam int unsigned ExtPllBase        = 'h2000;
     localparam int unsigned ExtPvtBase        = 'h3000;
-    localparam int unsigned ExtWindowSize     = 'h4000;
+    localparam int unsigned ExtStrapsBase     = 'h5800;
+    localparam int unsigned ExtWindowSize     =
+        32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EXTERNAL_SIZE);
 
     // Targets, in demux port order. Anything unclaimed lands on ExtUnmapped,
     // which answers DECERR.
     localparam int unsigned ExtPll      = 0;
     localparam int unsigned ExtPvt      = 1;
     localparam int unsigned ExtGpioCtrl = 2;
-    localparam int unsigned ExtUnmapped = 3;
-    localparam int unsigned ExtNumPorts = 4;
+    localparam int unsigned ExtStraps   = 3;
+    localparam int unsigned ExtUnmapped = 4;
+    localparam int unsigned ExtNumPorts = 5;
 
     smc_pkg::smc_axil_32_32_req_t  [ExtNumPorts-1:0] ext_req;
     smc_pkg::smc_axil_32_32_resp_t [ExtNumPorts-1:0] ext_resp;
@@ -194,30 +197,19 @@ module smc_ip_integration (
         input logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] addr
     );
         automatic logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0] off = addr % ExtWindowSize;
-        if (off >= ExtPvtBase)                              return ExtUnmapped;
-        else if (off >= ExtPllBase + pll_wrap_addrmap_pkg::PLL_WRAP_SIZE) return ExtUnmapped;
-        else if (off >= ExtPllBase)                         return ExtPll;
-        else if (off >= ExtGpioCtrlBase + ExtGpioCtrlNum * ExtGpioCtrlStride) return ExtUnmapped;
-        else if (off >= ExtGpioCtrlBase)                    return ExtGpioCtrl;
-        else                                                return ExtUnmapped;
+        if (off >= ExtStrapsBase &&
+            off < ExtStrapsBase + straps_reg_pkg::STRAPS_REG_SIZE) return ExtStraps;
+        else if (off >= ExtPvtBase &&
+                 off < ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) return ExtPvt;
+        else if (off >= ExtPllBase &&
+                 off < ExtPllBase + pll_wrap_addrmap_pkg::PLL_WRAP_SIZE) return ExtPll;
+        else if (off >= ExtGpioCtrlBase &&
+                 off < ExtGpioCtrlBase + ExtGpioCtrlNum * ExtGpioCtrlStride) return ExtGpioCtrl;
+        else                                                                 return ExtUnmapped;
     endfunction
 
-    always_comb begin
-        ext_aw_select = ext_decode(smc_external_req_i.aw.addr);
-        ext_ar_select = ext_decode(smc_external_req_i.ar.addr);
-        // The PVT window sits above the PLL one; fold it in separately so the
-        // chain above stays a simple descending compare.
-        if (smc_external_req_i.aw.addr % ExtWindowSize >= ExtPvtBase &&
-            smc_external_req_i.aw.addr % ExtWindowSize <
-                ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) begin
-            ext_aw_select = ExtPvt;
-        end
-        if (smc_external_req_i.ar.addr % ExtWindowSize >= ExtPvtBase &&
-            smc_external_req_i.ar.addr % ExtWindowSize <
-                ExtPvtBase + pvt_wrap_addrmap_pkg::PVT_WRAP_SIZE) begin
-            ext_ar_select = ExtPvt;
-        end
-    end
+    assign ext_aw_select = ext_decode(smc_external_req_i.aw.addr);
+    assign ext_ar_select = ext_decode(smc_external_req_i.ar.addr);
 
     axi_lite_demux #(
         .aw_chan_t   (smc_pkg::smc_axil_32_32_aw_chan_t),
@@ -267,6 +259,49 @@ module smc_ip_integration (
         .rst_ni     (rst_primary_smc_clk_ni),
         .axil_req_i (ext_req[ExtPvt]),
         .axil_resp_o(ext_resp[ExtPvt])
+    );
+
+    //////////////////////////////
+    // Captured GPIO straps     //
+    //////////////////////////////
+    // These rom_straps are intentionally undriven in RTL. They are to be driven/configured in DV/FW (cocotb)
+
+    logic [smc_pkg::NUM_BONDED_GPIO-1:0] rom_straps;
+    assign rom_straps = '0;
+
+    straps_reg_pkg::straps__in_t straps_hwif_in;
+
+    always_comb begin
+        straps_hwif_in.STRAPS_LO.straps.next = rom_straps[31:0];
+        straps_hwif_in.STRAPS_HI.straps.next = rom_straps[smc_pkg::NUM_BONDED_GPIO-1:32];
+    end
+
+    straps_reg u_straps_reg (
+        .clk    (clk_smc_i),
+        .arst_n (rst_primary_smc_clk_ni),
+
+        .s_axil_awvalid (ext_req[ExtStraps].aw_valid),
+        .s_axil_awaddr  (ext_req[ExtStraps].aw.addr[straps_reg_pkg::STRAPS_REG_MIN_ADDR_WIDTH-1:0]),
+        .s_axil_awprot  (ext_req[ExtStraps].aw.prot),
+        .s_axil_wvalid  (ext_req[ExtStraps].w_valid),
+        .s_axil_wdata   (ext_req[ExtStraps].w.data),
+        .s_axil_wstrb   (ext_req[ExtStraps].w.strb),
+        .s_axil_bready  (ext_req[ExtStraps].b_ready),
+        .s_axil_arvalid (ext_req[ExtStraps].ar_valid),
+        .s_axil_araddr  (ext_req[ExtStraps].ar.addr[straps_reg_pkg::STRAPS_REG_MIN_ADDR_WIDTH-1:0]),
+        .s_axil_arprot  (ext_req[ExtStraps].ar.prot),
+        .s_axil_rready  (ext_req[ExtStraps].r_ready),
+
+        .s_axil_awready (ext_resp[ExtStraps].aw_ready),
+        .s_axil_wready  (ext_resp[ExtStraps].w_ready),
+        .s_axil_bvalid  (ext_resp[ExtStraps].b_valid),
+        .s_axil_bresp   (ext_resp[ExtStraps].b.resp),
+        .s_axil_arready (ext_resp[ExtStraps].ar_ready),
+        .s_axil_rvalid  (ext_resp[ExtStraps].r_valid),
+        .s_axil_rdata   (ext_resp[ExtStraps].r.data),
+        .s_axil_rresp   (ext_resp[ExtStraps].r.resp),
+
+        .hwif_in        (straps_hwif_in)
     );
 
     //////////////////////////////////

@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+# Aggregate testlist for --dut i3ccore_wrap; leaf tests live in block.toml.
+#
+#   python3 tools/dv/run_dv.py --dut i3ccore_wrap --items all --tool verilator --stage sim
+#
+# test_i3ccore surveys the whole address map, including unwritten DAT/DCT SRAM that
+# powers up undefined, so the xresolve group needs COCOTB_RESOLVE_X=ZEROS.
+
+includes = ["block.toml"]
+
+[[groups]]
+name = "smoke"
+tests = [
+    "i3c_immediate_write_sanity",
+    "i3c_write_read_sanity",
+    "i3c_direct_ccc_sanity",
+    "i3c_ibi_sanity",
+]
+
+[[groups]]
+name = "xresolve"
+tests = ["test_i3ccore"]
+
+# Independent-bus-partner topology: the RTL target peer is off the bus and a cocotb
+# VIP target answers instead. Kept out of `all`, which is the peer topology.
+[[groups]]
+name = "vip"
+tests = [
+    "i3c_vip_write_read_sanity",
+    "i3c_vip_long_write_sanity",
+    "i3c_vip_long_read_sanity",
+    "i3c_vip_back_to_back",
+    "i3c_vip_pp_timing_transfer",
+    "i3c_vip_od_pp_mode_switch",
+    "i3c_vip_threshold_sweep",
+    "i3c_vip_short_read",
+]
+
+[[groups]]
+name = "all"
+tests = [
+    "test_i3ccore",
+    "i3c_immediate_write_sanity",
+    "i3c_write_read_sanity",
+    "i3c_long_write_sanity",
+    "i3c_long_read_sanity",
+    "i3c_direct_ccc_sanity",
+    "i3c_ibi_sanity",
+    "i3c_error_sanity",
+    "i3c_reg_reset_value_full",
+    "i3c_full_ccc_matrix",
+    "i3c_setnewda",
+    "i3c_pp_timing_transfer",
+    "i3c_od_pp_mode_switch",
+    "i3c_threshold_sweep",
+    "i3c_max_length_transfer",
+    "i3c_back_to_back",
+    "i3c_broadcast_ccc",
+    "i3c_ibi_payload_variants",
+    "i3c_ibi_nack_disabled",
+    "i3c_error_parity_inject",
+    "i3c_error_target_abort",
+    "i3c_multi_target_dat",
+    "i3c_multi_instance_indep",
+    "i3c_axi_protocol",
+    "i3c_recovery_reset_iface",
+    "i3c_reset_mid_transaction",
+    "i3c_random_ccc_stress",
+    "i3c_random_transfer_stress",
+    "i3c_tx_capacity_512",
+]

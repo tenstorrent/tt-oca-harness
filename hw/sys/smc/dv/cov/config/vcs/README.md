@@ -75,9 +75,14 @@ the `OCAH_FCOV_COVER` points that populate the `user` metric family.
 Third-party RTL and the chipyard-generated CPU cluster dominate the unscoped
 denominator and are barely exercised by SMC-level tests, so an unscoped
 headline is a statement about someone else's code — the same reason SEP drops
-`sep_cpu`. `hw/ip/**` stays in: it is Tenstorrent IP that SMC integrates, and
-integration coverage of those blocks is part of what SMC-level DV is for, even
-though IP-level DV owns their internals.
+`sep_cpu`. `hw/ip/**` and `hw/common/**` are dropped for the same reason the SMU
+and DTP scopes drop them: each block there carries its own DV package and its
+own coverage, and grading its internals again here attributes its holes to SMC
+and hides SMC's own integration inside a denominator an order of magnitude
+larger. What SMC grades is what it owns: `hw/sys/smc/rtl/**`, `hw/sys/smc/regs/**`
+and the `cov/sv` points. Whether an integrated block is *reached* from the SMC
+boundary is a functional-coverage question and is answered by the `user` points,
+not by that block's line count.
 
 ## Known gap in the Verilator scope
 
@@ -91,6 +96,11 @@ config that looks like scope and does nothing is worse than a documented gap.
 The SYS_OUT responder is the shared VIP slave agent, class code with no RTL to
 score; only its interface instance and struct bridge sit in the TB body. The
 VCS `.hier` file has no equivalent gap for the blocks it names by instance.
+
+The `hw/ip/**` and `hw/common/**` exclusion has no `.hier` equivalent either:
+VCS scopes by instance tree and those blocks are instantiated in dozens of
+places, so the commercial number still includes them until the `.hier` file
+names each tree.
 
 ## Verilator glob matching
 

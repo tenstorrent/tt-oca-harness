@@ -21,7 +21,7 @@ schema_version = 1
 # evidence directory.
 name = "smu"
 profile = "native"
-description = "Production-wrapper OSS baseline: no-SEP and real-SEP smoke"
+description = "Production-wrapper OSS regression on the single SEP=1 compile profile"
 default_tool = "verilator"
 tools = ["verilator", "vcs", "xcelium"]
 
@@ -32,15 +32,25 @@ format = "toml_list"
 # Waive abr_reg.sv external wr/rd_ack $error. On the wrapper SEP=1 profile the
 # ABR datapath is not meaningfully exercised; the assertion fires at t=0 and
 # again after reset release (e.g. 8 ns), so waive by file (not only "at time 0").
+#
+# Every other PeakRDL-regblock external-ack check fires once at time 0 on a
+# four-state simulator: the check is an immediate assertion in the `else`
+# branch of the reset always_ff, and the first clock edge sees `arst_n` = X.
+# It is generated code, so it cannot be gated in the tree, and $assertoff
+# races the time-0 evaluation. Ignore exactly the time-0 fire; the same
+# assertion failing at any later time stays a hard fail.
 [pass_fail]
-extra_ignore_patterns = ['abr_reg\.sv']
+extra_ignore_patterns = [
+  'abr_reg\.sv',
+  'assert_bad_ext_(wr|rd)_ack: at time 0 [a-z]s$',
+]
+extra_hard_fail_patterns = ['assert_bad_ext_(wr|rd)_ack: started at .* failed at [1-9]']
 
 [native.stages.clean]
 kind = "clean"
 paths = [
   "{run_dir}",
-  "hw/sys/smu/dv/build/cocotb_wrapper_no_sep",
-  "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl",
+  "hw/sys/smu/dv/build/cocotb_wrapper",
   "hw/sys/smu/dv/build/work_wrapper",
   "hw/sys/smu/dv/build/firmware",
 ]
@@ -73,10 +83,7 @@ bender_targets = [
   "sep_el2",
   "smu_wrapper",
 ]
-# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
-# (see smu_block_sim_cfg.toml).
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
@@ -176,7 +183,10 @@ build_args = [
 policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.toml"
 
 [build.options]
-build_jobs = 8
+# The hosted CI runner has four vCPUs and 16 GB; the wrapper model (SEP with
+# the EL2, the four-core SMC and the DTP) is the largest Verilated model in the
+# tree, so the compile parallelism matches that runner instead of oversubscribing it.
+build_jobs = 4
 
 [frameworks.cocotb]
 # Wrapper flow keeps its own PyUVM tree so module names stay independent of
@@ -240,6 +250,13 @@ argv = [
 outputs = [
   "hw/sys/smu/dv/build/firmware/smu_smc_smoke/smu_smc_smoke.rom.hex",
   "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
+  # The SEP=1 wrapper loads its SEP boot ROM, TCMs and eFuse at time zero and
+  # is fatal without them; build_firmware.py writes these zero-filled preloads
+  # for every --target, so staging them costs nothing.
+  "hw/sys/smu/dv/build/firmware/preloads/sep_efuse_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_boot_rom_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_itcm_default.hex",
+  "hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
 ]
 
 [c_build.sep_smoke]
@@ -500,12 +517,7 @@ outputs = [
 # their OTP image through the wrapper's SMC eFuse model. $value$plusargs
 # returns the first match, so a preload named here would override a test's own.
 [run_modes.smoke]
-description = "Production-wrapper baseline for no-SEP and real-SEP targets"
-timeout_sec = 1800
-args = []
-
-[run_modes.no_sep]
-description = "SMC firmware boot in the OSS smu_wrapper with SEP=0"
+description = "Production-wrapper baseline"
 timeout_sec = 1800
 args = []
 
@@ -526,13 +538,6 @@ args = []
 # it, so the eFuse bank models supply the sensed data. The shadow preload
 # plusargs are read only under +skip_fuse_sense, so the SMC one is inert here
 # and the SEP one is left off entirely.
-[run_modes.no_sep_fuse_sense]
-description = "SEP=0 wrapper with real SMC fuse sense (no +skip_fuse_sense)"
-timeout_sec = 1800
-args = [
-  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
-]
-
 [run_modes.sep_rtl_fuse_sense]
 description = "Real-SEP wrapper with real SMC and SEP fuse sense"
 timeout_sec = 3600
@@ -541,10 +546,9 @@ args = [
 ]
 
 [targets.default]
-description = "Fallback: OSS wrapper no-SEP profile"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
+description = "Fallback: the single OSS wrapper profile (SEP=1, real EL2 CPU)"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
-  "SMU_NO_SEP",
 ]
 
 [targets.default.tools.verilator]
@@ -554,27 +558,13 @@ flags = [
   "+define+ASSERTS_OFF",
 ]
 
-[targets.compile_smu_chiplet_no_sep]
-description = "OSS smu_wrapper with NoSepCfg and SEP=0"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_no_sep"
-defines = [
-  "SMU_NO_SEP",
-]
-
-[targets.compile_smu_chiplet_no_sep.tools.verilator]
-flags = [
-  "-Wno-BLKLOOPINIT",
-  "+define+VERILATOR",
-  "+define+ASSERTS_OFF",
-]
-
-[targets.compile_smu_chiplet_sep_rtl]
+[targets.compile_smu_chiplet]
 description = "OSS smu_wrapper with DefaultCfg, SEP=1, and the real EL2 CPU"
-build_dir = "hw/sys/smu/dv/build/cocotb_wrapper_sep_rtl"
+build_dir = "hw/sys/smu/dv/build/cocotb_wrapper"
 defines = [
 ]
 
-[targets.compile_smu_chiplet_sep_rtl.tools.verilator]
+[targets.compile_smu_chiplet.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",

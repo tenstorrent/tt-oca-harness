@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_dtp_jtag2axi_smc_error_path_test — SMC J2A unmapped DECERR (SEP=0)."""
+"""smu_dtp_jtag2axi_smc_error_path_test — SMC J2A unmapped DECERR."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ class smu_dtp_jtag2axi_smc_error_path_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_dtp_jtag2axi_smc_error_path_test TierC JTAG2AXI-SMC-ERROR SEP=0 JTAG"
+            "DUT_TAG=WRAPPER smu_dtp_jtag2axi_smc_error_path_test TierC JTAG2AXI-SMC-ERROR SEP=1 JTAG"
         )
         seq = smu_dtp_jtag2axi_smc_error_path_test_seq(self)
         await seq.run()

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OTP JTAG2AXI write/readback of eFuse MAP SPARE[0] (SEP=0, no Force).
+"""SMC OTP JTAG2AXI write/readback of eFuse MAP SPARE[0] (SEP=1, no Force).
 
 S1: After TCK sync, ``tb_otp_jtag2axi_security_disable`` reads 0 -- the OTP
     J2A gate is open in this configuration. ``lc_state_o`` is the no-LCC
@@ -41,7 +41,7 @@ OTP_POLL = 128
 
 
 class smu_dtp_otp_smc_map_rw_test_seq:
-    """OTP J2A MAP SPARE[0] allow-path R/W; gate already open on SEP=0."""
+    """OTP J2A MAP SPARE[0] allow-path R/W; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test

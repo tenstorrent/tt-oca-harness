@@ -1,20 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_axi_id_width_conversion_test - the SEP=0 ID converter, on the wrapper.
+"""smu_axi_id_width_conversion_test - the external-port ID conversion, on the wrapper.
 
-Same claim as the bare `--dut smu_block` leaf of this name: under SEP=0, smu_axi_in
-(8-bit ID) feeds axi_iw_converter -> SMC SYS_IN (6-bit ID), and the converter
-path completes with RID == ARID on authoritative-map probes.
+smu_axi_in (8-bit ID) enters the SMU fabric and reaches SMC SYS_IN (6-bit ID)
+through the ID-width conversion in front of it; the path completes with
+RID == ARID on authoritative-map probes. The AXI slave is the `ext_in_*` pin
+group, the smu_axi_in_req_i / smu_axi_in_resp_o pair on smu_wrapper.sv, and
+the SMC reset observable is rst_primary_smc_clk_n_o.
 
-Two things differ from the bare-smu copy, and both are naming rather than
-substance. The AXI slave is `ext_in_*` here and `s_axi_*` there -- the same
-smu_axi_in_req_i / smu_axi_in_resp_o pair on smu_wrapper.sv, flattened under a
-different name by each TB. The SMC reset observable is rst_primary_smc_clk_n_o
-here and rst_primary_smc_clk_no there.
-
-Deny-path and filter allow/OKAY stay out of scope for the same reason they do
-in the bare copy: SYS_IN BlockByDefault plus a gated JTAG2AXI prevent a
-frontdoor allow under SEP=0, so a DECERR claim would have no positive control.
+Deny-path and filter allow/OKAY stay out of scope: SYS_IN BlockByDefault
+prevents a frontdoor allow without filter programming, so a DECERR claim would
+have no positive control here.
 """
 
 from __future__ import annotations
