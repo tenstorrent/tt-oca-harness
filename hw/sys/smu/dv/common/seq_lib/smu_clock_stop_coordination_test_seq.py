@@ -272,6 +272,17 @@ class smu_clock_stop_coordination_test_seq:
         dut.rst_cold_ni.value = 0
         await ClockCycles(dut.clk_ref_i, 64)
         dut.rst_cold_ni.value = 1
+        # Arm the sense-done observation at the release itself: the flag reads 0
+        # in reset, and the settle below can outlast the whole sense.
+        sense_done = cocotb.start_soon(
+            self._wait_rise(
+                dut.smc_fuse_sense_done_o,
+                clk=dut.clk_smu_i,
+                bound=FUSE_SENSE_BOUND_CYCLES,
+                label="s2_fuse_sense_done_after_cold",
+                name="smc_fuse_sense_done_o",
+            )
+        )
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         await self._wait_eq(
             smc_primary_reset(dut),
@@ -284,13 +295,7 @@ class smu_clock_stop_coordination_test_seq:
         # The cold reset restarted the sense. Only once it has completed is a
         # low fuse_reset the stall gate: hold it at 0 for the whole window
         # (bound == hold, so a single 1 expires the wait).
-        sense_cycles = await self._wait_rise(
-            dut.smc_fuse_sense_done_o,
-            clk=dut.clk_smu_i,
-            bound=FUSE_SENSE_BOUND_CYCLES,
-            label="s2_fuse_sense_done_after_cold",
-            name="smc_fuse_sense_done_o",
-        )
+        sense_cycles = await sense_done
         self._log(
             f"FUSE-SENSE cold+stall: smc_fuse_sense_done_o rose after {sense_cycles} clk_smu "
             f"@{self._sim_ns():.3f}ns fuse_reset="
