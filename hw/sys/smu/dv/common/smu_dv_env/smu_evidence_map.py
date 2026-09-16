@@ -538,6 +538,29 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "VERSION_LO inside the programmed page returns OKAY",
         ),
     ],
+    "smu_telemetry_atb_capture_test": [
+        (
+            "CHK-SMU-TEL-RESET",
+            "CHK-SMU-TEL-RESET",
+            "receiver 0 reads STATUS.BUFFER_EMPTY set with PROBE_ID and "
+            "COUNTER_VLDS clear before any beat is driven",
+        ),
+        (
+            "CHK-SMU-TEL-CAPTURE",
+            "CHK-SMU-TEL-CAPTURE",
+            "with the telemetry clock gate proved open, a complete last-flagged "
+            "ATB message whose every beat handshook on telemetry_atready_o "
+            "leaves the buffer non-empty, reports the framed probe id and one "
+            "valid bit per counter sent, and CTRL.BUFFER_POP returns it to empty",
+        ),
+        (
+            "CHK-SMU-TEL-FLUSH",
+            "CHK-SMU-TEL-FLUSH",
+            "CTRL.TELEMETRY_TX_FLUSH raises telemetry_afvalid_o and the request "
+            "holds while telemetry_afready_i is low; raising it retires the "
+            "request at the pin and clears the register field",
+        ),
+    ],
     "smu_system_timer_octs_test": [
         (
             "CHK-OCTS-PRIMARY-STRAP",

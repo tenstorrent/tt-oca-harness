@@ -1525,6 +1525,7 @@ tests = [
   "smu_ic_reset_ss_domain_matrix_test",
   "smu_periph_ext_window_test",
   "smu_smc_boundary_io_test",
+  "smu_telemetry_atb_capture_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
   "smu_smc_reset_ctrl_test",
@@ -2272,6 +2273,26 @@ args = [
   "+sep_dtcm_hex=sep_dtcm_default.hex",
 ]
 
+# The ATB telemetry source at the SMU boundary, read back through the
+# telemetry receiver's own registers.
+[[tests]]
+name = "smu_telemetry_atb_capture_test"
+module = "smu_telemetry_atb_capture_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "telemetry", "no_sep", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
 # SMC-facing boundary signals against the SMC registers that own them.
 # port_table.adoc declares each one; the bench previously tied them off, so no
 # leaf had ever driven or observed them.
@@ -2503,8 +2524,9 @@ tests = [
   "smu_smc_fuse_sense_sequence_test",
   "smu_smc_boundary_io_test",
   "smu_dtp_scan_chain_boundary_test",
+  "smu_telemetry_atb_capture_test",
 ]
-expected_count = 62
+expected_count = 63
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2605,8 +2627,9 @@ tests = [
   "smu_sep_fuse_sense_done_test",
   "smu_smc_boundary_io_test",
   "smu_dtp_scan_chain_boundary_test",
+  "smu_telemetry_atb_capture_test",
 ]
-expected_count = 88
+expected_count = 89
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

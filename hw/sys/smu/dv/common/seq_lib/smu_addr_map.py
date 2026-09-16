@@ -23,6 +23,9 @@ _RESET_UNIT_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "bloc
 _AXIL_MAILBOX_H = (
     _REPO_ROOT / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c" / "axil_mailbox.h"
 )
+_SMC_BASE_CONFIG_H = (
+    _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "smc_base_config.h"
+)
 _DFX_CTRL_STATUS_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
 )
@@ -36,6 +39,12 @@ _ANY_DEFINE_RE = re.compile(r"^\s*#define\s+(\w+)\s+(0x[0-9A-Fa-f]+|\d+)\s*$")
 _INDEXED_RE = re.compile(
     r"^\s*#define\s+(SMC_TOP_\w+_BASE_ADDR)\(\w+\)\s+"
     r"\(0x([0-9A-Fa-f]+)\s+\+\s+\(\w+\s+\*\s+0x([0-9A-Fa-f]+)\)\s*\)\s*$"
+)
+# Two-index: #define NAME(i, j) (0xBASE + (i * 0xS1) + (j * 0xS2))
+_INDEXED2_RE = re.compile(
+    r"^\s*#define\s+(SMC_TOP_\w+_BASE_ADDR)\(\w+,\s*\w+\)\s+"
+    r"\(0x([0-9A-Fa-f]+)\s+\+\s+\(\w+\s+\*\s+0x([0-9A-Fa-f]+)\)"
+    r"\s+\+\s+\(\w+\s+\*\s+0x([0-9A-Fa-f]+)\)\s*\)\s*$"
 )
 _BM_RE = re.compile(r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bm)\s+(0x[0-9A-Fa-f]+)\s*$")
 _BP_RE = re.compile(r"^\s*#define\s+(FILTER_CTRL__FILTER_CONFIG__\w+_bp)\s+(\d+)\s*$")
@@ -68,6 +77,20 @@ def _smc_indexed_table() -> dict[str, tuple[int, int]]:
             out[m.group(1)] = (int(m.group(2), 16), int(m.group(3), 16))
     if not out:
         raise RuntimeError(f"no indexed SMC_TOP_* macros parsed from {_SMC_ADDR_H}")
+    return out
+
+
+@lru_cache(maxsize=1)
+def _smc_indexed2_table() -> dict[str, tuple[int, int, int]]:
+    """Return {BASE_ADDR_macro: (base, stride_outer, stride_inner)} from smc_addr.h."""
+    text = _SMC_ADDR_H.read_text(encoding="utf-8")
+    out: dict[str, tuple[int, int, int]] = {}
+    for line in text.splitlines():
+        m = _INDEXED2_RE.match(line)
+        if m:
+            out[m.group(1)] = (int(m.group(2), 16), int(m.group(3), 16), int(m.group(4), 16))
+    if not out:
+        raise RuntimeError(f"no two-index SMC_TOP_* macros parsed from {_SMC_ADDR_H}")
     return out
 
 
@@ -185,6 +208,11 @@ def reset_unit_u32(symbol: str) -> int:
     return c_header_u32(_RESET_UNIT_H, symbol)
 
 
+def smc_base_config_u32(symbol: str) -> int:
+    """Return an ``SMC_BASE_CONFIG__*`` integer ``#define`` from ``smc_base_config.h``."""
+    return c_header_u32(_SMC_BASE_CONFIG_H, symbol)
+
+
 def dfx_ctrl_status_u32(symbol: str) -> int:
     """Return a ``DFX_CTRL_STATUS__*`` integer ``#define`` from ``dfx_ctrl_status.h``."""
     return c_header_u32(_DFX_CTRL_STATUS_H, symbol)
@@ -208,6 +236,16 @@ def smc_indexed_addr(symbol: str, idx: int = 0) -> int:
     except KeyError as exc:
         raise KeyError(f"{symbol} not an indexed macro in {_SMC_ADDR_H}") from exc
     return base + int(idx) * stride
+
+
+def smc_indexed2_addr(symbol: str, outer: int = 0, inner: int = 0) -> int:
+    """Return ``BASE + outer*S1 + inner*S2`` for a two-index ``SMC_TOP_*`` macro."""
+    table = _smc_indexed2_table()
+    try:
+        base, s_outer, s_inner = table[symbol]
+    except KeyError as exc:
+        raise KeyError(f"{symbol} not a two-index macro in {_SMC_ADDR_H}") from exc
+    return base + int(outer) * s_outer + int(inner) * s_inner
 
 
 def smc_indexed_stride(symbol: str) -> int:
