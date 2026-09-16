@@ -29,6 +29,12 @@ _SMC_BASE_CONFIG_H = (
 _DFX_CTRL_STATUS_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
 )
+_CROSS_TRIGGER_PORT_H = (
+    _REPO_ROOT / "hw" / "ip" / "cross_trigger" / "cross_trigger_port" / "regs" / "gen" / "c"
+)
+_CROSS_TRIGGER_MATRIX_H = (
+    _REPO_ROOT / "hw" / "ip" / "cross_trigger" / "cross_trigger_matrix" / "regs" / "gen" / "c"
+)
 _TELEMETRY_RECEIVER_H = (
     _REPO_ROOT / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
 )
@@ -216,6 +222,22 @@ def smc_base_config_u32(symbol: str) -> int:
 def dfx_ctrl_status_u32(symbol: str) -> int:
     """Return a ``DFX_CTRL_STATUS__*`` integer ``#define`` from ``dfx_ctrl_status.h``."""
     return c_header_u32(_DFX_CTRL_STATUS_H, symbol)
+
+
+def cross_trigger_u32(symbol: str) -> int:
+    """Return a cross-trigger port or matrix ``#define`` from its generated headers."""
+    paths = (
+        _CROSS_TRIGGER_PORT_H / "cross_trigger_port.h",
+        _CROSS_TRIGGER_PORT_H / "cross_trigger_port_addr.h",
+        _CROSS_TRIGGER_MATRIX_H / "cross_trigger_matrix.h",
+        _CROSS_TRIGGER_MATRIX_H / "cross_trigger_matrix_addr.h",
+    )
+    for path in paths:
+        try:
+            return c_header_u32(path, symbol)
+        except KeyError:
+            continue
+    raise KeyError(f"{symbol} not in any of {[str(p) for p in paths]}")
 
 
 def telemetry_receiver_u32(symbol: str) -> int:

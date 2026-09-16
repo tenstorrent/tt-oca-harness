@@ -726,6 +726,46 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_wrapper_elaboration_test": [
         ("CHK-WRAP-ELAB", "WRAP_ELAB_OK", "wrapper elab/reset contract"),
     ],
+    "smu_xtrig_ctp_pad_test": [
+        (
+            "CHK-SMU-CTP-DEFAULT",
+            "CHK-SMU-CTP-DEFAULT",
+            "CONFIG.MODE resets to wire-OR, where the request-out data input "
+            "enable is high on all sixteen lanes and every other CTP data and "
+            "enable output is idle",
+        ),
+        (
+            "CHK-SMU-CTP-TIEOFF",
+            "CHK-SMU-CTP-TIEOFF",
+            "the five CTP outputs the cross-trigger network ties to 1'b0 read zero in both modes",
+        ),
+        (
+            "CHK-SMU-CTP-P2P-MODE",
+            "CHK-SMU-CTP-P2P-MODE",
+            "CONFIG.MODE=1 raises req_out_dout_en, req_in_din_en, ack_in_din_en "
+            "and ack_out_dout_en and drops req_out_din_en, on the written lane "
+            "only",
+        ),
+        (
+            "CHK-SMU-CTP-P2P-RX",
+            "CHK-SMU-CTP-P2P-RX",
+            "a point-to-point request in raises the acknowledge out and shows "
+            "in STATUS, and releasing the request retires it",
+        ),
+        (
+            "CHK-SMU-CTP-ROUTE",
+            "CHK-SMU-CTP-ROUTE",
+            "with CT_SRC[1].CT_DST_SELECT pointing at lane 0, the trigger "
+            "appears as lane 1's request out and the acknowledge in retires it",
+        ),
+        (
+            "CHK-SMU-CTM-SRC",
+            "CHK-SMU-CTM-SRC",
+            "routing lane 0's destination into the matrix port of internal "
+            "cross-trigger lane 0 raises xtrig_ctm_src_req_o[0], and a wire-OR "
+            "edge on lane 2's request-out data input does the same",
+        ),
+    ],
     "smu_xtrig_ctm_illegal_phase_test": [
         ("CHK-XT-ILLEGAL", "XT_ILLEGAL_PHASE", "DTP[9:2] follows abort/double-req pin patterns"),
     ],

@@ -360,7 +360,29 @@ module smu_wrapper_uvm_top (
   output logic              tb_smc_wdt_first_timeout,
   output logic              tb_smc_wdt_second_timeout,
   output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  tb_gpio_interrupt,
-  output logic [smc_config_pkg::NUM_UART-1:0] tb_uart_interrupt
+  output logic [smc_config_pkg::NUM_UART-1:0] tb_uart_interrupt,
+  // GPIO pin 0 pad drive, weak so a core output still wins, matching the
+  // boot-stall strap drive on pin 57 below.
+  input  wire  logic tb_gpio0_drive_en,
+  input  wire  logic tb_gpio0_drive_val,
+  // Cross-trigger port pads. The DTP is the pad controller on all four
+  // groups, so the bench is the padring on the data inputs and watches the
+  // data and enable outputs.
+  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_din,
+  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_din,
+  input  wire  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_din,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_dout,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_dout_en,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_out_din_en,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_dout,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_dout_en,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_req_in_din_en,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_dout,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_dout_en,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_in_din_en,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_out_dout,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_out_dout_en,
+  output logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] tb_xtrig_ctp_ack_out_din_en
 );
 
 `ifdef SMU_NO_SEP
@@ -614,6 +636,10 @@ module smu_wrapper_uvm_top (
   smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_w [31:0];
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_out_dout_w, ctp_req_in_dout_w;
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_w, ctp_ack_out_dout_w;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_out_dout_en_w, ctp_req_out_din_en_w;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_req_in_dout_en_w, ctp_req_in_din_en_w;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_en_w, ctp_ack_in_din_en_w;
+  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_out_dout_en_w, ctp_ack_out_din_en_w;
   logic [31:0] jtag_ptap_state_w;
   logic [31:0] smu_axi_in_awvalid_count, smu_axi_out_awvalid_count;
   logic tb_axil_external_active;
@@ -686,6 +712,19 @@ module smu_wrapper_uvm_top (
   assign tb_smc_wdt_second_timeout = wdt_second_timeout_w;
   assign tb_gpio_interrupt         = gpio_interrupt_w;
   assign tb_uart_interrupt         = uart_interrupt_w;
+
+  assign tb_xtrig_ctp_req_out_dout    = ctp_req_out_dout_w;
+  assign tb_xtrig_ctp_req_out_dout_en = ctp_req_out_dout_en_w;
+  assign tb_xtrig_ctp_req_out_din_en  = ctp_req_out_din_en_w;
+  assign tb_xtrig_ctp_req_in_dout     = ctp_req_in_dout_w;
+  assign tb_xtrig_ctp_req_in_dout_en  = ctp_req_in_dout_en_w;
+  assign tb_xtrig_ctp_req_in_din_en   = ctp_req_in_din_en_w;
+  assign tb_xtrig_ctp_ack_in_dout     = ctp_ack_in_dout_w;
+  assign tb_xtrig_ctp_ack_in_dout_en  = ctp_ack_in_dout_en_w;
+  assign tb_xtrig_ctp_ack_in_din_en   = ctp_ack_in_din_en_w;
+  assign tb_xtrig_ctp_ack_out_dout    = ctp_ack_out_dout_w;
+  assign tb_xtrig_ctp_ack_out_dout_en = ctp_ack_out_dout_en_w;
+  assign tb_xtrig_ctp_ack_out_din_en  = ctp_ack_out_din_en_w;
 
   assign secure_tm_req = 1'b0;
   // ------------------------------------------------------------------
@@ -1271,6 +1310,7 @@ module smu_wrapper_uvm_top (
   // smc_ip_integration puts a prim_pad_shim on every pin -- so the drive goes
   // onto the wire itself, weak (pull) elsewhere so a core output still wins.
   assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
+  assign gpio_pad_io[0]  = tb_gpio0_drive_en ? tb_gpio0_drive_val : 1'bz;
 
   // smu.sv does not forward the peripheral-domain primary reset to its own
   // boundary, so read it off the SMC the way tb_top.sv does.
@@ -1528,21 +1568,21 @@ module smu_wrapper_uvm_top (
     .xtrig_clk_stop_req_i (xtrig_clk_stop_req),
 
     .xtrig_ctp_req_out_dout_o (ctp_req_out_dout_w),
-    .xtrig_ctp_req_out_dout_en_o (),
-    .xtrig_ctp_req_out_din_i ('0),
-    .xtrig_ctp_req_out_din_en_o (),
+    .xtrig_ctp_req_out_dout_en_o (ctp_req_out_dout_en_w),
+    .xtrig_ctp_req_out_din_i (tb_xtrig_ctp_req_out_din),
+    .xtrig_ctp_req_out_din_en_o (ctp_req_out_din_en_w),
     .xtrig_ctp_req_in_dout_o (ctp_req_in_dout_w),
-    .xtrig_ctp_req_in_dout_en_o (),
-    .xtrig_ctp_req_in_din_i ('0),
-    .xtrig_ctp_req_in_din_en_o (),
+    .xtrig_ctp_req_in_dout_en_o (ctp_req_in_dout_en_w),
+    .xtrig_ctp_req_in_din_i (tb_xtrig_ctp_req_in_din),
+    .xtrig_ctp_req_in_din_en_o (ctp_req_in_din_en_w),
     .xtrig_ctp_ack_in_dout_o (ctp_ack_in_dout_w),
-    .xtrig_ctp_ack_in_dout_en_o (),
-    .xtrig_ctp_ack_in_din_i ('0),
-    .xtrig_ctp_ack_in_din_en_o (),
+    .xtrig_ctp_ack_in_dout_en_o (ctp_ack_in_dout_en_w),
+    .xtrig_ctp_ack_in_din_i (tb_xtrig_ctp_ack_in_din),
+    .xtrig_ctp_ack_in_din_en_o (ctp_ack_in_din_en_w),
     .xtrig_ctp_ack_out_dout_o (ctp_ack_out_dout_w),
-    .xtrig_ctp_ack_out_dout_en_o (),
+    .xtrig_ctp_ack_out_dout_en_o (ctp_ack_out_dout_en_w),
     .xtrig_ctp_ack_out_din_i ('0),
-    .xtrig_ctp_ack_out_din_en_o (),
+    .xtrig_ctp_ack_out_din_en_o (ctp_ack_out_din_en_w),
 
     .rst_primary_ref_clk_no (rst_primary_ref_clk_no),
     .rst_primary_smc_clk_no (rst_primary_smc_clk_n),

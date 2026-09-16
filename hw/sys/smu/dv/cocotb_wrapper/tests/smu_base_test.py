@@ -218,6 +218,11 @@ class smu_base_test(uvm_test):
         "tb_cfg_flr_pf_active",
         "tb_mem_repair_abort",
         "tb_mbist_abort",
+        "tb_gpio0_drive_en",
+        "tb_gpio0_drive_val",
+        "tb_xtrig_ctp_req_out_din",
+        "tb_xtrig_ctp_req_in_din",
+        "tb_xtrig_ctp_ack_in_din",
     )
 
     def drive_idle_inputs(self) -> None:

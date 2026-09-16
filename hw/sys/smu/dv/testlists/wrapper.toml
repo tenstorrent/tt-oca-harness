@@ -2293,6 +2293,26 @@ args = [
   "+sep_dtcm_hex=sep_dtcm_default.hex",
 ]
 
+# The cross-trigger port pads, programmed through the DTP CSR window in the
+# SMC peripheral map.
+[[tests]]
+name = "smu_xtrig_ctp_pad_test"
+module = "smu_xtrig_ctp_pad_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "xtrig", "no_sep", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
 # SMC-facing boundary signals against the SMC registers that own them.
 # port_table.adoc declares each one; the bench previously tied them off, so no
 # leaf had ever driven or observed them.
@@ -2385,6 +2405,7 @@ tests = [
   "smu_dtp_io_stap_smoke_test",
   "smu_dtp_jtag2axi_back_to_back_error_ok_test",
   "smu_dtp_scan_chain_boundary_test",
+  "smu_xtrig_ctp_pad_test",
   # Two leaves end in an SMC fabric SERIES INCR write, which returns zeros or
   # parks SERIES_CTRL in BUSY whenever the drawn jtag_period_ns /
   # smu_clk_period_ns ratio is under 4; both pin the ratio to >= 4 through
@@ -2525,8 +2546,9 @@ tests = [
   "smu_smc_boundary_io_test",
   "smu_dtp_scan_chain_boundary_test",
   "smu_telemetry_atb_capture_test",
+  "smu_xtrig_ctp_pad_test",
 ]
-expected_count = 63
+expected_count = 64
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2628,8 +2650,9 @@ tests = [
   "smu_smc_boundary_io_test",
   "smu_dtp_scan_chain_boundary_test",
   "smu_telemetry_atb_capture_test",
+  "smu_xtrig_ctp_pad_test",
 ]
-expected_count = 89
+expected_count = 90
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
