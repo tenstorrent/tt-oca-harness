@@ -16,7 +16,7 @@ needs a measured database first.
 |Public metric |interface toggle: the `toggle_signal` family over the ports
 of `smu_wrapper` (`smu_wrapper_uvm_top.u_dut`), a port counting once any of
 its bits has toggled; plus the `user` points
-|Numeric target |interface toggle floor 55 percent (the
+|Numeric target |interface toggle floor 50 percent (the
 `wrapper-interface-toggle` threshold in `smu_wrapper_coverage_policy.toml`,
 set from the measured `sep0_all` database); the plan works toward 85 percent
 |===

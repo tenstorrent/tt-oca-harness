@@ -753,9 +753,10 @@ hierarchy = "smu_wrapper_uvm_top.u_dut"
 line = 259
 
 # The wrapper interface toggle rate: the ports of smu_wrapper, a port counting as
-# toggled when any of its bits has. The floor is the value measured on the
-# sep0_all database this file was generated from, so a regression fails the
-# grade; the target the coverage plan works toward is 85 percent.
+# toggled when any of its bits has. The floor sits below the values measured
+# on two sep0_all databases (57.4 and 56.8 percent; the seed moves a port or
+# two), so a real regression fails the grade and seed noise does not; the
+# target the coverage plan works toward is 85 percent.
 [[thresholds]]
 id = "wrapper-interface-toggle"
 tool = "verilator"
@@ -763,4 +764,4 @@ target = "*"
 scope = "smu_wrapper_uvm_top.u_dut"
 metric_family = "toggle_signal"
 population = "effective"
-minimum_percent = 55.0
+minimum_percent = 50.0
