@@ -4728,35 +4728,35 @@ b. Release the stall and confirm the returned data matches the reference model.
 
 *Test Coverage*:
 
-* Reset/abort asserted from reachable JTAG2AXI FSM states while a write is stalled at the data phase
-* In-flight bridge state and per-channel `axi_cdc_clearable` FIFO contents are flushed on abort
-* No partial or stale write escapes to the subordinate after the abort
-* Clean recovery: a subsequent legal write/read completes normally from `AXI_IDLE`
+* A system reset (`rst_n_i`, the bridges' AXI-side reset) asserted while a SINGLE_OP write is held on the W channel of each bridge by a responder READY stall that is released only after the reset
+* The bridge observed mid-flight before the reset through `dtp_tb_if`: its TCK-domain AXI FSM outside `AXI_IDLE` with the single-op pending flag set (the CDC accepts AW and W at once, so the FSM waits in `AXI_WAIT_BRESP` while the responder holds the channel)
+* Containment: the FSM back in `AXI_IDLE` within a bound after the reset, the CDC's TCK-side isolate-and-clear observed, and no write for the aborted operation reaching the subordinate
+* Recovery: the SINGLE_OP status leaving `BUSY_OR_FULL` within eight polls and a legal write completing afterwards
+* A bridge that stays in `AXI_WAIT_BRESP` with status `BUSY_OR_FULL` after the reset fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`; the scenario is the regression for that defect
 
 *Test Procedure*:
 
 [arabic]
-. Stage a stalled write through `OcahJtagMasterDriver`:
-a. Launch a single-op write and hold the subordinate W ready low so the bridge dwells in the reachable write FSM states (`AXI_SEND_ADDR_W` / `AXI_WAIT_BRESP`).
-. Assert reset/abort mid-flight:
-a. Drive the JTAG2AXI reset/abort while the operation is held, exercising the abort transition out of the reachable FSM state.
-b. Sample the FSM history and confirm the state returns to `AXI_IDLE` and never lands in `AXI_SEND_DATA_W`.
-. Confirm containment:
-a. Verify the `ocah_axi_vip` subordinate observed no completed write (no escaped partial transaction) for the aborted op.
-b. Verify the bridge status reports the abort/idle condition rather than a spurious OKAY.
-. Issue a fresh clean write and read-back to confirm full recovery.
+. For each bridge: hold the responder's W channel with a READY stall that outlasts the scenario, record the target slot's prior word, and issue a SINGLE_OP write through `OcahJtagMasterDriver`.
+. Step TCK in Run-Test/Idle while sampling the bridge FSM and pending flag through `dtp_tb_if` until the FSM leaves `AXI_IDLE`, bounded in TCK cycles (the FSM and the CDC's TCK side advance only while TCK runs); record `CHK-J2A-ABORT-MIDFLIGHT`.
+. Clear the sticky CDC clear-seen flag, pulse `rst_n_i` for one to three system cycles, then release the stall.
+. Step TCK while sampling the FSM until it returns to `AXI_IDLE`, bounded in TCK cycles; record `CHK-J2A-ABORT-FSM`. Record `CHK-J2A-CDC-CLEAR` from the sticky clear-seen flag and `CHK-J2A-ABORT-ESCAPE` from the unchanged target slot.
+. Poll the SINGLE_OP status up to eight times; record `CHK-J2A-ABORT-RECOVERY` against `SUCCESS`, and on success issue a legal write to a clean slot with the memory compare.
+. After all three bridges, fail the pass naming the bridges whose status stayed `BUSY_OR_FULL`.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`j2a_abort_fsm_chk` |Abort drives the FSM back to `AXI_IDLE` from a reachable state without entering `AXI_SEND_DATA_W`
-|`j2a_abort_escape_chk` |No partial/stale write reaches the subordinate for the aborted operation
-|`j2a_abort_recovery_chk` |A subsequent legal write/read completes correctly after the abort
+|`CHK-J2A-ABORT-MIDFLIGHT` |The FSM has left `AXI_IDLE` and the pending flag is set when the reset lands
+|`CHK-J2A-ABORT-FSM` |The FSM is back in `AXI_IDLE` within the bound after the reset
+|`CHK-J2A-CDC-CLEAR` |The bridge's CDC ran its TCK-side isolate-and-clear after the reset
+|`CHK-J2A-ABORT-ESCAPE` |The aborted operation's slot in the subordinate memory is unchanged
+|`CHK-J2A-ABORT-RECOVERY` |The SINGLE_OP status leaves `BUSY_OR_FULL` within eight polls and the follow-on legal write completes
 |===
 
-*Pass Criteria*: The reset/abort transition fires from a reachable FSM state, in-flight state is fully flushed with no escaped write, and the bridge recovers to service a clean follow-on access with zero scoreboard/reference-model errors.
+*Pass Criteria*: On every bridge the reset lands with the FSM observed mid-flight, the FSM returns to `AXI_IDLE`, the CDC clear is observed, no write escapes, and the status recovers so the follow-on write completes, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4771,33 +4771,36 @@ b. Verify the bridge status reports the abort/idle condition rather than a spuri
 
 *Test Coverage*:
 
-* `cdc_reset_ctrlr_half` reset-driven intermediate recovery states reached by a narrow reset pulse mid-transaction
-* TCK-to-ACLK CDC FIFO clear / isolate handshake while bridge traffic is in flight
-* Bridge status converges to a defined abort/idle condition after the narrow pulse
-* Subsequent access completes normally, proving the CDC recovers cleanly
+* A system reset (`rst_n_i`, the bridges' AXI-side reset) asserted while a SINGLE_OP write is held on the AW channel of each bridge by a responder READY stall that is released only after the reset
+* The bridge observed mid-flight before the reset through `dtp_tb_if`: its TCK-domain AXI FSM outside `AXI_IDLE` with the single-op pending flag set (the CDC accepts AW and W at once, so the FSM waits in `AXI_WAIT_BRESP` while the responder holds the channel)
+* Containment: the FSM back in `AXI_IDLE` within a bound after the reset, the CDC's TCK-side isolate-and-clear observed, and no write for the aborted operation reaching the subordinate
+* Recovery: the SINGLE_OP status leaving `BUSY_OR_FULL` within eight polls and a legal write completing afterwards
+* The single-cycle pulse exercises the `axi_cdc_clearable` reset controllers' isolate-and-clear on the TCK side; the sticky clear-seen flag in `dtp_tb_if` is the observation
+* A bridge that stays in `AXI_WAIT_BRESP` with status `BUSY_OR_FULL` after the reset fails `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY`; the scenario is the regression for that defect
 
 *Test Procedure*:
 
 [arabic]
-. Launch a transaction across the CDC through `OcahJtagMasterDriver`:
-a. Start a JTAG2AXI op so traffic is mid-flight across the TCK-to-ACLK `axi_cdc_clearable` path.
-. Apply a narrow reset pulse:
-a. Pulse the CDC clear/reset for a short interval timed to land mid-transaction, exercising the `cdc_reset_ctrlr_half` intermediate clear/isolate recovery states.
-b. Sample the CDC controller state and confirm it passes through the expected intermediate recovery states rather than hanging.
-. Verify post-pulse status reports abort/idle and the CDC FIFOs are emptied/cleared.
-. Issue a follow-on read/write and confirm it completes with the expected status and data.
+. For each bridge: hold the responder's AW channel with a READY stall that outlasts the scenario, record the target slot's prior word, and issue a SINGLE_OP write through `OcahJtagMasterDriver`.
+. Step TCK in Run-Test/Idle while sampling the bridge FSM and pending flag through `dtp_tb_if` until the FSM leaves `AXI_IDLE`, bounded in TCK cycles (the FSM and the CDC's TCK side advance only while TCK runs); record `CHK-J2A-ABORT-MIDFLIGHT`.
+. Clear the sticky CDC clear-seen flag, pulse `rst_n_i` for a single system cycle, then release the stall.
+. Step TCK while sampling the FSM until it returns to `AXI_IDLE`, bounded in TCK cycles; record `CHK-J2A-ABORT-FSM`. Record `CHK-J2A-CDC-CLEAR` from the sticky clear-seen flag and `CHK-J2A-ABORT-ESCAPE` from the unchanged target slot.
+. Poll the SINGLE_OP status up to eight times; record `CHK-J2A-ABORT-RECOVERY` against `SUCCESS`, and on success issue a legal write to a clean slot with the memory compare.
+. After all three bridges, fail the pass naming the bridges whose status stayed `BUSY_OR_FULL`.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`j2a_cdc_narrow_state_chk` |`cdc_reset_ctrlr_half` passes through the expected intermediate clear/isolate recovery states
-|`j2a_cdc_narrow_status_chk` |Post-pulse bridge status converges to a defined abort/idle condition
-|`j2a_cdc_narrow_recovery_chk` |A subsequent access completes correctly after the narrow reset
+|`CHK-J2A-ABORT-MIDFLIGHT` |The FSM has left `AXI_IDLE` and the pending flag is set when the reset lands
+|`CHK-J2A-ABORT-FSM` |The FSM is back in `AXI_IDLE` within the bound after the reset
+|`CHK-J2A-CDC-CLEAR` |The bridge's CDC ran its TCK-side isolate-and-clear after the reset
+|`CHK-J2A-ABORT-ESCAPE` |The aborted operation's slot in the subordinate memory is unchanged
+|`CHK-J2A-ABORT-RECOVERY` |The SINGLE_OP status leaves `BUSY_OR_FULL` within eight polls and the follow-on legal write completes
 |===
 
-*Pass Criteria*: The narrow reset pulse drives `cdc_reset_ctrlr_half` through its reachable intermediate recovery states, the CDC FIFOs clear, status reaches a defined abort/idle condition, and a follow-on access succeeds with zero scoreboard/reference-model errors.
+*Pass Criteria*: On every bridge the reset lands with the FSM observed mid-flight, the FSM returns to `AXI_IDLE`, the CDC clear is observed, no write escapes, and the status recovers so the follow-on write completes, with zero scoreboard/reference-model errors.
 
 '''''
 

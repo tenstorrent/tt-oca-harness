@@ -147,6 +147,23 @@ class DtpTbIf:
             raise ValueError(f"unknown dbg_disable field {name!r}")
         return getattr(self.ctrl, _DBG_DISABLE_PREFIX + name)
 
+    # --- JTAG2AXI bridge state --------------------------------------------------
+    def bridge_fsm_state(self, target: str) -> int:
+        """AXI FSM state of one bridge (``DtpJtag2AxiFsmState`` encoding)."""
+        return self.sample(f"{target}_fsm_state")
+
+    def bridge_op_pending(self, target: str) -> int:
+        """1 while the bridge holds a launched SINGLE_OP."""
+        return self.sample(f"{target}_op_pending")
+
+    def cdc_clear_seen(self, target: str) -> int:
+        """1 once the bridge's CDC has run its TCK-side isolate-and-clear since the last clear."""
+        return self.sample(f"{target}_cdc_clear_seen")
+
+    def set_cdc_clear_seen_clear(self, value: int) -> None:
+        """Hold ``cdc_clear_seen_clear``: 1 clears every bridge's sticky clear-seen flag."""
+        self.handle("cdc_clear_seen_clear").value = value
+
     # --- shared AXI VIP binding -----------------------------------------------
     def axi_bus(self, target: str, *, passive: bool = False) -> OcahAxiBus:
         """Shared-VIP bus handle over one DTP AXI interface at the bus's real geometry.

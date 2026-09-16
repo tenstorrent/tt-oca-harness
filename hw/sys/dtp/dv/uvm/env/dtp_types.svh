@@ -64,6 +64,17 @@ typedef enum int unsigned {
   DTP_J2A_BUSY_OR_FULL = 3
 } dtp_j2a_status_e;
 
+// Bridge AXI FSM state as dtp_tb_if samples it from jtag2axi.sv (axi_state_e).
+typedef enum logic [2:0] {
+  DTP_J2A_FSM_IDLE          = 0,
+  DTP_J2A_FSM_SEND_ADDR_W   = 1,
+  DTP_J2A_FSM_SEND_DATA_W   = 2,
+  DTP_J2A_FSM_WAIT_BRESP    = 3,
+  DTP_J2A_FSM_SEND_ADDR_R   = 4,
+  DTP_J2A_FSM_WAIT_RDATA    = 5,
+  DTP_J2A_FSM_UPDATE_STATUS = 6
+} dtp_j2a_fsm_state_e;
+
 typedef struct {
   string                                name;
   ocah_axi_protocol_e protocol;
@@ -107,6 +118,14 @@ localparam int unsigned DtpJtag2AxiCapsLen = 14;
 // Evidence ID of the per-pass geometry gate every JTAG2AXI scenario records.
 localparam string DtpJ2aGeometryCheckId = "CHK-J2A-GEOMETRY";
 localparam string DtpJ2aStatusBitCheckId = "CHK-J2A-STATUS-BIT";
+// Reset-abort scenario evidence: the bridge observed mid-flight before the
+// reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
+// escaped write, and a recovered status.
+localparam string DtpJ2aAbortMidFlightCheckId = "CHK-J2A-ABORT-MIDFLIGHT";
+localparam string DtpJ2aAbortFsmCheckId = "CHK-J2A-ABORT-FSM";
+localparam string DtpJ2aCdcClearCheckId = "CHK-J2A-CDC-CLEAR";
+localparam string DtpJ2aAbortEscapeCheckId = "CHK-J2A-ABORT-ESCAPE";
+localparam string DtpJ2aAbortRecoveryCheckId = "CHK-J2A-ABORT-RECOVERY";
 localparam int unsigned DtpJ2aSeriesStatusBeats = 4;
 // Increment flag per beat of the WITH_ERROR_STATUS streams (bit i = beat i):
 // the second beat re-writes the held address.
