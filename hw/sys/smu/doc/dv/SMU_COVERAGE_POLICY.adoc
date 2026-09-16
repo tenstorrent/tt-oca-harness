@@ -11,7 +11,7 @@ needs a measured database first.
 [cols=",",options="header",]
 |===
 |Field |Value
-|Release group |`--dut smu --items sep0_all` (live size in
+|Release group |`--dut smu --items hosted` (live size in
 `SMU_RELEASE_MATRIX.adoc`)
 |Public metric |toggle. Weekly `--cov` on this tree does not collect it —
 see below
@@ -21,8 +21,10 @@ see below
 `cov/sv/` carries eleven cover-property modules, 120 points in all; the counts
 are the `OCAH_FCOV_COVER` invocations in each file. The block bench
 `tb/tb_top.sv` instantiates nine of them and 90 points elaborate there; the
-wrapper bench `tb/tb_wrapper_top.sv` instantiates all eleven, of which 91
-elaborate on its no-SEP target. `smu_alias_fcov.sv` and `smu_clk_fcov.sv` are
+wrapper bench `tb/tb_wrapper_top.sv` instantiates all eleven on its single
+`compile_smu_chiplet` profile (SEP=1), where every `g_sep` block elaborates;
+the wrapper point count is measured by the coverage-policy rework that follows
+the single profile. `smu_alias_fcov.sv` and `smu_clk_fcov.sv` are
 wrapper-bench only -- `smu_clk_fcov` reads clock mirrors that only that bench
 publishes.
 

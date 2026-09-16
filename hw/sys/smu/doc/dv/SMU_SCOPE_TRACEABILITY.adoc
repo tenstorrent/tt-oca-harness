@@ -50,8 +50,8 @@ bench is `--dut smu_block` (`testlists/all.toml`), whose PASSes carry
 * `--dut smu_block` PASSes (`DUT_TAG=BARE`) are OUT of this matrix.
 * SEP=1 instantiate / fetch / retire (F2) and live SMC↔SEP mailbox
   challenge-response (F5) are OUT.
-* Wrapper elaboration / reset is `smu_wrapper_elaboration_no_sep_test`;
-  SEP=1 elaboration is `smu_wrapper_elaboration_sep_rtl_test`.
+* Wrapper elaboration / reset is `smu_wrapper_elaboration_sep_rtl_test`
+  (wrapper `smoke`).
 
 [[smu-traceability-matrix]]
 === Matrix (SPEC Features 1–7)

@@ -121,6 +121,5 @@ emits; the map must not invent a checkbox the body cannot prove.
 * `--dut smu` is the wrapper bench and carries `hosted` itself; PASSes are
   labelled `DUT_TAG=WRAPPER`. The bare block bench is `--dut smu_block`
   (`SMU_VPLAN.adoc`).
-* Wrapper elaboration / reset is `smu_wrapper_elaboration_no_sep_test`;
-  SEP=1 elaboration is `smu_wrapper_elaboration_sep_rtl_test` (wrapper
-  `smoke`).
+* Wrapper elaboration / reset is `smu_wrapper_elaboration_sep_rtl_test`
+  (wrapper `smoke`).

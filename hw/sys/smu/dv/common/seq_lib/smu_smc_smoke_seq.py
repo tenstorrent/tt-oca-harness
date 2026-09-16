@@ -42,7 +42,7 @@ class SmuSmcSmokeSeq:
         # The wrapper elaborates SEP=1, so the real SEP reset tree is present and
         # cold reset must hold the SEP in reset (the same check the SEP=1 leg of
         # smu_wrapper_elaboration_seq makes). SEP fuse-done after release is a
-        # SEP-side observation this SMC boot claim does not own, so it is logged.
+        # SEP-side observation this SMC boot claim does not own.
         assert self.test.pre_release_sep_reset == 0, (
             "SEP=1 wrapper must assert SEP reset during cold reset: "
             f"expected=0 observed={self.test.pre_release_sep_reset}"

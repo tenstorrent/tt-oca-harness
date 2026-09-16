@@ -53,13 +53,15 @@ tests = [
 ]
 
 # .github/workflows/sim.yml runs one fixed tier -- `--items smoke` -- for every
-# DUT in its matrix, so this DUT needs the group to exist by that name. It
-# carries no firmware, which matters: the hosted runner in .github/actions/dv-run installs
+# DUT in its matrix, so this DUT needs the group to exist by that name. Its
+# two leaves, the JTAG smoke and the SEP=0 configuration proof, carry no
+# firmware, which matters: the hosted runner in .github/actions/dv-run installs
 # Verilator and nothing else, so a group needing the RISC-V toolchain cannot
-# run there. It is also the scenario the SV-UVM view binds to, so
-# `--framework uvm --items smoke` selects it.
+# run there. The JTAG smoke is also the scenario the SV-UVM view binds to, so
+# `--framework uvm --items smoke --skip-unimplemented` selects it.
 [[groups]]
 name = "smoke"
 tests = [
   "smu_dtp_jtag_smoke_test",
+  "smu_no_sep_configuration_test",
 ]

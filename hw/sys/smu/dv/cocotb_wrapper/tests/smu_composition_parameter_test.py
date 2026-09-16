@@ -18,7 +18,7 @@ field by field and checks each decoded field against the port width or
 sub-block parameter that follows it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
-    --items smu_composition_parameter_sep_rtl_test smu_composition_parameter_no_sep_test \\
+    --items smu_composition_parameter_sep_rtl_test \\
     --tool verilator
 """
 
@@ -31,7 +31,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_composition_parameter_test(smu_base_test):
-    """Token, OTP depth, security_disable and Cfg plumbing, both build profiles."""
+    """Token, OTP depth, security_disable and Cfg plumbing on the wrapper profile."""
 
     use_shared_env = True
 
