@@ -1355,6 +1355,36 @@ module dtp_uvm_top
   assign u_tb_if.sep_otp_axil_wvalid_count  = sep_otp_axil_wvalid_count;
   assign u_tb_if.sep_otp_axil_arvalid_count = sep_otp_axil_arvalid_count;
 
+  // JTAG2AXI bridge state for the reset-abort scenarios, through the same
+  // hierarchical references the coverage instance uses. The sticky flags
+  // catch the CDC's TCK-side isolate-and-clear on the system clock.
+  logic smc_axi_cdc_clear_seen;
+  logic smc_otp_cdc_clear_seen;
+  logic sep_otp_cdc_clear_seen;
+  always_ff @(posedge clk_i or negedge pwr_on_rst_ni) begin
+    if (!pwr_on_rst_ni || u_tb_if.cdc_clear_seen_clear) begin
+      smc_axi_cdc_clear_seen <= 1'b0;
+      smc_otp_cdc_clear_seen <= 1'b0;
+      sep_otp_cdc_clear_seen <= 1'b0;
+    end else begin
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        smc_axi_cdc_clear_seen <= 1'b1;
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        smc_otp_cdc_clear_seen <= 1'b1;
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        sep_otp_cdc_clear_seen <= 1'b1;
+    end
+  end
+  assign u_tb_if.smc_axi_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.smc_axi_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.smc_axi_cdc_clear_seen = smc_axi_cdc_clear_seen;
+  assign u_tb_if.smc_otp_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.smc_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.smc_otp_cdc_clear_seen = smc_otp_cdc_clear_seen;
+  assign u_tb_if.sep_otp_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.sep_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.sep_otp_cdc_clear_seen = sep_otp_cdc_clear_seen;
+
   // XTRIG CSR AXI-Lite initiator: the shared ocah_axi_vip master (SV-UVM
   // agent or cocotb BFM) drives the CSR port (the initiator mirror of the
   // slave-port pattern: the master drives the request-side signals on the
