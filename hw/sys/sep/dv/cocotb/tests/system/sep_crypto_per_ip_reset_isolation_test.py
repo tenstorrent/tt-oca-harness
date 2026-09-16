@@ -58,6 +58,18 @@ Isolation proof (both directions, then the remaining isolated bits):
                     resolves; it may drain or terminate, but it
                     may not hang. That the path is not left wedged is the
                     existing CHK-ISOLATE-REOPEN beat after release.
+  * CHK-ABR-DRAIN-ORDER  the Adams Bridge reset does not assert until BOTH
+                    paths its domain depends on report isolated: the full-AXI
+                    SEP host path and the shared Key Manager path. An ABR-only
+                    reset request must raise the Key Manager bit on its own --
+                    a design that raises it only for a Key Manager reset never
+                    releases the sequencer and fails here rather than passing
+                    on a steady state.
+  * CHK-ABR-JTAG-OVERRIDE  the JTAG IC_RESET override holds the Adams Bridge
+                    domain in reset while SW_RESET_N still reports it released,
+                    and releasing the override lets the domain come back. The
+                    override is sampled against the gated reset, so a mux that
+                    ignored the new select fails here.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
                     TRNG-only reset. SW_RESET_N inside the window shows the
                     TRNG bit held and the four accelerator bits released.
@@ -98,6 +110,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     HMAC_DIGEST_RESET,
     RESP_OKAY,
     RESP_SLVERR,
+    RST_ABR,
     RST_HMAC,
     SW_RESET_N_DEFAULT,
     SepCryptoResetIso,
@@ -583,6 +596,91 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "window confirming the TRNG domain held and all four accelerator "
             "domains released",
             sw_parked,
+        )
+
+        # ---- Adams Bridge drain-before-reset ---------------------------------
+        # ABR's host path is a full-AXI isolate and its Key Manager path is
+        # shared with the KM domain, so the sequencer waits on host_abr AND
+        # km_abr. The reset must still be released when the loop starts, or the
+        # sampled state would be the settled one in which both bits are high
+        # anyway and the order could not fail.
+        abr_rst = SepCryptoResetIso(self)
+        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 1, (
+            "ABR gated reset was already asserted before the reset request was "
+            "issued, so this domain asserted reset with no drain window at all"
+        )
+        abr_task = cocotb.start_soon(abr_rst.assert_reset(RST_ABR))
+        abr_saw_window = False
+        for _ in range(1_000):
+            host_iso = int(cocotb.top.abr_host_isolated_probe_o.value)
+            km_iso = int(cocotb.top.abr_km_isolated_probe_o.value)
+            if int(cocotb.top.abr_gated_rst_n_probe_o.value) == 0:
+                assert host_iso == 1 and km_iso == 1, (
+                    "ABR reset asserted before its AXI paths isolated: "
+                    f"host_abr={host_iso} km_abr={km_iso}"
+                )
+                self.logger.info(
+                    "CHK-ABR-DRAIN-ORDER PASS: ABR reset asserted only after the "
+                    "full-AXI host path and the shared Key Manager path both "
+                    "reported isolated (sampled in the same cycle as the observed "
+                    "assert edge)"
+                )
+                break
+            if not abr_saw_window and (host_iso == 1 or km_iso == 1):
+                abr_saw_window = True
+                self.logger.info(
+                    "ABR drain window open (host_abr=%d km_abr=%d, gated reset still released)",
+                    host_iso,
+                    km_iso,
+                )
+            await ClockCycles(cocotb.top.clk_i, 1)
+        else:
+            raise AssertionError(
+                "ABR gated reset never asserted after the reset request: the "
+                "sequencer is still waiting for host_abr and km_abr to isolate"
+            )
+        await abr_task
+        assert abr_saw_window, (
+            "no ABR drain window was observed: the gated reset asserted with no "
+            "cycle in which an isolate bit was set and the reset still released"
+        )
+        await abr_rst.release_resets()
+
+        # ---- ABR JTAG IC_RESET override -------------------------------------
+        # The override mux sits after the SW-reset AND: asserting it must hold
+        # the domain even though SW_RESET_N still shows ABR released. Both
+        # directions are graded, so a mux stuck in either position fails.
+        sw_before = await abr_rst.read_back()
+        assert sw_before & (1 << RST_ABR), (
+            f"SW_RESET_N=0x{sw_before:08x} shows ABR already held before the JTAG "
+            "override is applied, so a held gated reset below would prove nothing"
+        )
+        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 1, (
+            "ABR gated reset is already asserted before the JTAG override, so the "
+            "override cannot be shown to be what holds it"
+        )
+        cocotb.top.jtag_abr_rst_hold_i.value = 1
+        await ClockCycles(cocotb.top.clk_i, 10)
+        sw_held = await abr_rst.read_back()
+        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 0, (
+            "JTAG override asserted but the ABR gated reset stayed released, so "
+            "the override select does not reach the reset mux"
+        )
+        assert sw_held & (1 << RST_ABR), (
+            f"SW_RESET_N=0x{sw_held:08x} shows the ABR bit low inside the override "
+            "window, so the hold cannot be attributed to JTAG rather than software"
+        )
+        cocotb.top.jtag_abr_rst_hold_i.value = 0
+        await ClockCycles(cocotb.top.clk_i, 10)
+        assert int(cocotb.top.abr_gated_rst_n_probe_o.value) == 1, (
+            "ABR gated reset stayed asserted after the JTAG override released, so "
+            "the mux is stuck on the override leg"
+        )
+        self.logger.info(
+            "CHK-ABR-JTAG-OVERRIDE PASS: the override held the ABR domain with "
+            "SW_RESET_N=0x%08x still reporting it released, and the domain "
+            "returned when the override released",
+            sw_held,
         )
 
         self.logger.info(

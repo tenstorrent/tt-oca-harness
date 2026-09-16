@@ -258,7 +258,7 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # reset_ctrl CSR + WDT sanity, combined (the reference suite\'s sep_reset_ctrl_csr_test +
-# wdt_sanity_test): SW_RESET_N=0x3E plus the per-IP and shared TRNG reset-wire
+# wdt_sanity_test): SW_RESET_N=0x7E plus the per-IP and shared TRNG reset-wire
 # clears, bad-address D-bus NMI x2, WDT
 # bark->NMI/pet/disable/re-bark, and the BITE reset request on the real
 # wdt_timer_rst_req_o output (tb_top probe). cpu run mode; +skip_fuse_sense.

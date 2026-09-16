@@ -2379,7 +2379,7 @@ reaches its wait before the interrupt fires.
 *Test Procedure*:
 
 [arabic]
-. Check the software reset register default, which is `0x3E`: the Key Manager is held and OTBN, AES, HMAC, KMAC and the TRNG come up released. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The TRNG is not parked, because it supplies entropy rather than requesting it. The firmware then probes each per-IP reset wire, including the shared TRNG bit: assert the bit, confirm the register goes to its reset value, release, confirm it is writable again.
+. Check the software reset register default, which is `0x7E`: the Key Manager is held and OTBN, AES, HMAC, KMAC, the TRNG and Adams Bridge come up released. JTAG-holds OTBN/AES/HMAC/KMAC across `rst_ni` release and fuse sense so they never raise crypto `edn_req` while the fabric is opening, then releases them. The TRNG is not parked, because it supplies entropy rather than requesting it. The firmware then probes each per-IP reset wire, including the shared TRNG bit: assert the bit, confirm the register goes to its reset value, release, confirm it is writable again.
 . Perform a bad write and a bad read of the unmapped gap, with settling in between; expect two bus-error interrupts.
 . Configure the watchdog with small bark and bite thresholds; enable.
 . On the first bark the handler clears and disables; confirm the count is frozen non-zero, pet returns it to zero, and it stays zero while disabled.
@@ -2403,7 +2403,7 @@ reaches its wait before the interrupt fires.
 |CHK-BITE
 |The bite reset request reaches the real output pin.
 |CHK-SWRST-DEFAULT
-|The software reset register holds its specified default of `0x3E`.
+|The software reset register holds its specified default of `0x7E`.
 |CHK-SWRST-WIRE
 |Pulsing each per-IP bit, the shared TRNG bit included, returns that domain's probe register to its reset value and leaves the neighbouring domains untouched.
 |===
