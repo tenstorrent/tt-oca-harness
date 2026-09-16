@@ -240,9 +240,6 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         addr = self._target_addr(target, addr_idx)
         data = rng.getrandbits(64) & self.data_mask(size)
         before = self.read_target_mem_int(target, addr, size)
-        tb_if.set_cdc_clear_seen_clear(1)
-        await self.wait_sys_cycles(1)
-        tb_if.set_cdc_clear_seen_clear(0)
         self.configure_target_backpressure(
             target, channels=(channel,), stall_cycles=ABORT_HOLD_CYCLES
         )
@@ -263,6 +260,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             1,
             f"fsm={DtpJtag2AxiFsmState(state).name}",
         )
+        tb_if.set_cdc_clear_seen_clear(1)
+        await self.wait_sys_cycles(1)
+        tb_if.set_cdc_clear_seen_clear(0)
         await self.pulse_system_reset(cycles=reset_cycles)
         self.clear_target_backpressure(target)
         recovered = await self._judge_abort_aftermath(target, addr, before, context=context)

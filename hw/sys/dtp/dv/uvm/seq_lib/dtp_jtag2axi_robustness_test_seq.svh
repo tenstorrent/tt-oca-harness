@@ -278,7 +278,6 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     dtp_j2a_status_e st;
     bit [63:0] rdata;
     bit mid_flight;
-    clear_cdc_clear_seen();
     configure_target_backpressure(t, '{channel}, AbortHoldCycles);
     issue_single(t, DTP_J2A_OP_WRITE, addr, data, full_wstrb(size), size, 1'b0);
     wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, state);
@@ -293,6 +292,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         $sformatf(
             "fsm=%s", state.name())
     ));
+    clear_cdc_clear_seen();
     pulse_system_reset(reset_cycles);
     clear_target_backpressure(t);
     wait_bridge_fsm(t, 1'b1, AbortSettleTck, state);

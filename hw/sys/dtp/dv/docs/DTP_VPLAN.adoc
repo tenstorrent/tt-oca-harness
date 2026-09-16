@@ -4737,9 +4737,9 @@ b. Release the stall and confirm the returned data matches the reference model.
 *Test Procedure*:
 
 [arabic]
-. For each bridge: clear the sticky CDC clear-seen flag, hold the responder's W channel with a READY stall that outlasts the scenario, record the target slot's prior word, and issue a SINGLE_OP write through `OcahJtagMasterDriver`.
+. For each bridge: hold the responder's W channel with a READY stall that outlasts the scenario, record the target slot's prior word, and issue a SINGLE_OP write through `OcahJtagMasterDriver`.
 . Step TCK in Run-Test/Idle while sampling the bridge FSM and pending flag through `dtp_tb_if` until the FSM leaves `AXI_IDLE`, bounded in TCK cycles (the FSM and the CDC's TCK side advance only while TCK runs); record `CHK-J2A-ABORT-MIDFLIGHT`.
-. Pulse `rst_n_i` for one to three system cycles, then release the stall.
+. Clear the sticky CDC clear-seen flag, pulse `rst_n_i` for one to three system cycles, then release the stall.
 . Step TCK while sampling the FSM until it returns to `AXI_IDLE`, bounded in TCK cycles; record `CHK-J2A-ABORT-FSM`. Record `CHK-J2A-CDC-CLEAR` from the sticky clear-seen flag and `CHK-J2A-ABORT-ESCAPE` from the unchanged target slot.
 . Poll the SINGLE_OP status up to eight times; record `CHK-J2A-ABORT-RECOVERY` against `SUCCESS`, and on success issue a legal write to a clean slot with the memory compare.
 . After all three bridges, fail the pass naming the bridges whose status stayed `BUSY_OR_FULL`.
@@ -4781,9 +4781,9 @@ b. Release the stall and confirm the returned data matches the reference model.
 *Test Procedure*:
 
 [arabic]
-. For each bridge: clear the sticky CDC clear-seen flag, hold the responder's AW channel with a READY stall that outlasts the scenario, record the target slot's prior word, and issue a SINGLE_OP write through `OcahJtagMasterDriver`.
+. For each bridge: hold the responder's AW channel with a READY stall that outlasts the scenario, record the target slot's prior word, and issue a SINGLE_OP write through `OcahJtagMasterDriver`.
 . Step TCK in Run-Test/Idle while sampling the bridge FSM and pending flag through `dtp_tb_if` until the FSM leaves `AXI_IDLE`, bounded in TCK cycles (the FSM and the CDC's TCK side advance only while TCK runs); record `CHK-J2A-ABORT-MIDFLIGHT`.
-. Pulse `rst_n_i` for a single system cycle, then release the stall.
+. Clear the sticky CDC clear-seen flag, pulse `rst_n_i` for a single system cycle, then release the stall.
 . Step TCK while sampling the FSM until it returns to `AXI_IDLE`, bounded in TCK cycles; record `CHK-J2A-ABORT-FSM`. Record `CHK-J2A-CDC-CLEAR` from the sticky clear-seen flag and `CHK-J2A-ABORT-ESCAPE` from the unchanged target slot.
 . Poll the SINGLE_OP status up to eight times; record `CHK-J2A-ABORT-RECOVERY` against `SUCCESS`, and on success issue a legal write to a clean slot with the memory compare.
 . After all three bridges, fail the pass naming the bridges whose status stayed `BUSY_OR_FULL`.
