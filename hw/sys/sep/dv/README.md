@@ -13,20 +13,22 @@ its pads come out of the wrapper. There is no SPI pad mux in this build.
 **Stimulus** = a cocotbext-axi master on the CPU LSU splice (`s_axi_*`), a second
 master on the real SMN-inbound port (`m_axi_*`, inbound filter), and VeeR EL2
 firmware boot on the `cpu` / `rom_fw` paths.
-**Backend** = Verilator is the reference backend; VCS and Xcelium also run.
+**Backend** = Verilator is the acceptance backend; VCS and Xcelium are the
+commercial development backends (`sep_sim_cfg.toml` `tools`), and VCS is the
+one graded coverage and SV-UVM run on.
 Everything the environment needs lives under this tree.
 
 ## Prerequisites
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x | the acceptance backend | CI pin 5.050 (`v5.050`) |
-| g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
-| Python ≥ 3.11 | launcher | `run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
-| Bender | filelist (`--stage flist`) | must be on `PATH` |
-| ccache | Verilator object cache | SEP sets `[build.verilator] ccache = true`; without the binary the C++ compile dies |
-| RISC-V GCC with picolibc | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | `riscv64-unknown-elf-gcc` or `riscv-none-elf-gcc` (rv32imc / ilp32); not needed for `--items smoke`. Host installs without picolibc fall back to `scripts/docker-run.sh` |
-| VCS or Xcelium | optional commercial backends | Verilator is the acceptance backend; SV-UVM (`--framework uvm`) is VCS only |
+| Verilator 5.x (CI pin `v5.050`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
+| g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8 g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
+| Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python`. `run_dv.py` bootstraps the locked uv-managed DV env (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
+| Bender (CI: `pulp-actions/bender-install@v2.5.1`) | filelist (`--stage flist`) | must be on `PATH`. A missing binary fails filelist generation. No SEP-owned semver pin |
+| ccache (CI: Ubuntu apt) | Verilator object cache | `[build.verilator] ccache = true`. Absence fails the C++ compile (`ccache: No such file or directory` / make Error 127) |
+| RISC-V GCC + picolibc (`ocah-toolchain`) | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | `tools/docker/Dockerfile`: Debian trixie `gcc-riscv64-unknown-elf` + `picolibc-riscv64-unknown-elf` (packages float; the base image digest is pinned). Host without `--specs=picolibc.specs` fails unless `scripts/docker-run.sh` is available. Not needed for `--items smoke` |
+| VCS (commercial; no public pin) | develop, graded `--cov`, and SV-UVM | Missing `VCS_HOME` / `SNPSLMD_LICENSE_FILE` or the 32-bit `vcs` driver's python-3.9 lib on `LD_LIBRARY_PATH` fails the driver |
 
 ### Environment variables
 

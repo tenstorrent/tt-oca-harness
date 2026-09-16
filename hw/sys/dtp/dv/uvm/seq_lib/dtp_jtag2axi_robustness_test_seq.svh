@@ -23,11 +23,15 @@
 //   * cdc_clear_abort_back_to_back_reset — two adjacent reset pulses with
 //     seeded spacing, then recovery write and read on every bridge;
 //   * decode_error_decerr_{write,read} / decode_error_mixed — one-shot
-//     DECERR injections per bridge with OKAY recovery accesses; the mixed
-//     flavor brackets the bad read between good write/read accesses at a
-//     neighbouring mapped address. Credits are armed direction-exact so
-//     every armed DECERR is consumed by a real bus response
-//     (CHK-AXI-NONVAC + the scoreboard's check_phase drain);
+//     DECERR injections per bridge (the DTP boundary has no address
+//     decoder: each target's responder injects the response) with OKAY
+//     recovery accesses; the errored write leaves its slot unchanged and
+//     the errored read's SINGLE_OP capture returns the errored beat's
+//     RDATA (CHK-J2A-ERR-RDATA); the mixed flavor brackets the bad read
+//     between good write/read accesses at a neighbouring mapped address.
+//     Credits are armed direction-exact so every armed DECERR is consumed
+//     by a real bus response (CHK-AXI-NONVAC + the scoreboard's
+//     check_phase drain);
 //   * series_corner_all_bridges — series reset, a pipeline_depth=1 write
 //     stream, two with-status increment beats with responder
 //     burst-completion waits before the memory compares, and the settled
@@ -63,10 +67,11 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // cocotb ROBUST_TARGETS order (smc_axi, smc_otp, sep_otp); plumbed by
   // the test. Class handles cannot live inside dtp_j2a_target_t; the
   // responders come from the virtual sequencer by target name.
-  dtp_j2a_target_t   targets[NumTargets];
-  ocah_axi_config    target_cfgs[NumTargets];
-  ocah_axi_checker   target_evidence[NumTargets];
-  ocah_axi_ref_model target_ref_models[NumTargets];
+  dtp_j2a_target_t     targets[NumTargets];
+  ocah_axi_config      target_cfgs[NumTargets];
+  ocah_axi_checker     target_evidence[NumTargets];
+  ocah_axi_ref_model   target_ref_models[NumTargets];
+  dtp_axi_read_history target_read_history[NumTargets];
 
   function new(string name = "dtp_jtag2axi_robustness_test_seq");
     super.new(name);
@@ -81,6 +86,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     axi_cfg       = target_cfgs[idx];
     axi_evidence  = target_evidence[idx];
     axi_ref_model = target_ref_models[idx];
+    axi_reads     = target_read_history[idx];
     return targets[idx];
   endfunction
 
@@ -383,10 +389,23 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       dtp_j2a_status_e op_status;
       int unsigned size = t.default_size;
       bit [63:0]   addr = robust_addr(t, i + 25);
+      bit [63:0] mem_before, mem_after;
       arm_target_error(t, addr, OCAH_AXI_RESP_DECERR, 1'b0, 1'b1);
+      mem_before = read_target_mem_int(t, addr, size);
       write_target_single_expect_status(t, addr, 64'($urandom) ^ 64'(i + 1), DTP_J2A_DECERR,
                                         op_status, size, full_wstrb(size), $sformatf(
                                         "decerr_write.%s", t.name));
+      // The responder drops an armed write beat, so the error slot keeps
+      // its prior value.
+      mem_after = read_target_mem_int(t, addr, size);
+      if (mem_after !== mem_before)
+        `uvm_error("jtag2axi_mem_chk", $sformatf(
+                   "decerr_write.%s.no_write_side_effect: memory at 0x%0h changed 0x%0h -> 0x%0h",
+                   t.name,
+                   addr,
+                   mem_before,
+                   mem_after
+                   ))
       // Seeded per-pass recovery payload.
       verify_target_recovery(t, addr + 64'h200, 64'($urandom) ^ 64'(i + 1), 1'b0, $sformatf(
                              "decerr_write.%s", t.name));
@@ -401,9 +420,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       bit [63:0]   rdata;
       int unsigned size = t.default_size;
       bit [63:0]   addr = robust_addr(t, i + 33);
+      bit [63:0]   preload = rand_nonzero_data(t);
+      write_target_mem_int(t, addr, preload, size);
       arm_target_error(t, addr, OCAH_AXI_RESP_DECERR, 1'b1, 1'b0);
       read_target_single_expect_status(t, addr, DTP_J2A_DECERR, op_status, rdata, size, $sformatf(
                                        "decerr_read.%s", t.name));
+      check_error_rdata(t, addr, rdata, OCAH_AXI_RESP_DECERR, preload, size, $sformatf(
+                        "decerr_read.%s", t.name));
       // Seeded per-pass recovery payload.
       verify_target_recovery(t, addr + 64'h200, 64'($urandom) ^ 64'(i + 1), 1'b1, $sformatf(
                              "decerr_read.%s", t.name));
@@ -512,7 +535,8 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   task body();
     seed_scenario_rng();
     foreach (target_cfgs[i]) begin
-      if (target_cfgs[i] == null || target_evidence[i] == null || target_ref_models[i] == null)
+      if (target_cfgs[i] == null || target_evidence[i] == null || target_ref_models[i] == null
+              || target_read_history[i] == null)
         `uvm_fatal(get_type_name(), $sformatf(
                    "robustness sequence needs all target bundles plumbed (index %0d)", i))
     end

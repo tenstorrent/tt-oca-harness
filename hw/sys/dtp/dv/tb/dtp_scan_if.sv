@@ -10,14 +10,21 @@
 interface dtp_scan_if;
 
   // Boundary-scan chain controls (driven by tb_top from the DUT's
-  // jtag_bsr_host_scan_ctrl_o).
+  // jtag_bsr_host_scan_ctrl_o). select is qualified by the boundary-scan
+  // instructions; the capture/shift/update strobes are the TAP's DR strobes
+  // under every instruction; run_test_idle and test_logic_reset decode the
+  // TAP state; runbist follows the RUNBIST instruction decode.
   logic jtag_bsr_select;
   logic jtag_bsr_shift_en;
   logic jtag_bsr_capture_en;
   logic jtag_bsr_update_en;
+  logic jtag_bsr_run_test_idle;
+  logic jtag_bsr_test_logic_reset;
+  logic jtag_bsr_runbist;
 
   // iJTAG SIB scan controls (driven by tb_top): the secure DFT, non-secure
-  // DFT, and DFD host scan chains.
+  // DFT, and DFD host scan chains. The non-secure DFT host also exposes the
+  // state and RUNBIST fields its SIB forwards ungated.
   logic jtag_dft_secure_select;
   logic jtag_dft_secure_shift_en;
   logic jtag_dft_secure_capture_en;
@@ -26,6 +33,9 @@ interface dtp_scan_if;
   logic jtag_dft_shift_en;
   logic jtag_dft_capture_en;
   logic jtag_dft_update_en;
+  logic jtag_dft_run_test_idle;
+  logic jtag_dft_test_logic_reset;
+  logic jtag_dft_runbist;
   logic jtag_dfd_select;
   logic jtag_dfd_shift_en;
   logic jtag_dfd_capture_en;

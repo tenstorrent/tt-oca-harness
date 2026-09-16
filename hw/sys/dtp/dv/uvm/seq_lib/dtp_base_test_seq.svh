@@ -60,6 +60,8 @@ class dtp_base_test_seq extends ocah_sequence;
   // TAP state tracked across operations (each operation re-syncs the VIP
   // model from it and hands the landing state back).
   protected ocah_jtag_tap_state_e m_tap_state = OCAH_JTAG_TEST_LOGIC_RESET;
+  // TAP state sampled by set_trst with TRST_N low and no TCK edge since.
+  protected bit [15:0] m_trst_async_state;
 
   function new(string name = "dtp_base_test_seq");
     super.new(name);
@@ -217,19 +219,30 @@ class dtp_base_test_seq extends ocah_sequence;
     check_state(TEST_LOGIC_RESET, "sanity_scan_path_chk", "after 5x TMS=1");
   endtask
 
-  // Hold or release TRST directly (active-low), stepping TCK with TMS=1 so
-  // the env's per-cycle FSM checker prediction (TLR self-loop) stays valid
-  // while the asynchronous reset dominates.
+  // Hold or release TRST directly (active-low). Asserting samples the TAP
+  // state once the pin has settled and before any TCK edge (the driver
+  // idles TCK between items), then clocks TCK with TMS low, which leaves
+  // Test-Logic-Reset unless the reset holds the controller there. Releasing
+  // clocks TCK with TMS high, the Test-Logic-Reset self-loop.
   task set_trst(bit value, int unsigned cycles = 1);
     if (jtag_vif == null)
       `uvm_fatal(get_type_name(), "set_trst() needs jtag_vif plumbed by the test")
     jtag_vif.trst_n <= value;
-    repeat (cycles > 0 ? cycles : 1) step(1'b1);
+    if (value == 1'b0) begin
+      wait_sys_cycles(1);
+      m_trst_async_state = tb_vif.tap_state;
+    end
+    repeat (cycles > 0 ? cycles : 1) step(value);
     if (value == 1'b0) begin
       sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
       if (evidence != null) evidence.reset_model();
     end
   endtask
+
+  // The TAP state set_trst sampled under TRST_N before any TCK edge.
+  function bit [15:0] trst_async_state();
+    return m_trst_async_state;
+  endfunction
 
   // Pulse power-on reset while TCK keeps stepping with TMS=1 (the TAP's
   // POR independence contract is checked by the caller from tb_vif state).

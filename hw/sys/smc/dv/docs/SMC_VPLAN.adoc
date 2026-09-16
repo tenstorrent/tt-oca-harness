@@ -6860,10 +6860,10 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 |===
 |Checker |Description
 |`CHK-GPIO-IRQ-MASK-ARM` |Pad high with the enable set asserts the IRQ and holds it, so the mask leg's stimulus is the enable write alone
-|`CHK-GPIO-IRQ-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ. **Expected to fail**: `gpio.sv:253-261` uses the enable as the interrupt flop's clock enable and `:302` drives `interrupt_o` from that flop unqualified
+|`CHK-GPIO-IRQ-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ and holds it de-asserted for the same span the arm leg holds it asserted
 |===
 
-*Pass Criteria*: both legs hold. The second leg fails on RTL that carries the defect. Enrolled in: `rtl_issue`.
+*Pass Criteria*: `CHK-GPIO-IRQ-MASK-ARM` and `CHK-GPIO-IRQ-MASK-DEASSERT` hold after their compares. Enrolled in: `all`, `hosted`, `per_ip`, `pyuvm`.
 
 '''''
 
@@ -6896,11 +6896,11 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 |===
 |Checker |Description
 |`CHK-LOG-ENGINE-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
-|`CHK-LOG-ENGINE-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATUS still carrying the bit -- the last is what separates an output mask from a repair that simply clears the status. **Expected to fail**: `log_engine.sv:496` drives `irq_o` from INTR_STATUS unqualified
-|`CHK-LOG-ENGINE-INTR-MASK-LATCH` |An event arriving while masked is still latched. **Expected to fail**: `log_engine.sv:489-491` ANDs the event with the enable before the flop, so the pulse is lost
+|`CHK-LOG-ENGINE-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATUS still carrying the bit -- the last is what separates an output mask from a DUT that simply clears the status
+|`CHK-LOG-ENGINE-INTR-MASK-LATCH` |An event arriving while masked is still latched and surfaces once the enable is set
 |===
 
-*Pass Criteria*: all three legs hold. The last two fail on RTL that carries the defect; both are measured before either raises, so neither hides the other. Enrolled in: `rtl_issue`.
+*Pass Criteria*: `CHK-LOG-ENGINE-INTR-MASK-ARM`, `CHK-LOG-ENGINE-INTR-MASK-DEASSERT` and `CHK-LOG-ENGINE-INTR-MASK-LATCH` hold after their compares; the last two are measured before either raises, so neither hides the other. Enrolled in: `all`, `hosted`, `per_ip`, `pyuvm`.
 
 '''''
 
@@ -6933,11 +6933,11 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 |===
 |Checker |Description
 |`CHK-I2C-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
-|`CHK-I2C-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATE still carrying the bit -- the last is what separates an output mask from a repair that simply clears the state. **Expected to fail**: `i2c_core.sv:981` drives `irq_o` from INTR_STATE.intr unqualified
-|`CHK-I2C-INTR-MASK-LATCH` |An event arriving while masked is still latched. **Expected to fail**: `i2c_core.sv:1001` ANDs the event with the enable before the flop
+|`CHK-I2C-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATE still carrying the bit -- the last is what separates an output mask from a DUT that simply clears the state
+|`CHK-I2C-INTR-MASK-LATCH` |An event arriving while masked is still latched and surfaces once the enable is set
 |===
 
-*Pass Criteria*: all three legs hold. The last two fail on RTL that carries the defect. Enrolled in: `rtl_issue`.
+*Pass Criteria*: `CHK-I2C-INTR-MASK-ARM`, `CHK-I2C-INTR-MASK-DEASSERT` and `CHK-I2C-INTR-MASK-LATCH` hold after their compares; the last two are measured before either raises, so neither hides the other. Enrolled in: `all`, `hosted`, `per_ip`, `pyuvm`.
 
 '''''
 

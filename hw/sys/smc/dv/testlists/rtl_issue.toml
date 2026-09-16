@@ -37,49 +37,6 @@ schema_version = 1
 # Do not "fix" a red test here by weakening its checker.
 
 [[tests]]
-# Clearing DATA_CTRL.interrupt_enable while a GPIO interrupt is
-# asserted does not de-assert interrupt_o. gpio.sv:253-261 uses the enable as
-# the interrupt flop's clock enable rather than the output mask that
-# hw/ip/gpio/doc/architecture.adoc:122 specifies.
-name = "smc_gpio_irq_mask_deassert_test"
-module = "smc_gpio_irq_mask_deassert_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue", "gpio", "pyuvm"]
-run_modes = ["smoke"]
-expect_fail = "#1602: clearing DATA_CTRL.interrupt_enable while a GPIO interrupt is asserted does not de-assert interrupt_o"
-expect_fail_match = "CHK-GPIO-IRQ-MASK-DEASSERT: .* stayed 1 after DATA_CTRL"
-
-[[tests]]
-# INTERRUPT_ENABLE gates the interrupt set path instead of masking the
-# output. log_engine.rdl:159-161 records the intended `hwenable` binding -- an
-# output mask -- as commented out, and log_engine.sv:489-496 puts the enable on
-# the set path while driving irq_o from INTR_STATUS unqualified. gpio.sv and
-# i2c_core.sv:981,995-1010 have the same shape; this leaf is the log-engine
-# instance of that pattern.
-name = "smc_log_engine_intr_mask_test"
-module = "smc_log_engine_intr_mask_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue", "uart", "pyuvm"]
-run_modes = ["smoke"]
-expect_fail = "#1635: INTERRUPT_ENABLE gates the log-engine interrupt set path instead of masking irq_o"
-expect_fail_match = "CHK-LOG-ENGINE-INTR-MASK-DEASSERT: .* stayed 1 after INTR_ENABLE"
-
-[[tests]]
-# The same enable-on-set-path pattern, third IP: i2c_core.sv:1000 ANDs the event
-# with the enable before the flop and :981 drives irq_o from INTR_STATE.intr
-# unqualified -- the same shape as log_engine.sv and gpio.sv.
-name = "smc_i2c_intr_mask_test"
-module = "smc_i2c_intr_mask_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue", "i2c", "pyuvm"]
-run_modes = ["smoke"]
-expect_fail = "#1635: INTR_ENABLE gates the i2c_core interrupt set path instead of masking irq_o (the I2C instance of the pattern)"
-expect_fail_match = "CHK-I2C-INTR-MASK-DEASSERT: .* stayed 1 after INTR_ENABLE"
-
-[[tests]]
 # Dead offsets inside seven register windows wrap onto live registers and the
 # bus answers OKAY (wrap_to_live=7 read_alias=6 of 8 checkable probes): the
 # wrapper truncates to the PeakRDL address width before any range check, so
@@ -98,9 +55,6 @@ expect_fail_match = "aliased live registers \\(wrap_to_live=[1-9][0-9]* read_ali
 [[groups]]
 name = "rtl_issue"
 tests = [
-    "smc_gpio_irq_mask_deassert_test",
-    "smc_log_engine_intr_mask_test",
-    "smc_i2c_intr_mask_test",
     "smc_deadspace_decode_test",
 ]
-expected_count = 4
+expected_count = 1

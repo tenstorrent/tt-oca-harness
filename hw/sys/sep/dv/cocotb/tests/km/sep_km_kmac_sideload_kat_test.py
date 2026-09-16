@@ -24,7 +24,8 @@ VPLAN-parity checkers:
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only KMAC of the four
             sideload targets released; AES/HMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to KMAC
-  CHK-PUB   public KMAC KEY_SHARE0/1 read back zero after sideload (no key leak)
+  PUB-OBS   public KMAC KEY_SHARE0/1 read back zero after sideload. NOT a checker:
+            kmac.hjson declares them swaccess=wo, so the read cannot fail
   CHK-SIDE  sideload digest != dummy digest (the sideloaded key drives the output)
   CHK-MAC   sideload digest == SW-key(KNOWN key) digest (consume-proof: KMAC used
             exactly the KM-delivered known key)
@@ -180,19 +181,21 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to KMAC)")
 
-        # CHK-PUB: the sideloaded key is NOT exposed on the public KEY_SHARE CSRs.
+        # PUB-OBSERVATION: the public KEY_SHARE CSRs read zero. Logged, not scored
+        # -- kmac.hjson declares them swaccess=wo, so "reads zero" holds on any RTL.
         s0_pub, s1_pub, ctl_pub = await self.kmac.read_public_key_shares()
         assert all(w == 0 for w in s0_pub + s1_pub), (
             "KMAC public KEY_SHARE0/1 not all zero after sideload (key leak): "
             f"s0={[hex(w) for w in s0_pub if w]} s1={[hex(w) for w in s1_pub if w]}"
         )
         assert ctl_pub != 0, (
-            "CHK-PUB positive control failed: KMAC STATUS read back 0 over the same "
+            "PUB-OBSERVATION positive control failed: KMAC STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
         )
         self.logger.info(
-            "CHK-PUB KMAC public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=%#010x)",
+            "PUB-OBSERVATION KMAC public KEY_SHARE0/1 frontdoor reads zero after "
+            "sideload. Not scored: kmac.hjson declares them swaccess=wo, so this read "
+            "cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,
         )
 

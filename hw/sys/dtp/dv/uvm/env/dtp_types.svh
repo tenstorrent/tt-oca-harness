@@ -118,6 +118,8 @@ localparam int unsigned DtpJtag2AxiCapsLen = 14;
 // Evidence ID of the per-pass geometry gate every JTAG2AXI scenario records.
 localparam string DtpJ2aGeometryCheckId = "CHK-J2A-GEOMETRY";
 localparam string DtpJ2aStatusBitCheckId = "CHK-J2A-STATUS-BIT";
+localparam string DtpJ2aErrRdataCheckId = "CHK-J2A-ERR-RDATA";
+localparam string DtpJ2aSeriesAddrCheckId = "CHK-J2A-SERIES-ADDR";
 // Reset-abort scenario evidence: the bridge observed mid-flight before the
 // reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
 // escaped write, and a recovered status.
@@ -515,6 +517,15 @@ typedef enum int unsigned {
 } dtp_stap_e;
 
 localparam int unsigned DtpIjtagSibCount = 3;
+// Instrument stub widths behind each SIB (tb_top), dtp_ijtag_sib_e order:
+// every subset of open SIBs sums to a distinct chain length.
+localparam int unsigned DtpIjtagInstrumentWidths[DtpIjtagSibCount] = '{4, 5, 6};
+localparam int unsigned DtpIjtagChainLenMax = DtpIjtagSibCount + 4 + 5 + 6;
+// A latency-measuring scan shifts a marker word ahead of the chain's
+// maintain image; the marker's MSB is set, so the stream's highest set bit
+// lands at chain_len + DtpScanMarkerWidth - 1.
+localparam int unsigned DtpScanMarkerWidth = 16;
+localparam int unsigned DtpIjtagObserveScanWidth = 40;
 localparam int unsigned DtpStapCount = 4;
 localparam int unsigned DtpPtapIrWidth = DtpIrWidth;
 // IEEE 1149.1: a TAP's IR capture presents 01 in its two LSBs.
@@ -526,6 +537,17 @@ typedef enum int unsigned {
   DTP_SCAN_DR = 0,
   DTP_SCAN_IR = 1
 } dtp_scan_kind_e;
+
+// What a window over one host chain's scan controls shows across a DR scan:
+// SELECTED = select high and the TAP's capture/shift/update strobes pulse;
+// UNSELECTED = select low while the strobes pulse (the strobes are the
+// TAP's and only select is qualified by the instruction); GATED = the
+// chain's host holds select and every strobe low.
+typedef enum int unsigned {
+  DTP_SCAN_CTRL_SELECTED   = 0,
+  DTP_SCAN_CTRL_UNSELECTED = 1,
+  DTP_SCAN_CTRL_GATED      = 2
+} dtp_scan_ctrl_expect_e;
 
 // One data register of a downstream TAP.
 typedef struct {
@@ -593,6 +615,9 @@ localparam int unsigned DtpXtrigCtmStride =
 localparam bit [63:0] DtpXtrigCtpBase = 64'(cross_trigger_network_pkg::CSR_ADDR_CTM_SIZE);
 localparam int unsigned DtpXtrigCtpStride = cross_trigger_network_pkg::CSR_ADDR_CTP_SIZE;
 localparam bit [63:0] DtpXtrigUnmappedBase = DtpXtrigCtpBase + DtpXtrigNumCtp * DtpXtrigCtpStride;
+// Read data the crossbar's error subordinate returns alongside DECERR on an
+// unmapped XTRIG address (the low word of the pulp axi_err_slv response word).
+localparam bit [31:0] DtpXtrigDecerrData = 32'hBADC_AB1E;
 
 localparam int unsigned DtpCtpConfigOffset  =
     int'(cross_trigger_port_addrmap_pkg::CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR);

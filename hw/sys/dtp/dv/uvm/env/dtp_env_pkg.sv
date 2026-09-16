@@ -65,7 +65,9 @@ package dtp_env_pkg;
   `include "dtp_jtag2axi_status_ref_model.svh"
 
   `include "dtp_tap_fsm_checker.svh"
+  `include "dtp_jtag_scan_builder.svh"
   `include "dtp_scan_window_monitor.svh"
+  `include "dtp_axi_read_history.svh"
   `include "dtp_scoreboard.svh"
   `include "dtp_env.svh"
 

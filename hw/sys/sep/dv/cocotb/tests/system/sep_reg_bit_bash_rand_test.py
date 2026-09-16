@@ -80,11 +80,25 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
             bash.lands_ok,
             bash.lands_upper_ok,
         )
+        # Both counts are floors, not decorations: a regenerated export that
+        # widened every mask, or dropped every reserved field, would take the
+        # matching count to zero and the PASS line would still print. Assert the
+        # population is non-empty so the token cannot outlive the thing it
+        # reports on.
+        assert bash.ro_ok > 0, (
+            "CHK-RO FAIL: no write-bash register carried an out-of-mask bit, so "
+            "nothing exercised the read-only contract -- if every mask is now all "
+            "ones this check has no population and must be retired, not passed"
+        )
         self.logger.info(
             "CHK-RO PASS: %d write-bash register(s) with out-of-mask bits "
             "left them unchanged (registers whose mask is all ones carry no "
             "out-of-mask bits and are not counted)",
             bash.ro_ok,
+        )
+        assert bash.reserved_ok > 0, (
+            "CHK-RESERVED FAIL: no write-bash register carried a non-zero reserved "
+            "field, so nothing exercised the reserved-reads-zero contract"
         )
         self.logger.info(
             "CHK-RESERVED PASS: %d write-bash register(s) with a non-zero "
