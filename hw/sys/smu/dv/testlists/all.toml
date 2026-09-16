@@ -4,8 +4,9 @@
 schema_version = 1
 
 # Testlist for --dut smu_block, the bare `smu #(.SEP(0))` DUT. The SMU
-# regression is testlists/wrapper.toml on --dut smu; these are the two leaves
-# that cannot run there.
+# regression is testlists/wrapper.toml on --dut smu, whose single compile
+# profile elaborates SEP=1. This DUT hosts the SEP=0 composition proofs
+# (nosep.toml) and the two leaves below that cannot run on the wrapper.
 #
 # smu_dtp_jtag2axi_abort_mid_op_test aborts an OTP operation mid-flight, so it
 # has to observe SINGLE_OP report BUSY first. That is available here, where
@@ -26,13 +27,29 @@ schema_version = 1
 # file: smu_sim_cfg.toml [testlist] selects it directly, and the two DUTs have
 # separate configs and separate testlist roots, so no wrapper leaf is reachable
 # from here and none is meant to be.
-includes = ["dtp.toml"]
+includes = ["dtp.toml", "nosep.toml"]
 
 [[groups]]
 name = "all"
 tests = [
   "smu_dtp_jtag2axi_abort_mid_op_test",
   "smu_dtp_jtag_smoke_test",
+  "smu_axi_xbar_structure_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_no_sep_configuration_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
+]
+
+# The SEP=0 composition leaves (testlists/nosep.toml).
+[[groups]]
+name = "nosep"
+tests = [
+  "smu_axi_xbar_structure_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_no_sep_configuration_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
 ]
 
 # .github/workflows/sim.yml runs one fixed tier -- `--items smoke` -- for every

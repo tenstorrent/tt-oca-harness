@@ -10,7 +10,7 @@ package, and they carry no evidence token. What the tokens rest on is plumbing
 the design can get wrong: a parameter reaching the instance that consumes it.
 
 On the `--dut smu` production wrapper. The SEP=1 entry
-(compile_smu_chiplet_sep_rtl, +expected_sep=1) reads the 256-bit
+(compile_smu_chiplet, +expected_sep=1) reads the 256-bit
 SEP_SEC_DISABLE_TOKEN at the wrapper, at `smu` and at the SEP eFuse controller
 that consumes it, the DTP's forced SEP OTP pipeline depths, and the one
 security_disable net from the SEP consumer through the `smu` wire into the SMC

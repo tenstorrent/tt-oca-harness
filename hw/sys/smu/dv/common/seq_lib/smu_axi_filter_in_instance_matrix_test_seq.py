@@ -28,7 +28,10 @@ from seq_lib.smu_addr_map import (
     smc_indexed_addr,
 )
 from seq_lib.smu_axi_helpers import make_smu_axi_master, resp_name
-from seq_lib.smu_filter_helpers import page_align_window
+from seq_lib.smu_filter_helpers import (
+    page_align_window,
+    program_smc_aperture_local_alias,
+)
 from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_SUCCESS,
     jtag2axi_single_read,
@@ -229,6 +232,8 @@ class smu_axi_filter_in_instance_matrix_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != 0x1:

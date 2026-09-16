@@ -20,6 +20,7 @@ from seq_lib.smu_filter_helpers import (
     await_smn_resp,
     clear_inbound0_config,
     program_inbound0_window,
+    program_smc_aperture_local_alias,
 )
 from seq_lib.smu_jtag_helpers import DTP_DEFAULT_IDCODE, make_smu_jtag_tap
 from seq_lib.smu_tb_pins import smc_primary_reset
@@ -63,6 +64,8 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:

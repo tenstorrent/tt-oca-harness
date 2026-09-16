@@ -293,7 +293,7 @@ check.
 *Test Coverage*:
 
 * Sequence for smu_axi_external_port_connectivity_test (SMU_ALL_002).
-* SMU_ALL_002 owns SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via direct IW converters (wrapper bench, SEP=0; required_cells dir=in + dest=smc_aperture only).
+* SMU_ALL_002 owns SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via direct IW converters (block bench, SEP=0; required_cells dir=in + dest=smc_aperture only).
 * SMU-SEP-PARAM.S2 — SEP=0 elaboration of direct SMC↔external ID converters (non-OTP-error).
 * The S1 probe (`CHIP_CONFIG.VERSION_LO`) lands on SMC BlockByDefault, so the write and the read answer DECERR. A DECERR alone is also what a dead bus or a stuck converter returns, so the same run carries a positive control on the same master and path: JTAG2AXI opens inbound filter 0 over the probe, the external read must return OKAY with the RDL reset value of `VERSION_LO`, and the window is cleared so the DECERR returns.
 * SEP aperture inbound (dest=sep_aperture) is owned by SMU-PORT-SMN-AXI.S4 on SMU_ALL_008 — out of scope for this card.
@@ -301,7 +301,7 @@ check.
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_axi_external_port_connectivity_test_seq` over the wrapper's product interfaces.
+. Drive `smu_axi_external_port_connectivity_test_seq` over the block bench's product interfaces (`--dut smu_block`, `smu #(.SEP(0))`; the wrapper's single profile elaborates SEP=1).
 . Write and read `VERSION_LO` from `smu_axi_in` with distinct AWID/ARID before any inbound window is programmed; the response class must be OKAY or DECERR and BID/RID must equal the issued IDs.
 . Bring the PTAP out of TLR, require the SMC JTAG2AXI gate open, and program inbound filter 0 over the probe's 4 KB granule.
 . Read `VERSION_LO` again from `smu_axi_in` with a third ARID: OKAY, RID match, data equal to the RDL reset value.
@@ -531,7 +531,7 @@ check.
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_axi_xbar_structure_test_seq` over the wrapper's product interfaces.
+. Drive `smu_axi_xbar_structure_test_seq` over the block bench's product interfaces (`--dut smu_block`, `smu #(.SEP(0))`; the wrapper's single profile elaborates SEP=1).
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -1931,7 +1931,7 @@ check.
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_dtp_ptap_otp_instr_scan_test_seq` over the wrapper's product interfaces.
+. Drive `smu_dtp_ptap_otp_instr_scan_test_seq` over the block bench's product interfaces (`--dut smu_block`, `smu #(.SEP(0))`; the wrapper's single profile elaborates SEP=1).
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -2108,7 +2108,7 @@ check.
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_no_sep_configuration_test_seq` over the wrapper's product interfaces.
+. Drive `smu_no_sep_configuration_test_seq` over the block bench's product interfaces (`--dut smu_block`, `smu #(.SEP(0))`; the wrapper's single profile elaborates SEP=1).
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -2266,7 +2266,7 @@ check.
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_smc_security_demote_pm_test_seq` over the wrapper's product interfaces.
+. Drive `smu_smc_security_demote_pm_test_seq` over the block bench's product interfaces (`--dut smu_block`, `smu #(.SEP(0))`; the wrapper's single profile elaborates SEP=1).
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
@@ -2428,6 +2428,8 @@ Two things are worth reading before the entries:
 
 [[sec-057-smu_wrapper_elaboration_no_sep_test]]
 ===== 57 `smu_wrapper_elaboration_no_sep_test`
+
+*Enrollment*: none. The wrapper has one compile profile, `compile_smu_chiplet` (SEP=1), so the `+expected_sep=0` leg of `smu_wrapper_elaboration_test` has no elaboration to run against; the SEP=1 leg is <<sec-058-smu_wrapper_elaboration_sep_rtl_test>> and the SEP=0 composition proofs run on `--dut smu_block` (`testlists/nosep.toml`). The card records what this leaf checks.
 
 *Source Module*: `smu_wrapper_elaboration_test`
 

@@ -18,26 +18,29 @@ under `hw/sys/smu/doc/dv/` (`SMU_FEATURE_LIST`, `SMU_SCOPE_TRACEABILITY`,
 
 **DUT.** `--dut smu` builds `hw/top/smu_wrapper.sv` -- the SMU with the
 open-source IP integration attached -- under `tb/tb_wrapper_top.sv`
-(`smu_wrapper_uvm_top`), in two compile profiles: `compile_smu_chiplet_no_sep`
-(`NoSepCfg`, `SEP=0`, no SEP instantiated) and `compile_smu_chiplet_sep_rtl`
-(`DefaultCfg`, `SEP=1`, the real SEP EL2 core). `smu_wrapper` is a registered
+(`smu_wrapper_uvm_top`), in one compile profile, `compile_smu_chiplet`
+(`SEP=1`, the real SEP EL2 core). Every leaf of the regression runs on that
+elaboration, so a regression pays one Verilator build and coverage merges across
+the whole selection. `smu_wrapper` is a registered
 alias of `smu` (`hw/common/dv/configs/duts.toml`), so the two names resolve to
 one config, one build cache and one identity; logs carry `DUT_TAG=WRAPPER`.
 The bare block bench, `--dut smu_block`, builds `smu #(.SEP(0))` with its
 technology interfaces tied off under `tb/tb_top.sv` (`smu_uvm_top`,
-`DUT_TAG=BARE`) and holds two leaves only (`testlists/all.toml`): the
-JTAG2AXI abort test, which needs an OTP interface that hangs, and the JTAG
-smoke, which carries the SV-UVM binding.
+`DUT_TAG=BARE`) and holds the leaves that need `SEP=0` (`testlists/all.toml`):
+the five SEP=0 composition proofs in `testlists/nosep.toml` (no crossbar, direct
+ID converters, SEP aperture and lifecycle tie-offs, DTP without its SEP debug
+slice), the JTAG2AXI abort test, which needs an OTP interface that hangs, and
+the JTAG smoke, which carries the SV-UVM binding.
 
-**What it verifies.** On the `no_sep` profile, four surfaces of the SMU at its
+**What it verifies.** With `elaboration` firmware, four surfaces of the SMU at its
 own boundary: the fabric and address decode (external SMN AXI into SMC,
 ID-width conversion, crossbar error handling, alias remap, the inbound and
 outbound filters); the SMC reached through the SMU (bring-up, reset control,
 mailbox, watchdog, OCTS, security demote); the DTP reached through the SMU
 (primary JTAG, STAP selection, boundary scan, the OTP bridge over JTAG2AXI,
 cross-trigger routing); and clock, reset and boot sequencing (clock stop,
-boot stall, IC_RESET domains, the external boot-sequence gate). On the
-`sep_rtl` profile, the SEP firmware set: SEP boot and firmware execution
+boot stall, IC_RESET domains, the external boot-sequence gate). With the
+real SEP firmware images, the SEP firmware set: SEP boot and firmware execution
 under the SMU, lifecycle state broadcast from the SEP eFuse shadow to the SMC
 and the DTP, and the entropy stack. `docs/SMU_VPLAN.adoc` cards every leaf.
 
@@ -100,15 +103,16 @@ python3 tools/dv/run_dv.py --validate-configs
 python3 tools/dv/run_dv.py --dut smu --list
 
 # 1. PR gate. `.github/workflows/sim.yml` runs this on every hardware diff on a
-#    hosted runner (Verilator, no RISC-V toolchain): four SEP=0 leaves.
+#    hosted runner (Verilator, no RISC-V toolchain): two toolchain-free leaves.
 python3 tools/dv/run_dv.py --dut smu --items smoke_sep0
 
 # 2. Nightly and weekly. `.github/workflows/regress.yml` runs this as the
-#    release qualification set: 53 SEP=0 leaves, one seed nightly, three
-#    weekly with --cov on the large runner. No firmware compile stage.
+#    release qualification set: 52 toolchain-free leaves, one seed nightly,
+#    three weekly with --cov on the large runner. Their `elaboration` firmware
+#    stage only writes zero-filled preload images (Python, no toolchain).
 python3 tools/dv/run_dv.py --dut smu --items sep0_all
 
-# 3. The whole package: `all` adds the SEP=1 firmware set (81 leaves). The
+# 3. The whole package: `all` adds the SEP firmware set (84 leaves). The
 #    firmware c_build stages build every image in the toolchain container
 #    (unless RISCV_TOOLCHAIN names a picolibc gcc), so build that image once
 #    first. Nothing schedules this group: the hosted runners have Verilator
@@ -117,11 +121,12 @@ python3 tools/dv/run_dv.py --dut smu --items sep0_all
 python3 tools/dv/run_dv.py --dut smu --items all
 ```
 
-`smoke` (the two elaboration leaves plus `smu_smc_smoke_test` and
+`smoke` (the elaboration leaf plus `smu_smc_smoke_test` and
 `smu_sep_smoke_test`) needs the SMC and SEP firmware compiles and is the
 runner's default; `sim.yml` substitutes `smoke_sep0` for it on `smu`. The
-block bench is `python3 tools/dv/run_dv.py --dut smu_block --items all` (two
-leaves, no toolchain); `sim.yml` runs its `smoke` group (one leaf) on every
+block bench is `python3 tools/dv/run_dv.py --dut smu_block --items all` (seven
+leaves, no toolchain; `nosep` is the five SEP=0 composition proofs); `sim.yml`
+runs its `smoke` group (one leaf) on every
 hardware PR, and `regress.yml` is the schedule of record for the rest.
 
 Groups (`testlists/wrapper.toml`): `build_smoke`, `smoke`, `smoke_sep0`,
@@ -150,10 +155,10 @@ Every directory and top-level file under `dv/` is listed here.
 | `docs/` | `index.adoc` and the three chapters: `SMU_TB_ARCH.adoc`, `SMU_VPLAN.adoc`, `SMU_FCOV.adoc` |
 | `fw/` | this root's own firmware: `build_firmware.py`, `common/` (SMC and SEP start-up and linker files), `tests/` (the SMC smoke, the SEP smoke and the two SEP arm images). The `sep_real_fw` images come from `hw/sys/sep/dv/fw/` instead |
 | `tb/` | `tb_wrapper_top.sv` (`--dut smu`), `tb_top.sv` (`--dut smu_block`; one module with a cocotb pin shape and an SV-UVM harness shape), `smu_tb_signal_list.svh`, `smu_tb_if.sv`, `smu_wrapper_public_scope.vlt` |
-| `testlists/` | `wrapper.toml` (`--dut smu`: the SMU regression), `all.toml` and `dtp.toml` (`--dut smu_block`) |
+| `testlists/` | `wrapper.toml` (`--dut smu`: the SMU regression), `all.toml`, `dtp.toml` and `nosep.toml` (`--dut smu_block`) |
 | `tools/` | `smu_wrapper_tb_readiness_test.py`, the static readiness gates below |
 | `uvm/{env,seq_lib,tests}/` | the SV-UVM realization (`--dut smu_block --framework uvm`, VCS) |
-| `smu_sim_cfg.toml` | `--dut smu` launch config: Bender targets, the two compile profiles, run modes, `c_build` stages |
+| `smu_sim_cfg.toml` | `--dut smu` launch config: Bender targets, the single compile profile, run modes, `c_build` stages |
 | `smu_block_sim_cfg.toml` | `--dut smu_block` launch config: `[frameworks.cocotb]` + `[frameworks.uvm]` |
 | `smu_public_scope.vlt` | Verilator public-signal scope of the block bench (`smu_block_sim_cfg.toml` `[build.verilator].public_scope`); the wrapper's is `tb/smu_wrapper_public_scope.vlt` |
 | `build/` | generated: models, firmware, `build/runs/`; gitignored |
@@ -177,7 +182,7 @@ additional to the shared DV directory set (`cocotb/`, `cov/`, `docs/`,
 * `uvm/` -- the SV-UVM shape of the same scenarios, selected by
   `--framework uvm`; it shares `tb/tb_top.sv` with the cocotb shape.
 
-## Compile profiles and images (`--dut smu`)
+## Compile profile and images (`--dut smu`)
 
 The `ram_<depth>x39` ICCM/DCCM macros that `hw/sys/sep/rtl/sep_tcm_wrapper.sv`
 instantiates come from the upstream VeeR `mem_lib.sv` on the `sep_el2` Bender
@@ -228,7 +233,7 @@ they gate is the controller's own, and their log reads `Not skipping fuse sense`
 python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
 
 python3 tools/dv/run_dv.py --dut smu \
-  --items smu_wrapper_elaboration_no_sep_test --stage flist
+  --items smu_wrapper_elaboration_sep_rtl_test --stage flist
 python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
   --phase filelist \
   --filelist hw/sys/smu/dv/build/smu_wrapper_dut_compile.f
@@ -299,9 +304,10 @@ feature reuses that IP bench's reference model and scoreboard through
 
 ## Enrollment
 
-`--dut smu` carries the regression: `all` is the enrolled set (81), `sep0_all`
-is the toolchain-free SEP=0 subset the workflows run (53), and the rest of
-`all` is the SEP=1 firmware set. Names outside both are classified in
+`--dut smu` carries the regression: `all` is the enrolled set (84), `sep0_all`
+is the toolchain-free subset the workflows run (52), and the rest of `all` is
+the SEP firmware set. The SEP=0 composition proofs are enrolled on `--dut smu_block`
+(`nosep`). Names outside both are classified in
 `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`, which also records which
 enrolled names run only in the unscheduled groups.
 
