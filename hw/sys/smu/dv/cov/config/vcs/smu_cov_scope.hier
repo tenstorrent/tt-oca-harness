@@ -6,14 +6,14 @@
 // subsystems SMU integrates are named by the instance that contains each of
 // them; the Verilator file names the same trees by source path.
 //
-// Toggle is collected on the ports of smu_wrapper only. An integration level
-// owns its interfaces, and a port has toggled when any of its bits has; the
-// nets inside the subsystems belong to their own packages.
+// The wrapper is graded on its interface. Everything under u_dut is internal
+// logic with an owner of its own -- the SMU block on the `--dut smu_block`
+// bench, SMC, DTP and SEP in their own packages -- so those trees are dropped
+// and toggle is collected on the ports of smu_wrapper only, `portsonly` being
+// urg's own per-port view: a port has toggled when any of its bits has.
 
 -tree smu_wrapper_uvm_top 1
--tree smu_wrapper_uvm_top.u_dut.u_smu.u_smc
--tree smu_wrapper_uvm_top.u_dut.u_smu.u_dtp
--tree smu_wrapper_uvm_top.u_dut.u_smu.u_sep
+-tree smu_wrapper_uvm_top.u_dut.u_smu
 -tree smu_wrapper_uvm_top.u_dut.u_smc_ip_integration
 -tree smu_wrapper_uvm_top.u_dut.u_sep_ip_integration
 

@@ -13,13 +13,15 @@ needs a measured database first.
 |Field |Value
 |Release group |`--dut smu --items hosted` (live size in
 `SMU_RELEASE_MATRIX.adoc`)
-|Public metric |interface toggle: the `toggle_signal` family over the ports
-of `smu_wrapper` (`smu_wrapper_uvm_top.u_dut`), a port counting once any of
-its bits has toggled; plus the `user` points
-|Numeric target |interface toggle floor 45 percent (the
-`wrapper-interface-toggle` threshold in `smu_wrapper_coverage_policy.toml`,
-below the 50.6 and 57.2 percent the first databases measured); the plan works
-toward 85 percent
+|Public metric |interface toggle: the ports of `smu_wrapper`
+(`smu_wrapper_uvm_top.u_dut`), a port counting once any of its bits has
+toggled, read from the run's `cov/merged.dat` by `cov/interface_toggle.py`;
+plus the `user` points
+|Numeric target |interface toggle 85 percent of the wrapper's ports (139 of
+165 = 84.2 percent on the `hosted` group when this chapter was written);
+`user` 95 percent effective. Neither is a runner gate: the runner grades the
+native families and the policy's `[[holes]]`, and the interface figure is
+reported beside them
 |===
 
 `cov/sv/` carries eleven cover-property modules, 115 points in all; the counts
@@ -59,24 +61,29 @@ that replaces the crossbar, in each direction
 |===
 |Path |What it collects |Where it runs
 |Public Verilator |line / expr / toggle / user over
-`smu_wrapper_cov_scope.vlt`, which drops the SEP, SMC and DTP trees, the
-`hw/top` integration shells, vendored and generated RTL at compile time; the
-runner derives `toggle_signal` from the toggle points |weekly `--cov` on the
-large runner (`regress.yml`). Nightly does not collect.
-|Public metric |`toggle_signal` scoped to `smu_wrapper_uvm_top.u_dut`: the
-ports of the wrapper, one point per port, every one of them live because the
-single target elaborates SEP |the `wrapper-interface-toggle` threshold,
-evaluated on every `--cov` run of `--dut smu` and re-gradable with `--waive`
-|Commercial |toggle / code / assertion databases under the licensed
-flow |not a public CI job; not a substitute for the public weekly
+`smu_wrapper_cov_scope.vlt`, which drops everything the wrapper instantiates
+at compile time -- the SMU block (graded on `--dut smu_block`), the SEP, SMC
+and DTP trees, the `hw/top` integration shells, vendored and generated RTL --
+so the toggle points that remain are the wrapper's ports |weekly `--cov` on
+the large runner (`regress.yml`). Nightly does not collect.
+|Public metric |`cov/interface_toggle.py <run dir>` folds the per-bit,
+per-edge toggle points whose hierarchy is exactly `smu_wrapper_uvm_top.u_dut`
+into one figure per port; every port is live because the single target
+elaborates SEP. `--list` names the ports that never toggled |on any finished
+`--cov` run of `--dut smu`, without a simulator
+|Commercial |toggle / code / assertion databases under the licensed flow;
+`smu_cov_scope.hier` drops the same trees and collects toggle as
+`tgl(portsonly)` on `u_dut`, which is urg's own per-port view |not a public
+CI job; not a substitute for the public weekly
 |===
 
-The DUT is an integration shell: `smu.sv` is wiring, and Verilator
-emits no line / branch / expression sites under `hw/sys/smu/rtl/`.
-That is why the metric is toggle rather than line or expression, and
-why it is counted per port rather than per bit: a 256-bit struct port is one
-interface, not five hundred and twelve. A Python `smu_fcov.py` sampler is not
-the release metric and is not a gate.
+The DUT is an integration shell, and an integration level is graded on its
+interfaces. That is why the metric is toggle rather than line or expression,
+and why it is counted per port rather than per bit: a 256-bit struct port is
+one interface, not five hundred and twelve. The folding is a report over the
+database the runner already writes, not a runner family, so the coverage
+layout stays the one DTP, SEP and SMC use. A Python `smu_fcov.py` sampler is
+not the release metric and is not a gate.
 
 [[smu-cov-out]]
 === Structural OUT versus a waiver hole
@@ -87,8 +94,8 @@ Three mechanisms. Do not mix them.
 |===
 |Kind |Effect |Carrier
 |Structural OUT, by source file |the point never enters the database
-|`coverage_off` file patterns (SMC, DTP, SEP, `hw/ip`, `hw/common`, CPU
-cluster, TB, vendor trees the file pattern can reach)
+|`coverage_off` file patterns (`hw/sys/smu/rtl`, SMC, DTP, SEP, `hw/ip`,
+`hw/common`, CPU cluster, TB, vendor trees the file pattern can reach)
 |Structural OUT, by elaboration |the point is not elaborated, so it never
 enters the database and no waiver names it |the `SepPresent` parameter and
 its `g_sep` generate blocks in `cov/sv/*_fcov.sv`; a point whose observable
@@ -109,9 +116,9 @@ ConfigError on the first run.
 
 Every `[[holes]]` row must carry:
 
-* `tool`, `metric_family` (the family that database holds: line / expr
-/ user on `--dut smu`; `toggle` on `--dut smu_block`), `hierarchy` or
-file selector
+* `tool`, `metric_family` (the family that database holds: `user` and the
+wrapper's own `toggle` on `--dut smu`; line / expr / toggle / user on
+`--dut smu_block`), `hierarchy` or file selector
 * `category` (`out_of_scope` / `excluded` / `waived` / `open`)
 * `disposition`
 * `owner`
