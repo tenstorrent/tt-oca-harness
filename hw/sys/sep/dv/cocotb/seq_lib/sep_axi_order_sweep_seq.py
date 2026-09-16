@@ -82,9 +82,11 @@ BLOCK_EXCLUDE: dict[str, str] = {
 # Blocks kept out of the sweep when it is driven from the SMN inbound master,
 # for a reason that belongs to that path. Each entry names the RTL fact.
 BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
-    # Every INBOUND_FILTER_CTRL_<n>_ block IS the rule set that gates this bus:
-    # sep_system_peripherals.sv drives u_inbound_filter.filter_ctrl_i from these
-    # CSRs, and the swept registers are that entry's START_ADDR / END_ADDR. A
+    # Every INBOUND_FILTER_CTRL_<n>_ block IS the rule set that gates this bus.
+    # hw/sys/sep/doc/fabric.adoc (Traffic Filter Decode) states the inbound
+    # filter has 16 entries and that each entry is one filter_ctrl register
+    # triple -- FILTER_CONFIG, START_ADDR, END_ADDR -- so the swept registers are
+    # that entry's own address window. A
     # sweep write there moves the address window of the access in flight, so the
     # cell would measure filter reprogramming rather than an adapter's channel
     # ordering. Reaching them from m_axi at all would also need an allow window
@@ -97,12 +99,15 @@ BLOCK_EXCLUDE_M_AXI: dict[str, str] = {
 }
 
 # Coarse inbound-filter allow windows for the m_axi walk, as
-# (name, start, end_inclusive). traffic_filter.sv compares
-# addr[AW-1:3] against start[AW-1:3]..end[AW-1:3] inclusive (DataBusWidthLog2=3
-# for the 64-bit inbound bus), so END is the last byte address inside the
-# window, and axi_filter_wrap.sv reports it back with its low 3 bits set.
-# allow_burst stays 0, so the 4 KB page widen does not apply and the granule is
-# 8 bytes.
+# (name, start, end_inclusive).
+#
+# The comparison granule is the specification's, not the design's:
+# hw/ip/axi_filter/doc/index.adoc (Address Range Granule) states that with
+# allow_burst = 0 the granule is the data bus width -- 8 bytes on a 64-bit bus
+# -- and address bits [2:0] are ignored, that START_ADDR widens *down* to the
+# base of its granule and END_ADDR widens *up* to the top of its granule. So END
+# below is the last byte address inside the window and reads back with its low
+# three bits set. allow_burst stays 0, so the 4 KB page widen does not apply.
 #
 # Five windows out of the sixteen filter entries, coarse so the walk needs no
 # reprogramming mid-sweep. None of them covers the filter CSR bank at
