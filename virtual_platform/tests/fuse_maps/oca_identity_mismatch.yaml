@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # SEP_CHIPLET_ID deliberately NOT matching (byte 1 differs) the identity configs/oca_identity_boot_test.yaml requires.
 #
 # The manifest's sparse chiplet_id fixes bytes 0 and 1 to 0xDE 0xAD and leaves

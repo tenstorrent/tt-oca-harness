@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Guard the VP eFuse model's register map against the RDL.
 
 Why this lives here rather than in the model repo

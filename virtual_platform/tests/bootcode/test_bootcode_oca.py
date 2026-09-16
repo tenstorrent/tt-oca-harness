@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """OCA boot-manifest happy paths on sep-vp: unsigned, signed, and encrypted.
 
 These are the counterpart to test_bootcode_oca_negative.py. Each asserts a full

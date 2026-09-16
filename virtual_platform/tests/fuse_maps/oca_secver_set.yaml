@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # BL1_VERSION with one flag burned. The test images carry
 # manifest_security_version = 0, so any device bit makes them a rollback:
 # the check is a bit-superset test, manifest & device == device.

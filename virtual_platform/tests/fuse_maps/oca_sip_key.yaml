@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # SIP_PUBK_HASH1 provisioned with the SHA-256 of ROM key 0's RSA-3072 modulus.
 #
 # configs/oca_sip_key_boot_test.yaml selects public_key_select_classic bit 24,

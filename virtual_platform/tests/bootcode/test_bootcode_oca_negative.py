@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """OCA boot-manifest rejection cases on sep-vp, asserted via the SEP_STATUS stream.
 
 Each case tampers with a copy of a real packed image and asserts which check

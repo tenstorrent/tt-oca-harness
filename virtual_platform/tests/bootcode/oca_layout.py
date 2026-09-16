@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """OCA manifest field offsets, loaded from the producer's own constants.
 
 The offsets are not restated here. `src/oca/constants.py` in the tt-oca-manifest

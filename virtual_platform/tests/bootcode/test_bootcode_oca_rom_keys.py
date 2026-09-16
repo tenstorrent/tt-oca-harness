@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Per-slot coverage of the six ROM-embedded public keys.
 
 `key_digests.c` pins six root-key digests (`PUBK_SEL_NUM_ROM_KEYS`, slots 0-5).
