@@ -1026,7 +1026,6 @@ class _EvidenceRecorder:
     NO_OWN_EVIDENCE = {
         # Scoreboard protocol-VIP record with a stimulus floor, plus expected=
         # compares on every CSR read the sequence issues.
-        "smc_dma_sanity_test": "protocol-VIP floor and scoreboard compares",
         "smc_filter_field_sweep_test": "protocol-VIP floor and scoreboard compares",
         "smc_gpio_ctrl_full_sweep_test": "protocol-VIP floor and scoreboard compares",
         "smc_gpio_intf_full_sweep_test": "protocol-VIP floor and scoreboard compares",
@@ -1045,7 +1044,6 @@ class _EvidenceRecorder:
         "smc_gpio_output_driveback_test": "sequence asserts, unlabelled",
         "smc_smbus_alert_ara_test": "in-leaf asserts on sequence flags, unlabelled",
         # Asserts in the leaf on the scoreboard's memory-model compare counters.
-        "smc_output_fabric_slverr_inject_test": "in-leaf asserts, unlabelled",
         "smc_output_fabric_wr_rd_responder_test": "in-leaf asserts, unlabelled",
         # Sequence asserts; the protocol-VIP record it books is an activity
         # stamp (csr_accesses=0, auto_evidence=True) and is not evidence.
