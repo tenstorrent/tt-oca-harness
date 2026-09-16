@@ -1345,18 +1345,6 @@ addrmap i2c {
              TARGET_EVENTS                TARGET_EVENTS                @0x7c;
              SMBUS_STATUS                 SMBUS_STATUS                 @0x80;
 
-
-    //////////////////////////
-    // Property Assignments //
-    //////////////////////////
-
-    // INTR_ENABLE masks the interrupt output only; it is applied in the RTL
-    // (irq_o = |(INTR_STATE & INTR_ENABLE)). Event-type status bits latch whether
-    // or not the interrupt is enabled and are cleared only by W1C; status-type
-    // bits follow their condition regardless of the enable. See
-    // hw/ip/uart/log_engine/regs/log_engine.rdl for why the mask is not bound
-    // here with the SystemRDL `enable` property.
-
 };
 
 `endif
