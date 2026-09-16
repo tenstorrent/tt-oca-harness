@@ -157,14 +157,17 @@ public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
 
 [coverage.verilator]
-# Line / branch (--coverage-line), expression, and SVL user coverage, replacing
-# the simulator default `--coverage`, which would enable every form including
-# toggle. Toggle is absent: this DUT elaborates the real SEP/SMC/DTP wrappers,
-# and unscoped toggle is the 0.5 GB-per-leaf case. Scoped toggle lives on
-# `--dut smu_block`.
+# Line / branch (--coverage-line), expression, toggle and SVL user coverage,
+# replacing the simulator default `--coverage`.
+#
+# Toggle is what an integration level owns: whether the interconnect it wires
+# up was actually exercised. It is affordable on this DUT only because
+# smu_wrapper_cov_scope.vlt drops the subsystem, vendored and generated trees
+# at compile time, which is the same reason `--dut smu_block` can carry it.
 build_args = [
   "--coverage-line",
   "--coverage-expr",
+  "--coverage-toggle",
   "--coverage-user",
   "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
 ]
