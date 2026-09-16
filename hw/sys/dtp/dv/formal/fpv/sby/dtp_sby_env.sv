@@ -7,9 +7,9 @@
 //
 // With explicit clock modelling every step is a time point and the asynchronous resets are free
 // inputs, so a reset that changes at a tck sampling edge, or between two edges, lands in the state
-// register without the sampled `disable iff` seeing it. The environment therefore releases all
-// resets once: they are free up to the first tck posedge, where the property modules pin the
-// reset low, and stay released afterwards.
+// register without the sampled `disable iff` seeing it. The environment therefore asserts every
+// reset up to the first tck posedge, so that every clock domain starts from its reset state, and
+// releases all of them there for the rest of the trace.
 
 `include "ocah_fv_macros.svh"
 
@@ -26,6 +26,7 @@ module dtp_sby_env (
   always_ff @(posedge tck_i) released_q <= 1'b1;
 
   always_comb begin
+    asm_env_resets_asserted : assume (released_q || !(trst_ni || pwr_on_rst_ni || rst_ni));
     asm_env_resets_released : assume (!released_q || (trst_ni && pwr_on_rst_ni && rst_ni));
     asm_env_scan_reset_inactive : assume (scan_rst_ni);
   end

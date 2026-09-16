@@ -5,7 +5,7 @@
 The abort is proven on the thing that was aborted: after the TAP reset the OTP
 SINGLE_OP DR is captured again and must no longer report BUSY. The fabric
 VERSION_LO reads that follow show the bridge is usable afterwards. Requires
-+skip_fuse_sense. SEP=0, no Force.
++skip_fuse_sense. SEP=1, no Force.
 """
 
 from __future__ import annotations

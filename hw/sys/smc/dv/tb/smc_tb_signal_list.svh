@@ -91,14 +91,26 @@
 `SMC_TB_IN(logic, tb_uart0_rx_ext_drive)
 `SMC_TB_OUT(logic, tb_uart0_tx_from_dut)
 
-// Telemetry ATB receiver 0 pad lift (U4-6). Cocotb drives beats into
-// telemetry_at*_i[0]; receivers 1/2 stay tied off.
+// Telemetry ATB pad lift (U4-6). Cocotb drives beats into telemetry_at*_i per
+// receiver. Every stimulus entry here idles at the value the tie-off it
+// replaced presented (atdata/atid 0, atvalid 0, afready 1), so a test that
+// touches none of them sees the bench it saw before the lift. AFVALID/AFREADY
+// stay lifted for receiver 0 only: the flush handshake is not part of what the
+// per-receiver decode legs drive.
 `SMC_TB_IN(logic [7:0], tb_telemetry0_atdata)
 `SMC_TB_IN(logic [6:0], tb_telemetry0_atid)
 `SMC_TB_IN(logic, tb_telemetry0_atvalid)
 `SMC_TB_OUT(logic, tb_telemetry0_atready)
 `SMC_TB_IN(logic, tb_telemetry0_afready)
 `SMC_TB_OUT(logic, tb_telemetry0_afvalid)
+`SMC_TB_IN(logic [7:0], tb_telemetry1_atdata)
+`SMC_TB_IN(logic [6:0], tb_telemetry1_atid)
+`SMC_TB_IN(logic, tb_telemetry1_atvalid)
+`SMC_TB_OUT(logic, tb_telemetry1_atready)
+`SMC_TB_IN(logic [7:0], tb_telemetry2_atdata)
+`SMC_TB_IN(logic [6:0], tb_telemetry2_atid)
+`SMC_TB_IN(logic, tb_telemetry2_atvalid)
+`SMC_TB_OUT(logic, tb_telemetry2_atready)
 
 // SPI octal-flash pad lift (U2-1/U2-2). Cocotb drives tb_spi_* as the
 // external SPI host into the padring mux; flash MISO returns via

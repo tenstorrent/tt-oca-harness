@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: alias-remap manager scope (FAB_SMC_018 subset).
 
-SEP=0 honest scope (no sep_in / no Force):
+SEP=1 honest scope (no sep_in / no Force):
   S3  J2A programs alias region[0], writes via alias window, proves remapped
       SPM consumer readback (jtag manager path through smc_alias_remap_wrap).
   S1  not covered: DMA data_accel observe needs DMA bring-up.
   S2  not covered: Log Engine observe needs log_engine stimulus.
   S4  not covered: smc_alias_remap_wrap has no cpu_ext manager port.
-  S5  not covered: alias-then-filter ordering is not provable under SEP=0.
+  S5  not covered: alias-then-filter ordering is not provable on this bench.
 
 The remapped target is proven by SPM consumer readback (same address math)
 rather than by a hierarchical AW watch on axi_to_input_mux_req.*.
@@ -47,23 +47,23 @@ EXPECTED_REMAPPED = ALIAS_TARGET_SPM + (JTAG_ISSUE - PROGRAMMED_ALIAS_INPUT)
 
 DEFERRED_S1_TEXT = (
     "SMCF-ALIAS-REMAP-SCOPE.S1 (dma.alias_remapped) "
-    "NOT-REACHABLE-AT-THIS-LEVEL under OSS SEP=0 without DMA bring-up + "
+    "NOT-REACHABLE-AT-THIS-LEVEL on the wrapper without DMA bring-up + "
     "data_accel AW observe. Do not invent J2A substitute for DMA manager."
 )
 DEFERRED_S2_TEXT = (
     "SMCF-ALIAS-REMAP-SCOPE.S2 (log_engine.alias_remapped) "
-    "NOT-REACHABLE-AT-THIS-LEVEL under OSS SEP=0 without Log Engine stimulus + "
+    "NOT-REACHABLE-AT-THIS-LEVEL on the wrapper without Log Engine stimulus + "
     "log AR observe."
 )
 DEFERRED_S4_TEXT = (
     "SMCF-ALIAS-REMAP-SCOPE.S4 (cpu_ext.alias_remapped) deferred "
     "NOT-REACHABLE-AT-THIS-LEVEL. smc_alias_remap_wrap has no "
-    "cpu_ext manager port under SEP=0."
+    "cpu_ext manager port on this bench."
 )
 DEFERRED_S5_TEXT = (
     "INT-SMCF-ALIAS-THEN-FILTER deferred NOT-REACHABLE-AT-THIS-LEVEL "
     "Alias-then-filter ordering at outbound filter not provable "
-    "under SEP=0."
+    "on this bench."
 )
 
 

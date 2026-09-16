@@ -58,6 +58,17 @@ class ocah_axi_item extends uvm_sequence_item;
   bit                 timed_out;
   bit                 hold_stable = 1'b1;
 
+  // Two-outstanding operations (write_pair_skewed_result /
+  // read_pair_hold_result, the cocotb pair-result parity): `pair` is the
+  // second single-beat transaction the master driver launches before this
+  // one completes, filled like a plain result. ax_stall_cycles counts the
+  // cycles the address channel held VALID while READY was low across the
+  // pair; ax_stable reports VALID and the address held through every such
+  // stall (IHI 0022 A3.2.1).
+  ocah_axi_item       pair;
+  int unsigned        ax_stall_cycles;
+  bit                 ax_stable = 1'b1;
+
   function new(string name = "ocah_axi_item");
     super.new(name);
   endfunction
@@ -128,6 +139,9 @@ class ocah_axi_item extends uvm_sequence_item;
     observed_id_valid = rhs_item.observed_id_valid;
     timed_out         = rhs_item.timed_out;
     hold_stable       = rhs_item.hold_stable;
+    pair              = rhs_item.pair;
+    ax_stall_cycles   = rhs_item.ax_stall_cycles;
+    ax_stable         = rhs_item.ax_stable;
   endfunction
 
 endclass : ocah_axi_item

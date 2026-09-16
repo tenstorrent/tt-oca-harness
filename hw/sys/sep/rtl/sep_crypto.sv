@@ -293,8 +293,10 @@ module sep_crypto #(
   sep_pkg::sep_32_32_axil_resp_t esrc_axil_isolated_resp;
   drbg_pkg::drbg_axil64_req_t csrng_axil_isolated_req, edn_axil_isolated_req;
   drbg_pkg::drbg_axil64_resp_t csrng_axil_isolated_resp, edn_axil_isolated_resp;
-  sep_pkg::sep_32_64_6_12_axi_req_t fuse_axi_req, lifecycle_axi_req, abr_axi_req;
-  sep_pkg::sep_32_64_6_12_axi_resp_t fuse_axi_resp, lifecycle_axi_resp, abr_axi_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t fuse_axi_req, lifecycle_axi_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t fuse_axi_resp, lifecycle_axi_resp;
+  sep_pkg::sep_32_64_6_12_axi_req_t  abr_axi_isolated_req;
+  sep_pkg::sep_32_64_6_12_axi_resp_t abr_axi_isolated_resp;
 
   sep_crypto_axi_interconnect u_sep_crypto_axi_interconnect (
     .clk_i                        (clk_i),
@@ -350,8 +352,8 @@ module sep_crypto #(
     .fuse_axi_resp_i              (fuse_axi_resp),
     .lifecycle_axi_req_o          (lifecycle_axi_req),
     .lifecycle_axi_resp_i         (lifecycle_axi_resp),
-    .abr_axi_req_o                (abr_axi_req),
-    .abr_axi_resp_i               (abr_axi_resp)
+    .abr_axi_isolated_req_o       (abr_axi_isolated_req),
+    .abr_axi_isolated_resp_i      (abr_axi_isolated_resp)
   );
 
   // Internal entropy complex: coordinated reset/isolation, ESRC, and DRBG.
@@ -527,10 +529,10 @@ module sep_crypto #(
     .SRAM_LATENCY (SRAM_LATENCY)
   ) u_sep_crypto_abr_wrapper_s3c_scan (
     .clk_i                 (clk_i),
-    .rst_ni                (sep_reset_ni),
+    .rst_ni                (gated_rst_ni.abr),
     // Control/status path: ABR AXI aperture off the crypto interconnect
-    .abr_axi_req_i         (abr_axi_req),
-    .abr_axi_resp_o        (abr_axi_resp),
+    .abr_axi_req_i         (abr_axi_isolated_req),
+    .abr_axi_resp_o        (abr_axi_isolated_resp),
     // Key path: KM private AXI4-Lite key bus (CSR block lives in the wrapper)
     .abr_key_axil_req_i    (abr_key_axil_isolated_req),
     .abr_key_axil_resp_o   (abr_key_axil_isolated_resp),
@@ -561,8 +563,8 @@ module sep_crypto #(
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .test_i     (test_en_i),
-    .slv_req_i  (abr_axi_req),
-    .slv_resp_o (abr_axi_resp)
+    .slv_req_i  (abr_axi_isolated_req),
+    .slv_resp_o (abr_axi_isolated_resp)
   );
 
   // (2) Terminate the KM's private ABR key bus with DECERR. The key CSR block

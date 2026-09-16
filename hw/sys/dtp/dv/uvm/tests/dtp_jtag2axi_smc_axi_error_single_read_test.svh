@@ -3,9 +3,11 @@
 //
 // dtp_jtag2axi_smc_axi_error_single_read_test — VPLAN 4.2: SLVERR and
 // DECERR single-read injections on the SMC fabric port. Both injected
-// responses must be classified as EXPECTED (CHK-AXI-ERR-INJ), the recovery
-// read must return the preloaded reference data with OKAY (CHK-AXI-RDATA),
-// and completion must stay within the poll bound.
+// responses must be classified as EXPECTED (CHK-AXI-ERR-INJ), the errored
+// read's SINGLE_OP capture must return the RDATA of the errored beat and
+// not the preloaded word (CHK-J2A-ERR-RDATA), the recovery read must
+// return the preloaded reference data with OKAY (CHK-AXI-RDATA), and
+// completion must stay within the poll bound.
 
 class dtp_jtag2axi_smc_axi_error_single_read_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_error_single_read_test)
@@ -24,7 +26,8 @@ class dtp_jtag2axi_smc_axi_error_single_read_test extends dtp_base_test;
                             "CHK-AXI-RADDR",
                             "CHK-AXI-RDATA",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-ERR-RDATA"
                         });
   endfunction
 
@@ -53,6 +56,7 @@ class dtp_jtag2axi_smc_axi_error_single_read_test extends dtp_base_test;
     err_seq.axi_cfg       = m_env.m_smc_axi_cfg;
     err_seq.axi_evidence  = m_env.m_smc_axi_env.m_checker;
     err_seq.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
+    err_seq.axi_reads     = m_env.m_axi_read_history["smc_axi"];
   endfunction
 
 endclass : dtp_jtag2axi_smc_axi_error_single_read_test

@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Open-path formal run with jtag2axi as the top, elaborated in the shape of the DTP's OTP
+# AXI-Lite bridges (32-bit address and data, pipeline depth 3). The shared Bender filelist of the
+# dtp top supplies the sources (hw/common/dv/docs/formal-property-style.adoc); sby copies every
+# [files] entry into the task's src/ directory, so the paths inside the filelist must be absolute.
+# The bridge has a tck domain with negedge latches and an ACLK domain, so the clocks are modelled
+# explicitly (multiclock on) and dtp_jtag2axi_sby_env.sv supplies the reset model, the JTAG-side
+# control shape and the AXI responder rules. Two cutpoints keep the target on the control: the
+# shared shift register is free at every step in every task, so an Update-DR can present any
+# request without the 72 shift cycles that loading it through TDI costs; and in the bounded and
+# cover tasks the CDC's response side toward the request machine is free, so a response needs no
+# round trip through the clearable CDC and its post-reset clear handshake. The environment
+# constrains that side as a responder in every task, which holds for the real CDC too. Every
+# proof over the control logic holds for the real signals because the free ones include every
+# value they can take. The prove task keeps the CDC in the loop: the property-directed engine
+# generalizes over its state, while the free response side makes its clause set outgrow the
+# host's memory, and k-induction cannot close `$past` relations under explicit clocks, since an
+# induction window may hold a single tck edge. The cover depth must exceed the step at which the
+# deepest cov_ label is reached; the bmc depth matches it.
+
+[tasks]
+j2a_ctrl_bmc    j2a_ctrl bmc free_resp
+j2a_ctrl_cover  j2a_ctrl cover free_resp
+j2a_ctrl_prove  j2a_ctrl prove
+
+[options]
+multiclock on
+bmc:   mode bmc
+cover: mode cover
+prove: mode prove
+j2a_ctrl_bmc:   depth 40
+j2a_ctrl_cover: depth 40
+j2a_ctrl_prove: timeout 2400
+
+[engines]
+bmc:   smtbmc yices
+cover: smtbmc yices
+prove: abc pdr
+
+[script]
+plugin -i slang
+j2a_ctrl: read_slang -D FORMAL --top jtag2axi -G ADDR_WIDTH=32 -G DATA_WIDTH=32 -G ID_WIDTH=1 -G USER_WIDTH=1 -G FIFO_DEPTH=3 --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_jtag2axi_ctrl_props.sv dtp_jtag2axi_ctrl_bind.sv dtp_jtag2axi_sby_env.sv
+cutpoint jtag2axi/w:shift_register_q_tclk
+free_resp: cutpoint jtag2axi/w:src_resp
+prep -top jtag2axi
+
+[files]
+../../build/dtp.f
+dtp_jtag2axi_sby_env.sv
+j2a_ctrl: ../../props/dtp_jtag2axi_ctrl_props.sv
+j2a_ctrl: ../../props/dtp_jtag2axi_ctrl_bind.sv

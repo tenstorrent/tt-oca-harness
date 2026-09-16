@@ -51,9 +51,12 @@ package dtp_seq_lib_pkg;
   `include "dtp_axi_csr_write_seq.svh"
   `include "dtp_axi_csr_read_seq.svh"
 
-  // Scenario layer: base virtual sequence and the basic-JTAG family.
+  // Scenario layer: base virtual sequence, the basic-JTAG family, and the
+  // debug-TDR family; the reset-family and undefined-instruction scenarios
+  // read the debug-TDR pins through the latter.
   `include "dtp_base_test_seq.svh"
   `include "dtp_jtag_base_test_seq.svh"
+  `include "dtp_debug_tdr_base_test_seq.svh"
 
   // Basic-JTAG instruction-family scenarios.
   `include "dtp_jtag_bypass_test_seq.svh"
@@ -87,7 +90,6 @@ package dtp_seq_lib_pkg;
   `include "dtp_jtag2axi_robustness_test_seq.svh"
 
   // Debug-TDR scenarios (TMP / IC_RESET / DEBUG_CONTROL / CAPS).
-  `include "dtp_debug_tdr_base_test_seq.svh"
   `include "dtp_jtag_tmp_status_register_smoke_test_seq.svh"
   `include "dtp_jtag_tmp_status_chrst_n_in_persistence_test_seq.svh"
   `include "dtp_jtag_tmp_status_bypass_escape_test_seq.svh"

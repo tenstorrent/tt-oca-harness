@@ -27,7 +27,10 @@ VPLAN-parity checkers:
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only HMAC of the four
             sideload targets released; AES/KMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to HMAC
-  CHK-PUB   HMAC public KEY CSRs read back zero after the sideload (SepHmac.read_public_key)
+  PUB-OBS   HMAC public KEY CSRs read back zero after the sideload. NOT a checker:
+            hmac.hjson declares KEY swaccess=wo, so the read returns zero whether the
+            key is protected, mirrored elsewhere, or never delivered. CHK-SIDE and
+            CHK-MAC carry the key-protection evidence that can fail.
   CHK-MAC   engine keyed digest == HMAC-SHA256(known_key, msg) golden (consume-proof)
   CHK-RW1C  HMAC done event W1C-clears (INTR_STATE.hmac_done -> 0)
   CHK-ERR   HMAC ERR_CODE == 0 and INTR_STATE.hmac_err == 0
@@ -147,10 +150,13 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to HMAC)")
 
-        # CHK-PUB: the sideloaded key is NOT exposed on the public KEY CSRs.
+        # PUB-OBSERVATION: the public KEY CSRs read zero. Logged, not scored --
+        # hmac.hjson declares them swaccess=wo, so "reads zero" holds on any RTL.
+        # The falsifiable half is the positive control below: a dead read path, or
+        # these registers becoming readable and leaking, still fails.
         pub, ctl_pub = await self.hmac.read_public_key()
         assert ctl_pub != 0, (
-            "CHK-PUB positive control failed: HMAC STATUS read back 0 over the same "
+            "PUB-OBSERVATION positive control failed: HMAC STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY reads prove nothing about the key"
         )
         assert all(w == 0 for w in pub), (
@@ -158,8 +164,9 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
             f"{[hex(w) for w in pub if w]}"
         )
         self.logger.info(
-            "CHK-PUB HMAC public KEY frontdoor reads zero after sideload "
-            "(read path alive: STATUS=%#010x)",
+            "PUB-OBSERVATION HMAC public KEY frontdoor reads zero after sideload. "
+            "Not scored: hmac.hjson declares KEY swaccess=wo, so this read cannot "
+            "fail. Read path alive: STATUS=%#010x",
             ctl_pub,
         )
 

@@ -53,6 +53,16 @@ tags = ["ci", "uart", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_uart_cross_3to0"]
 
+# Log-engine INTR_ENABLE masks irq_o only: INTR_STATUS latches while masked
+# and clears only on W1C.
+[[tests]]
+name = "smc_log_engine_intr_mask_test"
+module = "smc_log_engine_intr_mask_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "uart"
 tests = [
@@ -62,6 +72,7 @@ tests = [
     "smc_uart_baud_word_parity_format_test",
     "smc_uart_extremes_misc_test",
     "smc_uart_sanity_test",
+    "smc_log_engine_intr_mask_test",
 ]
 
 [[tests]]

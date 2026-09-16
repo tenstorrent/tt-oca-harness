@@ -155,11 +155,14 @@ Protocol-control operations (SV-UVM parity; see
 |---|---|---|
 | `await write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew — AXI permits either arrival order — plus a deferred BREADY assert after the request phase |
 | `await read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low for `hold_cycles` after RVALID; the result's `hold_stable` reports that RVALID stayed asserted with RDATA/RRESP unchanged across the window |
+| `await write_pair_skewed_result(addr_a, data_a, addr_b, data_b, *, aw_valid_delay, w_valid_delay, b_ready_delay, strb_a, strb_b, ...)` | `OcahAxiWritePairResult` | Two single-beat writes queued back to back: the second write's AW and W follow the first on their channels, so under a W delay the second AW meets the responder while the first W is pending; BREADY is deferred `b_ready_delay` cycles after the first write's request phase and both B responses are accepted in order; `aw_stall_cycles` counts AWVALID-without-AWREADY cycles across the pair and `aw_stable` reports AWVALID and AWADDR held through every such stall |
+| `await read_pair_hold_result(addr_a, addr_b, hold_cycles, ...)` | `OcahAxiReadPairResult` | Two single-beat reads: AR(b) follows AR(a) while RREADY is held low for `hold_cycles` after the first RVALID, so a responder that admits one read at a time stalls AR(b); `first.hold_stable` reports the hold window, `ar_stall_cycles` / `ar_stable` the AR channel across the pair |
 
-Both operations require an idle engine on their direction (the skew is
+All four operations require an idle engine on their direction (the skew is
 applied by pausing the backend's channel sources/sinks) and bound every
 phase with `timeout_cycles`; `allow_timeout=True` converts an expiry into a
-`timed_out` result.
+`timed_out` result. The pair results expose the two per-transaction results
+as `first` and `second` in issue order.
 
 Event helpers:
 
@@ -523,8 +526,10 @@ modules simply do not elaborate. Its contents:
   API), and `ocah_axi_slave_agent` (reactive bundle without a
   sequencer). Master side: `ocah_axi_master_config` (vif, geometry, handshake
   watchdog), `ocah_axi_master_driver` (active initiator: sequential AW/W/B
-  and AR/R engines, single transaction outstanding; samples via `mon_cb`,
-  drives the initiator-side vif signals procedurally), the standard
+  and AR/R engines, one transaction outstanding except for the pair
+  operations, whose second single-beat transaction launches before the
+  first completes; samples via `mon_cb`, drives the initiator-side vif
+  signals procedurally), the standard
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   stimulus API — see below), `ocah_axi_master_agent` (driver + sequencer;

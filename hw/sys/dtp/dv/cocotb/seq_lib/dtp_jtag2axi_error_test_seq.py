@@ -3,9 +3,11 @@
 """JTAG2AXI error and error-path security scenarios.
 
 Every fault beat is judged: the SINGLE_OP or SERIES_CTRL status the bridge
-reports is compared with the injected response, the with-status capture bit
-with the previous beat's outcome, and the responder memory with the committed
-or dropped expectation. ``status`` is the scenario verdict.
+reports is compared with the injected response, the SINGLE_OP read data with
+the RDATA the responder drove on the errored beat, the with-status capture
+bit with the previous beat's outcome, the SERIES_CTRL address with the
+per-beat increment, and the responder memory with the committed or dropped
+expectation. ``status`` is the scenario verdict.
 """
 
 from __future__ import annotations
@@ -113,18 +115,18 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         *,
         expected: DtpJtag2AxiStatus,
         context: str,
-    ) -> int:
-        """Issue one SINGLE_OP, poll it to completion, and judge its status."""
+    ) -> tuple[int, int]:
+        """Issue one SINGLE_OP, poll it to completion, judge its status; returns (status, rdata)."""
         size = self.target_cfg(self.target).default_size
         wstrb = self.target_full_wstrb(self.target, size) if op == DtpJtag2AxiOp.WRITE else 0
         self.log_target_jtag2axi_op(
             self.target, context, addr=addr, data=data, size=size, wstrb=wstrb
         )
         await self.write_target_single_raw(self.target, op, addr, data=data, wstrb=wstrb, size=size)
-        status, _ = await self.poll_target_single_status(self.target)
+        status, rdata = await self.poll_target_single_status(self.target)
         self.scoreboard_expect_completion(self.target, status, context=context)
         self._check_status(f"{context}.status", status, expected, f"addr=0x{addr:x}")
-        return status
+        return status, rdata
 
     def _emit_error_nonvacuity(self, label: str) -> None:
         """CHK-AXI-NONVAC: every armed SLVERR/DECERR was consumed by a real
@@ -172,8 +174,11 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         size = self.target_cfg(self.target).default_size
         self.write_target_mem_int(self.target, addr, data, size)
         expected = self.configure_target_error(self.target, addr, resp, read=True, write=False)
-        await self._single_op_status(
+        _, rdata = await self._single_op_status(
             DtpJtag2AxiOp.READ, addr, 0, expected=expected, context=context
+        )
+        self.check_error_rdata(
+            self.target, addr, rdata, resp=resp, preload=data, size=size, context=context
         )
         await self.verify_target_recovery(
             self.target,
@@ -201,9 +206,12 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
         self.log_banner(f"{self.target} SINGLE_OP read error")
         await self.reset_tap()
         rng = self.rng(f"{self.target}.error_single_read")
+        width = self.target_cfg(self.target).data_width
         for idx, resp in enumerate(ERROR_RESPONSES, start=1):
             addr = self._addr(ERROR_BASE + 0x100, idx)
-            data = rng.getrandbits(self.target_cfg(self.target).data_width)
+            # A nonzero preload keeps the slot's word distinguishable from the
+            # errored beat's RDATA.
+            data = rng.randrange(1, 1 << width)
             self.log_iteration(
                 idx, len(ERROR_RESPONSES), "read error addr=0x%08x resp=%d", addr, resp
             )
@@ -363,11 +371,21 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             self.assert_equal(
                 f"series_read_error.rdata#{idx}", rdata, mem_expected, f"addr=0x{addr:x}"
             )
-            return
-        _, _, _, _, status = await self.read_series_ctrl(size=plan.size, target=self.target)
-        self._check_status(
-            "series_read_error.fault_status", status, plan.expected, f"beat={idx} addr=0x{addr:x}"
+        # The launched read advances the captured address by one stride,
+        # errored or not; the dropped second request leaves it alone.
+        status = await self.check_series_addr(
+            self.target,
+            addr + plan.stride,
+            size=plan.size,
+            context=f"series_read_error.addr#{idx}",
         )
+        if idx == plan.fault_idx:
+            self._check_status(
+                "series_read_error.fault_status",
+                status,
+                plan.expected,
+                f"beat={idx} addr=0x{addr:x}",
+            )
 
     async def _series_read_with_status_stream(self, plan: _SeriesFault, preload: list[int]) -> None:
         """Status-mode stream: shift k launches read k and returns read k-1's data and outcome.

@@ -1,37 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""I2C `INTR_ENABLE` placement: the enable gates the set path, not the output.
+"""I2C `INTR_ENABLE` as an output mask.
 
-**Fails while `INTR_ENABLE` gates the INTR_STATE set path instead of masking
-`irq_o`** (see below).
+`hw/ip/i2c/rtl/i2c_core.sv` follows the vendored `prim_intr_hw` shape for its
+event-type interrupts: `INTR_STATE` latches an event whether or not the
+interrupt is enabled and clears only on W1C, and `irq_o` is the state ANDed
+with `INTR_ENABLE`. Two consequences follow, both scored here and both measured
+before either is allowed to raise:
 
-`hw/ip/i2c/rtl/i2c_core.sv` has this shape::
-
-    :1000  assign reg_in_o.INTR_STATE.CMD_COMPLETE.next =
-             (event_cmd_complete || cmd_complete_intr_test) &&
-             cmd_complete_intr_en;              // enable gates the SET
-    :981   assign irq_o = reg_out_i.INTR_STATE.intr || |{...intr_req};
-                                                // output NOT gated
-
-against `vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_intr_hw.sv:66`,
-which latches unconditionally, and `:99`, which masks the output.
-
-Two consequences, both scored here and both measured before either is allowed
-to raise:
-
-* **Stuck.** A bit latched while enabled keeps `irq_o` asserted after
-  `INTR_ENABLE` is cleared; only a W1C releases it.
-* **Lost.** An event arriving while `INTR_ENABLE` is 0 is never latched, so
-  enabling later never fires it and `INTR_STATE` polling cannot find it. The
-  more serious of the two.
+* **Held.** Clearing `INTR_ENABLE` releases `irq_o` while `INTR_STATE` keeps
+  the bit; only a W1C clears the state.
+* **Kept.** An event arriving while `INTR_ENABLE` is 0 is latched, so enabling
+  later fires it and an `INTR_STATE` poll finds it.
 
 `CMD_COMPLETE` is the vehicle. `INTR_TEST` is `sw = w` with `singlepulse`
-(`i2c.rdl:312,336`), so a write is a one-cycle event on the same line as the
-real event -- no bus traffic, no target model, and it exercises exactly the
-path under test.
+(`i2c.rdl`), so a write is a one-cycle event on the same line as the real
+event -- no bus traffic and no target model.
 
 Observation is `tb_i2c_irq[0]`, instance 0's bit of
-`peripheral_interrupts[25:23]` (`smc_peripherals.sv:1161`). That bit carries
+`peripheral_interrupts[25:23]` (`smc_peripherals.sv`). That bit carries
 only this I2C instance, so there is no sibling source to
 exclude -- but it is still required to read 0 before the run starts, so a
 stuck-high line from a previous phase cannot be read as this stimulus.
@@ -72,7 +59,6 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_i2c_intr_mask_test_seq") -> None:
         super().__init__(name)
-        self.chk_seen: set[str] = set()
 
     def _irq(self, dut) -> int:
         sig = dut.tb_i2c_irq.value
@@ -138,9 +124,9 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
         armed = await self.csr_read("I2C_INTR_STATE_ARMED", I2C_INTR_STATE)
         assert (armed & CMD_COMPLETE_STATE) == CMD_COMPLETE_STATE, (
             f"arm: INTR_TEST.CMD_COMPLETE written with INTR_ENABLE.CMD_COMPLETE "
-            f"set did not latch INTR_STATE (0x{armed:x}); i2c_core.sv:1000 is the "
-            f"set path and INTR_TEST is singlepulse, so this is the stimulus the "
-            f"legs below depend on"
+            f"set did not latch INTR_STATE (0x{armed:x}); INTR_TEST is a "
+            f"singlepulse on the same line as the real event, so this is the "
+            f"stimulus the legs below depend on"
         )
         await self._wait_irq(dut, 1, "arm irq")
         await self._hold_irq(dut, 1, "arm irq hold")
@@ -155,14 +141,12 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
             _HOLD,
             pre_irq,
         )
-        self.chk_seen.add("CHK-I2C-INTR-MASK-ARM")
 
-        # Both symptoms are measured before either raises: raising at the first
-        # would hide the second, and whichever is repaired first the other still
-        # needs to be visible.
+        # Both legs below are measured before either is allowed to raise, so a
+        # failure in the first cannot hide the second.
         failures: list[str] = []
 
-        # ---- Stuck: clear INTR_ENABLE only; nothing else changes -------------
+        # ---- Mask: clear INTR_ENABLE only; nothing else changes --------------
         await self.csr_write("I2C_INTR_ENABLE_CLR", I2C_INTR_ENABLE, 0)
         await ClockCycles(dut.clk_smc_i, _IRQ_BOUND)
         stuck = self._irq(dut)
@@ -177,15 +161,15 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
                 f"{broke[0]} of {_HOLD}, with no further stimulus"
             )
         elif stuck == 0 and (still & CMD_COMPLETE_STATE) != CMD_COMPLETE_STATE:
-            # The claim is that the ENABLE masks the *output*. A repair that
-            # cleared INTR_STATE instead would also drop the line, and would
-            # satisfy this leg if the state were not required to survive.
+            # INTR_ENABLE masks the *output*. A DUT that cleared INTR_STATE
+            # instead would also drop the line, and would satisfy this leg if
+            # the state were not required to survive.
             failures.append(
                 f"CHK-I2C-INTR-MASK-DEASSERT: the line dropped, but INTR_STATE "
                 f"lost the bit too (0x{still:x}, wanted 0x{CMD_COMPLETE_STATE:x} "
-                f"still set). prim_intr_hw.sv:99 masks the output over a latched "
-                f"state, so the state must survive the mask -- a drop that also "
-                f"clears the state is a different mechanism than the one claimed"
+                f"still set). INTR_ENABLE masks irq_o over a latched state, so "
+                f"the state must survive the mask -- a drop that also clears "
+                f"the state is a different mechanism"
             )
         elif stuck == 0:
             cocotb.log.info(
@@ -200,13 +184,12 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
             failures.append(
                 f"CHK-I2C-INTR-MASK-DEASSERT: tb_i2c_irq[{_I2C0}] stayed {stuck} "
                 f"after INTR_ENABLE 0x{CMD_COMPLETE_ENABLE:x} -> 0x0 with no "
-                f"other stimulus (INTR_STATE still 0x{still:x}). i2c_core.sv:981 "
-                f"drives irq_o from INTR_STATE.intr with no enable term, while "
-                f"prim_intr_hw.sv:99 masks the output"
+                f"other stimulus (INTR_STATE still 0x{still:x}). INTR_ENABLE "
+                f"masks irq_o, so the line must fall with the enable while "
+                f"INTR_STATE keeps the bit"
             )
-        self.chk_seen.add("CHK-I2C-INTR-MASK-DEASSERT")
 
-        # ---- Lost: an event while masked must not be dropped -----------------
+        # ---- Latch: an event while masked must not be dropped ----------------
         await self.csr_write("I2C_INTR_STATE_W1C", I2C_INTR_STATE, CMD_COMPLETE_STATE)
         cleared = await self.csr_read("I2C_INTR_STATE_CLEARED", I2C_INTR_STATE)
         assert (cleared & CMD_COMPLETE_STATE) == 0, (
@@ -232,14 +215,10 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
                 f"CHK-I2C-INTR-MASK-LATCH: a singlepulse INTR_TEST issued with "
                 f"INTR_ENABLE=0 was never latched -- INTR_STATE reads 0x{late:x} "
                 f"after INTR_ENABLE was set back to 0x{CMD_COMPLETE_ENABLE:x}. "
-                f"i2c_core.sv:1000 ANDs the event with the enable before the "
-                f"flop, so the pulse is gone and no later enable or INTR_STATE "
-                f"poll can recover it. prim_intr_hw.sv:66 latches "
-                f"unconditionally for exactly this reason. This is the "
-                f"more serious half: an interrupt is silently dropped rather "
-                f"than spuriously held"
+                f"INTR_STATE latches an event whether or not the interrupt is "
+                f"enabled, so the pulse must be held until a W1C and a later "
+                f"enable must surface it"
             )
-        self.chk_seen.add("CHK-I2C-INTR-MASK-LATCH")
 
         await self.csr_write("I2C_INTR_STATE_W1C_POST", I2C_INTR_STATE, CMD_COMPLETE_STATE)
         await self.csr_write("I2C_CG_RESTORE", CLOCK_GATE_CONTROL, cg)

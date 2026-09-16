@@ -39,9 +39,35 @@ class smc_efuse_shim_ctrl_test_seq(SmcCsrSeq):
             EFUSE_SHIM_CTRL,
             expected=EFUSE_BANK_INIT_TIME_RESET,
         )
+        # Write leg on the same window. Every access this package made to the
+        # bank-control port was a read, so the write direction of that port --
+        # aw_valid with w_valid through to its B response -- had never been
+        # presented at all, and the port's own docs place it outside the eFuse
+        # map / interface CSR ranges, which is what makes this address decode to
+        # it (smc_efuse_vip_utils.py names the same decode). `init_time` is
+        # `sw = rw; hw = r` (hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl), so
+        # the readback is a real value compare booked by the scoreboard: a write
+        # routed to the interface CSR window instead answers with an error
+        # rather than OKAY, and a write that was dropped while its response was
+        # still returned leaves the reset value behind. The value is the reset
+        # plus one -- `init_time` presets the bank-init down-counter -- and it is
+        # restored before the sequence ends.
+        probe_value = EFUSE_BANK_INIT_TIME_RESET + 1
+        await self.csr_write_readback(
+            "EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_WR", EFUSE_SHIM_CTRL, probe_value
+        )
+        await self.csr_restore(
+            "EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME",
+            EFUSE_SHIM_CTRL,
+            EFUSE_BANK_INIT_TIME_RESET,
+        )
         cocotb.log.info(
             "CHK-EFUSE-SHIM-CTRL: EFUSE_INTERFACE_CTRL and EFUSE_SHIM_CTRL "
             "EFUSE_BANK_INIT_TIME both answered OKAY, the latter compared "
-            "against its generated reset 0x%08x",
+            "against its generated reset 0x%08x; the same window then took "
+            "0x%08x through the write direction of the bank-control port, "
+            "returned it on readback, and was restored to 0x%08x",
+            EFUSE_BANK_INIT_TIME_RESET,
+            probe_value,
             EFUSE_BANK_INIT_TIME_RESET,
         )

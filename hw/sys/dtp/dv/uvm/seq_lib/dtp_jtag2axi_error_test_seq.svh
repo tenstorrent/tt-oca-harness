@@ -12,14 +12,18 @@
 //     JTAG status must report the injected code, the armed non-OKAY is
 //     EXPECTED for the shared scoreboard (CHK-AXI-ERR-INJ), the failed
 //     write commits nothing (the shared slave responder suppresses armed
-//     write beats), and an OKAY recovery access follows every injection;
+//     write beats), the failed read's SINGLE_OP capture returns the RDATA
+//     of the errored beat and not the preloaded word (CHK-J2A-ERR-RDATA),
+//     and an OKAY recovery access follows every injection;
 //   * error_series_{no_incr,incr}_{write,read}[_with_status] — a 3-beat
 //     series stream with the fault armed on one specific beat: good beats
 //     commit/return the expected data at the expected addresses, the fault
 //     beat's write is dropped by the responder and its settled SERIES_CTRL
-//     status must equal the injected code, the with-status modes' captured
-//     status bit must flag the fault beat and no other, and an OKAY
-//     recovery access proves no stuck state;
+//     status must equal the injected code, the plain read modes' per-beat
+//     SERIES_CTRL capture holds the beat address plus one stride
+//     (CHK-J2A-SERIES-ADDR), the with-status modes' captured status bit
+//     must flag the fault beat and no other, and an OKAY recovery access
+//     proves no stuck state;
 //   * error_security_gating — two assert/release passes of the target's
 //     lifecycle disable with an injection armed but NOT expected-armed
 //     (arm_expected=0: a gated op must never reach the bus, so no credit
@@ -176,6 +180,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     single_read(t, addr, op_status, rdata, t.default_size, 1'b0, context_s);
     check_fault_status({context_s, ".status"}, op_status, axi_resp_to_status(resp), $sformatf(
                        "addr=0x%0h", addr));
+    check_error_rdata(t, addr, rdata, resp, data, t.default_size, context_s);
     verify_target_recovery(t, addr + 64'h400, data ^ 64'h00FF_00FF_00FF_00FF, 1'b1, context_s);
     operation_count++;
   endtask
@@ -205,7 +210,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     reset_to_rti();
     foreach (responses[i]) begin
       bit [63:0] addr = slot_addr(t, ErrorBase + 64'h100, i + 1);
-      bit [63:0] data = rand_data(t);
+      bit [63:0] data = rand_nonzero_data(t);
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/2: read error addr=0x%08h resp=%s preload=0x%0h",
                 i + 1,
@@ -318,9 +323,6 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     int unsigned fault_idx = increment ? 1 : 0;
     ocah_axi_resp_e resp = rand_error_resp();
     bit [63:0] preload[SeriesBeats];
-    bit sr_reset;
-    bit [63:0] sr_addr;
-    int unsigned sr_pl, sr_size;
     dtp_j2a_status_e sr_status;
     `uvm_info(get_type_name(),
               $sformatf("%s series %s read error%s: base=0x%08h fault_beat=%0d resp=%s", t.name,
@@ -357,11 +359,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         wait_for_target_activity(t, aw0, w0, ar0, 1'b1, $sformatf("series_read_error.axi#%0d", idx
                                  ));
         series_plain_read_shift(t, size, increment, rdata);
-        if (idx == fault_idx) begin
-          read_series_ctrl(t, size, sr_reset, sr_addr, sr_pl, sr_size, sr_status);
-          check_fault_status("series_read_error.fault_status", sr_status, axi_resp_to_status(resp),
-                             $sformatf("beat=%0d addr=0x%0h", idx, addr));
-        end else if (rdata !== mem_expected)
+        if (idx != fault_idx && rdata !== mem_expected)
           `uvm_error("jtag2axi_data_chk", $sformatf(
                      "series_read_error.rdata#%0d: read 0x%0h != expected 0x%0h (addr=0x%0h)",
                      idx,
@@ -369,6 +367,13 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
                      mem_expected,
                      addr
                      ))
+        // The launched read advances the captured address by one stride,
+        // errored or not; the dropped second request leaves it alone.
+        check_series_addr(t, addr + stride, size, $sformatf("series_read_error.addr#%0d", idx),
+                          sr_status);
+        if (idx == fault_idx)
+          check_fault_status("series_read_error.fault_status", sr_status, axi_resp_to_status(resp),
+                             $sformatf("beat=%0d addr=0x%0h", idx, addr));
       end
     end
     verify_target_recovery(t, RecoveryBase + 64'h100, 64'hDEAD_BEEF_7654_3210, 1'b1,

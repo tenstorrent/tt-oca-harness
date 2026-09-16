@@ -325,9 +325,9 @@ bit nearest TDO:
 * *SMC slice* (nearest TDI). Fuse, cold, cool, and warm resets, plus cold and
   warm resets for each of the 32 managed subsystems. The SMU consumes this
   slice internally.
-* *SEP slice.* SEP main reset and the TRNG, KMAC, HMAC, AES, OTBN, and Key
-  Manager resets. Present when SEP is instantiated; omitted otherwise. The
-  SMU consumes this slice internally.
+* *SEP slice.* SEP main reset and the Adams Bridge, TRNG, KMAC, HMAC, AES,
+  OTBN, and Key Manager resets. Present when SEP is instantiated; omitted
+  otherwise. The SMU consumes this slice internally.
 * *External slice.* Reset overrides for logic outside the SMU. The ports in
   this slice are adopter-defined: the integrator supplies the slice type and
   routes the SMU output to that logic. OCAH does not name the external bits.

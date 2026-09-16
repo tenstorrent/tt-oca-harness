@@ -71,6 +71,11 @@ _TYPE_ALIAS = {
     "TIMEOUT_COUNT_ENTROPY_READ": "TIMEOUT_COUNT",
     "TIMEOUT_COUNT_FILTER_OUT": "TIMEOUT_COUNT",
     "TIMEOUT_COUNT_ALIAS_REMAP": "TIMEOUT_COUNT",
+    # km_mailbox_sep.rdl declares SEP_STATUS with the typedef `status_reg`, so
+    # PeakRDL emits KM_MAILBOX_SEP_STATUS_REG_* and the <block>_<reg> walk misses
+    # it. The register is in the RDL and the block is in the SEP addrmap; only the
+    # generated name differs.
+    "SEP_STATUS": "STATUS_REG",
 }
 
 # PeakRDL type name when it is not ``<block>_<reg>`` and the suffix walk is
@@ -741,6 +746,7 @@ EDN = CHeaderRegBlock("EDN", ot_c_header("edn"))
 EFUSE_INTERFACE_CTRL = RegBlock("EFUSE_INTERFACE_CTRL")
 AXIL_MAILBOX_OUTBOUND_0 = RegBlock("AXIL_MAILBOX_OUTBOUND_MAILBOX_0")
 SEP_LIFECYCLE_CTRL = RegBlock("SEP_LIFECYCLE_CTRL")
+KM_MAILBOX_SEP = RegBlock("KM_MAILBOX_SEP")
 INBOUND_FILTER_CTRL_0 = RegBlock("INBOUND_FILTER_CTRL_0_")
 LOCAL_MASTER_ALIAS_REMAP_CTRL_0 = RegBlock("LOCAL_MASTER_ALIAS_REMAP_CTRL_0_")
 
@@ -784,7 +790,9 @@ def _selftest() -> int:
     # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
     # that is NOT software-usable (mask 0x0). If the generator ever renames the
     # field, or the exclusion regex stops matching it, these disagree and fail.
-    for name in _TYPE_ALIAS:
+    # The alias table also carries entries for other blocks, so this walk takes
+    # the SEP_CPU_CTRL instances by their shared type rather than the whole table.
+    for name in (n for n, t in _TYPE_ALIAS.items() if t == "TIMEOUT_COUNT"):
         if cpu.mask32(name) != 0x0:
             failures.append(f"{name}: implemented mask {hex(cpu.mask32(name))} != 0x0")
         if cpu.mask32_all(name) != 0x1:
@@ -807,7 +815,7 @@ def _selftest() -> int:
 
     # Fabric-walk blocks the sequence value-checks.
     block_checks = [
-        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_003E),
+        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_007E),
         (OTBN, "INTR_STATE", 0x1090_0000, 0x0),
         (HMAC, "INTR_STATE", 0x1091_1000, 0x0),
         (KMAC, "INTR_STATE", 0x1091_3000, 0x0),
@@ -835,6 +843,7 @@ def _selftest() -> int:
         "hmac_sw_rst_n": 0x08,
         "kmac_sw_rst_n": 0x10,
         "trng_sw_rst_n": 0x20,
+        "abr_sw_rst_n": 0x40,
     }
     for field, expected in sw_reset_field_masks.items():
         got = SEP_RESET_CTRL.field_mask("SW_RESET_N", field)
@@ -859,10 +868,10 @@ def _selftest() -> int:
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (1921, 1763, 158):
+    if (walk.export, walk.inventory, walk.nometa) != (1921, 1764, 157):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 1921/1763/158"
+            f"{walk.nometa} != 1921/1764/157"
         )
     if walk.inventory < 100:
         failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")
