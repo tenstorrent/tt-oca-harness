@@ -7,15 +7,15 @@ AXI master (no_cpu): local-master alias-remap, AP/STEE output-remap, and the
 inbound/outbound filter config banks. Proves field R/W + 64-bit upper-word access +
 the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_width
 field, with a non-vacuity anchor (a written value differs from reset and is confined
-to its field). RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W
-(clearable), NOT woset -- only the filter locked bit is woset (CHK-VALID-RW vs
-CHK-WOSET). CSR layer only -- this entry does not prove live remap translation
+to its field). The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
+not woset; only the filter locked bit is woset (CHK-VALID-RW vs CHK-WOSET). CSR
+layer only -- this entry does not prove live remap translation
 or outbound-filter drop.
 
 reference refs: sep_fabric_64bit_regwidth_test (64-bit + locked/valid
 woset), sep_outbound_filter_cfg_test (FILTER_CONFIG incl. RO
 data_bus_width=3), sep_cpuctrl_misc_regs_test, and the System-block
-subset of sep_reg_sanity_test. Mapping: COVERED_BY. Distinct from
+subset of sep_reg_sanity_test. Distinct from
 sep_address_map_test (which only read-touched alias/AP remap for decode
 reachability -- no field R/W, no 64-bit upper word, no woset, no filter banks) and
 from the inbound-filter rule matrix test (real PROD fuse + external master; this is
@@ -80,8 +80,9 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         await self._chk_ap_stee_rw()
         await self._chk_filter_cfg_and_ro()
         await self._chk_woset()
-        # No CHK-ALL summary line. It asserted nothing, and a plan row keyed on it
-        # would record coverage against a string with no checker behind it.
+        # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
+        # row keyed on a bare summary string would record coverage with no checker
+        # behind it.
 
     async def _chk_alias_rw_and_nonvac(self) -> None:
         """CHK-ALIAS-RW + CHK-NONVAC on the seeded alias-remap region (no woset touched)."""

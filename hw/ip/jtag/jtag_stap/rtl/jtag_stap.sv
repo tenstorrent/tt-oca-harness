@@ -57,9 +57,10 @@ module jtag_stap
   // TDO output lockup latch
   prim_flop #(
     .Width(1),
-    .ResetValue('0)
+    .ResetValue('0),
+    .Negedge(1'b1)
   ) u_tdo_lockup_flop (
-    .clk_i  (~client_scan_ctrl_i.tck),
+    .clk_i  (client_scan_ctrl_i.tck),
     .rst_ni (client_scan_ctrl_i.rst_n),
     .d_i    (stap_scan_in),
     .q_o    (host_tdo_int)
@@ -69,9 +70,10 @@ module jtag_stap
   if (TDI_LOCKUP) begin : gen_tdi_lockup_latch
     prim_flop #(
       .Width(1),
-      .ResetValue('0)
+      .ResetValue('0),
+      .Negedge(1'b1)
     ) u_tdi_lockup_flop (
-      .clk_i  (~client_scan_ctrl_i.tck),
+      .clk_i  (client_scan_ctrl_i.tck),
       .rst_ni (client_scan_ctrl_i.rst_n),
       .d_i    (host_tdi_i),
       .q_o    (stap_tdi)
@@ -104,9 +106,10 @@ module jtag_stap
   // TAP state transitions.
   prim_flop #(
     .Width     (1),
-    .ResetValue(1'b0)
+    .ResetValue(1'b0),
+    .Negedge   (1'b1)
   ) u_config_hold_sticky_flop (
-    .clk_i  (~client_scan_ctrl_i.tck),
+    .clk_i  (client_scan_ctrl_i.tck),
     .rst_ni (client_tap_ctrl_i.trst_n),
     .d_i    (config_hold),
     .q_o    (config_hold_sticky)

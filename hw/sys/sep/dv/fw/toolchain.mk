@@ -6,10 +6,7 @@
 # Target CPU: VeeR EL2 (RV32IMC + Zicsr/Zifencei/Zb*), ilp32 ABI. picolibc via
 # --specs=picolibc.specs, provided by the Docker toolchain (not bundled).
 #
-# A full SEP compile also needs the VeeR EL2 snapshot (not bundled); set
-# FW_SEP_SNAPSHOT_DIR to enable it. Until then the link/hex stages are gated.
-#
-# Zb* is deliberately absent from the default. GCC will happily emit sh2add and
+# Zb* is absent from the default. GCC emits sh2add and
 # rev8 for ordinary C, and those trap as illegal instructions on the EL2 config
 # this testbench runs, so all but a handful of tests are built without the
 # bit-manip extensions. FW_ARCH_BITMANIP is the opt-in for the tests that are
@@ -22,12 +19,12 @@ FW_ABI           ?= ilp32
 FW_WARNINGS ?= -Wall -Wextra
 FW_OPT ?= -Os -fdata-sections -ffunction-sections -fno-common -fstack-usage
 
-# Pin the C standard instead of inheriting the compiler default. These test/driver
-# sources are C17-era: several call unprototyped functions, which C23 redefines
-# (`void f()` means "takes no arguments"), turning what -Wno-implicit-function-
-# declaration / -Wno-strict-prototypes used to relax into hard errors on GCC >= 15
-# (whose default is -std=gnu23). Pinning gnu17 keeps those relaxations effective
-# and makes the build independent of the toolchain's default standard.
+# Pin the C standard instead of inheriting the compiler default. Several test and
+# driver sources call unprototyped functions, which C23 redefines (`void f()`
+# means "takes no arguments"); under GCC >= 15's default -std=gnu23 those calls
+# are hard errors that -Wno-implicit-function-declaration / -Wno-strict-prototypes
+# cannot relax. Pinning gnu17 keeps the relaxations effective and makes the build
+# independent of the toolchain's default standard.
 FW_STD ?= -std=gnu17
 
 # picolibc must be on both compile and link paths so GCC resolves picolibc's

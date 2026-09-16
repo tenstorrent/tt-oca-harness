@@ -35,13 +35,29 @@ int main(void) {
     write64_reg(SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR, 0); // Start zeroer
 
     simputs("Waiting for zeroer to finish...\n");
-    // Wait for zeroer to finish
+    /* Wait for zeroer to finish.
+     *
+     * This poll had no bound. A zeroer that never dropped its busy bit hung
+     * the hart until the harness killed the run, and a harness kill is not
+     * this test declaring a failure -- so the test could not tell "the zeroer
+     * completed" from "the zeroer never responded", which is exactly the
+     * distinction the checks below depend on.
+     *
+     * The transfer here is n_addr words, and the loop body is a single 64-bit
+     * register read, so completion is a handful of iterations. 200 leaves a
+     * wide margin and still expires quickly enough to reach test_fail. */
     uint64_t status = 0;
+    uint32_t poll = 200u;
     do {
         status = read_reg_64(SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR);
         // Get bit 32
         status = (status >> 32) & 0x1;
-    } while (status != 0);
+    } while (status != 0 && --poll != 0u);
+
+    if (status != 0) {
+        simputs("Zeroer never reported completion\n");
+        test_fail(0);
+    }
 
     simputs("Zeroer finished, checking sram\n");
     // Read sram addy 0x1000
@@ -66,7 +82,13 @@ int secondary_main(void) {
 
     if (hartid == 0) {
         return main();
-    } else {
+    }
+
+    /* Harts 1-3 park here for the whole run; a `wfi` may return spuriously, so the
+     * wait loops. */
+    while (true) {
         __asm__("wfi");
     }
+
+    return 0;
 }

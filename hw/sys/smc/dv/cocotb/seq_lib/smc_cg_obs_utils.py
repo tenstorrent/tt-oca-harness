@@ -7,7 +7,7 @@ A module-level ``logging.getLogger(__name__)`` is **not** captured by the
 cocotb/pyuvm runner, so the ``CHK-*`` / ``STEP`` / ``FENCE`` records written
 through one never reach the kept log -- an evidence token that exists only in
 the Python process cannot be re-verified by an audit
-(``[EVIDENCE-TOKEN-CONDITIONAL]``). Do not reintroduce a module logger here.
+(``[EVIDENCE-TOKEN-CONDITIONAL]``). No module-level logger belongs here.
 """
 
 from __future__ import annotations

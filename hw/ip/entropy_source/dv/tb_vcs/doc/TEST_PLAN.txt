@@ -3,10 +3,7 @@
 ================================================================================
 
 PROJECT:        Entropy Source Component
-VERSION:        1.1 (Release)
-DATE:           December 2025
 SIMULATOR:      Synopsys VCS with cocotb
-TOTAL TESTS:    56 tests across 5 suites
 
 ================================================================================
 VERIFICATION INFRASTRUCTURE
@@ -54,7 +51,7 @@ The REPETITION_TEST_COUNT register counts run length (total consecutive occurren
 Example: For threshold=10, failure occurs at 10th consecutive identical bit.
 
 ================================================================================
-TEST SUITE 0: SANITY & BASIC TESTS (3 TESTS)
+TEST SUITE 0: SANITY & BASIC TESTS
 ================================================================================
 
 TEST 0.1: test_entropy_sanity
@@ -140,10 +137,10 @@ TEST 0.3: test_apb_random
     [ ] All transactions complete within timeout
 
 ================================================================================
-TEST SUITE 1: DECORRELATOR MODES (16 TESTS)
+TEST SUITE 1: DECORRELATOR MODES
 ================================================================================
 
-CATEGORY 1.1: PURE MODES (4 TESTS)
+CATEGORY 1.1: PURE MODES
 -----------------------------------
 
 TEST 1.1.1: test_1_1_1_full_decorrelation_mode
@@ -236,7 +233,7 @@ TEST 1.1.4: test_1_1_4_decorrelation_slow_sampling
     [ ] All checkers pass
 
 ================================================================================
-CATEGORY 1.2: MIXED/MIXER MODES (8 TESTS)
+CATEGORY 1.2: MIXED/MIXER MODES
 ------------------------------------------
 
 TEST 1.2.1: test_1_2_1_single_lane_bypass_lane0
@@ -394,7 +391,7 @@ TEST 1.2.8: test_1_2_8_dynamic_bypass_mask_changes
     [ ] All checkers pass for both phases
 
 ================================================================================
-CATEGORY 1.3: COMPRESSOR BYPASS MODE (3 TESTS)
+CATEGORY 1.3: COMPRESSOR BYPASS MODE
 -----------------------------------------------
 
 TEST 1.3.1: test_1_3_1_bypass_compressor_mode
@@ -472,7 +469,7 @@ TEST 1.3.3: test_1_3_3_bypass_fast_sampling
     [ ] Decorrelator checker passes
 
 ================================================================================
-CATEGORY 1.4: BYTE MASK CONFIGURATION (1 TEST)
+CATEGORY 1.4: BYTE MASK CONFIGURATION
 -----------------------------------------------
 
 TEST 1.4.1: test_1_4_1_decorrelator_byte_mask
@@ -503,13 +500,13 @@ TEST 1.4.1: test_1_4_1_decorrelator_byte_mask
     [ ] No errors or exceptions
 
 ================================================================================
-TEST SUITE 2: ENTROPY FIFO (16 TESTS)
+TEST SUITE 2: ENTROPY FIFO
 ================================================================================
 
 Note: Decorrelator and Compressor checkers DISABLED for FIFO tests
       to isolate FIFO-specific functionality
 
-CATEGORY 2.1: BASIC FUNCTIONALITY (5 TESTS)
+CATEGORY 2.1: BASIC FUNCTIONALITY
 --------------------------------------------
 
 TEST 2.1.1: test_2_1_1_reset_behavior
@@ -627,7 +624,7 @@ TEST 2.1.5: test_2_1_5_simultaneous_push_and_pop
     [ ] System remains stable
 
 ================================================================================
-CATEGORY 2.2: POINTER MANAGEMENT (1 TEST)
+CATEGORY 2.2: POINTER MANAGEMENT
 ------------------------------------------
 
 TEST 2.2.1: test_2_2_1_pointer_wraparound
@@ -653,7 +650,7 @@ TEST 2.2.1: test_2_2_1_pointer_wraparound
     [ ] No data loss during wrap
 
 ================================================================================
-CATEGORY 2.3: BOUNDARY CONDITIONS (2 TESTS)
+CATEGORY 2.3: BOUNDARY CONDITIONS
 --------------------------------------------
 
 TEST 2.3.1: test_2_3_1_overflow_detection
@@ -711,7 +708,7 @@ TEST 2.3.2: test_2_3_2_underflow_detection
     [ ] irq_o clears after W1C
 
 ================================================================================
-CATEGORY 2.4: DATA INTEGRITY (1 TEST)
+CATEGORY 2.4: DATA INTEGRITY
 --------------------------------------
 
 TEST 2.4.1: test_2_4_1_data_pattern_tests
@@ -745,7 +742,7 @@ TEST 2.4.1: test_2_4_1_data_pattern_tests
     [ ] All 32 bits valid per entry
 
 ================================================================================
-CATEGORY 2.5: REGISTER INTERFACE (2 TESTS)
+CATEGORY 2.5: REGISTER INTERFACE
 -------------------------------------------
 
 TEST 2.5.1: test_2_5_1_fifo_enable_disable
@@ -799,7 +796,7 @@ TEST 2.5.2: test_2_5_2_fifo_rdata_autopop
     [ ] Autopop mechanism works correctly
 
 ================================================================================
-CATEGORY 2.6: FIFO INTERRUPT VERIFICATION (1 TEST)
+CATEGORY 2.6: FIFO INTERRUPT VERIFICATION
 ---------------------------------------------------
 
 TEST 2.6.1: test_2_6_1_fifo_intr_test_and_error
@@ -843,7 +840,7 @@ TEST 2.6.1: test_2_6_1_fifo_intr_test_and_error
     [ ] FIFO_ERROR interrupt path functional
 
 ================================================================================
-CATEGORY 2.7: SECURITY FEATURES (4 TESTS)
+CATEGORY 2.7: SECURITY FEATURES
 ------------------------------------------
 
 TEST 2.7.1: test_2_7_1_parity_generation
@@ -1011,13 +1008,13 @@ TEST 2.7.4: test_2_7_4_combined_security_alert
     [ ] System recovers cleanly from all error combinations
 
 ================================================================================
-TEST SUITE 3: HEALTH TESTS (17 TESTS)
+TEST SUITE 3: HEALTH TESTS
 ================================================================================
 
 Note: Decorrelator/Compressor checkers DISABLED for most tests to isolate
       health test functionality
 
-CATEGORY 3.1: CSR INTERFACE (3 TESTS)
+CATEGORY 3.1: CSR INTERFACE
 --------------------------------------
 
 TEST 3.1.1: test_3_1_1_health_test_enable_disable
@@ -1078,7 +1075,7 @@ TEST 3.1.3: test_3_1_3_register_monitoring_and_counters
     [ ] APT high count is not below the APT low count
 
 ================================================================================
-CATEGORY 3.2: PIPELINE INTEGRATION (1 TEST)
+CATEGORY 3.2: PIPELINE INTEGRATION
 --------------------------------------------
 
 TEST 3.2.1: test_3_2_1_health_tests_with_decorrelation
@@ -1099,7 +1096,7 @@ TEST 3.2.1: test_3_2_1_health_tests_with_decorrelation
     [ ] Pipeline operates stably for full duration
 
 ================================================================================
-CATEGORY 3.3: FAILURE DETECTION AND RECOVERY (4 TESTS)
+CATEGORY 3.3: FAILURE DETECTION AND RECOVERY
 -------------------------------------------------------
 
 TEST 3.3.1: test_3_3_1_repetition_test_failure
@@ -1195,7 +1192,7 @@ TEST 3.3.4: test_3_3_4_multiple_simultaneous_failures
     [ ] Recovery successful
 
 ================================================================================
-CATEGORY 3.4: THRESHOLD BOUNDARY (1 TEST)
+CATEGORY 3.4: THRESHOLD BOUNDARY
 ------------------------------------------
 
 TEST 3.4.1: test_3_4_1_threshold_at_failure_boundary
@@ -1223,7 +1220,7 @@ TEST 3.4.1: test_3_4_1_threshold_at_failure_boundary
     [ ] Threshold comparison uses >= logic correctly
 
 ================================================================================
-CATEGORY 3.5: LONG-DURATION AND STRESS TESTING (2 TESTS)
+CATEGORY 3.5: LONG-DURATION AND STRESS TESTING
 ---------------------------------------------------------
 
 TEST 3.5.1: test_3_5_1_extended_operation_without_failures
@@ -1259,7 +1256,7 @@ TEST 3.5.2: test_3_5_2_repeated_failure_recovery_cycles
     [ ] Counters clear properly each cycle
 
 ================================================================================
-CATEGORY 3.6: INTERRUPT VERIFICATION (1 TEST)
+CATEGORY 3.6: INTERRUPT VERIFICATION
 ----------------------------------------------
 
 TEST 3.6.1: test_3_6_1_health_intr_test_injection
@@ -1278,7 +1275,7 @@ TEST 3.6.1: test_3_6_1_health_intr_test_injection
     [ ] Interrupt latency < 50 cycles
 
 ================================================================================
-CATEGORY 3.7: DETUNE FEATURE (4 TESTS)
+CATEGORY 3.7: DETUNE FEATURE
 ---------------------------------------
 
 Note: Per-lane detune uses rtl_detune_flat signal (exposes actual per-generator
@@ -1360,13 +1357,13 @@ TEST 3.7.4: test_3_7_4_autotune_markov_test
     [ ] Recovery and manual control work
 
 ================================================================================
-TEST SUITE 4: DEBUG MONITOR (3 TESTS)
+TEST SUITE 4: DEBUG MONITOR
 ================================================================================
 
-Note: Tests verify CSR interface and signal routing. Tests 4.2-4.4 removed
-      as redundant (Suites 1-3 verify signal integrity).
+Note: Tests verify the CSR interface and signal routing; signal integrity
+      through the pipeline is covered by Suites 1-3.
 
-CATEGORY 4.1: CSR INTERFACE AND SIGNAL SELECTION (3 TESTS)
+CATEGORY 4.1: CSR INTERFACE AND SIGNAL SELECTION
 -----------------------------------------------------------
 
 TEST 4.1.1: test_4_1_1_debug_ctrl_register_access
@@ -1424,15 +1421,15 @@ TEST 4.1.3: test_4_1_3_frequency_selector_boundary_values
   Pass Criteria:
     [ ] All 8 divisions produce measurable output within tolerance
     [ ] Ratios correct, no stuck signals
-    [ ] Issue #1055 fixed: div-by-128 works (FREQ_DIV_WIDTH=8)
+    [ ] div-by-128 works (FREQ_DIV_WIDTH=8)
 
 ================================================================================
-TEST SUITE 5: MISCELLANEOUS (2 TESTS)
+TEST SUITE 5: MISCELLANEOUS
 ================================================================================
 
 Note: Low-priority auxiliary feature tests with limited coverage
 
-CATEGORY 5.1: DOWNSAMPLE CONFIGURATION (1 TEST)
+CATEGORY 5.1: DOWNSAMPLE CONFIGURATION
 ------------------------------------------------
 
 TEST 5.1: test_5_1_downsample_rate_configuration
@@ -1453,31 +1450,4 @@ TEST 5.1: test_5_1_downsample_rate_configuration
 
 ================================================================================
 [End of Test Plan]
-================================================================================
-
-REMOVED TESTS
--------------
-Category 4.2-4.4 tests removed as redundant with comprehensive coverage
-in Test Suites 1-3 which verify signal integrity throughout the pipeline.
-
-The 3 debug monitor tests focus on CSR interface and basic functionality,
-which is sufficient for release verification.
-
-================================================================================
-DOCUMENT REVISION HISTORY
-================================================================================
-
-Version 1.1 (December 2025) - Updated
-  - Added Suite 5: Miscellaneous tests
-  - Test 5.1: CTRL.DOWNSAMPLE_RATE configuration
-  - Low-priority auxiliary features have basic verification
-
-Version 1.0 (December 2025) - Release
-  - Production-ready test plan for release
-  - 54 tests across 5 suites verified and documented
-  - Fixed test_4_1_3 per Issue #1055 (div-128 support)
-  - Comprehensive checkers: DECOR, COMP, FIFO, IRQ
-  - All tests implemented and passing
-  - Ready for production release
-
 ================================================================================

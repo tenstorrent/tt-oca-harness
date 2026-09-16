@@ -26,9 +26,9 @@ class dtp_jtag2axi_backpressure_long_stall_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_robustness_test_seq,
             "backpressure_long_stall",
-            specific_env="DTP_JTAG2AXI_BACKPRESSURE_LONG_STALL_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_BACKPRESSURE_LONG_STALL_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="backpressure_long_stall",
         )
         for seq in sequences:

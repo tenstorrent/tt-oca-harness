@@ -1,8 +1,10 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 * xref:index.adoc[Programmer's Guide]
 ** xref:index.adoc#smc[SMC]
+*** xref:index.adoc#smc-per-core-reset[Per-Core Reset]
 ** xref:index.adoc#sep[SEP]
 *** xref:index.adoc#cpu-bring-up[CPU Bring-Up]
 *** xref:index.adoc#ocah-trng-bring-up[OCAH TRNG Bring-Up]
+** xref:index.adoc#aou-software-operation[AXI-over-UCIe Bridge (AoU) Software Operation]

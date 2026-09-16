@@ -1,0 +1,302 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: regress
+
+# Scheduled regression tiers. The pull-request gate lives in sim.yml; both
+# run the DV job through .github/actions/dv-run. Policy is structural here:
+# each tier is its own job with its own matrix, so what a tier runs (group,
+# seeds, coverage, fan-out, runner, budget) is read off that job, never
+# computed from the triggering event.
+#
+# Tier purposes:
+#   nightly  one random seed per test of each DUT's regression group, no
+#            coverage, sized to fit the standard 4-vCPU runner; a red
+#            nightly is a triage signal, not a merge gate.
+#   weekly   the coverage regression the dashboard publishes (dashboard.yml
+#            listens for `dv-run-<dut>-<tool>-weekly`); reseeded, and
+#            promoted to a larger runner by the DV_LARGE_RUNNER variable.
+
+run-name: ${{ format('regress {0} ({1})', (github.event.schedule == '0 18 * * 6' && 'weekly') || inputs.tier || 'nightly', github.event_name == 'schedule' && 'scheduled' || 'manual dispatch') }}
+
+on:
+  schedule:
+    # 18:00 UTC == 02:00 UTC+8 the next day. Sunday to Friday run the
+    # nightly tier; Saturday runs the weekly tier instead, so exactly one
+    # tier runs per day. The `tier` job maps the cron string to the tier.
+    - cron: "0 18 * * 0-5"
+    - cron: "0 18 * * 6"
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Regression tier to run"
+        type: choice
+        options: [nightly, weekly]
+        default: nightly
+
+# Scheduled tiers are never cancelled; a dispatch of the same tier queues
+# behind the one in flight. The two crons are distinct groups.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.schedule || inputs.tier }}
+  cancel-in-progress: false
+
+jobs:
+  tier:
+    runs-on: ubuntu-latest
+    outputs:
+      tier: ${{ steps.pick.outputs.tier }}
+    steps:
+      - name: Map the trigger to a tier
+        id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          CRON: ${{ github.event.schedule }}
+          DISPATCH_TIER: ${{ inputs.tier }}
+        run: |
+          case "$EVENT" in
+            workflow_dispatch) tier="$DISPATCH_TIER" ;;
+            schedule)
+              case "$CRON" in
+                "0 18 * * 6") tier=weekly ;;
+                *) tier=nightly ;;
+              esac
+              ;;
+            *) echo "unsupported event: $EVENT" >&2; exit 1 ;;
+          esac
+          echo "tier=$tier" >> "$GITHUB_OUTPUT"
+          echo "Tier: $tier" >> "$GITHUB_STEP_SUMMARY"
+
+  verilator-nightly:
+    name: verilator-nightly (${{ matrix.dut }})
+    needs: [tier]
+    if: needs.tier.outputs.tier == 'nightly'
+    runs-on: ${{ matrix.runner }}
+    # The budget is per DUT (matrix.timeout): headroom for a Verilator cache
+    # miss (from-source build) plus the model build and the group at
+    # --sim-jobs 4 with one seed per test.
+    timeout-minutes: ${{ matrix.timeout }}
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        # items is NOT always `all`: hosted runners have no RISC-V toolchain,
+        # so any DUT whose `all` group contains firmware tests (a `c_compile`
+        # stage) must name a CPU-free group instead, or every run fails at
+        # build.
+        #
+        # coverage stays off on this tier. dtp `all` with coverage does not
+        # fit a hosted job (six-hour cap), and the coverage-instrumented sep
+        # and smu model builds exceed the standard runner's memory; the
+        # weekly tier carries coverage on a larger runner.
+        include:
+          - dut: dtp
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 210
+          - dut: sep
+            # SEP's `all` mixes cpu firmware tests; `cpu_stub` is the
+            # toolchain-free subset and carries several half-hour KM/DRBG
+            # simulations per seed.
+            items: cpu_stub
+            reseed: 1
+            coverage: false
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            timeout: 240
+          - dut: smu
+            # `hosted` is the enrolled toolchain-free release set: every leaf
+            # uses `elaboration` firmware, whose only products are zero-filled
+            # preload images written in Python, so there is no RISC-V toolchain
+            # stage on hosted runners. `smu` is the wrapper DUT on its single
+            # compile profile (real SEP); the bare block bench is `smu_block`
+            # (hw/sys/smu/dv/testlists/all.toml). `smu`'s own `all` is not
+            # usable here -- it carries the SEP firmware set, which needs the
+            # toolchain container.
+            items: hosted
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 90
+          - dut: smu_block
+            # The bare `smu #(.SEP(0))` bench. `all` is its cocotb leaves --
+            # the SEP=0 composition proofs plus the two JTAG leaves that cannot
+            # run on the wrapper -- with no firmware stage, so it runs on the
+            # hosted runner; sim.yml gates only the `smoke` leaf, so the
+            # scheduled tiers are where the abort-mid-op leaf executes. Budget:
+            # two 1800 s leaves in parallel plus build headroom.
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 90
+          - dut: smc
+            # SMC `all` is 171 leaves; the 14 in testlists/fw.toml need a
+            # RISC-V toolchain and three need an SMC_DUAL elaboration.
+            # `hosted` is that group minus those 17, so the scheduled tier
+            # keeps the former smoke leaves.
+            items: hosted
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 90
+          # Cross-trigger IP-level benches: small single-IP DUTs, seconds per
+          # full group; nightly is their only scheduled enrollment besides
+          # the weekly.
+          - dut: cross_trigger_port
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 30
+          - dut: cross_trigger_matrix
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 30
+          - dut: cross_trigger_network
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The run id keeps the recorded native run_dir unique per run: the
+      # dashboard trend-point identity hashes it, so a repeated path would
+      # make consecutive points replace each other whenever main has not
+      # moved.
+      - name: Run nightly tier
+        uses: ./.github/actions/dv-run
+        with:
+          dut: ${{ matrix.dut }}
+          tool: verilator
+          tier: nightly
+          items: ${{ matrix.items }}
+          reseed: ${{ matrix.reseed }}
+          coverage: ${{ matrix.coverage }}
+          sim-jobs: 4
+          run-dir: build/ci/runs/${{ matrix.dut }}/verilator/nightly/${{ github.run_id }}
+
+  verilator-weekly:
+    # A row may carry `label` to run a second group of the same DUT; it reaches
+    # the job name and the artifact name so the two rows never collide.
+    name: verilator-weekly (${{ matrix.dut }}${{ matrix.label && format(' {0}', matrix.label) || '' }})
+    needs: [tier]
+    if: needs.tier.outputs.tier == 'weekly'
+    runs-on: ${{ matrix.runner }}
+    # Per-DUT budget (matrix.timeout), below the six-hour hosted cap. The
+    # run must reach cov_merge/cov_report so the coverage record and
+    # artifact survive even a red run.
+    timeout-minutes: ${{ matrix.timeout }}
+    permissions: { contents: read }
+    strategy:
+      fail-fast: false
+      matrix:
+        # Runner-size promotion: the repository variable DV_LARGE_RUNNER names
+        # a 16-vCPU label once it is confirmed in the org's runner settings
+        # (see sim.yml for why a missing label must not be the default).
+        # Three policies key off it, all in this matrix:
+        #   - dtp reseeds three times only on the larger runner; at
+        #     --sim-jobs 4 the three-seed `all` needs about nine hours.
+        #   - sep, smu and smu_block collect coverage only on the larger
+        #     runner; the sep and smu coverage-instrumented model builds
+        #     exceed the standard runner's memory, and smu_block is the same
+        #     SMU model without the wrapper, so it shares the gate.
+        #   - sim-jobs follows the runner core count (the action's `nproc`).
+        # Every coverage block sets --output-groups 0: Verilator otherwise
+        # concatenates the generated .cpp files into --build-jobs groups by
+        # file count, and one group of the coverage-instrumented smc model
+        # became a 243 MB translation unit the compiler never finished; the
+        # same shape fits the sep/smu runner deaths. Per-file compilation is
+        # verified on smc (46-minute build on six cores, 12 MB database per
+        # leaf), so smc collects coverage here; sep, smu and smu_block keep
+        # their larger-runner gate until one weekly run confirms the standard
+        # runner's memory suffices for them too. The cross_trigger benches
+        # are small enough to collect coverage on the standard runner.
+        include:
+          - dut: dtp
+            items: all
+            reseed: ${{ vars.DV_LARGE_RUNNER != '' && 3 || 1 }}
+            coverage: true
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            timeout: 330
+          - dut: sep
+            items: cpu_stub
+            reseed: 1
+            coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            timeout: 330
+          - dut: smu
+            items: hosted
+            reseed: 3
+            coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            timeout: 180
+          - dut: smu_block
+            items: all
+            reseed: 3
+            coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            timeout: 180
+          - dut: smc
+            items: hosted
+            reseed: 3
+            coverage: true
+            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+            timeout: 180
+          - dut: smc
+            # The `rtl_issue` reproducers: every leaf carries `expect_fail`, so
+            # the row is green while the filed defects stand and goes red the
+            # week one is fixed and its test has to move. Its own row because
+            # `hosted` feeds the coverage dashboard and a graded expected
+            # failure must not count there; no coverage for the same reason.
+            # One seed: each leaf is a directed reproducer. The budget is the
+            # model build plus five short leaves.
+            items: rtl_issue
+            label: rtl_issue
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+            timeout: 90
+          - dut: cross_trigger_port
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+            timeout: 30
+          - dut: cross_trigger_matrix
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+            timeout: 30
+          - dut: cross_trigger_network
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+            timeout: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Artifact name dv-run-<dut>-verilator-weekly and the run-dir shape are
+      # the dashboard contract (dashboard.yml, tools/dv/run_dashboard.py); a
+      # labelled row's artifact ends in -<label> and falls outside it.
+      - name: Run weekly tier
+        uses: ./.github/actions/dv-run
+        with:
+          dut: ${{ matrix.dut }}
+          tool: verilator
+          tier: weekly
+          label: ${{ matrix.label || '' }}
+          items: ${{ matrix.items }}
+          reseed: ${{ matrix.reseed }}
+          coverage: ${{ matrix.coverage }}
+          sim-jobs: nproc
+          run-dir: build/ci/runs/${{ matrix.dut }}/verilator/weekly/${{ github.run_id }}
+          retention-days: 30

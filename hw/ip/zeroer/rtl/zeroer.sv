@@ -19,34 +19,34 @@ module zeroer #(
   parameter int unsigned CTRL_USER_WIDTH = 12,
 
   // Width params for master-side internal logic
-  parameter int unsigned AXI_ADDR_WIDTH  = 56,
-  parameter int unsigned AXI_DATA_WIDTH  = 64,
-  parameter int unsigned AXI_USER_WIDTH  = 12,
-  parameter int unsigned MST_ID_WIDTH    = 3,
+  parameter int unsigned AXI_ADDR_WIDTH = 56,
+  parameter int unsigned AXI_DATA_WIDTH = 64,
+  parameter int unsigned AXI_USER_WIDTH = 12,
+  parameter int unsigned MST_ID_WIDTH   = 3,
 
   parameter int unsigned CG_HYSTERESIS_W = 6
 ) (
-  input   logic                               clk_i,
-  input   logic                               rst_ni,
-  input   logic                               test_en_i,
+  input logic clk_i,
+  input logic rst_ni,
+  input logic test_en_i,
 
-  input   logic                               cg_enable_i,
-  input   logic [CG_HYSTERESIS_W-1:0]         cg_hysteresis_i,
+  input logic                       cg_enable_i,
+  input logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,
 
-  output  logic                               zeroer_busy_o,
-  output  logic                               zeroer_intp_o,
+  output logic zeroer_busy_o,
+  output logic zeroer_intp_o,
 
   // AXI Register Interface
-  input   zeroer_ctrl_req_t                   zeroer_ctrl_axi_req_i,
-  output  zeroer_ctrl_resp_t                  zeroer_ctrl_axi_resp_o,
+  input  zeroer_ctrl_req_t  zeroer_ctrl_axi_req_i,
+  output zeroer_ctrl_resp_t zeroer_ctrl_axi_resp_o,
 
   // Zeroer Output Interface
-  output  mst_req_t                           mst_axi_req_o,
-  input   mst_resp_t                          mst_axi_resp_i,
+  output mst_req_t  mst_axi_req_o,
+  input  mst_resp_t mst_axi_resp_i,
 
   // Clock gater activity indicators
-  output  logic                               zeroer_clk_active_o,
-  output  logic                               zeroer_bus_active_o
+  output logic zeroer_clk_active_o,
+  output logic zeroer_bus_active_o
 );
 
   `include "ocah_assert.svh"
@@ -85,9 +85,9 @@ module zeroer #(
     .FallThrough(0),
     .FullBW(0),
 
-    .full_req_t(zeroer_ctrl_req_t),
+    .full_req_t (zeroer_ctrl_req_t),
     .full_resp_t(zeroer_ctrl_resp_t),
-    .lite_req_t(zeroer_ctrl_axil_req_t),
+    .lite_req_t (zeroer_ctrl_axil_req_t),
     .lite_resp_t(zeroer_ctrl_axil_resp_t)
 
   ) ctrl_axi_to_axilite (
@@ -109,11 +109,12 @@ module zeroer #(
   logic [63:0] dest_addr;
   logic [63:0] size;
   logic        int_en;
-  logic [1:0]  status_swacc;
+  logic [1:0] status_swacc;
 
   logic [31:0] outstanding_reqs;
 
   typedef enum logic [2:0] {
+    ST_ERROR      = 3'b000,
     ST_IDLE       = 3'b001,
     ST_ISSUE_ADDR = 3'b010,
     ST_ISSUE_DATA = 3'b100
@@ -125,7 +126,13 @@ module zeroer #(
   logic axi_clk;
   logic reg_clk;
 
-  assign zeroer_busy_o = status_swacc[1] | (cur_state != ST_IDLE) | (|outstanding_reqs);
+  always_comb begin
+    zeroer_busy_o = 1'b1;
+    if (cur_state == ST_IDLE) begin
+      zeroer_busy_o = status_swacc[1] | (|outstanding_reqs);
+    end
+  end
+
   wire disable_cg = !cg_enable_i;
 
   wire axi_clk_enable = disable_cg | zeroer_busy_o | ~rst_ni;
@@ -142,32 +149,32 @@ module zeroer #(
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
   ) zeroer_cg (
-    .clk_i           (clk_i),
-    .rst_ni          (rst_ni),
+    .clk_i (clk_i),
+    .rst_ni(rst_ni),
 
     .snoop_aw_valid_i(zeroer_ctrl_axil_req.aw_valid),
     .snoop_aw_ready_i(zeroer_ctrl_axil_resp.aw_ready),
-    .snoop_w_valid_i (zeroer_ctrl_axil_req.w_valid),
-    .snoop_b_valid_i (zeroer_ctrl_axil_resp.b_valid),
-    .snoop_b_ready_i (zeroer_ctrl_axil_req.b_ready),
+    .snoop_w_valid_i(zeroer_ctrl_axil_req.w_valid),
+    .snoop_b_valid_i(zeroer_ctrl_axil_resp.b_valid),
+    .snoop_b_ready_i(zeroer_ctrl_axil_req.b_ready),
     .snoop_ar_valid_i(zeroer_ctrl_axil_req.ar_valid),
     .snoop_ar_ready_i(zeroer_ctrl_axil_resp.ar_ready),
-    .snoop_r_valid_i (zeroer_ctrl_axil_resp.r_valid),
-    .snoop_r_ready_i (zeroer_ctrl_axil_req.r_ready),
-    .snoop_r_last_i  (1'b1), // every beat is "last" in AXI-L
+    .snoop_r_valid_i(zeroer_ctrl_axil_resp.r_valid),
+    .snoop_r_ready_i(zeroer_ctrl_axil_req.r_ready),
+    .snoop_r_last_i(1'b1),  // every beat is "last" in AXI-L
 
-    .kick_i          (disable_cg), // continuously kick to keep clock awake when not gating
+    .kick_i(disable_cg),  // continuously kick to keep clock awake when not gating
 
-    .test_clk_en_i   (test_en_i),
-    .hysteresis_i    (cg_hysteresis_i),
-    .clk_active_o    (zeroer_clk_active_o),
-    .gated_clk_o     (reg_clk),
-    .bus_active_o    (zeroer_bus_active_o)
+    .test_clk_en_i(test_en_i),
+    .hysteresis_i (cg_hysteresis_i),
+    .clk_active_o (zeroer_clk_active_o),
+    .gated_clk_o  (reg_clk),
+    .bus_active_o (zeroer_bus_active_o)
   );
 
   // ----------
 
-  zeroer_ctrl_reg_pkg::zeroer_ctrl__in_t hwif_in;
+  zeroer_ctrl_reg_pkg::zeroer_ctrl__in_t  hwif_in;
   zeroer_ctrl_reg_pkg::zeroer_ctrl__out_t hwif_out;
 
   zeroer_ctrl_reg zeroer_reg (
@@ -176,25 +183,25 @@ module zeroer #(
 
     .s_axil_awready(zeroer_ctrl_axil_resp.aw_ready),
     .s_axil_awvalid(zeroer_ctrl_axil_req.aw_valid),
-    .s_axil_awaddr(zeroer_ctrl_axil_req.aw.addr),
-    .s_axil_awprot(zeroer_ctrl_axil_req.aw.prot),
-    .s_axil_wready(zeroer_ctrl_axil_resp.w_ready),
-    .s_axil_wvalid(zeroer_ctrl_axil_req.w_valid),
-    .s_axil_wdata(zeroer_ctrl_axil_req.w.data),
-    .s_axil_wstrb(zeroer_ctrl_axil_req.w.strb),
-    .s_axil_bready(zeroer_ctrl_axil_req.b_ready),
-    .s_axil_bvalid(zeroer_ctrl_axil_resp.b_valid),
-    .s_axil_bresp(zeroer_ctrl_axil_resp.b.resp),
+    .s_axil_awaddr (zeroer_ctrl_axil_req.aw.addr),
+    .s_axil_awprot (zeroer_ctrl_axil_req.aw.prot),
+    .s_axil_wready (zeroer_ctrl_axil_resp.w_ready),
+    .s_axil_wvalid (zeroer_ctrl_axil_req.w_valid),
+    .s_axil_wdata  (zeroer_ctrl_axil_req.w.data),
+    .s_axil_wstrb  (zeroer_ctrl_axil_req.w.strb),
+    .s_axil_bready (zeroer_ctrl_axil_req.b_ready),
+    .s_axil_bvalid (zeroer_ctrl_axil_resp.b_valid),
+    .s_axil_bresp  (zeroer_ctrl_axil_resp.b.resp),
     .s_axil_arready(zeroer_ctrl_axil_resp.ar_ready),
     .s_axil_arvalid(zeroer_ctrl_axil_req.ar_valid),
-    .s_axil_araddr(zeroer_ctrl_axil_req.ar.addr),
-    .s_axil_arprot(zeroer_ctrl_axil_req.ar.prot),
-    .s_axil_rready(zeroer_ctrl_axil_req.r_ready),
-    .s_axil_rvalid(zeroer_ctrl_axil_resp.r_valid),
-    .s_axil_rdata(zeroer_ctrl_axil_resp.r.data),
-    .s_axil_rresp(zeroer_ctrl_axil_resp.r.resp),
+    .s_axil_araddr (zeroer_ctrl_axil_req.ar.addr),
+    .s_axil_arprot (zeroer_ctrl_axil_req.ar.prot),
+    .s_axil_rready (zeroer_ctrl_axil_req.r_ready),
+    .s_axil_rvalid (zeroer_ctrl_axil_resp.r_valid),
+    .s_axil_rdata  (zeroer_ctrl_axil_resp.r.data),
+    .s_axil_rresp  (zeroer_ctrl_axil_resp.r.resp),
 
-    .hwif_in(hwif_in),
+    .hwif_in (hwif_in),
     .hwif_out(hwif_out)
   );
 
@@ -204,7 +211,9 @@ module zeroer #(
   assign size = hwif_out.SIZE.SIZE.value;
   assign int_en = hwif_out.CTRL_STATUS.INT_EN.value;
 
-  assign status_swacc = {hwif_out.CTRL_STATUS.INT_EN.wr_swacc, hwif_out.CTRL_STATUS.STATUS.rd_swacc};
+  assign status_swacc = {
+    hwif_out.CTRL_STATUS.INT_EN.wr_swacc, hwif_out.CTRL_STATUS.STATUS.rd_swacc
+  };
 
   // ----------
 
@@ -215,21 +224,21 @@ module zeroer #(
   axi_strb_t cur_last_transfer_strb, nxt_last_transfer_strb;
   axi_pkg::len_t cur_beats_to_transfer, nxt_beats_to_transfer;
 
-  axi_pkg::len_t                 burst_len;
-  axi_data_t                     last_transfer_size;
-  axi_data_t                     total_transfer_size;
-  logic [AXI_DATA_WIDTH:0]       total_transfer_size_overflow;
-  axi_strb_t                     last_strb;
+  axi_pkg::len_t                    burst_len;
+  axi_data_t                        last_transfer_size;
+  axi_data_t                        total_transfer_size;
+  logic          [AXI_DATA_WIDTH:0] total_transfer_size_overflow;
+  axi_strb_t                        last_strb;
 
-  logic          mst_awvalid;
-  axi_addr_t     mst_awaddr;
-  axi_pkg::len_t mst_awlen;
+  logic                             mst_awvalid;
+  axi_addr_t                        mst_awaddr;
+  axi_pkg::len_t                    mst_awlen;
 
-  logic          mst_wvalid;
-  axi_strb_t     mst_wstrb;
-  logic          mst_wlast;
+  logic                             mst_wvalid;
+  axi_strb_t                        mst_wstrb;
+  logic                             mst_wlast;
 
-  logic          mst_bready;
+  logic                             mst_bready;
 
   always_comb begin
     nxt_state = cur_state;
@@ -238,10 +247,12 @@ module zeroer #(
     nxt_strb = cur_strb;
     nxt_last_transfer_strb = cur_last_transfer_strb;
     nxt_beats_to_transfer = cur_beats_to_transfer;
+    nxt_size_overflow = '0;
 
     burst_len = axi_pkg::len_t'(0);
-    last_transfer_size = axi_pkg::len_t'(0);
-    total_transfer_size = axi_pkg::len_t'(0);
+    last_transfer_size = '0;
+    total_transfer_size = '0;
+    total_transfer_size_overflow = '0;
     last_strb = axi_strb_t'(0);
 
     mst_awvalid = 1'b0;
@@ -271,28 +282,32 @@ module zeroer #(
 
         // cannot burst across 4KB boundary, calculate how many bursts can be done before hitting boundary
         // -> using 'hFFF ensures that when addr offset == data_size, it gives the correct length
-        if ((('hFFF - cur_dest_addr[11:0]) >> AXI_DATA_SIZE) > AXI_MAX_BURST_LEN) begin
-          burst_len = AXI_MAX_BURST_LEN;
+        if ((('hFFF - 32'(cur_dest_addr[11:0])) >> AXI_DATA_SIZE) > AXI_MAX_BURST_LEN) begin
+          burst_len = axi_pkg::len_t'(AXI_MAX_BURST_LEN);
         end else begin
-          burst_len = ('hFFF - cur_dest_addr[11:0]) >> AXI_DATA_SIZE;
+          burst_len = axi_pkg::len_t'(('hFFF - 32'(cur_dest_addr[11:0])) >> AXI_DATA_SIZE);
         end
 
         // check if data left to transfer can be done in less than the max burst length
         // if it can, check if size is not perfectly sized and a strobe is needed
         if (cur_size[AXI_DATA_WIDTH-1:AXI_DATA_SIZE] <= {53'd0, burst_len}) begin
-          mst_awlen = ((cur_size - axi_pkg::len_t'(1)) >> AXI_DATA_SIZE);
+          mst_awlen = axi_pkg::len_t'((cur_size - 64'd1) >> AXI_DATA_SIZE);
           // last transfer can be not a full word
           last_transfer_size = (|cur_size[AXI_DATA_SIZE-1:0]) ? {61'd0,cur_size[AXI_DATA_SIZE-1:0]} : {32'd0, AXI_STRB_WIDTH};
         end else begin
           mst_awlen = burst_len;
           // if single beat of data allowed, check for address offsets
-          last_transfer_size = |burst_len ? AXI_STRB_WIDTH : AXI_STRB_WIDTH - cur_dest_addr[AXI_DATA_SIZE-1:0];
+          last_transfer_size = |burst_len ? axi_data_t'(AXI_STRB_WIDTH)
+                                           : axi_data_t'(AXI_STRB_WIDTH)
+                                             - axi_data_t'(cur_dest_addr[AXI_DATA_SIZE-1:0]);
         end
 
         nxt_last_transfer_strb = ~({AXI_STRB_WIDTH{1'b1}} << last_transfer_size);
 
         if (|mst_awlen) begin
-          total_transfer_size_overflow = (mst_awlen << AXI_DATA_SIZE) - cur_dest_addr[AXI_DATA_SIZE-1:0] + last_transfer_size;
+          total_transfer_size_overflow = ($bits(total_transfer_size_overflow)'(mst_awlen) << AXI_DATA_SIZE)
+                                          - $bits(total_transfer_size_overflow)'(cur_dest_addr[AXI_DATA_SIZE-1:0])
+                                          + last_transfer_size;
           total_transfer_size = total_transfer_size_overflow[AXI_DATA_WIDTH-1:0];
           // first wstrb depends on address offset
           nxt_strb = {AXI_STRB_WIDTH{1'b1}} << cur_dest_addr[AXI_DATA_SIZE-1:0];
@@ -301,7 +316,7 @@ module zeroer #(
           total_transfer_size = last_transfer_size;
           // only enough strb bits for data size when it's a single beat
           for (int i = 0; i < AXI_STRB_WIDTH; i++) begin
-            last_strb[i] = last_transfer_size > i;
+            last_strb[i] = last_transfer_size > axi_data_t'(i);
           end
           // shift strb to correct position based on address offset
           nxt_strb = last_strb << cur_dest_addr[AXI_DATA_SIZE-1:0];
@@ -310,7 +325,7 @@ module zeroer #(
         if (mst_axi_resp_i.aw_ready) begin
           nxt_state = ST_ISSUE_DATA;
           nxt_beats_to_transfer = mst_awlen;
-          nxt_dest_addr = mst_awaddr + ((mst_awlen + 1) << AXI_DATA_SIZE);
+          nxt_dest_addr = mst_awaddr + (($bits(nxt_dest_addr)'(mst_awlen) + 1) << AXI_DATA_SIZE);
           // calculate how much data gets transferred
           // sub last transfer size, sub other transfers, add first transfer offset
           nxt_size_overflow = cur_size - total_transfer_size;
@@ -327,15 +342,18 @@ module zeroer #(
             nxt_beats_to_transfer = axi_pkg::len_t'(0);
             nxt_strb = {AXI_STRB_WIDTH{1'b0}};
             // after current chunk of data is transferred, anymore chunks?
-            nxt_state = (cur_size == axi_pkg::len_t'(0)) ? ST_IDLE : ST_ISSUE_ADDR;
+            nxt_state = (cur_size == '0) ? ST_IDLE : ST_ISSUE_ADDR;
           end else begin
             nxt_beats_to_transfer = cur_beats_to_transfer - 1;
             nxt_strb = (cur_beats_to_transfer == axi_pkg::len_t'(1)) ? cur_last_transfer_strb : {AXI_STRB_WIDTH{1'b1}};
           end
         end
       end
+      ST_ERROR: begin
+        nxt_state = ST_ERROR;
+      end
       default: begin
-        nxt_state = ST_IDLE;
+        nxt_state = ST_ERROR;
       end
     endcase
   end
@@ -344,9 +362,9 @@ module zeroer #(
     if (~rst_ni) begin
       cur_state <= ST_IDLE;
       cur_dest_addr <= axi_addr_t'(0);
-      cur_size <= axi_pkg::len_t'(0);
+      cur_size <= '0;
       cur_strb <= axi_strb_t'(0);
-      cur_last_transfer_strb <= axi_pkg::len_t'(0);
+      cur_last_transfer_strb <= '0;
       cur_beats_to_transfer <= axi_pkg::len_t'(0);
     end else begin
       cur_state <= nxt_state;
@@ -363,7 +381,9 @@ module zeroer #(
     if (~rst_ni) begin
       outstanding_reqs <= 32'd0;
     end else begin
-      outstanding_reqs <= 32'(outstanding_reqs + (mst_axi_resp_i.aw_ready & mst_axi_req_o.aw_valid) - (mst_axi_req_o.b_ready & mst_axi_resp_i.b_valid));
+      outstanding_reqs <= outstanding_reqs
+                           + 32'(mst_axi_resp_i.aw_ready & mst_axi_req_o.aw_valid)
+                           - 32'(mst_axi_req_o.b_ready & mst_axi_resp_i.b_valid);
     end
   end
 
@@ -374,7 +394,9 @@ module zeroer #(
       zeroer_intp_o <= 1'b0;
     end else begin
       prev_busy <= zeroer_busy_o;
-      if (int_en) begin
+      if (nxt_state == ST_ERROR) begin
+        zeroer_intp_o <= 1'b0;
+      end else if (int_en) begin
         // trigger on falling edge of busy
         zeroer_intp_o <= prev_busy & !zeroer_busy_o;
       end
@@ -387,7 +409,7 @@ module zeroer #(
   assign mst_axi_req_o.aw.addr   = mst_awaddr;
   assign mst_axi_req_o.aw.len    = mst_awlen;
   assign mst_axi_req_o.w_valid   = mst_wvalid;
-  assign mst_axi_req_o.w.data    = axi_pkg::len_t'(0);  // always write 0
+  assign mst_axi_req_o.w.data    = '0;  // always write 0
   assign mst_axi_req_o.w.strb    = mst_wstrb;
   assign mst_axi_req_o.w.last    = mst_wlast;
   assign mst_axi_req_o.b_ready   = mst_bready;
@@ -423,5 +445,16 @@ module zeroer #(
   `OCAH_ASSERT_NEVER(TotalTransferSizeOverflow, total_transfer_size_overflow[AXI_DATA_WIDTH],
                      clk_i, !rst_ni)
   `OCAH_ASSERT_NEVER(NxtSizeOverflow, nxt_size_overflow[64], clk_i, !rst_ni)
+  `OCAH_ASSERT(
+      IllegalStateTransitionsToError_A,
+      ($isunknown(cur_state)
+      || !(cur_state inside {ST_ERROR, ST_IDLE, ST_ISSUE_ADDR, ST_ISSUE_DATA})) |=> cur_state == ST_ERROR,
+      axi_clk, !rst_ni)
+  `OCAH_ASSERT(ErrorStateAbsorbing_A, cur_state == ST_ERROR |=> cur_state == ST_ERROR, axi_clk,
+               !rst_ni)
+  `OCAH_ASSERT(
+      ErrorStateFailsClosed_A,
+      cur_state == ST_ERROR |-> zeroer_busy_o && !zeroer_intp_o && !mst_awvalid && !mst_wvalid,
+      axi_clk, !rst_ni)
 
 endmodule

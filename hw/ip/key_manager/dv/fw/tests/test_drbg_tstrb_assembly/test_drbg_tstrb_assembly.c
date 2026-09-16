@@ -6,15 +6,9 @@
  * @file test_drbg_tstrb_assembly.c
  * @brief DRBG Sampler partial-TSTRB byte-assembly test
  *
- * Exposes the RTL bug where the active DATA-read and prefetch FSMs discarded
- * partial-TSTRB beats instead of accumulating them into a 32-bit word.
- *
- * Pre-fix:  subtests "two-partials", "single-lane", "walking-lanes",
- *           "mixed-width", "prefetch-single-lane", "prefetch-two-partials",
- *           and "stbyteassembly-full-word" all fail at TEST_ASSERT_EQ because
- *           the RTL returns the next full-word beat instead of the assembled
- *           partial-beat value.
- * Post-fix: all subtests pass.
+ * Verifies that the active DATA-read and prefetch FSMs accumulate
+ * partial-TSTRB beats into a 32-bit word rather than discarding them and
+ * returning the next full-word beat.
  *
  * Protocol:
  *   - Use TB_CMD_DRBG_SET_NEXT_VALUE to load the tdata for the next queued beat.
@@ -76,7 +70,6 @@ int main(void) {
      * Beat 1: tdata=0xAABBCCDD, tstrb=0x3 -> packs bytes 0xDD,0xCC (lanes 0,1)
      * Beat 2: tdata=0xEEFF1122, tstrb=0xC -> packs bytes 0xFF,0xEE (lanes 2,3)
      * Expected assembled word: 0xEEFFCCDD
-     * Fails on pre-fix RTL (returns the next default-random full-word beat).
      *==========================================================================*/
     TEST_SUBTEST_START("Active read - two non-overlapping partials");
 
@@ -93,10 +86,10 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*==========================================================================
-     * Subtest 2: Active read - single-lane-only stream (Policy B critical case)
-     * Source always asserts tstrb=0x1 (only lane 0 valid per beat).
-     * Policy A would deadlock until timeout; Policy B compaction produces a
-     * full word from 4 successive single-lane beats.
+     * Subtest 2: Active read - single-lane-only stream
+     * Source always asserts tstrb=0x1 (only lane 0 valid per beat); the packer
+     * compacts 4 successive single-lane beats into a full word instead of
+     * waiting for a full-width beat until timeout.
      * Expected: bytes packed in arrival order -> 0xDDCCBBAA
      *==========================================================================*/
     TEST_SUBTEST_START("Active read - single-lane-only stream");
@@ -293,10 +286,9 @@ int main(void) {
     TEST_SUBTEST_PASS();
 
     /*==========================================================================
-     * Subtest 9: Prefetch - single-lane-only stream (Policy B critical case)
+     * Subtest 9: Prefetch - single-lane-only stream
      * Enable prefetch, queue four tstrb=0x1 beats, wait for PREFETCHED,
      * read PREFETCH_DATA and DATA.  Expected: 0xD4C3B2A1.
-     * Fails on pre-fix RTL (prefetch loads the next default full-word beat).
      *==========================================================================*/
     TEST_SUBTEST_START("Prefetch - single-lane-only stream");
 
@@ -340,7 +332,6 @@ int main(void) {
      * Beat 1: tdata=0xAABBCCDD, tstrb=0x3 -> 0xDD,0xCC (bytes_collected=2)
      * Beat 2: tdata=0xEEFF1122, tstrb=0xC -> 0xFF,0xEE (bytes_collected=4)
      * Expected PREFETCH_DATA: 0xEEFFCCDD
-     * Fails on pre-fix RTL (prefetch discards partials, waits for full word).
      *==========================================================================*/
     TEST_SUBTEST_START("Prefetch - two non-overlapping partials");
 

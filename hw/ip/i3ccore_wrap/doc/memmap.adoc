@@ -745,7 +745,7 @@ to Static Address) CCC. 0 = Disabled (will not respond), 1 = Enabled (will
 respond and use static address as dynamic address).
 
 |12 |TARGET_XACT_ENABLE |RW |0 |**Target Transaction Interface Enable**:
-Enables Target Transaction Interface (TTI) for servicing read/write transactions
+When set, the Target Transaction Interface (TTI) services read/write transactions
 when in target mode. 0 = Disabled (TTI not available), 1 = Enabled (TTI available,
 software can service target transactions via TTI queues).
 

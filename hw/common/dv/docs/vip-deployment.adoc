@@ -23,9 +23,167 @@ root:
 python3 -m pip install -e hw/common/dv
 ----
 
-Supported Python versions are 3.11 through 3.13. Package dependencies are
-declared in `hw/common/dv/pyproject.toml` and resolved through the repository
-`uv.lock`.
+Supported Python versions are 3.11 through 3.13; the lock refuses a 3.14
+interpreter with the project's `requires-python` range. Package dependencies
+are declared in `hw/common/dv/pyproject.toml` and resolved through the
+repository `uv.lock`, which pins every resolved version; `uv sync --locked`
+installs exactly that set or fails.
+
+[[shared-vip-dependencies]]
+=== Dependencies and Licenses
+
+The `dv` dependency group carries four runtime dependencies. Each row names
+the pinned range, the SPDX license the distribution declares, the packages
+that bind it, and what happens without it.
+
+[cols="<2,<2,<2,<3,<4",options="header"]
+|===
+|Dependency |Pin |License |Bound by |Without it
+
+|`cocotb`
+|`>=2.0.0,<2.1`
+|BSD-3-Clause
+|every package and the native runner's cocotb framework
+|nothing imports: cocotb is the simulation runtime of the whole layer
+
+|`cocotbext-axi`
+|`>=0.1.24,<0.2`
+|MIT
+|`ocah_axi_vip` masters and responders
+|`import ocah_axi_vip` succeeds; the checker, reference model, scoreboard,
+items, and result types work; constructing a master or responder class
+raises `OcahAxiVipBackendError` naming the backend
+
+|`cocotbext-jtag`
+|`>=0.4.0,<0.5`
+|MIT
+|`ocah_jtag_vip` master driver and monitor, and the slave monitor built on it
+|`import ocah_jtag_vip` succeeds; the checker, reference model, state
+helpers, device maps, and the reactive device engine work; constructing a
+master-side class or a slave monitor raises `OcahJtagVipBackendError` naming
+the backend
+
+|`pyuvm`
+|`>=4.0.0,<5`
+|Apache-2.0
+|the PyUVM base classes of `ocah_lib` and the DUT benches built on them
+|the PyUVM layer does not import; the plain-cocotb packages do
+|===
+
+`cocotb-bus` (BSD-3-Clause) and `find_libpython` (MIT) arrive transitively
+through `cocotbext-axi` and `cocotb`. `ocah_spi_vip`, `ocah_uart_vip`,
+`ocah_checker`, and `ocah_lib` bind no third-party protocol package. The
+SystemVerilog collateral compiles from the tree; the SV-UVM layer takes the
+UVM library from the simulator. Commercial VIP is adopter-owned and lives in
+the proprietary companion repository (<<shared-vip-commercial-deployment>>).
+
+[[shared-vip-clean-environment]]
+=== Clean-Environment Qualification
+
+A clean supported environment is a fresh interpreter of a supported version
+with only the locked `dv` group installed. The sequence below is the
+qualification of a candidate on each supported Python version; it needs no
+simulator until the last step.
+
+[source,bash]
+----
+export UV_PROJECT_ENVIRONMENT=/tmp/ocah-dv-3.11
+uv sync --locked --group dv --python 3.11
+uv run --locked --group dv --python 3.11 python -c \
+  'import ocah_axi_vip, ocah_jtag_vip, ocah_spi_vip, ocah_uart_vip, ocah_checker, ocah_lib'
+uv run --locked --group dv --python 3.11 python -m py_compile \
+  hw/common/dv/vip/*/cocotb/examples/example_*.py
+for selftest in hw/common/dv/vip/*/cocotb/examples/example_*_selftest.py; do
+  PYTHONPATH=hw/common/dv/vip uv run --locked --group dv --python 3.11 python "$selftest"
+done
+python3 tools/dv/run_dv.py --doctor --dut ocah_axi_vip --tool verilator
+----
+
+The `example_*_selftest.py` files run without a simulator and print a pass
+marker; the other examples are API snippets that compile here and run as the
+`--dut ocah_<protocol>_vip` harness selftests (<<shared-vip-supported-simulators>>).
+`--doctor` reports the interpreter, the locked packages, the namespace
+bridge, the import of every testlist module with the run's `PYTHONPATH`, the
+simulators on `PATH`, and the license variables each licensed tool expects.
+
+[[shared-vip-supported-simulators]]
+=== Supported Simulators
+
+Each package's wire-harness selftests (`--dut ocah_<protocol>_vip`) are the
+qualification vehicle of a simulator and framework pair. The native runner's
+cocotb framework runs on Verilator, VCS, and Xcelium; its SV-UVM framework
+runs on VCS.
+
+[cols="<2,<2,<2,<2,<2",options="header"]
+|===
+|Package |Verilator, cocotb |VCS, cocotb |Xcelium, cocotb |VCS, SV-UVM
+
+|`ocah_axi_vip`
+|harness `smoke`, DTP/SEP/SMC/SMU benches
+|harness `smoke`
+|harness `smoke`
+|harness `smoke`, DTP/SEP/SMC/SMU benches
+
+|`ocah_jtag_vip`
+|harness `smoke`, DTP/SMC/SMU benches
+|harness `smoke`
+|harness `smoke`
+|harness `smoke`, DTP/SMU benches
+
+|`ocah_spi_vip`
+|harness `smoke`, SEP/SMC benches
+|harness `smoke`
+|harness `smoke`
+|no SV-UVM realization
+
+|`ocah_uart_vip`
+|harness `smoke`, SMC bench
+|harness `smoke`
+|harness `smoke`
+|no SV-UVM realization
+|===
+
+Verilator is the license-free baseline hosted CI runs; VCS and Xcelium runs
+take a licensed host, so their qualification is recorded on the tracker with
+the tool release, and hosted CI runs neither. The following combinations are
+unsupported, each with the diagnostic it produces:
+
+[cols="<3,<4,<4",options="header"]
+|===
+|Combination |Diagnostic |Rule
+
+|Python 3.14 or newer
+|`uv sync` refuses the interpreter against `requires-python >=3.11,<3.14`
+|cocotb 2.0 publishes no 3.14 wheels; the range moves with cocotb
+
+|A `cocotbext-*` backend missing from the environment
+|the AXI and JTAG packages import; constructing a backend-bound class raises
+`Ocah*VipBackendError` naming the backend; `--doctor` reports the failing
+testlist import
+|the checker, model, and pure-Python components stay usable; masters and
+responders need the backend
+
+|SV-UVM on Verilator
+|the runner rejects `--framework uvm` for a Verilator-only DUT
+|Verilator compiles no UVM library; the cocotb realization is the
+license-free path
+
+|SV-UVM on Xcelium
+|the runner's SV-UVM framework lists VCS as its only tool
+|deferred: no qualifying run exists; the SV-UVM realizations are qualified
+on VCS
+
+|Covergroups on Verilator
+|`cov/` collateral never enters a Verilator filelist
+|covergroups collect on the four-state simulators through the SV-UVM
+harness shapes (<<shared-vip-checking-ownership>>)
+
+|A four-state simulator with an undriven harness bundle
+|`OCAH_AXI_*_VALID_RESET_LOW` fails at the first clock edge on an X-valued
+`VALID`
+|the harness starts every cocotb-owned net at zero; a DUT bench binds a
+VIP to every checked bundle or ties its checker's `en_i` low
+|===
 
 [[shared-vip-import-contract]]
 === Import Contract
@@ -99,7 +257,7 @@ await monitor.stop()
 checker.assert_clean()
 ----
 
-Monitor callbacks deliberately catch and log subscriber exceptions so one
+Monitor callbacks catch and log subscriber exceptions so one
 subscriber cannot terminate observation. A checker attached to a monitor must
 retain findings before raising, and the owning test or scoreboard must finalize
 after traffic. Named evidence should be finalized through the per-protocol
@@ -182,14 +340,15 @@ A missing operation is added to the VIP API, never inlined as raw driver or
 virtual-interface manipulation in DUT code. DUT scoreboards consume OCAH
 events or monitor items; nothing reaches into driver internals.
 
-*Reactive responders.* The shared AXI slave agent answers DUT-mastered
-traffic: the testbench wires the DUT-driven signals into the slave
-interface instance, the agent's driver drives the responder-side signals
-back, and error injection is programmed by sequences through
-`ocah_axi_slave_sequence` rather than testbench error ports. Where a plain
-memory model suffices, the behavioral RAM responders
-(`sv/ocah_axi*_ram_responder.sv`) are module collateral wired directly in
-the testbench top.
+*Reactive responders.* The shared AXI slave agent answers every
+DUT-mastered AXI boundary: the testbench wires the DUT-driven signals into
+the slave interface instance, the agent's driver drives the responder-side
+signals back, and memory preloads and error injection are programmed by
+sequences through `ocah_axi_slave_sequence` rather than through testbench
+ports or hierarchical writes. A port the bench flattens to pins is wired
+directly; a port that stays a request/response struct inside the testbench
+top is placed on an `ocah_axi_if` instance through
+`interface/ocah_axi_struct_bridge.sv` and answered the same way.
 
 *Passive checking.* The passive stack (monitor, reference model,
 scoreboard) attaches per bus behind cfg gating; every checker extends the
@@ -251,7 +410,10 @@ checker.expect_not_timed_out(
 
 `allow_timeout=True` makes a timeout observable; it does not make the operation
 successful. An expected timeout requires explicit VPLAN intent, a declared
-bound, and `expect_timeout()` evidence.
+bound, and `expect_timeout()` evidence. Every blocking master operation is
+bounded even without a `timeout_ns` argument: the instance bound applies, else
+the package default (`DEFAULT_TIMEOUT_NS`, 500 µs, or the
+`+OCAH_AXI_TIMEOUT_NS` plusarg).
 
 [[shared-vip-deployment-validation]]
 === Deployment Validation
@@ -270,7 +432,8 @@ python3 tools/dv/run_dv.py \
 ----
 
 Retain the run-level `result.json`, structured test result, relevant log, tool
-versions, seed, and commit SHA as qualification evidence.
+versions, seed, and commit SHA as qualification evidence in the tracker and the
+CI artifact store.
 
 [[shared-vip-deployment-troubleshooting]]
 === Troubleshooting

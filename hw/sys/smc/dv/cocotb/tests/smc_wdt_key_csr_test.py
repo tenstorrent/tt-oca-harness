@@ -17,6 +17,9 @@ from smc_base_test import smc_base_test
 class smc_wdt_key_csr_test(smc_base_test):
     """CMP writes are gated by the KEY magic value, proven per core."""
 
+    required_evidence = ("CHK-WDT-KEY-PROTOCOL",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -33,11 +36,14 @@ class smc_wdt_key_csr_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.CPU,
             type(self).__name__,
-            # Directed stimulus floor, literal here and NOT read from
-            # `seq.accesses`: 4 cores x 12 SEP_IN AXI accesses (2 entry
-            # reads, locked write + recheck, key + key read, unlocked write +
-            # readback, re-lock read, then key + restore + restore readback).
-            min_csr_accesses=len(WDT_CORES) * 12,
+            # Booked as an activity stamp, not a check. The sequence issues
+            # exactly 4 cores x 12 accesses by construction and
+            # `assert_all_reachable(len(WDT_CORES) * 12)` has already compared
+            # the count exactly, so a floor here would be `48 >= 48` -- a
+            # relation no RTL behaviour can falsify, presented as a protocol VIP
+            # check. The key-gate proof is the 48 per-access scoreboard compares
+            # and the `cores_proven` assert above.
+            auto_evidence=True,
             csr_accesses=seq.accesses,
             proxy=False,
             details=(

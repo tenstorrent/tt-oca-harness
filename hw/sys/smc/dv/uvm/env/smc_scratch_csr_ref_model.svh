@@ -13,8 +13,8 @@
 // cfg.csr_scoreboard_negative (+SMC_CSR_SCOREBOARD_NEGATIVE) is the
 // documented negative-validation hook: the prediction is corrupted so the
 // scoreboard must fail on the first scratch read. No comparison and no
-// verdict live here. The cocotb twin is env/smc_scratch_csr_ref_model.py
-// once the cocotb side migrates.
+// verdict live here. The cocotb twin is the SysAxi expected-value check of
+// env/smc_scoreboard.py.
 
 class smc_scratch_csr_ref_model extends ocah_ref_model #(ocah_axi_item, ocah_axi_item);
   `uvm_component_utils(smc_scratch_csr_ref_model)

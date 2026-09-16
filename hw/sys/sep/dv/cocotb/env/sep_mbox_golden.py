@@ -13,27 +13,25 @@ verify the TX path").
 
 STATUS has no exact-depth field (only empty/full/write_level_above/read_level_above),
 so the golden keeps the TX occupancy internally and predicts the visible bits.
-Thresholds compare with STRICT > (RTL); a programmed thold>=depth clamps to depth-1.
-The config object is the single source of truth for DUT programming + golden.
+Thresholds compare with STRICT >. The config object is the single source of
+truth for DUT programming + golden.
 
-Accepted deltas:
-  * data round-trip readback and read-threshold (RIRQT/read_level_above) both need the RX
-    FIFO filled by the peer side. A clean VCS repro proved the external smn_inbound
-    frontdoor can write inbound_mailbox_0 @ 0x10A0_0800 and the CPU-LSU side can read the
-    value back from outbound_mailbox_0. This model remains scoped to outbound TX
-    occupancy because the permanent testcase is the TX-path randomized rep; a permanent
-    peer-path closure should use the external master and its own checker contract.
-
-Geometry note: MAILBOX_SIZE=0x800, so inbound_mailbox_0 is at 0x10A0_0800
-(the earlier 0x1000 stride put it at 0x10A0_1000 and mis-decoded 0x10A0_0800 onto
-the outbound port -- fixed).
+Scope: data round-trip readback and the read threshold (RIRQT/read_level_above)
+both need the RX FIFO filled from the peer side, which this aperture cannot do, so
+the model covers outbound TX occupancy only and predicts read_level_above as
+constant False. The peer path is reachable only through the external smn_inbound
+master (inbound_mailbox_0 @ 0x10A0_0800, MAILBOX_SIZE=0x800).
 """
 
 from __future__ import annotations
 
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0, SEP_CPU_CTRL, sym
-
-from env.sep_seeded_rng import SepSeededRng
+from sep_seeded_rng import SepSeededRng
+from sep_spec_tables import (
+    mailbox_depth,
+    mailbox_empty_sentinel,
+    mailbox_write_data_rd_sentinel,
+)
 
 # --- outbound_mailbox_0 register map (single source of truth) -------------------
 OUTBOUND_BASE = sym(
@@ -51,6 +49,7 @@ IRQP = AXIL_MAILBOX_OUTBOUND_0.offset("IRQP")
 CTRL = AXIL_MAILBOX_OUTBOUND_0.offset("CTRL")
 
 # STATUS / IRQS / ERROR_FLAGS bit positions from the generated bitfields.
+CTRL_WFLUSH = AXIL_MAILBOX_OUTBOUND_0.field_mask("CTRL", "wflush")
 ST_EMPTY = AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "empty")
 ST_FULL = AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "full")
 ST_WLVL_ABOVE = AXIL_MAILBOX_OUTBOUND_0.field_mask("STATUS", "write_level_above_thresh")
@@ -67,11 +66,12 @@ ERR_WRITE = AXIL_MAILBOX_OUTBOUND_0.field_mask("ERROR_FLAGS", "write_error")
 # unconditionally clocked and the "ungate" is a CSR write-path exercise, not a gate
 # release. Use the implemented mask so the value cannot claim a field that is not there.
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
-CLOCK_GATE_MAILBOX = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
+CLOCK_GATE_IMPL_MASK = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
-MAILBOX_DEPTH = 8  # sep_pkg::MAILBOX_DEPTH
-# Read-from-empty returns this sentinel + SLVERR (axi_lite_mailbox.sv).
-READ_EMPTY_SENTINEL = 0xFEED_DEAD
+MAILBOX_DEPTH = mailbox_depth()
+# Read-from-empty / write-only readback, from the mailbox interface.adoc.
+READ_EMPTY_SENTINEL = mailbox_empty_sentinel()
+WRITE_DATA_RD_SENTINEL = mailbox_write_data_rd_sentinel()
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
@@ -99,9 +99,6 @@ class SepMboxCfg:
             if v != 0 and v not in self.payloads:
                 self.payloads.append(v)
 
-    def clamped(self, thold: int) -> int:
-        return min(thold, self.depth - 1)
-
     def summary(self) -> str:
         return (
             f"seed={self.seed} depth={self.depth} wirqt={self.wirqt} "
@@ -114,14 +111,16 @@ class SepMboxGolden:
     """Golden depth model for the TX FIFO (outbound WRITE_DATA push side).
 
     Predicts the outbound-aperture STATUS bits + the write-threshold IRQ from the TX
-    occupancy. The RX side (READ_DATA) stays empty on bare-sep. Thresholds use strict
-    > (RTL); thold>=depth clamps to depth-1.
+    occupancy. The RX side (READ_DATA) stays empty on bare-sep. Thresholds use
+    strict greater-than (``architecture.adoc``: fill level exceeds the configured
+    threshold). SepMboxCfg draws wirqt in [1, depth-1], so every threshold the config
+    can program is below depth and needs no clamp.
     """
 
     def __init__(self, cfg: SepMboxCfg) -> None:
         self.cfg = cfg
         self.tx = 0  # TX FIFO occupancy
-        self.wirqt = cfg.clamped(cfg.wirqt)
+        self.wirqt = cfg.wirqt
 
     def push(self) -> bool:
         """WRITE_DATA push. False if TX full (write-to-full -> write_error/eirq)."""

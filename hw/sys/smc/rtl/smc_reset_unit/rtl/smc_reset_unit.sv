@@ -59,10 +59,8 @@ module smc_reset_unit (
 
   // Test mode signals
   input  logic                                   test_en_i,
-  input  logic                                   scan_rst_ni,
+  input  logic                                   scan_rst_ni
 
-  // Captured straps input
-  input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]    captured_straps_i
 );
 
   logic rst_primary_n;
@@ -117,8 +115,6 @@ module smc_reset_unit (
     hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE = hwif_in_cool.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE;
 
     // Fields driven by captured straps
-    hwif_in.STRAPS_LO.straps.next               = captured_straps_i[31:0];  // Quasi static, raw crossing
-    hwif_in.STRAPS_HI.straps.next               = captured_straps_i[smc_pkg::NUM_BONDED_GPIO-1:32]; // Quasi static, raw crossing
   end
 
   reset_unit_reg u_reset_unit_reg (

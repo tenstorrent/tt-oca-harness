@@ -15,6 +15,13 @@ from smc_base_test import smc_base_test
 class smc_cpu_ctrl_map_depth_test(smc_base_test):
     """Run CPU-control address-map CSR depth checks."""
 
+    required_evidence = (
+        "CHK-CPU-BFM-OBSERVABILITY",
+        "CHK-CPU-CTRL-MAP-DEPTH",
+        "CHK-CPU-CTRL-MAP-LIVE",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -35,8 +42,8 @@ class smc_cpu_ctrl_map_depth_test(smc_base_test):
             min_csr_accesses=5,
             csr_accesses=seq.accesses,
             proxy=False,
-            # Narrowed: this testcase proves SMC_BASE_CONFIG decode + RDL reset
-            # content over SEP_IN AXI. The reset/powergood levels checked by
+            # This testcase proves SMC_BASE_CONFIG decode + RDL reset content
+            # over SEP_IN AXI. The reset/powergood levels checked by
             # `check_cpu_bfm_observability` are a bring-up precondition of that
             # sweep, not part of the map-depth claim.
             details=(

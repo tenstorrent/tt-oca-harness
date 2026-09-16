@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: (c) 2024-2026 Tenstorrent Inc. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
 #
 # sep_drbg_scoreboard.py
 #
@@ -19,17 +19,12 @@
 # Nth DUT item equals the golden's Nth item), with a small warmup skip for the
 # decorrelator SR-fill / enable-edge transient (reference warmup_samples).
 #
-# strict=False (calibration): mismatches logged, test not failed, first-N pairs
-# dumped for offline alignment. strict=True (sign-off): report() raises (house-rule
-# section 7).
+# strict=False: mismatches logged, test not failed, first-N pairs dumped for
+# offline alignment. strict=True: report() raises.
 
 from __future__ import annotations
 
 from collections import Counter, deque
-
-# Largest number of 128b blocks one CSRNG Generate command can request: the glen
-# field is GenBitsCtrWidth bits (csrng_pkg.sv:26, GenBitsCtrWidth = 12).
-_CSRNG_MAX_GLEN = (1 << 12) - 1
 
 import cocotb
 from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
@@ -143,7 +138,7 @@ class SepDrbgScoreboard:
         #   observe    -- require real beats, no value compare (rom_main).
         #   disabled   -- the sink is not scored (idle in this test).
         #
-        # The KM sink is configured via the back-compat score_km kwarg
+        # The KM sink is configured via the score_km kwarg
         # (True->golden, False->disabled, or an explicit mode string). The crypto
         # sinks (aes/kmac/otbn_rnd/otbn_urnd) and the entropy-pool sink (pool,
         # EDN endpoint [2]) are configured via score_sinks; omitted sinks default
@@ -162,7 +157,7 @@ class SepDrbgScoreboard:
         # so N live golden sinks cannot steal words from each other. A same-cycle
         # dual grant is a fail (prim_arbiter_ppc is one-hot). Single-sink golden
         # is the N=1 case of the same rule.
-        # Back-compat aliases retained for callers/reporting.
+        # Aliases read by callers and report().
         self.km_score_mode = self.sink_mode["km"]
         self.score_km = self.km_score_mode == "golden"
         # CHK2 source: default is the AXI frontdoor FIFO_RDATA drain (fed via
@@ -215,11 +210,10 @@ class SepDrbgScoreboard:
         # golden_kwargs["legal_gen_lengths"]; otherwise segments are only bounds-
         # checked (see report()).
         self.glen = int(self._gk.get("glen", 32))
-        # Default the legal set to the sequence's own commanded glen. Leaving it
-        # None degraded the check to 1 <= n <= 4095, where n < 1 is structurally
-        # impossible and 4095 is ~90x any block count these tests reach -- i.e.
-        # unfalsifiable. No construction site passes the knob today, so without
-        # this default the predicate could never reject anything.
+        # Default the legal set to the sequence's own commanded glen, so the
+        # segmentation check in report() is always an exact membership test.
+        # There is no looser fallback: a width-derived ceiling no block count
+        # these tests reach could violate is not a check.
         if self.legal_gen_lengths is None:
             self.legal_gen_lengths = {self.glen}
         self._fips_violations = 0
@@ -270,11 +264,11 @@ class SepDrbgScoreboard:
         # Contention evidence: the sim-time (ns) of every post-adapter crypto-EDN beat
         # per sink, index-aligned with _sink_words. Two sinks whose beat time-spans
         # OVERLAP were being granted EDN words during an overlapping window -- i.e. the
-        # round-robin arbiter (u_axis_edn_crypto) time-multiplexed two live clients
+        # round-robin arbiter (u_axis_edn_crypto_s3c_scan) served two live clients
         # (real contention), not one sink drained fully before the other. Exposed via
-        # sink_beat_times(); a stricter same-cycle-req overlap does not occur with this
-        # stimulus (brief req pulses separated by long AXI config), so the beat-window
-        # form is the honest sufficient proof.
+        # sink_beat_times(). Same-cycle request overlap does not occur with this
+        # stimulus (brief req pulses separated by long AXI config), so contention is
+        # measured on beat windows.
         self._sink_beat_times = {n: [] for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd")}
 
         self.results = {k: _StreamResult(k, w) for k, (_, w) in self._STREAMS.items()}
@@ -423,7 +417,7 @@ class SepDrbgScoreboard:
         rotation (the noise cancels), so it never decays: a wrong initial phase
         leaves a rotating difference that matches the sampled byte ff[28:21] only
         while it sits outside bits[28:21] and mismatches when it rotates in --
-        exactly the intermittent CHK1 pattern seen when syncing on decor alone.
+        an intermittent CHK1 mismatch if the golden is synced on decor alone.
         The full TRNG reset resets ff_stage through the entropy-source rst_ni.
         Detect the bring-up pulse from the explicit gated-reset probe. Ignore
         the initial asserted level at cold reset: first observe release, then
@@ -548,7 +542,11 @@ class SepDrbgScoreboard:
         if self._skip[key] > 0:
             self._skip[key] -= 1
             return
-        ok = expected == actual
+        # An absent side is never a match: an X/Z bus with a same-cycle dual grant
+        # records (None, None), and a bare ``expected == actual`` would score that
+        # as a compare with nothing compared -- satisfying a beat floor with no
+        # evidence. A pair is a match only when both sides are present.
+        ok = expected is not None and actual is not None and expected == actual
         if ok:
             r.matches += 1
         else:
@@ -904,7 +902,7 @@ class SepDrbgScoreboard:
         boundaries -- and therefore where each trailing CTR_DRBG Update lands --
         are not predictable from the seed stream alone.
 
-        MODELLING DEPENDENCY, stated plainly: the Update BOUNDARY is taken from
+        MODELLING DEPENDENCY: the Update BOUNDARY is taken from
         the DUT (gen_last), so a DUT that segmented wrongly would be followed by
         the golden rather than caught by it. Every block VALUE is still predicted
         independently from the (key, V) chain, so a wrong block, a missing Update
@@ -1270,9 +1268,9 @@ class SepDrbgScoreboard:
                 )
         # Generate segmentation. gen_last IS a per-Generate-command terminator:
         # csrng_cmd_stage sets cmd_gen_cnt_last when the genbits down-counter
-        # reaches its final beat (csrng_cmd_stage.sv:379, :447), ships it as
+        # reaches its final beat (csrng_cmd_stage.sv:380, :448), ships it as
         # acmd_bus[16] ("glast"), and csrng_core latches it into gen_last_q at
-        # acmd_sop (csrng_core.sv:750) to drive ctr_drbg_gen.req_glast_i. So each
+        # acmd_sop (csrng_core.sv:748-751) to drive ctr_drbg_gen.req_glast_i. So each
         # Generate command ends with exactly one glast beat, and that is where its
         # single trailing Update lands.
         self.log.info(
@@ -1284,12 +1282,11 @@ class SepDrbgScoreboard:
             self.glen,
             sorted(self.legal_gen_lengths),
         )
-        # State plainly when the segmentation check had nothing to act on. These
-        # runs never observe a completed Generate command -- gen_last is a level
-        # held from acmd_sop and EDN's own commanded glen is larger than the block
-        # count any test reaches -- so the loop below cannot fire and CHK4's
-        # Update boundary is taken from the DUT unchecked. Say so rather than let
-        # a silent zero read as coverage.
+        # A run in which no Generate command completes (gen_last is a level held
+        # from acmd_sop, and an EDN-commanded glen above the run's block count never
+        # terminates) gives the loop below nothing to check, so CHK4's Update
+        # boundary is taken from the DUT unchecked. Log that rather than let a
+        # silent zero read as coverage.
         if not self._gen_lengths and self.results["CHK4_genbits"].dut_items:
             self.log.info(
                 "CHK4 segmentation NOT EXERCISED: no Generate command completed "
@@ -1299,27 +1296,22 @@ class SepDrbgScoreboard:
                 "inside csrng_cmd_stage.",
                 self.results["CHK4_genbits"].dut_items,
             )
-        # A completed command must carry a legal number of blocks. glen is a
-        # GenBitsCtrWidth field, so a segment can never exceed its maximum, and a
-        # zero-length segment would mean gen_last fired with no genbits at all.
-        # When the caller declares the lengths its endpoints request
-        # (golden_kwargs["legal_gen_lengths"]) anything else is a hard failure.
+        # A completed command must carry a legal number of blocks: one of the
+        # lengths the endpoints actually request, and never zero, which would
+        # mean gen_last fired with no genbits at all. legal_gen_lengths is the
+        # only bound, and __init__ always leaves it a set -- the caller's
+        # declared lengths, else the sequence's own commanded glen -- so the
+        # predicate is an exact membership test on every path.
         for seg_len, count in sorted(self._gen_lengths.items()):
-            bad = (
-                (seg_len < 1)
-                or (seg_len > _CSRNG_MAX_GLEN)
-                or (self.legal_gen_lengths is not None and seg_len not in self.legal_gen_lengths)
-            )
-            if bad:
+            if seg_len < 1 or seg_len not in self.legal_gen_lengths:
                 self.log.error(
                     "CHK4 illegal Generate segmentation: %d command(s) emitted "
-                    "%d blocks; legal=%s (max %d). gen_last landed somewhere the "
+                    "%d blocks; legal=%s. gen_last landed somewhere the "
                     "commanded glen cannot explain, so the trailing CTR_DRBG "
                     "Update ran at the wrong point.",
                     count,
                     seg_len,
-                    sorted(self.legal_gen_lengths) if self.legal_gen_lengths else ">=1",
-                    _CSRNG_MAX_GLEN,
+                    sorted(self.legal_gen_lengths),
                 )
                 any_fail = True
         self.log.info("==== end report (strict=%s, any_fail=%s) ====", self.strict, any_fail)

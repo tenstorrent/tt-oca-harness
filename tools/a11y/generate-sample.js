@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 // Computes the page sample exactly once per `npm run scan` invocation and
 // writes it to report/sample.json. tests/a11y.spec.js reads this static
 // file rather than sampling itself -- Playwright loads spec files more

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag_trst_por_independence_test — POR-only TAP reset
-// (`--items dtp_jtag_trst_por_independence_test`): runs
+// dtp_jtag_trst_por_independence_test — POR-only TAP reset: runs
 // dtp_jtag_trst_por_independence_test_seq at the looped floor, each pass
 // proving a power-on reset forces Test-Logic-Reset with TRST_N deasserted
 // throughout and that IDCODE reads back after recovery.

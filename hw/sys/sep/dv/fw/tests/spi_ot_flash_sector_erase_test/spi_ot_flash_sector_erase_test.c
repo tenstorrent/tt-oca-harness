@@ -24,11 +24,6 @@
  *
  * TX byte packing (LITTLE_ENDIAN=1): TXDATA[7:0] sent first.
  * cmd+addr: byte[0]=cmd, byte[1]=addr[23:16], byte[2]=addr[15:8], byte[3]=addr[7:0]
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_flash_sector_erase_test STACK=sim \
- * EXTRA_SIM_ARGS=+spi_device_sel=winbond
- *
  */
 
 #include <stdint.h>

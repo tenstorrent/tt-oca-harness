@@ -31,6 +31,9 @@ from smc_base_test import smc_base_test
 class smc_powergood_glitch_test(smc_base_test):
     """Run the SMC OSS powergood-glitch recovery scenario."""
 
+    required_evidence = ("CHK-MID-ASSERT-HOLD",)
+    min_evidence = 1
+
     async def run_scenario(self) -> None:
         seq = smc_powergood_glitch_test_seq("powergood_glitch_seq")
         await self.start_seq(seq, self.env.reset_agent.sequencer)

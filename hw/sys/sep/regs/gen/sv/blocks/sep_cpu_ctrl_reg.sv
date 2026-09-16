@@ -251,8 +251,6 @@ module sep_cpu_ctrl_reg (
         logic SMU_REGION_SIZE;
         logic SMC_FUSE_SENSE_STATUS;
         logic SEP_FUSE_SENSE_STATUS;
-        logic SEP_STRAPS;
-        logic RAS_BANK_INFO;
         logic SEP_SW_DEBUG;
         logic SEP_NMI_VEC;
         logic SEP_NMI_VEC_LOCK;
@@ -301,8 +299,6 @@ module sep_cpu_ctrl_reg (
         decoded_reg_strb.SMU_REGION_SIZE = cpuif_req_masked & (cpuif_addr == 13'h110);
         decoded_reg_strb.SMC_FUSE_SENSE_STATUS = cpuif_req_masked & (cpuif_addr == 13'h140) & !cpuif_req_is_wr;
         decoded_reg_strb.SEP_FUSE_SENSE_STATUS = cpuif_req_masked & (cpuif_addr == 13'h150) & !cpuif_req_is_wr;
-        decoded_reg_strb.SEP_STRAPS = cpuif_req_masked & (cpuif_addr == 13'h160) & !cpuif_req_is_wr;
-        decoded_reg_strb.RAS_BANK_INFO = cpuif_req_masked & (cpuif_addr == 13'h170);
         decoded_reg_strb.SEP_SW_DEBUG = cpuif_req_masked & (cpuif_addr == 13'h178);
         decoded_reg_strb.SEP_NMI_VEC = cpuif_req_masked & (cpuif_addr == 13'h180);
         decoded_reg_strb.SEP_NMI_VEC_LOCK = cpuif_req_masked & (cpuif_addr == 13'h188);
@@ -450,16 +446,6 @@ module sep_cpu_ctrl_reg (
                 logic load_next;
             } size;
         } SMU_REGION_SIZE;
-        struct {
-            struct {
-                logic [3:0] next;
-                logic load_next;
-            } bank_chip;
-            struct {
-                logic [3:0] next;
-                logic load_next;
-            } bank_instance;
-        } RAS_BANK_INFO;
         struct {
             struct {
                 logic [31:0] next;
@@ -637,14 +623,6 @@ module sep_cpu_ctrl_reg (
                 logic [31:0] value;
             } size;
         } SMU_REGION_SIZE;
-        struct {
-            struct {
-                logic [3:0] value;
-            } bank_chip;
-            struct {
-                logic [3:0] value;
-            } bank_instance;
-        } RAS_BANK_INFO;
         struct {
             struct {
                 logic [31:0] value;
@@ -1196,52 +1174,6 @@ module sep_cpu_ctrl_reg (
         end
     end
     assign hwif_out.SMU_REGION_SIZE.size.value = field_storage.SMU_REGION_SIZE.size.value;
-    // Field: sep_cpu_ctrl.RAS_BANK_INFO.bank_chip
-    always_comb begin
-        automatic logic [3:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.RAS_BANK_INFO.bank_chip.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.RAS_BANK_INFO && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.RAS_BANK_INFO.bank_chip.value & ~decoded_wr_biten[3:0]) | (decoded_wr_data[3:0] & decoded_wr_biten[3:0]);
-            load_next_c = '1;
-        end
-        field_combo.RAS_BANK_INFO.bank_chip.next = next_c;
-        field_combo.RAS_BANK_INFO.bank_chip.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.RAS_BANK_INFO.bank_chip.value <= 4'h0;
-        end else begin
-            if(field_combo.RAS_BANK_INFO.bank_chip.load_next) begin
-                field_storage.RAS_BANK_INFO.bank_chip.value <= field_combo.RAS_BANK_INFO.bank_chip.next;
-            end
-        end
-    end
-    assign hwif_out.RAS_BANK_INFO.bank_chip.value = field_storage.RAS_BANK_INFO.bank_chip.value;
-    // Field: sep_cpu_ctrl.RAS_BANK_INFO.bank_instance
-    always_comb begin
-        automatic logic [3:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.RAS_BANK_INFO.bank_instance.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.RAS_BANK_INFO && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.RAS_BANK_INFO.bank_instance.value & ~decoded_wr_biten[7:4]) | (decoded_wr_data[7:4] & decoded_wr_biten[7:4]);
-            load_next_c = '1;
-        end
-        field_combo.RAS_BANK_INFO.bank_instance.next = next_c;
-        field_combo.RAS_BANK_INFO.bank_instance.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.RAS_BANK_INFO.bank_instance.value <= 4'h0;
-        end else begin
-            if(field_combo.RAS_BANK_INFO.bank_instance.load_next) begin
-                field_storage.RAS_BANK_INFO.bank_instance.value <= field_combo.RAS_BANK_INFO.bank_instance.next;
-            end
-        end
-    end
-    assign hwif_out.RAS_BANK_INFO.bank_instance.value = field_storage.RAS_BANK_INFO.bank_instance.value;
     // Field: sep_cpu_ctrl.SEP_SW_DEBUG.sep_sw_debug
     always_comb begin
         automatic logic [31:0] next_c;
@@ -1679,14 +1611,6 @@ module sep_cpu_ctrl_reg (
         end
         if(rd_mux_addr == 13'h150) begin
             readback_data_var[0] = hwif_in.SEP_FUSE_SENSE_STATUS.sep_fuse_sense_done.next;
-        end
-        if(rd_mux_addr == 13'h160) begin
-            readback_data_var[0] = hwif_in.SEP_STRAPS.test_en.next;
-            readback_data_var[1] = hwif_in.SEP_STRAPS.bypass_mem_repair.next;
-        end
-        if(rd_mux_addr == 13'h170) begin
-            readback_data_var[3:0] = field_storage.RAS_BANK_INFO.bank_chip.value;
-            readback_data_var[7:4] = field_storage.RAS_BANK_INFO.bank_instance.value;
         end
         if(rd_mux_addr == 13'h178) begin
             readback_data_var[31:0] = field_storage.SEP_SW_DEBUG.sep_sw_debug.value;

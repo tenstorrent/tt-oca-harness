@@ -45,8 +45,14 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
     build_env = False
 
     async def _check_reset(self, sig, name: str, expected: int) -> None:
-        """Assert a reset observable equals an exact value (X resolves to 0)."""
-        val = self.rd(sig)
+        """Assert a reset observable equals an exact value.
+
+        A zero expectation reads through rd_known: rd resolves X to 0, so
+        ``== 0`` would also hold for an observable nothing drives, which is the
+        whole point of a reset check. A one expectation is safe on rd -- an X
+        cannot satisfy it.
+        """
+        val = self.rd_known(sig) if expected == 0 else self.rd(sig)
         if val != expected:
             raise AssertionError(f"{name}: expected {expected}, got {val}")
         self.logger.info("PASS: %s == %d", name, expected)
@@ -63,14 +69,8 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
         await self._check_reset(dut.sep_cpu_reset_n_o, "CHK-BASELINE sep_cpu_reset_n released", 1)
         self.logger.info("CHK-BASELINE PASS: both reset observables released with dbg_rstb_i high")
 
-        # No CHK-ISO. This test elaborates lsu_stub_all_live, whose CPU stub
-        # declares dbg_rstb_i and never reads it. Against the real CPU, sep.sv
-        # routes the pin only into sep_cpu, and sep_reset_ctrl -- which produces
-        # both observables -- has no dbg_rstb port. There is no netlist path from
-        # the stimulus to either signal, so a pulse-and-check would be CHK-BASELINE
-        # with a no-op write in between. Closing the isolation claim needs a cpu
-        # run-mode (so the pin reaches sep_cpu) and a positive debug-domain
-        # observable; that is an open item in the plan.
+        # No CHK-ISO: in lsu_stub_all_live dbg_rstb_i has no netlist path to either
+        # observable (module docstring), so a pulse-and-check could not fail.
 
         # CHK-LIVE: a real reset source (wdt_rst_ni_i low) MUST drop sep_cpu_reset_n,
         # proving the observable is live rather than stuck at 1.

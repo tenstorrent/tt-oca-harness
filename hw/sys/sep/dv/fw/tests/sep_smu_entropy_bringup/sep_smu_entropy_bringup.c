@@ -14,9 +14,9 @@
  *   3. spin so a first seed can accumulate.
  *   4. sep_entropy_enable_edn()       PHASE-B: enable EDN last.
  *
- * The order is not cosmetic -- the reference flow's guard is "configure EDN
- * commands ONLY, do NOT enable EDN yet" -- so each phase gets its own fail loop
- * and the testbench can tell which one did not take.
+ * The order is a hardware constraint (EDN commands are staged before EDN is
+ * enabled), so each phase gets its own fail loop and the testbench can tell
+ * which one did not take.
  *
  * The raw noise itself comes from the testbench: under Verilator the ESRC ring
  * oscillators do not self-oscillate, so +esrc_noise_force drives the 12

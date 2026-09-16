@@ -17,6 +17,13 @@ from smc_base_test import smc_base_test
 class smc_efuse_otp_clock_config_depth_test(smc_base_test):
     """Run eFuse OTP clock/timing register programming depth checks."""
 
+    required_evidence = (
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-IDLE",
+        "CHK-EFUSE-CLOCK-GATE-DEPTH",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -32,19 +39,18 @@ class smc_efuse_otp_clock_config_depth_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
-            # Directed stimulus floor: 11 SEP_IN AXI accesses (1 eFuse-bank
-            # positive control + 5 CHIP_CONFIG proxy reads + 5 CLOCK_GATE_CONTROL
+            # Directed stimulus floor: 10 SEP_IN AXI accesses (1 eFuse-bank
+            # positive control + 4 CHIP_CONFIG proxy reads + 5 CLOCK_GATE_CONTROL
             # save/write/read/restore/re-read). Literal here, not read from
             # `seq.accesses`.
-            min_csr_accesses=11,
+            min_csr_accesses=10,
             csr_accesses=seq.accesses,
             proxy=False,
-            # Narrowed to what is actually checked: the clock-gate RW depth
+            # What is checked: the clock-gate RW depth
             # (write/masked-readback/restore) and the eFuse-bank idle claim,
-            # which is now backed by a same-run positive control. The
-            # CHIP_CONFIG CHIP_ID / LC_STATE / RAS_BANK_INFO reads are
-            # observed-only and are no longer claimed as "fuse-derived
-            # semantics checked".
+            # backed by a same-run positive control. The CHIP_CONFIG CHIP_ID /
+            # LC_STATE reads are observed-only, not
+            # "fuse-derived semantics checked".
             details=(
                 "SMC_BASE_CONFIG CLOCK_GATE_CONTROL RW depth (pattern under "
                 "mask 0x1FFF + restore) checked; CHIP_CONFIG VERSION_LO/HI "

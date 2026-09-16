@@ -17,9 +17,11 @@
 //   * one passive ocah_axi_env per observed port (monitor, reference model,
 //     scoreboard, evidence; monitor-only on the XTRIG CSR port, whose
 //     volatile status and reset-cleared selects the memory-shadow model
-//     cannot describe: the DTP scoreboard's xtrig_csr feature owns that);
+//     cannot describe: the DTP scoreboard's xtrig_csr feature owns that),
+//     each bridge port's stream also feeding a dtp_axi_read_history the
+//     JTAG2AXI sequences compare SINGLE_OP captures against;
 //   * one ocah_jtag_slave_agent per STAP host port as the downstream TAP the
-//     tests may splice behind it (dtp_tb_if.stap_<x>_ds_en; default keeps
+//     tests may splice behind it (dtp_scan_if.stap_<x>_ds_en; default keeps
 //     the wire loopback), with the device map from dtp_types;
 //   * one dtp_<feature>_ref_model per scoreboard feature, each a subscriber
 //     on the monitor stream its feature is judged on (the JTAG event and
@@ -34,12 +36,14 @@
 class dtp_env extends ocah_env;
   `uvm_component_utils(dtp_env)
 
-  dtp_env_cfg       cfg;
-  virtual dtp_tb_if tb_vif;
+  dtp_env_cfg                   cfg;
+  virtual dtp_tb_if             tb_vif;
+  virtual dtp_scan_if           scan_vif;
+  virtual dtp_xtrig_if          xtrig_vif;
 
   // Primary TAP: shared VIP master env on the ocah_jtag_if published by tb_top.
-  ocah_jtag_master_config m_jtag_cfg;
-  ocah_jtag_master_env    m_jtag_env;
+  ocah_jtag_master_config       m_jtag_cfg;
+  ocah_jtag_master_env          m_jtag_env;
 
   // Always-on checking: one reference model per scoreboard feature, the
   // scoreboard that pairs them, TAP FSM subscriber, scan-window monitor,
@@ -52,39 +56,42 @@ class dtp_env extends ocah_env;
   dtp_jtag2axi_req_ref_model    m_jtag2axi_req_ref_model;
   dtp_jtag2axi_status_ref_model m_jtag2axi_status_ref_model;
   dtp_scoreboard                m_scoreboard;
-  dtp_tap_fsm_checker     m_fsm_checker;
-  dtp_scan_window_monitor m_scan_window;
-  ocah_jtag_scan_builder  m_scan_builder;
-  ocah_jtag_checker       m_jtag_checker;
+  dtp_tap_fsm_checker           m_fsm_checker;
+  dtp_scan_window_monitor       m_scan_window;
+  ocah_jtag_scan_builder        m_scan_builder;
+  ocah_jtag_checker             m_jtag_checker;
 
   // Virtual sequencer every scenario pass runs on.
-  dtp_virtual_sequencer m_vseqr;
+  dtp_virtual_sequencer         m_vseqr;
 
   // Passive shared-VIP AXI observation, one cfg+env per observed port.
-  ocah_axi_config m_smc_otp_axi_cfg;
-  ocah_axi_env    m_smc_otp_axi_env;
-  ocah_axi_config m_sep_otp_axi_cfg;
-  ocah_axi_env    m_sep_otp_axi_env;
-  ocah_axi_config m_smc_axi_cfg;
-  ocah_axi_env    m_smc_axi_env;
-  ocah_axi_config m_xtrig_axi_cfg;
-  ocah_axi_env    m_xtrig_axi_env;
+  ocah_axi_config               m_smc_otp_axi_cfg;
+  ocah_axi_env                  m_smc_otp_axi_env;
+  ocah_axi_config               m_sep_otp_axi_cfg;
+  ocah_axi_env                  m_sep_otp_axi_env;
+  ocah_axi_config               m_smc_axi_cfg;
+  ocah_axi_env                  m_smc_axi_env;
+  ocah_axi_config               m_xtrig_axi_cfg;
+  ocah_axi_env                  m_xtrig_axi_env;
+
+  // Observed-read history per bridge port, keyed by target name.
+  dtp_axi_read_history          m_axi_read_history[string];
 
   // Active shared-VIP AXI master: the XTRIG CSR AXI-Lite initiator.
-  ocah_axi_master_config m_xtrig_master_cfg;
-  ocah_axi_master_env    m_xtrig_master_env;
+  ocah_axi_master_config        m_xtrig_master_cfg;
+  ocah_axi_master_env           m_xtrig_master_env;
 
   // Active shared-VIP slave agents: the memory-backed responders.
-  ocah_axi_slave_config m_smc_otp_slave_cfg;
-  ocah_axi_slave_agent  m_smc_otp_slave_agent;
-  ocah_axi_slave_config m_sep_otp_slave_cfg;
-  ocah_axi_slave_agent  m_sep_otp_slave_agent;
-  ocah_axi_slave_config m_smc_axi_slave_cfg;
-  ocah_axi_slave_agent  m_smc_axi_slave_agent;
+  ocah_axi_slave_config         m_smc_otp_slave_cfg;
+  ocah_axi_slave_agent          m_smc_otp_slave_agent;
+  ocah_axi_slave_config         m_sep_otp_slave_cfg;
+  ocah_axi_slave_agent          m_sep_otp_slave_agent;
+  ocah_axi_slave_config         m_smc_axi_slave_cfg;
+  ocah_axi_slave_agent          m_smc_axi_slave_agent;
 
   // Downstream STAP TAP devices, indexed per dtp_stap_ds_name().
-  ocah_jtag_slave_config m_stap_ds_cfg[DtpStapCount];
-  ocah_jtag_slave_agent  m_stap_ds_agent[DtpStapCount];
+  ocah_jtag_slave_config        m_stap_ds_cfg               [DtpStapCount];
+  ocah_jtag_slave_agent         m_stap_ds_agent             [DtpStapCount];
 
   function new(string name = "dtp_env", uvm_component parent = null);
     super.new(name, parent);
@@ -96,6 +103,10 @@ class dtp_env extends ocah_env;
       `uvm_fatal(get_type_name(), "dtp_env_cfg `env_cfg` not found in uvm_config_db")
     if (!uvm_config_db#(virtual dtp_tb_if)::get(this, "", "tb_vif", tb_vif))
       `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not found in uvm_config_db")
+    if (!uvm_config_db#(virtual dtp_scan_if)::get(this, "", "scan_vif", scan_vif))
+      `uvm_fatal(get_type_name(), "virtual dtp_scan_if `scan_vif` not found in uvm_config_db")
+    if (!uvm_config_db#(virtual dtp_xtrig_if)::get(this, "", "xtrig_vif", xtrig_vif))
+      `uvm_fatal(get_type_name(), "virtual dtp_xtrig_if `xtrig_vif` not found in uvm_config_db")
     tb_vif.clk_period_ns = cfg.clk_period_ns;
     `uvm_info(get_type_name(), {"env cfg: ", cfg.convert2string()}, UVM_MEDIUM)
 
@@ -104,47 +115,106 @@ class dtp_env extends ocah_env;
     m_vseqr = dtp_virtual_sequencer::type_id::create("m_vseqr", this);
 
     m_smc_otp_axi_cfg = build_passive_axi(
-            '{name: "m_smc_otp_axi", vif_key: "smc_otp_axil_vif", name_tag: "dtp_smc_otp_axil",
-              protocol: OCAH_AXI_PROTO_AXI4_LITE, addr_width: 32, data_width: 32, id_width: 0},
-            cfg.axi_policy_for("smc_otp"));
+        '{
+            name: "m_smc_otp_axi",
+            vif_key: "smc_otp_axil_vif",
+            name_tag: "dtp_smc_otp_axil",
+            protocol: OCAH_AXI_PROTO_AXI4_LITE,
+            addr_width: 32,
+            data_width: 32,
+            id_width: 0
+        },
+        cfg.axi_policy_for(
+            "smc_otp")
+    );
     m_smc_otp_axi_env = ocah_axi_env::type_id::create("m_smc_otp_axi_env", this);
     m_sep_otp_axi_cfg = build_passive_axi(
-            '{name: "m_sep_otp_axi", vif_key: "sep_otp_axil_vif", name_tag: "dtp_sep_otp_axil",
-              protocol: OCAH_AXI_PROTO_AXI4_LITE, addr_width: 32, data_width: 32, id_width: 0},
-            cfg.axi_policy_for("sep_otp"));
+        '{
+            name: "m_sep_otp_axi",
+            vif_key: "sep_otp_axil_vif",
+            name_tag: "dtp_sep_otp_axil",
+            protocol: OCAH_AXI_PROTO_AXI4_LITE,
+            addr_width: 32,
+            data_width: 32,
+            id_width: 0
+        },
+        cfg.axi_policy_for(
+            "sep_otp")
+    );
     m_sep_otp_axi_env = ocah_axi_env::type_id::create("m_sep_otp_axi_env", this);
     m_smc_axi_cfg = build_passive_axi(
-            '{name: "m_smc_axi", vif_key: "m_axi_vif", name_tag: "dtp_smc_axi",
-              protocol: OCAH_AXI_PROTO_AXI4, addr_width: 56, data_width: 64, id_width: 2},
-            cfg.axi_policy_for("smc_axi"));
+        '{
+            name: "m_smc_axi",
+            vif_key: "m_axi_vif",
+            name_tag: "dtp_smc_axi",
+            protocol: OCAH_AXI_PROTO_AXI4,
+            addr_width: 56,
+            data_width: 64,
+            id_width: 2
+        },
+        cfg.axi_policy_for(
+            "smc_axi")
+    );
     m_smc_axi_env = ocah_axi_env::type_id::create("m_smc_axi_env", this);
     // Monitor only: the memory-shadow reference model cannot describe the
     // XTRIG CSR block (volatile status reads, reset-cleared selects,
     // DECERR on unmapped decode); the DTP scoreboard's xtrig_csr feature
     // owns the readback contract on this stream.
     m_xtrig_axi_cfg = build_passive_axi(
-            '{name: "m_xtrig_axi", vif_key: "xtrig_axil_vif", name_tag: "dtp_xtrig_axil",
-              protocol: OCAH_AXI_PROTO_AXI4_LITE, addr_width: 32, data_width: 32, id_width: 0},
-            cfg.axi_policy_for("xtrig"), .en_scoreboard(1'b0));
+        '{
+            name: "m_xtrig_axi",
+            vif_key: "xtrig_axil_vif",
+            name_tag: "dtp_xtrig_axil",
+            protocol: OCAH_AXI_PROTO_AXI4_LITE,
+            addr_width: 32,
+            data_width: 32,
+            id_width: 0
+        },
+        cfg.axi_policy_for(
+            "xtrig"
+        ),
+        .en_scoreboard(1'b0)
+    );
     m_xtrig_axi_env = ocah_axi_env::type_id::create("m_xtrig_axi_env", this);
 
     build_xtrig_master();
 
     m_smc_otp_slave_cfg = build_axi_slave(
-            '{name: "m_smc_otp_slave", vif_key: "smc_otp_slave_vif", name_tag: "dtp_smc_otp_slave",
-              protocol: OCAH_AXI_PROTO_AXI4_LITE, addr_width: 32, data_width: 32, id_width: 0});
-    m_smc_otp_slave_agent =
-            ocah_axi_slave_agent::type_id::create("m_smc_otp_slave_agent", this);
+        '{
+            name: "m_smc_otp_slave",
+            vif_key: "smc_otp_slave_vif",
+            name_tag: "dtp_smc_otp_slave",
+            protocol: OCAH_AXI_PROTO_AXI4_LITE,
+            addr_width: 32,
+            data_width: 32,
+            id_width: 0
+        }
+    );
+    m_smc_otp_slave_agent = ocah_axi_slave_agent::type_id::create("m_smc_otp_slave_agent", this);
     m_sep_otp_slave_cfg = build_axi_slave(
-            '{name: "m_sep_otp_slave", vif_key: "sep_otp_slave_vif", name_tag: "dtp_sep_otp_slave",
-              protocol: OCAH_AXI_PROTO_AXI4_LITE, addr_width: 32, data_width: 32, id_width: 0});
-    m_sep_otp_slave_agent =
-            ocah_axi_slave_agent::type_id::create("m_sep_otp_slave_agent", this);
+        '{
+            name: "m_sep_otp_slave",
+            vif_key: "sep_otp_slave_vif",
+            name_tag: "dtp_sep_otp_slave",
+            protocol: OCAH_AXI_PROTO_AXI4_LITE,
+            addr_width: 32,
+            data_width: 32,
+            id_width: 0
+        }
+    );
+    m_sep_otp_slave_agent = ocah_axi_slave_agent::type_id::create("m_sep_otp_slave_agent", this);
     m_smc_axi_slave_cfg = build_axi_slave(
-            '{name: "m_smc_axi_slave", vif_key: "smc_axi_slave_vif", name_tag: "dtp_smc_axi_slave",
-              protocol: OCAH_AXI_PROTO_AXI4, addr_width: 56, data_width: 64, id_width: 2});
-    m_smc_axi_slave_agent =
-            ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);
+        '{
+            name: "m_smc_axi_slave",
+            vif_key: "smc_axi_slave_vif",
+            name_tag: "dtp_smc_axi_slave",
+            protocol: OCAH_AXI_PROTO_AXI4,
+            addr_width: 56,
+            data_width: 64,
+            id_width: 2
+        }
+    );
+    m_smc_axi_slave_agent = ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);
 
     for (int unsigned i = 0; i < DtpStapCount; i++) build_stap_ds(i);
   endfunction
@@ -152,16 +222,16 @@ class dtp_env extends ocah_env;
   function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
     // Virtual sequencer: agent sequencers and responder sequences.
-    m_vseqr.m_jtag_seqr          = m_jtag_env.m_sequencer;
-    m_vseqr.m_xtrig_seqr         = m_xtrig_master_env.m_sequencer;
-    m_vseqr.m_smc_otp_slave_seq  = m_smc_otp_slave_agent.seq;
-    m_vseqr.m_sep_otp_slave_seq  = m_sep_otp_slave_agent.seq;
-    m_vseqr.m_smc_axi_slave_seq  = m_smc_axi_slave_agent.seq;
+    m_vseqr.m_jtag_seqr         = m_jtag_env.m_sequencer;
+    m_vseqr.m_xtrig_seqr        = m_xtrig_master_env.m_sequencer;
+    m_vseqr.m_smc_otp_slave_seq = m_smc_otp_slave_agent.seq;
+    m_vseqr.m_sep_otp_slave_seq = m_sep_otp_slave_agent.seq;
+    m_vseqr.m_smc_axi_slave_seq = m_smc_axi_slave_agent.seq;
     for (int unsigned i = 0; i < DtpStapCount; i++) begin
-      m_vseqr.m_stap_ds_seq[i] = ocah_jtag_slave_sequence::type_id::create(
-                {"m_stap_", dtp_stap_ds_name(i), "_ds_seq"});
+      m_vseqr.m_stap_ds_seq[i] =
+          ocah_jtag_slave_sequence::type_id::create({"m_stap_", dtp_stap_ds_name(i), "_ds_seq"});
       m_vseqr.m_stap_ds_seq[i].responder = m_stap_ds_agent[i].m_driver;
-      m_vseqr.m_stap_ds_seq[i].evidence  = m_jtag_checker;
+      m_vseqr.m_stap_ds_seq[i].evidence = m_jtag_checker;
     end
     // Monitor streams into the always-on subscribers.
     m_jtag_env.event_ap.connect(m_fsm_checker.analysis_export);
@@ -185,14 +255,14 @@ class dtp_env extends ocah_env;
     if (!uvm_config_db#(virtual ocah_jtag_if)::get(this, "", "jtag_vif", m_jtag_cfg.vif))
       `uvm_fatal(get_type_name(), "virtual ocah_jtag_if `jtag_vif` not found in uvm_config_db")
     m_jtag_cfg.is_active       = UVM_ACTIVE;
-    m_jtag_cfg.en_monitor      = 1'b1;   // DTP checking rides the OCAH event stream
+    m_jtag_cfg.en_monitor      = 1'b1;  // DTP checking rides the OCAH event stream
     m_jtag_cfg.tck_half_period = cfg.tck_half_period_ns * 1ns;
     uvm_config_db#(ocah_jtag_master_config)::set(this, "m_jtag_env*", "cfg", m_jtag_cfg);
     m_jtag_env = ocah_jtag_master_env::type_id::create("m_jtag_env", this);
   endfunction
 
   protected function void build_checking();
-    m_jtag_checker = ocah_jtag_checker::type_id::create("m_jtag_checker");
+    m_jtag_checker              = ocah_jtag_checker::type_id::create("m_jtag_checker");
     m_jtag_checker.name_tag     = "dtp_jtag";
     m_jtag_checker.required_ids = cfg.jtag_policy.required_ids;
 
@@ -201,34 +271,45 @@ class dtp_env extends ocah_env;
     m_scoreboard.tb_vif = tb_vif;
 
     m_fsm_checker = dtp_tap_fsm_checker::type_id::create("m_fsm_checker", this);
-    m_fsm_checker.tb_vif           = tb_vif;
-    m_fsm_checker.evidence         = m_jtag_checker;
+    m_fsm_checker.tb_vif = tb_vif;
+    m_fsm_checker.evidence = m_jtag_checker;
     m_fsm_checker.require_activity = cfg.jtag_activity_required;
 
     m_scan_window = dtp_scan_window_monitor::type_id::create("m_scan_window", this);
-    m_scan_window.tb_vif = tb_vif;
+    m_scan_window.scan_vif = scan_vif;
 
-    m_scan_builder = ocah_jtag_scan_builder::type_id::create("m_scan_builder", this);
+    begin
+      dtp_jtag_scan_builder builder = dtp_jtag_scan_builder::type_id::create(
+          "m_scan_builder", this
+      );
+      builder.tb_vif = tb_vif;
+      m_scan_builder = builder;
+    end
+
+    m_axi_read_history["smc_otp"] =
+        dtp_axi_read_history::type_id::create("m_smc_otp_read_history", this);
+    m_axi_read_history["sep_otp"] =
+        dtp_axi_read_history::type_id::create("m_sep_otp_read_history", this);
+    m_axi_read_history["smc_axi"] =
+        dtp_axi_read_history::type_id::create("m_smc_axi_read_history", this);
   endfunction
 
   // One reference model per scoreboard feature; each reads the TB
   // interface for the observables and reset counters it re-baselines on.
   protected function void build_reference_models();
-    m_ir_decode_ref_model =
-        dtp_ir_decode_ref_model::type_id::create("m_ir_decode_ref_model", this);
+    m_ir_decode_ref_model = dtp_ir_decode_ref_model::type_id::create("m_ir_decode_ref_model", this);
     m_ir_decode_ref_model.tb_vif = tb_vif;
     m_idcode_ref_model = dtp_idcode_ref_model::type_id::create("m_idcode_ref_model", this);
     m_idcode_ref_model.tb_vif = tb_vif;
     m_bypass_ref_model = dtp_bypass_ref_model::type_id::create("m_bypass_ref_model", this);
     m_bypass_ref_model.tb_vif = tb_vif;
-    m_xtrig_csr_ref_model =
-        dtp_xtrig_csr_ref_model::type_id::create("m_xtrig_csr_ref_model", this);
+    m_xtrig_csr_ref_model = dtp_xtrig_csr_ref_model::type_id::create("m_xtrig_csr_ref_model", this);
     m_xtrig_csr_ref_model.tb_vif = tb_vif;
     m_xtrig_decode_ref_model =
         dtp_xtrig_decode_ref_model::type_id::create("m_xtrig_decode_ref_model", this);
     m_jtag2axi_req_ref_model =
         dtp_jtag2axi_req_ref_model::type_id::create("m_jtag2axi_req_ref_model", this);
-    m_jtag2axi_req_ref_model.tb_vif   = tb_vif;
+    m_jtag2axi_req_ref_model.tb_vif = tb_vif;
     m_jtag2axi_req_ref_model.negative = cfg.jtag2axi_ref_model_negative;
     if (cfg.jtag2axi_ref_model_negative)
       `uvm_info(get_type_name(),
@@ -288,6 +369,7 @@ class dtp_env extends ocah_env;
     port_env.item_ap.connect(m_jtag2axi_req_ref_model.axi_export);
     port_env.item_ap.connect(m_jtag2axi_status_ref_model.axi_export);
     port_env.item_ap.connect(m_scoreboard.jtag2axi_req_observed_export);
+    port_env.item_ap.connect(m_axi_read_history[target].analysis_export);
   endfunction
 
   // One passive shared-VIP AXI observer: geometry, identity, evidence

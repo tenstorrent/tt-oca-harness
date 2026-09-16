@@ -7,8 +7,3 @@ waive --rule=module-filename --regex="module OCAH4CORECluster_rom_ext " --locati
 # Generic testbench top name: the module identifies the driven block.
 waive --rule=module-filename --regex="module smc_uvm_top" --location=".*hw/sys/smc/dv/tb/tb_top\.sv$"
 
-# axi_sim_mem exposes dynamically sized error maps. Verilator rejects
-# nonblocking assignment to them, while the TB requires the writes to take
-# effect immediately when programming the model.
-waive --rule=always-ff-non-blocking --regex="u_output_mem.werr" --location=".*hw/sys/smc/dv/tb/tb_top\.sv$"
-waive --rule=always-ff-non-blocking --regex="u_output_mem.rerr" --location=".*hw/sys/smc/dv/tb/tb_top\.sv$"

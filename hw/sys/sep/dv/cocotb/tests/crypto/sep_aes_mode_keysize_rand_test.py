@@ -3,16 +3,15 @@
 """Standalone AES mode x key-size breadth, RAND-REP (AES mode/key-size breadth).
 
 Drives the OpenTitan AES engine directly over the CPU-LSU AXI master (no_cpu, no
-firmware, SW key) across the full standalone matrix the Phase-1 KM->AES sideload
+firmware, SW key) across the full standalone matrix the KM->AES sideload
 KAT (`sep_km_aes_sideload_kat_test`, ECB-256 via keymgr) does not reach:
 
     {ECB, CBC, CTR} x {128, 192, 256}  (9 cells).
 
-reference parity: MERGED_INTO rep of the reference suite aes mode/keylen directed set. The reference suite
-uvm_tests/aes suite is register/alert-centric with no standalone CBC/CTR/128/192
-ciphertext golden, so the independent pure-Python golden (env/sep_aes_golden.py:
-FIPS-197 ECB 128/192/256 + SP800-38A CBC/CTR self-tested) is the reference and
-this rep is stronger than the reference suite for encryption breadth. DISTINCT from
+Reference parity: the reference suite uvm_tests/aes suite is register/alert-centric
+with no standalone CBC/CTR/128/192 ciphertext golden, so the independent
+pure-Python golden (env/sep_aes_golden.py: FIPS-197 ECB 128/192/256 + SP800-38A
+CBC/CTR self-tested) is the reference here. DISTINCT from
 `sep_km_aes_sideload_kat_test` (ECB-256 via sideload) -- AES mode/key-size breadth
 is standalone SW-key across modes/sizes.
 
@@ -34,7 +33,8 @@ Checkers:
   CHK-STATUS   per cell: no AES recoverable/fatal alert across enc + round-trip
   CHK1..CHK4   bit-exact entropy golden (strict scoreboard report)
   CHK5_aes     post-adapter AES beats == AXIS1 in order (single live crypto sink)
-  CHK-RAND-REP all 9 discrete cells walked in one invocation (seed logged)
+  CHK-RAND-REP every discrete cell produced its own golden-matching ciphertext,
+               and all ciphertexts are distinct (seed logged)
 """
 
 from __future__ import annotations
@@ -60,13 +60,16 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         # routing is in-order (one live sink). AES stays released for the
         # masking reseed.
         await self.bring_up_entropy(strict=True, score_km=False, score_sinks={"aes": "golden"})
+        # The default floor is one scored beat, which is far below what the
+        # per-beat routing claim needs across the whole cell walk.
+        self.drbg_sb.set_min_matches(CHK5_aes=32)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
         self.aes = SepAes(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("AES mode/key-size breadth AES mode x key-size breadth: seed=%d", seed)
+        self.logger.info("AES mode x key-size breadth: seed=%d", seed)
         await self.aes.trigger_prng_reseed()  # seed the masking PRNG from EDN
 
         # Collect each cell's DUT ciphertext, so the matrix claim rests on observed
@@ -80,6 +83,9 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
 
         walked = len(results)
         expected = len(MODES) * len(KEY_SIZES)
+        # Construction guard, not a DUT contract: this compares the walk against
+        # the cell list that drove it, so only a table or keying mistake in this
+        # file can trip it. The DUT evidence is the per-cell golden compare.
         assert walked == expected, f"walked {walked} cells != {expected}"
         assert len(set(results.values())) == expected, (
             "AES cells produced duplicate ciphertexts, so they did not all run distinct "
@@ -119,11 +125,6 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
             f"  golden={[hex(w) for w in golden]}"
         )
 
-        # No golden-vs-golden guards here. With the DUT result already pinned
-        # bit-exact against the golden above, any further comparison between that
-        # result and another golden-model output reduces to a property of the model
-        # alone -- it holds with the simulator switched off. Model sanity belongs in
-        # the golden's import-time KAT block, not in a per-cell DUT check.
         await self.aes.check_status_clean(cell + "-enc")  # CHK-STATUS
 
         # --- CHK-RT: recover the plaintext -----------------------------------

@@ -17,7 +17,7 @@ class dtp_dbg_ctrl_clk_stop_cla_clock_stop_test(dtp_base_test):
         await self.start_looped_seq(
             dtp_dbg_ctrl_clk_stop_cla_clock_stop_test_seq,
             "dbg_ctrl_clk_stop_cla_clock_stop_test_seq",
-            specific_env="DTP_DBG_CTRL_CLK_STOP_CLA_CLOCK_STOP_TEST_LOOPS",
+            specific_knob="DTP_DBG_CTRL_CLK_STOP_CLA_CLOCK_STOP_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_DEBUG_TDR_TEST_LOOPS",
+            group_knob="DTP_DEBUG_TDR_TEST_LOOPS",
         )

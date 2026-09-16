@@ -6,15 +6,32 @@
 
 The SEP integrates a VeeR EL2 core with a built-in
 **Programmable Interrupt Controller (PIC)**. All maskable external interrupt
-sources feed a single `extintsrc_req` bus; the core's `meipl`, `meie`, and
-`meigwctrl` CSRs configure priority, enable, and gateway polarity per source.
+sources feed a single `extintsrc_req` bus; the memory-mapped `meipl`, `meie`,
+and `meigwctrl` registers configure priority, enable, and gateway polarity per
+source.
 
 The PIC base address is `0xC008_0000`; its register layout is described in the
 <<sep-pic-registers,Register Interfaces>> section below.
 
 Interrupt source IDs are **1-based** inside the PIC. Source 0 is permanently
-tied to zero inside the core. Firmware programs source `N` by writing the
-`meipl[N]` and `meie[N]` CSR entries and reading/clearing `meip[N]`.
+tied to zero inside the core. Firmware programs source `N` through the
+per-source arrays, each indexed at an offset of `N * 4` from its region base:
+`meipl` at PIC base `+0x0000`, `meie` at `+0x2000`, `meigwctrl` at `+0x4000`
+and `meigwclr` at `+0x5000`. Pending status is the exception -- `meip` at
+`+0x1000` is a bitmap rather than a per-source array, so source `N` is bit
+`N % 32` of `meip[N / 32]`.
+
+Each per-source array carries an entry 0, so that the array index is the source
+ID and no off-by-one applies: `meipl[7]` is source 7. That entry is reserved and
+has no hardware behind it -- the PIC decodes the address but ties the register
+off, so `+0x0000`, `+0x2000`, `+0x4000` and `+0x5000` read as zero and discard
+writes. It appears in the RDL, the generated headers and the UVM RAL only to
+preserve the indexing; firmware must never program it.
+
+NOTE: Register tests that walk the whole PIC map must skip index 0 of `meipl`,
+`meie`, `meigwctrl` and `meigwclr`. The register model declares those entries
+read-write like every other element, but the hardware treats them as reserved,
+so a read-write check on them fails.
 
 // Canonical SEP interrupt documentation: maintain this section with RTL changes.
 // Other guides should xref <<sep-cpu-interrupt-vector-map>>.
@@ -162,7 +179,10 @@ not here; see <<sep-non-pic-paths>>.
 
 |`33`
 |Crypto alert
-|Aggregated crypto subsystem alert (fault)
+|Combined OpenTitan crypto alert. SEP has no `alert_handler`; each
+accelerator has its own `prim_alert_receiver` channel(s) with ping
+disabled, and those pulses plus integrity-fails share this source. See
+<<sep-crypto-alert-policy>>.
 
 |`34`
 |Locked field access
@@ -222,7 +242,8 @@ Cleared by the same `DMA_BUS_ERR_CLEAR.clr` write.
 |The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
 CSRNG, EDN and the watchdog timer. Read `PERIPH_BUS_ERR_STATUS` to identify
 which block faulted, and clear that block's bit in `PERIPH_BUS_ERR_CLEAR`;
-clears are per-block so acknowledging one cannot discard another block's fault.
+clears are per-block so acknowledging one cannot discard another block's
+fault. See <<sep-crypto-bridge-faults>>.
 
 |`[44–255]`
 |Reserved (external band)
@@ -369,3 +390,7 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<sep-detailed-register-map>>.
 endif::backend-pdf[]
+
+The per-source arrays in that table are listed from index 0. Index 0 is the
+reserved entry described in <<sep-interrupts>>: it exists so the array index
+equals the interrupt source ID, and the first programmable source is index 1.

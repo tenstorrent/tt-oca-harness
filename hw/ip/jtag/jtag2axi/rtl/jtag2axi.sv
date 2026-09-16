@@ -1353,27 +1353,26 @@ module jtag2axi #(
     // state, or push a series data entry into the request FIFO.
     if (i_update_en && !security_disable_i) begin
       if (i_select_AXISingleOp) begin
-        if (!(axi_transaction_in_progress_tclk || single_tx_req_valid_tclk)) begin
-          if (update_register_q_tclk[AXISINGLEOP_OP_HIGH:AXISINGLEOP_OP_LOW] == JTAG_OP_READ ||
-                        update_register_q_tclk[AXISINGLEOP_OP_HIGH:AXISINGLEOP_OP_LOW] == JTAG_OP_WRITE) begin
+        automatic logic [1:0] single_op_val;
+        single_op_val = update_register_q_tclk[AXISINGLEOP_OP_HIGH:AXISINGLEOP_OP_LOW];
+        // READ/WRITE while a beat is in flight is a rejected operation.
+        // NOP (and reserved) Update-DR is a status poll and must not set
+        // sticky_full or clear pending.
+        if (single_op_val == JTAG_OP_READ || single_op_val == JTAG_OP_WRITE) begin
+          if (!(axi_transaction_in_progress_tclk || single_tx_req_valid_tclk)) begin
             single_tx_req_valid_tclk_d     = 1'b1;
-            single_tx_op_tclk_d            = update_register_q_tclk[AXISINGLEOP_OP_HIGH   : AXISINGLEOP_OP_LOW];
+            single_tx_op_tclk_d            = single_op_val;
             single_tx_addr_tclk_d          = update_register_q_tclk[AXISINGLEOP_ADDR_HIGH : AXISINGLEOP_ADDR_LOW];
             single_tx_data_tclk_d          = update_register_q_tclk[AXISINGLEOP_DATA_HIGH : AXISINGLEOP_DATA_LOW];
             single_tx_axi_size_tclk_d      = update_register_q_tclk[AXISINGLEOP_SIZE_HIGH : AXISINGLEOP_SIZE_LOW];
             single_tx_wstrb_tclk_d         = update_register_q_tclk[AXISINGLEOP_WSTRB_HIGH: AXISINGLEOP_WSTRB_LOW];
             single_op_pending_tclk_d       = 1'b1;
-            last_single_op_was_read_tclk_d =
-                            (update_register_q_tclk[AXISINGLEOP_OP_HIGH:AXISINGLEOP_OP_LOW] == JTAG_OP_READ);
+            last_single_op_was_read_tclk_d = (single_op_val == JTAG_OP_READ);
+          end else begin
+            sticky_axi_status_full_tclk_d = 1'b1;
+            last_single_op_status_tclk_d  = CAPTURE_STATUS_BUSY_OR_FULL;
+            single_op_pending_tclk_d      = 1'b0;
           end
-        end else begin
-          // Rejected: prior op still in flight. Mark BUSY on the
-          // single-op capture channel and set sticky_full; also
-          // drop the pending flag so the rejected op doesn't
-          // appear "stuck" in the capture view.
-          sticky_axi_status_full_tclk_d = 1'b1;
-          last_single_op_status_tclk_d  = CAPTURE_STATUS_BUSY_OR_FULL;
-          single_op_pending_tclk_d      = 1'b0;
         end
       end else if (i_select_AXISeriesCtrl) begin
         automatic logic [1:0] op_val;

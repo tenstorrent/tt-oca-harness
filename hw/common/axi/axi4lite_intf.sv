@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-// Imported from PeakRDL (https://peakrdl-regblock.readthedocs.io/en/latest/cpuif/axi4lite.html#cpuif-axi4lite)
+//
+// AXI4-Lite SystemVerilog interface with master and slave modports, adapted from
+// the PeakRDL regblock AXI4-Lite CPUIF (https://peakrdl-regblock.readthedocs.io/en/latest/cpuif/axi4lite.html).
 
 interface axi4lite_intf #(
   parameter int unsigned DATA_WIDTH = 32,

@@ -44,17 +44,12 @@ PROG_IF_RD = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_INTERFACE_READ
 PROG_IF_RD_RESET = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_INTERFACE_READ_DATA__DOUT_reset"
 )
-# `PROG_IF_RD` is `sw = r; hw = w` (efuse_interface_ctrl.rdl:160-163) and its
-# generated reset is 0x0, so an `expected=PROG_IF_RD_RESET` compare is ALSO
-# satisfied by a dead or unmapped register -- it cannot on its own show that
-# the efuse_interface_ctrl block answered ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
-# The field is driven only in the program FSM's ST_CAPTURE_DATA state
-# ("Hardware debug only", rdl:158), which this testcase never enters, so there
-# is no way to make it hold a distinguishing value. The block's liveness is
-# therefore proven on a WRITABLE sibling in the same register block instead:
-# EFUSE_READ_REQ_TIMEOUT @0x14 is `sw=rw` (rdl:180) with a non-zero reset, so
-# it discriminates a dead window in three independent ways (non-zero reset
-# read, a written pattern read back, and the restore).
+# `PROG_IF_RD` is `sw = r; hw = w` (efuse_interface_ctrl.rdl:160-163) with a
+# generated reset of 0x0, so an `expected=PROG_IF_RD_RESET` compare is also
+# satisfied by a dead or unmapped register; the module docstring gives the
+# provenance. Block liveness is proven on the writable sibling
+# EFUSE_READ_REQ_TIMEOUT @0x14 (`sw=rw`, rdl:180, non-zero reset)
+# ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 READ_REQ_TMO = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_BASE_ADDR")
 READ_REQ_TMO_CYCLES_RESET = efuse_ifc_u32(
     "EFUSE_INTERFACE_CTRL__EFUSE_READ_REQ_TIMEOUT__READ_REQ_TIMEOUT_CYCLES_reset"
@@ -159,10 +154,9 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
                 f"RELEASE: tb_fuse_reset_n stayed 0 after ext_boot release "
                 f"last={last_frst} bound={_RELEASE_BOUND}"
             )
-        # `tb_rst_warm_smc_clk_n` is an unconditional TB output (tb_top.sv:439,
-        # driven at tb_top.sv:1316), so the old `if hasattr(...)` guard was dead
-        # and would have silently skipped this leg if the port ever disappeared
-        # ([NO-DUMMY-DEAD-CODE]). Assert it instead.
+        # `tb_rst_warm_smc_clk_n` is an unconditional TB output (tb_top.sv), so a
+        # missing port is a bench defect: assert it rather than skip the leg
+        # ([NO-DUMMY-DEAD-CODE]).
         assert hasattr(dut, "tb_rst_warm_smc_clk_n"), (
             "tb_rst_warm_smc_clk_n missing from the TB top: the warm-reset "
             "release leg has no observation port and cannot be checked"
@@ -178,17 +172,11 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
 
         # Exact expectation from the generated RDL reset: no program read-back
         # has been issued in this testcase, so DOUT must still be at its reset
-        # value. `expected=` is mandatory here: printing the word inside the
-        # evidence token without comparing it reads as a check while being none
-        # ([EXACT-EXPECTATION]).
+        # value ([EXACT-EXPECTATION]).
         prog = await self.csr_read("EFUSE_PROG_IF_RD", PROG_IF_RD, expected=PROG_IF_RD_RESET)
-        # Positive control for the compare above (see PROG_IF_RD_RESET note at
-        # the top of this file): PROG_IF_RD's reset is 0x0 and it is `sw = r`,
-        # so that read alone cannot separate "the block answered with the reset
-        # value" from "nothing decoded this window". Prove the block is live on
-        # a writable sibling at +0x14 in the SAME register block, in the same
-        # run: its non-zero reset already rules out a stuck-at-0 window, and
-        # the write/readback/restore rules out a reset-only or stuck window.
+        # Positive control for the compare above (see the PROG_IF_RD_RESET note):
+        # the writable sibling at +0x14 in the same register block is read at
+        # its non-zero reset, written, read back and restored in the same run.
         tmo_reset = await self.csr_read(
             "EFUSE_READ_REQ_TMO_RESET",
             READ_REQ_TMO,
@@ -251,12 +239,9 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
             restored,
         )
         self.chk_seen.add("CHK-EFUSE-BND-REL")
-        # Summary token, carrying the values each leg observed. A payload of
-        # `hold`/`map`/`release` booleans would be literal `True` at this line --
-        # every leg above raises on failure, so reaching here is all such flags
-        # could report, and a kept-log line whose entire content is constants is
-        # not evidence ([NO-ALWAYS-PASS-CHECKER]). The measured words make this
-        # line falsifiable against the per-leg tokens above it.
+        # Summary token carrying the values each leg observed, so the line is
+        # falsifiable against the per-leg tokens above it
+        # ([NO-ALWAYS-PASS-CHECKER]).
         cocotb.log.info(
             "CHK-EFUSE-BND-BASIC: hold(sense=%d fuse_reset_n=%d held for %d "
             "clocks after sense) map(LOCKS=0x%x == preload) release("

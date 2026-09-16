@@ -11,7 +11,7 @@ probe. Without those legs a stuck-at-0 / undriven / mis-tied probe passes all
 eight asserts identically (`[NEGATIVE-NEEDS-POSITIVE-CONTROL]`).
 
 ``dtp_csr_active`` is never exact-compared here: no positive control for it can
-exist in this TB (``tb_top.sv:1151`` ties ``axil_dtp_csr_resp = '0'``), so the
+exist in this TB (``tb_top.sv:1119`` ties ``axil_dtp_csr_resp = '0'``), so the
 shared :func:`smc_axil_idle_test_seq.assert_axil_idle` iterates
 ``AXIL_CHECKABLE_FIELDS`` and returns that field as OBSERVED-ONLY text.
 """
@@ -44,12 +44,6 @@ class smc_axil_burst_idle_test_seq(smc_base_test_seq):
         )
         sb = self.env.scoreboard
         booked_before = sb.axil_samples_seen
-        # No SETUP step is narrated here: clocks/resets are brought up by
-        # smc_base_test._bring_up before this sequence starts, and this body owns
-        # no setup action of its own. The former "STEP S1: SETUP clocks/resets"
-        # line performed nothing and read as an implemented phase
-        # ([NO-EMPTY-PHASE]) -- the same removal
-        # smc_irq_observe_test_seq.py:51-55 already made.
         cocotb.log.info(
             "STEP S1: POSITIVE CONTROL — real frontdoor SEP_IN AXI request "
             "drives tb_axil_any_master_active to 1"
@@ -70,10 +64,8 @@ class smc_axil_burst_idle_test_seq(smc_base_test_seq):
         assert len(self.samples) == self.BURST_SAMPLES, (
             f"expected {self.BURST_SAMPLES} AXI-Lite SAMPLE items, got {len(self.samples)}"
         )
-        # One OBSERVED-ONLY string per sample, kept per-sample: reassigning a
-        # single variable inside the loop left the token quoting the *last*
-        # sample's unbackable-probe value inside burst-wide wording
-        # ([NO-DUMMY-DEAD-CODE]).
+        # One OBSERVED-ONLY string per sample, so the burst-wide token quotes
+        # each sample's own unbackable-probe value ([NO-DUMMY-DEAD-CODE]).
         observed_only_per_sample = [assert_axil_idle(s) for s in self.samples]
         distinct_observed_only = sorted(set(observed_only_per_sample))
         observed_only = "; ".join(
@@ -101,11 +93,6 @@ class smc_axil_burst_idle_test_seq(smc_base_test_seq):
             len(observed_only_per_sample),
             observed_only,
         )
-        # No `SMC_003 scenario PASS` line and no DV-CARD provenance header in
-        # `tests/smc_axil_burst_idle_test.py`: both cited
-        # `hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md`, which does not exist at this
-        # revision, so that anchor resolved to no record and neither the test nor
-        # the sequence may assert a contract identity ([NO-DUMMY-DEAD-CODE]).
         cocotb.log.info(
             "smc_axil_burst_idle_test_seq PASS: %d idle samples, %d booked",
             self.BURST_SAMPLES,

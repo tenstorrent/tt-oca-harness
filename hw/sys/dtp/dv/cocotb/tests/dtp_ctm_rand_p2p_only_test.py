@@ -14,6 +14,6 @@ class dtp_ctm_rand_p2p_only_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "ctm_rand_p2p_only",
             scenario="ctm_rand_p2p_only",
-            specific_env="DTP_CTM_RAND_P2P_ONLY_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_CTM_RAND_P2P_ONLY_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

@@ -8,7 +8,11 @@ module cla_wrapper
     parameter DEBUG_SIGNAL_WIDTH = 64,
     parameter DEBUGMARKER_WIDTH = 8,
     parameter NUM_INPUT_LANES = 8,
-    parameter LANE_WIDTH = 8
+    parameter bit TIMESTAMP_SYNC_SCHEME = 0,
+    parameter bit OCTS_TS_OUTPUT = 0,
+    parameter LANE_WIDTH = 8,
+    localparam TIMESTAMP_UPPER_WIDTH = 56,
+    localparam TIMESTAMP_LOWER_WIDTH = 8
 )(
     // Gated clock / reset / clamp from clk_rst_wrapper (per-instance)
     input  logic [NUM_CLA_INST-1:0] cla_gated_clock,
@@ -27,7 +31,9 @@ module cla_wrapper
     input  logic [NUM_CLA_INST-1:0][XTRIGGER_WIDTH-1:0] i_cla_xtrigger,
     input  logic [NUM_CLA_INST-1:0][63:0]               i_timestamp,
     input  logic [NUM_CLA_INST-1:0]                     i_cla_time_tick,
-    output logic [NUM_CLA_INST-1:0][XTRIGGER_WIDTH-1:0] o_cla_xtrigger,
+    input  logic [NUM_CLA_INST-1:0][63:0]               i_octs_timestamp,
+    input  logic [NUM_CLA_INST-1:0][TIMESTAMP_UPPER_WIDTH-1:0]        i_ref_timestamp,
+    output logic [NUM_CLA_INST-1:0][XTRIGGER_WIDTH-1:0]             o_cla_xtrigger,
 
     output logic [NUM_CLA_INST-1:0][DEBUGMARKER_WIDTH-1:0]          o_cla_debug_marker,
     output logic [NUM_CLA_INST-1:0]                                 o_cla_external_action_trace_start,
@@ -62,7 +68,8 @@ module cla_wrapper
     DbgMuxSelMmr_s [NUM_CLA_INST-1:0]                      DebugMuxSelMmr;
     ClaMmrsWr_s    [NUM_CLA_INST-1:0]                      ClaMmrsWr_int;
 
-
+    logic [NUM_CLA_INST-1:0][63:0] cla_timestamp_muxed;
+    assign cla_timestamp_muxed = OCTS_TS_OUTPUT == 1'b1 ? i_octs_timestamp : timesync_cla_timestamp_int;
 
     for (genvar ii = 0; ii < NUM_CLA_INST; ii++) begin : cla_gen_inst_blk
         // -----------------------------------------------------------------
@@ -106,7 +113,8 @@ module cla_wrapper
 
         core_logic_analyzer #(
             .CORE_INSTANCE(1'b1),
-            .DEBUG_SIGNAL_WIDTH(DEBUG_SIGNAL_WIDTH)
+            .DEBUG_SIGNAL_WIDTH(DEBUG_SIGNAL_WIDTH),
+            .TIMESTAMP_SYNC_SCHEME(TIMESTAMP_SYNC_SCHEME)
         ) cla_inst (
             .clock								(cla_gated_clock[ii]),
             .i_reset_n							(cla_gated_reset_n[ii]),
@@ -124,6 +132,7 @@ module cla_wrapper
             .external_action_custom				(external_action_custom_int[ii]),
             .debug_signals_aligned				(debug_bus_aligned[ii]),
             .timestamp							(dst_pkg::timestamp_s'(i_timestamp[ii])),
+            .i_ref_timestamp						(i_ref_timestamp[ii]),
             .o_cla_timesync_timestamp			(timesync_cla_timestamp_int[ii]),
             .o_cla_debug_marker					(cla_debug_marker_int[ii]),
 
@@ -204,6 +213,7 @@ module cla_wrapper
             .XtriggertimestretchMmr			    (ClaMmrs[ii].Cdbgclaxtriggertimestretch),
             .ClatimestampMmr					(ClaMmrs[ii].Cdbgclatimestamp),
             .ClatimestampsyncMmr				(ClaMmrs[ii].Cdbgclatimestampsync),
+            .ClatimestampoffsetMmr				(ClaMmrs[ii].Cdbgclatimestampoffset),
             .ClatimestampconfigMmr				(ClaMmrs[ii].Cdbgclatimestampconfig),
             .ClatimematchMmr					(ClaMmrs[ii].Cdbgclatimematch),
             .i_Time_Tick						(i_cla_time_tick[ii]),
@@ -259,7 +269,7 @@ module cla_wrapper
         assign o_cla_external_action_debug_interrupt_out[ii]  = cla_gated_func_clamp[ii] ? '0 : external_action_debug_interrupt_out_int[ii];
         assign o_cla_external_action_toggle_gpio_out[ii]      = cla_gated_func_clamp[ii] ? '0 : external_action_toggle_gpio_out_int[ii];
         assign o_cla_external_action_custom[ii]               = cla_gated_func_clamp[ii] ? '0 : external_action_custom_int[ii];
-        assign timesync_cla_timestamp[ii]               = cla_gated_func_clamp[ii] ? '0 : timesync_cla_timestamp_int[ii];
+        assign timesync_cla_timestamp[ii]               = cla_gated_func_clamp[ii] ? '0 : cla_timestamp_muxed[ii];
         assign ClaMmrsWr[ii]                            = cla_gated_func_clamp[ii] ? '0 : ClaMmrsWr_int[ii];
         assign o_debug_mux_sel[ii]                          = cla_gated_func_clamp[ii] ? '0 : DebugMuxSelMmr[ii];
     end

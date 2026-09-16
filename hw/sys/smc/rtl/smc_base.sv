@@ -6,11 +6,9 @@
 module smc_base #(
   parameter bit NO_ADDR_REMAP = 1'b1,
 
-  parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_1CORE,
-
-  localparam int unsigned NUM_CPU_CORES      = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES : smc_1core_cpu_pkg::NUM_CPU_CORES,
-  localparam int unsigned NUM_CPU_INTERRUPTS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
-  localparam int unsigned NUM_EXT_INTERRUPTS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS
+  localparam int unsigned NUM_CPU_CORES      = smc_4core_cpu_pkg::NUM_CPU_CORES,
+  localparam int unsigned NUM_CPU_INTERRUPTS = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,
+  localparam int unsigned NUM_EXT_INTERRUPTS = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS
 
 ) (
   // Clocks from PLLs
@@ -244,8 +242,8 @@ module smc_base #(
     .o_q   (ext_interrupts_smc_clk)
   );
 
-  // Each config has interrupt distribution of N external interrupts, 32 peripheral interrupts, up to 32 mailbox interrupts, 8 internal interrupts
-  // - different configs have different number of interrupts, so handle interrupt routing
+  // Interrupt distribution: N external interrupts, 32 peripheral interrupts,
+  // 32 mailbox interrupts, 4 internal interrupts
   always_comb begin
     cpu_interrupts_o = '0;
     cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk;
@@ -274,49 +272,23 @@ module smc_base #(
   logic [1023:0] debug_bus;
   logic [7:0]    debug_marker;
 
-  // different configs have different set of signals
-  generate
-    if (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) begin : gen_4core_debug_routing
-      assign debug_bus[16*1-1:16*0]       = cpu_wb_reg_pc_i[0][15:0];
-      assign debug_bus[16*2-1:16*1]       = cpu_wb_reg_pc_i[0][31:16];
-      assign debug_bus[16*3-1:16*2]       = cpu_wb_reg_pc_i[1][15:0];
-      assign debug_bus[16*4-1:16*3]       = cpu_wb_reg_pc_i[1][31:16];
-      assign debug_bus[16*5-1:16*4]       = cpu_wb_reg_pc_i[2][15:0];
-      assign debug_bus[16*6-1:16*5]       = cpu_wb_reg_pc_i[2][31:16];
-      assign debug_bus[16*7-1:16*6]       = cpu_wb_reg_pc_i[3][15:0];
-      assign debug_bus[16*8-1:16*7]       = cpu_wb_reg_pc_i[3][31:16];
+  assign debug_bus[16*1-1:16*0]       = cpu_wb_reg_pc_i[0][15:0];
+  assign debug_bus[16*2-1:16*1]       = cpu_wb_reg_pc_i[0][31:16];
+  assign debug_bus[16*3-1:16*2]       = cpu_wb_reg_pc_i[1][15:0];
+  assign debug_bus[16*4-1:16*3]       = cpu_wb_reg_pc_i[1][31:16];
+  assign debug_bus[16*5-1:16*4]       = cpu_wb_reg_pc_i[2][15:0];
+  assign debug_bus[16*6-1:16*5]       = cpu_wb_reg_pc_i[2][31:16];
+  assign debug_bus[16*7-1:16*6]       = cpu_wb_reg_pc_i[3][15:0];
+  assign debug_bus[16*8-1:16*7]       = cpu_wb_reg_pc_i[3][31:16];
 
-      assign debug_bus[16*9-1:16*8]       = cpu_interrupts_o[15:0]    | cpu_interrupts_o[143:128];
-      assign debug_bus[16*10-1:16*9]      = cpu_interrupts_o[31:16]   | cpu_interrupts_o[159:144];
-      assign debug_bus[16*11-1:16*10]     = cpu_interrupts_o[47:32]   | cpu_interrupts_o[175:160];
-      assign debug_bus[16*12-1:16*11]     = cpu_interrupts_o[63:48]   | cpu_interrupts_o[191:176];
-      assign debug_bus[16*13-1:16*12]     = cpu_interrupts_o[79:64]   | cpu_interrupts_o[207:192];
-      assign debug_bus[16*14-1:16*13]     = cpu_interrupts_o[95:80]   | cpu_interrupts_o[223:208];
-      assign debug_bus[16*15-1:16*14]     = cpu_interrupts_o[111:96]  | cpu_interrupts_o[239:224];
-      assign debug_bus[16*16-1:16*15]     = cpu_interrupts_o[127:112] | cpu_interrupts_o[255:240];
-    end else if (SMC_CPU_CONFIG == smc_pkg::SMC_1CORE) begin : gen_1core_debug_routing
-      assign debug_bus[16*1-1:16*0]       = cpu_wb_reg_pc_i[0][15:0];
-      assign debug_bus[16*2-1:16*1]       = cpu_wb_reg_pc_i[0][31:16];
-      assign debug_bus[16*3-1:16*2]       = '0;
-      assign debug_bus[16*4-1:16*3]       = '0;
-      assign debug_bus[16*5-1:16*4]       = '0;
-      assign debug_bus[16*6-1:16*5]       = '0;
-      assign debug_bus[16*7-1:16*6]       = '0;
-      assign debug_bus[16*8-1:16*7]       = '0;
-
-      assign debug_bus[16*9-1:16*8]       = cpu_interrupts_o[15:0];
-      assign debug_bus[16*10-1:16*9]      = cpu_interrupts_o[31:16];
-      assign debug_bus[16*11-1:16*10]     = '0;
-      assign debug_bus[16*12-1:16*11]     = '0;
-      assign debug_bus[16*13-1:16*12]     = '0;
-      assign debug_bus[16*14-1:16*13]     = '0;
-      assign debug_bus[16*15-1:16*14]     = '0;
-      assign debug_bus[16*16-1:16*15]     = {1'h0, wdt_second_timeout_i,
-                                            {{(4-NUM_CPU_CORES){1'b0}}, cpu_wdt_timeout_cluster_i},
-                                            cpu_cluster_ded_i, dma_busy,
-                                            1'b0, 2'b0, 5'b0};
-    end
-  endgenerate
+  assign debug_bus[16*9-1:16*8]       = cpu_interrupts_o[15:0]    | cpu_interrupts_o[143:128];
+  assign debug_bus[16*10-1:16*9]      = cpu_interrupts_o[31:16]   | cpu_interrupts_o[159:144];
+  assign debug_bus[16*11-1:16*10]     = cpu_interrupts_o[47:32]   | cpu_interrupts_o[175:160];
+  assign debug_bus[16*12-1:16*11]     = cpu_interrupts_o[63:48]   | cpu_interrupts_o[191:176];
+  assign debug_bus[16*13-1:16*12]     = cpu_interrupts_o[79:64]   | cpu_interrupts_o[207:192];
+  assign debug_bus[16*14-1:16*13]     = cpu_interrupts_o[95:80]   | cpu_interrupts_o[223:208];
+  assign debug_bus[16*15-1:16*14]     = cpu_interrupts_o[111:96]  | cpu_interrupts_o[239:224];
+  assign debug_bus[16*16-1:16*15]     = cpu_interrupts_o[127:112] | cpu_interrupts_o[255:240];
 
   assign debug_bus[16*17-1:16*16]     = peripheral_interrupts_i[15:0];
   assign debug_bus[16*18-1:16*17]     = peripheral_interrupts_i[31:16];
@@ -572,6 +544,7 @@ module smc_base #(
     .trace_mem_resp_i                 (trace_mem_resp_i),
 
     .test_en_i                        (test_en_i),
+    .scan_rst_ni                      (scan_rst_ni),
 
     .mem_repair_done_i                (mem_repair_done_i),
     .mem_repair_success_i             (mem_repair_success_i),
@@ -654,7 +627,7 @@ module smc_base #(
   // is excluded -- covered by the watchdog). Snoop is local; config comes from
   // the cpu_ctrl register block (u_internal_regs). The three irqs are OR'd into
   // a single fault line on axi_hang_irq_o, which smc.sv feeds back into
-  // smc_peripherals to land on peripheral_interrupts[31] -> PLIC source 288.
+  // smc_peripherals to land on peripheral_interrupts[30] -> PLIC source 287.
   // Software reads the per-detector HANG_DET_*_CTRL registers to tell which
   // master stalled.
   logic hang_irq_sys_axi, hang_irq_sep_axi, hang_irq_data_accel;
@@ -728,7 +701,7 @@ module smc_base #(
     .irq_o            (hang_irq_data_accel)
   );
 
-  // Combined fault out to smc.sv, which routes it to peripheral_interrupts[31]
+  // Combined fault out to smc.sv, which routes it to peripheral_interrupts[30]
   assign axi_hang_irq_o = hang_irq_sys_axi | hang_irq_sep_axi | hang_irq_data_accel;
 
 endmodule

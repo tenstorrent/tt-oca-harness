@@ -3286,7 +3286,7 @@ module entropy_source_reg (
         if(rd_mux_addr == 9'h1c) begin
             readback_data_var[0] = hwif_in.SHA256_STATUS.BUSY.next;
             readback_data_var[7:4] = hwif_in.SHA256_STATUS.INPUT_COUNT.next;
-            readback_data_var[10:8] = hwif_in.SHA256_STATUS.OUTPUT_COUNT.next;
+            readback_data_var[11:8] = hwif_in.SHA256_STATUS.OUTPUT_COUNT.next;
         end
         if(rd_mux_addr == 9'h20) begin
             readback_data_var[0] = field_storage.FIFO_CTRL.ENABLE.value;

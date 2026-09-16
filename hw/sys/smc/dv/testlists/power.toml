@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "smc_sideband_protocol_smoke_test"
+module = "smc_sideband_protocol_smoke_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_avsbus_sanity_test"
+module = "smc_avsbus_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "functional", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_avsbus_status_depth_test"
+module = "smc_avsbus_status_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "avsbus_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_avsbus_clock_config_proxy_test"
+module = "smc_avsbus_clock_config_proxy_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "avsbus_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_octs_dual_sync_test"
+module = "smc_octs_dual_sync_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_uart_log", "u4_5_octs", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_telemetry_receiver_csr_test"
+module = "smc_telemetry_receiver_csr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_key_csr_test"
+module = "smc_wdt_key_csr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_timeout_pin_test"
+module = "smc_wdt_timeout_pin_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt", "pyuvm"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "avsbus_depth"
+tests = [
+    "smc_avsbus_status_depth_test",
+    "smc_avsbus_clock_config_proxy_test",
+]

@@ -144,7 +144,7 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
   // Single-beat write with explicit channel skew (the cocotb write_skewed
   // parity operation): aw/w_valid_delay hold that channel's VALID low for N
   // cycles before it launches — AXI permits either arrival order, so
-  // demux/regblock channel-ordering paths are exercised deliberately — and
+  // demux/regblock channel-ordering paths are exercised — and
   // b_ready_delay defers the BREADY assert after the data phase.
   task write_skewed_result(
       input bit [63:0] addr, input bit [63:0] data, output ocah_axi_item result,
@@ -187,6 +187,85 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
     read_transactions++;
     enforce_result(it, "held read from", check_response, allow_timeout);
     result = it;
+  endtask
+
+  // Two single-beat writes queued back to back (the cocotb
+  // write_pair_skewed_result parity operation): the second write's AW and
+  // W launch as soon as the first's are accepted, so under a W delay the
+  // second AW meets the responder while the first W is pending; BREADY is
+  // deferred b_ready_delay cycles after the first write's request phase
+  // and both B responses are accepted in order. `first` and `second` are
+  // the completed items in issue order; first.ax_stall_cycles and
+  // first.ax_stable observe the AW channel across the pair.
+  task write_pair_skewed_result(
+      input bit [63:0] addr_a, input bit [63:0] data_a, input bit [63:0] addr_b,
+      input bit [63:0] data_b, output ocah_axi_item first, output ocah_axi_item second,
+      input int unsigned aw_valid_delay = 0, input int unsigned w_valid_delay = 0,
+      input int unsigned b_ready_delay = 0, input bit [7:0] strb_a = 8'hFF,
+      input bit [7:0] strb_b = 8'hFF, input int size = -1, input bit [2:0] prot = '0,
+      input bit check_response = 1'b1, input bit allow_timeout = 1'b0);
+    ocah_axi_item it = ocah_axi_item::type_id::create("write_pair");
+    ocah_axi_item pair = ocah_axi_item::type_id::create("write_pair_second");
+    it.protocol       = resolve_cfg().protocol;
+    it.direction      = OCAH_AXI_DIR_WRITE;
+    it.address        = addr_a;
+    it.data_words.push_back(data_a);
+    it.strobes.push_back(resolve_strb(strb_a));
+    it.size           = resolve_size(size);
+    it.prot           = prot;
+    it.expected_beats = 1;
+    it.aw_valid_delay = aw_valid_delay;
+    it.w_valid_delay  = w_valid_delay;
+    it.b_ready_delay  = b_ready_delay;
+    pair.protocol       = it.protocol;
+    pair.direction      = OCAH_AXI_DIR_WRITE;
+    pair.address        = addr_b;
+    pair.data_words.push_back(data_b);
+    pair.strobes.push_back(resolve_strb(strb_b));
+    pair.size           = it.size;
+    pair.prot           = prot;
+    pair.expected_beats = 1;
+    it.pair             = pair;
+    do_axi(it);
+    write_transactions += 2;
+    enforce_result(it, "paired write to", check_response, allow_timeout);
+    enforce_result(pair, "paired write to", check_response, allow_timeout);
+    first  = it;
+    second = pair;
+  endtask
+
+  // Two single-beat reads with the second AR presented under an RREADY hold
+  // (the cocotb read_pair_hold_result parity operation): AR(b) launches as
+  // soon as AR(a) is accepted while RREADY stays low for hold_cycles after
+  // the first RVALID, so a responder that admits one read at a time stalls
+  // AR(b). first.hold_stable reports the hold window; first.ax_stall_cycles
+  // and first.ax_stable observe the AR channel across the pair.
+  task read_pair_hold_result(
+      input bit [63:0] addr_a, input bit [63:0] addr_b, input int unsigned hold_cycles,
+      output ocah_axi_item first, output ocah_axi_item second, input int size = -1,
+      input bit [2:0] prot = '0, input bit check_response = 1'b1, input bit allow_timeout = 1'b0);
+    ocah_axi_item it = ocah_axi_item::type_id::create("read_pair");
+    ocah_axi_item pair = ocah_axi_item::type_id::create("read_pair_second");
+    it.protocol       = resolve_cfg().protocol;
+    it.direction      = OCAH_AXI_DIR_READ;
+    it.address        = addr_a;
+    it.size           = resolve_size(size);
+    it.prot           = prot;
+    it.expected_beats = 1;
+    it.r_ready_delay  = hold_cycles;
+    pair.protocol       = it.protocol;
+    pair.direction      = OCAH_AXI_DIR_READ;
+    pair.address        = addr_b;
+    pair.size           = it.size;
+    pair.prot           = prot;
+    pair.expected_beats = 1;
+    it.pair             = pair;
+    do_axi(it);
+    read_transactions += 2;
+    enforce_result(it, "paired read from", check_response, allow_timeout);
+    enforce_result(pair, "paired read from", check_response, allow_timeout);
+    first  = it;
+    second = pair;
   endtask
 
   // Multi-beat write burst (one raw bus word per beat; strb_words empty =

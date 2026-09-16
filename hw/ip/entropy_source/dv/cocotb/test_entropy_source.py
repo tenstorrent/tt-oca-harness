@@ -125,34 +125,3 @@ async def csr_access_test(dut):
     ctrl_rd = ENTROPY_SOURCE_CTRL_reg_u()
     ctrl_rd.val = await reg_read(dut, CTRL_REG_ADDR)
     assert ctrl_rd.val == ctrl_wr.val, "CTRL register read/write mismatch!"
-
-
-# DEPRECATED # @cocotb.test()
-# DEPRECATED # async def entropy_source_sanity_test(dut):
-# DEPRECATED #     """
-# DEPRECATED #     CSR Access Test.
-# DEPRECATED #     """
-# DEPRECATED #     log = logging.getLogger("cocotb.tb")
-# DEPRECATED #     clock_period_ns = 1
-# DEPRECATED #
-# DEPRECATED #     await init_entropy_source(dut)
-# DEPRECATED #     await start_dut_clk(dut, clock_period_ns)
-# DEPRECATED #     await reset_dut(dut)
-# DEPRECATED #     await configure_entropy_source(dut)
-# DEPRECATED #
-# DEPRECATED #     log.info("Waiting for 64 * 64 = 4096 clock cycles for one FIFO push...")
-# DEPRECATED #     await ClockCycles(dut.clk_i, 5000)
-# DEPRECATED #
-# DEPRECATED #     log.info("Setting CTRL.DOWNSAMPLE_RATE to 0...")
-# DEPRECATED #     ctrl_wr = ENTROPY_SOURCE_CTRL_reg_u()
-# DEPRECATED #     ctrl_wr.f.downsample_rate = 0
-# DEPRECATED #     await reg_write(dut, CTRL_REG_ADDR, ctrl_wr.val)
-# DEPRECATED #
-# DEPRECATED #     log.info(
-# DEPRECATED #         "Waiting for 64 * 64 = 4096 clock cycles for new down-sampling rate to take effect..."
-# DEPRECATED #     )
-# DEPRECATED #     await ClockCycles(dut.clk_i, 5000)
-# DEPRECATED #
-# DEPRECATED #     log.info(
-# DEPRECATED #         "Test complete. Please check the waveform to make sure it is correct. The test itself has no assertions."
-# DEPRECATED #     )

@@ -14,6 +14,6 @@ class dtp_ctm_wire_or_ctp_to_cla_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "ctm_wire_or_ctp_to_cla",
             scenario="ctm_wire_or_ctp_to_cla",
-            specific_env="DTP_CTM_WIRE_OR_CTP_TO_CLA_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_CTM_WIRE_OR_CTP_TO_CLA_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

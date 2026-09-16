@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS PyUVM iJTAG-adjacent pin-level smoke (Batch C)."""
+"""SMC OSS PyUVM iJTAG-adjacent pin-level smoke."""
 
 from __future__ import annotations
 
@@ -18,14 +18,20 @@ from smc_base_test import smc_base_test
 class smc_ijtag_basic_test(smc_base_test):
     """Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario."""
 
+    required_evidence = (
+        "CHK-CPU-JTAG-DTMCS",
+        "CHK-CPU-JTAG-IDCODE",
+        "CHK-CPU-JTAG-SCAN-ACTIVITY",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         seq = smc_ijtag_basic_test_seq("ijtag_basic_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         # Returns the tb_cpu_jtag_tck rising edges it measured at the pin, and
-        # asserts them against MIN_CPU_JTAG_TCK_EDGES inside the helper. Before
-        # round 3 the JTAG scans on this record had NO activity floor at all --
+        # asserts them against MIN_CPU_JTAG_TCK_EDGES inside the helper:
         # `min_csr_accesses` below counts SEP_IN AXI CSR traffic from
         # smc_ijtag_basic_test_seq, which is unrelated to the TAP.
         tck_edges = await check_cpu_jtag_pin_vip()

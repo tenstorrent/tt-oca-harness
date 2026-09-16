@@ -6,7 +6,7 @@
 // different streams), width masks, and the directed pattern set every
 // data-path scan starts from. The random draws use the calling process's
 // RNG, which the scenario body seeds first (ocah_sequence::seed_scenario_rng).
-// The cocotb twin is ocah_lib.ocah_rng with the same pattern set.
+// The cocotb twin is ocah_lib.OcahRng with the same pattern set.
 
 class ocah_rng;
 

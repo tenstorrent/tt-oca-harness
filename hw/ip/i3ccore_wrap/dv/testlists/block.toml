@@ -1,0 +1,312 @@
+# SPDX-License-Identifier: Apache-2.0
+schema_version = 1
+
+# One entry per regression module. `module` is the Python file basename
+# (cocotb MODULE=). dv/cocotb/tests/ also holds i3c_ibi_diag, an IBI receive
+# diagnostic that is intentionally not listed here.
+
+[[tests]]
+name = "test_i3ccore"
+module = "test_i3ccore"
+seed = 1
+timeout_sec = 1800
+tags = ["xresolve"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_immediate_write_sanity"
+module = "i3c_immediate_write_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "sanity"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_write_read_sanity"
+module = "i3c_write_read_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "sanity"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_long_write_sanity"
+module = "i3c_long_write_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["sanity"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_long_read_sanity"
+module = "i3c_long_read_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["sanity"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_direct_ccc_sanity"
+module = "i3c_direct_ccc_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ccc"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_ibi_sanity"
+module = "i3c_ibi_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ibi"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_error_sanity"
+module = "i3c_error_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["error"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_reg_reset_value_full"
+module = "i3c_reg_reset_value_full"
+seed = 1
+timeout_sec = 1800
+tags = ["regs"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_full_ccc_matrix"
+module = "i3c_full_ccc_matrix"
+seed = 1
+timeout_sec = 1800
+tags = ["ccc"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_setnewda"
+module = "i3c_setnewda"
+seed = 1
+timeout_sec = 1800
+tags = ["ccc"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_pp_timing_transfer"
+module = "i3c_pp_timing_transfer"
+seed = 1
+timeout_sec = 1800
+tags = ["timing"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_od_pp_mode_switch"
+module = "i3c_od_pp_mode_switch"
+seed = 1
+timeout_sec = 1800
+tags = ["timing"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_threshold_sweep"
+module = "i3c_threshold_sweep"
+seed = 1
+timeout_sec = 1800
+tags = ["fifo"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_max_length_transfer"
+module = "i3c_max_length_transfer"
+seed = 1
+timeout_sec = 1800
+tags = ["xfer"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_back_to_back"
+module = "i3c_back_to_back"
+seed = 1
+timeout_sec = 1800
+tags = ["xfer"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_broadcast_ccc"
+module = "i3c_broadcast_ccc"
+seed = 1
+timeout_sec = 1800
+tags = ["ccc"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_ibi_payload_variants"
+module = "i3c_ibi_payload_variants"
+seed = 1
+timeout_sec = 1800
+tags = ["ibi"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_ibi_nack_disabled"
+module = "i3c_ibi_nack_disabled"
+seed = 1
+timeout_sec = 1800
+tags = ["ibi"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_error_parity_inject"
+module = "i3c_error_parity_inject"
+seed = 1
+timeout_sec = 1800
+tags = ["error"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_error_target_abort"
+module = "i3c_error_target_abort"
+seed = 1
+timeout_sec = 3600
+tags = ["error"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_multi_target_dat"
+module = "i3c_multi_target_dat"
+seed = 1
+timeout_sec = 1800
+tags = ["multi"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_multi_instance_indep"
+module = "i3c_multi_instance_indep"
+seed = 1
+timeout_sec = 1800
+tags = ["multi"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_axi_protocol"
+module = "i3c_axi_protocol"
+seed = 1
+timeout_sec = 1800
+tags = ["axi"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_recovery_reset_iface"
+module = "i3c_recovery_reset_iface"
+seed = 1
+timeout_sec = 1800
+tags = ["reset"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_reset_mid_transaction"
+module = "i3c_reset_mid_transaction"
+seed = 1
+timeout_sec = 1800
+tags = ["reset"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_random_ccc_stress"
+module = "i3c_random_ccc_stress"
+seed = 1
+timeout_sec = 3600
+tags = ["random"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_random_transfer_stress"
+module = "i3c_random_transfer_stress"
+seed = 1
+timeout_sec = 3600
+tags = ["random"]
+run_modes = ["block"]
+
+[[tests]]
+name = "i3c_tx_capacity_512"
+module = "i3c_tx_capacity_512"
+seed = 1
+timeout_sec = 1800
+tags = ["fifo"]
+run_modes = ["block"]
+
+# +i3c_vip_target takes the RTL target peer off the shared bus, so this entry must
+# not be selected without it.
+[[tests]]
+name = "i3c_vip_write_read_sanity"
+module = "i3c_vip_write_read_sanity"
+seed = 1
+timeout_sec = 1800
+tags = ["vip", "sanity"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_long_write_sanity"
+module = "i3c_vip_long_write_sanity"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "sanity"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_long_read_sanity"
+module = "i3c_vip_long_read_sanity"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "sanity"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_back_to_back"
+module = "i3c_vip_back_to_back"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "xfer"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_pp_timing_transfer"
+module = "i3c_vip_pp_timing_transfer"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "timing"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_od_pp_mode_switch"
+module = "i3c_vip_od_pp_mode_switch"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "timing"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_threshold_sweep"
+module = "i3c_vip_threshold_sweep"
+seed = 1
+timeout_sec = 3600
+tags = ["vip", "fifo"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]
+
+[[tests]]
+name = "i3c_vip_short_read"
+module = "i3c_vip_short_read"
+seed = 1
+timeout_sec = 1800
+tags = ["vip", "error"]
+run_modes = ["block"]
+args = ["+i3c_vip_target"]

@@ -23,7 +23,7 @@ class ocah_axi_config extends uvm_object;
   int unsigned        data_width = 32;
   int unsigned        id_width   = 0;
 
-  // Component gating (mirrors the SEP KM trio pattern structurally).
+  // Component gating.
   bit en_monitor    = 1'b1;
   bit en_ref_model  = 1'b1;
   bit en_scoreboard = 1'b1;

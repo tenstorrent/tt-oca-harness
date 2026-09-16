@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
-# Nightly Tier A: commercial UART depth BFMs.
+# BFM rebuilds of the commercial UART depth tests.
 [[tests]]
 name = "smc_uart_fifo_basic_trigger_reset_test"
 module = "smc_uart_fifo_basic_trigger_reset_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+tags = ["ci", "uart", "depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -16,7 +16,7 @@ name = "smc_uart_irq_sources_priority_test"
 module = "smc_uart_irq_sources_priority_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+tags = ["ci", "uart", "depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -24,7 +24,7 @@ name = "smc_uart_error_conditions_test"
 module = "smc_uart_error_conditions_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+tags = ["ci", "uart", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_uart_cross_3to0"]
 
@@ -33,7 +33,7 @@ name = "smc_uart_baud_word_parity_format_test"
 module = "smc_uart_baud_word_parity_format_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+tags = ["ci", "uart", "depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -41,7 +41,7 @@ name = "smc_uart_extremes_misc_test"
 module = "smc_uart_extremes_misc_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+tags = ["ci", "uart", "depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -49,7 +49,7 @@ name = "smc_uart_sanity_test"
 module = "smc_uart_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "tier_a_pilot", "pyuvm"]
+tags = ["ci", "uart", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_uart_cross_3to0"]
 
@@ -62,4 +62,34 @@ tests = [
     "smc_uart_baud_word_parity_format_test",
     "smc_uart_extremes_misc_test",
     "smc_uart_sanity_test",
+]
+
+[[tests]]
+name = "smc_uart_spi_log_engine_test"
+module = "smc_uart_spi_log_engine_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_log_engine_reg_rw_test"
+module = "smc_uart_log_engine_reg_rw_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_uart_log", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_loopback_test"
+module = "smc_uart_loopback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_uart_log", "pyuvm"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "depth_uart_log"
+tests = [
+    "smc_uart_log_engine_reg_rw_test",
 ]

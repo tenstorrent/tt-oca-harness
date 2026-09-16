@@ -3,13 +3,13 @@
 """Discriminate the Xcelium SYS_OUT write hang: AW vs W at both ends.
 
 After the outbound filter is programmed pass-all, one JTAG AXI write is issued
-at the TB axi_sim_mem window (0x0200_0000). A clocked sticky observer records
+at the SYS_OUT responder window (0x0200_0000). A clocked sticky observer records
 whether AW/W/B ever handshook on the JTAG ingress and on the SYS_OUT boundary.
 
-Healthy path: write completes and every channel handshook. The claimed
-four-state hang is AW-at-SYS_OUT without W-at-SYS_OUT after JTAG W was
-accepted. Those two outcomes are different assertion texts so a bare timeout
-cannot be mistaken for the split.
+Healthy path: write completes and every channel handshook. The four-state
+hang this test discriminates is AW-at-SYS_OUT without W-at-SYS_OUT after JTAG
+W was accepted. Those two outcomes are different assertion texts so a bare
+timeout cannot be mistaken for the split.
 """
 
 from __future__ import annotations
@@ -46,8 +46,9 @@ class _HandshakeWatch:
 
 
 async def _watch_handshakes(dut, watch: _HandshakeWatch) -> None:
-    # SYS_OUT axi_sim_mem applies ready 1 ns after the edge (ApplDelay). A
-    # posedge-only sample therefore misses W even when the write completes.
+    # The SYS_OUT responder drives READY from cocotb in the clock-edge delta
+    # cycles, so a posedge-only sample can miss W even when the write completes;
+    # a 1 ns poll in the read-only phase sees every handshake.
     while not watch.stop:
         await Timer(1, unit="ns")
         await ReadOnly()
@@ -70,6 +71,9 @@ def _fmt_watch(watch: _HandshakeWatch) -> str:
 @pyuvm.test()
 class smc_sys_out_aw_w_split_test(smc_base_test):
     """One SYS_OUT write; fail specifically on AW-without-W at the boundary."""
+
+    required_evidence = ("CHK-SYS-OUT-WR-COMPLETE",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 

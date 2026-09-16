@@ -5,8 +5,7 @@
 Observation-style UVM agent: the driver consumes ``SmcI2cItem`` transactions
 and samples the top-level I2C observability ports of ``smc_uvm_top``. Each
 completed transaction is broadcast on an analysis port so the scoreboard can
-verify the post-reset state. Active master/target stimulus lands later when
-the OSS top exposes I2C SCL/SDA.
+verify the post-reset state.
 """
 
 from __future__ import annotations

@@ -65,19 +65,18 @@ int main(void) {
     /* Start with prefetch disabled */
     DRBG_CFG_REG.w = 0;
 
-    /* Step 1: Get the next pending value from the TB (this is what HW will prefetch) */
+    /* Get the next pending value from the TB (this is what HW will prefetch) */
     if (!tb_drbg_get_next_value(&expected, 1000)) {
         TEST_FAIL("tb_drbg_get_next_value (initial) failed");
     }
 
-    /* Step 2: Enable prefetch */
     TEST_SUBTEST_START("DRBG prefetch enable");
     DRBG_CFG_REG.f.prefetch = 1;
     TEST_ASSERT_EQ(DRBG_CFG_REG.f.prefetch, 1u, "CFG.PREFETCH");
     TEST_SUBTEST_PASS();
 
-    /* Steps 3–6: Loop – get next expected at start (value TB will send when we read DATA); compare
-     * and read; then expected for next iter is that value */
+    /* Loop: get next expected at start (value TB will send when we read DATA); compare and
+     * read; then expected for next iter is that value */
     for (int i = 0; i < PREFETCH_LOOP_ITERATIONS; i++) {
         uint32_t next_expected;
         const char *subtest_name = (i == 0)   ? "DRBG prefetch iter 1"
@@ -99,11 +98,11 @@ int main(void) {
             TEST_FAIL("PREFETCHED not set within timeout");
         }
 
-        /* Step 3: PREFETCH_DATA should match value we got from TB (expected for this iteration) */
+        /* PREFETCH_DATA should match value we got from TB (expected for this iteration) */
         prefetch_val = DRBG_PREFETCH_DATA_REG.f.data;
         TEST_ASSERT_EQ(prefetch_val, expected, "PREFETCH_DATA");
 
-        /* Step 4: DATA read returns same value (consumes prefetch; RTL handshakes and prefetch gets
+        /* DATA read returns same value (consumes prefetch; RTL handshakes and prefetch gets
          * next_expected) */
         data_val = DRBG_DATA_REG.f.data;
         TEST_ASSERT_EQ(data_val, expected, "DATA");

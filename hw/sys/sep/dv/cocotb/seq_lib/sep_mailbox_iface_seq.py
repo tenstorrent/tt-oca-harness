@@ -7,9 +7,9 @@ the SEP/CPU side of the two-port cross-FIFO, reachable with NO inbound filter. T
 is the TX-path test (as in the reference suite): WRITE_DATA pushes the TX FIFO; READ_DATA
 pops the RX FIFO, which is empty on bare-sep (no peer port wired) -> read returns
 the 0xFEEDDEAD sentinel + SLVERR. Over the CPU-LSU master WRITE_DATA is accessed as
-a single native 64-bit beat = one FIFO entry (a 32-bit sub-word write to WRITE_DATA
-+0x04 SLVERRs; the 32->64 combine exists only on the external 32-bit-downsized
-smn_inbound path, not here). 32-bit CSRs use 4-byte beats.
+a single native 64-bit beat = one FIFO entry (``memory_map.adoc`` / mailbox
+docs: WRITE_DATA is 64-bit). The push side is addressed at +0x00. 32-bit CSRs
+use 4-byte beats.
 
 Register constants + the golden depth model live in env/sep_mbox_golden.py.
 """
@@ -19,8 +19,9 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from env.sep_mbox_golden import (
     CLOCK_GATE_CTRL,
-    CLOCK_GATE_MAILBOX,
+    CLOCK_GATE_IMPL_MASK,
     CTRL,
+    CTRL_WFLUSH,
     OUTBOUND_BASE,
     READ_DATA,
     WRITE_DATA,
@@ -37,7 +38,7 @@ class SepMbox(SepAxiRegDriver):
 
     async def ungate_clock(self) -> None:
         cur = await self._rd(CLOCK_GATE_CTRL)
-        await self._wr(CLOCK_GATE_CTRL, cur | CLOCK_GATE_MAILBOX)
+        await self._wr(CLOCK_GATE_CTRL, cur | CLOCK_GATE_IMPL_MASK)
 
     # --- 32-bit CSRs --------------------------------------------------------
     async def wr_csr(self, off: int, val: int) -> None:
@@ -77,7 +78,19 @@ class SepMbox(SepAxiRegDriver):
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata
 
+    async def rd_write_data(self) -> tuple[int, int]:
+        """Read the write-only WRITE_DATA register. Returns (resp, data)."""
+        seq = SepAxiAccessSeq(
+            "mbox_rd_wdata",
+            op=SepAxiOp.READ,
+            addr=OUTBOUND_BASE + WRITE_DATA,
+            length=8,
+            size=None,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code, seq.rdata
+
     # --- FIFO control -------------------------------------------------------
     async def flush_write(self) -> None:
         """CTRL.wflush (bit 0) drains the TX FIFO."""
-        await self._wr(OUTBOUND_BASE + CTRL, 0x1)
+        await self._wr(OUTBOUND_BASE + CTRL, CTRL_WFLUSH)

@@ -26,6 +26,31 @@ plus a noun.
 | `ocah_knobs`, `ocah_rng` | none | plusarg accessor; seed salting and directed patterns |
 
 `uvm/` is the SystemVerilog realization (`ocah_lib_pkg`, entered through
-`uvm/sources.toml` ahead of the protocol VIP manifests). The cocotb realization
-carries the same basenames under `cocotb/` when it lands. The reference bench is
-`hw/sys/dtp/dv/`.
+`uvm/sources.toml` ahead of the protocol VIP manifests). `cocotb/` is the
+PyUVM realization with the same basenames, one module per base; the Python
+class takes the basename in CamelCase with acronyms written as words
+(`ocah_test` is `OcahTest`, `ocah_rng` is `OcahRng`), and the package root
+re-exports every class, so a bench writes `from ocah_lib import OcahTest`.
+The `ocah-dv` package finds it under `hw/common/dv/vip/` with the protocol
+VIPs; a DUT sim config reaches it through the same `python_paths` entry. The
+reference bench is `hw/sys/dtp/dv/`.
+
+The two realizations differ only where the language forces it:
+
+| Aspect | cocotb (`cocotb/`) | SV-UVM (`uvm/`) |
+|---|---|---|
+| Knob transport | environment variables (`OcahKnobs`) | plusargs (`ocah_knobs`) |
+| Seed source | `RANDOM_SEED`, read once by `OcahTest.base_seed` | `+ntb_random_seed`, read once by `ocah_test::base_seed` |
+| Per-pass randomness | `OcahSequence.rng(label)`: one `random.Random` per helper, seeded by `OcahRng.salted_seed` | `seed_scenario_rng()` seeds the `body()` process once; helpers draw from `$urandom` |
+| Looped scenario | `run_looped_scenario()` over the same hooks, plus `start_looped_seq(seq_cls, ...)` since a class is a value | `run_looped_scenario()` over `create_scenario_seq()` |
+| Scoreboard verdict | a mismatch or an unpaired item folds into the feature's `CHK-SB-*` record, which fails `check_phase` through `OcahChecker.finalize` | a mismatch or an unpaired item is a `uvm_error` at once |
+| Run verdict | an exception escaping a phase; `results.xml`; no banner from test code | `UVM_ERROR`/`UVM_FATAL` counts plus `UVM TEST PASSED` from `report_phase` |
+
+Knob names, feature names, `CHK-SB-*` IDs, the loop-count resolution order,
+`MIN_DEFAULT_LOOPS`, the salt formula, and the directed pattern prefix are
+identical; `cocotb/examples/example_ocah_lib_selftest.py` pins the shared
+values and exercises the scoreboard pairing contract without a simulator:
+
+```bash
+PYTHONPATH=hw/common/dv/vip python3 -m ocah_lib.cocotb.examples.example_ocah_lib_selftest
+```

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Temporal scan-control window monitor: counts high samples of named
-// dtp_tb_if scan observables once per TCK cycle while a window is open, so
+// dtp_scan_if scan observables once per TCK cycle while a window is open, so
 // a gated resource proves ZERO control pulses across a whole scan and an
 // enabled one proves the expected pulses occurred (post-scan snapshots
 // cannot). Samples ride the shared JTAG monitor's STEP events, which land
@@ -17,7 +17,7 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
   `uvm_component_utils(dtp_scan_window_monitor)
 
   // Handed by dtp_env: the scan-control observables.
-  virtual dtp_tb_if tb_vif;
+  virtual dtp_scan_if scan_vif;
 
   protected bit          m_active;
   protected string       m_signals[$];
@@ -30,7 +30,8 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    if (tb_vif == null) `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not set by the env")
+    if (scan_vif == null)
+      `uvm_fatal(get_type_name(), "virtual dtp_scan_if `scan_vif` not set by the env")
   endfunction
 
   // One sample per TCK cycle while the window is open.
@@ -65,34 +66,44 @@ class dtp_scan_window_monitor extends ocah_subscriber #(ocah_jtag_event);
                 UVM_MEDIUM)
   endfunction
 
-  // Named scan observable (iJTAG SIB controls, STAP forwarding pins, STAP
-  // host scan controls).
+  // Named scan observable (boundary-scan controls, iJTAG SIB controls, STAP
+  // forwarding pins, STAP host scan controls).
   function bit sample_scan_signal(string name);
     case (name)
-      "jtag_dft_secure_select":     return tb_vif.jtag_dft_secure_select;
-      "jtag_dft_secure_shift_en":   return tb_vif.jtag_dft_secure_shift_en;
-      "jtag_dft_secure_capture_en": return tb_vif.jtag_dft_secure_capture_en;
-      "jtag_dft_secure_update_en":  return tb_vif.jtag_dft_secure_update_en;
-      "jtag_dft_select":            return tb_vif.jtag_dft_select;
-      "jtag_dft_shift_en":          return tb_vif.jtag_dft_shift_en;
-      "jtag_dft_capture_en":        return tb_vif.jtag_dft_capture_en;
-      "jtag_dft_update_en":         return tb_vif.jtag_dft_update_en;
-      "jtag_dfd_select":            return tb_vif.jtag_dfd_select;
-      "jtag_dfd_shift_en":          return tb_vif.jtag_dfd_shift_en;
-      "jtag_dfd_capture_en":        return tb_vif.jtag_dfd_capture_en;
-      "jtag_dfd_update_en":         return tb_vif.jtag_dfd_update_en;
-      "jtag_stap_io_tms":           return tb_vif.jtag_stap_io_tms;
-      "jtag_stap_io_tdo_oen":       return tb_vif.jtag_stap_io_tdo_oen;
-      "jtag_stap_smc_tms":          return tb_vif.jtag_stap_smc_tms;
-      "jtag_stap_smc_tdo_oen":      return tb_vif.jtag_stap_smc_tdo_oen;
-      "jtag_stap_sep_tms":          return tb_vif.jtag_stap_sep_tms;
-      "jtag_stap_sep_tdo_oen":      return tb_vif.jtag_stap_sep_tdo_oen;
-      "jtag_stap_extra0_tms":       return tb_vif.jtag_stap_extra0_tms;
-      "jtag_stap_extra0_tdo_oen":   return tb_vif.jtag_stap_extra0_tdo_oen;
-      "jtag_stap_host_select":      return tb_vif.jtag_stap_host_select;
-      "jtag_stap_host_shift_en":    return tb_vif.jtag_stap_host_shift_en;
-      "jtag_stap_host_capture_en":  return tb_vif.jtag_stap_host_capture_en;
-      "jtag_stap_host_update_en":   return tb_vif.jtag_stap_host_update_en;
+      "jtag_bsr_select":            return scan_vif.jtag_bsr_select;
+      "jtag_bsr_shift_en":          return scan_vif.jtag_bsr_shift_en;
+      "jtag_bsr_capture_en":        return scan_vif.jtag_bsr_capture_en;
+      "jtag_bsr_update_en":         return scan_vif.jtag_bsr_update_en;
+      "jtag_bsr_run_test_idle":     return scan_vif.jtag_bsr_run_test_idle;
+      "jtag_bsr_test_logic_reset":  return scan_vif.jtag_bsr_test_logic_reset;
+      "jtag_bsr_runbist":           return scan_vif.jtag_bsr_runbist;
+      "jtag_dft_secure_select":     return scan_vif.jtag_dft_secure_select;
+      "jtag_dft_secure_shift_en":   return scan_vif.jtag_dft_secure_shift_en;
+      "jtag_dft_secure_capture_en": return scan_vif.jtag_dft_secure_capture_en;
+      "jtag_dft_secure_update_en":  return scan_vif.jtag_dft_secure_update_en;
+      "jtag_dft_select":            return scan_vif.jtag_dft_select;
+      "jtag_dft_shift_en":          return scan_vif.jtag_dft_shift_en;
+      "jtag_dft_capture_en":        return scan_vif.jtag_dft_capture_en;
+      "jtag_dft_update_en":         return scan_vif.jtag_dft_update_en;
+      "jtag_dft_run_test_idle":     return scan_vif.jtag_dft_run_test_idle;
+      "jtag_dft_test_logic_reset":  return scan_vif.jtag_dft_test_logic_reset;
+      "jtag_dft_runbist":           return scan_vif.jtag_dft_runbist;
+      "jtag_dfd_select":            return scan_vif.jtag_dfd_select;
+      "jtag_dfd_shift_en":          return scan_vif.jtag_dfd_shift_en;
+      "jtag_dfd_capture_en":        return scan_vif.jtag_dfd_capture_en;
+      "jtag_dfd_update_en":         return scan_vif.jtag_dfd_update_en;
+      "jtag_stap_io_tms":           return scan_vif.jtag_stap_io_tms;
+      "jtag_stap_io_tdo_oen":       return scan_vif.jtag_stap_io_tdo_oen;
+      "jtag_stap_smc_tms":          return scan_vif.jtag_stap_smc_tms;
+      "jtag_stap_smc_tdo_oen":      return scan_vif.jtag_stap_smc_tdo_oen;
+      "jtag_stap_sep_tms":          return scan_vif.jtag_stap_sep_tms;
+      "jtag_stap_sep_tdo_oen":      return scan_vif.jtag_stap_sep_tdo_oen;
+      "jtag_stap_extra0_tms":       return scan_vif.jtag_stap_extra0_tms;
+      "jtag_stap_extra0_tdo_oen":   return scan_vif.jtag_stap_extra0_tdo_oen;
+      "jtag_stap_host_select":      return scan_vif.jtag_stap_host_select;
+      "jtag_stap_host_shift_en":    return scan_vif.jtag_stap_host_shift_en;
+      "jtag_stap_host_capture_en":  return scan_vif.jtag_stap_host_capture_en;
+      "jtag_stap_host_update_en":   return scan_vif.jtag_stap_host_update_en;
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown scan observable '%s'", name))
         return 1'b0;

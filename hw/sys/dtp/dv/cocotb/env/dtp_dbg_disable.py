@@ -2,9 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Canonical DTP debug-disable metadata.
 
-The DUT takes ``sep_lifecycle_ctrl_pkg::dbg_disable_t``: eleven pre-resolved
-active-high disables, one per gated interface (1 = interface disabled).
-``tb_top.sv`` exposes one scalar input per field, named ``dbg_disable_<field>``.
+The DUT's ``dbg_disable_i`` port carries eleven pre-resolved active-high
+disables, one per gated path (1 = path disabled); the Debug Disable table in
+``hw/sys/dtp/doc/jtag.adoc`` names them. ``dtp_tb_if`` exposes one
+``dbg_disable_<field>`` member per name and binds each to its struct field,
+so this module holds the name set and the per-path name maps only.
 Deriving these disables from lifecycle policy is SEP-level behavior; DTP DV
 drives and checks each field directly.
 """
@@ -13,7 +15,18 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-# Declaration order of sep_lifecycle_ctrl_pkg::dbg_disable_t (MSB first).
+__all__ = [
+    "DBG_DISABLE_FIELDS",
+    "IJTAG_SIB_DISABLE",
+    "JTAG2AXI_DISABLE",
+    "STAP_DISABLE",
+    "format_dbg_disable",
+    "full_dbg_disable",
+    "validate_dbg_disable",
+]
+
+# The eleven disable fields in the row order of the Debug Disable table in
+# hw/sys/dtp/doc/jtag.adoc; the order serves logging only.
 DBG_DISABLE_FIELDS: tuple[str, ...] = (
     "stap_io",
     "stap_smc",
@@ -68,7 +81,7 @@ def full_dbg_disable(values: Mapping[str, int] | None = None) -> dict[str, int]:
 
 
 def format_dbg_disable(values: Mapping[str, int]) -> str:
-    """Deterministic 'field=value' log string in struct declaration order."""
+    """Deterministic 'field=value' log string in table order."""
     return " ".join(
         f"{name}={int(values[name]) & 1}" for name in DBG_DISABLE_FIELDS if name in values
     )

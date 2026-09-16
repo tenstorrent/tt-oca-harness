@@ -6,7 +6,7 @@
 // outputs and the fuse-sense / warm-domain release observables the
 // sequences and the scoreboard read, the cold-reset assertion counter the
 // scoreboard predictors re-baseline on, and the AXI SVA enable.
-// Deliberately separate from the shared ocah_axi_if, which carries generic
+// Separate from the shared ocah_axi_if, which carries generic
 // AXI pins only. Sequences, checkers, and the scoreboard reach DUT-local
 // signals only through this interface. The cocotb realization exposes the
 // same pins as tb_top ports driven from smc_base_test.
@@ -44,5 +44,8 @@ interface smc_tb_if;
 
   // Runtime enable for the shared AXI protocol SVA checker.
   logic axi_sva_en = 1'b1;
+
+  // Runtime enable for the shared JTAG protocol SVA checker on the CPU TAP.
+  logic jtag_sva_en = 1'b1;
 
 endinterface : smc_tb_if

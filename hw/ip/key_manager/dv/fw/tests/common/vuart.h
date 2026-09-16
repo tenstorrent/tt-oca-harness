@@ -75,11 +75,8 @@ static inline int vuart_print_enabled(void) {
  * @param c Character to transmit
  */
 static inline void vuart_putc(char c) {
-    /* In simulation, TX is always ready (instant capture by testbench).
-     * Skip the wait loop to avoid hangs if hardware isn't perfectly set up.
-     * For real UART, you would wait for TX ready here.
-     */
-
+    /* TX is always ready: the testbench captures each byte the cycle it is
+     * written, so there is no ready wait. */
     VUART_TX_REG.f.tx_byte = (uint32_t)c;
     VUART_TX_REG.f.data_valid = 1;
 }
@@ -89,11 +86,9 @@ static inline void vuart_putc(char c) {
  * @return Received character
  */
 static inline char vuart_getc(void) {
-    /* Wait for RX data valid */
     while (!vuart_rx_valid()) {
     }
 
-    /* Read and return character */
     return (char)VUART_RX_REG.f.rx_byte;
 }
 

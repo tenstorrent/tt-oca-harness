@@ -22,7 +22,7 @@
 //   ocah_axi_master_config.svh    — master cfg: vif, geometry, watchdog
 //   ocah_axi_checker.svh          — AXI checker identity over the shared
 //                                   ocah_checker evidence base
-//                                   (ocah_checker_uvm_pkg, issue #1132)
+//                                   (ocah_checker_uvm_pkg)
 //   ocah_axi_monitor.svh          — passive burst reconstruction (per-ID
 //                                   pairing; side-neutral bus observer)
 //   ocah_axi_ref_model.svh        — shadow memory + expected-item prediction
@@ -42,8 +42,8 @@
 //   ocah_axi_master_env.svh       — master env (frozen surface: m_sequencer,
 //                                   cfg; the commercial-override unit)
 //
-// The clean-room SVA protocol checker (sva/ocah_axi_sva.sv) and
-// the behavioral responders (sv/ocah_axi{l,}_ram_responder.sv) are module
+// The clean-room SVA protocol checker (sva/ocah_axi_sva.sv) and the
+// struct-port bridge (interface/ocah_axi_struct_bridge.sv) are module
 // collateral compiled alongside this package, not part of it.
 
 `timescale 1ns / 1ps

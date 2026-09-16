@@ -5,18 +5,18 @@
  * @file main.c
  * @brief OCTS P0 Credit Test - DUT as PRIMARY, BFM as SECONDARY
  *
- * Genuine PRIMARY/SECONDARY OCTS credit-mechanism test.
+ * PRIMARY/SECONDARY OCTS credit-mechanism test.
  *
  * The OCTS SECONDARY datapath cannot be exercised with the DUT strapped SECONDARY in
  * this single-DUT-firmware testbench: the RTL SECONDARY trips ExpectedCountValid_A the
  * instant it sees a credit before being enabled by a sync_load, and that ordering cannot
- * be guaranteed across two independently-booting chiplets without changing hw/ RTL (not
- * permitted). Instead the DUT runs as OCTS PRIMARY and the master-BFM chiplet as OCTS
- * SECONDARY (booting the st_octs_p1_credit_test ROM). The DUT PRIMARY generates the
- * credit stream on GPIO[59]; the BFM SECONDARY accumulates credits and advances its
- * timer. The cocotb checker (check_primary_secondary_sync) performs a REAL cross-chiplet
- * verification (credit/sync alignment + timer_count tracking within a margin), and this
- * firmware reports its own PRIMARY verdict in scratch[0].
+ * be guaranteed across two independently-booting chiplets. The DUT therefore runs as
+ * OCTS PRIMARY and the master-BFM chiplet as OCTS SECONDARY (booting the
+ * st_octs_p1_credit_test ROM). The DUT PRIMARY generates the credit stream on GPIO[59];
+ * the BFM SECONDARY accumulates credits and advances its timer. The cocotb checker
+ * (check_primary_secondary_sync) performs the cross-chiplet verification (credit/sync
+ * alignment + timer_count tracking within a margin), and this firmware reports its own
+ * PRIMARY verdict in scratch[0].
  */
 
 #include <stdint.h>

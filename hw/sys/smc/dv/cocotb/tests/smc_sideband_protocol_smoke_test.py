@@ -29,6 +29,18 @@ SIDEBAND_MIN_CSR_ACCESSES = 11
 class smc_sideband_protocol_smoke_test(smc_base_test):
     """Run the AVSBus sideband CSR representative precheck."""
 
+    required_evidence = (
+        "CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE",
+        "CHK-AVS-FIFOS-STATUS",
+        "CHK-AVS-INTERRUPT-MASK",
+        "CHK-AVS-INTERRUPT-W1C",
+        "CHK-AVS-NORMAL-STATUS",
+        "CHK-AVS-READBACK-EMPTY-FIFO-READ",
+        "CHK-AVS-READBACK-POINTER-ADVANCE",
+        "CHK-AVS-SLAVE-STATUS",
+    )
+    min_evidence = 8
+
     # No AUTO-COVERAGE-STAMP: this scenario records its own protocol VIP item
     # from measured counts below, so the base-test activity stamp would only add
     # a second, weaker record of the same traffic.
@@ -44,8 +56,7 @@ class smc_sideband_protocol_smoke_test(smc_base_test):
             # No timeout statistic is published: every access in this sequence
             # leaves `allow_timeout` False, so the driver raises on expiry and
             # `seq.timeouts` can only ever be 0 here. Reporting that structural
-            # zero would advertise a measurement that was never taken
-            # .
+            # zero would advertise a measurement that was never taken.
             timeouts=None,
             min_csr_accesses=SIDEBAND_MIN_CSR_ACCESSES,
             details=(

@@ -360,7 +360,7 @@ localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_BUSY_SHIFT                 
 localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_INPUT_COUNT_MASK                                             = 32'hF0;
 localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_INPUT_COUNT_SHIFT                                            = 4;
 
-localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_OUTPUT_COUNT_MASK                                            = 32'h700;
+localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_OUTPUT_COUNT_MASK                                            = 32'hF00;
 localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_OUTPUT_COUNT_SHIFT                                           = 8;
 
 localparam int unsigned ENTROPY_SOURCE_FIFO_CTRL_ENABLE_MASK                                                      = 32'h1;
@@ -720,7 +720,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [2:0]   output_count ;
+    logic [3:0]   output_count ;
     logic [3:0]   input_count ;
     logic [2:0]   rsvd_0 ;
     logic [0:0]   busy ;

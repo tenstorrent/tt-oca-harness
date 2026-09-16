@@ -40,17 +40,30 @@ Isolation proof (both directions, then the remaining isolated bits):
                     claimed. KM (bit 0) stays held at the reset default and is
                     not claimed.
   * CHK-ISOLATE-*   while HMAC's SW_RESET_N is held, the same DIGEST_0 address
-                    that just returned OKAY + the golden digest returns DECERR
-                    on read; a write to HMAC CFG also DECERR; AES DATA_OUT_0
+                    that just returned OKAY + the golden digest returns SLVERR
+                    on read and does not return that live digest; a write to
+                    HMAC CFG also SLVERR; AES DATA_OUT_0
                     on the sibling port stays OKAY; SW_RESET_N readback shows
                     the HMAC bit low; after release DIGEST_0 is OKAY at its
-                    reset value. Drain-before-reset is not claimed.
+                    reset value.
+  * CHK-DRAIN-ORDER  the HMAC reset does not assert until BOTH AXI-Lite paths
+                    that domain depends on -- the SEP host path and the Key
+                    Manager path -- report isolated. Each accelerator
+                    reset depends on both.
+  * CHK-HOST-DRAIN  host reads accepted before the reset request resolve OKAY
+                    or SLVERR, never DECERR and never a hang, and at least one
+                    drains OKAY -- so accepted traffic completed rather than
+                    being dropped.
+  * CHK-DRAIN-ARRIVAL  a further read issued WHILE isolation is draining also
+                    resolves; it may drain or terminate, but it
+                    may not hang. That the path is not left wedged is the
+                    existing CHK-ISOLATE-REOPEN beat after release.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
-                    TRNG-only reset, so resetting the entropy complex does not
-                    reach the accelerator domains.
+                    TRNG-only reset. SW_RESET_N inside the window shows the
+                    TRNG bit held and the four accelerator bits released.
 
-reference ref: clock sep_clock_uvm_sw_reset_per_ip_test --
-COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
+Reference: sep_clock_uvm_sw_reset_per_ip_test --
+the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
 bit mapping (via an HDL backdoor); this test proves the reset actually lands in the
 IP and is domain-isolated at the level of a live crypto-datapath RESULT, frontdoor.
 no_cpu / +skip_fuse_sense (entropy + crypto are independent of OTP lifecycle) /
@@ -59,8 +72,8 @@ under sim -- required by bring_up_entropy, same as the km/crypto entropy tests).
 
 DELTA vs the card: the held state is a COMPLETED golden result resident in the
 engine's output registers (re-readable across the sibling's reset), not a paused
-mid-round micro-state. A cycle-accurate mid-round freeze + all-pairs matrix are
-deferred (GAP); the resident-result observation already proves the reset-domain
+mid-round micro-state. A cycle-accurate mid-round freeze and an all-pairs matrix
+are not covered here; the resident-result observation proves the reset-domain
 boundary against a real crypto-datapath value.
 """
 
@@ -70,9 +83,10 @@ import hashlib
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, with_timeout
 from env.sep_aes_golden import aes256_ecb_encrypt_words
 from env.sep_kmac_golden import kmac_family_words
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from sep_reg_meta import KMAC
 from seq_lib.sep_aes_seq import AES_DATA_OUT_0, SepAes
@@ -82,8 +96,8 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     ENG_KMAC,
     ENG_OTBN,
     HMAC_DIGEST_RESET,
-    RESP_DECERR,
     RESP_OKAY,
+    RESP_SLVERR,
     RST_HMAC,
     SW_RESET_N_DEFAULT,
     SepCryptoResetIso,
@@ -91,7 +105,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
 from seq_lib.sep_hmac_seq import HMAC_CFG, HMAC_DIGEST_0, SepHmac
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 from seq_lib.sep_otbn_seq import OTBN_DMEM_RESULT_LO, OTBN_LOAD_CHECKSUM_RESET, SepOtbn
-from seq_lib.sep_sw_reset_seq import SepSwReset
+from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
 # Directed known vectors (RAND-NONE).
 HMAC_MSG = [0x6A6F6232, 0xDEADBEEF, 0x0BADF00D, 0xFEEDFACE]
@@ -217,10 +231,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # later is a real, non-trivial observation, not a one-shot artifact).
         assert await self.hmac.read_digest() == h_digest, "HMAC DIGEST not held on re-read"
         assert await self.aes.read_data_out() == c_block, "AES DATA_OUT not held on re-read"
-        # No `!= _ZERO` guards. Both results are already pinned bit-exact to their
-        # goldens above, so those comparisons reduce to relations between file-scope
-        # constants -- decidable without running the DUT. The load-bearing non-vacuity
-        # evidence is the re-read-holds pair below, which is a second real DUT read.
+        # The non-vacuity evidence is the re-read pair above, a second real DUT
+        # read; both results are already pinned bit-exact to their goldens, so a
+        # compare against the zero constant is decidable without the DUT.
         self.logger.info(
             "CHK-NONVAC PASS: HMAC DIGEST + AES DATA_OUT hold real golden results "
             "(!= reset 0): HMAC[0]=0x%08x AES[0]=0x%08x",
@@ -229,12 +242,12 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
 
         # ---- Case A: pulse AES (victim); HMAC (neighbor) must survive ----------
-        # Self-reset evidence = the victim's held result is PERTURBED (no longer the
-        # value it held stably across the prior re-reads). For AES this is asserted as
-        # "!= C", NOT "== 0", and that is RTL-correct, not a hidden reset bug: the
-        # OpenTitan AES DATA_OUT registers are, per spec, "cleared with pseudo-random
-        # data" on reset (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc -- the DATA_REG.SEC_WIPE SCA
-        # countermeasure), so an AES-domain reset replaces the ciphertext with PRNG
+        # Self-reset evidence = the victim's held result is PERTURBED (it differs from
+        # the value it held stably across the prior re-reads). For AES this is asserted
+        # as "!= C", not "== 0": the OpenTitan AES DATA_OUT registers are, per spec,
+        # "Upon reset, these registers are cleared with pseudo-random data"
+        # (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc),
+        # so an AES-domain reset replaces the ciphertext with PRNG
         # data rather than a clean 0. DATA_OUT is fully inside aes_sw_rst_ni
         # (sep_crypto.sv) so there is no out-of-domain ciphertext leak. (The 4-word
         # read is non-atomic -- interleaved with entropy-FIFO drains -- so individual
@@ -275,9 +288,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
         self.logger.info("CHK-REVERSE PASS: HMAC reset cleared its own DIGEST; AES DATA_OUT intact")
 
-        # ---- Isolate window: HMAC held in reset; same DIGEST_0 must DECERR --
+        # ---- Isolate window: HMAC held in reset; same DIGEST_0 must SLVERR --
         # Re-establish a live HMAC result so the pre-window beat is OKAY + the
-        # golden (an unmapped address cannot produce OKAY -> DECERR -> OKAY).
+        # golden (an unmapped address cannot produce OKAY -> SLVERR -> OKAY).
         # AES still holds C from Case B; that is the sibling-OKAY witness.
         h_digest = await self._run_hmac()
         pre = await self.rst.probe(HMAC_DIGEST_0)
@@ -289,32 +302,134 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "CHK-ISOLATE-PRE PASS: HMAC DIGEST_0 OKAY with live golden 0x%08x", h_digest[0]
         )
 
-        await self.rst.assert_reset(ENG_HMAC.rst_bit)
-        await ClockCycles(cocotb.top.clk_i, 8)
+        # ---- Drain-before-reset (the in-window arrival case) -------------
+        # Queue host reads that the fabric can accept BEFORE the reset request,
+        # so the isolate coordinator has real traffic to drain. Accepted beats
+        # must complete; anything not yet accepted is terminated. None may hang.
+        axi_driver = self.env.axi_agent.driver
+        drain_reads = [
+            axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2) for _ in range(4)
+        ]
+        reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_HMAC.rst_bit))
+
+        # The HMAC reset may not assert until BOTH paths that domain depends on
+        # report isolated. Sampling every cycle catches the assert edge -- but
+        # only if the reset is still RELEASED here: entering the loop after the
+        # edge would grade a steady state in which both isolate bits are high
+        # anyway, and the check could not fail.
+        assert int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 1, (
+            "HMAC gated reset was already asserted before the reset request was "
+            "issued, so this domain asserted reset with no drain window at all"
+        )
+
+        # The drain window is the interval in which an isolate bit is asserted
+        # while the gated reset is still released. The arrival beat (#245) is
+        # issued INSIDE that window, on the first cycle a probe shows it open.
+        # A fixed delay cannot place it there: the window opens relative to the
+        # SW_RESET_N write's own B response, so any constant delay can land the
+        # beat beside the pre-request batch instead, before the window exists.
+        # The probe values at issue are kept
+        # in the log, so the beat's position in the window is evidence, and a
+        # design that never opens a window fails below rather than scoring the
+        # pre-request property a second time.
+        arrival_read = None
+        arrival_iso = None
+        for _ in range(1_000):
+            host_iso = int(cocotb.top.hmac_host_isolated_probe_o.value)
+            km_iso = int(cocotb.top.hmac_km_isolated_probe_o.value)
+            if int(cocotb.top.hmac_gated_rst_n_probe_o.value) == 0:
+                assert host_iso == 1 and km_iso == 1, (
+                    "HMAC reset asserted before its AXI-Lite paths isolated: "
+                    f"host_hmac={host_iso} km_hmac={km_iso}"
+                )
+                self.logger.info(
+                    "CHK-DRAIN-ORDER PASS: HMAC reset asserted only after the host "
+                    "and Key Manager paths both reported isolated (sampled in the "
+                    "same cycle as the observed assert edge)"
+                )
+                break
+            if arrival_read is None and (host_iso == 1 or km_iso == 1):
+                arrival_read = axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
+                arrival_iso = (host_iso, km_iso)
+                self.logger.info(
+                    "drain window open (host_hmac=%d km_hmac=%d, gated reset still "
+                    "released): arrival read issued here",
+                    host_iso,
+                    km_iso,
+                )
+            await ClockCycles(cocotb.top.clk_i, 1)
+        else:
+            raise AssertionError("HMAC gated reset never asserted after the reset request")
+
+        await reset_task
+
+        drain_codes = []
+        for event in drain_reads:
+            await with_timeout(event.wait(), 10_000, "ns")
+            drain_codes.append(worst_resp(getattr(event.data, "resp", None)))
+        assert all(code in (RESP_OKAY, RESP_SLVERR) for code in drain_codes), (
+            f"in-flight HMAC host reads returned unexpected responses {drain_codes}"
+        )
+        assert RESP_OKAY in drain_codes, (
+            "no pre-reset HMAC host read drained successfully, so this run does "
+            "not show that accepted traffic completes rather than being dropped"
+        )
+        self.logger.info(
+            "CHK-HOST-DRAIN PASS: in-flight HMAC host reads resolved %s "
+            "(no hang, no DECERR); at least one drained OKAY",
+            drain_codes,
+        )
+
+        assert arrival_read is not None, (
+            "no drain window was ever observed: the HMAC gated reset asserted "
+            "without any cycle in which an isolate bit was set and the reset was "
+            "still released, so the arrival-during-drain case has no beat and "
+            "CHK-DRAIN-ARRIVAL has nothing to grade"
+        )
+        await with_timeout(arrival_read.wait(), 10_000, "ns")
+        arrival_code = worst_resp(getattr(arrival_read.data, "resp", None))
+        assert arrival_code in (RESP_OKAY, RESP_SLVERR), (
+            f"read arriving during the isolate drain returned resp={arrival_code}, "
+            "expected OKAY (drained) or SLVERR (terminated), never DECERR or a hang"
+        )
+        self.logger.info(
+            "CHK-DRAIN-ARRIVAL PASS: a read issued inside the drain window "
+            "(host_hmac=%d km_hmac=%d at issue, gated reset still released) "
+            "resolved resp=%d, no hang",
+            arrival_iso[0],
+            arrival_iso[1],
+            arrival_code,
+        )
+
         sw = await self.rst.read_back()
         assert (sw >> RST_HMAC) & 1 == 0, (
             f"SW_RESET_N HMAC bit still released after isolate request: 0x{sw:08x}"
         )
         self.logger.info("CHK-ISOLATE-LANDED PASS: SW_RESET_N=0x%08x HMAC bit held", sw)
 
-        self.env.axi_monitor.arm_expected_decerr(1)
         iso_rd = await self.rst.probe(HMAC_DIGEST_0, expect_error=True)
-        assert iso_rd.resp_code == RESP_DECERR and not iso_rd.timed_out, (
+        assert iso_rd.resp_code == RESP_SLVERR and not iso_rd.timed_out, (
             f"in-window HMAC DIGEST_0 read resp={iso_rd.resp_code} "
-            f"timed_out={iso_rd.timed_out}, expected DECERR (not hang/OKAY/SLVERR)"
+            f"timed_out={iso_rd.timed_out}, expected SLVERR (not hang/OKAY/DECERR)"
+        )
+        assert iso_rd.rdata != h_digest[0], (
+            f"in-window HMAC DIGEST_0 read returned SLVERR with the live digest "
+            f"0x{iso_rd.rdata:08x}; the HMAC responder still supplied the data"
         )
         self.logger.info(
-            "CHK-ISOLATE-DECERR PASS: HMAC DIGEST_0 read -> DECERR (resp=%d)", iso_rd.resp_code
+            "CHK-ISOLATE-SLVERR PASS: HMAC DIGEST_0 read -> SLVERR (resp=%d) "
+            "rdata=0x%08x, not the live digest",
+            iso_rd.resp_code,
+            iso_rd.rdata,
         )
 
-        self.env.axi_monitor.arm_expected_decerr(1)
         iso_wr = await self.rst.probe(HMAC_CFG, write=True, wdata=0x1, expect_error=True)
-        assert iso_wr.resp_code == RESP_DECERR and not iso_wr.timed_out, (
+        assert iso_wr.resp_code == RESP_SLVERR and not iso_wr.timed_out, (
             f"in-window HMAC CFG write resp={iso_wr.resp_code} "
-            f"timed_out={iso_wr.timed_out}, expected DECERR"
+            f"timed_out={iso_wr.timed_out}, expected SLVERR"
         )
         self.logger.info(
-            "CHK-ISOLATE-WR PASS: HMAC CFG write -> DECERR (resp=%d)", iso_wr.resp_code
+            "CHK-ISOLATE-WR PASS: HMAC CFG write -> SLVERR (resp=%d)", iso_wr.resp_code
         )
 
         sib = await self.rst.probe(AES_DATA_OUT_0)
@@ -431,6 +546,30 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         trng_rst = SepSwReset(self)
         await trng_rst.park("trng")
         await ClockCycles(cocotb.top.clk_i, 40)
+        # Witness the request inside the parked window. Without this the leg is
+        # two non-events: park() only proves its CSR write returned OKAY, and the
+        # "four accelerator domains released" half is read back BEFORE the park --
+        # so a TRNG bit that did nothing would pass identically. Reading the
+        # register back here requires the bit to be low while the neighbours are
+        # high, in the same window the digests are sampled.
+        sw_parked = await trng_rst.read_back()
+        trng_bit = 1 << SW_RESET_N_BIT["trng"]
+        neighbours = (
+            (1 << SW_RESET_N_BIT["otbn"])
+            | (1 << SW_RESET_N_BIT["aes"])
+            | (1 << SW_RESET_N_BIT["hmac"])
+            | (1 << SW_RESET_N_BIT["kmac"])
+        )
+        assert not (sw_parked & trng_bit), (
+            f"SW_RESET_N=0x{sw_parked:08x} shows the TRNG domain NOT held inside the "
+            "window the neighbour results are checked in, so this leg would pass "
+            "whether or not the reset request reached the entropy complex"
+        )
+        assert (sw_parked & neighbours) == neighbours, (
+            f"SW_RESET_N=0x{sw_parked:08x} shows an accelerator domain also held "
+            "during the TRNG-only reset, so a surviving neighbour result proves "
+            "nothing about isolation"
+        )
         assert await self.hmac.read_digest() == h_digest, (
             "HMAC held DIGEST was disturbed by a TRNG-only reset"
         )
@@ -440,12 +579,15 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         await trng_rst.release("trng")
         self.logger.info(
             "CHK-TRNG-NEIGHBORS PASS: idle HMAC DIGEST and AES DATA_OUT survived "
-            "the shared entropy-complex reset"
+            "the shared entropy-complex reset, with SW_RESET_N=0x%08x inside the "
+            "window confirming the TRNG domain held and all four accelerator "
+            "domains released",
+            sw_parked,
         )
 
         self.logger.info(
             "per-IP SW-reset isolation ALL CHECKS PASS: live crypto results "
-            "(HMAC<->AES, KMAC, OTBN, TRNG neighbours; SW_RESET_N=0x%08x; "
-            "entropy-backed: CHK5_aes/kmac beats reported)",
+            "(HMAC<->AES, KMAC, OTBN; TRNG neighbours HMAC DIGEST and AES DATA_OUT; "
+            "SW_RESET_N=0x%08x; entropy-backed: CHK5_aes/kmac beats reported)",
             sw_final,
         )

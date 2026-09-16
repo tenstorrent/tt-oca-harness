@@ -3,409 +3,65 @@
 
 schema_version = 1
 
-# Aggregate Phase-1 (SEP=0) testlist for --dut smu.
-# Executable contract: enrolled groups in this file / testlists/all.toml
-# The SEP=1 / interop / depth inventory is not ported.
-# Result-reporting policy: only enrolled groups report PASS.
-# Only groups in this file (and testlists/wrapper.toml for --dut smu_wrapper)
-# produce reportable passing results.
+# Testlist for --dut smu_block, the bare `smu #(.SEP(0))` DUT. The SMU
+# regression is testlists/wrapper.toml on --dut smu, whose single compile
+# profile elaborates SEP=1. This DUT hosts the SEP=0 composition proofs
+# (nosep.toml) and the two leaves below that cannot run on the wrapper.
+#
+# smu_dtp_jtag2axi_abort_mid_op_test aborts an OTP operation mid-flight, so it
+# has to observe SINGLE_OP report BUSY first. That is available here, where
+# smu.sv re-exposes the eFuse interface and the TB leaves it unterminated so
+# the operation hangs BUSY. On the wrapper the real SMC eFuse model answers in
+# tens of clk_smu against a 39-bit DR shift, so the operation finishes before
+# any JTAG capture completes and the window does not exist. Reaching it there
+# needs a stallable eFuse hook in the wrapper TB.
+#
+# smu_dtp_jtag_smoke_test is the one VPLAN scenario with an SV-UVM
+# implementation as well as a cocotb one, and the SV-UVM harness is the `UVM`
+# shape of tb/tb_top.sv -- this DUT. Its entry carries the
+# `module = { cocotb, uvm }` binding map that `--dut smu_block --framework uvm`
+# resolves through. Its cocotb side is enrolled in dtp_under_smu on the wrapper,
+# and that is the copy the regression scores.
 
-includes = ["smc.toml", "dtp.toml", "fabric.toml"]
+# testlists/wrapper.toml, the `--dut smu` regression, is not an include of this
+# file: smu_sim_cfg.toml [testlist] selects it directly, and the two DUTs have
+# separate configs and separate testlist roots, so no wrapper leaf is reachable
+# from here and none is meant to be.
+includes = ["dtp.toml", "nosep.toml"]
 
+[[groups]]
+name = "all"
+tests = [
+  "smu_dtp_jtag2axi_abort_mid_op_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_axi_xbar_structure_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_no_sep_configuration_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
+]
+
+# The SEP=0 composition leaves (testlists/nosep.toml).
+[[groups]]
+name = "nosep"
+tests = [
+  "smu_axi_xbar_structure_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_no_sep_configuration_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
+]
+
+# .github/workflows/sim.yml runs one fixed tier -- `--items smoke` -- for every
+# DUT in its matrix, so this DUT needs the group to exist by that name. Its
+# two leaves, the JTAG smoke and the SEP=0 configuration proof, carry no
+# firmware, which matters: the hosted runner in .github/actions/dv-run installs
+# Verilator and nothing else, so a group needing the RISC-V toolchain cannot
+# run there. The JTAG smoke is also the scenario the SV-UVM view binds to, so
+# `--framework uvm --items smoke --skip-unimplemented` selects it.
 [[groups]]
 name = "smoke"
 tests = [
-    "smu_smc_smoke_test",
-    "smu_dtp_jtag_smoke_test",
-    "smu_no_sep_configuration_test",
-    "smu_ext_boot_seq_gate_test",
-]
-
-[[groups]]
-name = "top5"
-tests = [
-    "smu_smc_smoke_test",
-    "smu_dft_dtp_boot_stall_test",
-    "smu_axi_id_width_conversion_test",
-    "smu_jtag_reset_override_test",
-    "smu_smc_reset_ctrl_test",
-]
-
-[[groups]]
-name = "top10"
-tests = [
-    "smu_smc_smoke_test",
-    "smu_dft_dtp_boot_stall_test",
-    "smu_axi_id_width_conversion_test",
-    "smu_axi_crossbar_error_handling_test",
-    "smu_jtag_reset_override_test",
-    "smu_smc_reset_ctrl_test",
-    "smu_clock_stop_coordination_test",
-    "smu_dft_gpio_boot_stall_test",
-    "smu_dtp_jtag_smoke_test",
-    "smu_no_sep_configuration_test",
-    "smu_ext_boot_seq_gate_test",
-]
-
-# phase1 without Force/LCC ungating (those moved to deferred needs_real_lcc).
-# Product-pin CTM remap enrolled; Force four-phase / CLA fb inject stay deferred.
-[[groups]]
-name = "phase1"
-tests = [
-    "smu_smc_smoke_test",
-    "smu_dft_dtp_boot_stall_test",
-    "smu_axi_id_width_conversion_test",
-    "smu_axi_crossbar_error_handling_test",
-    "smu_jtag_reset_override_test",
-    "smu_smc_reset_ctrl_test",
-    "smu_clock_stop_coordination_test",
-    "smu_xtrig_ctm_remap_test",
-    "smu_sep_smoke_test",
-    "smu_dft_gpio_boot_stall_test",
-    "smu_axi_external_port_connectivity_test",
-    "smu_axi_xbar_structure_test",
-    "smu_axi_atomic_operation_test",
-    "smu_axi_filter_allow_ns_test",
-    "smu_sys_in_filter_program_jtag_test",
-    "smu_sys_in_filter_window_edge_test",
-    "smu_sys_in_filter_reprogram_shrink_test",
-    "smu_axi_prot_encoding_decode_test",
-    "smu_axi_filter_in_instance_matrix_test",
-    "smu_axi_filter_out_instance_matrix_test",
-    "smu_fabric_reg_bar_wr_test",
-    "smu_axi_alias_remap_manager_scope_test",
-    "smu_system_timer_octs_test",
-    "smu_i3c_mem_port_connectivity_test",
-    "smu_smc_wdt_sanity_test",
-    "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
-    "smu_smc_mailbox_sanity_test",
-    "smu_dtp_io_stap_smoke_test",
-    "smu_dtp_smc_stap_smoke_test",
-    "smu_dtp_bsr_ijtag_scan_test",
-    "smu_dtp_otp_smc_map_rw_test",
-    "smu_dtp_otp_smc_series_error_test",
-    "smu_smc_dtp_jtag2axi_smoke_test",
-    "smu_dtp_jtag2axi_smc_error_path_test",
-    "smu_dtp_jtag_smc_cpu_register_test",
-    "smu_dtp_jtag2axi_smc_rw_matrix_test",
-    "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-    "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-    "smu_dtp_jtag2axi_abort_mid_op_test",
-    "smu_jtag2axi_vs_smn_same_csr_race_test",
-    "smu_otp_vs_fabric_map_race_test",
-    "smu_dtp_otp_smc_complete_rw_test",
-    "smu_dtp_ptap_otp_instr_scan_test",
-    "smu_jtag_chain_enhanced_test",
-    "smu_dtp_jtag_smoke_test",
-    "smu_no_sep_configuration_test",
-    "smu_ext_boot_seq_gate_test",
-    "smu_smc_security_demote_pm_test",
-]
-
-[[groups]]
-name = "smc"
-tests = [
-    "smu_smc_smoke_test",
-    "smu_no_sep_configuration_test",
-    "smu_ext_boot_seq_gate_test",
-    "smu_smc_reset_ctrl_test",
-    "smu_smc_security_demote_pm_test",
-    "smu_smc_mailbox_int_test",
-    "smu_system_timer_octs_test",
-    "smu_i3c_mem_port_connectivity_test",
-    "smu_smc_wdt_sanity_test",
-    "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
-    "smu_smc_mailbox_sanity_test",
-]
-
-[[groups]]
-name = "dtp"
-tests = [
-    "smu_dtp_jtag_smoke_test",
-    "smu_dft_dtp_boot_stall_test",
-    "smu_dft_gpio_boot_stall_test",
-    "smu_clock_stop_coordination_test",
-    "smu_xtrig_ctm_remap_test",
-    "smu_sep_smoke_test",
-    "smu_jtag_reset_override_test",
-    "smu_boot_stall_jtag_cold_reset_matrix_test",
-    "smu_ic_reset_smc_multi_domain_test",
-    "smu_ic_reset_dual_domain_illegal_test",
-    "smu_boot_stall_vs_ic_reset_priority_test",
-    "smu_xtrig_ctm_illegal_phase_test",
-    "smu_dtp_io_stap_smoke_test",
-    "smu_dtp_smc_stap_smoke_test",
-    "smu_dtp_bsr_ijtag_scan_test",
-    "smu_dtp_otp_smc_map_rw_test",
-    "smu_dtp_otp_smc_series_error_test",
-    "smu_smc_dtp_jtag2axi_smoke_test",
-    "smu_dtp_jtag2axi_smc_error_path_test",
-    "smu_dtp_jtag_smc_cpu_register_test",
-    "smu_dtp_jtag2axi_smc_rw_matrix_test",
-    "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-    "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-    "smu_dtp_jtag2axi_abort_mid_op_test",
-    "smu_jtag2axi_vs_smn_same_csr_race_test",
-    "smu_otp_vs_fabric_map_race_test",
-    "smu_dtp_otp_smc_complete_rw_test",
-    "smu_dtp_ptap_otp_instr_scan_test",
-    "smu_jtag_chain_enhanced_test",
-]
-
-[[groups]]
-name = "phase2_smc_dtp"
-tests = [
-    "smu_boot_stall_jtag_cold_reset_matrix_test",
-    "smu_ic_reset_smc_multi_domain_test",
-]
-
-[[groups]]
-name = "phase2"
-tests = [
-    # phase1 (24) — keep density gate intact
-    "smu_smc_smoke_test",
-    "smu_dft_dtp_boot_stall_test",
-    "smu_axi_id_width_conversion_test",
-    "smu_axi_crossbar_error_handling_test",
-    "smu_jtag_reset_override_test",
-    "smu_smc_reset_ctrl_test",
-    "smu_clock_stop_coordination_test",
-    "smu_xtrig_ctm_remap_test",
-    "smu_sep_smoke_test",
-    "smu_dft_gpio_boot_stall_test",
-    "smu_axi_external_port_connectivity_test",
-    "smu_axi_xbar_structure_test",
-    "smu_axi_atomic_operation_test",
-    "smu_axi_filter_allow_ns_test",
-    "smu_sys_in_filter_program_jtag_test",
-    "smu_sys_in_filter_window_edge_test",
-    "smu_sys_in_filter_reprogram_shrink_test",
-    "smu_axi_prot_encoding_decode_test",
-    "smu_axi_filter_in_instance_matrix_test",
-    "smu_axi_filter_out_instance_matrix_test",
-    "smu_fabric_reg_bar_wr_test",
-    "smu_axi_alias_remap_manager_scope_test",
-    "smu_system_timer_octs_test",
-    "smu_i3c_mem_port_connectivity_test",
-    "smu_smc_wdt_sanity_test",
-    "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
-    "smu_smc_mailbox_sanity_test",
-    "smu_dtp_io_stap_smoke_test",
-    "smu_dtp_smc_stap_smoke_test",
-    "smu_dtp_bsr_ijtag_scan_test",
-    "smu_dtp_otp_smc_map_rw_test",
-    "smu_dtp_otp_smc_series_error_test",
-    "smu_smc_dtp_jtag2axi_smoke_test",
-    "smu_dtp_jtag2axi_smc_error_path_test",
-    "smu_dtp_jtag_smc_cpu_register_test",
-    "smu_dtp_jtag2axi_smc_rw_matrix_test",
-    "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-    "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-    "smu_dtp_jtag2axi_abort_mid_op_test",
-    "smu_jtag2axi_vs_smn_same_csr_race_test",
-    "smu_otp_vs_fabric_map_race_test",
-    "smu_dtp_otp_smc_complete_rw_test",
-    "smu_dtp_ptap_otp_instr_scan_test",
-    "smu_jtag_chain_enhanced_test",
-    "smu_dtp_jtag_smoke_test",
-    "smu_no_sep_configuration_test",
-    "smu_smc_security_demote_pm_test",
-    # phase2 deepeners
-    "smu_boot_stall_jtag_cold_reset_matrix_test",
-    "smu_ic_reset_smc_multi_domain_test",
-]
-
-[[groups]]
-name = "phase3_corner"
-tests = [
-    "smu_ic_reset_dual_domain_illegal_test",
-    "smu_boot_stall_vs_ic_reset_priority_test",
-    "smu_xtrig_ctm_illegal_phase_test",
-]
-
-[[groups]]
-name = "phase3"
-tests = [
-    # phase2_smc_dtp (15)
-    "smu_boot_stall_jtag_cold_reset_matrix_test",
-    "smu_ic_reset_smc_multi_domain_test",
-    # phase3 H2 + H1b + H4b + H5 + H1c pin-only + H6 deferred
-    "smu_ic_reset_dual_domain_illegal_test",
-    "smu_boot_stall_vs_ic_reset_priority_test",
-    "smu_xtrig_ctm_illegal_phase_test",
-]
-
-[[groups]]
-name = "fabric"
-tests = [
-    "smu_axi_external_port_connectivity_test",
-    "smu_axi_xbar_structure_test",
-    "smu_axi_id_width_conversion_test",
-    "smu_axi_crossbar_error_handling_test",
-    "smu_axi_atomic_operation_test",
-    "smu_axi_filter_allow_ns_test",
-    "smu_sys_in_filter_program_jtag_test",
-    "smu_sys_in_filter_window_edge_test",
-    "smu_sys_in_filter_reprogram_shrink_test",
-    "smu_axi_prot_encoding_decode_test",
-    "smu_axi_filter_in_instance_matrix_test",
-    "smu_axi_filter_out_instance_matrix_test",
-    "smu_fabric_reg_bar_wr_test",
-    "smu_axi_alias_remap_manager_scope_test",
-]
-
-# P4-SEP0 deepen + glue remainder (7)
-[[groups]]
-name = "phase4_sep0"
-tests = [
-    "smu_ic_reset_ss_domain_matrix_test",
-    "smu_dtp_bsr_extest_loopback_test",
-    "smu_dtp_io_stap_smoke_test",
-    "smu_dtp_smc_stap_smoke_test",
-    "smu_dtp_bsr_ijtag_scan_test",
-    "smu_dtp_otp_smc_map_rw_test",
-    "smu_dtp_otp_smc_series_error_test",
-    "smu_smc_dtp_jtag2axi_smoke_test",
-    "smu_dtp_jtag2axi_smc_error_path_test",
-    "smu_dtp_jtag_smc_cpu_register_test",
-    "smu_dtp_jtag2axi_smc_rw_matrix_test",
-    "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-    "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-    "smu_dtp_jtag2axi_abort_mid_op_test",
-    "smu_jtag2axi_vs_smn_same_csr_race_test",
-    "smu_otp_vs_fabric_map_race_test",
-    "smu_dtp_otp_smc_complete_rw_test",
-    "smu_dtp_ptap_otp_instr_scan_test",
-    "smu_jtag_chain_enhanced_test",
-]
-
-# Full SEP=0 enrolled set (non-Force): phase1 (49-1) + deepeners (2) + corner (3) = 53.
-# smu_ext_boot_seq_gate_test is in smoke/phase1 but not here; see #493.
-[[groups]]
-name = "sep0_all"
-tests = [
-    # phase1
-    "smu_smc_smoke_test",
-    "smu_dft_dtp_boot_stall_test",
-    "smu_axi_id_width_conversion_test",
-    "smu_axi_crossbar_error_handling_test",
-    "smu_jtag_reset_override_test",
-    "smu_smc_reset_ctrl_test",
-    "smu_clock_stop_coordination_test",
-    "smu_xtrig_ctm_remap_test",
-    "smu_sep_smoke_test",
-    "smu_dft_gpio_boot_stall_test",
-    "smu_axi_external_port_connectivity_test",
-    "smu_axi_xbar_structure_test",
-    "smu_axi_atomic_operation_test",
-    "smu_axi_filter_allow_ns_test",
-    "smu_sys_in_filter_program_jtag_test",
-    "smu_sys_in_filter_window_edge_test",
-    "smu_sys_in_filter_reprogram_shrink_test",
-    "smu_axi_prot_encoding_decode_test",
-    "smu_axi_filter_in_instance_matrix_test",
-    "smu_axi_filter_out_instance_matrix_test",
-    "smu_fabric_reg_bar_wr_test",
-    "smu_axi_alias_remap_manager_scope_test",
-    "smu_system_timer_octs_test",
-    "smu_i3c_mem_port_connectivity_test",
-    "smu_smc_wdt_sanity_test",
-    "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
-    "smu_smc_mailbox_sanity_test",
-    "smu_dtp_io_stap_smoke_test",
-    "smu_dtp_smc_stap_smoke_test",
-    "smu_dtp_bsr_ijtag_scan_test",
-    "smu_dtp_otp_smc_map_rw_test",
-    "smu_dtp_otp_smc_series_error_test",
-    "smu_smc_dtp_jtag2axi_smoke_test",
-    "smu_dtp_jtag2axi_smc_error_path_test",
-    "smu_dtp_jtag_smc_cpu_register_test",
-    "smu_dtp_jtag2axi_smc_rw_matrix_test",
-    "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-    "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-    "smu_dtp_jtag2axi_abort_mid_op_test",
-    "smu_jtag2axi_vs_smn_same_csr_race_test",
-    "smu_otp_vs_fabric_map_race_test",
-    "smu_dtp_otp_smc_complete_rw_test",
-    "smu_dtp_ptap_otp_instr_scan_test",
-    "smu_jtag_chain_enhanced_test",
-    "smu_dtp_jtag_smoke_test",
-    "smu_no_sep_configuration_test",
-    "smu_smc_security_demote_pm_test",
-    # phase2 deepeners
-    "smu_boot_stall_jtag_cold_reset_matrix_test",
-    "smu_ic_reset_smc_multi_domain_test",
-    # phase3_corner
-    "smu_ic_reset_dual_domain_illegal_test",
-    "smu_boot_stall_vs_ic_reset_priority_test",
-    "smu_xtrig_ctm_illegal_phase_test",
-]
-
-# SEP=0 + P4: sep0_all + phase4_sep0
-[[groups]]
-name = "sep0_p4_all"
-tests = [
-    # phase1
-    "smu_smc_smoke_test",
-    "smu_dft_dtp_boot_stall_test",
-    "smu_axi_id_width_conversion_test",
-    "smu_axi_crossbar_error_handling_test",
-    "smu_jtag_reset_override_test",
-    "smu_smc_reset_ctrl_test",
-    "smu_clock_stop_coordination_test",
-    "smu_xtrig_ctm_remap_test",
-    "smu_sep_smoke_test",
-    "smu_dft_gpio_boot_stall_test",
-    "smu_axi_external_port_connectivity_test",
-    "smu_axi_xbar_structure_test",
-    "smu_axi_atomic_operation_test",
-    "smu_axi_filter_allow_ns_test",
-    "smu_sys_in_filter_program_jtag_test",
-    "smu_sys_in_filter_window_edge_test",
-    "smu_sys_in_filter_reprogram_shrink_test",
-    "smu_axi_prot_encoding_decode_test",
-    "smu_axi_filter_in_instance_matrix_test",
-    "smu_axi_filter_out_instance_matrix_test",
-    "smu_fabric_reg_bar_wr_test",
-    "smu_axi_alias_remap_manager_scope_test",
-    "smu_system_timer_octs_test",
-    "smu_i3c_mem_port_connectivity_test",
-    "smu_smc_wdt_sanity_test",
-    "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
-    "smu_smc_mailbox_sanity_test",
-    "smu_dtp_io_stap_smoke_test",
-    "smu_dtp_smc_stap_smoke_test",
-    "smu_dtp_bsr_ijtag_scan_test",
-    "smu_dtp_otp_smc_map_rw_test",
-    "smu_dtp_otp_smc_series_error_test",
-    "smu_smc_dtp_jtag2axi_smoke_test",
-    "smu_dtp_jtag2axi_smc_error_path_test",
-    "smu_dtp_jtag_smc_cpu_register_test",
-    "smu_dtp_jtag2axi_smc_rw_matrix_test",
-    "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
-    "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-    "smu_dtp_jtag2axi_abort_mid_op_test",
-    "smu_jtag2axi_vs_smn_same_csr_race_test",
-    "smu_otp_vs_fabric_map_race_test",
-    "smu_dtp_otp_smc_complete_rw_test",
-    "smu_dtp_ptap_otp_instr_scan_test",
-    "smu_jtag_chain_enhanced_test",
-    "smu_dtp_jtag_smoke_test",
-    "smu_no_sep_configuration_test",
-    "smu_smc_security_demote_pm_test",
-    # phase2 deepeners
-    "smu_boot_stall_jtag_cold_reset_matrix_test",
-    "smu_ic_reset_smc_multi_domain_test",
-    # phase3_corner
-    "smu_ic_reset_dual_domain_illegal_test",
-    "smu_boot_stall_vs_ic_reset_priority_test",
-    "smu_xtrig_ctm_illegal_phase_test",
-    # phase4_sep0 (unique names only; DTP leaves already listed above)
-    "smu_ic_reset_ss_domain_matrix_test",
-    "smu_dtp_bsr_extest_loopback_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_no_sep_configuration_test",
 ]

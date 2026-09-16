@@ -3,10 +3,10 @@
 //
 // Shared SV-UVM checker-evidence package: the protocol-neutral
 // CHK-*/CHECKER_SUMMARY mechanics every ocah_<protocol>_vip UVM checker
-// extends (issue #1132) -- the SV mirror of the shared cocotb ocah_checker
-// layer. Compiled ahead of the protocol VIP packages: each dependent VIP
-// manifest lists this package before its own, and the flow's source-list
-// expansion dedup-merges the entry when several VIPs are consumed together.
+// extends -- the SV mirror of the shared cocotb ocah_checker layer. Compiled
+// ahead of the protocol VIP packages: each dependent VIP manifest lists this
+// package before its own, and the flow's source-list expansion dedup-merges
+// the entry when several VIPs are consumed together.
 
 `timescale 1ns / 1ps
 

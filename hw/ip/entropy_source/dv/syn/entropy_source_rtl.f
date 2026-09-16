@@ -28,13 +28,18 @@
 
 // Generic cells and primitives
 // Note: Ring oscillators use asynchronous logic - requires special synthesis constraints
-../rtl/gcells.sv
+../../../../common/och_prim_generic/rtl/prim_clock_nand2.sv
+../../../../common/och_prim_generic/rtl/prim_dffrxq.sv
+../../../../common/och_prim_generic/rtl/prim_inv.sv
+../../../../common/och_prim_generic/rtl/prim_stdbuf.sv
+../../../../common/och_prim_generic/rtl/prim_stdmux2.sv
 
 // Clock manipulation utilities
 // Note: Ripple dividers use asynchronous ripple chains - requires special synthesis constraints
 ../rtl/entropy_ripple_divider.sv
 
 // Entropy generation modules (in dependency order)
+../rtl/entropy_ring_stage_wrappers.sv
 ../rtl/entropy_ring_oscillator.sv
 ../rtl/entropy_rosc_tune_fsm.sv
 ../rtl/entropy_noise_source.sv
@@ -78,16 +83,15 @@
 //
 //   2. Ripple Dividers (entropy_ripple_divider.sv):
 //      - Contains asynchronous ripple chains (toggle flip-flop cascade)
-//      - Intentional combinational feedback loops (D→QB for toggle)
+//      - Combinational feedback loops (D→QB for toggle)
 //      - Must not be optimized by synthesis tool
 //      - Use set_dont_touch on ripple divider instances
 //      - Use set_false_path for ripple chain and feedback paths
 //      - Total: 13 instances (1 debug + 12 generators)
-//      - See entropy_source.sdc lines 106-145 for constraints
-//      - See README_RIPPLE_DIVIDER_CONSTRAINTS.md for detailed explanation
+//      - See the RIPPLE DIVIDER CONSTRAINTS section of entropy_source.sdc
 //
 //   3. Metastability:
-//      - Sampler flip-flops deliberately operate in metastable region
+//      - Sampler flip-flops operate in the metastable region (the entropy mechanism)
 //      - See entropy_sampler_clocks.sv for dual-rank synchronizers
 //
 //   4. Security-Critical Paths:
@@ -101,5 +105,4 @@
 //   - False paths defined for ring oscillator crossings
 //   - False paths defined for ripple divider chains and feedback
 //   - Multi-cycle paths for health test statistics
-//   - Use SYNTHESIS_CHECKLIST.md for complete pre-synthesis checklist
 //------------------------------------------------------------------------------            

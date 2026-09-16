@@ -19,8 +19,8 @@
 // The default 6 seeded multi-hot rows make 16 rows per pass (1 all_clear +
 // 8 one-hot + 6 multi-hot + 1 all_disabled), so one matrix pass meets the
 // 16-iteration floor with seeded rows; +DTP_DBG_DISABLE_MULTI_HOT_ROWS
-// overrides. The cocotb flow's Python DtpDbgDisableFcov ledger stays
-// cocotb-only; the checks it gated on are all ported.
+// overrides. The cocotb flow's Python DtpDbgDisableFcov ledger is
+// cocotb-only.
 
 class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_dbg_disable_scan_matrix_test_seq)
@@ -151,10 +151,9 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
 
   task body();
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN",
-                              "CHK-SCAN-OBS", "CHK-SCAN-CHAIN"};
+                              "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"};
     bit [ScanFieldCount-1:0] row_bits[$];
     string row_labels[$];
-    string quiet[$], none[$];
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
     seed_scenario_rng();
     // Scenario-owned Shift-x exits: skip the scan-count cross-check.
@@ -199,20 +198,16 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     // Delayed-replay proof (the check_stored_sib_across_gate pattern):
     // close every SIB with a sanctioned write first — the SIB scan
     // registers RETAIN sanctioned configuration under a gate, so a SIB
-    // left open by an earlier row legitimately re-arms on release and
+    // left open by an earlier row re-arms on release and
     // is not a replay — then attempt a fully-gated open of all three,
     // release without reset, and prove no select pulses (a gated open
     // attempt that stuck would assert here).
     enable_all_debug();
-    program_ijtag_sibs(3'b000, "release.close");
+    program_ijtag_sibs(3'b000, '0, "release.close");
     set_dbg_disable_full(scan_mask_from_bits('1));
-    program_ijtag_sibs(3'b111, "release.gated_open_attempt");
+    program_ijtag_sibs(3'b111, scan_mask_from_bits('1), "release.gated_open_attempt");
     enable_all_debug();
-    for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++)
-      quiet.push_back({ijtag_prefix(sib), "_select"});
-    start_scan_window(quiet);
-    program_ijtag_sibs(3'b000, "release.observe");
-    check_scan_window(quiet, none, "release.window");
+    check_ijtag_all_closed('0, "release.observe");
 
     check_ijtag_row('0, "recovery");
     check_stap_row('0, "recovery");

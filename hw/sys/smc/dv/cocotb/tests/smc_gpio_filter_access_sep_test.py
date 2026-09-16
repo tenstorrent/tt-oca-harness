@@ -16,6 +16,16 @@ from smc_base_test import smc_base_test
 class smc_gpio_filter_access_sep_test(smc_base_test):
     """GPIO0/1 ACCESS_FILTER: AxPROT=1 allowed, AxPROT=0 refused (read + write)."""
 
+    required_evidence = (
+        "CHK-GPIO-FILTER-GPIO1",
+        "CHK-GPIO-FILTER-PRE",
+        "CHK-GPIO-FILTER-PRIV",
+        "CHK-GPIO-FILTER-SCOREBOARD",
+        "CHK-GPIO-FILTER-UNPRIV",
+        "CHK-GPIO-FILTER-WR-DENY",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

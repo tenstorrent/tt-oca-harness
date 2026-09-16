@@ -23,9 +23,8 @@ module jtag_3dcr_reg
   // STAP control output (IEEE 1838)
   output logic  stap_sel_o
 );
-  // Tie off unused fields to satisfy lint
   logic unused_tap_ctrl;
-  assign unused_tap_ctrl = ^{tap_ctrl_i.tms, tap_ctrl_i.tck};
+  assign unused_tap_ctrl = tap_ctrl_i.tms;
 
   jtag_scan_ctrl_t  reg_scan_ctrl;
   logic             config_hold;
@@ -39,9 +38,10 @@ module jtag_3dcr_reg
   // state transitions.
   prim_flop #(
     .Width     (1),
-    .ResetValue(1'b0)
+    .ResetValue(1'b0),
+    .Negedge   (1'b1)
   ) u_config_hold_sticky_flop (
-    .clk_i  (~scan_ctrl_i.tck),
+    .clk_i  (scan_ctrl_i.tck),
     .rst_ni (tap_ctrl_i.trst_n),
     .d_i    (config_hold),
     .q_o    (config_hold_sticky)

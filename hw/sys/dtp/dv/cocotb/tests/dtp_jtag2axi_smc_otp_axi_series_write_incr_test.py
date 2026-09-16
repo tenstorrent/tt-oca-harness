@@ -26,9 +26,9 @@ class dtp_jtag2axi_smc_otp_axi_series_write_incr_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_otp_axi_test_seq,
             "smc_otp_series_write_incr",
-            specific_env="DTP_JTAG2AXI_SMC_OTP_AXI_SERIES_WRITE_INCR_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SMC_OTP_AXI_SERIES_WRITE_INCR_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             target="smc_otp",
             scenario="series_write_incr",
         )

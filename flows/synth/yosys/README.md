@@ -3,11 +3,19 @@
 Slang and verible Make targets are native-or-fail (tools must be on `PATH`);
 yosys synthesis is Docker-by-default. Covered blocks: the four `hw/sys`
 blocks (`smc`, `sep`, `smu`, `dtp`) plus vendored IP packages (currently
-`aou-rtl`). The EDA container image,
+`aou`). The EDA container image,
 [`hpretl/iic-osic-tools`](https://github.com/hpretl/iic-osic-tools), bundles
 `slang`, `yosys` + the `yosys-slang` plugin, and `verible`. See
 [`tools/docker/README.md`](../../../tools/docker/README.md) for how the
 container is invoked.
+
+**Status: work in progress.** What is here is an initial set of scripts -
+enough to elaborate and map the four `hw/sys` blocks, not a qualified
+synthesis flow. Timing constraints are not wired in at all (see
+[Timing constraints](#timing-constraints-constraintssdc-vs-the-abc-driving-cellload-model)
+below), so the timing and area reports carry no weight. Commands, layout and
+reports will keep changing as the flow matures; until then, use it at your own
+risk.
 
 ## Commands
 
@@ -19,7 +27,7 @@ make format-sv-check    [FORMAT_PATH=<path>]         # verible-verilog-format --
 ```
 
 `BLOCK` selects one of the discovered blocks (`smc`/`sep`/`smu`/`dtp`/
-`aou-rtl`; omit to run all of them - see [Layout](#layout) for how a block is
+`aou`; omit to run all of them - see [Layout](#layout) for how a block is
 discovered). It is not called `TARGET` because `hw/common/regs/classify.mk`
 already validates a top-level `TARGET=` against the (disjoint) register-block
 namespace, unconditionally, for every goal - `make lint-slang-all TARGET=smu` would fail with
@@ -174,7 +182,7 @@ block's name is normally its own directory name, except under
 their flow descriptor in `overlay/` rather than editing the vendored tree
 directly, mirroring how other TT-specific collateral is already layered onto
 vendored packages in this repo (generated regs, waivers, etc.) - see
-`vendor/tenstorrent/aou-rtl/overlay/flow.mk` for an example.
+`vendor/tenstorrent/aou/overlay/flow.mk` for an example.
 
 ## Provenance
 

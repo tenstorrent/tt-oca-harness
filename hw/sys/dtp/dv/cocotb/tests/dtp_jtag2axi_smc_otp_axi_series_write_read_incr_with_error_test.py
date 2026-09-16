@@ -18,8 +18,12 @@ class dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test(dtp_base_t
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
         "CHK-AXI-RDATA",
+        "CHK-AXI-RESP-EXPECTED",
         "CHK-AXI-COMPLETION",
+        "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
+        "CHK-AXI-NONVAC",
+        "CHK-J2A-STATUS-BIT",
     )
     axi_checker_stream_minimums = {"smc_otp": 2}
 
@@ -27,9 +31,9 @@ class dtp_jtag2axi_smc_otp_axi_series_write_read_incr_with_error_test(dtp_base_t
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_otp_axi_test_seq,
             "smc_otp_series_write_read_incr_with_error",
-            specific_env="DTP_JTAG2AXI_SMC_OTP_AXI_SERIES_WRITE_READ_INCR_WITH_ERROR_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SMC_OTP_AXI_SERIES_WRITE_READ_INCR_WITH_ERROR_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             target="smc_otp",
             scenario="series_write_read_incr_with_error",
         )

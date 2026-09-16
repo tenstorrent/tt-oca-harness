@@ -30,7 +30,7 @@ module RO_Jitter_Model #(
 
   // Internal state
   logic prev_bit_q;
-  // Temporary sanitized config (module-scope to satisfy older tool restrictions)
+  // Sanitized config at module scope: some simulators reject declarations inside always blocks
   logic        _enable_d;
   logic        _stuck_en_d;
   logic        _stuck_val_d;
@@ -56,9 +56,8 @@ module RO_Jitter_Model #(
     end
   end
 
-  // Sanitize potentially unknown config inputs; provide safe defaults. Kept
-  // combinational (rather than blocking-assigned inside the always_ff below)
-  // so the sequential block only ever reads them.
+  // Sanitize potentially unknown config inputs and clamp probabilities to
+  // PROB_SCALE; the always_ff below only reads these.
   always_comb begin
     _enable_d    = (cfg_enable_i      === 1'b1);
     _stuck_en_d  = (cfg_stuck_en_i    === 1'b1);
@@ -92,7 +91,7 @@ module RO_Jitter_Model #(
       vld_o   <= _enable_q;
       _enable_q <= _enable_d;
 
-      if (_enable_q) begin  // Changed from _enable_d to _enable_q for synchronization
+      if (_enable_q) begin
         if (_stuck_en_d) begin
           bit_o <= _stuck_val_d;
         end else begin

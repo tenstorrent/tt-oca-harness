@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC eFuse map layout, for generate_efuse_preload.py.
+#
+# THIS FILE IS DERIVED, NOT AUTHORED. Every block below transcribes
+# hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl, which is the single
+# source of truth for the layout. The RDL address map is:
+#
+#     LOCKS                   @ 0x000    64 b
+#     JTAG_PUBLIC_IDENTITY    @ 0x008   256 b
+#     I2C_I3C_ID[9]           @ 0x028    64 b each
+#     SMC_CONFIG              @ 0x070    64 b
+#     OCCP_TRANSPORT_TIMEOUT  @ 0x078    64 b
+#     SPARE[28]               @ 0x080   256 b each  -> ends at 0x400 = 1024 B
+#
+#     total = 8192 b = 1 KB = smc_efuse_pkg::SHADOW_REG_BITS
+#
+# The generator lays blocks out in the order they appear here, so this order
+# must match the RDL address map above. If the RDL changes, this file has to
+# change with it; nothing checks the two against each other.
+#
+# I2C_I3C_ID and SPARE are arrays in the RDL. They are flattened here into
+# one block each of the full array width, because the generator works on
+# contiguous bit ranges rather than register instances:
+#     I2C_I3C_ID  9 x  64 =   576 b
+#     SPARE      28 x 256 =  7168 b
+# A configuration addresses an individual SPARE word by shifting inside
+# that 7168-bit value.
+
+[LOCKS]
+regwidth = 64
+  [LOCKS.fields.lock_entries]
+  bits = "63:0"
+  desc = "Per-field read/write lock controls. Bit 2*i = write lock, bit 2*i+1 = read lock, in configuration order."
+
+[JTAG_PUBLIC_IDENTITY]
+regwidth = 256
+  [JTAG_PUBLIC_IDENTITY.fields.value]
+  bits = "255:0"
+  desc = "JTAG-public identity window. Replaces the former CHIPLET_ID and PACKAGE_ID registers. Readable via JTAG in PROD and RMA_SiP states where all other eFuse fields are blocked."
+
+[I2C_I3C_ID]
+regwidth = 576
+  [I2C_I3C_ID.fields.interface_id]
+  bits = "575:0"
+  desc = "9 x 64 b I2C/I3C interface IDs. Static-ID mode uses [6:0] of each word; provisional-ID mode uses all 64."
+
+[SMC_CONFIG]
+regwidth = 64
+  [SMC_CONFIG.fields.smc_config]
+  bits = "63:0"
+  desc = "SMC configuration bits. rom_flip_endianness=[0], sram_auto_zero_disable=[7], dft_ignore_error=[15]. All other bits reserved."
+
+[OCCP_TRANSPORT_TIMEOUT]
+regwidth = 64
+  [OCCP_TRANSPORT_TIMEOUT.fields.transport_timeout]
+  bits = "63:0"
+  desc = "OCCP transport timeout in bits [31:0]; bits [63:32] reserved. The boot ROM reads this and substitutes a 10000-cycle default when it reads 0."
+
+[SPARE]
+regwidth = 7168
+  [SPARE.fields.spare_data]
+  bits = "7167:0"
+  desc = "28 x 256 b individually lockable spare regions. Each element has its own write/read lock pair in LOCKS (slots 4-31). Reserved for fields assigned after the RTL is frozen."

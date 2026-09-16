@@ -198,13 +198,6 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
         self._release_smbsus()
         self.suspend_ok = True
         cocotb.log.info("CHK-I2C-TGT-SMBUS-SUS-CLR: STATUS.SMBSUS cleared after release")
-        cocotb.log.info(
-            "CHK-I2C-TGT-SMBUS-BASIC: alert=%s ara=%s clr=%s sus=%s",
-            self.alert_asserted,
-            self.ara_ok,
-            self.alert_cleared,
-            self.suspend_ok,
-        )
 
         await self.csr_write("I2C0_CTRL_DISABLE", I2C0_CTRL, 0)
         await self.csr_write("CLOCK_GATE_RESTORE", CLOCK_GATE_CONTROL, cg)

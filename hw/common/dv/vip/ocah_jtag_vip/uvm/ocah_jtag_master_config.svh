@@ -24,8 +24,8 @@ class ocah_jtag_master_config extends uvm_object;
   // flows only.
   bit en_cov = 0;
 
-  // Opaque extension hook for commercial-VIP env subclasses (e.g. an
-  // svt_*_system_configuration built by the integration and consumed in
+  // Opaque extension hook for commercial-VIP env subclasses (the vendor
+  // system configuration object built by the integration and consumed in
   // the subclass's build_phase). The OCAH implementation ignores it.
   uvm_object vendor_cfg;
 

@@ -128,6 +128,7 @@ TB_CMD_OTP_WRITE_SIGINT = 0x0000002E  # Drive corrupted dual-rail on one 256-bit
 TB_CMD_SEP_MBOX_DRAIN_CTRL = 0x0000002F  # Arm/disarm autonomous SEP outbound-FIFO drainer (models SEP draining KM->SEP); arg=1 arm, 0 disarm; result = 1
 TB_CMD_ABR_SK_LOAD = 0x00000030  # Inject shared-key into ABR reg block: arg=word_index (0-7); pre-fill tb_abr_sk_load_data via DRBG_SET_NEXT_VALUE then call with arg=0xFF to assert hwset; result = 1
 TB_CMD_ABR_SK_IRQ_STATUS_READ = 0x00000031  # Read ABR ML-KEM shared-key IRQ status (abr_mlkem_sharedkey_irq signal); result = 0 or 1
+TB_CMD_KM_MBOX_READ_DURING_SEP_FLUSH = 0x00000032  # SEP CTRL.FLUSH then KM READ_DATA AR on the flush-active cycle; result = 1 if R arrives
 # Testbench command status
 TB_STATUS_IDLE = 0x00000000
 TB_STATUS_ACK = 0x00000001
@@ -330,7 +331,7 @@ class TestbenchCommandHandler:
             current_cycles_ref: Mutable list ``[int]`` holding the current cycle count.
             vuart_monitor: Optional VuartMonitor for VUART verification commands.
             enable_unrecoverable_watch: If True, arm the unrecoverable watcher
-                at startup (legacy unrecoverable tests).
+                at startup.
         """
         self.dut = dut
         self.regs = kmcsr_regs
@@ -392,6 +393,7 @@ class TestbenchCommandHandler:
             TB_CMD_SEP_MBOX_DRAIN_CTRL: self._handle_sep_mbox_drain_ctrl,
             TB_CMD_ABR_SK_LOAD: self._handle_abr_sk_load,
             TB_CMD_ABR_SK_IRQ_STATUS_READ: self._handle_abr_sk_irq_status_read,
+            TB_CMD_KM_MBOX_READ_DURING_SEP_FLUSH: self._handle_km_mbox_read_during_sep_flush,
         }
         self._outbound_drain_armed = (
             False  # When armed, autonomously drain the SEP outbound FIFO (models the SEP)
@@ -1442,6 +1444,103 @@ class TestbenchCommandHandler:
                 pass
             return 0
 
+    async def _handle_km_mbox_read_during_sep_flush(self, arg):
+        """Pulse SEP CTRL.FLUSH and issue a KM READ_DATA AR on the flush-active cycle.
+
+        The flush register bit is high for the cycle after the SEP write commits.
+        Driving KM AR so it handshakes on that cycle is the mailbox read/flush
+        overlap. Returns 1 if an R beat arrives within 32 cycles.
+        """
+        from cocotb.triggers import RisingEdge
+
+        SEP_CTRL_FLUSH = 0x4
+        R_TIMEOUT_CYCLES = 32
+
+        if not hasattr(self.dut, "tb_km_mbox_inject"):
+            self.dut._log.error("[TB CMD] KM mailbox inject signals not found")
+            raise RuntimeError("tb_km_mbox_inject missing")
+        if not hasattr(self.dut, "sep_awvalid"):
+            self.dut._log.error("[TB CMD] SEP AXI signals not found")
+            raise RuntimeError("sep_awvalid missing")
+
+        try:
+            self.dut.tb_km_mbox_inject.value = 1
+            self.dut.tb_km_arvalid.value = 0
+            self.dut.tb_km_rready.value = 0
+            self.dut.tb_km_araddr.value = MAILBOX_KM_KM_READ_DATA_REG_ADDR
+            self.dut.tb_km_arprot.value = 0
+
+            self.dut.sep_awvalid.value = 1
+            self.dut.sep_awaddr.value = SEP_CTRL_REG_OFFSET
+            self.dut.sep_awprot.value = 0
+            self.dut.sep_wvalid.value = 1
+            self.dut.sep_wdata.value = SEP_CTRL_FLUSH
+            self.dut.sep_wstrb.value = 0xF
+            self.dut.sep_bready.value = 1
+
+            max_cycles = 50
+            cycles = 0
+            aw_done = False
+            w_done = False
+            while cycles < max_cycles and (not aw_done or not w_done):
+                await RisingEdge(self.dut.clk)
+                cycles += 1
+                if not aw_done and int(self.dut.sep_awready.value) == 1:
+                    aw_done = True
+                    self.dut.sep_awvalid.value = 0
+                if not w_done and int(self.dut.sep_wready.value) == 1:
+                    w_done = True
+                    self.dut.sep_wvalid.value = 0
+
+            if not aw_done or not w_done:
+                self.dut._log.error("[TB CMD] SEP CTRL.FLUSH handshake timeout")
+                raise TimeoutError("SEP CTRL.FLUSH AW/W handshake")
+
+            # After AW/W: cycle 0 clr=0 (B typically valid), cycle 1 clr=1 empty=0.
+            # Take B on cycle 0; do not wait extra cycles or AR misses the flush window.
+            await RisingEdge(self.dut.clk)
+            if int(self.dut.sep_bvalid.value) == 1:
+                self.dut.sep_bready.value = 0
+            self.dut.tb_km_arvalid.value = 1
+            await RisingEdge(self.dut.clk)
+            ar_done = int(self.dut.tb_km_arready.value) == 1
+            fifo_clr = int(self.dut.tb_km_fifo_clr.value)
+            inbound_empty = int(self.dut.u_key_manager.u_mailbox.inbound_empty.value)
+            self.dut._log.info(
+                f"[TB CMD] KM READ_DATA AR handshake={ar_done} clr={fifo_clr} empty={inbound_empty}"
+            )
+            if not ar_done:
+                self.dut._log.error("[TB CMD] KM READ_DATA AR did not handshake on flush cycle")
+                raise TimeoutError("KM READ_DATA AR handshake")
+            if fifo_clr != 1:
+                self.dut._log.error("[TB CMD] KM READ_DATA AR handshake was not on fifo_clr")
+                raise TimeoutError("KM READ_DATA AR missed flush cycle")
+
+            self.dut.tb_km_arvalid.value = 0
+            self.dut.tb_km_rready.value = 1
+
+            for _ in range(R_TIMEOUT_CYCLES):
+                await RisingEdge(self.dut.clk)
+                if int(self.dut.tb_km_rvalid.value) == 1:
+                    resp = int(self.dut.tb_km_rresp.value)
+                    self.dut.tb_km_rready.value = 0
+                    self.dut._log.info(
+                        f"[TB CMD] KM READ_DATA R arrived during SEP flush, resp={resp}"
+                    )
+                    return 1
+
+            self.dut._log.error(
+                f"[TB CMD] KM READ_DATA R timeout ({R_TIMEOUT_CYCLES} cycles) after flush-overlap AR"
+            )
+            return 0
+        finally:
+            self.dut.tb_km_arvalid.value = 0
+            self.dut.tb_km_rready.value = 0
+            self.dut.tb_km_mbox_inject.value = 0
+            self.dut.sep_awvalid.value = 0
+            self.dut.sep_wvalid.value = 0
+            self.dut.sep_bready.value = 0
+
     async def _handle_sep_mbox_write_separator_write(self, arg):
         """Write SEP mailbox WRITE_SEPARATOR register.
 
@@ -2163,7 +2262,7 @@ class TestbenchCommandHandler:
 
         arg selects the field by its OTP_READ_LOCK bit position, defaulting to
         chiplet_uid.  That field's value half is valid but its complement half
-        has bit 0 intentionally NOT inverted, which should trigger OTP_SIGINT in
+        has bit 0 NOT inverted, which should trigger OTP_SIGINT in
         hardware and an unrecoverable fault.  All other fields stay valid.
         """
         if not hasattr(self.dut, "otp_data"):
@@ -2467,12 +2566,9 @@ class TestbenchCommandHandler:
                             f"tstrb=0x{queued_tstrb:01X} "
                             f"(remaining={len(self._drbg_beat_queue)})"
                         )
-                        # Pre-stage the next beat's data immediately so it is stable
-                        # at the following rising edge.  Without this, the driver
-                        # would loop back to await RisingEdge before updating the
-                        # signals, and the RTL would sample the just-consumed beat's
-                        # data again on the very next cycle (causing byte-assembly
-                        # errors when partial-TSTRB beats are used back-to-back).
+                        # Pre-stage the next beat's data now: TVALID stays high, so the
+                        # RTL samples TDATA/TSTRB again at the very next rising edge and
+                        # must see the next beat there, not the consumed one.
                         if self._drbg_beat_queue:
                             nv, nt = self._drbg_beat_queue[0]
                             self.dut.drbg_tdata.value = nv

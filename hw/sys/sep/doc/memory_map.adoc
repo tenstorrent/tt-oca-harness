@@ -55,10 +55,24 @@ remap.
 
 The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 
-Each row below is the address *aperture* reserved for a unit, not the extent that
-decodes. Within an aperture, only the unit's register extent responds; the
-remainder is reserved and returns DECERR. Reads and writes there never reach the
-unit, so an address that owns no register cannot alias onto one.
+Each row below is the address aperture reserved for a unit, not the
+extent that decodes.
+
+The fabric refuses an address that falls between unit windows, or past
+the extent a unit allocates; such an access never reaches a unit.
+
+Inside a unit's allocated extent, an offset that owns no register is
+accepted by the unit: reads return zero and writes are discarded, both
+with an OKAY response. Software gets no indication that it addressed
+nothing. Such an offset cannot alias a live register, because register
+decode is an exact address match rather than a range -- not because the
+access is refused.
+
+The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
+does not decode offsets inside that window, so every access reaches the TRNG
+slave. Intra-aperture decode is an integrator constraint: an address that owns
+no register must return SLVERR and must not alias onto a live register. See the
+Integrator Guide.
 
 The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
 single-beat transactions only; see <<crypto-single-beat-only>>.
@@ -82,7 +96,7 @@ single-beat transactions only; see <<crypto-single-beat-only>>.
 |0x1091_4000 |0x1091_4FFF |4 kB |_RSV_ |Reserved
 |0x1091_5000 |0x1091_5FFF |4 kB |DRBG |Deterministic Random Bit Generator
 |0x1091_6000 |0x1091_6FFF |4 kB |ESRC |Entropy Source
-|0x1091_7000 |0x1091_7FFF |4 kB |TRNG |Random Num Gen
+|0x1091_7000 |0x1091_7FFF |4 kB |TRNG |External TRNG CSR passthrough
 |0x1091_8000 |0x1091_FFFF |32 kB |LC |Life Cycle Controller
 |0x1092_0000 |0x1092_0FFF |4 kB |KM |Key Manager
 |0x1092_1000 |0x1092_FFFF | |_RSV_ |Reserved
@@ -209,7 +223,7 @@ ifdef::backend-pdf[]
 include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 
-==== DRBG (CSRNG and EDN)
+==== DRBG
 
 The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <<drbg,Architecture>>). Their register maps are reported here.

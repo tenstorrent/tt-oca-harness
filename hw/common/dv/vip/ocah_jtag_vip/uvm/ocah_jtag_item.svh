@@ -5,6 +5,9 @@
 //
 //   OCAH_JTAG_TAP_RESET — assert TRST for cfg.trst_reset_cycles TCK cycles
 //     (TMS held 1), release, leave the TAP in Test-Logic-Reset.
+//   OCAH_JTAG_TRST_LEVEL — drive TRST to `trst_asserted` (trst_n low when
+//     asserted), then hold TMS 1 for `trst_tck_cycles` TCK cycles. Asserting
+//     leaves the TAP in Test-Logic-Reset; releasing moves nothing.
 //   OCAH_JTAG_IR_SCAN   — from Run-Test/Idle: load `width` IR bits from
 //     `wdata` (LSB-first), return to Run-Test/Idle. Observed TDO in `tdo`.
 //   OCAH_JTAG_DR_SCAN   — from Run-Test/Idle: shift `width` DR bits from
@@ -21,7 +24,8 @@ typedef enum {
   OCAH_JTAG_TAP_RESET,
   OCAH_JTAG_IR_SCAN,
   OCAH_JTAG_DR_SCAN,
-  OCAH_JTAG_RAW_TMS
+  OCAH_JTAG_RAW_TMS,
+  OCAH_JTAG_TRST_LEVEL
 } ocah_jtag_op_e;
 
 class ocah_jtag_item extends uvm_sequence_item;
@@ -33,6 +37,9 @@ class ocah_jtag_item extends uvm_sequence_item;
 
   bit tms_bits[];                  // raw op: per-step TMS (defines step count)
   bit tdi_bits[];                  // raw op: per-step TDI (padded with 0 if shorter)
+
+  bit          trst_asserted;      // TRST level op: TRST asserted (trst_n low)
+  int unsigned trst_tck_cycles;    // TRST level op: TCK cycles with TMS held 1
 
   // Wide-scan extension: when wbits is non-empty, IR/DR scans shift
   // wbits.size() bits LSB-first (no 64-bit limit; e.g. the 72/132-bit
@@ -66,6 +73,8 @@ class ocah_jtag_item extends uvm_sequence_item;
                     return $sformatf("DR_SCAN  wide width=%0d", wbits.size());
                 else
                     return $sformatf("DR_SCAN  width=%0d wdata=0x%016h tdo=0x%016h", width, wdata, tdo);
+      OCAH_JTAG_TRST_LEVEL:
+                return $sformatf("TRST_LEVEL asserted=%0b tck=%0d", trst_asserted, trst_tck_cycles);
       default:             return $sformatf("RAW_TMS  steps=%0d", tms_bits.size());
     endcase
   endfunction

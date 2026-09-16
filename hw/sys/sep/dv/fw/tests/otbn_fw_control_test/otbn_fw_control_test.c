@@ -191,8 +191,7 @@ static int step7_read_results(void) {
         errors++;
     }
 
-    /* DMEM result readback is unreliable in current TB (scrambled SRAM),
-     * but still attempt it for completeness */
+    /* Step 7 checks INSN_CNT only; DMEM results are not read back. */
     printf("[STEP 7/8] Verification complete (INSN_CNT check)\n");
     return errors > 0 ? -1 : 0;
 }

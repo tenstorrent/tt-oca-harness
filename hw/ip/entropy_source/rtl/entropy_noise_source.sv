@@ -48,26 +48,26 @@ module entropy_noise_source #(
   );
 
   // Metastable sample flip-flop — intentional async capture of RO output
-  gdff u_smpl (
-    .d_i   (noise_async),
-    .cdn_i (rst_ni),
-    .cp_i  (sample_clk_i),
-    .q_o   (noise_sample)
+  prim_dffrxq u_smpl (
+    .i_CK (sample_clk_i),
+    .i_D  (noise_async),
+    .i_RN (rst_ni),
+    .o_Q  (noise_sample)
   );
 
   // Two-flop synchroniser
-  gdff u_sync0 (
-    .d_i   (noise_sample),
-    .cdn_i (rst_ni),
-    .cp_i  (clk_i),
-    .q_o   (noise_sync[0])
+  prim_dffrxq u_sync0 (
+    .i_CK (clk_i),
+    .i_D  (noise_sample),
+    .i_RN (rst_ni),
+    .o_Q  (noise_sync[0])
   );
 
-  gdff u_sync1 (
-    .d_i   (noise_sync[0]),
-    .cdn_i (rst_ni),
-    .cp_i  (clk_i),
-    .q_o   (noise_sync[1])
+  prim_dffrxq u_sync1 (
+    .i_CK (clk_i),
+    .i_D  (noise_sync[0]),
+    .i_RN (rst_ni),
+    .o_Q  (noise_sync[1])
   );
 
   ///////////

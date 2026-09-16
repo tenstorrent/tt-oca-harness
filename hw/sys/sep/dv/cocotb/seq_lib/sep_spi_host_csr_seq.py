@@ -7,10 +7,12 @@
 randomized-but-legal register values walked by the test; the golden is the
 documented reset values + RW/W1C/RO field semantics (this file), taken from the
 SEP-integrated ``spi_controller`` reg block (NUM_CS=1, native AXI4-Lite @
-0x10B0_0000 -- NOT the raw OpenTitan TL-UL map; the offsets/field bits below are
-the modified module's, which is why CSID/CMD/ERROR_* sit one slot lower than the
-upstream OT spi_host and the field bits are byte-spread). Driven over the CPU-LSU
-AXI splice (no_cpu), so no firmware. Pure control plane -- no flash BFM.
+0x10B0_0000). Register OFFSETS match upstream OpenTitan spi_host; the FIELD
+packing does not -- this block byte-spreads the status and error bits that
+upstream packs contiguously, and collapses upstream's per-CS ``CONFIGOPTS``
+multireg into a single ``CFG``. Every offset, mask and reset below is read from
+the generated export through sep_reg_meta, never retyped. Driven over the
+CPU-LSU AXI splice (no_cpu), so no firmware. Pure control plane -- no flash BFM.
 """
 
 from __future__ import annotations
@@ -45,8 +47,6 @@ CTRL_SPIEN = SPI_CONTROLLER.field_mask("CTRL", "spien")
 ST_TXQD = SPI_CONTROLLER.field_mask("STATUS", "txqd")
 ST_RXQD = SPI_CONTROLLER.field_mask("STATUS", "rxqd")
 ST_CMDQD = SPI_CONTROLLER.field_mask("STATUS", "cmdqd")
-ST_RXWM = SPI_CONTROLLER.field_mask("STATUS", "rxwm")
-ST_BYTEORDER = SPI_CONTROLLER.field_mask("STATUS", "byteorder")
 ST_RXEMPTY = SPI_CONTROLLER.field_mask("STATUS", "rxempty")
 ST_RXFULL = SPI_CONTROLLER.field_mask("STATUS", "rxfull")
 ST_TXWM = SPI_CONTROLLER.field_mask("STATUS", "txwm")
@@ -56,6 +56,7 @@ ST_ACTIVE = SPI_CONTROLLER.field_mask("STATUS", "active")
 ST_READY = SPI_CONTROLLER.field_mask("STATUS", "ready")
 
 CFG_RW_MASK = SPI_CONTROLLER.mask32("CFG")
+CSID_RW_MASK = SPI_CONTROLLER.mask32("CSID")
 # CTRL writable for the readback walk -- exclude SW_RST so the walk never holds
 # the core in reset; SPIEN/enable is covered by its own directed facet.
 CTRL_RW_MASK = CTRL_RX_WM | CTRL_TX_WM | CTRL_OUTPUT_EN | CTRL_SPIEN
@@ -71,16 +72,21 @@ ERR_UNDERFLOW = SPI_CONTROLLER.field_mask("ERROR_STATUS", "underflow")
 ERR_CMDINVAL = SPI_CONTROLLER.field_mask("ERROR_STATUS", "cmdinval")
 ERR_CSIDINVAL = SPI_CONTROLLER.field_mask("ERROR_STATUS", "csidinval")
 ERR_ACCESSINVAL = SPI_CONTROLLER.field_mask("ERROR_STATUS", "accessinval")
-CMD_FIFO_DEPTH = 4
+CTRL_RESET = SPI_CONTROLLER.reset32("CTRL")
+CTRL_IMPL_MASK = SPI_CONTROLLER.mask32("CTRL")
+CTRL_TX_WM_LSB = SPI_CONTROLLER.field_lsb("CTRL", "tx_watermark")
+ERR_STATUS_MASK = SPI_CONTROLLER.mask32("ERROR_STATUS")
 
-# spi_controller TX FIFO depth (spi_controller_data_fifos.sv TxDepth) -- writing
-# beyond it with the core disabled drives ERROR_STATUS.OVERFLOW.
-TX_FIFO_DEPTH = 72
+# No FIFO depth constant lives here on purpose. The OVERFLOW and CMDBUSY
+# triggers find their boundary from STATUS (TXFULL, READY) and then write one
+# beat past it, so neither stimulus needs a depth the RDL does not carry and
+# neither is sized from the design's own source.
 
-# CMD fields
-CMD_DIR_RX = 1 << 12
-CMD_DIR_TX = 2 << 12
-CMD_SPEED_RESERVED = 3 << 10  # SPEED=2'b11 -> CMDINVAL (test_speed/dir_inval)
+# CMD fields, positioned from the generated export.
+_CMD_DIR_LSB = SPI_CONTROLLER.field_lsb("CMD", "direction")
+_CMD_SPEED_LSB = SPI_CONTROLLER.field_lsb("CMD", "speed")
+CMD_DIR_TX = 2 << _CMD_DIR_LSB
+CMD_SPEED_RESERVED = 3 << _CMD_SPEED_LSB  # SPEED=2'b11 -> CMDINVAL
 
 # --- documented reset values (golden for CHK-RESET) -------------------------
 RESET_VALUES = {
@@ -101,24 +107,46 @@ class SepSpiHostCfg:
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
-        # RW readback walk: (name, addr, writable_mask, random_value).
+        # RW readback walk: (name, addr, walk_mask, impl_mask, random_value).
+        # walk_mask is what the readback compares; impl_mask is every bit the
+        # generated block implements, so `~impl_mask` is the set of genuinely
+        # unimplemented bits the reserved-bit probe may safely drive. CTRL's
+        # SW_RST is implemented but excluded from walk_mask, so probing
+        # `~walk_mask` would soft-reset the core mid-walk.
         self.rw_regs = [
-            ("CTRL", CTRL, CTRL_RW_MASK, rng.getrandbits(32) & CTRL_RW_MASK),
-            ("CFG", CFG, CFG_RW_MASK, rng.getrandbits(32) & CFG_RW_MASK),
-            ("CSID", CSID, 0xFFFF_FFFF, rng.getrandbits(32)),
-            ("INTR_ENABLE", INTR_ENABLE, INTR_RW_MASK, rng.getrandbits(8) & INTR_RW_MASK),
-            ("ERROR_ENABLE", ERROR_ENABLE, ERR_EN_MASK, rng.getrandbits(32) & ERR_EN_MASK),
-            ("EVENT_ENABLE", EVENT_ENABLE, EVT_EN_MASK, rng.getrandbits(32) & EVT_EN_MASK),
+            ("CTRL", CTRL, CTRL_RW_MASK, CTRL_IMPL_MASK, rng.getrandbits(32) & CTRL_RW_MASK),
+            ("CFG", CFG, CFG_RW_MASK, CFG_RW_MASK, rng.getrandbits(32) & CFG_RW_MASK),
+            ("CSID", CSID, CSID_RW_MASK, CSID_RW_MASK, rng.getrandbits(32) & CSID_RW_MASK),
+            (
+                "INTR_ENABLE",
+                INTR_ENABLE,
+                INTR_RW_MASK,
+                INTR_RW_MASK,
+                rng.getrandbits(32) & INTR_RW_MASK,
+            ),
+            (
+                "ERROR_ENABLE",
+                ERROR_ENABLE,
+                ERR_EN_MASK,
+                ERR_EN_MASK,
+                rng.getrandbits(32) & ERR_EN_MASK,
+            ),
+            (
+                "EVENT_ENABLE",
+                EVENT_ENABLE,
+                EVT_EN_MASK,
+                EVT_EN_MASK,
+                rng.getrandbits(32) & EVT_EN_MASK,
+            ),
         ]
         rng.shuffle(self.rw_regs)
         # Watermark facet: a TX_WATERMARK threshold in a range a small fill can cross.
+        # wm in [2, 8]: wm <= 1 makes the "one word below the mark" step vacuous.
         self.tx_watermark = rng.randrange(2, 9)
         self.tx_fill_words = self.tx_watermark + rng.randrange(2, 5)
-        # CHK-NONVAC pattern (nonzero) written to CFG.
-        self.nonvac_cfg = (rng.getrandbits(32) & CFG_RW_MASK) | 0x1
 
     def summary(self) -> str:
-        regs = " ".join(f"{n}=0x{v:08x}" for n, _, _, v in self.rw_regs)
+        regs = " ".join(f"{n}=0x{v:08x}" for n, _, _, _, v in self.rw_regs)
         return f"seed={self.seed} tx_wm={self.tx_watermark} tx_fill={self.tx_fill_words} rw[{regs}]"
 
 

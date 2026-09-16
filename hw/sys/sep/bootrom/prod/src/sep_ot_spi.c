@@ -161,7 +161,8 @@ static uint32_t ot_apply_profile(const ot_spi_params_t *p) {
     return OT_SPI_OK;
 }
 
-__attribute__((weak)) void ot_spi_select_pad_mux(void) {}
+__attribute__((weak)) void ot_spi_select_pad_mux(void) {
+}
 
 uint32_t ot_spi_init(void) {
     ot_spi_select_pad_mux();

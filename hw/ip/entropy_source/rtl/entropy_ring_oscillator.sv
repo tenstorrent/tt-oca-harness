@@ -31,34 +31,34 @@ module entropy_ring_oscillator #(
   logic                    feedback;
 
   // first delay cell is inverting and has enable input
-  gnand2 u_en (
-    .a_i (enable_i),
-    .b_i (feedback),
-    .z_o (stage_o[0])
+  entropy_ring_nand2_wrapper u_en (
+    .i_A1 (enable_i),
+    .i_A2 (feedback),
+    .o_Y  (stage_o[0])
   );
 
   // remaining buffer delay chain TOTAL_LENGTH-1
   generate
     for (genvar i = 1; i < TOTAL_LENGTH; i++) begin : gen_dly
-      gbuff u_bf (
-        .d_i (stage_o[i-1]),
-        .z_o (stage_o[i])
+      entropy_ring_buf_wrapper u_bf (
+        .i_A (stage_o[i-1]),
+        .o_Y (stage_o[i])
       );
     end
   endgenerate
 
   // select full length or tapped length for feedback
-  gmux2 u_tap (
-    .i0_i (stage_o[TAPPED_LENGTH-1]),
-    .i1_i (stage_o[TOTAL_LENGTH-1]),
-    .s_i  (detune_i),
-    .z_o  (feedback)
+  entropy_ring_mux2_wrapper u_tap (
+    .i_I0  (stage_o[TAPPED_LENGTH-1]),
+    .i_I1  (stage_o[TOTAL_LENGTH-1]),
+    .i_SEL (detune_i),
+    .o_Y   (feedback)
   );
 
   // buffer ring output to manage load
-  gbuff u_fbf (
-    .d_i (feedback),
-    .z_o (noise_o)
+  entropy_ring_buf_wrapper u_fbf (
+    .i_A (feedback),
+    .o_Y (noise_o)
   );
 
 endmodule

@@ -131,8 +131,8 @@ async def ctn_routing_test(dut) -> None:
     source_kinds = ("ext_wo", "ext_p2p", "int_wo", "int_p2p")
     target_kinds = ("ext_wo", "ext_p2p", "int_wo", "int_p2p")
 
-    # Deterministic corners (the legacy mixed-mode pairs) ahead of the
-    # random sweep: every cross-mode combination appears at least once.
+    # Deterministic corners ahead of the random sweep: mixed wire-OR/P2P
+    # pairs in both directions, plus one external wire-OR to wire-OR route.
     scenarios: list[tuple[str, int, str, int]] = [
         ("ext_wo", 0, "ext_p2p", 2),
         ("ext_p2p", 2, "ext_wo", 1),

@@ -6,7 +6,7 @@
 // stream (write) and publishes one dtp_expected_item per observed
 // transaction so the scoreboard pairs the two streams in lockstep; mapped
 // accesses carry no contract. Stateless, no comparison, no reporting. The
-// cocotb realization has no twin yet (DTP_TB_ARCH).
+// cocotb realization has no twin (DTP_TB_ARCH).
 
 class dtp_xtrig_decode_ref_model extends ocah_ref_model #(ocah_axi_item, dtp_expected_item);
   `uvm_component_utils(dtp_xtrig_decode_ref_model)

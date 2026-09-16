@@ -18,9 +18,10 @@ all 14 aligned narrow-ARSIZE cells; the all-zeros/all-ones CSR patterns);
 only legal knobs (walk order, SRAM offsets, data values, extra CSR patterns)
 are seed-randomized.
 
-Each read runs twice with a disturbing read of an unrelated value in between,
-so a result that depends on leftover channel state instead of the addressed
-lanes shows up as a repeat mismatch.
+Each read — CSR, byte-run slice, and narrow-ARSIZE — runs twice with a
+disturbing read of an unrelated value in between, so a result that depends
+on leftover channel state instead of the addressed lanes shows up as a
+repeat mismatch.
 """
 
 from __future__ import annotations
@@ -45,6 +46,12 @@ LOCAL_BASE_ADDR_ADDR = SEP_CPU_CTRL.addr("SEP_LOCAL_BASE_ADDR")
 LOCAL_BASE_ADDR_EXP = SEP_CPU_CTRL.reset32("SEP_LOCAL_BASE_ADDR")
 
 _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
+
+# Combinatorial floors for an 8-byte beat. The walk tally is held against
+# these, not against len() of the list that drove it, so a walk that drops
+# a cell fails rather than shrinking the bound.
+SLICE_CELL_FLOOR = sum(range(1, 9))  # 8+7+…+1 = 36
+ARSIZE_CELL_FLOOR = 8 + 4 + 2  # AxSIZE 0/1/2, aligned offsets only
 
 # CSR patterns that must run on every seed: the two extremes a lane-extraction
 # defect is most likely to alias with (all-zeros looks like an undriven-lane
@@ -135,3 +142,15 @@ class SepAxiPartialLaneRead:
         if not seq.resp_ok:
             raise AssertionError(f"lane read @0x{addr:08x} len{length} size={size} not OKAY")
         return seq.rdata
+
+
+def _selftest() -> None:
+    assert len(_slice_specs()) == SLICE_CELL_FLOOR, (
+        f"slice cell list drifted: {len(_slice_specs())} != {SLICE_CELL_FLOOR}"
+    )
+    assert len(_arsize_specs()) == ARSIZE_CELL_FLOOR, (
+        f"ARSIZE cell list drifted: {len(_arsize_specs())} != {ARSIZE_CELL_FLOOR}"
+    )
+
+
+_selftest()

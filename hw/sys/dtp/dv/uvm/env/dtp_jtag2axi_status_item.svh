@@ -6,7 +6,7 @@
 // reconstructed scan: the status field the bridge must present and, for a
 // completed read, the read data. compare = 0 pairs and drops without a
 // record (a scan that is not a status capture, or one inside the CDC settle
-// window after a completion). No cocotb twin yet (see DTP_TB_ARCH).
+// window after a completion). No cocotb twin (see DTP_TB_ARCH).
 
 class dtp_jtag2axi_status_item extends ocah_sequence_item;
   `uvm_object_utils(dtp_jtag2axi_status_item)

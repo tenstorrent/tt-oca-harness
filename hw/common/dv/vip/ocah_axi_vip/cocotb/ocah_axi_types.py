@@ -2,16 +2,37 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared AXI type constants and value-conversion helpers (side-neutral).
 
-Response and protection codes as plain integers, plus the conversions between
-backend payloads and plain Python values. The wrapper layer keeps cocotbext
-transaction objects and enums behind this boundary; tests assert on these
-names without importing backend-specific types. The SV-UVM flow carries the
-same role as ``uvm/ocah_axi_types.svh``.
+Response and protection codes as plain integers, the bus-protocol ``Enum``,
+and the conversions between backend payloads and plain Python values. The
+wrapper layer keeps cocotbext transaction objects and enums behind this
+boundary; tests assert on these names without importing backend-specific
+types. The SV-UVM flow carries the same role as ``uvm/ocah_axi_types.svh``.
 """
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
+
+__all__ = [
+    "DEFAULT_TIMEOUT_NS",
+    "PROT_INSTRUCTION",
+    "PROT_NONSECURE",
+    "PROT_PRIVILEGED",
+    "RESP_DECERR",
+    "RESP_EXOKAY",
+    "RESP_OKAY",
+    "RESP_SLVERR",
+    "RESP_TIMEOUT",
+    "OcahAxiProtocol",
+    "axi_resp_ok",
+    "bytes_to_int",
+    "default_timeout_ns",
+    "normalize_resp_list",
+    "resp_name",
+    "words_from_bytes",
+    "worst_resp",
+]
 
 RESP_OKAY = 0
 RESP_EXOKAY = 1
@@ -19,10 +40,35 @@ RESP_SLVERR = 2
 RESP_DECERR = 3
 RESP_TIMEOUT = -1
 
+# Bound of every blocking master operation when neither the instance nor the
+# call names one; the ``+OCAH_AXI_TIMEOUT_NS`` plusarg overrides it for a run.
+DEFAULT_TIMEOUT_NS = 500_000
+_PLUSARG_TIMEOUT_NS = "OCAH_AXI_TIMEOUT_NS"
+
+
+def default_timeout_ns() -> int:
+    """Return the run's default master bound in ns (plusarg, else ``DEFAULT_TIMEOUT_NS``)."""
+    try:
+        import cocotb
+
+        raw = cocotb.plusargs.get(_PLUSARG_TIMEOUT_NS)
+    except Exception:  # noqa: BLE001 - plusargs exist only inside a simulator run
+        raw = None
+    return DEFAULT_TIMEOUT_NS if raw is None else int(raw)
+
+
 # AxPROT bit values (IHI 0022 A4.7): OR them into the `prot` argument.
 PROT_PRIVILEGED = 1
 PROT_NONSECURE = 2
 PROT_INSTRUCTION = 4
+
+
+class OcahAxiProtocol(Enum):
+    """Bus protocol of one connection; twin of ``ocah_axi_protocol_e``."""
+
+    AXI4 = "axi4"
+    AXI4_LITE = "axi4_lite"
+
 
 _RESP_NAMES = {
     RESP_OKAY: "OKAY",

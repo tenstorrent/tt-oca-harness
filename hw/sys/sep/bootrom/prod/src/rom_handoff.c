@@ -1,18 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// OROM BL1 handoff: find image, copy to SRAM, jump.
+// OROM BL1 handoff: find image, copy to ICCM, jump.
 //
 // BL1 handoff sequence:
 //   1. find_toc_entry(SEP_BL1) — scan TOC for BL1 image
-//   2. copy_bl1_to_sram()      — CPU memcpy BL1 to SRAM load address
+//   2. sep_dma_copy()          — DMA BL1 from SRAM to its ICCM load address
 //   3. jump_to_bl1()           — transfer control to BL1 entry point
 //
 // Manifest format: manifest_t + toc_header + toc_entry[].
 //
-// BL1 is a single flat binary (.text + .rodata + .data + .bss) linked
-// to an SRAM address.  Both IFU and LSU access SRAM through the AXI
-// system bus, so no ICCM/DCCM split is needed.
+// BL1 executes from ICCM: the IFU fetches it there, and vector.S's warm-reset
+// handler check only accepts an ICCM address.  Nothing BL1 loads or stores can
+// be in ICCM, though, so the blob copied here is BL1's .text plus the load image
+// of its .rodata/.data, and BL1's own _start copies that second part into DCCM --
+// reading it from SRAM via bl0_state.bl1_image_src_addr, since the ICCM copy is
+// not readable to it either.
 //
 // The manifest payload (including BL1) is already in SRAM after the
 // SPI DMA load.  We copy it to BL1's link address so the PC-relative
@@ -20,8 +23,10 @@
 
 #include <stdint.h>
 
+#include "bl0_state.h"
 #include "manifest.h"
 #include "errors.h"
+#include "sep_dma.h"
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -39,28 +44,15 @@ static const struct toc_entry *find_toc_entry(const manifest_t *m, uint64_t imag
     return (const struct toc_entry *)0;
 }
 
-// Copy BL1 image to its SRAM load address via CPU memcpy.
-// Both src (manifest payload in SRAM) and dst (BL1 link address in SRAM)
-// are LSU-accessible.
-static void copy_bl1_to_sram(const uint8_t *src, uint32_t dest_addr, uint32_t length) {
-    volatile uint32_t *dst = (volatile uint32_t *)(uintptr_t)dest_addr;
-    const uint32_t *src32 = (const uint32_t *)src;
-    uint32_t words = length >> 2;
-    for (uint32_t i = 0; i < words; ++i) {
-        dst[i] = src32[i];
-    }
-    uint32_t rem = length & 3u;
-    if (rem) {
-        uint32_t last = 0;
-        const uint8_t *tail = (const uint8_t *)&src32[words];
-        for (uint32_t j = 0; j < rem; ++j) last |= (uint32_t)tail[j] << (8u * j);
-        dst[words] = last;
-    }
-}
+// The copy must go through the DMA, not a CPU memcpy. ICCM and DCCM share VeeR
+// region 0xC, so el2_lsu_addrcheck treats any 0xCxxxxxxx address as DCCM's and
+// faults the ones outside DCCM's offset range: a store to ICCM raises an
+// unmapped access fault and never reaches the bus. The DMA engine is a separate
+// crossbar master and does reach the ICCM window.
 
 // Jump to BL1 entry point.  Does not return.
 __attribute__((noreturn)) static void jump_to_bl1(uint32_t entry_addr) {
-    // fence.i flushes IFU pipeline so freshly written SRAM code is visible.
+    // fence.i flushes IFU pipeline so freshly written ICCM code is visible.
     // fence completes pending stores.
     simputs("PRE_JUMP\n");
     __asm__ volatile("csrw mepc, %0\n"
@@ -106,7 +98,7 @@ uint32_t rom_handoff_bl1(const manifest_t *m) {
         return MANIFEST_ERR_BL1_BAD_ADDR;
     }
 
-    if (img_length == 0u || img_length > SEP_SRAM_SIZE) {
+    if (img_length == 0u || img_length > SEP_IRAM_SIZE) {
         simputs("BL1_SIZE\n");
         return MANIFEST_ERR_BL1_TOO_LARGE;
     }
@@ -115,14 +107,22 @@ uint32_t rom_handoff_bl1(const manifest_t *m) {
 
     const uint8_t *bl1_data = (const uint8_t *)toc + img_offset;
 
-    // ── Step 2: Copy BL1 to SRAM load address ──
+    // ── Step 2: Copy BL1 to its ICCM load address ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_COPY);
     simputshex32("COPY_SRC=", (uint32_t)(uintptr_t)bl1_data);
     simputshex32("COPY_DST=", load_addr);
     simputshex32("COPY_LEN=", img_length);
 
-    copy_bl1_to_sram(bl1_data, load_addr, img_length);
+    uint32_t dma_err = sep_dma_copy(load_addr, (uint32_t)(uintptr_t)bl1_data, img_length);
+    if (dma_err) {
+        simputs("BL1_COPY_FAIL\n");
+        return MANIFEST_ERR_BL1_BAD_ADDR;
+    }
     simputs("BL1_COPIED\n");
+
+    // BL1 needs the SRAM source, not the ICCM copy, to reach the load image of
+    // its own .rodata/.data: it executes from ICCM but cannot read ICCM.
+    get_bl0_state()->bl1_image_src_addr = (uint32_t)(uintptr_t)bl1_data;
 
     // ── Step 3: Jump to BL1 ──
     uint32_t entry_addr = load_addr + entry_off;

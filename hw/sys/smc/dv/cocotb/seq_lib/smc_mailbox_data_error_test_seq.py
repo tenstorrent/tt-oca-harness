@@ -3,27 +3,17 @@
 """Mailbox data path and error-response depth test over real SEP_IN AXI.
 
 Every register address and the clock-gate field mask are imported by generated
-symbol (``hw/sys/smc/regs/gen/c/smc_addr.h`` /
-``blocks/smc_base_config.h``), the way the sibling
-``smc_mailbox_irq_test_seq`` does, instead of being reached as
-``MAILBOX_0_BASE_ADDR + 0x8/0x10/0x18`` with a ``1 << 1`` field literal. The
-``CLOCK_GATE_CONTROL`` offset is taken from the generated map rather than
-tracked in a comment: it has moved once already, when ``HANG_DET_*`` was added
-([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+symbol (``hw/sys/smc/regs/gen/c/smc_addr.h`` / ``blocks/smc_base_config.h``),
+the way the sibling ``smc_mailbox_irq_test_seq`` does, so a regenerated map
+moves this sequence with it ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 
 The DUT-vs-golden compare is the ``expected=`` on each paired ``READ_DATA``
 read, enforced by ``SmcScoreboard`` (``env/smc_scoreboard.py:711-716``): data
 written into ``OUTBOUND_WRITE_DATA`` must come back out of
-``INBOUND_READ_DATA`` in FIFO order, and vice versa. There are deliberately no
-synthetic ``SmcMemoryModel`` regions here: asserting a written literal back out
-of a TB-local dict at an address no DUT transaction reaches is a ``C == C``
-compare that cannot fail on any RTL ([NO-ALWAYS-PASS-CHECKER]). The
-scoreboard's real
-``update_golden`` / ``check_golden`` path cannot replace them either: it is
-keyed by ``item.addr``, and a mailbox is a FIFO whose two writes land on the
-same address, so an address-keyed model cannot represent it. The synthetic
-regions are therefore removed rather than rewired, per the closure condition's
-first branch; the fail-capable DUT compare above is untouched.
+``INBOUND_READ_DATA`` in FIFO order, and vice versa. The scoreboard's
+``update_golden`` / ``check_golden`` path is keyed by ``item.addr``, and a
+mailbox is a FIFO whose writes land on one address, so an address-keyed model
+cannot represent it; the paired-read compare is the verdict.
 """
 
 from __future__ import annotations

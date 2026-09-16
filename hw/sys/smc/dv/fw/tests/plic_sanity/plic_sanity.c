@@ -11,7 +11,15 @@
 #include "smc_test.h"
 #include "virt_console.h"
 
-#define TEST_INTERRUPT_ID 23
+/* PLIC source 1, which is cpu_interrupts[0] and therefore ext_interrupts_i[0]:
+ * source IDs are the interrupt line plus one because the RISC-V PLIC reserves
+ * ID 0, and smc_base.sv:251 puts ext_interrupts at the bottom of the vector.
+ *
+ * Bit 0 is the only external interrupt this testbench drives: tb_top.sv ties
+ * the upper ext_interrupts_i bits to zero and exposes bit 0 as
+ * tb_ext_interrupt_0_i.
+ */
+#define TEST_INTERRUPT_ID 1
 
 static void test_interrupt_handler(int id, void *priv) {
     (void)priv;

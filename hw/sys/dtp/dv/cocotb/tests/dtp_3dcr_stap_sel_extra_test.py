@@ -26,6 +26,6 @@ class dtp_3dcr_stap_sel_extra_test(dtp_base_test):
             dtp_stap_scan_test_seq,
             "stap_sel_extra",
             scenario="stap_sel_extra",
-            specific_env="DTP_3DCR_STAP_SEL_EXTRA_TEST_LOOPS",
-            group_env="DTP_SCAN_TEST_LOOPS",
+            specific_knob="DTP_3DCR_STAP_SEL_EXTRA_TEST_LOOPS",
+            group_knob="DTP_SCAN_TEST_LOOPS",
         )

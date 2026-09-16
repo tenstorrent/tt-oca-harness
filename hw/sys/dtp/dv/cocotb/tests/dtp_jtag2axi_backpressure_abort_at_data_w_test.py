@@ -19,6 +19,11 @@ class dtp_jtag2axi_backpressure_abort_at_data_w_test(dtp_base_test):
         "CHK-AXI-RESP",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-ABORT-MIDFLIGHT",
+        "CHK-J2A-ABORT-FSM",
+        "CHK-J2A-CDC-CLEAR",
+        "CHK-J2A-ABORT-ESCAPE",
+        "CHK-J2A-ABORT-RECOVERY",
     )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 
@@ -26,9 +31,9 @@ class dtp_jtag2axi_backpressure_abort_at_data_w_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_robustness_test_seq,
             "backpressure_abort_at_data_w",
-            specific_env="DTP_JTAG2AXI_BACKPRESSURE_ABORT_AT_DATA_W_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_BACKPRESSURE_ABORT_AT_DATA_W_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="backpressure_abort_at_data_w",
         )
         for seq in sequences:

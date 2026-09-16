@@ -41,9 +41,9 @@ Checkers (each logged):
     scratch_cold_probe_o) advances across the JTAG burst -- the CPU was not stalled
     by the JTAG master.
 
-OSS deltas (documented): real PROD-sense replaces the reference suite's backdoor
-``force_jtag_lc_state``; a fixed CPU loop window replaces the reference suite's backdoor
-``uvm_hdl_deposit`` UVM_DONE release. A live CPU loop window replaces that deposit.
+Deltas vs the reference suite: real PROD-sense replaces its backdoor
+``force_jtag_lc_state``; a live CPU loop window replaces its backdoor
+``uvm_hdl_deposit`` UVM_DONE release.
 """
 
 from __future__ import annotations
@@ -246,7 +246,7 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
         # Seed the token-input word first, for the same reason token1 is seeded:
         # SEC_DISABLE_TOKEN_I is `external` sw=rw with no reset, so an unwritten
         # read returns X. Writing a TOKEN_I word starts no compare -- only a
-        # TOKEN_EOP write does, which this checker deliberately never issues.
+        # TOKEN_EOP write does, which this checker never issues.
         code, _ = await self.jtag_axil_op(
             write=True, addr=_EFUSE_MMR_SEC_DIS_I0, wdata=_SEC_DIS_I0_SEED
         )

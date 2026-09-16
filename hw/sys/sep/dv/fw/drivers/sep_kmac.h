@@ -29,7 +29,7 @@
  * Use with PeakRDL unions: cfg.f.mode = SEP_KMAC_MODE_CSHAKE.
  */
 #define SEP_KMAC_MODE_SHA3 ((uint32_t)0x0u)     /* 2'b00 */
-#define SEP_KMAC_MODE_RESERVED ((uint32_t)0x1u) /* 2'b01 unused / intentional mismatch */
+#define SEP_KMAC_MODE_RESERVED ((uint32_t)0x1u) /* 2'b01 reserved; used as a mismatch value */
 #define SEP_KMAC_MODE_SHAKE ((uint32_t)0x2u)    /* 2'b10 */
 #define SEP_KMAC_MODE_CSHAKE ((uint32_t)0x3u)   /* 2'b11 */
 

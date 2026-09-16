@@ -62,7 +62,12 @@ SCR_SCR = _field_mask(_UART_H, "UART_16550_MAIN__SCR__SCR_bm")
 
 _IER_BASIC = IER_ERBFI | IER_ETBEI | IER_ELSI | IER_EDSSI
 _SCR_PATTERNS = (0x00, 0xFF, 0xA5, 0x5A, 0x01, 0x02, 0x04, 0x08)
-_LSR_ERR = LSR_DR | LSR_OE | LSR_PE | LSR_FE | LSR_BI
+# Only DR: `_positive_dr_then_idle` is the same-run control that shows DR going
+# 1 then 0, so a stuck-at-0 DR fails. Nothing in this sequence can drive
+# OE/PE/FE/BI to 1, so an idle check on them would be an unbacked negative that
+# a tied-off bit passes; smc_uart_error_conditions_test drives each of them and
+# back.
+_LSR_IDLE_CHECKED = LSR_DR
 
 
 class smc_uart_extremes_misc_test_seq(SmcCsrSeq):
@@ -130,10 +135,14 @@ class smc_uart_extremes_misc_test_seq(SmcCsrSeq):
         await self.csr_write("SCR_MAGIC", UART_SCR, 0xA1)
         for i in range(256):
             lsr = await self.csr_read(f"IDLE_LSR_{i}", UART_LSR)
-            if lsr & _LSR_ERR:
-                raise AssertionError(f"idle LSR unexpected flags LSR=0x{lsr:08x} iter={i}")
+            if lsr & _LSR_IDLE_CHECKED:
+                raise AssertionError(f"idle LSR.DR set LSR=0x{lsr:08x} iter={i}")
             await Timer(100, units="ns")
-        cocotb.log.info("CHK-UART-EXT-IDLE: no DR/err flags over idle window after DR+ drain")
+        cocotb.log.info(
+            "CHK-UART-EXT-IDLE: LSR.DR stayed 0 over the idle window after the "
+            "DR+ drain; OE/PE/FE/BI are not claimed here (no control for them "
+            "in this sequence)"
+        )
 
     async def body(self) -> None:
         cg = await self.csr_read("UART_CG", CLOCK_GATE_CONTROL)

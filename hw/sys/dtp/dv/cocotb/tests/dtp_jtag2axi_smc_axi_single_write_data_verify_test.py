@@ -29,9 +29,9 @@ class dtp_jtag2axi_smc_axi_single_write_data_verify_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_smc_axi_wr_test_seq,
             "single_write_data_verify",
-            specific_env="DTP_JTAG2AXI_SMC_AXI_SINGLE_WRITE_DATA_VERIFY_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SMC_AXI_SINGLE_WRITE_DATA_VERIFY_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="single_write_data_verify",
         )
         for seq in sequences:

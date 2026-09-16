@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// IR/DR scan-level reconstruction over the passive monitor's STEP stream —
-// the decode layer the package header documented as a follow-up, now that a
-// checker consumer exists (issue tt-oca-hw#3296). Mirrors the cocotb
-// OcahJtagMasterMonitor reconstruction: walk the IEEE 1149.1 reference FSM from
-// the sampled TMS bits, accumulate TDI/TDO while the controller is in
-// Shift-x, and publish one ocah_jtag_scan_item on each Shift-x -> Exit1-x
-// transition. A scan that re-enters Shift-x via Pause/Exit2 publishes a
-// partial item at the first Exit1-x and a cumulative item at the last, same
-// as the cocotb builder.
+// IR/DR scan-level reconstruction over the passive monitor's STEP stream.
+// Mirrors the cocotb OcahJtagMasterMonitor reconstruction: walk the IEEE
+// 1149.1 reference FSM from the sampled TMS bits, accumulate TDI/TDO while
+// the controller is in Shift-x, and publish one ocah_jtag_scan_item on each
+// Shift-x -> Exit1-x transition. A scan that re-enters Shift-x via
+// Pause/Exit2 publishes a partial item at the first Exit1-x and a cumulative
+// item at the last, same as the cocotb builder.
 //
 // Purely passive and DUT-agnostic: state comes from the reference model,
 // never from DUT observables. TRST assertion (event or sampled level)
@@ -79,10 +77,14 @@ class ocah_jtag_scan_builder extends uvm_subscriber #(ocah_jtag_event);
       void'(publish(1'b0, t.timestamp));
     end
 
-    // The instruction becomes active leaving Update-IR.
-    if (previous == OCAH_JTAG_UPDATE_IR && m_pending_ir_valid) begin
-      m_active_ir        = m_pending_ir;
-      m_active_ir_known  = 1'b1;
+    // The instruction becomes active leaving Update-IR. Without a Shift-IR
+    // cycle the register latches its device-specific Capture-IR pattern,
+    // which the reconstruction cannot know.
+    if (previous == OCAH_JTAG_UPDATE_IR) begin
+      if (m_pending_ir_valid) begin
+        m_active_ir       = m_pending_ir;
+        m_active_ir_known = 1'b1;
+      end else m_active_ir_known = 1'b0;
       m_pending_ir_valid = 1'b0;
     end
   endfunction

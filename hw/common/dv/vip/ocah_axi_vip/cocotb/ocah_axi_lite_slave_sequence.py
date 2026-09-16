@@ -37,7 +37,7 @@ class OcahAxiLiteSlaveSequence:
         return self.driver
 
     def start(self) -> None:
-        """Compatibility no-op; cocotbext responders start at construction."""
+        """No-op: cocotbext responders start at construction."""
 
     def read(self, addr: int, length: int) -> bytes:
         """Backdoor-read ``length`` bytes starting at ``addr``."""

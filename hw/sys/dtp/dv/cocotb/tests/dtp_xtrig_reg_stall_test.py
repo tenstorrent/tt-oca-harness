@@ -14,6 +14,6 @@ class dtp_xtrig_reg_stall_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "reg_stall",
             scenario="reg_stall",
-            specific_env="DTP_XTRIG_REG_STALL_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_XTRIG_REG_STALL_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

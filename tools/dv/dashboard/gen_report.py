@@ -206,7 +206,7 @@ def render_report(result: dict) -> str:
   <tr>
     <td>{fmt(tests.get("passing"))}</td>
     <td>{fmt(tests.get("total"))}</td>
-    <td>{fmt(tests.get("pass_rate"))}</td>
+    <td>{"incomplete run" if tests.get("completed") is False else fmt(tests.get("pass_rate"))}</td>
     <td>{fmt(coverage.get("total_percent"))}</td>
   </tr>
 </table>

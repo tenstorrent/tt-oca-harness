@@ -14,6 +14,12 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_stretch_test(smc_base_test):
     """TX stretch recover + RSTART read/write on shared I2C pads."""
 
+    required_evidence = (
+        "CHK-I2C-P0-HOST-SETTLED",
+        "CHK-I2C-P0-STRETCH",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -25,12 +31,15 @@ class smc_i2c_p0_stretch_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 34-35 accesses observed across the
-            # retained regression runs (TX_PENDING stretch polls vary with
-            # timing), so the floor is set below the minimum observed. Literal
-            # here, not read from `seq.accesses`.
-            min_csr_accesses=27,
+            # The straight-line count the body must reach: every unconditional
+            # access plus one iteration of each of the three polling loops
+            # (TX_PENDING, RX_STATUS, HOST_IDLE); anything above it is poll
+            # iterations that vary with timing.
+            min_csr_accesses=30,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(f"TX_PENDING stretch={seq.stretch_ok} read={seq.read_ok}"),
+            details=(
+                f"I2C0 target stretched TX_PENDING until the host read it back; "
+                f"host received 0x{seq.rx_byte:02X} over {seq.accesses} accesses"
+            ),
         )

@@ -32,6 +32,8 @@ The DTP serves as the central hub for:
 * Configurable instruction register
 * Support for standard instructions (BYPASS, IDCODE, EXTEST, etc.)
 * Optional JTAG-to-AXI bridges for register access
+* Per-path debug-disable inputs that gate STAPs, iJTAG SIBs, and JTAG2AXI
+  bridges
 
 *Cross Trigger Network*
 

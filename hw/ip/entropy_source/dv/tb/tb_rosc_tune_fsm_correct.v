@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //------------------------------------------------------------------------------
-// Testbench for Entropy Ring Oscillator Tune FSM - CORRECT Behavior Verification
+// Testbench for Entropy Ring Oscillator Tune FSM - Rising-Edge Toggle Behavior
 //
 // Purpose: Verify that the FSM correctly responds ONLY to rising edges (0->1)
 //          of health_error_i, representing new health error events.
@@ -401,7 +401,7 @@ module tb_rosc_tune_fsm_correct;
     $finish;
   end
 
-  // Timeout watchdog - increased for extended stress test
+  // Timeout watchdog sized for the extended stress test
   initial begin
     #200000000;  // 200ms timeout for extended test
     $display("\nERROR: Test timeout!");

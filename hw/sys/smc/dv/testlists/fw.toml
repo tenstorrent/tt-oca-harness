@@ -1,0 +1,276 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+schema_version = 1
+
+# Firmware tests: SMC C images built from hw/sys/smc/dv/fw/tests/ and executed
+# by the CPU cluster, as opposed to the cocotb sequences that drive CSRs from
+# SEP_IN AXI.
+#
+# A `firmware = "<name>"` key is the whole opt-in. The runner inserts the
+# c_compile stage for any run whose selection contains such a test
+# (tools/dv/runlib/cli.py:2663-2673), builds `<name>` through [c_build.default] in
+# smc_sim_cfg.toml, and copies the declared outputs into the per-test simulator
+# directory by basename (tools/dv/runlib/stages.py:_stage_firmware_outputs),
+# hard-failing when one is missing.
+#
+# Plusargs naming a firmware output are therefore bare basenames, never
+# {repo_root} paths. A {repo_root} path points into hw/sys/smc/dv/fw/build/,
+# which is gitignored and outside the staging gate, so `--stage sim` on its own
+# would silently simulate whatever image happened to be left there.
+#
+# No `ci` tag and not in `smoke` or `hosted`: the hosted runners have no
+# RISC-V toolchain. The per-PR gate is `smoke`; nightly and weekly schedule
+# `hosted` (`all` minus the leaves in this file and the three SMC_DUAL leaves).
+#
+# In the `all` group. The pass magic 0xACAFACA1 lands in CPU_CTRL SCRATCH_0 and
+# the image occupies scratch banks 0-3 only -- what the decode in
+# smc_scratch_map_pkg predicts for a link map that ends at offset 0x8730, since
+# the other 28 banks serve addresses at least 128 KB up. Check that bank distribution in the log when
+# this test fails: an image spread across all 32 banks means the loader's
+# decode disagrees with the cluster's, and the CPU is fetching from somewhere
+# the image was never written.
+
+[[tests]]
+# The cheapest end-to-end proof that the firmware path works at all:
+# `int main(void) { test_pass(0); }` is one MMIO store, and reaching it
+# exercises c_compile -> .ecc.hex -> banked scratch load -> reset-vector
+# fetch -> crt0 + picolibc init -> __metal_synchronize_harts across four harts
+# -> the store -> AXI readback of CPU_CTRL SCRATCH_0.
+#
+# +smc_hold_cpu_boot holds boot_stall from t=0 so the sequence programs
+# RESET_VECTOR before any core fetches. Real fuse sense: no +skip_fuse_sense,
+# which would have the testbench supply state the DUT should have produced.
+name = "smc_fw_hello_world_test"
+module = "smc_fw_hello_world_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "hello_world"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=hello_world.ecc.hex",
+]
+
+[[tests]]
+# The cluster PLIC's enable/priority/threshold path, which has no cocotb route:
+# the 0xC400_0000 aperture answers SEP_IN AXI reads but takes no writes from it
+# (SMC_VPLAN.adoc, Known Limitations), so the CPU is the only master that can
+# program it. fw/tests/plic_sanity does the
+# programming; the sequence supplies ext_interrupts_i[0] and holds the ordering.
+name = "smc_fw_plic_claim_test"
+module = "smc_fw_plic_claim_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "interrupt", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "plic_sanity"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=plic_sanity.ecc.hex",
+]
+
+[[tests]]
+# All four harts: hello_world proves hart 0's store only, and a hart that stalls
+# after the crt0 barrier would not stop it. Here hart 0 waits for three atomic
+# check-ins before PASS, and the bench reads harts 2 and 3's own markers back.
+name = "smc_fw_hello_world_multicore_test"
+module = "smc_fw_hello_world_multicore_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "hello_world_multicore"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=hello_world_multicore.ecc.hex",
+]
+
+[[tests]]
+# OCTS preset sweep from the hart that owns the timer in the product. The image
+# parks with the timer running, so the bench reads COUNT advancing and counts
+# PRIMARY credit pulses on pad 56 after the verdict.
+name = "smc_fw_octs_p0_primary_test"
+module = "smc_fw_octs_p0_primary_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "octs", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "octs_p0_primary_test"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=octs_p0_primary_test.ecc.hex",
+]
+
+[[tests]]
+# I2C images: I2C_0 and I2C_1 talk to each other under firmware, so both need
+# the shared pad bus (+smc_i2c_shared_bus, as the cocotb I2C0<->I2C1 leaves do).
+# A passive decoder on tb_i2c0_scl/sda grades the wire against floors each
+# image implies; the firmware grades its own CSR-side checks.
+#
+# i2c_sanity: controller bring-up, a 3-byte write with STOP and a NACKed probe.
+name = "smc_fw_i2c_sanity_test"
+module = "smc_fw_i2c_sanity_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_sanity"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_sanity.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+# i2c_target_sanity: target bring-up whose step S6 needs a host that STOPs
+# inside the acknowledge clock; the bench plays it from a SCRATCH_1 marker.
+name = "smc_fw_i2c_target_sanity_test"
+module = "smc_fw_i2c_target_sanity_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_target_sanity"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_target_sanity.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+# ACQ-full auto-stretch and its release by ACQ reset. The stretch is a duration
+# on SCL no register reports; the image parks at two markers and the bench
+# samples the target's own SCL pull in each window before acknowledging.
+name = "smc_fw_i2c_acq_fifo_stretch_reset_test"
+module = "smc_fw_i2c_acq_fifo_stretch_reset_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_acq_fifo_stretch_reset"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_acq_fifo_stretch_reset.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+name = "smc_fw_i2c_p1_fifo_depth_xfer_test"
+module = "smc_fw_i2c_p1_fifo_depth_xfer_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_p1_fifo_depth_xfer"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_p1_fifo_depth_xfer.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+name = "smc_fw_i2c_tx_stretch_timeout_recovery_test"
+module = "smc_fw_i2c_tx_stretch_timeout_recovery_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_tx_stretch_timeout_recovery"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_tx_stretch_timeout_recovery.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+# Transfer-driven FIFO fill; the cocotb smc_i2c_fifo_full_test is CSR-only.
+name = "smc_fw_i2c_fifo_full_test"
+module = "smc_fw_i2c_fifo_full_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "i2c_fifo_full"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=i2c_fifo_full.ecc.hex",
+    "+smc_i2c_shared_bus",
+]
+
+[[tests]]
+# Log-engine images: the engine's data path is CPU-side (SRAM fetch, UART write,
+# MCR.LOOP return through the UART's own receiver), which no cocotb body drives.
+# The bench reads the SRAM source and the engine's programming back after the
+# verdict; single_entry also exposes the received-data interrupt on the UART
+# IRQ line, and fetch_err's unmapped address is probed from SEP_IN for DECERR.
+name = "smc_fw_uart_log_engine_single_entry_test"
+module = "smc_fw_uart_log_engine_single_entry_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "uart", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "uart_log_engine_single_entry"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=uart_log_engine_single_entry.ecc.hex",
+]
+
+[[tests]]
+name = "smc_fw_uart_log_engine_boundary_backpressure_test"
+module = "smc_fw_uart_log_engine_boundary_backpressure_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "uart", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "uart_log_engine_boundary_backpressure"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=uart_log_engine_boundary_backpressure.ecc.hex",
+]
+
+[[tests]]
+name = "smc_fw_uart_log_engine_disable_during_xfer_test"
+module = "smc_fw_uart_log_engine_disable_during_xfer_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "uart", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "uart_log_engine_disable_during_xfer"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=uart_log_engine_disable_during_xfer.ecc.hex",
+]
+
+[[tests]]
+name = "smc_fw_uart_log_engine_fetch_err_test"
+module = "smc_fw_uart_log_engine_fetch_err_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "uart", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "uart_log_engine_fetch_err"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=uart_log_engine_fetch_err.ecc.hex",
+]
+
+[[groups]]
+name = "fw"
+tests = [
+    "smc_fw_hello_world_multicore_test",
+    "smc_fw_hello_world_test",
+    "smc_fw_i2c_acq_fifo_stretch_reset_test",
+    "smc_fw_i2c_fifo_full_test",
+    "smc_fw_i2c_p1_fifo_depth_xfer_test",
+    "smc_fw_i2c_sanity_test",
+    "smc_fw_i2c_target_sanity_test",
+    "smc_fw_i2c_tx_stretch_timeout_recovery_test",
+    "smc_fw_octs_p0_primary_test",
+    "smc_fw_plic_claim_test",
+    "smc_fw_uart_log_engine_boundary_backpressure_test",
+    "smc_fw_uart_log_engine_disable_during_xfer_test",
+    "smc_fw_uart_log_engine_fetch_err_test",
+    "smc_fw_uart_log_engine_single_entry_test",
+]
+expected_count = 14

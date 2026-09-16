@@ -1,2 +1,0 @@
-+incdir+${CALIPTRA_ROOT}/src/entropy_src/tb
-${CALIPTRA_ROOT}/src/entropy_src/tb/physical_rng.sv

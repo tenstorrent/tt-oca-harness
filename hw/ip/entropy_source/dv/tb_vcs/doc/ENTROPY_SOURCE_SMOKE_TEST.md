@@ -98,104 +98,17 @@ Sample 4: LEVEL>prev, WPTR>prev, RPTR=0
 
 ## Pass Criteria Summary
 
-| Check | Criteria | Status |
-|-------|----------|--------|
-| APB Interface | Read 0x000 = 0x01000001 | ✓ |
-| FIFO Level | Increases over time | ✓ |
-| Write Pointer | Advances (wraps allowed) | ✓ |
-| Read Pointer (before reads) | Stays at 0 | ✓ |
-| FIFO Data | Non-zero values | ✓ |
-| Read Pointer (after reads) | Advances correctly | ✓ |
-| Valid Signal | Toggles HIGH | ✓ |
-| Entropy Data | Varying values | ✓ |
-| End-to-End | ROs → Decorrelator → Compressor → FIFO → APB | ✓ |
-
----
-
-## Example Test Log
-
-```
-[PHASE 1] Initialize clocks and reset
-  [OK] Clocks running, reset released
-
-[PHASE 2] Verify APB interface
-  Component ID (via register name) = 0x01000001
-  Component ID (via addr 0x0) = 0x01000001
-  [OK] APB interface verified
-
-[PHASE 3] Configure bypass decorrelator mode and initialize ROs
-  DECORRELATOR_CTRL = 0x0003FFFF
-    BYPASS[11:0] = 0xFFF (all decorrelators bypassed)
-    SAMPLE_CLK_DIV[31:12] = 63 (div-64 sampling)
-  RING_OSC_ENABLE = 0x00000000 (all ROs disabled)
-  Wait 1000 ns (100 cycles)
-  RING_OSC_ENABLE = 0x00FFFFFF (all 24 ROs enabled)
-  [OK] DUT configured (bypass decorrelator mode, internal sample clocks)
-
-[PHASE 4] Monitor FIFO status (verify data path)
-  Sample 0: LEVEL=0, WPTR=0, RPTR=0
-  Sample 1: LEVEL=5, WPTR=5, RPTR=0
-  Sample 2: LEVEL=10, WPTR=10, RPTR=0
-  Sample 3: LEVEL=15, WPTR=15, RPTR=0
-  Sample 4: LEVEL=20, WPTR=20, RPTR=0
-  FIFO level changed: 0 -> 20
-  [OK] FIFO receiving data (level=20)
-  [OK] Write pointer advancing
-  [OK] Read pointer stable at 0 (no FIFO reads)
-
-  Reading FIFO data to verify entropy values...
-    FIFO[0] = 0x8A3F5C21
-    FIFO[1] = 0x4D92A7E3
-    FIFO[2] = 0xB1E6F849
-    FIFO[3] = 0x7C2D9A5B
-    FIFO[4] = 0x3E8F1D7A
-  [OK] FIFO data verified: 10 reads, 0 zeros, 10 non-zero
-  [OK] Read pointer advanced to 10 after 10 reads
-
-[PHASE 5] Monitor entropy_stream_data_o and entropy_stream_vld_o
-  Monitoring for 10 µs (1000 clock cycles)...
-    Cycle 150: entropy_stream_vld=1, data=0x8A3F5C21
-    Cycle 183: entropy_stream_vld=1, data=0x4D92A7E3
-    Cycle 217: entropy_stream_vld=1, data=0xB1E6F849
-    Cycle 251: entropy_stream_vld=1, data=0x7C2D9A5B
-    ... (more samples) ...
-
-[PHASE 5] Verify results
-  Valid pulses detected: 47
-  Unique data values: 47
-  [OK] entropy_stream_vld_o toggled 47 times
-  [OK] entropy_stream_data_o changing (47 unique values)
-
-================================================================================
-CL INTEGRATION TEST: PASS
-================================================================================
-Summary:
-  - APB interface: Working (verified 0x000 = 0x01000001)
-  - Configuration: 2 APB writes (DECORRELATOR_CTRL, RING_OSC_ENABLE)
-  - Clock source: Internal sample clock ROs (default)
-  - FIFO level: 0 -> 20 (data path working)
-  - FIFO write pointer: 0 -> 20 (advancing)
-  - FIFO read: 10 words, 10 non-zero values
-  - FIFO read pointer: 0 -> 10 (correct)
-  - entropy_stream_vld_o: Toggling (47 pulses)
-  - entropy_stream_data_o: Changing (47 unique values)
-  - Models used: NONE (real ring oscillators)
-================================================================================
-
-Sample entropy_stream data (first 5 values):
-  [0] 0x8A3F5C21
-  [1] 0x4D92A7E3
-  [2] 0xB1E6F849
-  [3] 0x7C2D9A5B
-  [4] 0x3E8F1D7A
-
-Sample FIFO data (first 5 values):
-  [0] 0x8A3F5C21
-  [1] 0x4D92A7E3
-  [2] 0xB1E6F849
-  [3] 0x7C2D9A5B
-  [4] 0x3E8F1D7A
-```
+| Check | Criteria |
+|-------|----------|
+| APB Interface | Read 0x000 = 0x01000001 |
+| FIFO Level | Increases over time |
+| Write Pointer | Advances (wraps allowed) |
+| Read Pointer (before reads) | Stays at 0 |
+| FIFO Data | Non-zero values |
+| Read Pointer (after reads) | Advances correctly |
+| Valid Signal | Toggles HIGH |
+| Entropy Data | Varying values |
+| End-to-End | ROs → Decorrelator → Compressor → FIFO → APB |
 
 ---
 
@@ -258,11 +171,11 @@ The RING_OSC_ENABLE register (address 0x090) provides a clean way to initialize 
 - Bit [23:12]: Enable 12 sample clock ring oscillators
 - ROs start from clean state and begin oscillating
 
-This method is **cleaner** than the old `force/release` approach because:
+Properties of this method:
 
-- Uses documented register interface (no testbench backdoor)
+- Uses the documented register interface (no testbench backdoor)
 - Works the same way in real silicon
-- More maintainable (no hierarchy-dependent paths)
+- No hierarchy-dependent paths
 
 ### Register Bit Allocation (RING_OSC_ENABLE @ 0x090)
 
@@ -340,7 +253,4 @@ Default value: `0x00FFFFFF` (all enabled after reset)
 
 ---
 
-**Version**: 2.0
-**Date**: 2026-01-09
 **Test**: `test/test_cl_integration.py::test_cl_integration_minimal`
-**Updated**: Replaced force/release with RING_OSC_ENABLE toggle method

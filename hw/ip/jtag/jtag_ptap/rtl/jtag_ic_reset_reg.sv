@@ -47,7 +47,9 @@ module jtag_ic_reset_reg
   output logic             scan_out_o,
 
   // TAP control interface (for reset control)
+  /* verilator lint_off UNUSEDSIGNAL */
   input  jtag_tap_ctrl_t   tap_ctrl_i,
+  /* verilator lint_on UNUSEDSIGNAL */
 
   // IC Reset control outputs. NOTE: `ic_reset_ovrd_o` is the *active-high*
   // override signal; it is the bit-wise inversion of the IEEE §17
@@ -55,9 +57,8 @@ module jtag_ic_reset_reg
   output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ovrd_o,    // 1 ⇒ JTAG overriding this port (== !reset_enable)
   output logic [NUM_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_o   // Active-low reset value (== reset_control TDR field)
 );
-  // Tie off unused field to satisfy lint
   logic unused_tap_ctrl;
-  assign unused_tap_ctrl = ^{tap_ctrl_i.tms, tap_ctrl_i.tck};
+  assign unused_tap_ctrl = tap_ctrl_i.tms;
 
   //--------------------------------------------------------------------------
   // Local Parameters

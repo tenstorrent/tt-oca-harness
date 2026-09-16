@@ -7,9 +7,22 @@ from __future__ import annotations
 import random
 
 from cocotb.triggers import Event
+from ocah_axi_vip import OcahAxiConfig, OcahAxiProtocol, OcahAxiSlaveSequence
 from pyuvm import uvm_object
 
 from .smc_memory_model import SmcMemoryModel
+
+# SYS_OUT AXI4 egress geometry (smc_pkg smc_sys_out_56_64_8_12_axi_*) and the
+# responder's sparse memory span; the dual bench binds one responder per
+# instance from the same values.
+SYS_OUT_AXI_GEOMETRY = OcahAxiConfig(
+    protocol=OcahAxiProtocol.AXI4,
+    addr_width=56,
+    data_width=64,
+    id_width=8,
+    user_width=12,
+)
+SYS_OUT_MEM_SIZE = 1 << 56
 
 
 class SmcEnvCfg(uvm_object):
@@ -29,6 +42,9 @@ class SmcEnvCfg(uvm_object):
         # Testcase-local golden memory. This is not a DUT backdoor; sequences
         # use it to track data driven through public AXI/protocol VIP paths.
         self.memory_model = SmcMemoryModel()
+        # Slave sequence of the SYS_OUT responder smc_base_test.bring_up binds to
+        # u_output_axi_if: backdoor memory access and one-shot faults.
+        self.sys_out_mem: OcahAxiSlaveSequence | None = None
         # Set by the base test once clocks are running and cold reset is
         # released, so the env agents start their observations at the right
         # time.

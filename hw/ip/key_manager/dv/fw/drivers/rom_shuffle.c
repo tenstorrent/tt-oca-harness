@@ -101,8 +101,7 @@ void rom_shuffle_array(rom_km_bitpool_t *pool, rom_km_prng_state_t *prng, uint16
  * @brief Initialise an index array to [0..n) and shuffle it in place.
  *
  * Convenience wrapper combining identity initialisation, bitpool reset, and
- * Fisher-Yates shuffle into a single call.  Eliminates duplicated setup
- * code in sideload_write_dual_share and rom_shred_region.
+ * Fisher-Yates shuffle into a single call.
  *
  * @param[in]     prng PRNG state for random index generation.
  * @param[out]    arr  Array to fill with shuffled indices (must hold n elements).

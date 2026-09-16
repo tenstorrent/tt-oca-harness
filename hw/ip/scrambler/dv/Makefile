@@ -207,7 +207,7 @@ run_all_bw: run_512_bw run_1024_bw run_2048_bw run_4096_bw run_8192_bw
 	@echo "All BYTE_WISE=1 simulations complete"
 	@echo "=========================================="
 
-# Backward compatibility
+# Default run target (512x32 word mode).
 run: run_512
 
 
@@ -226,7 +226,7 @@ help:
 	@echo "Scrambler Testbench Makefile (Verilator)"
 	@echo ""
 	@echo "Build targets:"
-	@echo "  all           - Build all 10 testbenches (word-mode + byte-wise)"
+	@echo "  all           - Build every word-mode and byte-wise testbench"
 	@echo "  all_bw        - Build BYTE_WISE=1 testbenches only"
 	@echo ""
 	@echo "Run targets:"

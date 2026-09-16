@@ -343,9 +343,9 @@ Sampling rules:
 |===
 |VPLAN Test / Group |Coverage
 |`dtp_sanity_test` |`tap_smoke_cg`, partial `tap_state_cg`
-|`basic_jtag` group |`tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR/iJTAG loopback observations
-|`dtp_jtag2axi_smc_axi_wr_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS write
-|`dtp_jtag2axi_smc_axi_rd_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS read
+|`basic_jtag` group |`tap_smoke_cg`, `tap_state_cg`, `jtag_instruction_cg`, compact BSR loopback observations
+|`dtp_jtag2axi_smc_axi_single_write_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS write
+|`dtp_jtag2axi_smc_axi_single_write_read_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS read
 |JTAG instruction scenarios |`jtag_instruction_cg`, `tap_state_cg`
 |`debug_tdr` group |`tmp_ic_reset_cg`, `debug_control_cg`, `caps_tdr_cg`, `jtag_instruction_cg`
 |JTAG2AXI robustness scenarios |`jtag2axi_robustness_cg`, `jtag2axi_response_cg`
@@ -367,7 +367,7 @@ Sampling rules:
 |Per-group reporting |The DV dashboard ingests the merged run's `coverage-details.json` (policy dispositions included), keyed by the cover points' native hierarchy names (`u_dtp_<area>_fcov.c_<label>`); no DTP-specific report script
 |Commercial simulation |The same modules' covergroups compile under VCS/Xcelium (the `ifndef VERILATOR` layer); both frameworks collect through the runner — `run_dv.py --cov --tool vcs` for cocotb, `run_dv.py --framework uvm --cov` for SV-UVM — with per-test `simv.vdb` databases merged (`cov_merge`, `urg` with the design database) and reported (`cov_report`)
 |Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion coverage
-|Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file with their tracking references
+|Closure triage |Add directed tests for reachable holes; record blocked or unreachable points as hole entries in the coverage policy file, each stating the structural reason the point cannot fire
 |===
 
 Sampling happens at the documented transaction boundaries: completed IR scan,
@@ -381,9 +381,8 @@ change.
 |===
 |Item |Reason
 |SV covergroups in Verilator |Unsupported by the tool; the cover-property layer carries the public flow
-|`jtag2axi_robustness_cg` reset-timing request-issued/data-phase/response-wait and CDC clear/isolate bins (15 points) |Cannot fire until a mid-flight reset abort is recoverable: a stall outlasting the JTAG scan tail leaves the recovery write BUSY_OR_FULL; the reset scenarios keep post-completion stalls until then. Tracked as hole entries in the coverage policy file
-|`jtag2axi_response_cg` poll long-wait bins (3 points) |Settled-status polls never exceed three BUSY captures with the current stall profile; the settle point vs. poll cadence needs measurement. Tracked as hole entries in the coverage policy file
-|`ctp_cg` / `ctm_cg` under SV-UVM |The SV-UVM tb shape ties the XTRIG CSR bus and cross-trigger inputs quiescent; these bins collect in the cocotb flow
+|`jtag2axi_robustness_cg` reset-timing request-issued/data-phase/response-wait and CDC clear/isolate bins |A stall that outlasts the JTAG scan tail leaves the recovery write BUSY_OR_FULL, so the reset scenarios stall only after completion and these bins do not fire; they are hole entries in the coverage policy file
+|`jtag2axi_response_cg` poll long-wait bins |Settled-status polls never exceed three BUSY captures under the responder stall profile, so the long-wait bins do not fire; they are hole entries in the coverage policy file
 |Stimulus-intent bins (IC_RESET pattern source, seeded random request masks) |Test-layer randomization intent, not signal-observable; the modules record the resulting behavior instead
 |Invalid IDCODE marker, contradictory debug-disable outcomes |Checker failures in a passing run, never coverage bins
 |Unaligned and unmapped JTAG2AXI addresses |Outside the bridge TDR and testbench address-map contract

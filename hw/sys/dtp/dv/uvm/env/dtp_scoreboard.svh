@@ -34,7 +34,7 @@
 //
 // A required feature (dtp_test_cfg.required_features through the env cfg)
 // that ends with zero comparisons fails the run. The cocotb DtpScoreboard
-// still checks inline on the driver's completed-item stream (DTP_TB_ARCH,
+// checks inline on the driver's completed-item stream (DTP_TB_ARCH,
 // realization table).
 
 `uvm_analysis_imp_decl(_dtp_ir_decode_expected)

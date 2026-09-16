@@ -16,132 +16,128 @@
 | 0x28 | Trdstramrplow | RW a| -
 | 0x2C | Trdstramrphigh | RW a| -
 | 0x40 | Trdstramdata | R a| -
-| 0xFF8 | TrDstSinkScratchLo | RW a| -
-| 0xFFC | TrDstSinkScratchHi | RW a| -
+| 0xFF8 | ScratchLo | RW a| Scratch register (low) for DV and potential ECO usage
+| 0xFFC | ScratchHi | RW a| Scratch register (high) for DV and potential ECO usage
 | 0x1000 | Trfunnelcontrol | RW a| -
 | 0x1004 | Trfunnelimpl | R a| -
 | 0x1008 | Trfunneldisinput | RW a| -
-| 0x1FF8 | TrFunnelScratchLo | RW a| -
-| 0x1FFC | TrFunnelScratchHi | RW a| -
 | 0x2100 | CDbgClaCounter0Cfg | RW a| Configure CLA counter0. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 | 0x2108 | CDbgClaCounter1Cfg | RW a| Configure CLA counter1. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 | 0x2110 | CDbgClaCounter2Cfg | RW a| Configure CLA counter2. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 | 0x2118 | CDbgClaCounter3Cfg | RW a| Configure CLA counter3. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
-| 0x2120 | CDbgNode0Eap0 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (Two EAPs per Node).
-| 0x2128 | CDbgNode0Eap1 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (Two EAPs per Node).
-| 0x2130 | CDbgNode1Eap0 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (Two EAPs per Node).
-| 0x2138 | CDbgNode1Eap1 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (Two EAPs per Node).
-| 0x2140 | CDbgNode2Eap0 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (Two EAPs per Node).
-| 0x2148 | CDbgNode2Eap1 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (Two EAPs per Node).
-| 0x2150 | CDbgNode3Eap0 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (Two EAPs per Node).
-| 0x2158 | CDbgNode3Eap1 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (Two EAPs per Node).
-| 0x2160 | CDbgSignalMask0Lo | RW a| -
-| 0x2168 | CDbgSignalMatch0Lo | RW a| -
-| 0x2170 | CDbgSignalMask1Lo | RW a| -
-| 0x2178 | CDbgSignalMatch1Lo | RW a| -
+| 0x2120 | CDbgNode0Eap0 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2128 | CDbgNode0Eap1 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2130 | CDbgNode1Eap0 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2138 | CDbgNode1Eap1 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2140 | CDbgNode2Eap0 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2148 | CDbgNode2Eap1 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2150 | CDbgNode3Eap0 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2158 | CDbgNode3Eap1 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2160 | CDbgSignalMask0Lo | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
+| 0x2168 | CDbgSignalMatch0Lo | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
+| 0x2170 | CDbgSignalMask1Lo | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
+| 0x2178 | CDbgSignalMatch1Lo | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
 | 0x2180 | CDbgSignalEdgeDetectCfg | RW a| Register to configure debug bus for edge triggers.
 | 0x2188 | CDbgEapStatus | RW a| Register to indicate if EAP Pair was activated. Use the corresponding w2c register to reset the status. There are 2 bits for each EAP. The bit corresponds to action-0 and action-1 of the EAP. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)
 | 0x2190 | CDbgClaCtrlStatus | RW a| Ctrl/Status register to Enable EAP after EAP programming is complete, and read the current node.
 | 0x2198 | CDbgMuxSelLo | RW a| -
 | 0x21A0 | CDbgRsvd1 | RW a| Reserved Register that can be changed.
 | 0x21A8 | CDbgRsvd2 | RW a| Reserved Register that can be changed.
-| 0x21B0 | CDbgTransitionMaskLo | RW a| -
-| 0x21B8 | CDbgTransitionFromValueLo | RW a| -
-| 0x21C0 | CDbgTransitionToValueLo | RW a| -
-| 0x21C8 | CDbgOnesCountMaskLo | RW a| -
-| 0x21D0 | CDbgOnesCountValue | RW a| 2 registers to configure \"ones count\" event. Event triggered when the sum of the signals match the value specified in this register.
-| 0x21D8 | CDbgAnyChangeLo | RW a| -
-| 0x21E0 | CDbgSignalSnapshotNode0Eap0Lo | R a| -
-| 0x21E8 | CDbgSignalSnapshotNode0Eap1Lo | R a| -
-| 0x21F0 | CDbgSignalSnapshotNode1Eap0Lo | R a| -
-| 0x21F8 | CDbgSignalSnapshotNode1Eap1Lo | R a| -
-| 0x2200 | CDbgSignalSnapshotNode2Eap0Lo | R a| -
-| 0x2208 | CDbgSignalSnapshotNode2Eap1Lo | R a| -
-| 0x2210 | CDbgSignalSnapshotNode3Eap0Lo | R a| -
-| 0x2218 | CDbgSignalSnapshotNode3Eap1Lo | R a| -
+| 0x21B0 | CDbgTransitionMaskLo | RW a| 3 registers to configure "transition event". This register is to select the signals of interest using a mask.
+| 0x21B8 | CDbgTransitionFromValueLo | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value A.
+| 0x21C0 | CDbgTransitionToValueLo | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value B.
+| 0x21C8 | CDbgOnesCountMaskLo | RW a| 2 registers to configure "ones count" event. This register is to select the signals of interest using a mask.
+| 0x21D0 | CDbgOnesCountValue | RW a| 2 registers to configure "ones count" event. Event triggered when the sum of the signals match the value specified in this register.
+| 0x21D8 | CDbgAnyChangeLo | RW a| Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.
+| 0x21E0 | CDbgSignalSnapshotNode0Eap0Lo | R a| debug Bus Value when Node0 Eap0 Trigger is met.
+| 0x21E8 | CDbgSignalSnapshotNode0Eap1Lo | R a| debug Bus Value when Node0 Eap1 Trigger is met.
+| 0x21F0 | CDbgSignalSnapshotNode1Eap0Lo | R a| debug Bus Value when Node1 Eap0 Trigger is met.
+| 0x21F8 | CDbgSignalSnapshotNode1Eap1Lo | R a| debug Bus Value when Node1 Eap0 Trigger is met.
+| 0x2200 | CDbgSignalSnapshotNode2Eap0Lo | R a| debug Bus Value when Node0 Eap0 Trigger is met.
+| 0x2208 | CDbgSignalSnapshotNode2Eap1Lo | R a| debug Bus Value when Node0 Eap1 Trigger is met.
+| 0x2210 | CDbgSignalSnapshotNode3Eap0Lo | R a| debug Bus Value when Node1 Eap0 Trigger is met.
+| 0x2218 | CDbgSignalSnapshotNode3Eap1Lo | R a| debug Bus Value when Node1 Eap0 Trigger is met.
 | 0x2220 | CDbgClaTimeMatch | RW a| This value is compared (greater than or equal to the programmed value) against the internal time register value of the core, and is used to generate a time match event for CLA. Needs to be non zero for the time match event signal to trigger. The event will only trigger an action if the EAP programming is done. Requires writing 0 to this register to stop the match event.
-| 0x2228 | CDbgSignalMask2Lo | RW a| -
-| 0x2230 | CDbgSignalMatch2Lo | RW a| -
-| 0x2238 | CDbgSignalMask3Lo | RW a| -
-| 0x2240 | CDbgSignalMatch3Lo | RW a| -
-| 0x2248 | CDbgNode0Eap2 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2250 | CDbgNode0Eap3 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2258 | CDbgNode1Eap2 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2260 | CDbgNode1Eap3 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2268 | CDbgNode2Eap2 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2270 | CDbgNode2Eap3 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2278 | CDbgNode3Eap2 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2280 | CDbgNode3Eap3 | RW a| CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2288 | CDbgSignalSnapshotNode0Eap2Lo | R a| -
-| 0x2290 | CDbgSignalSnapshotNode0Eap3Lo | R a| -
-| 0x2298 | CDbgSignalSnapshotNode1Eap2Lo | R a| -
-| 0x22A0 | CDbgSignalSnapshotNode1Eap3Lo | R a| -
-| 0x22A8 | CDbgSignalSnapshotNode2Eap2Lo | R a| -
-| 0x22B0 | CDbgSignalSnapshotNode2Eap3Lo | R a| -
-| 0x22B8 | CDbgSignalSnapshotNode3Eap2Lo | R a| -
-| 0x22C0 | CDbgSignalSnapshotNode3Eap3Lo | R a| -
+| 0x2228 | CDbgSignalMask2Lo | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
+| 0x2230 | CDbgSignalMatch2Lo | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
+| 0x2238 | CDbgSignalMask3Lo | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
+| 0x2240 | CDbgSignalMatch3Lo | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
+| 0x2248 | CDbgNode0Eap2 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2250 | CDbgNode0Eap3 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2258 | CDbgNode1Eap2 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2260 | CDbgNode1Eap3 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2268 | CDbgNode2Eap2 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2270 | CDbgNode2Eap3 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2278 | CDbgNode3Eap2 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2280 | CDbgNode3Eap3 | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2288 | CDbgSignalSnapshotNode0Eap2Lo | R a| debug Bus Value when Node0 Eap2 Trigger is met.
+| 0x2290 | CDbgSignalSnapshotNode0Eap3Lo | R a| debug Bus Value when Node0 Eap3 Trigger is met.
+| 0x2298 | CDbgSignalSnapshotNode1Eap2Lo | R a| debug Bus Value when Node1 Eap2 Trigger is met.
+| 0x22A0 | CDbgSignalSnapshotNode1Eap3Lo | R a| debug Bus Value when Node1 Eap3 Trigger is met.
+| 0x22A8 | CDbgSignalSnapshotNode2Eap2Lo | R a| debug Bus Value when Node2 Eap2 Trigger is met.
+| 0x22B0 | CDbgSignalSnapshotNode2Eap3Lo | R a| debug Bus Value when Node2 Eap3 Trigger is met.
+| 0x22B8 | CDbgSignalSnapshotNode3Eap2Lo | R a| debug Bus Value when Node3 Eap2 Trigger is met.
+| 0x22C0 | CDbgSignalSnapshotNode3Eap3Lo | R a| debug Bus Value when Node3 Eap3 Trigger is met.
 | 0x22C8 | CDbgSignalDelayMuxSel | RW a| -
 | 0x22D8 | CDbgClaXtriggerTimestretch | RW a| This value determines the time stretched pulse duration for the cross trigger. 8 bits for each of the two triggers.
-| 0x22F0 | CDbgClaTimestamp | R a| -
-| 0x22F8 | CDbgClaTimestampSync | RW a| This value is loaded to the finegrain timestamp counter based on a cross trigger to sync the time value across the multiple cluster's CLA blocks
-| 0x2300 | CDbgClaTimestampConfig | RW a| -
-| 0x23F0 | CrScratchpad | RW a| Scratchpad register for DV
-| 0x2400 | CDbgSignalMask0Hi | RW a| -
-| 0x2408 | CDbgSignalMatch0Hi | RW a| -
-| 0x2410 | CDbgSignalMask1Hi | RW a| -
-| 0x2418 | CDbgSignalMatch1Hi | RW a| -
-| 0x2420 | CDbgSignalMask2Hi | RW a| -
-| 0x2428 | CDbgSignalMatch2Hi | RW a| -
-| 0x2430 | CDbgSignalMask3Hi | RW a| -
-| 0x2438 | CDbgSignalMatch3Hi | RW a| -
+| 0x22F0 | CDbgClaTimestamp | R a| 64-bit timestamp counter. Increments on time_tick. Can be written directly or loaded from timestamp_sync on xtrigger when resync is enabled.
+| 0x22F8 | CDbgClaTimestampSync | RW a| Timestamp sync value. This value is loaded into the timestamp register on xtrigger posedge when resync bit is enabled.
+| 0x2300 | CDbgClaTimestampConfig | RW a| Timestamp configuration register. Controls resync behavior and debug marker.
+| 0x2308 | CDbgClaTimestampOffset | RW a| Timestamp offset register. The Offset value is subtracted from the timestamp before comparing with incoming timestamp value.
+| 0x2400 | CDbgSignalMask0Hi | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
+| 0x2408 | CDbgSignalMatch0Hi | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
+| 0x2410 | CDbgSignalMask1Hi | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
+| 0x2418 | CDbgSignalMatch1Hi | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
+| 0x2420 | CDbgSignalMask2Hi | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
+| 0x2428 | CDbgSignalMatch2Hi | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
+| 0x2430 | CDbgSignalMask3Hi | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
+| 0x2438 | CDbgSignalMatch3Hi | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
 | 0x2440 | CDbgMuxSelHi | RW a| -
-| 0x2448 | CDbgTransitionMaskHi | RW a| -
-| 0x2450 | CDbgTransitionFromValueHi | RW a| -
-| 0x2458 | CDbgTransitionToValueHi | RW a| -
-| 0x2460 | CDbgOnesCountMaskHi | RW a| -
-| 0x2468 | CDbgAnyChangeHi | RW a| -
-| 0x2470 | CDbgSignalSnapshotNode0Eap0Hi | R a| -
-| 0x2478 | CDbgSignalSnapshotNode0Eap1Hi | R a| -
-| 0x2480 | CDbgSignalSnapshotNode1Eap0Hi | R a| -
-| 0x2488 | CDbgSignalSnapshotNode1Eap1Hi | R a| -
-| 0x2490 | CDbgSignalSnapshotNode2Eap0Hi | R a| -
-| 0x2498 | CDbgSignalSnapshotNode2Eap1Hi | R a| -
-| 0x24A0 | CDbgSignalSnapshotNode3Eap0Hi | R a| -
-| 0x24A8 | CDbgSignalSnapshotNode3Eap1Hi | R a| -
-| 0x24B0 | CDbgSignalSnapshotNode0Eap2Hi | R a| -
-| 0x24B8 | CDbgSignalSnapshotNode0Eap3Hi | R a| -
-| 0x24C0 | CDbgSignalSnapshotNode1Eap2Hi | R a| -
-| 0x24C8 | CDbgSignalSnapshotNode1Eap3Hi | R a| -
-| 0x24D0 | CDbgSignalSnapshotNode2Eap2Hi | R a| -
-| 0x24D8 | CDbgSignalSnapshotNode2Eap3Hi | R a| -
-| 0x24E0 | CDbgSignalSnapshotNode3Eap2Hi | R a| -
-| 0x24E8 | CDbgSignalSnapshotNode3Eap3Hi | R a| -
-| 0x24F0 | CDbgLfsr | RW a| -
-| 0x24F8 | CDbgLfsrMask | RW a| -
-| 0x2500 | CDbgTimestampCapture | R a| -
-| 0x2508 | CDbgCompare0Lo | RW a| -
-| 0x2510 | CDbgCompare0MaskLo | RW a| -
-| 0x2518 | CDbgCompare1Lo | RW a| -
-| 0x2520 | CDbgCompare1MaskLo | RW a| -
-| 0x2528 | CDbgCompare2Lo | RW a| -
-| 0x2530 | CDbgCompare2MaskLo | RW a| -
-| 0x2538 | CDbgCompare3Lo | RW a| -
-| 0x2540 | CDbgCompare3MaskLo | RW a| -
-| 0x2548 | CDbgCompare0Hi | RW a| -
-| 0x2550 | CDbgCompare0MaskHi | RW a| -
-| 0x2558 | CDbgCompare1Hi | RW a| -
-| 0x2560 | CDbgCompare1MaskHi | RW a| -
-| 0x2568 | CDbgCompare2Hi | RW a| -
-| 0x2570 | CDbgCompare2MaskHi | RW a| -
-| 0x2578 | CDbgCompare3Hi | RW a| -
-| 0x2580 | CDbgCompare3MaskHi | RW a| -
+| 0x2448 | CDbgTransitionMaskHi | RW a| 3 registers to configure "transition event". This register is to select the signals of interest using a mask.
+| 0x2450 | CDbgTransitionFromValueHi | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value A.
+| 0x2458 | CDbgTransitionToValueHi | RW a| 3 registers to configure "transition event". The event is triggered on transition from Value A to Value B. This register specifies Value B.
+| 0x2460 | CDbgOnesCountMaskHi | RW a| 2 registers to configure "ones count" event. This register is to select the signals of interest using a mask.
+| 0x2468 | CDbgAnyChangeHi | RW a| Event triggered when a subset of debug signals change. The mask is used to select the subset of the debug signals.
+| 0x2470 | CDbgSignalSnapshotNode0Eap0Hi | R a| debug Bus Value when Node0 Eap0 Trigger is met.
+| 0x2478 | CDbgSignalSnapshotNode0Eap1Hi | R a| debug Bus Value when Node0 Eap1 Trigger is met.
+| 0x2480 | CDbgSignalSnapshotNode1Eap0Hi | R a| debug Bus Value when Node1 Eap0 Trigger is met.
+| 0x2488 | CDbgSignalSnapshotNode1Eap1Hi | R a| debug Bus Value when Node1 Eap0 Trigger is met.
+| 0x2490 | CDbgSignalSnapshotNode2Eap0Hi | R a| debug Bus Value when Node0 Eap0 Trigger is met.
+| 0x2498 | CDbgSignalSnapshotNode2Eap1Hi | R a| debug Bus Value when Node0 Eap1 Trigger is met.
+| 0x24A0 | CDbgSignalSnapshotNode3Eap0Hi | R a| debug Bus Value when Node1 Eap0 Trigger is met.
+| 0x24A8 | CDbgSignalSnapshotNode3Eap1Hi | R a| debug Bus Value when Node1 Eap0 Trigger is met.
+| 0x24B0 | CDbgSignalSnapshotNode0Eap2Hi | R a| debug Bus Value when Node0 Eap2 Trigger is met.
+| 0x24B8 | CDbgSignalSnapshotNode0Eap3Hi | R a| debug Bus Value when Node0 Eap3 Trigger is met.
+| 0x24C0 | CDbgSignalSnapshotNode1Eap2Hi | R a| debug Bus Value when Node1 Eap2 Trigger is met.
+| 0x24C8 | CDbgSignalSnapshotNode1Eap3Hi | R a| debug Bus Value when Node1 Eap3 Trigger is met.
+| 0x24D0 | CDbgSignalSnapshotNode2Eap2Hi | R a| debug Bus Value when Node2 Eap2 Trigger is met.
+| 0x24D8 | CDbgSignalSnapshotNode2Eap3Hi | R a| debug Bus Value when Node2 Eap3 Trigger is met.
+| 0x24E0 | CDbgSignalSnapshotNode3Eap2Hi | R a| debug Bus Value when Node3 Eap2 Trigger is met.
+| 0x24E8 | CDbgSignalSnapshotNode3Eap3Hi | R a| debug Bus Value when Node3 Eap3 Trigger is met.
+| 0x24F0 | CDbgLfsr | RW a| LFSR value.
+| 0x24F8 | CDbgLfsrMask | RW a| LFSR programming mask.
+| 0x2500 | CDbgTimestampCapture | R a| Captured timestamp upper bits. When ts_capture is set in the timestamp config register, a cross trigger 0 event captures the timestamp upper bits into this register.
+| 0x2508 | CDbgCompare0Lo | RW a| Value for arithmetic comparison.
+| 0x2510 | CDbgCompare0MaskLo | RW a| Value to mask the arithmetic comparison.
+| 0x2518 | CDbgCompare1Lo | RW a| Value for arithmetic comparison.
+| 0x2520 | CDbgCompare1MaskLo | RW a| Value to mask the arithmetic comparison.
+| 0x2528 | CDbgCompare2Lo | RW a| Value for arithmetic comparison.
+| 0x2530 | CDbgCompare2MaskLo | RW a| Value to mask the arithmetic comparison.
+| 0x2538 | CDbgCompare3Lo | RW a| Value for arithmetic comparison.
+| 0x2540 | CDbgCompare3MaskLo | RW a| Value to mask the arithmetic comparison.
+| 0x2548 | CDbgCompare0Hi | RW a| Value for arithmetic comparison.
+| 0x2550 | CDbgCompare0MaskHi | RW a| Value to mask the arithmetic comparison.
+| 0x2558 | CDbgCompare1Hi | RW a| Value for arithmetic comparison.
+| 0x2560 | CDbgCompare1MaskHi | RW a| Value to mask the arithmetic comparison.
+| 0x2568 | CDbgCompare2Hi | RW a| Value for arithmetic comparison.
+| 0x2570 | CDbgCompare2MaskHi | RW a| Value to mask the arithmetic comparison.
+| 0x2578 | CDbgCompare3Hi | RW a| Value for arithmetic comparison.
+| 0x2580 | CDbgCompare3MaskHi | RW a| Value to mask the arithmetic comparison.
 | 0x2FF8 | Scratch | RW a| Additional scratch register for DV and potential ECO usage
 | 0x3000 | Trdstcontrol | RW a| -
 | 0x3004 | Trdstimpl | RW a| -
 | 0x3008 | Trdstinstfeatures | RW a| -
 | 0x31A0 | CDbgDebugTraceCfg | RW a| -
-| 0x3FF8 | TrDstScratchLo | RW a| -
-| 0x3FFC | TrDstScratchHi | RW a| -
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -241,14 +237,14 @@
 |===
 
 [cols="1,3,1,1,6", options="header"]
-.TrDstSinkScratchLo Register
+.ScratchLo Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Data` | RW | 0x0 a| -
 |===
 
 [cols="1,3,1,1,6", options="header"]
-.TrDstSinkScratchHi Register
+.ScratchHi Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `Data` | RW | 0x0 a| -
@@ -281,20 +277,6 @@
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
 | 15:0 | `Trfunneldisinput` | RW | 0x0 a| Bits 7:0 are reserved for N-trace srcs and 15:8 for Dst sources
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.TrFunnelScratchLo Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `Data` | RW | 0x0 a| -
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.TrFunnelScratchHi Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `Data` | RW | 0x0 a| -
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -349,14 +331,14 @@
 .CDbgNode0Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| -
-| 57:52 | `Action2` | RW | 0x0 a| -
+| 63:58 | `Action3` | RW | 0x0 a| Select an Action
+| 57:52 | `Action2` | RW | 0x0 a| Select an Action
 | 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -369,14 +351,14 @@
 .CDbgNode0Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| -
-| 57:52 | `Action2` | RW | 0x0 a| -
+| 63:58 | `Action3` | RW | 0x0 a| Select an Action
+| 57:52 | `Action2` | RW | 0x0 a| Select an Action
 | 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -389,14 +371,14 @@
 .CDbgNode1Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| -
-| 57:52 | `Action2` | RW | 0x0 a| -
+| 63:58 | `Action3` | RW | 0x0 a| Select an Action
+| 57:52 | `Action2` | RW | 0x0 a| Select an Action
 | 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -409,14 +391,14 @@
 .CDbgNode1Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| -
-| 57:52 | `Action2` | RW | 0x0 a| -
+| 63:58 | `Action3` | RW | 0x0 a| Select an Action
+| 57:52 | `Action2` | RW | 0x0 a| Select an Action
 | 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -429,14 +411,14 @@
 .CDbgNode2Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| -
-| 57:52 | `Action2` | RW | 0x0 a| -
+| 63:58 | `Action3` | RW | 0x0 a| Select an Action
+| 57:52 | `Action2` | RW | 0x0 a| Select an Action
 | 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -449,14 +431,14 @@
 .CDbgNode2Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| -
-| 57:52 | `Action2` | RW | 0x0 a| -
+| 63:58 | `Action3` | RW | 0x0 a| Select an Action
+| 57:52 | `Action2` | RW | 0x0 a| Select an Action
 | 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -469,14 +451,14 @@
 .CDbgNode3Eap0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| -
-| 57:52 | `Action2` | RW | 0x0 a| -
+| 63:58 | `Action3` | RW | 0x0 a| Select an Action
+| 57:52 | `Action2` | RW | 0x0 a| Select an Action
 | 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -489,14 +471,14 @@
 .CDbgNode3Eap1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:58 | `Action3` | RW | 0x0 a| -
-| 57:52 | `Action2` | RW | 0x0 a| -
+| 63:58 | `Action3` | RW | 0x0 a| Select an Action
+| 57:52 | `Action2` | RW | 0x0 a| Select an Action
 | 51:44 | `Udf` | RW | 0x0 a| User Defined Function with event type 0, 1, and 2 as arguments
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -509,28 +491,28 @@
 .CDbgSignalMask0Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch0Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask1Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch1Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -538,9 +520,9 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 63:16 | `Reserved` | - | - a| Reserved
-| 15 | `PosEdgeSignal1` | RW | 0x0 a| Defines which edge to detect for signal from signal1_select. 1: Pos edge, 0: Neg Edge
+| 15 | `PosEdgeSignal1` | RW | 0x0 a| Defines which edge to detect for singal from signal1_select. 1: Pos edge, 0: Neg Edge
 | 14:8 | `Signal1Select` | RW | 0x0 a| Define which signal to select for edge detection.
-| 7 | `PosEdgeSignal0` | RW | 0x0 a| Defines which edge to detect for signal from signal0_select. 1: Pos edge, 0: Neg Edge
+| 7 | `PosEdgeSignal0` | RW | 0x0 a| Defines which edge to detect for singal from signal0_select. 1: Pos edge, 0: Neg Edge
 | 6:0 | `Signal0Select` | RW | 0x0 a| Define which signal to select for edge detection.
 |===
 
@@ -588,8 +570,8 @@
 .CDbgClaCtrlStatus Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `ClaLock` | RW | 0x0 a| -
-| 62:16 | `Rsvd6216` | RW | 0x0 a| -
+| 63 | `ClaLock` | RW | 0x0 a| If this bit is set, then CLA is locked and the enbale_cla is latched forever
+| 62:16 | `Rsvd6216` | RW | 0x0 a| reserved fields
 | 15 | `DisableLocalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to local clocks
 | 14 | `DisableGlobalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to global clocks
 | 13:7 | `ClaChainLoopDelay` | RW | 0x36 a| Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal
@@ -607,14 +589,14 @@
 | 57:52 | `Muxselseg6` | RW | 0x0 a| -
 | 51:46 | `Muxselseg5` | RW | 0x0 a| -
 | 45:40 | `Muxselseg4` | RW | 0x0 a| -
-| 39:34 | `Muxselseg3` | RW | 0x0 a| -
-| 33:28 | `Muxselseg2` | RW | 0x0 a| -
-| 27:22 | `Muxselseg1` | RW | 0x0 a| -
-| 21:16 | `Muxselseg0` | RW | 0x0 a| -
+| 39:34 | `Muxselseg3` | RW | 0x0 a| Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...
+| 33:28 | `Muxselseg2` | RW | 0x0 a| Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...
+| 27:22 | `Muxselseg1` | RW | 0x0 a| Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...
+| 21:16 | `Muxselseg0` | RW | 0x0 a| Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...
 | 15:9 | `Rsvd159` | RW | 0x0 a| -
-| 8 | `Finegraintime` | RW | 0x0 a| -
-| 7:2 | `Dbmid` | RW | 0x0 a| -
-| 1:0 | `Dbmmode` | RW | 0x0 a| -
+| 8 | `Finegraintime` | RW | 0x0 a| Fine Grain Time Enable. If this bit is set, the fine grain time is enabled.
+| 7:2 | `Dbmid` | RW | 0x0 a| Unique DBM ID of the DBM instance
+| 1:0 | `Dbmmode` | RW | 0x0 a| Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -740,28 +722,28 @@
 .CDbgSignalMask2Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch2Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask3Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch3Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -774,8 +756,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -794,8 +776,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -814,8 +796,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -834,8 +816,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -854,8 +836,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -874,8 +856,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -894,8 +876,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -914,8 +896,8 @@
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -985,14 +967,14 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 63:32 | `Rsvd` | RW | 0x0 a| -
-| 31:30 | `Muxselseg15` | RW | 0x0 a| -
-| 29:28 | `Muxselseg14` | RW | 0x0 a| -
-| 27:26 | `Muxselseg13` | RW | 0x0 a| -
-| 25:24 | `Muxselseg12` | RW | 0x0 a| -
-| 23:22 | `Muxselseg11` | RW | 0x0 a| -
-| 21:20 | `Muxselseg10` | RW | 0x0 a| -
-| 19:18 | `Muxselseg9` | RW | 0x0 a| -
-| 17:16 | `Muxselseg8` | RW | 0x0 a| -
+| 31:30 | `Muxselseg15` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
+| 29:28 | `Muxselseg14` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
+| 27:26 | `Muxselseg13` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
+| 25:24 | `Muxselseg12` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
+| 23:22 | `Muxselseg11` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
+| 21:20 | `Muxselseg10` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
+| 19:18 | `Muxselseg9` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
+| 17:16 | `Muxselseg8` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 0
 | 15:14 | `Muxselseg7` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 7
 | 13:12 | `Muxselseg6` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 6
 | 11:10 | `Muxselseg5` | RW | 0x0 a| Dbg Mux Shifted signals Select Bits for Lane 5
@@ -1016,88 +998,89 @@
 .CDbgClaTimestamp Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Timestamp` | R | 0x0 a| -
+| 63:8 | `TimestampUpper` | R | 0x0 a| Current timestamp value (upper 56 bits)
+| 7:0 | `TimestampLower` | R | 0x0 a| Current timestamp value (lower 8 bits)
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgClaTimestampSync Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `TimestampSync` | RW | 0x0 a| -
+| 63:0 | `TimestampSync` | RW | 0x0 a| Sync value to load into timestamp
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgClaTimestampConfig Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:11 | `Rsvd1` | RW | 0x0 a| -
-| 10 | `TsSyncRaw` | RW | 0x0 a| -
-| 9 | `TsSyncOffset` | RW | 0x0 a| -
-| 8:1 | `DebugMarker` | RW | 0x0 a| -
-| 0 | `TsCapture` | RW | 0x0 a| -
+| 63:10 | `Rsvd1` | RW | 0x0 a| Reserved
+| 9 | `TsCapture` | RW | 0x0 a| When this bit is set, a cross trigger 0 event will cause the value from Timestamp register to be written into the TimestampCapture register
+| 8:1 | `DebugMarker` | RW | 0x0 a| Debug marker output value
+| 0 | `Resync` | RW | 0x0 a| When set, timestamp is loaded from timestamp_sync on xtrigger posedge. Auto-clears after load.
 |===
 
 [cols="1,3,1,1,6", options="header"]
-.CrScratchpad Register
+.CDbgClaTimestampOffset Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Data` | RW | 0xBFBFBFBFBFBFBFBF a| -
+| 63:56 | `Rsvd0` | RW | 0x0 a| Reserved
+| 55:0 | `Offset` | RW | 0x0 a| Timestamp offset value
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask0Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch0Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask1Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch1Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask2Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch2Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMask3Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Mask to be applied to debug bus before match
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgSignalMatch3Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value used for debug bus match.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -1108,13 +1091,13 @@
 | 57:52 | `Muxselseg14` | RW | 0x0 a| -
 | 51:46 | `Muxselseg13` | RW | 0x0 a| -
 | 45:40 | `Muxselseg12` | RW | 0x0 a| -
-| 39:34 | `Muxselseg11` | RW | 0x0 a| -
-| 33:28 | `Muxselseg10` | RW | 0x0 a| -
-| 27:22 | `Muxselseg9` | RW | 0x0 a| -
-| 21:16 | `Muxselseg8` | RW | 0x0 a| -
+| 39:34 | `Muxselseg11` | RW | 0x0 a| Mux Select Bits for Lane 3. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane3= Seg3, if bit[0] = 1, Lane3 = Seg4, if bit[1] =1, Lane3 = Seg5,...
+| 33:28 | `Muxselseg10` | RW | 0x0 a| Mux Select Bits for Lane 2. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane2= Seg2, if bit[0] = 1, Lane2 = Seg4, if bit[1] =1, Lane2 = Seg5,...
+| 27:22 | `Muxselseg9` | RW | 0x0 a| Mux Select Bits for Lane 1. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane1= Seg1, if bit[0] = 1, Lane1 = Seg4, if bit[1] =1, Lane1 = Seg5,...
+| 21:16 | `Muxselseg8` | RW | 0x0 a| Mux Select Bits for Lane 0. Split debug bus into 16 bit segments. Seg0 = debug bus [15:0], Seg1 = debug bus[31:16],.... If all bits are 0, Lane0 = Seg0, if bit[0] = 1, Lane0 = Seg4, if bit[1] =1, Lane0 = Seg5,...
 | 15:8 | `Rsvd158` | RW | 0x0 a| -
-| 7:2 | `Dbmid` | RW | 0x0 a| -
-| 1:0 | `Dbmmode` | RW | 0x0 a| -
+| 7:2 | `Dbmid` | RW | 0x0 a| Unique DBM ID of the DBM instance
+| 1:0 | `Dbmmode` | RW | 0x0 a| Mode selection, 0: DBM off, 1: Normal debug mode, 2: DBM ID output mode, 3: Toggle Mode
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -1268,135 +1251,135 @@
 .CDbgLfsr Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:1 | `Lfsr` | RW | 0x0 a| -
-| 0 | `LfsrActive` | RW | 0x0 a| -
+| 63:1 | `Lfsr` | RW | 0x0 a| Value of the LFSR register.
+| 0 | `LfsrActive` | RW | 0x0 a| Enable the LFSR register.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgLfsrMask Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:1 | `Mask` | RW | 0x0 a| -
-| 0 | `Rsvd0` | RW | 0x0 a| -
+| 63:1 | `Mask` | RW | 0x0 a| Value to mask the LFSR register.
+| 0 | `Rsvd0` | RW | 0x0 a| Reserved.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgTimestampCapture Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Timestamp` | R | 0x0 a| -
+| 63:0 | `Timestamp` | R | 0x0 a| Timestamp capture value.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare0Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare0MaskLo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare1Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare1MaskLo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare2Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare2MaskLo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare3Lo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare3MaskLo Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare0Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare0MaskHi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare1Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare1MaskHi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare2Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare2MaskHi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare3Hi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value for arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CDbgCompare3MaskHi Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `Value` | RW | 0x0 a| -
+| 63:0 | `Value` | RW | 0x0 a| Value to mask the arithmetic comparison.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -1411,10 +1394,10 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:27 | `Reserved` | - | - a| Reserved
-| 26:24 | `Trdstformat` | RW | 0x3 a| bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compression), 2'b0 (No Compression)
+| 26:24 | `Trdstformat` | RW | 0x3 a| bit[0]: XOR Enable, bit[1]: VLT Enable. Supported values : 2'b3 (XOR+VLT Compression), 2'b1 (XOR Compresion), 2'b0 (No Compression)
 | 23:20 | `Trdstsyncmax` | RW | 0x0 a| When trDstSyncMode is set to 2'b10, timestamp will be sent for every 2^(trDstSyncMax + 4) Cluster clocks.
 | 19:18 | `Reserved` | - | - a| Reserved
-| 17:16 | `Trdstsyncmode` | RW | 0x0 a| When the field is set tp 2'b10, sent timestamp. All other values not NA.
+| 17:16 | `Trdstsyncmode` | RW | 0x0 a| When the field is set tp 2'b10, sent timestamp. All other vlaues not NA.
 | 15 | `Trdstinhibitsrc` | R | 0x0 a| -
 | 14 | `Reserved` | - | - a| Reserved
 | 13 | `Trdstinststallena` | R | 0x0 a| -
@@ -1434,8 +1417,8 @@
 .Trdstimpl Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `Trdsttimestampconfig` | RW | 0x0 a| -
-| 30:28 | `Trdstvendorstreamlength` | RW | 0x4 a| Specify Stream length. A stream starts with \"no compressed packet\". Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)
+| 31 | `Trdsttimestampconfig` | RW | 0x0 a| DST timestamp configuration. 0: timestamp input form external source (CoreTime). 1: timestamp from CLA timesync.
+| 30:28 | `Trdstvendorstreamlength` | RW | 0x4 a| Specify Stream length. A stream starts with "no compressed packet". Stream length specifies number of frames before a non-compressed packet is sent.Stream Length = 32* 2^(trDstVendorStreamLength + 1)
 | 27:24 | `Trdstvendorframelength` | RW | 0x1 a| Specify frame length. Frame Length = trDstVendorFrameLength* 64 ; Frame Length should be a multiple of Bank Data Width.
 | 23:20 | `Trdstprotocolminor` | R | 0x0 a| -
 | 19:16 | `Trdstprotocolmajor` | R | 0x1 a| -
@@ -1464,23 +1447,9 @@
 | Bits | Field | Access | Reset | Description
 | 31:22 | `Reserved` | - | - a| Reserved
 | 21 | `FrameClosureMode` | RW | 0x0 a| Closure Mode: 1: Close frame with a packet no larger than max packet size  before any overflow (due to packets crossing frame boundary). 0: Close frame when packets cross boundary. Push back packet crossing frame boundary to packet generator.
-| 20 | `FrameModeEnable` | RW | 0x1 a| Enable Frame Mode (Frame Mode: Always pack \"frame length\" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete transmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.
+| 20 | `FrameModeEnable` | RW | 0x1 a| Enable Frame Mode (Frame Mode: Always pack "frame length" number of bytes for trace transmission). If flush to memory is stalled (due to silicon bug), we can have incomplete packets in memory. Frame Mode will help SW decoder to avoid reading incomplete trasnmitted packets. In Frame Mode, SW will get a memory pointer that is aligned to Frame Length. HW will ensure  there are no incomplete packets incluced in the region pointed by memory pointer.
 | 19:16 | `Reserved` | - | - a| Reserved
 | 15:12 | `FrameLenghtInBytes` | RW | 0x2 a| Use trDstImpl[trDstVendorFrameLength] for Frame Length programming. Register field ZBB-ed.
-| 11:4 | `TraceFrameFillByte` | RW | 0x81 a| Use \"Filler Packet\" to align a stream of trace packets within a frame boundary.
-| 3:0 | `TraceSourceId` | RW | 0x0 a| Trace Source ID (FIXME: Base Address, Tool Issue)
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.TrDstScratchLo Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `Data` | RW | 0x0 a| -
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.TrDstScratchHi Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `Data` | RW | 0x0 a| -
+| 11:4 | `TraceFrameFillByte` | RW | 0x81 a| Use "Filler Packet" to align a stream of trace packets within a frame boundary.
+| 3:0 | `TraceSourceId` | RW | 0x0 a| Trace Source ID
 |===

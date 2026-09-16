@@ -15,10 +15,10 @@
 // the reference model precedes the scoreboard it feeds; the env and the test
 // come last because they reference the others.
 //
-// Deliberately absent: a report server or report catcher (the pass banner
-// and the step formats are methods on ocah_test and ocah_sequence), and a
-// reset ladder (SV interfaces cannot inherit, so each bench's base test owns
-// bring_up() through its own <dut>_tb_if).
+// The pass banner and the step formats are methods on ocah_test and
+// ocah_sequence (no report server or report catcher). SV interfaces cannot
+// inherit, so each bench's base test owns bring_up() through its own
+// <dut>_tb_if (no shared reset ladder).
 
 `timescale 1ns / 1ps
 
