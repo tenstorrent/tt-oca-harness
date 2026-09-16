@@ -120,7 +120,7 @@ class smu_axi_in_burst_outstanding_test_seq:
             if result.timed_out:
                 raise AssertionError(f"TIMEOUT s1 read {idx}: bound={AXI_TIMEOUT_NS}ns")
         resps = {resp_name(r.resp) for r in reads}
-        datas = {int(r.data) & 0xFFFF_FFFF for r in reads}
+        words = {int(r.data) & 0xFFFF_FFFF for r in reads}
         sb.expect_eq(
             "CHK-AXIIN-DEPTH-RD every concurrent read is OKAY",
             resps,
@@ -128,7 +128,7 @@ class smu_axi_in_burst_outstanding_test_seq:
         )
         sb.expect_eq(
             "CHK-AXIIN-DEPTH-RD every concurrent read returns the reset value",
-            datas,
+            words,
             {VERSION_LO_RESET},
             evidence="CHK-AXIIN-DEPTH",
         )
