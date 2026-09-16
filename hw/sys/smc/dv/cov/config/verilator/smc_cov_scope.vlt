@@ -58,6 +58,12 @@ coverage_off -file "*chipyard_generated_files/*"
 // in makes the headline number a statement about other projects' code.
 coverage_off -file "*vendor/*"
 
+// IP blocks and shared primitives SMC integrates carry their own DV packages
+// and their own coverage; SMC grades the integration it owns (rtl/, regs/ and
+// the cov/sv points), the same rule the SMU and DTP scopes apply.
+coverage_off -file "*hw/ip/*"
+coverage_off -file "*hw/common/*"
+
 // KNOWN GAP: this line drops chipsalliance/i3c-core and lowRISC/opentitan,
 // but not vendor/pulp-platform/** or vendor/tenstorrent/tt-hw-debug/**, which
 // stay instrumented. No file pattern reaches them; `*pulp-platform/*` and

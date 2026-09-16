@@ -77,6 +77,7 @@ verifying the block behind the port.
 |`smc_default_reg_rd_test` |Run a compact OSS-safe default-register read sweep.
 |`smc_ext_interrupts_pin_test` |ext_interrupts_i[0] after prim_sync3.
 |`smc_fw_plic_claim_test` |Firmware programs the cluster PLIC and claims ext_interrupts_i[0] through it.
+|`smc_rdl_field_sweep_test` |Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
 |`smc_register_boundary_depth_test` |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |Run the SMC OSS register-sanity scenario.
 |===
@@ -7303,6 +7304,42 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `dual_a
 
 '''''
 
+
+[[sec-193-smc_rdl_field_sweep_test]]
+===== 193 `smc_rdl_field_sweep_test`
+
+*Source Module*: `smc_rdl_field_sweep_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) on SEP_IN
+
+*Objective*: Every software-owned field of the SCRATCH, DFX_CTRL, SMC_BASE_CONFIG, CPU_CTRL and RESET_UNIT blocks, plus the adopter strap capture registers, driven against its generated RDL contract and restored.
+
+*Test Coverage*:
+
+* Addresses, reset values, field positions and software-access types come from the PeakRDL IP-XACT export (`hw/sys/smc/regs/gen/ipxact/smc.xml`) through `seq_lib/smc_rdl_regmap.py`, which cross-checks every address against the matching `smc_reg.py` symbol before the sequence uses it. The IP-XACT export is the only generated view that carries the RDL access type, the `oneToSet` / read-side-effect modifiers and the `volatile` flag; the C headers and `smc_reg.py` carry addresses and resets alone.
+* Each register is read at reset, written half at a time with its software-writable bits set and then with the low pattern, read back after every half, and restored to its RDL reset. Writing one half at a time deasserts the byte lanes over the other half, so every readback also checks that the untouched half kept its value.
+* A register array gets a phased pass: all elements take an index-derived signature, all are read back while the signatures are co-resident, and only then are they restored, so an array folded onto one physical register fails instead of returning the value just written through the same address.
+* Fields whose readback the contract does not pin -- hardware-driven, `singlepulse`, `oneToSet`, read-side-effect -- are never written by the generic cycle. The four CPU_CTRL registers that carry a contract of their own (`WDT_TIMEOUT_RESET`, `MUTEX`, `SEMA`, `REFERENCE_COUNTER`) are driven against that contract instead.
+* `_EXCLUDED` in the sequence names every remaining software-writable register of those blocks and what driving it here would do; `_assert_partition` fails when a register of the blocks is in neither list, so a regenerated map cannot add one silently.
+* The adopter strap capture registers are the `sw = r` half: `hw/top/smc_ip_integration.sv` decodes them out of the external window at `ExtStrapsBase` and drives them from `rom_straps`, which the open integration ties to 0. The offset is read out of the integration source, not copied.
+
+*Test Procedure*:
+
+Drive `smc_rdl_field_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RDL-SWEEP-CYCLE` |Every swept register instance read its RDL reset with all undeclared bits 0, took the pattern its access type allows through half-register writes and the co-resident array pass, and read back its RDL reset after the restore
+|`CHK-RDL-SWEEP-SPECIAL` |CPU_CTRL `WDT_TIMEOUT_RESET` self-cleared its `singlepulse` fields, `MUTEX[0..3]` handed the mutex out once and released it on a write, `SEMA[0..3]` added and subtracted the signed written value, and `REFERENCE_COUNTER` stayed ahead of its earlier sample across a software write of 0
+|`CHK-RDL-STRAPS-RO` |`STRAPS_LO` and `STRAPS_HI` read their driven value with every undeclared bit 0, and a software write of 0xffffffff left both unchanged
+|===
+
+*Pass Criteria*: all three checkers hold and the protocol-VIP record clears its 520-access floor. Enrolled in: `all`, `hosted`.
+
+'''''
 
 [[smc-formal-plan]]
 === Formal Verification Plan

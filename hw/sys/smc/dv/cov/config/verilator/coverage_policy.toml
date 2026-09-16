@@ -426,24 +426,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_sep_in_awsize_byte"
 
 [[holes]]
-id = "fcov-smc-c_sep_in_awsize_half"
-title = "c sep in awsize half"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_sep_in_awsize_half"
-
-[[holes]]
 id = "fcov-smc-c_sep_in_wstrb_none"
 title = "c sep in wstrb none"
 category = "missing_stimulus"
@@ -1216,96 +1198,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_map_fcov.c_remap_region"
-
-[[holes]]
-id = "fcov-smc-c_strap_write_has_no_effect"
-title = "c strap write has no effect"
-category = "needs_review"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_strap_write_has_no_effect"
-
-[[holes]]
-id = "fcov-smc-c_straps_hi_decodes"
-title = "c straps hi decodes"
-category = "needs_review"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_straps_hi_decodes"
-
-[[holes]]
-id = "fcov-smc-c_straps_hi_read"
-title = "c straps hi read"
-category = "needs_review"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_straps_hi_read"
-
-[[holes]]
-id = "fcov-smc-c_straps_lo_decodes"
-title = "c straps lo decodes"
-category = "needs_review"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_straps_lo_decodes"
-
-[[holes]]
-id = "fcov-smc-c_straps_lo_read"
-title = "c straps lo read"
-category = "needs_review"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_straps_lo_read"
 
 [[holes]]
 id = "fcov-smc-c_uart_instance_3"
