@@ -190,23 +190,27 @@ module telemetry_receiver_wrap
         // ATB AF CDC //
         ////////////////
 
+        // afready_i arrives from the telemetry clock domain but is consumed by
+        // telemetry_receiver on clk_i, so it is synchronized into clk_i.
         prim_sync2r #(
             .WIDTH                  (1),
             .RANDOM_DELAY_GRAY_CODE (1'b0)
         ) afready_sync2r (
-            .i_clk                  (clk_telemetry_i),
+            .i_clk                  (clk_i),
             .i_d                    (afready_i[i]),
-            .i_reset_n              (rst_telemetry_ni),
+            .i_reset_n              (rst_ni),
             .o_q                    (afready)
         );
 
+        // afvalid is produced on clk_i and exported to the telemetry clock
+        // domain, so it is synchronized into clk_telemetry_i.
         prim_sync2r #(
             .WIDTH                  (1),
             .RANDOM_DELAY_GRAY_CODE (1'b0)
         ) afvalid_sync2r (
-            .i_clk                  (clk_i),
+            .i_clk                  (clk_telemetry_i),
             .i_d                    (afvalid),
-            .i_reset_n              (rst_ni),
+            .i_reset_n              (rst_telemetry_ni),
             .o_q                    (afvalid_o[i])
         );
 
