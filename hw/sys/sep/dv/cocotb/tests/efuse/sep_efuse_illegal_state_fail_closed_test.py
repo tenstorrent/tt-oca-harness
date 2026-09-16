@@ -401,8 +401,6 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         command through a corrupted state fails.
         """
         dut = cocotb.top
-        if not hasattr(self, "_injected_once"):
-            self._injected_once: set[str] = set()
         en = getattr(dut, f"efuse_{which}_state_inject_en_i")
         val = getattr(dut, f"efuse_{which}_state_inject_i")
 
@@ -426,18 +424,37 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # data mismatch instead. Recorded rather than asserted away.
         await ReadOnly()
         err_before = int(getattr(dut, f"efuse_{which}_error_o").value)
-        if which not in self._injected_once:
-            assert err_before == 0, (
-                f"{which} error_o was already 1 before the first injection on this "
-                "interface, so a 1 afterwards would not be attributable to it"
+        done_before = int(getattr(dut, f"efuse_{which}_done_o").value)
+
+        if in_flight:
+            # A command is mid-operation, so error and done are both low going in
+            # and the 1/1/0 verdict below is a consequence of the injection.
+            assert (err_before, done_before) == (0, 0), (
+                f"{which} error_o={err_before} done_o={done_before} before an "
+                "in-flight injection; the verdict terms must start low or they are "
+                "not attributable to it"
             )
-            self._injected_once.add(which)
-        elif err_before == 1:
+        else:
+            # Idle-window injection. Measured on this build: error_o and done_o are
+            # BOTH already 1 here, on the first injection as well as later ones --
+            # an idle interface has retired its last command and is reporting it.
+            # busy/req are idle-low for the same reason, and the data term compares
+            # the fixed refusal sentinel against an image word, which are never
+            # equal. So every term of the 1/1/0 + data verdict is settled before
+            # the injection and none of it grades suppression.
+            #
+            # What this leg does still grade is the state-report path: the injected
+            # encoding must appear on *_state_o and the interface must recover to a
+            # legal state afterwards. That is asserted above and below, and it is
+            # what the checker row now claims.
             self.logger.info(
-                "%s error_o carried in set from the previous injection (cleared only "
-                "by the next request); this leg's verdict rests on done and the data "
-                "mismatch, not on the error term",
+                "%s idle-window injection (%#04x): error_o=%d done_o=%d before the "
+                "injection, so the 1/1/0 terms are pre-settled and grade nothing "
+                "here -- this leg grades the state report and the recovery",
                 which,
+                state,
+                err_before,
+                done_before,
             )
 
         await NextTimeStep()
@@ -498,6 +515,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "expected 1/1/0 -- a machine that recovers silently leaves the caller "
             "believing its operation is still in flight"
         )
+        # Recorded, not relied on: `data` is the interface's refusal sentinel and
+        # `sensed` is an image word, so these are never equal and this compare
+        # cannot fail. It stays because a leaked fuse value would be a serious
+        # result if it ever did -- but the leg's weight is on done and, where it
+        # is attributable, error.
         sensed = self._sensed_control_word
         assert data != sensed, (
             f"CHK-{which.upper()}-FAILCLOSED FAIL: {which} read-back data = "
