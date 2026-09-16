@@ -4161,7 +4161,7 @@ feature credit. Closing the isolation claim needs both a run mode where
 |CHK-REGWEN-LOCK
 |Once locked, both `WDOG_BARK_THOLD` and `WDOG_BITE_THOLD` reject writes.
 |CHK-WKUP-PRESCALE
-|`WKUP_CTRL.prescaler` divides the wakeup count rate. The measurement window is sized from the programmed divisor so the divided run must advance (a frozen counter fails the lower bound) and must stay at or below the divisor bound (an ignored prescaler fails the upper bound). Both bounds come from the divisor, not from the undivided measurement.
+|`WKUP_CTRL.prescaler` divides the wakeup count rate. The measurement window is sized from the programmed divisor so the divided run must advance (a frozen counter fails the lower bound) and must stay at or below the divisor bound (an ignored prescaler fails the upper bound). Both bounds come from the divisor, not from the undivided measurement. The divisor is the OpenTitan AON Timer specification's cycles-per-tick rule (one more than `WKUP_CTRL.prescaler`), carried by `sep_spec_tables`; it is not taken from the timer RTL.
 |CHK-INTR-TEST
 |`INTR_TEST` forces `INTR_STATE.wkup_expired` with the wakeup counter off, then write-one-to-clear releases it.
 |CHK-REGWEN-SCOPE

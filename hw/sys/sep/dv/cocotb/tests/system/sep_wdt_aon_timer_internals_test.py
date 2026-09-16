@@ -26,7 +26,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env.sep_spec_tables import aon_timer_regwen_gates
+from env.sep_spec_tables import aon_timer_regwen_gates, aon_timer_wkup_ticks_per_count
 from sep_base_test import sep_base_test
 from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
@@ -205,17 +205,19 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
     async def _chk_wkup_prescale(self) -> None:
         """CHK-WKUP-PRESCALE: WKUP_CTRL.prescaler divides the wakeup count rate.
 
-        aon_timer_core.sv gates wkup_incr on ``prescale_count_q == prescaler``, so the
-        counter advances once per ``prescaler + 1`` clk_wdt ticks. Measured over the
-        same window with prescaler=0 and prescaler=P, the divided advance must fit the
-        spec bound; a prescaler that is decoded but not applied advances at the
-        undivided rate and fails the bound.
+        The OpenTitan AON Timer Technical Specification (Wakeup timer) states "The
+        number of cycles per tick is one more than the 12-bit WKUP_CTRL.prescaler
+        field", so the counter advances once per ``prescaler + 1`` ticks. That rate
+        is carried by sep_spec_tables.aon_timer_wkup_ticks_per_count, not read back
+        from aon_timer_core.sv. Measured over the same window with prescaler=0 and
+        prescaler=P, the divided advance must fit the spec bound; a prescaler that is
+        decoded but not applied advances at the undivided rate and fails the bound.
         """
         presc = self.cfg_wdt.wkup_prescaler
         # Window sized from the programmed divisor so the divided run must tick.
         # A frozen counter then fails the lower bound; a prescaler that is
         # ignored fails the upper bound. Both bounds come from the divisor.
-        window = 4 * (presc + 1)
+        window = 4 * aon_timer_wkup_ticks_per_count(presc)
         adv_fast = await self._count_advance(0, window)
         adv_slow = await self._count_advance(presc, window)
         # Nonvacuity against an independent literal: the undivided run must make real
@@ -224,7 +226,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-WKUP-PRESCALE: prescaler=0 advanced only {adv_fast} over {window} "
             f"clk_wdt ticks; the divided-rate bound below would be vacuous"
         )
-        expected = window // (presc + 1)
+        expected = window // aon_timer_wkup_ticks_per_count(presc)
         bound_lo = 1
         bound_hi = expected + 2
         assert adv_slow >= bound_lo, (

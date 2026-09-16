@@ -303,6 +303,24 @@ def aon_timer_regwen_gates(regwen: str) -> frozenset[str]:
         raise KeyError(f"{regwen!r} gates no register in aon_timer.hjson") from exc
 
 
+# AON timer wakeup prescaler. OpenTitan "AON Timer Technical Specification",
+# Wakeup timer section: "The number of cycles per tick is one more than the
+# 12-bit WKUP_CTRL.prescaler field."
+#
+# DV-owned transcription. The rate is stated in neither aon_timer.rdl nor
+# aon_timer.hjson -- both describe the field only as "Pre-scaler value for
+# wakeup timer count" -- so it is carried here rather than read back from
+# aon_timer_core.sv, which is the datapath under test.
+AON_TIMER_PRESCALE_OFFSET = 1
+
+
+def aon_timer_wkup_ticks_per_count(prescaler: int) -> int:
+    """clk_aon ticks per wakeup-counter increment at this prescaler value."""
+    if prescaler < 0:
+        raise ValueError(f"prescaler must be non-negative, got {prescaler}")
+    return prescaler + AON_TIMER_PRESCALE_OFFSET
+
+
 def _selftest() -> None:
     assert window("ABR").base == 0x1094_0000
     assert window("EPOOL").base == 0x1095_0000
@@ -333,6 +351,8 @@ def _selftest() -> None:
     )
     assert "WDOG_COUNT" not in aon_timer_regwen_gates("WDOG_REGWEN")
     assert "WKUP_THOLD_LO" not in aon_timer_regwen_gates("WDOG_REGWEN")
+    assert aon_timer_wkup_ticks_per_count(0) == 1
+    assert aon_timer_wkup_ticks_per_count(24) == 25
 
 
 _selftest()
