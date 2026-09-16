@@ -4919,7 +4919,7 @@ scan order: the first field is nearest TDI.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">7 when <code>SEP=1</code>, else 0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8 when <code>SEP=1</code>, else 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OCAH (<code>sep_pkg::jtag_sep_reset_ctrl_t</code>)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP reset controller; SMU-internal, no SMU port</p></td>
 </tr>
@@ -4992,7 +4992,7 @@ cold and warm resets. Vector index <code>[31]</code> of each SS field is nearer 
 <h4 id="sep-slice-tdi-to-tdo"><a class="anchor" href="#sep-slice-tdi-to-tdo"></a><a class="link" href="#sep-slice-tdi-to-tdo">6.5.2. SEP slice (TDI to TDO)</a></h4>
 <div class="paragraph">
 <p>When <code>SEP=1</code> the SEP slice covers the SEP main reset and the crypto, Key
-Manager, and TRNG resets consumed by <code>sep_reset_ctrl</code>. <code>trng_jtag_rst_n</code> is
+Manager, and TRNG resets consumed by <code>sep_reset_ctrl</code>. <code>abr_jtag_rst_n</code> is
 nearest TDI.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
@@ -5007,6 +5007,10 @@ nearest TDI.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>abr_jtag_rst_n</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge</p></td>
+</tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>trng_jtag_rst_n</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TRNG</p></td>

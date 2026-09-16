@@ -944,9 +944,7 @@ register map is reported in <a href="#sep-detailed-register-map">[sep-detailed-r
 <div class="sect3">
 <h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">SEP Reset Controller</a></h4>
 <div class="paragraph">
-<p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.
-Adams Bridge is the exception: it has no software-reset bit and resets with
-<code>sep_reset_n</code>.</p>
+<p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.</p>
 </div>
 <div class="paragraph">
 <p>The controller contains a single 64-bit register <code>SW_RESET_N</code> at offset <code>0x0</code> with the following fields:</p>
@@ -1011,19 +1009,27 @@ Adams Bridge is the exception: it has no software-reset bit and resets with
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">abr_sw_rst_n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge reset (0=assert, 1=release)</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>On power-up, <code>SW_RESET_N</code> resets to <code>0x3E</code>: KM is held in reset, while OTBN,
-AES, HMAC, KMAC, and the TRNG are released. The SEP host firmware writes <code>1</code> to
-release an IP from reset and writes <code>0</code> to request its software reset.</p>
+<p>On power-up, <code>SW_RESET_N</code> resets to <code>0x7E</code>: KM is held in reset, while OTBN,
+AES, HMAC, KMAC, the TRNG, and Adams Bridge are released. The SEP host firmware
+writes <code>1</code> to release an IP from reset and writes <code>0</code> to request its software
+reset.</p>
 </div>
 <div class="paragraph">
 <p>Each <code>SW_RESET_N</code> bit is a request to a per-domain sequencer. The sequencer
-isolates the domain&#8217;s AXI4-Lite paths, waits for outstanding transactions to
-drain, and then asserts reset. New transactions presented while isolated
-terminate with SLVERR. Isolation remains asserted for the duration of reset and
-is released with reset when software removes the request.</p>
+isolates the domain&#8217;s AXI paths, waits for outstanding transactions to drain,
+and then asserts reset. New transactions presented while isolated terminate
+with SLVERR. Isolation remains asserted for the duration of reset and is
+released with reset when software removes the request.</p>
 </div>
 <div class="paragraph">
 <p>An accelerator reset waits for both its host CSR path and Key Manager key path
