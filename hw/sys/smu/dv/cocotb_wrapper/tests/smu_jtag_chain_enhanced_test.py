@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_jtag_chain_enhanced_test — IDCODE/BYPASS at 1/5/10/20 MHz TCK (SEP=0)."""
+"""smu_jtag_chain_enhanced_test — IDCODE/BYPASS at 1/5/10/20 MHz TCK."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ class smu_jtag_chain_enhanced_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_jtag_chain_enhanced_test TierC DTP-JTAG-CHAIN-ENHANCED SEP=0 JTAG"
+            "DUT_TAG=WRAPPER smu_jtag_chain_enhanced_test TierC DTP-JTAG-CHAIN-ENHANCED SEP=1 JTAG"
         )
         seq = smu_jtag_chain_enhanced_test_seq(self)
         await seq.run()

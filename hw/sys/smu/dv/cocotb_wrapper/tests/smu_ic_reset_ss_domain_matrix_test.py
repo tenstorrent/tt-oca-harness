@@ -2,10 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_ic_reset_ss_domain_matrix_test - P4 IC_RESET SS cold/warm domains.
 
-Exercises SS_COLD0 (port 5) and SS_WARM0 (port 37) one at a time with mutual
-exclusion against fuse/warm/cool/cold and each other.
+Exercises SS_COLD0 (port 12) and SS_WARM0 (port 44) on the wrapper, one at a
+time, with mutual exclusion against fuse/warm/cool/cold and each other; the
+indices are SMU_IC_RESET_SMC_SS_*_PORT in smu_jtag_helpers.
 
-Does NOT close ss_reset_complete handshake (input tied dead under SEP=0).
+Does NOT close ss_reset_complete handshake (input tied dead on this bench).
 """
 
 from __future__ import annotations

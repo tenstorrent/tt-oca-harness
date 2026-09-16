@@ -3,7 +3,7 @@
 """smu_cold_reset_async_assert_test - asynchronous cold-reset assertion.
 
 Closes SMU-RST-COLD.S1 against the rst_cold_ni row of port_table.adoc, on the
-`--dut smu` production wrapper built with compile_smu_chiplet_no_sep: every
+`--dut smu` production wrapper built with compile_smu_chiplet: every
 wrapper clock is stopped and held static, rst_cold_ni is asserted, and
 rst_cold_stable_ref_clk_no, rst_primary_ref_clk_no, rst_primary_smc_clk_no,
 rst_primary_periph_clk_no and the SMC and DTP primary-reset inputs are read

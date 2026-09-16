@@ -9,18 +9,16 @@ drift checks on the elaborated parameters against a table that mirrors that
 package, and they carry no evidence token. What the tokens rest on is plumbing
 the design can get wrong: a parameter reaching the instance that consumes it.
 
-On the `--dut smu` production wrapper. The SEP=1 entry
-(compile_smu_chiplet_sep_rtl, +expected_sep=1) reads the 256-bit
-SEP_SEC_DISABLE_TOKEN at the wrapper, at `smu` and at the SEP eFuse controller
-that consumes it, the DTP's forced SEP OTP pipeline depths, and the one
-security_disable net from the SEP consumer through the `smu` wire into the SMC
-input. Both entries decode the elaborated `Cfg` struct field by field and check
-each decoded field against the port width or sub-block parameter that follows
-it, which is what shows NoSepCfg field-identical to DefaultCfg on the SEP=0
-entry (compile_smu_chiplet_no_sep, +expected_sep=0).
+On the `--dut smu` production wrapper (compile_smu_chiplet, +expected_sep=1):
+reads the 256-bit SEP_SEC_DISABLE_TOKEN at the wrapper, at `smu` and at the
+SEP eFuse controller that consumes it, the DTP's forced SEP OTP pipeline
+depths, and the one security_disable net from the SEP consumer through the
+`smu` wire into the SMC input. It also decodes the elaborated `Cfg` struct
+field by field and checks each decoded field against the port width or
+sub-block parameter that follows it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
-    --items smu_composition_parameter_sep_rtl_test smu_composition_parameter_no_sep_test \\
+    --items smu_composition_parameter_sep_rtl_test \\
     --tool verilator
 """
 
@@ -33,7 +31,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_composition_parameter_test(smu_base_test):
-    """Token, OTP depth, security_disable and Cfg plumbing, both build profiles."""
+    """Token, OTP depth, security_disable and Cfg plumbing on the wrapper profile."""
 
     use_shared_env = True
 

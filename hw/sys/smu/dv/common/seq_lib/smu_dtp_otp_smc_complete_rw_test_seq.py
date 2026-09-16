@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP J2A MAP SPARE walk + shadow match. SEP=0, no Force. Not LOCKS."""
+"""OTP J2A MAP SPARE walk + shadow match. SEP=1, no Force. Not LOCKS."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ RESERVED_ADDRS = _reserved_addrs()
 
 
 class smu_dtp_otp_smc_complete_rw_test_seq:
-    """OTP+fabric+shadow MAP walk on SPARE words; gate open on SEP=0."""
+    """OTP+fabric+shadow MAP walk on SPARE words; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test

@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_jtag_reset_override_test - IC_RESET TDR override of EXT/SMC slices.
 
-SMU IC_RESET TDR is 139 bits (68 SMC + 1 EXT ports + hold), not the 7-bit
+SMU IC_RESET TDR is 153 bits on the SEP=1 wrapper (68 SMC + 7 SEP + 1 EXT ports
++ hold), not the 7-bit
 standalone DTP smoke geometry.
 
 Real checkers:

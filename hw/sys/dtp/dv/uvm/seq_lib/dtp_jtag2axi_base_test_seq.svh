@@ -638,6 +638,49 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
                          t.name, timeout_cycles))
   endtask
 
+  // --- bridge FSM observation (dtp_tb_if) -----------------------------------
+  function dtp_j2a_fsm_state_e bridge_fsm_state(dtp_j2a_target_t t);
+    logic [2:0] raw;
+    if (t.name == "smc_otp") raw = tb_vif.smc_otp_fsm_state;
+    else if (t.name == "sep_otp") raw = tb_vif.sep_otp_fsm_state;
+    else raw = tb_vif.smc_axi_fsm_state;
+    return dtp_j2a_fsm_state_e'(raw);
+  endfunction
+
+  function bit bridge_op_pending(dtp_j2a_target_t t);
+    if (t.name == "smc_otp") return tb_vif.smc_otp_op_pending;
+    if (t.name == "sep_otp") return tb_vif.sep_otp_op_pending;
+    return tb_vif.smc_axi_op_pending;
+  endfunction
+
+  // 1 once the bridge's CDC has run its TCK-side isolate-and-clear since
+  // clear_cdc_clear_seen().
+  function bit cdc_clear_seen(dtp_j2a_target_t t);
+    if (t.name == "smc_otp") return tb_vif.smc_otp_cdc_clear_seen;
+    if (t.name == "sep_otp") return tb_vif.sep_otp_cdc_clear_seen;
+    return tb_vif.smc_axi_cdc_clear_seen;
+  endfunction
+
+  task clear_cdc_clear_seen();
+    tb_vif.cdc_clear_seen_clear <= 1'b1;
+    wait_sys_cycles(1);
+    tb_vif.cdc_clear_seen_clear <= 1'b0;
+    wait_sys_cycles(1);
+  endtask
+
+  // Step TCK in Run-Test/Idle until the bridge FSM leaves (want_idle = 0)
+  // or reaches (want_idle = 1) IDLE, within `tck_cycles`: the FSM and the
+  // CDC's TCK side advance only while TCK runs.
+  task wait_bridge_fsm(dtp_j2a_target_t t, bit want_idle, int unsigned tck_cycles,
+                       output dtp_j2a_fsm_state_e state);
+    state = bridge_fsm_state(t);
+    for (int unsigned i = 0; i < tck_cycles; i++) begin
+      if ((state == DTP_J2A_FSM_IDLE) == want_idle) return;
+      step(1'b0);
+      state = bridge_fsm_state(t);
+    end
+  endtask
+
   // --- WITH_ERROR_STATUS streams -------------------------------------------
   // A clean stream whose footprint (the trailing shift touches one slot past
   // the last beat) fits the target window.
