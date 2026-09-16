@@ -7,7 +7,7 @@
 # graded run left unhit, each carried with a category, a rationale, an owner
 # and an expiry. Regenerate them from a fresh coverage-details.json rather
 # than editing them by hand; this header is the only part written by a person.
-# They were measured from `--dut smu --items sep0_all --cov` on the single
+# They were measured from `--dut smu --items hosted --cov` on the single
 # `compile_smu_chiplet` target.
 #
 # No floor is set on the `user` family; one is set only from a measured

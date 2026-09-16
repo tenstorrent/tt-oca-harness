@@ -11,7 +11,7 @@ needs a measured database first.
 [cols=",",options="header",]
 |===
 |Field |Value
-|Release group |`--dut smu --items sep0_all` (live size in
+|Release group |`--dut smu --items hosted` (live size in
 `SMU_RELEASE_MATRIX.adoc`)
 |Public metric |interface toggle: the `toggle_signal` family over the ports
 of `smu_wrapper` (`smu_wrapper_uvm_top.u_dut`), a port counting once any of
