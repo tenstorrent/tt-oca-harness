@@ -499,9 +499,6 @@ module sep_fcov (
   logic [7:0] km_cmd_len_q;      // declared payload_len
   logic [8:0] km_cmd_idx_q;      // 0 = header
   logic       km_cmd_hdr_next_q; // next WRITE_DATA word starts a frame
-  logic [7:0] km_cmd_id_q;       // cmd_id of the frame being written
-  logic [7:0] km_load_words_q;   // image word count, from the LOAD_EXEC payload
-  logic [8:0] km_raw_left_q;     // unframed image words still to come
   logic [8:0] km_rsp_idx_q;      // 0 = response header
   logic       km_rsp_arm_q;      // a command frame has been sent, response pending
   logic [7:0] km_rsp_cmd_q;      // echoed cmd_id (payload word 2)
@@ -867,9 +864,6 @@ module sep_fcov (
       kem_encaps_armed_q <= 1'b0;
       kem_decaps_armed_q <= 1'b0;
       km_cmd_hdr_next_q <= 1'b1;
-      km_cmd_id_q       <= '0;
-      km_load_words_q   <= '0;
-      km_raw_left_q     <= '0;
       km_cmd_idx_q      <= '0;
       km_rsp_idx_q      <= '0;
       km_rsp_arm_q      <= 1'b0;
@@ -1036,19 +1030,9 @@ module sep_fcov (
 
       // KM command frame: header, payload_len words, then the payload CRC word
       // when payload_len > 0.
-      // CMD_SRAM_LOAD_EXEC is followed by the image itself, streamed to this
-      // same WRITE_DATA register as UNFRAMED words. They are not a frame and
-      // must not be parsed as one: the blob's first word declares whatever sits
-      // in its byte 2 as a payload_len, which strands the tracker mid-phantom
-      // frame and silently drops every real command after it. The frame carries
-      // the word count as its single payload word, so the length is on the bus;
-      // skip exactly that many words plus the CRC-32C that follows them.
       if (km_wr_data) begin
-        if (km_raw_left_q != 9'd0) begin
-          km_raw_left_q <= km_raw_left_q - 9'd1;
-        end else if (km_cmd_hdr_next_q) begin
+        if (km_cmd_hdr_next_q) begin
           km_cmd_len_q      <= wr_data[23:16];
-          km_cmd_id_q       <= wr_data[15:8];
           km_cmd_idx_q      <= 9'd0;
           km_cmd_hdr_next_q <= (wr_data[23:16] == 8'h00);
           km_rsp_idx_q      <= 9'd0;
@@ -1057,18 +1041,6 @@ module sep_fcov (
           km_cmd_idx_q      <= km_cmd_idx_q + 9'd1;
           // last word of the frame = payload_len + 1 (the CRC word)
           km_cmd_hdr_next_q <= ((km_cmd_idx_q + 9'd1) >= (9'(km_cmd_len_q) + 9'd1));
-          // Payload word 1 of a SRAM_LOAD_EXEC frame is the image word count.
-          if ((km_cmd_idx_q == 9'd0) && (km_cmd_id_q == KmCmdSramLoadExec)) begin
-            km_load_words_q <= wr_data[7:0];
-          end
-          // The image follows the COMPLETE frame, so arm the skip as the frame
-          // ends -- on its CRC word -- not on the payload word that declared
-          // the count, which would swallow that CRC and leave the image's own
-          // CRC to be parsed as a frame word.
-          if (((km_cmd_idx_q + 9'd1) >= (9'(km_cmd_len_q) + 9'd1)) &&
-              (km_cmd_id_q == KmCmdSramLoadExec)) begin
-            km_raw_left_q <= 9'(km_load_words_q) + 9'd1;
-          end
         end
       end
 
