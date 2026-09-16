@@ -44,6 +44,8 @@ class dtp_test_cfg extends ocah_test_cfg;
   bit tap_checker_negative;      // +DTP_JTAG_TAP_CHECKER_NEGATIVE
   bit axi_scoreboard_negative;   // +DTP_AXI_SCOREBOARD_NEGATIVE
   bit xtrig_checker_negative;    // +DTP_XTRIG_CHECKER_NEGATIVE
+  bit j2a_geometry_negative;     // +DTP_J2A_GEOMETRY_NEGATIVE
+  bit j2a_status_bit_negative;   // +DTP_J2A_STATUS_BIT_NEGATIVE
   bit jtag2axi_ref_model_negative;  // +DTP_J2A_REF_MODEL_NEGATIVE
 
   // --- bench topology -------------------------------------------------------
@@ -78,6 +80,8 @@ class dtp_test_cfg extends ocah_test_cfg;
     tap_checker_negative    = ocah_knobs::is_set("DTP_JTAG_TAP_CHECKER_NEGATIVE");
     axi_scoreboard_negative = ocah_knobs::is_set("DTP_AXI_SCOREBOARD_NEGATIVE");
     xtrig_checker_negative  = ocah_knobs::is_set("DTP_XTRIG_CHECKER_NEGATIVE");
+    j2a_geometry_negative   = ocah_knobs::is_set("DTP_J2A_GEOMETRY_NEGATIVE");
+    j2a_status_bit_negative = ocah_knobs::is_set("DTP_J2A_STATUS_BIT_NEGATIVE");
     jtag2axi_ref_model_negative = ocah_knobs::is_set("DTP_J2A_REF_MODEL_NEGATIVE");
   endfunction
 

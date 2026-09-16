@@ -10,8 +10,10 @@ schema_version = 1
 # that key build the single-instance model.
 #
 # Group names share all.toml's namespace, so the groups here are prefixed:
-# `dual_smoke` and `dual_all`. Three of these leaves sit in `all`; the
-# hosted-runner set `hosted` holds them out because they elaborate SMC_DUAL.
+# `dual_smoke` and `dual_all`. Three of these leaves sit in `all`; `hosted`
+# leaves them out because every entry here declares a ROM or firmware image
+# the hosted runners cannot build (SMC_DEFERRED_DISPOSITION.adoc, "Leaves no
+# scheduled tier runs").
 # `occp_dual` is unprefixed: nothing else in the catalog uses that name.
 
 [[tests]]

@@ -537,7 +537,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
 
     async def _program_cg_field(self, *, enable: bool, hyst_value: int) -> int:
         """Program DMA_CG_EN / CG_HYSTERESIS via the generated field mask/shift
-        (never a hand literal -- guardrail CHK-NO-TAUTOLOGY / policy
+        (never a hand literal -- policy
         [ADDRESS-FROM-AUTHORITATIVE-MAP]). `hyst_value` may exceed the field's
         own width (e.g. 64 against the 6-bit CG_HYSTERESIS_W field); the write
         is masked through CG_HYST_MASK exactly as firmware computing the same

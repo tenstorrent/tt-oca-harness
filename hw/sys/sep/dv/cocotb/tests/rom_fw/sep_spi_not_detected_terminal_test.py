@@ -324,7 +324,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         )
         assert not fw_pass, "ROM signalled PASS with no valid manifest at either address"
         log.info(
-            "CHK-TERMINAL: %s after both rejections, cold_scratch[1] held "
+            "CHK-TERMINAL PASS: %s after both rejections, cold_scratch[1] held "
             "0x%08x then 0x%08x, mailbox FAIL (fw_pass=0)",
             _ALL_FAILED,
             _STATUS_LOOP_FAILED,

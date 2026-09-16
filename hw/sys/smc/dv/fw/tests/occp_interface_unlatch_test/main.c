@@ -103,7 +103,6 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
     uint64_t upper = OCCP_TEST_UPPER_ADDR;
     uint64_t range = (upper > base) ? (upper - base) : 0;
 
-    // TODO: send random command not predetermined
     switch (which) {
     case 0: /* Header CRC error (detectable) */
         simputs("Injecting Header CRC error (detectable)\n");

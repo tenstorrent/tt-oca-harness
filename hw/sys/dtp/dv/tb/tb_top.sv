@@ -518,7 +518,7 @@ module dtp_uvm_top
   always @(negedge rst_n_i) sys_rst_assert_count <= sys_rst_assert_count + 32'd1;
   always @(negedge pwr_on_rst_ni) por_assert_count <= por_assert_count + 32'd1;
 
-  // Flat slave inputs (from AxiRam) -> DUT resp struct
+  // Flat responder outputs -> DUT resp struct
   always_comb begin
     axi_smc_dbg_resp          = '{default: '0};
     axi_smc_dbg_resp.aw_ready = m_axi_awready;
@@ -646,7 +646,7 @@ module dtp_uvm_top
   end
 
   // ------------------------------------------------------------------
-  // DTP DUT (default parameters; type params use jtag_tap_pkg/dtp_pkg stubs)
+  // DTP DUT: default parameters; the type parameters come from jtag_tap_pkg and dtp_pkg
   // ------------------------------------------------------------------
   dtp u_dut (
     .clk_i                            (clk_i),
@@ -969,9 +969,10 @@ module dtp_uvm_top
   assign u_scan_if.jtag_bsr_update_en  = jtag_bsr_update_en;
 
   // Lifecycle debug disables and clock-stop requests: sequences drive the
-  // typed dbg_disable_t and the CLA clock-stop request vector through
-  // dtp_tb_if (dbg_disable init '1 = fail-closed; clk_stop_req init '0 =
-  // quiescent; the debug-TDR sequences drive the requests they need).
+  // named debug disables and the CLA clock-stop request vector through
+  // dtp_tb_if, which binds the disables into the typed dbg_disable_t
+  // (disables init 1 = fail-closed; clk_stop_req init '0 = quiescent; the
+  // debug-TDR sequences drive the requests they need).
   assign xtrig_clk_stop_req = u_tb_if.xtrig_clk_stop_req;
   assign dbg_disable        = u_tb_if.dbg_disable;
 
@@ -1353,6 +1354,36 @@ module dtp_uvm_top
   assign u_tb_if.sep_otp_axil_awvalid_count = sep_otp_axil_awvalid_count;
   assign u_tb_if.sep_otp_axil_wvalid_count  = sep_otp_axil_wvalid_count;
   assign u_tb_if.sep_otp_axil_arvalid_count = sep_otp_axil_arvalid_count;
+
+  // JTAG2AXI bridge state for the reset-abort scenarios, through the same
+  // hierarchical references the coverage instance uses. The sticky flags
+  // catch the CDC's TCK-side isolate-and-clear on the system clock.
+  logic smc_axi_cdc_clear_seen;
+  logic smc_otp_cdc_clear_seen;
+  logic sep_otp_cdc_clear_seen;
+  always_ff @(posedge clk_i or negedge pwr_on_rst_ni) begin
+    if (!pwr_on_rst_ni || u_tb_if.cdc_clear_seen_clear) begin
+      smc_axi_cdc_clear_seen <= 1'b0;
+      smc_otp_cdc_clear_seen <= 1'b0;
+      sep_otp_cdc_clear_seen <= 1'b0;
+    end else begin
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        smc_axi_cdc_clear_seen <= 1'b1;
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        smc_otp_cdc_clear_seen <= 1'b1;
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        sep_otp_cdc_clear_seen <= 1'b1;
+    end
+  end
+  assign u_tb_if.smc_axi_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.smc_axi_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.smc_axi_cdc_clear_seen = smc_axi_cdc_clear_seen;
+  assign u_tb_if.smc_otp_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.smc_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.smc_otp_cdc_clear_seen = smc_otp_cdc_clear_seen;
+  assign u_tb_if.sep_otp_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.sep_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.sep_otp_cdc_clear_seen = sep_otp_cdc_clear_seen;
 
   // XTRIG CSR AXI-Lite initiator: the shared ocah_axi_vip master (SV-UVM
   // agent or cocotb BFM) drives the CSR port (the initiator mirror of the

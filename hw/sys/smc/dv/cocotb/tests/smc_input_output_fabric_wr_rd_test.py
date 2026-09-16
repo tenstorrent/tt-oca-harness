@@ -40,6 +40,12 @@ MIN_JTAG_AXI_ACCESSES = 2
 class smc_input_output_fabric_wr_rd_test(smc_base_test):
     """Run output-fabric write/read through JTAG AXI with responder checks."""
 
+    required_evidence = (
+        "CHK-INPUT-OUTPUT-FABRIC-WR-RD",
+        "CHK-NONVAC",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -114,4 +120,13 @@ class smc_input_output_fabric_wr_rd_test(smc_base_test):
                 f"(updates={self.env.scoreboard.memory_model_updates_seen} "
                 f"checks={self.env.scoreboard.memory_model_checks_seen})"
             ),
+        )
+        cocotb.log.info(
+            "CHK-NONVAC: protocol-VIP record accepted with csr_accesses=%d against "
+            "floor %d and jtag_axi_accesses=%d against floor %d; the scoreboard "
+            "rejects the record, and the run fails, below either floor",
+            cfg_seq.accesses,
+            INPUT_OUTPUT_FABRIC_MIN_CSR_ACCESSES,
+            self.env.scoreboard.axi_accesses_by_bus.get("JTAG AXI", 0),
+            MIN_JTAG_AXI_ACCESSES,
         )

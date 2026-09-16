@@ -31,7 +31,8 @@ VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
   CHK-ISO  key-bus isolation: only AES released; OTBN/KMAC/HMAC parked in SW reset
            so they physically cannot receive the key (OSS analog of the reference suite's per-
            engine key-bus AW monitor; same mechanism as the OTBN KAT)
-  CHK-PUB  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload:
+  PUB-OBS  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload (not
+           scored -- swaccess=wo makes the read unfalsifiable):
            the KM-delivered key is not exposed through software-readable CSRs
   CHK-F    ct_side == AES(known_key, PT) golden: sideload delivered the exact key
            (replaces the reference suite's backdoor SHARE0^SHARE1 non-degeneracy proof)
@@ -184,8 +185,9 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             rst,
         )
 
-        # CHK-PUB: the public KEY_SHARE CSRs still read zero, and the read path
-        # that produced those zeros is alive. The positive control is the point:
+        # PUB-OBSERVATION: the public KEY_SHARE CSRs read zero, and the read path
+        # that produced those zeros is alive. Logged, not scored. The control is
+        # the only falsifiable half:
         # KEY_SHARE0/1 are write-only with read data tied to zero in the generated
         # register block, so on its own "reads zero" is unfalsifiable -- it holds
         # whether the key is protected, mirrored elsewhere, or never delivered.
@@ -193,7 +195,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # the check fail if the read path dies or if these become readable.
         s0_pub, s1_pub, ctl_pub = await self.aes.read_public_key_shares()
         assert ctl_pub != 0, (
-            "CHK-PUB positive control failed: AES STATUS read back 0 over the same "
+            "PUB-OBSERVATION positive control failed: AES STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
         )
         assert all(w == 0 for w in s0_pub) and all(w == 0 for w in s1_pub), (
@@ -202,8 +204,9 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  s1={[hex(w) for w in s1_pub if w]}"
         )
         self.logger.info(
-            "CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=%#010x)",
+            "PUB-OBSERVATION AES public KEY_SHARE0/1 frontdoor reads zero after "
+            "sideload. Not scored: aes.hjson declares them swaccess=wo, so this read "
+            "cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,
         )
 

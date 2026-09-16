@@ -9,36 +9,46 @@
 // banks the CPU never fetches from, and every testcase that does not execute
 // that firmware still passes.
 //
-// The mapping is not a flat round-robin. It is read out of the cluster's own
-// decode, in two places:
+// Sources. The geometry comes from the register description and the
+// architecture document, never from the cluster RTL:
 //
-//   OCAH4CORECluster_TLXbar_mbus_i1_o33_a32d64s11k1z3u.sv:700-755
-//     Bank select. Every one of the 32 requestAIO_0_<n> terms compares the
-//     same two fields: address[20:17], which picks one of eight contiguous
-//     128 KB groups (values 3..10, base 0x60000), and address[7:6], which
-//     picks one of four banks inside that group.
-//         bank = 4 * address[19:17]_group + address[7:6]
+//   hw/sys/smc/regs/include/spm_memory.rdl
+//     mem spm_memory: NUM_ENTRIES = 131072 words of WIDTH = 64 bits, i.e.
+//     8 bytes per entry and 1 MiB of scratch in total.
+//   hw/sys/smc/doc/cpu.adoc, memory-system table
+//     Local SRAM/Scratchpad: 1 MiB (32 banks), SECDED ECC.
 //
-//   OCAH4CORECluster_TLRAM.sv:308,286
-//     Entry select, inside the bank the xbar already chose:
-//         addr     = address[16:3]
-//         RW0_addr = {addr[13:5], addr[2:0]} = {address[16:8], address[5:3]}
-//     address[7:6] is absent because it went to the bank select above.
+// The interleave -- how an offset inside that 1 MiB picks one of the 32 banks
+// and an entry within it -- is not fixed by either document. It is carried
+// here as a DV-owned table with two assumptions: consecutive 64-byte stripes
+// rotate across the FOUR banks of a group, and the eight 128 KiB groups are
+// contiguous. Bank and entry are then
 //
-// So the interleave granularity is 64 bytes across FOUR banks -- a 256-byte
-// cycle -- and the other three bits of bank index come from the top of the
-// 1 MB window, not from the stripe counter. A flat "round-robin across all 32
-// banks every 64 bytes" model agrees with this only for the first 256 bytes
-// and diverges from offset 0x100 onward.
+//     bank  = 4 * (offset / 128 KiB) + (offset / 64) % 4
+//     entry = ((offset % 128 KiB) / 256) * 8 + (offset % 64) / 8
+//
+// smc_dual_axi_sram_probe_test cross-checks this table against front-door AXI
+// traffic (CHK-SCRATCH-BACKDOOR-DECODE): a table that disagreed with the
+// design fails that testcase instead of silently misplacing an image. A flat
+// "round-robin across all 32 banks every 64 bytes" model agrees with this
+// table only for the first 256 bytes and diverges from offset 0x100 onward.
 package smc_scratch_map_pkg;
 
-  // 64 data bits + 8 SECDED bits per entry; addresses are byte addresses.
-  localparam int unsigned SCRATCH_BYTES_PER_ENTRY = 8;
-  // address[7:6]: the stripe that rotates between the four banks of a group.
+  // spm_memory.rdl: 131072 entries x 64 bits.
+  localparam int unsigned SCRATCH_NUM_ENTRIES = 131072;
+  localparam int unsigned SCRATCH_ENTRY_BITS = 64;
+  localparam int unsigned SCRATCH_BYTES_PER_ENTRY = SCRATCH_ENTRY_BITS / 8;
+  localparam int unsigned SCRATCH_TOTAL_BYTES = SCRATCH_NUM_ENTRIES * SCRATCH_BYTES_PER_ENTRY;
+  // cpu.adoc: 32 banks.
+  localparam int unsigned SCRATCH_NUM_BANKS = 32;
+
+  // DV-owned interleave assumptions (see the header).
   localparam int unsigned SCRATCH_BANK_STRIPE_BYTES = 64;
   localparam int unsigned SCRATCH_BANKS_PER_GROUP = 4;
-  // address[20:17]: 128 KB per group, eight groups, 1 MB of scratch.
-  localparam int unsigned SCRATCH_GROUP_BYTES = 32'h0002_0000;
+
+  // Derived: eight contiguous groups of four banks, 128 KiB each.
+  localparam int unsigned SCRATCH_NUM_GROUPS = SCRATCH_NUM_BANKS / SCRATCH_BANKS_PER_GROUP;
+  localparam int unsigned SCRATCH_GROUP_BYTES = SCRATCH_TOTAL_BYTES / SCRATCH_NUM_GROUPS;
   localparam int unsigned SCRATCH_ENTRIES_PER_STRIPE =
       SCRATCH_BANK_STRIPE_BYTES / SCRATCH_BYTES_PER_ENTRY;
 

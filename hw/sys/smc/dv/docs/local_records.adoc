@@ -1,0 +1,617 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// Development records, not a role document. Nothing in index.adoc includes
+// this file. An adopter cannot act on the porting plan, the sign-off run
+// directories, or the coverage-progression history; those stay local.
+
+= SMC DV local development records
+:doctype: article
+
+[[smc-oss-porting-plan]]
+== Porting Plan
+
+How the open-source suite was derived from the commercial one: the
+selection rules, the module-to-testcase mapping, the infrastructure each
+batch needed, and the milestones the port was tracked against.
+
+[[sec-1-scope--goal]]
+=== Scope & Goal
+
+For each functional module, select representative scenarios that follow the DTP
+test architecture (`env/` + `seq_lib/` + `tests/`) and share reusable
+infrastructure.
+
+
+[[sec-2-design-principles-hard-rules]]
+=== Design Principles (hard rules)
+
+[cols=",,",options="header",]
+|===================================================================================================================================================================
+|Rule |Source |Consequence
+|PyUVM-on-cocotb only; no SV UVM tests |DTP / SEP pattern |Tests use the common Python environment
+|No prebuilt firmware binary dependency |Reproducible builds |Firmware-driven behavior uses source-built images or BFM-driven Python tests
+|All stimulus goes through BFM agents |DTP rule |One agent per external interface (I2C / JTAG / AXI / GPIO / OCTS / AVSBus / …)
+|`tb_top` flattens and lifts internal signals to top-level |SEP rule |Internal observables exposed by `assign` XMR; BFMs hang off top-level ports
+|Commercial sim is the live verification target; Verilator is best-effort |Pragmatic |Until the upstream Verilator codegen bug is fixed, live PASS via Xcelium / VCS
+|Testlists split per module + aggregated by `all.toml` |DTP rule |`--tag` / `--items` filtering works cleanly
+|Prefer reusing existing `ocah_*_vip` BFMs |DTP / SEP |New OCAH-local BFMs only when no shared wrapper exists
+|===================================================================================================================================================================
+
+
+[[sec-3-starting-point]]
+=== Starting Point
+
+Already in place at the time this plan was written:
+
+* `cocotb/env/` `SmcEnvCfg`, `SmcEnv`, `SmcI2cAgent`, `SmcI2cItem`, `SmcScoreboard`
+* `cocotb/seq_lib/` `smc_base_test_seq`, `smc_i2c_cg_sanity_test_seq`
+* `cocotb/tests/` `smc_base_test`, `smc_i2c_cg_sanity_test`, plus existing flat
+`test_smc_oss_reset_sanity`, `test_smc_oss_i2c_cg_sanity`
+* `tb/tb_top.sv` clocks / reset / powergood + I2C observability outputs
+* `testlists/smoke.toml` groups: `smoke`, `i2c`, `pyuvm`
+* `smc_sim_cfg.toml` no longer sets `SYNTHESIS` on any tool (VCS/Xcelium
+run OpenTitan and PeakRDL SVA; PULP stays off via the shared profile,
+same as SEP; Verilator still gates the rest off)
+* `pyuvm 4.0.1` for Python 3.11
+
+Known blocker at that time:
+
+* Verilator + PeakRDL nested-struct codegen bug blocked live execution on
+Verilator 5.030 / 5.036 / 5.046. The same bug affected SEP / DTP. Live PASS
+required an upstream fix, a commercial simulator, or PeakRDL re-generation.
+
+
+[[sec-4-module--representative-testcase-mapping]]
+=== Module → Representative Testcase Mapping
+
+[[batch-a--observation-class-no-new-bfm-reuses-base-bring-up]]
+==== Batch A — Observation class (no new BFM; reuses base bring-up)
+
+[cols=",,,,,",options="header",]
+|=========================================================================================================================================
+|# |Module |Legacy test |OSS testcase |Agent |New tb_top port
+|1 |Reset (cold) |flat `test_smc_oss_reset_sanity` |`smc_cold_reset_test` (PyUVM) |`SmcResetAgent` |none (already exposed)
+|2 |Reset (warm handshake) |`reset_warm_reset_handshake_test` |`smc_warm_reset_handshake_test` |`SmcResetAgent` |warm reset observe
+|3 |Cool reset interaction |`smc_cool_reset_x_cool_reset_test` |`smc_cool_reset_intersection_test` |`SmcResetObserver` |cool reset signals
+|4 |Clock glitch-free |`clk_glitch_free_test` |`smc_clk_glitch_free_test` |`SmcClockObserver` |clk mux select
+|5 |Clock force ref |`clk_force_refclk_test` |`smc_clk_force_refclk_test` |`SmcClockObserver` |ref/smc select
+|6 |PLL observability |`pll_gpio_observe_test` |`smc_pll_observe_test` |`SmcGpioObserver` |PLL lock + GPIO
+|7 |GPIO strap / IRQ |`smc_gpio_irq_active_test` |`smc_gpio_irq_active_test` |`SmcGpioAgent` |gpio_i/o;
+|8 |I2C clock-gate |already built |`smc_i2c_cg_sanity_test` ✓ |`SmcI2cAgent` (observer) |already in tb_top
+|9 |Hang detector |`smc_hang_detector_sanity_test` |`smc_hang_detector_sanity_test` |`SmcInterruptObserver` |hang IRQ
+|10 |External interrupts |`smc_ext_interrupts_pin_test` |`smc_ext_interrupts_pin_test` |`SmcInterruptAgent` |IRQ in/out
+|=========================================================================================================================================
+
+Effort: ~5 days tests + 3 days shared infra = *8 days*
+
+[[batch-b--axi--csr-class-needs-axi-lite-master-agent]]
+==== Batch B — AXI / CSR class (needs AXI-Lite master agent)
+
+[cols=",,,,",options="header",]
+|=================================================================================================================
+|# |Module |Legacy test |OSS testcase |Agent
+|11 |Register access |`register_test` |`smc_register_sanity_test` |`SmcAxiLiteCsrAgent`
+|12 |AXI-Lite extension |`smc_external_test` |`smc_external_test` |`SmcAxiLiteCsrAgent`
+|13 |AXI timeout |`smc_axi_timeout_sanity_test` |`smc_axi_timeout_sanity_test` |`SmcAxiMasterAgent` + stall inject
+|14 |Mailbox register |`smc_mailbox_register_test` |`smc_mailbox_register_test` |`SmcMailboxAgent`
+|15 |Default reg read |`smc_default_reg_rd_test` |`smc_default_reg_rd_test` |`SmcAxiLiteCsrAgent`
+|16 |ECAM |`smc_ecam_sanity_test` |`smc_ecam_sanity_test` |`SmcAxiLiteCsrAgent` (ECAM space)
+|17 |ECC |`smc_ecc_test` |`smc_ecc_sanity_test` |`SmcAxiMasterAgent` + ECC inject
+|18 |AVSBus |`smc_avsbus_sanity_test` |`smc_avsbus_sanity_test` |proxy CSR/status checks (no pad-level AVSBus VIP)
+|19 |DBS sanity |`smc_dbs_sanity_test` |`smc_dbs_sanity_test` |`SmcAxiLiteCsrAgent` + DBS BFM
+|20 |DFD sanity |`smc_dfd_sanity_test` |`smc_dfd_sanity_test` |`SmcAxiLiteCsrAgent` + DFD observe
+|=================================================================================================================
+
+Effort: ~12 days tests + 7 days BFM infra = *19 days*
+
+[[batch-c--standard-protocol-class-mostly-reuses-existing-ocah-vip]]
+==== Batch C — Standard protocol class (mostly reuses existing OCAH VIP)
+
+[cols=",,,,",options="header",]
+|============================================================================================================================
+|# |Module |Legacy test |OSS testcase |OCAH VIP
+|21 |I2C controller↔target |`smc_i2c_sanity_test` |`smc_i2c_master_target_test` |`smc_i2c_protocol_vip` (SMC-local)
+|22 |I2C target only |`smc_i2c_target_sanity_test` |`smc_i2c_target_sanity_test` |`smc_i2c_protocol_vip` (SMC-local)
+|23 |Dual I2C |`smc_i2c_p0_multictrl_test` |`smc_i2c_p0_multictrl_test` |`smc_i2c_protocol_vip` (SMC-local)
+|24 |iJTAG |`smc_basic_ijtag_test` |`smc_ijtag_basic_test` |`ocah_jtag_vip`
+|25 |I3C → fabric |`smc_input_fabric_i3c_to_output_wr_rd_test` |`smc_i3c_to_fabric_test` |proxy CSR + pad checks (no I3C VIP)
+|26 |OCTS |`octs_sanity_test` |`smc_octs_sanity_test` |new OCAH-local BFM
+|27 |ATB |`atb_sanity_test` |`smc_atb_sanity_test` |new OCAH-local BFM
+|28 |eFuse OTP |`smc_efuse_otp_clock_config_test` |`smc_efuse_otp_clock_test` |OTP responder (SEP-derived)
+|============================================================================================================================
+
+Effort: ~12 days tests + 4 days new BFM = *16 days*
+
+[[batch-d--fabric--cpu-traffic-class-multi-agent-integration]]
+==== Batch D — Fabric / CPU traffic class (multi-agent integration)
+
+[cols=",,,,",options="header",]
+|====================================================================================================================================
+|# |Module |Legacy test |OSS testcase |Agents
+|29 |Input fabric WR/RD |`smc_local_fabric_input_axi_wr_rd_test` |`smc_input_fabric_axi_wr_rd_test` |AxiMaster + AxiSlave
+|30 |Output fabric WR/RD |`smc_output_fabric_wr_rd_test` |`smc_output_fabric_wr_rd_test` |AxiMaster + AxiSlave
+|31 |Local fabric internal |`smc_local_fabric_internal_reg_xbar_wr_rd_test` |`smc_local_fabric_internal_test` |AxiMaster + AxiLiteCsr
+|32 |Binary loader (no CPU) |`smc_binary_loader_test` |`smc_binary_loader_test` |AxiMaster backdoor
+|33 |CPU → SEP AXI |`smc_cpu_traffic_sep_axi_test` |`smc_cpu_to_sep_axi_test` |AxiMaster + CPU-LSU force-splice
+|34 |FLR |`smc_flr_sanity_test` |`smc_flr_sanity_test` |AxiLite + ResetObserver
+|====================================================================================================================================
+
+Effort: ~18 days tests + 6 days infra = *24 days*
+
+[[batch-x--out-of-scope]]
+==== Batch X — Out of scope
+
+[cols=",",options="header",]
+|===================================================================================
+|Item |Reason
+|`smc_sep_load_and_run_binary_test` |SEP OSS already covers (`sep_hello_world_test`)
+|`smc_i2c_smbus_*`, `smc_i2c_pmbus_*` |High-level on top of I2C; phase 2
+|`smc_efuse_jtag_*` variants |Needs full iJTAG + eFuse env; phase 2
+|`smc_cpu_perf_loader_test` |OSS scope is not aimed at performance
+|`*_p1_*`, `*_p2_*` variants |p0 / sanity already represent the module
+|===================================================================================
+
+
+[[sec-5-shared-infrastructure-roadmap]]
+=== Shared Infrastructure Roadmap
+
+[cols=",,,,",options="header",]
+|=========================================================================================
+|# |Component |Depends on |Reuse |Effort
+|I1 |`SmcResetAgent` / `SmcResetObserver` |cocotb |base bring-up |0.5
+|I2 |`SmcClockObserver` |cocotb |— |0.5
+|I3 |`SmcGpioAgent` / `SmcGpioObserver` |cocotb |— |1.0
+|I4 |`SmcInterruptObserver` |cocotb |— |0.5
+|I5 |`SmcAxiMasterAgent` |`ocah_axi_vip` |DTP `DtpAxiAgent` template |1.0
+|I6 |`SmcAxiLiteCsrAgent` |`ocah_axi_vip` AXI-Lite |I5 variant |1.0
+|I7 |`SmcMailboxAgent` |`ocah_axi_vip` AXI-Lite |I6 variant |1.0
+|I8 |`SmcI2cMasterTargetAgent` |`smc_i2c_protocol_vip` (SMC-local) |upgrades observer |1.5
+|I9 |`SmcJtagAgent` |`ocah_jtag_vip` |copy from DTP |0.5
+|I10 |`SmcI3cAgent` |none (no I3C VIP ships) |same |1.0
+|I11 |`SmcOtpResponderAgent` |SEP OTP shim |copy from SEP |1.0
+|I12 |`SmcAvsBusAgent` |none (needs a real pad-level AVSBus VIP) |— |2.0
+|I13 |`SmcOctsAgent` (new BFM) |— |— |2.0
+|I14 |`SmcAtbAgent` (new BFM) |— |— |1.5
+|I15 |CPU-LSU force-splice + scratch helper |SEP tb_top |copy from SEP |2.0
+|I16 |Scoreboard multi-stream dispatch |already minimal |refactor |1.0
+|=========================================================================================
+
+Total shared infra: ~17.5 days.
+
+
+[[sec-6-tb_top-expansion-plan-per-batch]]
+=== tb_top Expansion Plan (per batch)
+
+Incremental, never all-at-once.
+
+[cols=",",options="header",]
+|============================================================================================
+|Stage |New tb_top top-level ports
+|After A |warm / cool reset observe, clock mux select, all GPIO, all IRQ, hang detector IRQ
+|After B |s_axil_csr__, s_axil_ext__, m_axi_*, mailbox AXIL, AVSBus, ECAM AXIL, ECC injection
+|After C |I2C SCL/SDA × N, I3C SDA/SCL, iJTAG TCK/TMS/TDI/TDO, OCTS pads, ATB, OTP IF
+|After D |SEP AXI splice, CPU LSU force probe, internal xbar observation
+|============================================================================================
+
+Each batch close-out: re-run `--validate-configs` + dry-run for the new and
+all prior tests, and a regression dry-run on `reset_sanity` and
+`i2c_cg_sanity_test` to catch tb_top breakage early.
+
+
+[[sec-7-testlist-reorganization-dtp-style]]
+=== Testlist Reorganization (DTP-style)
+
+....
+testlists/
+├── all.toml              (includes everything, defines smoke/functional/full)
+├── smoke.toml            (Batch A sanity subset)
+├── reset.toml            (Batch A reset family)
+├── clock.toml            (Batch A clock / PLL)
+├── gpio_irq.toml         (Batch A GPIO / IRQ)
+├── csr.toml              (Batch B register / AXIL / AVSBus / ECAM)
+├── ecc.toml              (Batch B ECC / AXI timeout)
+├── i2c.toml              (Batch C I2C family)
+├── i3c.toml              (Batch C I3C)
+├── ijtag.toml            (Batch C iJTAG)
+├── octs.toml             (Batch C OCTS)
+├── atb.toml              (Batch C ATB)
+├── efuse.toml            (Batch C eFuse)
+├── fabric.toml           (Batch D fabric)
+└── cpu_traffic.toml      (Batch D CPU traffic)
+....
+
+`smc_sim_cfg.toml [testlist].path` → `all.toml`.
+
+
+[[sec-8-phased-milestones]]
+=== Phased Milestones
+
+[cols=",,,",options="header",]
+|====================================================
+|Phase |Work |Effort |Cumulative
+|P0 |DONE: env scaffold + i2c_cg_sanity |— |0
+|P1 |Shared infra I1–I9 (first 9 components) |7 |7
+|P2 |Batch A: 10 observation tests |5 |12
+|P3 |Shared infra I5–I7 + Batch B: 10 tests |12 |24
+|P4 |Shared infra I8–I14 + Batch C: 8 tests |14 |38
+|P5 |Shared infra I15–I16 + Batch D: 6 tests |17 |55
+|P6 |testlist reorg + commercial sim full run |3 |58
+|P7 |docs (`SMC_TB_ARCH.adoc`, `SMC_VPLAN.adoc`) |2 |60
+|====================================================
+
+Total: ~60 person-days, single mid-level engineer.
+
+
+[[sec-9-risks--mitigations]]
+=== Risks & Mitigations
+
+[cols=",,",options="header",]
+|============================================================================================================================================================
+|Risk |Impact |Mitigation
+|Verilator + PeakRDL codegen bug |All live Verilator runs blocked |Accept static + dry-run + commercial sim as verification; file a minimal upstream repro
+|Missing OCAH BFMs (OCTS / ATB / AVSBus) |Some Batch B / C tests gated |Write OCAH-local simplified models (I12 / I13 / I14 in shared infra)
+|CPU-LSU splice complexity |Batch D CPU tests hard |Copy the SEP `initial force` + XMR-read pattern verbatim
+|Firmware-only test behavior |May need a BFM-driven equivalent |Express the hardware action, such as an IRQ trigger or CSR write, through the appropriate BFM
+|`tb_top` port growth → bender filelist breakage |Batch C / D risk |Validate after every batch; stub immediately if any new Verilator surface fails
+|============================================================================================================================================================
+
+
+[[sec-10-acceptance-criteria]]
+=== Acceptance Criteria
+
+Per testcase:
+
+* [ ] `--validate-configs` smc OK
+* [ ] `--dut smc --list` shows the new test in the right group / tag
+* [ ] `--items <name> --tool verilator --dry-run` 4 stages PASS
+* [ ] Static import of all new `env` / `seq_lib` modules succeeds
+* [ ] `--items <name> --tool xcelium` (if licensed) live PASS
+* [ ] `result.json` `status=PASS` + `results.xml` testcase PASS
+
+Per batch:
+
+* [ ] Entire batch group dry-run PASS
+* [ ] `reset_sanity` and prior PyUVM tests still dry-run PASS
+* [ ] Any new OCAH-local BFM has README + example
+
+
+[[sec-11-execution-order]]
+=== Execution Order
+
+1.  *First*: build one representative test (`smc_cold_reset_test`) to validate the
+porting workflow end-to-end including a second agent in the env.
+2.  After it passes: build the remaining Batch A tests (Phase P1 + P2 in parallel).
+3.  Batch B onward proceeds linearly.
+
+
+[[smc-oss-signoff-records]]
+== Sign-off Records
+
+Closure evidence for the phases that have been signed off, kept with the
+plan they close rather than in a separate document.
+
+Run evidence below was captured on Xcelium 25.03.001 and Verilator 5.046.
+Run directories are named
+`hw/sys/smc/dv/build/runs/<timestamp>__<tool>__<item>` and are local
+artifacts, so a timestamp identifies a result in one workspace rather than
+something reproducible from a clean clone. The PASS counts and the
+root-cause notes are the durable content.
+
+[[sec-6b-p2-phase-a-sign-off]]
+=== P2 Phase A Sign-off
+
+[[scope]]
+==== Scope
+
+Six P2 Phase A tests, tracked as six category buckets plus six test issues under
+P2 parent `[OS_OCAH] SMC Test Migration - P2` #2893 on Project 335:
+
+* #3482 `i2c_smbus_pmbus` → #3483 `smc_smbus_pmbus_test`
+* #3484 `i3c_ccc_ibi_full` → #3485 `smc_i3c_ccc_ibi_full_test`
+* #3486 `uart_loopback` → #3487 `smc_uart_loopback_test`
+* #3489 `smbus_hostnotify` → #3490 `smc_smbus_hostnotify_test`
+* #3491 `spi_loopback` → #3492 `smc_spi_loopback_test`
+* #3493 `sideband_avsbus_octs_bfm` → #3494 `smc_sideband_avsbus_octs_bfm_test`
+
+Issues were created and placed on the project by a local `gh` CLI + GraphQL
+script, using the same mutation as the P0/P1 migration.
+
+[[verilator-model-instability-and-revert]]
+==== Verilator model instability and revert
+
+The intermediate SPI/telemetry pad lift described under "Root causes worth
+remembering" was reverted here. Baseline restore after the revert plus the
+trailing-comma fix:
+
+* `smc_uart_loopback_test` Verilator PASS 74.0 s
+* `canonical_top20` Xcelium PASS 103.2 s; Verilator PASS 191.5 s
+* P2 Phase A trio Xcelium 3/3 PASS 48.5 s; Verilator 3/3 PASS 127.8 s
+* `vplan_triplets` Xcelium *48/48 PASS 289.1 s*; Verilator *48/48 PASS 533.0 s*
+— full P1 slate confidence pass proving no regression from the revert
+
+[[phase-a-completion]]
+==== Phase A completion
+
+The three deferred items closed with Verilator-safe wrapper-level
+implementations:
+
+* `smc_smbus_hostnotify_test` — an SMBus Host Notify frame drives the I2C0 pad,
+reusing the existing polarity + wired-AND adapter with no new `tb_top` port. A
+second `SmcI2cEepromSlave` bound at SMBus Host Address 0x08 captures the
+target-addr + data16 payload; the assertion is on `slave.mem[0xA0..0xA1]`.
+* `smc_spi_loopback_test` — `ocah_spi_vip` library import + JEDEC ID readback +
+preload/mem round-trip + SpiMode enum smoke, combined with five low-speed
+peripheral CSR reads via `SmcCsrSeq` (UART_LOG, AVS, OCTS). No `tb_top` pin
+needed. A full pin-driven byte-level proof awaits a Verilator-safe SPI pad lift.
+* `smc_sideband_avsbus_octs_bfm_test` — deferred under the no-fake-BFM
+policy: the Python-side fake BFM was retired because it never drove DUT
+pads. The test raises until a real pad-level AVSBus/OCTS VIP exists;
+sideband coverage stays with the proxy CSR/status tests. A full pin-driven
+external BFM proof awaits a Verilator-safe telemetry pad lift.
+
+Closure evidence: Xcelium `p2_phase_a` *6/6 PASS 80.1 s*; Verilator
+`p2_phase_a` *6/6 PASS 157.9 s*.
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut smc --items p2_phase_a --tool xcelium
+python3 tools/dv/run_dv.py --dut smc --items p2_phase_a --tool verilator
+----
+
+The full pin-driven SPI byte-level loopback and full pin-driven sideband external
+BFM remain roadmap items in `SMC_VPLAN.adoc` §P2, not blockers for Phase A closure.
+
+
+[[sec-6c-testplan-execution-details]]
+=== Testplan-Execution Details
+
+This content was moved out of `SMC_VPLAN.adoc` so that document could focus purely
+on testplan description. Refer to `SMC_VPLAN.adoc` for what each test verifies;
+refer to this section for how the infrastructure underneath is delivered.
+
+[[sec-6c1-port--vip-delivery-status]]
+==== 6c.1 Port / VIP delivery status
+
+[cols=",,,",options="header",]
+|==============================================================================================================================================================================================================================================================
+|Infrastructure |Status |Tests it unlocks |Notes
+|Reset/powergood/cool-reset agent |built / passing |reset + FLR + multi-reset triplet |Covers public reset behavior; a dedicated FLR source register would deepen the FLR proxy
+|SEP_IN AXI master bridge (`s_axi_*` → `sep_axi_in_req_i`) |built / TOP-20 PASS |All CSR/precheck slices |Use `--stage sim` for Python-only edits after the one-time Verilator build
+|Field-aware CSR access list |partial |Register / eFuse / PLL / Multi-reset depth |Must classify each target as RO, RW, W1C/W1S, side-effect, timeout-prone, retained, or unsafe
+|Timeout/no-response target |bounded CSR timeout built / passing |`smc_axi_timeout_sanity_test`, `smc_zeroer_dma_timeout_test` |Bounded short-timeout CSR path; a true no-response responder remains optional depth
+|Mailbox data/error depth |built / static-checked |`smc_mailbox_data_error_test` |FIFO data path + illegal-access response checks (`mailbox_depth` tag, not canonical)
+|Mailbox event / IRQ source |missing |`smc_mailbox_event_irq_test`, `smc_gpio_irq_active_test` completion |Current tests prove CSR decode/control only
+|I2C VIP/BFM |monitor + master built / passing |I2C triplet + SMBus + PMBus + Host Notify |`SmcI2cBusMonitor` / `SmcI2cEepromSlave` / `SmcI2cMasterVip` in `seq_lib/smc_i2c_protocol_vip.py`. DesignWare controller CSR bring-up still follow-up
+|I3C VIP/BFM |missing |I3C triplet + CCC/IBI SDR extension |No I3C VIP ships; `smc_i3c_to_fabric_test` gates on CSR decode plus the external pull-low pad check (`proxy=True`). Needs a real pad-level VIP with a reproducible backend
+|JTAG/iJTAG VIP |TAP-level built / passing |JTAG triplet |`SmcJtagTap` in `seq_lib/smc_jtag_protocol_vip.py`, `SmcCpuTapDevice(idcode=0x10CA0555, ir_len=5, IDCODE@0x01, DTMCS@0x10, DMI@0x11)`. IR/DR access beyond the default IDCODE latch proven end-to-end
+|UART VIP |built / passing |`smc_uart_loopback_test` |`SmcUartVip` wraps the OCAH-native line driver + sampler via `OcahUartConsole`; 8-N-1 loopback at 115200 baud, no external UART library
+|SPI VIP |library-level built / passing |`smc_spi_loopback_test` |`ocah_spi_vip.OcahSpiFlash` library integration + mock signals; full pin-driven loopback needs a Verilator-safe SPI pad lift
+|Sideband pad-level BFM |missing |`smc_sideband_avsbus_octs_bfm_test` (deferred) |Fake BFM retired under the no-fake-BFM policy (never drove DUT pads); needs a real pad-level AVSBus/OCTS VIP plus a Verilator-safe telemetry pad lift
+|Output-fabric responder / memory slave |built / passing |`smc_input_output_fabric_wr_rd_test`, `smc_output_filter_remap_security_test`, `smc_output_fabric_wr_rd_responder_test` |JTAG AXI final VIP path drives real write/read and allow/block checks
+|CPU firmware loader or force-splice |missing |`smc_cpu_sanity_test`, `smc_occp_sanity_secure_error_test` |Copy the SEP CPU/firmware pattern only after the fabric path is stable
+|eFuse/OTP shim usage plan |partial |`smc_efuse_permission_boundary_test` |Verilator stubs exist; safe CSR/shim semantics need classification
+|Sideband external BFM (real pins) |missing |Full sideband promotion |AVSBus/OCTS/telemetry blocked-window prechecks pass; full external BFM needs a pad-lift refactor
+|Fault/diagnostic injection |missing |`smc_dfd_sanity_test`, `smc_cpu_ecc_lint_pint_depth_test` deepening |Currently a bounded diagnostic representative only
+|==============================================================================================================================================================================================================================================================
+
+[[sec-6c3-roadmap--implementation-order]]
+==== 6c.3 Roadmap / implementation order
+
+1.  Keep broad `smoke` as the debug regression; do not add weak variants just to
+increase test count.
+2.  Keep `canonical_top6`, `canonical_top10`, and `canonical_top20` active; all
+listed entries have Verilator PASS with at least an active CSR/precheck slice.
+3.  Build a field-aware CSR catalog from `smc_top_reg.svh` and selected generated
+structs. Classify each target as RO, RW, W1C/W1S, side-effect, timeout-prone,
+retained, or unsafe.
+4.  Replace the bounded CSR timeout with a true no-response responder only if
+deeper timeout semantics are required.
+5.  Add a dedicated FLR source when available; keep the current cool-reset
+recovery test as the OSS-active approximation.
+6.  Keep `smc_mailbox_data_error_test` as the mailbox depth regression and use its
+response-code checks as the model for other expected-error AXI tests.
+7.  Deepen I2C to a DUT-controller-driven byte transaction once DesignWare I2C0
+controller CSR bring-up (`IC_CON`/`IC_TAR`/`IC_ENABLE`/`IC_DATA_CMD`) is
+drafted.
+8.  Deepen JTAG to DMI-side CPU debug register access once CPU firmware boot lands.
+9.  Refactor the `tb_top` pad lift to be Verilator-safe so the full pin-driven SPI
+byte-level loopback and sideband external BFM tests can graduate from
+library-level to pin-driven proofs.
+10. Do not add more breadth tests until a precheck is deepened.
+
+[[sec-6c4-open-design-questions]]
+==== 6c.4 Open design questions
+
+* Should the active AXI agent be renamed from `SmcSysAxiAgent` to
+`SmcSepInAxiAgent`, or keep the current name to avoid churn?
+* Which generated register source should own the CSR catalog:
+`smc_top_reg.svh`, `smc_top_reg_structs.svh`, or a generated Python map?
+* Should `canonical_top6` replace the current `smoke` CI target, or stay as a
+smaller parallel CI tier?
+* Which responder should unlock deeper fabric coverage first: an explicit
+output-fabric memory slave, a remap/filter test responder, or a controlled
+deny/timeout responder?
+* Can sideband tests share one external BFM without hiding failures, or should
+AVSBus/OCTS/telemetry each stay as depth follow-ons after one representative
+canonical smoke exists?
+
+
+[[sec-6d-p1-coverage-gap-depth-slate-sign-off]]
+=== P1 Coverage-Gap Depth Slate Sign-off
+
+Five rounds closed the RTL-vs-testplan coverage gap identified in `SMC_VPLAN.adoc`
+§P1 Coverage-Gap Depth Slate. Tests land under `--items p1_coverage_gap` plus a
+per-round tag.
+
+[[round-1--one-representative-per-unreached-block-13-tests]]
+==== Round 1 — one representative per unreached block (13 tests)
+
+Extensions to existing P1 categories: `smc_mailbox_inbound_test` (P1-5),
+`smc_i2c_multi_instance_test` (P1-6), `smc_i3c_wrap_extended_test` (P1-7),
+`smc_efuse_map_read_test` + `smc_efuse_shim_ctrl_test` (P1-9),
+`smc_pll_cgm_awm_config_test` (P1-10), `smc_gpio_ctrl_full_sweep_test` (P1-11),
+`smc_uart_multi_instance_test` (P1-12), `smc_telemetry_receiver_csr_test` (P1-13).
+
+New P1 categories: `smc_cluster_cpu_infra_test` (P1-17, bundles WDT + PLIC +
+CLINT), `smc_pvt_analog_sensor_test` (P1-18, bundles PVT combined + temp +
+POC/PBIAS), `smc_remap_cla_test` (P1-19, bundles MMODE_REMAP + full ALIAS sweep +
+CLA), `smc_cdns_i3c_axil_test` (P1-20).
+
+New helper: `SmcCsrSeq.csr_read_bounded()` tolerates *both* DECERR and timeout,
+for CSR blocks that are clock-gated or absent in the current bring-up (WDT /
+PLIC / CLINT / PLL_CGM_AWM / GPIO_CTRL / EFUSE_SHIM / AXIL_EXT / PVT /
+POC_PBIAS). It increments both `accesses` and `timeouts` on no-decode.
+
+Evidence: Xcelium `p1_coverage_gap` *13/13 PASS 45.7 s*; Verilator *13/13
+PASS*. Regression parity: `canonical_top20` Xcelium 20/20 PASS 98.3 s +
+Verilator 20/20 PASS 229.9 s.
+
+Coverage impact: SMC top-level distinct CSR blocks with any test coverage went
+from *29 → 41 of 51* (43% → 80%). Multi-instance depth (I2C 3-instance, UART
+4-instance, I3C 6-instance OCA, Mailbox 30-pair, ALIAS/MMODE/FILTER
+8/8/16-entry) had previously touched only the first instance. Subsystems that P0/P1
+could not reach at all — PVT, POC-PBIAS, WDT, PLIC, CLINT, CGM/AWM, eFuse-shim,
+telemetry, MMODE-remap, CLA, Cadence-I3C-AXIL — all landed under bounded probes.
+
+[[round-2--multi-instance-depth]]
+==== Round 2 — multi-instance depth
+
+* `smc_mailbox_multi_instance_test` — all 32 outbound + 32 inbound mailbox STATUS
+registers (64 reads + 3 clock-gate accesses).
+* `smc_filter_multi_entry_test` — all 16 inbound + 16 outbound filter
+FILTER_CONFIG entries (32 reads).
+* `smc_gpio_refclk_ctrl_test` — GPIO_REFCLK_CTRL (0xC000_4CC0), separate from the
+GPIO_INTF / GPIO_CTRL sweeps.
+* Fix: `smc_gpio_ctrl_full_sweep_test` extended from 46 → 68 entries (RTL has
+GPIO_CTRL_0..67; the first pass under-counted).
+* New testlist `p1_coverage_gap_r2.toml`.
+
+Evidence: Xcelium `p1_coverage_gap + r2` *16/16 PASS 53.8 s*; Verilator
+*16/16 PASS 120.0 s*.
+
+[[round-3--field-level-depth]]
+==== Round 3 — field-level depth
+
+* `smc_gpio_intf_full_sweep_test` — all 68 GPIO_INTF entries (previously 0-2).
+* `smc_mailbox_field_sweep_test` — per-mailbox 6-field decode
+(STATUS/ERROR_FLAGS/WIRQT/RIRQT/IRQEN/IRQS) × 4 outbound mailboxes; rounds 1/2
+touched only STATUS.
+* `smc_filter_field_sweep_test` — per-filter 3-field decode
+(FILTER_CONFIG/START_ADDR/END_ADDR) × 4 entries × 2 directions = 24 reads.
+* `smc_pll_awm_freq_sweep_test` — AWM 0 + AWM 1 FREQUENCY 0..5 + CGM 0..2
+sub-blocks (9 × 2 = 18 reads); round 1 touched only the AWM base.
+* New testlist `p1_coverage_gap_r3.toml`.
+
+Evidence: Xcelium `p1_coverage_gap_r3` *4/4 PASS 16.6 s*; Verilator *4/4 PASS
+40.7 s*. Aggregate `p1_coverage_gap + r2 + r3` *20/20 PASS both simulators*
+(Xcelium 87.6 s, Verilator 180.9 s).
+
+[[round-4--previously-unreached-csr-blocks]]
+==== Round 4 — previously-unreached CSR blocks
+
+A second RTL-vs-testplan audit found three addressable surfaces R1–R3 missed, all
+simple bounded reads through the existing `SmcSysAxiAgent` + `csr_read_bounded()`
+path:
+
+* `smc_xvisor_remap_test` — the 8-entry hypervisor remap table
+`SMC_XVISOR_REMAP_0..7` (0xC001_4000 stride 0x08), sibling of the already
+covered ALIAS_REMAP (0xC001_2000) / MMODE_REMAP (0xC001_3000) tables.
+* `smc_cluster_beu_test` — the 4 per-core Bus Error Units
+`SMC_CLUSTER_CORE0..3_BEU` (0xC801_0000 stride 0x1000), reading
+CAUSE/ENABLE/PLIC_ENABLE per core (12 bounded reads).
+* Fix: `smc_cdns_i3c_axil_test` extended from 4 → *6* wraps (RTL has
+wrap_0..5; wrap_4 @ 0xC040_1000 and wrap_5 @ 0xC040_1400 were unreached). Its
+`accesses` assertion moves from 8 → 12.
+* New testlist `p1_coverage_gap_r4.toml`.
+
+This round also hardened the protocol-VIP scoreboard (see §6 Protocol VIP
+Status). Evidence: `p1_coverage_gap_r4` + extended `smc_cdns_i3c_axil_test`
+*3/3 PASS* on Verilator (`smc_xvisor_remap_test` accesses==8,
+`smc_cluster_beu_test` accesses==12, `smc_cdns_i3c_axil_test` accesses==12). The
+scoreboard-hardening regression on `p2_phase_a` confirmed the new
+`details != ""` / `timeouts <= csr_accesses` asserts do not regress the five
+`csr_accesses=0` pin-VIP tests.
+
+[[round-5--exhaustive-block-audit]]
+==== Round 5 — exhaustive block audit
+
+An exhaustive audit cross-checked _every_ `*_REG_MAP_BASE_ADDR` container in
+`smc_top_reg.svh` against the addresses the cocotb sequences actually read. Two
+surfaces remained:
+
+* `smc_pvt_droop_test` — `SMC_PVT_WRAP_DROOP` (0xC000_7400), the droop-monitor
+sub-block between the PVT combined-sensor (0xC000_7000) and temp-sensor
+(0xC000_7900) surfaces; 10 representative bounded reads spanning
+control/sampling/config/readback.
+* `smc_dft_ctrl_test` — bounded read of top-level `DFT_CTRL` STATUS_SMU
+(0xC000_F800). On Verilator the DFT wrap is a stub
+(`verilator_stubs/smc_dft_ctrl_status_wrap.sv`) so the read may no-decode; on
+Xcelium it hits the real decode.
+* New testlist `p1_coverage_gap_r5.toml`.
+
+Evidence: `p1_coverage_gap_r5` *2/2 PASS* on Verilator
+(`smc_pvt_droop_test` accesses==10, `smc_dft_ctrl_test` accesses==1).
+
+*Post-Round-5 claim:* every top-level CSR block container in
+`smc_top_reg.svh` is touched by at least one OSS test.
+
+Two documentation corrections landed with this round. First, the earlier "only
+protocol-complete gaps remain" statement after Round 2 was inaccurate — Rounds 4
+and 5 found five more non-firmware-gated surfaces. Second, the VPLAN
+P1-17/18/19 tables had listed nine per-sub-block test names
+(`smc_cluster_wdt_sanity_test`, `smc_cluster_plic_test`, `smc_cluster_clint_test`,
+`smc_pvt_combined_sensor_test`, `smc_pvt_temp_sensor_test`,
+`smc_gpio_poc_pbias_sanity_test`, `smc_mmode_remap_csr_test`,
+`smc_cla_sanity_test`, `smc_alias_remap_full_sweep_test`) that were never created
+standalone; they are implemented as the three bundled tests
+`smc_cluster_cpu_infra_test`, `smc_pvt_analog_sensor_test`, and
+`smc_remap_cla_test`. The VPLAN tables now point at the bundled names.
+
+[[aggregate-regressions]]
+==== Aggregate regressions
+
+Combined `canonical_top20 + vplan_triplets + p1_coverage_gap + p1_coverage_gap_r2 + p2_phase_a` (71 tests, deduplicated): Xcelium *71/71 PASS
+375.7 s*; Verilator *71/71 PASS 707.7 s*.
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut smc \
+  --items canonical_top20 vplan_triplets p1_coverage_gap p1_coverage_gap_r2 p2_phase_a \
+  --tool verilator
+----
+
+The complete discovered set (109 tests) reached *109/109 PASS* on Verilator via
+`--stage sim`. The first pass showed 103/109, with all six I3C tests failing on
+`ImportError: No module named 'cocotbext_i3c'` and the five JTAG tests failing on
+`SmcJtagTapError: cocotbext-jtag is required`. Both were dependency-visibility
+problems, not TB or RTL defects; once the extensions were importable all eleven
+passed. See §1 for the current dependency surface.
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut smc \
+  --items $(python3 tools/dv/run_dv.py --dut smc --list \
+            | sed -n 's/^tests *: //p' | tr ',' ' ') \
+  --tool verilator --stage sim
+----
+
+[[coverage-progression-history]]
+== Coverage progression history
+
+
+[cols=",,",options="header",]
+|============================================
+|Stage |Single seed |5-seed UNION
+|Original baseline (`smoke` 73 tests) |13 |17
+|Slim to 22 representative tests |13 |17
+|+ Cool reset op in repeated seq |15 |19
+|+ Seed-driven random clk windows |18 |32
+|+ RAW_SAMPLE op mid-glitch |21 |35
+|+ Denser RAW_SAMPLE probing |21 |35 (capped)
+|============================================
+
+35 was the natural ceiling of the pure-observability TB. Growing the four
+saturated bins (`axil_master`, `gpio_state`, `i2c_state`, `irq_state`) required
+an active driver — which the later AXI master / JTAG2AXI promotions delivered.
+

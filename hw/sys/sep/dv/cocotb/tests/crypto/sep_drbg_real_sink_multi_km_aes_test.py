@@ -172,7 +172,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         aes_task = cocotb.start_soon(aes_arm())
         await km_task  # join (aes runs concurrently meanwhile)
         await aes_task  # join + re-raise any AES-arm assertion
-        self.logger.info("CHK-AESKAT block-0 ciphertext == AES-256-ECB golden")
+        self.logger.info("CHK-AESKAT PASS: block-0 ciphertext == AES-256-ECB golden")
 
         # Both sinks consumed entropy DURING the concurrent fork (not just one) --
         # evidences overlap (the OSS analog of the reference suite's fork count_good/ack-advance
@@ -189,7 +189,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
             f"(beats {aes_before}->{aes_after})"
         )
         self.logger.info(
-            "CHK-CONCUR KM+AES both advanced during the concurrent fork: KM %d->%d, AES %d->%d",
+            "CHK-CONCUR PASS: KM+AES both advanced during the concurrent fork: KM %d->%d, AES %d->%d",
             km_before,
             km_after,
             aes_before,

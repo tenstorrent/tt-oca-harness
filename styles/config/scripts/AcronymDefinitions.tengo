@@ -32,7 +32,7 @@ canonical := {
   SMU:    ["system management unit"], // doc/trm/src/architecture.adoc
   SMN:    ["system management network"], // doc/home/src/features.adoc
   SMO:    ["safety monitor"], // doc/trm/src/architecture.adoc
-  AoU:    ["axi-over-ucie bridge"], // doc/home/src/features.adoc
+  AoU:    ["axi-over-ucie bridge", "axi-over-ucie"], // doc/home/src/features.adoc
   CLA:    ["core logic analyzer"], // hw/sys/smc/doc/dfd.adoc
   PTAP:   ["primary tap"], // hw/ip/jtag/jtag_ptap/doc/index.adoc
   STAP:   ["secondary tap"], // hw/ip/jtag/jtag_stap/doc/index.adoc

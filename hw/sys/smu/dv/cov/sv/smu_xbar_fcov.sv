@@ -10,13 +10,18 @@
 // signal. The points here are driven by the map outputs and the inbound AXI
 // handshake, so a bin is hit because the DUT did the thing.
 //
-// One passive, signal-driven module in the shared tb_top. Every port is a
-// smu_tb_signal_list.svh signal.
+// One passive, signal-driven module instantiated by both benches. Every port
+// is a smu_tb_signal_list.svh signal, except axil_external_active_i, which
+// the wrapper bench reads from a window smu_wrapper keeps inside itself.
 //
 // Points must need stimulus beyond power-up and reset release. The map
 // outputs take whatever the fuses and straps leave at power-up, so a level
 // on them proves nothing; each is qualified by the value having changed,
 // which is what programming the window looks like from outside.
+//
+// SEP PRESENCE: the SEP-aperture points sit in the `g_sep` generate block, so
+// a SEP=0 build carries no unhittable point and one coverage policy can grade
+// both elaborations.
 //
 // CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
 // argument is a single continuous-assign wire; no declaration initializers
@@ -26,7 +31,13 @@
 
 `include "ocah_fcov_macros.svh"
 
-module smu_xbar_fcov (
+module smu_xbar_fcov #(
+  // 0 on an elaboration without SEP. The SEP aperture outputs come from the
+  // SEP CSR block, so smu.sv's gen_no_sep branch ties base and size to '0
+  // and they can never move; the points that watch them move are dropped
+  // rather than carried unhittable.
+  parameter bit SepPresent = 1'b1
+) (
   input wire clk_smu_i,
   input wire rst_cold_ni,
 
@@ -67,34 +78,21 @@ module smu_xbar_fcov (
   // moves; reprogramming is a second move, which is the shrink/regrow
   // case the filter tests drive.
   // ------------------------------------------------------------------
-  logic [55:0] sep_base_q, sep_size_q, smc_base_q;
+  logic [55:0] smc_base_q;
   logic [31:0] smc_size_q;
-  logic sep_base_prog_q, sep_size_prog_q, smc_base_prog_q, smc_size_prog_q;
-  logic sep_size_reprog_q, smc_size_reprog_q;
+  logic smc_base_prog_q, smc_size_prog_q, smc_size_reprog_q;
 
   always_ff @(posedge clk_smu_i) begin
     if (in_reset) begin
-      sep_base_q <= sep_global_base_i;
-      sep_size_q <= sep_region_size_i;
       smc_base_q <= smc_global_base_i;
       smc_size_q <= smc_region_size_i;
-      sep_base_prog_q <= 1'b0;
-      sep_size_prog_q <= 1'b0;
       smc_base_prog_q <= 1'b0;
       smc_size_prog_q <= 1'b0;
-      sep_size_reprog_q <= 1'b0;
       smc_size_reprog_q <= 1'b0;
     end else begin
-      sep_base_q <= sep_global_base_i;
-      sep_size_q <= sep_region_size_i;
       smc_base_q <= smc_global_base_i;
       smc_size_q <= smc_region_size_i;
-      if (sep_global_base_i !== sep_base_q) sep_base_prog_q <= 1'b1;
       if (smc_global_base_i !== smc_base_q) smc_base_prog_q <= 1'b1;
-      if (sep_region_size_i !== sep_size_q) begin
-        sep_size_prog_q <= 1'b1;
-        if (sep_size_prog_q) sep_size_reprog_q <= 1'b1;
-      end
       if (smc_region_size_i !== smc_size_q) begin
         smc_size_prog_q <= 1'b1;
         if (smc_size_prog_q) smc_size_reprog_q <= 1'b1;
@@ -102,25 +100,68 @@ module smu_xbar_fcov (
     end
   end
 
-  wire sep_base_programmed_e = sep_base_prog_q;
-  wire sep_size_programmed_e = sep_size_prog_q;
   wire smc_base_programmed_e = smc_base_prog_q;
   wire smc_size_programmed_e = smc_size_prog_q;
-  wire sep_size_reprogrammed_e = sep_size_reprog_q;
   wire smc_size_reprogrammed_e = smc_size_reprog_q;
-  `OCAH_FCOV_COVER(c_map_sep_base_programmed, sep_base_programmed_e, clk_smu_i, in_reset)
-  `OCAH_FCOV_COVER(c_map_sep_size_programmed, sep_size_programmed_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_map_smc_base_programmed, smc_base_programmed_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_map_smc_size_programmed, smc_size_programmed_e, clk_smu_i, in_reset)
-  `OCAH_FCOV_COVER(c_map_sep_size_reprogrammed, sep_size_reprogrammed_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_map_smc_size_reprogrammed, smc_size_reprogrammed_e, clk_smu_i, in_reset)
 
   // A zero-size window denies the whole region; it is a legal programmed
   // state the filter tests use and is worth naming separately.
-  wire sep_size_zero_e = sep_size_prog_q && (sep_region_size_i === '0);
   wire smc_size_zero_e = smc_size_prog_q && (smc_region_size_i === '0);
-  `OCAH_FCOV_COVER(c_map_sep_size_zero, sep_size_zero_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_map_smc_size_zero, smc_size_zero_e, clk_smu_i, in_reset)
+
+  // The SEP aperture, watched the same way. Only elaborated with SEP
+  // present: base and size are tied to '0 without it and never move.
+  if (SepPresent) begin : g_sep
+    logic [55:0] sep_base_q, sep_size_q;
+    logic sep_base_prog_q, sep_size_prog_q, sep_size_reprog_q;
+
+    always_ff @(posedge clk_smu_i) begin
+      if (in_reset) begin
+        sep_base_q <= sep_global_base_i;
+        sep_size_q <= sep_region_size_i;
+        sep_base_prog_q <= 1'b0;
+        sep_size_prog_q <= 1'b0;
+        sep_size_reprog_q <= 1'b0;
+      end else begin
+        sep_base_q <= sep_global_base_i;
+        sep_size_q <= sep_region_size_i;
+        if (sep_global_base_i !== sep_base_q) sep_base_prog_q <= 1'b1;
+        if (sep_region_size_i !== sep_size_q) begin
+          sep_size_prog_q <= 1'b1;
+          if (sep_size_prog_q) sep_size_reprog_q <= 1'b1;
+        end
+      end
+    end
+
+    wire sep_base_programmed_e = sep_base_prog_q;
+    wire sep_size_programmed_e = sep_size_prog_q;
+    wire sep_size_reprogrammed_e = sep_size_reprog_q;
+    wire sep_size_zero_e = sep_size_prog_q && (sep_region_size_i === '0);
+    `OCAH_FCOV_COVER(c_map_sep_base_programmed, sep_base_programmed_e, clk_smu_i, in_reset)
+    `OCAH_FCOV_COVER(c_map_sep_size_programmed, sep_size_programmed_e, clk_smu_i, in_reset)
+    `OCAH_FCOV_COVER(c_map_sep_size_reprogrammed, sep_size_reprogrammed_e, clk_smu_i, in_reset)
+    `OCAH_FCOV_COVER(c_map_sep_size_zero, sep_size_zero_e, clk_smu_i, in_reset)
+
+`ifndef VERILATOR
+    // Commercial-simulator covergroup: the programmed and zero-size states
+    // of the SEP window, which a flat point list cannot cross.
+    covergroup cg_sep_window with function sample (logic prog, logic zero);
+      option.per_instance = 1;
+      cp_prog: coverpoint prog;
+      cp_zero: coverpoint zero;
+      x_programmed: cross cp_prog, cp_zero;
+    endgroup
+
+    cg_sep_window u_cg_sep_window = new();
+
+    always_ff @(posedge clk_smu_i) begin
+      if (!in_reset) u_cg_sep_window.sample(sep_size_prog_q, sep_size_zero_e);
+    end
+`endif
+  end
 
   // ------------------------------------------------------------------
   // Inbound AXI handshake and response codes. All four response
@@ -180,12 +221,25 @@ module smu_xbar_fcov (
 
   wire in_advanced = (axi_in_awvalid_count_i !== in_count_q);
   wire out_advanced = (axi_out_awvalid_count_i !== out_count_q);
-  wire route_forwarded_e = in_advanced && out_advanced;
   wire route_not_forwarded_e = in_advanced && !out_advanced;
   wire axil_external_e = (axil_external_active_i === 1'b1);
-  `OCAH_FCOV_COVER(c_route_inbound_forwarded, route_forwarded_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_route_inbound_not_forwarded, route_not_forwarded_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_axil_external_active, axil_external_e, clk_smu_i, in_reset)
+
+  // An inbound write answered with no outbound AW having fired since its own
+  // AW was accepted: ext_in reached its target without a route to ext_out.
+  logic out_since_in_q;
+  always_ff @(posedge clk_smu_i) begin
+    if (in_reset) begin
+      out_since_in_q <= 1'b0;
+    end else begin
+      if (aw_accept_e) out_since_in_q <= 1'b0;
+      else if (out_advanced) out_since_in_q <= 1'b1;
+    end
+  end
+
+  wire no_route_ext_in_to_ext_out_e = b_accept && (out_since_in_q === 1'b0);
+  `OCAH_FCOV_COVER(c_no_route_ext_in_to_ext_out, no_route_ext_in_to_ext_out_e, clk_smu_i, in_reset)
 
 `ifndef VERILATOR
   // ------------------------------------------------------------------
@@ -199,26 +253,22 @@ module smu_xbar_fcov (
     }
   endgroup
 
-  covergroup cg_map_windows with function sample (
-      logic sep_prog, logic smc_prog, logic sep_zero, logic smc_zero
-  );
+  covergroup cg_map_window with function sample (logic prog, logic zero);
     option.per_instance = 1;
-    cp_sep_prog: coverpoint sep_prog;
-    cp_smc_prog: coverpoint smc_prog;
-    cp_sep_zero: coverpoint sep_zero;
-    cp_smc_zero: coverpoint smc_zero;
-    x_programmed: cross cp_sep_prog, cp_smc_prog;
+    cp_prog: coverpoint prog;
+    cp_zero: coverpoint zero;
+    x_programmed: cross cp_prog, cp_zero;
   endgroup
 
   cg_axi_in_resp u_cg_bresp = new();
   cg_axi_in_resp u_cg_rresp = new();
-  cg_map_windows u_cg_map_windows = new();
+  cg_map_window u_cg_smc_window = new();
 
   always_ff @(posedge clk_smu_i) begin
     if (!in_reset) begin
       if (b_accept) u_cg_bresp.sample(s_axi_bresp_i);
       if (r_accept) u_cg_rresp.sample(s_axi_rresp_i);
-      u_cg_map_windows.sample(sep_size_prog_q, smc_size_prog_q, sep_size_zero_e, smc_size_zero_e);
+      u_cg_smc_window.sample(smc_size_prog_q, smc_size_zero_e);
     end
   end
 `endif

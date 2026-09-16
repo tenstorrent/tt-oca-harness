@@ -53,6 +53,7 @@ from ocah_jtag_vip import (
     OcahJtagSlaveAgent,
     OcahJtagSlaveConfig,
     OcahJtagSlaveSequence,
+    OcahJtagState,
 )
 from ocah_lib import OcahKnobs, OcahRng
 
@@ -63,16 +64,20 @@ __all__ = [
     "IDCODE",
     "IDCODE_MASK",
     "IDCODE_WIDTH",
+    "CHECKER_NEGATIVE_KNOB",
     "IR_WIDTH",
     "NEGATIVE_KNOB",
+    "NEVER_RECORDED_ID",
     "STATUS_OPCODE",
     "STATUS_WIDTH",
     "UNUSED_OPCODE",
     "JtagHarness",
     "base_seed",
     "build_stack",
+    "capture_only_scan",
     "device_config",
     "negative_armed",
+    "paused_scan",
     "rejects",
     "scenario_rng",
 ]
@@ -91,6 +96,8 @@ STATUS_WIDTH = 8
 UNUSED_OPCODE = 0x0A
 BYPASS_OPCODE = (1 << IR_WIDTH) - 1
 NEGATIVE_KNOB = "OCAH_JTAG_SELFTEST_NEGATIVE"
+CHECKER_NEGATIVE_KNOB = "OCAH_CHECKER_SELFTEST_NEGATIVE"
+NEVER_RECORDED_ID = "CHK-NEVER-RECORDED"
 _SEED_ENV = "RANDOM_SEED"
 _SIGNAL_MAP = {name: f"{PREFIX}_{name}" for name in ("tck", "tms", "tdi", "tdo", "trst", "tdo_oen")}
 
@@ -106,9 +113,19 @@ class JtagHarness:
     checker: OcahJtagChecker
 
     async def stop(self) -> None:
-        """Stop the monitor and the reactive device."""
+        """Stop the monitor and the reactive device.
+
+        The monitor's swallowed-callback count is recorded on the test's
+        checker, so a subscriber exception the monitor logged cannot pass.
+        """
         await self.monitor.stop()
         await self.slave_agent.stop()
+        self.checker.expect_equal(
+            "CHK-JTAG-MON-CALLBACKS",
+            self.monitor.get_statistics()["callback_errors"],
+            0,
+            context="subscriber exceptions the monitor swallowed",
+        )
 
 
 def device_config(name: str = "harness_device") -> OcahJtagSlaveConfig:
@@ -145,8 +162,16 @@ async def build_stack(
     )
     tap.init_signals()
     monitor = OcahJtagMasterMonitor.from_prefix(dut, PREFIX, name="harness_monitor")
+    ids = list(required_ids)
+    if OcahKnobs.is_set(CHECKER_NEGATIVE_KNOB):
+        log.warning(
+            "NEGATIVE VALIDATION: required ID %s is never recorded; "
+            "CHECKER_SUMMARY must report missing=1",
+            NEVER_RECORDED_ID,
+        )
+        ids.append(NEVER_RECORDED_ID)
     checker = OcahJtagChecker(
-        name="ocah_jtag_harness", ir_width=IR_WIDTH, required_ids=required_ids, logger=log
+        name="ocah_jtag_harness", ir_width=IR_WIDTH, required_ids=ids, logger=log
     )
     if item_checks:
         checker.attach_monitor(monitor)
@@ -177,6 +202,77 @@ async def _mirror_device_state(dut: Any, responder: Any) -> None:
         if trigger is not None and getattr(trigger, "signal", None) is trst:
             await Timer(1, "ns")
         state_net.value = int(responder.device_state())
+
+
+async def paused_scan(
+    harness: JtagHarness,
+    *,
+    is_ir: bool,
+    value: int,
+    width: int,
+    split: int,
+    pause_cycles: int,
+    context: str = "",
+) -> int:
+    """Scan ``value`` LSB-first with a Pause-x stop after ``split`` bits; return the captured bits.
+
+    Raw TCK steps from Run-Test/Idle along the IEEE 1149.1 controller diagram:
+    Select-x, Capture-x, ``split`` Shift-x beats, Exit1-x, ``pause_cycles``
+    cycles in Pause-x, Exit2-x, then Shift-x for the remaining bits and
+    Exit1-x, or Update-x straight from Exit2-x when ``split`` equals
+    ``width``; Update-x, Run-Test/Idle. The device holds its shift register
+    across the pause, and the monitor publishes the whole scan at the last
+    Exit1-x. The device state is judged in the pause (``CHK-SLAVE-STATE``).
+    """
+    if not 0 < split <= width:
+        raise ValueError(f"split must lie inside the scan; got split={split} width={width}")
+    if pause_cycles < 1:
+        raise ValueError(f"pause_cycles must be >= 1; got {pause_cycles}")
+    master = harness.master
+    pause_state = OcahJtagState.PAUSE_IR if is_ir else OcahJtagState.PAUSE_DR
+    captured = 0
+
+    async def shift_bits(first: int, last: int) -> None:
+        nonlocal captured
+        for bit_idx in range(first, last):
+            tdo = await master.step(int(bit_idx == last - 1), (value >> bit_idx) & 1)
+            captured |= (tdo & 1) << bit_idx
+
+    await master.step(1)  # Run-Test/Idle -> Select-DR-Scan
+    if is_ir:
+        await master.step(1)  # Select-DR-Scan -> Select-IR-Scan
+    await master.step(0)  # Select-x -> Capture-x
+    await master.step(0)  # Capture-x -> Shift-x
+    await shift_bits(0, split)  # the last beat exits to Exit1-x
+    await master.step(0)  # Exit1-x -> Pause-x
+    for _ in range(pause_cycles):
+        await master.step(0)
+    harness.slave.check_state(pause_state, context=f"{context} pause".strip())
+    await master.step(1)  # Pause-x -> Exit2-x
+    if split < width:
+        await master.step(0)  # Exit2-x -> Shift-x
+        await shift_bits(split, width)  # the last beat exits to Exit1-x
+    await master.step(1)  # Exit1-x or Exit2-x -> Update-x
+    await master.step(0)  # Update-x -> Run-Test/Idle
+    return captured
+
+
+async def capture_only_scan(harness: JtagHarness, *, is_ir: bool) -> None:
+    """A scan with no Shift-x cycle: Capture-x, Exit1-x, Update-x.
+
+    Raw TCK steps from Run-Test/Idle and back. A DR scan captures the
+    selected register and latches that value again, so a writable register
+    records one more update of its own value; an IR scan loads the device's
+    instruction capture pattern.
+    """
+    master = harness.master
+    await master.step(1)  # Run-Test/Idle -> Select-DR-Scan
+    if is_ir:
+        await master.step(1)  # Select-DR-Scan -> Select-IR-Scan
+    await master.step(0)  # Select-x -> Capture-x
+    await master.step(1)  # Capture-x -> Exit1-x
+    await master.step(1)  # Exit1-x -> Update-x
+    await master.step(0)  # Update-x -> Run-Test/Idle
 
 
 def base_seed() -> int:

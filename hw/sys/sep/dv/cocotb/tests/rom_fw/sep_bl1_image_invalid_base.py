@@ -267,7 +267,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"converge on a mailbox FAIL. cold_scratch[1]: {status_hex}"
         )
         assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
-        log.info("CHK-TERMINAL: mailbox FAIL (fw_pass=0)")
+        log.info("CHK-TERMINAL PASS: mailbox FAIL (fw_pass=0)")
 
         # CHK-NO-HANDOFF: the procedures' central claim -- BL0 rejected the image
         # BEFORE attempting to copy or enter BL1.

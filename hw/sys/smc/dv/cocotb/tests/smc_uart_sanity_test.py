@@ -14,6 +14,12 @@ from smc_base_test import smc_base_test
 class smc_uart_sanity_test(smc_base_test):
     """UART pad-cross byte exchange on pairs 0→3 and 1→2."""
 
+    required_evidence = (
+        "CHK-UART-SANITY",
+        "CHK-UART-SANITY-BASIC",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

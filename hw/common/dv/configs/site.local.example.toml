@@ -32,7 +32,11 @@ license_env = ["SNPSLMD_LICENSE_FILE"]
 extra_env = { VCS_HOME = "/opt/vcs" }
 
 # A tool table the checked-in registry lacks must be complete; the registry schema
-# validates it, and a DUT's formal config selects it through `tools`/`default_tool`.
+# validates it, and a DUT's formal config selects it through `tools`/`default_tool`. The open
+# registry names the open formal backend only, so this is how a licensed formal backend
+# reaches the runner: its `license_env` drives the `(licensed)` marking in `--list`, and its
+# `argv` is the launch template (`{binary} {args} {script} {formal_args}` suits a Tcl-driven
+# tool; an app table may override it).
 [simulators.fvtool]
 kind = "formal"
 binary = "fvtool"
@@ -44,6 +48,8 @@ default_waves = ""
 argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
 
 # A companion checkout's formal config for one DUT, reached without editing duts.toml.
-# Paths resolve against the repository root, or are absolute; the file must exist.
+# Paths resolve against the repository root, or are absolute. While the file is absent,
+# `--list` and `--validate-configs` show the view as unavailable and only `--mode formal`
+# on that DUT is an error.
 # [duts.dtp]
 # formal_cfg = "nonfree/hw/sys/dtp/dv/dtp_formal_cfg.toml"

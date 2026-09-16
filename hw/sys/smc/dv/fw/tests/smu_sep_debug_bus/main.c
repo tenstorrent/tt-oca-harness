@@ -43,8 +43,7 @@ SMC_STACKLESS_ENTRY(smu_sep_debug_bus_entry)
         SMC_WR32((lo), (uint32_t)(v)); \
         SMC_WR32((hi), (uint32_t)((uint64_t)(v) >> 32)); \
     } while (0)
-#define SMC_RD64_LOHI(lo, hi) \
-    ((uint64_t)SMC_RD32(lo) | ((uint64_t)SMC_RD32(hi) << 32))
+#define SMC_RD64_LOHI(lo, hi) ((uint64_t)SMC_RD32(lo) | ((uint64_t)SMC_RD32(hi) << 32))
 
 /* W2C is rise-edge only. Drop bit32 first so a later write of bit32 pulses. */
 #define DEBUG_BUS_W2C_PULSE() \

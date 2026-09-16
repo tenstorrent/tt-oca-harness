@@ -91,7 +91,7 @@ from .coverage_policy import (
 )
 from .formal import grade_formal_stage
 from .junit import ensure_leaf_junit
-from .logparse import parse_stage_result
+from .logparse import parse_stage_result, xunit_failure_messages
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
 from .paths import repo_path, repo_rel
 from .site import ToolLaunch, launch_argv, launch_env, tool_launch
@@ -254,6 +254,70 @@ def _mark_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> None:
 
 def _is_cocotb_prebuilt(args: argparse.Namespace, target_name: str) -> bool:
     return target_name in _prebuilt_targets(args)
+
+
+def grade_expected_fail(
+    status: str,
+    reason: str,
+    buckets: list[dict[str, Any]] | None,
+    expect_fail: str,
+    *,
+    observed_failures: list[str] | None = None,
+    expect_fail_match: str | None = None,
+) -> tuple[str, str, list[dict[str, Any]] | None, dict[str, Any]]:
+    """Grade a leaf whose testlist entry carries `expect_fail`.
+
+    An observed FAIL is the recorded outcome and grades PASS -- unless the entry also carries
+    `expect_fail_match` and no observed failure message matches it, in which case the leaf
+    failed for a reason other than the recorded one and grades FAIL in the
+    `expected_fail_mismatch` bucket. An observed PASS means the defect the entry records is
+    no longer there, and grades FAIL so the entry cannot outlive its reason. ERROR, TIMEOUT
+    and UNKNOWN are not the recorded failure -- the leaf proved nothing either way -- and
+    keep their status. The returned record goes into the leaf metadata under `expected_fail`
+    with the observed status, reason, failure messages and the parser's failure buckets.
+    """
+    failures = list(observed_failures or [])
+    record: dict[str, Any] = {
+        "reason": expect_fail,
+        "observed_status": status,
+        "observed_reason": reason,
+        "observed_failures": failures,
+        "observed_buckets": [
+            {"kind": bucket.get("kind"), "signature": bucket.get("signature")}
+            for bucket in buckets or []
+        ],
+    }
+    if expect_fail_match is not None:
+        record["match"] = expect_fail_match
+    if status == "FAIL":
+        if expect_fail_match is not None and not any(
+            re.search(expect_fail_match, message) for message in failures
+        ):
+            first = failures[0] if failures else "no failure message recorded"
+            graded_reason = (
+                f"expected to fail ({expect_fail}) but failed for another reason: {first}"
+            )
+            bucket = {
+                "kind": "expected_fail_mismatch",
+                "signature": graded_reason[:120],
+                "count": 1,
+                "examples": [],
+            }
+            return "FAIL", graded_reason, [bucket], record
+        return "PASS", f"expected_fail: {expect_fail}", None, record
+    if status == "PASS":
+        graded_reason = (
+            f"expected to fail ({expect_fail}) but passed: the defect is gone, move the test "
+            "into its owning feature testlist and drop expect_fail"
+        )
+        bucket = {
+            "kind": "expected_fail_passed",
+            "signature": graded_reason[:120],
+            "count": 1,
+            "examples": [],
+        }
+        return "FAIL", graded_reason, [bucket], record
+    return status, reason, buckets, record
 
 
 def _target_build_metadata(
@@ -3890,6 +3954,30 @@ def run_stage(
         ]
         parser = None
         console.event("error", reason)
+
+    expect_fail = (
+        catalog.tests[item].expect_fail
+        if stage_name in {"sim", "regress"}
+        and item is not None
+        and item in catalog.tests
+        and not args.dry_run
+        else None
+    )
+    if expect_fail:
+        status, reason, buckets, metadata["expected_fail"] = grade_expected_fail(
+            status,
+            reason,
+            buckets,
+            expect_fail,
+            observed_failures=xunit_failure_messages(stage_dir / "results" / "results.xml"),
+            expect_fail_match=catalog.tests[item].expect_fail_match,
+        )
+        for bucket in buckets or []:
+            examples = bucket.setdefault("examples", [])
+            rel_log = repo_rel(root, log_path)
+            if rel_log and rel_log not in examples:
+                examples.append(rel_log)
+        console.event("xfail", f"{item}: {reason}")
 
     ended_at = datetime.now(UTC)
     duration_sec = time.monotonic() - started

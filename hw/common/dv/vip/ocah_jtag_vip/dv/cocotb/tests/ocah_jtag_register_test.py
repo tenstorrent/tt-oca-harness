@@ -3,8 +3,12 @@
 """Shared JTAG VIP selftest: scan data lands in the device's registers.
 
 Host writes to the writable ``CTRL`` register latch on Update-DR, are
-recorded by the device, and read back over the bus; the read-only ``STATUS``
-register captures its stored value and never latches; the monitor
+recorded by the device, and read back over the bus; a write paused in
+Pause-DR latches whole and reconstructs at its full width, whether the scan
+resumes shifting after the pause or updates straight from Exit2-DR; a
+capture-only scan (no Shift-DR cycle) latches the captured value back; the
+read-only
+``STATUS`` register captures its stored value and never latches; the monitor
 reconstructs every IR and DR scan at its driven width. A wrong expected
 latch value handed to a fail-fast checker must be rejected.
 """
@@ -23,6 +27,8 @@ from ocah_jtag_vip_harness import (
     STATUS_OPCODE,
     STATUS_WIDTH,
     build_stack,
+    capture_only_scan,
+    paused_scan,
     rejects,
     scenario_rng,
 )
@@ -34,11 +40,14 @@ REQUIRED_IDS = (
     "CHK-SLAVE-DR-UPDATE-COUNT",
     "CHK-SLAVE-REG",
     "CHK-JTAG-DR-READBACK",
+    "CHK-JTAG-DR-PAUSE",
+    "CHK-JTAG-DR-CAPTURE-ONLY",
     "CHK-JTAG-RO-CAPTURE",
     "CHK-SCAN-IR-LEN",
     "CHK-SCAN-DR-LEN",
     "CHK-JTAG-NEG-UPDATE",
 )
+PAUSE_CYCLES = 4
 
 
 @cocotb.test()
@@ -64,8 +73,47 @@ async def ocah_jtag_register_test(dut) -> None:
         readback = await seq.shift_dr(0, CTRL_WIDTH, back_to_rti=True)
         checker.expect_equal("CHK-JTAG-DR-READBACK", readback, value, context=f"write {index}")
         log.info("write %d: value=0x%04x readback=0x%04x", index, value, readback)
+
+    # Writes paused in Pause-DR latch whole: one resumes shifting after the
+    # pause, one pauses after its last bit and updates from Exit2-DR. A
+    # capture-only scan then latches the captured value back, and the readback
+    # that follows returns the last paused value: four more CTRL updates.
+    for split, label in ((CTRL_WIDTH // 2, "resumed"), (CTRL_WIDTH, "completed")):
+        paused = rng.getrandbits(CTRL_WIDTH)
+        await paused_scan(
+            harness,
+            is_ir=False,
+            value=paused,
+            width=CTRL_WIDTH,
+            split=split,
+            pause_cycles=PAUSE_CYCLES,
+            context=f"{label} paused CTRL write",
+        )
+        seq.check_last_scan_length(
+            is_ir=False, expected_width=CTRL_WIDTH, context=f"{label} paused write"
+        )
+        slave.check_last_update("CTRL", paused, context=f"{label} paused write")
+    updates_before = len(slave.updates())
+    await capture_only_scan(harness, is_ir=False)
+    checker.expect_equal(
+        "CHK-JTAG-DR-CAPTURE-ONLY",
+        len(slave.updates()) - updates_before,
+        1,
+        context="a capture-only scan latches once",
+    )
+    slave.check_last_update("CTRL", paused, context="capture-only scan latches the captured value")
+    readback = await seq.shift_dr(0, CTRL_WIDTH, back_to_rti=True)
+    checker.expect_equal(
+        "CHK-JTAG-DR-PAUSE",
+        readback,
+        paused,
+        context=f"readback after a write paused {PAUSE_CYCLES} cycles and a capture-only scan",
+    )
     slave.check_update_count(
-        2 * len(values), reg_name="CTRL", context="one write and one readback scan per value"
+        2 * len(values) + 4,
+        reg_name="CTRL",
+        context="one write and one readback scan per value, two paused writes, "
+        "the capture-only scan, and its readback",
     )
 
     status = rng.getrandbits(STATUS_WIDTH)

@@ -18,6 +18,13 @@ from smc_base_test import smc_base_test
 class smc_ijtag_basic_test(smc_base_test):
     """Run the SMC OSS iJTAG-adjacent CSR and CPU JTAG pin scenario."""
 
+    required_evidence = (
+        "CHK-CPU-JTAG-DTMCS",
+        "CHK-CPU-JTAG-IDCODE",
+        "CHK-CPU-JTAG-SCAN-ACTIVITY",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

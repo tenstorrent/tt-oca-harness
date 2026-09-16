@@ -163,22 +163,7 @@ parser_policy = "sby-summary"
 # stage directory as `<item>_<task>`; the app's `args` name the tasks to run.
 argv = ["{binary}", "-f", "--prefix", "{run_dir}/stages/formal/{item}", "{script}", "{args}", "{formal_args}"]
 
-[jasper]
-kind = "formal"
-binary = "jg"
-frameworks = ["formal"]
-license_env = ["CDS_LIC_FILE", "LM_LICENSE_FILE"]
-supports_waves = []
-supports_cov = ["formal"]
-default_waves = ""
-argv = ["{binary}", "{args}", "{script}", "{formal_args}"]
-
-[vcf]
-kind = "formal"
-binary = "vcf"
-frameworks = ["formal"]
-license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
-supports_waves = []
-supports_cov = ["formal"]
-default_waves = ""
-argv = ["{binary}", "{args}", "{script}", "{formal_args}"]
+# `sby` is the only formal backend this registry names. A licensed formal backend is a complete
+# tool table in the site layer (`[simulators.<name>]` in site.local.toml, shaped like the `fvtool`
+# example in site.local.example.toml); a DUT formal config that lists the name in `tools` selects
+# it, and the runner treats it exactly like a table declared here.

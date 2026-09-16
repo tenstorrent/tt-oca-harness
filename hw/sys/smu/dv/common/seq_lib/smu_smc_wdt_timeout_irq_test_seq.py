@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""CORE0 WDT first timeout sticky WDOGIP0 via J2A. SEP=0, no Force. IRQ/PLIC not claimed."""
+"""CORE0 WDT first timeout sets WDOGIP0 and holds it, via J2A. SEP=1, no Force.
+
+"Sticky" is measured, not assumed: WDOGIP0 is clear before the enable, set
+once the counter has passed CMP, and then sampled STICKY_SAMPLES more times
+across STICKY_GAP_CYCLES each with no software clear in between; every sample
+must still show it set. IRQ/PLIC delivery is not claimed.
+"""
 
 from __future__ import annotations
 
@@ -29,10 +35,12 @@ WDT_ZEROCMP_MASK = wdt_bm("WDT__CTRL__WDOGZEROCMP_bm")
 WDT_CTRL_EN = WDT_ALWAYS_MASK | WDT_ZEROCMP_MASK
 CMP_SMALL = 0x10
 CMP_MASK = wdt_bm("WDT__CMP__WDOGCMP0_bm")
+STICKY_SAMPLES = 4
+STICKY_GAP_CYCLES = 512
 
 
 class smu_smc_wdt_timeout_irq_test_seq:
-    """CORE0 WDT first timeout sets sticky WDOGIP0."""
+    """CORE0 WDT first timeout sets WDOGIP0, which then holds with no software clear."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -142,14 +150,31 @@ class smu_smc_wdt_timeout_irq_test_seq:
             await ClockCycles(dut.clk_smu_i, 512)
         if not ip0:
             raise AssertionError(f"WDOGIP0 never set (CTRL=0x{last_ctrl:08x})")
+        # Hold window: nothing clears IP0 here, so a WDT whose pending bit
+        # followed the counter (which keeps wrapping under WDOGZEROCMP) would
+        # drop it inside this window.
+        held = []
+        for i in range(STICKY_SAMPLES):
+            await ClockCycles(dut.clk_smu_i, STICKY_GAP_CYCLES)
+            st_h, ctrl_h = await self._rd32(jtag, WDT_CTRL)
+            if st_h != J2A_STATUS_SUCCESS:
+                raise AssertionError(f"WDT_CTRL hold sample {i} status={st_h}")
+            held.append(bool(ctrl_h & WDT_IP0_MASK))
+            if not held[-1]:
+                raise AssertionError(
+                    f"WDOGIP0 dropped at hold sample {i} (CTRL=0x{ctrl_h:08x}); it is not sticky"
+                )
         st_n, _ = await self._rd32(jtag, WDT_COUNT)
         if st_n != J2A_STATUS_SUCCESS:
             raise AssertionError(f"WDT_COUNT after IP0 status={st_n}")
         self.s3_ok = True
-        self._log(f"WDT_WDOGIP0 CTRL=0x{last_ctrl:08x} COUNT readable")
+        self._log(
+            f"WDT_WDOGIP0 CTRL=0x{last_ctrl:08x} held over {STICKY_SAMPLES} samples "
+            f"{STICKY_GAP_CYCLES} cycles apart; COUNT readable"
+        )
         sb.expect_eq(
-            "CHK-WDT-IP0 sticky after enable+CMP",
-            ip0,
-            True,
+            "CHK-WDT-IP0 set after enable+CMP and held across the window",
+            (ip0, *held),
+            (True,) + (True,) * STICKY_SAMPLES,
             evidence="WDT_WDOGIP0",
         )

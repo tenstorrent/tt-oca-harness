@@ -22,6 +22,12 @@ from smc_base_test import smc_base_test
 class smc_mailbox_field_sweep_test(smc_base_test):
     """Read every readable register of 4 mailboxes on each of the 2 ports."""
 
+    required_evidence = (
+        "CHK-MBOX-FIELD-COUNT",
+        "CHK-MBOX-FIELD-DECODE",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_cfifo_test(smc_base_test):
     """Controller FMT FIFO empty-threshold interrupt."""
 
+    required_evidence = ("CHK-I2C-P0-CFIFO",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

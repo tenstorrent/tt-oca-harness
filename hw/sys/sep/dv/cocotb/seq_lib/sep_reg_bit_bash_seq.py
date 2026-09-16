@@ -34,7 +34,9 @@ from collections import defaultdict
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import AXI_BUS_BYTES
 from sep_reg_meta import (
+    INBOUND_FILTER_CTRL_0,
     RegInfo,
     iter_register_walk,
     reg_hw_updating,
@@ -266,11 +268,18 @@ WRITE_EXCLUDE_PREFIXES: dict[str, str] = {
     "AXIL_MAILBOX_": "FIFO",
 }
 
-# Beat granule (DataBusWidthLog2=3). END_ADDR reset is 0x7.
-_GRANULE = 0x7
+# Beat granule. hw/ip/axi_filter/doc/index.adoc (Address Range Granule): with
+# allow_burst = 0 the granule is the data bus width and address bits [2:0] are
+# ignored, so the mask is one less than the bus width in bytes.
+_GRANULE = AXI_BUS_BYTES - 1
 _INBOUND_ADDR = frozenset({"START_ADDR", "END_ADDR"})
-# Peer at reset during solo bash (each bash restores before the next reg).
-_INBOUND_PEER_RESET = {"START_ADDR": 0x7, "END_ADDR": 0x0}
+# Peer at reset during solo bash (each bash restores before the next reg), taken
+# from the generated export rather than transcribed: the value for START_ADDR is
+# the peer END_ADDR's reset, and vice versa.
+_INBOUND_PEER_RESET = {
+    "START_ADDR": INBOUND_FILTER_CTRL_0.reset("END_ADDR"),
+    "END_ADDR": INBOUND_FILTER_CTRL_0.reset("START_ADDR"),
+}
 
 
 def write_mask(info: RegInfo) -> int:
@@ -282,7 +291,7 @@ def inbound_addr_expected(name: str, written: int) -> int:
     """Readback after a solo START/END write with the peer at reset.
 
     ``allow_burst`` reset is 0, so the granule is 8 bytes
-    (``hw/common/axi/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
+    (``hw/ip/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
     when START and END share a beat, START[2:0] clears and END[2:0] sets;
     otherwise the write lands. The 4 KB granule is CHK-PAGE-WIDEN.
     """

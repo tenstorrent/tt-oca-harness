@@ -306,7 +306,6 @@ module smu #(
   input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
   output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
   input  logic                               ext_trng_irq_i,
-  input  logic                               ext_trng_alarm_i,
 
   // Ring-oscillator sample clock for SEP entropy_source (async to clk_i)
   input  logic                               entropy_rosc_sample_clk_i,
@@ -927,7 +926,6 @@ module smu #(
       .ext_trng_axis_req_i           (ext_trng_axis_req_i),
       .ext_trng_axis_rsp_o           (ext_trng_axis_rsp_o),
       .ext_trng_irq_i                (ext_trng_irq_i),
-      .ext_trng_alarm_i              (ext_trng_alarm_i),
 
       .lcc_demote_state_1_o          (lcc_demote_state_1_o),
       .lcc_demote_state_2_o          (lcc_demote_state_2_o),
@@ -1091,7 +1089,9 @@ module smu #(
     // Lifecycle & mailbox driven by SEP
     // ==================================================================
     assign lc_state_o      = sep_lc_state;
-    assign lc_sigint_err_o = sep_lc_sigint_err;
+
+    // differential encoding error reported by either the SEP or SMC efuse interface
+    assign lc_sigint_err_o = sep_lc_sigint_err | efuse_lc_sigint_err;
 
     // Export the OT SPI request to the wrapper-level SPI mux (u_sep_ip_integration).
     assign sep_io_spi_req_o = sep_io_spi_req;
@@ -1162,7 +1162,9 @@ module smu #(
     assign sep_dbg_disable   = '0;
     assign sep_lc_sigint_err = 1'b0;
     assign lc_state_o        = sep_lc_state;
-    assign lc_sigint_err_o   = efuse_lc_sigint_err;
+
+    // differential encoding error reported by either the SEP or SMC efuse interface
+    assign lc_sigint_err_o   = sep_lc_sigint_err | efuse_lc_sigint_err;
 
     // ==================================================================
     // SEP mailbox and WDT tie-offs

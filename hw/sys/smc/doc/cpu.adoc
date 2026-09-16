@@ -62,6 +62,7 @@ management.
 Internally, the CPU cluster uses a TileLink bus to connect cores to the scratchpad, Boot ROM, PLIC, CLINT, and Bus Error Units.
 At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for integration with the SMC fabric (see <<fabric>>).
 
+[[smc-per-core-reset]]
 ==== Reset, Boot, and Initialization
 
 Each CPU core supports an independent reset mechanism and a programmable
@@ -69,6 +70,11 @@ reset vector, configured via rst_core_N_ni and reset_vector_N_i signals
 for cores N=0 to 3. The design provides separate reset controls for the
 uncore logic and debug subsystems, enabling flexible platform management
 and debug flows.
+
+Individual core reset clears the core's private L1 cache and TileLink client
+state without resetting the shared coherence manager. The current SMC Rocket
+integration provides no reset-aware coherence mechanism to drain outstanding
+transactions or preserve dirty cache data.
 
 SRAM initialization is handled automatically by hardware on reset,
 ensuring memory consistency and error-free operation at startup; this
@@ -81,13 +87,15 @@ allowing software to reliably detect when memory is ready for use.
 
 The SMC CPU subsystem includes Built-In Redundancy Analysis (BIRA) memory repair
 support to address manufacturing defects in SRAM arrays. Repair uses redundant
-memory elements configured with data stored in eFuse memory, applied during the
+memory elements configured by an external repair controller, applied during the
 boot sequence.
 
 Memory repair executes automatically after eFuse sensing completes and before
-MBIST operations. The process reads repair data from the eFuse BIRA register
-(16-kilobit `repair_data` field) and configures redundant memory elements,
-ensuring SRAM arrays are functional before the CPU cluster begins execution.
+MBIST operations. The external controller configures the redundant memory
+elements and reports completion through `mem_repair_done` / `mem_repair_success`,
+ensuring SRAM arrays are functional before the CPU cluster begins execution. The
+SMC fuse map provides no repair-data storage; where that data lives is an
+integration choice.
 
 **Control Mechanisms:**
 

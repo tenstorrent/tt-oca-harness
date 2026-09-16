@@ -107,6 +107,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# The peer half of the mailbox that the TX rep above cannot reach. The external
+# SMN master writes the inbound aperture to fill the receive FIFO, which closes
+# the data round-trip readback and the read threshold (RIRQT), and grades the
+# fabric.adoc contract that a 4-byte READ_DATA at either half pops one whole
+# entry -- so two reads consume two entries rather than reassembling one.
+name = "sep_mailbox_peer_rx_rirqt_test"
+module = "system.sep_mailbox_peer_rx_rirqt_test"
+seed = 1
+timeout_sec = 1800
+tags = ["mailbox", "axil_mailbox", "fifo", "interrupt", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # Per-IP SW-reset domain isolation (the reference suite\'s sep_clock_uvm_sw_reset_per_ip_test ).
 # With entropy brought up, hold a LIVE golden-checked crypto RESULT in each of two engines --
 # HMAC SHA-256 DIGEST and AES ECB-256 DATA_OUT (the AES masking-PRNG reseed consumes the
@@ -114,7 +129,11 @@ args = ["+skip_fuse_sense"]
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
 # clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
 # address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
-# DIGEST_0 is OKAY at reset. Drain-before-reset is not claimed. no_cpu; +skip_fuse_sense
+# DIGEST_0 is OKAY at reset. Drain-before-reset IS claimed on the HMAC path:
+# CHK-DRAIN-ORDER (reset waits for both AXI-Lite paths to drain),
+# CHK-HOST-DRAIN (reads accepted before the request resolve OKAY) and
+# CHK-DRAIN-ARRIVAL (a read arriving mid-drain also resolves). The other three
+# accelerator domains are not claimed. no_cpu; +skip_fuse_sense
 # (entropy/crypto independent of OTP lifecycle).
 name = "sep_crypto_per_ip_reset_isolation_test"
 module = "system.sep_crypto_per_ip_reset_isolation_test"

@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_filter_multi_entry_test(smc_base_test):
     """Filter 16 inbound + 16 outbound CONFIG sweep."""
 
+    required_evidence = ("CHK-FILTER-MULTI-ENTRY-SLOT-IDENTITY",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

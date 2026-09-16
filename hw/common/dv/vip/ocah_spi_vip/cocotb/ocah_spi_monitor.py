@@ -160,6 +160,7 @@ class OcahSpiMonitor:
             "transactions_seen": 0,
             "bytes_mosi": 0,
             "bytes_miso": 0,
+            "callback_errors": 0,
         }
 
     # ------------------------------------------------------------------
@@ -258,7 +259,7 @@ class OcahSpiMonitor:
         self._stats["bytes_mosi"] += len(txn["data_mosi"])
         self._stats["bytes_miso"] += len(txn["data_miso"])
 
-        _fire_callbacks(self._callbacks, txn)
+        self._stats["callback_errors"] += _fire_callbacks(self.log, self._callbacks, txn)
 
         self.log.info(
             "%s: %s addr=0x%06X mosi=%dB miso=%dB",
@@ -339,10 +340,15 @@ def _bits_to_bytes(bits: List[int]) -> bytes:
     return bytes(out)
 
 
-def _fire_callbacks(callbacks: list, *args) -> None:
-    """Call each callback; log but do not re-raise exceptions."""
+def _fire_callbacks(log: logging.Logger, callbacks: list, *args) -> int:
+    """Call each callback; a checker verdict propagates, any other exception is logged and counted."""
+    errors = 0
     for fn in callbacks:
         try:
             fn(*args)
+        except AssertionError:
+            raise
         except Exception as exc:  # noqa: BLE001
-            logging.getLogger(__name__).error("Exception in SpiMonitor callback %s: %s", fn, exc)
+            errors += 1
+            log.error("Exception in SpiMonitor callback %s: %s", fn, exc)
+    return errors

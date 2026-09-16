@@ -16,6 +16,13 @@ from smc_base_test import smc_base_test
 class smc_cg_dft_reset_bringup_test(smc_base_test):
     """LIVE/CONNECTIVITY DFT test_en_i bypass + Zeroer reset-override."""
 
+    required_evidence = (
+        "CHK-DFT-BYPASS-FREE-RUN",
+        "CHK-NONVAC",
+        "CHK-RESET-OVERRIDE-FREE-RUN",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

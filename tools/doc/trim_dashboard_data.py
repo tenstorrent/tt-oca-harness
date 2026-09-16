@@ -3,10 +3,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-Trim the published dashboard summary down to what the web page renders.
+Trim the published dashboard data down to what the web pages render.
 
-Reads ``latest/summary.json`` from the ``dv-dashboard-data`` branch and keeps
-only the following:
+The ``summary`` subcommand reads ``latest/summary.json`` from the
+``dv-dashboard-data`` branch and keeps only the following:
 
     {
       "generated_at": str,
@@ -25,6 +25,17 @@ With ``--tests-out``, a second file for the block pages:
                     "seed": int, "duration_sec": float, "stage": str}]
       }
     }
+
+The ``history`` subcommand reads the published ``data/history.json`` and writes
+the series for the trends page:
+
+    {
+      "points": [{"generated_at": str, "test_pass_rate": float,
+                  "flow_pass_rate": float, "failed_tests": int,
+                  "flaky_tests": int,
+                  "per_dut": [{"flow": str, "coverage_status": str,
+                               "effective_metrics": {...}}]}]
+    }
 """
 
 from __future__ import annotations
@@ -32,6 +43,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +60,16 @@ COVERAGE_KEYS: tuple[str, ...] = ("effective_metrics",)
 # Per-test fields for the block pages, written to a separate file.
 TEST_KEYS: tuple[str, ...] = ("name", "status", "category", "seed", "duration_sec", "stage")
 
+# Per-point fields for the trends page.
+HISTORY_POINT_KEYS: tuple[str, ...] = (
+    "generated_at",
+    "test_pass_rate",
+    "flow_pass_rate",
+    "failed_tests",
+    "flaky_tests",
+)
+HISTORY_DUT_KEYS: tuple[str, ...] = ("flow", "coverage_status", "effective_metrics")
+
 
 def trim_test(test: dict[str, Any]) -> dict[str, Any]:
     """
@@ -61,6 +83,28 @@ def trim_test(test: dict[str, Any]) -> dict[str, Any]:
         filled in, so the page decides how to render them
     """
     return {key: test[key] for key in TEST_KEYS if key in test}
+
+
+def trim_history_point(point: dict[str, Any]) -> dict[str, Any]:
+    """
+    Reduce one history point to the fields plotted by the trends page.
+
+    Args:
+        point: A single entry from the published history's points list
+
+    Returns:
+        The point with only HISTORY_POINT_KEYS, and a per_dut list holding
+        only HISTORY_DUT_KEYS
+    """
+    trimmed = {key: point[key] for key in HISTORY_POINT_KEYS if key in point}
+    duts = point.get("per_dut")
+    if isinstance(duts, list):
+        trimmed["per_dut"] = [
+            {key: dut[key] for key in HISTORY_DUT_KEYS if key in dut}
+            for dut in duts
+            if isinstance(dut, dict)
+        ]
+    return trimmed
 
 
 def trim_result(result: dict[str, Any]) -> dict[str, Any]:
@@ -81,31 +125,48 @@ def trim_result(result: dict[str, Any]) -> dict[str, Any]:
     return trimmed
 
 
-def main() -> int:
+def read_json(source: Path) -> Any:
+    """
+    Read a JSON file, reporting an unreadable or malformed file on stderr.
+
+    Args:
+        source: Path to the file to read
+
+    Returns:
+        The decoded document, or None if it could not be read
+    """
+    try:
+        return json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        print(f"error: cannot read {source}: {error}", file=sys.stderr)
+        return None
+
+
+def write_json(output: Path, document: dict[str, Any]) -> None:
+    """
+    Write a JSON document, creating the parent directory if needed.
+
+    Args:
+        output: Path to write
+        document: The document to serialise
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def trim_summary(args: argparse.Namespace) -> int:
     """
     Read the published summary and write the trimmed file, plus the per-flow
     test detail when --tests-out is given.
 
+    Args:
+        args: Parsed arguments carrying source, output and tests_out
+
     Returns:
         0 on success, 1 when the source is unreadable or is not a JSON object
     """
-    parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument("source", type=Path, help="published summary.json")
-    parser.add_argument("output", type=Path, help="trimmed file to write")
-    parser.add_argument(
-        "--tests-out",
-        type=Path,
-        help="optional per-flow test detail for the block pages",
-    )
-    args = parser.parse_args()
-
-    try:
-        summary = json.loads(args.source.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        print(f"error: cannot read {args.source}: {error}", file=sys.stderr)
+    summary = read_json(args.source)
+    if summary is None:
         return 1
 
     if not isinstance(summary, dict):
@@ -129,8 +190,7 @@ def main() -> int:
     if isinstance(results, list):
         trimmed["results"] = [trim_result(result) for result in results if isinstance(result, dict)]
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(trimmed, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_json(args.output, trimmed)
 
     if args.tests_out:
         by_flow: dict[str, list[dict[str, Any]]] = {}
@@ -146,12 +206,67 @@ def main() -> int:
             "generated_at": summary.get("generated_at"),
             "flows": by_flow,
         }
-        args.tests_out.parent.mkdir(parents=True, exist_ok=True)
-        args.tests_out.write_text(
-            json.dumps(detail, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        write_json(args.tests_out, detail)
 
     return 0
+
+
+def trim_history(args: argparse.Namespace) -> int:
+    """
+    Read the published history and write the trimmed file for the trends page.
+
+    Args:
+        args: Parsed arguments carrying source and output
+
+    Returns:
+        0 on success, 1 when the source is unreadable
+    """
+    history = read_json(args.source)
+    if history is None:
+        return 1
+
+    points = history.get("points") if isinstance(history, dict) else None
+    trend: dict[str, Any] = {
+        "points": [trim_history_point(point) for point in points or [] if isinstance(point, dict)]
+    }
+    write_json(args.output, trend)
+
+    return 0
+
+
+def main() -> int:
+    """
+    Parse arguments and dispatch to the selected subcommand.
+
+    Returns:
+        0 on success, 1 when an input is unreadable or malformed
+    """
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    subcommands = parser.add_subparsers(dest="subcommand", required=True)
+
+    summary = subcommands.add_parser("summary", help="trim the published summary")
+    summary.add_argument("source", type=Path, help="published summary.json")
+    summary.add_argument("output", type=Path, help="trimmed file to write")
+    summary.add_argument(
+        "--tests-out",
+        type=Path,
+        help="optional per-flow test detail for the block pages",
+    )
+
+    history = subcommands.add_parser("history", help="trim the published history")
+    history.add_argument("source", type=Path, help="published history.json")
+    history.add_argument("output", type=Path, help="trend series to write")
+
+    handlers: dict[str, Callable[[argparse.Namespace], int]] = {
+        "summary": trim_summary,
+        "history": trim_history,
+    }
+
+    args = parser.parse_args()
+    return handlers[args.subcommand](args)
 
 
 if __name__ == "__main__":

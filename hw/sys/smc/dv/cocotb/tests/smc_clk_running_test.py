@@ -28,6 +28,17 @@ CLK_RUNNING_MIN_CSR_ACCESSES = 20
 class smc_clk_running_test(smc_base_test):
     """P0 bring-up LIVE CG enable / idle gate / DMA ungate."""
 
+    required_evidence = (
+        "CHK-ACTIVE-RUNNING",
+        "CHK-CG-ENABLE-READBACK",
+        "CHK-DMA-ACTIVITY-UNGATE",
+        "CHK-DMA-PAYLOAD-GOLDEN",
+        "CHK-IDLE-GATED-BASELINE",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 7
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

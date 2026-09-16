@@ -63,8 +63,15 @@ from .coverage_policy import (
     load_coverage_policy,
     native_policy_manifest,
 )
-from .duts import list_dut_names, load_duts, resolve_dut
-from .junit import materialize_stage_junit
+from .duts import (
+    FormalView,
+    discover_formal_views,
+    list_dut_names,
+    load_duts,
+    load_formal_views,
+    resolve_dut,
+)
+from .junit import materialize_interruption_junit, materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
@@ -74,9 +81,11 @@ from .results import (
     exit_code_for_status,
     fragment_payload,
     git_info,
+    incomplete_run_note,
     regression_payload,
     result_payload,
     rollup_payload,
+    run_is_complete,
     tool_versions,
     write_result,
 )
@@ -166,7 +175,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
               Pick a framework (same scenario names, different implementation):
                 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test
-                python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
+                python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
+                python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
 
               Debug a failure:
                 python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
@@ -217,8 +227,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--skip-unimplemented",
         action="store_true",
         help=(
-            "Skip group/tag-selected scenarios not implemented in the selected framework "
-            "(default: error); explicitly named --items tests still error"
+            "Skip group/tag-selected scenarios whose binding map has no entry for the selected "
+            "framework (default: error). Scenarios declaring the framework `false` skip without "
+            "this flag; an explicitly named --items test errors either way"
         ),
     )
     common.add_argument(
@@ -809,12 +820,23 @@ def load_registries(root: Path) -> Registries:
     )
 
 
-def validate_all(root: Path) -> tuple[dict[str, Flow], Registries]:
+def validate_all(root: Path) -> tuple[dict[str, Flow], Registries, dict[str, FormalView]]:
+    """Load and validate every selectable DUT and every available formal view.
+
+    A formal view whose site-named file is absent stays unavailable and is not an error here;
+    selecting it with --mode formal is.
+    """
     registries = load_registries(root)
     duts = load_duts(root)
     for flow in duts.values():
         validate_flow(flow, root, registries.simulators, registries.policies, registries.executors)
-    return duts, registries
+    formal_views = load_formal_views(root, registries.site)
+    for view in formal_views.values():
+        if view.flow is not None:
+            validate_flow(
+                view.flow, root, registries.simulators, registries.policies, registries.executors
+            )
+    return duts, registries, formal_views
 
 
 def adopter_overlay_path(args: Any) -> Path | None:
@@ -868,8 +890,41 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
         print("\nResult: could not load the DUT set")
         return 2
 
+    try:
+        formal_views = discover_formal_views(root, registries.site)
+    except ConfigError as exc:
+        print(f"  formal views     FAIL: {exc}")
+        print("\nResult: could not discover the formal views")
+        return 2
+
     failures = 0
+    unavailable = 0
     rows = 0
+
+    def check(label: str, name: str, mode: str, fw: str | None, base: Flow | None) -> None:
+        nonlocal failures
+        site = registries.site
+        try:
+            suffix = ""
+            if overlay is not None:
+                try:
+                    view = resolve_dut(
+                        root, name, mode=mode, framework=fw, adopter_overlay=overlay, site=site
+                    )
+                    suffix = " [+overlay]"
+                except OverlayFrameworkMismatch:
+                    view = base or resolve_dut(root, name, mode=mode, framework=fw, site=site)
+                    suffix = " [overlay skipped: frameworks guard]"
+            else:
+                view = base or resolve_dut(root, name, mode=mode, framework=fw, site=site)
+            warnings = validate_flow(view, root, simulators, policies, executors)
+            print(f"  {label:<16} OK{suffix}")
+            for line in warnings:
+                print(f"  {'':<16} warning: {line}")
+        except ConfigError as exc:
+            failures += 1
+            print(f"  {label:<16} FAIL: {exc}")
+
     for name in sorted(duts):
         flow = duts[name]
         # Validate every framework view a DUT implements, not only its default: the default row
@@ -878,28 +933,26 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
         views += [(f"{name} ({fw})", fw) for fw in flow.frameworks if fw != flow.framework]
         for label, fw in views:
             rows += 1
-            try:
-                suffix = ""
-                if overlay is not None:
-                    try:
-                        view = resolve_dut(root, name, framework=fw, adopter_overlay=overlay)
-                        suffix = " [+overlay]"
-                    except OverlayFrameworkMismatch:
-                        view = flow if fw is None else resolve_dut(root, name, framework=fw)
-                        suffix = " [overlay skipped: frameworks guard]"
-                else:
-                    view = flow if fw is None else resolve_dut(root, name, framework=fw)
-                warnings = validate_flow(view, root, simulators, policies, executors)
-                print(f"  {label:<16} OK{suffix}")
-                for line in warnings:
-                    print(f"  {'':<16} warning: {line}")
-            except ConfigError as exc:
-                failures += 1
-                print(f"  {label:<16} FAIL: {exc}")
+            check(label, name, "sim", fw, flow if fw is None else None)
+    for name in sorted(formal_views):
+        formal = formal_views[name]
+        label = f"{name} (formal)"
+        rows += 1
+        if formal.available:
+            check(label, name, "formal", None, None)
+        elif formal.source == "site":
+            # The companion checkout the site layer points into may be absent on this machine.
+            unavailable += 1
+            print(f"  {label:<16} UNAVAILABLE: {formal.reason}")
+        else:
+            failures += 1
+            print(f"  {label:<16} FAIL: {formal.reason}")
 
     total = len(duts)
+    tail = f", {unavailable} unavailable" if unavailable else ""
     print(
-        f"\nResult: {total} DUT(s), {rows} framework view(s): {rows - failures} OK, {failures} FAILED"
+        f"\nResult: {total} DUT(s), {rows} view(s): "
+        f"{rows - failures - unavailable} OK, {failures} FAILED{tail}"
     )
     return 0 if failures == 0 else 2
 
@@ -1197,15 +1250,12 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     here?" — it confirms configs load, then probes tool binaries and license-env presence.
     """
     try:
-        registries = load_registries(root)
+        _duts, registries, _formal_views = validate_all(root)
         simulators, executors, policies = (
             registries.simulators,
             registries.executors,
             registries.policies,
         )
-        duts = load_duts(root)
-        for candidate_flow in duts.values():
-            validate_flow(candidate_flow, root, simulators, policies, executors)
     except ConfigError as exc:
         print(f"configs : FAIL: {exc}")
         print("\nResult: fix config errors first (run --validate-configs for the full list)")
@@ -1304,7 +1354,12 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     return 0
 
 
-def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
+def list_flows(
+    flows: dict[str, Flow],
+    simulators: dict[str, Any],
+    formal_views: dict[str, FormalView] | None = None,
+) -> None:
+    """The DUT table: one row per simulation framework view, then the DUT's `fv` row."""
     BOLD = "\033[1m"
     NORMAL = "\033[0m"
     SELECT_BEGIN = BOLD
@@ -1339,49 +1394,102 @@ def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
         for framework in simulators[sim]["frameworks"]:
             freeframeworks[framework] = free or freeframeworks.get(framework, False)
             frameworkTools[framework] = frameworkTools.get(framework, []) + [sim]
-    for flow in sorted(flows.values(), key=lambda item: item.name):
-        spill = False
-        frameworks = {
-            framework: format_selected_licensed(
-                framework,
-                (flow.framework and framework == flow.framework)
-                or (not flow.framework and framework == flow.default_framework),
-                freeframeworks[framework],
-            )
-            for framework in sorted(
-                flow.frameworks,
-                key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
-            )
-        } or {"": "-"}
-        for framework, label in frameworks.items():
-            toolArr = list(set(flow.tools) & set(frameworkTools[framework]))
-            defaultTool = (
-                flow.default_tool
-                if flow.default_tool in toolArr
-                else toolArr[0]
-                if len(toolArr)
-                else ""
-            )
-            toolsArr = [
-                format_selected_licensed(tool, tool == defaultTool, freesims[tool])
-                for tool in sorted(
-                    toolArr, key=lambda x: (0, 0) if x == flow.default_tool else (1, str.lower(x))
-                )
-            ] or ["-"]
-            tools = "/".join(toolsArr)
 
-            print(
-                f"{(flow.name if not spill else ''):<{widths[0]}} {flow.kind if not spill else ' ' + chr(8627):<{widths[1]}} {align(label, widths[2])} {align(tools, widths[3])} {flow.description if not spill else ''}"
+    def tools_column(flow: Flow, framework: str) -> str:
+        toolArr = list(set(flow.tools) & set(frameworkTools.get(framework, [])))
+        defaultTool = (
+            flow.default_tool
+            if flow.default_tool in toolArr
+            else toolArr[0]
+            if len(toolArr)
+            else ""
+        )
+        toolsArr = [
+            format_selected_licensed(tool, tool == defaultTool, freesims[tool])
+            for tool in sorted(
+                toolArr, key=lambda x: (0, 0) if x == flow.default_tool else (1, str.lower(x))
             )
-            spill = True
+        ] or ["-"]
+        return "/".join(toolsArr)
+
+    def row(name: str, kind: str, label: str, tools: str, description: str) -> None:
+        print(
+            f"{name:<{widths[0]}} {kind:<{widths[1]}} {align(label, widths[2])} {align(tools, widths[3])} {description}"
+        )
+
+    formal_views = formal_views or {}
+    for name in sorted(set(flows) | set(formal_views)):
+        flow = flows.get(name)
+        if flow is not None:
+            spill = False
+            frameworks = {
+                framework: format_selected_licensed(
+                    framework,
+                    (flow.framework and framework == flow.framework)
+                    or (not flow.framework and framework == flow.default_framework),
+                    freeframeworks[framework],
+                )
+                for framework in sorted(
+                    flow.frameworks,
+                    key=lambda x: (0, 0) if x == flow.default_framework else (1, str.lower(x)),
+                )
+            } or {"": "-"}
+            for framework, label in frameworks.items():
+                row(
+                    flow.name if not spill else "",
+                    flow.kind if not spill else " " + chr(8627),
+                    label,
+                    tools_column(flow, framework),
+                    flow.description if not spill else "",
+                )
+                spill = True
+        view = formal_views.get(name)
+        if view is None:
+            continue
+        if view.flow is None:
+            row(name, "fv", "formal", "-", f"unavailable: {view.reason}")
+            continue
+        row(
+            name,
+            view.flow.kind,
+            format_selected_licensed("formal", True, freeframeworks.get("formal", False)),
+            tools_column(view.flow, "formal"),
+            view.flow.description,
+        )
+
+
+def _binding_matrix(flow: Flow, catalog: TestCatalog) -> dict[str, dict[str, int]]:
+    """Per framework: scenarios bound, declared `false`, and lacking any entry.
+
+    The three counts sum to the catalog size for every framework the DUT implements.
+    """
+    frameworks = flow.frameworks or ([flow.framework] if flow.framework else [])
+    matrix: dict[str, dict[str, int]] = {}
+    for fw in frameworks:
+        implemented = sum(1 for test in catalog.tests.values() if fw in test.bindings)
+        excluded = sum(1 for test in catalog.tests.values() if fw in test.excluded)
+        matrix[fw] = {
+            "implemented": implemented,
+            "excluded": excluded,
+            "missing": len(catalog.tests) - implemented - excluded,
+        }
+    return matrix
 
 
 def _implemented_counts(flow: Flow, catalog: TestCatalog) -> dict[str, int]:
     """Scenario count per implemented framework — the binding-matrix summary."""
-    frameworks = flow.frameworks or ([flow.framework] if flow.framework else [])
-    return {
-        fw: sum(1 for test in catalog.tests.values() if fw in test.bindings) for fw in frameworks
-    }
+    return {fw: row["implemented"] for fw, row in _binding_matrix(flow, catalog).items()}
+
+
+def _implemented_summary(flow: Flow, catalog: TestCatalog) -> str:
+    """One line per framework, e.g. `uvm 151/153 (2 excluded)`; zero counts stay silent."""
+    parts = []
+    for fw, row in _binding_matrix(flow, catalog).items():
+        detail = ", ".join(f"{row[key]} {key}" for key in ("excluded", "missing") if row[key])
+        parts.append(
+            f"{fw} {row['implemented']}/{len(catalog.tests)}" + (f" ({detail})" if detail else "")
+        )
+    return ", ".join(parts)
 
 
 def list_flow_detail(flow: Flow, root: Path) -> None:
@@ -1392,11 +1500,7 @@ def list_flow_detail(flow: Flow, root: Path) -> None:
     print(f"framework  : {flow.framework}")
     if multi_framework:
         print(f"frameworks : {', '.join(flow.frameworks)} (default: {flow.default_framework})")
-        counts = _implemented_counts(flow, catalog)
-        print(
-            "implemented: "
-            + ", ".join(f"{fw} {n}/{len(catalog.tests)}" for fw, n in counts.items())
-        )
+        print("implemented: " + _implemented_summary(flow, catalog))
     print(f"root       : {flow.root}")
     print(f"tools      : {', '.join(flow.tools)}")
     print(f"default    : {flow.default_tool}")
@@ -1404,13 +1508,16 @@ def list_flow_detail(flow: Flow, root: Path) -> None:
     print(f"runnability: {flow.runnability}")
     print(f"stages     : {', '.join(flow_stages(flow))}")
     if catalog.tests:
-        # Scenarios implemented beyond the default framework are marked (+fw): the compact
-        # human view of the binding matrix (--json carries the full per-scenario map).
+        # Scenarios implemented beyond the default framework are marked (+fw) and frameworks
+        # declared `false` are marked (-fw): the compact human view of the binding matrix
+        # (--json carries the full per-scenario map).
         default = flow.default_framework or flow.framework
         names = []
         for name in sorted(catalog.tests):
-            extras = sorted(set(catalog.tests[name].bindings) - {default})
-            names.append(name + (f" (+{','.join(extras)})" if extras else ""))
+            test = catalog.tests[name]
+            marks = [f"+{fw}" for fw in sorted(set(test.bindings) - {default})]
+            marks += [f"-{fw}" for fw in sorted(test.excluded)]
+            names.append(name + (f" ({','.join(marks)})" if marks else ""))
         print("tests      : " + ", ".join(names))
     if catalog.groups:
         print(
@@ -1425,6 +1532,8 @@ def _flow_view_dict(flow: Flow) -> dict[str, Any]:
     return {
         "name": flow.name,
         "kind": flow.kind,
+        "mode": "formal" if flow.kind == "fv" else "sim",
+        "available": True,
         "framework": flow.framework,
         "default": flow.framework == flow.default_framework,
         "frameworks": list(flow.frameworks),
@@ -1439,11 +1548,16 @@ def _flow_view_dict(flow: Flow) -> dict[str, Any]:
     }
 
 
-def list_flows_json(root: Path, flows: dict[str, Flow]) -> None:
-    """Machine-readable enumeration: one entry per (DUT, framework) view.
+def list_flows_json(
+    root: Path,
+    flows: dict[str, Flow],
+    formal_views: dict[str, FormalView] | None = None,
+) -> None:
+    """Machine-readable enumeration: one entry per (DUT, framework) view plus one per formal view.
 
     CI matrices consume this instead of hardcoding DUT names — e.g. a licensed UVM job selects
-    `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need.
+    `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need;
+    a formal job selects `.duts[] | select(.mode == "formal" and .available)`.
     """
     views: list[dict[str, Any]] = []
     for name in sorted(flows):
@@ -1452,6 +1566,21 @@ def list_flows_json(root: Path, flows: dict[str, Flow]) -> None:
         for fw in flow.frameworks:
             if fw != flow.framework:
                 views.append(_flow_view_dict(resolve_dut(root, name, framework=fw)))
+    for name, view in sorted((formal_views or {}).items()):
+        if view.flow is not None:
+            views.append(_flow_view_dict(view.flow))
+        else:
+            views.append(
+                {
+                    "name": name,
+                    "kind": "fv",
+                    "mode": "formal",
+                    "available": False,
+                    "framework": "formal",
+                    "path": repo_rel(root, view.path),
+                    "reason": view.reason,
+                }
+            )
     print(json.dumps({"schema_version": 1, "duts": views}, indent=2))
 
 
@@ -1462,8 +1591,13 @@ def list_flow_detail_json(flow: Flow, root: Path) -> None:
     payload["stages"] = list(flow_stages(flow))
     payload["total_scenarios"] = len(catalog.tests)
     payload["implemented"] = _implemented_counts(flow, catalog)
+    payload["binding_matrix"] = _binding_matrix(flow, catalog)
     payload["tests"] = {
-        name: {"bindings": dict(test.bindings), "tags": list(test.tags or [])}
+        name: {
+            "bindings": dict(test.bindings),
+            "excluded": sorted(test.excluded),
+            "tags": list(test.tags or []),
+        }
         for name, test in sorted(catalog.tests.items())
     }
     payload["groups"] = {name: list(members) for name, members in sorted(catalog.groups.items())}
@@ -1538,6 +1672,7 @@ def _existing_run_result(
         raise ConfigError(
             f"{result_path}: flow is `{existing.get('flow')}`, expected `{flow.name}`"
         )
+    _require_completed_run(existing, result_path)
     existing_tool = existing.get("tool")
     if not isinstance(existing_tool, str) or not existing_tool:
         raise ConfigError(f"{result_path}: missing original tool")
@@ -1548,6 +1683,18 @@ def _existing_run_result(
     args.tool = existing_tool
     args.cov = True
     return run_dir, existing
+
+
+def _require_completed_run(existing: dict[str, Any], result_path: Path) -> None:
+    """Coverage is graded over a finished regression only; a truncated run has no grade."""
+
+    if run_is_complete(existing):
+        return
+    note = incomplete_run_note(existing.get("tests")) or "incomplete run"
+    raise ConfigError(
+        f"{result_path}: {note}; an interrupted or truncated run is not gradeable, "
+        "rerun the regression"
+    )
 
 
 def _status_from_values(values: list[str]) -> str:
@@ -1786,13 +1933,14 @@ def waive_run(
 
     if tool not in flow.tools:
         raise ConfigError(f"tool `{tool}` is not allowed for flow `{flow.name}`")
+    result_path = run_dir / "result.json"
+    _require_completed_run(existing, result_path)
     sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
     cov = coverage_cfg(sim_cfg)
     tool_cov = cov.get(tool, {}) if isinstance(cov.get(tool, {}), dict) else {}
     if not tool_cov:
         raise ConfigError(f"no coverage configuration is available for tool `{tool}`")
     paths = coverage_run_paths(run_dir, coverage_merged_name(tool, tool_cov))
-    result_path = run_dir / "result.json"
     stages = [stage for stage in existing.get("stages", []) if isinstance(stage, dict)]
     record = _waive_report_record(stages, paths.raw_details, result_path, str(args.run_dir))
     manifest = load_manifest(paths.manifest)
@@ -2089,7 +2237,9 @@ def selected_stages(flow: Flow, args: argparse.Namespace) -> list[str]:
             stage for stage in ("flist", "hdl_compile", "elaborate", "sim") if stage in available
         ]
     elif flow.kind == "fv" and "formal" in available:
-        requested = ["formal"]
+        # A formal config that declares a filelist stage regenerates the filelist its task file
+        # reads before every proof, the way a simulation flow does before its compile.
+        requested = [stage for stage in ("flist", "formal") if stage in available]
     else:
         requested = [
             stage for stage in ("flist", "hdl_compile", "elaborate", "sim") if stage in available
@@ -2152,8 +2302,10 @@ def validate_item_bindings(
     """Enforce that every selected scenario is implemented in the selected framework.
 
     A selected scenario with no `module` entry for the selected framework is a config error.
-    `--skip-unimplemented` skips group/tag-derived unimplemented scenarios instead — loudly, and
-    recorded in run metadata — while an explicitly named `--items` test always errors.
+    Two escapes apply to group/tag-derived scenarios only, and both are printed and recorded in
+    run metadata: a scenario whose binding map declares the framework `false` is skipped
+    without any flag, and `--skip-unimplemented` skips the scenarios whose map has no entry.
+    An explicitly named `--items` test errors in both cases.
     """
     if not flow.framework:
         return items
@@ -2162,30 +2314,52 @@ def validate_item_bindings(
     ]
     if not unimplemented:
         return items
-    explicit = [name for name in unimplemented if name in set(args.items or [])]
-    if explicit or not args.skip_unimplemented:
-        width = max(len(name) for name in unimplemented)
-        lines = "\n".join(
-            f"  {name:<{width}}  (implemented: {', '.join(sorted(catalog.tests[name].bindings)) or 'none'})"
-            for name in unimplemented
-        )
-        fix = (
-            f"  fix: add a `{flow.framework}` module entry or narrow the selection"
-            if explicit
-            else f"  fix: add a `{flow.framework}` module entry, narrow the selection, or pass --skip-unimplemented"
-        )
-        raise ConfigError(
-            f"{len(unimplemented)} selected scenario(s) are not implemented for framework "
-            f"`{flow.framework}`:\n{lines}\n{fix}"
-        )
-    kept = [name for name in items if name not in set(unimplemented)]
+    explicit = set(args.items or [])
+    excluded = [name for name in unimplemented if flow.framework in catalog.tests[name].excluded]
+    missing = [name for name in unimplemented if name not in set(excluded)]
+    blocking = [
+        name
+        for name in unimplemented
+        if name in explicit or (name in set(missing) and not args.skip_unimplemented)
+    ]
+    if blocking:
+        raise ConfigError(_unimplemented_message(flow, catalog, blocking, explicit))
+    dropped = set(unimplemented)
+    kept = [name for name in items if name not in dropped]
     if not kept:
         raise ConfigError(
-            "--skip-unimplemented left no runnable scenarios: none of the selected tests are "
-            f"implemented for framework `{flow.framework}`"
+            "selection left no runnable scenarios: none of the selected tests are implemented "
+            f"for framework `{flow.framework}`"
         )
-    setattr(args, "_skipped_unimplemented", unimplemented)
+    setattr(args, "_skipped_excluded", excluded)
+    setattr(args, "_skipped_unimplemented", missing)
     return kept
+
+
+def _unimplemented_message(
+    flow: Flow, catalog: TestCatalog, blocking: list[str], explicit: set[str]
+) -> str:
+    """Error text naming each blocking scenario, how its map treats the framework, and a fix."""
+    fw = flow.framework
+    width = max(len(name) for name in blocking)
+    lines = []
+    for name in blocking:
+        test = catalog.tests[name]
+        state = f"{fw} = false" if fw in test.excluded else f"no {fw} entry"
+        implemented = ", ".join(sorted(test.bindings)) or "none"
+        lines.append(f"  {name:<{width}}  ({state}; implemented: {implemented})")
+    if any(name in explicit for name in blocking):
+        fix = f"  fix: add a `{fw}` module entry or narrow the selection"
+    else:
+        fix = (
+            f"  fix: add a `{fw}` module entry, declare `{fw} = false` in the binding map, "
+            "narrow the selection, or pass --skip-unimplemented"
+        )
+    return (
+        f"{len(blocking)} selected scenario(s) are not implemented for framework `{fw}`:\n"
+        + "\n".join(lines)
+        + f"\n{fix}"
+    )
 
 
 def select_by_tags(catalog: TestCatalog, candidates: list[str], tags: list[str]) -> list[str]:
@@ -2371,6 +2545,7 @@ def write_regression_summary(
     interruption: dict[str, Any] | None = None,
     versions: dict[str, str] | None = None,
     git_metadata: dict[str, str] | None = None,
+    planned_leaves: int | None = None,
 ) -> None:
     path = run_dir / "stages" / "regress" / "regression.json"
     write_result(
@@ -2390,6 +2565,7 @@ def write_regression_summary(
             interruption=interruption,
             versions=versions,
             git_metadata=git_metadata,
+            planned_leaves=planned_leaves,
         ),
     )
 
@@ -2594,13 +2770,13 @@ def run_flow(
             "overlay_env=" + " ".join(f"{name}={value}" for name, value in overlay_env.items()),
         )
     args._ui_leaf_mode = "compact" if scheduler else "full"
-    skipped_unimplemented = list(getattr(args, "_skipped_unimplemented", []) or [])
-    if skipped_unimplemented:
-        console.event(
-            "selection",
-            f"skipped_unimplemented={len(skipped_unimplemented)} framework={flow.framework} "
-            f"tests={','.join(skipped_unimplemented)}",
-        )
+    for kind in ("skipped_excluded", "skipped_unimplemented"):
+        names = list(getattr(args, f"_{kind}", []) or [])
+        if names:
+            console.event(
+                "selection",
+                f"{kind}={len(names)} framework={flow.framework} tests={','.join(names)}",
+            )
     run_started = time.monotonic()
     results: list[StageResult] = []
     runs_by_item: dict[str, list[tuple[int, StageResult]]] = {}
@@ -2696,6 +2872,7 @@ def run_flow(
             interruption=interruption,
             versions=run_versions,
             git_metadata=run_git,
+            planned_leaves=len(expected_leaves),
         )
         write_result(result_path, payload)
         if export_path is not None:
@@ -3210,12 +3387,14 @@ def run_flow(
                 time.monotonic() - run_started,
                 versions=run_versions,
                 git_metadata=run_git,
+                planned_leaves=len(expected_leaves),
             )
         if scheduler:
             console.regression_summary(
                 runs_by_item,
                 ordered_items=items,
                 elapsed_sec=time.monotonic() - run_started,
+                planned=len(expected_leaves),
             )
 
         # Structured-result guarantee, leafless case: a non-passing run in which no sim
@@ -3247,6 +3426,7 @@ def run_flow(
             executor=executor,
             versions=run_versions,
             git_metadata=run_git,
+            planned_leaves=len(expected_leaves),
         )
         if replaying_coverage:
             payload = _merge_coverage_replay_result(existing_result, payload)
@@ -3267,9 +3447,13 @@ def run_flow(
             tests=len(items) if need_items else 0,
             run_dir=repo_rel(root, run_dir),
             result_json=repo_rel(root, result_path),
+            incomplete=incomplete_run_note(payload.get("tests")),
         )
         return exit_code_for_status(status)
     except RunInterrupted as exc:
+        # The signal unwound run_stage past its console.suppress exit, so this thread is
+        # still muted; everything below is for the operator.
+        console.clear_suppression()
         request_stage_cancellation()
         signal_name = signal.Signals(exc.signum).name
         interruption = {
@@ -3297,13 +3481,26 @@ def run_flow(
                 interruption=interruption,
                 versions=run_versions,
                 git_metadata=run_git,
+                planned_leaves=len(expected_leaves),
             )
-        write_checkpoint(
+        payload = write_checkpoint(
             state="interrupted",
             status="ERROR",
             progress=progress,
             interruption=interruption,
         )
+        if payload is not None:
+            try:
+                materialize_interruption_junit(
+                    flow=flow,
+                    root=root,
+                    run_dir=run_dir,
+                    tool=tool,
+                    interruption=interruption,
+                    progress=progress,
+                )
+            except Exception as junit_exc:  # noqa: BLE001
+                console.event("warning", f"junit synthesis failed: {junit_exc}", force=True)
         console.event("error", interruption["reason"], force=True)
         console.result(
             status="ERROR",
@@ -3311,6 +3508,10 @@ def run_flow(
             tests=len(items) if need_items else 0,
             run_dir=repo_rel(root, run_dir),
             result_json=repo_rel(root, result_path),
+            incomplete=incomplete_run_note((payload or {}).get("tests"))
+            or f"incomplete run: {progress['completed_count']} of "
+            f"{progress['expected_count']} planned leaves ran",
+            force=True,
         )
         return 128 + exc.signum
     finally:
@@ -3339,7 +3540,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.doctor:
             return cmd_doctor(root, args)
 
-        duts, registries = validate_all(root)
+        duts, registries, formal_views = validate_all(root)
         simulators, executors, policies = (
             registries.simulators,
             registries.executors,
@@ -3362,9 +3563,9 @@ def main(argv: list[str] | None = None) -> int:
                 else:
                     list_flow_detail(flow, root)
             elif args.json:
-                list_flows_json(root, duts)
+                list_flows_json(root, duts, formal_views)
             else:
-                list_flows(duts, simulators)
+                list_flows(duts, simulators, formal_views)
             return 0
 
         if not args.dut:

@@ -35,6 +35,7 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import (
     ClockCycles,
+    NextTimeStep,
     ReadOnly,
     RisingEdge,
     SimTimeoutError,
@@ -58,6 +59,7 @@ from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
+from env.sep_noise_golden import SepNoiseGolden
 from env.sep_smc_mem import SMC_AXI_GEOMETRY, SMC_MEM_SIZE, preload_smc_mem
 from env.sep_verdict import decode_verdict
 
@@ -72,6 +74,12 @@ _DEFAULT_EFUSE_PRELOAD = (
 # AXI round trip (which is tens of ns) but finite, so a wedged fabric cannot turn
 # the diagnostic itself into a sim timeout.
 _STALL_CSR_TIMEOUT_NS = 50_000
+# Cap on the dirty-file list in RUN-IDENTITY-DIRTY. The digest covers the whole
+# diff; the paths are there to be read, so a 400-file rebase does not bury the log.
+_RUN_IDENTITY_MAX_PATHS = 40
+# Above this the simulator binary is named and sized but not hashed, so a
+# pathological build cannot add minutes to every run's time 0.
+_SIM_BINARY_HASH_MAX_BYTES = 512 << 20
 
 
 class _EvidenceFilter(logging.Filter):
@@ -122,7 +130,6 @@ class _EvidenceFilter(logging.Filter):
         "sep_efuse_km_axil_cpu_mux_coexist_test": "in-leaf asserts, unlabelled",
         "sep_km_mem_smoke_test": "in-leaf asserts, unlabelled",
         "sep_otbn_mem_smoke_test": "in-leaf asserts, unlabelled",
-        "sep_rom_sanity_test": "in-leaf asserts, unlabelled",
         "sep_spi_flash_jedec_smoke_test": "in-leaf asserts, unlabelled",
         # Checks live in the sequence the leaf starts.
         "sep_axi_smoke_test": "sequence-level compares plus AXI scoreboard check_phase",
@@ -173,13 +180,12 @@ class sep_base_test(uvm_test):
     #   min_evidence      -- fewest distinct IDs of the test's OWN (records the
     #                        base class emits do not count). 0 disables it.
     #
-    # Both default to off, and the default is deliberate rather than timid. A
-    # floor applied centrally is wrong in both directions here: `rom_fw` leaves
-    # report a passing check as `CHK-UNARMED:` with no PASS token and would be
-    # rejected for a logging convention, while 18 of the 92 `all` leaves grade
-    # through a firmware verdict rather than a CHK line and would need an
-    # exemption each. So every run REPORTS its evidence and a leaf opts in to
-    # having it graded.
+    # Both default to off. They tighten a leaf that already emits records; they
+    # do not replace the unconditional floor in `_finalize_evidence`. A leaf
+    # whose `own` count is zero fails unless it is named in NO_OWN_EVIDENCE.
+    # Graded contracts the floor accepts log `CHK-<ID> PASS` (or OK) after the
+    # check. A colon-only `CHK-<ID>:` line does not match the counter, even when
+    # an assert already sat in front of it.
     required_evidence: tuple[str, ...] = ()
     min_evidence = 0
 
@@ -220,6 +226,43 @@ class sep_base_test(uvm_test):
             return int(resolved, 2)
         except ValueError:
             return 0
+
+    @staticmethod
+    def rd_known(sig, mask: int | None = None) -> int:
+        """Read a signal, raising if any bit selected by ``mask`` is not 0 or 1.
+
+        ``rd`` resolves unknown bits to zero per bit, which is right for a wide
+        probe but wrong wherever the *passing* branch is zero: ``rd(x) == 0``
+        then holds for an undriven, tied, or X node just as it does for a node
+        the device drove low. Use this instead at those compares.
+
+        ``mask`` selects the bits that must be known; the default is every bit
+        the signal carries. Passing a mask matters on a wide probe whose unused
+        lanes are legitimately X -- checking the whole word there would raise on
+        a healthy run.
+
+        Note for the reader: Verilator is built two-state here (no
+        ``--x-assign`` / ``--x-initial`` in sep_sim_cfg.toml), so uninitialised
+        bits read as 0 and this can only fire under VCS.
+        """
+        value = sig.value
+        bits = getattr(value, "binstr", None)
+        if bits is None:
+            # Fully resolved already: int() would not have raised.
+            return int(value)
+        unknown = [
+            i
+            for i, c in enumerate(reversed(bits))
+            if c not in "01" and (mask is None or (mask >> i) & 1)
+        ]
+        if unknown:
+            raise AssertionError(
+                f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
+                f"compare reads: binstr={bits!r}, unknown bit indices {unknown}. "
+                "A zero-expecting compare on an unknown node passes for free, so "
+                "it is raised here instead."
+            )
+        return int(bits, 2)
 
     @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
@@ -1052,6 +1095,37 @@ class sep_base_test(uvm_test):
         )
         return seq
 
+    def start_esrc_noise_driver(
+        self, *, noise_mode: str = "unbiased", seed_base: int = 0x1234_5678
+    ):
+        """Drive tb_top.esrc_noise_ext_i every cycle and return the forked task.
+
+        ``+esrc_noise_force`` only routes this port onto the ring-oscillator
+        noise input; it does not generate anything. A test that brings the
+        entropy stack up WITHOUT the DRBG scoreboard -- firmware doing its own
+        ESRC/CSRNG/EDN programming, for instance -- still needs the raw bits
+        driven, or the health window never fills and the boot gate never opens.
+
+        This is the drive half of ``SepDrbgScoreboard`` with no golden chain and
+        no scoring: the caller gets entropy that moves, not entropy that is
+        graded. A test that needs the values checked wants ``bring_up_entropy``.
+
+        Kill the returned task before the test ends. A forked task still writing
+        a DUT port while the simulator tears down segfaults the run, which shows
+        up as a non-zero exit on an otherwise passing test.
+        """
+        dut = cocotb.top
+        gen = SepNoiseGolden()
+        gen.configure(noise_mode, seed_base=seed_base)
+
+        async def _drive() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                await NextTimeStep()
+                dut.esrc_noise_ext_i.value = gen.step_all()
+
+        return cocotb.start_soon(_drive())
+
     async def assert_noise_force_active(self, cycles: int = 16) -> None:
         """Prove +esrc_noise_force took: lane-0's actual DUT noise_i tracks the
         driven raw-noise bit, and the driven noise actually toggles (not stuck)."""
@@ -1180,40 +1254,180 @@ class sep_base_test(uvm_test):
         offered as evidence for, and the identity cannot be recovered after
         the run.
         """
+        import hashlib
         import os
         import subprocess
 
-        rev = os.environ.get("SEP_DV_GIT_REV")
-        if not rev:
+        git_dir = os.path.dirname(os.path.abspath(__file__))
+
+        def _git(*args, timeout=15):
+            """Run one git command. Returns (ok, stdout_bytes).
+
+            ok is False for a failed spawn, a nonzero exit AND a timeout, so a
+            caller can tell "git said no" from "git said nothing". Treating
+            those as an empty answer is what lets an unanswered question read
+            as a negative answer.
+            """
             try:
-                rev = subprocess.run(
-                    ["git", "rev-parse", "HEAD"],
-                    cwd=os.path.dirname(os.path.abspath(__file__)),
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                ).stdout.strip()
+                cp = subprocess.run(
+                    ["git", *args], cwd=git_dir, capture_output=True, timeout=timeout
+                )
             except (OSError, subprocess.SubprocessError):
-                rev = ""
-        # A dirty tree is part of the identity: the commit alone would name
-        # sources the run did not use.
-        dirty = ""
-        try:
-            dirty = subprocess.run(
-                ["git", "status", "--porcelain", "--untracked-files=no"],
-                cwd=os.path.dirname(os.path.abspath(__file__)),
-                capture_output=True,
-                text=True,
-                timeout=15,
-            ).stdout.strip()
-        except (OSError, subprocess.SubprocessError):
-            pass
+                return False, b""
+            return cp.returncode == 0, cp.stdout
+
+        head_ok, head_out = _git("rev-parse", "HEAD", timeout=10)
+        head = head_out.decode("utf-8", "replace").strip() if head_ok else ""
+        # An env override names the commit the CALLER believes was built. It is
+        # reported next to live HEAD rather than in place of it: a stale export
+        # would otherwise pair commit A with tree B's dirtiness, and nothing in
+        # the log would show it.
+        env_rev = os.environ.get("SEP_DV_GIT_REV") or ""
+        rev = env_rev or head
+        rev_note = ""
+        if env_rev and head_ok and env_rev != head:
+            rev_note = f" (SEP_DV_GIT_REV; live HEAD={head} -- THEY DISAGREE)"
+        elif env_rev and not head_ok:
+            rev_note = " (SEP_DV_GIT_REV; live HEAD unavailable, not corroborated)"
+
+        # Tree state. `unknown` is a third value, distinct from clean: a check
+        # that could not run must not print what a clean tree prints.
+        dirty_ok, dirty_out = _git("status", "--porcelain", "-uall")
+        dirty = dirty_out.decode("utf-8", "replace") if dirty_ok else ""
+        if not dirty_ok:
+            state = " (tree state UNKNOWN: git status failed -- do not read this as clean)"
+        elif dirty.strip():
+            state = " (tree dirty: uncommitted sources)"
+        else:
+            state = ""
         self.logger.info(
-            "RUN-IDENTITY: commit=%s%s work-dir=%s",
+            "RUN-IDENTITY: commit=%s%s%s work-dir=%s",
             rev or "unknown",
-            " (tree dirty: uncommitted sources)" if dirty else "",
+            rev_note,
+            state,
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
+        # Build identity: the binary this process IS. A commit names the
+        # sources on disk at time 0, which is not the same claim as "the model
+        # executing was compiled from them" -- a reused simv, or a rebuild that
+        # landed after the flist was read, produces a truthful-looking commit
+        # line for a run that executed something else. The digest is the part
+        # that cannot be recovered after the fact.
+        #
+        # Hashed ONCE PER BUILD, not once per test. A regression reuses one
+        # binary across every leaf, and sha256 runs at ~45 MB/s here, so a
+        # 512 MiB VCS simv would cost ~11 s on every one of them. The digest is
+        # a property of the binary, so it is cached beside it, keyed on size
+        # and mtime; an unwritable or mismatched cache costs a rehash, never a
+        # wrong answer. The line says which it was: `cached` is trusted on
+        # (size, mtime) rather than on content, so a reader chasing a
+        # provenance question knows to delete the sidecar and rerun to get a
+        # digest computed from the bytes.
+        try:
+            exe = os.path.realpath("/proc/self/exe")
+            st = os.stat(exe)
+            key = f"{st.st_size} {int(st.st_mtime)}"
+            cache = Path(f"{exe}.sha256")
+            exe_digest = ""
+            digest_src = "computed"
+            try:
+                cached_key, cached_digest = cache.read_text().split("\n")[0].rsplit(" ", 1)
+                if cached_key == key:
+                    exe_digest = cached_digest.strip()
+                    digest_src = "cached"
+            except (OSError, ValueError):
+                pass
+            if not exe_digest:
+                if st.st_size <= _SIM_BINARY_HASH_MAX_BYTES:
+                    h = hashlib.sha256()
+                    with open(exe, "rb") as fh:
+                        for chunk in iter(lambda: fh.read(1 << 20), b""):
+                            h.update(chunk)
+                    exe_digest = h.hexdigest()[:16]
+                    try:
+                        # Atomic, because concurrent leaves of one regression
+                        # race here; a torn file would be read back as a
+                        # mismatched key and simply rehashed.
+                        tmp = cache.with_suffix(f".sha256.{os.getpid()}")
+                        tmp.write_text(f"{key} {exe_digest}\n")
+                        os.replace(tmp, cache)
+                    except OSError:
+                        pass
+                else:
+                    exe_digest = f"not-hashed(>{_SIM_BINARY_HASH_MAX_BYTES}B)"
+            self.logger.info(
+                "RUN-IDENTITY-BUILD: sim-binary=%s sha256=%s (%s) bytes=%d mtime=%d",
+                exe,
+                exe_digest,
+                digest_src,
+                st.st_size,
+                int(st.st_mtime),
+            )
+        except (OSError, ValueError) as exc:
+            # Say so rather than omit the line: a missing build identity is a
+            # gap a reader must see, not one they should have to infer.
+            self.logger.info(
+                "RUN-IDENTITY-BUILD: unavailable (%s) -- this log cannot be "
+                "bound to the build that produced it",
+                type(exc).__name__,
+            )
+        # WHICH files, not just that some were. "tree dirty" alone cannot be
+        # acted on after the run: a reader has to decide whether any
+        # uncommitted file was on this test's proof path, and the boolean makes
+        # that unanswerable from the artifact.
+        #
+        # Untracked files are included. The question is what the run executed,
+        # and an untracked module on a proof path is as unrecorded as a
+        # modified one -- `--untracked-files=no` would hide exactly the new
+        # test or generated image most likely to matter.
+        if dirty_ok and dirty.strip():
+            # Tracked modifications and untracked files are reported
+            # separately, because they answer the proof-path question
+            # differently and mixing them buries the answer: `-uall` expands a
+            # single untracked venv/ into four figures of paths, and a 40-path
+            # cap then hides the one modified source that mattered. Tracked
+            # paths are listed; untracked are counted and named by top-level
+            # area, which is enough to see whether a new module could be on the
+            # proof path.
+            tracked, untracked = [], []
+            for line in dirty.splitlines():
+                # Porcelain v1: two status characters, a space, then the path.
+                # Slice the RAW line -- stripping the block first eats the
+                # leading space of an unstaged-only first entry (" M path") and
+                # cuts a character off that path, which is precisely the name a
+                # reader greps against the proof path.
+                if len(line) <= 3:
+                    continue
+                path = line[3:].strip().strip('"')
+                (untracked if line.startswith("??") else tracked).append(path)
+            digest = "unavailable"
+            diff_ok, diff_out = _git("diff", "HEAD", timeout=30)
+            if diff_ok:
+                digest = hashlib.sha256(diff_out).hexdigest()[:16]
+            shown = tracked[:_RUN_IDENTITY_MAX_PATHS]
+            self.logger.info(
+                "RUN-IDENTITY-DIRTY: %d tracked file(s) modified, "
+                "tracked-diff-sha256=%s%s paths=%s",
+                len(tracked),
+                digest,
+                "" if len(tracked) == len(shown) else f" (first {len(shown)} shown)",
+                ",".join(shown) or "none",
+            )
+            if untracked:
+                # Group by the first two path components, so "venv/bin" is one
+                # area rather than 300, and a new DV module still shows as
+                # "hw/sys" -- specific enough to ask "could that be on my
+                # proof path?" without reprinting the list.
+                areas = sorted({"/".join(u.split("/")[:2]) for u in untracked})
+                shown_areas = areas[:_RUN_IDENTITY_MAX_PATHS]
+                self.logger.info(
+                    "RUN-IDENTITY-UNTRACKED: %d file(s) in %d area(s)%s: %s "
+                    "(not covered by tracked-diff-sha256)",
+                    len(untracked),
+                    len(areas),
+                    "" if len(areas) == len(shown_areas) else f", first {len(shown_areas)} shown",
+                    ",".join(shown_areas),
+                )
 
     def _finalize_evidence(self) -> None:
         """Report the evidence this run produced, and grade it if the leaf asked.

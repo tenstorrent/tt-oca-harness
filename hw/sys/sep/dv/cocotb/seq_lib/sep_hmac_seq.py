@@ -51,6 +51,9 @@ HMAC_CMD_HASH_START = 1 << 0
 HMAC_CMD_HASH_PROCESS = 1 << 1
 
 HMAC_STATUS_FIFO_FULL = 1 << 2
+# STATUS.hmac_idle: set while the core holds no in-flight message. Taken from
+# the generated block, so a field move cannot leave a stale literal here.
+HMAC_STATUS_IDLE = HMAC.field_mask("STATUS", "hmac_idle")
 HMAC_INTR_DONE = 1 << 0
 HMAC_INTR_ERR = 1 << 2
 
@@ -59,8 +62,23 @@ HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}  # SHA2_256/384/512
 HMAC_KEY_LENGTH = {128: 0x1, 256: 0x2, 384: 0x4, 512: 0x8, 1024: 0x10}
 # Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.adoc).
 HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
-# Illegal keyed combo: SHA-256 supports keys up to 512-bit only (hmac.sv:819).
-HMAC_ILLEGAL_KEYED = {(256, 1024)}
+# SHA-2 block size per digest size, in bits. hmac.adoc: "the key length cannot
+# be greater than the block size: up to 1024-bit for SHA-2 384/512 and up to
+# 512-bit for SHA-2 256."
+HMAC_BLOCK_BITS = {256: 512, 384: 1024, 512: 1024}
+# Keyed cells the register specification blocks, derived from that rule rather
+# than listed: hmac.adoc states a start with KEY_LENGTH = Key_1024 while
+# DIGEST_SIZE = SHA2_256 "is blocked and an error is signalled to SW". Deriving
+# it keeps the legal set the specification's, not the design's -- an RTL bound
+# that disagreed with the block-size rule would now drive a cell this set calls
+# legal.
+HMAC_ILLEGAL_KEYED = {
+    (sha_bits, key_bits)
+    for sha_bits in HMAC_DIGEST_SIZE
+    for key_bits in HMAC_KEY_LENGTH
+    if key_bits > HMAC_BLOCK_BITS[sha_bits]
+}
+assert HMAC_ILLEGAL_KEYED == {(256, 1024)}, HMAC_ILLEGAL_KEYED
 
 
 def build_cfg(
@@ -242,6 +260,19 @@ class SepHmac(SepAxiRegDriver):
             f"HMAC INTR_STATE.hmac_done not cleared by W1C (0x{post:08x})"
         )
         return digest
+
+    async def wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
+        """Poll STATUS until hmac_idle. A caller that has just released this
+        domain from reset needs the core to be accepting again before it can
+        attribute a refusal to anything other than the core being busy."""
+        for i in range(timeout):
+            if await self._rd(HMAC_STATUS) & HMAC_STATUS_IDLE:
+                self.log.info("HMAC idle (%s) after %d polls", tag, i)
+                return
+            if i and i % 500 == 0:
+                self.log.info("HMAC wait_idle (%s): poll %d", tag, i)
+            await ClockCycles(cocotb.top.clk_i, poll_cycles)
+        raise AssertionError(f"HMAC did not reach STATUS.hmac_idle ({tag})")
 
     async def _wait_fifo_space(self, *, timeout: int = 2_000, poll_cycles: int = 10) -> None:
         for _ in range(timeout):

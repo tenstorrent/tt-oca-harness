@@ -21,10 +21,18 @@ from smc_base_test import smc_base_test
 class smc_axil_burst_idle_test(smc_base_test):
     """Run the SMC OSS AXI-Lite burst idle scenario."""
 
+    required_evidence = (
+        "CHK-DIAG-AXIL-ACTIVE",
+        "CHK-EFUSE-BANK-AXIL-ACTIVE",
+        "CHK-NONVAC",
+        "CHK-PROBE-AXIL-EXTERNAL-ALIVE",
+    )
+    min_evidence = 3
+
     # Positive control for `tb_axil_external_active`, the one AXI-Lite activity
     # probe on this burst's proof path without one elsewhere (the eFuse-bank and
     # any-master probes are covered by the sequence's own prover, and
-    # `tb_axil_dtp_csr_active` is unbackable in this TB -- tb_top.sv:1151 ties
+    # `tb_axil_dtp_csr_active` is unbackable in this TB -- tb_top.sv:1119 ties
     # `axil_dtp_csr_resp = '0'` -- so the scoreboard books it OBSERVED-ONLY and
     # never exact-compares it) ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
     probe_positive_controls = ("axil_external_active",)

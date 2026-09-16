@@ -19,7 +19,7 @@ class smu_otp_vs_fabric_map_race_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_otp_vs_fabric_map_race_test TierA OTP||fabric MAP race SEP=0"
+            "DUT_TAG=WRAPPER smu_otp_vs_fabric_map_race_test TierA OTP||fabric MAP race"
         )
         seq = smu_otp_vs_fabric_map_race_test_seq(self)
         await seq.run()

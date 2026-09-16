@@ -19,8 +19,18 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from smc_dual_base_test import SmcDualHarness
+from smc_dual_base_test import SmcDualHarness, dual_test
 from smc_occp_dual_defs import SHARED_I3C_CHANNELS
+
+REQUIRED_EVIDENCE = (
+    "CHK-DUAL-BOOT-STALL",
+    "CHK-DUAL-ELAB",
+    "CHK-DUAL-FUSE-SENSE",
+    "CHK-DUAL-I3C-IDLE",
+    "CHK-DUAL-I3C-INDEXING",
+    "CHK-DUAL-MEM-INIT",
+    "CHK-DUAL-RESET",
+)
 
 # Both instances must clear fuse sense within this many clk_smc cycles. The
 # single-instance smc_cpu_firmware_boot_test uses a 200k-cycle bound for the
@@ -53,22 +63,21 @@ def _check_i3c_counter_indexing(dut) -> None:
         int(getattr(dut, f"tb_i3c_channel_id_{pos}").value)
         for pos in range(len(SHARED_I3C_CHANNELS))
     ]
+    assert seen == list(SHARED_I3C_CHANNELS), (
+        f"cocotb sees the I3C counter positions as {seen} but the testbench "
+        f"assigned {list(SHARED_I3C_CHANNELS)}. Every per-channel count and "
+        "every 'transfer seen on I3Cn' label is mis-attributed by this amount."
+    )
     cocotb.log.info(
         "CHK-DUAL-I3C-INDEXING: cocotb reads tb_i3c_channel_id as %s; the TB "
         "assigns SharedI3cIdx = %s",
         seen,
         list(SHARED_I3C_CHANNELS),
     )
-    assert seen == list(SHARED_I3C_CHANNELS), (
-        f"cocotb sees the I3C counter positions as {seen} but the testbench "
-        f"assigned {list(SHARED_I3C_CHANNELS)}. Every per-channel count and "
-        "every 'transfer seen on I3Cn' label is mis-attributed by this amount."
-    )
 
 
-@cocotb.test()
-async def smc_dual_elaboration_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_dual_elaboration_test(harness: SmcDualHarness) -> None:
     _check_i3c_counter_indexing(cocotb.top)
     dut = harness.dut
 

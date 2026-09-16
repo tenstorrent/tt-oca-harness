@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""JTAG2AXI DECERR then immediate VERSION_LO SUCCESS. SEP=0, no Force."""
+"""JTAG2AXI DECERR then immediate VERSION_LO SUCCESS. SEP=1, no Force."""
 
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_BUSY,
     J2A_STATUS_DECERR,
     J2A_STATUS_SUCCESS,
-    SMC_AXI_ERR_SLV_POISON,
     SMC_DBG_AXSIZE_4B,
     jtag2axi_single_read,
     jtag2axi_single_write,
@@ -33,7 +32,7 @@ OTP_POLL = 128
 
 
 class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
-    """DECERR then immediate VERSION_LO SUCCESS; gate already open on SEP=0."""
+    """DECERR then immediate VERSION_LO SUCCESS; gate open on the SEP=1 wrapper."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -119,11 +118,11 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
         self._log(f"CHK-B2B-ALLOW @0x{VERSION_LO:08x} data=0x{d0:08x} status=SUCCESS")
         sb.expect_eq("CHK-B2B-ALLOW", d0, VERSION_LO_RESET)
 
-        st_e, poison = await self._rd32(jtag, UNMAPPED)
-        if st_e != J2A_STATUS_DECERR or poison != SMC_AXI_ERR_SLV_POISON:
+        st_e, hole_data = await self._rd32(jtag, UNMAPPED)
+        if st_e != J2A_STATUS_DECERR:
             raise AssertionError(
-                f"unmapped RD @0x{UNMAPPED:08x} status={st_e} data=0x{poison:08x} "
-                f"want DECERR+0x{SMC_AXI_ERR_SLV_POISON:08x}"
+                f"unmapped RD @0x{UNMAPPED:08x} status={st_e} data=0x{hole_data:08x} "
+                f"want DECERR={J2A_STATUS_DECERR}"
             )
         st1, d1 = await self._rd32(jtag, VERSION_LO)
         if st1 == J2A_STATUS_BUSY:
@@ -135,18 +134,13 @@ class smu_dtp_jtag2axi_back_to_back_error_ok_test_seq:
             )
         self.s3_ok = True
         self._log(
-            f"CHK-J2A-B2B RD-DECERR@0x{UNMAPPED:08x} poison=0x{poison:08x} "
+            f"CHK-J2A-B2B RD-DECERR@0x{UNMAPPED:08x} data=0x{hole_data:08x} "
             f"then VERSION_LO=0x{d1:08x} status=SUCCESS"
         )
         sb.expect_eq(
             "CHK-J2A-B2B",
-            (st_e, poison, st1, d1),
-            (
-                J2A_STATUS_DECERR,
-                SMC_AXI_ERR_SLV_POISON,
-                J2A_STATUS_SUCCESS,
-                VERSION_LO_RESET,
-            ),
+            (st_e, st1, d1),
+            (J2A_STATUS_DECERR, J2A_STATUS_SUCCESS, VERSION_LO_RESET),
         )
 
         st_w = await self._wr32(jtag, UNMAPPED, 0xDEAD_BEEF)

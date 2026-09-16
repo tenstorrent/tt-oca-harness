@@ -36,17 +36,19 @@
 //       therefore the DUT's own statement that the transfer finished, and one
 //       that reads back nonzero is its statement that it did not.  [S1]:118-128
 //
-// SPEC-OPEN -- not settled from RTL:
-//   [S1]:148-150 leaves the two enable properties commented out:
-//       // TODO // INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR;
-//       // TODO // INTR_STATUS.LOG_WRITE_ERR->hwenable = INTR_ENABLE.LOG_WRITE_ERR;
-//   So the RDL DECLARES the intent -- a masked interrupt must not capture
-//   into its status bit -- but does not yet express it as a generated
-//   property.  The ENABLE-gating arms below check that DECLARED INTENT and
-//   nothing more.  Open spec question:
-//       "Does INTR_ENABLE gate INTR_STATUS capture, or only the IRQ output?"
-//   If the answer comes back "IRQ output only", the two gating arms below are
-//   the checks that must change, and they are marked so a reader can find them.
+// DECLARED INTENT vs RTL:
+//   [S1]:148-150 leaves the two `hwenable` bindings commented out
+//   (INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR, and the
+//   LOG_WRITE_ERR twin).  So the RDL DECLARES the intent -- a masked interrupt
+//   must not capture into its status bit -- but does not yet express it as a
+//   generated property.  The ENABLE-gating arms below check that DECLARED
+//   INTENT and nothing more.  Whether INTR_ENABLE gates INTR_STATUS capture
+//   or only the IRQ output is settled as an RTL defect: the RTL gates the SET
+//   path where prim_intr_hw masks the OUTPUT, and the intended form is the
+//   output-mask form.
+// The two ENABLE-gating arms below expect no capture while masked, which is
+// the SET-path gating the RTL has today. Those arms must then expect capture
+// while masked if the log engine moves to the output-mask form.
 //
 //==========================================================================
 // OBSERVED DUT BEHAVIOUR THIS TEST MUST WORK AROUND (not an expectation)
@@ -349,7 +351,7 @@ int main(void) {
     //--------------------------------------------------------------------------
     // SCENARIO 0b — ENABLE gating, checked with the controlled INTR_TEST cause.
     //
-    // CHECKS DECLARED INTENT, NOT SETTLED SPEC.  See the SPEC-OPEN block at the
+    // CHECKS DECLARED INTENT, NOT RTL.  See the DECLARED INTENT vs RTL block at the
     // top of this file: [S1]:148-150 declares
     //     INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR
     // but leaves it commented out pending a PeakRDL fix, and [S2] records the
@@ -382,7 +384,7 @@ int main(void) {
             if (s != 0u) {
                 info_msg_hex32_s(0, "FAIL: ENABLE=0 but INTR_TEST pulse latched status=", s);
                 fail_at("FAIL: INTR_ENABLE gating of INTR_STATUS capture is broken "
-                        "(see SPEC-OPEN note at the top of this file)");
+                        "(see the DECLARED INTENT vs RTL note at the top of this file)");
             }
         }
         chk_ok("CHK-ENABLE-GATE-NEGATIVE: ENABLE=0 + INTR_TEST pulse -> "

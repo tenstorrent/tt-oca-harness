@@ -11,14 +11,6 @@ tags = ["ci", "vplan_gap", "local_axi_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_deadspace_decode_test"
-module = "smc_deadspace_decode_test"
-seed = 1
-timeout_sec = 1800
-tags = ["vplan_gap", "local_axi_depth", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_output_fabric_wr_rd_responder_test"
 module = "smc_output_fabric_wr_rd_responder_test"
 seed = 1
@@ -82,7 +74,7 @@ timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "pyuvm"]
 run_modes = ["smoke"]
 
-# BFM: CHIPLET_ID lock IRQ on tb_efuse_locked_access_irq (bit 28).
+# BFM: JTAG_PUBLIC_IDENTITY lock IRQ on tb_efuse_locked_access_irq.
 [[tests]]
 name = "smc_efuse_locked_access_interrupt_test"
 module = "smc_efuse_locked_access_interrupt_test"
@@ -91,8 +83,8 @@ timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "pyuvm"]
 run_modes = ["smoke"]
 # The read-lock precondition of this scenario is supplied by this asset (word 0
-# sets CHIPLET_ID_READ_LOCK), so it is named here rather than inherited silently
-# from the bench-wide default in smc_sim_cfg.toml.
+# sets JTAG_PUBLIC_IDENTITY_READ_LOCK), so it is named here rather than inherited
+# silently from the bench-wide default in smc_sim_cfg.toml.
 args = [
     "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
 ]
@@ -125,11 +117,12 @@ timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "zeroer_dma_depth", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
 
-# No GPIO-strap or external-interrupt testcase is enrolled here. The two
-# features are covered by smc_captured_straps_test (unenrolled, no_dut_port)
-# and smc_ext_interrupts_pin_test (irq.toml). ext_interrupts_i[255:1] is tied
-# to 0 in tb/tb_top.sv, so an external-interrupt testcase beyond bit 0 needs
-# TB work before it can exist.
+# No GPIO-strap or external-interrupt testcase is enrolled here. smc_wrapper
+# declares no captured_straps_i, so the strap feature has no testcase
+# (hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc); external interrupts are
+# covered by smc_ext_interrupts_pin_test (irq.toml). ext_interrupts_i[255:1] is
+# tied to 0 in tb/tb_top.sv, so an external-interrupt testcase beyond bit 0
+# needs TB work before it can exist.
 
 [[tests]]
 name = "smc_uart_log_engine_error_boundary_test"
@@ -161,6 +154,14 @@ module = "smc_dma_sanity_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "vplan_gap", "zeroer_dma_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dma_reserved_stream_banks_test"
+module = "smc_dma_reserved_stream_banks_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "zeroer_dma_depth", "decode", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]

@@ -112,7 +112,10 @@ ocah_axi_vip/
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items all --cov
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip \
-                                       --framework uvm --tool vcs --items smoke
+                                       --framework uvm --tool vcs --items smoke --cov
+                                   dv/cov/config/verilator/coverage_policy.toml grades
+                                   the Verilator run; the SV-UVM shape samples the
+                                   covergroups
 ```
 
 ### Side-token naming
@@ -447,8 +450,8 @@ replay of failures.
 | Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
 | Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`); `allow_timeout=True` returns `RESP_TIMEOUT` | — |
 | Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
-| Coverage | `cov/ocah_axi_cov.sv` covergroups on commercial simulators; `--cov` on `--dut ocah_axi_vip` collects native Verilator coverage of the SV collateral | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
-| Simulators and protocols | Verilator (cocotb selftests) and VCS (SV-UVM selftests); AXI4 and AXI4-Lite | Xcelium; AXI-Stream; AXI5-only features |
+| Coverage | `cov/ocah_axi_cov.sv` covergroups, sampled by the SV-UVM harness through one `ocah_axi_cov_if` (`--dut ocah_axi_vip --framework uvm --tool vcs --cov`) together with the `OCAH_AXI_C_*` cover properties; `--cov` on `--dut ocah_axi_vip` collects Verilator line and branch coverage of the SV collateral, graded by `dv/cov/config/verilator/coverage_policy.toml` | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
+| Simulators and protocols | Verilator, VCS, and Xcelium (cocotb selftests); VCS (SV-UVM selftests); AXI4 and AXI4-Lite | SV-UVM on Xcelium (the runner's SV-UVM flow is VCS-only); AXI-Stream; AXI5-only features |
 
 ---
 

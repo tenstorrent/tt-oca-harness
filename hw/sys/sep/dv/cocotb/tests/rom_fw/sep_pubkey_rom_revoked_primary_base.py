@@ -462,7 +462,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
             f"Console: {console}"
         )
         self.logger.info(
-            "CHK-REVOKE-FAILOVER: primary %s -> %s -> %s (slot %d refused once) -> "
+            "CHK-REVOKE-FAILOVER PASS: primary %s -> %s -> %s (slot %d refused once) -> "
             "backup %s -> %s again at line %d, permitted -> boot",
             self._PUBK_SEL_ECHO,
             self._REVOKE_ECHO,

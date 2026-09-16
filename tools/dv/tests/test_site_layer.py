@@ -173,8 +173,16 @@ class SiteFileValidationTest(SiteCase):
 
     def test_dut_entry_keys_and_target(self) -> None:
         self.rejects('[duts.dtp]\nsim_cfg = "x.toml"\n', "unsupported key(s): sim_cfg")
-        self.rejects('[duts.dtp]\nformal_cfg = "missing_formal_cfg.toml"\n', "does not exist")
         self.rejects("[duts.dtp]\nformal_cfg = 1\n", "formal_cfg must be a non-empty path")
+
+    def test_absent_formal_cfg_loads_and_fails_only_when_selected(self) -> None:
+        layer = self.load('[duts.dtp]\nformal_cfg = "missing_formal_cfg.toml"\n')
+        self.assertEqual(layer.formal_cfg(["dtp"]), "missing_formal_cfg.toml")
+        resolve_dut(REPO_ROOT, "dtp", site=layer)
+        with self.assertRaises(ConfigError) as ctx:
+            resolve_dut(REPO_ROOT, "dtp", mode="formal", site=layer)
+        self.assertIn("formal config not found", str(ctx.exception))
+        self.assertIn("named by the site layer", str(ctx.exception))
 
     def test_dut_entry_must_name_a_selectable_dut(self) -> None:
         cfg = self.write("x_formal_cfg.toml", "name = 'x'\n")
@@ -734,9 +742,9 @@ class ResolveDutTest(SiteCase):
         self.assertEqual((flow.kind, flow.default_tool, flow.framework), ("fv", "sby", "formal"))
         sim = resolve_dut(REPO_ROOT, "dtp", site=layer)
         self.assertEqual(sim.path.name, "dtp_sim_cfg.toml")
-        with self.assertRaises(ConfigError) as ctx:
-            resolve_dut(REPO_ROOT, "dtp", mode="formal")
-        self.assertIn("formal config not found", str(ctx.exception))
+        # Without the site pointer the DUT's own formal config is the one loaded.
+        own = resolve_dut(REPO_ROOT, "dtp", mode="formal")
+        self.assertEqual(own.path, REPO_ROOT / "hw/sys/dtp/dv/dtp_formal_cfg.toml")
 
     def test_site_entry_for_the_canonical_dut_serves_its_alias(self) -> None:
         cfg = self.formal_cfg("smu")

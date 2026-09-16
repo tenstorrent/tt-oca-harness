@@ -19,6 +19,11 @@ class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test(dtp_base_test):
         "CHK-AXI-RESP",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-ABORT-MIDFLIGHT",
+        "CHK-J2A-ABORT-FSM",
+        "CHK-J2A-CDC-CLEAR",
+        "CHK-J2A-ABORT-ESCAPE",
+        "CHK-J2A-ABORT-RECOVERY",
     )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 

@@ -15,6 +15,15 @@ from smc_base_test import smc_base_test
 class smc_mailbox_data_error_test(smc_base_test):
     """Run mailbox write/read data and illegal access response checks."""
 
+    required_evidence = (
+        "CHK-MAILBOX-FIFO-DATA",
+        "CHK-MAILBOX-IRQ-ASSERT",
+        "CHK-MAILBOX-IRQ-CLEAR",
+        "CHK-MAILBOX-IRQ-IDLE",
+        "CHK-MAILBOX-IRQ-SOURCE",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

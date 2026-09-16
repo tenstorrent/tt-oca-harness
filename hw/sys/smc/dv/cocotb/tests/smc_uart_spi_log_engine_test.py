@@ -29,6 +29,22 @@ UART_LOG_MIN_CSR_ACCESSES = 12
 class smc_uart_spi_log_engine_test(smc_base_test):
     """Run the UART/log-engine representative CSR precheck."""
 
+    required_evidence = (
+        "CHK-UART-LOG-COUNT",
+        "CHK-UART-LOG-LOG_ENGINE_CTRL",
+        "CHK-UART-LOG-LOG_ENGINE_INTR_STATUS",
+        "CHK-UART-LOG-UART_IIR",
+        "CHK-UART-LOG-UART_LOG_ENGINE_CTRL",
+        "CHK-UART-LOG-UART_LSR",
+        "CHK-UART-MSR-CTS-PAD0",
+        "CHK-UART-MSR-CTS-PAD1",
+        "CHK-UART-MSR-DELTA-CLEAR",
+        "CHK-UART-MSR-DELTA-CLEAR-PAD0",
+        "CHK-UART-MSR-DELTA-CLEAR-PAD1",
+        "CHK-UART-MSR-FIRST",
+    )
+    min_evidence = 12
+
     # No AUTO-COVERAGE-STAMP: this scenario records its own protocol VIP item
     # from measured counts below, so the base-test activity stamp would only add
     # a second, weaker record of the same traffic.
@@ -59,7 +75,7 @@ class smc_uart_spi_log_engine_test(smc_base_test):
                 "CTS = ~cts_ni at BOTH pad levels this test drives on UART0 CTS "
                 "pad 14 (via the top-level tb_gpio_ext_drive_* pins, not a pad "
                 "default) and DCTS set->clear in both directions, all expected "
-                "values taken from the MSR field descriptions plus the declared "
-                "dsr_ni/ri_ni/dcd_ni tie-offs"
+                "values taken from the MSR field descriptions, every compare "
+                "masked to the CTS/DCTS bits this test drives"
             ),
         )

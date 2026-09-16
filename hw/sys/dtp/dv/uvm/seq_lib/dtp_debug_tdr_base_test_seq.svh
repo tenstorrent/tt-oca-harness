@@ -29,12 +29,16 @@
 class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   `uvm_object_utils(dtp_debug_tdr_base_test_seq)
 
-  // TDR geometry (standalone OSS DTP instantiation).
+  // Register sizes: DEBUG_CONTROL from the interface-unit instruction table;
+  // IC_RESET is reset_hold plus one {enable, control} pair per port
+  // ("IC_RESET Support" table), one SMC, one SEP, and one external port in
+  // the standalone DTP; JTAG_CAPS[59:0] ("JTAG Capabilities" table) and
+  // *_JTAG2AXI_CAPS[13:0] from the PTAP document.
   localparam int unsigned DebugControlLen = 5;
   localparam int unsigned IcResetPorts = 3;
   localparam int unsigned IcResetLen = 2 * IcResetPorts + 1;
   localparam int unsigned JtagCapsLen = 60;
-  localparam int unsigned Jtag2AxiCapsLen = 14;
+  localparam int unsigned Jtag2AxiCapsLen = DtpJtag2AxiCapsLen;
   localparam int unsigned NumClkStopReq = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ;
 
   // DEBUG_CONTROL bit positions.
@@ -153,9 +157,10 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     | 64'd0;  // OCH_VER
   endfunction
 
-  static function bit [63:0] expected_jtag2axi_caps(
-      bit bus_type, int unsigned addr_width, int unsigned data_width_bits,
-      int unsigned rd_pl_depth = 3, int unsigned wr_pl_depth = 3);
+  static function bit [63:0] expected_jtag2axi_caps(bit bus_type, int unsigned addr_width,
+                                                    int unsigned data_width_bits,
+                                                    int unsigned rd_pl_depth = DtpJ2aPipelineDepth,
+                                                    int unsigned wr_pl_depth = DtpJ2aPipelineDepth);
     int unsigned size_enc = $clog2(data_width_bits / 8);
     return (64'(rd_pl_depth) << 12)
              | (64'(wr_pl_depth) << 10)
@@ -211,10 +216,14 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     end
   endtask
 
-  // Common JTAG2AXI_CAPS flow: value/field compare, multi-read stability,
-  // read-only sweep, and instruction-switch re-reads.
-  task check_jtag2axi_caps(input bit [IrWidth-1:0] instr, input string label, input bit bus_type,
-                           input int unsigned addr_width, input int unsigned data_width_bits);
+  // Common JTAG2AXI_CAPS flow for one bridge of the dtp_types geometry table:
+  // value/field compare, multi-read stability, read-only sweep, and
+  // instruction-switch re-reads.
+  task check_jtag2axi_caps(input dtp_j2a_target_t t, input string label);
+    bit [IrWidth-1:0] instr = IrWidth'(t.caps_instr);
+    bit bus_type = t.bus_type;
+    int unsigned addr_width = t.addr_width;
+    int unsigned data_width_bits = t.data_width;
     bit [63:0] expected = expected_jtag2axi_caps(bus_type, addr_width, data_width_bits);
     bit [63:0] value, reread;
     read_caps_tdr(instr, Jtag2AxiCapsLen, value);
@@ -227,8 +236,8 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     family_check("CHK-CAPS", {label, ".addr_width"}, 64'(value[6:1]), 64'(addr_width & 'h3F));
     family_check("CHK-CAPS", {label, ".data_size"}, 64'(value[9:7]), 64'($clog2(data_width_bits / 8
                  )));
-    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'd3);
-    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'd3);
+    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'(DtpJ2aPipelineDepth));
+    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'(DtpJ2aPipelineDepth));
     check_caps_multi_read(instr, Jtag2AxiCapsLen, value, label);
     check_caps_read_only_patterns(instr, Jtag2AxiCapsLen, value, label);
     // Instruction switches must not disturb the stored capability value.

@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_telemetry_receiver_csr_test(smc_base_test):
     """U4-6: TELEMETRY CSR reset + INTR_TEST -> tb_telemetry_irq_any."""
 
+    required_evidence = ("CHK-TELEMETRY-RECEIVER-CSR",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

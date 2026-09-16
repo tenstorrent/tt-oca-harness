@@ -7,10 +7,14 @@
 === Overview
 
 The SMU open-source environment is a PyUVM-on-cocotb testbench driven by
-`tools/dv/run_dv.py`. Verilator is the functional backend; VCS and Xcelium run
-the same Python tests when commercial coverage is wanted. The bare `smu` DUT
-also carries a SystemVerilog UVM realization (`--framework uvm`, VCS) on the
-same `tb/tb_top.sv`; see <<sv-uvm-realization>>.
+`tools/dv/run_dv.py`. Verilator is the simulator every enrolled group runs
+on, and the only one with a build and a coverage section in either sim
+config. `smu_sim_cfg.toml` lists `vcs` and `xcelium` as selectable tools, but
+no enrolled cocotb group runs on them: the cocotb targets on VCS fail the
+runner on live RTL assertions while every test passes (issue #1755, open),
+and no Xcelium configuration exists. VCS is used for the SystemVerilog UVM
+realization of the bare `smu` DUT (`--framework uvm`) on the same
+`tb/tb_top.sv`; see <<sv-uvm-realization>>.
 
 Two DUTs share this DV root:
 
@@ -23,32 +27,19 @@ technology interfaces tied off. Holds the leaves the wrapper cannot express
 shape
 |`--dut smu` (alias `smu_wrapper`) |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
 `hw/top/smu_wrapper.sv` with production pins, in a `no_sep` and a `sep_rtl`
-compile profile. The SMU regression: `sep0_all` and `all`
+compile profile. The SMU regression: `hosted` and `all`
 |===
 
 The two are separate evidence surfaces. Logs carry `DUT_TAG=BARE`
-or `DUT_TAG=WRAPPER`, and a wrapper PASS is not merged into bare `sep0_all`
+or `DUT_TAG=WRAPPER`, and a wrapper PASS is not merged into bare `hosted`
 evidence.
 
 === Directory Structure
 
-....
-hw/sys/smu/dv/
-├── common/{smu_dv_env,seq_lib}/  # PyUVM env and sequence library, shared by both DUTs
-├── cocotb/tests/                 # --dut smu_block test bodies and base test
-├── cocotb_wrapper/{env,tests}/   # --dut smu env additions and test bodies
-├── cov/                          # coverage scope, policy and cov/sv cover-property modules
-├── assets/                       # eFuse-shadow preload images (lifecycle states)
-├── docs/                         # this chapter set
-├── fw/                           # firmware images built for the dual-FW tests
-├── tb/                           # tb_top.sv (cocotb + UVM shapes), smu_tb_signal_list.svh,
-│                                 # smu_tb_if.sv, tb_wrapper_top.sv, public scopes
-├── uvm/{env,seq_lib,tests}/      # SV-UVM env / seq_lib / tests (--framework uvm)
-├── testlists/                    # wrapper.toml (--dut smu); all.toml + dtp.toml (--dut smu_block)
-├── tools/                        # wrapper readiness gates
-├── smu_block_sim_cfg.toml        # --dut smu_block: [frameworks.cocotb] + [frameworks.uvm]
-└── smu_sim_cfg.toml              # --dut smu
-....
+`hw/sys/smu/dv/README.md` owns the layout: its table lists every directory
+and top-level file under `dv/` and says why each of the additions to the
+shared DV directory set is held here. This chapter names paths only where it
+describes the component behind them.
 
 === Environment Components
 
@@ -96,9 +87,15 @@ of every run.
 
 === Stimulus Strategy
 
-Sequences drive the DUT through its real pins and buses. No enrolled test uses
-Force or deposit: a scenario that needs one is not reportable as PASS and is
-classified OUT in `SMU_DEFERRED_DISPOSITION.adoc`.
+Sequences drive the DUT through its real pins and buses. One enrolled force
+exists, `+esrc_noise_force` on the twelve ESRC raw-noise lanes of three
+SEP=1 leaves; it and every other stand-in on a proof path (the fuse-sense
+skip, the `abr_reg.sv` waiver, the scan-chain loopbacks, the `prim_sync`
+stand-ins, the eFuse models) have a six-field entry in the *Bench stand-ins
+and exceptions* section of
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`. A scenario that needs a
+force or deposit outside that record is not reportable as PASS and is
+classified OUT in the same document.
 
 [[smu-checking-strategy]]
 === Checking Strategy
@@ -108,17 +105,26 @@ them:
 
 . *No vacuous PASS.* `check_phase` raises if zero checks executed. A test that
   drives stimulus but never compares anything fails.
-. *No invented checkboxes.* `prove_mapped_features()` runs after the scenario
-  and requires that every TOKEN mapped to this testcase in
-  `smu_evidence_map.py` was logged by an `expect_*` call that passed. Tokens
-  cannot be claimed after seeing a green path. A testcase with no mapped rows
-  must be declared in `UNMAPPED_TESTS`; an undeclared one fails here. What this
-  does *not* establish is the EXPECT column: it is free-text contract wording,
-  nothing compares an observed value against it, and the per-row
-  `EVIDENCE TOKEN SEEN` line says only that the token was carried by a passing
-  check. Each row prints its binding -- `evidence-arg` when a caller named the
-  token outright, `check-name-substring` when the token was matched against the
-  check's name -- and the rows in the second class are collected into an
+. *No invented checkboxes.* The base test of each bench
+  (`cocotb_wrapper/tests/smu_base_test.py`, `cocotb/tests/smu_base_test.py`)
+  calls `bind_testcase` before bring-up and `prove_mapped_features()` after
+  the scenario for every leaf that builds an `SmuScoreboard`
+  (`use_shared_env`). The call requires that every TOKEN mapped to the
+  testcase in `smu_evidence_map.py` was logged by an `expect_*` call that
+  passed; tokens cannot be claimed after seeing a green path. A
+  scoreboard-bearing testcase with no mapped rows must be declared in
+  `UNMAPPED_TESTS` with the reason, and the gate logs the declaration instead
+  of failing; an undeclared row-less testcase fails here. A leaf that builds
+  no `SmuScoreboard` -- the firmware terminal-loop leaves, the two smokes, the
+  elaboration leaves -- is not gated: the wrapper base test logs one
+  `EVIDENCE MAP GATE SKIPPED` line naming it, and its verdict is the
+  sequence's own raise or its own scoreboard. What this does *not* establish is
+  the EXPECT column: it is free-text contract wording, nothing compares an
+  observed value against it, and the per-row `EVIDENCE TOKEN SEEN` line says
+  only that the token was carried by a passing check. Each row prints its
+  binding -- `evidence-arg` when a caller named the token outright,
+  `check-name-substring` when the token was matched against the check's name
+  -- and the rows in the second class are collected into an
   `EVIDENCE BINDING WEAK` warning.
 . *Traceable evidence.* Each satisfied check logs `EVIDENCE: <TOKEN>`, and the
   run ends with an `EVIDENCE_SUMMARY` line. `CHK-NONVAC` is emitted by
@@ -209,11 +215,11 @@ passing run logs the same summary at info level in `report_phase`.
 
 === Coverage Strategy
 
-Verilator does not support SystemVerilog covergroups, so scenario-intent
-coverage is collected Python-side: `smu_fcov.py` maps each testcase to the bins
-its scenario is meant to reach, and `run_phase` hits them before the scoreboard
-checks. RTL code coverage comes from the commercial simulators over the same
-tests.
+`SMU_FCOV.adoc` owns coverage intent: the metric choice, the `cov/sv`
+cover-property modules, and what the plan may claim from a database. Verilator
+does not compile SystemVerilog covergroups, so `smu_fcov.py` records
+scenario intent Python-side -- `run_phase` marks the bins a testcase claims
+before the scoreboard checks -- and that table is not coverage.
 
 === Open-Source BFM Policy
 
@@ -227,7 +233,20 @@ inbound pins
 |SMC OTP AXI-Lite over JTAG2AXI |`ocah_axi_vip` AXI-Lite wrappers
 |SMC scratch / mailbox |Backdoor read plus cocotb polling
 |Cross-trigger / iJTAG |product-pin stimulus from the sequences; no dedicated VIP
+|SMC and SEP eFuse / OTP |`efuse_interface_shim` + `efuse_bank_model`, instantiated by
+`hw/top/smc_ip_integration.sv` and `hw/top/sep_ip_integration.sv` inside the DUT
+compile (a model in the product composition, not a testbench component); on the
+block bench `tb/tb_top.sv` ties the shim responses to zero. Shadow registers are
+preloaded under `+skip_fuse_sense`
+|BSR / STAP / DFD host scan chains |testbench loopback of `scan_out` to `scan_in`
+(`tb/tb_wrapper_top.sv` BSR only, other chains tied low; `tb/tb_top.sv` all five)
+|CDC synchronisers on Verilator |`prim_sync2` / `prim_sync3` stand-ins from
+`hw/sys/smc/dv/tb/verilator_stubs/`, listed in `[build].stubs`
 |===
+
+The last three rows are stand-ins on a proof path; their scope and approval
+fields are the *Bench stand-ins and exceptions* entries in
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
 
 === Testlists
 
@@ -237,46 +256,17 @@ leaves and `[[groups]]`; `testlists/all.toml` holds the `--dut smu_block` groups
 and includes `dtp.toml`. A test is selectable by its own name or by any group it
 belongs to.
 
-Names classified OUT are catalogued in `SMU_DEFERRED_DISPOSITION.adoc`; none of
+Names classified OUT are catalogued in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`; none of
 them is enrolled and none is reportable as a PASS.
 
 === Build and Run
 
-`run_dv.py` bootstraps its own locked `uv` environment, so there is nothing to
-install or source beyond a simulator on `PATH`.
-
-[source,bash]
-----
-python3 tools/dv/run_dv.py --validate-configs
-python3 tools/dv/run_dv.py --dut smu --list
-python3 tools/dv/run_dv.py --dut smu --items smoke
-python3 tools/dv/run_dv.py --dut smu --items sep0_all
-python3 tools/dv/run_dv.py --dut smu --items smu_smc_smoke_test --seed 1
-----
-
-`--seed` applies to a single item; a multi-item regression picks its own seeds
-and reports them per test. Results land under
+`hw/sys/smu/dv/README.md` owns the build and run recipes: its Quick start
+names the CI, nightly and full-package commands and the toolchain-container
+step the firmware leaves need, and its tools table carries the versions.
+`run_dv.py` bootstraps its own locked `uv` environment; results land under
 `build/runs/<timestamp>__<tool>__<label>/` with a per-test `result.json` and
 `results.xml`.
-
-[source,bash]
-----
-# SV-UVM view (VCS): build, the bound scenario, the UVM-implemented smoke subset
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
-----
-
-The wrapper DUT additionally builds firmware images through
-`fw/build_firmware.py` into `build/firmware/`, declared per test as
-`[c_build.*].outputs` and staged into each per-test run directory.
-
-[source,bash]
-----
-python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
-python3 tools/dv/run_dv.py --dut smu --items smoke \
-  --stage flist --stage c_compile --stage hdl_compile --stage sim
-----
 
 [[sv-uvm-realization]]
 === SystemVerilog UVM Realization (`--framework uvm`)
@@ -286,9 +276,10 @@ declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm_block/` build tree), and `--dut smu_block --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 bind both realizations in their testlist `module` map
-(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
-entry error when selected under the UVM view, and `--skip-unimplemented` runs
-a group's UVM-implemented subset. The conventions this realization follows
+(`module = { cocotb = "<name>", uvm = "<name>" }`); a scenario declared
+`uvm = false` is skipped from group selections under the UVM view, one with
+no `uvm` entry errors there, and `--skip-unimplemented` skips those from a
+group selection as well. The conventions this realization follows
 are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
 DTP and SMC benches are the reference implementations.
 

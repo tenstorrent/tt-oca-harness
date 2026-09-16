@@ -50,6 +50,14 @@ OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES = 4
 class smc_output_filter_remap_security_test(smc_base_test):
     """Verify output filter allows reads and blocks writes at protocol level."""
 
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-NONVAC-PHASE-FENCE",
+        "CHK-OUTBOUND-BLOCK-WRITE",
+        "CHK-OUTBOUND-PASS-ALL",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -198,4 +206,13 @@ class smc_output_filter_remap_security_test(smc_base_test):
             timeouts=None,
             proxy=False,
             details="Output filter pass/read-only behavior checked with responder counters",
+        )
+        cocotb.log.info(
+            "CHK-NONVAC: protocol-VIP record accepted with csr_accesses=%d against "
+            "floor %d and jtag_axi_accesses=%d against floor %d; the scoreboard "
+            "rejects the record, and the run fails, below either floor",
+            pass_seq.accesses + block_seq.accesses,
+            OUTPUT_FILTER_MIN_CSR_ACCESSES,
+            self.env.scoreboard.axi_accesses_by_bus.get("JTAG AXI", 0),
+            OUTPUT_FILTER_MIN_JTAG_AXI_ACCESSES,
         )

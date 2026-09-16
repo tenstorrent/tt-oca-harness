@@ -14,6 +14,12 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_timeout_test(smc_base_test):
     """Stretch-timeout observation (empty target TX during host READ)."""
 
+    required_evidence = (
+        "CHK-I2C-P0-TIMEOUT",
+        "CHK-I2C-TIMEOUT-CSR-SWEEP",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

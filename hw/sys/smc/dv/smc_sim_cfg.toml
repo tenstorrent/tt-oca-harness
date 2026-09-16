@@ -21,6 +21,40 @@ tools = ["vcs", "verilator", "xcelium"]
 path = "testlists/all.toml"
 format = "toml_list"
 
+# The PeakRDL register blocks cpu_ctrl_reg, reset_unit_reg and
+# system_timer_octs_reg each carry two immediate assertions on
+# external_wr_ack / external_rd_ack (assert_bad_ext_wr_ack /
+# assert_bad_ext_rd_ack). On VCS they fire once at t=0 fs, before reset is
+# applied, because the ack strobes and external_pending are still X and an X
+# fails `assert(!ack || ...)`. Benign X-init in generated code; the SEP flow
+# waives the same class for abr_reg.
+#
+# They live in the POST-reset branch of an always_ff, so they are REAL runtime
+# protocol checks -- waiving them by file or by name alone would also hide a
+# genuine runtime violation. The two patterns therefore work as a pair:
+#
+#   ignore    -- drops the "Error:" line of exactly these six assertions, and
+#                only when it reads "at time 0 fs".
+#   hard-fail -- the companion line carries the timestamp ("...: started at
+#                0fs failed at 0fs"). Matching "failed at <non-zero>" turns any
+#                post-time-0 firing of those exact assertions into a hard
+#                failure.
+#
+# So the t=0 X-init noise is waived and nothing else is: a later firing of the
+# same assertion still fails the run, loudly, on the timestamped line. No other
+# assertion is touched; `prim_ag_clk_mux` CheckMutualExclusionClk1 in
+# particular still fails the leaf that fires it.
+#
+# ($assertoff in the TB does not work here -- it races the always_ff's own
+# time-0 evaluation and the assertion fires first.)
+[pass_fail]
+extra_ignore_patterns = [
+  '(cpu_ctrl_reg|reset_unit_reg|system_timer_octs_reg)\.sv", \d+: \S+\.assert_bad_ext_(wr|rd)_ack: at time 0 fs',
+]
+extra_hard_fail_patterns = [
+  '(cpu_ctrl_reg|reset_unit_reg|system_timer_octs_reg)\.sv", \d+: \S+\.assert_bad_ext_(wr|rd)_ack: started at \d+fs failed at [1-9]',
+]
+
 [native.stages.clean]
 kind = "clean"
 paths = ["{run_dir}", "hw/sys/smc/dv/build", "hw/sys/smc/dv/build_dual"]
@@ -44,7 +78,6 @@ common_bender_targets = [
 # smc_wrapper Bender target pulls hw/top/smc_wrapper.sv.
 bender_targets = ["smc", "smc_wrapper"]
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smc/dv/tb",
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
@@ -55,10 +88,15 @@ exclude_files = [
   "hw/oss-example/wrapper/sep/sep_ip_integration.sv",
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg_pkg.sv",
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
-  "deps/i3c-core",
 ]
 stubs = [
-  # Tooling shims only (OSS prim port / X-init). No product-module overrides.
+  # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks them on Verilator. On
+  # VCS only, the runner drops any stub whose basename the Bender graph
+  # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
+  # receives both files like Verilator does. The leaves that read a
+  # signal behind one, and the VCS control that keeps those claims honest, are
+  # in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc (Bench stand-ins).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
@@ -121,6 +159,19 @@ sources = [
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Spec-derived P0 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  # Spec-derived P1 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_iso_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_filt_fcov.sv",
 ]
 
 [build.verilator]
@@ -410,6 +461,9 @@ defines = [
 
 [targets.dual.tools.verilator]
 flags = [
+  # An undeclared net in the dual harness silently becomes a constant-0 wire
+  # under -Wno-fatal; a port that nothing drives must stop the build instead.
+  "-Werror-IMPLICIT",
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
@@ -450,7 +504,6 @@ filelist = "hw/sys/smc/dv/build/uvm/smc_uvm_compile.f"
 bender_filelist = "hw/sys/smc/dv/build/uvm/smc_uvm_bender.f"
 work_dir = "hw/sys/smc/dv/build/uvm"
 incdirs = [
-  "hw/sys/sep/dv/shims/prim",
   "hw/sys/smc/dv/tb",
   "hw/common/assert",
   "hw/sys/smc/dv/uvm/env",
@@ -491,14 +544,27 @@ sources = [
   # TB collateral shared with the cocotb flow.
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
-  # Flow-shared functional-coverage modules; the same five entries the
-  # [build] sources list carries for the cocotb/Verilator flow.
+  # Flow-shared functional-coverage modules; the same entries the [build]
+  # sources list carries for the cocotb/Verilator flow.
   "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Spec-derived P0 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  # Spec-derived P1 coverage.
+  "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_iso_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_filt_fcov.sv",
   "hw/sys/smc/dv/tb/smc_tb_if.sv",
   "hw/sys/smc/dv/uvm/env/smc_env_pkg.sv",
   "hw/sys/smc/dv/uvm/seq_lib/smc_seq_lib_pkg.sv",

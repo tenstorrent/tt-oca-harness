@@ -16,6 +16,16 @@ from smc_base_test import smc_base_test
 class smc_static_cg_sanity_test(smc_base_test):
     """P0 bring-up LIVE gate-disabled free-run plus the P1 module-gating thresholds."""
 
+    required_evidence = (
+        "CHK-DMA-GATE-DISABLED-FREE-RUN",
+        "CHK-ENABLE-THRESHOLD",
+        "CHK-MODULE-GATING",
+        "CHK-NONVAC",
+        "CHK-TIMEOUT-PATHS",
+        "CHK-ZEROER-GATE-DISABLED-FREE-RUN",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

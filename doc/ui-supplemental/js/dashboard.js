@@ -21,6 +21,7 @@
   // Files baked in during build, or public URLs
   var SUMMARY_URL = './data/summary.json';
   var TESTS_URL = './data/tests.json';
+  var HISTORY_URL = './data/history.json';
 
   // Bands shared by pass rate and every coverage column.
   var PASS_AT = 95;
@@ -29,10 +30,23 @@
   // Columns mapped from tools/dv/runlib/coverage_model.py CLOSURE_METRICS.
   var COVERAGE_COLUMNS = ['line', 'branch', 'expression', 'user'];
 
+  var GRID_LINE = '#e6e6e6';
+
   // Match to dut_status[] flows
   var CHIP_ROWS = ['chip_ocah'];
   var BLOCK_ROWS = ['dtp', 'sep', 'smc', 'aou'];
   var LINKABLE_ROWS = CHIP_ROWS.concat(BLOCK_ROWS);
+
+  /**
+   * Read a value from the page theme.
+   * @param {string} name CSS custom property, e.g. "--oca-text".
+   * @param {string} fallback Value used when the property is unset.
+   * @return {string} The resolved value.
+   */
+  function themeValue(name, fallback) {
+    var value = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return value.trim() || fallback;
+  }
 
   /**
    * Return the CSS style given a pass percentage.
@@ -338,10 +352,224 @@
       });
   }
 
-  // Both pages share this script, and it is loaded only by them; the element
-  // lookups below decide which renderer runs.
+  /**
+   * Draw a line chart with ECharts, one series per named entry.
+   * @param {!HTMLElement} host Element the chart replaces the contents of.
+   * @param {!Array<string>} labels x-axis labels, one per point.
+   * @param {!Array<{name: string, colour: string, values: !Array<?number>}>} series
+   *     Series to plot; a null value breaks the line rather than plotting zero.
+   * @param {number} max Upper bound of the y axis.
+   * @param {string} unit Suffix shown on y-axis labels and in tooltips.
+   */
+  function lineChart(host, labels, series, max, unit) {
+    // Changing the window redraws, and an instance outlives the nodes it drew,
+    // so the old one is disposed before the host is cleared.
+    var previous = echarts.getInstanceByDom(host);
+    if (previous) previous.dispose();
+
+    host.textContent = '';
+    // ECharts sizes to its container, so the box needs a height of its own.
+    host.style.height = '280px';
+
+    // 'svg' rather than the default canvas renderer, so each mark is a DOM
+    // node and the chart stays reachable by assistive technology.
+    var chart = echarts.init(host, null, { renderer: 'svg' });
+
+    chart.setOption({
+      // Generates a screen-reader description of the chart from the series.
+      aria: { enabled: true },
+      animation: false,
+      // ECharts styles its text inline, which a stylesheet cannot override,
+      // so the theme is read here instead.
+      textStyle: {
+        fontFamily: themeValue('--oca-font-body', 'sans-serif'),
+        color: themeValue('--oca-text', '#484848'),
+        fontSize: 11,
+      },
+      legend: {
+        bottom: 0,
+        itemWidth: 12,
+        itemHeight: 12,
+        textStyle: { color: themeValue('--oca-text', '#484848'), fontSize: 11 },
+      },
+      // 'grid' is the plot rectangle, not the gridlines. These margins
+      // reserve room around it for the axis labels and legend.
+      grid: { left: 56, right: 20, top: 16, bottom: 56 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: themeValue('--oca-cream-light', '#f8f4eb'),
+        borderColor: themeValue('--oca-green', '#103525'),
+        textStyle: {
+          color: themeValue('--oca-text', '#484848'),
+          fontFamily: themeValue('--oca-font-body', 'sans-serif'),
+        },
+      },
+      // Ticks are labelled month-day. The full range is named in the status
+      // line above the charts.
+      xAxis: {
+        type: 'category',
+        // Without this a category axis leaves a gap at each end, holding
+        // the first and last run away from the edges.
+        boundaryGap: false,
+        data: labels.map(function (label) {
+          return label.slice(5);
+        }),
+        axisLine: { lineStyle: { color: GRID_LINE } },
+        axisTick: { show: false },
+        axisLabel: { color: themeValue('--oca-text', '#484848'), fontSize: 11 },
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        max: max,
+        axisLabel: {
+          formatter: '{value}' + unit,
+          color: themeValue('--oca-text', '#484848'),
+          fontSize: 11,
+        },
+        axisLine: { show: false },
+        // splitLine is ECharts' name for the gridlines across the plot.
+        splitLine: { lineStyle: { color: GRID_LINE } },
+      },
+      series: series.map(function (s) {
+        return {
+          name: s.name,
+          type: 'line',
+          data: s.values,
+          itemStyle: { color: s.colour },
+          lineStyle: { width: 2 },
+          symbolSize: 5,
+          // A null value breaks the line rather than joining across it.
+          connectNulls: false,
+        };
+      }),
+    });
+
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () {
+        chart.resize();
+      }).observe(host);
+    }
+  }
+
+  /**
+   * Render the trend charts from the published history.
+   * @param {!HTMLElement} statusEl Element carrying the range, or the reason
+   *     the charts are empty.
+   * @param {!HTMLElement} trendsEl Wrapper revealed once the charts are drawn.
+   * @param {!HTMLSelectElement} windowEl Control selecting how many runs to show.
+   */
+  function renderTrends(statusEl, trendsEl, windowEl) {
+    var fail = failWith(statusEl);
+
+    fetchJson(HISTORY_URL)
+      .then(function (history) {
+        var all = history.points || [];
+        if (!all.length) {
+          fail('the published history contains no points');
+          return;
+        }
+
+        function draw() {
+          // A hidden element has no size for the charts to measure, so the
+          // wrapper is shown before they are drawn.
+          trendsEl.hidden = false;
+          var count = parseInt(windowEl.value, 10) || 0;
+          var pts = count > 0 ? all.slice(-count) : all;
+          var labels = pts.map(function (p) {
+            return (p.generated_at || '').slice(0, 10);
+          });
+
+          lineChart(
+            document.getElementById('dashboard-trend-tests'),
+            labels,
+            [
+              {
+                name: 'Test pass rate',
+                colour: '#3A863D',
+                values: pts.map(function (p) {
+                  return round1(p.test_pass_rate);
+                }),
+              },
+              {
+                name: 'Flow pass rate',
+                colour: '#C55050',
+                values: pts.map(function (p) {
+                  return round1(p.flow_pass_rate);
+                }),
+              },
+            ],
+            100,
+            ' %'
+          );
+
+          var palette = ['#103525', '#F6931E', '#937027', '#3A863D', '#C55050', '#f6c343'];
+          lineChart(
+            document.getElementById('dashboard-trend-coverage'),
+            labels,
+            COVERAGE_COLUMNS.map(function (family, i) {
+              return {
+                name: family,
+                colour: palette[i % palette.length],
+                values: pts.map(function (p) {
+                  var dut = (p.per_dut || [])[0] || {};
+                  var metrics = dut.effective_metrics || {};
+                  return round1(metrics[family]);
+                }),
+              };
+            }),
+            100,
+            ' %'
+          );
+
+          var counts = pts.map(function (p) {
+            return Math.max(p.failed_tests || 0, p.flaky_tests || 0);
+          });
+          lineChart(
+            document.getElementById('dashboard-trend-failures'),
+            labels,
+            [
+              {
+                name: 'Failing',
+                colour: '#C55050',
+                values: pts.map(function (p) {
+                  return p.failed_tests || 0;
+                }),
+              },
+              {
+                name: 'Flaky',
+                colour: '#f6c343',
+                values: pts.map(function (p) {
+                  return p.flaky_tests || 0;
+                }),
+              },
+            ],
+            Math.max.apply(null, counts.concat([4])),
+            ''
+          );
+
+          statusEl.className = 'dashboard-status';
+          statusEl.textContent =
+            pts.length + ' runs, ' + labels[0] + ' to ' + labels[labels.length - 1] + '.';
+        }
+
+        windowEl.addEventListener('change', draw);
+        draw();
+      })
+      .catch(function (error) {
+        fail(error.message);
+      });
+  }
+
   var statusEl = document.getElementById('dashboard-status');
   if (!statusEl) return;
+
+  var trendsEl = document.getElementById('dashboard-trends');
+  var windowEl = document.getElementById('dashboard-window-select');
+  if (trendsEl && windowEl) {
+    renderTrends(statusEl, trendsEl, windowEl);
+    return;
+  }
 
   var chipRowsEl = document.getElementById('dashboard-chip-rows');
   var blockRowsEl = document.getElementById('dashboard-block-rows');

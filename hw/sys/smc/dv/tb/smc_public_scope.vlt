@@ -28,3 +28,11 @@ public_flat_rd -module "smc_efuse_wrapper" -var "is_prod_or_rma_sip"
 // `[NO-FORCED-INTERNAL-STATE]` structurally true.
 public_flat_rd -module "OCAH4CORECluster_CSRFile" -var "reg_mcause"
 public_flat_rd -module "OCAH4CORECluster_CSRFile" -var "reg_mepc"
+
+// The dual target makes IMPLICIT an error so an undeclared net in this harness
+// stops the build instead of becoming a constant-0 wire. Vendored OpenTitan
+// RTL declares two buffer outputs implicitly (prim_diff_encode.sv) and is not
+// ours to edit, so the rule is switched off for that path. This file is on
+// every SMC cocotb Verilator build, so the default target drops those two
+// warnings as well; nothing under hw/ matches the glob.
+lint_off -rule IMPLICIT -file "*/vendor/lowRISC/opentitan/*"

@@ -24,6 +24,9 @@ from smc_base_test import smc_base_test
 class smc_fw_hello_world_test(smc_base_test):
     """Firmware boots from the scratch image and posts its own PASS word."""
 
+    required_evidence = ("CHK-FW-HELLO-WORLD-BOOT",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

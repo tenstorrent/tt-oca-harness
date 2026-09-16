@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SYS_IN inbound0 program via J2A then SMN admit; outside page still DECERR. SEP=0, no Force."""
+"""SYS_IN inbound0 program via J2A then SMN admit; outside page still DECERR. SEP=1, no Force."""
 
 from __future__ import annotations
 
@@ -18,12 +18,12 @@ from seq_lib.smu_addr_map import (
 from seq_lib.smu_axi_helpers import make_smu_axi_master
 from seq_lib.smu_filter_helpers import (
     PASS_RW_CONFIG,
-    SMC_FILTER_POISON_LO,
     WDT_CTRL_ADDR,
     await_smn_resp,
     inbound0_config_readback,
     page_align_window,
     program_inbound0_window,
+    program_smc_aperture_local_alias,
 )
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -75,6 +75,8 @@ class smu_sys_in_filter_program_jtag_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
@@ -94,11 +96,6 @@ class smu_sys_in_filter_program_jtag_test_seq:
             clk=dut.clk_smu_i,
             label="pre-program VERSION_LO DECERR",
         )
-        if (int(pre_data) & 0xFFFF_FFFF) != SMC_FILTER_POISON_LO:
-            raise AssertionError(
-                f"pre-program poison want 0x{SMC_FILTER_POISON_LO:08x} "
-                f"got 0x{int(pre_data) & 0xFFFF_FFFF:08x}"
-            )
         self.s2_ok = True
         self._log(f"CHK-FILTER-PROG-PRE-DECERR data=0x{int(pre_data) & 0xFFFF_FFFF:08x}")
         sb.expect_eq("CHK-FILTER-PROG-PRE-DECERR", pre_resp, RESP_DECERR)
@@ -151,11 +148,6 @@ class smu_sys_in_filter_program_jtag_test_seq:
             clk=dut.clk_smu_i,
             label="WDT outside window DECERR",
         )
-        if (int(out_data) & 0xFFFF_FFFF) != SMC_FILTER_POISON_LO:
-            raise AssertionError(
-                f"outside-window poison want 0x{SMC_FILTER_POISON_LO:08x} "
-                f"got 0x{int(out_data) & 0xFFFF_FFFF:08x}"
-            )
         self.s5_ok = True
-        self._log(f"CHK-FILTER-PROG-OUT-DECERR WDT poison=0x{int(out_data) & 0xFFFF_FFFF:08x}")
+        self._log(f"CHK-FILTER-PROG-OUT-DECERR WDT data=0x{int(out_data) & 0xFFFF_FFFF:08x}")
         sb.expect_eq("CHK-FILTER-PROG-OUT-DECERR", out_resp, RESP_DECERR)

@@ -123,9 +123,49 @@ static void i2c_wrapper_enable(uint32_t idx, bool controller_mode) {
 }
 
 /**
+ * @brief After a transaction that ends in STOP, wait until the target has logged it.
+ *
+ * i2c_controller_write()/read() return once the data byte is done; the controller
+ * FSM drives the STOP afterwards and the target pushes a STOP entry into its ACQ
+ * FIFO one bus event later. Draining or resetting the target ACQ before that
+ * entry lands leaves it behind the reset, and i2c_reset_fifos() reports that as
+ * a reset that did not take. Wait for HOSTIDLE, then consume entries until the
+ * STOP shows up; anything before it is the START/address leftover of this
+ * transaction.
+ */
+static int target_wait_stop_entry(uint32_t controller_idx, uint32_t target_idx) {
+    uint32_t target_base = i2c_get_base(target_idx);
+    const uint32_t STOP_WAIT_TIMEOUT = 10000;
+    const uint32_t STOP_DRAIN_BOUND = 16;
+    uint32_t wait_count = 0;
+    uint32_t drained = 0;
+
+    if (i2c_controller_wait_idle(controller_idx, I2C_TIMEOUT_DEFAULT) != I2C_OK) {
+        simputs("    ERROR: controller did not return to idle after STOP\n");
+        return I2C_ERROR;
+    }
+    while (wait_count < STOP_WAIT_TIMEOUT && drained < STOP_DRAIN_BOUND) {
+        if (i2c_target_acq_fifo_empty(target_idx)) {
+            wait_count++;
+            continue;
+        }
+        i2c__ACQDATA_t acqdata = {
+            .w = read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
+                                         SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+        drained++;
+        if (acqdata.f.SIGNAL == I2C_ACQ_SIGNAL_STOP) {
+            return I2C_OK;
+        }
+    }
+    simputs("    ERROR: target ACQ never logged the STOP entry\n");
+    return I2C_ERROR;
+}
+
+/**
  * @brief Fail-closed: wait for ACQ DATA byte matching expected, then drain/reset ACQ.
  */
-static int target_verify_acq_data_and_clear(uint32_t target_idx, uint8_t expected) {
+static int target_verify_acq_data_and_clear(uint32_t controller_idx, uint32_t target_idx,
+                                            uint8_t expected, bool ends_with_stop) {
     uint32_t target_base = i2c_get_base(target_idx);
     uint32_t wait_count = 0;
     const uint32_t ACQ_WAIT_TIMEOUT = 10000;
@@ -171,6 +211,9 @@ static int target_verify_acq_data_and_clear(uint32_t target_idx, uint8_t expecte
         i2c_clear_target_events(target_idx, 0xFFFFFFFF);
     }
 
+    if (ends_with_stop && target_wait_stop_entry(controller_idx, target_idx) != I2C_OK) {
+        return I2C_ERROR;
+    }
     uint32_t drain_count = 0;
     while (!i2c_target_acq_fifo_empty(target_idx)) {
         (void)read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
@@ -431,7 +474,8 @@ int main(void) {
 
             // Fail-closed: prove target ACQ saw write data, then clear for next txn
             simputs("    [Target] Verifying ACQ DATA after write...\n");
-            if (target_verify_acq_data_and_clear(TARGET_IDX, write_data) != I2C_OK) {
+            if (target_verify_acq_data_and_clear(CONTROLLER_IDX, TARGET_IDX, write_data,
+                                                 send_stop) != I2C_OK) {
                 write_scratch(0, 0xBAD00044 | (txn & 0xFF));
                 test_fail(0);
             }
@@ -510,6 +554,10 @@ int main(void) {
             uint32_t target_events = i2c_get_target_events(TARGET_IDX);
             if (target_events != 0) {
                 i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF);
+            }
+            if (send_stop && target_wait_stop_entry(CONTROLLER_IDX, TARGET_IDX) != I2C_OK) {
+                write_scratch(0, 0xBAD00056 | (txn & 0xFF));
+                test_fail(0);
             }
             uint32_t drain_base = i2c_get_base(TARGET_IDX);
             uint32_t drain_count = 0;

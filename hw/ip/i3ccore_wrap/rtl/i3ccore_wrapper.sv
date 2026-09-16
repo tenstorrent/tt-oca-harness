@@ -155,13 +155,18 @@ module i3ccore_wrapper
     .axi_req_t(axil_req_t),
     .axi_resp_t(axil_resp_t),
     .NoMstPorts(NUM_I3C),
-    .MaxTrans(1),
+    .MaxTrans(8),
+    // Zero-latency lite demux deadlocks against the I3C AXI skid
+    // (wready only after AW is accepted): W/R can retire on the TB
+    // side while the selected slave never sees the beat. Register
+    // every channel; FallThrough keeps the select FIFO visible the
+    // cycle AW/AR is forwarded.
     .FallThrough(1'b1),
-    .SpillAw(1'b0),
-    .SpillW(1'b0),
-    .SpillB(1'b0),
-    .SpillAr(1'b0),
-    .SpillR(1'b0)
+    .SpillAw(1'b1),
+    .SpillW(1'b1),
+    .SpillB(1'b1),
+    .SpillAr(1'b1),
+    .SpillR(1'b1)
   ) u_axil_demux (
     .clk_i(clk_i),
     .rst_ni(rst_ni),

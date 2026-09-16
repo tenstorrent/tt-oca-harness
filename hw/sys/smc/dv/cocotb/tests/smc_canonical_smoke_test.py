@@ -14,6 +14,17 @@ from smc_base_test import smc_base_test
 class smc_canonical_smoke_test(smc_base_test):
     """Run six-agent observability across the reset recovery matrix."""
 
+    required_evidence = (
+        "CHK-CANONICAL-SMOKE",
+        "CHK-RESET-WAIT-COLD_PRIMARY_ASSERTED",
+        "CHK-RESET-WAIT-COLD_RELEASED",
+        "CHK-RESET-WAIT-COOL_PRIMARY_ASSERTED",
+        "CHK-RESET-WAIT-COOL_RELEASED",
+        "CHK-RESET-WAIT-PG_ASSERTED",
+        "CHK-RESET-WAIT-PG_RELEASED",
+    )
+    min_evidence = 7
+
     # Seven of this testcase's compares are idle-zero reads: the four AXIL
     # activity bits, the sync/uart IRQ aggregates and I2C `cg_en`. These
     # controls drive the producers of five of them (the efuse-bank and

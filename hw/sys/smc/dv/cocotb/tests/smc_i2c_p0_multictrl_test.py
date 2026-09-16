@@ -14,6 +14,14 @@ from smc_base_test import smc_base_test
 class smc_i2c_p0_multictrl_test(smc_base_test):
     """Three-phase I2C0/1/2 shared-bus write + ACQ proof."""
 
+    required_evidence = (
+        "CHK-I2C-P0-MULTICTRL",
+        "CHK-I2C-P0-MULTICTRL-P0",
+        "CHK-I2C-P0-MULTICTRL-P1",
+        "CHK-I2C-P0-MULTICTRL-P2",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -18,6 +18,19 @@ from smc_base_test import smc_base_test
 class smc_dma_cg_activity_test(smc_base_test):
     """LIVE DMA activity/enable clock-gating check."""
 
+    required_evidence = (
+        "CHK-DMA-GATE-OFF",
+        "CHK-DMA-GATING-DISABLED",
+        "CHK-DMA-HYST-RACE",
+        "CHK-DMA-HYST-SWEEP",
+        "CHK-DMA-WAKEUP-BACKEND",
+        "CHK-DMA-WAKEUP-FRONTEND",
+        "CHK-NONVAC",
+        "CHK-NONVAC-P2",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 9
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

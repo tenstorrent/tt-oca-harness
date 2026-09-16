@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unit tests for the formal launch templates: registry defaults, app-table overrides, optional
-groups, the routing of --proof-depth and --formal-arg, template validation, and the dry-run
-command line.
+"""Unit tests for the formal stage: app resolution (item module, --app, default_tool
+fallback, cwd), the launch templates (registry defaults, app-table overrides, optional groups,
+the routing of --proof-depth and --formal-arg, template validation), and the dry-run stage.
 
 Run from the repository root:
 
@@ -23,17 +23,47 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib import stages  # noqa: E402
+from runlib import cli, site, stages  # noqa: E402
 from runlib.config import (  # noqa: E402
     load_simulators,
     render_formal_argv,
     validate_formal_argv_template,
     validate_native_config_shape,
 )
+from runlib.duts import resolve_dut  # noqa: E402
+from runlib.logparse import validate_parser_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
+from runlib.site import load_site_layer, merged_simulators  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DTP_DV_ROOT = REPO_ROOT / "hw/sys/dtp/dv"
+
+# A licensed formal backend reaches the runner as a complete tool table in the site layer; this
+# one carries the generic launch template a Tcl-driven tool uses.
+LICENSED_SITE = """
+schema_version = 1
+[simulators.fvtool]
+kind = "formal"
+binary = "fvtool"
+frameworks = ["formal"]
+license_env = ["FVTOOL_LICENSE_FILE"]
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+argv = ["{binary}", "{args}", "{script}", "{formal_args}"]
+"""
+
+
+def registry_with_site_backend() -> dict:
+    """The checked-in registry with the site-added licensed backend `fvtool` merged in."""
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "site.toml"
+        path.write_text(LICENSED_SITE)
+        layer = load_site_layer(REPO_ROOT, {site.SITE_ENV: str(path)})
+    assert layer is not None
+    return merged_simulators(load_simulators(REPO_ROOT), layer)
+
+
 RUN_DIR = Path("/runs/unit")
 
 
@@ -86,12 +116,8 @@ def make_args(**overrides) -> Namespace:
 class FormalLaunchBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.simulators = load_simulators(REPO_ROOT)
-        cls.licensed_tool = next(
-            name
-            for name, cfg in sorted(cls.simulators.items())
-            if cfg.get("kind") == "formal" and cfg["license_env"]
-        )
+        cls.simulators = registry_with_site_backend()
+        cls.licensed_tool = "fvtool"
 
     def launch(
         self, tool: str, sim_cfg: dict, args: Namespace, simulators: dict | None = None
@@ -264,6 +290,130 @@ class TemplateValidationTest(unittest.TestCase):
             optional={"proof_depth": None},
         )
         self.assertEqual(argv, ["tool", "a", "b"])
+
+
+class FormalAppResolutionTest(unittest.TestCase):
+    """`resolve_formal_app`: which `[formal.apps.<app>.<tool>]` table an item launches."""
+
+    def resolve(self, raw: dict, item: str = "dtp_fpv", tool: str = "sby", **args):
+        flow = formal_flow(tool, raw)
+        return stages.resolve_formal_app(
+            flow, REPO_ROOT, raw, catalog(), item, make_args(**args), tool
+        )
+
+    def test_item_module_names_the_app(self) -> None:
+        app = self.resolve(sim_cfg_for("sby"))
+        self.assertEqual((app.name, app.tool), ("fpv", "sby"))
+        self.assertEqual(app.table["script"], "dtp.sby")
+        self.assertEqual(app.cwd, DTP_DV_ROOT / "formal/fpv/sby")
+
+    def test_app_flag_overrides_the_module(self) -> None:
+        raw = {
+            "formal": {
+                "apps": {"fpv": {"sby": {"script": "a.sby"}}, "conn": {"sby": {"script": "c.sby"}}}
+            }
+        }
+        self.assertEqual(self.resolve(raw, app="conn").table["script"], "c.sby")
+
+    def test_item_without_a_catalog_entry_uses_its_own_name(self) -> None:
+        raw = {"formal": {"apps": {"solo": {"sby": {"script": "s.sby"}}}}}
+        self.assertEqual(self.resolve(raw, item="solo").name, "solo")
+
+    def test_default_tool_fallback_when_the_selected_tool_has_no_table(self) -> None:
+        raw = {"formal": {"apps": {"fpv": {"default_tool": "sby", "sby": {"script": "d.sby"}}}}}
+        app = self.resolve(raw, tool="fvtool")
+        self.assertEqual((app.tool, app.table["script"]), ("sby", "d.sby"))
+
+    def test_missing_app_and_missing_backend_are_config_errors(self) -> None:
+        with self.assertRaises(ConfigError) as ctx:
+            self.resolve({"formal": {"apps": {}}})
+        self.assertIn("formal app `fpv` is not defined", str(ctx.exception))
+        raw = {"formal": {"apps": {"fpv": {"sby": {"script": "a.sby"}}}}}
+        with self.assertRaises(ConfigError) as ctx:
+            self.resolve(raw, tool="fvtool")
+        self.assertIn("has no `fvtool` backend", str(ctx.exception))
+
+    def test_cwd_resolves_repo_relative_then_dut_relative(self) -> None:
+        repo_relative = self.resolve(sim_cfg_for("sby", cwd="hw/sys/dtp/dv/formal/fpv/sby"))
+        self.assertEqual(repo_relative.cwd, REPO_ROOT / "hw/sys/dtp/dv/formal/fpv/sby")
+        dut_relative = self.resolve(sim_cfg_for("sby", cwd="formal/fpv/sby"))
+        self.assertEqual(dut_relative.cwd, DTP_DV_ROOT / "formal/fpv/sby")
+        absent = self.resolve(sim_cfg_for("sby", cwd="no/such/dir"))
+        self.assertEqual(absent.cwd, DTP_DV_ROOT / "no/such/dir")
+
+
+class FormalDryRunStageTest(unittest.TestCase):
+    """`run_stage` on a formal item in dry-run: renders the command, grades nothing."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.simulators = load_simulators(REPO_ROOT)
+        cls.policies = validate_parser_registry(REPO_ROOT)
+
+    def test_dry_run_prints_the_command_and_skips_grading(self) -> None:
+        raw = {"native": {"stages": {"formal": {"kind": "formal_run"}}}, **sim_cfg_for("sby")}
+        args = make_args(quiet=False, seed=None, sim_jobs=1, cov=False, waves=None)
+        out = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp, redirect_stdout(out):
+            result = stages.run_stage(
+                formal_flow("sby", raw),
+                REPO_ROOT,
+                raw,
+                catalog(),
+                "formal",
+                "dtp_fpv",
+                args,
+                "sby",
+                Path(tmp),
+                self.simulators,
+                self.policies,
+            )
+            cmd = next(line for line in out.getvalue().splitlines() if line.startswith("CMD  :"))
+            self.assertEqual(
+                cmd,
+                f"CMD  : sby -f --prefix {tmp}/stages/formal/dtp_fpv dtp.sby bmc cover",
+            )
+        self.assertEqual((result.stage, result.item, result.status), ("formal", "dtp_fpv", "PASS"))
+        self.assertIsNone(result.formal)
+        self.assertIsNone(result.parser)
+
+
+class FormalStageSelectionTest(unittest.TestCase):
+    """`selected_stages` on a formal flow: the filelist stage precedes the proof when declared."""
+
+    def stages(self, raw: dict, **overrides) -> list[str]:
+        values = {
+            "cov": False,
+            "stage": None,
+            "build_only": False,
+            "run_only": False,
+            "regress": False,
+        }
+        values.update(overrides)
+        return cli.selected_stages(formal_flow("sby", raw), Namespace(**values))
+
+    def test_declared_filelist_stage_runs_before_the_proof(self) -> None:
+        raw = {
+            "native": {"stages": {"flist": {"kind": "filelist"}, "formal": {"kind": "formal_run"}}}
+        }
+        self.assertEqual(self.stages(raw), ["flist", "formal"])
+        self.assertEqual(self.stages(raw, build_only=True), ["flist"])
+        self.assertEqual(self.stages(raw, run_only=True), ["formal"])
+
+    def test_profile_without_a_filelist_stage_runs_the_proof_alone(self) -> None:
+        raw = {"native": {"stages": {"formal": {"kind": "formal_run"}}}}
+        self.assertEqual(self.stages(raw), ["formal"])
+
+    def test_checked_in_dtp_formal_config_plans_both_stages(self) -> None:
+        flow = resolve_dut(REPO_ROOT, "dtp", mode="formal")
+        self.assertEqual(flow.kind, "fv")
+        self.assertEqual(
+            cli.selected_stages(
+                flow,
+                Namespace(cov=False, stage=None, build_only=False, run_only=False, regress=False),
+            ),
+            ["flist", "formal"],
+        )
 
 
 class FormalConfigShapeTest(unittest.TestCase):

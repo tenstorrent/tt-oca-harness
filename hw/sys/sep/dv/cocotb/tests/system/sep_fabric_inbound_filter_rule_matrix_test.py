@@ -48,12 +48,10 @@ allow_burst=1 window on entry 15. An 8-byte window inside the
 dual-scratch page (0x1080_2000) is rewritten by axi_filter_wrap.sv to the
 whole page, and traffic_filter.sv then compares only addr[AddrWidth-1:12].
 CHK-PAGE-WIDEN proves the 4 KB page grant ON THE BUS
-(hw/common/axi/axi_filter/doc/index.adoc: START down, END up):
+(hw/ip/axi_filter/doc/index.adoc: START down, END up):
 an external access to an address inside the granted page but OUTSIDE the
 programmed START..END is OKAY for read and write, with the exact staged
-value. The HW-adjusted START/END readback is the setup step that shows
-the widen took effect, not the claim: a CSR mirror is not evidence of
-what the filter passes.
+value.
 CHK-PAGE-BOUND is the security contract: memory_map.adoc packs distinct
 blocks of this aperture at the same 4 KB pitch (DMA CSR 0x1080_0000, WDT
 0x1080_1000, dual scratch banks 0x1080_2000), so a page-crossing grant would
@@ -63,10 +61,9 @@ scratch-page grant, then the WDT page becomes the granted one, which answers
 that WDT probe and turns the scratch register DECERR. Each probe is therefore
 proven reachable, so neither DECERR can be an address-decode hole.
 CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
-cannot move: sep_system_csr.sv demuxes a locked entry's writes to an AXI-Lite
-error slave, so the attempt returns SLVERR, the field reads back unchanged,
-and the frozen bit still grants the widened page. The lock is sticky until
-reset, so this cell runs last on entry 15.
+cannot move. A write to a locked entry completes SLVERR, the field reads
+back unchanged, and the frozen bit still grants the widened page. The lock
+is sticky until reset, so this cell runs last on entry 15.
 
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
@@ -384,11 +381,6 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.filt.disable_all()
         await program_widen()
 
-        # Setup evidence, not the contract: filter_ctrl.rdl declares
-        # START_ADDR/END_ADDR hw=rw, so axi_filter_wrap.sv writes the adjusted
-        # window back into the storage the CPU reads. Reading it here shows the
-        # rewrite took effect; a mirror register says nothing about what the
-        # filter passes, which is what the bus probes below measure.
         start_rb = await self.filt.read_cpu(cell.start_addr_reg)
         end_rb = await self.filt.read_cpu(cell.end_addr_reg)
         assert start_rb == wcfg.page_base, (

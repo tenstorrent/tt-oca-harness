@@ -18,6 +18,13 @@ from smc_base_test import smc_base_test
 class smc_cpu_ctrl_scratch_window_test(smc_base_test):
     """Run CPU scratch-window write/readback/restore checks."""
 
+    required_evidence = (
+        "CHK-CPU-BFM-OBSERVABILITY",
+        "CHK-CPU-CTRL-DUMMY-ROM",
+        "CHK-CPU-CTRL-SCRATCH",
+    )
+    min_evidence = 3
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -160,7 +160,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
     def _last_write_addr(self) -> int:
         """AW address of the most recently B-responded output-AXI write.
 
-        `tb_top.sv:1076-1077` latches the counter and this address together on
+        `tb_top.sv:1085-1086` latches the counter and this address together on
         the same B handshake, so pairing them attributes a counted write to the
         destination it went to. A bare counter increment cannot: the counter is
         shared by every write on the output port, so op1's own response
@@ -262,7 +262,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         trigger a solo op1-shaped operation from idle and measure the exact
         clk_smc_i cycle span busy stays asserted, so the 3 required race
         timings can be scheduled against the DUT's own observed timing
-        (CHK-NO-TAUTOLOGY: never a hand literal)."""
+        (never a hand literal)."""
         await self._wait_zeroer_idle()
         timeline: list[int] = []
         task = cocotb.start_soon(self._p2_trigger_op(P2_DEST_CALIB, P2_OP_SIZE))

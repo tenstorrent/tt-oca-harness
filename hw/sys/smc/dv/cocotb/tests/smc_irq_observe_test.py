@@ -11,6 +11,9 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_irq_observe_test(smc_base_test):
+    required_evidence = ("CHK-IRQ-OBSERVE-IDLE-CHECKED",)
+    min_evidence = 1
+
     # The scoreboard's only value compare on this testcase's proof path is the
     # idle `tb_<aggregate> == 0` of the three IRQ aggregates, which a
     # stuck-at-0 / undriven / mis-bound probe passes identically to a quiet DUT.

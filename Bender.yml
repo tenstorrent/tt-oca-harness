@@ -308,13 +308,15 @@ vendor_package:
   #     - "dependencies/common"
   #   patch_dir: "vendor/tenstorrent/tt-hw-debug/patches"
 
-  # AXI-over-UCIe (AoU) bridge IP: RTL design + csr SystemRDL.
+  # AXI-over-UCIe (AoU) bridge IP: RTL, CSR SystemRDL, and the MAS.
   - name: aou
     target_dir: "vendor/tenstorrent/aou/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "28716da1c1e588636f88410d47846714c63058eb" }
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "08863921a328579bc96f3141b05113c11d7ac84c" }
     include_from_upstream:
       - "RTL"
       - "csr"
+      - "DOC/MAS"
+      - "DOC/integration_guide"
     patch_dir: "vendor/tenstorrent/aou/patches"
 
   # I3C controller/target core. The wrapper and memory primitives are left out;
@@ -385,10 +387,10 @@ sources:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_addrmap_pkg.sv
   - target: sep
     files:
-      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_addrmap_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_addrmap_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_addrmap_pkg.sv
@@ -431,7 +433,7 @@ sources:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
   - target: sep
     files:
-      - hw/common/axi/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
+      - hw/ip/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
   - target: smc
     files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
@@ -456,9 +458,9 @@ sources:
     files:
       - hw/ip/avsbus_controller/regs/gen/sv/avsbus_controller_reg_pkg.sv
       - hw/ip/avsbus_controller/rtl/avsbus_controller_pkg.sv
-      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
-      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
-      - hw/common/axi/axi_filter/rtl/axi_filter_pkg.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg_pkg.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg_pkg.sv
+      - hw/ip/axi_filter/rtl/axi_filter_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_sep_wrap_reg_pkg.sv
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_smc_wrap_reg_pkg.sv
@@ -528,7 +530,7 @@ sources:
       - hw/ip/memory_interface/rtl/examples/sram/example_sram_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
+      - hw/ip/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
   - target: any(sep, key_manager)
     files:
       - hw/ip/scrambler/rtl/scrambler_pkg.sv
@@ -710,15 +712,15 @@ sources:
       - hw/ip/avsbus_controller/rtl/avsbus_controller.sv
       - hw/ip/avsbus_controller/rtl/submodules/avsbus_async_fifo.sv
       - hw/ip/avsbus_controller/rtl/submodules/avsbus_crc3.sv
-      - hw/common/axi/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv
-      - hw/common/axi/axi_alias_remap/rtl/axi_alias_remap.sv
-      - hw/common/axi/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
-      - hw/common/axi/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
-      - hw/common/axi/axi_filter/rtl/axi_filter_wrap.sv
-      - hw/common/axi/axi_filter/rtl/traffic_filter.sv
+      - hw/ip/axi_alias_remap/regs/gen/sv/alias_remap_reg.sv
+      - hw/ip/axi_alias_remap/rtl/axi_alias_remap.sv
+      - hw/ip/axi_alias_remap/rtl/axi_alias_remap_wrap.sv
+      - hw/ip/axi_filter/regs/gen/sv/filter_ctrl_reg.sv
+      - hw/ip/axi_filter/rtl/axi_filter_wrap.sv
+      - hw/ip/axi_filter/rtl/traffic_filter.sv
   - target: smc
     files:
-      - hw/common/axi/axi_hang_detector/rtl/axi_hang_detector.sv
+      - hw/ip/axi_hang_detector/rtl/axi_hang_detector.sv
   - target: any(sep, smc)
     files:
       - hw/ip/axi_lite_mailbox_unit/regs/gen/sv/axil_mailbox_reg.sv
@@ -916,7 +918,7 @@ sources:
       - hw/ip/key_manager/rtl/picorv32_wrapper.sv
   - target: sep
     files:
-      - hw/common/axi/axi_window_remap/rtl/axi_window_remap.sv
+      - hw/ip/axi_window_remap/rtl/axi_window_remap.sv
   - target: smc
     files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
@@ -926,8 +928,8 @@ sources:
       - hw/ip/memory_interface/rtl/memory_interface.sv
   - target: any(sep, smc)
     files:
-      - hw/common/axi/output_remap/regs/gen/sv/output_remap_reg.sv
-      - hw/common/axi/output_remap/rtl/output_remap.sv
+      - hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv
+      - hw/ip/output_remap/rtl/output_remap.sv
   - target: any(sep, key_manager)
     files:
       - hw/ip/scrambler/rtl/scrambler.sv

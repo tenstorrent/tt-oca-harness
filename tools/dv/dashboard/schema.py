@@ -112,9 +112,18 @@ def _merge_failure_buckets(results: list[dict[str, Any]]) -> list[dict[str, Any]
     )
 
 
+def run_completed(result: dict[str, Any]) -> bool | None:
+    """The record's `tests.completed`: `None` when the producer did not say."""
+    tests = result.get("tests")
+    completed = tests.get("completed") if isinstance(tests, dict) else None
+    return completed if isinstance(completed, bool) else None
+
+
 def _category_summary(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     categories: dict[str, dict[str, Any]] = {}
     for result in results:
+        if run_completed(result) is False:
+            continue
         flow = str(result.get("flow", ""))
         for test in result.get("tests_detail") or []:
             category = str(test.get("category") or flow or "uncategorized")
@@ -175,6 +184,7 @@ def _dut_status(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "tests_failing": int(tests.get("failing") or 0),
                 "tests_skipped": int(tests.get("skipped") or 0),
                 "tests_unknown": int(tests.get("unknown") or 0),
+                "tests_completed": tests.get("completed"),
                 "pass_rate": tests.get("pass_rate"),
                 "category_count": len(categories),
                 "categories": categories,
@@ -327,6 +337,7 @@ def make_result(
     duration_sec: float | None = None,
     tests_total: int = 0,
     tests_passing: int = 0,
+    tests_completed: bool | None = None,
     coverage_percent: float | None = None,
     coverage_breakdown: dict[str, float] | None = None,
     coverage_details: dict[str, Any] | None = None,
@@ -365,7 +376,9 @@ def make_result(
             "total": tests_total,
             "passing": tests_passing,
             "failing": tests_failing,
-            "pass_rate": pct(tests_passing, tests_total),
+            "completed": tests_completed,
+            # A run that stopped before its planned leaves has no denominator.
+            "pass_rate": None if tests_completed is False else pct(tests_passing, tests_total),
         },
         "coverage": coverage,
         "artifacts": artifacts or {},
@@ -441,14 +454,20 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
     warning_count = 0
     failed_tests = 0
     flaky_tests = 0
+    incomplete_runs = 0
     for result in results:
         tests = result.get("tests", {})
+        if run_completed(result) is False:
+            # Its leaves would lend the aggregate a rate no run earned; the record still
+            # counts as a failing flow and keeps its failure buckets.
+            incomplete_runs += 1
+            tests = {}
         test_total += int(tests.get("total") or 0)
         test_passing += int(tests.get("passing") or 0)
         test_failing += int(tests.get("failing") or 0)
         test_skipped += int(tests.get("skipped") or 0)
         test_unknown += int(tests.get("unknown") or 0)
-        if result.get("tests_detail"):
+        if tests and result.get("tests_detail"):
             detail_statuses = [
                 str(test.get("status") or STATUS_UNKNOWN)
                 for test in result.get("tests_detail") or []
@@ -491,6 +510,7 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
             "skipped": test_skipped,
             "unknown": test_unknown,
             "pass_rate": pct(test_passing, test_total),
+            "incomplete_runs": incomplete_runs,
         },
         "coverage": {
             "average_total_percent": None,

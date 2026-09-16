@@ -15,6 +15,9 @@ from smc_base_test import smc_base_test
 class smc_octs_sanity_test(smc_base_test):
     """Run sideband status decode as the public OCTS bounded checker."""
 
+    required_evidence = ("CHK-SIDEBAND-OBSERVABILITY",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

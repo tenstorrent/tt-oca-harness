@@ -57,10 +57,12 @@ single-bit data timing; DDR, vendor timing, and vendor commands are out of
 scope and earn no checker credit. SEP and SMC are consumers.
 
 |`ocah_uart_vip`
-|Experimental
+|Promoted for asynchronous serial console links
 |OCAH-native cocotb model
-|Console wrapper, native 8-N-1 line driver/sampler, and passive monitor. No
-external UART library. SMC is the consumer.
+|Console host, line driver with fault injection, classifying frame sampler,
+passive two-line tap, and frame checker. 5..9 data bits, none/even/odd
+parity, 1, 1.5, or 2 stop bits; flow control is out of scope. No external
+UART library. SMC is the consumer.
 
 |`ocah_checker`
 |Shared infrastructure
@@ -92,7 +94,9 @@ build lists the interface and the `sva/` checker too):
 descriptions), the struct-port bridge beside the interface, and the
 passive `uvm/ocah_axi_uvm_pkg.sv` (monitor, reference model, scoreboard with
 `CHK-*`/`CHECKER_SUMMARY` evidence, optional coverage subscriber, env).
-The DTP SV-UVM flow consumes it.
+The DTP SV-UVM flow consumes it. The package's `dv/` harness grades Verilator
+coverage of the SV layer against its coverage policy and samples the
+covergroups in its SV-UVM shape.
 
 Use compatibility `read()`/`write()` methods for positive paths. Use
 `read_result()`/`write_result()` when checking responses, expected errors, or
@@ -141,7 +145,8 @@ The cocotb API provides:
 
 The SystemVerilog UVM layer provides a pin-level interface, item, config,
 driver, monitor, sequencer, agent, and VIP environment. DTP consumes the UVM
-layer.
+layer. The package's `dv/` harness grades Verilator coverage of the SVA
+against its coverage policy and samples the covergroups in its SV-UVM shape.
 
 The shared scope is IEEE 1149.1. DTP/SMC/SMU instruction maps, JTAG2AXI TDR
 packing, iJTAG, STAP/3DCR, and boundary-scan fixture models remain domain- or
@@ -193,10 +198,27 @@ a gating DUT smoke test.
 
 Package: `hw/common/dv/vip/ocah_uart_vip/`
 
-`OcahUartConsole` provides source/sink console traffic and `OcahUartMonitor`
-provides passive byte observation. The backend is native to the package (no
-external UART library); `OcahUartImportError` is exported but never raised by
-it.
+`OcahUartConsole` provides console traffic with deterministic per-operation
+timeouts: a read on a silent line ends exactly `timeout_us` microseconds of
+simulation time after it started, and frames a timed-out read had taken stay
+readable. `OcahUartMasterDriver` and `OcahUartLineMonitor` are the engines
+behind it: the driver frames 5..9 data bits with none, even, or odd parity and
+1, 1.5, or 2 stop bits, and injects a bad stop bit, an inverted parity bit, a
+break, or a sub-half-bit glitch at a deterministic place in the byte stream;
+the sampler resynchronizes on every start edge and classifies every frame
+(`OcahUartFrame`: framing error, parity error, break) with the time of its
+start edge and first rising edge, so the wire's bit period is measurable.
+`OcahUartMonitor` taps both lines passively. `OcahUartChecker` judges driven
+frames against sampled frames and records `CHK-UART-*` evidence for data,
+cleanliness, wire bit period, idle level, non-vacuity, fault classification,
+error counters, exact timeouts, and statistics. The backend is native to the
+package (no external UART library); `OcahUartImportError` is exported but
+never raised by it.
+
+The `--dut ocah_uart_vip` wire-harness selftests prove the components against
+each other, each with an in-band must-fail probe; `smc_uart_loopback_test` is
+the gating SMC consumer. Flow control (RTS/CTS, XON/XOFF), sticky parity, and
+SV collateral are out of scope.
 
 [[shared-vip-entropy]]
 === Entropy Stream

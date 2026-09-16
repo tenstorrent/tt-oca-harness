@@ -10,6 +10,8 @@ from typing import Any
 from cocotb.triggers import Event
 from pyuvm import uvm_object
 
+from .dtp_xtrig_types import DtpXtrigCtpShadow
+
 __all__ = ["DtpEnvCfg"]
 
 
@@ -46,6 +48,9 @@ class DtpEnvCfg(uvm_object):
         self.axi_watchers: dict[str, Any] = {}
         self.xtrig_axil = None
         self.xtrig_bfm = None
+        # Programmed CTP mode/polarity, written by the XTRIG sequences and kept
+        # across passes because the DUT keeps its configuration between them.
+        self.xtrig_ctp_shadow = DtpXtrigCtpShadow()
         self.xtrig_num_ctp = 16
         self.xtrig_num_int_ct = 10
         # Downstream STAP TAPs: the STAP names whose host port

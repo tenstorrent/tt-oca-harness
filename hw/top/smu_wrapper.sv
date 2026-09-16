@@ -289,7 +289,6 @@ module smu_wrapper
   smc_pkg::smc_axil_32_32_req_t  smc_external_req;
   smc_pkg::smc_axil_32_32_resp_t smc_external_resp;
 
-  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select;
   // Trace sink memories (smu <-> smc_ip_integration)
   trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req;
   trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp;
@@ -331,8 +330,6 @@ module smu_wrapper
   i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
   i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
 
-  assign lsio_interface_select_o = lsio_interface_select;
-
   smc_pkg::smc_axil_32_32_req_t     smc_efuse_bank_ctrl_req;
   smc_pkg::smc_axil_32_32_resp_t    smc_efuse_bank_ctrl_resp;
   smc_efuse_pkg::fuse_command_req_t  smc_efuse_shim_command_req;
@@ -352,7 +349,6 @@ module smu_wrapper
   ext_trng_axis_rsp_t ext_trng_axis_rsp [EXT_TRNG_NUM_AXIS-1:0];
 
   logic ext_trng_irq;
-  logic ext_trng_alarm;
 
   sep_crypto_pkg::abr_mem_req_t abr_mem_req;
   sep_crypto_pkg::abr_mem_rsp_t abr_mem_rsp;
@@ -399,8 +395,7 @@ module smu_wrapper
     .ext_trng_axis_req_i (ext_trng_axis_req),
     .ext_trng_axis_rsp_o (ext_trng_axis_rsp),
 
-    .ext_trng_irq_i   (ext_trng_irq),
-    .ext_trng_alarm_i (ext_trng_alarm),
+    .ext_trng_irq_i (ext_trng_irq),
 
     .smc_external_req_o  (smc_external_req),
     .smc_external_resp_i (smc_external_resp),
@@ -562,8 +557,7 @@ module smu_wrapper
     .ext_trng_axis_req_o (ext_trng_axis_req),
     .ext_trng_axis_rsp_i (ext_trng_axis_rsp),
 
-    .ext_trng_irq_o   (ext_trng_irq),
-    .ext_trng_alarm_o (ext_trng_alarm),
+    .ext_trng_irq_o (ext_trng_irq),
 
     .abr_mem_req_i (abr_mem_req),
     .abr_mem_rsp_o (abr_mem_rsp),

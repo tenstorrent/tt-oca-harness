@@ -44,7 +44,12 @@ class OcahSequence(uvm_sequence):
         loop_index: int = 0,
     ) -> None:
         super().__init__(name)
-        self.log = logging.getLogger(name)
+        # A child of the `cocotb` logger: the cocotb log configuration raises only
+        # that hierarchy to INFO, so a same-named root-child logger keeps the root's
+        # WARNING threshold and its INFO records never reach the simulation log.
+        # Resolved by name: `cocotb.log` exists only once the simulator has
+        # initialised, and this class also runs in the simulator-free selftest.
+        self.log = logging.getLogger("cocotb").getChild(name)
         # Per-pass seed: runner seed plus loop index, set by the base test.
         self.scenario_seed = scenario_seed
         # Random patterns or operations per pass.

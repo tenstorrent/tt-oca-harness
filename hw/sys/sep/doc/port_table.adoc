@@ -77,7 +77,6 @@
 |`ext_trng_axis_req_i` |`ext_trng_axis_req_t` |Input |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream request array (from `sep_ip_integration`). |External TRNG shim |N/A
 |`ext_trng_axis_rsp_o` |`ext_trng_axis_rsp_t` |Output |`[EXT_TRNG_NUM_AXIS-1:0]` |External TRNG AXI-Stream response array. |External TRNG shim |N/A
 |`ext_trng_irq_i` |`logic` |Input |1 |External TRNG interrupt (routed to PIC). |External TRNG shim |Tie to '0 if unused
-|`ext_trng_alarm_i` |`logic` |Input |1 |External TRNG alarm (reserved for RAS). |External TRNG shim |Tie to '0 if unused
 
 |`km_rom_mem_req_o` |`km_intf_pkg::km_rom_mem_req_t` |Output |- |Key Manager ROM memory request. |ROM macro |N/A
 |`km_rom_mem_rsp_i` |`km_intf_pkg::km_rom_mem_rsp_t` |Input |- |Key Manager ROM memory response. |ROM macro |N/A

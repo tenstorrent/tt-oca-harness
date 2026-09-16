@@ -143,18 +143,19 @@ class sep_km_kpv_scrambler_test(sep_base_test):
             "holding zero, which is the value the setup fill left everywhere"
         )
         first_logical = cfg.indices[0]
-        first_pass = [(i, v) for i, v in rep.pairs if v == key_b_value and i == key_b_index]
-        assert not first_pass, (
+        first_words = {v for _, v in rep.pairs}
+        assert key_b_value not in first_words, (
             f"CHK-KEYED FAIL: the same plaintext at logical index {first_logical} "
-            f"stored 0x{key_b_value:08x} at physical {key_b_index} under BOTH keys "
-            f"(0x{cfg.key_a:08x} and 0x{cfg.key_b:08x}) -- the transform ignores the key"
+            f"stored word 0x{key_b_value:08x} under BOTH keys "
+            f"(0x{cfg.key_a:08x} and 0x{cfg.key_b:08x}) -- the data path ignores the key"
         )
         self.logger.info(
-            "CHK-KEYED PASS: logical %d stored differently under the two keys "
-            "(key B: physical %d = 0x%08x)",
+            "CHK-KEYED PASS: logical %d key-B word 0x%08x (physical %d) "
+            "is not among the %d first-key stored words",
             first_logical,
-            key_b_index,
             key_b_value,
+            key_b_index,
+            len(first_words),
         )
 
         # --- CHK-RT -----------------------------------------------------------

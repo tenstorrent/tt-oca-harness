@@ -16,6 +16,12 @@ from smc_base_test import smc_base_test
 class smc_uart_baud_word_parity_format_test(smc_base_test):
     """UART0 loopback divisor × frame-format sweep with masked RX check."""
 
+    required_evidence = (
+        "CHK-UART-BAUD-BASIC",
+        "CHK-UART-BAUD-FMT",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

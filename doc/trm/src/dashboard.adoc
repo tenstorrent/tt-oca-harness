@@ -32,6 +32,8 @@ ifdef::backend-html5[]
     <span class="dash-fail">&nbsp;&nbsp;&nbsp;</span> Needs attention
   </p>
 
+  <p class="dashboard-more"><a href="dashboard-trends.html">Verification trends over time &#8594;</a></p>
+
   <noscript>
     <p class="dashboard-status dashboard-status-error">
       This dashboard renders live regression data with JavaScript. With

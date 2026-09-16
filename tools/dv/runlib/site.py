@@ -51,7 +51,7 @@ from .config import (
     validate_simulator_registry,
 )
 from .models import ConfigError
-from .paths import configs_root, dv_path, repo_rel
+from .paths import configs_root, repo_rel
 
 SITE_FILE_NAME = "site.local.toml"
 SITE_ENV = "OCAH_DV_SITE"
@@ -191,8 +191,6 @@ def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> Sit
         text = entry.get("formal_cfg")
         if not isinstance(text, str) or not text:
             raise ConfigError(f"{entry_where}.formal_cfg must be a non-empty path")
-        if not dv_path(root, text).is_file():
-            raise ConfigError(f"{entry_where}.formal_cfg does not exist: {dv_path(root, text)}")
     return SiteLayer(path=path, label=label, simulators=simulators, executors=executors, duts=duts)
 
 

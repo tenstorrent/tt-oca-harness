@@ -14,6 +14,15 @@ from smc_base_test import smc_base_test
 class smc_i2c_fifo_full_test(smc_base_test):
     """FMT/TX full+empty and RX/ACQ empty STATUS (CSR-only)."""
 
+    required_evidence = (
+        "CHK-I2C-FIFO-FULL-ACQ",
+        "CHK-I2C-FIFO-FULL-BASIC",
+        "CHK-I2C-FIFO-FULL-FMT",
+        "CHK-I2C-FIFO-FULL-RX",
+        "CHK-I2C-FIFO-FULL-TX",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

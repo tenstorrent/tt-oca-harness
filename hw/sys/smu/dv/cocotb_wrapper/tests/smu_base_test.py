@@ -183,10 +183,17 @@ class smu_base_test(uvm_test):
 
     #: TB inputs no leaf drives unless it exercises that interface. Verilator
     #: two-state reads an undriven input as 0, but this config also lists vcs
-    #: and xcelium, where it is X -- and an X on AxPROT or a cross-trigger
-    #: request reaches the DUT. Driven here so the idle value is the same on
-    #: every simulator; a leaf that wants them takes them over afterwards.
+    #: and xcelium, where it is X -- and an X on AxPROT, on an AXI handshake
+    #: valid or ready (the fabric's clock-gate snoop and hang detector fold
+    #: those into their known-value assertions), or on a cross-trigger request
+    #: reaches the DUT. Driven here so the idle value is the same on every
+    #: simulator; a leaf that wants them takes them over afterwards.
     IDLE_INPUTS = (
+        "ext_in_awvalid",
+        "ext_in_wvalid",
+        "ext_in_arvalid",
+        "ext_in_bready",
+        "ext_in_rready",
         "ext_in_awlock",
         "ext_in_awcache",
         "ext_in_awprot",
@@ -202,6 +209,21 @@ class smu_base_test(uvm_test):
         "xtrig_ctm_dst_req",
         "xtrig_ctm_src_ack",
         "xtrig_clk_stop_req",
+        "tb_telemetry_atdata",
+        "tb_telemetry_atid",
+        "tb_telemetry_atvalid",
+        "tb_telemetry_afready",
+        "tb_smc_ext_interrupts",
+        "tb_smc_ndmreset_request",
+        "tb_cfg_flr_pf_active",
+        "tb_mem_repair_abort",
+        "tb_mbist_abort",
+        "tb_secure_tm_req",
+        "tb_gpio0_drive_en",
+        "tb_gpio0_drive_val",
+        "tb_xtrig_ctp_req_out_din",
+        "tb_xtrig_ctp_req_in_din",
+        "tb_xtrig_ctp_ack_in_din",
     )
 
     def drive_idle_inputs(self) -> None:
@@ -385,9 +407,23 @@ class smu_base_test(uvm_test):
 
     async def run_phase(self) -> None:
         self.raise_objection()
+        tc = self.get_type_name()
+        if self.use_shared_env:
+            # Bound before any expect_* runs so a check name can attach to its
+            # mapped token.
+            self.env.scoreboard.bind_testcase(tc)
         await self.bring_up()
         try:
             await self.run_scenario()
+            if self.use_shared_env:
+                self.env.scoreboard.prove_mapped_features()
+            else:
+                self.logger.info(
+                    "EVIDENCE MAP GATE SKIPPED %s: no SmuScoreboard on this leaf "
+                    "(use_shared_env=False); the verdict is the sequence's own "
+                    "raise or the leaf's own scoreboard",
+                    tc,
+                )
         except Exception:  # noqa: BLE001 -- re-raised once the SEP state is in the log
             self.sep_trace_mon.dump_diagnostics(logging.ERROR)
             raise

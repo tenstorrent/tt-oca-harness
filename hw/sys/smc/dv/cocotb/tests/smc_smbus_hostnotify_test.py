@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_smbus_hostnotify_test(smc_base_test):
     """U4-2: VIP master Host Notify -> DUT target ACQDATA."""
 
+    required_evidence = ("CHK-SMBUS-HOSTNOTIFY-FRAME",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

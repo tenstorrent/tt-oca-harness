@@ -532,6 +532,27 @@
     text-align: center;
 }
 
+.dashboard .dashboard-more {
+    margin-top: 2em;
+}
+
+.dashboard-window {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+}
+
+.dashboard-window select {
+    font-family: var(--oca-font-body);
+    font-size: 0.85rem;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border: 1px solid #ddd;
+}
+
+.dashboard-chart {
+    margin: 0.5em 0 1.5em 0;
+}
+
 /* ========================================
    MOBILE NAVBAR
    ======================================== */

@@ -42,7 +42,7 @@ import logging
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.smc_virt_console import VirtConsole
-from smc_dual_base_test import DualCsr, SmcDualHarness, random_seed
+from smc_dual_base_test import DualCsr, SmcDualHarness, dual_test, random_seed
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
     SCRATCH_PASS_FAIL,
@@ -55,6 +55,8 @@ from smc_occp_dual_defs import (
     required_plusarg,
 )
 
+REQUIRED_EVIDENCE = ("CHK-OCCP-SANITY",)
+
 # The transaction is GET_VERSION plus one 4-byte WRITE, against the boot test's
 # 15 chunks of 1024 B. The pass lands at roughly 939 us of sim time, about 235
 # poll intervals; the bound below is ~17x that, which is headroom for a stalled
@@ -64,9 +66,8 @@ SANITY_POLL_CYCLES = 2000
 PROGRESS_EVERY = 200
 
 
-@cocotb.test()
-async def smc_occp_sanity_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_occp_sanity_test(harness: SmcDualHarness) -> None:
     dut = harness.dut
 
     required_plusarg("rom_bin64", "smc_occp_sanity_test")

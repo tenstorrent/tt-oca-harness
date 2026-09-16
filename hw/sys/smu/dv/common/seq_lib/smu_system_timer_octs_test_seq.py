@@ -6,8 +6,9 @@ S1: SMC_ATTRIBUTES.chiplet_is_primary vs tb_top hardwire.
 S2: PRESET + TIMER_START → STATUS.RUNNING; tb_timer_count advances.
 S3: Larger PRESET + START; pin reloads to the new PRESET then advances.
 
-COUNT CSR via J2A hangs under Verilator after free-run starts; product pin
-``tb_timer_count`` (``timer_count_o``) is the authoritative observe path.
+TIMER_COUNT_{HI,LO} is read over J2A and bracketed between two samples of
+the product pin ``tb_timer_count`` (``timer_count_o``) taken either side of
+the read, so the CSR view and the pin view of the same counter are compared.
 
 32-bit CSRs at addr[2]=1 use the upper 64b J2A lane (wstrb=0xF0), matching
 ``wdt_unlock``.
@@ -39,6 +40,8 @@ ADDR_START = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_START_BASE_ADDR")
 ADDR_STATUS = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_STATUS_BASE_ADDR")
 ADDR_PRESET_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR")
 ADDR_PRESET_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR")
+ADDR_COUNT_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADDR")
+ADDR_COUNT_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR")
 STATUS_RUNNING = system_timer_octs_bm("SYSTEM_TIMER_OCTS__STATUS__RUNNING_bm")
 
 PRESET = 0x1000
@@ -105,6 +108,23 @@ class smu_system_timer_octs_test_seq:
         if not val.is_resolvable:
             raise AssertionError(f"X/Z on tb_timer_count: {val}")
         return int(val) & ((1 << 64) - 1)
+
+    async def _read_csr_count_bracketed(self, jtag) -> tuple[int, int, int]:
+        """Read TIMER_COUNT_{HI,LO} between two ``tb_timer_count`` samples.
+
+        The counter free-runs during the J2A read, so the pin samples taken
+        either side of it are the tightest bound the bench can place on the
+        value the CSR should return.
+        """
+        pin_before = self._sample_pin_count()
+        if pin_before is None:
+            raise AssertionError("tb_timer_count unobservable before COUNT CSR read")
+        count_hi = await self._j2a_rd32(jtag, ADDR_COUNT_HI, "TIMER_COUNT_HI")
+        count_lo = await self._j2a_rd32(jtag, ADDR_COUNT_LO, "TIMER_COUNT_LO")
+        pin_after = self._sample_pin_count()
+        if pin_after is None:
+            raise AssertionError("tb_timer_count unobservable after COUNT CSR read")
+        return (count_hi << 32) | count_lo, pin_before, pin_after
 
     async def _poll_status_running(self, jtag, label: str) -> int:
         last = 0
@@ -185,9 +205,17 @@ class smu_system_timer_octs_test_seq:
         self.pin_ok = True
         self._log(f"CHK-OCTS-COUNT-MONOTONIC: pin {pin0} -> {pin1}")
         sb.expect_true("CHK-OCTS-COUNT-MONOTONIC", pin1 > pin0)
-        self._log(
-            "CHK-OCTS-CSR-COUNT: DEFERRED-NOTE "
-            "(J2A COUNT hangs under Verilator; pin is authoritative)"
+        csr_count, pin_pre, pin_post = await self._read_csr_count_bracketed(jtag)
+        if not pin_pre <= csr_count <= pin_post:
+            raise AssertionError(
+                f"TIMER_COUNT CSR {csr_count} outside the pin bracket "
+                f"[{pin_pre}, {pin_post}] taken either side of the read"
+            )
+        self._log(f"CHK-OCTS-CSR-COUNT: csr={csr_count} in pin bracket [{pin_pre}, {pin_post}]")
+        sb.expect_true(
+            "CHK-OCTS-CSR-COUNT",
+            pin_pre <= csr_count <= pin_post,
+            evidence="CHK-OCTS-CSR-COUNT",
         )
 
         # S3: larger PRESET + START must reload count (not only keep free-run).

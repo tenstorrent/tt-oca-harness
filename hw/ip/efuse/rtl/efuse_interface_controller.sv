@@ -56,7 +56,7 @@ module efuse_interface_controller #(
   localparam bit [31:0] EFUSE_CTRL_REG_MAP_WIDTH = $clog2(EFUSE_CTRL_REG_MAP_SIZE),
 
   // Efuse Bank configuration parameters
-  parameter int unsigned SHADOW_REG_BITS = 24576,
+  parameter int unsigned SHADOW_REG_BITS = 8192,
   localparam int unsigned SHADOW_REG_BYTES = SHADOW_REG_BITS / 8,
   parameter int unsigned EFUSE_MACRO_WORD_WIDTH = 32,
 

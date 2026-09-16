@@ -76,7 +76,8 @@ jobs:
 
       # A dispatch can name any regress run; publish only runs that carry a
       # weekly run tree. DUT and tool come from the artifact name
-      # (dv-run-<dut>-<tool>-weekly; dut/tool never contain hyphens).
+      # (dv-run-<dut>-<tool>-weekly; dut/tool never contain hyphens). A labelled
+      # row's artifact ends in -<label>, so the -weekly$ anchor leaves it out.
       #
       # Everything downstream of here is single-DUT: the classification file is
       # keyed by day alone, and ghdata/latest holds one result. The regress matrix
@@ -135,7 +136,8 @@ jobs:
       # run_dv.py --waive rewrites only coverage values inside the run tree:
       # exit 0 and 1 are applied grades (1 = thresholds not met, visible as the
       # collected coverage status); exit 2 is the one error outcome and leaves
-      # the tree as recorded. A weekly whose report command crashed is refused
+      # the tree as recorded. A weekly whose report command crashed, or whose
+      # run did not finish (result.json tests.completed false), is refused
       # and publishes as recorded; a weekly whose policy failed at grade time
       # publishes its repaired grade once the policy is corrected. Every
       # dispatch adds a trend point. The scheduled path does not run this step.

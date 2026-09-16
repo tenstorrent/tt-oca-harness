@@ -16,6 +16,14 @@ _EDGE_COUNT = 3
 class smc_spm_mem_boundary_test(smc_base_test):
     """SPM first/next/last 64-bit word write/readback via SEP_IN AXI."""
 
+    required_evidence = (
+        "CHK-SPM-MEM-BASIC",
+        "CHK-SPM-MEM-SPM_HI",
+        "CHK-SPM-MEM-SPM_LO",
+        "CHK-SPM-MEM-SPM_LO_NEXT",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

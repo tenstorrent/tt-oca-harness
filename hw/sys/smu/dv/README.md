@@ -4,137 +4,278 @@ SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 -->
 # SMU OCAH Open-Source TB
 
-OCAH open-source DV testbench for the **SMU (System Management Unit)**.
-Layout follows `hw/sys/sep/` (flow-first cocotb under `cocotb/`).
-See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
-[`docs/SMU_TB_ARCH.adoc`](docs/SMU_TB_ARCH.adoc) for the testbench
-architecture, [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
-verification plan, and
-[`docs/SMU_FEATURE_LIST.adoc`](docs/SMU_FEATURE_LIST.adoc) for the
-SEP=0 feature subset,
-[`docs/SMU_SCOPE_TRACEABILITY.adoc`](docs/SMU_SCOPE_TRACEABILITY.adoc)
-for the requirement-to-test matrix,
-[`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
-for the deferred/OUT classification of every catalogued name,
-[`docs/SMU_RELEASE_MATRIX.adoc`](docs/SMU_RELEASE_MATRIX.adoc) for the
-release regression matrix,
-[`docs/SMU_COVERAGE_POLICY.adoc`](docs/SMU_COVERAGE_POLICY.adoc) for the
-coverage-target and waiver-field policy, and
-[`docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc`](docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc)
-for the SEP=0 component scope.
+Open-source DV package for the **SMU (System Management Unit)**, the
+integration level that wires the SMC, the DTP, the SEP and the AXI crossbar
+together. This file owns the build-and-run recipes and the package layout.
+The other owners are `docs/SMU_TB_ARCH.adoc` (testbench architecture and the
+BFM table), `docs/SMU_VPLAN.adoc` (what every enrolled test intends and
+checks), `docs/SMU_FCOV.adoc` (coverage intent), and the decision records
+under `hw/sys/smu/doc/dv/` (`SMU_FEATURE_LIST`, `SMU_SCOPE_TRACEABILITY`,
+`SMU_DEFERRED_DISPOSITION`, `SMU_RELEASE_MATRIX`, `SMU_COVERAGE_POLICY`,
+`SMU_HOSTED_COMPONENT_SIGNOFF`). `docs/index.adoc` is the chapter set.
 
-**Executable contract:** the enrolled groups in
-[`testlists/wrapper.toml`](testlists/wrapper.toml) (no Force; product-pin
-CTM). `--dut smu` is the DUT; [`testlists/all.toml`](testlists/all.toml)
-holds the bare-`smu_block` leaves the wrapper cannot run, for the reasons
-recorded there.
-**Green / signoff policy:** no DUT Force / no TB placeholder.
+## What the bench is
 
-**Group ladder:** `build_smoke` ⊂ `smoke` ⊂ `all`, and `sep0_all` ⊂ `all`
-(see `testlists/wrapper.toml`). `sep0_all` and `smoke` are siblings, not nested:
-`sep0_all` is the toolchain-free SEP=0 set CI runs, while `smoke` reaches the
-SEP=1 elaboration and both firmware smokes and so needs the RISC-V toolchain.
-`all` is the union plus the SEP=1 firmware set.
-**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): every such
-name is classified in
-[`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
-and none is reportable as PASS.
+**DUT.** `--dut smu` builds `hw/top/smu_wrapper.sv` -- the SMU with the
+open-source IP integration attached -- under `tb/tb_wrapper_top.sv`
+(`smu_wrapper_uvm_top`), in one compile profile, `compile_smu_chiplet`
+(`SEP=1`, the real SEP EL2 core). Every leaf of the regression runs on that
+elaboration, so a regression pays one Verilator build and coverage merges across
+the whole selection. `smu_wrapper` is a registered
+alias of `smu` (`hw/common/dv/configs/duts.toml`), so the two names resolve to
+one config, one build cache and one identity; logs carry `DUT_TAG=WRAPPER`.
+The bare block bench, `--dut smu_block`, builds `smu #(.SEP(0))` with its
+technology interfaces tied off under `tb/tb_top.sv` (`smu_uvm_top`,
+`DUT_TAG=BARE`) and holds the leaves that need `SEP=0` (`testlists/all.toml`):
+the five SEP=0 composition proofs in `testlists/nosep.toml` (no crossbar, direct
+ID converters, SEP aperture and lifecycle tie-offs, DTP without its SEP debug
+slice), the JTAG2AXI abort test, which needs an OTP interface that hangs, and
+the JTAG smoke, which carries the SV-UVM binding.
 
+**What it verifies.** With `elaboration` firmware, four surfaces of the SMU at its
+own boundary: the fabric and address decode (external SMN AXI into SMC,
+ID-width conversion, crossbar error handling, alias remap, the inbound and
+outbound filters); the SMC reached through the SMU (bring-up, reset control,
+mailbox, watchdog, OCTS, security demote); the DTP reached through the SMU
+(primary JTAG, STAP selection, boundary scan, the OTP bridge over JTAG2AXI,
+cross-trigger routing); and clock, reset and boot sequencing (clock stop,
+boot stall, IC_RESET domains, the external boot-sequence gate). With the
+real SEP firmware images, the SEP firmware set: SEP boot and firmware execution
+under the SMU, lifecycle state broadcast from the SEP eFuse shadow to the SMC
+and the DTP, and the entropy stack. `docs/SMU_VPLAN.adoc` cards every leaf.
+
+**Stimulus.** JTAG through `ocah_jtag_vip`; external SMN AXI through
+`ocah_axi_vip` (master on the inbound pins, `OcahAxiSlaveAgent` answering the
+outbound boundary); product pins driven by the sequences; SMC ROM and SEP
+ITCM/DTCM images loaded at time zero; eFuse shadow preload images from
+`assets/`. Verdicts are `SmuScoreboard` compares, or -- for the firmware
+leaves -- the firmware's own terminal loop, observed by the bench. The one
+signal the bench forces (`+esrc_noise_force`, the ESRC raw-noise lanes) and
+the other stand-ins on a proof path are recorded, with their scope and
+approval fields, in the *Bench stand-ins and exceptions* section of
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`.
+
+**Simulators.** Verilator runs every enrolled group and is the only
+simulator with a build and a coverage section in either sim config; it is
+what CI runs. VCS runs the SystemVerilog UVM view of `--dut smu_block`
+(`--framework uvm`; Verilator has no SV-UVM support). `smu_sim_cfg.toml`
+lists `vcs` and `xcelium` as selectable tools, but no enrolled cocotb group
+runs on them: the cocotb targets on VCS fail the runner on live RTL
+assertions while every test passes (issue #1755, open), and `smu_sim_cfg.toml`
+declares no Xcelium target of its own -- only the shared
+`hw/common/dv/configs/profiles/native.toml` defaults, which no SMU group
+selects.
+
+## Tools
+
+Versions are the repository's pins; the second column says where each comes
+from, and a value with no pin says so.
+
+| Tool | Version | Pinned in |
+|---|---|---|
+| Verilator | `v5.050`, built from source | `.github/actions/dv-run/action.yml`, `verilator-version` default |
+| Python | 3.11 in CI; `>=3.11,<3.14` accepted | `.github/actions/dv-run/action.yml`, `python-version` default; `pyproject.toml`, `requires-python` |
+| cocotb / pyuvm / cocotbext-axi | 2.0.1 / 4.0.1 / 0.1.28 | `uv.lock` (`dv` group); `run_dv.py` bootstraps this environment itself |
+| Bender | whatever `pulp-platform/pulp-actions/bender-install@v2.5.1` installs; no Bender version is pinned in this repository | `.github/actions/dv-run/action.yml` |
+| g++ | the `g++` package of `ubuntu-latest` at run time; no version pinned. cocotb 2.x compiles with `-fcoroutines`, so a C++20 compiler is required | `.github/actions/dv-run/action.yml` |
+| RISC-V GCC (firmware leaves only) | `gcc-riscv64-unknown-elf` + `picolibc-riscv64-unknown-elf` from Debian trixie in the `ocah-toolchain` image; the base image is pinned by digest, the package version floats | `tools/docker/Dockerfile`; `tools/docker/README.md` |
+| VCS (`--framework uvm` only) | not pinned in this repository | `hw/common/dv/configs/simulators.toml` names the tool |
+
+Environment variables the package reads:
+
+| Variable | Read by | Effect |
+|---|---|---|
+| `TMPDIR` | the runner and the container scripts | scratch; must exist and be large (`AGENTS.md`). Never `/tmp` |
+| `RANDOM_SEED` | `smu_base_test`, two fabric sequences | the run seed; set by the runner from `--seed` or its own draw |
+| `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | `fw/build_firmware.py`, i.e. every `[c_build.*]` stage | directory and tool prefix (default `riscv64-unknown-elf-`) of a RISC-V toolchain that has picolibc; unset, or without picolibc, the stage re-runs itself in the `ocah-toolchain` container through `scripts/docker-run.sh run-here`. No `PATH` or site probe |
+| `SMU_SMC_BOOT_MAX_CYCLES` | `smu_smc_smoke_seq.py` | SMC ROM boot budget in `clk_smu` cycles |
+| `SMU_SEP_BOOT_MAX_CYCLES` | `smu_sep_smoke_seq.py`, `smu_sep_boot_health_seq.py` | SEP boot budget |
+| `SMU_SEP_FW_MAX_CYCLES` | the `sep_real_fw`, lifecycle and chain sequences | terminal-loop budget for a SEP firmware image |
+| `SMU_SEP_SANITY_MAX_CYCLES`, `SMU_SEP_MODULES_MAX_CYCLES`, `SMU_SEP_ENTROPY_MAX_CYCLES` | the sequence of the same name | per-image budgets for the longer firmware runs |
+
+## Quick start
+
+Three commands matter, and each runs in a different place.
+
+```bash
+mkdir -p "${TMPDIR:?set TMPDIR to a large local scratch directory}"
+python3 tools/dv/run_dv.py --validate-configs
+python3 tools/dv/run_dv.py --dut smu --list
+
+# 1. PR gate. `.github/workflows/sim.yml` runs this on every hardware diff on a
+#    hosted runner (Verilator, no RISC-V toolchain): two toolchain-free leaves.
+python3 tools/dv/run_dv.py --dut smu --items hosted_smoke
+
+# 2. Nightly and weekly. `.github/workflows/regress.yml` runs this as the
+#    release qualification set: 52 toolchain-free leaves, one seed nightly,
+#    three weekly with --cov on the large runner. Their `elaboration` firmware
+#    stage only writes zero-filled preload images (Python, no toolchain).
+python3 tools/dv/run_dv.py --dut smu --items hosted
+
+# 3. The whole package: `all` adds the SEP firmware set (84 leaves). The
+#    firmware c_build stages build every image in the toolchain container
+#    (unless RISCV_TOOLCHAIN names a picolibc gcc), so build that image once
+#    first. Nothing schedules this group: the hosted runners have Verilator
+#    and no container toolchain.
+./scripts/docker-run.sh build
+python3 tools/dv/run_dv.py --dut smu --items all
 ```
-smu_<scenario>_test
-  └─ SmuEnv (`common/smu_dv_env/smu_env.py`)
-       ├─ SMC boot / scratch + mailbox observation
-       ├─ DTP JTAG TAP BFM
-       ├─ External SMN AXI master / OcahAxiSlaveAgent
-       └─ SmuScoreboard
-```
+
+`smoke` (the elaboration leaf plus `smu_smc_smoke_test` and
+`smu_sep_smoke_test`) needs the SMC and SEP firmware compiles and is the
+runner's default; `sim.yml` substitutes `hosted_smoke` for it on `smu`. The
+block bench is `python3 tools/dv/run_dv.py --dut smu_block --items all` (seven
+leaves, no toolchain; `nosep` is the five SEP=0 composition proofs); `sim.yml`
+runs its `smoke` group (one leaf) on every
+hardware PR, and `regress.yml` is the schedule of record for the rest.
+
+Groups (`testlists/wrapper.toml`): `build_smoke`, `smoke`, `hosted_smoke`,
+`hosted`, `all`, `fabric`, `smc_under_smu`, `dtp_under_smu`,
+`needs_otp_stall`, `sep_real_fw`, `sep_lifecycle`, `sep_chain`,
+`sep_entropy`, `sep_probe`, `sep_rtl_only`, `sep_smc_sram_blocked`,
+`sep_smc_dual`, `all_with_sep_exec`. `build_smoke` ⊂ `smoke` ⊂ `all` and
+`hosted` ⊂ `all`; `hosted` and `smoke` are siblings.
+
+Results land under `build/runs/<timestamp>__<tool>__<label>/` with a per-test
+`result.json` and `results.xml`. `--seed` applies to a single item; a
+multi-item regression draws its own seeds and reports them per test.
+
+## Layout
+
+Every directory and top-level file under `dv/` is listed here.
 
 | Path | Role |
-|------|------|
-| `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB; one module, two shapes (cocotb pins by default, SV-UVM harness under `UVM`) |
-| `tb/smu_tb_signal_list.svh`, `tb/smu_tb_if.sv` | The TB signals declared once for both shapes; the SMU-local TB interface of the SV-UVM view |
-| `uvm/{env,seq_lib,tests}/` | SV-UVM realization (`--framework uvm`, VCS) |
-| `cocotb/tests/` | The `--dut smu_block` test bodies plus their base test |
-| `common/{smu_dv_env,seq_lib}/` | The PyUVM env and sequence library, shared by both DUTs |
-| `testlists/all.toml` | The `--dut smu_block` leaves and groups |
-| `smu_block_sim_cfg.toml` | `--dut smu_block` sim defaults |
-| `smu_sim_cfg.toml` | `--dut smu` sim defaults (`smu_wrapper` is a registered alias) |
-| `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
-| `cocotb_wrapper/{env,tests}/` | PyUVM tests on this DUT |
-| `testlists/wrapper.toml` | The SMU regression (`sep0_all` and `all`) |
-| `fw/`, `tools/` | Firmware, readiness |
+|---|---|
+| `README.md` | this file: build, run, layout |
+| `assets/` | the five SEP eFuse shadow preload images: `default_sep_efuse_shadow_reg.preload` and `sep_efuse_shadow_lc_{test_dev,prod,prod_end,rma_chiplet}.preload`, which set the diff-encoded lifecycle state word. Each has a REUSE `.license` sidecar because the hex format has no comment syntax |
+| `cocotb/tests/` | the `--dut smu_block` test bodies and their base test |
+| `cocotb_wrapper/{env,tests}/` | the `--dut smu` test bodies, their base test, and the wrapper-only env pieces (`smu_boot_scoreboard.py`, `smu_sep_cpu_trace_monitor.py`, `smu_env_cfg.py`) |
+| `common/{smu_dv_env,seq_lib}/` | the PyUVM env (`SmuEnv`, `SmuScoreboard`, the evidence map, `smu_fcov.py`) and the sequence library, shared by both DUTs |
+| `cov/` | coverage collateral: `config/verilator/smu_cov_scope.vlt` and `smu_block_coverage_policy.toml`, and `sv/` with the two cover-property modules; intent in `docs/SMU_FCOV.adoc` |
+| `docs/` | `index.adoc` and the three chapters: `SMU_TB_ARCH.adoc`, `SMU_VPLAN.adoc`, `SMU_FCOV.adoc` |
+| `fw/` | this root's own firmware: `build_firmware.py`, `common/` (SMC and SEP start-up and linker files), `tests/` (the SMC smoke, the SEP smoke and the two SEP arm images). The `sep_real_fw` images come from `hw/sys/sep/dv/fw/` instead |
+| `tb/` | `tb_wrapper_top.sv` (`--dut smu`), `tb_top.sv` (`--dut smu_block`; one module with a cocotb pin shape and an SV-UVM harness shape), `smu_tb_signal_list.svh`, `smu_tb_if.sv`, `smu_wrapper_public_scope.vlt` |
+| `testlists/` | `wrapper.toml` (`--dut smu`: the SMU regression), `all.toml`, `dtp.toml` and `nosep.toml` (`--dut smu_block`) |
+| `tools/` | `smu_wrapper_tb_readiness_test.py`, the static readiness gates below |
+| `uvm/{env,seq_lib,tests}/` | the SV-UVM realization (`--dut smu_block --framework uvm`, VCS) |
+| `smu_sim_cfg.toml` | `--dut smu` launch config: Bender targets, the single compile profile, run modes, `c_build` stages |
+| `smu_block_sim_cfg.toml` | `--dut smu_block` launch config: `[frameworks.cocotb]` + `[frameworks.uvm]` |
+| `smu_public_scope.vlt` | Verilator public-signal scope of the block bench (`smu_block_sim_cfg.toml` `[build.verilator].public_scope`); the wrapper's is `tb/smu_wrapper_public_scope.vlt` |
+| `build/` | generated: models, firmware, `build/runs/`; gitignored |
 
-## BFM Policy
+`assets/`, `cocotb_wrapper/`, `common/`, `fw/`, `tools/` and `uvm/` are
+additional to the shared DV directory set (`cocotb/`, `cov/`, `docs/`,
+`tb/`, `testlists/`); each is held here because:
 
-| Interface | VIP / Model |
-|-----------|-------------|
-| Primary JTAG TAP | `ocah_jtag_vip` |
-| External SMN AXI4 | `ocah_axi_vip`: `OcahAxiSlaveAgent` on the outbound boundary (struct port bridged by `ocah_axi_struct_bridge`), master on the inbound pins |
-| SMC OTP AXI-Lite (over JTAG2AXI) | `ocah_axi_vip` AXI-Lite |
-| SMC scratch / mailbox | Backdoor + cocotb polling |
-| Cross-trigger / iJTAG | product-pin stimulus from the sequences; no dedicated VIP |
+* `assets/` -- a preload image is an input to a scenario, so it belongs beside
+  the testlist that names it; the lifecycle leaves select their image by name.
+* `cocotb_wrapper/` -- two DUTs share this root. The wrapper's test bodies and
+  its env additions cannot live in `cocotb/`, which the runner resolves for
+  `--dut smu_block`, without the two benches' base tests colliding.
+* `common/` -- the env and the sequences resolve their pins by role and run
+  against both tops, so one copy serves both DUTs.
+* `fw/` -- the SMC smoke and the SEP smoke/arm images are stimulus whose source
+  must be versioned with the tests that boot it; `build_firmware.py` builds
+  them into `build/firmware/`.
+* `tools/` -- the readiness gates check the wrapper TB against its source and
+  its filelist without a simulation, and are not tests.
+* `uvm/` -- the SV-UVM shape of the same scenarios, selected by
+  `--framework uvm`; it shares `tb/tb_top.sv` with the cocotb shape.
 
-## Running
+## Compile profile and images (`--dut smu`)
+
+The `ram_<depth>x39` ICCM/DCCM macros that `hw/sys/sep/rtl/sep_tcm_wrapper.sv`
+instantiates come from the upstream VeeR `mem_lib.sv` on the `sep_el2` Bender
+closure and have no init-file hook, so `tb/tb_wrapper_top.sv` backdoor-loads
+`+sep_itcm_hex` / `+sep_dtcm_hex` into their `ram_core` arrays at time zero,
+de-interleaved into the EL2 bank/row layout with per-word Hsiao ECC, and counts
+qualified bank writes at the `sep_tcm_wrapper` request port for the DCCM-store
+evidence. This mirrors the SEP DV TB backdoor (`hw/sys/sep/dv/tb/tb_top.sv`,
+`` `BD_ICCM `` / `` `BD_DCCM ``). A missing image is fatal at t=0 rather than
+a boot timeout. `smu_sep_rom_tcm_load_test` is the exception: it boots from
+`+sep_boot_rom_hex` with `+sep_no_tcm_preload` and loads its own TCM, covering
+the step the backdoor hides.
+
+The SMC boot path's MEM_ZERO FSM writes every word of scratch RAM after the
+time-zero backdoor load unless held off; `tb_wrapper_top.sv` asserts that hold
+whenever `+smc_scratch_ram_hex` supplies an image.
+
+Firmware images are declared per test as `[c_build.*].outputs` and staged
+into each per-test run directory. Every stage runs `fw/build_firmware.py`: its
+own freestanding images land in `build/firmware/`, and for the SEP=1 leaves it
+also builds the selected image of the SEP firmware engine (`hw/sys/sep/dv/fw`,
+`--sep-test {fw_target}`; the dual leaves add one SMC engine image) into
+`hw/sys/<sys>/dv/fw/build/tests/`. Those link against picolibc and `libsep.a`,
+so the builder uses the caller's `RISCV_TOOLCHAIN` only when that gcc has
+picolibc and otherwise re-runs itself inside the `ocah-toolchain` container
+(`scripts/docker-run.sh run-here`).
+
+`+esrc_noise_force` (three entries of `sep_real_fw` / `sep_entropy`) drives
+the twelve ESRC raw-noise lanes from `common/seq_lib/esrc_noise.py`, because
+the ring oscillators do not self-oscillate under Verilator; the ESRC sample
+clock `entropy_rosc_sample_clk_i` is driven at 3 ns by the TB for the same
+leaves. What that force does and does not prove is recorded in the disposition
+record's stand-ins section, together with `+skip_fuse_sense`, the `prim_sync`
+stand-ins and the eFuse models.
+
+`+skip_fuse_sense` replaces the SMC (and, on `sep_rtl`, the SEP) eFuse sense
+with the shadow-register preload named beside it. It is declared per test in
+`testlists/wrapper.toml`, each entry carrying the reason its claim tolerates
+the skip; no `[run_modes.*]` table passes it. The five boot-stall leaves
+(`smu_boot_stall_*`, `smu_dft_*_boot_stall_test`, `smu_clock_stop_coordination_test`)
+carry no skip: the SMC eFuse controller senses the `+smc_efuse_hex` image
+through the wrapper's eFuse model, so the `smc_fuse_reset_n_delayed_o` release
+they gate is the controller's own, and their log reads `Not skipping fuse sense`.
+
+### Readiness gates
 
 ```bash
-# Simulator and bender on PATH (see AGENTS.md for the with/without-companion paths).
-mkdir -p "${TMPDIR:?set TMPDIR to a large local scratch directory}"
+python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
 
-python3 tools/dv/run_dv.py --dut smu --build-only
-python3 tools/dv/run_dv.py --dut smu --items sep0_all --dry-run
-
-# SEP=0 release set: no RISC-V toolchain, no c_compile stage.
-python3 tools/dv/run_dv.py --dut smu --items sep0_all
-
-# The whole regression, including the SEP=1 firmware tests (needs the
-# toolchain; the firmware c_compiles dominate the wall time).
-python3 tools/dv/run_dv.py --dut smu --items all
-
-# The bare block bench (see testlists/all.toml for its leaves and why).
-python3 tools/dv/run_dv.py --dut smu_block --items all
+python3 tools/dv/run_dv.py --dut smu \
+  --items smu_wrapper_elaboration_sep_rtl_test --stage flist
+python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
+  --phase filelist \
+  --filelist hw/sys/smu/dv/build/smu_wrapper_dut_compile.f
 ```
 
-Groups (`testlists/wrapper.toml`): `build_smoke`, `smoke`, `smoke_sep0`,
-`sep0_all`, `all`, `migrated_fabric`, `migrated_smc`, `migrated_dtp`,
-`migrated_dtp_pending`, `sep_real_fw`, `sep_lifecycle`, `sep_chain`,
-`sep_entropy`, `sep_probe`, `sep_rtl_only`, `sep_smc_sram_blocked`,
-`all_with_sep_exec`.
-### SystemVerilog UVM framework (`--framework uvm`)
-
-The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
-flow: `smu_block_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay (same
-Bender RTL recipe), and `--dut smu_block --framework uvm` selects it. A testlist
-scenario carries both implementations in its `module` binding map
-(`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
-selects the same VPLAN scenario in either framework; the UVM class name is
-the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
-errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-VCS only: Verilator has no SV-UVM support. The bench architecture is in
-`docs/SMU_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
-conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
-
-SMU integrates DTP, so the SMU bench checks the embedded DTP with the DTP
-bench's own reference models, TAP FSM checker, and scoreboard
-(`hw/sys/dtp/dv/uvm/env`), attached through a `dtp_tb_if` instance the SMU
-top wires to the DTP instance. The first bound scenario is
-`smu_dtp_jtag_smoke_test` (SMU_ALL_005): TAP reset, IDCODE against the
-`smu_pkg` configuration, BYPASS one-TCK latency (directed plus seeded random
-patterns), TRST and power-on reset back to Test-Logic-Reset, over 16 seeded
-passes; every IDCODE and BYPASS scan is predicted by the DTP reference models
-and paired by the always-on scoreboard, and the sequence records named
-`CHK-*` evidence (`CHECKER_SUMMARY name=smu_scenario`).
+### Single test, cached model
 
 ```bash
-# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
-# without it the runner selects the cocotb-only scenarios and stops before compiling.
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only --skip-unimplemented
+# Firmware toolchain (firmware leaves only): RISCV_TOOLCHAIN with picolibc,
+# otherwise the ocah-toolchain container via scripts/docker-run.sh run-here.
+python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
+  --seed 1 --stage c_compile --stage sim
+```
+
+## SystemVerilog UVM framework (`--framework uvm`)
+
+The SV-UVM view shares this DV root, sim config and testlist with the cocotb
+flow: `smu_block_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay
+(same Bender RTL recipe), and `--dut smu_block --framework uvm` selects it on
+VCS. A testlist scenario carries both implementations in its `module` binding
+map (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
+selects the same VPLAN scenario in either framework; the UVM class name is the
+`uvm` entry (`+UVM_TESTNAME`). A scenario declared `uvm = false` in its map is
+skipped from group selections under the UVM view; selecting one with no `uvm`
+entry errors, and `--skip-unimplemented` skips those from a group selection as
+well.
+The bound scenario is `smu_dtp_jtag_smoke_test`; its architecture is in
+`docs/SMU_TB_ARCH.adoc` ("SystemVerilog UVM Realization") and the framework
+conventions in `hw/common/dv/docs/uvm-framework.adoc`.
+
+
+```bash
+# SV-UVM build only (VCS); the default selection is the smoke group
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut smu_block --items smu_dtp_jtag_smoke_test --tool verilator
 python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
 
-# Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
+# Smoke group; `all` needs the flag while any of its scenarios lacks a uvm entry
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items all --skip-unimplemented
 
 # Negative validation: a wrong expected IDCODE in both the reference model and
 # the scenario evidence must FAIL the run
@@ -145,7 +286,7 @@ python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_
 # every looped test runs at least 16 seeded passes by default
 python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test \
   --plusarg +SMU_DTP_JTAG_SMOKE_TEST_LOOPS=4
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented \
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke \
   --plusarg +SMU_TEST_LOOPS=1
 ```
 
@@ -161,223 +302,24 @@ ties off is promoted into `tb/smu_tb_if.sv` first; a new embedded-IP
 feature reuses that IP bench's reference model and scoreboard through
 `smu_env` and `smu_scoreboard`.
 
-## Signoff source
-
-| Source | DUT | Signoff role |
-|--------|-----|--------------|
-| `--dut smu` (alias `smu_wrapper`) | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | The SMU regression: SEP=0 density / CSR / fabric / DTP (`sep0_all`) plus the SEP=1 firmware set (`all`) |
-| `--dut smu_block` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Two leaves: `smu_dtp_jtag2axi_abort_mid_op_test`, which needs an unterminated OTP interface, and `smu_dtp_jtag_smoke_test`, which carries the SV-UVM binding (the SV-UVM harness is this TB's `UVM` shape) |
-
-One signoff source: the wrapper is the same `smu` with the open-source IP
-integration attached, so there is no second catalog to reconcile against.
-
-`--dut smu` selects the wrapper; the bare block bench is `--dut smu_block`.
-`smu_wrapper` is registered as an alias of `smu` (`alias_of` in
-hw/common/dv/configs/duts.toml), so the two names resolve to one config, one
-build cache and one identity. Logs still carry `DUT_TAG=`.
-
-## Compile profiles (`--dut smu`)
-
-`smu_sim_cfg.toml` builds `hw/top/smu_wrapper.sv` (via the `smu_wrapper` Bender
-target) with two compile profiles:
-
-- `compile_smu_chiplet_no_sep`: wrapper with `NoSepCfg`, `SEP=0`.
-- `compile_smu_chiplet_sep_rtl`: wrapper with `DefaultCfg`, `SEP=1` and the
-  real SEP EL2 CPU.
-
-The `ram_<depth>x39` ICCM/DCCM macros that `hw/sys/sep/rtl/sep_tcm_wrapper.sv`
-instantiates come from the upstream VeeR `mem_lib.sv` on the `sep_el2` Bender
-closure. Those macros have no
-init-file hook, so `tb/tb_wrapper_top.sv` backdoor-loads `+sep_itcm_hex` /
-`+sep_dtcm_hex` into their `ram_core` arrays at time zero — de-interleaved into
-the EL2 bank/row layout with per-word Hsiao ECC — and counts qualified bank
-writes at the `sep_tcm_wrapper` request port for the DCCM-store evidence. This
-mirrors the SEP DV TB backdoor (`hw/sys/sep/dv/tb/tb_top.sv`, `` `BD_ICCM ``
-/ `` `BD_DCCM ``). A missing image is fatal at t=0 rather than a boot timeout.
-Verilator tooling shims (`prim_sync2/3`) are shared from
-`hw/sys/smc/dv/tb/verilator_stubs/` (see `hw/sys/smc/dv/README.md`, `tb/verilator_stubs/`).
-
-### Readiness gates
-
-```bash
-python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
-
-python3 tools/dv/run_dv.py --dut smu \
-  --items smu_wrapper_elaboration_no_sep_test --stage flist
-python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
-  --phase filelist \
-  --filelist hw/sys/smu/dv/build/smu_wrapper_dut_compile.f
-```
-
-### Tests
-
-| Test | Profile | Pass evidence |
-|------|---------|---------------|
-| `smu_wrapper_elaboration_no_sep_test` | no_sep | profile selection + reset propagation |
-| `smu_wrapper_elaboration_sep_rtl_test` | sep_rtl | same, with the real SEP present |
-| `smu_smc_smoke_test` | no_sep | SMC ROM firmware runs, scratch `TEST_PASS` |
-| `smu_sep_smoke_test` | sep_rtl | boot readiness: SMC CLA arm, SEP boot-ROM fetch → ICCM execution, ≥16 distinct PCs, DCCM result stores |
-
-### Real SEP DV firmware (`--items sep_real_fw`)
-
-These boot the images from `hw/sys/sep/dv/fw/tests/` rather than this DV root's
-minimal freestanding smoke. They need the toolchain container (see
-`[c_build.sep_dv_fw]`), so they are enrolled in `sep_real_fw` rather than in
-`smoke`.
-
-The verdict is always the firmware's own — a named terminal loop, or the STDOUT
-mailbox handshake — and the testbench only observes. `seq_lib/sep_fw_common.py`
-holds the symbol lookup and PC attribution; `seq_lib/sep_terminal_loop_seq.py`
-is the shared loop classifier that most of these subclass in a few lines.
-`cocotb_wrapper/env/smu_sep_cpu_trace_monitor.py` is the passive SEP
-processor-state monitor every wrapper test builds: a failing scenario ends with
-its symbolized SEP call stack, trap records, and recent-PC tail in the log, and
-`+sep_trace_log` streams every retirement to `sep_trace.log` (see
-`docs/SMU_TB_ARCH.adoc`).
-
-| Test | Firmware | Pass evidence |
-|------|----------|---------------|
-| `smu_sep_boot_health_test` | `sep_smu_boot_health` | boot-ROM reset vector → ICCM `_start` → pass loop |
-| `smu_sep_sanity_test` | `sep_smu_sanity` | stage beacons 0–4 plus `TEST_MAGIC_PASS`: SHA-256 and SHA3-256 KATs matched on-chip |
-| `smu_sep_efuse_test` | `sep_smu_efuse` | eFuse control + external-shim CSR read/write path |
-| `smu_sep_wdt_test` | `sep_smu_wdt` | eight WDT CSRs programmed then read back on-chip; the bark, bite and wakeup thresholds are a reset-to-programmed delta, and the first mismatch parks the firmware in its fail loop |
-| `smu_sep_dma_test` | `sep_smu_dma` | DMA engine register path |
-| `smu_sep_spi_test` | `sep_smu_spi` | OpenTitan `spi_controller` command/address/read-back, six per-stage fail loops |
-| `smu_sep_bidirect_test` | `sep_smu_bidirect` + `smu_sep_bidirect_arm` | SEP↔SMC both directions: scratch RW across the crossbar, then a four-pattern handshake |
-| `smu_sep_remap_test` | `sep_smu_remap` | AP and STEE output-remap offsets match golden (TB-side compare; the image is a stimulus generator and cannot self-check) |
-| `smu_sep_smc_notify_test` | `sep_smc_notify` | outbound egress walked segment by segment: SEP AW → SMU-boundary write → mailbox PASS |
-| `smu_sep_rom_tcm_load_test` | `rom_no_tcm_preload_mem_init` | **no TB TCM preload**: ROM-fetched code secure-DMAs into ICCM and executes there |
-| `smu_sep_lcc_flow_test` | `sep_smu_lcc_flow` | lifecycle controller driven from firmware: `DEMOTE_1`/`DEMOTE_2` written, write-once `lock` honoured, four named fail loops; plus the posture at two consumers — `lc_state` `0x0f`→`0xf0` at the SMC and `dbg_disable` cleared at the DTP, each a delta off the pre-sense baseline compared against the default eFuse image's TEST_DEV contract |
-| `smu_sep_modules_test` | `sep_smu_modules` | module matrix: AES ECB-128 vector, HMAC and KMAC, each with its own fail loop. Brings the entropy stack up first (see below) |
-| `smu_sep_aes_test` | `sep_smu_aes` | dedicated AES-128 ECB known-answer test, a second independent vector; alert status checked before parking |
-| `smu_sep_otbn_test` | `sep_smu_otbn` | **reachability only**: five OTBN CSR writes cross the SEP outbound fabric without a store access fault. No IMEM/DMEM load, no EXECUTE, and the firmware's own fail branch is unreachable — see the seq docstring before reading anything more into a PASS |
-
-`smu_sep_rom_tcm_load_test` is the exception to the backdoor. Every other anchor has its
-ICCM/DCCM placed by the testbench, because the product boot path (ROM → SPI
-flash → manifest → BL1) needs the SPI flash models this tree excludes; that
-backdoor matches what the OSS SEP DV testbench does. `rom_no_tcm_preload_mem_init`
-is the one image that boots from ROM and loads its own TCM, so it covers the
-step the backdoor hides. Its boot ROM is loaded exactly as the SEP DV testbench
-loads one — `+sep_boot_rom_hex` into `u_sep_boot_rom.mem` — and
-`+sep_no_tcm_preload` leaves the TCM zeroed at reset. The plusarg is opt-in:
-without it a missing TCM image is fatal at t=0, so no test boots a zeroed ICCM
-unnoticed.
-
-The images in `sep_smc_sram_blocked` are enrolled outside `all` because of a
-structural limit rather than a test defect (see the notes on their testlist
-entries):
-
-| Test | Group | Limit |
-|------|-------|-------|
-| `smu_sep_smc_xbar_test` | `sep_smc_sram_blocked` | SEP-driven SMC bring-up polls SMC SRAM for an image cookie, but that RAM is on the CPU-private memory interface (`scratch_ram_intf_req_o` leaves `smc.sv` as a port; `smc.sv` exposes no AXI aperture onto it), so a master arriving through sys-inbound has no path to it. The `sep_smc_interop` and `sep_smc_mbox_irq` SEP firmware images share the limit. |
-| `smu_sep_ext_axi_test` | `sep_smc_sram_blocked` | The SMC core leaves the ROM carrying the ROM's `mtvec`, so `seq_lib/smc_cpu_revector.py` programs `RESET_VECTOR` and pulses a tile reset over JTAG2AXI; after the release no core fetches from the re-vectored image. |
-
-`smu_sep_modules_test` and `sep_smu_aes` are enrolled in `sep_real_fw`: the
-entropy stack is brought up by firmware (`sep_entropy_bringup()` in
-`hw/sys/sep/dv/fw/drivers/sep_entropy.h`) ahead of the AES stage, with
-`+esrc_noise_force` supplying the raw noise the ring oscillators cannot generate
-under Verilator. `sep_smu_otbn` only writes CSRs and needs no entropy.
-
-`smu_sep_ext_axi_test` has three parties: the SEP and SMC firmware halves, and
-an ext_in AXI master played by the sequence on the flat `ext_in_*` pins the
-testbench exposes for `cocotbext.axi`; the ext_in master drives real AXI and
-gets real responses, including the DECERR the closed SMC aperture returns.
-
-The SMC boot path's MEM_ZERO FSM writes every word of scratch RAM (4096 bus
-writes, exactly the RAM depth) after the time-zero backdoor load unless held
-off. `tb_wrapper_top.sv` asserts that hold whenever `+smc_scratch_ram_hex`
-supplies an image, so the writes go to 0 and the image survives into firmware.
-Handing over by jumping from the ROM leaves the core carrying the ROM's
-`mtvec`; `seq_lib/smc_cpu_revector.py` programs `RESET_VECTOR` on all
-four cores and forces a tile-reset pulse over the DTP's JTAG2AXI instead, the
-way `hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py` does it over its CSR
-agent. `RESET_VECTOR` resets to its own default, so the re-vector is issued
-after the SMC has left reset; the cluster never drains, so the `RESET_TIMEOUT`
-force is what applies the reset.
-
-SMC scratch RAM is on the CPU-private memory interface (`scratch_ram_intf_req_o`
-leaves `smc.sv` as a port, and `smc.sv` exposes no AXI aperture onto it), so a
-master arriving through sys-inbound has no path to it; the
-`sep_smc_sram_blocked` group never reports PASS.
-
-The SEP smoke is a boot-readiness anchor; console/STDOUT checking over the
-external AXI path is out of scope.
-
-### Entropy stack (`--items sep_entropy`)
-
-| Test | Firmware | Pass evidence |
-|------|----------|---------------|
-| `smu_sep_entropy_test` | `sep_smu_entropy_bringup` | the chain flows, not just its registers: driven noise reaches `dcor.noise_i`, ESRC produces an accepted seed, CSRNG consumes it (`es_ack`), and the CTR_DRBG produces `genbits` |
-
-The firmware drives the documented order — PHASE-A with the generators off,
-generators on, wait for `MAIN_SM_STATUS.BOOT_PHASE_DONE`, then EDN last — and
-marks each phase in SEP cold scratch1. It waits on the boot gate rather than on
-a delay, and parks in distinct fail loops for "gate never opened" versus
-"`ALERT`/`ERR` latched", because an FSM that escalated to AlertHang will never
-produce entropy and that is a different verdict from "not yet".
-
-Two things this needs that the rest of the suite does not:
-
-* **`entropy_rosc_sample_clk_i`**, the ESRC ring-oscillator sample clock, is a
-  separate and faster clock than `clk_smu`. The TB drives it at 3 ns, matching
-  `hw/sys/sep/dv`. With it static the entropy source produces nothing however
-  the stack is programmed.
-* **`+esrc_noise_force`** drives the 12 `dcor.noise_i` lanes from a per-lane
-  LFSR, because the ring oscillators do not self-oscillate under Verilator.
-  This is the one forced signal, it is inert without the plusarg, and the
-  downstream taps are read-only. `hw/sys/sep/dv` takes the same exception;
-  its other shortcut, `+sep_crypto_edn_force`, has no counterpart here.
-
-### Lifecycle and the DTP → SEP → SMC chain
-
-| Group | Pass evidence |
-|-------|---------------|
-| `sep_lifecycle` | per-LC-state feature profile (Table 50): `lc_state` to the SMC, `dbg_disable` to the DTP, `feat_ctrl`, across `TEST_DEV` / `PROD` / `PROD_END` / `RMA_CHIPLET`, plus JTAG debug gating in the two extreme states |
-| `sep_chain` | the full lifecycle path end to end in `PROD` and `PROD_END`: eFuse shadow → SEP lifecycle controller → `dbg_disable` gating the DTP's JTAG2AXI → `lc_state` observed by the SMC, with the SMC's own firmware marker confirming it got there |
-
-LC states are supplied by `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_*.preload`,
-which set the diff-encoded state word (`{~x, x}`, so `TEST_DEV` raw `0x0` is
-`0xF0`). Posture is sampled only after the fuse sense completes — before that
-`lc_state` reads `0x0f`, which is not a state.
-
-### Running
-
-```bash
-# Simulator and bender on PATH (see AGENTS.md).
-mkdir -p "${TMPDIR:?set TMPDIR to a large local scratch directory}"
-# Firmware toolchain: riscv64-unknown-elf-* on PATH, RISCV_TOOLCHAIN, or
-# per-tool overrides (e.g. Homebrew): RISCV_GCC/RISCV_OBJCOPY/RISCV_NM.
-
-# Full baseline (regression: no --seed; both profiles incl. real-SEP boot):
-python3 tools/dv/run_dv.py --dut smu --items smoke \
-  --stage flist --stage c_compile --stage hdl_compile --stage sim
-
-# Single test, cached model (--seed only with a single item):
-python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
-  --seed 1 --stage c_compile --stage sim
-```
-
-Firmware images are built by `fw/build_firmware.py` into `build/firmware/`
-(declared per test as `[c_build.*].outputs`, then staged into each per-test
-run directory). Results land under `build/runs/<ts>__<tool>__<label>/` with
-per-test `result.json` / `results.xml`.
-
 ## Enrollment
 
-`--dut smu` carries the regression: `all` is the enrolled set, `sep0_all` is
-the toolchain-free SEP=0 subset CI runs (`.github/workflows/regress.yml`,
-nightly at one seed per test, weekly at three), and the rest of `all` is the
-SEP=1 firmware set. Names outside both are classified in
-`docs/SMU_DEFERRED_DISPOSITION.adoc`.
+`--dut smu` carries the regression: `all` is the enrolled set (84), `hosted`
+is the toolchain-free subset the workflows run (52), and the rest of `all` is
+the SEP firmware set. The SEP=0 composition proofs are enrolled on `--dut smu_block`
+(`nosep`). Names outside both are classified in
+`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`, which also records which
+enrolled names run only in the unscheduled groups.
 
 Leaves enrolled outside the wrapper's `all` carry their reason on their own
-group: the `sep_smc_sram_blocked` images, and
-`smu_dtp_jtag2axi_abort_mid_op_test` (`migrated_dtp_pending`), which runs on
-the bare DUT because it needs an unterminated OTP interface.
-`smu_dtp_jtag_smoke_test` also runs there for its SV-UVM binding; its cocotb
-side is enrolled here in `migrated_dtp`.
+group: the `sep_smc_sram_blocked` images (SEP-driven SMC bring-up polls SMC
+SRAM that no sys-inbound master can reach, so the group never reports PASS),
+and `smu_dtp_jtag2axi_abort_mid_op_test` (`needs_otp_stall`), which runs on
+the block bench because it needs an OTP interface that holds SINGLE_OP in
+BUSY. `smu_dtp_jtag_smoke_test` also runs there for its SV-UVM binding; its
+cocotb side is enrolled here in `dtp_under_smu`.
 
-Two bodies under `cocotb/tests/` are enrolled nowhere
-and have no wrapper twin: `smu_ext_axi_global_addr_smoke_test` (the OSS `s_axi`
-is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs) and
+Two bodies under `cocotb/tests/` are enrolled nowhere and have no wrapper
+twin: `smu_ext_axi_global_addr_smoke_test` (the OSS `s_axi` is a LOCAL
+aperture, so `GLOBAL_BASE + offset` DECERRs) and
 `smu_smc_gpio_strap_sanity_test`. Their docstrings carry the reasons.

@@ -134,7 +134,7 @@ class sep_warm_reset_bad_target_exception_test(sep_warm_dispatch_base):
             f"exception status; observed {[hex(v) for v in after_exc]}. The trap "
             f"did not come from the seeded handler address"
         )
-        self.logger.info("CHK-MEPC: cold_scratch[1] carried 0x%08x", _BAD_TARGET)
+        self.logger.info("CHK-MEPC PASS: cold_scratch[1] carried 0x%08x", _BAD_TARGET)
 
         # CHK-MCAUSE: an illegal instruction, not an ECC or access fault. Keeps
         # the test pinned to "the target is not code" rather than to whatever

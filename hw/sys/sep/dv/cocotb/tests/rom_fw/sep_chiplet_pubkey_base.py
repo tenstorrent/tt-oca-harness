@@ -461,7 +461,7 @@ class sep_chiplet_pubkey_valid_base(_chiplet_key_mixin, sep_rom_ot_dma_boot_test
                 f"Console: {console}"
             )
         self.logger.info(
-            "CHK-FUSEKEY-RAN: primary@%d -> %s@%d -> %s@%d -> RSA_VERIFY_START@%d -> "
+            "CHK-FUSEKEY-RAN PASS: primary@%d -> %s@%d -> %s@%d -> RSA_VERIFY_START@%d -> "
             "SIG_VALID@%d -> CRYPTO_VALIDATE_OK@%d, each exactly once; the ROM read "
             "CHIPLET fused key %d, found it unrevoked, and the manifest modulus bound "
             "to that fuse's digest",

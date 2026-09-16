@@ -19,6 +19,15 @@ class smc_cg_zeroer_activity_bringup_test(smc_base_test):
     """LIVE Zeroer axi_clk + reg_clk activity-driven gate/ungate, single zero
     operation."""
 
+    required_evidence = (
+        "CHK-BUSY-UNGATES-AXI-CLK",
+        "CHK-NONVAC",
+        "CHK-REG-ACCESS-UNGATES-REG-CLK",
+        "CHK-REG-CLK-IDLE-GATED",
+        "CHK-TIMEOUT-PATHS",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
 

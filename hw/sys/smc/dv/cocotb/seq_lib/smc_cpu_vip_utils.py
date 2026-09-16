@@ -12,6 +12,8 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from .smc_pad_table import pad_index
+
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -72,8 +74,12 @@ CPU_FW_FAIL_VALUE = 0xBAD0_0000
 # failures actually leave behind.
 CPU_FW_TEST_FAIL = 0xFFFF_FFFF
 
-# boot_stall is an lsio pad; smc_padring.sv holds the assignment.
-BOOT_STALL_PAD = 57
+# The boot-stall pad, looked up by function in the Integrator Guide's GPIO
+# table (doc/integrator/meta/ocah_gpio_table.csv): "Stall after fuse sensing
+# ... boot will resume when this GPIO is released". `_release_boot_stall`
+# proves the index by requiring the DUT's boot_stall_combined_o to drop when
+# the pad is released.
+BOOT_STALL_PAD = pad_index("Boot Stall")
 
 
 # Bound for the post-bring-up observability state this helper claims to observe.
@@ -123,11 +129,19 @@ async def check_cpu_bfm_observability() -> None:
     )
 
 
+# Bound on the pad -> boot_stall_combined_o path after a release (pad shim,
+# synchronizer and sticky flop); a release that has not reached the DUT's
+# combined output by then means the pad driven was not the boot-stall pad.
+BOOT_STALL_RELEASE_BOUND_CYCLES = 64
+
+
 def _set_boot_stall(asserted: bool) -> None:
     """Drive the boot_stall pad (active-high) via the TB GPIO override."""
     dut = cocotb.top
-    if not hasattr(dut, "tb_gpio_ext_drive_en"):
-        return
+    assert hasattr(dut, "tb_gpio_ext_drive_en"), (
+        "tb_gpio_ext_drive_en is not exported by this bench, so the boot-stall pad cannot "
+        "be driven and no boot release below can be believed"
+    )
     en = int(dut.tb_gpio_ext_drive_en.value)
     val = int(dut.tb_gpio_ext_drive_value.value)
     mask = 1 << BOOT_STALL_PAD
@@ -140,6 +154,37 @@ def _set_boot_stall(asserted: bool) -> None:
         val &= ~mask
     dut.tb_gpio_ext_drive_en.value = en
     dut.tb_gpio_ext_drive_value.value = val
+
+
+async def _release_boot_stall() -> None:
+    """Release the held boot-stall pad and prove the release reached the DUT.
+
+    Positive control for ``BOOT_STALL_PAD``: with ``+smc_hold_cpu_boot`` the pad
+    has held ``boot_stall_combined_o`` high since t=0, and dropping the pad this
+    helper names must drop it. A boot that proceeds without that transition was
+    never stalled by this pad, and is failed rather than credited.
+    """
+    dut = cocotb.top
+    combined = dut.tb_boot_stall_combined_o.value
+    assert combined.is_resolvable and int(combined) == 1, (
+        f"boot_stall_combined_o={combined} before the release; +smc_hold_cpu_boot should "
+        f"have held it through GPIO_PAD[{BOOT_STALL_PAD}]"
+    )
+    _set_boot_stall(False)
+    for cycle in range(BOOT_STALL_RELEASE_BOUND_CYCLES):
+        await ClockCycles(dut.clk_smc_i, 1)
+        combined = dut.tb_boot_stall_combined_o.value
+        if combined.is_resolvable and int(combined) == 0:
+            cocotb.log.info(
+                "boot_stall_combined_o 1->0 %d cycle(s) after releasing GPIO_PAD[%d] (Boot Stall)",
+                cycle + 1,
+                BOOT_STALL_PAD,
+            )
+            return
+    raise AssertionError(
+        f"boot_stall_combined_o stayed {combined} for {BOOT_STALL_RELEASE_BOUND_CYCLES} cycles "
+        f"after releasing GPIO_PAD[{BOOT_STALL_PAD}]; the released pad is not the boot-stall pad"
+    )
 
 
 def _hold_cpu_boot_plusarg() -> bool:
@@ -184,7 +229,7 @@ async def _release_held_cpu_boot(seq, reset_vector: int, *, settle_cycles: int =
     )
     await ClockCycles(cocotb.top.clk_smc_i, settle_cycles)
 
-    _set_boot_stall(False)
+    await _release_boot_stall()
     await ClockCycles(cocotb.top.clk_smc_i, settle_cycles * 4)
     cocotb.log.info("CPU boot: released +smc_hold_cpu_boot with vector=0x%08x", reset_vector)
 

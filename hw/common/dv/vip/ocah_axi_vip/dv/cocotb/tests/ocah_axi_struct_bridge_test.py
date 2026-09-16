@@ -10,10 +10,12 @@ side feeds the VIP scoreboard whose reference model predicts every response
 and readback, and the scenario checker records the boundary contract: a
 backdoor preload reads back over the bus, single beats of every transfer size
 with random IDs read back under matching BID/RID and agree with the backdoor,
-INCR/FIXED/WRAP bursts land at the IHI 0022 A3.4.1 beat addresses, a one-shot
-read fault answers the programmed response and retires, a write fault leaves
-the memory untouched, requests beyond the agent's queue depth complete under
-backpressure, and bounded READY stalls on the agent complete every transfer.
+INCR/FIXED/WRAP bursts land at the IHI 0022 A3.4.1 beat addresses, one-shot
+read and write faults answer each programmed response code and retire, a write
+fault leaves the memory untouched, requests beyond the agent's queue depth complete under
+backpressure, and bounded READY stalls on the agent complete every transfer,
+including a stall of the write address channel alone, under which the data
+beats hand shake before their address (IHI 0022 A3.3).
 """
 
 from __future__ import annotations
@@ -127,7 +129,7 @@ async def random_single_beats(
 
 async def bursts(checker: OcahChecker, seq: OcahAxiMasterSequence, rng) -> None:
     """INCR bursts read back in order, FIXED repeats one address, WRAP folds at its window."""
-    for beats in (4, 16):
+    for beats in (2, 3, 4, 16):
         base = SCRATCH_BASE + (rng.randrange(0, SCRATCH_BYTES - 256) & ~0xFF)
         words = [OcahRng.random_pattern(DATA_WIDTH, rng) for _ in range(beats)]
         burst_id = OcahRng.random_pattern(ID_WIDTH, rng)
@@ -176,35 +178,47 @@ async def faults(
     model: OcahAxiRefModel,
     rng,
 ) -> None:
-    """One-shot read and write faults programmed through the slave sequence."""
+    """One-shot read and write faults programmed through the slave sequence, each direction once per code."""
     word = FAULT_WORD
     stored = OcahRng.random_pattern(DATA_WIDTH, rng)
     wres = await seq.write_result(word, stored)
     checker.expect_true(CHK_FAULT_RD, wres.ok, context="seed write")
 
-    slave.inject_error(word, RESP_SLVERR, read=True, write=False)
-    model.expect_error(word, RESP_SLVERR, read=True, write=False)
-    monitor.arm_expected_resp(RESP_SLVERR, direction="read")
-    rres = await seq.read_result(word, check_response=False)
-    checker.expect_equal(CHK_FAULT_RD, rres.resp, RESP_SLVERR, context="read fault response")
-    rres = await seq.read_result(word)
-    checker.expect_true(
-        CHK_FAULT_RD, rres.ok and rres.data == stored, context="one-shot retired, data intact"
-    )
+    for read_code, write_code in ((RESP_SLVERR, RESP_DECERR), (RESP_DECERR, RESP_SLVERR)):
+        slave.inject_error(word, read_code, read=True, write=False)
+        model.expect_error(word, read_code, read=True, write=False)
+        monitor.arm_expected_resp(read_code, direction="read")
+        rres = await seq.read_result(word, check_response=False)
+        checker.expect_equal(
+            CHK_FAULT_RD, rres.resp, read_code, context=f"read fault response 0x{read_code:x}"
+        )
+        rres = await seq.read_result(word)
+        checker.expect_true(
+            CHK_FAULT_RD,
+            rres.ok and rres.data == stored,
+            context=f"one-shot 0x{read_code:x} retired, data intact",
+        )
 
-    other = OcahRng.random_pattern(DATA_WIDTH, rng)
-    slave.inject_error(word, RESP_DECERR, read=False, write=True)
-    model.expect_error(word, RESP_DECERR, read=False, write=True)
-    monitor.arm_expected_resp(RESP_DECERR, direction="write")
-    wres = await seq.write_result(word, other, check_response=False)
-    checker.expect_equal(CHK_FAULT_WR, wres.resp, RESP_DECERR, context="write fault response")
-    checker.expect_equal(
-        CHK_FAULT_WR, slave.read32(word), stored, context="backdoor: memory untouched"
-    )
-    rres = await seq.read_result(word)
-    checker.expect_true(
-        CHK_FAULT_WR, rres.ok and rres.data == stored, context="bus: memory untouched"
-    )
+        other = OcahRng.random_pattern(DATA_WIDTH, rng)
+        slave.inject_error(word, write_code, read=False, write=True)
+        model.expect_error(word, write_code, read=False, write=True)
+        monitor.arm_expected_resp(write_code, direction="write")
+        wres = await seq.write_result(word, other, check_response=False)
+        checker.expect_equal(
+            CHK_FAULT_WR, wres.resp, write_code, context=f"write fault response 0x{write_code:x}"
+        )
+        checker.expect_equal(
+            CHK_FAULT_WR,
+            slave.read32(word),
+            stored,
+            context=f"backdoor: memory untouched after 0x{write_code:x}",
+        )
+        rres = await seq.read_result(word)
+        checker.expect_true(
+            CHK_FAULT_WR,
+            rres.ok and rres.data == stored,
+            context=f"bus: memory untouched after 0x{write_code:x}",
+        )
 
 
 async def outstanding(checker: OcahChecker, seq: OcahAxiMasterSequence, rng) -> None:
@@ -241,19 +255,28 @@ async def outstanding(checker: OcahChecker, seq: OcahAxiMasterSequence, rng) -> 
 async def backpressure(
     checker: OcahChecker, seq: OcahAxiMasterSequence, slave: OcahAxiSlaveSequence, rng
 ) -> None:
-    """Bounded READY stalls on the agent's request channels complete every transfer."""
-    slave.enable_backpressure(channels=("aw", "w", "ar"), stall_cycles=STALL_CYCLES)
-    for index in range(4):
-        addr = BACKPRESSURE_BASE + BEAT_BYTES * index
-        data = OcahRng.random_pattern(DATA_WIDTH, rng)
-        wres = await seq.write_result(addr, data)
-        rres = await seq.read_result(addr)
-        checker.expect_true(
-            CHK_BACKPRESSURE,
-            wres.ok and rres.ok and rres.data == data,
-            context=f"stall={STALL_CYCLES} op {index} addr=0x{addr:08x}",
-        )
-    slave.disable_backpressure()
+    """Bounded READY stalls on the agent's request channels complete every transfer.
+
+    The second round stalls the write address channel alone: the master
+    presents AW and W together, so the data beats hand shake first and the
+    agent pairs them with the address that follows.
+    """
+    for round_index, channels in enumerate((("aw", "w", "ar"), ("aw",))):
+        slave.enable_backpressure(channels=channels, stall_cycles=STALL_CYCLES)
+        for index in range(4):
+            addr = BACKPRESSURE_BASE + BEAT_BYTES * (4 * round_index + index)
+            data = OcahRng.random_pattern(DATA_WIDTH, rng)
+            wres = await seq.write_result(addr, data)
+            rres = await seq.read_result(addr)
+            checker.expect_true(
+                CHK_BACKPRESSURE,
+                wres.ok and rres.ok and rres.data == data,
+                context=(
+                    f"stall={STALL_CYCLES} channels={','.join(channels)} "
+                    f"op {index} addr=0x{addr:08x}"
+                ),
+            )
+        slave.disable_backpressure()
 
 
 @cocotb.test()

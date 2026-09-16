@@ -10,9 +10,7 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[6]
 _SMC_ADDR_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "smc_addr.h"
-_FILTER_CTRL_H = (
-    _REPO_ROOT / "hw" / "common" / "axi" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
-)
+_FILTER_CTRL_H = _REPO_ROOT / "hw" / "ip" / "axi_filter" / "regs" / "gen" / "c" / "filter_ctrl.h"
 _CPU_CTRL_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
 _CHIP_CONFIG_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "chip_config.h"

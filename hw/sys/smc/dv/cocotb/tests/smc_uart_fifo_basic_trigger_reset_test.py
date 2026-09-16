@@ -17,6 +17,16 @@ from smc_base_test import smc_base_test
 class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
     """UART0 loopback FIFO trigger levels + RX/TX FIFO reset."""
 
+    required_evidence = (
+        "CHK-UART-FIFO-RST-RX",
+        "CHK-UART-FIFO-RST-TX",
+        "CHK-UART-FIFO-TRIG-1B",
+        "CHK-UART-FIFO-TRIG-32B",
+        "CHK-UART-FIFO-TRIG-4B",
+        "CHK-UART-FIFO-TRIG-ABOVE-DEPTH",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

@@ -10,7 +10,7 @@ Drives product ports only:
 Under PROD (raw 0x1):
 
   * non-identity read / write → BLOCK (DECERR + 0xBADCAB1E)
-  * CHIPLET_ID / PACKAGE_ID read → ALLOW (not DECERR; timeout fails)
+  * JTAG_PUBLIC_IDENTITY read → ALLOW (not DECERR; timeout fails)
 
 Also records ``CHIP_CONFIG_LC_STATE`` over SEP_IN with an exact expected
 matching the packed ``tb_lc_state`` value. Full multi-state matrix lives in
@@ -32,9 +32,8 @@ except ImportError:  # pragma: no cover - cocotb version shim
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from seq_lib.smc_efuse_jtag_lc_negative_test_seq import (
-    SMC_EFUSE_MAP_CHIPLET_ID,
+    SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY,
     SMC_EFUSE_MAP_LOCKS,
-    SMC_EFUSE_MAP_PACKAGE_ID,
     smc_efuse_jtag_lc_negative_test_seq,
 )
 from seq_lib.smc_jtag_vip_utils import check_cpu_jtag_pin_vip
@@ -57,6 +56,13 @@ def pack_lc_state(raw: int) -> int:
 @pyuvm.test()
 class smc_efuse_jtag_lc_negative_test(smc_base_test):
     """PROD JTAG eFuse deny paths + identity-read exception."""
+
+    required_evidence = (
+        "CHK-CPU-JTAG-DTMCS",
+        "CHK-CPU-JTAG-IDCODE",
+        "CHK-CPU-JTAG-SCAN-ACTIVITY",
+    )
+    min_evidence = 3
 
     auto_protocol_vip = False
 
@@ -81,8 +87,9 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
 
         # Negative: non-identity blocked; identity exception still allowed.
         await self._check_read("PROD", "NON_ID", SMC_EFUSE_MAP_LOCKS, expect_block=True)
-        await self._check_read("PROD", "CHIPLET_ID", SMC_EFUSE_MAP_CHIPLET_ID, expect_block=False)
-        await self._check_read("PROD", "PACKAGE_ID", SMC_EFUSE_MAP_PACKAGE_ID, expect_block=False)
+        await self._check_read(
+            "PROD", "JTAG_PUBLIC_IDENTITY", SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY, expect_block=False
+        )
         await self._check_write("PROD", SMC_EFUSE_MAP_LOCKS, expect_block=True)
 
         # Positive control for the block above, in this same run and on the
@@ -127,15 +134,15 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.JTAG,
             type(self).__name__,
-            # Directed stimulus floor: the four PROD legs, the TEST_DEV
+            # Directed stimulus floor: the three PROD legs, the TEST_DEV
             # positive control, and the LC-state CSR read. Literal here, not
             # read from the sequence counters.
-            min_csr_accesses=6,
+            min_csr_accesses=5,
             csr_accesses=self.checks + lc_seq.accesses,
             proxy=False,
             details=(
                 "PROD JTAG eFuse: NON_ID/write BLOCK (DECERR+0xBADCAB1E); "
-                "CHIPLET_ID/PACKAGE_ID ALLOW via resp=OKAY "
+                "JTAG_PUBLIC_IDENTITY ALLOW via resp=OKAY "
                 "(identity rdata not scored on Verilator stub); "
                 "CHIP_CONFIG_LC_STATE exact; CPU JTAG pins checked"
             ),

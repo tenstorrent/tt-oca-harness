@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "ocah_uart_data_test"
+module = "ocah_uart_data_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "uart_data"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_uart_format_test"
+module = "ocah_uart_format_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "uart_format"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_uart_error_test"
+module = "ocah_uart_error_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "uart_error"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_uart_timeout_test"
+module = "ocah_uart_timeout_test"
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "uart_timeout"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "smoke"
+tests = [
+    "ocah_uart_data_test",
+    "ocah_uart_format_test",
+    "ocah_uart_error_test",
+    "ocah_uart_timeout_test",
+]
+
+[[groups]]
+name = "all"
+tests = [
+    "ocah_uart_data_test",
+    "ocah_uart_format_test",
+    "ocah_uart_error_test",
+    "ocah_uart_timeout_test",
+]

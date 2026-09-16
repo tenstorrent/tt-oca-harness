@@ -72,6 +72,9 @@ def _fmt_watch(watch: _HandshakeWatch) -> str:
 class smc_sys_out_aw_w_split_test(smc_base_test):
     """One SYS_OUT write; fail specifically on AW-without-W at the boundary."""
 
+    required_evidence = ("CHK-SYS-OUT-WR-COMPLETE",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
