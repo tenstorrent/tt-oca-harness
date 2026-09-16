@@ -162,6 +162,25 @@ class SmcSysAxiItem(uvm_sequence_item):
         )
 
 
+class SmcSysAxiGroupItem(uvm_sequence_item):
+    """Accesses the manager keeps outstanding at the same time.
+
+    AXI transactions are pipelined: a manager may present the next address
+    before the subordinate has answered the previous one. A driver that waits
+    for each response before starting the next can never present more than one,
+    so the subordinate's ready-side flow control is never exercised. The driver
+    starts every member of a group before awaiting any of them; each member is
+    a plain `SmcSysAxiItem` and reaches the scoreboard on its own, so every
+    access in the group keeps its own expectation and its own check.
+    """
+
+    def __init__(self, name: str, items: list[SmcSysAxiItem], timing=None) -> None:
+        super().__init__(name)
+        assert items, "a SmcSysAxiGroupItem needs at least one access"
+        self.items = list(items)
+        self.timing = timing
+
+
 class SmcSysAxiDriver(uvm_driver):
     """Drives SmcSysAxiItem transactions through ocah_axi_vip.OcahAxiMasterSequence."""
 
@@ -189,39 +208,72 @@ class SmcSysAxiDriver(uvm_driver):
 
         while True:
             item = await self.seq_item_port.get_next_item()
-            item.bus_name = self.bus_name
+            members = self._members(item)
+            for member in members:
+                member.bus_name = self.bus_name
             await self._drive(item)
-            self.ap.write(item)
+            for member in members:
+                self.ap.write(member)
             self.seq_item_port.item_done()
 
-    async def _drive(self, item: SmcSysAxiItem) -> None:
-        """Drive one item, under its own channel timing when it carries one."""
+    @staticmethod
+    def _members(item) -> list:
+        """The accesses an item carries: a group's members, or the item itself."""
+        return list(item.items) if isinstance(item, SmcSysAxiGroupItem) else [item]
+
+    async def _drive(self, item) -> None:
+        """Drive one item or group, under its own channel timing when it has one."""
         if item.timing is None:
-            await self._drive_transfer(item)
+            await self._drive_transfers(item)
             return
         self.axi.driver.set_timing(item.timing)
         try:
-            await self._drive_transfer(item)
+            await self._drive_transfers(item)
         finally:
             clear_profile(self.axi.driver)
 
-    async def _drive_transfer(self, item: SmcSysAxiItem) -> None:
+    async def _drive_transfers(self, item) -> None:
+        """Start every member on the bus, then collect the responses.
+
+        A group's members are all started before any of them is awaited, so
+        the manager keeps them outstanding at once and the address channels
+        stay valid while the subordinate is still answering earlier ones.
+        """
+        members = self._members(item)
+        events = [self._start_transfer(member) for member in members]
+        for member, event in zip(members, events):
+            await self._collect_transfer(member, event)
+
+    def _start_transfer(self, item: SmcSysAxiItem):
         if item.op is SmcSysAxiOp.READ:
-            event = self.axi.init_read(
+            return self.axi.init_read(
                 address=item.addr,
                 length=item.transfer_bytes,
                 size=self._axi_size(item.length),
                 burst=int(item.burst),
                 prot=int(item.prot),
             )
-            resp = await self._timed_event(event, item, "read")
-            if resp is None:
-                item.resp_ok = item.allow_timeout
-                return
+        if item.op is SmcSysAxiOp.WRITE:
+            return self.axi.init_write(
+                address=item.addr,
+                data=item.wdata.to_bytes(item.transfer_bytes, "little"),
+                size=self._axi_size(item.length),
+                burst=int(item.burst),
+                prot=int(item.prot),
+            )
+        raise ValueError(f"unknown SMC SYS AXI op {item.op}")
+
+    async def _collect_transfer(self, item: SmcSysAxiItem, event) -> None:
+        what = item.op.value
+        resp = await self._timed_event(event, item, what)
+        if resp is None:
+            item.resp_ok = item.allow_timeout
+            return
+        item.resp_code = self._resp_code(resp)
+        _raw_ok = self._resp_ok(resp)
+        item.resp_ok = _raw_ok or item.allow_error
+        if item.op is SmcSysAxiOp.READ:
             item.rdata = int.from_bytes(resp.data, "little")
-            item.resp_code = self._resp_code(resp)
-            _raw_ok = self._resp_ok(resp)
-            item.resp_ok = _raw_ok or item.allow_error
             self.logger.info(
                 "%s read  0x%014x -> 0x%x ok=%s%s",
                 self.bus_name,
@@ -230,21 +282,7 @@ class SmcSysAxiDriver(uvm_driver):
                 item.resp_ok,
                 self._tolerated_note(_raw_ok, item.resp_code),
             )
-        elif item.op is SmcSysAxiOp.WRITE:
-            event = self.axi.init_write(
-                address=item.addr,
-                data=item.wdata.to_bytes(item.transfer_bytes, "little"),
-                size=self._axi_size(item.length),
-                burst=int(item.burst),
-                prot=int(item.prot),
-            )
-            resp = await self._timed_event(event, item, "write")
-            if resp is None:
-                item.resp_ok = item.allow_timeout
-                return
-            item.resp_code = self._resp_code(resp)
-            _raw_ok = self._resp_ok(resp)
-            item.resp_ok = _raw_ok or item.allow_error
+        else:
             self.logger.info(
                 "%s write 0x%014x <- 0x%x ok=%s%s",
                 self.bus_name,
@@ -253,8 +291,6 @@ class SmcSysAxiDriver(uvm_driver):
                 item.resp_ok,
                 self._tolerated_note(_raw_ok, item.resp_code),
             )
-        else:
-            raise ValueError(f"unknown SMC SYS AXI op {item.op}")
 
     @staticmethod
     def _tolerated_note(raw_ok: bool, resp_code: int) -> str:

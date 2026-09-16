@@ -408,60 +408,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_sys_out_rresp_decerr"
 
 [[holes]]
-id = "fcov-smc-c_ar_stall"
-title = "c ar stall"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_ar_stall"
-
-[[holes]]
-id = "fcov-smc-c_aw_stall"
-title = "c aw stall"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_aw_stall"
-
-[[holes]]
-id = "fcov-smc-c_b_stall"
-title = "c b stall"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_b_stall"
-
-[[holes]]
 id = "fcov-smc-c_bresp_exokay"
 title = "c bresp exokay"
 category = "missing_stimulus"
@@ -478,24 +424,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_bresp_exokay"
-
-[[holes]]
-id = "fcov-smc-c_r_stall"
-title = "c r stall"
-category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_r_stall"
 
 [[holes]]
 id = "fcov-smc-c_rresp_exokay"
