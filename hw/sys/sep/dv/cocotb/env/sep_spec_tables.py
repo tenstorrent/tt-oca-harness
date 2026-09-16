@@ -202,6 +202,57 @@ def abr_off(name: str) -> int:
         raise KeyError(f"{name!r} missing from abr_reg.rdl") from exc
 
 
+_ESRC_RDL = _REPO / "hw" / "ip" / "entropy_source" / "regs" / "entropy_source.rdl"
+
+_RDL_REG = re.compile(r"^\s*reg\s+([A-Za-z_]\w*)\s*\{", re.M)
+_RDL_FIELD = re.compile(r"field\s*\{(?P<body>[^{}]*)\}\s*(?P<name>[A-Za-z_]\w*)\s*\[", re.S)
+
+
+@lru_cache(maxsize=1)
+def esrc_fips_locked_fields() -> dict[str, frozenset[str]]:
+    """Fields FIPS_LOCK.LOCK freezes, keyed by register, from ``entropy_source.rdl``.
+
+    The certified-configuration inventory is the set of fields the RDL marks
+    ``swwel``; FIPS_LOCK's own block documents it in those terms. The generated
+    Python and C exports drop ``swwel``, so the property is read from the RDL
+    source, as ``abr_offsets`` reads ``abr_reg.rdl``.
+
+    This is the DV-side expectation of what must freeze. It is deliberately not
+    taken from ``entropy_source.sv``: the RTL is hand-written and maintained
+    separately from this file, so a lock the RTL adds or drops on its own shows
+    up here as a disagreement instead of being copied into the expectation.
+    """
+    text = _ESRC_RDL.read_text(encoding="utf-8")
+    bounds = [(m.group(1), m.start()) for m in _RDL_REG.finditer(text)]
+    out: dict[str, frozenset[str]] = {}
+    for i, (reg, start) in enumerate(bounds):
+        end = bounds[i + 1][1] if i + 1 < len(bounds) else len(text)
+        locked = {
+            f.group("name")
+            for f in _RDL_FIELD.finditer(text[start:end])
+            if "swwel" in f.group("body")
+        }
+        if locked:
+            out[reg] = frozenset(locked)
+    if not out:
+        raise RuntimeError(
+            f"no swwel fields parsed from {_ESRC_RDL}; the walked lock set would "
+            "be empty and every post-lock check would pass without poking anything"
+        )
+    return out
+
+
+def esrc_fips_locked(reg: str) -> frozenset[str]:
+    """The FIPS-locked fields of one register. Raises if the register locks none."""
+    try:
+        return esrc_fips_locked_fields()[reg]
+    except KeyError as exc:
+        raise KeyError(
+            f"{reg!r} has no swwel field in entropy_source.rdl; it is not part of "
+            "the certified-configuration inventory FIPS_LOCK freezes"
+        ) from exc
+
+
 def _selftest() -> None:
     assert window("ABR").base == 0x1094_0000
     assert window("EPOOL").base == 0x1095_0000
@@ -220,6 +271,13 @@ def _selftest() -> None:
     name0, name1 = mldsa_name_words()
     assert name0 == 0x44534D4C
     assert name1 == 0x3837412D
+    locked = esrc_fips_locked_fields()
+    # A parse that silently matched nothing would empty the post-lock walk.
+    assert len(locked) >= 10, locked
+    assert sum(len(v) for v in locked.values()) >= 30
+    assert esrc_fips_locked("CTRL") >= {"MODULE_ENABLE", "SHA256_WHITENING_ENABLE"}
+    assert esrc_fips_locked("HEALTH_TEST_CTRL") >= {"ENABLE", "REPETITION_LIMIT"}
+    assert "LOCK" not in locked.get("FIPS_LOCK", frozenset())
 
 
 _selftest()

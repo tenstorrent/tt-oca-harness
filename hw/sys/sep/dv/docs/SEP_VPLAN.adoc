@@ -5401,8 +5401,11 @@ watermark together; no vehicle asserts that pair.
 . Health-test *quality* is not claimed.
 . `FIPS_LOCK.LOCK` is write-1-only.
 . Observe FIFOs stay writable under lock.
-. Walks every field `entropy_source.sv` marks `swwel = fips_lock`, one target
-per register, except `CTRL.MODULE_ENABLE`.
+. Walks every field `entropy_source.rdl` marks `swwel` -- the
+certified-configuration inventory `FIPS_LOCK` freezes -- one target per
+register, except `CTRL.MODULE_ENABLE`. The sequence declares its coverage and
+reconciles it against that RDL inventory at import, so a lock added or dropped
+there fails the test instead of leaving the walk quietly short.
 
 *Checkers*:
 
@@ -5440,7 +5443,7 @@ an exact binomial cutoff with no closed form; what is claimed for it is that it
 stays inside the 1024-sample window and falls as the assessed min-entropy rises.
 |CHK-RANDCFG
 |26 locked registers walked in one invocation, covering 34 of the 35 fields
-`entropy_source.sv` marks `swwel = fips_lock`. Every register that locks two
+`entropy_source.rdl` marks `swwel`. Every register that locks two
 fields moves both off reset in the pre-lock write, so a field inside the compare
 mask is never left unwritten.
 |===
