@@ -1992,6 +1992,35 @@ args = [
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",
 ]
 
+# sep_lifecycle_ctrl.sv hardwires dbg_disable.smc_otp_jtag2axi and
+# .sep_otp_jtag2axi to 0 while deriving .smc_jtag2axi from the Case-2 gating
+# term, so the OTP bridges sit outside the lifecycle debug ladder. Every other
+# OTP leaf runs with an image that leaves debug open, so that separation is
+# never observed. This entry names the PROD_END SEP shadow image, whose posture
+# closes the fabric bridge, and drives both OTP bridges to completion in it.
+[[tests]]
+name = "smu_otp_bridges_under_dbg_disable_test"
+module = "smu_otp_bridges_under_dbg_disable_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag2axi", "otp", "sep", "real_rtl", "lifecycle", "security"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: the per-test +sep_shadow_reg_preload image is the declared
+  # stimulus, and it is also the OTP content the JTAG OTP path reads back.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload",
+]
+
 [[tests]]
 name = "smu_otp_vs_fabric_map_race_test"
 module = "smu_otp_vs_fabric_map_race_test"
@@ -2301,6 +2330,7 @@ tests = [
   "smu_jtag2axi_vs_smn_same_csr_race_test",
   "smu_jtag_chain_enhanced_test",
   "smu_jtag_reset_override_test",
+  "smu_otp_bridges_under_dbg_disable_test",
   "smu_otp_vs_fabric_map_race_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_xtrig_ctm_illegal_phase_test",
@@ -2403,6 +2433,7 @@ tests = [
   "smu_jtag2axi_vs_smn_same_csr_race_test",
   "smu_jtag_chain_enhanced_test",
   "smu_jtag_reset_override_test",
+  "smu_otp_bridges_under_dbg_disable_test",
   "smu_otp_vs_fabric_map_race_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_smc_mailbox_int_test",
@@ -2431,7 +2462,7 @@ tests = [
   "smu_smc_peripheral_irq_test",
   "smu_sep_secure_tm_test",
 ]
-expected_count = 62
+expected_count = 63
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2506,6 +2537,7 @@ tests = [
   "smu_jtag2axi_vs_smn_same_csr_race_test",
   "smu_jtag_chain_enhanced_test",
   "smu_jtag_reset_override_test",
+  "smu_otp_bridges_under_dbg_disable_test",
   "smu_otp_vs_fabric_map_race_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_smc_mailbox_int_test",
@@ -2539,7 +2571,7 @@ tests = [
   "smu_smc_peripheral_irq_test",
   "smu_sep_secure_tm_test",
 ]
-expected_count = 94
+expected_count = 95
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

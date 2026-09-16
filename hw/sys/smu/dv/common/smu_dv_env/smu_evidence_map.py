@@ -381,6 +381,55 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
         ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
+    "smu_otp_bridges_under_dbg_disable_test": [
+        (
+            "CHK-OTP-DBG-POSTURE",
+            "CHK-OTP-DBG-POSTURE",
+            "the SEP shadow image puts the chiplet in a lifecycle state whose posture "
+            "disables dbg_disable.smc_jtag2axi, and lc_state carries that state",
+        ),
+        (
+            "CHK-OTP-FABRIC-BLOCKED",
+            "CHK-OTP-FABRIC-BLOCKED",
+            "a SINGLE_OP on the primary TAP launches neither AW nor AR on the "
+            "DTP -> SMC debug AXI port while that posture holds",
+        ),
+        (
+            "CHK-OTP-SMC-RW-WHILE-BLOCKED",
+            "CHK-OTP-SMC-RW-WHILE-BLOCKED",
+            "SMC OTP JTAG2AXI write and readback of SMC eFuse MAP SPARE[0] both "
+            "complete with SUCCESS in the same blocked-fabric state",
+        ),
+        (
+            "CHK-OTP-SEP-LC-READ-WHILE-BLOCKED",
+            "CHK-OTP-SEP-LC-READ-WHILE-BLOCKED",
+            "SEP OTP JTAG2AXI read of SEP eFuse MAP LC_STATE returns the "
+            "{~raw, raw} word the shadow image programmed",
+        ),
+        (
+            "CHK-OTP-SEP-RW-WHILE-BLOCKED",
+            "CHK-OTP-SEP-RW-WHILE-BLOCKED",
+            "SEP OTP JTAG2AXI write and readback of SEP eFuse MAP SPARE0 both "
+            "complete with SUCCESS in the same blocked-fabric state",
+        ),
+        (
+            "CHK-OTP-SEP-BANK-CTRL-READ",
+            "CHK-OTP-SEP-BANK-CTRL-READ",
+            "a SEP OTP JTAG2AXI read of the shim window leaves the SEP on the "
+            "eFuse bank-control port and returns EFUSE_BANK_INIT_TIME's RDL reset",
+        ),
+        (
+            "CHK-OTP-SEP-BANK-CTRL-WRITE",
+            "CHK-OTP-SEP-BANK-CTRL-WRITE",
+            "the same port takes a written EFUSE_BANK_INIT_TIME value and reads it back",
+        ),
+        (
+            "CHK-OTP-DBG-POSTURE-HELD",
+            "CHK-OTP-DBG-POSTURE-HELD",
+            "dbg_disable.smc_jtag2axi is still asserted after all OTP traffic, so the "
+            "completions above are attributable to the blocked-fabric state",
+        ),
+    ],
     "smu_otp_vs_fabric_map_race_test": [
         ("CHK-RACE-OTP-FAB", "RACE_OTP_FABRIC", "shadow == last writer"),
     ],
