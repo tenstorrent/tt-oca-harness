@@ -22,9 +22,9 @@ signature_type: 0x01                 # RSA-3072 PKCS#1 v1.5 / SHA-256
 signing_authority: local
 signing_key_name: "test_rom_key_0"
 signing_key_file: "tests/signing_keys/rsa_private_key.rom_key0.pem"
-public_key_select_classic: 0x1000000 # bit 24 = SIP_PUBK_HASH1 (an OTP anchor)
-public_key_encoding: 0x02            # RAW (388 B: 384-byte modulus + 4-byte exponent)
-signature_encoding: 0x02             # RAW (384 B, big-endian)
+public_key_select_classic: 0x1000000  # bit 24 = SIP_PUBK_HASH1 (an OTP anchor)
+public_key_encoding: 0x02             # RAW (388 B: 384-byte modulus + 4-byte exponent)
+signature_encoding: 0x02              # RAW (384 B, big-endian)
 
 timestamp: 1764633600
 manifest_content_version:

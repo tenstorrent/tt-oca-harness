@@ -90,7 +90,7 @@ window. The ROM copies them to SEP SRAM before validation and execution.
 The two halves of that window requirement are enforced differently, and an
 integrator has to account for both. The ROM checks the payload source range
 itself: a payload that starts below the SMC SRAM base or ends above it is
-rejected with `MANIFEST_ERR_PAYLOAD_BAD_LOC`, as is an address computation that
+rejected with `OCA_FAIL_PAYLOAD_LOCATION` (console `PAYLOAD_LOC_FAIL`), as is an address computation that
 overflows. The manifest header read is not checked. BL0 adds the offset from
 scratch register 8 to the SMC SRAM base and issues the header transfer without
 a range or overflow test, so keeping that offset inside the window is SMC's
