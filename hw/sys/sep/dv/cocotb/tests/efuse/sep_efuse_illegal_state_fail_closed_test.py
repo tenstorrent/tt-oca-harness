@@ -411,6 +411,18 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 "would land in an idle window and grade nothing"
             )
 
+        # Pre-state control for the error term. error_o is one of the three
+        # things the verdict below rests on, and on the program leg the
+        # injection lands in an idle window where the other two are already
+        # true. Sampling it here means "error_o == 1 afterwards" is a change
+        # this injection caused, not a latch left set by an earlier leg.
+        await ReadOnly()
+        err_before = int(getattr(dut, f"efuse_{which}_error_o").value)
+        assert err_before == 0, (
+            f"test bug: {which} error_o was already 1 before the injection, so a "
+            "1 afterwards would not be attributable to it"
+        )
+
         await NextTimeStep()
         val.value = state
         en.value = 1
