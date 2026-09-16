@@ -17,9 +17,10 @@ needs a measured database first.
 (`smu_wrapper_uvm_top.u_dut`), a port counting once any of its bits has
 toggled, read from the run's `cov/merged.dat` by `cov/interface_toggle.py`;
 plus the `user` points
-|Numeric target |interface toggle 85 percent of the wrapper's ports (139 of
-165 = 84.2 percent on the `hosted` group when this chapter was written);
-`user` 95 percent effective. Neither is a runner gate: the runner grades the
+|Numeric target |interface toggle 85 percent of the wrapper's ports (141 of
+165 = 85.5 percent on the `hosted` group when this chapter was written);
+`user` 95 percent effective (94 of 107 hit, 90.4 percent effective, at the
+same time). Neither is a runner gate: the runner grades the
 native families and the policy's `[[holes]]`, and the interface figure is
 reported beside them
 |===
