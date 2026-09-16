@@ -3,8 +3,9 @@
 //
 // dtp_jtag_runbist_test scenario sequence. RUNBIST (IR 0x02) selects the
 // iJTAG network as its data register: with every SIB closed that register
-// is the three-SIB chain, so a DR scan returns the pattern three TCK behind
-// TDI with the SIB captures in the low bits (CHK-RUNBIST-DR-LEN), and
+// is the three-SIB chain and an open SIB splices its instrument stub in, so
+// a DR scan returns the chain's capture bits followed by the pattern one TCK
+// per chain flop behind TDI (CHK-RUNBIST-DR-LEN), and
 // directed plus seeded scans produce distinct, nonzero responses
 // (CHK-RUNBIST-RESPONSE). The RUNBIST strobe reaches the non-secure DFT host
 // whatever the SIB state and the dft_nonsecure disable (CHK-DFT-RUNBIST);
@@ -21,12 +22,13 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
   localparam string RunbistStrobeCheckId = "CHK-DFT-RUNBIST";
   localparam string RunbistDrCheckId = "CHK-RUNBIST-DR-LEN";
 
-  // Stored SIB bits the chain holds and the disable vector gating them.
-  protected bit m_sib_bits[DtpIjtagSibCount];
+  // Chain state the scans program and the disable vector gating it.
+  protected dtp_ijtag_sib_model m_sib_model;
   protected sep_lifecycle_ctrl_pkg::dbg_disable_t m_dbg_disable;
 
   function new(string name = "dtp_jtag_runbist_test_seq");
     super.new(name);
+    m_sib_model = new();
   endfunction
 
   // Stored SIB bits that open the non-secure DFT SIB alone.
@@ -43,16 +45,25 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
     check_scan_observable(RunbistStrobeCheckId, "jtag_dft_runbist", 1'b1, context_s);
   endtask
 
-  // Compare one RUNBIST DR scan with the SIB-chain prediction, then track
-  // the update.
+  // Compare one RUNBIST DR scan with the chain prediction, then commit its
+  // update.
   protected function void judge_runbist_tdo(bit [63:0] pattern, bit [63:0] observed,
                                             string context_s);
-    bit [63:0] expected = dtp_ijtag_sib_model::expected_dr_tdo(
-        m_sib_bits, pattern, RunbistScanWidth, m_dbg_disable
-    );
-    family_check(RunbistDrCheckId, "RUNBIST TDO is the SIB chain, three TCK behind TDI", observed,
-                 expected, $sformatf("pattern=0x%02h sibs=%p %s", pattern, m_sib_bits, context_s));
-    dtp_ijtag_sib_model::update(m_sib_bits, pattern, RunbistScanWidth, m_dbg_disable);
+    bit eff[DtpIjtagSibCount];
+    bit [63:0] expected = m_sib_model.expected_scan_tdo(RunbistScanWidth, m_dbg_disable, pattern);
+    m_sib_model.effective(m_dbg_disable, eff);
+    family_check(RunbistDrCheckId,
+                 "RUNBIST TDO is the iJTAG chain: capture bits, then TDI behind the chain",
+                 observed, expected, $sformatf(
+                 "pattern=0x%02h chain_len=%0d sibs=%p %s",
+                 pattern,
+                 m_sib_model.chain_len(
+                     m_dbg_disable
+                 ),
+                 eff,
+                 context_s
+                 ));
+    m_sib_model.apply_raw_scan(RunbistScanWidth, m_dbg_disable, pattern);
   endfunction
 
   // One RUNBIST DR scan judged against the SIB-chain prediction.
@@ -78,32 +89,42 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
                            "%s edges=%0d", context_s, edges));
   endtask
 
-  // RUNBIST scan value whose last three bits keep only the DFT SIB open.
+  // RUNBIST scan value that keeps only the DFT SIB open and randomizes the
+  // instrument segment and the bits that fall through the chain.
   protected function bit [63:0] dft_open_pattern();
     bit bits[DtpIjtagSibCount];
-    int unsigned low = RunbistScanWidth - DtpIjtagSibCount;
+    bit [63:0] inst[int];
+    bit [63:0] value;
+    int unsigned free = RunbistScanWidth - m_sib_model.chain_len(m_dbg_disable);
     dft_sib_open(bits);
-    return (64'(dtp_ijtag_sib_model::pattern_value(bits)) << low) | random_pattern(low);
+    inst[int'(IJ_DFT)] = random_pattern(DtpIjtagInstrumentWidths[IJ_DFT]);
+    value = m_sib_model.compose_scan(RunbistScanWidth, m_dbg_disable,
+                                     int'(dtp_ijtag_sib_model::pattern_value(bits)), inst);
+    if (free > 0) value |= random_pattern(free);
+    return value;
   endfunction
 
   // Program the SIB chain through SELECT_IJTAG so only the DFT SIB is open.
   protected task open_dft_sib();
     bit bits[DtpIjtagSibCount];
+    bit [63:0] inst[int];
     bit [63:0] value, unused;
+    int unsigned width = m_sib_model.chain_len(m_dbg_disable);
     dft_sib_open(bits);
-    value = 64'(dtp_ijtag_sib_model::pattern_value(bits));
+    value = m_sib_model.compose_scan(width, m_dbg_disable,
+                                     int'(dtp_ijtag_sib_model::pattern_value(bits)), inst);
     load_ir(6'(SELECT_IJTAG_INSTR));
-    shift_dr(value, DtpIjtagSibCount, unused);
-    dtp_ijtag_sib_model::update(m_sib_bits, value, DtpIjtagSibCount, m_dbg_disable);
+    shift_dr(value, width, unused);
+    m_sib_model.apply_raw_scan(width, m_dbg_disable, value);
   endtask
 
   // Directed and seeded RUNBIST scans: chain response, distinct and nonzero.
   protected task check_runbist_response();
     bit [63:0] patterns[$];
-    bit        seen_results[bit [7:0]];
-    bit [7:0]  observed;
-    bit        any_nonzero = 1'b0;
-    string     results_s = "";
+    bit seen_results[bit [7:0]];
+    bit any_nonzero = 1'b0;
+    string results_s = "";
+    bit [7:0] observed;
     patterns = {64'h00, 64'hFF, 64'h5A, 64'hA5};
     for (int unsigned r = 0; r < random_count; r++)
       patterns.push_back(random_pattern(RunbistScanWidth));
@@ -139,7 +160,7 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
     `uvm_info(get_type_name(),
               "Step 1: Reset TAP; RUNBIST raises the DFT runbist strobe, BYPASS drops it", UVM_LOW)
     reset_to_tlr();
-    dtp_ijtag_sib_model::closed(m_sib_bits);
+    m_sib_model.reset();
     m_dbg_disable = '0;
     load_runbist("RUNBIST loaded");
     load_ir(6'(BYPASS_INSTR));
@@ -147,7 +168,7 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
     load_runbist("RUNBIST reloaded");
 
     `uvm_info(get_type_name(),
-              "Step 2: RUNBIST DR scans return the SIB chain, pattern three TCK behind TDI",
+              "Step 2: RUNBIST DR scans return the chain capture, then the pattern behind it",
               UVM_LOW)
     check_runbist_response();
 

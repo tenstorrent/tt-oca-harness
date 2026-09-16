@@ -3,8 +3,9 @@
 """Sequence for dtp_jtag_runbist_test.
 
 RUNBIST (IR 0x02) selects the iJTAG network as its data register. With every
-SIB closed that register is the three-SIB chain, so a DR scan returns the
-pattern three TCK behind TDI with the SIB captures in the low bits. The RUNBIST
+SIB closed that register is the three-SIB chain; an open SIB splices its
+instrument stub in, so a DR scan returns the chain's capture bits followed by
+the pattern one TCK per chain flop behind TDI. The RUNBIST
 strobe reaches the non-secure DFT host whatever the SIB state and the
 ``dft_nonsecure`` disable; that disable holds the DFT SIB closed and silences
 its host scan controls without touching the instruction decode.
@@ -14,7 +15,7 @@ from __future__ import annotations
 
 import random
 
-from env.dtp_scan_ref_model import IJTAG_SIB_COUNT, DtpIjtagSibModel
+from env.dtp_scan_ref_model import IJTAG_INSTRUMENT_WIDTHS, DtpIjtagSibModel
 from env.dtp_types import DtpJtagInstr, DtpScanCtrlExpect
 
 from .dtp_jtag_base_test_seq import DFT_SCAN_CTRL, SCAN_CTRL_CHECK_IDS, dtp_jtag_base_test_seq
@@ -33,7 +34,6 @@ class dtp_jtag_runbist_test_seq(dtp_jtag_base_test_seq):
     def __init__(self, name: str = "dtp_jtag_runbist_test_seq", **kwargs) -> None:
         super().__init__(name, **kwargs)
         self.sib_model = DtpIjtagSibModel()
-        self.sib_bits = self.sib_model.closed()
         self.dbg_disable: dict[str, int] = {}
 
     async def load_runbist(self, context: str) -> None:
@@ -45,20 +45,19 @@ class dtp_jtag_runbist_test_seq(dtp_jtag_base_test_seq):
         )
 
     def judge_runbist_tdo(self, pattern: int, observed: int, *, context: str) -> None:
-        """Compare one RUNBIST DR scan with the SIB-chain prediction, then track the update."""
-        expected = self.sib_model.expected_dr_tdo(
-            self.sib_bits, pattern, RUNBIST_SCAN_WIDTH, self.dbg_disable
-        )
+        """Compare one RUNBIST DR scan with the chain prediction, then commit its update."""
+        expected = self.sib_model.expected_scan_tdo(pattern, RUNBIST_SCAN_WIDTH, self.dbg_disable)
         self.family_check(
             RUNBIST_DR_CHECK_ID,
-            "RUNBIST TDO is the SIB chain, three TCK behind TDI",
+            "RUNBIST TDO is the iJTAG chain: capture bits, then TDI behind the chain",
             observed,
             expected,
-            context=f"pattern=0x{pattern:02x} sibs={self.sib_bits} {context}",
+            context=(
+                f"pattern=0x{pattern:02x} chain_len={self.sib_model.chain_len(self.dbg_disable)}"
+                f" sibs={self.sib_model.effective(self.dbg_disable)} {context}"
+            ),
         )
-        self.sib_bits = self.sib_model.update(
-            self.sib_bits, pattern, RUNBIST_SCAN_WIDTH, self.dbg_disable
-        )
+        self.sib_model.apply_raw_scan(pattern, RUNBIST_SCAN_WIDTH, self.dbg_disable)
 
     async def runbist_scan(self, pattern: int, *, context: str) -> int:
         """One RUNBIST DR scan judged against the SIB-chain prediction."""
@@ -86,18 +85,25 @@ class dtp_jtag_runbist_test_seq(dtp_jtag_base_test_seq):
         )
 
     def dft_open_pattern(self, rng: random.Random) -> int:
-        """RUNBIST scan value whose last three bits keep only the DFT SIB open."""
-        low = RUNBIST_SCAN_WIDTH - IJTAG_SIB_COUNT
-        return (self.sib_model.pattern_value(DFT_SIB_OPEN) << low) | self.random_pattern(low, rng)
+        """RUNBIST scan value that keeps only the DFT SIB open and randomizes the rest."""
+        value = self.sib_model.compose_scan(
+            RUNBIST_SCAN_WIDTH,
+            pattern=self.sib_model.pattern_value(DFT_SIB_OPEN),
+            inst_values={"dft": rng.getrandbits(IJTAG_INSTRUMENT_WIDTHS["dft"])},
+            dbg_disable=self.dbg_disable,
+        )
+        free = RUNBIST_SCAN_WIDTH - self.sib_model.chain_len(self.dbg_disable)
+        return value | self.random_pattern(free, rng)
 
     async def open_dft_sib(self) -> None:
         """Program the SIB chain through SELECT_IJTAG so only the DFT SIB is open."""
-        value = self.sib_model.pattern_value(DFT_SIB_OPEN)
-        await self.load_ir(DtpJtagInstr.SELECT_IJTAG)
-        await self.shift_dr(value, IJTAG_SIB_COUNT)
-        self.sib_bits = self.sib_model.update(
-            self.sib_bits, value, IJTAG_SIB_COUNT, self.dbg_disable
+        width = self.sib_model.chain_len(self.dbg_disable)
+        value = self.sib_model.compose_scan(
+            width, pattern=self.sib_model.pattern_value(DFT_SIB_OPEN), dbg_disable=self.dbg_disable
         )
+        await self.load_ir(DtpJtagInstr.SELECT_IJTAG)
+        await self.shift_dr(value, width)
+        self.sib_model.apply_raw_scan(value, width, self.dbg_disable)
 
     async def check_runbist_response(self, rng: random.Random) -> None:
         """Directed and seeded RUNBIST scans: chain response, distinct and nonzero."""
@@ -142,7 +148,7 @@ class dtp_jtag_runbist_test_seq(dtp_jtag_base_test_seq):
         self.log_banner("RUNBIST: decode, SIB-chain response, DFT strobe, DFT SIB gating")
         self.log_step(1, "Reset TAP; RUNBIST raises the DFT runbist strobe, BYPASS drops it")
         await self.reset_to_tlr()
-        self.sib_bits = self.sib_model.closed()
+        self.sib_model.reset()
         self.dbg_disable = {}
         await self.load_runbist("RUNBIST loaded")
         await self.load_ir(DtpJtagInstr.BYPASS_3F)
@@ -151,7 +157,7 @@ class dtp_jtag_runbist_test_seq(dtp_jtag_base_test_seq):
         )
         await self.load_runbist("RUNBIST reloaded")
 
-        self.log_step(2, "RUNBIST DR scans return the SIB chain, pattern three TCK behind TDI")
+        self.log_step(2, "RUNBIST DR scans return the chain capture, then the pattern behind it")
         await self.check_runbist_response(rng)
 
         self.log_step(3, "Open the DFT SIB: the RUNBIST scan drives the DFT host scan controls")

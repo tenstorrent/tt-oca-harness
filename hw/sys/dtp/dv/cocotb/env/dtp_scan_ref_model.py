@@ -126,12 +126,6 @@ class DtpIjtagSibModel:
             requested=requested, effective=effective, gated=gated, chain_len=chain_len
         )
 
-    # --- stored SIB bits across any instruction that scans the chain --------
-    @staticmethod
-    def closed() -> dict[str, int]:
-        """Stored SIB bits after Test-Logic-Reset: every SIB closed."""
-        return {name: 0 for name in IJTAG_SIB_ORDER}
-
     @staticmethod
     def pattern_value(bits: Mapping[str, int]) -> int:
         """Inverse of ``pattern_dict``: the scan value that stores ``bits``."""
@@ -139,55 +133,6 @@ class DtpIjtagSibModel:
             (bits[name] & 0x1) << (IJTAG_SIB_COUNT - 1 - idx)
             for idx, name in enumerate(IJTAG_SIB_ORDER)
         )
-
-    def capture_value(
-        self, stored: Mapping[str, int], dbg_disable: Mapping[str, int] | None = None
-    ) -> int:
-        """Capture-DR value of the chain: each SIB presents its stored bit, a gated SIB 0."""
-        gated = self.gates(dbg_disable)
-        return self.pattern_value(
-            {name: stored[name] & (gated[name] ^ 1) for name in IJTAG_SIB_ORDER}
-        )
-
-    def update(
-        self,
-        stored: Mapping[str, int],
-        scan_value: int,
-        width: int,
-        dbg_disable: Mapping[str, int] | None = None,
-    ) -> dict[str, int]:
-        """Stored bits after Update-DR of a ``width``-bit scan through the chain.
-
-        The last three bits scanned in are resident in the SIBs; a gated SIB
-        ignores the update and keeps its stored bit.
-        """
-        if width < IJTAG_SIB_COUNT:
-            raise ValueError(f"a chain scan needs at least {IJTAG_SIB_COUNT} bits, got {width}")
-        tail = self.pattern_dict(
-            (scan_value >> (width - IJTAG_SIB_COUNT)) & ((1 << IJTAG_SIB_COUNT) - 1)
-        )
-        gated = self.gates(dbg_disable)
-        return {name: stored[name] if gated[name] else tail[name] for name in IJTAG_SIB_ORDER}
-
-    def expected_dr_tdo(
-        self,
-        stored: Mapping[str, int],
-        scan_value: int,
-        width: int,
-        dbg_disable: Mapping[str, int] | None = None,
-    ) -> int:
-        """TDO of a ``width``-bit DR scan through the chain, LSB first.
-
-        The three captured SIB bits come out first, then the scanned-in value
-        follows three TCK behind TDI (one stage per SIB).
-        """
-        mask = (1 << width) - 1
-        return ((scan_value << IJTAG_SIB_COUNT) & mask) | self.capture_value(stored, dbg_disable)
-
-    @staticmethod
-    def expected_tdo(pattern: int, width: int) -> int:
-        # With zero-width looped instruments, the observable DR stream is the SIB chain itself.
-        return pattern & ((1 << width) - 1)
 
     def chain_layout(self, dbg_disable: Mapping[str, int] | None = None) -> list[IjtagChainFlop]:
         """Chain flops in TDI-to-TDO order for the current effective state."""
@@ -248,6 +193,44 @@ class DtpIjtagSibModel:
                 self.instruments[name] = int(inst_values[name]) & mask
             if not gated[name]:
                 self.stored[name] = sib_bits[name]
+
+    def apply_raw_scan(
+        self, value: int, width: int, dbg_disable: Mapping[str, int] | None = None
+    ) -> None:
+        """Commit the Update-DR of a ``width``-bit scan of ``value`` through the current chain.
+
+        Shift-DR moves the Capture-DR contents ``width`` flops toward TDO while the
+        value enters at TDI, so a scan narrower than the chain leaves the deeper
+        flops holding what shallower flops captured; a gated SIB and its
+        instrument ignore the update.
+        """
+        layout = self.chain_layout(dbg_disable)
+        capture, length = self.expected_capture(dbg_disable)
+        gated = self.gates(dbg_disable)
+        sib_bits = dict(self.stored)
+        instruments: dict[str, int] = {}
+        for depth, flop in enumerate(layout):
+            if depth < width:
+                bit = (value >> (width - 1 - depth)) & 1
+            else:
+                bit = (capture >> (length - 1 - (depth - width))) & 1
+            if flop.field == "sib":
+                sib_bits[flop.owner] = bit
+            else:
+                instruments[flop.owner] = instruments.get(flop.owner, 0) | (bit << flop.bit)
+        for name in IJTAG_SIB_ORDER:
+            if name in instruments:
+                self.instruments[name] = instruments[name]
+            if not gated[name]:
+                self.stored[name] = sib_bits[name]
+
+    def expected_scan_tdo(
+        self, value: int, width: int, dbg_disable: Mapping[str, int] | None = None
+    ) -> int:
+        """TDO of a ``width``-bit scan, LSB first: the chain's capture bits nearest TDO,
+        then the scanned value one TCK per chain flop behind TDI."""
+        capture, length = self.expected_capture(dbg_disable)
+        return ((value << length) | capture) & ((1 << width) - 1)
 
     def expected_capture(self, dbg_disable: Mapping[str, int] | None = None) -> tuple[int, int]:
         """(expected, chain_len) of a scan's captured TDO bits: captured bit j
