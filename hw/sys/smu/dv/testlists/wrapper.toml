@@ -1224,6 +1224,7 @@ args = [
 name = "fabric"
 tests = [
   "smu_axi_id_width_conversion_test",
+  "smu_axi_in_burst_outstanding_test",
   "smu_axi_alias_remap_manager_scope_test",
   "smu_axi_atomic_operation_test",
   "smu_axi_crossbar_error_handling_test",
@@ -1440,6 +1441,23 @@ args = [
   "+rom_hex=smc_rom_default.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
   # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+]
+
+[[tests]]
+name = "smu_axi_in_burst_outstanding_test"
+module = "smu_axi_in_burst_outstanding_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "no_sep", "smn", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  # +skip_fuse_sense: the inbound window is opened over CSRs, no eFuse word is read.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
@@ -2244,6 +2262,7 @@ tests = [
   "smu_axi_filter_in_instance_matrix_test",
   "smu_axi_filter_out_instance_matrix_test",
   "smu_axi_id_width_conversion_test",
+  "smu_axi_in_burst_outstanding_test",
   "smu_axi_prot_encoding_decode_test",
   "smu_axi_xbar_structure_test",
   "smu_boot_stall_jtag_cold_reset_matrix_test",
@@ -2296,7 +2315,7 @@ tests = [
   "smu_sram_auto_init_done_test",
   "smu_smc_fuse_sense_sequence_test",
 ]
-expected_count = 59
+expected_count = 60
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -2345,6 +2364,7 @@ tests = [
   "smu_axi_filter_in_instance_matrix_test",
   "smu_axi_filter_out_instance_matrix_test",
   "smu_axi_id_width_conversion_test",
+  "smu_axi_in_burst_outstanding_test",
   "smu_axi_prot_encoding_decode_test",
   "smu_axi_xbar_structure_test",
   "smu_boot_stall_jtag_cold_reset_matrix_test",
@@ -2402,7 +2422,7 @@ tests = [
   "smu_smc_fuse_sense_sequence_test",
   "smu_sep_fuse_sense_done_test",
 ]
-expected_count = 92
+expected_count = 93
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
