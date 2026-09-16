@@ -81,6 +81,30 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-SMU-ALLOW-NS-S2", "CHK-SMU-ALLOW-NS-S2", "dual-slot admits secure and NS"),
         ("CHK-SMU-ALLOW-NS-S3", "CHK-SMU-ALLOW-NS-S3", "clear returns DECERR for both"),
     ],
+    "smu_axi_in_burst_outstanding_test": [
+        (
+            "CHK-AXIIN-DEPTH",
+            "CHK-AXIIN-DEPTH",
+            "eight inbound reads in flight at once all return the VERSION_LO RDL "
+            "reset value with OKAY",
+        ),
+        (
+            "CHK-AXIIN-DEPTH-ORDER",
+            "CHK-AXIIN-DEPTH-ORDER",
+            "eight inbound writes in flight under one AWID leave the last value "
+            "written in SCRATCH_COLD",
+        ),
+        (
+            "CHK-AXIIN-BURST",
+            "CHK-AXIIN-BURST",
+            "an inbound WRAP burst read at a register target is refused with SLVERR",
+        ),
+        (
+            "CHK-AXIIN-BURST-FIXED",
+            "CHK-AXIIN-BURST-FIXED",
+            "an inbound multi-beat FIXED burst write at a register target is refused with SLVERR",
+        ),
+    ],
     "smu_axi_filter_in_instance_matrix_test": [
         (
             "CHK-FILTER-IN-INSTANCES-S1",
