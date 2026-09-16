@@ -88,6 +88,17 @@ class sep_efuse_program_lock_matrix_test(sep_base_test):
         )
 
         await self.start_seq(sep_efuse_otp_program_seq(cell.lock_bit))
+        # Read the lock bit straight out of OTP before the image is re-staged.
+        # Every shadow compare below runs against an image this test wrote into
+        # the fuse preload, so on its own it cannot separate a bit the DUT burned
+        # from a bit the testbench placed. This one read is the lock bit's own
+        # evidence, and it is taken from the device.
+        lock_word = await self._direct_word(cell.lock_bit // 32)
+        assert ((lock_word >> (cell.lock_bit % 32)) & 1) == 1, (
+            f"{cell.field} write-lock bit {cell.lock_bit} did not burn in OTP "
+            f"(word=0x{lock_word:08x}); the reject leg below would then be "
+            "asserting about a lock that was never set"
+        )
         golden.words[cell.lock_bit // 32] |= 1 << (cell.lock_bit % 32)
         self.write_efuse_image(golden)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)

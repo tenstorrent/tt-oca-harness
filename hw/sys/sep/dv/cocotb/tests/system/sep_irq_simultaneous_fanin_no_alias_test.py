@@ -69,21 +69,11 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
         """
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
-        bits = str(cocotb.top.sep_internal_interrupts_probe_o.value)  # MSB first
-        region = 0
-        bad = []
-        for i in range(REGION_LO, REGION_HI + 1):
-            ch = bits[len(bits) - 1 - i].lower()
-            if ch == "1":
-                region |= 1 << i
-            elif ch != "0":
-                bad.append(i)
-        if bad:
-            raise AssertionError(
-                f"[{where}] sep_internal_interrupts bits {bad} are X/Z inside "
-                f"[{REGION_LO}:{REGION_HI}] (aggregator leg not driven)"
-            )
-        return region
+        try:
+            vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, REGION_MASK)
+        except AssertionError as exc:
+            raise AssertionError(f"[{where}] aggregator leg not driven: {exc}") from exc
+        return vec & REGION_MASK
 
     async def _poll_region(self, expect_bits: int, *, timeout: int = 400) -> tuple[bool, int]:
         """Poll until the [8:33] region of the aggregate equals exactly expect_bits."""
@@ -183,6 +173,11 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             await self._drive(src, on=False)
         ok, vec = await self._poll_region(0)
         assert ok, f"[8:33] not clear after W1C (vec=0x{vec:010x})"
+        # The poll reads through self.rd(), so "clear" there also covers "X". This
+        # leg's passing branch is zero, so re-sample raw and require the region to
+        # be resolved -- a leg that stopped being driven must not read as cleared.
+        cleared = await self._assert_region_resolved("after W1C")
+        assert cleared == 0, f"[8:33] resolved to 0x{cleared:010x} after W1C, expected 0"
         for src in sources:
             assert await self.irq.read_state_bit(src) == 0, (
                 f"{src.name}: INTR_STATE bit not cleared by W1C"
