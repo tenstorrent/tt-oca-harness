@@ -576,6 +576,7 @@ module smu_wrapper_uvm_top (
   logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] ctp_ack_in_dout_w, ctp_ack_out_dout_w;
   logic [31:0] jtag_ptap_state_w;
   logic [31:0] smu_axi_in_awvalid_count, smu_axi_out_awvalid_count;
+  logic tb_axil_external_active;
 
   assign secure_tm_req = 1'b0;
   // ------------------------------------------------------------------
@@ -1568,8 +1569,13 @@ module smu_wrapper_uvm_top (
     .lcc_demote_state_2_i        (lcc_demote_state_2_o)
   );
 
-  // smu_wrapper does not bring the SMC AXI-Lite external window to its
-  // boundary, so that activity port is tied off here.
+  // Macro AXI-Lite activity (OR of aw/w/ar valid), as tb_top.sv builds it at
+  // its own boundary. smu_wrapper keeps that window inside itself, between
+  // the SMC peripheral crossbar and smc_ip_integration, so it is read there.
+  assign tb_axil_external_active = u_dut.smc_external_req.aw_valid
+                                 | u_dut.smc_external_req.w_valid
+                                 | u_dut.smc_external_req.ar_valid;
+
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
   smu_xbar_fcov #(
     .SepPresent(SEP_PRESENT)
@@ -1596,7 +1602,7 @@ module smu_wrapper_uvm_top (
     .s_axi_rresp_i            (ext_in_rresp),
     .axi_in_awvalid_count_i   (smu_axi_in_awvalid_count),
     .axi_out_awvalid_count_i  (smu_axi_out_awvalid_count),
-    .axil_external_active_i   (1'b0)
+    .axil_external_active_i   (tb_axil_external_active)
   );
 
   // SEP_PRESENT drops the SEP-only points on the no-SEP elaboration.
