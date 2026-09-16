@@ -387,13 +387,13 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         #   KMAC, seed produces, so a seed change does not trip them. They do
         #   pool  NOT bound their sink's full stimulus.
         #
-        # Deriving the AES/URND floors from the observed grant count was tried
-        # and REVERTED: the scoreboard scores one item per cycle where
+        # The floors stay constants rather than tracking the observed grant
+        # count. The scoreboard scores one item per cycle where
         # crypto_edn_req_o & crypto_edn_ack_o for that client, which is the same
-        # pair of ports the grant monitor edge-counts, so items >= grants held
-        # by construction and the floor could not fail for any DUT behaviour --
-        # strictly weaker than the constant it replaced. The grant counts are
-        # logged below as diagnostics, which is what they can honestly be.
+        # pair of ports the grant monitor edge-counts, so items >= grants holds
+        # by construction and a grant-derived floor could not fail for any DUT
+        # behaviour. The grant counts are logged below as diagnostics, which is
+        # what they can honestly be.
         #
         # What still carries each unbounded sink: AES and URND by CHK-NO-STARVE
         # and CHK-GRANT-ALT on the grant stream; KMAC by CHK-KMAC-CLIENT, whose

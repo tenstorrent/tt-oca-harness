@@ -18,11 +18,11 @@ The golden inputs/outputs are the official NIST ACVP "internalProjection" files
 (they contain both inputs and expected outputs). Download them first:
 
   base=https://raw.githubusercontent.com/usnistgov/ACVP-Server/master/gen-val/json-files
-  curl -sSL -o /tmp/mldsa_keygen.json $base/ML-DSA-keyGen-FIPS204/internalProjection.json
-  curl -sSL -o /tmp/mldsa_siggen.json $base/ML-DSA-sigGen-FIPS204/internalProjection.json
-  curl -sSL -o /tmp/mldsa_sigver.json $base/ML-DSA-sigVer-FIPS204/internalProjection.json
-  curl -sSL -o /tmp/mlkem_keygen.json $base/ML-KEM-keyGen-FIPS203/internalProjection.json
-  curl -sSL -o /tmp/mlkem_encdec.json $base/ML-KEM-encapDecap-FIPS203/internalProjection.json
+  curl -sSL -o $TMPDIR/mldsa_keygen.json $base/ML-DSA-keyGen-FIPS204/internalProjection.json
+  curl -sSL -o $TMPDIR/mldsa_siggen.json $base/ML-DSA-sigGen-FIPS204/internalProjection.json
+  curl -sSL -o $TMPDIR/mldsa_sigver.json $base/ML-DSA-sigVer-FIPS204/internalProjection.json
+  curl -sSL -o $TMPDIR/mlkem_keygen.json $base/ML-KEM-keyGen-FIPS203/internalProjection.json
+  curl -sSL -o $TMPDIR/mlkem_encdec.json $base/ML-KEM-encapDecap-FIPS203/internalProjection.json
 
 Word packing, from the register description -- abr_reg.rdl, which is the
 specification for this block, not a view of the implementation.
@@ -61,15 +61,19 @@ import json
 import os
 import sys
 
+# The vectors are read from $TMPDIR, which is where the curl lines above put
+# them; /tmp is not assumed to be writable or shared.
+_TMP = os.environ.get("TMPDIR", "/tmp")
+
 PARAM = "ML-DSA-87"
-KG = "/tmp/mldsa_keygen.json"
-SG = "/tmp/mldsa_siggen.json"
-SV = "/tmp/mldsa_sigver.json"
+KG = os.path.join(_TMP, "mldsa_keygen.json")
+SG = os.path.join(_TMP, "mldsa_siggen.json")
+SV = os.path.join(_TMP, "mldsa_sigver.json")
 OUT = os.path.join(os.path.dirname(__file__), "abr_nist_vectors.h")
 
 KEM_PARAM = "ML-KEM-1024"
-KEM_KG = "/tmp/mlkem_keygen.json"
-KEM_ED = "/tmp/mlkem_encdec.json"
+KEM_KG = os.path.join(_TMP, "mlkem_keygen.json")
+KEM_ED = os.path.join(_TMP, "mlkem_encdec.json")
 KEM_OUT = os.path.join(os.path.dirname(__file__), "abr_nist_kem_vectors.h")
 
 

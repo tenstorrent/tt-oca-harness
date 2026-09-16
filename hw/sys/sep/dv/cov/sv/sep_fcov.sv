@@ -1470,8 +1470,8 @@ module sep_fcov (
       bins chunk_done = {1'b1};
     }
     cp_rego: coverpoint dma_rego_non_initial {bins rego_not_initial = {1'b1};}
-    // Which inline-hash opcode was commanded. cp_hash above is SHA-256 only, so
-    // a SHA-384 transfer scored nothing before this. SHA-512 is a legal opcode
+    // Which inline-hash opcode was commanded. cp_hash above is SHA-256 only,
+    // so it does not distinguish a SHA-384 transfer. SHA-512 is a legal opcode
     // with no leaf that commands it, so it has no bin rather than a permanent
     // hole.
     // verilog_format: off  // verible packs these two bins onto one line.

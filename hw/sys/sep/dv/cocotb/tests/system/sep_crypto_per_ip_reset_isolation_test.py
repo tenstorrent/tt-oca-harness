@@ -48,14 +48,14 @@ Isolation proof (both directions, then the remaining isolated bits):
                     reset value.
   * CHK-DRAIN-ORDER  the HMAC reset does not assert until BOTH AXI-Lite paths
                     that domain depends on -- the SEP host path and the Key
-                    Manager path -- report isolated. #1253 makes each
-                    accelerator reset depend on both.
+                    Manager path -- report isolated. Each accelerator
+                    reset depends on both.
   * CHK-HOST-DRAIN  host reads accepted before the reset request resolve OKAY
                     or SLVERR, never DECERR and never a hang, and at least one
                     drains OKAY -- so accepted traffic completed rather than
                     being dropped.
   * CHK-DRAIN-ARRIVAL  a further read issued WHILE isolation is draining also
-                    resolves (the #245 case); it may drain or terminate, but it
+                    resolves; it may drain or terminate, but it
                     may not hang. That the path is not left wedged is the
                     existing CHK-ISOLATE-REOPEN beat after release.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
@@ -302,7 +302,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "CHK-ISOLATE-PRE PASS: HMAC DIGEST_0 OKAY with live golden 0x%08x", h_digest[0]
         )
 
-        # ---- Drain-before-reset (#1464 / the #245 arrival case) ----------
+        # ---- Drain-before-reset (the in-window arrival case) -------------
         # Queue host reads that the fabric can accept BEFORE the reset request,
         # so the isolate coordinator has real traffic to drain. Accepted beats
         # must complete; anything not yet accepted is terminated. None may hang.
@@ -324,10 +324,11 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         # The drain window is the interval in which an isolate bit is asserted
         # while the gated reset is still released. The arrival beat (#245) is
-        # issued INSIDE that window, on the first cycle a probe shows it open --
-        # not on a fixed delay, which in an earlier revision put the beat on the
-        # bus in the same cycle as the pre-request batch and 45 ns before the
-        # SW_RESET_N write's own B response. The probe values at issue are kept
+        # issued INSIDE that window, on the first cycle a probe shows it open.
+        # A fixed delay cannot place it there: the window opens relative to the
+        # SW_RESET_N write's own B response, so any constant delay can land the
+        # beat beside the pre-request batch instead, before the window exists.
+        # The probe values at issue are kept
         # in the log, so the beat's position in the window is evidence, and a
         # design that never opens a window fails below rather than scoring the
         # pre-request property a second time.

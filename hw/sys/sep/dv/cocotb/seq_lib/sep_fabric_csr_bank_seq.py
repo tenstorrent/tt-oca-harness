@@ -69,7 +69,7 @@ INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 OUTFILT_BASE = sym("OUTBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 FILTER_STRIDE = sym("INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR") - INFILT_BASE
 # Per-entry FILTER_* offsets (64-bit START/END as lo/hi 32-bit words). Both SEP
-# filters are instances of the same axi_filter_wrap block (doc/fabric.adoc), so
+# filters are instances of the same axi_filter_wrap block (hw/sys/sep/doc/fabric.adoc), so
 # one per-entry layout describes the inbound and the outbound bank; only the
 # inbound block is exported as a register block, and it is the source here.
 FILTER_START_ADDR = INBOUND_FILTER_CTRL_0.offset("START_ADDR")

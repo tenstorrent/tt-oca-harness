@@ -446,7 +446,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             # What this leg does still grade is the state-report path: the injected
             # encoding must appear on *_state_o and the interface must recover to a
             # legal state afterwards. That is asserted above and below, and it is
-            # what the checker row now claims.
+            # what the checker row claims.
             self.logger.info(
                 "%s idle-window injection (%#04x): error_o=%d done_o=%d before the "
                 "injection, so the 1/1/0 terms are pre-settled and grade nothing "

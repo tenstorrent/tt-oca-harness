@@ -33,8 +33,7 @@ all: $(PARHEX)
 # NOTHING RUNS THIS AUTOMATICALLY. No stage, testlist or CI job invokes it, so
 # it does not by itself prevent the drift above -- it only lets you detect it.
 # Run it after editing any .S, and commit the regenerated blob with the source
-# change. It needs the RISC-V toolchain on PATH (see sim/run.sh for the site
-# path); without it every image reports BUILD FAILED, which is why a failed
+# change. It needs the RISC-V toolchain on PATH; without it every image reports BUILD FAILED, which is why a failed
 # build is a distinct token from a mismatch.
 #
 # It rebuilds into a scratch OUT_DIR and never writes the tracked blob: the

@@ -115,7 +115,7 @@ human. Other members may fill a group in passing.
 |`sep_km_wipe_cg` |`sep_km_wipe_reset_test`
 |`sep_km_sw_reset_cg` |`sep_km_wipe_reset_test`, `sep_km_handover_test`
 |`sep_crypto_isolate_cg` |`sep_km_isolate_termination_test` (all three bins: it is the only leaf that isolates a KM path, presents a KM master transaction to it, and then reopens it). `sep_crypto_per_ip_reset_isolation_test` fills `cp_km_iso` and `cp_rst_ordered` from the host side.
-|`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash; both `cp_hash_opcode` bins -- it is the only leaf that commands an inline hash, and it now walks SHA-256 then SHA-384)
+|`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash; both `cp_hash_opcode` bins -- it is the only leaf that commands an inline hash, and it walks SHA-256 then SHA-384)
 |`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_host_csr_irq_rand_test`; DMA handshake `sep_spi_ot_dma_rx_test` / `sep_spi_ot_dma_tx_test`
 |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
 |`sep_efuse_sense_cg` |`sep_efuse_sense_test`, `sep_efuse_image_test` (any leaf passing `+skip_fuse_sense` cannot fill it)
@@ -473,7 +473,7 @@ ordering bin exists to catch.
 |Coverpoint |Bins
 |`cp_copy` |`CONTROL.GO` with opcode COPY
 |`cp_hash` |`CONTROL.GO` with opcode SHA256
-|`cp_hash_opcode` |Which inline-hash opcode was commanded on a `CONTROL.GO`: `sha256`, `sha384`. `cp_hash` above is SHA-256 only, so a SHA-384 transfer scored nothing before this. SHA-512 is a legal opcode (`OpcSha512`) that no leaf commands, so it has no bin rather than a permanent hole.
+|`cp_hash_opcode` |Which inline-hash opcode was commanded on a `CONTROL.GO`: `sha256`, `sha384`. `cp_hash` above is SHA-256 only, so it does not distinguish a SHA-384 transfer. SHA-512 is a legal opcode (`OpcSha512`) that no leaf commands, so it has no bin rather than a permanent hole.
 |`cp_copy_done` |Completion after a COPY GO
 |`cp_hash_done` |Completion after a SHA256 GO
 |`cp_chunk` |`STATUS.chunk_done` observed while a GO'd transfer is outstanding
