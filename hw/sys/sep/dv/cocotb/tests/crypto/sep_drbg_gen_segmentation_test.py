@@ -19,10 +19,15 @@ model stay in lockstep. Existing tests leave ``program_boot_generate`` False so
 their one-open-command CHK4 budgets stay put.
 
 What this proves that no other test does:
-  * ``gen_last`` is observed asserted, so the trailing CTR_DRBG Update runs;
+  * ``gen_last`` is observed asserted at the end of a Generate command;
   * every completed command carries exactly ``cfg.glen`` blocks -- a segment of
     any other length fails;
-  * CHK1..CHK4 stay bit-exact across those Update boundaries.
+  * CHK1..CHK4 stay bit-exact at every stage of the entropy stack.
+
+Not proven here: bit-exactness *across* a trailing CTR_DRBG Update boundary.
+The Update fires after the last block of a command and this vehicle completes
+exactly one, so no golden-compared block lands on its far side. See the class
+docstring for the measurement behind that.
 """
 
 from __future__ import annotations

@@ -1984,7 +1984,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |CHK0
 |Key Manager firmware boots on real entropy and reports ready over the mailbox.
 |CHK-PUB (observation)
-|Observation, not a check. `aes.hjson` declares `KEY_SHARE0`/`KEY_SHARE1` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered — the read cannot fail and is logged rather than scored. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-SIDE and CHK-MAC below.
+|Observation, not a check. `aes.hjson` declares `KEY_SHARE0`/`KEY_SHARE1` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered — the read cannot fail and is logged rather than scored. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-F below: the sideload key encrypts to the golden ciphertext.
 |CHK1..CHK3
 |The entropy stack matches its golden bit-exactly at the decorrelator, compress and seed stages.
 |CHK5
@@ -2038,7 +2038,7 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |CHK0
 |Key Manager firmware boots on real entropy and reports ready over the mailbox.
 |CHK-PUB (observation)
-|Observation, not a check. `hmac.hjson` declares `KEY` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered — the read cannot fail and is logged rather than scored. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-SIDE and CHK-MAC below.
+|Observation, not a check. `hmac.hjson` declares `KEY` `swaccess = wo`, so a frontdoor read returns zero whether a key was sideloaded, mirrored elsewhere, or never delivered — the read cannot fail and is logged rather than scored. Software-unreadability here is a property of the register description, not a runtime behaviour this leaf can demonstrate. The key-protection evidence that *can* fail is CHK-MAC below: the sideload key produces the golden digest.
 |CHK1..CHK3
 |The entropy stack matches its golden bit-exactly at the decorrelator, compress and seed stages.
 |CHK5
@@ -2143,8 +2143,8 @@ recovery. Those are listed in <<phase-3>>.
 |Checker |Contract
 |CHK-AGG
 |All six interrupts propagate to their expected aggregator bit and clear again — baseline-low, assert, isolation and clear all covered. "One-hot" here means one-hot among the six covered bits. Bits outside that set are not compared — and the logged vector shows some of them are legitimately high, so this is a real scope limit rather than a theoretical one.
-|CHK-NONVAC
-|A non-zero number of AXI transactions was observed, so the run cannot pass having done nothing. This is a transaction floor, not a per-source minimum: no assertion requires that all six sources ran. The six per-source lines are what evidence that.
+|Non-vacuity (not a leaf checker)
+|A non-zero number of AXI transactions was observed, so the run cannot pass having done nothing. This leaf emits no `CHK-NONVAC` of its own: the floor is the shared scoreboard's `checks > 0` activity guard (`cocotb/env/sep_scoreboard.py`). It is a transaction floor, not a per-source minimum — no assertion requires that all six sources ran. The six per-source lines are what evidence that.
 |CHK-BUSERR-BASE
 |`DMA_BUS_ERR_STATUS` and `PERIPH_BUS_ERR_STATUS` read 0, and aggregator bits 40 and 42 read 0, before either fault. A stuck-high latch fails here.
 |CHK-BUSERR-DMA
@@ -4966,7 +4966,7 @@ watermark together; no vehicle asserts that pair.
 
 [arabic]
 . Assert the cell floor when the walk completes, and require the compare count to equal the cells the config presented, so a walk shrunk by a map or routing change fails rather than reporting a clean pass over fewer cells.
-. Program the inbound filter from the CPU-LSU side: the filter denies by default, so five allow windows are opened over the swept extent. The window bounds follow `traffic_filter.sv`, which compares `addr[AW-1:3]` inclusively on an 8-byte granule.
+. Program the inbound filter from the CPU-LSU side: the filter denies by default, so five allow windows are opened over the swept extent. The window bounds follow `hw/ip/axi_filter/doc/index.adoc` (Address Range Granule): with `allow_burst = 0` the granule is the data bus width, address bits [2:0] are ignored, `START_ADDR` widens down and `END_ADDR` widens up.
 . Walk the cells exactly as the CPU-LSU sweep does.
 
 *Checkers*:
