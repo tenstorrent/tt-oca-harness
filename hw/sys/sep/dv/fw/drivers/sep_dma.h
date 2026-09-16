@@ -19,7 +19,11 @@
 #define SEP_DMA_REGWEN_UNLOCKED SECURE_DMA__CFG_REGWEN__REGWEN_reset
 #define SEP_DMA_REGWEN_LOCKED 0x9u
 
-// CONTROL.OPCODE encodings (not named in PeakRDL).
+// CONTROL.OPCODE encodings. PeakRDL carries only the field, so the legal set
+// is transcribed here from the IP register specification:
+// vendor/lowRISC/opentitan/upstream/hw/ip/dma/data/dma.hjson enumerates
+// opcode as COPY 0x0, SHA256 0x1, SHA384 0x2, SHA512 0x3. 0x4..0xF are
+// reserved; the RDL describes OPCODE_ERROR as "Opcode is invalid."
 #define SEP_DMA_OPCODE_COPY 0x0u
 #define SEP_DMA_OPCODE_SHA256 0x1u
 #define SEP_DMA_OPCODE_SHA384 0x2u

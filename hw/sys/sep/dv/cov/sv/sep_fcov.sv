@@ -207,8 +207,10 @@ module sep_fcov (
   localparam logic [31:0] HmacCmdProcess = HMAC_CMD_HASH_PROCESS_MASK;
   localparam logic [31:0] HmacDoneMask = HMAC_INTR_STATE_HMAC_DONE_MASK;
 
-  localparam logic [7:0] OtbnExecute = 8'hD8;  // otbn_pkg cmd_e CmdExecute
-  localparam logic [7:0] OtbnIdle = 8'h00;  // otbn_pkg status_e StatusIdle
+  // CMD.cmd EXECUTE and STATUS IDLE from
+  // vendor/lowRISC/opentitan/upstream/hw/ip/otbn/data/otbn.hjson.
+  localparam logic [7:0] OtbnExecute = 8'hD8;
+  localparam logic [7:0] OtbnIdle = 8'h00;
 
   localparam logic [3:0] DmaOpCopy = 4'h0;  // fw/drivers/sep_dma.h
   localparam logic [3:0] DmaOpSha256 = 4'h1;
@@ -432,7 +434,7 @@ module sep_fcov (
       (((rd_data & OTBN_STATUS_STATUS_MASK) >> OTBN_STATUS_STATUS_SHIFT) == 32'(OtbnIdle));
   wire otbn_err_zero = rd_ev && (ar_addr_q == OTBN_ERR_BITS_REG_ADDR) && (rd_data == 32'h0);
 
-  // otbn_pkg status_e: Idle 0x00, BusyExecute 0x01, BusySecWipe* 0x02-0x04.
+  // otbn.hjson STATUS: IDLE 0x00, BUSY_EXECUTE 0x01, BUSY_SEC_WIPE_* 0x02-0x04.
   // Without an observed busy status the poll can win a race against OTBN
   // leaving IDLE and score a program that never started.
   wire otbn_status_busy = rd_ev && (ar_addr_q == OTBN_STATUS_REG_ADDR) &&

@@ -59,8 +59,8 @@ Isolation proof (both directions, then the remaining isolated bits):
                     may not hang. That the path is not left wedged is the
                     existing CHK-ISOLATE-REOPEN beat after release.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
-                    TRNG-only reset, so resetting the entropy complex does not
-                    reach the accelerator domains.
+                    TRNG-only reset. SW_RESET_N inside the window shows the
+                    TRNG bit held and the four accelerator bits released.
 
 Reference: sep_clock_uvm_sw_reset_per_ip_test --
 the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output

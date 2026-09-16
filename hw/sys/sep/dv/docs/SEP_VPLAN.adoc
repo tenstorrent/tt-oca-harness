@@ -2907,7 +2907,7 @@ one word and parks, which is enough for the legality check to execute.
 |CHK-ISOLATE-RESET-DEFAULT
 |After release `DIGEST_0` reads its reset value 0.
 |CHK-TRNG-NEIGHBORS
-|Parking the shared TRNG reset leaves the four accelerator domains released and their held results readable, so the TRNG domain is reset-independent of them.
+|Parking the shared TRNG reset holds the TRNG `SW_RESET_N` bit and leaves the four accelerator bits released. HMAC DIGEST and AES DATA_OUT stay unchanged in that window. KMAC STATE and OTBN `LOAD_CHECKSUM` are not sampled here.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
