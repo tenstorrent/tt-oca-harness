@@ -318,11 +318,46 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_no_sep_configuration_test": [
         ("CHK-SEP0-LC", "CHK-SEP0-LC", "lc_state_o==0xf0 stable >=16 cycles"),
+        (
+            "CHK-SEP0-EGRESS",
+            "CHK-SEP0-EGRESS",
+            "a J2A write outside both SMC apertures advances the outbound write "
+            "counter and the read brings the pattern back",
+        ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S2<PASS"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_otp_vs_fabric_map_race_test": [
         ("CHK-RACE-OTP-FAB", "RACE_OTP_FABRIC", "shadow == last writer"),
+    ],
+    "smu_periph_ext_window_test": [
+        (
+            "CHK-PERIPH-EXT-SHIM",
+            "CHK-PERIPH-EXT-SHIM",
+            "EFUSE_SHIM_CTRL.EFUSE_BANK_INIT_TIME reads its RDL reset value over the "
+            "eFuse bank-control AXI-Lite port, takes a written value and is restored",
+        ),
+        (
+            "CHK-PERIPH-EXT-STRAPS",
+            "CHK-PERIPH-EXT-STRAPS",
+            "the straps block inside the macro AXI-Lite window answers",
+        ),
+        (
+            "CHK-PERIPH-EXT-UNMAPPED",
+            "CHK-PERIPH-EXT-UNMAPPED",
+            "an offset above every decoded sub-window of the macro window DECERRs",
+        ),
+        (
+            "CHK-PERIPH-EXT-APERTURE",
+            "CHK-PERIPH-EXT-APERTURE",
+            "REGION_SIZE shrunk below the window sends the same read out of the "
+            "chiplet instead of to the shim",
+        ),
+        (
+            "CHK-PERIPH-EXT-APERTURE-ZERO",
+            "CHK-PERIPH-EXT-APERTURE-ZERO",
+            "REGION_SIZE zero leaves no local aperture: a core SMC CSR read leaves the chiplet too",
+        ),
     ],
     "smu_sep_smoke_test": [
         (
