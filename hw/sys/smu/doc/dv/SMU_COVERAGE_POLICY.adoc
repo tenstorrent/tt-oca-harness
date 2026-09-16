@@ -16,21 +16,20 @@ needs a measured database first.
 |Public metric |interface toggle: the `toggle_signal` family over the ports
 of `smu_wrapper` (`smu_wrapper_uvm_top.u_dut`), a port counting once any of
 its bits has toggled; plus the `user` points
-|Numeric target |interface toggle floors per target in
-`smu_wrapper_coverage_policy.toml`: `wrapper-interface-toggle-no-sep` (45
-percent, measured 50.6 on `sep0_all`) and `wrapper-interface-toggle-sep-rtl`
-(40 percent, measured 45.8 on the two firmware-free leaves and 57.2 on
-`all_with_sep_exec`); the plan
-works toward 85 percent on the sep_rtl target, where every port is live
+|Numeric target |interface toggle floor 45 percent (the
+`wrapper-interface-toggle` threshold in `smu_wrapper_coverage_policy.toml`,
+below the 50.6 and 57.2 percent the first databases measured); the plan works
+toward 85 percent
 |===
 
 `cov/sv/` carries eleven cover-property modules, 115 points in all; the counts
 are the `OCAH_FCOV_COVER` invocations in each file. The block bench
 `tb/tb_top.sv` instantiates nine of them and 84 points elaborate there; the
-wrapper bench `tb/tb_wrapper_top.sv` instantiates all eleven, of which 85
-elaborate on its no-SEP target. `smu_alias_fcov.sv` and `smu_clk_fcov.sv` are
-wrapper-bench only -- `smu_clk_fcov` reads clock mirrors that only that bench
-publishes.
+wrapper bench `tb/tb_wrapper_top.sv` instantiates ten and 111 points elaborate
+on its single target, `compile_smu_chiplet`, which has SEP present.
+`smu_alias_fcov.sv` and `smu_clk_fcov.sv` are wrapper-bench only --
+`smu_clk_fcov` reads clock mirrors that only that bench publishes;
+`smu_nosep_fcov.sv` is block-bench only, its points exist without SEP.
 
 [cols="2,1,4",options="header",]
 |===
@@ -65,11 +64,9 @@ that replaces the crossbar, in each direction
 runner derives `toggle_signal` from the toggle points |weekly `--cov` on the
 large runner (`regress.yml`). Nightly does not collect.
 |Public metric |`toggle_signal` scoped to `smu_wrapper_uvm_top.u_dut`: the
-ports of the wrapper, one point per port. The SEP-facing ports only move on
-the `compile_smu_chiplet_sep_rtl` target, which is therefore the target the
-metric is collected on; a no_sep database reports them as open holes rather
-than excluding them |one threshold per target, evaluated on every `--cov`
-run of `--dut smu` and re-gradable with `--waive`
+ports of the wrapper, one point per port, every one of them live because the
+single target elaborates SEP |the `wrapper-interface-toggle` threshold,
+evaluated on every `--cov` run of `--dut smu` and re-gradable with `--waive`
 |Commercial |toggle / code / assertion databases under the licensed
 flow |not a public CI job; not a substitute for the public weekly
 |===

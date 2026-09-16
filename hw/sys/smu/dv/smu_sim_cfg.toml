@@ -146,9 +146,10 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   # Functional-coverage modules (cov/sv/), instantiated in tb/tb_wrapper_top.sv
-  # on this bench's signal names; smu_block_sim_cfg.toml carries the same set
-  # minus smu_clk_fcov, whose clock mirrors only this bench exposes. Their
-  # cover properties are the `user` points --coverage-user records.
+  # on this bench's signal names. smu_block_sim_cfg.toml carries the same set
+  # minus smu_clk_fcov, whose clock mirrors only this bench exposes, and plus
+  # smu_nosep_fcov, whose points only exist without SEP. Their cover
+  # properties are the `user` points --coverage-user records.
   "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
@@ -158,7 +159,6 @@ sources = [
   "hw/sys/smu/dv/cov/sv/smu_ext_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_clkstop_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_dbg_fcov.sv",
-  "hw/sys/smu/dv/cov/sv/smu_nosep_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_alias_fcov.sv",
 ]
 

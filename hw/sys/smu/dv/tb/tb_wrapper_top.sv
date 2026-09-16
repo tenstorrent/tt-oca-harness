@@ -1751,26 +1751,6 @@ module smu_wrapper_uvm_top (
     .dbg_disable_sep_otp_i       (u_dut.u_smu.sep_dbg_disable.sep_otp_jtag2axi)
   );
 
-  smu_nosep_fcov u_smu_nosep_fcov (
-    .clk_smu_i          (clk_smu_i),
-    .rst_cold_ni        (rst_cold_ni),
-    .sep_present_i      (SEP_ENABLED[0]),
-    .ext_in_bvalid_i    (ext_in_bvalid),
-    .ext_in_bready_i    (ext_in_bready),
-    .ext_in_bresp_i     (ext_in_bresp),
-    .ext_in_rvalid_i    (ext_in_rvalid),
-    .ext_in_rready_i    (ext_in_rready),
-    .ext_in_rlast_i     (ext_in_rlast),
-    .ext_in_rresp_i     (ext_in_rresp),
-    .axi_out_bvalid_i   (smu_axi_out_resp.b_valid),
-    .axi_out_bready_i   (smu_axi_out_req.b_ready),
-    .axi_out_bresp_i    (smu_axi_out_resp.b.resp),
-    .axi_out_rvalid_i   (smu_axi_out_resp.r_valid),
-    .axi_out_rready_i   (smu_axi_out_req.r_ready),
-    .axi_out_rlast_i    (smu_axi_out_resp.r.last),
-    .axi_out_rresp_i    (smu_axi_out_resp.r.resp)
-  );
-
   // The SEP-to-SMC alias remap port and the crossbar SEP initiator port are
   // inside the SEP=1 generate branch, so the no-SEP profile ties the alias
   // observation nets off and the points stay unhit there.
