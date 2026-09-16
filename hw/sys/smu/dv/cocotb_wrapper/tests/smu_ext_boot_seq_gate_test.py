@@ -68,6 +68,6 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
         self.logger.info("SMU_006 bring-up: clocks running; boot gate=0; cold released")
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_ext_boot_seq_gate_test SMU_006 SEP=0")
+        self.logger.info("DUT_TAG=WRAPPER smu_ext_boot_seq_gate_test SMU_006")
         seq = smu_ext_boot_seq_gate_test_seq(self)
         await seq.run()

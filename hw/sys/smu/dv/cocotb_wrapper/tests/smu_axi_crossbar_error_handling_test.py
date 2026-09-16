@@ -22,7 +22,7 @@ class smu_axi_crossbar_error_handling_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_axi_crossbar_error_handling_test SMU_ALL_008 SEP=0 (PWRGOOD-only)"
+            "DUT_TAG=WRAPPER smu_axi_crossbar_error_handling_test SMU_ALL_008 (PWRGOOD-only)"
         )
         seq = smu_axi_crossbar_error_handling_test_seq(self)
         await seq.run()

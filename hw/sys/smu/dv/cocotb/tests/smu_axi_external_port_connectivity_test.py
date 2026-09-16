@@ -21,8 +21,6 @@ class smu_axi_external_port_connectivity_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info(
-            "DUT_TAG=WRAPPER smu_axi_external_port_connectivity_test SMU_ALL_002 SEP=0"
-        )
+        self.logger.info("DUT_TAG=BARE smu_axi_external_port_connectivity_test SMU_ALL_002 SEP=0")
         seq = smu_axi_external_port_connectivity_test_seq(self)
         await seq.run()

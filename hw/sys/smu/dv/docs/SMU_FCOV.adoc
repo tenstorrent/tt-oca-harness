@@ -132,15 +132,16 @@ third that is easy to confuse with them.
 * A `[[holes]]` entry is the opposite case: the point exists, is not hit, and
   is carried with a category, a rationale, an owner and an expiry.
 
-`tb_wrapper_top.sv` passes `SepPresent = 1'b0` under the `SMU_NO_SEP` define;
-the block bench passes `1'b0` unconditionally, because it hardcodes SEP=0.
+`tb_wrapper_top.sv` passes `SepPresent = 1'b0` only under the `SMU_NO_SEP`
+define, which the wrapper's compile profile `compile_smu_chiplet` does not set:
+it elaborates SEP=1, so on the wrapper `SepPresent` is `1'b1` and every `g_sep`
+point exists. The block bench passes `1'b0` unconditionally, because it
+hardcodes SEP=0, and it is where the SEP=0 composition proofs
+(`testlists/nosep.toml`) run.
 
-This matters because one Verilator policy grades both wrapper targets:
-`policy_file` resolves per tool, not per target. An accepted waiver whose
-selector matches a covered point is a hard `ConfigError`, so the wrapper
-policy's holes come from the no-SEP run that CI gates, and a point which can
-only fire with SEP present must not exist on that elaboration. The `g_sep`
-guards are what makes that true.
+The `g_sep` guards still matter on the block bench: an accepted waiver whose
+selector matches a covered point is a hard `ConfigError`, so a point which can
+only fire with SEP present must not exist on the SEP=0 elaboration.
 
 ==== Fuse-sense run modes
 
@@ -148,8 +149,8 @@ Every run mode in `smu_sim_cfg.toml` passes `+skip_fuse_sense`, under which
 `efuse_shadow_regs.sv` drives `fuse_sense_done` from the plusarg and loads the
 shadow array from a preload file. A test that observes fuse-sense completion
 has to run without it, so that the eFuse bank models supply the sensed data.
-`[run_modes.no_sep_fuse_sense]` and `[run_modes.sep_rtl_fuse_sense]` are the
-two that leave the plusarg unset, and they carry the only two tests needing it.
+`[run_modes.sep_rtl_fuse_sense]` is the one that leaves the plusarg unset, and
+it carries the only two tests needing it.
 
 Points must need stimulus beyond power-up and reset release. A level that is
 true in the quiescent state is either absent or qualified by a sticky flag

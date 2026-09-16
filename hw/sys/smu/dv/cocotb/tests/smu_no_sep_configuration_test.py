@@ -19,6 +19,6 @@ class smu_no_sep_configuration_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_no_sep_configuration_test SMU_005 SEP=0")
+        self.logger.info("DUT_TAG=BARE smu_no_sep_configuration_test SMU_005 SEP=0")
         seq = smu_no_sep_configuration_test_seq(self)
         await seq.run()

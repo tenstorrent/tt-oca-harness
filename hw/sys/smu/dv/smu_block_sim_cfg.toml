@@ -7,7 +7,8 @@ schema_version = 1
 # technology-specific interfaces tied off rather than attached to the
 # open-source IP integration. SEP=0 is hardcoded in tb/tb_top.sv.
 #
-# It carries the two leaves that cannot run on `--dut smu` and the SV-UVM
+# It carries the SEP=0 composition proofs (testlists/nosep.toml), the two
+# leaves that cannot run on `--dut smu`, and the SV-UVM
 # view, whose harness is the `UVM` shape of this TB. testlists/all.toml records
 # why each is here.
 #
@@ -17,7 +18,7 @@ schema_version = 1
 # bottom). Shared stage graph + tool list come from profile = "native".
 name = "smu_block"
 profile = "native"
-description = "Bare smu #(.SEP(0)) block bench: the two leaves that cannot run on --dut smu, plus the SV-UVM view"
+description = "Bare smu #(.SEP(0)) block bench: the SEP=0 composition proofs, the two leaves that cannot run on --dut smu, plus the SV-UVM view"
 default_framework = "cocotb"
 
 [testlist]

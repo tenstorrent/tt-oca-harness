@@ -16,7 +16,7 @@ class smu_dtp_io_stap_smoke_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_dtp_io_stap_smoke_test TierC DTP-IO-STAP SEP=0 JTAG")
+        self.logger.info("DUT_TAG=WRAPPER smu_dtp_io_stap_smoke_test TierC DTP-IO-STAP SEP=1 JTAG")
         seq = smu_dtp_io_stap_smoke_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok, f"io_stap incomplete s1={seq.s1_ok} s2={seq.s2_ok}"

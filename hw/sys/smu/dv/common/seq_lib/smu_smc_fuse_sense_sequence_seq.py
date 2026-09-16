@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_smc_fuse_sense_sequence_test (SMU_108).
 
-SMU-FUSE-SENSE.S1 and .S3 on the SEP=0 wrapper, with the run mode leaving
+SMU-FUSE-SENSE.S1 and .S3 on the wrapper (its single profile elaborates SEP=1),
+with the run mode leaving
 +skip_fuse_sense unset so the SMC eFuse bank model supplies the sensed data.
 The observers are armed before bring-up; this sequence scores what they
 recorded: smc_fuse_sense_done_o rises once, after the SMC primary reset released
@@ -45,7 +46,7 @@ class smu_smc_fuse_sense_sequence_seq:
         await self.test.cfg.reset_done.wait()
         await ClockCycles(dut.clk_smu_i, SETTLE_CYCLES)
 
-        sb.expect_eq("SEP=0 build profile", sample(dut.sep_enabled_o, "sep_enabled_o"), 0)
+        sb.expect_eq("SEP=1 build profile", sample(dut.sep_enabled_o, "sep_enabled_o"), 1)
         sb.expect_true(
             "this run mode leaves +skip_fuse_sense unset, so the sense is the DUT's",
             "skip_fuse_sense" not in cocotb.plusargs,
