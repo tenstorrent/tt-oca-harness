@@ -817,7 +817,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_abr_mlkem_kat_test`. keyGen, encaps and decaps against the ACVP vectors, with the implicit-rejection case graded on its published shared key. The same leaf grades the Adams Bridge `SW_RESET_N` domain on a live result — see `Per-IP SW_RESET_N isolation`. `KEYGEN+DECAPS` and the key-vault seed path are not claimed.
 
 |Entropy pool aperture + PIC sources
-|`sep_entropy_pool_aperture_test`. Drain-under-fill / stall-duration are not claimed.
+|`sep_entropy_pool_aperture_test`. Drain-under-fill is not claimed; stall duration is graded by `CHK-STALL-DURATION`.
 
 |KM CRC engine (PCPI)
 |`sep_km_crc_pcpi_kat_test`. All three modes against an independent golden, plus a hardware-only word-versus-byte chaining cross-check that holds if the golden is wrong.
@@ -946,6 +946,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |The base and size registers accept a write, read back, and restore cleanly.
 |CHK-FABRIC-WALK
 |Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation. The logged count must be non-zero.
+|CHK-EXT-DEMUX-BOUND
+|The first word of the eFuse-shim window answers something other than DECERR, so the demux selected the shim port, and the word past the window answers DECERR from the extension error slave. Both addresses come from the generated header by symbol. The value behind the shim is adopter-owned and is not graded — only which port the decode selected.
 |CHK-CPU-CTRL-HOLE
 |Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` reads OKAY with zero data, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. `hw/sys/sep/doc/memory_map.adoc` states both halves: a unit accepts such an offset with zero/OKAY, and non-aliasing follows from exact-match register decode rather than from refusal.
 |===
@@ -3395,6 +3397,8 @@ the shared-key write lane to the key vault, and ML-DSA.
 |Aggregate `[36]` low after fill.
 |CHK-IRQ-CAUSE-IDLE
 |`0x08` traverses `0x1 -> 0x0` after fill, not a copy of status.
+|CHK-STALL-DURATION
+|Holding the same stall three times past `StallThresh` leaves `[37]` asserted and the irq-cause code still reading the fill-stall value. The counter saturates and the flag clears only on forward progress, so a counter that wrapped or a flag that self-cleared on saturation would drop the fault while the outage continued.
 |CHK-WRITE-ORDER
 |A write whose AW leads W, and one whose W leads AW, each answer a single BRESP=SLVERR and leave `fifo_level` unchanged. AW and W carry no ordering requirement between them (AMBA IHI 0022 A3.3) and `sep_entropy_fifo.sv:381` states the module accepts either order; the backend presents both in the same cycle, so the split-arrival arms of that handshake need the master armed with an `AxiTimingProfile`. A slave that assumed same-cycle arrival would wedge or answer twice.
 |CHK-WRITE-SLVERR
@@ -3436,7 +3440,9 @@ EDN_CTRL `EDN_ENABLE=False` (legal mubi4, other fields unchanged) and pops
 leftover words until the pool has room and acks have stopped.
 
 *Not claimed*: full PIC delivery (claim / mask / ISR). Drain-under-fill and
-stall-duration / recovery stress are not exercised here.
+recovery stress are not exercised here. Stall duration is graded by
+`CHK-STALL-DURATION`; what remains unclaimed is a stall that outlasts a
+recovery attempt.
 
 '''''
 
@@ -6625,6 +6631,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
 
 |Contracts not claimed (no vehicle in `all`)
-|Phase 3: ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the AES and OTBN domains (HMAC, KMAC, Adams Bridge and the shared TRNG drain are proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
+|Phase 3: ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill; isolate drain-before-reset on the AES and OTBN domains (HMAC, KMAC, Adams Bridge and the shared TRNG drain are proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
 
 |===

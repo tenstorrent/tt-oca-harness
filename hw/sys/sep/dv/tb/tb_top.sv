@@ -1042,7 +1042,7 @@ module sep_uvm_top
 
     // IP-interrupt aggregate vector feeding the PIC (sep.sv sep_internal_interrupts):
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
-    // map to bits [21:24], EDN to [25:26] (sep.sv).
+    // map to bits [23:26], EDN to [27:28] (sep.sv:548-553).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
     assign trng_gated_rst_n_probe_o =

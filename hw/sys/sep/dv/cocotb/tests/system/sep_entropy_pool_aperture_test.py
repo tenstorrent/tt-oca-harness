@@ -272,8 +272,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             st_stall,
         )
 
-        # stall_cnt_q saturates at StallThresh and the flag clears only on
-        # forward progress (sep_entropy_fifo.sv:264-272), so holding the same
+        # The stall counter saturates at StallThresh and the flag clears only on
+        # forward progress, so holding the same
         # stall far past the threshold must leave [37] asserted. A counter that
         # wrapped, or a flag that self-cleared on saturation, would drop the
         # fault here and let a real EDN outage go unreported.
