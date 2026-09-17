@@ -49,8 +49,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
-          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init --recursive
 
       - name: Checkout dashboard data branch
         uses: actions/checkout@v4

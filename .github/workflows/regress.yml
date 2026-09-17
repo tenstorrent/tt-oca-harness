@@ -164,9 +164,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
       # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
       # the only one in the tree. The SEP DV env reads its src/oca/constants.py
@@ -320,9 +317,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
 
       # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
       # the only one in the tree. The SEP DV env reads its src/oca/constants.py
