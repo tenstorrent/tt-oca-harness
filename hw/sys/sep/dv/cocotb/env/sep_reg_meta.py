@@ -815,7 +815,7 @@ def _selftest() -> int:
 
     # Fabric-walk blocks the sequence value-checks.
     block_checks = [
-        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_003E),
+        (SEP_RESET_CTRL, "SW_RESET_N", 0x1080_3000, 0x0000_007E),
         (OTBN, "INTR_STATE", 0x1090_0000, 0x0),
         (HMAC, "INTR_STATE", 0x1091_1000, 0x0),
         (KMAC, "INTR_STATE", 0x1091_3000, 0x0),
@@ -843,6 +843,7 @@ def _selftest() -> int:
         "hmac_sw_rst_n": 0x08,
         "kmac_sw_rst_n": 0x10,
         "trng_sw_rst_n": 0x20,
+        "abr_sw_rst_n": 0x40,
     }
     for field, expected in sw_reset_field_masks.items():
         got = SEP_RESET_CTRL.field_mask("SW_RESET_N", field)

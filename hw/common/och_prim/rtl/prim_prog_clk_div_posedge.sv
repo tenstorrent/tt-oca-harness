@@ -39,11 +39,11 @@ module prim_prog_clk_div_posedge #(
   prim_sync_reset #(
     .WIDTH(RESET_WIDTH)
   ) reset_sync (
-    .clk(clk_i),
-    .rst_n(rst_ni),
-    .test_mode(test_en_i),
-    .scan_rst_n(scan_rst_ni),
-    .sync_rst_n(reset_n_syncd)
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(reset_n_syncd)
   );
 
   always_ff @(posedge clk_i) begin
@@ -84,8 +84,8 @@ module prim_prog_clk_div_posedge #(
   end
 
   prim_stdbuf div_clk_stdbuf (
-    .i_A(div_clk),
-    .o_Y(div_clk_buf)
+    .a_i(div_clk),
+    .y_o(div_clk_buf)
   );
 
   //here, unbuffered div_clk continues into glitch-free mux.
@@ -94,13 +94,13 @@ module prim_prog_clk_div_posedge #(
   prim_ag_clk_mux #(
     .SelectOnReset(DIVIDED_CLOCK_ON_RESET)
   ) postdiv_mux (
-    .i_clk0(clk_i),
-    .i_clk1(div_clk),
-    .i_reset_n_clk0(reset_n_syncd),
-    .i_reset_n_clk1(reset_n_syncd),
-    .i_test_en(1'b0),
-    .i_sel(use_clk_div_i),
-    .o_clk(clk_o)
+    .clk0_i(clk_i),
+    .clk1_i(div_clk),
+    .rst_clk0_ni(reset_n_syncd),
+    .rst_clk1_ni(reset_n_syncd),
+    .test_en_i(1'b0),
+    .sel_i(use_clk_div_i),
+    .clk_o(clk_o)
   );
 
 endmodule

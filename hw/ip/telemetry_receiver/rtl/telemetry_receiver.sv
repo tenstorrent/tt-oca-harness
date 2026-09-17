@@ -97,8 +97,8 @@ module telemetry_receiver
 
   message_buffer_ptr_t buffer_threshold;
 
-  logic missing_last_event, missing_last_intr_test, missing_last_intr_req;
-  logic buffer_threshold_intr_test, buffer_threshold_intr_en, buffer_threshold_intr_req;
+  logic missing_last_event, missing_last_intr_test;
+  logic buffer_threshold_intr_test, buffer_threshold_intr_req;
 
 
   ///////////////////////////////
@@ -287,9 +287,12 @@ module telemetry_receiver
   /////////////////////
 
   assign buffer_threshold_intr_req =
-        (message_buffer_fill_level > buffer_threshold || buffer_threshold_intr_test) &&
-        buffer_threshold_intr_en;
-  assign irq_o = missing_last_intr_req || buffer_threshold_intr_req;
+        message_buffer_fill_level > buffer_threshold || buffer_threshold_intr_test;
+  // MISSING_LAST latches whether or not the interrupt is enabled
+  // Clears only on W1C; INTR_ENABLE masks the output only
+  assign irq_o =
+        (reg_out.INTR_STATUS.MISSING_LAST.value && reg_out.INTR_ENABLE.MISSING_LAST.value) ||
+        (buffer_threshold_intr_req               && reg_out.INTR_ENABLE.BUFFER_THRESHOLD.value);
 
 
   //////////
@@ -356,14 +359,9 @@ module telemetry_receiver
   assign reg_in.STATUS.BUFFER_FULL.next  = message_buffer_full;
 
   // INTR_STATE Register
-  assign reg_in.INTR_STATUS.MISSING_LAST.next =
-        (missing_last_event || missing_last_intr_test) && reg_out.INTR_ENABLE.MISSING_LAST.value;
+  assign reg_in.INTR_STATUS.MISSING_LAST.next     = missing_last_event || missing_last_intr_test;
   assign reg_in.INTR_STATUS.BUFFER_THRESHOLD.next = buffer_threshold_intr_req;
 
-  assign missing_last_intr_req = reg_out.INTR_STATUS.MISSING_LAST.value;
-
-  // INTR_ENABLE Register
-  assign buffer_threshold_intr_en = reg_out.INTR_ENABLE.BUFFER_THRESHOLD.value;
 
   // INTR_TEST Register
   assign missing_last_intr_test     = reg_out.INTR_TEST.MISSING_LAST.value;

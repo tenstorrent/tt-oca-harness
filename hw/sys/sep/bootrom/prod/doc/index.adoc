@@ -31,8 +31,10 @@ The implementation is divided into:
 * reset, warm-dispatch, memory-health, PMP, and C-runtime setup in
   `src/vector.S`;
 * boot orchestration in `src/rom_main.c`;
-* manifest and payload processing in `src/manifest_load.c` and
-  `src/manifest_crypto.c`;
+* manifest and payload processing in `src/oca_boot.c`, which drives the OCA
+  validator library vendored at `tools/tt-oca-manifest/`, with this ROM's
+  platform callbacks (key authorization, revocation, anti-rollback, signature
+  verification, payload decryption) in `src/oca_platform.c`;
 * SPI, DMA, cryptographic, lifecycle, and SMC-interface support in `src/` and
   `include/`; and
 * ROM and DCCM placement in `link/rom.ld`.

@@ -1,0 +1,366 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[dv-interfaces]]
+= DV Infrastructure Interfaces
+
+The native runner, the dashboard, the shared configuration, the coverage
+policies, the hosted workflows, and the contributor environment are separate
+services that meet only at files and command lines. This page maps those
+files and command lines: for each interface it names the component that
+writes it, the components that read it, the contract a change has to keep,
+and the check that fails when the contract is broken. The runner and dashboard pages
+hold the detail; this page links to them.
+
+Responsibility is expressed by component and path. The tree that holds a
+file owns its contract: a DUT tree owns its sim config,
+testlists, and coverage policy; the shared configuration directory owns the
+registries and profiles; the runner package owns the native result; the
+dashboard package owns the normalized data; the workflow files own the CI
+matrices; the root project file and lockfile own the Python environment.
+
+== Data flow
+
+[source,text]
+----
+contributor shell, or a hosted job through .github/actions/dv-run
+  |
+  v
+tools/dv/run_dv.py
+  reads  hw/common/dv/configs/{duts,simulators,executors,parsers}.toml
+         hw/common/dv/configs/profiles/*.toml
+         <dut-dv-root>/<dut>_sim_cfg.toml, <dut-dv-root>/testlists/*.toml
+         optional: --overlay file, site.local.toml / $OCAH_DV_SITE
+  plans  flist -> hdl_compile -> sim leaves -> cov_merge -> cov_report
+  writes <run>/result.json                    (integer schema_version 1)
+         <run>/stages/regress/regression.json
+         <run>/<test>/.../result.json, results/results.xml
+         <run>/cov/report/{summary,coverage-details,policy-application}.json
+  |
+  v
+.github/actions/dv-run gate (jq on <run>/result.json)
+  uploads artifact dv-run-<dut>-<tool>-<tier>[-<label>]
+  |
+  v
+tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.1")
+tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.1")
+                                         history.json        (string "0.2")
+.github/workflows/dashboard.yml       -> classification.json
+tools/dv/run_dashboard.py publish     -> manifest.json       (string "0.1")
+  |
+  v
+artifact dv-dashboard-data and branch dv-dashboard-data
+  |
+  v
+the website that renders the data (outside this repository)
+----
+
+Three boundaries carry no shared code:
+
+* The runner and the dashboard never import or call each other. Their only
+  shared file is the run-level `result.json`.
+* The dashboard and the website meet only at the published data. This
+  repository renders no dashboard HTML in CI and hosts none.
+* The workflow callers and the composite action meet at the action's inputs.
+  A caller owns its matrix and tier policy; the action owns toolchain setup,
+  the run, the result gate, and the upload.
+
+== Interface map
+
+Each row is one interface. _Written by_ is the component whose change
+alters the interface; _Read by_ lists every consumer that has to keep
+working; _Contract and check_ states the rule and the automated check behind
+it.
+
+[cols="<2,<2,<2,<5",options="header"]
+|===
+|Interface |Written by |Read by |Contract and check
+
+|Registries and profiles: `duts.toml`, `simulators.toml`, `executors.toml`,
+`parsers.toml`, `profiles/*.toml` under `hw/common/dv/configs/`
+|The shared configuration directory
+|Runner config loading; `--list --json` for CI matrices
+|Every registry carries `schema_version = 1`. An unknown key is a validation
+error. A checked-in registry that carries `launcher`, `extra_env`, or
+`setup_hook` fails validation, so site-specific launch detail stays in the
+site layer (xref:run-dv.adoc#runner-site-layer[Site-local override layer]).
+Checked by `--validate-configs`, which every hosted job runs before its
+simulation, and by the configuration and registry tests in `tools/dv/tests`.
+
+|DUT configuration: `<dut>_sim_cfg.toml`, `testlists/*.toml`, and
+`cov/config/<tool>/coverage_policy.toml` in a DUT's DV root
+|The DUT tree
+|Runner config loading, stage planning, coverage grading
+|The profile supplies shared policy and the DUT config overrides it
+(the Configuration and precedence section of xref:run-dv.adoc[DV and FV
+Runner]). A group that names a missing test, a run mode a DUT does not declare,
+or a template placeholder the runner does not define is a config error. Checked by `--validate-configs`
+across every framework view a DUT implements, and by the expected-failure,
+framework-binding, and coverage-configuration tests.
+
+|Adopter overlay: the file `--overlay` or `OCAH_DV_OVERLAY` names
+|The adopter, outside this tree
+|Runner config loading
+|Append-only: the grammar is the subset of sim-config keys the runner page
+lists, and an overlay adds to the merged view but never replaces or removes
+a checked-in value. An unset `$VAR` in an overlay entry is a hard config
+error. The applied path and `[env]` table are recorded as `overlay` and
+`overlay_env` in `result.json`. Checked by `--validate-configs` on each view
+the overlay targets.
+
+|Site layer: `hw/common/dv/configs/site.local.toml` or the file
+`OCAH_DV_SITE` names
+|The deployment, outside version control
+|Runner registry loading, `--doctor`, `--list`, the run path
+|Active exactly when the file exists; a companion checkout beside the tree
+changes nothing. Only the keys the runner page lists are accepted, and each
+either replaces a registry value or adds a complete tool, executor, or
+formal-config entry. The active file is recorded as `site` in
+`result.json`. Checked by `--validate-configs`, which reports the merged
+registries, and by the site-layer tests.
+
+|Runner command line and run tree: `run_dv.py` options; the
+`<dut-dv-root>/build/runs/<stamp>__<tool>__<label>/` layout with `stages/`,
+per-leaf directories, and `cov/`
+|`tools/dv/runlib`
+|Contributors, the composite action, `collect`, `--waive`
+|Status maps to exit code as the runner page tabulates, and run-level
+aggregation orders `ERROR > TIMEOUT > FAIL > UNKNOWN > PASS`. Return code
+zero from a simulator is never sufficient for `PASS`. An explicit `--run-dir`
+is reused as supplied and never creates or updates `latest`. Most subprocess
+stages leave a replayable script under `scripts/`. Checked by the smoke job
+on every pull request and by the result and stage tests.
+
+|Native run result: run-level `result.json`, `stages/regress/regression.json`,
+per-leaf `result.json`, and `results/results.xml`
+|`tools/dv/runlib/results.py`
+|The composite action's gate, `collect`, `--waive`, JUnit consumers
+|Integer `schema_version` `1`. The file is written atomically, starting with
+an `UNKNOWN` checkpoint before the first leaf, so an incomplete run is never
+read as a pass. A run that did not finish carries `tests.completed = false`
+and `tests.pass_rate = null`, and a handled interruption adds an
+`interruption` object and a run-level errored JUnit testcase. The gate in
+`.github/actions/dv-run` requires `schema_version == 1`, a `flow` and `tool`
+matching the invocation, `status == "PASS"`, and coverage evidence when the
+row collects coverage. The completion and expected-failure tests cover the
+rest (the Output and result contract section of xref:run-dv.adoc[DV and FV
+Runner]).
+
+|Coverage grade: `--cov`, the `cov_merge` and `cov_report` stages,
+`cov/coverage.json`, `cov/report/*.json`, and `--waive`
+|Runner coverage stages; policy files in the DUT tree
+|`collect`, the dashboard coverage view, the publication workflow's re-grade
+|The compatibility threshold is `--fail-under`, then
+`[coverage.<tool>].fail_under`, then `0.0`, graded on the tool's raw overall
+figure; waiver-aware grading is a `pass:[[[thresholds]]]` rule in the policy.
+Coverage is graded over a complete regression only: an interrupted or
+truncated run is refused. A changed policy changes `comparison_key`, so trend
+points before and after are separate series. A lapsed waiver grades as open.
+Checked by `--validate-configs` (expiry warnings), the coverage-closure,
+policy-expiry, and waive tests, and the coverage evidence clause of the
+action's gate. Hosted CI publishes the score but enforces no threshold
+(xref:run-dv.adoc#runner-waive[Waive coverage bins after a regression]).
+
+|Normalized dashboard data: `<dut>.result.json`, `summary.json`,
+`history.json`, `manifest.json`, `classification.json`
+|`tools/dv/dashboard` and `.github/workflows/dashboard.yml`
+|The website that renders the dashboard; `dashboard` itself for history
+|String `schema_version` values: `"0.1"` for the per-DUT record, the summary,
+and the manifest, `"0.2"` for the history; `classification.json` carries
+none. The conversion from the native result is lossy: native `ERROR` and `TIMEOUT`
+collapse into `FAIL`. `classification.json` is computed from the native leaf
+records, which keep the distinction. The consumers in this tree do not enforce
+the schema version (xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
+The artifact and the branch carry identical content. Checked by the
+dashboard completion tests and by the Operational checks section of
+xref:run-dashboard.adoc[DV and FV Dashboard].
+
+|Hosted workflows and the composite action: `sim.yml`, `regress.yml`,
+`dashboard.yml`, `.github/actions/dv-run`; artifact names
+`dv-run-<dut>-<tool>-<tier>[-<label>]` and `dv-dashboard-data`; run
+directories `build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; check contexts
+`verilator-smoke (<dut>)`; branch `dv-dashboard-data`
+|`.github/workflows` and `.github/actions`
+|Branch protection, the publication workflow, the website
+|Callers pass matrix and tier policy as action inputs, so a regression-tier
+change cannot alter the pull-request gate. Pull requests run the smoke group
+only. The weekly tier is the only one the dashboard publishes; the run
+directory shape is hashed into the trend-point identity. A red weekly
+publishes as well, because the workflow gates on the presence of the native
+result, not on the run's conclusion. Verilator is built from a pinned tag on
+a cache miss. Retention: run artifacts 14 days (30 for the weekly tier), the
+dashboard artifact 90 days, history and archives on the branch trimmed to 90
+entries. Checked by the required `verilator-smoke (dtp)` and
+`verilator-smoke (sep)` contexts and by the `dv-unit-tests` job in
+`lint.yml`, which runs `tools/dv/tests` on DV-scoped changes
+(xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
+
+|Contributor environment: `pyproject.toml` and `uv.lock` (the `dv` dependency
+group resolves to the `ocah-dv` workspace package under `hw/common/dv`),
+`Bender.yml`, Verilator, the `ocah-toolchain` image from
+`tools/docker/Dockerfile`, and `scripts/docker-run.sh`
+|The root project file and lockfile; the DV package manifest; the Dockerfile
+and its wrapper
+|Runner bootstrap, the composite action, the firmware build engine
+`hw/common/dv/fw/compile.mk`
+|The lockfile is the environment: the runner re-executes through
+`uv run --project <root> --locked --group dv`, and a hosted job reaches the
+runner through the same bootstrap. Python 3.11 through 3.13. `OCAH_DV_SKIP_UV=1` opts a
+pre-provisioned environment out of the re-execution and nothing else. Pulled
+container images are pinned by digest where their tags float. A host RISC-V
+toolchain with picolibc may replace the container through `RISCV_TOOLCHAIN`.
+Checked by `--doctor` (a targeted availability probe, not a license test),
+`docker-run.sh verify`, `uv sync --locked`, and the doctor-probe tests.
+|===
+
+== Public and licensed boundary
+
+The open tree runs end to end on Verilator with no licensed component. Every
+licensed or site-specific element enters through one of the layers below, is
+never activated by the presence of a companion checkout, and is recorded in
+the run result so a result is attributable to its layers.
+
+[cols="<2,<3,<3",options="header"]
+|===
+|Layer |In the open tree |Licensed or site-specific side
+
+|Tool registry
+|`simulators.toml` lists `verilator`, `vcs`, `xcelium`, and `sby` by their
+default executable names; a licensed tool's table names its `license_env`
+variables. The `native`
+profile declares `visibility = "public"`, `license = "none"`, and
+`default_tool = "verilator"`.
+|Binaries under other names, `launcher` prefixes for containers,
+`setup_hook` files, `extra_env`, and added tools live in the site layer.
+`--list` marks a tool `(licensed)` from its `license_env`.
+
+|Frameworks
+|cocotb is the default framework on every DUT and runs on Verilator.
+|SV-UVM views run on VCS. They are valid configurations that hosted CI does
+not run; `--validate-configs` validates them regardless.
+
+|Hosted CI
+|Verilator only, on GitHub-hosted runners. Smoke on every pull request;
+nightly and weekly regression tiers.
+|VCS and Xcelium need licensed self-hosted runners. Formal mode is a
+developer-host flow: no formal job runs in hosted CI and no formal result
+reaches the dashboard.
+
+|Formal collateral
+|Property and bind files, `sby` task files, the formal config with the `sby`
+app, and the `native-formal` profile.
+|A licensed formal backend is a site-layer tool table plus a companion-owned
+formal config named by `[duts.<dut>] formal_cfg`
+(xref:run-dv.adoc#runner-formal-licensed[Licensed backends and the companion boundary]).
+
+|Vendor VIP
+|The shipped `ocah_<proto>_if` interfaces carry guarded include hooks behind
+`OCAH_<PROTO>_VENDOR_IF` defines. The tree ships no vendor header.
+|An adopter overlay adds the include directories, defines, tool flags,
+runtime arguments, and environment the vendor package needs.
+
+|Companion repository
+|`nonfree/` is ignored, not tracked. `ocah.mk` includes `nonfree/nonfree.mk`
+when that file exists; the runner has no equivalent automatic include.
+|Runner-side companion material reaches a run only through `--overlay` or
+the site layer, and both are recorded in `result.json`.
+
+|Coverage
+|Verilator coverage, graded by the Verilator parser, which recomputes
+effective percentages from accepted waivers.
+|VCS `urg` and Xcelium `imc` percentages are the vendor report's; a waiver
+changes a hole's classification, not the percentage.
+
+|Firmware toolchain
+|`ocah-toolchain` is built locally from the Dockerfile and published to no
+registry. Its base image is digest-pinned; the packages installed on top
+float with the distribution.
+|`OCAH_DOCKER_CACHE_DIR` names an optional shared tarball cache, and
+`OCAH_TOOLCHAIN_ROOTFS` selects a bubblewrap sandbox instead of a container
+engine. Both are unset in a bare clone.
+|===
+
+== Operations
+
+[cols="<2,<3,<3",options="header"]
+|===
+|Task |Mechanism |Detail
+
+|Prove configuration consistency
+|`python3 tools/dv/run_dv.py --validate-configs`
+|Every DUT, every framework view, every available formal view, and the
+merged registries. Runs in every hosted job.
+
+|Probe a host for a DUT and tool
+|`python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>`
+|Reports the active site file and the source of each tool entry; sources the
+tool's `setup_hook`.
+
+|Run the tooling tests
+|`uv run --locked --group dv python -m unittest discover tools/dv/tests`
+|The same command the `dv-unit-tests` job runs.
+
+|Run a tier by hand
+|`gh workflow run regress.yml -f tier=nightly` or `-f tier=weekly`
+|Scheduled tiers are never cancelled; a dispatch of the same tier queues
+behind the one in flight.
+
+|Move coverage rows to a larger runner
+|`gh variable set DV_LARGE_RUNNER --body <runner-label>`
+|A repository variable, not a workflow edit. A label with no matching runner
+queues until the job times out.
+
+|Publish or backfill a weekly
+|`gh workflow run dashboard.yml -f run_id=<regress run id>`
+|Add `-f dry_run=true` to collect and aggregate without pushing the branch,
+uploading the bundle, or sending the digest.
+
+|Apply a merged waiver to a published weekly
+|Merge the policy change, then dispatch the publication for the weekly's
+run id
+|The job re-grades the downloaded tree with `--waive` against the checkout's
+policy (xref:run-dashboard.adoc#dashboard-waive[Waive coverage bins on a published weekly]).
+
+|Re-grade a downloaded run tree locally
+|`OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut <dut> --run-dir <tree> --waive`
+|No simulator or report tool runs; the tree is the only input.
+
+|Inspect the published data
+|Branch `dv-dashboard-data`: `latest/`, `data/history.json`,
+`data/runs/`, `data/classification/`
+|The artifact of the same name carries the per-run bundle with identical
+content.
+
+|Send the weekly digest
+|The `OCAH_MAIL_USERNAME`, `OCAH_MAIL_PASSWORD`, and `OCAH_MAIL_TO` secrets
+|The step is skipped when `OCAH_MAIL_TO` is empty.
+
+|Render this guide
+|The `asciidoctor` and `asciidoctor-pdf` commands in the guide index
+|`tools/dv/doc` is not staged by the Antora build or the documentation
+workflow; `make ocah-lint-vale VALE_PATH=tools/dv/doc` lints its prose.
+|===
+
+== Changing an interface
+
+* A registry, result file, or normalized file carries `schema_version`. A
+  change that a current reader cannot consume increments it; an additive
+  field does not.
+* A writer and every reader of the same interface inside this tree change in
+  one pull request: the result schema together with the action's gate and
+  `collect`; a registry key together with `--validate-configs` and the
+  registry tests; an action input together with both calling workflows.
+* The website that renders the published data is outside this repository.
+  The `schema_version` string in every published file is its signal that the
+  layout changed.
+* A coverage policy change changes `comparison_key`. Compare trend points
+  only when their keys match.
+* A Python dependency changes through `uv.lock`. Hosted jobs and the runner
+  bootstrap install with `--locked`, so an unlocked change fails before any
+  simulation.
+* The overlay and site-layer grammars are closed. An added key enters the
+  runner's schema and its validation before any file may use it.
+* Licensed material never enters a checked-in configuration. A tool the open
+  tree cannot run is a site-layer or companion entry, and a configuration
+  that hosted CI cannot run stays in the _configured, not CI-run_ tier of the
+  support matrix until a qualifying run at head promotes it.

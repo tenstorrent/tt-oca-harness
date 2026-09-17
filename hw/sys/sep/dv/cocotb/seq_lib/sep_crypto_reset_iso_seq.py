@@ -10,8 +10,8 @@ module only owns the reset-control register so the held-result observation is a
 real crypto-datapath state, not a poked status bit.
 
 SW_RESET_N @ 0x1080_3000 (sep_reset_ctrl) is RW and ACTIVE-LOW: bit N high = IP N
-released, low = held in reset. Reset default 0x3E (km[0] held; otbn[1]/aes[2]/
-hmac[3]/kmac[4]/trng[5] released). A reset pulse for IP N clears that bit in the
+released, low = held in reset. Reset default 0x7E (km[0] held; otbn[1]/aes[2]/
+hmac[3]/kmac[4]/trng[5]/abr[6] released). A reset pulse for IP N clears that bit in the
 generated default, then restores the default, preserving all unrelated domains.
 The pulsed engine's whole wrapper rst_ni drops (sep_crypto.sv
 hmac_wrapper.rst_ni/aes.rst_ni fed from sep_sw_rst_no.<ip>), clearing its held result;
@@ -39,6 +39,7 @@ RST_AES = SEP_RESET_CTRL.field_lsb("SW_RESET_N", "aes_sw_rst_n")
 RST_HMAC = SEP_RESET_CTRL.field_lsb("SW_RESET_N", "hmac_sw_rst_n")
 RST_KMAC = SEP_RESET_CTRL.field_lsb("SW_RESET_N", "kmac_sw_rst_n")
 RST_TRNG = SEP_RESET_CTRL.field_lsb("SW_RESET_N", "trng_sw_rst_n")
+RST_ABR = SEP_RESET_CTRL.field_lsb("SW_RESET_N", "abr_sw_rst_n")
 KM_RST_MASK = SEP_RESET_CTRL.field_mask("SW_RESET_N", "km_sw_rst_n")
 RESP_OKAY = 0
 RESP_SLVERR = 2

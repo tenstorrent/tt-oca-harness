@@ -68,11 +68,15 @@ SECTIONS {
   /* Reserve the top of DCCM for bl0_state so the stack cannot overlap it. MUST
    * equal BL0_STATE_RESERVE_BYTES in include/bl0_state.h; rom_main.c compares
    * the pair at boot and fails loudly if they drift. */
-  __bl0_state_reserve = 128;
+  __bl0_state_reserve = 256;
 
-  /* Stack grows downward from __stack_top (below the bl0_state reserve) toward
-   * .bss at __stack_bottom.  rom_main writes STACK_CANARY_VALUE at
-   * __stack_bottom and checks it before PASS. */
+  /* Stack grows downward from below the BL0 state region toward .bss.
+   * __stack_top   = highest stack address (initial sp), below BL0 state.
+   * __stack_bottom = lowest usable stack address (just above .bss).
+   *
+   * C16 stack canary: rom_main writes STACK_CANARY_VALUE at __stack_bottom
+   * at init and re-checks it just before the BL1 hand-off.  If corrupted, it
+   * means the stack overflowed into the .bss region — a fatal error. */
   __stack_top = ORIGIN(dccm) + LENGTH(dccm) - __bl0_state_reserve;
   __stack_bottom = ALIGN(__bss_end, 4);
 

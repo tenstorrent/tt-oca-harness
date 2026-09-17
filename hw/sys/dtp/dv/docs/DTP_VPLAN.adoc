@@ -1666,6 +1666,8 @@ b. Confirm the captured B-response is OKAY.
 |`smc_axi_wr_data_chk` |`OcahAxiSlaveAgent` subordinate holds the written address/data/wstrb
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The `*_wr_caps_chk` row is the geometry gate of the base sequence (`CHK-J2A-GEOMETRY`) and the capability scenarios of section 1 (F2.5).
+
 *Pass Criteria*: The AXI4 single write completes with OKAY status and the `OcahAxiSlaveAgent` subordinate captures the correct address, data, and wstrb, with zero scoreboard/reference-model errors.
 
 '''''
@@ -1701,6 +1703,8 @@ b. Confirm the captured B-response is OKAY.
 |`smc_axi_wr_data_readback_chk` |Read-back data equals the written data pattern
 |`smc_axi_wr_status_okay_chk` |Write and read statuses both settle to OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR`, `CHK-AXI-RDATA`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The written data is observable through bridge read-back at the same address with OKAY status and zero scoreboard/reference-model errors.
 
@@ -1746,6 +1750,8 @@ b. Confirm no writes landed outside the addressed range.
 |`smc_axi_wr_incr_data_chk` |Each address holds its distinct data word
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All N incrementing writes complete, the SERIES_CTRL readback reports OKAY at base{plus}N*stride, and each target address holds its data word, with zero scoreboard/reference-model errors.
 
 '''''
@@ -1790,6 +1796,8 @@ b. Confirm status is OKAY and the captured address equals `base+N*4`.
 |`smc_axi_wr_incr_narrow_data_chk` |Each size-aligned address holds its distinct 32-bit payload, after its own beat and after the whole stream
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All N 32-bit incrementing writes complete with OKAY status, drive the strobes of the address-selected AXI lanes, leave the sentinel untouched, and each target address holds its expected data, with zero scoreboard/reference-model errors.
 
 '''''
@@ -1833,6 +1841,8 @@ b. Capture SMC_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address = the
 |`smc_axi_wr_no_incr_addr_chk` |All captured AW addresses equal the single fixed address
 |`smc_axi_wr_no_incr_data_chk` |Fixed location holds the final (last-beat) data
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: All N fixed-address writes complete, the SERIES_CTRL readback reports OKAY at the unchanged address, and the single target location holds the last data beat, with zero scoreboard/reference-model errors.
 
@@ -1881,6 +1891,8 @@ d. Shift one trailing word (data 0, increment 0) and verify its status bit repor
 |`smc_axi_wr_status_recover_chk` |A legal single write outside the stream completes OKAY with its memory update; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-STATUS-BIT` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The fault beat's response surfaces on the following shift's status bit and nowhere else, every other beat lands, the faulting slot is unchanged, the SERIES_CTRL readback shows base{plus}3*stride, and the recovery write completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
@@ -1923,6 +1935,8 @@ a. Read back / inspect the `OcahAxiSlaveAgent` subordinate and compare every wri
 |`smc_axi_rand_mem_chk` |Final subordinate image matches the reference memory exactly
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All randomized writes complete with OKAY status and the final subordinate memory image matches the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -1963,6 +1977,8 @@ d. Clear the disable without reset; verify the sentinel is still unchanged (no d
 |`smc_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay); the gated request carries all-ones strobes, so a leaked write overwrites it
 |`smc_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-GATE-W`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: With `dbg_disable_i.smc_jtag2axi` asserted the write is suppressed with no AXI traffic and no memory mutation, and each release restores a passing OKAY write, with zero scoreboard/reference-model errors.
 
@@ -2010,6 +2026,8 @@ b. Confirm the captured B-response is OKAY.
 |`smc_otp_axi_wr_data_chk` |AXI-Lite subordinate holds the written address/data/wstrb
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The `*_wr_caps_chk` row is the geometry gate of the base sequence (`CHK-J2A-GEOMETRY`) and the capability scenarios of section 1 (F2.5).
+
 *Pass Criteria*: The AXI4-Lite single write completes with OKAY status and the SMC OTP subordinate captures the correct address and data, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2045,6 +2063,8 @@ b. Confirm the captured B-response is OKAY.
 |`smc_otp_wr_data_readback_chk` |Read-back data equals the written SMC OTP word
 |`smc_otp_wr_status_okay_chk` |Write and read statuses both settle to OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR`, `CHK-AXI-RDATA`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The SMC OTP written word is returned by bridge read-back with OKAY status and zero scoreboard/reference-model errors.
 
@@ -2090,6 +2110,8 @@ b. Confirm no writes landed outside the addressed range.
 |`smc_otp_axi_wr_incr_data_chk` |Each address holds its distinct data word
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All N incrementing writes complete, the SERIES_CTRL readback reports OKAY at base{plus}N*stride, and each target address holds its data word, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2133,6 +2155,8 @@ b. Capture SMC_OTP_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address =
 |`smc_otp_axi_wr_no_incr_addr_chk` |All captured AW addresses equal the single fixed address
 |`smc_otp_axi_wr_no_incr_data_chk` |Fixed location holds the final (last-beat) data
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: All N fixed-address writes complete, the SERIES_CTRL readback reports OKAY at the unchanged address, and the single target location holds the last data beat, with zero scoreboard/reference-model errors.
 
@@ -2181,6 +2205,8 @@ d. Shift one trailing word (data 0, increment 0) and verify its status bit repor
 |`smc_otp_axi_wr_status_recover_chk` |A legal single write outside the stream completes OKAY with its memory update; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-STATUS-BIT` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The fault beat's response surfaces on the following shift's status bit and nowhere else, every other beat lands, the faulting slot is unchanged, the SERIES_CTRL readback shows base{plus}3*stride, and the recovery write completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2223,6 +2249,8 @@ a. Inspect the AXI-Lite subordinate and compare every written location against t
 |`smc_otp_axi_rand_mem_chk` |Final subordinate image matches the reference memory exactly
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All randomized writes complete with OKAY status and the final subordinate memory image matches the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2263,6 +2291,8 @@ a. With all required enables high, verify a legal write again completes with OKA
 |`smc_otp_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay)
 |`smc_otp_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-GATE-W`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: With `dbg_disable_i.smc_otp_jtag2axi` asserted the write is suppressed with no AXI-Lite traffic and no memory mutation, and each release restores a passing OKAY write, with zero scoreboard/reference-model errors.
 
@@ -2310,6 +2340,8 @@ b. Confirm the captured B-response is OKAY.
 |`sep_otp_axi_wr_data_chk` |AXI-Lite subordinate holds the written address/data/wstrb
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The `*_wr_caps_chk` row is the geometry gate of the base sequence (`CHK-J2A-GEOMETRY`) and the capability scenarios of section 1 (F2.5).
+
 *Pass Criteria*: The AXI4-Lite single write completes with OKAY status and the SEP OTP subordinate captures the correct address and data, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2345,6 +2377,8 @@ b. Confirm the captured B-response is OKAY.
 |`sep_otp_wr_data_readback_chk` |Read-back data equals the written SEP OTP word
 |`sep_otp_wr_status_okay_chk` |Write and read statuses both settle to OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR`, `CHK-AXI-RDATA`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The SEP OTP written word is returned by bridge read-back with OKAY status and zero scoreboard/reference-model errors.
 
@@ -2390,6 +2424,8 @@ b. Confirm no writes landed outside the addressed range.
 |`sep_otp_axi_wr_incr_data_chk` |Each address holds its distinct data word
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All N incrementing writes complete, the SERIES_CTRL readback reports OKAY at base{plus}N*stride, and each target address holds its data word, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2433,6 +2469,8 @@ b. Capture SEP_OTP_AXI_SERIES_CTRL and verify status = 0b00 (OKAY) and address =
 |`sep_otp_axi_wr_no_incr_addr_chk` |All captured AW addresses equal the single fixed address
 |`sep_otp_axi_wr_no_incr_data_chk` |Fixed location holds the final (last-beat) data
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: All N fixed-address writes complete, the SERIES_CTRL readback reports OKAY at the unchanged address, and the single target location holds the last data beat, with zero scoreboard/reference-model errors.
 
@@ -2481,6 +2519,8 @@ d. Shift one trailing word (data 0, increment 0) and verify its status bit repor
 |`sep_otp_axi_wr_status_recover_chk` |A legal single write outside the stream completes OKAY with its memory update; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-STATUS-BIT` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The fault beat's response surfaces on the following shift's status bit and nowhere else, every other beat lands, the faulting slot is unchanged, the SERIES_CTRL readback shows base{plus}3*stride, and the recovery write completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2523,6 +2563,8 @@ a. Inspect the AXI-Lite subordinate and compare every written location against t
 |`sep_otp_axi_rand_mem_chk` |Final subordinate image matches the reference memory exactly
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All randomized writes complete with OKAY status and the final subordinate memory image matches the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2563,6 +2605,8 @@ a. With all required enables high, verify a legal write again completes with OKA
 |`sep_otp_axi_gate_sentinel_chk` |The preloaded RAM sentinel is unchanged while gated and after release (no delayed replay)
 |`sep_otp_axi_gate_restore_chk` |A legal write completes with OKAY after each release
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-GATE-W`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: With `dbg_disable_i.sep_otp_jtag2axi` asserted the write is suppressed with no AXI-Lite traffic and no memory mutation, and each release restores a passing OKAY write, with zero scoreboard/reference-model errors.
 
@@ -2613,6 +2657,8 @@ c. Poll op status until not Busy (0b11), then read returned data and status from
 |`smc_axi_single_wr_rd_mem_chk` |`OcahAxiSlaveAgent` content at the target address matches the issued write
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-RADDR`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The write completes OKAY, the read-back returns the same word with OKAY status, and the memory side effect matches, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2658,6 +2704,8 @@ b. Shift SMC_AXI_SERIES_DATA_INCR once to launch the read and wait for the AXI r
 |`smc_axi_series_incr_mem_chk` |`OcahAxiSlaveAgent` content over the block matches the issued write series
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Every incrementing-address write and read completes, the SERIES_CTRL readback reports OKAY, and all per-beat comparisons match the written data, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2695,6 +2743,8 @@ b. Shift SMC_AXI_SERIES_DATA_INCR once to launch the read and wait for the AXI r
 |`smc_axi_series_incr_narrow_rdata_chk` |Each Capture-DR beat matches the written 32-bit payload
 |`smc_axi_series_incr_narrow_mem_chk` |`OcahAxiSlaveAgent` content at each size-aligned address matches the issued write
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: Every 32-bit incrementing write and read completes OKAY, Capture-DR returns the logical payload from the address-selected lanes, and all per-beat comparisons match, with zero scoreboard/reference-model errors.
 
@@ -2739,6 +2789,8 @@ b. Shift SMC_AXI_SERIES_DATA_NO_INCR once to launch the read and wait for the AX
 |`smc_axi_series_no_incr_rdata_chk` |Every returned beat equals the last word written
 |`smc_axi_series_no_incr_mem_chk` |`OcahAxiSlaveAgent` at the fixed address holds the last word written across the series
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: All fixed-address beats complete, every returned beat equals the last word written, and the SERIES_CTRL readback reports OKAY at the unchanged address, with zero scoreboard/reference-model errors.
 
@@ -2791,6 +2843,8 @@ d. Capture SMC_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
 |`smc_axi_series_status_recover_chk` |A legal single read outside the stream returns its word with OKAY; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-STATUS-BIT` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The write leg completes clean, the read leg's fault surfaces on the following shift's status bit and nowhere else, every other beat returns its word, both SERIES_CTRL readbacks show base{plus}3*stride, and the recovery read completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2830,6 +2884,8 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 |`smc_axi_random_rdata_chk` |Each returned word matches the randomized `OcahAxiSlaveAgent` reference
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All randomized reads complete OKAY and every returned word matches the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2867,6 +2923,8 @@ a. Snapshot the AW/W/AR activity counters before the attempt and verify no AXI t
 |`smc_rd_gate_restore_chk` |Normal read with OKAY status resumes after the bit clears
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-GATE-W` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
+
 *Pass Criteria*: The asserted disable suppresses all AXI activity with no delayed replay after release, and reads resume correctly once the disable clears, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2902,6 +2960,8 @@ a. Snapshot the AW/W/AR activity counters before the attempt and verify no AXI t
 |`smc_rd_gate_no_aw_ar_chk` |No AWVALID or ARVALID while the bridge is gated
 |`smc_rd_gate_restore_activity_chk` |AXI read activity resumes after gating clears
 |===
+
+*Evidence*: cocotb: `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-GATE-W` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: Each required enable independently blocks all SMC fabric AXI read activity while low and normal reads resume after restore, with zero scoreboard/reference-model errors.
 
@@ -2949,6 +3009,8 @@ c. Poll op status until not Busy; read returned data and status from the DR.
 |`smc_otp_single_wr_rd_mem_chk` |AXI-Lite subordinate content at the target address matches the issued write
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-RADDR`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The write completes OKAY, the read-back returns the same word with OKAY status, and the memory side effect matches, with zero scoreboard/reference-model errors.
 
 '''''
@@ -2994,6 +3056,8 @@ b. Shift SMC_OTP_AXI_SERIES_DATA_INCR once to launch the read and wait for the A
 |`smc_otp_series_incr_mem_chk` |AXI-Lite subordinate content over the block matches the issued write series
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Every incrementing-address write and read completes, the SERIES_CTRL readback reports OKAY, and all per-beat comparisons match the written data, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3037,6 +3101,8 @@ b. Shift SMC_OTP_AXI_SERIES_DATA_NO_INCR once to launch the read and wait for th
 |`smc_otp_series_no_incr_rdata_chk` |Every returned beat equals the last word written
 |`smc_otp_series_no_incr_mem_chk` |AXI-Lite subordinate at the fixed address holds the last word written across the series
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: All fixed-address beats complete, every returned beat equals the last word written, and the SERIES_CTRL readback reports OKAY at the unchanged address, with zero scoreboard/reference-model errors.
 
@@ -3089,6 +3155,8 @@ d. Capture SMC_OTP_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
 |`smc_otp_series_status_recover_chk` |A legal single read outside the stream returns its word with OKAY; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-STATUS-BIT` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The write leg completes clean, the read leg's fault surfaces on the following shift's status bit and nowhere else, every other beat returns its word, both SERIES_CTRL readbacks show base{plus}3*stride, and the recovery read completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3128,6 +3196,8 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 |`smc_otp_random_rdata_chk` |Each returned word matches the randomized AXI-Lite reference
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All randomized reads complete OKAY and every returned word matches the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3164,6 +3234,8 @@ a. Verify no AXI-Lite transaction issues on `axil_smc_otp_jtag_req_o` across the
 |`smc_otp_rd_gate_noreplay_chk` |No queued request replays after the disable's release
 |`smc_otp_rd_gate_restore_chk` |Normal read with OKAY status resumes after the disable clears
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-GATE-W` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: The asserted `dbg_disable_i.smc_otp_jtag2axi` suppresses all AXI-Lite activity with no delayed replay after release, and reads resume correctly once the disable clears, with zero scoreboard/reference-model errors.
 
@@ -3211,6 +3283,8 @@ c. Poll op status until not Busy; read returned data and status from the DR.
 |`sep_otp_single_wr_rd_mem_chk` |AXI-Lite subordinate content at the target address matches the issued write
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The write completes OKAY, the read-back returns the same word with OKAY status, and the memory side effect matches, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3256,6 +3330,8 @@ b. Shift SEP_OTP_AXI_SERIES_DATA_INCR once to launch the read and wait for the A
 |`sep_otp_series_incr_mem_chk` |AXI-Lite subordinate content over the block matches the issued write series
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Every incrementing-address write and read completes, the SERIES_CTRL readback reports OKAY, and all per-beat comparisons match the written data, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3299,6 +3375,8 @@ b. Shift SEP_OTP_AXI_SERIES_DATA_NO_INCR once to launch the read and wait for th
 |`sep_otp_series_no_incr_rdata_chk` |Every returned beat equals the last word written
 |`sep_otp_series_no_incr_mem_chk` |AXI-Lite subordinate at the fixed address holds the last word written across the series
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: All fixed-address beats complete, every returned beat equals the last word written, and the SERIES_CTRL readback reports OKAY at the unchanged address, with zero scoreboard/reference-model errors.
 
@@ -3351,6 +3429,8 @@ d. Capture SEP_OTP_AXI_SERIES_CTRL and verify address = base{plus}3*stride.
 |`sep_otp_series_status_recover_chk` |A legal single read outside the stream returns its word with OKAY; the armed response reaches the bus and is consumed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-STATUS-BIT` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The write leg completes clean, the read leg's fault surfaces on the following shift's status bit and nowhere else, every other beat returns its word, both SERIES_CTRL readbacks show base{plus}3*stride, and the recovery read completes OKAY, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3390,6 +3470,8 @@ b. Poll op status until not Busy (0b11); capture returned data and status.
 |`sep_otp_random_rdata_chk` |Each returned word matches the randomized AXI-Lite reference
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All randomized reads complete OKAY and every returned word matches the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3426,6 +3508,8 @@ a. Verify no AXI-Lite transaction issues on `axil_sep_otp_jtag_req_o` across the
 |`sep_otp_rd_gate_noreplay_chk` |No queued request replays after the disable's release
 |`sep_otp_rd_gate_restore_chk` |Normal read with OKAY status resumes after the disable clears
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-EXACT`, `CHK-AXI-GATE-W` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: The asserted `dbg_disable_i.sep_otp_jtag2axi` suppresses all AXI-Lite activity with no delayed replay after release, and reads resume correctly once the disable clears, with zero scoreboard/reference-model errors.
 
@@ -3472,6 +3556,8 @@ b. Update-DR to launch the AXI4 transaction on `axi_smc_dbg_req_o`.
 |`smc_axi_err_single_wr_recover_chk` |A subsequent legal write completes with OKAY (no hang/corruption)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN`, `CHK-AXI-WMEM` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The `*_wr_caps_chk` row is the geometry gate of the base sequence (`CHK-J2A-GEOMETRY`) and the capability scenarios of section 1 (F2.5).
+
 *Pass Criteria*: The single write error is reported in the op-status, no spurious memory update occurs, and the bridge recovers for the next legal transaction, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3513,6 +3599,8 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |`smc_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY (`CHK-AXI-RDATA`)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-ERR-RDATA` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The single read error is reported in the op-status, the read-data field carries the errored beat's RDATA, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3552,6 +3640,8 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |`smc_axi_err_noincr_wr_mem_chk` |Good beats commit to the fixed address; no address increment observed
 |`smc_axi_err_noincr_wr_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The injected fault is reported on the failing beat, the address stays fixed for all beats, good beats commit correctly, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -3593,6 +3683,8 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |`smc_axi_err_noincr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Good beats match the fixed-address reference, the failing beat reports the injected error, the address stays fixed, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3632,6 +3724,8 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |`smc_axi_err_incr_wr_mem_chk` |Good beats commit at correctly-incremented addresses
 |`smc_axi_err_incr_wr_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: Good beats commit at the expected incrementing addresses, the failing beat reports the injected error, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -3674,6 +3768,8 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |`smc_axi_err_incr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-SERIES-ADDR` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Good beats match the expected references, every SERIES_CTRL capture shows the incremented address, the failing beat reports the injected error, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3713,6 +3809,8 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |`smc_axi_err_incr_wr_status_mem_chk` |Good beats commit at correctly-incremented addresses
 |`smc_axi_err_incr_wr_status_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The with-error-status bit and the SERIES_CTRL status report the failing beat and error code, good beats commit, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -3754,6 +3852,8 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |`smc_axi_err_incr_rd_status_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The with-error-status bit and the SERIES_CTRL status report the failing read beat and error code, good beats match references, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3791,6 +3891,8 @@ a. Verify no AXI transaction is issued on `axi_smc_dbg_req_o` and no error-statu
 |`smc_axi_err_gating_no_traffic_chk` |No AXI traffic on `axi_smc_dbg_req_o` while gated
 |`smc_axi_err_gating_restore_chk` |Each release restores normal/error-path operation
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: The asserted disable suppresses all AXI traffic on the error path, and operation is fully restored after each release, with zero scoreboard/reference-model errors.
 
@@ -3834,6 +3936,8 @@ b. Update-DR to launch the AXI4-Lite transaction on `axil_smc_otp_jtag_req_o`.
 |`smc_otp_axi_err_single_wr_recover_chk` |A subsequent legal write completes with OKAY (no hang/corruption)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The `*_wr_caps_chk` row is the geometry gate of the base sequence (`CHK-J2A-GEOMETRY`) and the capability scenarios of section 1 (F2.5).
+
 *Pass Criteria*: The single write error is reported in the op-status, no spurious update occurs on the AXI-Lite subordinate, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3875,6 +3979,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |`smc_otp_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY (`CHK-AXI-RDATA`)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-ERR-RDATA` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The single read error is reported in the op-status, the read-data field carries the errored beat's RDATA, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3914,6 +4020,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |`smc_otp_axi_err_incr_wr_mem_chk` |Good beats commit at correctly-incremented addresses
 |`smc_otp_axi_err_incr_wr_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: Good beats commit at the expected incrementing addresses, the failing beat reports the injected error, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -3955,6 +4063,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |`smc_otp_axi_err_incr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Good beats match the expected incrementing-address references, the failing beat reports the injected error, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -3994,6 +4104,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |`smc_otp_axi_err_noincr_wr_mem_chk` |Good beats commit to the fixed address; no address increment observed
 |`smc_otp_axi_err_noincr_wr_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The injected fault is reported on the failing beat, the address stays fixed, good beats commit correctly, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -4035,6 +4147,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |`smc_otp_axi_err_noincr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Good beats match the fixed-address reference, the failing beat reports the injected error, the address stays fixed, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4074,6 +4188,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |`smc_otp_axi_err_incr_wr_status_mem_chk` |Good beats commit at correctly-incremented addresses
 |`smc_otp_axi_err_incr_wr_status_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The with-error-status bit and the SERIES_CTRL status report the failing beat and error code, good beats commit, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -4115,6 +4231,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |`smc_otp_axi_err_incr_rd_status_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The with-error-status bit and the SERIES_CTRL status report the failing read beat and error code, good beats match references, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4152,6 +4270,8 @@ a. Verify no AXI-Lite transaction is issued on `axil_smc_otp_jtag_req_o` and no 
 |`smc_otp_axi_err_gating_no_traffic_chk` |No AXI-Lite traffic on `axil_smc_otp_jtag_req_o` while gated
 |`smc_otp_axi_err_gating_restore_chk` |Each release restores normal/error-path operation
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: The asserted disable suppresses all AXI-Lite traffic on the error path, and operation is fully restored after each release, with zero scoreboard/reference-model errors.
 
@@ -4195,6 +4315,8 @@ b. Update-DR to launch the AXI4-Lite transaction on `axil_sep_otp_jtag_req_o`.
 |`sep_otp_axi_err_single_wr_recover_chk` |A subsequent legal write completes with OKAY (no hang/corruption)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The `*_wr_caps_chk` row is the geometry gate of the base sequence (`CHK-J2A-GEOMETRY`) and the capability scenarios of section 1 (F2.5).
+
 *Pass Criteria*: The single write error is reported in the op-status, no spurious update occurs on the AXI-Lite subordinate, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4236,6 +4358,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |`sep_otp_axi_err_single_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY (`CHK-AXI-RDATA`)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-ERR-RDATA` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The single read error is reported in the op-status, the read-data field carries the errored beat's RDATA, and the bridge recovers for the next legal read, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4275,6 +4399,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |`sep_otp_axi_err_incr_wr_mem_chk` |Good beats commit at correctly-incremented addresses
 |`sep_otp_axi_err_incr_wr_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: Good beats commit at the expected incrementing addresses, the failing beat reports the injected error, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -4316,6 +4442,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |`sep_otp_axi_err_incr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Good beats match the expected incrementing-address references, the failing beat reports the injected error, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4355,6 +4483,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |`sep_otp_axi_err_noincr_wr_mem_chk` |Good beats commit to the fixed address; no address increment observed
 |`sep_otp_axi_err_noincr_wr_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The injected fault is reported on the failing beat, the address stays fixed, good beats commit correctly, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -4396,6 +4526,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |`sep_otp_axi_err_noincr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Good beats match the fixed-address reference, the failing beat reports the injected error, the address stays fixed, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4435,6 +4567,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |`sep_otp_axi_err_incr_wr_status_mem_chk` |Good beats commit at correctly-incremented addresses
 |`sep_otp_axi_err_incr_wr_status_recover_chk` |A subsequent legal write completes with OKAY
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The with-error-status bit and the SERIES_CTRL status report the failing beat and error code, good beats commit, and the bridge recovers, with zero scoreboard/reference-model errors.
 
@@ -4476,6 +4610,8 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |`sep_otp_axi_err_incr_rd_status_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: The with-error-status bit and the SERIES_CTRL status report the failing read beat and error code, good beats match references, and the bridge recovers, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4513,6 +4649,8 @@ a. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no 
 |`sep_otp_axi_err_gating_no_traffic_chk` |No AXI-Lite traffic on `axil_sep_otp_jtag_req_o` while gated
 |`sep_otp_axi_err_gating_restore_chk` |Each release restores normal/error-path operation
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NOACT`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The scoreboard's blocked window (`CHK-AXI-BLOCKED`) fails on any monitored transaction across the gated attempt and its release, and the sentinel read-back is a plain assertion. The blocked path's positive control is the enabled baseline access of the same scenario.
 
 *Pass Criteria*: Any required enable low forces BYPASS with no AXI-Lite traffic on the error path, and operation is fully restored after each enable is restored, with zero scoreboard/reference-model errors.
 
@@ -4557,6 +4695,8 @@ c. While W ready is low, confirm AW/W valid and payload remain stable and do not
 |`j2a_bp_status_chk` |Final JTAG2AXI completion status is OKAY and read-back data matches the written value
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The FSM row of the checker table is unrealized (<<dtp-vplan-signoff-j2a-dispositions>>).
+
 *Pass Criteria*: The reachable maximum-skew path and AXI-Lite stable assertions are exercised, and the write completes correctly with zero scoreboard/reference-model errors.
 
 '''''
@@ -4600,6 +4740,8 @@ b. Release the stall and confirm the returned data matches the reference model.
 |`j2a_long_stall_data_chk` |Post-stall write-back and read-data compare against the reference model
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR`, `CHK-AXI-RDATA`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: All AW/W/AR stable assertions receive real success hits under long stalls, no operation times out or aborts during a legal stall, and every read/write completes correctly after release with zero scoreboard/reference-model errors.
 
 '''''
@@ -4642,6 +4784,8 @@ b. Release the stall and confirm the returned data matches the reference model.
 |`CHK-J2A-ABORT-ESCAPE` |The aborted operation's slot in the subordinate memory is unchanged
 |`CHK-J2A-ABORT-RECOVERY` |The SINGLE_OP status leaves `BUSY_OR_FULL` within eight polls and the follow-on legal write completes
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-ABORT-ESCAPE`, `CHK-J2A-ABORT-FSM`, `CHK-J2A-ABORT-MIDFLIGHT`, `CHK-J2A-ABORT-RECOVERY`, `CHK-J2A-CDC-CLEAR` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. Not credited for the mid-flight abort: the scenario fails on the bridge defect it regresses (<<dtp-vplan-signoff-j2a-dispositions>>).
 
 *Pass Criteria*: On every bridge the reset lands with the FSM observed mid-flight, the FSM returns to `AXI_IDLE`, the CDC clear is observed, no write escapes, and the status recovers so the follow-on write completes, with zero scoreboard/reference-model errors.
 
@@ -4687,6 +4831,8 @@ b. Release the stall and confirm the returned data matches the reference model.
 |`CHK-J2A-ABORT-RECOVERY` |The SINGLE_OP status leaves `BUSY_OR_FULL` within eight polls and the follow-on legal write completes
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-ABORT-ESCAPE`, `CHK-J2A-ABORT-FSM`, `CHK-J2A-ABORT-MIDFLIGHT`, `CHK-J2A-ABORT-RECOVERY`, `CHK-J2A-CDC-CLEAR` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. Not credited for the mid-flight abort: the scenario fails on the bridge defect it regresses (<<dtp-vplan-signoff-j2a-dispositions>>).
+
 *Pass Criteria*: On every bridge the reset lands with the FSM observed mid-flight, the FSM returns to `AXI_IDLE`, the CDC clear is observed, no write escapes, and the status recovers so the follow-on write completes, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4727,6 +4873,8 @@ b. Sample the CDC controller and confirm it cycles through the IDLE / ISOLATE / 
 |`j2a_cdc_b2b_recovery_chk` |Post-recovery reads/writes complete correctly with expected status and data
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-NONVAC`, `CHK-AXI-RADDR`, `CHK-AXI-RDATA`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The CDC-state and settle rows of the checker table are unrealized (<<dtp-vplan-signoff-j2a-dispositions>>).
+
 *Pass Criteria*: Back-to-back CDC resets exercise the IDLE/ISOLATE/CLEAR recovery paths and reset re-entry without deadlock, all bridge state settles cleanly, and subsequent operations complete correctly with zero scoreboard/reference-model errors.
 
 '''''
@@ -4765,6 +4913,8 @@ b. Sample the CDC controller and confirm it cycles through the IDLE / ISOLATE / 
 |`j2a_decerr_wr_recovery_chk` |A subsequent legal write completes with OKAY and lands its bytes (`CHK-AXI-WMEM`)
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
+
 *Pass Criteria*: Every bridge reports the injected DECERR, no memory side effect lands at the errored slot, and a follow-on legal write succeeds on every target, with zero scoreboard/reference-model errors.
 
 '''''
@@ -4801,6 +4951,8 @@ b. Sample the CDC controller and confirm it cycles through the IDLE / ISOLATE / 
 |`j2a_decerr_rd_rdata_chk` |`CHK-J2A-ERR-RDATA`: returned read data equals the RDATA returned on the errored beat and differs from the preloaded slot value
 |`j2a_decerr_rd_recovery_chk` |A subsequent legal read returns the preloaded data with OKAY (`CHK-AXI-RDATA`)
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker, with `CHK-J2A-ERR-RDATA` recorded by the sequence into the same finalization; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: Every bridge reports the injected DECERR, the read-data field carries the errored beat's RDATA, and a follow-on legal read succeeds on every target, with zero scoreboard/reference-model errors.
 
@@ -4842,6 +4994,8 @@ a. Confirm status is preserved across the interleave and that the clean slot's d
 |`j2a_mixed_order_chk` |Per-access status preserved across the interleave
 |`j2a_mixed_isolation_chk` |Clean slot data unaffected by the interleaved faulted accesses
 |===
+
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-AXI-RESP-EXPECTED`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-ERR-INJ`, `CHK-AXI-RADDR`, `CHK-AXI-RDATA`, `CHK-AXI-STRB`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features.
 
 *Pass Criteria*: The interleave exercises the clean path and the responder-injected DECERR path on every bridge with correct per-access status, and the clean slot's data is uncontaminated.
 
@@ -4890,6 +5044,8 @@ d. For the pipelined reads, confirm the first `pl_depth{plus}1` reads return the
 |`j2a_series_pldepth_chk` |With `pl_depth=N`, the first `N{plus}1` reads return `DEADBEEF` and later reads return real data in queued order
 |===
 
+*Evidence*: cocotb: `CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The FIFO-depth and pipeline-depth rows of the checker table are unrealized (<<dtp-vplan-signoff-j2a-dispositions>>).
+
 *Pass Criteria*: All series corner cases (FIFO depth, sticky status, address bookkeeping, and `pl_depth` read pipelining with DEADBEEF marker behavior) complete as expected on each of the three bridges, with no cross-bridge aliasing and zero scoreboard/reference-model errors.
 
 '''''
@@ -4929,6 +5085,8 @@ d. For the pipelined reads, confirm the first `pl_depth{plus}1` reads return the
 |`j2a_matrix_recovery_chk` |A sanctioned operation succeeds on every previously-gated bridge
 |`j2a_matrix_isolation_chk` |Enabled bridges keep working while others are gated
 |===
+
+*Evidence*: cocotb: `CHK-AXI-BLOCKED`, `CHK-AXI-COMPLETION`, `CHK-AXI-NOACT`, `CHK-AXI-RDATA`, `CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-STREAM-MIN` required and finalized by the shared AXI checker; SV-UVM adds `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-NONVAC`, `CHK-AXI-WADDR`, `CHK-AXI-WDATA` and the `jtag2axi_req`, `jtag2axi_status`, and `ir_decode` scoreboard features. The blocked path's positive control is the enabled baseline access of the same scenario. The checker-gated ledger requires the six bridge cells and writes the JSON artifact.
 
 *Pass Criteria*: Every row mask produces the per-field allowed/blocked outcomes with no delayed replay and full recovery, closing all six bridge `dbg_disable_cg` cells, with zero scoreboard/reference-model errors.
 
@@ -7195,6 +7353,123 @@ the instructions of F2 through F5 and fire in the `debug_tdr`, `scan`,
 `jtag2axi`, and `dbg_disable` groups. On the commercial simulators the
 `cg_tap_state`, `cg_tap_arc`, and `cg_jtag_instruction` covergroups carry
 the same bins and `cg_scan_boundary` adds the loopback observations.
+
+[[dtp-vplan-signoff-j2a]]
+==== JTAG2AXI and OTP bridges (sections 2 to 4)
+
+The section 2, 3, and 4 scenarios are the `jtag2axi` group and realize the
+F4 rows of the scope matrix: single-operation and series transfers on the
+SMC fabric AXI4 bridge and the SMC and SEP OTP AXI4-Lite bridges, the
+SUCCESS, SLVERR, DECERR, and BUSY_OR_FULL status classes, backpressure and
+reset recovery, and the per-bridge lifecycle gate. `functional` carries the
+SMC fabric single write and single write-read as bring-up. The formal plan's
+target T7 (<<dtp-formal-targets>>) proves the bridge control machine; these
+rows record the simulation evidence beside it.
+
+Every pass opens with the geometry gate of the JTAG2AXI base sequence: the
+three `*_JTAG2AXI_CAPS` TDRs are read and `CHK-J2A-GEOMETRY` compares the
+bus type, address size, and data size of each bridge with the DV geometry
+table before any request is packed. Every scenario opts into the shared
+`ocah_axi_vip` passive environment on each bridge port it drives (monitor,
+reference model, scoreboard, checker), declares the records it requires, and
+sets a minimum number of compared transactions per armed stream, so a silent
+run fails at finalization. The sequence adds `CHK-AXI-NONVAC` (every armed
+error was consumed), `CHK-AXI-CREDITS` (the injection budget was spent),
+`CHK-AXI-NOACT` (a gated bridge raised no request), the scoreboard's blocked
+window (`CHK-AXI-BLOCKED`, which fails on any monitored transaction across a
+gated attempt and its release), and `CHK-AXI-WMEM` (the responder memory
+holds the written word), and records its own judgements into the same
+finalization: `CHK-J2A-FAULT-STATUS` (the op-status or SERIES_CTRL status
+carries the injected error code), `CHK-J2A-STATUS-BIT` (the WITH_ERROR_STATUS
+bit on every shift of a with-error series), `CHK-J2A-ERR-RDATA` (the errored
+read beat's data), `CHK-J2A-SERIES-ADDR` (the SERIES_CTRL address after every
+beat), and the `CHK-J2A-ABORT-*` and `CHK-J2A-CDC-CLEAR` records of the
+reset-abort scenarios. On SV-UVM the always-on `dtp_scoreboard` features
+`jtag2axi_req`, `jtag2axi_status`, and `ir_decode` end every run as
+`CHK-SB-JTAG2AXI-REQ`, `CHK-SB-JTAG2AXI-STATUS`, and `CHK-SB-IR-DECODE`;
+`CHK-AXI-ERR-INJ` records each injected error, and the `CHK-AXI-GATE-*`
+records prove exact request-count deltas across a gate. Each procedure's
+*Evidence* field names the records it lands.
+
+[cols="1,2,3,2,1",options="header",]
+|===
+|Row |Tests |Named evidence |Coverage points |Credit
+|F4.1 Single-operation write and read with data verification |The `single_write`, `single_write_data_verify`, and `single_write_read` scenarios of the three targets |`CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-STREAM-MIN`; SV-UVM `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` and the `jtag2axi_req` and `jtag2axi_status` features |`+c_<target>_op_{write,read,nop}+`, `+c_<target>_wstrb_*+`, `+c_<target>_addr_*+`, the size points, `+c_<target>_status_success+`, `+c_<target>_poll_{immediate,short_wait}+` |YES
+|F4.2 Series operations |The `series_write_{incr,no_incr,incr_with_error}`, `series_write_read_{incr,no_incr,incr_with_error}`, `random_ops`, and `read_random_ops` scenarios of the three targets, the two SMC fabric `narrow` scenarios, `dtp_jtag2axi_series_corner_all_bridges_test` |As F4.1; `CHK-J2A-STATUS-BIT` on the six `with_error` scenarios, each with one SLVERR or DECERR beat armed in its stream |`+c_<target>_series_{incr,no_incr,with_error_status}+` |YES for the three series modes; the FIFO-depth and pipeline-depth rows of the series-corner procedure are unrealized (<<dtp-vplan-signoff-j2a-dispositions>>)
+|F4.3 Response status: SLVERR and DECERR, the error-status TDR, recovery |The `error_*` scenarios of the three targets, the six `with_error` series scenarios, and the three `decode_error_*` scenarios |The armed non-OKAY response (`CHK-AXI-RESP-EXPECTED`, SV-UVM `CHK-AXI-ERR-INJ`), `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-J2A-FAULT-STATUS`, `CHK-J2A-STATUS-BIT`, `CHK-J2A-ERR-RDATA`, `CHK-J2A-SERIES-ADDR`; the `jtag2axi_status` feature |`+c_<target>_status_{slverr,decerr}+`, `+c_<target>_recovery_next_rw_after_error+` |YES
+|F4.4 Backpressure and reset recovery |`dtp_jtag2axi_backpressure_aw_before_w_test`, `dtp_jtag2axi_backpressure_long_stall_test`, `dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test`, `dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test` |`CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-STREAM-MIN` on all three streams; the protocol SVA handshake-hold rules; `CHK-J2A-ABORT-MIDFLIGHT`, `CHK-J2A-ABORT-FSM`, `CHK-J2A-CDC-CLEAR`, `CHK-J2A-ABORT-ESCAPE`, `CHK-J2A-ABORT-RECOVERY` on the two reset-abort scenarios; SV-UVM `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-WMEM` |`+c_<target>_skew_*+`, `+c_<target>_status_busy_or_full+`, `+c_<target>_reset_timing_idle+`, `+c_<target>_recovery_reset_abort+`, `c_reset_back_to_back`; the request-issued, data-phase, response-wait, CDC clear, and CDC isolate points are sampled only by the two reset-abort scenarios and are hole entries |YES for skew and a reset after completion; NO for a reset that lands mid-transaction: the two reset-abort scenarios drive it and fail on the bridge defect (<<dtp-vplan-signoff-j2a-dispositions>>)
+|F4.5 Per-bridge lifecycle gate |The `write_security_gating`, `read_security_gating`, and `error_security_gating` scenarios of the three targets, `dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test`, `dtp_jtag2axi_dbg_disable_matrix_test` |`CHK-AXI-NOACT`, `CHK-AXI-BLOCKED`, `CHK-AXI-NONVAC`; SV-UVM `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-EXACT`; the ledger's six bridge cells |`+c_<target>_gated_attempt+`, `+c_<target>_gating_release_no_replay+`, `+c_<target>_gating_recovery+` |YES
+|===
+
+The bridge geometry the checks encode (bus type, address width, and data
+width per bridge) lives in one DV-owned table per realization and is
+cross-checked against each bridge's capability TDR by the geometry gate
+before every pass and by the section 1 capability scenarios. The responder
+memory and the design collateral are the other sources of expected values;
+none is derived from the observation under check.
+
+Four hooks prove that the evidence path gates the verdict; a run with any of
+them set must fail:
+
+* `DTP_AXI_SCOREBOARD_NEGATIVE` (an environment variable on cocotb, a
+  plusarg on SV-UVM) arms the wrong expected response for an injected
+  error, so the passive environment's response compare fails.
+* `DTP_J2A_REF_MODEL_NEGATIVE` (SV-UVM) makes the bridge request reference
+  model predict corrupted addresses, so the `jtag2axi_req` pairing fails.
+* `DTP_J2A_GEOMETRY_NEGATIVE` (both realizations) corrupts the expected
+  address size of the geometry gate, so `CHK-J2A-GEOMETRY` fails before any
+  bridge request is packed.
+* `DTP_J2A_STATUS_BIT_NEGATIVE` (both realizations) leaves the with-error
+  series fault unarmed while its expectation stands, so `CHK-J2A-STATUS-BIT`
+  fails on the shift after the fault beat.
+
+The blocked-activity path has no separate hook: each gating scenario
+carries its positive control, an enabled baseline access with counted
+request activity before the disable, so a request counter that does not
+move under the disable is judged against one that did.
+
+[source,bash]
+----
+DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_decode_error_decerr_read_test
+DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_error_single_write_test
+DTP_J2A_GEOMETRY_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
+DTP_J2A_STATUS_BIT_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag2axi_smc_axi_error_single_write_test --plusarg +DTP_AXI_SCOREBOARD_NEGATIVE
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag2axi_smc_axi_single_write_read_test --plusarg +DTP_J2A_REF_MODEL_NEGATIVE
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag2axi_smc_otp_axi_single_write_read_test --plusarg +DTP_J2A_GEOMETRY_NEGATIVE
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test --plusarg +DTP_J2A_STATUS_BIT_NEGATIVE
+----
+
+[[dtp-vplan-signoff-j2a-dispositions]]
+===== Plan-to-realization dispositions
+
+Each row is a checker of sections 2 to 4 whose realization differs from
+its plan text or whose credit is withheld, with where the behavior is
+proven and what is not credited.
+
+[cols="2,3,3",options="header",]
+|===
+|Checker |Realization |Disposition
+|`j2a_bp_fsm_chk` (4.28), `j2a_cdc_b2b_state_chk`, `j2a_cdc_b2b_settle_chk` (4.32) |`dtp_tb_if` exposes each bridge's FSM state, pending flag, and CDC clear-seen flag; the AW-before-W and back-to-back scenarios do not sample them. `j2a_bp_stable_chk` and `j2a_long_stall_assert_chk` are the protocol SVA handshake-hold and payload-stability rules |Not credited; the rows need the scenarios to sample the observables the reset-abort scenarios sample
+|`CHK-J2A-ABORT-MIDFLIGHT`, `CHK-J2A-ABORT-FSM`, `CHK-J2A-CDC-CLEAR`, `CHK-J2A-ABORT-ESCAPE`, `CHK-J2A-ABORT-RECOVERY` (4.30, 4.31) |The READY stall is released only after the system reset, so the reset lands with the FSM observed outside `AXI_IDLE`; every bridge's FSM then stays in `AXI_WAIT_BRESP` with status `BUSY_OR_FULL` until a TAP reset, no write escapes, and the CDC clear is observed |Not credited for mid-transaction containment: the two scenarios fail `CHK-J2A-ABORT-FSM` and `CHK-J2A-ABORT-RECOVERY` on the bridge defect they regress, and the reset-timing and CDC coverage points are hole entries in `coverage_policy.toml`
+|`j2a_long_stall_status_chk`, `j2a_long_stall_data_chk` |The stall outlasts the scan tail by the configured number of scans and the long-wait poll class fires on every bridge; on SV-UVM the SMC fabric target can exceed the sixteen-poll status budget at high TCK-to-clock ratios |Credited; the SV-UVM budget overrun is seed-dependent and is a tracked DV defect
+|`j2a_series_fifo_chk`, `j2a_series_pldepth_chk` (4.36) |The scenario proves the final address progression and the terminal status per bridge; FIFO-depth corners and the pipeline-depth marker have no check |Not credited; plan text without a realization
+|`*_wr_caps_chk` (2.1, 2.7, 2.13) |The write procedures load no capability TDR of their own; the geometry gate reads the three CAPS TDRs before every pass (`CHK-J2A-GEOMETRY`), and `dtp_dbg_smc_jtag2axi_caps_test`, `dtp_dbg_smc_otp_jtag2axi_caps_test`, and `dtp_dbg_sep_otp_jtag2axi_caps_test` read them as TDRs |Credited through the gate and under F2.5
+|===
+
+===== Coverage review
+
+The `jtag2axi` group under Verilator fires, for each of the three bridges,
+every operation, status, poll, series, skew, recovery, gated-attempt,
+gating, write-strobe, address-class, and size point of
+`dtp_jtag2axi_fcov`, and the `c_reset_back_to_back` point; the
+`poll_long_wait` point of each bridge fires under the long-stall scenario.
+The request-issued, data-phase, and response-wait reset-timing points and
+the CDC clear and isolate points of each bridge are sampled only by the two
+reset-abort scenarios, which fail on the bridge defect, and carry hole
+entries in `cov/config/verilator/coverage_policy.toml` that name it. On the
+commercial simulators the module's `jtag2axi` covergroups carry the same
+bins.
 
 === Known Limitations
 

@@ -17,19 +17,19 @@ module prim_zero_counter #(
   localparam int unsigned CNT_WIDTH = WIDTH > 1 ? $clog2(WIDTH) : 1
 ) (
   /// Input vector to be counted.
-  input  logic [WIDTH-1:0]     i_in,
+  input  logic [WIDTH-1:0]     in_i,
   /// Count of the leading / trailing zeros.
-  output logic [CNT_WIDTH-1:0] o_count,
-  /// Counter is empty: Asserted if all bits in i_in are zero.
-  output logic                 o_empty
+  output logic [CNT_WIDTH-1:0] count_o,
+  /// Counter is empty: Asserted if all bits in in_i are zero.
+  output logic                 empty_o
 );
 
   `include "ocah_assert.svh"
 
   if (WIDTH == 1) begin : gen_degenerate_lzc
 
-    assign o_count[0] = !i_in[0];
-    assign o_empty = !i_in[0];
+    assign count_o[0] = !in_i[0];
+    assign empty_o = !in_i[0];
 
   end else begin : gen_lzc
 
@@ -44,7 +44,7 @@ module prim_zero_counter #(
     // reverse vector if required
     always_comb begin : flip_vector
       for (int unsigned i = 0; i < WIDTH; i++) begin
-        in_tmp[i] = (COUNT_LEADING) ? i_in[WIDTH-1-i] : i_in[i];
+        in_tmp[i] = (COUNT_LEADING) ? in_i[WIDTH-1-i] : in_i[i];
       end
     end
 
@@ -84,8 +84,8 @@ module prim_zero_counter #(
       end
     end
 
-    assign o_count = NumLevels > unsigned'(0) ? index_nodes[0] : {($clog2(WIDTH)) {1'b0}};
-    assign o_empty = NumLevels > unsigned'(0) ? ~sel_nodes[0] : ~(|i_in);
+    assign count_o = NumLevels > unsigned'(0) ? index_nodes[0] : {($clog2(WIDTH)) {1'b0}};
+    assign empty_o = NumLevels > unsigned'(0) ? ~sel_nodes[0] : ~(|in_i);
 
   end : gen_lzc
 

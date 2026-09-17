@@ -188,10 +188,10 @@ module smc_input_fabric #(
     .axi_out_remapped_data_accel_resp_i(axi_to_input_mux_resp.data_accel),
     .aR_ctrl_i(aR_ctrl_i),
 
-    .o_remap_debug_mmio(remap_debug_mmio_o),
-    .o_remap_debug_jtag(remap_debug_jtag_o),
-    .o_remap_debug_log(remap_debug_log_o),
-    .o_remap_debug_dma(remap_debug_dma_o)
+    .remap_debug_mmio_o(remap_debug_mmio_o),
+    .remap_debug_jtag_o(remap_debug_jtag_o),
+    .remap_debug_log_o(remap_debug_log_o),
+    .remap_debug_dma_o(remap_debug_dma_o)
   );
 
   smc_pkg::smc_56_64_6_12_axi_req_t   axi_from_input_mux_req;

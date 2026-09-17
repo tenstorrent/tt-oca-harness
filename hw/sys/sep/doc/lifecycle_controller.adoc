@@ -80,6 +80,22 @@ therefore leave SBOOT_DIS unburned and write-lock it via the LOCK field.
 [[demote-signing-model]]
 ====== Secure-Boot Signing Model
 
+NOTE: Implementation status -- *deferred to a later release, not abandoned.*
+This release verifies a single classical RSA-3072 signature; everything beyond
+that is deferred. The multi-owner model described below -- `REQUIRED_SIGNERS`,
+`REQUIRED_ALGS`, per-owner co-signatures and the demotion authorization that
+rides on them -- is therefore *not implemented in SEP ROM today*: BL0 reads
+neither fuse field, and while the OCA boot manifest defines verifier-key and
+co-signer entries, the validation library BL0 links does not verify them. What
+BL0 enforces today is a single root key -- the manifest names one key slot, that
+slot's digest is matched against a ROM-embedded digest or an OTP hash bank, and
+one RSA-3072 signature is verified against it (see the CPU Subsystem chapter's
+BL0 Secure Boot section). A later release adds combined classical + PQC
+signatures together with the verifier and co-signer keys that populate
+`REQUIRED_SIGNERS` and `REQUIRED_ALGS`. The fuse fields are provisioned for that
+release; the model below is the target design, and describes intended rather
+than current behaviour.
+
 SEP secure boot decides, for each manifest it verifies, which owners must sign it
 and with which algorithms. Enforcement -- including the demotion authorization
 that rides on it -- is delegated to the SEP boot firmware; the LCC hardware does

@@ -165,6 +165,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
+      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
+      # as the authority for the OCA manifest layout, so without it 54 of 162
+      # test modules fail to import and the run dies before any simulation.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
+      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
+      # submodule at all, died on the repo checkout itself with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses the submodule over SSH, which a hosted runner has
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. Same
+      # shape as .gitlab-ci.yml's OCAH_NONFREE_REMOTE. The rewrite is undone
+      # afterwards so the credential does not outlive the step.
+      - name: Check out the tt-oca-manifest submodule
+        if: matrix.dut == 'sep'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OCA_PAT:-}" ]; then
+            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
+            exit 1
+          fi
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
+
       # The run id keeps the recorded native run_dir unique per run: the
       # dashboard trend-point identity hashes it, so a repeated path would
       # make consecutive points replace each other whenever main has not
@@ -255,7 +289,7 @@ jobs:
             # `hosted` feeds the coverage dashboard and a graded expected
             # failure must not count there; no coverage for the same reason.
             # One seed: each leaf is a directed reproducer. The budget is the
-            # model build plus five short leaves.
+            # model build plus two short leaves.
             items: rtl_issue
             label: rtl_issue
             reseed: 1
@@ -283,6 +317,40 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # hw/sys/sep/bootrom/prod/tools/tt-oca-manifest is a PRIVATE submodule and
+      # the only one in the tree. The SEP DV env reads its src/oca/constants.py
+      # as the authority for the OCA manifest layout, so without it 54 of 162
+      # test modules fail to import and the run dies before any simulation.
+      #
+      # Deliberately NOT actions/checkout's `submodules`/`token` inputs. That
+      # `token` replaces the credential for the MAIN repository fetch too, and
+      # this PAT grants tt-oca-manifest and tt-oca-harness-model but NOT
+      # tt-oca-harness -- so every matrix entry, including the DUTs that need no
+      # submodule at all, died on the repo checkout itself with
+      # "remote: Write access to repository not granted".
+      #
+      # .gitmodules addresses the submodule over SSH, which a hosted runner has
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. Same
+      # shape as .gitlab-ci.yml's OCAH_NONFREE_REMOTE. The rewrite is undone
+      # afterwards so the credential does not outlive the step.
+      - name: Check out the tt-oca-manifest submodule
+        if: matrix.dut == 'sep'
+        env:
+          OCA_PAT: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${OCA_PAT:-}" ]; then
+            echo "::error::secret OCA_BOOT_MANIFEST_OCA_MODEL_PAT is empty or unset"
+            exit 1
+          fi
+          rewrite='url.https://x-access-token:'"${OCA_PAT}"'@github.com/'
+          cleanup() { git config --global --remove-section "$rewrite" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          git config --global "${rewrite}.insteadOf" 'git@github.com:'
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+          # Fail here rather than 54 import errors deep into the run.
+          test -f hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/src/oca/constants.py
 
       # Artifact name dv-run-<dut>-verilator-weekly and the run-dir shape are
       # the dashboard contract (dashboard.yml, tools/dv/run_dashboard.py); a

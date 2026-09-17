@@ -33,7 +33,8 @@ MODULE   = test_timeout
 
 # Include paths for prim_assert.sv (axi_hang_detector / prim_axi_snoop) and the
 # assert macro headers it pulls in (prim_assert_sec_cm.svh, prim_flop_macros.sv).
-COMPILE_ARGS += +incdir+$(OCH_ROOT)/hw/common/ot_prim_modifications/rtl
+COMPILE_ARGS += +incdir+$(OCH_ROOT)/hw/common/assert
+COMPILE_ARGS += +incdir+$(OCH_ROOT)/vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl
 COMPILE_ARGS += +incdir+$(OCH_ROOT)/hw/common/och_prim/rtl
 COMPILE_ARGS += +incdir+$(OCH_ROOT)/vendor/pulp-platform/register_interface/upstream/include
 

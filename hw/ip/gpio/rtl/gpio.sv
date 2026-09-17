@@ -244,17 +244,17 @@ module gpio
     .WIDTH(1),
     .RANDOM_DELAY_GRAY_CODE(1'b0)
   ) pad2core_sync (
-    .i_clk(clk_i),
-    .i_d(pad2core),
-    .i_reset_n(rst_primary_ni),
-    .o_q(pad2core_synced)
+    .clk_i(clk_i),
+    .d_i(pad2core),
+    .rst_ni(rst_primary_ni),
+    .q_o(pad2core_synced)
   );
 
   always_ff @(posedge clk_i or negedge rst_primary_ni) begin
     if (!rst_primary_ni) begin
       prev_pad2core <= 1'b0;
       interrupt <= 1'b0;
-    end else if (reg__interrupt_enable) begin
+    end else begin
       prev_pad2core <= pad2core_synced;
       interrupt <= nxt_interrupt;
     end
@@ -268,37 +268,33 @@ module gpio
   } interrupt_type_t;
 
   always_comb begin
-    if (reg__interrupt_enable) begin
-      unique case (reg__interrupt_type)
-        ACTIVE_HIGH: begin
-          nxt_interrupt = pad2core_synced;
-        end
-        ACTIVE_LOW: begin
-          nxt_interrupt = !pad2core_synced;
-        end
-        RISING_EDGE: begin
-          if (!prev_pad2core && pad2core_synced) begin
-            nxt_interrupt = 1'b1;
-          end else begin
-            nxt_interrupt = 1'b0;
-          end
-        end
-        FALLING_EDGE: begin
-          if (prev_pad2core && !pad2core_synced) begin
-            nxt_interrupt = 1'b1;
-          end else begin
-            nxt_interrupt = 1'b0;
-          end
-        end
-        default: begin
+    unique case (reg__interrupt_type)
+      ACTIVE_HIGH: begin
+        nxt_interrupt = pad2core_synced;
+      end
+      ACTIVE_LOW: begin
+        nxt_interrupt = !pad2core_synced;
+      end
+      RISING_EDGE: begin
+        if (!prev_pad2core && pad2core_synced) begin
+          nxt_interrupt = 1'b1;
+        end else begin
           nxt_interrupt = 1'b0;
         end
-      endcase
-    end else begin
-      nxt_interrupt = 1'b0;
-    end
+      end
+      FALLING_EDGE: begin
+        if (prev_pad2core && !pad2core_synced) begin
+          nxt_interrupt = 1'b1;
+        end else begin
+          nxt_interrupt = 1'b0;
+        end
+      end
+      default: begin
+        nxt_interrupt = 1'b0;
+      end
+    endcase
   end
 
-  assign interrupt_o = interrupt;
+  assign interrupt_o = interrupt && reg__interrupt_enable;
 
 endmodule
