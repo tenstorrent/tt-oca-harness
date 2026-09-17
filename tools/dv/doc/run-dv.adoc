@@ -2352,7 +2352,8 @@ per day.
 
 Retention: smoke and nightly run trees for 14 days, weekly run trees for 30,
 the normalized dashboard bundle for 90; the `dv-dashboard-data` branch keeps
-the trend history and per-week archives trimmed to 90 entries. The runner has
+the trend history trimmed to 90 points and each DUT's weekly archives to 90
+runs. The runner has
 no automatic retry in hosted CI; a leaf is graded on its single attempt, and
 the weekly digest's flaky list comes from seeds of one test disagreeing
 within a run.
