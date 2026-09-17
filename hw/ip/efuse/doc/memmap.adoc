@@ -12,7 +12,7 @@ values below are defaults. The MMR region is only present when the instance
 is configured with a lifecycle controller (`HAS_LC_STATE=1`).
 
 .Address Space Overview
-[width="100%",cols="30%,30%,40%",options="header",]
+[width="100%",cols="25%,23%,52%",options="header",]
 |=================================================================================
 |Default Address Range |Register Block |Description
 |`0x0000-0x0FFF` |Shadow Registers |Cached eFuse contents; size parameterized by `EFUSE_MAP_REG_MAP_SIZE`

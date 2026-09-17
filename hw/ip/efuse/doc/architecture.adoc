@@ -131,7 +131,7 @@ types:
 === Foundry-Specific Signals
 
 .Example Hardware Interfaces by OTP Variant
-[width="100%",cols="20%,80%",options="header",]
+[width="100%",cols="30%,70%",options="header",]
 |=====================================================================================
 |OTP Variant |Hardware Interface Signals
 |Adopter OTP macro
@@ -192,7 +192,7 @@ typedef struct packed {
 The `lock` field encodes read, write, and secure-test-mode permissions
 for the field:
 
-[width="100%",cols="15%,25%,60%",options="header",]
+[width="100%",cols="18%,22%,60%",options="header",]
 |=====================================================================================
 |Bits |Function |Encoding
 |`lock[0]` |Read |`0` = readable, `1` = read-locked
@@ -286,7 +286,7 @@ chip's lifecycle state.
 When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
 to eFuse registers is restricted:
 
-[width="100%",cols="30%,35%,35%",options="header",]
+[width="100%",cols="32%,43%,25%",options="header",]
 |=====================================================================================
 |Access Type |PROD/RMA_SOP State |Other States
 |JTAG Write |*Blocked* (error response) |Allowed
