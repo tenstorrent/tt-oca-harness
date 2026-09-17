@@ -5770,6 +5770,8 @@ a. Verify the input is synchronized to `clk_i` and the resulting internal cross-
 |`ctp_wire_or_busy_chk` |STATUS.BUSY reads 1 while a pulse of STRETCH_MULT >= 8 is active and 0 after it ends; the registered BUSY has the enable's width (STRETCH_MULT{plus}1) and rises in the same cycle for every stretch
 |===
 
+*Evidence*: `CHK-XTRIG-CSR` (the CONFIG and STRETCH_MULT readbacks, STATUS.BUSY while the wide pulse is active and after it ends), `CHK-XTRIG-SIGNAL` (the request enable and the busy flop rising together and the synchronized external request delivered), `CHK-XTRIG-STRETCH` (the enable width STRETCH_MULT{plus}1 for the wide, minimum, and seeded multipliers) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: Wire-OR pulse stretching, input synchronization, and BUSY tracking match the reference model for both stretch settings, with zero scoreboard/reference-model errors.
 
 '''''
@@ -5812,6 +5814,8 @@ b. Deassert CT_Req_in; verify CT_Ack_out deasserts; wait for the busy flop to cl
 |`ctp_p2p_busy_chk` |STATUS.BUSY is 1 in every in-flight phase of both handshakes and 0 once the acknowledge (request side) or the request (response side) deasserts
 |`ctp_p2p_deliver_chk` |External trigger is delivered to the CTM destination
 |===
+
+*Evidence*: `CHK-XTRIG-CSR` (the CONFIG readback and the five STATUS fields in every handshake phase), `CHK-XTRIG-SIGNAL` (the request and acknowledge pads through both four-phase handshakes) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: Both handshake directions complete with correct FSM sequencing, BUSY behavior, and trigger delivery, with zero scoreboard/reference-model errors.
 
@@ -5860,6 +5864,8 @@ b. Verify zero activity on every watched output and busy flop across the reset w
 |`ctp_reset_recovery_chk` |CTP resumes normal operation: a post-config-reset handshake and a post-system-reset route both match the reference model
 |===
 
+*Evidence*: `CHK-XTRIG-CSR` (STATUS during the stalled handshake and after CONFIG.RESET, every CTP CONFIG, STRETCH_MULT, and STATUS and every CT_SRC select at its reset value after the system reset), `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (the recovered handshake and the post-reset route), `CHK-XTRIG-QUIET` (every request and acknowledge output and every busy flop across the reset window) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: CONFIG.RESET recovers from deadlock, system reset restores defaults with no spurious activity, and post-reset operation matches the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -5900,6 +5906,8 @@ e. Verify the window matches the reference model with no unselected output; wire
 |`ctp_rand_invert_chk` |INVERT flips the pad levels: the wire-OR data pad holds the inverted static level while its enable pulses; the P2P request asserts low and idles high with the acknowledge driven low-active
 |`ctp_rand_route_chk` |Every draw's output window matches the CTM reference model with no unselected output firing
 |===
+
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per draw: the CONFIG and STRETCH_MULT readbacks, the request and acknowledge pads at the port's polarity, the fired outputs against the CTM model, no unselected output), `CHK-XTRIG-STRETCH` (the enable width of every wire-OR draw) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: All randomized configurations produce reference-model-matching behavior, including INVERT polarity and STRETCH_MULT timing, with zero scoreboard/reference-model errors.
 
@@ -5944,6 +5952,8 @@ c. Write all ones to STATUS and read it back unchanged.
 |`ctp_csr_sweep_alias_chk` |The neighbouring CTP's CONFIG and STRETCH_MULT are unchanged by the sweep; a routed pulse after the sweep matches the reference model with width (STRETCH_MULT{plus}1)
 |===
 
+*Evidence*: `CHK-XTRIG-CSR` (every full-word, inverted, and byte-strobe readback of CONFIG and STRETCH_MULT, the ignored STATUS write, the unchanged neighbor), `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION`, `CHK-XTRIG-STRETCH` (the routed pulse after the sweep) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: Every CTP CSR field accepts and returns deterministic values across all byte-enable patterns with correct reserved-bit and routing behavior and no aliasing, with zero scoreboard/reference-model errors.
 
 '''''
@@ -5987,6 +5997,8 @@ d. Exercise the internal CT ack toggle for that destination.
 |`ctp_dst_port_sweep_iso_chk` |No unprogrammed destination port toggles
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per output port: the select readback, the routed pulse, the fired set against the CTM model, every other output quiet) required in both realizations; the internal acknowledge pulse after each internal destination is driven and not checked (<<dtp-vplan-signoff-xtrig-dispositions>>); SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: Every destination-port selection toggles exactly its programmed destination with correct ack behavior and no spurious toggles, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6023,6 +6035,8 @@ b. Verify no trigger state changes until the access is accepted by the regblock.
 |`xtrig_reg_stall_csr_chk` |Accepted XTRIG CSR writes/reads read back without corruption
 |`xtrig_reg_stall_no_premature_chk` |No trigger state changes until the access is accepted
 |===
+
+*Evidence*: `CHK-XTRIG-CSR` (the three accepted writes read back), `CHK-XTRIG-QUIET` (no cross-trigger activity during the accesses), `CHK-XTRIG-AXIL` (the AWVALID and ARVALID counters advanced) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: Accepted XTRIG CSR accesses complete uncorrupted and the regblock local stall condition is never observed, with zero scoreboard/reference-model errors.
 
@@ -6067,6 +6081,8 @@ b. Verify ARVALID/ARADDR remain stable while ARREADY is low and the read returns
 |`xtrig_axi_skew_csr_chk` |Final XTRIG CSR contents match the programmed values
 |===
 
+*Evidence*: `CHK-XTRIG-AXIL` (the B response of the AW-first and W-first writes, the R response, RVALID and RDATA stable across the RREADY hold, the final read data), `CHK-XTRIG-CSR` (the plain write-read between the skewed writes) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: All skewed AXI-Lite write and read accesses complete with correct responses, stable channels, preserved ordering, and matching CSR contents, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6110,6 +6126,8 @@ b. Verify the CTM select readback matches.
 |`xtrig_demux_csr_chk` |Both CTP CONFIG readbacks and the CTM select readback match the programmed values
 |===
 
+*Evidence*: `CHK-XTRIG-AXIL` (both B responses of each pair in issue order, OKAY then DECERR for the unmapped word, the second AW's stall cycles with AWVALID and AWADDR stable, the bench AW stall counter equal to the VIP count, the readbacks), `CHK-XTRIG-AW-LOCK` (`xtrig_demux_w_pending` engaged during the pair and released after it, `xtrig_demux_aw_lock` clear) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: The `axi_lite_demux` AW lock engages and releases correctly with preserved ordering and matching CSR contents, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6150,6 +6168,8 @@ b. Verify RVALID/RDATA/RRESP stayed stable across the hold.
 |`xtrig_read_default_ar_chk` |Each decode error is answered by the crossbar's error subordinate: the read data is its response word (`0xBADCAB1E`); the xbar default master port is disabled in this integration
 |`xtrig_read_no_deadlock_chk` |Both responses complete once RREADY is released, and RVALID/RDATA/RRESP hold stable across the RREADY-low window
 |===
+
+*Evidence*: `CHK-XTRIG-AXIL` (both unmapped reads answered DECERR with the error subordinate's data word, RVALID, RDATA, and RRESP stable across the RREADY hold, exactly two AR beats accepted), `CHK-XTRIG-AR-STALL` (the second AR held with ARVALID and ARADDR stable and the bench AR stall counter equal to the VIP count) required in both realizations; SV-UVM adds the `xtrig_decode` scoreboard feature (`CHK-SB-XTRIG-DECODE`).
 
 *Pass Criteria*: Both unmapped reads return DECERR with stable channels through the backpressure window and the xbar default-read and demux read-stability assertions covered, with zero scoreboard/reference-model errors.
 
@@ -6201,6 +6221,8 @@ b. Pulse each source alone, then both in the same cycle: the shared destination 
 |`ctm_wire_or_cla_to_ctp_nospur_chk` |No non-selected destination port toggles
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (each selected output's select readback, the routed pulse, the fired outputs against the CTM model for each source alone and for both in the same cycle, no unselected output), `CHK-XTRIG-STRETCH` (the merged pulse width) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: The CLA source multicasts to exactly its selected CTP destinations, overlapping sources OR correctly, and no spurious destination toggles occur, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6245,6 +6267,8 @@ b. Verify non-selected CLA destinations remain quiet.
 |`ctm_wire_or_ctp_to_cla_nospur_chk` |No non-selected CLA destination toggles
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (each selected output's select readback, the routed pulse, the fired outputs against the CTM model for each source alone and for both in the same cycle, no unselected output), `CHK-XTRIG-STRETCH` (the merged pulse width) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: The CTP source multicasts to exactly its selected CLA destinations, overlapping sources OR correctly, and no spurious destination toggles occur, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6288,6 +6312,8 @@ b. Verify the routing mask behavior: non-selected CLA channels stay idle and the
 |`ctm_wire_or_cla_to_cla_or_chk` |Each of the two sources selected on the shared CLA channel fires it alone; both pulsed in the same cycle produce one merged two-cycle pulse
 |`ctm_wire_or_cla_to_cla_noloop_chk` |No feedback loop or self-retrigger of the source CLA
 |===
+
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (each selected output's select readback, the routed pulse, the fired outputs against the CTM model for each source alone and for both in the same cycle, no unselected output), `CHK-XTRIG-STRETCH` (the merged pulse width) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: The CLA source multicasts to exactly its selected CLA destinations with correct wire-OR superposition and no feedback or spurious toggles, with zero scoreboard/reference-model errors.
 
@@ -6334,6 +6360,8 @@ c. Verify no feedback loop re-triggers the source.
 |`ctm_wire_or_ctp_to_ctp_noloop_chk` |No feedback loop or self-retrigger of the source CTP
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (each selected output's select readback, the routed pulse, the fired outputs against the CTM model for each source alone and for both in the same cycle, no unselected output), `CHK-XTRIG-STRETCH` (the merged pulse width) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: The CTP source multicasts to exactly its selected CTP destinations with correct pulse width, wire-OR superposition, and no feedback or spurious toggles, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6375,6 +6403,8 @@ b. Verify no other destination port observes the request.
 |`ctm_p2p_cla_to_ctp_route_chk` |Trigger reaches exactly the selected CTP destination against the reference model
 |`ctm_p2p_cla_to_ctp_nospur_chk` |No spurious triggers on non-selected destinations
 |===
+
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per pair: the single-bit select readback, the routed pulse, exactly the selected destination against the CTM model, every other destination quiet) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: The CLA-to-CTP trigger is delivered only to the configured destination across all exercised pairs with no spurious activity, with zero scoreboard/reference-model errors.
 
@@ -6418,6 +6448,8 @@ b. Verify no other destination observes the request.
 |`ctm_p2p_ctp_to_cla_nospur_chk` |No spurious triggers on non-selected destinations
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per pair: the single-bit select readback, the routed pulse, exactly the selected destination against the CTM model, every other destination quiet) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: The CTP-to-CLA trigger is delivered only to the configured destination across all exercised pairs with no spurious activity, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6459,6 +6491,8 @@ b. Verify no other CLA channel observes the request and the source is not fed ba
 |`ctm_p2p_cla_to_cla_route_chk` |Trigger reaches exactly the selected CLA destination against the reference model
 |`ctm_p2p_cla_to_cla_nospur_chk` |No spurious triggers and no source self-retrigger
 |===
+
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per pair: the single-bit select readback, the routed pulse, exactly the selected destination against the CTM model, every other destination quiet) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: The CLA-to-CLA trigger is delivered only to the configured destination with no spurious activity or feedback, with zero scoreboard/reference-model errors.
 
@@ -6502,6 +6536,8 @@ b. Verify no other CTP port observes the request and no feedback loop re-trigger
 |`ctm_p2p_ctp_to_ctp_nospur_chk` |No spurious triggers and no source feedback loop
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per pair: the single-bit select readback, the routed pulse, exactly the selected destination against the CTM model, every other destination quiet) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: The CTP-to-CTP trigger is delivered only to the configured destination with no spurious activity or feedback, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6543,6 +6579,8 @@ b. Confirm zero activity on every watched output and busy flop across the reset 
 |`ctm_reset_wire_or_mode_nospur_chk` |The stretched pulses active when the reset lands are cleared: zero activity on every request/acknowledge output and CTP busy flop while the reset holds and across its release
 |`ctm_reset_wire_or_mode_route_chk` |Post-reset wire-OR reconfiguration to two or three outputs routes correctly against the reference model
 |===
+
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (the pre-reset route, every CT_SRC select and every CTP CONFIG, STRETCH_MULT, and STATUS at its reset value, the post-reset route against the CTM model), `CHK-XTRIG-QUIET` (every request and acknowledge output and every busy flop across the reset window) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: Reset clears all wire-OR routing state with no spurious destination toggles, and post-reset multicast routing matches the reference model, with zero scoreboard/reference-model errors.
 
@@ -6586,6 +6624,8 @@ b. Confirm zero activity on every watched output and busy flop across the reset 
 |`ctm_reset_p2p_mode_route_chk` |Post-reset point-to-point transaction completes at the selected destination against the reference model
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (the pre-reset route, every CT_SRC select and every CTP CONFIG, STRETCH_MULT, and STATUS at its reset value, the post-reset route against the CTM model), `CHK-XTRIG-QUIET` (every request and acknowledge output and every busy flop across the reset window) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: Reset clears all point-to-point routing and handshake state with no spurious activity, and a post-reset P2P transaction completes correctly, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6627,6 +6667,8 @@ b. Confirm zero activity on every watched output and busy flop across the reset 
 |`ctm_reset_all_modes_nospur_chk` |Zero activity on every request/acknowledge output and CTP busy flop while the reset holds and across its release
 |`ctm_reset_all_modes_route_chk` |Post-reset wire-OR and P2P reconfiguration both route correctly against the reference model
 |===
+
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (the pre-reset route, every CT_SRC select and every CTP CONFIG, STRETCH_MULT, and STATUS at its reset value, the post-reset route against the CTM model), `CHK-XTRIG-QUIET` (every request and acknowledge output and every busy flop across the reset window) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: Reset returns all routing state to defaults for both modes with no spurious activity, and both wire-OR and P2P routes reprogram correctly, with zero scoreboard/reference-model errors.
 
@@ -6670,6 +6712,8 @@ e. Verify every selected output is idle again at the end of the window.
 |`ctm_rand_all_scenarios_noleak_chk` |No unselected output fires and every selected output is idle at the end of each iteration's window
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per iteration: every selected output's select readback, the routed pulses, the fired set against the CTM model, no unselected output and every selected output idle at the window's end) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: Every random mixed-mode configuration routes exactly as modeled with correct wire-OR superposition and no inter-configuration leakage, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6711,6 +6755,8 @@ e. Verify non-selected destinations stayed idle and the selected ones are idle a
 |`ctm_rand_wire_or_only_nospur_chk` |No non-selected destination toggles
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per iteration: every selected output's select readback, the routed pulses, the fired set against the CTM model, no unselected output and every selected output idle at the window's end) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: Every random wire-OR configuration multicasts correctly with correct superposition and no spurious destination toggles, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6750,6 +6796,8 @@ e. Verify no other route observes the request (no cross-route leakage).
 |`ctm_rand_p2p_only_route_chk` |Each request/ack completes at the selected destination per the reference model
 |`ctm_rand_p2p_only_noleak_chk` |No cross-route leakage between independent point-to-point routes
 |===
+
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per iteration: every selected output's select readback, the routed pulses, the fired set against the CTM model, no unselected output and every selected output idle at the window's end) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: Every random point-to-point configuration completes its handshake at exactly the configured destination with no cross-route leakage, with zero scoreboard/reference-model errors.
 
@@ -6791,6 +6839,8 @@ e. Sample the source x destination coverage of the exercised CLA-to-CTP combinat
 |`ctm_rand_cla_to_ctp_nospur_chk` |No non-selected CTP destination toggles
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per iteration: every selected output's select readback, the routed pulses, the fired set against the CTM model, no unselected output and every selected output idle at the window's end) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: Every random CLA-to-CTP configuration routes correctly to its selected CTP destinations with no spurious activity and full route-combination coverage, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6831,6 +6881,8 @@ e. Sample the source x destination coverage of the exercised CTP-to-CLA combinat
 |`ctm_rand_ctp_to_cla_nospur_chk` |No non-selected CLA destination toggles
 |===
 
+*Evidence*: `CHK-XTRIG-CSR`, `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (per iteration: every selected output's select readback, the routed pulses, the fired set against the CTM model, no unselected output and every selected output idle at the window's end) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
+
 *Pass Criteria*: Every random CTP-to-CLA configuration routes correctly to its selected CLA destinations with no spurious activity and full route-combination coverage, with zero scoreboard/reference-model errors.
 
 '''''
@@ -6870,6 +6922,8 @@ b. Read back after each write and compare the full word: the defined field holds
 |`ctm_rand_deterministic_csr_sweep_rsvd_chk` |Reserved bits [31:26] read 0 after the all-ones, inverted, and strobed writes
 |`ctm_rand_deterministic_csr_sweep_route_chk` |Two swept output registers holding a multi-bit select fire for an input the select names and stay quiet for one it does not, against the reference model
 |===
+
+*Evidence*: `CHK-XTRIG-CSR` (every full-word, inverted, and byte-strobe readback of each CT_SRC select with the reserved bits zero), `CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION` (the two swept outputs firing for an input the select names and quiet for one it does not) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: Every byte-enable and masked-write condition in the CTM regblock is exercised and reads back correctly with reserved bits clear and route decode matching, with zero scoreboard/reference-model errors.
 
@@ -6912,6 +6966,8 @@ d. Confirm the written value affects only this source register and no neighborin
 |`ctm_rand_all_source_select_coverage_alias_chk` |No source index aliases another CTM source register
 |`ctm_rand_all_source_select_coverage_route_chk` |Per-source route decode matches the programmed mask against the reference model
 |===
+
+*Evidence*: `CHK-XTRIG-CSR` (the single, paired, and inverted masks read back at every source-select register and the neighbors unchanged) required in both realizations; SV-UVM adds the `xtrig_csr` scoreboard feature (`CHK-SB-XTRIG-CSR`).
 
 *Pass Criteria*: Every defined CTM source-select CSR is touched with single, paired, and inverted masks and reads back correctly with no aliasing across source indices, with zero scoreboard/reference-model errors.
 
@@ -7359,6 +7415,116 @@ The simulation groups below come from `testlists/all.toml`;
 |`dbg_disable` |The two debug-disable matrix tests plus every resource-specific directed gating test |Per-field `dbg_disable_t` closure (22-cell coverage contract)
 |`xtrig` |XTRIG, CTP, and CTM scenarios |Cross-trigger and CSR coverage
 |===
+
+[[dtp-vplan-signoff-package]]
+=== Signoff Package
+
+The DTP signoff package is the set of records below, each owned by one
+document of this book or by the tracker. The book carries the plans,
+contracts, dispositions, and waivers, which hold across candidates; the
+tracker's signoff item carries what belongs to one candidate: the commit,
+the run trees it was qualified with, the open issues with their owners and
+release dispositions, and the approvals of the DTP DV, design, coverage and
+CI, and project-lead owners.
+
+[cols="1,3",options="header",]
+|===
+|Record |Where it lives
+|Verification scope and requirements traceability |`DTP_SCOPE_TRACEABILITY.adoc`: the source of truth per question, the F1 to F5 matrix, the credit rules, and the gap table
+|Testbench and VIP architecture |`DTP_TB_ARCH.adoc`: the unified environment, the DUT-local model ownership, the supported simulator matrix, and the departures of the cocotb realization
+|Component closures |<<dtp-vplan-signoff>>: one subsection per plan section with its evidence contract, negative hooks, dispositions, and coverage review, and the *Evidence* field of every procedure
+|Coverage targets and closure |`DTP_FCOV.adoc`: the signoff target per metric, the evidence paths, and the closure policy that binds `cov/config/verilator/coverage_policy.toml`
+|Regression qualification |<<dtp-vplan-qualification>>: the supported pairs, the qualification run and its grading, the retained evidence, and the residual-failure register
+|Test quality and waivers |<<dtp-vplan-signoff-quality>>: the per-family quality review, the fail-closed evidence, and the waiver register
+|Known limitations |<<dtp-vplan-known-limitations>>
+|Candidate commit, run trees, open issues, approvals |The tracker's signoff item and the release record; the runner's `result.json` names the commit and the tool versions of every retained run
+|===
+
+[[dtp-vplan-qualification]]
+=== Release Qualification
+
+A release candidate is qualified by regression evidence on the supported
+framework and simulator pairs, graded by the runner's leaf rules and
+retained with the run tree; a passing set of individual tests is not a
+qualification. The rules below bind the DTP bench; the runner's grading,
+record, and CI contracts are in `tools/dv/doc/run-dv.adoc`.
+
+[cols="1,1,2,3",options="header",]
+|===
+|Framework |Simulator |Where it runs |Qualification evidence
+|cocotb (PyUVM) |Verilator, the version the CI toolchain step builds and the runner records in `result.json` |Hosted CI: `smoke` on every pull request and push to `main`, `all` at one seed nightly, `all` at three seeds with coverage weekly; a developer host for the same commands |The weekly run tree of the candidate commit, or a developer-host run of the same selection
+|cocotb (PyUVM) |VCS |A licensed host |A full `all` run at the candidate commit, with `--cov` for the commercial metric set
+|SV-UVM |VCS |A licensed host |A full `all` run at the candidate commit, with `--cov`; every canonical scenario has an SV-UVM realization, so the selection is the same 151-scenario inventory
+|cocotb (PyUVM) |Xcelium |Configured (`run_dv.py --list`), no qualifying run |Not a release pair until a full `all` run at head exists
+|Formal (SymbiYosys) |`dtp_tap_fpv` and the `fpv` group of `testlists/formal.toml` |A developer host; hosted CI runs no formal job |Corroboration of the rows the formal plan names, never regression credit
+|===
+
+The `all` group at one seed exceeds the standard hosted runner's nightly
+budget at four simulation jobs, so the hosted nightly is a triage signal
+and the qualification run is the weekly on the larger runner or a run on a
+developer or licensed host.
+
+==== The qualification run
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp --items all --regress --reseed 3 --cov --sim-jobs <n>
+python3 tools/dv/run_dv.py --dut dtp --items all --regress --reseed 3 --cov --tool vcs --sim-jobs <n>
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items all --regress --reseed 3 --cov --sim-jobs <n>
+----
+
+The run is qualified when all of the following hold in its run-level
+`result.json` and `stages/regress/regression.json`:
+
+* the planned leaves number the `all` group's `expected_count` times the
+  seed count, `tests.completed` is `true`, and `progress.missing` and
+  `progress.interrupted` are empty, so no leaf was skipped, cancelled, or
+  cut off by a budget;
+* every leaf's final attempt is `PASS` and the run status is `PASS`, with
+  the exceptions the residual register below dispositions; `ERROR`,
+  `TIMEOUT`, and `UNKNOWN` are infrastructure verdicts and never stand in
+  for a design result, so a leaf in one of them is rerun with its recorded
+  seed on the qualification host before the run is judged;
+* with coverage, the `cov_report` record is `PASS` and the effective
+  figures meet the targets of `DTP_FCOV.adoc`, or every hole below them has
+  a disposition in the policy file.
+
+A leaf that passes only after a `--retry` attempt is a flake: the runner
+lists it under `flaky_tests` with its failing attempt and rerun command,
+it counts as passing, and the qualification report names every flake with
+its first failure reason. Hosted CI runs no retry, so a flake there shows as
+seeds of one test disagreeing within the run, which the weekly digest lists.
+
+==== Retained evidence
+
+The candidate is the commit `result.json` records in its git block; the
+run tree of every qualification run is kept as a whole: the run-level
+`result.json` (status, tool versions, seeds, the coverage summary),
+`stages/regress/regression.json` (every attempt, the rerun command of every
+failed and flaky leaf), each leaf's `result.json`, `logs/`, and
+`results/results.xml`, and `cov/report/` with its `summary.json` and
+`coverage-details.json`. The hosted tiers publish the same tree as the
+`dv-run-dtp-verilator-<tier>` artifact, with the per-leaf coverage
+databases excluded after the merge; the retention periods are the CI
+contract's. A qualification run on a developer or licensed host is copied
+into the release record before the workspace is cleaned.
+
+==== Residual failures
+
+Every leaf whose final attempt is not `PASS` carries one disposition in the
+release record: a tracked defect the release ships with, an infrastructure
+verdict cleared by the rerun above, or a release blocker. The bench carries
+these residuals:
+
+[cols="2,3,2",options="header",]
+|===
+|Leaves |Behavior |Disposition
+|`dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test` |Both drive the system reset while a bridge write is in flight and fail `CHK-J2A-ABORT-FSM`, `CHK-J2A-ABORT-RECOVERY`, and the recovery completion on the bridge defect the F4.4 gap records (the FSM stays in `AXI_WAIT_BRESP` until a TAP reset); they stay in `all` as the regression of that defect |Tracked design defect; the two leaves are the expected non-passing set of a qualification run until the defect is fixed, and a run whose only failures are these two is judged on the remaining leaves
+|===
+
+A release that ships without a qualifying run on one of the licensed
+pairs records the deferral, the pair, and the last qualifying commit in
+the release record; the documentation carries no such record.
 
 [[dtp-vplan-signoff]]
 === Component Signoff
@@ -7863,6 +8029,206 @@ SELECT_IJTAG and `c_ir_category_ieee1838` and `c_ir_category_ijtag`. On the
 commercial simulators the `cg_ijtag_sib` and `cg_stap_3dcr` covergroups
 carry the same bins.
 
+[[dtp-vplan-signoff-xtrig]]
+==== XTRIG, CTP, and CTM (section 6)
+
+The section 6 scenarios are the `xtrig` group and realize the F5.1 to F5.6
+rows of the scope matrix: CTP wire-OR pulses with the configurable
+stretcher and inversion, the point-to-point four-phase handshake, CTM
+routing over every source and destination index with fanout and isolation,
+the CSR map with its byte strobes and reserved bits, the AXI-Lite CSR port
+under channel skew, demux locking, and decode backpressure, and reset
+recovery in each mode. F5.7, the clock-stop aggregation, is the section 1
+credit. The formal targets T8 (`ctn_xtrig_fpv`) and T9 (`ctn_csr_fpv`)
+corroborate these rows where SymbiYosys is installed and are not regression
+credit.
+
+Topology and register map. The bench elaborates the cross-trigger network
+with sixteen external CTPs on matrix ports 0 to 15 and ten internal
+cross-trigger channels on ports 16 to 25. `+CT_SRC[k]_CONFIG_0.CT_DST_SELECT+`
+is the register of matrix output `k` and holds one bit per input port whose
+pulses are OR'd onto that output; each CTP carries CONFIG (`MODE`, `INVERT`,
+`RESET`), the five read-only STATUS bits, and STRETCH_MULT. The CSR port is
+the shared `ocah_axi_vip` AXI-Lite master into the crossbar, whose error
+subordinate answers every unmapped word with DECERR and its fixed data word.
+The route helpers program every external CTP they use with `STRETCH_MULT=1`,
+so a routed pulse is two cycles wide on every port. The CTP and CTM "BFMs"
+of the plan are the bench's pin drivers and monitors on `dtp_xtrig_if`; the
+cross-trigger port, matrix, and network under test are the RTL, and no stub
+stands in for a design block.
+
+Every scenario runs at least sixteen seeded passes. Both realizations own a
+named-evidence checker with the scenario's required IDs and finalize it once
+per pass, so a pass with zero checks or a missing required ID fails.
+`CHK-XTRIG-CSR` is a CSR readback against the value written, masked by the
+field masks of the SystemRDL; `CHK-XTRIG-SIGNAL` is a pad or handshake level
+at the port's polarity; `CHK-XTRIG-ROUTE-MODEL` is the set of outputs that
+fired inside an activity window against the prediction of the CTM model,
+which is programmed from the selects the sequence writes and never from an
+observed pulse; `CHK-XTRIG-ISOLATION` is every unselected output quiet in
+the same window; `CHK-XTRIG-QUIET` is every request and acknowledge output
+and every busy flop quiet across a reset window or an access;
+`CHK-XTRIG-STRETCH` is a measured enable width; `CHK-XTRIG-AXIL`,
+`CHK-XTRIG-AW-LOCK`, and `CHK-XTRIG-AR-STALL` are the AXI-Lite responses,
+the demux state mirrors, and the stall counters. The activity window ORs
+the matrix request outputs and the CTP request pads per cycle from before
+the input pulse until the drain tail, so the observation is the pins through
+`dtp_xtrig_if` and not the CSR readback. On SV-UVM the always-on
+`dtp_scoreboard` adds an independent shadow predictor on the passive XTRIG
+monitor stream and ends every run with the `xtrig_csr` feature as
+`CHK-SB-XTRIG-CSR`, and the read-decode scenario with the `xtrig_decode`
+feature as `CHK-SB-XTRIG-DECODE`; the cocotb realization has no scoreboard
+feature for the CSR port and its CSR credit is the checker's record. Each
+procedure's *Evidence* field names the records it lands.
+
+[cols="1,2,3,2,1",options="header",]
+|===
+|Row |Tests |Named evidence |Coverage points |Credit
+|F5.1 CTP wire-OR: pulse routing, the stretcher, inversion |`dtp_xtrig_wire_or_test`, the four `dtp_ctm_wire_or_*` scenarios, `dtp_ctm_rand_wire_or_only_test`, the wire-OR draws of `dtp_xtrig_rand_test` |`CHK-XTRIG-SIGNAL`, `CHK-XTRIG-STRETCH`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION`, `CHK-XTRIG-CSR` (STATUS.BUSY during a wide pulse) |`c_ctp_mode_wire_or`, `c_ctp_inversion_{normal,inverted}`, `c_ctp_stretch_{min,mid,max}` |YES
+|F5.2 CTP point-to-point four-phase handshake |`dtp_xtrig_p2p_test`, the four `dtp_ctm_p2p_*` scenarios, `dtp_ctm_rand_p2p_only_test`, the point-to-point draws of `dtp_xtrig_rand_test` |`CHK-XTRIG-SIGNAL` (both handshake directions at the pads), `CHK-XTRIG-CSR` (the five STATUS bits per phase), `CHK-XTRIG-ROUTE-MODEL` |`c_ctp_mode_p2p`, `c_ctp_p2p_state_{idle,request_phase,acknowledge_phase,reset_recovery}` |YES
+|F5.3 CTM routing: every source and destination index, fanout, isolation |`dtp_xtrig_rand_test`, `dtp_xtrig_rand_deterministic_dst_port_sweep_test`, `dtp_ctm_rand_all_scenarios_test`, `dtp_ctm_rand_cla_to_ctp_test`, `dtp_ctm_rand_ctp_to_cla_test`, `dtp_ctm_rand_all_source_select_coverage_test` |`CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-ISOLATION`, `CHK-XTRIG-CSR` |`c_ctm_source_type_{ctp,internal}`, `c_ctm_dest_type_{ctp,internal}`, `c_ctm_fanout_{none,single,multicast}`, `c_ctm_source_index_*` and `c_ctm_dest_index_*` for all twenty-six ports |YES
+|F5.4 CSR map: readback, byte enables, reserved bits, no aliasing, reset defaults |`dtp_xtrig_rand_deterministic_csr_sweep_test`, `dtp_ctm_rand_deterministic_csr_sweep_test`, `dtp_xtrig_reg_stall_test`, `dtp_ctm_rand_all_source_select_coverage_test` |`CHK-XTRIG-CSR`, `CHK-XTRIG-AXIL`; SV-UVM `CHK-SB-XTRIG-CSR` |The index points above; no dedicated CSR point |YES
+|F5.5 AXI-Lite CSR port: channel skew, demux lock release, read-decode backpressure, DECERR for unmapped words |`dtp_xtrig_axi_channel_skew_test`, `dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test`, `dtp_xtrig_axi_channel_skew_read_decode_backpressure_test` |`CHK-XTRIG-AXIL`, `CHK-XTRIG-AW-LOCK`, `CHK-XTRIG-AR-STALL`; SV-UVM `CHK-SB-XTRIG-DECODE`; the `ocah_axi_sva` rules on the CSR port |None in `dtp_xtrig_fcov`; the protocol SVA carries the port |YES; the demux AW-lock branch is unreachable and not credited (<<dtp-vplan-signoff-xtrig-dispositions>>)
+|F5.6 CTP and CTM reset recovery in each mode |`dtp_xtrig_reset_test`, `dtp_ctm_reset_wire_or_mode_test`, `dtp_ctm_reset_p2p_mode_test`, `dtp_ctm_reset_all_modes_test` |`CHK-XTRIG-QUIET` (the reset window), `CHK-XTRIG-CSR` (every register at its reset value), `CHK-XTRIG-ROUTE-MODEL` (the post-reset route) |`c_ctp_p2p_state_reset_recovery` |YES
+|===
+
+The deterministic and randomized coverage of sources and destinations is
+complementary: the destination-port sweep walks every output from a seeded
+internal source, the all-source-select scenario touches every source-select
+register with three mask shapes, and the six random scenarios draw sources,
+outputs, and modes per iteration, so every one of the twenty-six source and
+twenty-six destination indices fires under both a directed and a seeded
+stimulus.
+
+Two hooks prove that the evidence path gates the verdict; each is an
+environment variable on cocotb and a plusarg of the same name on SV-UVM,
+and a run with either set must fail:
+
+* `DTP_XTRIG_CHECKER_NEGATIVE` programs the CTM model with the inverted
+  select of every route, so `CHK-XTRIG-ROUTE-MODEL` fails in every scenario
+  that compares a route.
+* `+DTP_XTRIG_NEGATIVE_CHECK=<n>+` corrupts the observed value of one
+  evidence ID everywhere the scenario records it: 1 `CHK-XTRIG-CSR`, 2
+  `CHK-XTRIG-SIGNAL`, 3 `CHK-XTRIG-ROUTE-MODEL`, 4 `CHK-XTRIG-ISOLATION`,
+  5 `CHK-XTRIG-QUIET`, 6 `CHK-XTRIG-STRETCH`, 7 `CHK-XTRIG-AXIL`, 8
+  `CHK-XTRIG-AW-LOCK`, 9 `CHK-XTRIG-AR-STALL`, so every record family,
+  including the quiet windows and the AXI-Lite records the model hook does
+  not touch, has its own must-fail proof.
+
+[source,bash]
+----
+DTP_XTRIG_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_ctm_p2p_cla_to_ctp_test
+DTP_XTRIG_NEGATIVE_CHECK=7 python3 tools/dv/run_dv.py --dut dtp --items dtp_xtrig_reg_stall_test
+DTP_XTRIG_NEGATIVE_CHECK=6 python3 tools/dv/run_dv.py --dut dtp --items dtp_xtrig_wire_or_test
+DTP_XTRIG_NEGATIVE_CHECK=5 python3 tools/dv/run_dv.py --dut dtp --items dtp_ctm_reset_all_modes_test
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_ctm_p2p_cla_to_ctp_test --plusarg +DTP_XTRIG_CHECKER_NEGATIVE
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_xtrig_reg_stall_test --plusarg +DTP_XTRIG_NEGATIVE_CHECK=7
+----
+
+[[dtp-vplan-signoff-xtrig-dispositions]]
+===== Plan-to-realization dispositions
+
+Each row is a section 6 checker whose realization differs from its plan
+text or whose credit is withheld, with where the behavior is proven.
+
+[cols="2,3,3",options="header",]
+|===
+|Checker |Realization |Disposition
+|`xtrig_reg_stall_unreachable_chk` (6.7) |The scenario drives seeded accepted-path writes and reads, records the quiet cross-trigger window across them (`CHK-XTRIG-QUIET`) and the advanced AWVALID and ARVALID counters (`CHK-XTRIG-AXIL`); no observable of the register block's local stall exists, and a simulation cannot prove a path unreachable |Credited for the accepted path; the unreachability of the local stall is a structural statement about the upstream ready and is not simulation credit
+|`xtrig_demux_aw_lock_engage_chk` (6.9) |The engaged state the pair proves is the pending-W bookkeeping (`xtrig_demux_w_pending`) with the second AW held; the AW lock flag itself stays clear because every subordinate behind the crossbar accepts an AW into an empty slot in the same cycle, so the lock branch has no reachable stimulus from the DTP boundary |Credited for the pending-W engage and release and the ordering; the lock branch is not credited
+|`ctp_dst_port_sweep_ack_chk` (6.6) |Every route of the sweep is wire-OR, where the internal acknowledge is unused; the sequence pulses the internal channel's acknowledge after each internal destination and records nothing on it |Not credited; plan text without a check
+|`ctp_wire_or_sync_chk`, `ctp_p2p_deliver_chk` (delivery to the CTM destination) |The delivered pulse is the output set of the activity window compared with the CTM model (`CHK-XTRIG-ROUTE-MODEL`) and the synchronized level at the pad (`CHK-XTRIG-SIGNAL`) |Credited
+|The CSR readback checks of every scenario on cocotb |`CHK-XTRIG-CSR` compares the readback with the value the sequence wrote; the cocotb `DtpScoreboard` has no feature for the CSR port, while the SV-UVM `xtrig_csr` and `xtrig_decode` features pair the passive monitor stream with a shadow predictor |Credited in both; the independent predictor exists on the SV-UVM twin only, which the TB_ARCH departures record
+|The CTP and CTM "BFMs" named in the procedures |Pin drivers and monitors on `dtp_xtrig_if` (`DtpXtrigAgent`, the SV-UVM pin surface of the base sequence) and the shared AXI-Lite master; no design block is stubbed |No stub receives credit; every record observes the RTL
+|===
+
+===== Coverage review
+
+The `xtrig` group under Verilator fires every point of `dtp_xtrig_fcov`:
+both CTP modes, both inversions, the three stretch classes, the four
+point-to-point states including reset recovery, both source and destination
+types, the three fanout classes, and all twenty-six source and twenty-six
+destination index points. F5.5 has no point in the module; the CSR port is
+carried by the `ocah_axi_sva` rules and the `CHK-XTRIG-AXIL` records. On
+the commercial simulators the `cg_ctp` and `cg_ctm` covergroups carry the
+same bins.
+
+[[dtp-vplan-signoff-quality]]
+==== Test quality review and waiver register (all sections)
+
+Every canonical scenario of `all` is reviewed for reproducible stimulus,
+independent and non-trivial checking, diagnostic logs, legal interface use,
+observability of the design rather than of the bench, and a proof that its
+checking can fail. The scenarios of one family share a base sequence, an
+evidence path, and a negative hook, so the review is recorded per family;
+the per-scenario differences are the *Evidence* fields of the procedures and
+the disposition tables of the component subsections.
+
+[cols="2,2,3,2,2,2",options="header",]
+|===
+|Family (scenarios) |Stimulus and reproduction |Expected values and checker |Design observability |Interface legality |Must-fail proof
+|Smoke and basic JTAG with the family checker (17 of the 19 section 0 scenarios) |Sixteen passes per run, `scenario_seed = seed {plus} pass`, `DTP_RANDOM_COUNT` seeded patterns per pass, TCK and system-clock periods drawn by the test configuration; one seed reproduces one leaf |Opcodes, TAP-state encodings, and IDCODE fields transcribed from the PTAP and interface-unit documents; the VIP TAP model; the family checker with required IDs and the passive scan monitor cross-check |`jtag_ptap_state_o`, the decoded instruction, the BSR loopback, and the TMP state through `dtp_tb_if` |The VIP master driver; `ocah_jtag_sva` on the primary TAP |`DTP_JTAG_FAMILY_CHECKER_NEGATIVE`, `DTP_JTAG_TAP_CHECKER_NEGATIVE`
+|`dtp_sanity_test`, `dtp_jtag_undef_instr_test` |As above |cocotb: plain assertions of the sequence; SV-UVM: the TAP checker and the `bypass` and `idcode` features |As above |As above |SV-UVM only (<<dtp-vplan-signoff-jtag-dispositions>>)
+|Debug TDRs (the 12 section 1 scenarios) |As above; seeded IC_RESET patterns, clock-stop combinations, CAPS write-attempt patterns |TDR layouts and pin defaults from the PTAP document, the elaboration constants, the DV geometry table; cocotb: plain assertions; SV-UVM: the family checker |The TDR readbacks and the flattened pins through `dtp_tb_if`, polled across the synchronizer |The VIP master driver; `ocah_jtag_sva` |SV-UVM only (<<dtp-vplan-signoff-dbg-dispositions>>)
+|JTAG2AXI bridges (the 79 scenarios of sections 2 to 4) |As above; seeded addresses, data, strobes, operation mixes, error beats, skew and stall lengths |The responder memory backdoor, the DV geometry table, the armed error responses; the shared `ocah_axi_vip` passive environment per bridge port with required IDs and stream minimums; the sequence's own fault-beat judgements; SV-UVM: the bridge request and status features |The three bridge ports' monitors, the TDR status, and the FSM, pending, and CDC flags through `dtp_tb_if` |The VIP slave responders; `ocah_axi_sva` per bus |`DTP_AXI_SCOREBOARD_NEGATIVE`, `DTP_J2A_GEOMETRY_NEGATIVE`, `DTP_J2A_STATUS_BIT_NEGATIVE`; SV-UVM `DTP_J2A_REF_MODEL_NEGATIVE`
+|Scan routing (the 13 section 5 scenarios) |As above; seeded SIB patterns, disable masks, 3DCR payloads, marker words, downstream register values |The SIB and STAP models programmed from the sequence's intent; the downstream device table; the family checker |The host scan controls, `tms` and `tdo_oen` per port, the chain images, and the downstream devices' records |The VIP master driver and VIP slave devices; `ocah_jtag_sva` |`DTP_JTAG_FAMILY_CHECKER_NEGATIVE` in both realizations; the cocotb matrix through its ledger only (<<dtp-vplan-signoff-scan-dispositions>>)
+|Cross-trigger (the 28 section 6 scenarios) |As above; seeded ports, modes, stretch values, select masks, skew and hold lengths |The CTM model programmed from the written selects, the written CSR values under the SystemRDL field masks, the error subordinate's constant; the named-evidence checker; SV-UVM: the CSR shadow and decode features |The `dtp_xtrig_if` pins inside activity and reset windows, the busy flops, the demux mirrors, the stall counters |The shared AXI-Lite master and `ocah_axi_sva` on the CSR port; polarity-aware pad drivers |`DTP_XTRIG_CHECKER_NEGATIVE`, `DTP_XTRIG_NEGATIVE_CHECK=<n>`
+|===
+
+The logs of every family carry the seed and every randomized choice, one
+`CHK-<ID> PASS|FAIL expected= observed= context=` line per comparison
+where a checker is attached and one `CHECK <name> expected= observed=` line
+where the comparison is a plain assertion, and one `CHECKER_SUMMARY` per
+finalized checker, so a failure is located from the log alone and the
+leaf's recorded seed reproduces it.
+
+===== Fail-closed evidence
+
+A green result is trusted only where the checking can fail. Each checker
+family and each no-activity claim has a guard against vacuity and a
+positive control:
+
+[cols="1,3,3",options="header",]
+|===
+|Family |Vacuity guard |No-activity evidence and its positive control
+|JTAG family and TAP checkers |Finalization rejects zero checks and a missing required ID; `CHK-NONVAC` requires at least one IR and one DR scan per pass |Not a no-activity family
+|Shared AXI passive environment |Per-stream minimum compared transactions, `CHK-AXI-NONVAC` (every armed error consumed), `CHK-AXI-CREDITS` (the injection budget spent) |`CHK-AXI-NOACT` and the blocked window `CHK-AXI-BLOCKED`, which fails on any monitored transaction across a gated attempt; the positive control is the counted baseline access of the same bridge before the disable, and on SV-UVM the `CHK-AXI-GATE-*` exact request-count deltas
+|Scan windows |Every `CHK-SCAN-WIN` window records that its TCK edge count is non-zero before a quiet or active verdict; a window with no edges fails |A gated port's or SIB's quiet window is paired with the active window of the same signals while enabled in the same scenario
+|Cross-trigger windows |`CHK-XTRIG-QUIET` and `CHK-XTRIG-ISOLATION` record the window's cycle count; the route window stays open through the drain tail |The isolation verdict is judged inside the window in which the selected output fired (`CHK-XTRIG-ROUTE-MODEL`); the reset window spans the held cycles and the release
+|Debug-disable ledger |`require_cells` refuses to finish with a missing cell; a cell is recorded only after its checker passed; the contradictory tuples are failures, never bins |Every blocked cell has its allowed cell for the same field in the same matrix run
+|SV-UVM scoreboard |A required feature with zero comparisons fails; an unpaired expected or observed item fails |Not a no-activity family
+|===
+
+===== Waiver register
+
+Every waiver names the rows it covers, the fact it rests on, the owner
+role, and the event that reopens it; no blanket waiver exists. Coverage
+holes are not waivers: they are dispositions in the coverage policy file
+under the closure policy of `DTP_FCOV.adoc`, and the reset-timing and CDC
+points of the bridges are open holes bound to a tracked defect.
+
+[cols="1,3,2,1,2",options="header",]
+|===
+|Waiver |Scope |Basis |Owner and reviewer |Revisit trigger
+|Boundary-cell pin behavior |The fifteen section 0 checker rows named in <<dtp-vplan-signoff-jtag-dispositions>>: pin drive, output enables, glitch-free transitions, scan-control timing of the boundary-scan instructions |The BSR is the compact identity loopback of the scan model; the bench has no boundary cells |DTP DV owner; design owner |A boundary-cell model with pin observables joins the bench
+|Instrument and downstream TAP behavior |The instrument data of 5.1 to 5.5, the downstream TAP internals of 5.6 to 5.9, and the host scan data path of 5.10 |The instruments are 4-, 5-, and 6-bit loopback stubs, the downstream TAPs are behavioral VIP devices with one writable register, and the host scan-in loops back |DTP DV owner; design owner |An instrument model or a real downstream TAP joins the bench
+|Disabled elaboration parameters |The disabled-slice path of `ic_reset_slice_chk` and the disabled-instruction paths of every instruction-enable parameter |The bench elaborates one target with every feature enabled |DTP DV owner; design owner |A second build target with a feature disabled
+|Unreachable crossbar branches |The demux AW-lock branch of 6.9 and the register-block local stall of 6.7 |Every subordinate behind the crossbar accepts an AW into an empty slot, and the upstream path always presents a ready interface; T9 corroborates the address-map contract |DTP DV owner; design owner |A subordinate that refuses an AW, or an upstream path with backpressure
+|===
+
+===== Recorded gaps
+
+The gaps the review leaves open are recorded where their owners read them
+and are not absorbed here: the realization-parity items of the cocotb
+family (the two section 0 scenarios, the twelve section 1 scenarios, and
+the scan matrix carry no named evidence) in the scope matrix's gap table
+and the TB_ARCH departures; the plan rows without a realization (4.28 and
+4.32 FSM rows, the series-corner depth rows, `ext_stap_disable_chk`,
+`ctp_dst_port_sweep_ack_chk`) in the component dispositions; the two
+reset-abort leaves and the SV-UVM long-stall budget as tracked defects in
+the release qualification residuals.
+
+[[dtp-vplan-known-limitations]]
 === Known Limitations
 
 [cols=",",options="header",]
