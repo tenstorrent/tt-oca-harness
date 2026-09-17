@@ -2904,9 +2904,9 @@ one word and parks, which is enough for the legality check to execute.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact. The HMAC and Adams Bridge domains also grade drain-before-reset. ABR grades the JTAG `IC_RESET` override on this leaf; its live-result isolation is on <<sep_abr_mlkem_kat_test>>.
+*Objective*: Proves the per-IP software reset domains are isolated, using live crypto results rather than a poked status bit: each engine computes a golden-checked value, then one engine is reset and the other's held result must survive bit-exact. The HMAC, KMAC and Adams Bridge domains also grade drain-before-reset. ABR grades the JTAG `IC_RESET` override on this leaf; its live-result isolation is on <<sep_abr_mlkem_kat_test>>.
 
-*Test Coverage*: Per-IP software reset; neighbour crypto result survives bit-exact; HMAC and ABR drain-before-reset; ABR JTAG override.
+*Test Coverage*: Per-IP software reset; neighbour crypto result survives bit-exact; HMAC, KMAC and ABR drain-before-reset; ABR JTAG override.
 
 *Test Procedure*:
 
@@ -2914,6 +2914,7 @@ one word and parks, which is enough for the legality check to execute.
 . Compute a golden-checked result on two engines.
 . Reset one engine; the other's held result must survive bit-exact. Both directions.
 . Hold HMAC in software reset and prove the same `DIGEST_0` read and a `CFG` write complete SLVERR, while the sibling AES port stays OKAY.
+. Hold the KMAC reset and prove the gated reset waits for both its host and Key Manager paths to isolate, that in-flight host reads resolve, and that a read arriving inside the window resolves.
 . Hold the Adams Bridge reset and prove the gated reset waits for both the full-AXI host path and the shared Key Manager path to isolate, that in-flight host reads resolve, and that the JTAG override holds the domain while `SW_RESET_N` still shows it released.
 
 *Checkers*:
@@ -2977,6 +2978,12 @@ releases. Both mux directions are graded.
 |After release the same `DIGEST_0` answers OKAY again. This is also what shows the drain did not leave the path wedged.
 |CHK-ISOLATE-RESET-DEFAULT
 |After release `DIGEST_0` reads its reset value 0.
+|CHK-KMAC-DRAIN-ORDER
+|The KMAC gated reset does not assert until both the host and Key Manager AXI-Lite paths report isolated, sampled in the same cycle as the observed assert edge. Guarded by a check that the reset is still released when the request is issued, so a domain that asserted with no drain window fails rather than scoring a steady state.
+|CHK-KMAC-HOST-DRAIN
+|KMAC host reads accepted before the reset request all resolve, at least one OKAY, none DECERR and none hanging. Dropped traffic and a wedge both fail.
+|CHK-KMAC-DRAIN-ARRIVAL
+|A read issued on the first cycle a probe shows the KMAC drain window open also resolves OKAY or SLVERR. Fails explicitly if no window was ever observed, so the property cannot be satisfied by re-scoring the pre-request batch.
 |CHK-TRNG-NEIGHBORS
 |Parking the shared TRNG reset holds the TRNG `SW_RESET_N` bit and leaves the five accelerator bits released (OTBN, AES, HMAC, KMAC, ABR). HMAC DIGEST and AES DATA_OUT stay unchanged in that window. KMAC STATE, OTBN `LOAD_CHECKSUM` and the ABR datapath are not sampled here.
 |===
@@ -2985,14 +2992,16 @@ releases. Both mux directions are graded.
 *Scope limit*: live-result isolation walks AES, HMAC, KMAC and OTBN. Drain-before-reset and the JTAG override walk Adams Bridge on this leaf; ABR live-result isolation is on <<sep_abr_mlkem_kat_test>>. The Key Manager bit stays at its reset default (a different mechanism) and is not claimed.
 
 *Drain-before-reset*: claimed for the HMAC domain by `CHK-DRAIN-ORDER`,
-`CHK-HOST-DRAIN` and `CHK-DRAIN-ARRIVAL`, and for the Adams Bridge domain by
-`CHK-ABR-DRAIN-ORDER`, `CHK-ABR-HOST-DRAIN` and `CHK-ABR-DRAIN-ARRIVAL`. HMAC
+`CHK-HOST-DRAIN` and `CHK-DRAIN-ARRIVAL`, for the Adams Bridge domain by
+`CHK-ABR-DRAIN-ORDER`, `CHK-ABR-HOST-DRAIN` and `CHK-ABR-DRAIN-ARRIVAL`, and
+for the KMAC domain by `CHK-KMAC-DRAIN-ORDER`, `CHK-KMAC-HOST-DRAIN` and
+`CHK-KMAC-DRAIN-ARRIVAL`. HMAC
 drain runs against a live golden-checked result on a path this entry isolates.
 ABR drain counts outstanding host reads at isolate close so it grades traffic
 the isolate has to retire. The shared TRNG domain grades drain-before-reset in
 <<sep_trng_reset_recovery_test>>.
 
-*Not claimed*: drain-before-reset for the AES, KMAC and OTBN domains — the
+*Not claimed*: drain-before-reset for the AES and OTBN domains — the
 mechanism is shared, but a per-domain demonstration is not made here. Key
 Manager isolate termination is not claimed here: `CHK-DRAIN-ORDER` reads the
 `km_hmac` isolate bit, so it shows the KM path reaching isolation, not what a
@@ -6616,6 +6625,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
 
 |Contracts not claimed (no vehicle in `all`)
-|Phase 3: ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the AES, KMAC and OTBN domains (HMAC, Adams Bridge and the shared TRNG drain are proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
+|Phase 3: ABR shared-key (`CMD_ABR_SK_TRANSFER`) consume after a live ABR capture; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the AES and OTBN domains (HMAC, KMAC, Adams Bridge and the shared TRNG drain are proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
 
 |===

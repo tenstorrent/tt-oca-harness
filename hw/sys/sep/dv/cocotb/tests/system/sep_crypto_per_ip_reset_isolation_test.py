@@ -125,6 +125,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     SepCryptoResetIso,
 )
 from seq_lib.sep_hmac_seq import HMAC_CFG, HMAC_DIGEST_0, SepHmac
+from seq_lib.sep_kmac_seq import KMAC_STATUS
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 from seq_lib.sep_otbn_seq import OTBN_DMEM_RESULT_LO, OTBN_LOAD_CHECKSUM_RESET, SepOtbn
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
@@ -224,6 +225,103 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         got = await self.otbn.read_load_checksum()
         assert got == OTBN_CHECKSUM_MARK, f"OTBN LOAD_CHECKSUM hold write failed 0x{got:08x}"
         return got, dmem
+
+    async def _drain_kmac(self) -> None:
+        """Assert the KMAC reset and grade its drain window.
+
+        Same three properties the HMAC leg proves, on the domain the VPLAN
+        lists as open: the gated reset may not assert until both AXI-Lite paths
+        report isolated, accepted traffic resolves rather than being dropped,
+        and a beat arriving inside the window also resolves.
+        """
+        axi_driver = self.env.axi_agent.driver
+        drain_reads = [
+            axi_driver.axi.init_read(address=KMAC_STATUS, length=4, size=2) for _ in range(4)
+        ]
+        reset_task = cocotb.start_soon(self.rst.assert_reset(ENG_KMAC.rst_bit))
+
+        assert int(cocotb.top.kmac_gated_rst_n_probe_o.value) == 1, (
+            "KMAC gated reset was already asserted before the reset request was "
+            "issued, so this domain asserted reset with no drain window at all"
+        )
+
+        arrival_read = None
+        arrival_iso = None
+        for _ in range(1_000):
+            host_iso = int(cocotb.top.kmac_host_isolated_probe_o.value)
+            km_iso = int(cocotb.top.kmac_km_isolated_probe_o.value)
+            if int(cocotb.top.kmac_gated_rst_n_probe_o.value) == 0:
+                assert host_iso == 1 and km_iso == 1, (
+                    "KMAC reset asserted before its AXI-Lite paths isolated: "
+                    f"host_kmac={host_iso} km_kmac={km_iso}"
+                )
+                self.logger.info(
+                    "CHK-KMAC-DRAIN-ORDER PASS: KMAC reset asserted only after the "
+                    "host and Key Manager paths both reported isolated (sampled in "
+                    "the same cycle as the observed assert edge)"
+                )
+                break
+            if arrival_read is None and (host_iso == 1 or km_iso == 1):
+                arrival_read = axi_driver.axi.init_read(
+                    address=KMAC_STATUS, length=4, size=2
+                )
+                arrival_iso = (host_iso, km_iso)
+                self.logger.info(
+                    "KMAC drain window open (host_kmac=%d km_kmac=%d, gated reset "
+                    "still released): arrival read issued here",
+                    host_iso,
+                    km_iso,
+                )
+            await ClockCycles(cocotb.top.clk_i, 1)
+        else:
+            raise AssertionError("KMAC gated reset never asserted after the reset request")
+
+        await reset_task
+
+        drain_codes = []
+        for event in drain_reads:
+            await with_timeout(event.wait(), 10_000, "ns")
+            drain_codes.append(worst_resp(getattr(event.data, "resp", None)))
+        assert all(code in (RESP_OKAY, RESP_SLVERR) for code in drain_codes), (
+            f"in-flight KMAC host reads returned unexpected responses {drain_codes}"
+        )
+        assert RESP_OKAY in drain_codes, (
+            "no pre-reset KMAC host read drained successfully, so this run does "
+            "not show that accepted traffic completes rather than being dropped"
+        )
+        self.logger.info(
+            "CHK-KMAC-HOST-DRAIN PASS: in-flight KMAC host reads resolved %s "
+            "(no hang, no DECERR); at least one drained OKAY",
+            drain_codes,
+        )
+
+        assert arrival_read is not None, (
+            "no KMAC drain window was ever observed: the gated reset asserted "
+            "without any cycle in which an isolate bit was set and the reset was "
+            "still released, so CHK-KMAC-DRAIN-ARRIVAL has nothing to grade"
+        )
+        await with_timeout(arrival_read.wait(), 10_000, "ns")
+        arrival_code = worst_resp(getattr(arrival_read.data, "resp", None))
+        assert arrival_code in (RESP_OKAY, RESP_SLVERR), (
+            f"read arriving during the KMAC isolate drain returned "
+            f"resp={arrival_code}, expected OKAY (drained) or SLVERR (terminated), "
+            f"never DECERR or a hang"
+        )
+        self.logger.info(
+            "CHK-KMAC-DRAIN-ARRIVAL PASS: a read issued inside the drain window "
+            "(host_kmac=%d km_kmac=%d at issue, gated reset still released) "
+            "resolved resp=%d, no hang",
+            arrival_iso[0],
+            arrival_iso[1],
+            arrival_code,
+        )
+
+        # The drain legs above only assert. Complete the pulse so the caller
+        # sees the same released state _pulse_reset would have left, and the
+        # STATUS readback that follows grades a reachable domain.
+        await ClockCycles(cocotb.top.clk_i, 40)
+        await self.rst.release_resets()
+        await ClockCycles(cocotb.top.clk_i, 40)
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -481,7 +579,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         h_digest = await self._run_hmac()
         k_digest = await self._run_kmac()
         assert await self.kmac.read_digest() == k_digest, "KMAC STATE not held on re-read"
-        await self._pulse_reset(ENG_KMAC.rst_bit)
+        await self._drain_kmac()
         kmac_status = await self.kmac.read_status()
         assert kmac_status == KMAC_STATUS_RESET, (
             f"KMAC STATUS not restored to register-map reset 0x{KMAC_STATUS_RESET:08x} "

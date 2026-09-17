@@ -1064,6 +1064,14 @@ module sep_uvm_top
     assign hmac_km_isolated_probe_o =
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
 
+    // KMAC per-IP gated reset and its two isolate-completion bits.
+    assign kmac_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.kmac;
+    assign kmac_host_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_kmac;
+    assign kmac_km_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_kmac;
+
     // Adams Bridge per-IP gated reset and the two isolate-completion bits its
     // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
     // the Key Manager domain and an ABR reset request alone must raise it.
