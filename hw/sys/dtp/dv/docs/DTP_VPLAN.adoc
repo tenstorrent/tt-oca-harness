@@ -5156,6 +5156,8 @@ b. Verify the latency equals the 3 SIB-control bits only (no instrument register
 |`sib_all_off_data_chk` |`CHK-SCAN-CHAIN`: the captured SIB states (all 0) and the marker passthrough match the SIB reference model on every scan, including the transition from the seeded open set
 |===
 
+*Evidence*: `CHK-SCAN-LEN` (the marker latency through the three closed SIBs), `CHK-SCAN-WIN` (no instrument select and no gated scan-control pulse across the observe scans, under the all-clear and the seeded disable mask), `CHK-SCAN-CHAIN` (the captured SIB states and the marker passthrough against the SIB model), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
+
 *Pass Criteria*: Chain length collapses to the SIB-control bits, all instrument scan controls stay inactive, and observed data matches the SIB reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -5201,6 +5203,8 @@ c. Verify chain length collapses to SIB bits only and no instrument scan control
 |`sib_all_on_gate_chk` |Asserted SIB disables force every SIB closed; chain collapses despite all-ON request
 |`sib_all_on_restore_chk` |Full chain and scan controls restored after the disables clear
 |===
+
+*Evidence*: `CHK-SCAN-LEN` (the full chain, then the collapsed chain under the three disables, then the full chain again), `CHK-SCAN-WIN` (the three instrument selects active while open, every control quiet while gated), `CHK-SCAN-CHAIN` (the captured SIB and instrument states against the SIB model), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
 
 *Pass Criteria*: The all-ON chain reaches full length with every scan control active, collapses to SIB bits when the SIB disables are asserted, and recovers when they clear, with zero scoreboard/reference-model errors.
 
@@ -5248,6 +5252,8 @@ c. Verify chain length accounts for forced-closed SIBs and only non-gated enable
 |`sib_random_data_chk` |`CHK-SCAN-CHAIN`: the captured SIB states and instrument registers, and the marker passthrough, match the SIB reference model on every scan
 |===
 
+*Evidence*: `CHK-SCAN-LEN` (the marker latency for each of the eight patterns and each seeded pattern under its disable mask), `CHK-SCAN-WIN` (selects only for open, ungated instruments; a gated SIB's four controls quiet), `CHK-SCAN-CHAIN` (every capture against the SIB model, including the value an open instrument latched on the previous scan), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
+
 *Pass Criteria*: All 8 SIB patterns plus randomized security combinations yield correct chain lengths, scan-control assertions, and gating behavior matching the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -5293,6 +5299,8 @@ a. Verify `jtag_dft_secure_host_scan_ctrl_o` asserts and shift a test pattern th
 |`dft_gate_restore_chk` |Both DFT SIBs restored, without TAP reset, after their disables clear
 |===
 
+*Evidence*: `CHK-SCAN-LEN` (each DFT instrument alone and both together), `CHK-SCAN-WIN` (the secure and non-secure selects while open; a gated SIB's controls quiet while the other stays openable), `CHK-SCAN-CHAIN` (the captures against the SIB model, the gated open attempt not stuck after release), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
+
 *Pass Criteria*: Secure and non-secure DFT instruments are independently reachable in the same scan flow, each gated by exactly its own disable field and restored when it clears, with zero scoreboard/reference-model errors.
 
 '''''
@@ -5331,6 +5339,8 @@ a. Verify the SIB stays closed and none of the DFD scan controls pulse across th
 |`dfd_stored_chk` |A gated Update-DR does not modify stored SIB state (no delayed open after release)
 |`dfd_restore_chk` |DFD access resumes, without TAP reset, after the disable clears
 |===
+
+*Evidence*: `CHK-SCAN-LEN` (the DFD instrument open), `CHK-SCAN-WIN` (the DFD select while open, every DFD control quiet while gated, the select again after release), `CHK-SCAN-CHAIN` (the DFD captures against the SIB model, the gated open attempt not stuck), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
 
 *Pass Criteria*: DFD is reachable when ungated and forced closed when `dbg_disable_i.dfd` is asserted, recovering without reset when the disable clears, with zero scoreboard/reference-model errors.
 
@@ -5380,6 +5390,8 @@ c. Verify the downstream device recorded no Update-DR, still holds the written v
 |`stap_ds_recover_chk` |Selection resumes without reset after release with the pre-gate downstream value intact (`CHK-DS-TDR-RESUME`), and a fresh configuration fully recovers
 |===
 
+*Evidence*: `CHK-SCAN-WIN` (the I/O host port forwarding while selected, quiet and parked while gated, the neighbor forwarding while the I/O port stays gated), `CHK-SCAN-CHAIN` (every composed chain readback against the STAP model), `CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`, `CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`, `CHK-DS-TDR-RESUME` (the downstream TAP behind the I/O port and behind the neighbor), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
+
 *Pass Criteria*: The I/O STAP forwards only while selected and enabled, the downstream TAP behind it is programmable and readable exactly then, `dbg_disable_i.stap_io` alone gates it with downstream state preserved and no delayed effect, and recovery needs no reset, with every required `CHK-*` ID recorded and zero scoreboard/reference-model errors.
 
 '''''
@@ -5427,6 +5439,8 @@ c. Verify the downstream device recorded no Update-DR, still holds the written v
 |`stap_smc_isolation_chk` |An unrelated STAP and its downstream TAP stay usable while the SMC debug STAP is gated
 |`stap_smc_recover_chk` |Selection resumes without reset after release with the pre-gate downstream value intact (`CHK-DS-TDR-RESUME`), and a fresh configuration fully recovers
 |===
+
+*Evidence*: `CHK-SCAN-WIN` (the SMC host port forwarding while selected, quiet and parked while gated, the neighbor forwarding while the SMC port stays gated), `CHK-SCAN-CHAIN` (every composed chain readback against the STAP model), `CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`, `CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`, `CHK-DS-TDR-RESUME` (the downstream TAP behind the SMC port and behind the neighbor), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
 
 *Pass Criteria*: The SMC debug STAP forwards only while selected and enabled, the downstream TAP behind it is programmable and readable exactly then, `dbg_disable_i.stap_smc` alone gates it with downstream state preserved and no delayed effect, and recovery needs no reset, with every required `CHK-*` ID recorded and zero scoreboard/reference-model errors.
 
@@ -5476,6 +5490,8 @@ c. Verify the downstream device recorded no Update-DR, still holds the written v
 |`stap_extra_recover_chk` |Selection resumes without reset after release with the pre-gate downstream value intact (`CHK-DS-TDR-RESUME`), and a fresh configuration fully recovers
 |===
 
+*Evidence*: `CHK-SCAN-WIN` (the extra host port forwarding while selected, quiet and parked while gated, the neighbor forwarding while the extra port stays gated), `CHK-SCAN-CHAIN` (every composed chain readback against the STAP model), `CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`, `CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`, `CHK-DS-TDR-RESUME` (the downstream TAP behind the extra port and behind the neighbor), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
+
 *Pass Criteria*: The extra STAP forwards only while selected and enabled, the downstream TAP behind it is programmable and readable exactly then, `dbg_disable_i.stap_extra` alone gates it with downstream state preserved and no delayed effect, and recovery needs no reset, with every required `CHK-*` ID recorded and zero scoreboard/reference-model errors.
 
 '''''
@@ -5524,6 +5540,8 @@ c. Verify the downstream device recorded no Update-DR, still holds the written v
 |`stap_sep_recover_chk` |Selection resumes without reset after release with the pre-gate downstream value intact (`CHK-DS-TDR-RESUME`), and a fresh configuration fully recovers
 |===
 
+*Evidence*: `CHK-SCAN-WIN` (the SEP host port forwarding while selected, quiet and parked while gated, the neighbor forwarding while the SEP port stays gated), `CHK-SCAN-CHAIN` (every composed chain readback against the STAP model), `CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`, `CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`, `CHK-DS-TDR-RESUME` (the downstream TAP behind the SEP port and behind the neighbor), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
+
 *Pass Criteria*: The SEP debug STAP forwards only while selected and enabled, the downstream TAP behind it is programmable and readable exactly then, `dbg_disable_i.stap_sep` alone gates it with downstream state preserved and no delayed effect, and recovery needs no reset, with every required `CHK-*` ID recorded and zero scoreboard/reference-model errors.
 
 '''''
@@ -5567,6 +5585,8 @@ c. Clear the disable without reset and verify scan control and the data path are
 |`ext_stap_gate_chk` |With `dbg_disable_i.stap_host` asserted, all four host scan controls stay quiet across the gated window and scan-in is bypassed
 |`ext_stap_restore_chk` |Normal STAP host scan resumes, without reset, after the disable clears
 |===
+
+*Evidence*: `CHK-SCAN-WIN` (the host `select` and `shift_en` active with the PTAP select set, all four host controls quiet across the gated shift, active again after the release without reset), `CHK-TAP-RESET-TLR` required in both realizations; the sampled `jtag_stap_host_select` level after each shift is a plain assertion and no scan-data compare exists (<<dtp-vplan-signoff-scan-dispositions>>); SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
 
 *Pass Criteria*: The extended STAP scan interface operates when selected, deactivates when deselected, is suppressed and loopback-bypassed while `dbg_disable_i.stap_host` is asserted, and recovers without reset when it clears, with zero scoreboard/reference-model errors.
 
@@ -5612,6 +5632,8 @@ b. h=0 across TLR, or TRST: verify every STAP 3DCR field reads 0.
 |`config_hold_data_chk` |`CHK-SCAN-CHAIN`: every chain readback (PTAP 3DCR, SIB, STAP 3DCR fields) matches the STAP reference model's predicted capture after each reset
 |===
 
+*Evidence*: `CHK-SCAN-CHAIN` (the PTAP and STAP 3DCR fields read back through the maintain scans after each Test-Logic-Reset and TRST case, for every STAP), `CHK-SCAN-OBS` (the cleared PTAP 3DCR over the TDR return path and the marker position that proves the path), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN`, `CHK-SCAN-DR-LEN`, and `CHK-TAP-TLR-TMS5` from the env checkers, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
+
 *Pass Criteria*: CONFIG_HOLD=1 holds both 3DCRs across TLR while CONFIG_HOLD=0 allows TLR to clear them, matching the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -5655,6 +5677,8 @@ c. `tdo_oen` never pulses.
 |`tms_hold_data_chk` |`CHK-SCAN-CHAIN`: the maintain scan's captured 3DCR (SELECT=0, TMS_HOLD=h) matches the STAP reference model, which also supplies the expected parked polarity
 |===
 
+*Evidence*: `CHK-SCAN-WIN` (the deselected port's TMS count equal to the window's TCK count with `tms_hold=1` and zero with `tms_hold=0`, `tdo_oen` quiet in both), `CHK-SCAN-CHAIN` (the maintain scan's captured 3DCR against the STAP model, for every STAP and both polarities), `CHK-TAP-RESET-TLR` required in both realizations; SV-UVM adds `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
+
 *Pass Criteria*: A deselected STAP parks its TMS at the configured TMS_HOLD value for both polarities, matching the reference model, with zero scoreboard/reference-model errors.
 
 '''''
@@ -5696,6 +5720,8 @@ c. `tdo_oen` never pulses.
 |`scan_matrix_noreplay_chk` |No gated open attempt sticks after the disables release
 |`scan_matrix_recovery_chk` |The all-clear row fully recovers after the all-disabled row
 |===
+
+*Evidence*: cocotb: the sixteen scan-side ledger cells through `require_cells` and the JSON coverage artifact; the per-row window, forwarding, and chain comparisons are plain assertions (<<dtp-vplan-signoff-scan-dispositions>>). SV-UVM: `CHK-SCAN-WIN` (each SIB's and each host port's allowed or blocked outcome per row), `CHK-SCAN-CHAIN` (the composed chain readbacks under every mask), `CHK-SCAN-LEN`, `CHK-TAP-RESET-TLR` required; `CHK-SCAN-IR-LEN` and `CHK-SCAN-DR-LEN` from the env checker, the `ir_decode` scoreboard feature, and `CHK-TAP-STATE`.
 
 *Pass Criteria*: Every row mask produces the per-field allowed/blocked outcomes with temporal-window evidence, no delayed effects, and full recovery, closing all sixteen scan-side `dbg_disable_cg` cells, with zero scoreboard/reference-model errors.
 
@@ -7714,6 +7740,128 @@ reset-abort scenarios, which fail on the bridge defect, and carry hole
 entries in `cov/config/verilator/coverage_policy.toml` that name it. On the
 commercial simulators the module's `jtag2axi` covergroups carry the same
 bins.
+
+[[dtp-vplan-signoff-scan]]
+==== STAP, 3DCR, and iJTAG scan routing (section 5)
+
+The section 5 scenarios are the `scan` group and realize the F3 rows of the
+scope matrix: the IEEE 1687 SIB network and its three instruments, the
+per-instrument disables, STAP selection through the composed TAP_3DCR chain
+for the I/O, SMC, SEP, and extra ports, the extended host scan path, the
+3DCR `config_hold` and `tms_hold` fields, and the eight scan-side lifecycle
+gates. The `dbg_disable` group carries the scan matrix and the directed
+gating scenarios into the closure contract. The formal targets T4 (STAP
+selection and debug disable) and T5 (the SIB network) corroborate F3.1 to
+F3.6 where SymbiYosys is installed and are not regression credit.
+
+Topology and model assumptions. The bench's iJTAG network is the three SIBs
+of the interface unit in chain order DFT secure, DFT non-secure, DFD, each
+with a loopback instrument stub of 4, 5, and 6 bits in `tb_top`, so every
+subset of open SIBs has a distinct chain length; the observe scan is 40 bits
+with a 16-bit marker word ahead of the chain image, and the SIB model
+predicts the chain image, the capture of each SIB, and the value an open
+stub latched on the previous scan. The STAP network is the 2-bit PTAP 3DCR
+(select, `config_hold`) followed serially by the STAP SIB chain of the four
+ports in the order I/O, SMC, SEP, extra, each STAP carrying a 3-bit 3DCR
+(`stap_sel`, `tms_hold`, `config_hold`), the selected I/O STAP splicing one
+lockup flop, and every scan issued while a STAP is selected composed over
+the full network, IR scans included. Behind each host port the four
+STAP-selection scenarios attach a behavioral `ocah_jtag_vip` slave device
+with a 5-bit IR, a distinct IDCODE, and one writable `DS_TDR` of a distinct
+width per port; every other scenario sees the host ports as loopbacks. Both
+models are DUT-local (TB_ARCH, DUT-local model ownership): they transcribe
+the scan-chain topology and the iJTAG network of the `jtag_intf_unit`
+chapter and the 3DCR register and lockup latches of the `jtag_stap` chapter,
+and they predict from the sequence's programming intent, never from the
+observed scan. The downstream device table (IDCODE and `DS_TDR` width per
+port) is one parity contract between `cocotb/env/dtp_stap_ds_agent.py` and
+`uvm/env/dtp_env.svh`.
+
+Every scenario runs at least sixteen seeded passes. Both realizations attach
+the family checker with the scenario's required IDs (without the scan
+cross-check, because the composed raw-TMS scans are not countable by the
+sequence) and record every comparison through it: `CHK-SCAN-WIN` counts the
+pulses of the host scan controls, `tdo_oen`, and `tms` inside a temporal
+window and judges them quiet or active, `CHK-SCAN-LEN` is the marker latency
+against the predicted chain length, `CHK-SCAN-CHAIN` is a captured chain
+image against the model, `CHK-SCAN-OBS` is the PTAP 3DCR read over the TDR
+return path, and the `CHK-DS-*` and `CHK-SLAVE-DR-UPDATE*` records are the
+downstream device's IDCODE, `DS_TDR` readbacks, and its own Update-DR
+record. A pass with zero checks or a missing required ID fails at
+finalization. On SV-UVM the env checker adds `CHK-SCAN-IR-LEN` and
+`CHK-SCAN-DR-LEN` for every reconstructed scan, the always-on
+`dtp_scoreboard` ends the run with `CHK-SB-IR-DECODE`, and the env TAP
+checker with `CHK-TAP-STATE`. Each procedure's *Evidence* field names the
+records it lands.
+
+[cols="1,2,3,2,1",options="header",]
+|===
+|Row |Tests |Named evidence |Coverage points |Credit
+|F3.1 iJTAG SIB network: every SIB pattern, chain length, instrument capture |`dtp_ijtag_sib_all_off_test`, `dtp_ijtag_sib_all_on_test`, `dtp_ijtag_sib_random_test` |`CHK-SCAN-LEN`, `CHK-SCAN-WIN`, `CHK-SCAN-CHAIN`, `CHK-TAP-RESET-TLR` |`c_sib_pattern_dfd{0,1}_dfts{0,1}_dftn{0,1}` (all eight), `c_instrument_access_{dfd,dft_secure,dft_nonsecure}` |YES against the 4-, 5-, and 6-bit loopback stubs (<<dtp-vplan-signoff-scan-dispositions>>)
+|F3.2 Instrument access follows `dft_secure`, `dft_nonsecure`, and `dfd` |`dtp_ijtag_dft_test`, `dtp_ijtag_dfd_test`; the random and all-on scenarios under seeded masks |`CHK-SCAN-WIN` (a gated SIB's four controls quiet, the other SIB still openable), `CHK-SCAN-LEN`, `CHK-SCAN-CHAIN` (a gated open attempt not stuck after release) |`c_sib_gating_{enabled,gated}_{dfd,dft_secure,dft_nonsecure}`, `c_dbg_disable_{dfd,dft_secure,dft_nonsecure}_{clear,set}` |YES
+|F3.3 STAP selection for the four ports: forwarding while selected, parked while gated, recovery without reset |`dtp_3dcr_stap_sel_ds_test`, `dtp_3dcr_stap_sel_smc_test`, `dtp_3dcr_stap_sel_sep_test`, `dtp_3dcr_stap_sel_extra_test` |`CHK-SCAN-WIN`, `CHK-SCAN-CHAIN`, `CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`, `CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`, `CHK-DS-TDR-RESUME` |`c_stap_type_{io,smc,sep,extra}`, `c_3dcr_field_select`, `c_3dcr_chain_{sib_open,sib_closed,selected_stap_in_path}`, `c_stap_security_{enabled,gated_by_field}`, `c_dbg_disable_stap_{io,smc,sep,extra}_{clear,set}` |YES against the behavioral downstream TAPs
+|F3.4 The extended host scan path follows `stap_host` |`dtp_ext_stap_scan_test` |`CHK-SCAN-WIN` (the host `select` and `shift_en` active, all four controls quiet while gated, active again after release) |`c_dbg_disable_stap_host_{clear,set}` |YES for the control path; the data path is the loopback (<<dtp-vplan-signoff-scan-dispositions>>)
+|F3.5 3DCR `config_hold` and `tms_hold` |`dtp_3dcr_config_hold_test`, `dtp_3dcr_tms_hold_test` |`CHK-SCAN-CHAIN`, `CHK-SCAN-OBS` (the TDR return path after a cleared select), `CHK-SCAN-WIN` (the parked TMS polarity) |`c_3dcr_field_{tms_hold,config_hold}` |YES
+|F3.6 Every scan-side disable gates exactly its path, with no replay after release and full recovery |`dtp_scan_dbg_disable_matrix_test` |SV-UVM: `CHK-SCAN-WIN`, `CHK-SCAN-CHAIN`, `CHK-SCAN-LEN` per row. cocotb: the sixteen scan-side ledger cells (`require_cells`) and the JSON artifact; the per-row comparisons are plain assertions |The eight scan-side `c_dbg_disable_<field>_{clear,set}` mirrors |YES; the closure contract is the cocotb ledger, the named evidence is the SV-UVM twin's (<<dtp-vplan-signoff-scan-dispositions>>)
+|===
+
+Every instrument and every STAP port has positive and blocked evidence in
+the same scenario: the SIB scenarios open the instrument and record its
+select before gating it and recording the quiet window, and the
+STAP-selection scenarios read the downstream TAP through the port before
+gating it and recording the parked TMS, the frozen downstream register, and
+the ignored 3DCR update. The matrix repeats both outcomes per field under
+the one-hot, boundary, and seeded multi-hot masks.
+
+One hook proves that the evidence path gates the verdict in both
+realizations: `DTP_JTAG_FAMILY_CHECKER_NEGATIVE` (an environment variable
+on cocotb, a plusarg on SV-UVM) corrupts every family expectation, so the
+window counts, the marker latency, the chain images, and the downstream
+readbacks all fail, and a run with it set must fail. The cocotb scan matrix
+attaches no family checker, so the hook does not reach it; its fail-closed
+path is the ledger's refusal to finish with a missing cell and the plain
+assertions of each row.
+
+[source,bash]
+----
+DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_ijtag_sib_random_test
+DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_3dcr_stap_sel_ds_test
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_ijtag_sib_random_test --plusarg +DTP_JTAG_FAMILY_CHECKER_NEGATIVE
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_3dcr_stap_sel_ds_test --plusarg +DTP_JTAG_FAMILY_CHECKER_NEGATIVE
+----
+
+[[dtp-vplan-signoff-scan-dispositions]]
+===== Plan-to-realization dispositions
+
+Each row is a section 5 checker whose realization differs from its plan
+text or whose credit is scoped, with where the behavior is proven and the
+scope of any waiver.
+
+[cols="2,3,3",options="header",]
+|===
+|Checker |Realization |Disposition
+|The checkers of 5.2, 5.4, 5.5, 5.10, and 5.13 named without an evidence ID |Every one is realized under `CHK-SCAN-WIN`, `CHK-SCAN-LEN`, or `CHK-SCAN-CHAIN` through the shared scan helpers: chain length as the marker latency, scan control as a counted window, gating as a quiet window plus a chain capture, recovery as the active window after release |Credited under the three scan records
+|`ext_stap_enable_chk` (scan data through the host scan-out and scan-in) |The host scan-in is the loopback of the host scan-out in `tb_top`, so no independent data observable exists; the scenario records the host `select` and `shift_en` window (`CHK-SCAN-WIN`) and samples the `jtag_stap_host_select` level after each shift as a plain assertion |Credited for the control path; the data path has no observable on this bench (topology waiver below)
+|`ext_stap_disable_chk` (the scan interface deactivates with the PTAP select cleared) |The design keeps the host scan controls active during PTAP scan activity and uses the PTAP 3DCR select for data routing only; the scenario logs the sampled select after the deselecting write and checks nothing |Not credited; the plan text describes a deactivation the design does not implement, and the row is a plan defect for the plan owner
+|`sib_all_on_gate_chk`, `sib_all_on_restore_chk`, `dft_*_gate_chk`, `dft_gate_restore_chk`, `dfd_gate_chk`, `dfd_stored_chk`, `dfd_restore_chk` |A gated SIB is proven closed by its quiet window (`CHK-SCAN-WIN`), the collapsed chain length (`CHK-SCAN-LEN`), and its captured state (`CHK-SCAN-CHAIN`); release without reset is proven by the active window and the full length again, and the stored-state rows by a capture that shows the gated open attempt did not latch |Credited
+|`stap_*_isolation_chk` |The scenario configures the neighbor STAP while the target stays gated and reads the neighbor's downstream TAP through a full load, write, and read cycle (`CHK-DS-*` on the neighbor) with the target's port quiet (`CHK-SCAN-WIN`) and its device recording no update |Credited
+|`scan_matrix_*_chk` (cocotb) |The cocotb matrix compares through plain assertions (the shared window and chain helpers fall back to `assert_equal` without an attached checker) and closes through the ledger's sixteen required cells and the JSON artifact; the SV-UVM matrix records `CHK-SCAN-WIN`, `CHK-SCAN-CHAIN`, and `CHK-SCAN-LEN` per row and has no ledger |Credited: the closure contract is the cocotb ledger, the named evidence is the SV-UVM twin's; the two realizations carry complementary halves of the F3.6 proof
+|Instrument and downstream TAP behavior beyond the stubs |The instruments behind the SIBs are 4-, 5-, and 6-bit loopback stubs, the downstream TAPs are behavioral VIP devices with one writable register, and the extended host scan-in is a loopback; the real SMC and SEP debug TAPs and any instrument are integration-level |Scoped waiver: the scan scenarios prove selection, routing, gating, chain length, and the downstream protocol against the bench's stubs and devices, and the waiver covers instrument data and real downstream TAP behavior only while the bench has no instrument or real-TAP model
+|===
+
+===== Coverage review
+
+The `scan` group under Verilator fires every point of `dtp_scan_fcov`
+except the three bridge-field mirrors (`c_dbg_disable_smc_jtag2axi_set`,
+`c_dbg_disable_smc_otp_jtag2axi_set`, `c_dbg_disable_sep_otp_jtag2axi_set`),
+which the JTAG2AXI matrix fires in the `jtag2axi` and `dbg_disable` groups:
+all eight SIB patterns, the three instrument-access points, the six SIB
+gating points, the four STAP types, the three 3DCR field points, the three
+chain points, the two STAP security points, and the sixteen scan-side field
+mirrors. In `dtp_fcov` it fires the `c_ir_opcode_*` points of TAP_3DCR and
+SELECT_IJTAG and `c_ir_category_ieee1838` and `c_ir_category_ijtag`. On the
+commercial simulators the `cg_ijtag_sib` and `cg_stap_3dcr` covergroups
+carry the same bins.
 
 === Known Limitations
 
