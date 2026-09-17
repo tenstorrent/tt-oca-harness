@@ -14,14 +14,16 @@ hung, dropping on its own once the bus makes progress (no software clear needed)
 `HANG_DET_<master>_CTRL`
 
 - `enable`   — run the detector. When 0, the counter is held and `irq_o` is forced low.
-- `irq_en`   — gate `irq_o`. When 0, a detected hang is suppressed (counter still runs).
-- `irq_test` — force `irq_o` high without a real stall. Software self-test only; the
-  detector does **not** need this to catch a real hang.
+- `irq_en`   — gate `irq_o`. When 0, both a detected hang and `irq_test` are suppressed
+  (the counter still runs).
+- `irq_test` — assert `irq_o` without a real stall, subject to `enable` and `irq_en`.
+  Software self-test only; the detector does **not** need this to catch a real hang.
 
 `HANG_DET_<master>_TIMEOUT_THRESHOLD`
 
-- `value` — number of consecutive stalled cycles before firing. **0 disables the
-  detector.** Default `0x1000`. 20 bits → up to ~1M cycles (~1 ms at 1 GHz).
+- `value` — number of consecutive stalled cycles before firing. Default `0x1000`.
+  20 bits → up to ~1M cycles (~1 ms at 1 GHz). **0 disables timeout detection**: a
+  stalled bus never fires, though `irq_test` still asserts `irq_o`.
 
 ## Programming order (firmware)
 
@@ -29,7 +31,13 @@ hung, dropping on its own once the bus makes progress (no software clear needed)
    (smaller = faster detection, but must exceed the longest legitimate stall).
 2. Write `CTRL` with `enable = 1` and `irq_en = 1` to arm the detector.
 
-The threshold is latched when a stall window begins, so reprogramming it mid-stall
-takes effect on the next window. To disable a detector, clear `CTRL.enable` (or set
-`TIMEOUT_THRESHOLD.value = 0`). Use `CTRL.irq_test = 1` only to verify the interrupt
-path during bring-up.
+The stall count restarts whenever a transaction completes, the bus goes idle, or
+`CTRL.enable` is cleared, and picks up the current threshold at that restart. A write
+therefore lands on the next stall rather than the one being timed: raising the
+threshold does not extend a stall in progress, and lowering it — or writing `0` —
+neither cuts that stall short nor clears an `irq_o` that is already asserted.
+
+To disable a detector, clear `CTRL.enable`; that takes effect at once and silences
+`irq_test` too. `TIMEOUT_THRESHOLD.value = 0` is not equivalent: it takes effect at
+the next stall count restart and leaves `CTRL.irq_test` able to assert `irq_o`. Use
+`CTRL.irq_test = 1` only to verify the interrupt path during bring-up.
