@@ -125,9 +125,17 @@
 // sep_rom_interface_shim, sep_tcm_wrapper, efuse_interface_shim -- stay graded:
 // they are SEP RTL under hw/sys/sep/rtl and hw/ip/efuse/rtl, and a SEP test
 // states a contract on the SRAM path through them.
+//
+// The two error slaves are named by INSTANCE, not by module. `-module` matches
+// every elaboration of a name, and both are instantiated elsewhere in SEP RTL
+// where a test states a contract on them: prim_axi_lite_err_slv at
+// sep_io.sv:180, sep_crypto.sv:573 and sep_efuse_wrapper.sv:259, and
+// axi_err_slv at sep_crypto.sv:555, sep_crypto_axi_interconnect.sv:270 and
+// sep_cpu.sv:591. sep_axi_map_refuse_test and the dead-space decode tests grade
+// those refusals, so a name-matched rule would waive live error-response logic.
 -module efuse_bank_model
--module prim_axi_lite_err_slv
--module axi_err_slv
+-tree sep_uvm_top.u_dut.u_sep_ip_integration.u_ext_trng_axil_err_slv
+-tree sep_uvm_top.u_dut.u_sep_ip_integration.u_axi_extension_err_slv
 
 // Entropy ring oscillator delay stages. A ring oscillator is an analog
 // construct: in digital simulation the chain is either X or externally forced

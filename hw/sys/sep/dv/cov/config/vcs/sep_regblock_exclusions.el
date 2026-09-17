@@ -1,0 +1,147 @@
+//==================================================
+// SEP VCS coverage exclusions -- PeakRDL regblock structural ties.
+// Format Version: 2
+// ExclMode: default
+//
+// Scope: the cocotb VCS elaboration of sep_uvm_top, target `default`.
+// Do not merge a `rom_boot` target run against this file.
+//
+// A1 NO-STALL applies to every regblock: the generated cpuif has balanced
+// read/write latency and hardwires cpuif_req_stall_rd/cpuif_req_stall_wr to '0
+// (e.g. sep_scratch_reg.sv:220-221), so neither net can leave zero.
+//
+// A2 NO-ERROR applies ONLY to the register spaces that decode no error. Their
+// decode always_comb sets is_valid_addr='1 and is_valid_rw='1 with the
+// generator's own comments "No valid address check" / "No valid RW check",
+// then decoded_err='0 (sep_scratch_reg.sv:242-248); cpuif_wr_err='0 (:311);
+// readback_err='0 and cpuif_rd_err=readback_err (:333,:338). With the response
+// buffer never loading a 1, s_axil_bresp/s_axil_rresp hold 2'b00 OKAY.
+//
+// A2 IS DELIBERATELY NOT APPLIED to the five *_wrapper_key_reg blocks. Those
+// DO decode errors --
+//   decoded_err = (~is_valid_addr | (is_valid_addr & ~is_valid_rw)) & decoded_req
+//   (aes_wrapper_key_reg.sv:260, cpuif_wr_err :385, readback_err :406;
+//    abr_wrapper_key_reg.sv:337,926,976)
+// -- and their SLVERR is reachable by an out-of-window or wrong-direction
+// access on the KM private key bus. Do not "complete" the set by adding them.
+//
+// SEP returns SLVERR from the fabric -- the AXI-Lite demux default slave
+// (sep_system_csr.sv:227), the axi_filter datapath and the xbar decode error
+// slave -- and sep_axi_map_refuse_test grades those. This file waives the
+// bresp/rresp OUTPUT OF A LEAF REGBLOCK only, which is a different signal.
+//==================================================
+
+
+CHECKSUM: "3714861442 325599202"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+MODULE: sep_scratch_reg
+Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
+Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+Toggle cpuif_rd_err "logic cpuif_rd_err"
+Toggle cpuif_wr_err "logic cpuif_wr_err"
+Toggle decoded_err "logic decoded_err"
+Toggle readback_err "logic readback_err"
+
+CHECKSUM: "602191063 2073096279"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+MODULE: sep_cpu_ctrl_reg
+Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
+Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+Toggle cpuif_rd_err "logic cpuif_rd_err"
+Toggle cpuif_wr_err "logic cpuif_wr_err"
+Toggle decoded_err "logic decoded_err"
+Toggle readback_err "logic readback_err"
+
+CHECKSUM: "3746075860 3442232018"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+MODULE: sep_reset_ctrl_reg
+Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
+Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+Toggle cpuif_rd_err "logic cpuif_rd_err"
+Toggle cpuif_wr_err "logic cpuif_wr_err"
+Toggle decoded_err "logic decoded_err"
+Toggle readback_err "logic readback_err"
+
+CHECKSUM: "1089600213 3277739977"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+MODULE: alias_remap_reg
+Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
+Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+Toggle cpuif_rd_err "logic cpuif_rd_err"
+Toggle cpuif_wr_err "logic cpuif_wr_err"
+Toggle decoded_err "logic decoded_err"
+Toggle readback_err "logic readback_err"
+
+CHECKSUM: "1931972926 336826070"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+MODULE: output_remap_reg
+Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
+Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+Toggle cpuif_rd_err "logic cpuif_rd_err"
+Toggle cpuif_wr_err "logic cpuif_wr_err"
+Toggle decoded_err "logic decoded_err"
+Toggle readback_err "logic readback_err"
+
+CHECKSUM: "2526737544 534567824"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+MODULE: filter_ctrl_reg
+Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
+Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+Toggle cpuif_rd_err "logic cpuif_rd_err"
+Toggle cpuif_wr_err "logic cpuif_wr_err"
+Toggle decoded_err "logic decoded_err"
+Toggle readback_err "logic readback_err"
+
+CHECKSUM: "1174471060 2756314957"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. SEP-REGBLOCK-A2-NOERROR: this register space decodes no error condition (is_valid_addr and is_valid_rw are constant 1, decoded_err is zero), so cpuif_rd_err/cpuif_wr_err/readback_err stay low and the AXI-Lite response holds 2-bit-zero OKAY."
+MODULE: sep_lifecycle_ctrl_reg
+Toggle s_axil_bresp "logic s_axil_bresp[1:0]"
+Toggle s_axil_rresp "logic s_axil_rresp[1:0]"
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+Toggle cpuif_rd_err "logic cpuif_rd_err"
+Toggle cpuif_wr_err "logic cpuif_wr_err"
+Toggle decoded_err "logic decoded_err"
+Toggle readback_err "logic readback_err"
+
+CHECKSUM: "2125860950 1425039785"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. A2 is NOT claimed here: this block decodes real errors and its SLVERR path is reachable."
+MODULE: aes_wrapper_key_reg
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+
+CHECKSUM: "536375817 2110593416"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. A2 is NOT claimed here: this block decodes real errors and its SLVERR path is reachable."
+MODULE: otbn_wrapper_key_reg
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+
+CHECKSUM: "2468595266 1425039785"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. A2 is NOT claimed here: this block decodes real errors and its SLVERR path is reachable."
+MODULE: hmac_wrapper_key_reg
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+
+CHECKSUM: "2634068924 1425039785"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. A2 is NOT claimed here: this block decodes real errors and its SLVERR path is reachable."
+MODULE: kmac_wrapper_key_reg
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
+
+CHECKSUM: "1094917889 2179785762"
+ANNOTATION: "SEP-REGBLOCK-A1-NOSTALL: the PeakRDL cpuif hardwires cpuif_req_stall_rd and cpuif_req_stall_wr to zero, so neither net presents a second value for any access this slave can see. A2 is NOT claimed here: this block decodes real errors and its SLVERR path is reachable."
+MODULE: abr_wrapper_key_reg
+Toggle cpuif_req_stall_wr "logic cpuif_req_stall_wr"
+Toggle cpuif_req_stall_rd "logic cpuif_req_stall_rd"
