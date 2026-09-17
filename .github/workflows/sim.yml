@@ -83,8 +83,8 @@ jobs:
         #
         #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
         #
-        # No workflow edit needed to flip it, or to roll back. regress.yml uses
-        # the same variable for its weekly coverage jobs.
+        # No workflow edit needed to flip it, or to roll back. regress.yml
+        # promotes its regression rows with the same variable.
         include:
           - dut: dtp
             runner: ubuntu-latest
