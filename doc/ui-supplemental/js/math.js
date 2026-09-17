@@ -5,7 +5,7 @@
 
 ;(function () {
   var article = document.querySelector('.doc')
-  if (!article || !/\\\(|\\\[/.test(article.textContent)) return
+  if (!article) return
 
   window.MathJax = {
     startup: { elements: [article] },
@@ -16,8 +16,4 @@
     },
     options: { enableMenu: false }
   }
-
-  var script = document.createElement('script')
-  script.src = new URL('vendor/mathjax/tex-svg.js', document.currentScript.src).href
-  document.head.appendChild(script)
 })()

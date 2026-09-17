@@ -19,4 +19,7 @@
 <script src="{{{uiRootPath}}}/js/a11y-patches.js"></script>
 <script src="{{{uiRootPath}}}/js/vendor/viewer.min.js"></script>
 <script src="{{{uiRootPath}}}/js/image-zoom.js"></script>
+{{#if (has-math page.contents)}}
 <script src="{{{uiRootPath}}}/js/math.js"></script>
+<script defer src="{{{uiRootPath}}}/js/vendor/mathjax/tex-svg.js"></script>
+{{/if}}
