@@ -24,9 +24,11 @@ rec {
   config = {
     inherit name;
 
-    # Ensure Container has /tmp
+    # Ensure Container has /tmp and /usr/bin
     extraCommands = ''
       mkdir -m 1777 tmp
+      mkdir -p usr
+      ln -sr bin usr/bin
     '';
     # Base system tools plus project packages; extraDeps allows callsites to extend the image.
     contents =
