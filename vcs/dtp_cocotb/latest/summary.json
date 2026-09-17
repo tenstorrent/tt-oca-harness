@@ -24,7 +24,7 @@
     "by_dut": [
       {
         "accepted": 0,
-        "comparison_key": "COVCMP-9a113e251112fc2b",
+        "comparison_key": "COVCMP-2189ae180e4b1760",
         "details_available": true,
         "dut": "dtp",
         "framework": "cocotb",
@@ -47,13 +47,13 @@
       ],
       "category_count": 1,
       "coverage_accepted_holes": 0,
-      "coverage_comparison_key": "COVCMP-9a113e251112fc2b",
+      "coverage_comparison_key": "COVCMP-2189ae180e4b1760",
       "coverage_details_available": true,
       "coverage_open_holes": 0,
       "coverage_status": "PASS",
       "coverage_threshold": 0.0,
       "coverage_threshold_met": true,
-      "coverage_total_percent": 37.91,
+      "coverage_total_percent": 38.44,
       "coverage_unclassified_holes": 0,
       "failed_tests": 1,
       "flaky_tests": 0,
@@ -78,7 +78,7 @@
       "affected": [],
       "count": 3,
       "examples": [
-        "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log"
+        "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log"
       ],
       "flows": [
         "dtp"
@@ -94,7 +94,7 @@
     "total": 1,
     "unknown": 0
   },
-  "generated_at": "2026-09-16T23:47:26+00:00",
+  "generated_at": "2026-09-17T00:38:21+00:00",
   "junit_xml": {
     "missing": 0,
     "total": 2
@@ -113,34 +113,34 @@
         "coverage_policy_application": "artifacts/dtp/coverage/report/policy-application.json",
         "coverage_report": "artifacts/dtp/coverage/report",
         "coverage_summary": "artifacts/dtp/coverage/report/summary.json",
-        "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log",
+        "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log",
         "regression_json": "jenkins-out/runs/dtp/stages/regress/regression.json",
         "result_json": "jenkins-out/runs/dtp/result.json",
         "run_dir": "jenkins-out/runs/dtp"
       },
       "coverage": {
-        "assert_percent": 30.7,
+        "assert_percent": 30.56,
         "backend": "urg",
-        "branch_percent": 60.51,
-        "build_fingerprint": "245be00987d4",
-        "comparison_key": "COVCMP-9a113e251112fc2b",
-        "cond_percent": 34.06,
+        "branch_percent": 61.24,
+        "build_fingerprint": "6959f9f121df",
+        "comparison_key": "COVCMP-2189ae180e4b1760",
+        "cond_percent": 34.49,
         "coverage_details": "artifacts/dtp/coverage/report/coverage-details.json",
         "coverage_details_raw": "artifacts/dtp/coverage/report/coverage-details.raw.json",
         "coverage_tool_version": "vcs script version : X-2025.06",
         "details_available": true,
         "effective_metrics": {
-          "assertion": 30.7,
-          "branch": 60.51,
-          "condition": 34.06,
-          "fsm_state": 36.42,
-          "functional": 24.8,
-          "line": 72.89,
-          "toggle": 5.98
+          "assertion": 30.56,
+          "branch": 61.24,
+          "condition": 34.49,
+          "fsm_state": 38.61,
+          "functional": 24.76,
+          "line": 73.41,
+          "toggle": 5.99
         },
         "enabled": true,
-        "fsm_percent": 36.42,
-        "functional_percent": 24.8,
+        "fsm_percent": 38.61,
+        "functional_percent": 24.76,
         "holes_summary": {
           "accepted": 0,
           "by_category": {},
@@ -159,54 +159,54 @@
         "inputs": [
           {
             "attempt": 0,
-            "build_fingerprint": "245be00987d4",
+            "build_fingerprint": "6959f9f121df",
             "item": "dtp_jtag_idcode_test",
-            "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/coverage/simv.vdb",
-            "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/result.json",
-            "seed": 100163715,
+            "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/coverage/simv.vdb",
+            "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/result.json",
+            "seed": 1344831680,
             "source": "result_json",
             "status": "FAIL",
             "target": "default"
           },
           {
             "attempt": 0,
-            "build_fingerprint": "245be00987d4",
+            "build_fingerprint": "6959f9f121df",
             "item": "dtp_sanity_test",
-            "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/coverage/simv.vdb",
-            "result_json": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/result.json",
-            "seed": 18022906,
+            "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/coverage/simv.vdb",
+            "result_json": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/result.json",
+            "seed": 379750260,
             "source": "result_json",
             "status": "PASS",
             "target": "default"
           }
         ],
-        "line_percent": 72.89,
+        "line_percent": 73.41,
         "manifest": "artifacts/dtp/coverage/coverage.json",
         "merged": "jenkins-out/runs/dtp/cov/merged.vdb",
         "metrics": {
-          "assert": 30.7,
-          "branch": 60.51,
-          "cond": 34.06,
-          "fsm": 36.42,
-          "functional": 24.8,
-          "line": 72.89,
-          "toggle": 5.98
+          "assert": 30.56,
+          "branch": 61.24,
+          "cond": 34.49,
+          "fsm": 38.61,
+          "functional": 24.76,
+          "line": 73.41,
+          "toggle": 5.99
         },
         "parser": "urg",
         "policy_application": "artifacts/dtp/coverage/report/policy-application.json",
         "policy_fingerprint": null,
         "policy_thresholds": [],
         "raw_metrics": {
-          "assertion": 30.7,
-          "branch": 60.51,
-          "condition": 34.06,
-          "fsm_state": 36.42,
-          "functional": 24.8,
-          "line": 72.89,
-          "toggle": 5.98
+          "assertion": 30.56,
+          "branch": 61.24,
+          "condition": 34.49,
+          "fsm_state": 38.61,
+          "functional": 24.76,
+          "line": 73.41,
+          "toggle": 5.99
         },
         "report": "artifacts/dtp/coverage/report",
-        "scope_fingerprint": "a8a82c9c68d9ffe374f53137668eb5ea1c7d8223e60898c4486a2af8ba82ce8d",
+        "scope_fingerprint": "a2054c073ca0005cd139b507fe5e64cb776d6350c14ca1a9c23b1da27052c6ec",
         "source_coverage_details": "jenkins-out/runs/dtp/cov/report/coverage-details.json",
         "source_coverage_details_raw": "jenkins-out/runs/dtp/cov/report/coverage-details.raw.json",
         "source_manifest": "jenkins-out/runs/dtp/cov/coverage.json",
@@ -227,14 +227,14 @@
         "target": "default",
         "threshold": 0.0,
         "threshold_met": true,
-        "toggle_percent": 5.98,
-        "total_percent": 37.91
+        "toggle_percent": 5.99,
+        "total_percent": 38.44
       },
       "failure_buckets": [
         {
           "count": 2,
           "examples": [
-            "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log"
+            "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log"
           ],
           "kind": "sim_failure",
           "signature": "1 testcase failure/error node(s)"
@@ -242,7 +242,7 @@
       ],
       "flow": "dtp",
       "framework": "cocotb",
-      "generated_at": "2026-09-16T23:47:24+00:00",
+      "generated_at": "2026-09-17T00:38:17+00:00",
       "git": {
         "branch": "HEAD",
         "sha": "66ec016ab49edf19f044fc222fe3e3ffee681349",
@@ -252,16 +252,16 @@
         {
           "attempt": 0,
           "exists": true,
-          "item": "dtp_jtag_idcode_test",
-          "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
-          "seed": 100163715
+          "item": "dtp_sanity_test",
+          "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/results/results.xml",
+          "seed": 379750260
         },
         {
           "attempt": 0,
           "exists": true,
-          "item": "dtp_sanity_test",
-          "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/results/results.xml",
-          "seed": 18022906
+          "item": "dtp_jtag_idcode_test",
+          "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
+          "seed": 1344831680
         }
       ],
       "kind": "dv",
@@ -280,8 +280,8 @@
         },
         "coverage": {
           "backend": "urg",
-          "build_fingerprint": "245be00987d4",
-          "comparison_key": "COVCMP-9a113e251112fc2b",
+          "build_fingerprint": "6959f9f121df",
+          "comparison_key": "COVCMP-2189ae180e4b1760",
           "coverage_backend": "urg",
           "coverage_class": "commercial_regression",
           "coverage_details": "jenkins-out/runs/dtp/cov/report/coverage-details.json",
@@ -289,13 +289,13 @@
           "coverage_tool_version": "vcs script version : X-2025.06",
           "details_available": true,
           "effective_metrics": {
-            "assertion": 30.7,
-            "branch": 60.51,
-            "condition": 34.06,
-            "fsm_state": 36.42,
-            "functional": 24.8,
-            "line": 72.89,
-            "toggle": 5.98
+            "assertion": 30.56,
+            "branch": 61.24,
+            "condition": 34.49,
+            "fsm_state": 38.61,
+            "functional": 24.76,
+            "line": 73.41,
+            "toggle": 5.99
           },
           "enabled": true,
           "holes_summary": {
@@ -316,22 +316,22 @@
           "inputs": [
             {
               "attempt": 0,
-              "build_fingerprint": "245be00987d4",
+              "build_fingerprint": "6959f9f121df",
               "item": "dtp_jtag_idcode_test",
-              "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/coverage/simv.vdb",
-              "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/result.json",
-              "seed": 100163715,
+              "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/coverage/simv.vdb",
+              "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/result.json",
+              "seed": 1344831680,
               "source": "result_json",
               "status": "FAIL",
               "target": "default"
             },
             {
               "attempt": 0,
-              "build_fingerprint": "245be00987d4",
+              "build_fingerprint": "6959f9f121df",
               "item": "dtp_sanity_test",
-              "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/coverage/simv.vdb",
-              "result_json": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/result.json",
-              "seed": 18022906,
+              "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/coverage/simv.vdb",
+              "result_json": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/result.json",
+              "seed": 379750260,
               "source": "result_json",
               "status": "PASS",
               "target": "default"
@@ -340,32 +340,32 @@
           "manifest": "jenkins-out/runs/dtp/cov/coverage.json",
           "merged": "jenkins-out/runs/dtp/cov/merged.vdb",
           "metrics": {
-            "assert": 30.7,
-            "branch": 60.51,
-            "cond": 34.06,
-            "fsm": 36.42,
-            "functional": 24.8,
-            "line": 72.89,
-            "toggle": 5.98
+            "assert": 30.56,
+            "branch": 61.24,
+            "cond": 34.49,
+            "fsm": 38.61,
+            "functional": 24.76,
+            "line": 73.41,
+            "toggle": 5.99
           },
-          "overall_percent": 37.91,
+          "overall_percent": 38.44,
           "parser": "urg",
           "policy_application": "jenkins-out/runs/dtp/cov/report/policy-application.json",
           "policy_fingerprint": null,
           "policy_thresholds": [],
           "raw_metrics": {
-            "assertion": 30.7,
-            "branch": 60.51,
-            "condition": 34.06,
-            "fsm_state": 36.42,
-            "functional": 24.8,
-            "line": 72.89,
-            "toggle": 5.98
+            "assertion": 30.56,
+            "branch": 61.24,
+            "condition": 34.49,
+            "fsm_state": 38.61,
+            "functional": 24.76,
+            "line": 73.41,
+            "toggle": 5.99
           },
           "report": "jenkins-out/runs/dtp/cov/report",
           "report_dir": "jenkins-out/runs/dtp/cov/report",
           "requested": true,
-          "scope_fingerprint": "a8a82c9c68d9ffe374f53137668eb5ea1c7d8223e60898c4486a2af8ba82ce8d",
+          "scope_fingerprint": "a2054c073ca0005cd139b507fe5e64cb776d6350c14ca1a9c23b1da27052c6ec",
           "signoff_quality": true,
           "simulator": "vcs",
           "status": "PASS",
@@ -383,41 +383,41 @@
           "target": "default",
           "threshold": 0.0,
           "threshold_met": true,
-          "total_percent": 37.91
+          "total_percent": 38.44
         },
-        "duration_sec": 70.463,
+        "duration_sec": 160.546,
         "executor": "local",
         "exit_code": 1,
         "failed_tests": [
           {
             "artifacts": {
-              "coverage": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/coverage/simv.vdb",
-              "env": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/env/sim.env",
-              "results_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
-              "script": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/scripts/sim.dtp_jtag_idcode_test.sh"
+              "coverage": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/coverage/simv.vdb",
+              "env": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/env/sim.env",
+              "results_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
+              "script": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/scripts/sim.dtp_jtag_idcode_test.sh"
             },
             "attempt_count": 1,
             "attempts": [
               {
                 "artifacts": {
-                  "coverage": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/coverage/simv.vdb",
-                  "env": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/env/sim.env",
-                  "results_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
-                  "script": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/scripts/sim.dtp_jtag_idcode_test.sh"
+                  "coverage": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/coverage/simv.vdb",
+                  "env": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/env/sim.env",
+                  "results_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
+                  "script": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/scripts/sim.dtp_jtag_idcode_test.sh"
                 },
                 "attempt": 0,
-                "duration_sec": 18.172,
+                "duration_sec": 44.88,
                 "failure_buckets": [
                   {
                     "count": 1,
                     "examples": [
-                      "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log"
+                      "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log"
                     ],
                     "kind": "sim_failure",
                     "signature": "1 testcase failure/error node(s)"
                   }
                 ],
-                "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log",
+                "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log",
                 "metadata": {
                   "attempt": 0,
                   "build_cache": {
@@ -425,9 +425,9 @@
                     "rebuild": false
                   },
                   "coverage": {
-                    "build_fingerprint": "245be00987d4",
+                    "build_fingerprint": "6959f9f121df",
                     "debug_only": false,
-                    "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/coverage/simv.vdb",
+                    "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/coverage/simv.vdb",
                     "requested": true,
                     "supported_metrics": [
                       "line",
@@ -442,13 +442,13 @@
                     "tool": "vcs"
                   },
                   "debug_only": false,
-                  "seed": 100163715,
+                  "seed": 1344831680,
                   "target": "default",
                   "target_build": {
-                    "artifact": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
-                    "build_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
+                    "artifact": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
+                    "build_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
                     "executor": "local",
-                    "fingerprint": "245be00987d4",
+                    "fingerprint": "6959f9f121df",
                     "status": "PASS",
                     "target": "default",
                     "tool": "vcs"
@@ -459,7 +459,7 @@
                     {
                       "kind": "results_xml",
                       "message": "1 testcase failure/error node(s)",
-                      "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
+                      "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
                       "status": "FAIL"
                     }
                   ],
@@ -472,30 +472,30 @@
                   "status_source": "structured_result"
                 },
                 "reason": "1 testcase failure/error node(s)",
-                "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/result.json",
+                "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/result.json",
                 "return_code": 0,
                 "status": "FAIL"
               }
             ],
-            "duration_sec": 18.172,
+            "duration_sec": 44.88,
             "failure_buckets": [
               {
                 "count": 1,
                 "examples": [
-                  "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log"
+                  "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log"
                 ],
                 "kind": "sim_failure",
                 "signature": "1 testcase failure/error node(s)"
               }
             ],
             "item": "dtp_jtag_idcode_test",
-            "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log",
+            "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log",
             "parser": {
               "evidence": [
                 {
                   "kind": "results_xml",
                   "message": "1 testcase failure/error node(s)",
-                  "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
+                  "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
                   "status": "FAIL"
                 }
               ],
@@ -508,12 +508,12 @@
               "status_source": "structured_result"
             },
             "reason": "1 testcase failure/error node(s)",
-            "rerun": "python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --stage sim --tool vcs --seed 100163715 --target default --cov",
-            "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/result.json",
-            "seed": 100163715,
+            "rerun": "python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --stage sim --tool vcs --seed 1344831680 --target default --cov",
+            "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/result.json",
+            "seed": 1344831680,
             "status": "FAIL",
             "target": "default",
-            "wave_replay": "python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --stage sim --tool vcs --seed 100163715 --waves default --target default"
+            "wave_replay": "python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --stage sim --tool vcs --seed 1344831680 --waves default --target default"
           }
         ],
         "failure_buckets": [
@@ -521,14 +521,14 @@
             "affected": [
               {
                 "item": "dtp_jtag_idcode_test",
-                "seed": 100163715,
+                "seed": 1344831680,
                 "status": "FAIL",
                 "target": "default"
               }
             ],
             "count": 1,
             "examples": [
-              "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log"
+              "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log"
             ],
             "kind": "sim_failure",
             "reason": "1 testcase failure/error node(s)",
@@ -538,7 +538,7 @@
         "flaky_tests": [],
         "flow": "dtp",
         "framework": "cocotb",
-        "generated_at": "2026-09-16T23:47:23.739975+00:00",
+        "generated_at": "2026-09-17T00:38:15.452388+00:00",
         "git": {
           "branch": "HEAD",
           "commit": "66ec016ab49edf19f044fc222fe3e3ffee681349",
@@ -547,101 +547,17 @@
         "jobs": [
           {
             "artifacts": {
-              "coverage": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/coverage/simv.vdb",
-              "env": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/env/sim.env",
-              "results_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
-              "script": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/scripts/sim.dtp_jtag_idcode_test.sh"
+              "coverage": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/coverage/simv.vdb",
+              "env": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/env/sim.env",
+              "results_xml": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/results/results.xml",
+              "script": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/scripts/sim.dtp_sanity_test.sh"
             },
             "attempt": 0,
-            "duration_sec": 18.172,
-            "ended_at": "2026-09-16T23:46:53.245003+00:00",
-            "failure_buckets": [
-              {
-                "count": 1,
-                "examples": [
-                  "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log"
-                ],
-                "kind": "sim_failure",
-                "signature": "1 testcase failure/error node(s)"
-              }
-            ],
-            "item": "dtp_jtag_idcode_test",
-            "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log",
-            "metadata": {
-              "attempt": 0,
-              "build_cache": {
-                "enabled": false,
-                "rebuild": false
-              },
-              "coverage": {
-                "build_fingerprint": "245be00987d4",
-                "debug_only": false,
-                "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/coverage/simv.vdb",
-                "requested": true,
-                "supported_metrics": [
-                  "line",
-                  "cond",
-                  "toggle",
-                  "fsm",
-                  "branch",
-                  "assert",
-                  "functional"
-                ],
-                "target": "default",
-                "tool": "vcs"
-              },
-              "debug_only": false,
-              "seed": 100163715,
-              "target": "default",
-              "target_build": {
-                "artifact": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
-                "build_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
-                "executor": "local",
-                "fingerprint": "245be00987d4",
-                "status": "PASS",
-                "target": "default",
-                "tool": "vcs"
-              }
-            },
-            "parser": {
-              "evidence": [
-                {
-                  "kind": "results_xml",
-                  "message": "1 testcase failure/error node(s)",
-                  "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
-                  "status": "FAIL"
-                }
-              ],
-              "extensions": [
-                "simulator:vcs"
-              ],
-              "policy": "cocotb-default",
-              "policy_fingerprint": "sha256:bf59a7c16d2672ee429856c0bb074a97b985e1f2f9b4315a62c2de3a402d6b1f",
-              "positive_evidence_required": true,
-              "status_source": "structured_result"
-            },
-            "reason": "1 testcase failure/error node(s)",
-            "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/result.json",
-            "return_code": 0,
-            "seed": 100163715,
-            "stage": "sim",
-            "started_at": "2026-09-16T23:46:35.072788+00:00",
-            "status": "FAIL",
-            "target": "default"
-          },
-          {
-            "artifacts": {
-              "coverage": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/coverage/simv.vdb",
-              "env": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/env/sim.env",
-              "results_xml": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/results/results.xml",
-              "script": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/scripts/sim.dtp_sanity_test.sh"
-            },
-            "attempt": 0,
-            "duration_sec": 26.263,
-            "ended_at": "2026-09-16T23:47:01.335448+00:00",
+            "duration_sec": 44.927,
+            "ended_at": "2026-09-17T00:37:13.446153+00:00",
             "failure_buckets": [],
             "item": "dtp_sanity_test",
-            "log": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/logs/dtp_sanity_test.log",
+            "log": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/logs/dtp_sanity_test.log",
             "metadata": {
               "attempt": 0,
               "build_cache": {
@@ -649,9 +565,9 @@
                 "rebuild": false
               },
               "coverage": {
-                "build_fingerprint": "245be00987d4",
+                "build_fingerprint": "6959f9f121df",
                 "debug_only": false,
-                "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/coverage/simv.vdb",
+                "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/coverage/simv.vdb",
                 "requested": true,
                 "supported_metrics": [
                   "line",
@@ -666,13 +582,13 @@
                 "tool": "vcs"
               },
               "debug_only": false,
-              "seed": 18022906,
+              "seed": 379750260,
               "target": "default",
               "target_build": {
-                "artifact": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
-                "build_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
+                "artifact": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
+                "build_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
                 "executor": "local",
-                "fingerprint": "245be00987d4",
+                "fingerprint": "6959f9f121df",
                 "status": "PASS",
                 "target": "default",
                 "tool": "vcs"
@@ -683,13 +599,13 @@
                 {
                   "kind": "results_xml",
                   "message": "1 testcase(s) passed",
-                  "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/results/results.xml",
+                  "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/results/results.xml",
                   "status": "PASS"
                 },
                 {
                   "kind": "log_summary",
                   "message": "TESTS=1 PASS=1 FAIL=0 SKIP=0",
-                  "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/logs/dtp_sanity_test.log",
+                  "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/logs/dtp_sanity_test.log",
                   "status": "PASS"
                 }
               ],
@@ -702,12 +618,96 @@
               "status_source": "structured_result"
             },
             "reason": "positive pass evidence matched",
-            "result_json": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/result.json",
+            "result_json": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/result.json",
             "return_code": 0,
-            "seed": 18022906,
+            "seed": 379750260,
             "stage": "sim",
-            "started_at": "2026-09-16T23:46:35.071988+00:00",
+            "started_at": "2026-09-17T00:36:28.519074+00:00",
             "status": "PASS",
+            "target": "default"
+          },
+          {
+            "artifacts": {
+              "coverage": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/coverage/simv.vdb",
+              "env": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/env/sim.env",
+              "results_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
+              "script": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/scripts/sim.dtp_jtag_idcode_test.sh"
+            },
+            "attempt": 0,
+            "duration_sec": 44.88,
+            "ended_at": "2026-09-17T00:37:13.398796+00:00",
+            "failure_buckets": [
+              {
+                "count": 1,
+                "examples": [
+                  "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log"
+                ],
+                "kind": "sim_failure",
+                "signature": "1 testcase failure/error node(s)"
+              }
+            ],
+            "item": "dtp_jtag_idcode_test",
+            "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log",
+            "metadata": {
+              "attempt": 0,
+              "build_cache": {
+                "enabled": false,
+                "rebuild": false
+              },
+              "coverage": {
+                "build_fingerprint": "6959f9f121df",
+                "debug_only": false,
+                "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/coverage/simv.vdb",
+                "requested": true,
+                "supported_metrics": [
+                  "line",
+                  "cond",
+                  "toggle",
+                  "fsm",
+                  "branch",
+                  "assert",
+                  "functional"
+                ],
+                "target": "default",
+                "tool": "vcs"
+              },
+              "debug_only": false,
+              "seed": 1344831680,
+              "target": "default",
+              "target_build": {
+                "artifact": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
+                "build_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/hw/sys/dtp/dv/build/cocotb/vcs-coverage/default",
+                "executor": "local",
+                "fingerprint": "6959f9f121df",
+                "status": "PASS",
+                "target": "default",
+                "tool": "vcs"
+              }
+            },
+            "parser": {
+              "evidence": [
+                {
+                  "kind": "results_xml",
+                  "message": "1 testcase failure/error node(s)",
+                  "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
+                  "status": "FAIL"
+                }
+              ],
+              "extensions": [
+                "simulator:vcs"
+              ],
+              "policy": "cocotb-default",
+              "policy_fingerprint": "sha256:bf59a7c16d2672ee429856c0bb074a97b985e1f2f9b4315a62c2de3a402d6b1f",
+              "positive_evidence_required": true,
+              "status_source": "structured_result"
+            },
+            "reason": "1 testcase failure/error node(s)",
+            "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/result.json",
+            "return_code": 0,
+            "seed": 1344831680,
+            "stage": "sim",
+            "started_at": "2026-09-17T00:36:28.518535+00:00",
+            "status": "FAIL",
             "target": "default"
           }
         ],
@@ -723,7 +723,7 @@
             ],
             "regress": true,
             "reseed": 1,
-            "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/jenkins-out/runs/dtp",
+            "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/jenkins-out/runs/dtp",
             "sim_jobs": 4,
             "target": "default",
             "tool": "vcs",
@@ -732,7 +732,7 @@
         },
         "producer": "run_dv.py",
         "rerun_commands": [
-          "python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --stage sim --tool vcs --seed 100163715 --target default --cov"
+          "python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --stage sim --tool vcs --seed 1344831680 --target default --cov"
         ],
         "run_dir": "jenkins-out/runs/dtp",
         "runnability": "contributor",
@@ -771,7 +771,7 @@
         "tool_version": "vcs script version : X-2025.06",
         "tool_versions": {
           "bender": "bender 0.28.1+tenstorrent8",
-          "python": "3.11.13",
+          "python": "3.11.11",
           "vcs": "vcs script version : X-2025.06"
         },
         "visibility": "public"
@@ -779,7 +779,7 @@
       "run_metadata": {
         "dry_run": false,
         "executor": "local",
-        "generated_at": "2026-09-16T23:47:23.757988+00:00",
+        "generated_at": "2026-09-17T00:38:15.534822+00:00",
         "git": {
           "branch": "HEAD",
           "commit": "66ec016ab49edf19f044fc222fe3e3ffee681349",
@@ -802,7 +802,7 @@
             ],
             "regress": true,
             "reseed": 1,
-            "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/just_for_test/jenkins-out/runs/dtp",
+            "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/jenkins-out/runs/dtp",
             "sim_jobs": 4,
             "target": "default",
             "tool": "vcs",
@@ -842,7 +842,7 @@
         "tool_version": "vcs script version : X-2025.06",
         "tool_versions": {
           "bender": "bender 0.28.1+tenstorrent8",
-          "python": "3.11.13",
+          "python": "3.11.11",
           "vcs": "vcs script version : X-2025.06"
         }
       },
@@ -863,19 +863,69 @@
       "tests_detail": [
         {
           "artifacts": {
-            "coverage": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/coverage/simv.vdb",
-            "env": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/env/sim.env",
-            "results_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
-            "script": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/scripts/sim.dtp_jtag_idcode_test.sh"
+            "coverage": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/coverage/simv.vdb",
+            "env": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/env/sim.env",
+            "results_xml": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/results/results.xml",
+            "script": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/scripts/sim.dtp_sanity_test.sh"
           },
           "attempt": 0,
           "category": "smoke",
-          "duration_sec": 18.172,
+          "duration_sec": 44.927,
+          "failure_buckets": [],
+          "groups": [
+            "smoke",
+            "basic_jtag",
+            "functional",
+            "all"
+          ],
+          "junit_xml": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/results/results.xml",
+          "log": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/logs/dtp_sanity_test.log",
+          "module": "dtp_sanity_test",
+          "name": "dtp_sanity_test",
+          "parser": {
+            "evidence": [
+              {
+                "kind": "results_xml",
+                "message": "1 testcase(s) passed",
+                "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/results/results.xml",
+                "status": "PASS"
+              },
+              {
+                "kind": "log_summary",
+                "message": "TESTS=1 PASS=1 FAIL=0 SKIP=0",
+                "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/logs/dtp_sanity_test.log",
+                "status": "PASS"
+              }
+            ],
+            "policy": "cocotb-default",
+            "status_source": "structured_result"
+          },
+          "reason": "positive pass evidence matched",
+          "result_json": "jenkins-out/runs/dtp/dtp_sanity_test/seed_379750260/attempt_0/result.json",
+          "seed": 379750260,
+          "stage": "sim",
+          "status": "PASS",
+          "tags": [
+            "smoke",
+            "ci"
+          ],
+          "target": "default"
+        },
+        {
+          "artifacts": {
+            "coverage": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/coverage/simv.vdb",
+            "env": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/env/sim.env",
+            "results_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
+            "script": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/scripts/sim.dtp_jtag_idcode_test.sh"
+          },
+          "attempt": 0,
+          "category": "smoke",
+          "duration_sec": 44.88,
           "failure_buckets": [
             {
               "count": 1,
               "examples": [
-                "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log"
+                "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log"
               ],
               "kind": "sim_failure",
               "signature": "1 testcase failure/error node(s)"
@@ -887,8 +937,8 @@
             "functional",
             "all"
           ],
-          "junit_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
-          "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/logs/dtp_jtag_idcode_test.log",
+          "junit_xml": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
+          "log": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/logs/dtp_jtag_idcode_test.log",
           "module": "dtp_jtag_idcode_test",
           "name": "dtp_jtag_idcode_test",
           "parser": {
@@ -896,7 +946,7 @@
               {
                 "kind": "results_xml",
                 "message": "1 testcase failure/error node(s)",
-                "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/results/results.xml",
+                "path": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/results/results.xml",
                 "status": "FAIL"
               }
             ],
@@ -904,8 +954,8 @@
             "status_source": "structured_result"
           },
           "reason": "1 testcase failure/error node(s)",
-          "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_100163715/attempt_0/result.json",
-          "seed": 100163715,
+          "result_json": "jenkins-out/runs/dtp/dtp_jtag_idcode_test/seed_1344831680/attempt_0/result.json",
+          "seed": 1344831680,
           "stage": "sim",
           "status": "FAIL",
           "tags": [
@@ -914,62 +964,12 @@
             "jtag"
           ],
           "target": "default"
-        },
-        {
-          "artifacts": {
-            "coverage": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/coverage/simv.vdb",
-            "env": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/env/sim.env",
-            "results_xml": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/results/results.xml",
-            "script": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/scripts/sim.dtp_sanity_test.sh"
-          },
-          "attempt": 0,
-          "category": "smoke",
-          "duration_sec": 26.263,
-          "failure_buckets": [],
-          "groups": [
-            "smoke",
-            "basic_jtag",
-            "functional",
-            "all"
-          ],
-          "junit_xml": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/results/results.xml",
-          "log": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/logs/dtp_sanity_test.log",
-          "module": "dtp_sanity_test",
-          "name": "dtp_sanity_test",
-          "parser": {
-            "evidence": [
-              {
-                "kind": "results_xml",
-                "message": "1 testcase(s) passed",
-                "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/results/results.xml",
-                "status": "PASS"
-              },
-              {
-                "kind": "log_summary",
-                "message": "TESTS=1 PASS=1 FAIL=0 SKIP=0",
-                "path": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/logs/dtp_sanity_test.log",
-                "status": "PASS"
-              }
-            ],
-            "policy": "cocotb-default",
-            "status_source": "structured_result"
-          },
-          "reason": "positive pass evidence matched",
-          "result_json": "jenkins-out/runs/dtp/dtp_sanity_test/seed_18022906/attempt_0/result.json",
-          "seed": 18022906,
-          "stage": "sim",
-          "status": "PASS",
-          "tags": [
-            "smoke",
-            "ci"
-          ],
-          "target": "default"
         }
       ],
       "timing": {
-        "duration_sec": 88.396,
-        "end_time": "2026-09-16T23:47:23.627025+00:00",
-        "start_time": "2026-09-16T23:46:13.259017+00:00"
+        "duration_sec": 203.222,
+        "end_time": "2026-09-17T00:38:14.500190+00:00",
+        "start_time": "2026-09-17T00:35:34.665075+00:00"
       },
       "tool": "vcs"
     }
