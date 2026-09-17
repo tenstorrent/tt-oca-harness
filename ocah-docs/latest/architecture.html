@@ -93,7 +93,13 @@
     <a class="nav-link" href="architecture.html">OCAH Architecture &amp; Design</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="#ocah-architecture">OCAH Architecture</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="#ocah-rtl-assertions">RTL Assertions</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="#security-processor-sep">Security Processor (SEP)</a>
@@ -679,6 +685,44 @@ chapter:</p>
 <p>For integration-level reset procedures, refer to the Integrator Guide.</p>
 </div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="ocah-rtl-assertions"><a class="anchor" href="#ocah-rtl-assertions"></a><a class="link" href="#ocah-rtl-assertions">1.7. RTL Assertions</a></h3>
+<div class="paragraph">
+<p>First-party RTL uses the <code>OCAH_ASSERT*</code> macros; OpenTitan-derived blocks use
+<code>OCAH_OT_ASSERT*</code>; PULP-vendored cells (<code>common_cells</code>, AXI, iDMA) use
+<code>OCAH_PULP_ASSERT*</code>. The checks live in the module that owns the behavior and
+cover known-value hygiene, illegal parameter combinations, and local protocol
+or FSM invariants. They compile out of synthesis and fire on four-state
+simulators.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. RTL assertion macro families</caption>
+<colgroup>
+<col style="width: 28%;">
+<col style="width: 72%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Family</th>
+<th class="tableblock halign-left valign-top">Header</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_ASSERT*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/common/assert/ocah_assert.svh</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_OT_ASSERT*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_PULP_ASSERT*</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>vendor/pulp-platform/common_cells/upstream/include/common_cells/assertions.svh</code></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -1799,7 +1843,7 @@ is one <code>filter_ctrl</code> register triple&#8201;&#8212;&#8201;<code>FILTER
 <div class="sect3">
 <h4 id="axi-traffic-filter-instances"><a class="anchor" href="#axi-traffic-filter-instances"></a><a class="link" href="#axi-traffic-filter-instances">2.4.1. Instances</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. Traffic filter instances</caption>
+<caption class="title">Table 4. Traffic filter instances</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 12%;">
@@ -1960,7 +2004,7 @@ or any range shorter than the granule, still admits the whole granule,
 and a range that straddles a granule boundary admits both granules.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 4. Granule widening examples</caption>
+<caption class="title">Table 5. Granule widening examples</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 20%;">
@@ -11853,7 +11897,7 @@ feature is enabled and False (F) indicates that it is disabled. The disable vect
 the corresponding feature, and 1&#8217;b1 disables it.</p>
 </div>
 <table id="feature-control-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 5. Per-LC-state feature control profile</caption>
+<caption class="title">Table 6. Per-LC-state feature control profile</caption>
 <colgroup>
 <col style="width: 13%;">
 <col style="width: 7%;">
@@ -12823,7 +12867,7 @@ logic into reset even when TRST is released. <code>BP_RESETN</code> drives the S
 functional cold reset path after power-good is stable.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 6. SMC Reset Sources and Characteristics</caption>
+<caption class="title">Table 7. SMC Reset Sources and Characteristics</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -12896,7 +12940,7 @@ registers. JTAG/TDR reset state is reset by POR, not by
 <p>Primary reset is activated by reset sources in the following table:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. Primary Reset Activation Sources</caption>
+<caption class="title">Table 8. Primary Reset Activation Sources</caption>
 <colgroup>
 <col style="width: 34%;">
 <col style="width: 66%;">
@@ -12937,7 +12981,7 @@ per-core watchdog timers and bus error units</p>
 <p>Warm reset is activated by reset sources in the following table:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. Warm Reset Activation Sources</caption>
+<caption class="title">Table 9. Warm Reset Activation Sources</caption>
 <colgroup>
 <col style="width: 34%;">
 <col style="width: 66%;">
@@ -13073,7 +13117,7 @@ is asynchronous and deassertion is synchronous.</p>
 provide metastability protection.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Reset Synchronization Domains</caption>
+<caption class="title">Table 10. Reset Synchronization Domains</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 25%;">
@@ -13121,7 +13165,7 @@ coordination for peripheral controllers</p></td>
 system management needs:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. Advanced Reset Features</caption>
+<caption class="title">Table 11. Advanced Reset Features</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -13309,7 +13353,7 @@ robust operation during complex reset scenarios.</p>
 <p>The following table lists the clock gating control parameters.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. Clock Gating Control Parameters</caption>
+<caption class="title">Table 12. Clock Gating Control Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 35%;">
@@ -13366,7 +13410,7 @@ connectivity.</p>
 protocols, and default instance counts:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. SMC Peripheral Summary</caption>
+<caption class="title">Table 13. SMC Peripheral Summary</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 47%;">
@@ -13491,7 +13535,7 @@ Most values match the IP defaults, but the following differ from the default
 documented in the IP&#8217;s own section.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 13. SMC Peripheral Parameter Overrides</caption>
+<caption class="title">Table 14. SMC Peripheral Parameter Overrides</caption>
 <colgroup>
 <col style="width: 16%;">
 <col style="width: 38%;">
@@ -15103,7 +15147,7 @@ sources that support reliable and responsive system monitoring and
 control, summarized in the following table.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 14. SMC interrupt sources</caption>
+<caption class="title">Table 15. SMC interrupt sources</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -15534,7 +15578,7 @@ management, traffic filtering, and security enforcement mechanisms.</p>
 performance and area:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 15. Fabric Configuration Parameters</caption>
+<caption class="title">Table 16. Fabric Configuration Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -15650,7 +15694,7 @@ transactions to peripherals.</p>
 traffic types:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. Network Characteristics</caption>
+<caption class="title">Table 17. Network Characteristics</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 30%;">
@@ -15691,7 +15735,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 <p>The table below lists the common AXI signal widths shared across all AXI4 fabric interfaces.</p>
 </div>
 <table id="fabric-axi-widths" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. AXI Common Signal Widths</caption>
+<caption class="title">Table 18. AXI Common Signal Widths</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 15%;">
@@ -15737,7 +15781,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 The table below lists the ID width at each point in the fabric.</p>
 </div>
 <table id="fabric-axi-id-widths" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. AXI ID Widths by Fabric Stage</caption>
+<caption class="title">Table 19. AXI ID Widths by Fabric Stage</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 15%;">
@@ -15811,7 +15855,7 @@ enforcement.</p>
 local and remote resources through the dual-network architecture.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Fabric Traffic Managers</caption>
+<caption class="title">Table 20. Fabric Traffic Managers</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -15877,7 +15921,7 @@ flexible address management between local and global address spaces.</p>
 organized by network type and function.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. Fabric Traffic Subordinates</caption>
+<caption class="title">Table 21. Fabric Traffic Subordinates</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -16134,7 +16178,7 @@ attributes:</p>
 encode transaction security and privilege attributes:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. Protection Bit Encoding</caption>
+<caption class="title">Table 22. Protection Bit Encoding</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 15%;">
@@ -16375,7 +16419,7 @@ level and routing path, plus a cacheable flag from the alias remap
 configuration:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. Source ID by Traffic Path</caption>
+<caption class="title">Table 23. Source ID by Traffic Path</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -16568,7 +16612,7 @@ multi-channel operation, scatter-gather transfers, and integration with
 SMC fabric filtering.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. DMA Controller Integration</caption>
+<caption class="title">Table 24. DMA Controller Integration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -16635,7 +16679,7 @@ control plane and data plane operations.</p>
 <p>The DMA controller supports the following configuration parameters:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 24. DMA Configuration Parameters</caption>
+<caption class="title">Table 25. DMA Configuration Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -16724,7 +16768,7 @@ processing, and transfer descriptor handling.</p>
 <p>The table below describes the frontend control interface.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 25. Frontend Control Interface</caption>
+<caption class="title">Table 26. Frontend Control Interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -16810,7 +16854,7 @@ treat the remaining banks as reserved.</p>
 <p>The table below describes the transfer descriptor support.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 26. Transfer Capabilities</caption>
+<caption class="title">Table 27. Transfer Capabilities</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -16911,7 +16955,7 @@ iDMA.</p>
 <p>The table below describes the AXI master interface.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 27. AXI4 Master Characteristics</caption>
+<caption class="title">Table 28. AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -16970,7 +17014,7 @@ access</p></td>
 DMA backend.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 28. Transfer Parameters</caption>
+<caption class="title">Table 29. Transfer Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -17020,7 +17064,7 @@ DMA backend.</p>
 backend.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 29. Status Monitoring and Control</caption>
+<caption class="title">Table 30. Status Monitoring and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -17075,7 +17119,7 @@ changes</p></td>
 optimization and power management features.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 30. Performance Features</caption>
+<caption class="title">Table 31. Performance Features</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -17123,7 +17167,7 @@ controller optimization</p></td>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 31. Clock Gating Configuration</caption>
+<caption class="title">Table 32. Clock Gating Configuration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -19014,7 +19058,7 @@ zero without CPU intervention. The unit uses a state machine-based
 architecture with dual clock domains.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 32. Memory Zeroer Integration</caption>
+<caption class="title">Table 33. Memory Zeroer Integration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -19076,7 +19120,7 @@ sequences</p>
 <p>The zeroer implements a three-state operation model:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. State Machine States</caption>
+<caption class="title">Table 34. State Machine States</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -19132,7 +19176,7 @@ optional interrupt</p>
 <div class="sect4">
 <h5 id="axi-master-interface"><a class="anchor" href="#axi-master-interface"></a><a class="link" href="#axi-master-interface">AXI Master Interface</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. AXI4 Master Characteristics</caption>
+<caption class="title">Table 35. AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -19207,7 +19251,7 @@ and interface isolation.</p>
 <div class="sect4">
 <h5 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">Clock Domains</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. Clock Domain Characteristics</caption>
+<caption class="title">Table 36. Clock Domain Characteristics</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -19235,7 +19279,7 @@ independent of AXI activity</p></td>
 <div class="sect4">
 <h5 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">Clock Gating</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. Clock Gating Control</caption>
+<caption class="title">Table 37. Clock Gating Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -19275,7 +19319,7 @@ independent of AXI activity</p></td>
 <div class="sect5">
 <h6 id="operation-control"><a class="anchor" href="#operation-control"></a><a class="link" href="#operation-control">Operation Control</a></h6>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. Configuration and Control</caption>
+<caption class="title">Table 38. Configuration and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -19334,7 +19378,7 @@ independent of AXI activity</p></td>
 <div class="sect3">
 <h4 id="operation-details"><a class="anchor" href="#operation-details"></a><a class="link" href="#operation-details">3.10.3. Operation Details</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. Data Generation and Control</caption>
+<caption class="title">Table 39. Data Generation and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -19434,7 +19478,7 @@ Protection</em>. This section records how they apply to the SMC eFuse controller
 <div class="sect3">
 <h4 id="smc-efuse-asset-classification"><a class="anchor" href="#smc-efuse-asset-classification"></a><a class="link" href="#smc-efuse-asset-classification">3.11.1. SMC eFuse Asset Classification</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 39. SMC eFuse shadow register classification</caption>
+<caption class="title">Table 40. SMC eFuse shadow register classification</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -19525,7 +19569,7 @@ regenerated:</p>
 shadow words 0 and 1.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 40. SMC shadow word allocation</caption>
+<caption class="title">Table 41. SMC shadow word allocation</caption>
 <colgroup>
 <col style="width: 55%;">
 <col style="width: 45%;">
@@ -19640,7 +19684,7 @@ section of the Integration Guide.</p>
 <p>The SMC address space is divided into several major functional regions:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 41. SMC Address Space Layout</caption>
+<caption class="title">Table 42. SMC Address Space Layout</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -19779,7 +19823,7 @@ Bus Error Units</p></td>
 components:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 42. SMC Component Address Map</caption>
+<caption class="title">Table 43. SMC Component Address Map</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -20062,7 +20106,7 @@ integration places its vendor I3C controllers (nonfree overlay) here.</p>
 <p>Addresses below are expressed as <code>BASE + offset</code> (<code>BASE</code> = <code>0xC000_0000</code>).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 43. SMC AXI-Lite External Window — Mandatory Region</caption>
+<caption class="title">Table 44. SMC AXI-Lite External Window — Mandatory Region</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -20133,7 +20177,7 @@ layer</p></td>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 44. SMC AXI-Lite External Window — Supplementary Region (optional)</caption>
+<caption class="title">Table 45. SMC AXI-Lite External Window — Supplementary Region (optional)</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -20179,7 +20223,7 @@ adopter external port.</p>
 interfaces in the following table:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 45. Register Interface Standards</caption>
+<caption class="title">Table 46. Register Interface Standards</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -20225,7 +20269,7 @@ interfaces in the following table:</p>
 <p>The SMC implements the following access control mechanisms:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 46. Access Control Mechanisms</caption>
+<caption class="title">Table 47. Access Control Mechanisms</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -20657,7 +20701,7 @@ wording in <a href="#peripherals">Peripherals</a>.</p>
 to the individual component documentation:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 47. SMC Component Documentation</caption>
+<caption class="title">Table 48. SMC Component Documentation</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 50%;">
