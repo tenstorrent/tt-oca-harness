@@ -21,12 +21,12 @@ module dtp_jtag2axi_ctrl_props #(
   localparam int CNT_W = $clog2(FIFO_DEPTH + 2),
   localparam int PD_W = (FIFO_DEPTH == 0) ? 1 : $clog2(FIFO_DEPTH + 1)
 ) (
-  input logic              i_tck,
-  input logic              i_trstn,
-  input logic              i_aclk,
-  input logic              i_arstn,
-  input logic              i_update_en,
-  input logic              i_select_AXISeriesCtrl,
+  input logic              tck_i,
+  input logic              trst_ni,
+  input logic              aclk_i,
+  input logic              arst_ni,
+  input logic              update_en_i,
+  input logic              select_AXISeriesCtrl_i,
   input logic              security_disable_i,
   input logic [2:0]        state_i,                // axi_state_q_tclk
   input logic              src_aw_valid_i,         // src_req.aw_valid
@@ -88,17 +88,17 @@ module dtp_jtag2axi_ctrl_props #(
   endfunction
 
   logic ctrl_reset_write;
-  assign ctrl_reset_write = i_update_en && !security_disable_i && i_select_AXISeriesCtrl &&
+  assign ctrl_reset_write = update_en_i && !security_disable_i && select_AXISeriesCtrl_i &&
                             ctrl_reset_bit_i;
 
   logic [CNT_W-1:0] admit_limit;
   assign admit_limit = CNT_W'(pipeline_depth_i) + CNT_W'(1);
 
   // verilog_format: off
-  `OCAH_FV_INITIAL_RESET(i_tck, i_trstn)
+  `OCAH_FV_INITIAL_RESET(tck_i, trst_ni)
 
   // ---- Request machine ----------------------------------------------------------------------
-  `OCAH_FV_ASSERT(ast_j2a_state_valid, state_i <= UPDATE_STATUS, i_tck, i_trstn)
+  `OCAH_FV_ASSERT(ast_j2a_state_valid, state_i <= UPDATE_STATUS, tck_i, trst_ni)
   `OCAH_FV_ASSERT(ast_j2a_valid_only_in_send_states,
                   `OCAH_FV_IMPLIES(src_aw_valid_i, state_i == SEND_ADDR_W) &&
                   `OCAH_FV_IMPLIES(src_w_valid_i, state_i inside {SEND_ADDR_W, SEND_DATA_W}) &&
@@ -106,13 +106,13 @@ module dtp_jtag2axi_ctrl_props #(
                   `OCAH_FV_IMPLIES(state_i == SEND_ADDR_W, src_aw_valid_i) &&
                   `OCAH_FV_IMPLIES(state_i == SEND_DATA_W, src_w_valid_i) &&
                   `OCAH_FV_IMPLIES(state_i == SEND_ADDR_R, src_ar_valid_i),
-                  i_tck, i_trstn)
+                  tck_i, trst_ni)
   `OCAH_FV_ASSERT(ast_j2a_idle_after_status,
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(state_i) == UPDATE_STATUS,
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(state_i) == UPDATE_STATUS,
                                    state_i == IDLE) &&
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(state_i) != IDLE && state_i == IDLE,
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(state_i) != IDLE && state_i == IDLE,
                                    $past(state_i) == UPDATE_STATUS),
-                  i_tck, i_trstn)
+                  tck_i, trst_ni)
 
   // ---- Status encoding and the sticky series status ----------------------------------------
   `OCAH_FV_ASSERT(ast_j2a_status_encodes_resp,
@@ -122,20 +122,20 @@ module dtp_jtag2axi_ctrl_props #(
                   `OCAH_FV_IMPLIES(rdata_update_i,
                                    state_i == WAIT_RDATA && src_r_valid_i && src_r_ready_i &&
                                    next_status_i == status_of(src_r_resp_i)) &&
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(bresp_update_i || rdata_update_i),
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(bresp_update_i || rdata_update_i),
                                    sticky_status_i == $past(next_status_i)),
-                  i_tck, i_trstn)
+                  tck_i, trst_ni)
   `OCAH_FV_ASSERT(ast_j2a_series_status_sticky,
-                  `OCAH_FV_IMPLIES($past(i_trstn) && !$past(bresp_update_i || rdata_update_i) &&
+                  `OCAH_FV_IMPLIES($past(trst_ni) && !$past(bresp_update_i || rdata_update_i) &&
                                    !$past(ctrl_reset_write),
                                    sticky_status_i == $past(sticky_status_i)) &&
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(sticky_full_i) &&
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(sticky_full_i) &&
                                    !$past(ctrl_reset_write),
                                    sticky_full_i) &&
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(ctrl_reset_write) &&
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(ctrl_reset_write) &&
                                    !$past(bresp_update_i || rdata_update_i),
                                    sticky_status_i == STATUS_SUCCESS && !sticky_full_i),
-                  i_tck, i_trstn)
+                  tck_i, trst_ni)
 
   // ---- Admission: the request FIFO and the read pipeline never exceed pipeline_depth + 1 -----
   `OCAH_FV_ASSERT(ast_j2a_admit_bounded_by_depth,
@@ -144,58 +144,58 @@ module dtp_jtag2axi_ctrl_props #(
                   reads_in_flight_i <= admit_limit &&
                   reads_pushed_i <= admit_limit &&
                   rsp_fifo_count_i <= CNT_W'(FIFO_DEPTH + 1),
-                  i_tck, i_trstn)
+                  tck_i, trst_ni)
 
   // ---- ACLK side: the outstanding counters hold the CDC pop at their saturation value --------
   `OCAH_FV_ASSERT(ast_j2a_outstanding_saturates,
                   `OCAH_FV_IMPLIES(write_outstanding_i == OUTSTANDING_MAX,
                                    !dst_aw_ready_i && !dst_w_ready_i) &&
                   `OCAH_FV_IMPLIES(read_outstanding_i == OUTSTANDING_MAX, !dst_ar_ready_i),
-                  i_aclk, i_arstn)
+                  aclk_i, arst_ni)
 
   // ---- Disable gate -------------------------------------------------------------------------
   `OCAH_FV_ASSERT(ast_j2a_disable_holds_idle,
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(security_disable_i) &&
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(security_disable_i) &&
                                    $past(state_i) == IDLE,
                                    state_i == IDLE && !single_valid_i &&
                                    req_fifo_count_i == '0 && rsp_fifo_count_i == '0 &&
                                    reads_in_flight_i == '0 && reads_pushed_i == '0 &&
                                    plain_reads_pending_i == '0) &&
-                  `OCAH_FV_IMPLIES($past(i_trstn) && security_disable_i && i_update_en,
+                  `OCAH_FV_IMPLIES($past(trst_ni) && security_disable_i && update_en_i,
                                    update_register_i == $past(update_register_i)),
-                  i_tck, i_trstn)
+                  tck_i, trst_ni)
   `OCAH_FV_ASSERT(ast_j2a_disable_inflight_completes,
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(security_disable_i) &&
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(security_disable_i) &&
                                    $past(state_i) == WAIT_BRESP && $past(src_b_valid_i),
                                    state_i == UPDATE_STATUS) &&
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(security_disable_i) &&
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(security_disable_i) &&
                                    $past(state_i) == WAIT_RDATA &&
                                    $past(src_r_valid_i && src_r_ready_i),
                                    state_i == UPDATE_STATUS) &&
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(security_disable_i) &&
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(security_disable_i) &&
                                    $past(state_i) inside {SEND_ADDR_W, SEND_DATA_W, SEND_ADDR_R},
                                    state_i != IDLE),
-                  i_tck, i_trstn)
+                  tck_i, trst_ni)
   `OCAH_FV_ASSERT(ast_j2a_release_replays_nothing,
-                  `OCAH_FV_IMPLIES($past(i_trstn) && $past(state_i) == IDLE &&
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(state_i) == IDLE &&
                                    !$past(single_valid_i) && $past(req_fifo_count_i) == '0,
                                    state_i == IDLE),
-                  i_tck, i_trstn)
+                  tck_i, trst_ni)
 
   // ---- Covers -------------------------------------------------------------------------------
   `OCAH_FV_COVER(cov_j2a_single_write_complete,
                  $past(state_i) == WAIT_BRESP && state_i == UPDATE_STATUS &&
-                 current_op_i == OP_WRITE, i_tck, i_trstn)
+                 current_op_i == OP_WRITE, tck_i, trst_ni)
   `OCAH_FV_COVER(cov_j2a_single_read_complete,
                  $past(state_i) == WAIT_RDATA && state_i == UPDATE_STATUS &&
-                 current_op_i == OP_READ, i_tck, i_trstn)
+                 current_op_i == OP_READ, tck_i, trst_ni)
   `OCAH_FV_COVER(cov_j2a_series_reads_admitted,
-                 reads_pushed_i == CNT_W'(FIFO_DEPTH + 1), i_tck, i_trstn)
-  `OCAH_FV_COVER(cov_j2a_status_slverr, sticky_status_i == STATUS_SLVERR, i_tck, i_trstn)
-  `OCAH_FV_COVER(cov_j2a_status_decerr, sticky_status_i == STATUS_DECERR, i_tck, i_trstn)
+                 reads_pushed_i == CNT_W'(FIFO_DEPTH + 1), tck_i, trst_ni)
+  `OCAH_FV_COVER(cov_j2a_status_slverr, sticky_status_i == STATUS_SLVERR, tck_i, trst_ni)
+  `OCAH_FV_COVER(cov_j2a_status_decerr, sticky_status_i == STATUS_DECERR, tck_i, trst_ni)
   for (genvar s = 1; s <= 6; s++) begin : gen_disable_in_state
     `OCAH_FV_COVER(cov_j2a_disable_in_state, security_disable_i && state_i == 3'(s),
-                   i_tck, i_trstn)
+                   tck_i, trst_ni)
   end
   // verilog_format: on
 
