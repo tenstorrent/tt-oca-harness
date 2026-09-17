@@ -541,12 +541,11 @@ for one-off debugging.
 [[runner-rejected-keys]]
 === Schema versions and rejected keys
 
-Every checked-in configuration file carries `schema_version = 1`: the
-registries, the profiles, each `<dut>_sim_cfg.toml`, and each testlist. The
-loader accepts the key in all of them and enforces its value on the site file
-(<<runner-site-layer>>). An unknown key anywhere in a configuration is an
-error naming the file and the table, so a misspelled key cannot pass as an
-unused one.
+The registries, each `<dut>_sim_cfg.toml`, and each testlist carry
+`schema_version = 1`; the profiles carry none. The loader accepts the key
+wherever it appears and enforces its value on the site file
+(<<runner-site-layer>>). An unknown key anywhere in a configuration, a
+misspelling included, is an error naming the file and the table.
 
 A setting has one spelling. A key in the left column below, and a key that
 duplicates a setting another table owns, is an error rather than an alias,
@@ -574,7 +573,9 @@ same keys under `[target_defaults.<name>]`
 |`[build.<tool>].extra_args`
 
 |`[coverage.<tool>].<tool>_build_args`, `_compile_args`, `_sim_args`,
-`_test_args`
+`_test_args`, and the fixed names `verilator_build_args`,
+`xcelium_build_args`, `xcelium_test_args`, `vcs_compile_args`, and
+`vcs_sim_args` in any tool's table
 |`[coverage.<tool>].build_args`, `compile_args`, `sim_args`, `test_args`
 
 |A `[build.<tool>]` or `[coverage.<tool>]` value equal to that tool's
@@ -582,8 +583,8 @@ same keys under `[target_defaults.<name>]`
 |Omit the key; the default applies
 |===
 
-The one accepted alias is on the command line: `--stage filelist` selects
-`flist`. No command-line option has a second, retired spelling.
+`--stage filelist` is the only alias the command line accepts; it selects
+`flist`.
 
 [[runner-validation]]
 === What validation checks
@@ -1396,8 +1397,9 @@ delete cached models and all prior runs. Inspect the `REMOVE` plan with
 === Build reuse
 
 A cocotb model is built into the target's `build_dir` with the tool name
-appended (`<build_dir>/<tool>`, or `<build_dir>/<tool>/coverage` under
-`--cov`) and reused by every later run of the same target and tool. The
+appended (`<build_dir>/<tool>`, or the sibling `<build_dir>/<tool>-coverage`
+under `--cov`; VCS adds one more component named after the target) and
+reused by every later run of the same target and tool. The
 `artifact build=<dir> (rebuild=<bool>)` line of a run names the directory it
 used. With `rebuild` off, the existing directory is handed to cocotb's build
 step, which rebuilds only what the simulator's own build system finds out of
@@ -1410,8 +1412,9 @@ date.
   other's model and an unchanged configuration finds its build again. The
   fingerprint covers the top module, the tool version, the generated filelist
   text, a digest of the sources the Bender filelist names, the rendered build
-  arguments with the target's defines and flags, the wave format, whether
-  coverage is on, and the strings in `cache_key_extra`.
+  arguments, the selected `[targets.<name>]` table, the Verilator
+  public-scope list, the wave format, whether coverage is on, and the strings
+  in `cache_key_extra`.
 * `rebuild = true`, or `--rebuild`, forces a clean build of the selected
   directory through the cocotb runner on every simulator, and removes a
   firmware template's declared outputs before `c_compile` runs so an
@@ -1454,7 +1457,7 @@ CMD  : <python> <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sani
 WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.sh
 WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/env/sim.env
 regression done index=1/2 status=PASS item=dtp_sanity_test seed=<seed> attempt=0 elapsed=0.0s
-(the second leaf, dtp_jtag_idcode_test, repeats the four lines above)
+(the second leaf, dtp_jtag_idcode_test, repeats the five lines above)
 summary    passing=2 total=2 failing=0 skipped=0 elapsed=0.0s
 result     status=PASS tests=2 elapsed=0.0s run_dir=<run> json=<run>/result.json
 ----
@@ -1665,7 +1668,7 @@ When scheduler mode executes `sim` or `regress`, seeds are fresh random
 positive integers and are recorded in leaf and regression results. `--seed` is
 rejected for those scheduler runs. Each cocotb simulation process receives the
 leaf seed as `RANDOM_SEED` and the directory its model was elaborated into as
-`OCAH_SIM_BUILD_DIR` (`<tool>/coverage` under the DUT build directory for a
+`OCAH_SIM_BUILD_DIR` (`<tool>-coverage` under the DUT build directory for a
 `--cov` run), so a test that records which model it simulated reads that
 variable instead of assuming the plain `<tool>` path. Reproduce a leaf as a
 single simulation with the recorded item and seed:
