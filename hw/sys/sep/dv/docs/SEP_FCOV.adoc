@@ -408,13 +408,14 @@ bin needs the KM's own answer. Silence cannot score it.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_dest` |HMAC, KMAC, AES, OTBN, ABR ML-DSA seed -- one cell each, taken from `RETURN_ARG` dest_engine of a successful `CMD_KEY_TRANSFER`
+|`cp_dest` |HMAC, KMAC, AES, OTBN, ABR ML-DSA seed, ABR ML-KEM seed D, ABR ML-KEM seed Z, ABR ML-KEM message -- one cell each for all eight destinations the KM firmware decodes, taken from `RETURN_ARG` dest_engine of a successful `CMD_KEY_TRANSFER`
 |===
 
 The consumer's use of the sideloaded key (the KAT digest) stays on the four
 `sep_km_*_sideload_kat_test` checkers for HMAC/KMAC/AES/OTBN, and on
-`sep_km_abr_seed_sideload_test` for ABR. Those leaves are the MUST-fill
-owners for consume. `sep_km_command_set_rand_test` also writes one
+`sep_km_abr_seed_sideload_test` for the ABR ML-DSA seed and
+`sep_km_abr_mlkem_sideload_test` for the three ML-KEM cells. Those leaves are
+the MUST-fill owners for consume. `sep_km_command_set_rand_test` also writes one
 seed-selected classic dest and a directed ABR dest every seed. The sampler
 scores `RETURN_ARG` dest_engine when `RESP_CMD` echoes `CMD_KEY_TRANSFER`
 with rc 0. A refused dest cannot fill a cell. A raw `WRITE_DATA` fill

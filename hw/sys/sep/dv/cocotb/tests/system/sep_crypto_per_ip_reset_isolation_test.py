@@ -53,7 +53,9 @@ Isolation proof (both directions, then the remaining isolated bits):
   * CHK-HOST-DRAIN  host reads accepted before the reset request resolve OKAY
                     or SLVERR, never DECERR and never a hang, and at least one
                     drains OKAY -- so accepted traffic completed rather than
-                    being dropped.
+                    being dropped. The count still unretired as the isolate
+                    closes is asserted non-zero, so the leg grades traffic the
+                    isolate actually had to drain.
   * CHK-DRAIN-ARRIVAL  a further read issued WHILE isolation is draining also
                     resolves; it may drain or terminate, but it
                     may not hang. That the path is not left wedged is the
@@ -443,6 +445,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # design that never opens a window fails below rather than scoring the
         # pre-request property a second time.
         arrival_read = None
+        host_outstanding = 0
         arrival_iso = None
         for _ in range(1_000):
             host_iso = int(cocotb.top.hmac_host_isolated_probe_o.value)
@@ -459,6 +462,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 )
                 break
             if arrival_read is None and (host_iso == 1 or km_iso == 1):
+                # Beats still unretired as the isolate closes. Without this the
+                # drain check below would pass on traffic that had already
+                # completed before the reset request went out -- the reads and
+                # the SW_RESET_N write share one master, so ordering alone does
+                # not put them in the window. This is the guard whose absence
+                # made the KMAC drain leg vacuous.
+                host_outstanding = sum(1 for e in drain_reads if not e.is_set())
                 arrival_read = axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
                 arrival_iso = (host_iso, km_iso)
                 self.logger.info(
@@ -484,9 +494,18 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "no pre-reset HMAC host read drained successfully, so this run does "
             "not show that accepted traffic completes rather than being dropped"
         )
+        assert host_outstanding, (
+            f"0 of the {len(drain_reads)} pre-request HMAC reads were still "
+            "unretired when the isolate closed, so every one of them had already "
+            "completed and this leg grades no traffic that the isolate had to "
+            "drain"
+        )
         self.logger.info(
-            "CHK-HOST-DRAIN PASS: in-flight HMAC host reads resolved %s "
-            "(no hang, no DECERR); at least one drained OKAY",
+            "CHK-HOST-DRAIN PASS: %d of %d in-flight HMAC host reads were still "
+            "unretired as the isolate closed and all resolved %s (no hang, no "
+            "DECERR); at least one drained OKAY",
+            host_outstanding,
+            len(drain_reads),
             drain_codes,
         )
 
