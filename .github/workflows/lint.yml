@@ -163,6 +163,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -207,6 +211,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -235,6 +243,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -291,6 +303,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -308,6 +324,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -383,6 +403,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -403,6 +427,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -428,6 +456,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -534,6 +566,11 @@ jobs:
               ;;
           esac
           echo "run=$run" >> "$GITHUB_OUTPUT"
+      - name: Checkout submodules
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         if: steps.scope.outputs.run == 'true'
         uses: astral-sh/setup-uv@v6
@@ -562,6 +599,10 @@ jobs:
           # check; match diff-class's fetch-depth here so the bypass has
           # real history to work with.
           fetch-depth: 0
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
