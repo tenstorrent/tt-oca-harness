@@ -268,19 +268,10 @@ module dtp_xtrig_fcov (
   // ------------------------------------------------------------------
   // Commercial-simulator covergroups mirroring the cover-property bins.
   // ------------------------------------------------------------------
-  function automatic logic [4:0] low_index16(logic [15:0] value);
-    for (int i = 0; i < 16; i++) begin
-      if (value[i]) return 5'(i);
-    end
-    return 5'd31;
-  endfunction
-
-  function automatic logic [4:0] low_index10(logic [9:0] value);
-    for (int i = 0; i < 10; i++) begin
-      if (value[i]) return 5'(i);
-    end
-    return 5'd31;
-  endfunction
+  // One port index space for both CTM index coverpoints: CTP ports occupy
+  // 0-15 and internal CTs 16-25, one bin per port as in the c_ctm_*_index_*
+  // cover properties.
+  localparam int unsigned IntPortBase = 16;
 
   covergroup cg_ctp with function sample (
       logic mode_p2p, logic inverted, logic [1:0] stretch_class
@@ -294,13 +285,22 @@ module dtp_xtrig_fcov (
   endgroup
 
   covergroup cg_ctm with function sample (
-      logic src_is_ctp, logic [4:0] src_idx, logic dst_is_ctp, logic [4:0] dst_idx
+      logic src_event,
+      logic src_is_ctp,
+      logic [4:0] src_idx,
+      logic dst_event,
+      logic dst_is_ctp,
+      logic [4:0] dst_idx
   );
     option.per_instance = 1;
-    cp_source_type: coverpoint src_is_ctp;
-    cp_dest_type: coverpoint dst_is_ctp;
-    cp_source_index: coverpoint src_idx {bins port[] = {[0 : 15]};}
-    cp_dest_index: coverpoint dst_idx {bins port[] = {[0 : 15]};}
+    cp_source_type: coverpoint src_is_ctp iff (src_event);
+    cp_dest_type: coverpoint dst_is_ctp iff (dst_event);
+    cp_source_index: coverpoint src_idx iff (src_event) {
+      bins ctp[] = {[0 : 15]}; bins internal[] = {[IntPortBase : IntPortBase + 9]};
+    }
+    cp_dest_index: coverpoint dst_idx iff (dst_event) {
+      bins ctp[] = {[0 : 15]}; bins internal[] = {[IntPortBase : IntPortBase + 9]};
+    }
   endgroup
 
   cg_ctp u_cg_ctp = new();
@@ -314,10 +314,22 @@ module dtp_xtrig_fcov (
       u_cg_ctp.sample(1'b0, 1'b0,
                       (stretch_val == 16'd0) ? 2'd0 : ((stretch_val >= 16'd15) ? 2'd2 : 2'd1));
     end
-    if (any_source_rise && any_dest_active) begin
-      u_cg_ctm.sample(ctm_source_ctp_e, ctm_source_ctp_e ? low_index16(ctp_src_rise) : low_index10(
-                      int_src_rise), ctm_dest_ctp_e, ctm_dest_ctp_e ? low_index16(ctp_dst_rise
-                      ) : low_index10(int_dst_rise));
+    // A destination rises one or more clocks after its source: the matrix
+    // registers its output and the CTP core adds synchroniser and handshake
+    // stages, so no single edge carries both ends of a route.
+    if (!in_reset) begin
+      for (int i = 0; i < 16; i++) begin
+        if (ctp_src_rise[i]) u_cg_ctm.sample(1'b1, 1'b1, 5'(i), 1'b0, 1'b0, 5'd0);
+        if (ctp_dst_rise[i]) u_cg_ctm.sample(1'b0, 1'b0, 5'd0, 1'b1, 1'b1, 5'(i));
+      end
+      for (int i = 0; i < 10; i++) begin
+        if (int_src_rise[i]) begin
+          u_cg_ctm.sample(1'b1, 1'b0, 5'(IntPortBase + i), 1'b0, 1'b0, 5'd0);
+        end
+        if (int_dst_rise[i]) begin
+          u_cg_ctm.sample(1'b0, 1'b0, 5'd0, 1'b1, 1'b0, 5'(IntPortBase + i));
+        end
+      end
     end
   end
 `endif

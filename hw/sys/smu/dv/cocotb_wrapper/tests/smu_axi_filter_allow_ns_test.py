@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""smu_axi_filter_allow_ns_test — SMU Tier A allow_ns (SEP=0 J2A + s_axi)."""
+"""smu_axi_filter_allow_ns_test — SMU Tier A allow_ns (SEP=1 J2A + s_axi)."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class smu_axi_filter_allow_ns_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_axi_filter_allow_ns_test TierA allow_ns SEP=0 J2A")
+        self.logger.info("DUT_TAG=WRAPPER smu_axi_filter_allow_ns_test TierA allow_ns SEP=1 J2A")
         seq = smu_axi_filter_allow_ns_test_seq(self)
         await seq.run()
         assert seq.secure_ok and seq.ns_block_ok and seq.dual_ok and seq.clear_ok, (

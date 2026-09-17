@@ -13,14 +13,18 @@ from seq_lib.dtp_dbg_disable_jtag2axi_matrix_test_seq import (
 @pyuvm.test()
 class dtp_jtag2axi_dbg_disable_matrix_test(dtp_base_test):
     # Shared AXI checker: passive bus monitors + reference model compare every
-    # observed transaction; the required evidence IDs and per-stream minimum
-    # compared-transaction counts below make a silent no-op run fail at
-    # finalization.
+    # observed transaction; every gated attempt must leave the request
+    # counters flat from before its TDR write and put no transaction inside
+    # the blocked window held across the release; the required evidence IDs
+    # and per-stream minimum compared-transaction counts below make a silent
+    # no-op run fail at finalization.
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
         "CHK-AXI-RDATA",
         "CHK-AXI-STRB",
+        "CHK-AXI-NOACT",
+        "CHK-AXI-BLOCKED",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
     )

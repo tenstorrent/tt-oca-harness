@@ -81,6 +81,14 @@ timeout_sec = 1800
 tags = ["clock", "pyuvm", "zeroer_cg", "functional"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "smc_clock_domain_connectivity_test"
+module = "smc_clock_domain_connectivity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "clock", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "clock"
 tests = [

@@ -38,7 +38,7 @@ one parameterized sequence.
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
 - `dtp_sim_cfg.toml` — the DUT's simulation defaults, run modes, Bender targets, and tool knobs.
-- `formal/` — formal properties on the TAP controller (`props/`), the open-path SymbiYosys task file and reset environment (`fpv/sby/`), and the generated filelist and work directories (`build/`); see `hw/common/dv/docs/formal-property-style.adoc`.
+- `formal/` — formal property modules and bind files, one per described block of the plan's nine targets (`props/`), the open-path SymbiYosys task files and environment modules of the `dtp`, `jtag2axi` and `cross_trigger_network` tops (`fpv/sby/`), and the generated filelist and work directories (`build/`); see `hw/common/dv/docs/formal-property-style.adoc`.
 
 ## BFM Policy
 
@@ -53,7 +53,7 @@ protocol BFMs behind a stable API:
 | AXI4-Lite OTP managers (`smc_otp`, `sep_otp`) | **`ocah_axi_vip`** (`OcahAxiLiteSlaveAgent`) | Standard AXI-Lite; memory model responds. |
 | AXI4-Lite CSR subordinate (`axil_xtrig`) | **`ocah_axi_vip`** (`ocah_axi_master_agent`, SV-UVM / `OcahAxiLiteMasterAgent`, cocotb) | Both flows drive the CSR port through the shared VIP master; the channel-skew, RREADY-hold, and partial-strobe operations live on its sequence APIs. |
 | Boundary scan / BSR loopback | DUT-local `DtpScanModel` | Implemented for this TB's compact identity loopback; not a generic boundary-cell model. |
-| iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and looped instruments; topology-specific. |
+| iJTAG (IEEE 1687 SIB networks) | DUT-local `DtpIjtagSibModel` | Implemented for DTP's three SIBs, lifecycle gates, and the bench's 4/5/6-bit instrument stubs; topology-specific. |
 | STAP / 3DCR | DUT-local `DtpStap3dcrModel` over **`ocah_jtag_vip`** slave devices | Composed TAP_3DCR chain model (PTAP 3DCR, per-STAP SIB/3DCR, network-wide IR scans); the STAP host ports loop back by default, and the STAP-selection scenarios splice a shared `ocah_jtag_vip` reactive TAP behind every port (see "Downstream STAP TAPs"). |
 | CTP / CTM | DUT-local `DtpXtrigBfm` / `DtpCtmRefModel` | Implemented for DTP signal counts, CSR layout, and OCAH routing policy; promote only after parameterization and independent reuse. |
 
@@ -115,23 +115,27 @@ TAP controller's effective reset. A new rule with two-state-safe operands goes o
 ## Formal
 
 `formal/` is the reference implementation of the property style in
-`hw/common/dv/docs/formal-property-style.adoc`: a bound property module on the
-IEEE 1149.1 TAP controller in the boolean subset that the open-source frontend
-and the licensed backends both elaborate, with `bmc`, `cover` and `prove` tasks
-run against `dtp` as the formal top. `dtp_formal_cfg.toml` and
-`testlists/formal.toml` launch it through the runner; the plan section is
-"Formal Verification Plan" in `docs/DTP_VPLAN.adoc`, which scopes nine
-targets over the `dtp`, `jtag2axi` and `cross_trigger_network` formal tops
-and names the item, depth and path of each. `testlists/formal.toml` lists the
-items in the `smoke` and `fpv` groups.
+`hw/common/dv/docs/formal-property-style.adoc`: one bound property module per
+described block, in the boolean subset that the open-source frontend and the
+licensed backends both elaborate, each with a `bmc`, `cover` and `prove` task
+triple. Six blocks run on the `dtp` top (the TAP controller, the instruction
+register, the reset hierarchy, the STAP and SIB gating, the debug-control
+register), the bridge control on `jtag2axi`, and the clock stop, the
+cross-trigger transport and the CSR contract on `cross_trigger_network`.
+`dtp_formal_cfg.toml` and `testlists/formal.toml` launch them through the
+runner; the plan section is "Formal Verification Plan" in
+`docs/DTP_VPLAN.adoc`, which names each target's rows, labels, item, depth and
+path and records the observations the proofs settle. `testlists/formal.toml`
+lists `dtp_tap_fpv` in the `smoke` group and every item in `fpv`.
 
 ```bash
-python3 tools/dv/run_dv.py --dut dtp --mode formal            # flist, then sby bmc/cover/prove
-python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run  # the rendered command
+python3 tools/dv/run_dv.py --dut dtp --mode formal              # the smoke group: flist, then the TAP triple
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items fpv  # every item
+python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run    # the rendered command
 ```
 
 That chapter also carries the filelist generation and the `sby` invocation by
-hand. The item needs `sby`, Yosys with a yosys-slang build that carries the
+hand. The items need `sby`, Yosys with a yosys-slang build that carries the
 concurrent-assertion lowering, and `yices` on one `PATH`; a site whose tools
 live in a container or that supplies a licensed backend selects them through
 the site layer, as the Formal verification chapter of `tools/dv/doc/run-dv.adoc`
@@ -152,9 +156,9 @@ python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test
 # Basic JTAG: all Smoke and Basic JTAG VPLAN scenarios
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag
 
-# JTAG2AXI SMC fabric write / read
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_wr_test
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_rd_test
+# JTAG2AXI SMC fabric write / write-read
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_test
+python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag2axi_smc_axi_single_write_read_test
 
 # Every JTAG2AXI test runs the shared ocah_axi_vip scoreboard (passive bus
 # monitors + reference model) with per-test required evidence IDs and
@@ -187,6 +191,19 @@ DTP_JTAG_FAMILY_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
 # fail every route-comparing scenario
 DTP_XTRIG_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_ctm_p2p_cla_to_ctp_test
+
+# JTAG2AXI geometry gate negative validation: every JTAG2AXI scenario opens a
+# pass by comparing the three *_JTAG2AXI_CAPS TDRs with the DV geometry table
+# (CHK-J2A-GEOMETRY); a corrupted expected address size must fail the run
+DTP_J2A_GEOMETRY_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test
+
+# JTAG2AXI with-status series negative validation: the six
+# *_series_write*_incr_with_error tests arm one SLVERR/DECERR beat and judge
+# the WITH_ERROR_STATUS bit on every shift (CHK-J2A-STATUS-BIT); leaving the
+# fault unarmed while the expectation stands must fail the fault beat's checks
+DTP_J2A_STATUS_BIT_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
+  --items dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test
 
 # SV-UVM TAP checker negative validation (VCS): wrong armed IDCODE must fail
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test \
@@ -367,6 +384,19 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm \
 python3 tools/dv/run_dv.py --dut dtp --framework uvm \
   --items dtp_jtag2axi_smc_axi_single_write_read_test \
   --plusarg +DTP_J2A_REF_MODEL_NEGATIVE
+
+# JTAG2AXI geometry gate negative validation: a corrupted expected address
+# size in the per-pass CAPS comparison (CHK-J2A-GEOMETRY) must fail
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_otp_axi_single_write_read_test \
+  --plusarg +DTP_J2A_GEOMETRY_NEGATIVE
+
+# JTAG2AXI with-status series negative validation: the fault beat left
+# unarmed while its expectation stands (CHK-J2A-STATUS-BIT) must fail the
+# fault beat's checks
+python3 tools/dv/run_dv.py --dut dtp --framework uvm \
+  --items dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test \
+  --plusarg +DTP_J2A_STATUS_BIT_NEGATIVE
 ```
 
 PASS/FAIL is classified by the global parser registry in

@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# OCA-classic non-secure boot image for the SEP boot ROM.
+#
+# Paths are relative to hw/sys/sep/bootrom/prod (the packer's cwd -- the Makefile
+# recipe runs under `make -C`) and are used verbatim: src/oca/payload.py opens
+# `path` as given, with no $OCH_ROOT/$ROOT expansion.
+#
+# timestamp is pinned so repeated packs are byte-identical; an absent timestamp
+# defaults to "now", which would make every build produce a different image and
+# defeat the DV `outputs` staleness check.
+manifest_format: oca-classic
+manifest_identifier: "OCAHSEP"
+description: "OCAH SEP boot ROM non-secure test image (BL1 = bl1_pass_test)"
+secure_boot: 0
+timestamp: 1764633600
+manifest_content_version:
+  major: 1
+  minor: 0
+  patch: 0
+payload_images:
+  # type is 16 ASCII bytes: bytes[15:8] vendor string (space padded),
+  # bytes[7:0] the spec's recommended label (boot-manifest.adoc "Payload TOC entry").
+  - type: "OCAHSEP BLSTAGE1"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+    # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
+    # LMA of its .rodata/.data straight after, which _start copies down to DCCM --
+    # so it only runs correctly when loaded there. The ROM honours whichever region
+    # this names (SEP-ROM-MAN-060 permits SRAM or ICCM) and copies via the DMA,
+    # which is mandatory for an ICCM destination: the LSU cannot store to ICCM.
+    load_addr: 0xC0000000

@@ -5,14 +5,17 @@
 The DTP instantiates one JTAG Interface Unit as its primary debug access point
 (`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction, TAP-state and
 JTAG2AXI tables below are transcriptions of that unit's and its PTAP's
-documentation; each names the document and section it copies.
+documentation; each names the document and section it copies. The three
+JTAG2AXI bridge geometries are the values each bridge publishes in its
+`*_JTAG2AXI_CAPS` TDR, compared with the DUT every pass by the geometry gate,
+and every TDR field width derives from them.
 """
 
 from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from enum import IntEnum
+from enum import Enum, IntEnum
 
 # Primary TAP instruction register width: "6-bit instruction encodings"
 # (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc` and
@@ -283,113 +286,167 @@ class DtpJtag2AxiStatus(IntEnum):
     BUSY_OR_FULL = 3
 
 
+class DtpJtag2AxiFsmState(IntEnum):
+    """Bridge AXI FSM state as the TB interface samples it (``jtag2axi.sv`` ``axi_state_e``)."""
+
+    IDLE = 0
+    SEND_ADDR_W = 1
+    SEND_DATA_W = 2
+    WAIT_BRESP = 3
+    SEND_ADDR_R = 4
+    WAIT_RDATA = 5
+    UPDATE_STATUS = 6
+
+
+class DtpScanCtrlExpect(Enum):
+    """What a window over one host chain's scan controls shows across a DR scan.
+
+    ``SELECTED``: the chain's select is high and the TAP's capture, shift, and
+    update strobes pulse; ``UNSELECTED``: select stays low while the strobes
+    pulse (the strobes are the TAP's and only select is qualified by the
+    instruction); ``GATED``: the chain's host holds select and every strobe low.
+    """
+
+    SELECTED = "selected"
+    UNSELECTED = "unselected"
+    GATED = "gated"
+
+
+# Reset-abort scenario evidence: the bridge observed mid-flight before the
+# reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
+# escaped write, and a recovered status.
+ABORT_MIDFLIGHT_CHECK_ID = "CHK-J2A-ABORT-MIDFLIGHT"
+ABORT_FSM_CHECK_ID = "CHK-J2A-ABORT-FSM"
+CDC_CLEAR_CHECK_ID = "CHK-J2A-CDC-CLEAR"
+ABORT_ESCAPE_CHECK_ID = "CHK-J2A-ABORT-ESCAPE"
+ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
+
+
+def size_field_bits(data_width: int) -> int:
+    """Width of the JTAG2AXI ``size`` field for a bridge data width.
+
+    The smallest width that encodes every AxSIZE up to a full beat, and at
+    least one bit; the ``*_AXI_SINGLE_OP`` table of
+    ``hw/ip/jtag/jtag_ptap/doc/architecture.adoc`` names this width ``$bits(size)``.
+    """
+    data_size = (data_width // 8).bit_length() - 1
+    return max(1, data_size.bit_length())
+
+
 @dataclass(frozen=True)
 class DtpJtag2AxiTargetCfg:
-    """Geometry and TDR register names for one DTP JTAG2AXI bridge target."""
+    """Geometry and TDR register names for one DTP JTAG2AXI bridge target.
+
+    ``bus_type`` (0 AXI4, 1 AXI4-Lite), ``addr_width``, and ``data_width`` are
+    the values the bridge publishes in its ``*_JTAG2AXI_CAPS`` TDR
+    (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, "*_JTAG2AXI_CAPS"); the
+    geometry gate compares them with the DUT every pass. Every other width
+    derives from them by the ``*_AXI_SINGLE_OP`` and ``*_AXI_SERIES_CTRL``
+    tables in the same document.
+    """
 
     name: str
+    bus_type: int
+    addr_width: int
+    data_width: int
+    caps_reg: str
     single_op_reg: str
     series_ctrl_reg: str
     series_data_incr_instr: DtpJtagInstr
     series_data_no_incr_instr: DtpJtagInstr
     series_data_with_status_instr: DtpJtagInstr
-    addr_width: int
-    data_width: int
-    size_bits: int
-    wstrb_bits: int
-    default_size: int
-    beat_bytes: int
     memory_attr: str
     activity_prefix: str
     dbg_disable_bit: str
 
     @property
+    def data_size(self) -> int:
+        """CAPS ``data_size``: the beat width in bytes as a power of two."""
+        return (self.data_width // 8).bit_length() - 1
+
+    @property
+    def beat_bytes(self) -> int:
+        return self.data_width // 8
+
+    @property
+    def default_size(self) -> int:
+        """AxSIZE of a full-width beat."""
+        return self.data_size
+
+    @property
+    def size_bits(self) -> int:
+        return size_field_bits(self.data_width)
+
+    @property
+    def wstrb_bits(self) -> int:
+        """One strobe per beat byte (``2**data_size``)."""
+        return 1 << self.data_size
+
+    @property
     def single_op_len(self) -> int:
+        """``op | size | wstrb | data | address``, LSB first."""
         return 2 + self.size_bits + self.wstrb_bits + self.data_width + self.addr_width
 
     @property
     def series_ctrl_len(self) -> int:
+        """``op | size | pl_depth | address | reset``, LSB first."""
         return 2 + self.size_bits + 2 + self.addr_width + 1
 
 
-# SMC fabric debug AXI geometry (dtp_pkg: ADDR=56, DATA=64).
-SMC_DBG_ADDR_WIDTH = 56
-SMC_DBG_DATA_WIDTH = 64
-SMC_DBG_SIZE_BITS = 2  # SCAN_CHAIN_SIZE_FIELD_WIDTH for 64-bit data
-SMC_DBG_WSTRB_BITS = 8  # DATA_WIDTH/8
-SMC_DBG_AXSIZE_8B = 3  # AXI awsize/arsize for a full 8-byte beat
-
-# SINGLE_OP DR layout (LSB-first): OP[2] | SIZE | WSTRB | DATA | ADDR, the field
-# order of the `*_AXI_SINGLE_OP` table (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`).
-_OP_OFF = 0
-_SIZE_OFF = _OP_OFF + 2
-_WSTRB_OFF = _SIZE_OFF + SMC_DBG_SIZE_BITS
-_DATA_OFF = _WSTRB_OFF + SMC_DBG_WSTRB_BITS
-_ADDR_OFF = _DATA_OFF + SMC_DBG_DATA_WIDTH
-SMC_DBG_SINGLE_OP_LEN = _ADDR_OFF + SMC_DBG_ADDR_WIDTH  # 132
-
-# SERIES_CTRL DR layout (LSB-first): OP[2] | SIZE | PL_DEPTH[2] | ADDR | RESET, the
-# field order of the `*_AXI_SERIES_CTRL` table in the same document.
-_SERIES_OP_OFF = 0
-_SERIES_SIZE_OFF = _SERIES_OP_OFF + 2
-_SERIES_PL_DEPTH_OFF = _SERIES_SIZE_OFF + SMC_DBG_SIZE_BITS
-_SERIES_ADDR_OFF = _SERIES_PL_DEPTH_OFF + 2
-_SERIES_RESET_OFF = _SERIES_ADDR_OFF + SMC_DBG_ADDR_WIDTH
-SMC_DBG_SERIES_CTRL_LEN = _SERIES_RESET_OFF + 1  # 63
-
+# One row per bridge. The TDR names are the interface-unit instruction table's
+# (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`).
 JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
     "smc_axi": DtpJtag2AxiTargetCfg(
         name="smc_axi",
+        bus_type=0,
+        addr_width=56,
+        data_width=64,
+        caps_reg="SMC_JTAG2AXI_CAPS",
         single_op_reg="SMC_AXI_SINGLE_OP",
         series_ctrl_reg="SMC_AXI_SERIES_CTRL",
         series_data_incr_instr=DtpJtagInstr.SMC_AXI_SERIES_DATA_INCR,
         series_data_no_incr_instr=DtpJtagInstr.SMC_AXI_SERIES_DATA_NO_INCR,
         series_data_with_status_instr=DtpJtagInstr.SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS,
-        addr_width=SMC_DBG_ADDR_WIDTH,
-        data_width=SMC_DBG_DATA_WIDTH,
-        size_bits=SMC_DBG_SIZE_BITS,
-        wstrb_bits=SMC_DBG_WSTRB_BITS,
-        default_size=SMC_DBG_AXSIZE_8B,
-        beat_bytes=8,
         memory_attr="axi_ram",
         activity_prefix="smc_axi",
         dbg_disable_bit="smc_jtag2axi",
     ),
     "smc_otp": DtpJtag2AxiTargetCfg(
         name="smc_otp",
+        bus_type=1,
+        addr_width=32,
+        data_width=32,
+        caps_reg="SMC_OTP_JTAG2AXI_CAPS",
         single_op_reg="SMC_OTP_AXI_SINGLE_OP",
         series_ctrl_reg="SMC_OTP_AXI_SERIES_CTRL",
         series_data_incr_instr=DtpJtagInstr.SMC_OTP_AXI_SERIES_DATA_INCR,
         series_data_no_incr_instr=DtpJtagInstr.SMC_OTP_AXI_SERIES_DATA_NO_INCR,
         series_data_with_status_instr=DtpJtagInstr.SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS,
-        addr_width=32,
-        data_width=32,
-        size_bits=2,
-        wstrb_bits=4,
-        default_size=2,
-        beat_bytes=4,
         memory_attr="smc_otp_axil_ram",
         activity_prefix="smc_otp_axil",
         dbg_disable_bit="smc_otp_jtag2axi",
     ),
     "sep_otp": DtpJtag2AxiTargetCfg(
         name="sep_otp",
+        bus_type=1,
+        addr_width=32,
+        data_width=32,
+        caps_reg="SEP_OTP_JTAG2AXI_CAPS",
         single_op_reg="SEP_OTP_AXI_SINGLE_OP",
         series_ctrl_reg="SEP_OTP_AXI_SERIES_CTRL",
         series_data_incr_instr=DtpJtagInstr.SEP_OTP_AXI_SERIES_DATA_INCR,
         series_data_no_incr_instr=DtpJtagInstr.SEP_OTP_AXI_SERIES_DATA_NO_INCR,
         series_data_with_status_instr=DtpJtagInstr.SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS,
-        addr_width=32,
-        data_width=32,
-        size_bits=2,
-        wstrb_bits=4,
-        default_size=2,
-        beat_bytes=4,
         memory_attr="sep_otp_axil_ram",
         activity_prefix="sep_otp_axil",
         dbg_disable_bit="sep_otp_jtag2axi",
     ),
 }
+
+# SMC fabric bridge shorthands of the SMC-only helpers.
+SMC_DBG_AXSIZE_8B = JTAG2AXI_TARGETS["smc_axi"].default_size
+SMC_DBG_SINGLE_OP_LEN = JTAG2AXI_TARGETS["smc_axi"].single_op_len
+SMC_DBG_SERIES_CTRL_LEN = JTAG2AXI_TARGETS["smc_axi"].series_ctrl_len
 
 
 def get_jtag2axi_target(target: str | DtpJtag2AxiTargetCfg) -> DtpJtag2AxiTargetCfg:
@@ -419,7 +476,11 @@ def pack_single_op(
     *,
     target: str | DtpJtag2AxiTargetCfg = "smc_axi",
 ) -> int:
-    """Pack a target-specific *_AXI_SINGLE_OP DR value (issue direction)."""
+    """Pack a target-specific *_AXI_SINGLE_OP DR value (issue direction).
+
+    Field order is that of the `*_AXI_SINGLE_OP` table: OP in the low bits,
+    then SIZE, WSTRB, DATA, and ADDR.
+    """
     cfg = get_jtag2axi_target(target)
     size_off = 2
     wstrb_off = size_off + cfg.size_bits

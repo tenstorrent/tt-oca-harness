@@ -24,7 +24,8 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiOp
-from sep_reg_meta import sym
+from env.sep_spec_tables import agg_from_pic
+from sep_reg_meta import KM_MAILBOX_SEP, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -41,19 +42,23 @@ KM_MBOX_IRQ_STATUS = sym("KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_ENABLE = sym("KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_OFFSET")
 KM_MBOX_CTRL = sym("KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET")
 
-# STATUS bit positions
-KM_STATUS_INBOUND_EMPTY = 0
-KM_STATUS_INBOUND_FULL = 1
-KM_STATUS_OUTBOUND_EMPTY = 2
-KM_STATUS_OUTBOUND_FULL = 3
-KM_STATUS_INBOUND_DEPTH_LSB = 4
-KM_STATUS_OUTBOUND_DEPTH_LSB = 12
-KM_STATUS_INBOUND_OVERFLOW = 20
-KM_STATUS_OUTBOUND_OVERFLOW = 21
-KM_STATUS_INBOUND_UNDERFLOW = 22
-KM_STATUS_OUTBOUND_UNDERFLOW = 23
-KM_STATUS_INBOUND_SEPARATOR = 24
-KM_STATUS_OUTBOUND_SEPARATOR = 25
+# SEP_STATUS bit positions, from the generated export like the offsets above.
+# km_mailbox_sep.rdl declares SEP_STATUS with the `status_reg` typedef, so the
+# emitted name is KM_MAILBOX_SEP_STATUS_REG_*; sep_reg_meta._TYPE_ALIAS bridges
+# that. A field that moves in the RDL moves these with it.
+_KM_MBOX = KM_MAILBOX_SEP.field_lsb
+KM_STATUS_INBOUND_EMPTY = _KM_MBOX("SEP_STATUS", "inbound_empty")
+KM_STATUS_INBOUND_FULL = _KM_MBOX("SEP_STATUS", "inbound_full")
+KM_STATUS_OUTBOUND_EMPTY = _KM_MBOX("SEP_STATUS", "outbound_empty")
+KM_STATUS_OUTBOUND_FULL = _KM_MBOX("SEP_STATUS", "outbound_full")
+KM_STATUS_INBOUND_DEPTH_LSB = _KM_MBOX("SEP_STATUS", "inbound_depth")
+KM_STATUS_OUTBOUND_DEPTH_LSB = _KM_MBOX("SEP_STATUS", "outbound_depth")
+KM_STATUS_INBOUND_OVERFLOW = _KM_MBOX("SEP_STATUS", "inbound_overflow")
+KM_STATUS_OUTBOUND_OVERFLOW = _KM_MBOX("SEP_STATUS", "outbound_overflow")
+KM_STATUS_INBOUND_UNDERFLOW = _KM_MBOX("SEP_STATUS", "inbound_underflow")
+KM_STATUS_OUTBOUND_UNDERFLOW = _KM_MBOX("SEP_STATUS", "outbound_underflow")
+KM_STATUS_INBOUND_SEPARATOR = _KM_MBOX("SEP_STATUS", "inbound_separator")
+KM_STATUS_OUTBOUND_SEPARATOR = _KM_MBOX("SEP_STATUS", "outbound_separator")
 
 # SEP_IRQ_STATUS bit positions.
 KM_IRQ_OUTBOUND_DATA_AVAIL = 0
@@ -67,8 +72,7 @@ KM_IRQ_EN_INBOUND_OVERFLOW = 2
 KM_IRQ_EN_OUTBOUND_UNDERFLOW = 3
 KM_IRQ_EN_FLUSHED_BY_KM = 4
 
-# sep.sv assembles km_mbox_irq onto sep_internal_interrupts[14].
-KM_MBOX_IRQ_AGG = 14
+KM_MBOX_IRQ_AGG = agg_from_pic("KM mailbox IRQ")
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
@@ -124,7 +128,9 @@ KM_VALID_CMD_IDS = (
 # stand-in for "a handle the key registry does not hold".
 KM_KEY_HANDLE_NULL = 0x00
 
-# Destination bitmask (rom_defs.h): bits [3:0] classic engines, [7:4] ABR.
+# Destination bitmask (`rom_defs.h` rom_km_dest_bits_t /
+# `hw/ip/key_manager/doc/firmware.adoc` DEST_VALID): bit0 HMAC, bit1 KMAC,
+# bit2 AES, bit3 OTBN, bit4 ABR ML-DSA seed, bits 5-7 ABR ML-KEM.
 KM_DEST_HMAC = 0x01
 KM_DEST_KMAC = 0x02
 KM_DEST_AES = 0x04

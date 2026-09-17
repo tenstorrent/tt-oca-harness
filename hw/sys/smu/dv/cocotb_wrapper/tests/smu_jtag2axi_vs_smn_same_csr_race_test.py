@@ -19,7 +19,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_jtag2axi_vs_smn_same_csr_race_test TierA J2A||SMN race SEP=0"
+            "DUT_TAG=WRAPPER smu_jtag2axi_vs_smn_same_csr_race_test TierA J2A||SMN race"
         )
         seq = smu_jtag2axi_vs_smn_same_csr_race_test_seq(self)
         await seq.run()

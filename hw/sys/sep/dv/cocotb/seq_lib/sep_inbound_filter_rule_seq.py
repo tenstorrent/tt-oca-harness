@@ -16,9 +16,10 @@ sep_debug skip gate). The filter CSR layout is defined in sep_fabric_csr_bank_se
 SepInboundFilterMatrixCfg is the single source of truth for the walked cells
 (entry x window x R/W-allow x src-id class).
 
-FILTER_CONFIG.src_id=0 is match-all (traffic_filter.sv). A non-zero src_id
-matches only the external master's ar/awuser[3:0]. allow_ns=1 matches the
-master's NONSECURE prot.
+FILTER_CONFIG.src_id=0 is match-all (`filter_ctrl.rdl` src_id wildcard;
+`hw/ip/axi_filter/doc/index.adoc`). A non-zero src_id matches only the
+external master's ar/awuser[3:0]. allow_ns=1 matches the master's
+NONSECURE prot.
 
 FILTER_CONFIG.allow_burst (bit 24) is walked on both filter instances
 (AR and AW). A 2-beat INCR (AxLEN=1) makes traffic_filter.sv pass_burst
@@ -29,9 +30,8 @@ SepInboundFilterWidenCfg covers the widen itself: with allow_burst=1 and
 START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
 whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
-is a write-once-set bit; sep_system_csr.sv routes every further write of a
-locked entry to an AXI-Lite error slave, so the frozen allow_burst keeps
-governing the granule.
+is write-once. A further write of a locked entry completes SLVERR, so the
+frozen allow_burst keeps governing the granule.
 """
 
 from __future__ import annotations
@@ -52,6 +52,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     F_SRC_ID_LSB,
     F_WRITE_ALLOWED,
     FILTER_CONFIG,
+    FILTER_END_ADDR,
+    FILTER_START_ADDR,
     FILTER_STRIDE,
     INFILT_BASE,
     OUTFILT_BASE,
@@ -59,9 +61,6 @@ from seq_lib.sep_fabric_csr_bank_seq import (
 )
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 
-# Inbound FILTER_* per-entry register offsets (64-bit START/END as lo/hi 32-bit words).
-FILTER_START_ADDR = 0x08
-FILTER_END_ADDR = 0x10
 # Same-page allow_burst=1 rewrites START down and END up to the 4 KB page
 # (hw/ip/axi_filter/doc/index.adoc). The allow_burst=0 8-byte
 # readback model is sep_reg_bit_bash_seq.inbound_addr_expected().
@@ -384,8 +383,8 @@ class SepInboundFilter(SepAxiRegDriver):
     async def write_tolerant(self, addr: int, data: int) -> int:
         """Write tolerating a non-OKAY response; return the AXI resp_code.
 
-        A locked entry's further writes are demuxed to an AXI-Lite error slave
-        (sep_system_csr.sv), so the proof is the resp code plus the read-back.
+        A locked entry's further writes complete SLVERR, so the proof is
+        the resp code plus the read-back.
         """
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",

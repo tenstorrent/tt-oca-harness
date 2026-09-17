@@ -330,7 +330,7 @@ passive tap beside the console, and a mid-test baud change.
 | Errors and evidence | `OcahUartChecker` (`CHK-UART-*`); `finalize()` fails on a failed check, zero checks, or a missing required ID; every harness selftest carries an in-band negative probe, and `OCAH_UART_SELFTEST_NEGATIVE` forces a failing run | Register-level checks of a DUT's UART (line status, FIFO levels) stay in the DUT tree |
 | Protocol checking | The sampler's classification and the checker's frame rules; X on a data bit is a framing error on four-state simulators | SVA collateral: none ships |
 | Coverage | Rule coverage through the `CHK-UART-*` identifiers of the harness selftests | Covergroups: no SV coverage model ships |
-| Simulators | Verilator (the `dv/` harness and the SMC bench) | VCS and Xcelium runs of the cocotb flow |
+| Simulators | Verilator, VCS, and Xcelium (the `dv/` harness); Verilator (the SMC bench) | — |
 | SV collateral | None: no interface, SVA, coverage model, or SV-UVM realization ships; the package is cocotb only | — |
 
 ## Validation

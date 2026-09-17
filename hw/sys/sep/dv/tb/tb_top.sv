@@ -52,6 +52,7 @@
 // Boot/reset invariants:
 //   * ext_boot_seq_done_i = 1   (DUT port, driven by cocotb)
 //   * +skip_fuse_sense          (RTL plusarg, set by tests that bypass real sense)
+//   * smc_fuse_sense_done_i     (TB-modelled; +sep_smc_fuse_sense_hold holds it low)
 //   * mpc_reset_run_req         (0 = hold the CPU off [no_cpu]; 1 = run [cpu])
 //
 // The CPU LSU req/resp struct (deps/axi AXI_TYPEDEF_ALL) is bridged to flat
@@ -146,6 +147,8 @@ module sep_uvm_top
             (jtag_kmac_rst_hold_i === 1'b1);
         jtag_sep_reset_ctrl_drive.ovrd.trng_jtag_rst_n_ovrd =
             (jtag_trng_rst_hold_i === 1'b1);
+        jtag_sep_reset_ctrl_drive.ovrd.abr_jtag_rst_n_ovrd =
+            (jtag_abr_rst_hold_i === 1'b1);
     end
 
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
@@ -251,11 +254,13 @@ module sep_uvm_top
     // otbn_rnd.sv:233 UrndNoReseedOnReset_A cannot pass on this instance. It arms
     // only while OTBN is in reset -- disable iff (rst_ni !== '0) -- and its guard
     // reads CURRENT rst_ni while the property body reads SAMPLED rst_ni. SEP
-    // asserts OTBN's reset ON a clk_i edge, because otbn_gated_rst_n is a flop
-    // output of hw/sys/sep/rtl/sep_crypto_axi_isolate_unit.sv, so at that edge the
-    // guard sees reset active and arms an attempt whose body still sees the
-    // pre-reset value and therefore demands seed_en_q be high. It fires on every
-    // software reset whatever the DUT does.
+    // asserts OTBN's reset ON a clk_i edge: the reset is a posedge clk_i flop
+    // output (sep_isolate_rst_seq.sv gated_rst_n_q), routed through the JTAG
+    // override mux u_otbn_rst_ovrd_mux in sep_reset_ctrl.sv to
+    // gated_rst_ni.otbn at sep_crypto.sv. At that edge the guard sees reset
+    // active and arms an attempt whose body still sees the pre-reset value and
+    // therefore demands seed_en_q be high. It fires on every software reset
+    // whatever the DUT does.
     //
     // This holds the property off for the WHOLE RUN, not just that edge, so no
     // in-reset cycle is checked in any test. The flop at otbn_rnd.sv:205-213
@@ -396,6 +401,42 @@ module sep_uvm_top
     // force security_disable.
     localparam bit [255:0] SEC_DIS_TB_DIGEST =
         256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+    // SMC fuse-sense completion. No SMC RTL is instantiated in this top, so the TB
+    // stands in for what the SoC provides: the SMC finishes sensing its eFuse array
+    // after reset and holds the indication high afterwards. Cold reset re-senses;
+    // wdt_rst_ni does not, which is why this tracks rst_n_int and not the warm reset.
+    //
+    // The ROM polls this to completion in [S08] before reading any fuse shadow, so a
+    // top that never asserts it hangs every boot. The same invariant is checked from
+    // the firmware side as CHK-SEP-HOLD-RELEASE
+    // (dv/fw/tests/common/smc_sep_xbar_protocol.h). +sep_smc_fuse_sense_hold keeps it
+    // low, which is the stimulus for proving the ROM refuses to advance without it.
+    // No declaration initializers: VCS rejects a variable that has both an
+    // initializer and a procedural driver (ICPD_INIT). Each of these has exactly
+    // one driver, the block that follows it.
+    localparam int SmcFuseSenseCycles = 64;
+    logic smc_fuse_sense_hold;
+    logic smc_fuse_sense_done_model;
+    int   smc_fuse_sense_count;
+    initial begin
+        smc_fuse_sense_hold = $test$plusargs("sep_smc_fuse_sense_hold");
+        if (smc_fuse_sense_hold) begin
+            $display("[tb] smc_fuse_sense_done held low (+sep_smc_fuse_sense_hold)");
+        end
+    end
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            smc_fuse_sense_count      <= 0;
+            smc_fuse_sense_done_model <= 1'b0;
+        end else if (smc_fuse_sense_hold) begin
+            smc_fuse_sense_done_model <= 1'b0;
+        end else if (smc_fuse_sense_count < SmcFuseSenseCycles) begin
+            smc_fuse_sense_count <= smc_fuse_sense_count + 1;
+        end else begin
+            smc_fuse_sense_done_model <= 1'b1;
+        end
+    end
+
     sep_wrapper #(
         .EXT_TRNG_NUM_AXIS     (3),
         .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
@@ -498,7 +539,7 @@ module sep_uvm_top
         .smc_mailbox_interrupt_o      (),
 
         // eFuse status
-        .smc_fuse_sense_done_i        (1'b0),
+        .smc_fuse_sense_done_i        (smc_fuse_sense_done_model),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
         .secure_tm_req_i              (test_en_strap_i),
@@ -1012,6 +1053,27 @@ module sep_uvm_top
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
     };
 
+    // HMAC per-IP gated reset and the two isolate-completion bits that domain
+    // depends on. The reset sequencer holds the domain until every AXI-Lite
+    // path it depends on reports isolated, so the drain-before-reset checks
+    // read the reset and both paths.
+    assign hmac_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.hmac;
+    assign hmac_host_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_hmac;
+    assign hmac_km_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_hmac;
+
+    // Adams Bridge per-IP gated reset and the two isolate-completion bits its
+    // domain waits on. host_abr is a full-AXI isolate; km_abr is shared with
+    // the Key Manager domain and an ABR reset request alone must raise it.
+    assign abr_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.abr;
+    assign abr_host_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
+    assign abr_km_isolated_probe_o =
+        `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
+
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
     // programmed. These leaf fields sit outside the AXI ready/valid combinational
@@ -1364,19 +1426,27 @@ module sep_uvm_top
     end
 `undef ESRC_NOISE_FORCE
 
-    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants the crypto
-    // blocks' EDN handshakes directly so they can leave their reseed states and
-    // run; the real entropy_source -> CSRNG -> EDN path is bypassed and NOT
-    // exercised. Covers OTBN (RND/URND) and AES; AES is a separate EDN client
-    // and stalls in its masking-PRNG reseed without a client-0 grant.
-    localparam logic [31:0] AesEdnWord = 32'hA5A5_5A5A;
+    // +sep_crypto_edn_force -- DV SHORTCUT, off by default. Grants OTBN's EDN
+    // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
+    // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
+    //
+    // Prefer +esrc_noise_force. The SEP boot ROM brings the real entropy chain up
+    // itself (src/sep_entropy.c), so a crypto test needs only raw noise injected
+    // -- the ring oscillators do not self-oscillate in simulation -- and the
+    // DRBG/CSRNG/EDN handshakes stay real. This force cannot do that: forcing
+    // edn_ack violates the EDN req/ack data-hold protocol and trips
+    // prim_sync_reqack_data's SyncReqAckDataHold* assertions. Testlist entries
+    // still passing it are being migrated.
+    //
+    // Kept for now as a debug lever only. It is a candidate for deletion once
+    // the real-entropy path has some mileage.
     logic edn_force_on;
-    logic otbn_rnd_ack_q, otbn_urnd_ack_q, aes_ack_q;
+    logic otbn_rnd_ack_q, otbn_urnd_ack_q;
     initial begin
         edn_force_on = $test$plusargs("sep_crypto_edn_force");
         if (edn_force_on) begin
-            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN and AES EDN grants");
-            $display("[tb] *** are forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
+            $display("[tb] *** DV SHORTCUT: +sep_crypto_edn_force -- OTBN EDN grants are");
+            $display("[tb] *** forced; the entropy_source/CSRNG/EDN chain is NOT exercised.");
         end
     end
 
@@ -1388,24 +1458,18 @@ module sep_uvm_top
 `define OTBN_URND_RSP `SEP_CORE.sep_crypto.crypto_edn_rsp[3]
 `define OTBN_RND_REQ  `SEP_CORE.sep_crypto.crypto_edn_req[2]
 `define OTBN_URND_REQ `SEP_CORE.sep_crypto.crypto_edn_req[3]
-`define AES_RSP       `SEP_CORE.sep_crypto.crypto_edn_rsp[0]
-`define AES_REQ       `SEP_CORE.sep_crypto.crypto_edn_req[0]
     // ack pulses for one cycle per request rather than sitting high, so a
     // multi-word reseed is delivered as a sequence of beats like the real EDN.
     always @(posedge clk_i) begin
         if (edn_force_on) begin
             otbn_rnd_ack_q  <= `OTBN_RND_REQ.edn_req  & ~otbn_rnd_ack_q;
             otbn_urnd_ack_q <= `OTBN_URND_REQ.edn_req & ~otbn_urnd_ack_q;
-            aes_ack_q       <= `AES_REQ.edn_req       & ~aes_ack_q;
             force `OTBN_RND_RSP.edn_ack   = otbn_rnd_ack_q;
             force `OTBN_RND_RSP.edn_fips  = 1'b1;
             force `OTBN_RND_RSP.edn_bus   = $urandom();
             force `OTBN_URND_RSP.edn_ack  = otbn_urnd_ack_q;
             force `OTBN_URND_RSP.edn_fips = 1'b1;
             force `OTBN_URND_RSP.edn_bus  = $urandom();
-            force `AES_RSP.edn_ack        = aes_ack_q;
-            force `AES_RSP.edn_fips       = 1'b1;
-            force `AES_RSP.edn_bus        = AesEdnWord;
         end
     end
 `undef AES_RSP
@@ -1647,8 +1711,11 @@ module sep_uvm_top
     assign otbn_dmem_write_count_o = otbn_dmem_wr_cnt_q;
     // KM SRAM word 0: peek the real macro array. The KM SRAM is one unscrambled
     // prim_ram_1p_adv (sep_ip_integration.u_km_sram) addressed by word index
-    // within the 32 KB km_intf_pkg SRAM window, so km_intf_pkg::SRAM_BASE_ADDR
-    // (0x0000_8000) + 0 is mem[0]. Both KM ROM images store their word there.
+    // within the 32 KB SRAM window the Key Manager specification places at
+    // 0x0000_8000, so base + 0 is mem[0]. Both KM ROM images store their word
+    // there. The index is a hierarchical path and does not depend on that base:
+    // a firmware store to the wrong window leaves mem[0] untouched and the
+    // word0 compare in sep_km_mem_smoke_test fails.
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
 
@@ -2165,6 +2232,13 @@ module sep_uvm_top
         .m_axi_rvalid_i        (m_axi_rvalid),
         .m_axi_rready_i        (m_axi_rready),
 
+        .hmac_gated_rst_n_i    (hmac_gated_rst_n_probe_o),
+        .hmac_host_isolated_i  (hmac_host_isolated_probe_o),
+        .hmac_km_isolated_i    (hmac_km_isolated_probe_o),
+        .abr_gated_rst_n_i     (abr_gated_rst_n_probe_o),
+        .abr_host_isolated_i   (abr_host_isolated_probe_o),
+        .abr_km_isolated_i     (abr_km_isolated_probe_o),
+
         .cpu_trace_valid_i     (cpu_trace_valid_o),
         .cpu_trace_addr_i      (cpu_trace_addr_o),
         .cpu_trace_interrupt_i (cpu_trace_interrupt_o),
@@ -2177,6 +2251,7 @@ module sep_uvm_top
         .drbg_genbits_vld_i    (drbg_genbits_vld_o),
         .axis1_tvalid_i        (axis1_tvalid_o),
         .axis1_tready_i        (axis1_tready_o),
+        .crypto_edn_ack_i      (crypto_edn_ack_o),
         .km_entropy_tvalid_i   (km_entropy_tvalid_o),
         .km_entropy_tready_i   (km_entropy_tready_o),
         // sep.sv:534 assembles the SEP AXI mailbox onto

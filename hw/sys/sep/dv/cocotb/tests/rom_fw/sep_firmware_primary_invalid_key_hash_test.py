@@ -6,12 +6,12 @@ STIMULUS. One bit of the primary manifest's RSA-3072 modulus is flipped
 (``sep_manifest_mutate.corrupt_public_key``) and the TBS is re-hashed, so the
 slot is structurally perfect and fails at exactly one place: the comparison of
 SHA-256(modulus) against the digest the ROM has compiled in for the selected slot
-(``manifest_crypto.c:124-136,190-196``). The backup is untouched and still binds
+. The backup is untouched and still binds
 to ROM key slot 0, so the run must recover and boot from it.
 
 WHY ONE BIT. A wholesale overwrite of the modulus would also be caught by a much
 coarser check on it; a single flip can only be caught by the hash comparison
-itself, so this pins the rejection to ``check_pubkey_hash``.
+itself, so this pins the rejection to the key-authorization check.
 
 WHAT THIS STIMULUS DOES *NOT* DEMONSTRATE, AND WHY IT IS BUILT THIS WAY. The
 reference testcase re-signs the primary with a DIFFERENT valid key
@@ -24,33 +24,33 @@ deleting the bind would move the rejection to ``rsa_3072_verify`` rather than le
 the boot through. What it does show is that the bind FIRES, on the smallest
 possible difference, before the modulus reaches the verifier.
 
-The reason for the substitution is that the tree ships exactly one RSA signing key
-(``tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem``), so the
-re-signed form would need a second key and a build step, which these Python-only
-mutations avoid (``sep_manifest_mutate`` module docstring). A re-signed variant
-would be a different claim, not a better version of this one.
+The reason for the substitution is that this mutation stays inside Python: it flips a
+modulus byte and re-hashes, where the re-signed form would sign with a key the manifest
+does not name. Six keys now ship
+(``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{0..5}.pem``), so a re-signed
+variant is buildable -- the revoke family already grafts whole slots out of the
+per-slot images. It is worth having alongside this one; it is a different claim, not a
+better version of this one.
 
 WHY THE RE-HASH MATTERS, AND WHY NO RE-SIGN. The modulus lives inside the TBS
-(offset 168, ``manifest.h:222``), so without recomputing ``manifest_hash`` the
-slot would be thrown out by ``manifest_check_integrity``
-(``manifest_load.c:500``) long before the key check and this test would be
+(offset 168, ), so without recomputing ``manifest_hash`` the
+slot would be thrown out by ``manifest_check_integrity`` long before the key check and this test would be
 asserting on the wrong rejection. Re-signing is neither possible nor needed:
-``check_pubkey_hash`` runs before ``rsa_3072_verify``
-(``manifest_crypto.c:195,244``), so the stale signature is never examined -- and
-``RSA_VERIFY_START`` must therefore NOT appear between the primary read and the
+the key-authorization check runs before ``rsa_3072_verify``, so the stale signature is never examined -- and
+``RSA_EXEC`` must therefore NOT appear between the primary read and the
 backup read, which is asserted below.
 
-CRYPTO FAILURES DO FALL OVER. ``manifest_crypto_validate`` is called inside the
+CRYPTO FAILURES DO FALL OVER. Manifest validation is called inside the
 per-slot attempt, so its error returns to ``rom_manifest_boot``'s retry loop
-(``manifest_load.c:659-673`` and the comment at ``rom_main.c:355-357``). That is
+(the comment at ``rom_main.c:355-357``). That is
 the behaviour under test: this is the pair to
 ``sep_firmware_backup_invalid_key_hash_test``, where both slots carry the defect
 and the run is terminal instead.
 
-``+sep_crypto_edn_force`` is required here and only here among the key-hash pair:
+``+esrc_noise_force`` is required here and only here among the key-hash pair:
 the BACKUP is valid, so the full RSA-3072 modexp runs on OTBN, which parks in
 UrndRefresh until EDN grants entropy. The RSA assertions are untouched, so
-``SIG_VALID`` still means the signature really verified.
+``RSA_VERIFY_OK`` still means the signature really verified.
 """
 
 from __future__ import annotations
@@ -63,6 +63,9 @@ from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
+# A key whose digest does not match its anchor is unauthorized, not revoked.
+MANIFEST_ERR_KEY_HASH_MISMATCH = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
+
 _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3]
     / "tb"
@@ -70,18 +73,13 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations"
     / "sep_efuse_lc_prod.toml"
 )
-
-# manifest.h:294-320
-MANIFEST_ERR_KEY_HASH_MISMATCH = 0x0003_0016
-
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c:132
-_CRYPTO_FAIL = f"CRYPTO_FAIL=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  # manifest_load.c:671
-_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  # manifest_load.c:771
-_RSA_START = "RSA_VERIFY_START"
-_SIG_VALID = "SIG_VALID"
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
+_HASH_MISMATCH = "PUBK_UNAUTHORIZED"  #
+_CRYPTO_FAIL = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  #
+_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  #
+_RSA_START = "RSA_EXEC"
+_RSA_VERIFY_OK = "RSA_VERIFY_OK"
 _MANIFEST_OK = "MANIFEST_OK"
 _LC_PROD = "LC=PROD"
 
@@ -91,12 +89,10 @@ _LC_PROD = "LC=PROD"
 _SBOOT_OFF = "SBOOT_OFF"
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _OTHER_KEY_VERDICTS = (
-    "BAD_KEY_IDX",
-    "BAD_KEY_SEL",
-    "FUSE_KEY_EMPTY",
-    "ROM_KEY_EMPTY",
-    "KEY_REVOKED",
-    "VERSION_ROLLBACK",
+    "PUBK_SLOT_RESERVED",
+    "PUBK_SEL_AMBIGUOUS",
+    "PUBK_OTP_EMPTY",
+    "PUBK_SLOT_UNPROVISIONED",
 )
 
 
@@ -112,8 +108,8 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         _SLOT_ERR,
         _BACKUP_SRC,
         _RSA_START,
-        _SIG_VALID,
-        _CRYPTO_OK,
+        _RSA_VERIFY_OK,
+        _MANIFEST_OK,
     )
     forbidden_markers = (
         sep_rom_ot_dma_boot_test.forbidden_markers
@@ -142,12 +138,13 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         # Both of these are evaluated before the key bind and would end the run
         # first, making the verdict unattributable.
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection (manifest_crypto.c:364)"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         assert revoke == 0, (
             f"CHIPLET_PUBK_REVOKE is 0x{revoke:x}, expected 0: revocation runs "
-            f"before the hash bind (manifest_crypto.c:181), and the backup must "
+            f"before the hash bind, and the backup must "
             f"be able to use slot 0"
         )
         self.logger.info(
@@ -212,8 +209,8 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         # was rejected.
         assert i_bsrc < i_ok, f"{_MANIFEST_OK}@{i_ok} did not follow the backup read@{i_bsrc}"
         self.logger.info(
-            "CHK-KEYHASH-FAILOVER: primary@%d -> PUBK_HASH_MISMATCH@%d -> "
-            "MANIFEST_ERR@%d -> backup@%d -> RSA_VERIFY_START@%d -> MANIFEST_OK@%d",
+            "CHK-KEYHASH-FAILOVER: primary@%d -> PUBK_UNAUTHORIZED@%d -> "
+            "MANIFEST_ERR@%d -> backup@%d -> RSA_EXEC@%d -> MANIFEST_OK@%d",
             i_psrc,
             i_hash,
             i_perr,

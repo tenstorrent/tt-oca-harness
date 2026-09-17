@@ -82,6 +82,17 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
         dut.rst_cold_ni.value = 0
         await ClockCycles(dut.clk_ref_i, 64)
         dut.rst_cold_ni.value = 1
+        # Arm the sense-done observation at the release itself: the flag reads 0
+        # in reset, and the settle below can outlast the whole sense.
+        gate_held = cocotb.start_soon(
+            expect_gate_held_after_sense(
+                dut,
+                sb,
+                log,
+                phase="cold+stall",
+                name="fuse_reset gated while stall sticky",
+            )
+        )
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         await wait_signal_high(
             smc_primary_reset(dut),
@@ -102,13 +113,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
             1,
         )
         # The cold reset restarted the sense; the gate is judged only once it is done.
-        await expect_gate_held_after_sense(
-            dut,
-            sb,
-            log,
-            phase="cold+stall",
-            name="fuse_reset gated while stall sticky",
-        )
+        await gate_held
 
         # --- IC_RESET warm while stall sticky ---
         warm_pat = pack_ic_reset_ports(

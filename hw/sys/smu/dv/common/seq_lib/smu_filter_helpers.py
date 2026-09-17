@@ -24,6 +24,7 @@ from seq_lib.smu_addr_map import (
 from seq_lib.smu_axi_helpers import axi_read32_resp_bounded, resp_name
 from seq_lib.smu_jtag_helpers import (
     J2A_STATUS_SUCCESS,
+    SMC_DBG_AXSIZE_4B,
     jtag2axi_single_read,
     jtag2axi_single_write,
     require_jtag_tdo_resolved,
@@ -65,6 +66,60 @@ def page_align_window(start: int, end: int) -> tuple[int, int]:
     """Effective allow_burst=1 range [granule base of start, granule top of end]."""
     start_a = int(start) & ~_FILTER_BURST_GRANULE_MASK
     return start_a, int(end) | _FILTER_BURST_GRANULE_MASK
+
+
+# SMC aperture as the SMU crossbar sees it. smc_base_config GLOBAL_BASE resets
+# to 0x4000_0000 with a 16 MiB REGION_SIZE, while the SMC registers these tests
+# probe from the external SMN port sit at their LOCAL addresses (0xC000_xxxx).
+# The wrapper elaborates SEP=1, so ext_in traffic is routed by
+# smu_axi_xbar.addr_map[1] = [GLOBAL_BASE, GLOBAL_BASE + REGION_SIZE) and a
+# local address misses it (DECERR, 0xBADCAB1E). LOCAL_BASE is hardwired to
+# 0xC000_0000, so writing GLOBAL_BASE = LOCAL_BASE makes the global and local
+# views coincide: every existing probe address and every inbound filter window
+# (the SYS_IN filter compares the raw incoming address) keeps working verbatim.
+# JTAG2AXI enters SMC through its debug port, which bypasses the crossbar, so
+# this write does not depend on the aperture it programs. smc_local_fabric masks
+# the address with REGION_SIZE-1 and rebases onto LOCAL_BASE, so SMC-side
+# decode is unchanged, and [0xC000_0000, 0xC100_0000) is disjoint from the SEP
+# aperture reset [0x0, 0x0100_0000), which the crossbar's overlap SVA requires.
+SMC_APERTURE_GLOBAL_BASE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
+SMC_APERTURE_REGION_SIZE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
+SMC_APERTURE_LOCAL_BASE = 0xC000_0000
+
+
+async def program_smc_aperture_local_alias(jtag, *, scoreboard: Any = None) -> int:
+    """Set SMC GLOBAL_BASE = LOCAL_BASE over JTAG2AXI so ext_in local addresses route.
+
+    Returns the GLOBAL_BASE[31:0] read back after the write. Raises if the
+    JTAG2AXI write or read does not complete with SUCCESS, or the readback
+    disagrees, so a later external-port access never runs against a route
+    that does not exist.
+    """
+    st, _ = await jtag2axi_single_write(
+        jtag,
+        SMC_APERTURE_GLOBAL_BASE_REG,
+        SMC_APERTURE_LOCAL_BASE,
+        wstrb=0x0F,
+        size=SMC_DBG_AXSIZE_4B,
+        require_complete=True,
+    )
+    require_jtag_tdo_resolved("J2A WR SMC_GLOBAL_BASE")
+    if st != J2A_STATUS_SUCCESS:
+        raise AssertionError(f"SMC GLOBAL_BASE write status={st} want SUCCESS={J2A_STATUS_SUCCESS}")
+    st, rdata = await jtag2axi_single_read(
+        jtag, SMC_APERTURE_GLOBAL_BASE_REG, size=SMC_DBG_AXSIZE_4B, require_complete=True
+    )
+    require_jtag_tdo_resolved("J2A RD SMC_GLOBAL_BASE")
+    if st != J2A_STATUS_SUCCESS:
+        raise AssertionError(f"SMC GLOBAL_BASE read status={st} want SUCCESS={J2A_STATUS_SUCCESS}")
+    rb = int(rdata) & 0xFFFF_FFFF
+    if rb != SMC_APERTURE_LOCAL_BASE:
+        raise AssertionError(
+            f"SMC GLOBAL_BASE readback 0x{rb:08x} want 0x{SMC_APERTURE_LOCAL_BASE:08x}"
+        )
+    if scoreboard is not None:
+        scoreboard.expect_eq("SMC aperture GLOBAL_BASE=LOCAL_BASE", rb, SMC_APERTURE_LOCAL_BASE)
+    return rb
 
 
 async def program_inbound0_window(
