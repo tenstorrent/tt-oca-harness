@@ -71,7 +71,7 @@ module idma_request_manager_wrapper #(
         .ExtPrio  (0),
         .AxiVldRdy(1),
         .LockIn   (0)   // don't lock in so in case mst is not ready, req can try a different req
-      ) u_i_rr_arb_tree (
+      ) u_rr_arb_tree (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
         .flush_i(1'b0),
@@ -163,7 +163,7 @@ module idma_request_manager_wrapper #(
         .ExtPrio  (0),
         .AxiVldRdy(1),
         .LockIn   (1)
-      ) u_i_rr_arb_tree (
+      ) u_rr_arb_tree (
         .clk_i  (clk_i),
         .rst_ni (rst_ni),
         .flush_i(1'b0),

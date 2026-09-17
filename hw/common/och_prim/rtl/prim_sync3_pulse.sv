@@ -15,14 +15,14 @@ module prim_sync3_pulse (
 
   wire toggle;
 
-  prim_sync3_pulse_src u_i_src (
+  prim_sync3_pulse_src u_src (
     .src_clk_i(src_clk_i),
     .src_pulse_i(src_pulse_i),
     .src_rst_ni(src_rst_ni),
     .toggle_o(toggle)
   );
 
-  prim_sync3_pulse_dest u_i_dest (
+  prim_sync3_pulse_dest u_dest (
     .dst_clk_i(dst_clk_i),
     .src_rst_ni(src_rst_ni),
     .toggle_i(toggle),

@@ -195,7 +195,7 @@ proc set_cdc_max_delay_prim_sync_reset { inst dst_clk { delay {} } } {
 proc set_cdc_max_delay_prim_sync3_pulse { inst dst_clk { delay {} } } {
     set inst [cdc_inst $inst]
     cdc_emit "prim_sync3_pulse $inst" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/u_i_dest/toggle_i" -quiet]
+        {} [get_pins "$inst/u_dest/toggle_i" -quiet]
 }
 
 ################################################################################
