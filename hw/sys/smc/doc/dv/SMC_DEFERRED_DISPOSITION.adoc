@@ -292,7 +292,7 @@ enrolment and point here; the dispositions live only here.
 Kinds used in the leaf tables:
 
 * *reads the crossing* -- the verdict samples the stand-in's output itself
-  (a CSR field or a `tb_top` tap wired to `o_q`). On Verilator that value has
+  (a CSR field or a `tb_top` tap wired to `q_o`). On Verilator that value has
   the stand-in as its author until the pipe has filled.
 * *downstream* -- the verdict reads product state that the DUT derives from
   the crossing's output.
@@ -533,9 +533,8 @@ the weekly tier runs the group on its own `regress.yml` row (artifact
 and the runner grades the recorded failure as PASS; an observed PASS grades
 `expected_fail_passed`, the signal to move the leaf into its feature testlist.
 Members: `smc_gpio_irq_mask_deassert_test` (#1602),
-`smc_log_engine_intr_mask_test` (#1635), `smc_i2c_intr_mask_test` (#1635),
-`smc_deadspace_decode_test` (#585) and `smc_remap_cla_test` (#1855: the CLA
-unmapped in-window offset `+0x38` completes with OKAY).
+`smc_log_engine_intr_mask_test` (#1635), `smc_i2c_intr_mask_test` (#1635) and
+`smc_deadspace_decode_test` (#585).
 `smc_efuse_read_timeout_status_test` is not a member: a read that hits
 `EFUSE_READ_REQ_TIMEOUT` completes with `EFUSE_READ_CTRL.READ_STATUS` set, so
 the leaf passes, proves `READ_STATUS` 0 -> 1 and runs from `efuse.toml` in

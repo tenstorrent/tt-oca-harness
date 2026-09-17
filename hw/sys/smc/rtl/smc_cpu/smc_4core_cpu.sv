@@ -97,10 +97,10 @@ module smc_4core_cpu (
   logic gated_debug_clock;
 
   prim_flop_3sync_r sync_debug_active (
-    .i_CK(clk_i),
-    .i_RN(rst_debug_ni),
-    .i_D(debug_dmactive),
-    .o_Q(debug_dmactiveAck)
+    .clk_i(clk_i),
+    .rst_ni(rst_debug_ni),
+    .d_i(debug_dmactive),
+    .q_o(debug_dmactiveAck)
   );
 
   always @(posedge clk_i) begin
@@ -112,10 +112,10 @@ module smc_4core_cpu (
   end
 
   prim_clkgater debug_clock_gate (
-    .i_clk    (clk_i),
-    .i_en     (clock_en),
-    .i_te     (test_en_i),
-    .o_clk    (gated_debug_clock)
+    .clk_i    (clk_i),
+    .en_i     (clock_en),
+    .te_i     (test_en_i),
+    .clk_o    (gated_debug_clock)
   );
 
   // cluster_ded has glitches because of uneven combo path, flop to mitigate CDC glitches

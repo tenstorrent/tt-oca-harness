@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# Full SPI image for the SEP boot ROM: the OCAH SEP no-BL1 placed at
+# both manifest slots the ROM reads.
+#
+# The bare `oca-classic` pack emits a bundle starting at offset 0; the ROM looks
+# for manifests at PRIMARY_MANIFEST_OFFSET / BACKUP_MANIFEST_OFFSET (see
+# include/boot_flash.h), so the bootable artefact is this combined image, not the
+# bundle. Both slots carry the same bundle, which is what makes the backup path
+# and the rotate_update strap testable without a second build.
+#
+# Layout (classic body is 4096 B, so each payload sits one body past its
+# manifest, leaving room to grow before the next slot):
+#   0x01000  primary manifest    0x02000  primary payload
+#   0x41000  backup  manifest    0x42000  backup  payload
+manifest_format: oca-combined
+name: "OCAH SEP no-BL1 SPI image"
+
+total_size: 0x50000
+pad_byte: 0xFF
+
+combos:
+  - name: primary
+    config: configs/oca_no_bl1_boot_test.yaml
+    manifest_offset: 0x1000
+    payload_offset: 0x2000
+
+  - name: backup
+    config: configs/oca_no_bl1_boot_test.yaml
+    manifest_offset: 0x41000
+    payload_offset: 0x42000

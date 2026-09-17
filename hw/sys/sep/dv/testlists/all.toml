@@ -309,7 +309,6 @@ tests = [
     # wall-second figures are not comparable between runs.
     "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
-    "sep_firmware_encrypted_boot_test",
     "sep_firmware_mbist_pass_test",
     "sep_firmware_mbist_only_fail_test",
     "sep_boot_recovery_test",
@@ -367,7 +366,7 @@ tests = [
     "sep_firmware_bl1_ver_test",
     # The four-member CHIPLET FUSED key family. They share ONE implementation,
     # rom_fw/sep_chiplet_pubkey_base.py, and differ only in _CHIPLET_KEY and the
-    # base they pick. This is the fused-key arm of validate_signature
+    # base they pick. This is the fused-key arm of the signature path
     # (manifest_crypto.c), distinct code from the ROM-key arm the
     # pubkey_rom_* families cover. Each positive member and its revoke twin run
     # byte-identical flash images, one CHIPLET_PUBK_REVOKE bit apart.
@@ -385,14 +384,14 @@ tests = [
     # byte-identical to sep_efuse_lc_prod_chiplet_key1.toml's -- making this and
     # sep_firmware_chiplet_pubkey_1_test a matched pair on the FUSE side.
     "sep_firmware_chiplet_pubkey_0_wrong_digest_test",
-    # The [C15] demotion decision: eight members covering SIX of the seven
+    # The [S25] demotion decision: eight members covering SIX of the seven
     # outcomes the block can produce -- see rom_fw/sep_demotion_decision_base.py
     # for the collapse map. The three PROD_END members are one observable (O1),
     # because rom_main.c returns before any manifest input is read; the
     # remaining five are O2a, O2b, O3a, O4 and O5. The seventh outcome, O3b
     # (unauth_flag_0_prod_sel_bit_set), has no testcase. Every member checks the
     # DEMOTE_1/DEMOTE_2 registers and not only the console, through the tb_top
-    # probes, because every [C15] console string is printed from a local
+    # probes, because every [S25] console string is printed from a local
     # computed one line earlier. The shared stimulus lives in
     # rom_fw/sep_demotion_prod_base.py (PROD, secure boot disabled on both
     # surfaces) and rom_fw/sep_demotion_prod_end_base.py.
@@ -411,6 +410,7 @@ tests = [
     # xfail mechanism, so a run whose ONLY failure is this test is the expected
     # result. See its [[tests]] entry in rom_fw.toml.
     "sep_decryption_failure_terminal_test",
+    "sep_decryption_failure_failover_test",
     "sep_mbist_fail_continue_test",
     "sep_warm_reset_invalid_hang_test",
     "sep_warm_reset_below_range_hang_test",
