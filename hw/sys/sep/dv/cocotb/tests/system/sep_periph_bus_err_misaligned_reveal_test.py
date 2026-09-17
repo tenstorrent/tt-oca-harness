@@ -18,6 +18,7 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_irq_aggregator_seq import (
     PERIPH_HMAC_BIT,
+    RESP_SLVERR,
     PERIPH_STATUS_ADDR,
     SepIrqIp,
     hmac_misaligned_addr,
@@ -49,10 +50,15 @@ class sep_periph_bus_err_misaligned_reveal_test(sep_base_test):
             mon.release_expected_decerr(unused)
 
         status = await self.irq.read32(PERIPH_STATUS_ADDR)
-        assert status == PERIPH_HMAC_BIT, (
+        # Both halves of the contract are graded. The status bit alone would go
+        # green on an RTL change that latched the bit while still answering
+        # DECERR, and the scoreboard's expect_error arm accepts any non-OKAY, so
+        # the response code needs its own comparison rather than only appearing
+        # in this message.
+        assert (seq.resp_code, status) == (RESP_SLVERR, PERIPH_HMAC_BIT), (
             f"misaligned read @0x{addr:08x} returned resp={seq.resp_code} and left "
-            f"PERIPH_BUS_ERR_STATUS=0x{status:x}; the contract requires SLVERR (2) "
-            f"and the hmac bit 0x{PERIPH_HMAC_BIT:x} latched"
+            f"PERIPH_BUS_ERR_STATUS=0x{status:x}; the contract requires SLVERR "
+            f"({RESP_SLVERR}) and the hmac bit 0x{PERIPH_HMAC_BIT:x} latched"
         )
         self.logger.info(
             "CHK-MISALIGN-LATCH PASS: 0x%08x latched STATUS=0x%x", addr, status
