@@ -1530,25 +1530,107 @@ original tool or history. A run that did not finish (`tests.completed` is
 `2`: coverage is graded over a complete regression only, so the leaves that
 happen to have run cannot produce a threshold verdict.
 
-Coverage merge/report accepts at most one known target and one known build
-fingerprint. A multi-target run cannot be merged as one coverage database;
-pass `--target NAME` to compile every selected test on one elaboration.
-Inputs that all lack target and build-fingerprint provenance merge as one set.
-Coverage-only replay resolves the current/default target rather than restoring
-an original non-default target; use replay only when target and build-affecting
-configuration still match. This is especially important for the VCS design
-coverage database.
+[[runner-coverage-inputs]]
+==== Which databases merge
 
-The compatibility threshold uses `--fail-under`, then
-`[coverage.<tool>].fail_under`, then `0.0`. It compares the tool's own overall
-percentage (`overall_percent` in `summary.json`): Verilator's count of hit
-points over all points, or the urg / imc dashboard total. Accepted waivers do
-not move that figure, so a DUT gated by `--fail-under` alone sees no effect
-from its policy. Waiver-aware gating is a `pass:[[[thresholds]]]` rule in
-`coverage_policy.toml`; its default `population = "effective"` grades hit
-points over the points that remain after accepted waivers and exclusions, per
-metric family, and `population = "raw"` grades the unwaived figure. Policy
-thresholds are enforced in addition to the compatibility threshold.
+`cov_merge` selects its inputs from the leaf `result.json` records under the
+run directory, not from a directory listing. For every test and seed it
+takes the final attempt that wrote a coverage database, whatever that leaf's
+status, so a retried leaf contributes once and a failing or timed-out leaf
+contributes what it collected. A debug-only rerun and a leaf whose database
+is missing or empty are rejected with a recorded reason, and a fragment that
+records another flow or tool refuses the whole merge. A run directory without
+leaf records falls back to the tool's `input_glob`.
+
+The inputs must share one target and one build fingerprint. A multi-target
+run cannot be merged as one coverage database; pass `--target NAME` to
+compile every selected test on one elaboration. Inputs that all lack target
+and build-fingerprint provenance merge as one set, and a set that mixes
+recorded and missing provenance is refused. Coverage-only replay resolves the
+current/default target rather than restoring an original non-default target;
+use replay only when target and build-affecting configuration still match.
+This is especially important for the VCS design coverage database.
+
+The merge and report commands, the merged database name, and the input glob
+come from `[coverage.<tool>]`, layered as every other tool table is
+(<<Configuration and precedence>>), so the same run directory merges the same
+way on any host that has the tool. `cov/coverage.json` records the selection
+(<<runner-coverage-record>>): the selection policy and source, every input
+with its test, seed, attempt, status, target, and build fingerprint, every
+rejection with its reason, the exclusion files, and the policy file with its
+SHA-256 and `scope_epoch`.
+
+[[runner-coverage-grading]]
+==== How the grade forms
+
+`cov_report` runs the tool's report command, parses the report into scalar
+metrics and per-point observations, applies the DUT's coverage policy, and
+grades the result. Two kinds of threshold apply, and both must be met:
+
+[cols="<2,<5",options="header"]
+|===
+|Threshold |Rule
+
+|Compatibility threshold
+|`--fail-under`, then `[coverage.<tool>].fail_under`, then `0.0`, compared
+with the tool's own overall percentage (`overall_percent` in
+`summary.json`): Verilator's count of hit points over all points, or the
+urg / imc dashboard total. Accepted waivers do not move that figure, so a DUT
+gated by `--fail-under` alone sees no effect from its policy. On a `--waive`
+re-grade the run's recorded `threshold` stands unless `--fail-under` is
+given.
+
+|Policy thresholds
+|Each `pass:[[[thresholds]]]` rule of `coverage_policy.toml` names a metric
+family and a `minimum_percent`. `population = "effective"` (the default)
+grades hit points over the points that remain after accepted waivers and
+exclusions, and `population = "raw"` grades the unwaived figure. With the
+default `scope`, a family with several native metrics grades its weakest;
+a `scope` glob pools the family's in-scope points into one figure, and is
+not met when the parser recorded no complete point list. `tool` and
+`target` limit a rule to one tool or target; a rule that names another is
+skipped without an outcome. `max_unclassified_points` fails the rule when
+more uncovered points than that carry no `pass:[[[holes]]]` entry. A rule
+whose metric family has no points is not met.
+|===
+
+The coverage status is `PASS` when every threshold is met and `FAIL`
+otherwise. A `FAIL` gives the `cov_report` record return code `1` and a
+`coverage_threshold` failure bucket, makes the run status `FAIL` and the exit
+code `1`, and names each missed threshold in the stage log. A DUT whose
+policy sets no `pass:[[[thresholds]]]` and whose configuration sets no
+`fail_under` grades against `0.0` and cannot fail on coverage.
+
+The grade is fail-closed on the policy itself, in two places. A policy that
+fails a grammar check is refused when `cov_merge` loads it, before any
+coverage file is written: that record is `ERROR` with a `config_error`
+bucket and the run status is `ERROR`. Grammar checks include a
+`schema_version` other than `1`, a `dut` other than the run's, an accepted
+waiver with `confidence = "low"`, an open entry with an actionable
+disposition and no GitHub issue, a duplicate id, a `minimum_percent` outside
+0 to 100, an `expected_matches` below 1, an entry without a
+`pass:[[[holes.native]]]` selector, and a category, disposition, status,
+population, date, or selector key outside the grammar. A policy that
+contradicts the report is refused by `cov_report` after the report command
+ran: a `pass:[[[holes]]]` entry that matches a number of points other than
+`expected_matches`, an accepted waiver or exclusion that matches a covered
+point, or two entries that claim one point. That record is `ERROR` with a
+`config_error` bucket, the run status is `ERROR`, and
+`coverage-details.raw.json` is the only report file written. An accepted
+waiver past its `expires` date grades its points as open and adds a warning
+to `policy-application.json`, so a lapsed waiver lowers the effective figure
+instead of hiding a hole.
+
+In scheduler mode (a group, `--regress`, `--reseed`, `--retry`,
+`--max-failures`, or more than one item), the leaf stage never stops the
+plan: `cov_merge` and `cov_report` run after the leaves whatever their
+statuses, so a red regression still carries its coverage record and the
+databases of its failing and timed-out leaves are inputs like any other. A
+flat single-test run stops at its first failing stage and reaches the
+coverage stages only when the test passed. A run that did not finish
+(`tests.completed` is `false`, or the record carries an `interruption`) is
+refused by coverage-only replay and by `--waive` with exit code `2`:
+coverage is graded over a complete regression only.
 
 [[runner-waive]]
 ==== Waive coverage bins after a regression
@@ -1578,8 +1660,7 @@ Bare `--waive` applies the policy the DUT configures (`policy_file`, else
 `cov/config/<tool>/coverage_policy.toml`); a DUT without one needs `FILE`.
 `--waive FILE` applies that file instead, and it must name the run's `dut`. A
 relative `FILE` resolves against the repository root, like `--run-dir`.
-. Collect the run again for the dashboard, or re-dispatch the publication
-  workflow for a weekly (see the dashboard page).
+. Collect the run again for the dashboard.
 
 No simulator or report tool runs: the run tree is the only input, so the
 command works on a copied or downloaded run tree and on a host without the
@@ -2236,6 +2317,80 @@ parser decision takes its stage's default kind (`flist` `config_error`,
 and `clean` `tool_error`, `formal` `formal_fail`), and a `ConfigError` is
 `config_error` whichever stage raised it.
 
+[[runner-coverage-record]]
+=== The coverage record
+
+A run that collected coverage carries the grade in four places, all under
+the run directory, so a copied or downloaded tree describes itself:
+
+[cols="<2,<1,<5",options="header"]
+|===
+|File |Schema |Carries
+
+|`coverage` in `result.json`
+|`1` (the run record)
+|`enabled`; `status`, the rollup of the coverage stages (`SKIP` with
+`total_percent` `null` when the run had none); `total_percent`, the tool's
+raw overall figure; `threshold` and `threshold_met`; `metrics`, the
+parser's per-family figures overlaid with the effective percentage of every
+family that has point records; `raw_metrics` and `effective_metrics` per
+family; `policy_thresholds`; `holes_summary`; `comparison_key`,
+`scope_fingerprint`, and `policy_fingerprint`; `target` and
+`build_fingerprint`; the tool version and supported metrics; the input list;
+and the paths of the files below.
+
+|`cov/coverage.json`
+|`2`
+|The merge manifest (<<runner-coverage-inputs>>) and, once the report has
+run, the grade: `status`, `metrics`, `overall_percent`, `threshold`,
+`threshold_met`, `policy_thresholds`, `holes_summary`, the fingerprints, and
+the merge and report return codes.
+
+|`cov/report/summary.json`
+|`2`
+|The graded summary: `status`, `overall_percent`, `threshold`,
+`threshold_met`, `compatibility_threshold_met`, `policy_thresholds` (one
+outcome per rule that applies to the run's tool and target, with
+`actual_percent`, `unclassified_points`, and `met`),
+`metrics`, `holes_summary` (`open`, `accepted`, `unclassified`, counts by
+metric, category, disposition, and status, and up to 100 sample holes),
+`comparison_key`, `scope_fingerprint`, `policy_fingerprint`, and the artifact
+paths.
+
+|`cov/report/coverage-details.json`
+|`1`
+|Every observation with its `native_locator`, `hierarchy`, `source`, `line`,
+`count`, and `covered`, plus the fields the matching `pass:[[[holes]]]` entry
+stamped on it (`policy_id`, `category`, `disposition`, `status`,
+`confidence`, `rationale`, `owner`, `reviewer`, `issues`), and one record per
+native metric with `covered`, `total`, `excluded`, `raw_percent`, and
+`effective_percent`. `coverage-details.raw.json` is the same before the
+policy applied.
+
+|`cov/report/policy-application.json`
+|none
+|The policy path and SHA-256, the native policy files applied, every
+`matched` entry with the observation ids it claimed, and the warnings, one
+per lapsed waiver.
+|===
+
+Three fingerprints decide whether two grades are comparable.
+`policy_fingerprint` is the SHA-256 of the policy file. `scope_fingerprint`
+hashes the build fingerprint, the scope the parser recorded, and the policy's
+`scope_epoch`; without a policy it is the parser's hash alone and
+`policy_fingerprint` is `null`. `comparison_key` (`COVCMP-` and 16 hex digits) hashes the DUT,
+the tool, the target, and both fingerprints: two grades share a key only when
+the same design build was graded against the same policy, so compare trend
+points and `holes_summary` counts only when their keys match. A waiver added
+to the policy changes the key by design; the hit counts do not.
+
+The dashboard collector carries the `coverage` object into the normalized
+record and stages `coverage.json`, `summary.json`, and
+`policy-application.json` beside it; the details files and the merged
+database stay in the run tree (the Continuous integration section of
+xref:run-dashboard.adoc[DV and FV Dashboard]). Hosted CI keeps a weekly run
+tree for 30 days and the normalized bundle for 90 (<<runner-ci-budgets>>).
+
 [[runner-junit-ownership]]
 === JUnit ownership
 
@@ -2290,34 +2445,23 @@ then prints one line and skips the simulation.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the IP-level
+DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`, and the IP-level
 benches' `all` groups (the three `cross_trigger` benches, the four UART-family
-benches, `system_timer_octs` and `scrambler`) run with `--reseed 3`. No
-coverage.
+benches, `system_timer_octs` and `scrambler`). No coverage.
 Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
-|The coverage regression the dashboard publishes. DTP `all` collects
-reference-only Verilator coverage; SEP `cpu_stub` and SMU `hosted` add
-`--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
-runner, because the coverage-instrumented SEP and SMU model builds exceed the
-standard runner's memory, and DTP reseeds three times on that runner. SMU,
-SMC `hosted`, and the IP-level benches run at three seeds; SMC `hosted`
-collects coverage on whichever runner the variable selects, and the IP-level
-benches collect it on the standard runner. A second SMC row
-(`label: rtl_issue`) runs the `rtl_issue`
-reproducers at one seed without coverage: every leaf carries `expect_fail`
-(<<runner-expected-failures>>), so the row is green while the filed defects
-stand and red the week one is fixed. `--sim-jobs` follows the runner core
-count. The score is published
-but does not determine test pass/fail. SEP, SMU, and DTP instrument
-line/branch/expression/user and SMC line/branch/user, none with toggle, and
-every coverage block compiles the generated model per file
-(`--output-groups 0`; see `[coverage.verilator]` in each DUT's sim config for
-the sizing and build rationale). The IP-level benches use the simulator
-default (all forms).
+|The regression the dashboard publishes, one random seed per test on every
+row and no coverage: DTP `all`, SEP `cpu_stub`, SMU `hosted`, SMC `hosted`,
+and the IP-level benches' `all` groups. A second SMC row
+(`label: rtl_issue`) runs the `rtl_issue` reproducers: every leaf carries
+`expect_fail` (<<runner-expected-failures>>), so the row is green while the
+filed defects stand and red the week one is fixed. `--sim-jobs` follows the
+runner core count. The coverage regression runs on the licensed simulator
+flow outside hosted CI; the coverage-instrumented Verilator models of DTP,
+SEP, and SMU do not fit a hosted job.
 |===
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
@@ -2347,6 +2491,13 @@ the outcome, so a cancelled job publishes non-passing evidence either way.
 Inside a job, each leaf is bounded by its resolved leaf timeout, and
 a leaf that exceeds it grades `TIMEOUT` without ending the run.
 
+A Verilator cache miss adds the from-source build to every job of that run
+that starts before one of them has saved the cache: the composite action
+keys its cache on the Verilator version, the runner operating system, and
+the architecture, so the first run after a version change pays the build in
+every row that starts together, and a coverage row pays it before its
+coverage-instrumented model build.
+
 Concurrency is per workflow: a pull-request push cancels the smoke run it
 supersedes, and a push to `main` never cancels a run in progress. The two
 regression crons and each dispatched tier are separate groups that are never
@@ -2359,19 +2510,18 @@ the normalized dashboard bundle for 90; the `dv-dashboard-data` branch keeps
 the trend history trimmed to 90 points and each DUT's weekly archives to 90
 runs. The runner has
 no automatic retry in hosted CI; a leaf is graded on its single attempt, and
-the weekly digest's flaky list comes from seeds of one test disagreeing
-within a run.
+the weekly digest's flaky list names a test whose seeds disagree within a
+run, which at one seed per test is only a test with its own `reseed` value.
 
 Each job writes an explicit per-run directory
 (`build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; the workflow run id keeps the
 recorded run identity unique for downstream trend history), gates on the
 native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
-`status` `PASS`). Coverage-enabled jobs additionally require a numeric score
-and recorded report/summary paths, but do not enforce a score threshold. The
+`status` `PASS`). A caller that sets the action's `coverage` input adds
+coverage evidence to that gate; no hosted row does. The
 action uploads `dv-run-<dut>-<tool>-<tier>` (`-<label>` appended for a
 labelled row), including on failure, for the retention periods in
-<<runner-ci-budgets>>; per-leaf Verilator `coverage.dat` inputs are excluded
-after merge while the merged coverage report and normalized summary remain.
+<<runner-ci-budgets>>.
 Explicit run directories never create or update the `latest`
 symlink.
 

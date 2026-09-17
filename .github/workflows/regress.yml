@@ -13,9 +13,13 @@ name: regress
 #   nightly  one random seed per test of each DUT's regression group, no
 #            coverage, sized to fit the standard 4-vCPU runner; a red
 #            nightly is a triage signal, not a merge gate.
-#   weekly   the coverage regression the dashboard publishes (dashboard.yml
-#            listens for `dv-run-<dut>-<tool>-weekly`); reseeded, and
+#   weekly   the regression the dashboard publishes (dashboard.yml listens
+#            for `dv-run-<dut>-<tool>-weekly`); one random seed per test,
 #            promoted to a larger runner by the DV_LARGE_RUNNER variable.
+#
+# Neither tier collects coverage: the coverage regression runs on the
+# licensed simulator flow outside hosted CI, and the coverage-instrumented
+# Verilator models of dtp, sep, and smu do not fit a hosted job.
 
 run-name: ${{ format('regress {0} ({1})', (github.event.schedule == '0 18 * * 6' && 'weekly') || inputs.tier || 'nightly', github.event_name == 'schedule' && 'scheduled' || 'manual dispatch') }}
 
@@ -83,11 +87,6 @@ jobs:
         # so any DUT whose `all` group contains firmware tests (a `c_compile`
         # stage) must name a CPU-free group instead, or every run fails at
         # build.
-        #
-        # coverage stays off on this tier. dtp `all` with coverage does not
-        # fit a hosted job (six-hour cap), and the coverage-instrumented sep
-        # and smu model builds exceed the standard runner's memory; the
-        # weekly tier carries coverage on a larger runner.
         include:
           - dut: dtp
             items: all
@@ -131,7 +130,7 @@ jobs:
             # `hosted` is that group minus those 17, so the scheduled tier
             # keeps the former smoke leaves.
             items: hosted
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           # IP-level benches (cross-trigger family, UART family, system timer,
@@ -140,47 +139,47 @@ jobs:
           # the weekly.
           - dut: cross_trigger_port
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           - dut: cross_trigger_matrix
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           - dut: cross_trigger_network
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           - dut: uart_16550
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           - dut: log_engine
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           - dut: uart_log_engine_wrap
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           - dut: uart_wrap
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           - dut: system_timer_octs
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
           - dut: scrambler
             items: all
-            reseed: 3
+            reseed: 1
             coverage: false
             runner: ubuntu-latest
     steps:
@@ -200,9 +199,9 @@ jobs:
       # "remote: Write access to repository not granted".
       #
       # .gitmodules addresses the submodule over SSH, which a hosted runner has
-      # no key for, so rewrite just that remote to HTTPS carrying the PAT. Same
-      # shape as .gitlab-ci.yml's OCAH_NONFREE_REMOTE. The rewrite is undone
-      # afterwards so the credential does not outlive the step.
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
+      # rewrite is undone afterwards so the credential does not outlive the
+      # step.
       - name: Check out the tt-oca-manifest submodule
         if: matrix.dut == 'sep'
         env:
@@ -245,68 +244,49 @@ jobs:
     if: needs.tier.outputs.tier == 'weekly'
     runs-on: ${{ matrix.runner }}
     # Every row runs under the hosted runner's six-hour cap, the largest
-    # budget a hosted job can have. A run that reaches cov_merge/cov_report
-    # keeps its coverage record and artifact even when it is red.
+    # budget a hosted job can have. A job the runner cancels at the cap
+    # still publishes its interruption checkpoint and its artifact.
     timeout-minutes: 360
     permissions: { contents: read }
     strategy:
       fail-fast: false
       matrix:
         # Runner-size promotion: the repository variable DV_LARGE_RUNNER names
-        # a 16-vCPU label once it is confirmed in the org's runner settings
-        # (see sim.yml for why a missing label must not be the default).
-        # Three policies key off it, all in this matrix:
-        #   - dtp reseeds three times only on the larger runner; at
-        #     --sim-jobs 4 the three-seed `all` needs about nine hours.
-        #   - sep, smu and smu_block collect coverage only on the larger
-        #     runner; the sep and smu coverage-instrumented model builds
-        #     exceed the standard runner's memory, and smu_block is the same
-        #     SMU model without the wrapper, so it shares the gate.
-        #   - sim-jobs follows the runner core count (the action's `nproc`).
-        # Every coverage block sets --output-groups 0: Verilator otherwise
-        # concatenates the generated .cpp files into --build-jobs groups by
-        # file count, and one group of the coverage-instrumented smc model
-        # became a 243 MB translation unit the compiler never finished; the
-        # same shape fits the sep/smu runner deaths. Per-file compilation is
-        # verified on smc (46-minute build on six cores, 12 MB database per
-        # leaf), so smc collects coverage here; sep, smu and smu_block keep
-        # their larger-runner gate until one weekly run confirms the standard
-        # runner's memory suffices for them too. The IP-level benches
-        # (cross_trigger, uart, system_timer_octs, scrambler) are small enough
-        # to collect coverage on the standard runner.
+        # a 16-vCPU label that exists in the org's runner settings
+        # (see sim.yml for why a missing label must not be the default);
+        # sim-jobs follows the runner core count (the action's `nproc`).
         include:
           - dut: dtp
             items: all
-            reseed: ${{ vars.DV_LARGE_RUNNER != '' && 3 || 1 }}
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
           - dut: sep
             items: cpu_stub
             reseed: 1
-            coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
+            coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
           - dut: smu
             items: hosted
-            reseed: 3
-            coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
+            reseed: 1
+            coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
           - dut: smu_block
             items: all
-            reseed: 3
-            coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
+            reseed: 1
+            coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
           - dut: smc
             items: hosted
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
           - dut: smc
             # The `rtl_issue` reproducers: every leaf carries `expect_fail`, so
             # the row is green while the filed defects stand and goes red the
             # week one is fixed and its test has to move. Its own row because
-            # `hosted` feeds the coverage dashboard and a graded expected
-            # failure must not count there; no coverage for the same reason.
-            # One seed: each leaf is a directed reproducer.
+            # `hosted` feeds the dashboard and a graded expected failure must
+            # not count there.
             items: rtl_issue
             label: rtl_issue
             reseed: 1
@@ -314,48 +294,48 @@ jobs:
             runner: ubuntu-latest
           - dut: cross_trigger_port
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
           - dut: cross_trigger_matrix
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
           - dut: cross_trigger_network
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
           - dut: uart_16550
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
           - dut: log_engine
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
           - dut: uart_log_engine_wrap
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
           - dut: uart_wrap
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
           - dut: system_timer_octs
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
           - dut: scrambler
             items: all
-            reseed: 3
-            coverage: true
+            reseed: 1
+            coverage: false
             runner: ubuntu-latest
     steps:
       - name: Checkout
@@ -374,9 +354,9 @@ jobs:
       # "remote: Write access to repository not granted".
       #
       # .gitmodules addresses the submodule over SSH, which a hosted runner has
-      # no key for, so rewrite just that remote to HTTPS carrying the PAT. Same
-      # shape as .gitlab-ci.yml's OCAH_NONFREE_REMOTE. The rewrite is undone
-      # afterwards so the credential does not outlive the step.
+      # no key for, so rewrite just that remote to HTTPS carrying the PAT. The
+      # rewrite is undone afterwards so the credential does not outlive the
+      # step.
       - name: Check out the tt-oca-manifest submodule
         if: matrix.dut == 'sep'
         env:

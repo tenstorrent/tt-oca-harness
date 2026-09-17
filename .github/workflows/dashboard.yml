@@ -128,30 +128,6 @@ jobs:
           run-id: ${{ env.REGRESS_RUN_ID }}
           github-token: ${{ github.token }}
 
-      # A dispatch re-grades each weekly tree against this checkout's coverage
-      # policy (not the regression commit's) before it is collected, so a
-      # waiver merged after the weekly ran reaches the published numbers.
-      # run_dv.py --waive rewrites only coverage values inside the run tree:
-      # exit 0 and 1 are applied grades (1 = thresholds not met, visible as the
-      # collected coverage status); exit 2 is the one error outcome and leaves
-      # the tree as recorded. A weekly whose report command crashed, or whose
-      # run did not finish (result.json tests.completed false), is refused
-      # and publishes as recorded; a weekly whose policy failed at grade time
-      # publishes its repaired grade once the policy is corrected. Every
-      # dispatch adds a trend point. The scheduled path does not run this step.
-      - name: Re-apply the checkout's coverage policy
-        if: steps.art.outputs.found == 'true' && github.event_name == 'workflow_dispatch'
-        run: |
-          while IFS=$'\t' read -r dut _ name; do
-            rc=0
-            OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut "$dut" --run-dir "weekly-runs/$name" --waive || rc=$?
-            case "$rc" in
-              0) ;;
-              1) echo "$dut: coverage policy applied; coverage thresholds not met" >> "$GITHUB_STEP_SUMMARY" ;;
-              *) echo "$dut: coverage policy not applied (exit $rc); publishing the recorded grade" >> "$GITHUB_STEP_SUMMARY" ;;
-            esac
-          done < rows.tsv
-
       # Fail closed on a malformed tree: every run-level result.json must
       # exist, and every collected record must carry the normalized schema
       # version and name its DUT. A FAIL/UNKNOWN status still publishes -- a
@@ -282,9 +258,9 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # The data branch is canonical: normalized results and staged coverage
-      # files, summary, bounded trend history, gzipped archives of the newest
-      # 90 runs per DUT, and classification.
+      # The data branch is canonical: normalized results, summary, bounded
+      # trend history, gzipped archives of the newest 90 runs per DUT, and
+      # classification.
       #
       # data/runs/<dut>/ holds every DUT's series. The flat data/runs/ series
       # is the one tools/doc/aggregate_test_history.py reads for the
@@ -328,7 +304,7 @@ jobs:
 
               latest/<dut>.result.json                      one normalized result per weekly DUT (schema "0.1")
               latest/summary.json                           the aggregate over those results (schema "0.1")
-              latest/artifacts/<dut>/coverage/              staged coverage manifest, summary, and policy application
+              latest/artifacts/<dut>/coverage/              staged coverage files of a run that collected coverage
               data/history.json                             trend history, newest 90 points (schema "0.2")
               data/runs/<dut>/<date>-run<id>.result.json.gz  archives of the newest 90 runs, per DUT
               data/runs/<date>-run<id>.result.json.gz        the one-DUT-per-run series the documentation site's test-history page reads

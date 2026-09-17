@@ -3,7 +3,8 @@
 """Sequence for smu_xtrig_mode_composition_test (SMU_104).
 
 The per-internal-CT mode vector the SMU presents to the DTP is
-{Cfg.XTRIG_INT_CT_MODE, 2'b00}, declared as DTP_XTRIG_INT_CT_MODE in
+Cfg.XTRIG_INT_CT_MODE in the SMU-exposed lanes concatenated with
+SMC-reserved pulse-sync bits, declared as DTP_XTRIG_INT_CT_MODE in
 hw/sys/smu/rtl/smu.sv. Reading that parameter back and comparing it against the
 elaborated Cfg field, or against the +xtrig_int_ct_mode the same build was
 elaborated with, is a drift check on the elaboration: both sides come from the
@@ -26,6 +27,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from seq_lib.smu_compose_helpers import (
     DTP_NUM_INT_CT,
     XTRIG_NUM_INT_CT,
+    XTRIG_SMC_INT_CT_LANES,
     bit_width,
     decode_cfg,
     hier,
@@ -70,8 +72,8 @@ class smu_xtrig_mode_composition_seq:
             sample(smu_vec, "DTP_XTRIG_INT_CT_MODE"),
         )
         sb.expect_eq(
-            "mode bits [1:0] presented to DTP are zero (SMC pulse-sync)",
-            dtp_mode & 0x3,
+            "mode bits in the SMC reservation presented to DTP are zero (pulse-sync)",
+            dtp_mode & ((1 << XTRIG_SMC_INT_CT_LANES) - 1),
             0,
             evidence="CHK-SMU-XTRIG-MODE-S1",
         )
@@ -82,9 +84,9 @@ class smu_xtrig_mode_composition_seq:
             mode_contract,
         )
         sb.expect_eq(
-            "mode bits [9:2] presented to DTP are Cfg.XTRIG_INT_CT_MODE unmodified",
-            dtp_mode >> 2,
-            cfg_fields["XTRIG_INT_CT_MODE"],
+            "mode bits above the SMC reservation presented to DTP are Cfg.XTRIG_INT_CT_MODE unmodified",
+            dtp_mode >> XTRIG_SMC_INT_CT_LANES,
+            cfg_fields["XTRIG_INT_CT_MODE"] & ((1 << XTRIG_NUM_INT_CT) - 1),
         )
         self.log.info("DTP mode vector 0x%03x = {0x%02x, 2'b00}", dtp_mode, mode_contract)
 
