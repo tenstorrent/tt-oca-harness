@@ -10,7 +10,7 @@ services that meet only at files and command lines. This page maps those
 files and command lines: for each interface it names the component that
 writes it, the components that read it, the contract a change has to keep,
 and the check that fails when the contract is broken. The runner and dashboard pages
-hold the detail; this page links to them rather than restating it.
+hold the detail; this page links to them.
 
 Responsibility is expressed by component and path. The tree that holds a
 file owns its contract: a DUT tree owns its sim config,
@@ -168,8 +168,8 @@ action's gate. Hosted CI publishes the score but enforces no threshold
 |String `schema_version` values: `"0.1"` for the per-DUT record, the summary,
 and the manifest, `"0.2"` for the history; `classification.json` carries
 none. The conversion from the native result is lossy: native `ERROR` and `TIMEOUT`
-collapse into `FAIL`, which is why `classification.json` is computed from
-the native leaf records instead. The consumers in this tree do not enforce
+collapse into `FAIL`. `classification.json` is computed from the native leaf
+records, which keep the distinction. The consumers in this tree do not enforce
 the schema version (xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
 The artifact and the branch carry identical content. Checked by the
 dashboard completion tests and by the Operational checks section of
@@ -333,7 +333,7 @@ content.
 
 |Send the weekly digest
 |The `OCAH_MAIL_USERNAME`, `OCAH_MAIL_PASSWORD`, and `OCAH_MAIL_TO` secrets
-|The step self-disables while the secrets are absent.
+|The step is skipped when `OCAH_MAIL_TO` is empty.
 
 |Render this guide
 |The `asciidoctor` and `asciidoctor-pdf` commands in the guide index
