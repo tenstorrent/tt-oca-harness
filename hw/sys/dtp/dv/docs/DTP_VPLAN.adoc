@@ -7357,6 +7357,30 @@ The simulation groups below come from `testlists/all.toml`;
 |`xtrig` |XTRIG, CTP, and CTM scenarios |Cross-trigger and CSR coverage
 |===
 
+[[dtp-vplan-signoff-package]]
+=== Signoff Package
+
+The DTP signoff package is the set of records below, each owned by one
+document of this book or by the tracker. The book carries the plans,
+contracts, dispositions, and waivers, which hold across candidates; the
+tracker's signoff item carries what belongs to one candidate: the commit,
+the run trees it was qualified with, the open issues with their owners and
+release dispositions, and the approvals of the DTP DV, design, coverage and
+CI, and project-lead owners.
+
+[cols="1,3",options="header",]
+|===
+|Record |Where it lives
+|Verification scope and requirements traceability |`DTP_SCOPE_TRACEABILITY.adoc`: the source of truth per question, the F1 to F5 matrix, the credit rules, and the gap table
+|Testbench and VIP architecture |`DTP_TB_ARCH.adoc`: the unified environment, the DUT-local model ownership, the supported simulator matrix, and the departures of the cocotb realization
+|Component closures |<<dtp-vplan-signoff>>: one subsection per plan section with its evidence contract, negative hooks, dispositions, and coverage review, and the *Evidence* field of every procedure
+|Coverage targets and closure |`DTP_FCOV.adoc`: the signoff target per metric, the evidence paths, and the closure policy that binds `cov/config/verilator/coverage_policy.toml`
+|Regression qualification |<<dtp-vplan-qualification>>: the supported pairs, the qualification run and its grading, the retained evidence, and the residual-failure register
+|Test quality and waivers |<<dtp-vplan-signoff-quality>>: the per-family quality review, the fail-closed evidence, and the waiver register
+|Known limitations |<<dtp-vplan-known-limitations>>
+|Candidate commit, run trees, open issues, approvals |The tracker's signoff item and the release record; the runner's `result.json` names the commit and the tool versions of every retained run
+|===
+
 [[dtp-vplan-qualification]]
 === Release Qualification
 
@@ -8145,6 +8169,7 @@ and the TB_ARCH departures; the plan rows without a realization (4.28 and
 reset-abort leaves and the SV-UVM long-stall budget as tracked defects in
 the release qualification residuals.
 
+[[dtp-vplan-known-limitations]]
 === Known Limitations
 
 [cols=",",options="header",]
