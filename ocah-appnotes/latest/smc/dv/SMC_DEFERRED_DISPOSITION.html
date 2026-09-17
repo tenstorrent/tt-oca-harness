@@ -1507,9 +1507,8 @@ the weekly tier runs the group on its own <code>regress.yml</code> row (artifact
 and the runner grades the recorded failure as PASS; an observed PASS grades
 <code>expected_fail_passed</code>, the signal to move the leaf into its feature testlist.
 Members: <code>smc_gpio_irq_mask_deassert_test</code> (#1602),
-<code>smc_log_engine_intr_mask_test</code> (#1635), <code>smc_i2c_intr_mask_test</code> (#1635),
-<code>smc_deadspace_decode_test</code> (#585) and <code>smc_remap_cla_test</code> (#1855: the CLA
-unmapped in-window offset <code>+0x38</code> completes with OKAY).
+<code>smc_log_engine_intr_mask_test</code> (#1635), <code>smc_i2c_intr_mask_test</code> (#1635) and
+<code>smc_deadspace_decode_test</code> (#585).
 <code>smc_efuse_read_timeout_status_test</code> is not a member: a read that hits
 <code>EFUSE_READ_REQ_TIMEOUT</code> completes with <code>EFUSE_READ_CTRL.READ_STATUS</code> set, so
 the leaf passes, proves <code>READ_STATUS</code> 0 &#8594; 1 and runs from <code>efuse.toml</code> in
