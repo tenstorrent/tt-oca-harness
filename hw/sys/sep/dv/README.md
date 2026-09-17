@@ -24,7 +24,8 @@ Everything the environment needs lives under this tree.
 |---|---|---|
 | Verilator 5.x (CI pin `v5.050`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
 | g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8 g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
-| Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python`. `run_dv.py` bootstraps the locked uv-managed DV env (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
+| Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python` |
+| uv (CI: `astral-sh/setup-uv@v6`) | every stage, including `--items smoke` | must be on `PATH`. `run_dv.py` re-executes itself inside the locked uv-managed DV env (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi). A missing binary exits 2 before any stage runs. No SEP-owned semver pin; the dependency pin is `uv.lock` |
 | Bender (CI: `pulp-actions/bender-install@v2.5.1`) | filelist (`--stage flist`) | must be on `PATH`. A missing binary fails filelist generation. No SEP-owned semver pin |
 | ccache (CI: Ubuntu apt) | Verilator object cache | `[build.verilator] ccache = true`. Absence fails the C++ compile (`ccache: No such file or directory` / make Error 127) |
 | RISC-V GCC + picolibc (`ocah-toolchain`) | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | `tools/docker/Dockerfile`: Debian trixie `gcc-riscv64-unknown-elf` + `picolibc-riscv64-unknown-elf` (packages float; the base image digest is pinned). Host without `--specs=picolibc.specs` fails unless `scripts/docker-run.sh` is available. Not needed for `--items smoke` |
@@ -34,9 +35,10 @@ Everything the environment needs lives under this tree.
 
 | Variable / action | When it is needed |
 |---|---|
-| `PATH` | must contain `verilator`, `python3`, `bender`; `ccache` for the Verilator model; a RISC-V GCC for `--items all`, `--items cpu`, `--items rom_fw`, and `--tag boot` |
+| `PATH` | must contain `uv`, `verilator`, `python3`, `bender`; `ccache` for the Verilator model; a RISC-V GCC for `--items all`, `--items cpu`, `--items rom_fw`, and `--tag boot` |
 | `source /opt/rh/gcc-toolset-11/enable` | RHEL-8 hosts whose default g++ is 8.5 (sets `PATH` to g++ ≥ 10) |
 | `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | optional override for `--stage c_compile`. Unset, the stage probes a site toolchain then a local xPack install, then `scripts/docker-run.sh` when picolibc is missing |
+| `OCAH_DV_SKIP_UV` | set to `1` on a pre-provisioned host that already supplies the `dv` dependency group. It skips only the uv re-execution; `run_dv.py` still exports the root and sets the Python path |
 | `OCAH_ROOT` | firmware `make` only (`OCAH_ROOT="$PWD"` from the repository root) |
 | `TMPDIR` | large local scratch for sim/build temporaries; do not use `/tmp` |
 | `VCS_HOME`, `SNPSLMD_LICENSE_FILE`, `LD_LIBRARY_PATH` | VCS only (license file plus the 32-bit `vcs` driver's python-3.9 lib dir) |
