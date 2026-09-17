@@ -2,14 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Cross-Trigger Matrix
-:description: CTM — AND-OR crossbar for cross-trigger pulse routing, configured as 26×26 in the DTP.
+:description: CTM — AND-OR crossbar for cross-trigger pulse routing. Dimensions come from the generated register map.
 
 [[cross-trigger-matrix]]
 
 The Cross Trigger Matrix (CTM) is an AND-OR crossbar that aggregates and
 statically routes cross-trigger pulses between all sources (CTPs, CLAs,
 internal devices) and sinks under AXI-Lite CSR control.
-The current DTP configuration uses 26 input ports and 26 output ports.
+The default DTP configuration uses 26 input ports and 26 output ports.
 
 == Overview
 
@@ -49,15 +49,17 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 These values cannot be overridden at instantiation. Resizing the matrix
-requires changing the SystemRDL parameters and regenerating the register map.
-The CTM takes the AXI-Lite
-request and response types as module parameters, which the CTN overrides to
-match its own crossbar.
+requires regenerating the register map with PeakRDL addrmap overrides
+(`OCAH_REG_RDL_PARAMS_cross_trigger_matrix`) that match the elaborated
+Cross-Trigger Network total (`NUM_CTP + NUM_INT_CT`). The CTN fails
+elaboration if that total disagrees with the generated `NUM_CT_SRC` and
+`NUM_CT_DST`. The CTM takes the AXI-Lite request and response types as
+module parameters, which the CTN overrides to match its own crossbar.
 
 Every CT_Src port occupies 8 bytes regardless of the port count. At or below
-32 destinations (including the DTP's 26), each register is a single 32-bit
-word with immediate write semantics. Above 32 destinations both words must be
-written before the mask takes effect, preventing half-programmed states.
+32 destinations, each register is a single 32-bit word with immediate write
+semantics. Above 32 destinations both words must be written before the mask
+takes effect, preventing half-programmed states.
 
 The register map for the CTM and for each CTP is included once in the
 ifdef::backend-html5[]

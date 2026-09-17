@@ -99,6 +99,8 @@ The top-level `cross_trigger_network` module has the following interface:
 
 *Parameters*
 
+* `NUM_CTP`, `NUM_INT_CT`, `NUM_CLK_STOP_REQ` - External CTP, internal CT, and
+  clock-stop request counts (defaults 16, 10, 9)
 * `INT_CT_MODE` - Per-bit mode selection for internal CTPs (0 = Wire-OR, 1 =
   P2P)
 * `axil_req_t`, `axil_resp_t` - AXI-Lite request/response types

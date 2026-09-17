@@ -65,6 +65,16 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
+The DTP passes these counts through as `XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, and
+`XTRIG_NUM_CLK_STOP_REQ`. The elaborated `NUM_CTP + NUM_INT_CT` must equal the
+generated Cross-Trigger Matrix `NUM_CT_SRC` and `NUM_CT_DST`; see
+ifdef::backend-html5[]
+xref:ip:cross_trigger_matrix/doc/index.adoc[Cross-Trigger Matrix].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<cross-trigger-matrix,Cross-Trigger Matrix>>.
+endif::backend-pdf[]
+
 ifdef::backend-pdf[]
 :imagesdir: assets
 endif::backend-pdf[]
