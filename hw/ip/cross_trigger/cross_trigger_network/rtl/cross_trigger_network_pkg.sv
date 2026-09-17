@@ -33,10 +33,8 @@ package cross_trigger_network_pkg;
   // CTM gets 512 bytes (0x200) - enough for up to 64 CT_SRC register pairs (64 * 8 bytes)
   // Each CT_SRC uses 8 bytes (CONFIG_0 + CONFIG_1) to support up to 64 CT_DST ports
   // Each CTP gets 16 bytes (0x10) - enough for 3 registers (CONFIG, STATUS, STRETCH_MULT)
-  localparam int unsigned CSR_ADDR_CTM_SIZE =
-      int'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
-  localparam int unsigned CSR_ADDR_CTP_SIZE =
-      int'(CROSS_TRIGGER_NETWORK_CTP_STRIDE);
+  localparam int unsigned CSR_ADDR_CTM_SIZE = int'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
+  localparam int unsigned CSR_ADDR_CTP_SIZE = int'(CROSS_TRIGGER_NETWORK_CTP_STRIDE);
 
   // AXI-Lite Parameters
   localparam int unsigned AXI_LITE_ADDR_WIDTH = 32;
