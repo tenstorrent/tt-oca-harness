@@ -133,7 +133,7 @@ appears.
 |Open-source files |PyUVM test under `cocotb/tests/`, stimulus in `cocotb/seq_lib/`, shared helpers on `sep_base_test` / `cocotb/env/`
 |Testlist enrollment |Leaf entry in the owning `testlists/*.toml` and in `testlists/all.toml`
 |Evidence |Every checker needs a positive log line naming the contract, as `CHK-<ID> PASS`
-|Evidence gate |`sep_base_test` counts the distinct `CHK-<ID> PASS` records a run emitted and fails a run that produced none, so a clean exit cannot stand in for a graded contract. A leaf may raise its own floor with `min_evidence = N`, or name the IDs it owes with `required_evidence = ("CHK-A", ...)`; both default to off. Each run logs `EVIDENCE_SUMMARY test=... observed=N required=N missing=N ids=...`
+|Evidence gate |`sep_base_test` counts the distinct `CHK-<ID> PASS` records a run emitted and fails a leaf whose OWN count is zero, so a clean exit cannot stand in for a graded contract. `own` excludes the records the base class emits during bring-up. `_EvidenceFilter.NO_OWN_EVIDENCE` names the leaves exempt from that floor because they grade through another channel, with the reason for each; the list may only shrink. A leaf may raise its own floor with `min_evidence = N`, or name the IDs it owes with `required_evidence = ("CHK-A", ...)`; both default to off. Each run logs `EVIDENCE_SUMMARY test=... observed=N own=N required=N missing=N ids=...`. See the evidence gate section of `README.md` for the full description
 |===
 
 === Open-Source BFM Policy
