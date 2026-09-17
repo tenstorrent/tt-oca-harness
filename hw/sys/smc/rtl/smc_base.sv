@@ -237,9 +237,9 @@ module smc_base #(
   prim_sync3 #(
     .WIDTH(NUM_EXT_INTERRUPTS)
   ) u_ext_interrupts_sync3 (
-    .i_clk (clk_smc_i),
-    .i_d   (ext_interrupts_i),
-    .o_q   (ext_interrupts_smc_clk)
+    .clk_i (clk_smc_i),
+    .d_i   (ext_interrupts_i),
+    .q_o   (ext_interrupts_smc_clk)
   );
 
   // Interrupt distribution: N external interrupts, 32 peripheral interrupts,
@@ -264,9 +264,9 @@ module smc_base #(
   prim_sync3 #(
     .WIDTH(512)
   ) u_ext_debug_bus_sync3 (
-    .i_clk (clk_smc_i),
-    .i_d   (ext_debug_bus_i),
-    .o_q   (ext_debug_bus_smc_clk)
+    .clk_i (clk_smc_i),
+    .d_i   (ext_debug_bus_i),
+    .q_o   (ext_debug_bus_smc_clk)
   );
 
   logic [1023:0] debug_bus;
@@ -544,6 +544,7 @@ module smc_base #(
     .trace_mem_resp_i                 (trace_mem_resp_i),
 
     .test_en_i                        (test_en_i),
+    .scan_rst_ni                      (scan_rst_ni),
 
     .mem_repair_done_i                (mem_repair_done_i),
     .mem_repair_success_i             (mem_repair_success_i),

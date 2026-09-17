@@ -6,11 +6,57 @@ schema_version = 1
 # Formal items for `--dut dtp --mode formal` (dtp_formal_cfg.toml). `module` names the app table
 # the item launches, [formal.apps.<module>.<tool>]; one item is one sby invocation that runs every
 # task of that app, and the runner grades it from the per-task status files and JUnit reports.
+# One item per described block of the plan section (DTP_VPLAN.adoc, Formal Verification Plan).
 
 [[tests]]
 name = "dtp_tap_fpv"
-module = "fpv"
+module = "tap_fpv"
 tags = ["formal", "smoke", "ci"]
+
+[[tests]]
+name = "dtp_ir_fpv"
+module = "ir_fpv"
+tags = ["formal"]
+
+[[tests]]
+name = "dtp_reset_fpv"
+module = "reset_fpv"
+tags = ["formal"]
+
+[[tests]]
+name = "dtp_stap_fpv"
+module = "stap_fpv"
+tags = ["formal"]
+
+[[tests]]
+name = "dtp_sib_fpv"
+module = "sib_fpv"
+tags = ["formal"]
+
+[[tests]]
+name = "dtp_dbgctl_fpv"
+module = "dbgctl_fpv"
+tags = ["formal"]
+
+[[tests]]
+name = "jtag2axi_ctrl_fpv"
+module = "j2a_ctrl_fpv"
+tags = ["formal"]
+
+[[tests]]
+name = "ctn_clkstop_fpv"
+module = "ctn_clkstop_fpv"
+tags = ["formal"]
+
+[[tests]]
+name = "ctn_xtrig_fpv"
+module = "ctn_xtrig_fpv"
+tags = ["formal"]
+
+[[tests]]
+name = "ctn_csr_fpv"
+module = "ctn_csr_fpv"
+tags = ["formal"]
 
 # `smoke` is the fast gate; `fpv` is every formal item of the plan section.
 [[groups]]
@@ -19,4 +65,15 @@ tests = ["dtp_tap_fpv"]
 
 [[groups]]
 name = "fpv"
-tests = ["dtp_tap_fpv"]
+tests = [
+  "dtp_tap_fpv",
+  "dtp_ir_fpv",
+  "dtp_reset_fpv",
+  "dtp_stap_fpv",
+  "dtp_sib_fpv",
+  "dtp_dbgctl_fpv",
+  "jtag2axi_ctrl_fpv",
+  "ctn_clkstop_fpv",
+  "ctn_xtrig_fpv",
+  "ctn_csr_fpv",
+]

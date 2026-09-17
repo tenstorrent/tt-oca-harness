@@ -89,9 +89,14 @@ EDN_ERR_CODE = sym("EDN_ERR_CODE_REG_ADDR")
 EDN_RECOV_ALERT = sym("EDN_RECOV_ALERT_STS_REG_ADDR")
 
 # --- values -----------------------------------------------------------------
-# OpenTitan multi-bit bool encodings (prim_mubi_pkg), not CSR addresses.
-_MUBI4_TRUE = 0x6
-_MUBI4_FALSE = 0x9
+# 4-bit multi-bit-bool, derived from the register export rather than copied from
+# an RTL package. csrng.rdl resets CTRL.ENABLE to the disabled encoding and
+# describes the enabling value as kMultiBitBool4True, so the field's reset IS
+# mubi-false and mubi-true is its complement across the field width. The
+# encoding is chosen for Hamming distance, which is why it is not 0 and 1.
+_MUBI4_FIELD = CSRNG.fields("CTRL")["ENABLE"]
+_MUBI4_FALSE = _MUBI4_FIELD["reset"]
+_MUBI4_TRUE = (~_MUBI4_FALSE) & ((1 << _MUBI4_FIELD["bw"]) - 1)
 CSRNG_CTRL_ENABLE = CSRNG.value(
     "CTRL",
     ENABLE=_MUBI4_TRUE,
@@ -118,7 +123,8 @@ CMD_RESEED = 0x0000_0902  # acmd=2
 RING_OSC_SAMPLECLK_ONLY = ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0, SAMPLE_CLK_ENABLE=0xFFF)
 RING_OSC_ALL_ON = ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0xFFF, SAMPLE_CLK_ENABLE=0xFFF)
 
-# DECORRELATOR_CTRL.SAMPLE_CLK_DIV: division = field+1 (RTL entropy_decorrelator.sv).
+# DECORRELATOR_CTRL.SAMPLE_CLK_DIV: division = field+1
+# (entropy_source.rdl: "this value plus one sample-clock cycles").
 # Reset is divide-by-64 (OTP-faithful). Divide-by-8 samples faster for a quick
 # alive bring-up.
 DECOR_CTRL_DIV64 = ENTROPY_SOURCE.value("DECORRELATOR_CTRL", SAMPLE_CLK_DIV=63)
@@ -177,12 +183,13 @@ class SepEntropyCfg:
     program_boot_generate: bool = False
     reseed_interval: int = 8  # EDN MAX_NUM_REQS_BETWEEN_RESEEDS
     # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
-    # before the CSRNG seed packer starts. ZERO for this DRBG -- drbg.sv wires the
-    # packer straight to the stream (`.csrng_word_valid_i (entropy_stream_vld_i)`,
-    # drbg.sv:150) with no distribution FIFO in between, so nothing is absorbed and
-    # the golden must not skip. A skip of 12 would model a distribution FIFO that
-    # this repository's drbg.sv does not instantiate and shift the golden by 12
-    # words: CHK3_seed (and so CHK4/CHK5) mismatch while CHK1/CHK2 match exactly.
+    # before the CSRNG seed packer starts. ZERO for this DRBG --
+    # hw/ip/drbg/doc/architecture.adoc Seed Assembly: one 32-bit entropy word per
+    # valid cycle directly from the entropy source, no upstream routing or
+    # distribution FIFO, so nothing is absorbed and the golden must not skip.
+    # A skip of 12 would model a distribution FIFO this integration does not
+    # instantiate and shift the golden by 12 words: CHK3_seed (and so CHK4/CHK5)
+    # mismatch while CHK1/CHK2 match exactly.
     ingress_skip: int = 0
     internal_drbg: bool = True  # EXT_TRNG_SRC_SEL = 0 (internal) vs 0x7 (ext_trng)
     health_ctrl: int = HEALTH_CTRL_DEFAULT

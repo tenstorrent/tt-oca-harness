@@ -14,7 +14,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_efuse_locked_access_interrupt_test(smc_base_test):
-    """CHIPLET_ID unlocked write silent; locked write/read pulse bit 28."""
+    """JTAG_PUBLIC_IDENTITY unlocked write silent; locked write/read pulse IRQ."""
 
     required_evidence = (
         "CHK-EFUSE-LOCK-IRQ-RD",

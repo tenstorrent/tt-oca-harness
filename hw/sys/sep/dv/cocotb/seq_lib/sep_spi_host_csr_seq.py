@@ -77,11 +77,10 @@ CTRL_IMPL_MASK = SPI_CONTROLLER.mask32("CTRL")
 CTRL_TX_WM_LSB = SPI_CONTROLLER.field_lsb("CTRL", "tx_watermark")
 ERR_STATUS_MASK = SPI_CONTROLLER.mask32("ERROR_STATUS")
 
-# spi_controller command-queue depth (spi_controller command_queue.sv CmdDepth).
-CMD_FIFO_DEPTH = 4
-# spi_controller TX FIFO depth (spi_controller_data_fifos.sv TxDepth) -- writing
-# beyond it with the core disabled drives ERROR_STATUS.OVERFLOW.
-TX_FIFO_DEPTH = 72
+# No FIFO depth constant lives here on purpose. The OVERFLOW and CMDBUSY
+# triggers find their boundary from STATUS (TXFULL, READY) and then write one
+# beat past it, so neither stimulus needs a depth the RDL does not carry and
+# neither is sized from the design's own source.
 
 # CMD fields, positioned from the generated export.
 _CMD_DIR_LSB = SPI_CONTROLLER.field_lsb("CMD", "direction")

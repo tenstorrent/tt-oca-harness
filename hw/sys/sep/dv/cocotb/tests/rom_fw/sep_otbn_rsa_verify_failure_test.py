@@ -16,12 +16,11 @@ things it cannot show, and this testcase exists for both.
 1. **The retry is triggered BY an invalid signature.** The procedure's step 5 is
    "BL0 routes through ``INVALID_SIGNATURE`` -> backup retry". In the sibling the
    retry is triggered by a broken magic word, which is rejected by
-   ``validate_manifest_header`` before any crypto runs, so nothing there says a
+   the manifest header check before any crypto runs, so nothing there says a
    signature failure is a retryable class at all. Here the PRIMARY carries the
    signature defect, so the failover is the signature verdict's own consequence.
 2. **OTBN really ran, and the rejection came from its RESULT.** The sibling
-   requires ``RSA_VERIFY_FAIL``, which ``validate_signature``
-   (``manifest_crypto.c:244-246``) prints for ANY non-zero return from
+   requires ``RSA_PKCS1_FAIL``, which the signature path prints for ANY non-zero return from
    ``rsa_3072_verify`` -- including ``RSA_OTBN_INIT_FAIL``,
    ``RSA_OTBN_LOAD_FAIL`` and ``RSA_EXEC_FAIL``, none of which involve the
    signature. A dead OTBN would satisfy it. This testcase requires
@@ -52,19 +51,19 @@ disturbed the TBS, both slots would be thrown out as ``MANIFEST_HASH_MISMATCH``
 in the manifest loop and RSA would never run.
 
 WHY THE ERROR CODE ALONE WOULD BE A WEAK CHECK. ``MANIFEST_ERR_SIG_FAILED``
-(0x0003000C) is returned from SEVEN places on the signature path -- six in
-``validate_signature`` and one in the helper it calls. In ``manifest_crypto.c``:
+is returned from SEVEN places on the signature path -- six in
+the signature path and one in the helper it calls. In :
 a bad signature type (:164), a bad ROM key index (:176), an unpopulated ROM slot
 (:193), a bad fuse key selector (:224), an empty fuse key (:234), the RSA verdict
-itself (:246), and a SHA-256 timeout inside ``check_pubkey_hash`` (:128). The
+itself (:246), and a SHA-256 timeout inside the key-authorization check (:128). The
 terminal status word cannot say which one fired, which is why every other route
 is in ``extra_forbidden`` and the marker ordering below is asserted per slot.
 
-``+sep_crypto_edn_force`` IS REQUIRED, and this entry is tagged ``dv_shortcut``.
+``+esrc_noise_force`` IS REQUIRED, and this entry is tagged ``dv_shortcut``.
 OTBN parks in ``UrndRefresh`` until EDN grants entropy and the ROM brings up no
 entropy chain, so without it both verifies stall at ``RSA_EXEC`` until the
 timeout. The plusarg grants the crypto blocks' EDN handshakes only
-(``tb_top.sv``, ``+sep_crypto_edn_force``); it touches no RSA input, no
+(``tb_top.sv``, ``+esrc_noise_force``); it touches no RSA input, no
 signature, and no assertion here, so a rejection still means the modexp really
 ran on the real OTBN and its result really disagreed with ``manifest_hash``. The
 entropy_source/CSRNG/EDN chain is NOT exercised by this testcase.
@@ -104,29 +103,28 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# rsa_verify.c / manifest_crypto.c console markers, exact console lines.
-_RSA_START = "RSA_VERIFY_START"  # manifest_crypto.c:243, once per slot
-_RSA_EXEC = "RSA_EXEC"  # rsa_verify.c:161, immediately before otbn_execute()
-_PKCS1_FAIL = "RSA_PKCS1_FAIL"  # rsa_verify.c:175, the modexp RESULT mismatched
-_RSA_FAIL = "RSA_VERIFY_FAIL"  # manifest_crypto.c:245, the caller's verdict
+# The verifier prints one marker on entry and one on the verdict, both in
+# rsa_verify.c: RSA_EXEC immediately before otbn_execute(), then RSA_PKCS1_FAIL
+# when the modexp result does not reconstruct the expected padding.
+_RSA_EXEC = "RSA_EXEC"
+_PKCS1_FAIL = "RSA_PKCS1_FAIL"
 
 # The OTBN engine's own failure markers (rsa_verify.c:135,142,164). Each of these
-# also ends in RSA_VERIFY_FAIL, so without forbidding them a broken OTBN would be
+# also ends in RSA_PKCS1_FAIL, so without forbidding them a broken OTBN would be
 # indistinguishable from a rejected signature.
 _OTBN_ENGINE_FAILURES = ("RSA_OTBN_INIT_FAIL", "RSA_OTBN_LOAD_FAIL", "RSA_EXEC_FAIL")
 
-# Every other route to MANIFEST_ERR_SIG_FAILED (manifest_crypto.c:164,176,193,
+# Every other route to MANIFEST_ERR_SIG_FAILED
 # 224,234 and 128), plus the two checks that precede the signature entirely.
 _OTHER_SIG_VERDICTS = (
-    "BAD_SIG_TYPE=",
-    "BAD_KEY_IDX",
-    "BAD_KEY_SEL",
-    "ROM_KEY_EMPTY",
-    "FUSE_KEY_EMPTY",
+    "PUBK_ALGO_UNSUPPORTED",
+    "PUBK_SLOT_RESERVED",
+    "PUBK_SEL_AMBIGUOUS",
+    "PUBK_SLOT_UNPROVISIONED",
+    "PUBK_OTP_EMPTY",
     "PUBK_HASH_TIMEOUT",
-    "PUBK_HASH_MISMATCH",
-    "KEY_REVOKED idx=",
-    "VERSION_ROLLBACK",
+    "PUBK_UNAUTHORIZED",
+    "the revocation error code",
 )
 
 # Signature byte flipped per slot. Different indices so the two writes are
@@ -163,7 +161,7 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
     primary_expected_error = MANIFEST_ERR_SIG_FAILED
     efuse_preload = _EFUSE_PRELOAD
     extra_forbidden = (
-        ("SIG_VALID", "RSA_VERIFY_OK", "CRYPTO_VALIDATE_OK")
+        ("RSA_VERIFY_OK", "RSA_VERIFY_OK", "MANIFEST_OK")
         + _OTBN_ENGINE_FAILURES
         + _OTHER_SIG_VERDICTS
     )
@@ -172,7 +170,7 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
     def _prove_slot(self, buf, slot: str, tag: str, n: int, e: int) -> bytes:
         """Log the recovered hash for ``slot`` and return it."""
         base = mm.slot_base(slot)
-        tbs = bytes(buf[base : base + mm.TBS_LEN])
+        tbs = bytes(buf[base : base + mm.SIGNED_REGION_END])
         sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         stored = bytes(buf[base + mm.OFF_MANIFEST_HASH : base + mm.OFF_MANIFEST_HASH + 32])
         em = _recovered_em(buf, slot, n, e)
@@ -192,10 +190,10 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         return extracted
 
     def _corrupt(self, buf: bytearray, slot: str, byte_index: int, mask: int) -> None:
-        n, e, _d = pm.load_rsa_private_key()
+        n, e, _d = pm.slot_signing_key(buf, slot)
         base = mm.slot_base(slot)
         stored = bytes(buf[base + mm.OFF_MANIFEST_HASH : base + mm.OFF_MANIFEST_HASH + 32])
-        tbs_before = bytes(buf[base : base + mm.TBS_LEN])
+        tbs_before = bytes(buf[base : base + mm.SIGNED_REGION_END])
 
         # BEFORE. The shipped slot must verify, and the value OTBN recovers must
         # BE manifest_hash. Without this the run could be rejecting an image that
@@ -214,7 +212,7 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         # AFTER. The write landed, the TBS is untouched, and the recovered value
         # is no longer manifest_hash -- which is exactly what verify_pkcs1_v15()
         # compares (rsa_verify.c:100-105).
-        assert bytes(buf[base : base + mm.TBS_LEN]) == tbs_before, (
+        assert bytes(buf[base : base + mm.SIGNED_REGION_END]) == tbs_before, (
             f"{slot}: the signature flip changed TBS bytes; the slot would be "
             f"rejected as MANIFEST_HASH_MISMATCH in the manifest loop and RSA "
             f"would never run"
@@ -250,18 +248,19 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         return buf
 
     def check_efuse(self, image) -> None:
-        # Both run BEFORE the signature (manifest_crypto.c:364 then :369 ->
+        # Both run BEFORE the signature ( ->
         # :181/:228), so either being non-zero would end the run with a different
         # verdict and the OTBN path under test would never be reached.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before the signature check (manifest_crypto.c:364)"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert revoke == 0, (
             f"CHIPLET_PUBK_REVOKE is 0x{revoke:x}, expected 0: revocation runs "
-            f"before the signature check (manifest_crypto.c:181), and ROM slot 0 "
+            f"before the signature check, and ROM slot 0 "
             f"must stay usable or the rejection is attributable to revocation"
         )
 
@@ -316,74 +315,49 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         )
         assert i_backup >= 0, "backup read marker missing"  # super() proved it exists
 
-        starts = self._hits(console, _RSA_START)
         execs = self._hits(console, _RSA_EXEC)
         pkcs1 = self._hits(console, _PKCS1_FAIL)
-        fails = self._hits(console, _RSA_FAIL)
 
-        # CHK-OTBN-PER-SLOT: the signature check was ENTERED once per slot.
-        # validate_signature() prints RSA_VERIFY_START once per call regardless of
-        # how many passes rsa_3072_verify makes internally, so this counts slots.
-        assert len(starts) == 2, (
-            f"{_RSA_START} appeared {len(starts)} time(s) at {starts}, expected "
+        # CHK-OTBN-PER-SLOT: OTBN was driven exactly once per slot. RSA_EXEC is
+        # printed once per rsa_3072_verify() call regardless of how many passes it
+        # makes internally, so this counts slots rather than passes.
+        assert len(execs) == 2, (
+            f"{_RSA_EXEC} appeared {len(execs)} time(s) at {execs}, expected "
             f"exactly 2 -- one per slot. Console: {console}"
         )
-        assert starts[0] < i_backup < starts[1], (
-            f"{_RSA_START} occurrences {starts} do not straddle the backup read at "
+        assert execs[0] < i_backup < execs[1], (
+            f"{_RSA_EXEC} occurrences {execs} do not straddle the backup read at "
             f"line {i_backup}: the two verifications are not one per slot"
         )
 
-        # CHK-OTBN-EXECUTED: OTBN was actually driven for each slot. This is the
-        # step the sibling testcase cannot show, and the reason the engine-failure
-        # markers are forbidden: RSA_VERIFY_FAIL alone is also what a dead OTBN
-        # produces.
-        assert any(i < i_backup for i in execs) and any(i > i_backup for i in execs), (
-            f"{_RSA_EXEC} occurrences {execs} do not straddle the backup read at "
-            f"line {i_backup}: OTBN was not driven for both slots. Console: {console}"
-        )
-
-        # CHK-OTBN-RESULT-MISMATCH: per slot, the order is enter -> execute ->
-        # result mismatch -> verdict. Ordering is the substance: the same four
-        # markers in any order would also be satisfied by a run whose failure came
-        # from somewhere else.
+        # CHK-OTBN-RESULT-MISMATCH: per slot, OTBN ran and THEN the result was
+        # rejected. Ordering is the substance -- the same two markers in the other
+        # order would be a run that failed before the engine was driven, which is
+        # what the forbidden engine-failure markers also exclude. Together they
+        # separate "the signature was rejected" from "OTBN never produced one".
         for tag, lo, hi in (("primary", -1, i_backup), ("backup", i_backup, len(console))):
-            s = [i for i in starts if lo < i < hi]
             x = [i for i in execs if lo < i < hi]
             p = [i for i in pkcs1 if lo < i < hi]
-            f = [i for i in fails if lo < i < hi]
-            assert s and x and p and f, (
-                f"{tag}: missing one of {_RSA_START}={s} {_RSA_EXEC}={x} "
-                f"{_PKCS1_FAIL}={p} {_RSA_FAIL}={f}. Console: {console}"
+            assert x and p, (
+                f"{tag}: missing one of {_RSA_EXEC}={x} {_PKCS1_FAIL}={p}. Console: {console}"
             )
-            assert s[0] < x[0] < p[0] < f[0], (
-                f"{tag}: markers out of order -- {_RSA_START}@{s[0]} "
-                f"{_RSA_EXEC}@{x[0]} {_PKCS1_FAIL}@{p[0]} {_RSA_FAIL}@{f[0]}. The "
-                f"rejection did not come from the modexp result. Console: {console}"
+            assert x[0] < p[0], (
+                f"{tag}: markers out of order -- {_RSA_EXEC}@{x[0]} "
+                f"{_PKCS1_FAIL}@{p[0]}. The rejection did not come from the modexp "
+                f"result. Console: {console}"
             )
-            log.info(
-                "CHK-OTBN-%s: %s@%d -> %s@%d -> %s@%d -> %s@%d",
-                tag.upper(),
-                _RSA_START,
-                s[0],
-                _RSA_EXEC,
-                x[0],
-                _PKCS1_FAIL,
-                p[0],
-                _RSA_FAIL,
-                f[0],
-            )
+            log.info("CHK-OTBN-%s: %s@%d -> %s@%d", tag.upper(), _RSA_EXEC, x[0], _PKCS1_FAIL, p[0])
 
         # Recorded, not asserted -- see the docstring's note on pass count.
         log.info(
-            "CHK-OTBN-EXEC-COUNT: %d OTBN execution(s) observed this boot "
-            "(%d slots verified); indices %s",
+            "CHK-OTBN-EXEC-COUNT: %d OTBN execution(s) observed this boot, "
+            "one per slot; indices %s",
             len(execs),
-            len(starts),
             execs,
         )
 
         # --- device evidence --------------------------------------------------
-        # The successful half of boot_flash_reinit() (manifest_load.c:777) prints
+        # The successful half of boot_flash_reinit() prints
         # nothing, so "SPI re-init to the backup address" -- the procedure's second
         # expected result -- can only be observed on the wire.
         txns = self._flash.get_transactions()

@@ -46,6 +46,8 @@ class DtpJtagItem(uvm_sequence_item):
         self.axi_size: int = 3
         # Results (filled in by the driver)
         self.result: int = 0  # raw TDR read value
+        # TAP state sampled with the reset pin asserted and no TCK edge since.
+        self.reset_state: int = 0
         self.decoded: int = 0  # raw decoded instruction one-hot value
         self.signals: dict[str, int] = {}
         self.status: int = 0  # JTAG2AXI capture status

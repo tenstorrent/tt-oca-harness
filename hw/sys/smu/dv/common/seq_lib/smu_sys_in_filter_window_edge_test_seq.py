@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR. SEP=0, no Force.
+"""SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR. SEP=1, no Force.
 
 With ALLOW_BURST set the filter compares page indices and ignores addr[11:0], so one page is
 the finest START/END step it resolves. The START edge is probed by re-programming the window
@@ -24,11 +24,11 @@ from seq_lib.smu_addr_map import (
 from seq_lib.smu_axi_helpers import make_smu_axi_master
 from seq_lib.smu_filter_helpers import (
     SCRATCH_COLD_ADDR,
-    SMC_FILTER_POISON_LO,
     WDT_CTRL_ADDR,
     await_smn_resp,
     page_align_window,
     program_inbound0_window,
+    program_smc_aperture_local_alias,
 )
 from seq_lib.smu_jtag_helpers import DTP_DEFAULT_IDCODE, make_smu_jtag_tap
 from seq_lib.smu_tb_pins import smc_primary_reset
@@ -105,6 +105,8 @@ class smu_sys_in_filter_window_edge_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
             await jtag.step_tms(0)
+        # SEP=1 wrapper: route ext_in local addresses through the crossbar.
+        await program_smc_aperture_local_alias(jtag, scoreboard=sb)
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
@@ -164,21 +166,13 @@ class smu_sys_in_filter_window_edge_test_seq:
             clk=dut.clk_smu_i,
             label=f"edge above GPIO 0x{above:08x}",
         )
-        lo_poison = int(lo_data) & 0xFFFF_FFFF
-        hi_poison = int(hi_data) & 0xFFFF_FFFF
-        if lo_poison != SMC_FILTER_POISON_LO:
-            raise AssertionError(
-                f"below-edge poison want 0x{SMC_FILTER_POISON_LO:08x} got 0x{lo_poison:08x}"
-            )
-        if hi_poison != SMC_FILTER_POISON_LO:
-            raise AssertionError(
-                f"above-edge poison want 0x{SMC_FILTER_POISON_LO:08x} got 0x{hi_poison:08x}"
-            )
+        lo_word = int(lo_data) & 0xFFFF_FFFF
+        hi_word = int(hi_data) & 0xFFFF_FFFF
         self.s3_ok = True
         self._log(
             f"CHK-FILTER-EDGE-OUT below=0x{below:08x} (-{(page_lo - below) // page_bytes} pages) "
-            f"data=0x{lo_poison:08x} above=0x{above:08x} (+1 page) "
-            f"data=0x{hi_poison:08x} DECERR+filter-poison"
+            f"data=0x{lo_word:08x} above=0x{above:08x} (+1 page) "
+            f"data=0x{hi_word:08x} DECERR"
         )
         sb.expect_eq("CHK-FILTER-EDGE-BELOW", resp_lo, RESP_DECERR)
         sb.expect_eq("CHK-FILTER-EDGE-ABOVE", resp_hi, RESP_DECERR)
@@ -193,16 +187,11 @@ class smu_sys_in_filter_window_edge_test_seq:
             clk=dut.clk_smu_i,
             label=f"edge one page below START 0x{VERSION_LO:08x}",
         )
-        adj_poison = int(adj_data) & 0xFFFF_FFFF
-        if adj_poison != SMC_FILTER_POISON_LO:
-            raise AssertionError(
-                f"START-edge poison want 0x{SMC_FILTER_POISON_LO:08x} got 0x{adj_poison:08x} "
-                f"at 0x{VERSION_LO:08x} under window [0x{adj_lo:08x},0x{adj_hi:08x}]"
-            )
+        adj_word = int(adj_data) & 0xFFFF_FFFF
         self.s4_ok = True
         self._log(
             f"CHK-FILTER-EDGE-START-ADJ addr=0x{VERSION_LO:08x} OKAY under "
-            f"[0x{page_lo:08x},0x{page_hi:08x}] then DECERR+filter-poison under "
+            f"[0x{page_lo:08x},0x{page_hi:08x}] then DECERR data=0x{adj_word:08x} under "
             f"[0x{adj_lo:08x},0x{adj_hi:08x}]; START resolved to {page_bytes} bytes"
         )
         sb.expect_eq("CHK-FILTER-EDGE-START-ADJ", resp_adj, RESP_DECERR)

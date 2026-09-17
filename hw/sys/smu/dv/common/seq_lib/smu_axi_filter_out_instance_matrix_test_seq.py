@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMU Tier A: outbound filter instance CSR DECODE (FAB_SMC_025 S1).
 
-SEP=0 honest scope (no sep_in / no Force / no ext_out peer):
+SEP=1 honest scope (no sep_in / no Force / no ext_out peer):
   S1  J2A program then readback on instances 0/1/8/15 (DECODE independence)
   S2  not covered: identical_struct_in_vs_out needs an ext_out peer
   S3  not covered: outbound pairwise isolation needs an ext_out peer
@@ -62,13 +62,13 @@ S1_SIGNATURES = {
 DEFERRED_S2_TEXT = (
     "SMCF-FILTER-OUT-INSTANCES.S2 (identical_struct_in_vs_out) "
     "NOT-REACHABLE-AT-THIS-LEVEL. identical_struct_in_vs_out LIVE "
-    "requires ext_out consumer — do not invent DECODE substitute under SEP=0."
+    "requires ext_out consumer — do not invent DECODE substitute."
 )
 
 DEFERRED_S3_TEXT = (
     "SMCF-FILTER-OUT-INSTANCES.S3 (outbound_instance_isolation_pairwise) "
     "NOT-REACHABLE-AT-THIS-LEVEL. outbound_instance_isolation_pairwise "
-    "LIVE requires ext_out beats under SEP=0."
+    "LIVE requires ext_out beats."
 )
 
 

@@ -24,10 +24,10 @@ module prim_clock_gating_sync (
   );
 
   prim_clkgater i_cg (
-    .i_clk(clk_i),
-    .i_en(en_o),
-    .i_te(test_en_i),
-    .o_clk(clk_o)
+    .clk_i(clk_i),
+    .en_i(en_o),
+    .te_i(test_en_i),
+    .clk_o(clk_o)
   );
 
 

@@ -4,6 +4,8 @@
 [[smn-integration]]
 = System Management Network (SMN) Integration
 
+== Status
+
 [WARNING]
 ====
 This section is currently under development. Content will be added to describe

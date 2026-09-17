@@ -6,17 +6,21 @@ DV-CARD:          SMU_ALL_004   ANCHOR: smu_smc_mailbox_int_test
 
 Owns:
   SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary
-    (bare tb_top SEP=0; required_cells width=32).
+    (wrapper; required_cells width=32).
 
-The observable `tb_top.ext_mailbox_interrupts` is declared
-`[smc_pkg::NUM_MAILBOXES-1:0]` in `tb/smu_tb_signal_list.svh`, so the sampled
-width is the DUT parameter and not a TB literal. Bit-index mapping is proven by
+Width and value are both read on the DUT's own output port
+`smc_ext_mailbox_interrupts_o`, reached hierarchically through `smu_scope()`.
+The testbench net that port drives is declared from the same RTL package as the
+port, so its width is 32 whatever width the port has, and only the port answers
+the boundary claim. The 32 the measured width is compared against is the SMC
+specification's mailbox count (`hw/sys/smc/doc/port_table.adoc`,
+`smc_ext_mailbox_interrupts_o`). Bit-index mapping is proven by
 raising the outbound write-threshold IRQ of mailbox 0 and of mailbox
 NUM_MAILBOXES-1 over the SMC fabric JTAG2AXI frontdoor and requiring exactly
 that bit of the boundary vector to move.
 
 CHANNELS.S2/S3 and EXT.S1 are owned by SMU_ALL_008 — out of scope.
-No Force/deposit on ext_mailbox_interrupts; all stimulus is MMIO.
+No Force/deposit on smc_ext_mailbox_interrupts_o; all stimulus is MMIO.
 """
 
 from __future__ import annotations
@@ -38,9 +42,12 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
     require_jtag_tdo_resolved,
 )
-from seq_lib.smu_tb_pins import smc_primary_reset
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope, tb_pin
 
 IRQEN_WTIRQ = mailbox_u32("AXIL_MAILBOX__IRQEN__WTIRQ_bm")
+# The DUT boundary port the width claim is about, inside the design.
+MBX_PORT = "smc_ext_mailbox_interrupts_o"
+MBX_PORT_PATH = f"smu.{MBX_PORT}"
 # One push takes the outbound write FIFO above the WIRQT reset threshold.
 MBX_PUSH_PATTERN = 0x5A5A_5A5A
 J2A_POLL = 128
@@ -48,7 +55,7 @@ MASK32 = 0xFFFF_FFFF
 
 
 class smu_smc_mailbox_int_test_seq:
-    """SMU_ALL_004: ext_mailbox_interrupts width and bit-index DECODE."""
+    """SMU_ALL_004: smc_ext_mailbox_interrupts_o width and bit-index DECODE."""
 
     NUM_MAILBOXES = 32
     BOUND_CYCLES = 2000
@@ -203,8 +210,8 @@ class smu_smc_mailbox_int_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S1",
-            "SETUP: SEP=0 bare tb_top bring-up; clocks/resets stable; "
-            "pre-MMIO baseline ext_mailbox_interrupts observation",
+            "SETUP: wrapper bring-up; clocks/resets stable; "
+            f"pre-MMIO baseline {MBX_PORT_PATH} DUT-port observation",
         )
         await self._wait_eq(
             smc_primary_reset(dut),
@@ -213,13 +220,11 @@ class smu_smc_mailbox_int_test_seq:
             bound=self.BOUND_CYCLES,
             label="s1_primary_release",
         )
-        if not hasattr(dut, "ext_mailbox_interrupts"):
-            raise AssertionError("unobservable: tb_top.ext_mailbox_interrupts missing")
-        mbx = dut.ext_mailbox_interrupts
-        baseline = self._sample(mbx, "ext_mailbox_interrupts")
-        baseline_w = self._nbits(mbx, "ext_mailbox_interrupts")
+        mbx = tb_pin(smu_scope(dut), MBX_PORT)
+        baseline = self._sample(mbx, MBX_PORT_PATH)
+        baseline_w = self._nbits(mbx, MBX_PORT_PATH)
         self._log(
-            f"baseline ext_mailbox_interrupts width={baseline_w} "
+            f"baseline DUT port {MBX_PORT_PATH} width={baseline_w} "
             f"val=0x{baseline:x} (passive; no MMIO)"
         )
 
@@ -228,7 +233,7 @@ class smu_smc_mailbox_int_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S2",
-            "ACTION SMC-MBX-IRQ-EXT.S2: observe ext_mailbox_interrupts"
+            f"ACTION SMC-MBX-IRQ-EXT.S2: observe DUT port {MBX_PORT_PATH}"
             f"[{self.NUM_MAILBOXES - 1}:0] width/DECODE at SMU boundary",
         )
         self._log(f"COVERAGE SMC-MBX-IRQ-EXT.S2 cells: width={self.NUM_MAILBOXES}")
@@ -237,7 +242,7 @@ class smu_smc_mailbox_int_test_seq:
         self._mark_lifecycle(
             "set",
             "assert observation for SMC-MBX-IRQ-EXT.S2 "
-            f"(port=ext_mailbox_interrupts baseline_w={baseline_w} "
+            f"(port={MBX_PORT_PATH} baseline_w={baseline_w} "
             f"baseline_val=0x{baseline:x})",
         )
 
@@ -265,7 +270,7 @@ class smu_smc_mailbox_int_test_seq:
             "S3",
             "ACTION SMC-MBX-IRQ-EXT.S2: raise the outbound write-threshold IRQ of "
             f"mailboxes {probe_idx} over J2A; each must move exactly its own bit of "
-            "ext_mailbox_interrupts",
+            f"the DUT port {MBX_PORT_PATH}",
         )
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         await jtag.reset_tap()
@@ -312,15 +317,15 @@ class smu_smc_mailbox_int_test_seq:
             )
             for _ in range(self.SETTLE_CYCLES):
                 await RisingEdge(dut.clk_smu_i)
-            held = self._sample(mbx, "ext_mailbox_interrupts")
+            held = self._sample(mbx, MBX_PORT_PATH)
             if held != expected:
                 raise AssertionError(
-                    f"mailbox {idx} IRQ not level-held: ext_mailbox_interrupts=0x{held:x} "
+                    f"mailbox {idx} IRQ not level-held: {MBX_PORT_PATH}=0x{held:x} "
                     f"expect=0x{expected:x} after {self.SETTLE_CYCLES} cycles"
                 )
             self._log(
                 f"CHK-SMC-MBX-IRQ-EXT-S2 index mailbox {idx}: "
-                f"ext_mailbox_interrupts=0x{held:x} (bit {idx} set, all other bits unchanged)"
+                f"{MBX_PORT_PATH}=0x{held:x} (bit {idx} set, all other bits unchanged)"
             )
             sb.expect_eq(f"CHK-SMC-MBX-IRQ-EXT-S2 bit {idx}", held, expected)
 
@@ -333,9 +338,9 @@ class smu_smc_mailbox_int_test_seq:
             bound=self.BOUND_CYCLES,
             label="s3_mbx_irq_release",
         )
-        released = self._sample(mbx, "ext_mailbox_interrupts")
+        released = self._sample(mbx, MBX_PORT_PATH)
         self._log(
-            f"CHK-SMC-MBX-IRQ-EXT-S2 release: ext_mailbox_interrupts=0x{released:x} "
+            f"CHK-SMC-MBX-IRQ-EXT-S2 release: {MBX_PORT_PATH}=0x{released:x} "
             f"baseline=0x{baseline:x}"
         )
         sb.expect_eq("CHK-SMC-MBX-IRQ-EXT-S2 release", released, baseline)
@@ -343,7 +348,7 @@ class smu_smc_mailbox_int_test_seq:
         # cleared: quiet window after the IRQ release; confirm DUT-driven idle
         for _ in range(self.SETTLE_CYCLES):
             await RisingEdge(dut.clk_smu_i)
-        cleared_val = self._sample(mbx, "ext_mailbox_interrupts")
+        cleared_val = self._sample(mbx, MBX_PORT_PATH)
         if cleared_val != baseline:
             raise AssertionError(
                 "SMC-MBX-IRQ-EXT.S2 clear/ack fail: vector moved with no MMIO "
@@ -356,8 +361,8 @@ class smu_smc_mailbox_int_test_seq:
             f"(idle_val=0x{cleared_val:x} matches baseline; no force)",
         )
 
-        checked_w = self._nbits(mbx, "ext_mailbox_interrupts")
-        checked_val = self._sample(mbx, "ext_mailbox_interrupts")
+        checked_w = self._nbits(mbx, MBX_PORT_PATH)
+        checked_val = self._sample(mbx, MBX_PORT_PATH)
         if checked_w != self.NUM_MAILBOXES:
             raise AssertionError(
                 f"SMC-MBX-IRQ-EXT.S2 checked_cleared width={checked_w} expect={self.NUM_MAILBOXES}"
@@ -384,7 +389,7 @@ class smu_smc_mailbox_int_test_seq:
 
         detail = (
             f"width={width} NUM_MAILBOXES={self.NUM_MAILBOXES} "
-            f"port=ext_mailbox_interrupts "
+            f"port={MBX_PORT_PATH} "
             f"baseline=0x{baseline:x} observed=0x{observed_val:x} "
             f"checked=0x{checked_val:x}"
         )

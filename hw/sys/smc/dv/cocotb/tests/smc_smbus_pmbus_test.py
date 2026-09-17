@@ -14,8 +14,10 @@ from smc_base_test import smc_base_test
 class smc_smbus_pmbus_test(smc_base_test):
     """P2-A / P2-11: SMBus ARA + PEC + PMBus Linear11 proof."""
 
-    # The SMC_VPLAN card declares no CHK-* token for this leaf, so the gate is
-    # the floor on the tokens the run does emit.
+    required_evidence = (
+        "CHK-SMBUS-ARA",
+        "CHK-SMBUS-PEC-REF",
+    )
     min_evidence = 2
 
     auto_protocol_vip = False

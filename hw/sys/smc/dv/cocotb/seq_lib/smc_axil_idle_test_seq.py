@@ -74,7 +74,7 @@ def assert_axil_idle(item: SmcAxilItem) -> str:
 
     Iterates ``AXIL_CHECKABLE_FIELDS``, not ``AXIL_SAMPLE_FIELDS``:
     ``dtp_csr_active`` has no positive control that can exist in this TB
-    (``tb_top.sv:1151`` ties ``axil_dtp_csr_resp = '0'`` so an access into the
+    (``tb_top.sv:1119`` ties ``axil_dtp_csr_resp = '0'`` so an access into the
     DTP CSR window would wedge instead of completing; the DTP CSR port is idle on
     ``smc_wrapper`` with no TB terminator (``hw/sys/smc/dv/README.md``). Exact-comparing
     it would be an unbacked negative check forever -- a stuck-at-0, undriven or

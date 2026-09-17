@@ -19,7 +19,7 @@ class smu_i3c_mem_port_connectivity_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=WRAPPER smu_i3c_mem_port_connectivity_test TierC FAB_SMC_031 SEP=0 J2A"
+            "DUT_TAG=WRAPPER smu_i3c_mem_port_connectivity_test TierC FAB_SMC_031 SEP=1 J2A"
         )
         seq = smu_i3c_mem_port_connectivity_test_seq(self)
         await seq.run()

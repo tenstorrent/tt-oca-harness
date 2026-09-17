@@ -160,7 +160,7 @@ class sep_crypto_edn_multisink_arbitration_test(sep_base_test):
         # NB: do NOT park OTBN/HMAC via SW_RESET_N. Holding a crypto engine in
         # reset while the crypto-EDN adapter is live wedges the AES masking reseed
         # (AES sits idle, no OUTPUT_VALID). OTBN/HMAC are
-        # left released (SW_RESET_N reset 0x3E): OTBN does a one-shot post-reset
+        # left released (SW_RESET_N reset 0x7E): OTBN does a one-shot post-reset
         # secure wipe then goes idle, and HMAC is not a crypto-EDN client, so AES +
         # KMAC are the sustained clients contending the arbiter (the standalone
         # AES recipe likewise leaves all crypto released and drives AES on entropy).

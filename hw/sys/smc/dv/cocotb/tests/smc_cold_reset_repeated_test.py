@@ -13,8 +13,7 @@ from smc_base_test import smc_base_test
 class smc_cold_reset_repeated_test(smc_base_test):
     """Run the SMC OSS repeated cold-reset re-assert scenario."""
 
-    # The SMC_VPLAN card declares no CHK-* token for this leaf, so the gate is
-    # the floor on the tokens the run does emit.
+    required_evidence = ("CHK-MID-ASSERT-HOLD",)
     min_evidence = 1
 
     async def run_scenario(self) -> None:

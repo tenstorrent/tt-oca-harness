@@ -14,7 +14,8 @@ filesets:
   files_dv:
     files:
       - tb/tb_top.sv
-      # Tooling shims only — never product-module overrides.
+      # Stand-ins for the och_prim prim_sync2 / prim_sync3 cells; recorded in
+      # hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc (Bench stand-ins).
       - tb/verilator_stubs/prim_sync2.sv
       - tb/verilator_stubs/prim_sync3.sv
     file_type: systemVerilogSource

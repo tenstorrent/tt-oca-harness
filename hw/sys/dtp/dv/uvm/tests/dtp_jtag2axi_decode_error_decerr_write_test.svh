@@ -3,9 +3,11 @@
 //
 // dtp_jtag2axi_decode_error_decerr_write_test — cross-bridge robustness scenario
 // iterating all three JTAG2AXI bridges (smc_axi, smc_otp, sep_otp).
-// One-shot DECERR write injection on every bridge: the JTAG status
-// reports DECERR, the injected response is classified EXPECTED, and
-// an OKAY recovery write with memory-vs-intent compare follows.
+// One-shot DECERR write injection by every bridge's responder (the DTP
+// boundary has no address decoder): the JTAG status reports DECERR, the
+// injected response is classified EXPECTED, the errored slot keeps its
+// prior word, and an OKAY recovery write with memory-vs-intent compare
+// follows.
 
 class dtp_jtag2axi_decode_error_decerr_write_test extends dtp_jtag2axi_robustness_base_test;
   `uvm_component_utils(dtp_jtag2axi_decode_error_decerr_write_test)

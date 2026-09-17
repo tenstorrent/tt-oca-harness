@@ -18,8 +18,10 @@ The open-source frontend elaborates the RTL and reads immediate and concurrent
 It reads neither sequences and implication operators nor the `$stable`,
 `$rose` and `$fell` family. Every property meant for both paths is written in
 that subset. The concurrent SystemVerilog Assertions (SVA) protocol checkers
-under `hw/common/dv/vip/*/sva/` and the `OCAH_ASSERT` macro family elaborate on
-licensed backends only.
+`ocah_axi_sva` and `ocah_jtag_sva` under `hw/common/dv/vip/*/sva/` and the
+`OCAH_ASSERT` macro family elaborate on licensed backends only; `ocah_axi_fv`
+and `ocah_jtag_fv` beside them state the same protocols' handshake rules in
+the subset (<<formal-style-shared-checkers>>).
 ====
 
 [[formal-style-constructs]]
@@ -88,6 +90,11 @@ with an `unsupported SVA feature` or `unsupported system task` diagnostic.
 | `final` block
 | accepted, produces no check
 | licensed backends only
+
+| `T'(2 ** x)` with an unsized literal base, in the RTL
+| accepted, sized to the literal's 32 bits before the cast
+| `T'(T_WIDTH'(1) << x)`; a simulator sizes the cast operand to `T`, so the
+  RTL idiom decides whether the two agree
 |===
 
 [[formal-style-macros]]
@@ -111,6 +118,12 @@ property layer.
 
 | `OCAH_FV_INITIAL_RESET(clk, rst_n)`
 | a first-cycle flop with a declaration initializer plus `asm_initial_reset`, which pins reset low in the initial state
+
+| `OCAH_FV_RULE(assume, label, expr, clk, rst_n)`
+| `OCAH_FV_ASSUME(asm_<label>, ...)` when `assume` is set, `OCAH_FV_ASSERT(ast_<label>, ...)` otherwise, inside a generate block `gen_<label>`; the form a shared checker uses to emit a side's rules as assertions or assumptions
+
+| `OCAH_FV_ASSERT_I(name, expr)`, `OCAH_FV_ASSUME_I(name, expr)`
+| the immediate forms, for a procedural block: at every step in an `always_comb`, such as a rule over the level of a clock, or on the edge the block is clocked on
 
 | `OCAH_FV_IMPLIES(a, b)`
 | `(!(a) \|\| (b))`
@@ -151,10 +164,13 @@ include path, as the yosys synthesis flow does, and the shim there governs.
 [[formal-style-attachment]]
 === Attaching a property module
 
-Properties live in `<top>_<block>_props.sv`, a module with input ports only,
-attached by one `bind` statement in `<top>_<block>_bind.sv`. `<top>` is the
-formal top, the DUT itself, and `<block>` the module the properties describe;
-the bind names that module, so every instance under the top is checked. The
+Every file under the DUT's DV tree carries `<dut>_` as its prefix. Properties
+live in `<dut>_<block>_props.sv`, a module of the same name with input ports
+only, attached by one `bind` statement in `<dut>_<block>_bind.sv`. `<block>`
+names the module the properties describe, prefixed by the formal top when
+that top is not the DUT (`dtp_ctn_csr_props.sv` on the cross-trigger
+network); the bind names the described module, so every instance under the
+top is checked. The
 RTL carries no properties and is not edited for formal. Internal signals reach
 the module through the bind port list, downward hierarchical references and
 struct members included; the frontend accepts them when it elaborates without
@@ -167,6 +183,51 @@ not used: it duplicates the DUT interface, needs internal signals exposed
 through the RTL, and gives the licensed backends a different top than
 simulation. A `bind` file compiles unchanged on every backend and in
 simulation.
+
+[[formal-style-shared-checkers]]
+=== Shared protocol checkers
+
+`hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_fv.sv` and
+`hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_fv.sv` are the protocol
+checkers of the open path: the AXI4 and AXI4-Lite handshake, reset,
+burst-legality and response-ordering rules, and the IEEE 1149.1 TAP state,
+TDO and phase rules, each a boolean written with the macros above. They
+carry the flat port lists of `ocah_axi_sva` and `ocah_jtag_sva` and cite the
+same public specification sections; the rules that need per-ID or per-beat
+history stay in the SVA checkers. Every rule belongs to the side that drives
+its signals, the master (the AXI manager, the JTAG host) or the slave (the
+AXI subordinate, the TAP), and the parameters `ASSUME_MASTER_RULES` and
+`ASSUME_SLAVE_RULES` emit that side's rules through `OCAH_FV_RULE` as
+assumptions instead of assertions. A formal environment binds one instance
+with the design's side asserted and the environment's side assumed, so the
+environment module states only what the protocol leaves open, such as an
+outstanding bound or a single-beat fact, and a property of the design that
+holds only under the protocol, such as the bridge's
+`ast_j2a_resp_only_while_waiting`, is proven against the checker's
+assumptions rather than against a hand-written restatement. The two SVA
+checkers take the same
+two parameters through `OCAH_SVA_RULE` and `OCAH_RULE`
+(`hw/common/assert/ocah_sva_macros.svh`), and their
+two-state rules are live under `FORMAL` as well as `SIMULATION`, so a licensed
+backend binds them the same way; both default to assertions, which is the
+simulation shape.
+
+The bind of a shared checker is a `props/` file named
+`<dut>_<top>_<protocol>_fv_bind.sv`, for example
+`dtp_ctn_axi_fv_bind.sv` on the `cross_trigger_network` AXI-Lite port with the
+manager's rules assumed and the network's asserted, or
+`dtp_jtag2axi_axi_fv_bind.sv`, which binds `ocah_axi_fv` on the request
+machine's side of the bridge's CDC with the responder's rules assumed. A
+rule's path in every report is
+`<instance>.gen_<rule>.ast_<rule>` or `asm_<rule>`, for example
+`u_ocah_axi_fv.gen_axi_aw_valid_held.asm_axi_aw_valid_held`. The checkers
+pin their own clock's reset through `OCAH_FV_INITIAL_RESET` and guard every
+`$past` of an input with the past reset, so on a top with a second clock
+domain the environment's reset model covers them too. The shared checkers'
+covers name the handshakes only, so an instance binds where its channels are
+reached within the task's depth; a cover on a backpressure or a response
+code belongs to the design's property module. The checker files join the formal filelist through
+`[build].sources` of the DUT's formal configuration.
 
 [[formal-style-labels]]
 === Labels
@@ -210,14 +271,28 @@ at least two steps of depth, and the asynchronous resets are free inputs.
 Under that model a reset that changes at a sampling edge, or between two edges,
 lands in the state register without the sampled `disable iff` seeing it, so
 the open path needs a reset environment. It lives in
-`<app>/sby/<top>_sby_env.sv`, a module bound to the top and read only by the
-task file: it is the open-path counterpart of the clock and reset commands a
+`<app>/sby/<dut>_sby_env.sv`, or `<dut>_<top>_sby_env.sv` for a top other than
+the DUT, a module bound to the top and read only by the task file: it is the open-path counterpart of the clock and reset commands a
 licensed backend's script issues, and it holds `asm_env_` assumptions on the
-top's input ports only. The DTP environment releases every reset once, after
-the first `tck` posedge where the property modules pin the reset low. With
-the clocks modelled, a negedge-clocked flag sampled at a `tck` posedge has
-already taken the value derived from the state sampled at that same edge, and
-a property can state that equality directly.
+top's input ports, and on internal state where the environment stands for a
+peer or a configuration bound. An assumption that one block's tasks alone
+need lives in a second module beside it, `<dut>_<block>_sby_env.sv`, read by
+those tasks only (`dtp_tap_sby_env.sv`). The DTP environments assert every reset up to
+the first sampling edge, so each clock domain starts from its reset state,
+and release all of them there for the rest of the trace; each property module
+pins its own reset low in the first cycle through `OCAH_FV_INITIAL_RESET`.
+With the clocks modelled, a negedge-clocked flag sampled at a `tck` posedge
+has already taken the value derived from the state sampled at that same edge,
+and a property can state that equality directly. A free input that a negedge
+latch samples takes the shape of a posedge flop through a negedge helper
+latch and a posedge-sampled assumption that the input equals it. A register
+whose only role in a target is to carry data, such as a JTAG shift register,
+can be a `cutpoint` in the task file: its value is then free at every step,
+which shortens the covers and keeps every proof over the surrounding control
+valid. The `prove` task of a multiclock top runs a property-directed engine:
+k-induction cannot close a `$past` relation there, because an induction
+window may hold a single edge of the property's clock and the sampled history
+before it is unconstrained.
 
 [[formal-style-layout]]
 === Layout under the DUT DV root
@@ -226,10 +301,16 @@ a property can state that equality directly.
 <dut-dv-root>/
   <dut>_formal_cfg.toml            runner launch fields (--mode formal)
   formal/
-    props/<top>_<block>_props.sv   property module, one per described block
-    props/<top>_<block>_bind.sv    bind statement
-    <app>/sby/<top>.sby            open-path task file, one per app and top
-    <app>/sby/<top>_sby_env.sv     open-path clock and reset environment
+    props/<dut>_<block>_props.sv   property module, one per described block
+    props/<dut>_<block>_bind.sv    bind statement
+    props/<dut>_<top>_<protocol>_fv_bind.sv
+                                   bind of a shared protocol checker (<<formal-style-shared-checkers>>)
+    <app>/sby/<dut>.sby            open-path task file, one per app, the DUT as top
+    <app>/sby/<dut>_<top>.sby      open-path task file for another top
+    <app>/sby/<dut>_sby_env.sv     open-path clock and reset environment, one per top
+                                   (<dut>_<top>_sby_env.sv for another top)
+    <app>/sby/<dut>_<block>_sby_env.sv
+                                   assumptions one block's tasks alone read
     build/                         generated: bender filelist, sby work directories
 ----
 
@@ -275,9 +356,11 @@ the `bmc` depth is set to the same value.
 [[formal-style-example]]
 === Worked example: the DTP TAP controller
 
-`hw/sys/dtp/dv/formal/` holds the reference implementation, with `dtp` as the
-formal top and the IEEE 1149.1 TAP controller inside the primary TAP as the
-described block.
+`hw/sys/dtp/dv/formal/` holds the reference implementation. The IEEE 1149.1
+TAP controller inside the primary TAP is the first described block, with
+`dtp` as the formal top; the plan section of `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`
+adds eight more blocks over the `dtp`, `jtag2axi` and `cross_trigger_network`
+tops in the same shape.
 
 * `props/dtp_tap_props.sv`: assertions and covers on the TAP state register
   and its outputs, all in the boolean subset: one-hot state, the rule that
@@ -289,14 +372,22 @@ described block.
 * `props/dtp_tap_bind.sv`: binds the module to `jtag_tap_ctrlr` and connects
   the TAP control struct, the state, the `tms` counter and the scan-control
   struct members.
+* `props/dtp_jtag_fv_bind.sv`: binds the shared JTAG checker to `dtp` on the
+  primary TAP, the host's phase rule assumed and the TAP's rules asserted;
+  `dtp_jtag2axi_axi_fv_bind.sv` and `dtp_ctn_axi_fv_bind.sv` do the same with
+  the shared AXI checker on the other two tops.
 * `fpv/sby/dtp_sby_env.sv`: the open-path reset environment
   (<<formal-style-clocks>>).
-* `fpv/sby/dtp.sby`: `bmc` and `cover` on `smtbmc` with yices at depth 30 and
-  `prove` on `abc pdr`, all under `multiclock on`.
-* `dtp_formal_cfg.toml` and `testlists/formal.toml`: the runner launch entry.
-  The `flist` stage regenerates the filelist and the `formal` stage runs the
-  three tasks in one `sby` invocation; the depth justification is the "Formal
-  Verification Plan" section of `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`.
+* `fpv/sby/dtp.sby`: one task triple per block on the `dtp` top, selected by
+  the block's tag; the TAP triple is `tap_bmc` and `tap_cover` on `smtbmc`
+  with yices at depth 30 and `tap_prove` on `abc pdr`, all under
+  `multiclock on`. `dtp_jtag2axi.sby` and `dtp_cross_trigger_network.sby` beside it
+  carry the other two tops.
+* `dtp_formal_cfg.toml` and `testlists/formal.toml`: the runner launch entry,
+  one app table and one item per block. The `flist` stage regenerates the
+  filelist and the `formal` stage runs an item's three tasks in one `sby`
+  invocation; the depth justification is the "Formal Verification Plan"
+  section of `hw/sys/dtp/dv/docs/DTP_VPLAN.adoc`.
 
 The runner drives the tasks:
 
@@ -316,10 +407,12 @@ mkdir -p hw/sys/dtp/dv/formal/build
   echo "+incdir+$PWD/hw/common/assert"
   bender script flist-plus -D SYNTHESIS=1 -t axi_rtl -t apb_rtl -t common_cells_rtl \
     -t common_cell_sync_shim -t register_interface_l1 -t dtp
+  echo "$PWD/hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_fv.sv"
+  echo "$PWD/hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_fv.sv"
 } > hw/sys/dtp/dv/formal/build/dtp.f
 
 cd hw/sys/dtp/dv/formal/fpv/sby
-sby --prefix ../../build/dtp -f dtp.sby
+sby --prefix ../../build/dtp -f dtp.sby tap_bmc tap_cover tap_prove
 ----
 
 Each task writes `<workdir>/status` (`PASS`, `FAIL`, `UNKNOWN`, `ERROR`) and a

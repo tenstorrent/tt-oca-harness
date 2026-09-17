@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""OTP J2A mid-BUSY abort then fabric VERSION_LO recovery. Requires +skip_fuse_sense. SEP=0, no Force."""
+"""OTP J2A mid-BUSY abort, observed on the aborted op, then fabric VERSION_LO recovery.
+
+The abort is proven on the thing that was aborted: after the TAP reset the OTP
+SINGLE_OP DR is captured again and must no longer report BUSY. The fabric
+VERSION_LO reads that follow show the bridge is usable afterwards. Requires
++skip_fuse_sense. SEP=1, no Force.
+"""
 
 from __future__ import annotations
 
@@ -34,7 +40,7 @@ OTP_POLL = 128
 
 
 class smu_dtp_jtag2axi_abort_mid_op_test_seq:
-    """IR+TRST abort of a hung OTP SINGLE_OP; fabric J2A recovers."""
+    """IR+TRST abort of a hung OTP SINGLE_OP, seen on its status; fabric J2A recovers."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -122,6 +128,11 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
         require_jtag_tdo_resolved("IDCODE mid-BUSY")
         if idc != DTP_DEFAULT_IDCODE:
             raise AssertionError(f"IDCODE mid-BUSY want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idc:08x}")
+        # MUTATION-ANCHOR abort-trst -- the TAP reset this test is about. The
+        # recheck recipe in the plan entry deletes the call on the next line and
+        # no other: run() opens with a bring-up reset_tap() whose four following
+        # lines are textually identical, and deleting that one runs a different
+        # experiment than the one documented. Grep this label, not the call.
         await jtag.reset_tap()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):
@@ -129,6 +140,18 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
         self.s3_ok = True
         self._log("CHK-ABORT-IR-TRST IDCODE mid-BUSY then TAP reset")
         sb.expect_eq("CHK-ABORT-IR-TRST", idc, DTP_DEFAULT_IDCODE)
+
+        # The op that was hung: its status after the reset is the abort evidence.
+        # A bridge that kept the AXI state machine waiting would still say BUSY.
+        await ClockCycles(self.dut.clk_smu_i, 32)
+        capt = await jtag.read("SMC_OTP_AXI_SINGLE_OP", shift_value=0)
+        require_jtag_tdo_resolved("OTP SINGLE_OP status after TAP reset")
+        otp_st_after, _ = unpack_otp_single_op(capt)
+        if otp_st_after == J2A_STATUS_BUSY:
+            raise AssertionError(
+                "OTP SINGLE_OP still BUSY after the TAP reset: the outstanding op was not aborted"
+            )
+        self._log(f"CHK-J2A-ABORT OTP SINGLE_OP status after TAP reset={otp_st_after} (not BUSY)")
 
         recovered = []
         for i in range(2):
@@ -151,8 +174,8 @@ class smu_dtp_jtag2axi_abort_mid_op_test_seq:
         self.s4_ok = True
         sb.expect_eq(
             "CHK-J2A-ABORT",
-            tuple(recovered),
-            (VERSION_LO_RESET, VERSION_LO_RESET),
+            (otp_st_after != J2A_STATUS_BUSY, *recovered),
+            (True, VERSION_LO_RESET, VERSION_LO_RESET),
         )
 
         self._log(

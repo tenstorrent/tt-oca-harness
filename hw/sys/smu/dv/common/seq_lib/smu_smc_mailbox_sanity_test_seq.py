@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Mailbox outbound-0 IRQEN/STATUS via J2A. SEP=0, no Force. IRQ pin / doorbell not claimed."""
+"""Mailbox outbound-0 IRQEN/STATUS via J2A. SEP=1, no Force. IRQ pin / doorbell not claimed."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from seq_lib.smu_addr_map import mailbox_u32, smc_addr
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
-    SMC_AXI_ERR_SLV_POISON,
     SMC_DBG_AXSIZE_4B,
     jtag2axi_single_read,
     jtag2axi_single_write,
@@ -112,8 +111,6 @@ class smu_smc_mailbox_sanity_test_seq:
         sb.expect_eq("CHK-MBX-JTAG-READY", (idcode, gate), (DTP_DEFAULT_IDCODE, 0))
 
         status = await self._rd32(jtag, STATUS, "STATUS")
-        if status == (SMC_AXI_ERR_SLV_POISON & MASK32):
-            raise AssertionError(f"STATUS @0x{STATUS:08x} is err_slv poison 0x{status:08x}")
         busy = STATUS_FULL | STATUS_WTHRESH | STATUS_RTHRESH
         if (status & STATUS_EMPTY) != STATUS_EMPTY or (status & busy) != 0:
             raise AssertionError(
@@ -140,8 +137,11 @@ class smu_smc_mailbox_sanity_test_seq:
         if clr != 0:
             raise AssertionError(f"IRQEN clear want 0 got 0x{clr:08x}")
         status2 = await self._rd32(jtag, STATUS, "STATUS-POST")
-        if status2 == (SMC_AXI_ERR_SLV_POISON & MASK32):
-            raise AssertionError(f"post-clear STATUS is err_slv poison 0x{status2:08x}")
+        if (status2 & STATUS_EMPTY) != STATUS_EMPTY or (status2 & busy) != 0:
+            raise AssertionError(
+                f"post-clear STATUS=0x{status2:08x} want EMPTY=0x{IDLE_STATUS:08x} "
+                f"(full/thresh must be 0, mask=0x{busy:x})"
+            )
         self.s4_ok = True
         sb.expect_eq("CHK-MBX-IRQEN-CLR", clr, 0)
 

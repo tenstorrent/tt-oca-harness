@@ -11,7 +11,7 @@ probe. Without those legs a stuck-at-0 / undriven / mis-tied probe passes all
 eight asserts identically (`[NEGATIVE-NEEDS-POSITIVE-CONTROL]`).
 
 ``dtp_csr_active`` is never exact-compared here: no positive control for it can
-exist in this TB (``tb_top.sv:1151`` ties ``axil_dtp_csr_resp = '0'``), so the
+exist in this TB (``tb_top.sv:1119`` ties ``axil_dtp_csr_resp = '0'``), so the
 shared :func:`smc_axil_idle_test_seq.assert_axil_idle` iterates
 ``AXIL_CHECKABLE_FIELDS`` and returns that field as OBSERVED-ONLY text.
 """

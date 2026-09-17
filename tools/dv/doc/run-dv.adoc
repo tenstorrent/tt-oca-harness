@@ -438,7 +438,10 @@ going red.
 Each selected test resolves a build target from its `target` field or the DUT
 default. Shared build stages run once per unique target, serially, before the
 test leaves execute. This permits one group to contain tests that consume
-different build images.
+different build images. A test `target` or a `--target` that names no
+`[targets.<name>]` entry is rejected when the run plans its builds, before
+any stage executes; `--validate-configs` does not check test targets
+(<<runner-validation>>).
 
 Run-mode selection uses:
 
@@ -519,7 +522,13 @@ Some domains have more specific rules:
 * Simulation-leaf timeout: `--timeout` > test `timeout_sec` > run-mode
   `timeout_sec` > `[defaults].timeout_sec`.
 * Runtime arguments append in order: profile/DUT `[sim].args`, run-mode
-  `args`, test `args`, then CLI `--sim-arg` and `--plusarg`.
+  `args`, test `args`, then CLI `--sim-arg` and `--plusarg`; with `--cov`,
+  the tool's `[coverage.<tool>]` `sim_args` and `test_args` follow. Run-mode
+  and test `args` are rendered with `{seed}` and `{repo_root}`; the other
+  lists stay literal. Across those two lists a later scalar `+key=value`
+  replaces an earlier one with the same key, so a test entry overrides its
+  run mode, and each dropped argument is printed as `PLUSARG: dropping ...`.
+  Bare flags and `+uvm_set_*` arguments are never collapsed.
 * Regression multiplicity: a test's `reseed` value overrides `--reseed` for
   that test.
 * A positive `[build.options].build_jobs` value overrides CLI-derived
@@ -528,6 +537,86 @@ Some domains have more specific rules:
 CLI overrides are curated rather than arbitrary TOML replacement. Stable
 settings belong in checked-in configuration; pass-through flags are intended
 for one-off debugging.
+
+[[runner-rejected-keys]]
+=== Schema versions and rejected keys
+
+The registries, each `<dut>_sim_cfg.toml`, and each testlist carry
+`schema_version = 1`; the profiles carry none. The loader accepts the key
+wherever it appears and enforces its value on the site file
+(<<runner-site-layer>>). An unknown key anywhere in a configuration, a
+misspelling included, is an error naming the file and the table.
+
+A setting has one spelling. A key in the left column below, and a key that
+duplicates a setting another table owns, is an error rather than an alias,
+reported as `deprecated duplicate-purpose config` together with the key to
+use:
+
+[cols="<3,<3",options="header"]
+|===
+|Rejected |Use instead
+
+|`[defaults].tool`
+|top-level `default_tool`
+
+|`[run_modes.<name>].tags`
+|testlist `tags`
+
+|`[build.options].ccache`, `[build.options].output_split`
+|`[build.verilator].ccache`, `[build.verilator].output_split`
+
+|`[targets.<name>].verilator_flags`, `.xcelium_flags`, `.vcs_flags`, and the
+same keys under `[target_defaults.<name>]`
+|`[targets.<name>.tools.<tool>].flags`
+
+|`[build.<tool>].extra_build_args`
+|`[build.<tool>].extra_args`
+
+|`[coverage.<tool>].<tool>_build_args`, `_compile_args`, `_sim_args`,
+`_test_args`, and the fixed names `verilator_build_args`,
+`xcelium_build_args`, `xcelium_test_args`, `vcs_compile_args`, and
+`vcs_sim_args` in any tool's table
+|`[coverage.<tool>].build_args`, `compile_args`, `sim_args`, `test_args`
+
+|A `[build.<tool>]` or `[coverage.<tool>]` value equal to that tool's
+`simulators.toml` default
+|Omit the key; the default applies
+|===
+
+`--stage filelist` is the only alias the command line accepts; it selects
+`flist`.
+
+[[runner-validation]]
+=== What validation checks
+
+`--validate-configs`, and every run before it resolves the requested DUT,
+validates each selectable DUT's views in this order. The first failure names
+the file and the table or entry:
+
+. The DUT DV root exists, and every tool in the flow's `tools` list is in
+  the merged registry and supports the selected framework.
+. Every `[native.stages.<name>]` names a canonical stage and carries a
+  `kind` that stage accepts.
+. Every table of the sim config holds only the keys its schema allows, and
+  every `{placeholder}` in a value is one the consuming stage defines.
+. `[testlist].path` is relative, resolves inside the DUT DV root, and exists.
+. Each `[coverage.<tool>]` table is well formed and each coverage policy
+  file loads; a lapsed waiver is a warning, not a failure.
+. The scheduler's default and allowed executors are registered.
+. No key from the rejected-key table is present (<<runner-rejected-keys>>).
+. The test catalog loads after include expansion: each test's `run_modes`
+  and `tools` name declared entries, each scenario binds or excludes every
+  framework the DUT implements, `firmware` is a string or a table,
+  `expect_fail` carries a reason, every group member names a test, and each
+  `expected_count` matches its list.
+. The flow's parser policy extensions are registered.
+
+Validation proves configuration consistency. It does not probe a tool or a
+license (`--doctor` does), it does not check test `target` references (the
+run does, when it plans its builds), and it does not check that a firmware
+name builds: the `c_compile` stage rejects a test whose `firmware` names no
+`[c_build.<mode>]` template, dry run included, and the build tool reports a
+target the template cannot build.
 
 [[runner-formal-templates]]
 === Formal launch templates
@@ -565,12 +654,12 @@ given and is dropped otherwise, so a two-token flag stays intact.
 
 [source,toml]
 ----
-[formal.apps.fpv.sby]
+[formal.apps.tap_fpv.sby]
 cwd = "formal/fpv/sby"
 script = "dtp.sby"
-args = ["bmc", "cover"]
+args = ["tap_bmc", "tap_cover"]
 
-[formal.apps.fpv.<tool>]
+[formal.apps.tap_fpv.<tool>]
 argv = ["{binary}", ["-depth", "{proof_depth}"], "{script}", "{formal_args}"]
 ----
 
@@ -666,8 +755,8 @@ a `formal` object:
 "formal": {
   "grader": "sby-summary",
   "tasks": [
-    {"name": "bmc", "mode": "bmc", "status": "PASS", "return_code": 0,
-     "workdir": "hw/sys/dtp/dv/build/runs/<run>/stages/formal/dtp_fpv_bmc",
+    {"name": "tap_bmc", "mode": "bmc", "status": "PASS", "return_code": 0,
+     "workdir": "hw/sys/dtp/dv/build/runs/<run>/stages/formal/dtp_tap_fpv_tap_bmc",
      "proven": 11, "failed": 0, "inconclusive": 0, "covered": 0, "unreached": 0}
   ],
   "proven": 11, "failed": 0, "inconclusive": 0, "covered": 6, "unreached": 0
@@ -970,7 +1059,8 @@ and solver requirements; a pip-only `sby` without a solver runs `bmc` and
 python3 tools/dv/run_dv.py --list                              # the `dtp fv` row: the formal view and its tools
 python3 tools/dv/run_dv.py --dut dtp --mode formal --dry-run   # the planned stages and the rendered sby command
 python3 tools/dv/run_dv.py --dut dtp --mode formal             # the `smoke` group: dtp_tap_fpv
-python3 tools/dv/run_dv.py --dut dtp --mode formal --items dtp_tap_fpv --app fpv
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items fpv # every item of the plan
+python3 tools/dv/run_dv.py --dut dtp --mode formal --items dtp_tap_fpv --app tap_fpv
 ----
 
 The `flist` stage writes the Bender filelist the task file reads through its
@@ -978,7 +1068,8 @@ The `flist` stage writes the Bender filelist the task file reads through its
 one `sby` invocation from the app's `cwd`, the directory holding the task
 file. Under `<run>/stages/formal/` the run leaves `logs/<item>.log`, the
 replay script `scripts/formal.<item>.sh`, the `env/` snapshot, and one work
-directory per task, `<item>_<task>/`, holding the model, the engine log, the
+directory per task, `<item>_<task>/` (`dtp_tap_fpv_tap_bmc` for the TAP
+block's `bmc` task), holding the model, the engine log, the
 `status` file, the JUnit report, and on a counterexample
 `engine_0/trace.vcd`; a reached cover writes its trace the same way inside
 the `cover` task's directory. The console ends with the item status and the
@@ -1037,9 +1128,11 @@ and on licensed backends alike. The rules a contributor meets first:
 
 * *Subset.* Every property body is a boolean over current and `$past` values.
   The open frontend reads no sequences, implication operators, or the
-  `$stable`, `$rose`, `$fell` family; the concurrent SVA checkers under
-  `hw/common/dv/vip/*/sva/` and the `OCAH_ASSERT` macros elaborate on
-  licensed backends only (Accepted constructs).
+  `$stable`, `$rose`, `$fell` family; the concurrent SVA checkers
+  `ocah_axi_sva` and `ocah_jtag_sva` and the `OCAH_ASSERT` macros elaborate
+  on licensed backends only, while `ocah_axi_fv` and `ocah_jtag_fv` beside
+  them carry the handshake rules in the subset, each side asserted or
+  assumed by parameter (Accepted constructs, Shared protocol checkers).
 * *Macros and guards.* `hw/common/assert/ocah_fv_macros.svh` supplies
   `OCAH_FV_ASSERT`, `OCAH_FV_ASSUME`, `OCAH_FV_COVER`, and
   `OCAH_FV_INITIAL_RESET`, all gated on `FORMAL`, which every backend script
@@ -1050,8 +1143,8 @@ and on licensed backends alike. The rules a contributor meets first:
   `asm_`, or `cov_` (Attaching a property module, Labels).
 * *Reset and clocks.* An `asm_initial_reset` holds the reset in the first
   cycle; a DUT clocked on both edges of one clock models its clocks explicitly
-  under `multiclock on` with an environment module for the free asynchronous
-  resets (Reset and history, Clock modelling).
+  under `multiclock on` with an environment module that asserts and then
+  releases the asynchronous resets (Reset and history, Clock modelling).
 * *Layout.* `<dut-dv-root>/formal/props/` holds the property and bind files,
   `formal/<app>/sby/` the task file and the reset environment,
   `formal/build/` the generated filelist and work directories (Layout under
@@ -1302,6 +1395,93 @@ delete cached models and all prior runs. Inspect the `REMOVE` plan with
 `--stage clean --dry-run` before executing it.
 ====
 
+[[runner-build-reuse]]
+=== Build reuse
+
+A cocotb model is built into the target's `build_dir` with the tool name
+appended (`<build_dir>/<tool>`, or the sibling `<build_dir>/<tool>-coverage`
+under `--cov`; VCS adds one more component named after the target) and
+reused by every later run of the same target and tool. The
+`artifact build=<dir> (rebuild=<bool>)` line of a run names the directory it
+used. With `rebuild` off, the existing directory is handed to cocotb's build
+step, which rebuilds only what the simulator's own build system finds out of
+date.
+
+`[build.options]` sets the sharing policy:
+
+* `cache_enabled = true` partitions the build directory by a fingerprint of
+  the build inputs, so configurations that differ never overwrite each
+  other's model and an unchanged configuration finds its build again. The
+  fingerprint covers the top module, the tool version, the generated filelist
+  text, a digest of the sources the Bender filelist names, the rendered build
+  arguments, the selected `[targets.<name>]` table, the Verilator
+  public-scope list, the wave format, whether coverage is on, and the strings
+  in `cache_key_extra`.
+* `rebuild = true`, or `--rebuild`, forces a clean build of the selected
+  directory through the cocotb runner on every simulator, and removes a
+  firmware template's declared outputs before `c_compile` runs so an
+  incremental build tool cannot keep stale objects.
+* `build_jobs` and `cflags`, with the `[build.<tool>]` knobs, shape the build
+  command and enter the fingerprint through the arguments they add.
+
+The shared profile leaves `cache_enabled` off, so one directory per target
+and tool is rebuilt in place when its inputs change.
+
+[[runner-dry-run-plan]]
+=== Reading a dry-run plan
+
+`--dry-run` resolves the configuration, plans the stages, and renders every
+command, script, and environment snapshot the run would use, without
+executing a backend tool or writing a result file. The plan for the DTP
+`smoke` group on Verilator with `--ui plain`, timestamps removed and the
+repository, run, and seed paths abbreviated:
+
+[source,text]
+----
+run        flow=dtp tool=verilator items=2 stages=flist,hdl_compile,sim run_dir=hw/sys/dtp/dv/build/runs/<stamp>__verilator__smoke mode=regression sim_jobs=1 executor=local backend=log
+config     merge_order=simulator-defaults < profile(native) < dut(hw/sys/dtp/dv/dtp_sim_cfg.toml) < cli
+config     effective_defaults=simulators.toml[verilator.build_defaults], simulators.toml[verilator.coverage_defaults], profile/DUT [defaults], profile/DUT [target_defaults], profile/DUT [build.options]
+stage      start name=flist item=- log=<run>/stages/flist/logs/flist.log
+CMD  : bender checkout
+CMD  : bender script flist-plus -t axi_rtl -t apb_rtl -t common_cells_rtl -t common_cell_sync_shim -t register_interface_l1 -t dtp -t simulation > <repo>/hw/sys/dtp/dv/build/dtp_bender.f
+WRITE: <run>/stages/flist/scripts/flist.sh
+WRITE: <run>/stages/flist/env/flist.env
+WRITE: <repo>/hw/sys/dtp/dv/build/dtp_dut_compile.f
+stage      done name=flist item=- status=PASS elapsed=0.0s
+stage      start name=hdl_compile item=- log=<run>/stages/hdl_compile/logs/hdl_compile.log
+artifact   build=<repo>/hw/sys/dtp/dv/build/cocotb/verilator (rebuild=False)
+WRITE: <run>/stages/hdl_compile/scripts/hdl_compile.sh
+WRITE: <run>/stages/hdl_compile/env/hdl_compile.env
+stage      done name=hdl_compile item=- status=PASS elapsed=0.0s
+regression start total=2 sim_jobs=1 executor=local seeds=1 retry=0
+WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.py
+CMD  : <python> <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.py
+WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/scripts/sim.dtp_sanity_test.sh
+WRITE: <run>/dtp_sanity_test/seed_<seed>/attempt_0/env/sim.env
+regression done index=1/2 status=PASS item=dtp_sanity_test seed=<seed> attempt=0 elapsed=0.0s
+(the second leaf, dtp_jtag_idcode_test, repeats the five lines above)
+summary    passing=2 total=2 failing=0 skipped=0 elapsed=0.0s
+result     status=PASS tests=2 elapsed=0.0s run_dir=<run> json=<run>/result.json
+----
+
+Reading it:
+
+* The `run` line is the resolved selection: the two `smoke` members became
+  two leaves under the scheduler (`mode=regression`), and the implicit stage
+  path is `flist -> hdl_compile -> sim` because no selected test declares
+  firmware.
+* The two `config` lines state the merge order and the tables that supplied
+  defaults, in the order they were layered.
+* `CMD` lines are the exact commands, `WRITE` lines the scripts and
+  environment snapshots that a real run writes, and `REMOVE` lines, under
+  `--stage clean`, the paths it deletes. Nothing after a colon has run.
+* Every stage reports `status=PASS elapsed=0.0s` because the plan, not the
+  tool, was executed, and the `result` line names a `result.json` that the
+  dry run does not write.
+
+A dry run also loads the locked Python environment and may refresh the
+generated namespace bridge (<<runner-current-limitations>>).
+
 === Coverage stages
 
 `--cov` requires the flow to declare coverage stages: on a flow whose stage
@@ -1490,7 +1670,7 @@ When scheduler mode executes `sim` or `regress`, seeds are fresh random
 positive integers and are recorded in leaf and regression results. `--seed` is
 rejected for those scheduler runs. Each cocotb simulation process receives the
 leaf seed as `RANDOM_SEED` and the directory its model was elaborated into as
-`OCAH_SIM_BUILD_DIR` (`<tool>/coverage` under the DUT build directory for a
+`OCAH_SIM_BUILD_DIR` (`<tool>-coverage` under the DUT build directory for a
 `--cov` run), so a test that records which model it simulated reads that
 variable instead of assuming the plain `<tool>` path. Reproduce a leaf as a
 single simulation with the recorded item and seed:
@@ -1508,6 +1688,39 @@ python3 tools/dv/run_dv.py \
 `--retry N` retries a non-passing leaf up to `N` times. Earlier failures remain
 in `regression.json`; the final effective attempt determines the leaf result.
 A leaf that passes after a failed attempt is recorded as flaky.
+
+[[runner-regression-record]]
+=== The regression record
+
+`stages/regress/regression.json` is the scheduler's own summary beside the
+run-level `result.json`; both carry the run `status` and `exit_code`. Its
+`jobs` list holds one record per attempt: `stage`, `item`, `target`, `seed`,
+`attempt`, `status`, `return_code`, `reason`, `duration_sec`, `started_at`,
+`ended_at`, `log`, `artifacts`, `failure_buckets`, `parser`, `metadata`, and
+`result_json`, the per-attempt `<test>/seed_<seed>/attempt_<n>/result.json`. Attempts of one
+`(item, seed, target)` leaf are grouped, and the highest attempt is the
+leaf's final result.
+
+* `failed_tests` lists every leaf whose final attempt is `FAIL`, `ERROR`,
+  `TIMEOUT`, or `UNKNOWN`, with `attempt_count`, every attempt's summary, the
+  final failure buckets (a leaf without a classified bucket gets one
+  `unknown` bucket carrying its `reason`), the `expected_fail` record when
+  the entry carries one, and a `rerun` command that reproduces the final
+  attempt with its seed.
+* `flaky_tests` lists every leaf whose final attempt is `PASS` after an
+  earlier non-passing attempt: `flaky_reason` is `passed_after_retry`,
+  `failing_attempts`, `first_fail_attempt`, `first_failure_reason`, and
+  `passed_on_attempt` locate the flip, and `tests.flaky` counts these leaves.
+  A flaky leaf is a passing leaf in `tests.passing` and in the run status.
+* `rerun_commands` repeats the `rerun` of every failed and flaky record.
+* `failure_buckets` groups the failed leaves' buckets by `(kind, signature)`
+  with a `count`, the `affected` leaves, and up to five example paths; an
+  interruption adds one `interruption` bucket naming the interrupted leaves.
+
+A `--waves-on-fail` rerun is recorded on the final attempt as `wave_debug`
+with `debug_only = true` and `status_affects_final_result = false`; it never
+changes the leaf's status. A leaf skipped after `--max-failures` has one job
+with status `SKIP`, no leaf directory, and no JUnit file.
 
 `--max-failures N` stops launching new serial leaves after `N` final failures
 and records the remainder as `SKIP`. Supplying this option disables the
@@ -1865,6 +2078,7 @@ table, when present, under `overlay_env` in both the run-level `result.json`
 and `regression.json`. When a site layer was active, its path is recorded
 under `site` in the same two files (<<runner-site-layer>>).
 
+[[runner-interrupted-checkpoints]]
 === Interrupted-run checkpoints
 
 Before executing the first planned leaf, the runner writes an atomic
@@ -1940,6 +2154,117 @@ For formal mode, the exit code is never the status source: task status lines,
 status files, and JUnit reports, or the app's summary file, are
 (<<runner-formal-grading>>). Missing evidence produces `UNKNOWN`.
 
+[[runner-leaf-grading]]
+=== How a simulation leaf is graded
+
+A `sim` or `regress` leaf that ran to the end is graded by its parser policy
+from three inputs: the structured result files the policy names under
+`results/`, the leaf log, and the process return code. The rules apply in
+this order, and the first that decides ends the grading:
+
+. A structured result with a `failure` or `error` node is `FAIL`
+  (`status_source` `structured_result`, bucket `sim_failure`). A structured
+  result with only passing testcases is positive evidence. A structured
+  result that is missing, empty, malformed, or has no testcase is
+  inconclusive and is remembered.
+. A log line matching a `hard_fail_patterns` entry is `ERROR`
+  (`log_pattern`, bucket `tool_error`).
+. A nonzero return code is `FAIL` (`return_code`, bucket `sim_failure`).
+. A `required_patterns` entry with no match in the log is `FAIL`.
+. A `fail_patterns` match that no `ignore_patterns` entry covers is `FAIL`;
+  an ignored match is recorded as evidence with status `IGNORED`.
+. The last match of each `summary_patterns` entry is read: counts with a
+  zero total, a nonzero failure figure, or a total that the passing and
+  skipped figures do not add up to, are `FAIL` (`log_summary`); otherwise the
+  summary is positive evidence.
+. A `pass_patterns` match is recorded, and counts as positive evidence only
+  when the policy names no structured result.
+. With an inconclusive structured result remembered, the leaf is `UNKNOWN`
+  (`structured result missing or inconclusive`, bucket `unknown`).
+. With `require_positive_evidence` set and no positive evidence, the leaf is
+  `UNKNOWN` (`no positive pass evidence matched`).
+. Otherwise the leaf is `PASS`.
+
+A leaf whose command exceeded its resolved timeout is `TIMEOUT` (bucket
+`timeout`) before any of this runs, and a leaf whose stage raised a
+configuration or tool exception is `ERROR` (bucket `config_error` or the
+stage's default). `expect_fail` grading follows (<<runner-expected-failures>>).
+Every decision records under `parser` the policy name, its fingerprint,
+`status_source`, the applied extensions, and up to 25 evidence records, each
+naming the file, its kind, the status it contributed, and the matched text.
+
+The policy is `[pass_fail].policy` in the sim config, else the framework's
+default: `cocotb-default` for cocotb (structured `results.xml`, the cocotb
+`TESTS=` summary line), `uvm-log` for SystemVerilog UVM (no structured
+result; `UVM_ERROR` and `UVM_FATAL` counts, `UVM Report Summary` required),
+and `generic-regex` otherwise, which validation rejects unless the flow names
+a positive-evidence source. `[pass_fail]` adds to a policy only:
+`extra_pass_patterns`, `extra_fail_patterns`, `extra_ignore_patterns`,
+`extra_required_patterns`, `extra_hard_fail_patterns`,
+`extra_summary_patterns`, and `extra_structured_results`; a `replace_*` key
+is rejected because it would weaken the policy. A tool's
+`[<tool>.parser_extensions]` table in `simulators.toml` adds
+`extra_fail_patterns` and `extra_hard_fail_patterns` for that simulator's
+own error markers. Every pattern is compiled at validation time.
+
+[[runner-status-vocabulary]]
+=== One vocabulary across result.json, JUnit, and the dashboard
+
+[cols="<1,<1,<3,<2",options="header"]
+|===
+|`result.json` status |Exit code |Synthesized JUnit node |Dashboard flow status
+
+|`PASS` |0 |none |`PASS`
+|`FAIL` |1 |`<failure type="<bucket kind>">`, `sim_failure` when no bucket
+|`FAIL`
+|`ERROR` |2 |`<error type="<bucket kind>">`, `tool_error` when no bucket
+|`FAIL`; `source.native_status` keeps `ERROR`
+|`TIMEOUT` |124 |`<error type="timeout">`
+|`FAIL`; `source.native_status` keeps `TIMEOUT`
+|`UNKNOWN` |5 |`<error type="unknown">` |`UNKNOWN`
+|`SKIP` |none |`<skipped>`; a skipped leaf writes no file |`SKIP` on the
+test, absent from the flow status
+|===
+
+The failure-bucket `kind` is the shared enum: `sim_failure`, `tool_error`,
+`unknown`, `timeout`, `config_error`, `compile_error`, `elaboration_error`,
+`coverage_threshold`, `formal_fail`, `expected_fail_passed`,
+`expected_fail_mismatch`, and `interruption`. A stage that fails without a
+parser decision takes its stage's default kind (`flist` `config_error`,
+`hdl_compile` and `c_compile` `compile_error`, `elaborate`
+`elaboration_error`, `sim` and `regress` `sim_failure`, the coverage stages
+and `clean` `tool_error`, `formal` `formal_fail`), and a `ConfigError` is
+`config_error` whichever stage raised it.
+
+[[runner-junit-ownership]]
+=== JUnit ownership
+
+Every executed simulation leaf ends with xUnit XML at
+`<leaf>/results/results.xml`. A framework that writes its own file, as cocotb
+does, owns it: the runner reads it as evidence and never rewrites it. When
+the file is absent after grading, for a SystemVerilog UVM leaf or a leaf
+whose simulator died before the framework could write, the runner
+synthesizes a single-testcase file from the graded result, with the node
+mapping above and a `system-out` block naming the log, the leaf
+`result.json`, the parser policy, the `status_source`, the failure buckets,
+and the attempt. Either way the path is recorded as `artifacts.results_xml`
+on the leaf.
+
+A synthesized file is a reporting artifact, written after grading, atomically,
+and never read back as evidence. Its suite carries a `producer` property
+with the value `run_dv.py junit-fallback`, and only a file carrying that
+marker is ever removed or replaced; a file without it is left alone even
+when it sits where the runner would write.
+
+Two run-level files follow the same rule. A handled interruption writes
+`<run>/results/results.xml` with one errored testcase of type `interruption`
+(<<runner-interrupted-checkpoints>>). A run that fails before any leaf
+executed writes the same path with one testcase for the first failing stage
+in `ERROR`, `TIMEOUT`, `FAIL`, `UNKNOWN` order, so a compile or filelist
+failure stays visible to a JUnit consumer; a run in which a leaf executed,
+or that passes, removes a marked run-level file left by an earlier
+invocation into the same directory.
+
 == Continuous integration
 
 Two GitHub workflows run simulator jobs on GitHub-hosted runners. Both run
@@ -1954,29 +2279,33 @@ change can never alter the pull-request gate:
 
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
-|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, 60-minute
-budget per job. The job names `verilator-smoke (<dut>)` are the stable check
-contexts.
+|`--items smoke --sim-jobs 2` for `dtp`, `sep`, and `smc`, and
+`--items hosted_smoke` for `smu`, whose own `smoke` group reaches firmware
+tests the hosted runner cannot build; 60-minute budget per job. The job
+names `verilator-smoke (<dut>)` are the stable check contexts. Every job
+runs for a documentation-only change too, so the contexts report; each job
+then prints one line and skips the simulation.
 
 |`nightly`
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `hosted` and the three
-`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
-budgets are sized for the standard runner. Nightly is not a merge gate; a red
-nightly run is a triage signal.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the three
+`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage.
+Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The coverage regression the dashboard publishes. DTP `all` collects
-reference-only Verilator coverage; SEP `cpu_stub` and SMU `sep0_all` add
+reference-only Verilator coverage; SEP `cpu_stub` and SMU `hosted` add
 `--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
-runner, because their coverage-instrumented model builds exceed the standard
-runner's memory, and DTP reseeds three times on that runner. SMC `hosted` and
-the three `cross_trigger` benches' `all` groups run at three seeds with
-coverage. A second SMC row (`label: rtl_issue`) runs the `rtl_issue`
+runner, because the coverage-instrumented SEP and SMU model builds exceed the
+standard runner's memory, and DTP reseeds three times on that runner. SMU,
+SMC `hosted`, and the three `cross_trigger` benches run at three seeds; SMC
+`hosted` collects coverage on whichever runner the variable selects, and the
+`cross_trigger` benches collect it on the standard runner. A second SMC row
+(`label: rtl_issue`) runs the `rtl_issue`
 reproducers at one seed without coverage: every leaf carries `expect_fail`
 (<<runner-expected-failures>>), so the row is green while the filed defects
 stand and red the week one is fixed. `--sim-jobs` follows the runner core
@@ -2001,6 +2330,36 @@ gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
 A label with no matching runner does not fail fast (the job queues until it
 times out), so the default stays the always-present standard runner.
 
+[[runner-ci-budgets]]
+=== Budgets, concurrency, and retention
+
+Every job carries a `timeout-minutes` budget: 60 for each smoke job, and
+360, the hosted runner's cap, for every nightly and weekly job; the
+scheduled tiers are bounded by that cap alone. A job that exceeds its
+budget is cancelled by the hosted runner;
+`run_dv.py` receives the cancellation as a signal and, when its handler
+completes, writes the interruption checkpoint and the run-level JUnit
+testcase, and otherwise its last `UNKNOWN` checkpoint stands
+(<<runner-interrupted-checkpoints>>). The artifact upload runs regardless of
+the outcome, so a cancelled job publishes non-passing evidence either way.
+Inside a job, each leaf is bounded by its resolved leaf timeout, and
+a leaf that exceeds it grades `TIMEOUT` without ending the run.
+
+Concurrency is per workflow: a pull-request push cancels the smoke run it
+supersedes, and a push to `main` never cancels a run in progress. The two
+regression crons and each dispatched tier are separate groups that are never
+cancelled: a dispatched tier runs beside a scheduled one and queues only
+behind an earlier dispatch of the same tier. Exactly one scheduled tier runs
+per day.
+
+Retention: smoke and nightly run trees for 14 days, weekly run trees for 30,
+the normalized dashboard bundle for 90; the `dv-dashboard-data` branch keeps
+the trend history trimmed to 90 points and each DUT's weekly archives to 90
+runs. The runner has
+no automatic retry in hosted CI; a leaf is graded on its single attempt, and
+the weekly digest's flaky list comes from seeds of one test disagreeing
+within a run.
+
 Each job writes an explicit per-run directory
 (`build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; the workflow run id keeps the
 recorded run identity unique for downstream trend history), gates on the
@@ -2008,9 +2367,10 @@ native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
 `status` `PASS`). Coverage-enabled jobs additionally require a numeric score
 and recorded report/summary paths, but do not enforce a score threshold. The
 action uploads `dv-run-<dut>-<tool>-<tier>` (`-<label>` appended for a
-labelled row; 14-day retention, 30 for the weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
-are excluded after merge while the merged coverage report and normalized
-summary remain. Explicit run directories never create or update the `latest`
+labelled row), including on failure, for the retention periods in
+<<runner-ci-budgets>>; per-leaf Verilator `coverage.dat` inputs are excluded
+after merge while the merged coverage report and normalized summary remain.
+Explicit run directories never create or update the `latest`
 symlink.
 
 [[runner-ci-support-matrix]]
@@ -2026,7 +2386,8 @@ symlink.
 tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `cpu_stub` / `sep0_all` / `smoke`). Main protection
+regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
+row). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
@@ -2062,7 +2423,6 @@ whose scenarios lack a `uvm` entry rides `--skip-unimplemented`:
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi
 python3 tools/dv/run_dv.py --dut ocah_axi_vip --framework uvm --items smoke
-python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
 ----

@@ -11,7 +11,9 @@ S4: SMC OTP ``SINGLE_OP`` NO_OP TDR echoes a non-zero probe (chain live).
     SEP OTP ``SINGLE_OP`` IR selects 1-bit BYPASS: 2-bit scan TDI=0b01
     returns 0b10 (capture-0 then shift-echo-1).
 
-Opcodes from ``jtag_inst_reg_pkg.sv``. No MAP R/W (that is map_rw /
+Opcodes from ``seq_lib.smu_jtag_helpers.dtp_ir_opcode``, i.e. ``DtpJtagInstr``
+transcribed from the "Instruction Encodings" table of
+``hw/ip/jtag/jtag_intf_unit/doc/interface.adoc``. No MAP R/W (that is map_rw /
 complete_rw). Not claimed: Force-closed OTP gate; SECURE_TM; SEP=1 bridge.
 """
 

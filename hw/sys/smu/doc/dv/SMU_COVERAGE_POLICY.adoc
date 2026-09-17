@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-coverage-policy]]
+== SMU coverage targets and closure policy
+
+This chapter defines *what* the SMU release group is graded on and *how*
+a hole is waived. It does not install a CI fail-on-hole gate; that gate
+needs a measured database first.
+
+[cols=",",options="header",]
+|===
+|Field |Value
+|Release group |`--dut smu --items hosted` (live size in
+`SMU_RELEASE_MATRIX.adoc`)
+|Public metric |interface toggle: the ports of `smu_wrapper`
+(`smu_wrapper_uvm_top.u_dut`), a port counting once any of its bits has
+toggled, read from the run's `cov/merged.dat` by `cov/interface_toggle.py`;
+plus the `user` points
+|Numeric target |interface toggle 85 percent of the wrapper's ports (114 of
+the 129 ports that carry a toggle point = 88.4 percent on the `hosted` group
+when this chapter was written; three more ports are constant); `user` 95
+percent effective (94 of 107 hit, 90.4 percent effective, at the same time). Neither is a runner gate: the runner grades the
+native families and the policy's `[[holes]]`, and the interface figure is
+reported beside them
+|===
+
+`cov/sv/` carries eleven cover-property modules, 115 points in all; the counts
+are the `OCAH_FCOV_COVER` invocations in each file. The block bench
+`tb/tb_top.sv` instantiates nine of them and 84 points elaborate there; the
+wrapper bench `tb/tb_wrapper_top.sv` instantiates ten and 107 points elaborate
+on its single target, `compile_smu_chiplet`, which has SEP present.
+`smu_alias_fcov.sv` and `smu_clk_fcov.sv` are wrapper-bench only --
+`smu_clk_fcov` reads clock mirrors that only that bench publishes;
+`smu_nosep_fcov.sv` is block-bench only, its points exist without SEP.
+
+[cols="2,1,4",options="header",]
+|===
+|Module |Points |Spec area
+|`smu_xbar_fcov.sv` |25 |Window programming and reprogramming, inbound AXI
+handshake, all four response encodings, inbound traffic not forwarded outbound
+|`smu_boot_fcov.sv` |21 |Reset-release edges, boot-stall sources and release,
+lifecycle broadcast, fuse sense, SRAM auto-init
+|`smu_rst_fcov.sv` |17 |Cold-reset assertion and release, per-domain reset
+order, powergood
+|`smu_dbg_fcov.sv` |13 |JTAG2AXI debug paths, security-disable, TAP state
+|`smu_ext_fcov.sv` |10 |External boot-sequence gate and the external AXI
+boundary
+|`smu_nosep_fcov.sv` |4 |The SEP=0 composition: the direct converter path
+that replaces the crossbar, in each direction
+|`smu_dtp_fcov.sv` |7 |Cross-trigger ports and XTRIG mode
+|`smu_lc_fcov.sv` |6 |Lifecycle state broadcast and demotion
+|`smu_alias_fcov.sv` |6 |Alias / remap manager scope at the SMU boundary
+|`smu_clk_fcov.sv` |3 |Clock mirrors the wrapper bench exposes
+|`smu_clkstop_fcov.sv` |3 |Clock-stop request and grant
+|===
+
+[[smu-cov-paths]]
+=== Public versus commercial evidence
+
+[cols="2,3,3",options="header",]
+|===
+|Path |What it collects |Where it runs
+|Public Verilator |line / expr / toggle / user over
+`smu_wrapper_cov_scope.vlt`, which drops everything the wrapper instantiates
+at compile time -- the SMU block (graded on `--dut smu_block`), the SEP, SMC
+and DTP trees, the `hw/top` integration shells, vendored and generated RTL --
+so the toggle points that remain are `smu_wrapper`'s own: its ports and the
+nets it declares between them |weekly `--cov` on the large runner
+(`regress.yml`). Nightly does not collect.
+|Public metric |`cov/interface_toggle.py <run dir>` keeps the per-bit,
+per-edge toggle points whose hierarchy is `smu_wrapper_uvm_top.u_dut` and
+whose name is in the port list of `hw/top/smu_wrapper.sv`, and folds them
+into one figure per port; every port is live because the single target
+elaborates SEP. `--list` names the ports that never toggled. It is run by
+hand on a finished database; no CI job invokes it |on any finished `--cov`
+run of `--dut smu`, without a simulator
+|Commercial |toggle / code / assertion databases under the licensed flow;
+`smu_wrapper_cov_scope.hier` drops the same trees and collects toggle as
+`tgl(portsonly)` on `u_dut`, which is urg's own per-port view (see
+`cov/config/vcs/README.md`) |not a public CI job and not yet measured; not a
+substitute for the public weekly
+|===
+
+The DUT is an integration shell, and an integration level is graded on its
+interfaces. That is why the metric is toggle rather than line or expression,
+and why it is counted per port rather than per bit: a 256-bit struct port is
+one interface, not five hundred and twelve. The folding is a report over the
+database the runner already writes, not a runner family, so the coverage
+layout stays the one DTP, SEP and SMC use. A Python `smu_fcov.py` sampler is
+not the release metric and is not a gate.
+
+[[smu-cov-out]]
+=== Structural OUT versus a waiver hole
+
+Three mechanisms. Do not mix them.
+
+[cols="2,3,3",options="header",]
+|===
+|Kind |Effect |Carrier
+|Structural OUT, by source file |the point never enters the database
+|`coverage_off` file patterns (`hw/sys/smu/rtl`, SMC, DTP, SEP, `hw/ip`,
+`hw/common`, CPU cluster, TB, vendor trees the file pattern can reach)
+|Structural OUT, by elaboration |the point is not elaborated, so it never
+enters the database and no waiver names it |the `SepPresent` parameter and
+its `g_sep` generate blocks in `cov/sv/*_fcov.sv`; a point whose observable
+exists only with SEP elaborated is absent from a SEP=0 build, which is what
+lets one Verilator policy grade both wrapper targets
+|Waiver hole |the point exists and is not hit |`[[holes]]` with the
+fields below
+|===
+
+A vendor site that `coverage_off` cannot name (hierarchy under `.u_smc`
+/ `.u_dtp`) is a hole with `category = "out_of_scope"` and
+`disposition = "exclude_scope"`. Write it only from a real database:
+`expected_matches` is a hard count, and a guessed count is a
+ConfigError on the first run.
+
+[[smu-cov-waiver]]
+=== Waiver fields
+
+Every `[[holes]]` row must carry:
+
+* `tool`, `metric_family` (the family that database holds: `user` and the
+wrapper's own `toggle` on `--dut smu`; toggle and `user` on
+`--dut smu_block`), `hierarchy` or file selector
+* `category` (one of the runner's hole categories, such as
+`missing_stimulus`, `config_disabled`, `out_of_scope` or `unreachable`)
+* `disposition`
+* `owner`
+* `review_date`
+* `issue` when the disposition is actionable
+
+`max_unclassified_points = 0` is the fail-on-new-hole knob. It is not
+set here; it is set together with the threshold, from a measured weekly
+`--cov` database.
+
+A waiver reaches a finished run without a simulator:
+`python3 tools/dv/run_dv.py --dut smu --run-dir <run> --waive` re-grades
+the run's report against this policy and rewrites its coverage grade in
+place. A dispatch of `dashboard.yml` with the weekly's regress run id does
+the same for the published weekly. Both are described on the runner and
+dashboard pages under `tools/dv/doc/`.

@@ -17,6 +17,16 @@ stages:
 # variables).
 variables:
   OCAH_NONFREE_REMOTE: "https://x-access-token:${NONFREE_REPO_PAT}@github.com/tenstorrent/tt-oca-harness-nonfree.git"
+  # The private submodules -- the OCA manifest tooling here, plus the harness
+  # model on the virtual-platform branches -- are addressed over SSH in
+  # .gitmodules and a runner has no key. ocah-submodules-init rewrites each to
+  # HTTPS carrying this token, as a per-submodule url override rather than a
+  # global insteadOf, so it reaches those repositories and nothing else.
+  #
+  # OCA_BOOT_MANIFEST_OCA_MODEL_PAT is a masked project variable granting
+  # tt-oca-manifest and tt-oca-harness-model. Same name as the GitHub Actions
+  # secret in .github/workflows, because it is the same combined credential.
+  OCAH_SUBMODULE_TOKEN: "${OCA_BOOT_MANIFEST_OCA_MODEL_PAT}"
 
 # Run on mirror-sync pushes, MRs, external PRs (GitHub mirror), manual web
 # triggers, and scheduled pipelines (the weekly EDA checks in the nonfree child

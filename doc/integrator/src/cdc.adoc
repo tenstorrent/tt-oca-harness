@@ -205,7 +205,7 @@ regeneration.
 
 This is the most important change.
 
-As shipped, the procs target the prim wrapper's own port, `prim_sync3/i_d`. That
+As shipped, the procs target the prim wrapper's own port, `prim_sync3/d_i`. That
 port exists only as long as the wrapper survives as a hierarchical boundary, and a
 prim cell is ordinary RTL: nothing stops synthesis from ungrouping it and
 dissolving its ports.
@@ -389,7 +389,7 @@ warns, but one that matches the *wrong* thing does not. Two stronger checks:
 
 [source,tcl]
 ----
-report_timing -to [get_pins <a synchronizer>/i_d] -nworst 1
+report_timing -to [get_pins <a synchronizer>/d_i] -nworst 1
 ----
 
 The `max_delay` line must show your `0.5 * T_dst` value rather than the default. If

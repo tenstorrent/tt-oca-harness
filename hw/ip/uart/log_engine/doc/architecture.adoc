@@ -17,7 +17,7 @@ logging.
 
 CSRs, accessed via AXI4-Lite, configure the engine and report status.
 Key registers control global enable/disable (CTRL), region
-size/alignment (LOG_REGION_SIZE), 64-bit base address (LOG_REGION_ADDR),
+size/alignment (LOG_REGION_SIZE), 56-bit base address (LOG_REGION_ADDR),
 UART target (LOG_WRITE_ADDR), and per-log-entry control and length
 (LOG_CTRL[0:15]). Interrupt registers (INTR_STATUS/ENABLE/TEST) enable
 robust error detection and error recovery.

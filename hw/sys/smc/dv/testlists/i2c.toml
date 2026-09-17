@@ -126,6 +126,16 @@ timeout_sec = 1800
 tags = ["ci", "i2c", "smbus", "depth", "pyuvm"]
 run_modes = ["smoke"]
 
+# I2C INTR_ENABLE masks irq_o only: INTR_STATE latches while masked and
+# clears only on W1C.
+[[tests]]
+name = "smc_i2c_intr_mask_test"
+module = "smc_i2c_intr_mask_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "i2c"
 tests = [
@@ -143,6 +153,7 @@ tests = [
     "smc_i2c_fifo_full_test",
     "smc_smbus_alert_suspend_test",
     "smc_i2c_target_smbus_test",
+    "smc_i2c_intr_mask_test",
 ]
 
 [[tests]]

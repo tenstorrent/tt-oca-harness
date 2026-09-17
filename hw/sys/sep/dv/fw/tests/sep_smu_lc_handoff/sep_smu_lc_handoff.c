@@ -61,7 +61,8 @@ static int run_lc_handoff(void) {
     }
     sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC_HANDOFF_BRINGUP_OK);
 
-    if (sep_smc_scratch_wait(LC_HANDOFF_PVT_EN_ALIAS, LC_HANDOFF_PVT_EN, LC_HANDOFF_FW_POLL_LIMIT) != 0) {
+    if (sep_smc_scratch_wait(LC_HANDOFF_PVT_EN_ALIAS, LC_HANDOFF_PVT_EN,
+                             LC_HANDOFF_FW_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), LC_HANDOFF_S0_FAIL);
         return -12;
     }
