@@ -18,6 +18,7 @@ run seed. Every seed walks the high-bit mirrors of the live registers
 from __future__ import annotations
 
 import cocotb
+from ocah_axi_vip import AxiTimingProfile
 import pyuvm
 from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from sep_base_test import sep_base_test
@@ -211,6 +212,38 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             level_room,
             FIFO_DEPTH,
         )
+
+        # AW and W carry no ordering requirement between them (AMBA IHI 0022
+        # A3.3), and sep_entropy_fifo.sv:381 states it accepts either order and
+        # answers one SLVERR. The backend presents both in the same cycle, so
+        # the aw_recv_q-first and w_recv_q-first arms of that handshake are
+        # unreachable without arming the master.
+        drv = self.env.axi_agent.driver.axi.driver
+        for order, profile in (
+            ("aw-first", AxiTimingProfile(w_delay=4)),
+            ("w-first", AxiTimingProfile(aw_delay=4)),
+        ):
+            drv.set_timing(profile)
+            try:
+                wr = await pool.access(
+                    POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True
+                )
+            finally:
+                drv.set_timing(AxiTimingProfile())
+            assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (
+                f"{order} write resp={wr.resp_code} timed_out={wr.timed_out}, "
+                f"expected one SLVERR; a slave that assumes same-cycle arrival "
+                f"either wedges or answers twice"
+            )
+            st = await pool.status()
+            assert (st & 0x3F) == level_room, (
+                f"{order} write changed fifo_level {level_room} -> {st & 0x3F}"
+            )
+            self.logger.info(
+                "CHK-WRITE-ORDER PASS: %s write BRESP=SLVERR, level unchanged (%d)",
+                order,
+                level_room,
+            )
 
         await ClockCycles(cocotb.top.clk_i, STALL_THRESH + 64)
         st_stall = await pool.status()

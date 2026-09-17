@@ -351,7 +351,7 @@ appears.
 |`sep_entropy_pool_aperture_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|Every seed walks the high-bit mirrors of the three live registers (the offsets that catch a truncated decode).
+|Every seed walks the high-bit mirrors of the three live registers (the offsets that catch a truncated decode), and refuses a write under all three AW/W arrival orders.
 |`sep_otbn_compute_rand_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -3353,16 +3353,18 @@ the shared-key write lane to the key vault, and ML-DSA.
 
 *Objective*: The fabric entropy pool answers only its three live registers. Occupancy, the live `pool_low` flag and fill-stall status reach software and the interrupt aggregator, a pop drains one word, an empty pop is refused, and every write and every unmapped offset inside the 64 KB window is refused with zero data.
 
-*Test Coverage*: Three live pool registers; pop, empty-refuse, and unmapped refuse.
+*Test Coverage*: Three live pool registers; pop, empty-refuse, unmapped refuse, and the write refusal under all three AW/W arrival orders.
 
 *Test Procedure*:
 
 [arabic]
 . Every seed walks the high-bit mirrors of the three live registers, plus all three unique-dead offsets, so a truncated decode cannot hide behind a seeded pick.
 . The block is a 64 KB crossbar target at `entropy_fifo.main` (`0x1095_0000`).
+. The write refusal is driven three ways: AW and W in the same cycle (the backend default), AW leading, and W leading, the latter two by arming an `AxiTimingProfile` on the master.
   Fill waits on the live `pool_low` flag, not on an occupancy watermark.
   `StallThresh` is the wait bound for the fill-stall flag.
 . It fills from the native EDN endpoint after the shared entropy bring-up.
+
 
 *Checkers*:
 
@@ -3379,6 +3381,8 @@ the shared-key write lane to the key vault, and ML-DSA.
 |Aggregate `[36]` low after fill.
 |CHK-IRQ-CAUSE-IDLE
 |`0x08` traverses `0x1 -> 0x0` after fill, not a copy of status.
+|CHK-WRITE-ORDER
+|A write whose AW leads W, and one whose W leads AW, each answer a single BRESP=SLVERR and leave `fifo_level` unchanged. AW and W carry no ordering requirement between them (AMBA IHI 0022 A3.3) and `sep_entropy_fifo.sv:381` states the module accepts either order; the backend presents both in the same cycle, so the split-arrival arms of that handshake need the master armed with an `AxiTimingProfile`. A slave that assumed same-cycle arrival would wedge or answer twice.
 |CHK-WRITE-SLVERR
 |Status write returns SLVERR and does not change `fifo_level` while the pool is not full (a full FIFO cannot show a refused fill).
 |CHK-UNMAPPED
