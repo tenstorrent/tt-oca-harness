@@ -350,6 +350,31 @@ endif::backend-pdf[]
 
 For integration-level reset procedures, refer to the Integrator Guide.
 
+[[ocah-rtl-assertions]]
+=== RTL Assertions
+
+First-party RTL uses the `OCAH_ASSERT*` macros; OpenTitan-derived blocks use
+`OCAH_OT_ASSERT*`; PULP-vendored cells (`common_cells`, AXI, iDMA) use
+`OCAH_PULP_ASSERT*`. The checks live in the module that owns the behavior and
+cover known-value hygiene, illegal parameter combinations, and local protocol
+or FSM invariants. They compile out of synthesis and fire on four-state
+simulators.
+
+.RTL assertion macro families
+[cols="<28%,<72%",options="header"]
+|===
+|Family |Header
+
+|`OCAH_ASSERT*`
+|`hw/common/assert/ocah_assert.svh`
+
+|`OCAH_OT_ASSERT*`
+|`vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_assert.sv`
+
+|`OCAH_PULP_ASSERT*`
+|`vendor/pulp-platform/common_cells/upstream/include/common_cells/assertions.svh`
+|===
+
 // ============================================================================
 // Per-subsystem deep dives
 // ============================================================================
