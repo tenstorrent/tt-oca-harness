@@ -151,16 +151,26 @@ Runner]).
 `cov/coverage.json`, `cov/report/*.json`, and `--waive`
 |Runner coverage stages; policy files in the DUT tree
 |`collect`, the dashboard coverage view, the publication workflow's re-grade
-|The compatibility threshold is `--fail-under`, then
+|The merge takes the final attempt of every leaf that wrote a database,
+whatever its status, and refuses inputs of mixed target or build
+provenance (xref:run-dv.adoc#runner-coverage-inputs[Which databases merge]).
+The compatibility threshold is `--fail-under`, then
 `[coverage.<tool>].fail_under`, then `0.0`, graded on the tool's raw overall
-figure; waiver-aware grading is a `pass:[[[thresholds]]]` rule in the policy.
-Coverage is graded over a complete regression only: an interrupted or
-truncated run is refused. A changed policy changes `comparison_key`, so trend
-points before and after are separate series. A lapsed waiver grades as open.
-Checked by `--validate-configs` (expiry warnings), the coverage-closure,
-policy-expiry, and waive tests, and the coverage evidence clause of the
-action's gate. Hosted CI publishes the score but enforces no threshold
-(xref:run-dv.adoc#runner-waive[Waive coverage bins after a regression]).
+figure; waiver-aware grading is a `pass:[[[thresholds]]]` rule in the policy,
+and both kinds must be met. The grade is fail-closed on the policy: a
+grammar error is refused when `cov_merge` loads the policy and writes no
+coverage file; a selector that matches the wrong number of points or an
+accepted waiver on a covered point is refused by `cov_report` and writes no
+summary; either grades the run `ERROR`
+(xref:run-dv.adoc#runner-coverage-grading[How the grade forms]). Coverage is
+graded over a complete regression only: an interrupted or truncated run is
+refused. A changed policy changes `comparison_key`, so trend points before
+and after are separate series. A lapsed waiver grades as open. Checked by
+`--validate-configs` (expiry warnings), the coverage-inputs,
+coverage-thresholds, coverage-closure, policy-expiry, and waive tests, and
+the coverage evidence clause of the action's gate. Hosted CI publishes the
+score but enforces no threshold
+(xref:run-dv.adoc#runner-coverage-record[The coverage record]).
 
 |Normalized dashboard data: `<dut>.result.json`, `summary.json`,
 `history.json`, `manifest.json`, `classification.json`
