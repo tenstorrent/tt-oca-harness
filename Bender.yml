@@ -367,7 +367,7 @@ sources:
   - target: all(dtp, not(sep))
     files:
       - hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
-  - target: any(dtp, sep, smc, key_manager)
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     include_dirs:
       - hw/common/assert
       - hw/ip/efuse/rtl/svh
@@ -428,23 +428,29 @@ sources:
       - hw/ip/key_manager/regs/gen/sv/km_mailbox_sep_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_addrmap_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_addrmap_pkg.sv
-  - target: smc
+  - target: any(smc, uart)
     files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_addrmap_pkg.sv
   - target: sep
     files:
       - hw/ip/output_remap/regs/gen/sv/output_remap_addrmap_pkg.sv
-  - target: smc
+  - target: any(smc, system_timer_octs)
     files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_addrmap_pkg.sv
+  - target: smc
+    files:
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_addrmap_pkg.sv
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_wrap_addrmap_pkg.sv
+  - target: any(smc, uart)
+    files:
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_addrmap_pkg.sv
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_addrmap_pkg.sv
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_addrmap_pkg.sv
       - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_addrmap_pkg.sv
       - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_wrap_addrmap_pkg.sv
       - hw/ip/uart/uart_wrap/regs/gen/sv/uart_wrap_addrmap_pkg.sv
+  - target: smc
+    files:
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
   - target: sep
     files:
@@ -520,7 +526,7 @@ sources:
       - hw/ip/key_manager/regs/gen/sv/kmac_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/regs/gen/sv/otbn_wrapper_key_reg_pkg.sv
       - hw/ip/key_manager/rtl/km_intf_pkg.sv
-  - target: smc
+  - target: any(smc, uart)
     files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg_pkg.sv
       - hw/ip/uart/log_engine/rtl/log_engine_pkg.sv
@@ -531,16 +537,20 @@ sources:
   - target: any(sep, smc)
     files:
       - hw/ip/output_remap/regs/gen/sv/output_remap_reg_pkg.sv
-  - target: any(sep, key_manager)
+  - target: any(sep, key_manager, scrambler)
     files:
       - hw/ip/scrambler/rtl/scrambler_pkg.sv
-  - target: smc
+  - target: any(smc, system_timer_octs)
     files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg_pkg.sv
       - hw/ip/system_timer_octs/rtl/system_timer_octs_pkg.sv
+  - target: smc
+    files:
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg_pkg.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver_pkg.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap_pkg.sv
+  - target: any(smc, uart)
+    files:
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_reg_pkg.sv
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_reg_pkg.sv
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_reg_pkg.sv
@@ -548,6 +558,8 @@ sources:
       - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg_pkg.sv
       - hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap_pkg.sv
       - hw/ip/uart/uart_wrap/rtl/uart_wrap_pkg.sv
+  - target: smc
+    files:
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg_pkg.sv
   - target: dtp
     files:
@@ -601,7 +613,7 @@ sources:
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
-  - target: any(dtp, sep, smc, key_manager)
+  - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     files:
       - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
       - hw/common/och_prim/rtl/prim_apb_arb.sv
@@ -665,7 +677,7 @@ sources:
     files:
       - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
       - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
-  - target: all(any(dtp, sep, smc, key_manager), not(synth))
+  - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs), not(synth))
     files:
       - hw/common/och_prim_generic/rtl/prim_ao222.sv
       - hw/common/och_prim_generic/rtl/prim_clkgater.sv
@@ -919,7 +931,7 @@ sources:
   - target: sep
     files:
       - hw/ip/axi_window_remap/rtl/axi_window_remap.sv
-  - target: smc
+  - target: any(smc, uart)
     files:
       - hw/ip/uart/log_engine/regs/gen/sv/log_engine_reg.sv
       - hw/ip/uart/log_engine/rtl/log_engine.sv
@@ -930,7 +942,7 @@ sources:
     files:
       - hw/ip/output_remap/regs/gen/sv/output_remap_reg.sv
       - hw/ip/output_remap/rtl/output_remap.sv
-  - target: any(sep, key_manager)
+  - target: any(sep, key_manager, scrambler)
     files:
       - hw/ip/scrambler/rtl/scrambler.sv
       - hw/ip/scrambler/rtl/scrambler_1024x32.sv
@@ -940,14 +952,18 @@ sources:
       - hw/ip/scrambler/rtl/scrambler_8192x32.sv
       - hw/ip/scrambler/rtl/scrambler_addr_tweak.sv
       - hw/ip/scrambler/rtl/scrambler_rotator.sv
-  - target: smc
+  - target: any(smc, system_timer_octs)
     files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg.sv
       - hw/ip/system_timer_octs/rtl/system_timer_octs.sv
       - hw/ip/system_timer_octs/rtl/system_timer_octs_core.sv
+  - target: smc
+    files:
       - hw/ip/telemetry_receiver/regs/gen/sv/telemetry_receiver_reg.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver.sv
       - hw/ip/telemetry_receiver/rtl/telemetry_receiver_wrap.sv
+  - target: any(smc, uart)
+    files:
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_dl_reg.sv
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_reg.sv
       - hw/ip/uart/uart_16550/regs/gen/sv/uart_16550_main_wo_reg.sv
@@ -958,6 +974,8 @@ sources:
       - hw/ip/uart/uart_log_engine_wrap/regs/gen/sv/uart_log_engine_ctrl_reg.sv
       - hw/ip/uart/uart_log_engine_wrap/rtl/uart_log_engine_wrap.sv
       - hw/ip/uart/uart_wrap/rtl/uart_wrap.sv
+  - target: smc
+    files:
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_reg.sv
       - hw/ip/zeroer/rtl/zeroer.sv
   - target: dtp

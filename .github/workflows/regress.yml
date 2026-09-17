@@ -134,7 +134,8 @@ jobs:
             reseed: 3
             coverage: false
             runner: ubuntu-latest
-          # Cross-trigger IP-level benches: small single-IP DUTs, seconds per
+          # IP-level benches (cross-trigger family, UART family, system timer,
+          # scrambler): small single-IP DUTs, seconds to a few minutes per
           # full group; nightly is their only scheduled enrollment besides
           # the weekly.
           - dut: cross_trigger_port
@@ -148,6 +149,36 @@ jobs:
             coverage: false
             runner: ubuntu-latest
           - dut: cross_trigger_network
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_16550
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+          - dut: log_engine
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_log_engine_wrap
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_wrap
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+          - dut: system_timer_octs
+            items: all
+            reseed: 3
+            coverage: false
+            runner: ubuntu-latest
+          - dut: scrambler
             items: all
             reseed: 3
             coverage: false
@@ -240,8 +271,9 @@ jobs:
         # verified on smc (46-minute build on six cores, 12 MB database per
         # leaf), so smc collects coverage here; sep, smu and smu_block keep
         # their larger-runner gate until one weekly run confirms the standard
-        # runner's memory suffices for them too. The cross_trigger benches
-        # are small enough to collect coverage on the standard runner.
+        # runner's memory suffices for them too. The IP-level benches
+        # (cross_trigger, uart, system_timer_octs, scrambler) are small enough
+        # to collect coverage on the standard runner.
         include:
           - dut: dtp
             items: all
@@ -291,6 +323,36 @@ jobs:
             coverage: true
             runner: ubuntu-latest
           - dut: cross_trigger_network
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+          - dut: uart_16550
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+          - dut: log_engine
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+          - dut: uart_log_engine_wrap
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+          - dut: uart_wrap
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+          - dut: system_timer_octs
+            items: all
+            reseed: 3
+            coverage: true
+            runner: ubuntu-latest
+          - dut: scrambler
             items: all
             reseed: 3
             coverage: true

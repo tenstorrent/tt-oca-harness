@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Scrambler family IP-level scenarios.
+
+[[tests]]
+name = "scrambler_roundtrip_test"
+module = { cocotb = "scrambler_roundtrip_test" }
+seed = 1
+timeout_sec = 900
+tags = ["smoke", "ci", "scrambler"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "scrambler_bytewise_test"
+module = { cocotb = "scrambler_bytewise_test" }
+seed = 1
+timeout_sec = 900
+tags = ["scrambler", "bytewise"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["scrambler_roundtrip_test"]
+
+[[groups]]
+name = "all"
+tests = ["scrambler_roundtrip_test", "scrambler_bytewise_test"]

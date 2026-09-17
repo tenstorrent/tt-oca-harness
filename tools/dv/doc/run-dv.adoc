@@ -2290,8 +2290,10 @@ then prints one line and skips the simulation.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the three
-`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage.
+DTP `all`, SEP `cpu_stub`, SMU `hosted`; SMC `hosted` and the IP-level
+benches' `all` groups (the three `cross_trigger` benches, the four UART-family
+benches, `system_timer_octs` and `scrambler`) run with `--reseed 3`. No
+coverage.
 Nightly is not a merge gate; a red nightly run is a triage signal.
 
 |`weekly`
@@ -2302,9 +2304,9 @@ reference-only Verilator coverage; SEP `cpu_stub` and SMU `hosted` add
 `--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
 runner, because the coverage-instrumented SEP and SMU model builds exceed the
 standard runner's memory, and DTP reseeds three times on that runner. SMU,
-SMC `hosted`, and the three `cross_trigger` benches run at three seeds; SMC
-`hosted` collects coverage on whichever runner the variable selects, and the
-`cross_trigger` benches collect it on the standard runner. A second SMC row
+SMC `hosted`, and the IP-level benches run at three seeds; SMC `hosted`
+collects coverage on whichever runner the variable selects, and the IP-level
+benches collect it on the standard runner. A second SMC row
 (`label: rtl_issue`) runs the `rtl_issue`
 reproducers at one seed without coverage: every leaf carries `expect_fail`
 (<<runner-expected-failures>>), so the row is green while the filed defects
@@ -2314,8 +2316,8 @@ but does not determine test pass/fail. SEP, SMU, and DTP instrument
 line/branch/expression/user and SMC line/branch/user, none with toggle, and
 every coverage block compiles the generated model per file
 (`--output-groups 0`; see `[coverage.verilator]` in each DUT's sim config for
-the sizing and build rationale). The `cross_trigger` benches use the
-simulator default (all forms).
+the sizing and build rationale). The IP-level benches use the simulator
+default (all forms).
 |===
 
 Pull requests never run the `all` regression; `sim.yml` carries only the
@@ -2381,9 +2383,10 @@ symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smc` + Verilator; `cross_trigger_port`,
-`cross_trigger_matrix`, `cross_trigger_network` + Verilator (regression
-tiers only)
+|`dtp`, `sep`, `smu`, `smc` + Verilator; the IP-level benches
+`cross_trigger_port`, `cross_trigger_matrix`, `cross_trigger_network`,
+`uart_16550`, `log_engine`, `uart_log_engine_wrap`, `uart_wrap`,
+`system_timer_octs`, `scrambler` + Verilator (regression tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
@@ -2391,8 +2394,8 @@ row). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
-run in the same matrix but are not required contexts; the `cross_trigger`
-benches are enrolled in the regression tiers only.
+run in the same matrix but are not required contexts; the IP-level benches
+are enrolled in the regression tiers only.
 
 |Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
