@@ -214,7 +214,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
 
         # AW and W carry no ordering requirement between them (AMBA IHI 0022
-        # A3.3), and sep_entropy_fifo.sv:381 states it accepts either order and
+        # A3.3), and sep_entropy_fifo.sv:390 states it accepts either order and
         # answers one SLVERR. The backend presents both in the same cycle, so
         # the aw_recv_q-first and w_recv_q-first arms of that handshake are
         # unreachable without arming the master.

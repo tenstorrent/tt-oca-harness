@@ -185,13 +185,15 @@ class sep_address_map_test(sep_base_test):
         # The two responses must differ. The value behind the shim is adopter
         # owned and is not graded -- only which port the decode chose.
         off = EFUSE_SHIM_BASE + EFUSE_SHIM_SIZE
+        # Keyed off the response rather than the monitor tally: the monitor
+        # counts on its own clock edge, which may not have run when start_seq
+        # returns, and a standing credit would absorb the next unexpected DECERR
+        # anywhere on this bus.
         mon = self.env.axi_monitor
         mon.arm_expected_decerr(2)
-        seen = mon.expected_decerr_seen
         past = await self._access(SepAxiOp.READ, off, expect_error=True)
-        unused = 2 - (mon.expected_decerr_seen - seen)
-        if unused > 0:
-            mon.release_expected_decerr(unused)
+        if past.timed_out or past.resp_code != RESP_DECERR:
+            mon.release_expected_decerr(2)
         assert not past.timed_out, (
             f"CHK-EXT-DEMUX-BOUND FAIL: read 0x{off:08x} timed out; the external "
             f"port must be terminated, not left to hang"

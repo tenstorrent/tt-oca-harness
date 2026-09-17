@@ -129,9 +129,10 @@
 // The two error slaves are named by INSTANCE, not by module. `-module` matches
 // every elaboration of a name, and both are instantiated elsewhere in SEP RTL
 // where a test states a contract on them: prim_axi_lite_err_slv at
-// sep_io.sv:180, sep_crypto.sv:573 and sep_efuse_wrapper.sv:259, and
+// sep_efuse_wrapper.sv:259 and sep_system_csr.sv:571, :690, :930, and
 // axi_err_slv at sep_crypto.sv:555, sep_crypto_axi_interconnect.sv:270 and
-// sep_cpu.sv:591. sep_axi_map_refuse_test and the dead-space decode tests grade
+// sep_cpu.sv:591. (sep_io.sv:180 and sep_crypto.sv:573 instantiate the
+// separate prim_axil_err_slv, which this rule does not name.) sep_axi_map_refuse_test and the dead-space decode tests grade
 // those refusals, so a name-matched rule would waive live error-response logic.
 -module efuse_bank_model
 -tree sep_uvm_top.u_dut.u_sep_ip_integration.u_ext_trng_axil_err_slv

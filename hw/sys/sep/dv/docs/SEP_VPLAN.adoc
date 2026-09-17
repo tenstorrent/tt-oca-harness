@@ -754,7 +754,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset is claimed for the HMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES, KMAC or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset is claimed for the HMAC, KMAC and Adams Bridge domains — see the detail entry; it is not claimed for AES or OTBN. The ABR domain also carries the JTAG `IC_RESET` override check, and its live-result behaviour is graded on `sep_abr_mlkem_kat_test`. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
@@ -2185,7 +2185,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Reveals that the misaligned-offset latch condition stated for `PERIPH_BUS_ERR_STATUS` does not exist. `sep_cpu_ctrl.rdl:383` and `doc/interrupts.adoc:227` require a misaligned CPU access to a block's registers to receive SLVERR and latch that block's status bit; the fabric refuses the beat with DECERR instead, so no TL-UL error reaches the block and nothing latches.
+*Objective*: Reveals that the misaligned-offset latch condition stated for `PERIPH_BUS_ERR_STATUS` does not exist. `sep_cpu_ctrl.rdl:383` and `doc/interrupts.adoc:241` require a misaligned CPU access to a block's registers to receive SLVERR and latch that block's status bit; the fabric refuses the beat with DECERR instead, so no TL-UL error reaches the block and nothing latches.
 
 *Test Coverage*: The misaligned-offset term of the bus-error status contract.
 
@@ -3400,7 +3400,7 @@ the shared-key write lane to the key vault, and ML-DSA.
 |CHK-STALL-DURATION
 |Holding the same stall three times past `StallThresh` leaves `[37]` asserted and the irq-cause code still reading the fill-stall value. The counter saturates and the flag clears only on forward progress, so a counter that wrapped or a flag that self-cleared on saturation would drop the fault while the outage continued.
 |CHK-WRITE-ORDER
-|A write whose AW leads W, and one whose W leads AW, each answer a single BRESP=SLVERR and leave `fifo_level` unchanged. AW and W carry no ordering requirement between them (AMBA IHI 0022 A3.3) and `sep_entropy_fifo.sv:381` states the module accepts either order; the backend presents both in the same cycle, so the split-arrival arms of that handshake need the master armed with an `AxiTimingProfile`. A slave that assumed same-cycle arrival would wedge or answer twice.
+|A write whose AW leads W, and one whose W leads AW, each answer a single BRESP=SLVERR and leave `fifo_level` unchanged. AW and W carry no ordering requirement between them (AMBA IHI 0022 A3.3) and `sep_entropy_fifo.sv:390` states the module accepts either order; the backend presents both in the same cycle, so the split-arrival arms of that handshake need the master armed with an `AxiTimingProfile`. A slave that assumed same-cycle arrival would wedge or answer twice.
 |CHK-WRITE-SLVERR
 |Status write returns SLVERR and does not change `fifo_level` while the pool is not full (a full FIFO cannot show a refused fill).
 |CHK-UNMAPPED

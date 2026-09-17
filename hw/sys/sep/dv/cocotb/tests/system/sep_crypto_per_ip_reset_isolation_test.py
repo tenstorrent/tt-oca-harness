@@ -247,6 +247,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         arrival_read = None
         arrival_iso = None
+        kmac_outstanding = None
         for _ in range(1_000):
             host_iso = int(cocotb.top.kmac_host_isolated_probe_o.value)
             km_iso = int(cocotb.top.kmac_km_isolated_probe_o.value)
@@ -261,7 +262,17 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "the same cycle as the observed assert edge)"
                 )
                 break
-            if arrival_read is None and (host_iso == 1 or km_iso == 1):
+            # The arrival beat travels the HOST path, so the window that matters
+            # for it is the one where host_kmac has isolated. km_kmac isolates
+            # first on this domain, and a beat issued on that edge exercises a
+            # path that is still live -- which is a weaker property than the
+            # checker names.
+            if arrival_read is None and host_iso == 1:
+                # Count the pre-request reads still in flight as the host path
+                # closes. Without this the leg passes on four reads that fully
+                # retired before the reset write even left the master, which is
+                # not traffic the isolate had to retire.
+                kmac_outstanding = sum(1 for e in drain_reads if not e.is_set())
                 arrival_read = axi_driver.axi.init_read(
                     address=KMAC_STATUS, length=4, size=2
                 )
@@ -289,16 +300,25 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "no pre-reset KMAC host read drained successfully, so this run does "
             "not show that accepted traffic completes rather than being dropped"
         )
+        assert kmac_outstanding, (
+            f"{kmac_outstanding} of the {len(drain_reads)} pre-request KMAC reads "
+            f"were still in flight when the host path isolated, so this run does "
+            f"not show the isolate completing traffic it had to retire"
+        )
         self.logger.info(
-            "CHK-KMAC-HOST-DRAIN PASS: in-flight KMAC host reads resolved %s "
-            "(no hang, no DECERR); at least one drained OKAY",
+            "CHK-KMAC-HOST-DRAIN PASS: %d of %d pre-request KMAC host reads were "
+            "still in flight at isolate close and all resolved %s (no hang, no "
+            "DECERR); at least one drained OKAY",
+            kmac_outstanding,
+            len(drain_reads),
             drain_codes,
         )
 
         assert arrival_read is not None, (
-            "no KMAC drain window was ever observed: the gated reset asserted "
-            "without any cycle in which an isolate bit was set and the reset was "
-            "still released, so CHK-KMAC-DRAIN-ARRIVAL has nothing to grade"
+            "no KMAC host-path drain window was ever observed: the gated reset "
+            "asserted without any cycle in which host_kmac was isolated and the "
+            "reset was still released, so CHK-KMAC-DRAIN-ARRIVAL has nothing to "
+            "grade on the path the arrival beat travels"
         )
         await with_timeout(arrival_read.wait(), 10_000, "ns")
         arrival_code = worst_resp(getattr(arrival_read.data, "resp", None))
@@ -308,8 +328,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"never DECERR or a hang"
         )
         self.logger.info(
-            "CHK-KMAC-DRAIN-ARRIVAL PASS: a read issued inside the drain window "
-            "(host_kmac=%d km_kmac=%d at issue, gated reset still released) "
+            "CHK-KMAC-DRAIN-ARRIVAL PASS: a read issued inside the host-path "
+            "drain window (host_kmac=%d km_kmac=%d at issue, gated reset still "
+            "released) "
             "resolved resp=%d, no hang",
             arrival_iso[0],
             arrival_iso[1],

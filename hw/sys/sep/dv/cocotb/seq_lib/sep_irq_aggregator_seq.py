@@ -49,6 +49,7 @@ INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR") - CSRNG_BASE
 INTR_TEST = sym("CSRNG_INTR_TEST_REG_ADDR") - CSRNG_BASE
 
 RESP_SLVERR = 2
+RESP_DECERR = 3
 
 # PIC source IDs from hw/sys/sep/doc/interrupts.adoc (1-based).
 # sep_internal_interrupts[N] feeds PIC source N+1.
