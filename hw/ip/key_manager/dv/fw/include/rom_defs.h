@@ -26,8 +26,7 @@
 #define ROM_KM_ROM_BASE 0x00000000
 /** @brief ROM size in bytes (16 KB). */
 #define ROM_KM_ROM_SIZE 0x00004000
-/* 0x0000_4000-0x0000_7FFF is unmapped and returns DECERR; it is held back for a
- * future ROM expansion. */
+/* 0x0000_4000-0x0000_7FFF is unmapped and returns DECERR. */
 /** @brief SRAM base address. */
 #define ROM_KM_SRAM_BASE 0x00008000
 /** @brief SRAM size in bytes (32 KB). */
@@ -304,7 +303,7 @@ typedef enum {
  *
  * POLICY: LIFE_CYCLE and DEMOTION are non-secret status and must NOT be
  * read-locked by firmware (they stay software-readable). They are therefore
- * deliberately excluded from the read-lock aggregate below, and there is no
+ * excluded from the read-lock aggregate below, and there is no
  * "lock all" read-lock mask. Firmware that read-locks OTP fields before
  * handing control to mutable (SRAM-loaded) firmware should use
  * ROM_KM_OTP_LOCK_SECRET_MASK.

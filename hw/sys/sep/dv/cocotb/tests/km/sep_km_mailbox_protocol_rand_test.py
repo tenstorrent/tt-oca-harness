@@ -39,7 +39,7 @@ Checkers:
   CHK-FLUSH    CTRL.FLUSH empties both FIFOs, self-clears, and does not
                clear the sticky error bits
 
-Accepted scope deltas (declared, not silent):
+Scope deltas:
   * inbound_underflow, outbound_overflow, and flushed_by_km need the KM CPU
     as the peer. They are graded on the KM IP mailbox vehicles, not here.
   * STATUS.inbound_separator updates only when the KM pops inbound;

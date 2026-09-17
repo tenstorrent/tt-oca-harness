@@ -4,7 +4,8 @@
 // SMU environment configuration, derived from smu_test_cfg and read by
 // smu_env: the chosen clock and TCK timing, the scoreboard features that
 // must compare, the negative-validation switch the embedded DTP IDCODE
-// reference model honors, and the aggregate JTAG evidence policy. The env
+// reference model honors, the aggregate JTAG evidence policy, and the
+// memory footprint of the outbound SMN responder. The env
 // fills the VIP config from this object and publishes the clock periods on
 // smu_tb_if. Never randomized. The cocotb twin is env/smu_env_cfg.py.
 
@@ -20,6 +21,8 @@ class smu_env_cfg extends ocah_env_cfg;
   bit ptap_idcode_negative;
   // Evidence policy of the env-owned aggregate JTAG recorder.
   smu_evidence_policy_t jtag_policy;
+  // Backing memory of the outbound SMN responder, in bytes (addresses wrap).
+  int unsigned axi_out_mem_bytes = 32'h8000_0000;
 
   function new(string name = "smu_env_cfg");
     super.new(name);

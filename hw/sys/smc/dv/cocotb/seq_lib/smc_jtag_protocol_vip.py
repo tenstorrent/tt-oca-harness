@@ -318,13 +318,11 @@ class SmcJtagTap:
                 int(cocotb.top.tb_cpu_debug_dmactive.value),
                 int(cocotb.top.tb_cpu_debug_dmactive_ack.value),
             )
-        except Exception:  # noqa: BLE001 - probe optional on older elaborations
+        except Exception:  # noqa: BLE001 - tb_cpu_debug_dmactive* probes are optional
             pass
-        # Both polls below raise on expiry. Falling through after 16 attempts
-        # and sending the result only to `cocotb.log.info` would report a debug
-        # module that never came out of reset -- or is absent altogether -- as a
-        # successful smoke test, while this helper and its caller state dmactive
-        # as established fact ([TIMEOUT-MUST-FAIL]).
+        # Both polls below raise on expiry: a debug module that never leaves
+        # reset, or is absent, must fail the smoke test rather than be logged
+        # as a pass ([TIMEOUT-MUST-FAIL]).
         _DM_POLLS = 16
         dmcontrol = 0
         for _ in range(_DM_POLLS):

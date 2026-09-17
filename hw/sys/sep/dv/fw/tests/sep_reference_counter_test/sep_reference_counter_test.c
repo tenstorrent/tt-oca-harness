@@ -5,7 +5,7 @@
  * SEP Reference Counter Test
  *
  * This test verifies REFERENCE_COUNTER (sep_cpu_ctrl) is a free-running
- * reference-clock counter, using the refclk poll from fw/smc/tests/avsbus_sanity.
+ * reference-clock counter, using the refclk poll from hw/sys/smc/dv/fw/tests/avsbus_sanity.
  *
  * Test flow:
  * 1. Sample the counter and poll until it counts up (fail if it never advances)

@@ -12,12 +12,13 @@ module sep_lifecycle_ctrl #(
   input logic test_en_i,
 
   input logic security_disable_i,
-  input logic secure_tm_i,
 
   input sep_efuse_pkg::efuse_map_t shadow_regs_i,
 
   output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
   output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_1_o,
   output logic [DEMOTE_OUT_WIDTH-1:0] lcc_demote_state_2_o,
   output logic lc_sigint_err_o,
@@ -69,28 +70,17 @@ module sep_lifecycle_ctrl #(
     .sigint_o(lc_sigint_err_o)
   );
 
+  // Demotion debug disable vector sub-groups
+  localparam int unsigned DBG_1_LSB = 0;
+  localparam int unsigned DBG_1_MSB = 23;
+  localparam int unsigned DBG_2_LSB = 24;
+  localparam int unsigned DBG_2_MSB = 47;
+
   sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl;
-  sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_sec_disable;
-  sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_secure_tm;
+  sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_sec_dis_ovrd;
 
   // Security-disable feature control
-  assign feat_ctrl_sec_disable = security_disable_i ? 64'hffff_ffff_ffff_ffff : feat_ctrl;
-
-  always_comb begin
-    feat_ctrl_secure_tm = feat_ctrl_sec_disable;
-    // "Overrides and Final Gates (SEC_DIS, SECURE_TM)": SECURE_TM gate is applied last;
-    // when SECURE_TM=0 the entire test group feat_ctrl_o[47:32] is forced to 0, even
-    // when SEC_DIS=1. Debug [31:0] and Function [63:48] groups are not affected.
-    if (!secure_tm_i) begin
-      feat_ctrl_secure_tm.sep_fuse_test    = 1'b0;
-      feat_ctrl_secure_tm.test_reserved_lo = 4'b0;
-      feat_ctrl_secure_tm.smc_fuse_test    = 1'b0;
-      feat_ctrl_secure_tm.fuse_vendor_test = 1'b0;
-      feat_ctrl_secure_tm.test_reserved    = 9'b0;
-    end
-  end
-
-  assign feat_ctrl_o = feat_ctrl_secure_tm;
+  assign feat_ctrl_sec_dis_ovrd = security_disable_i ? 64'hffff_ffff_ffff_ffff : feat_ctrl;
 
   // Logic follows 'Table 50. Per-LC-state feature control profile'
   always_comb begin
@@ -102,10 +92,10 @@ module sep_lifecycle_ctrl #(
         4'b0000: begin  // TEST_DEV state
           feat_ctrl = ~(shadow_regs_i.fields.sip_dis | shadow_regs_i.fields.sys_dis);
           if (demote_reg_1.demote) begin
-            feat_ctrl[15:0] = 16'hffff;
+            feat_ctrl[DBG_1_MSB:DBG_1_LSB] = '1;
           end
           if (demote_reg_2.demote) begin
-            feat_ctrl[31:16] = 16'hffff;
+            feat_ctrl[DBG_2_MSB:DBG_2_LSB] = '1;
           end
         end
 
@@ -114,10 +104,12 @@ module sep_lifecycle_ctrl #(
           feat_ctrl.func_reserved = ~(shadow_regs_i.fields.sip_dis.func_reserved |
                                     shadow_regs_i.fields.sys_dis.func_reserved);
           if (demote_reg_1.demote) begin
-            feat_ctrl[15:0]  = ~(shadow_regs_i.fields.sip_dis[15:0] | shadow_regs_i.fields.sys_dis[15:0]);
+            feat_ctrl[DBG_1_MSB:DBG_1_LSB] = ~(shadow_regs_i.fields.sip_dis[DBG_1_MSB:DBG_1_LSB] |
+                                               shadow_regs_i.fields.sys_dis[DBG_1_MSB:DBG_1_LSB]);
           end
           if (demote_reg_2.demote) begin
-            feat_ctrl[31:16] = ~(shadow_regs_i.fields.sip_dis[31:16] | shadow_regs_i.fields.sys_dis[31:16]);
+            feat_ctrl[DBG_2_MSB:DBG_2_LSB] = ~(shadow_regs_i.fields.sip_dis[DBG_2_MSB:DBG_2_LSB] |
+                                               shadow_regs_i.fields.sys_dis[DBG_2_MSB:DBG_2_LSB]);
           end
         end
 
@@ -183,7 +175,7 @@ module sep_lifecycle_ctrl #(
   sep_lifecycle_ctrl_reg_pkg::sep_lifecycle_ctrl__in_t lifecycle_ctrl_hwif_in;
   sep_lifecycle_ctrl_reg_pkg::sep_lifecycle_ctrl__out_t lifecycle_ctrl_hwif_out;
 
-  assign lifecycle_ctrl_hwif_in.FEAT_CTRL.feature_control.next = feat_ctrl_secure_tm;
+  assign lifecycle_ctrl_hwif_in.FEAT_CTRL.feature_control.next = feat_ctrl_sec_dis_ovrd;
   assign lifecycle_ctrl_hwif_in.DEMOTE_1.demote.swwe = demote_wen_1;
   assign lifecycle_ctrl_hwif_in.DEMOTE_2.demote.swwe     = demote_wen_2;
 
@@ -220,16 +212,34 @@ module sep_lifecycle_ctrl #(
     .hwif_out(lifecycle_ctrl_hwif_out)
   );
 
+  // The three nested reachability cases of 'Debug and Test Port Path Gating'.
+  // Disable-polarity: a case is disabled when any bit it requires is closed, and a
+  // granular bit is an additional term rather than a substitute.
+  logic case_1_dis;
+  logic case_2_dis;
+  logic case_3_dis;
+
+  assign case_1_dis = !feat_ctrl_sec_dis_ovrd.sip_debug;
+  assign case_2_dis = case_1_dis || !feat_ctrl_sec_dis_ovrd.chiplet_dbg;
+  assign case_3_dis = case_2_dis || !feat_ctrl_sec_dis_ovrd.sep_debug;
+
   // Debug-disable derivations (active-high; 1 = disabled).
-  assign dbg_disable_o.stap_io           = !feat_ctrl_secure_tm.sip_debug;
-  assign dbg_disable_o.stap_smc          = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
-  assign dbg_disable_o.stap_extra        = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
-  assign dbg_disable_o.stap_host         = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
-  assign dbg_disable_o.dft_nonsecure     = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
-  assign dbg_disable_o.dft_secure        = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg; // Spec confirmation: #450
-  assign dbg_disable_o.dfd               = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
-  assign dbg_disable_o.smc_jtag2axi      = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg;
-  assign dbg_disable_o.stap_sep          = !feat_ctrl_secure_tm.sip_debug || !feat_ctrl_secure_tm.chiplet_dbg || !feat_ctrl_secure_tm.sep_debug;
-  assign dbg_disable_o.smc_otp_jtag2axi  = 1'b0; // Spec confirmation: #452
-  assign dbg_disable_o.sep_otp_jtag2axi  = 1'b0; // Spec confirmation: #452
+  assign dbg_disable_o.stap_io          = case_1_dis;
+  assign dbg_disable_o.dfd              = case_1_dis;
+  assign dbg_disable_o.stap_host        = case_1_dis;
+  assign dbg_disable_o.stap_smc         = case_2_dis;
+  assign dbg_disable_o.stap_extra       = case_2_dis;
+  assign dbg_disable_o.dft_nonsecure    = case_2_dis;
+  assign dbg_disable_o.smc_jtag2axi     = case_2_dis;
+  assign dbg_disable_o.dft_secure       = case_3_dis;
+  assign dbg_disable_o.stap_sep         = case_3_dis;
+  assign dbg_disable_o.smc_otp_jtag2axi = 1'b0;
+  assign dbg_disable_o.sep_otp_jtag2axi = 1'b0;
+
+  // DFT-inserted fuse access paths. No functional logic consumes these;
+  // They exist for an adopter's DFT insertion to connect to
+  assign sep_fuse_dft_disable_o = case_3_dis || !feat_ctrl_sec_dis_ovrd.sep_fuse_dbg;
+  assign smc_fuse_dft_disable_o = case_2_dis || !feat_ctrl_sec_dis_ovrd.smc_fuse_dbg;
+
+  assign feat_ctrl_o = feat_ctrl_sec_dis_ovrd;
 endmodule

@@ -134,7 +134,7 @@ static inline void mbox_clear_overflow_status(void) {
 int main(void) {
     TEST_INIT();
 
-    /* Set timeout to accommodate data verification reads (16 entries * ~40k cycles each) */
+    /* Timeout covers the SEP-side readback of every FIFO entry */
     if (!tb_set_timeout(800000)) {
         TEST_FAIL("Failed to set testbench timeout");
     }

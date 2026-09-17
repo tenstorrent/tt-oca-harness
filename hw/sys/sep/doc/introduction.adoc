@@ -38,5 +38,5 @@ infrastructure
 including side channels
 * Prevents privilege escalation which would enable illegal operations
 
-A consolidated description of OCAH use cases is available in the
-top-level <<use-cases>> section.
+A consolidated description of OCAH use cases is available in
+xref:ocah-home::use-cases.adoc[Use Cases].

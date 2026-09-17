@@ -3,14 +3,16 @@
 //
 // Primary-TAP instruction model: the TAP state and the active instruction
 // of the DTP PTAP, rebuilt from the JTAG monitor's per-TCK events and the
-// reconstructed IR scans. The instruction latched at Update-IR is the last
-// plain 6-bit IR scan; a composed scan (wider, spanning the STAP chain) or
-// a re-shifted instruction scan leaves it unknown until the next plain load
-// or TAP reset. Test-Logic-Reset by TRST or TMS, and power-on reset, load
-// the device-identification instruction (IEEE 1149.1 6.1.1). Plain class
-// held by the JTAG reference models (ir_decode, idcode, bypass, jtag2axi);
-// no reporting. The cocotb twin is the TAP tracking in
-// env/dtp_tap_device.py.
+// reconstructed IR scans. Update-IR latches the instruction shift register:
+// after one plain 6-bit IR scan that is the scanned opcode; after an IR scan
+// that reaches Update-IR without a Shift-IR cycle it is the Capture-IR
+// pattern (DtpIrCapturePattern, the IDCODE opcode); a composed scan (wider,
+// spanning the STAP chain) or a re-shifted instruction scan leaves it
+// unknown until the next plain load or TAP reset. Test-Logic-Reset by TRST
+// or TMS, and power-on reset, load the device-identification instruction
+// (IEEE 1149.1 6.1.1). Plain class held by the JTAG reference models
+// (ir_decode, idcode, bypass, jtag2axi); no reporting. The cocotb twin is
+// the TAP tracking in env/dtp_tap_device.py.
 
 class dtp_jtag_ir_model;
 
@@ -95,17 +97,23 @@ class dtp_jtag_ir_model;
     m_tap_reset_seen   = 1'b1;
   endfunction
 
+  // The value the instruction shift register holds on the cycle leaving
+  // Update-IR: the Capture-IR pattern when no Shift-IR cycle followed the
+  // capture, the scanned opcode after one plain 6-bit scan, unknown
+  // otherwise.
   protected function bit commit_instruction();
-    bit committed = 1'b0;
-    if (m_pending_ir_scans == 1 && m_pending_ir_valid) begin
-      m_ir       = m_pending_ir;
-      m_ir_known = 1'b1;
-      m_ir_loads++;
-      committed = 1'b1;
-    end else if (m_pending_ir_scans != 0) m_ir_known = 1'b0;
+    bit [DtpIrWidth-1:0] latched;
+    bit known = 1'b1;
+    if (m_pending_ir_scans == 0) latched = DtpIrCapturePattern;
+    else if (m_pending_ir_scans == 1 && m_pending_ir_valid) latched = m_pending_ir;
+    else known = 1'b0;
     m_pending_ir_valid = 1'b0;
     m_pending_ir_scans = 0;
-    return committed;
+    m_ir_known         = known;
+    if (!known) return 1'b0;
+    m_ir = latched;
+    m_ir_loads++;
+    return 1'b1;
   endfunction
 
 endclass : dtp_jtag_ir_model

@@ -44,7 +44,7 @@ uninitialised memory to zero it would also pass on a file that was never
 written. The round-trip is a required conjunct, so a scrambler that destroys
 data cannot pass by looking scrambled.
 
-CHK-ADDR is deliberately "not all of them" rather than "each of them". The
+CHK-ADDR asserts "not all of them" rather than "each of them". The
 address transform is a bijection on the 1024 indices and a bijection may have
 fixed points, so a single index mapping to itself is legal; an identity mapping
 across three seeded indices is not.
@@ -89,9 +89,8 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         rep = await kpv.collect()
 
         # --- CHK-COUNT --------------------------------------------------------
-        # The collector already raises on a wrong count, before it drains the
-        # pair list that a wrong count would flood. This restates the contract
-        # at the point the plan names it, so the checker is visible here.
+        # The collector raises on a wrong count before it drains the pair list a
+        # wrong count would flood; this assertion carries the CHK-COUNT tag.
         assert rep.count == N_TEST_INDICES, (
             f"CHK-COUNT FAIL: {rep.count} of the 1024 key-entry words differ from the "
             f"zeroed setup, expected exactly {N_TEST_INDICES}. Fewer means a write "
@@ -144,18 +143,19 @@ class sep_km_kpv_scrambler_test(sep_base_test):
             "holding zero, which is the value the setup fill left everywhere"
         )
         first_logical = cfg.indices[0]
-        first_pass = [(i, v) for i, v in rep.pairs if v == key_b_value and i == key_b_index]
-        assert not first_pass, (
+        first_words = {v for _, v in rep.pairs}
+        assert key_b_value not in first_words, (
             f"CHK-KEYED FAIL: the same plaintext at logical index {first_logical} "
-            f"stored 0x{key_b_value:08x} at physical {key_b_index} under BOTH keys "
-            f"(0x{cfg.key_a:08x} and 0x{cfg.key_b:08x}) -- the transform ignores the key"
+            f"stored word 0x{key_b_value:08x} under BOTH keys "
+            f"(0x{cfg.key_a:08x} and 0x{cfg.key_b:08x}) -- the data path ignores the key"
         )
         self.logger.info(
-            "CHK-KEYED PASS: logical %d stored differently under the two keys "
-            "(key B: physical %d = 0x%08x)",
+            "CHK-KEYED PASS: logical %d key-B word 0x%08x (physical %d) "
+            "is not among the %d first-key stored words",
             first_logical,
-            key_b_index,
             key_b_value,
+            key_b_index,
+            len(first_words),
         )
 
         # --- CHK-RT -----------------------------------------------------------

@@ -267,8 +267,8 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._last_feat = seq.observed_feat
 
         # The transition rules again, in observed-code form, against the code the
-        # DUT returned. Redundant with the per-cell value check by design: it
-        # fails on a step that is wrong in a way the expectation shares.
+        # DUT returned. It overlaps the per-cell value check and fails on a step
+        # that is wrong in a way the expectation shares.
         assert is_valid_lc_transition(prev, observed), (
             f"{tag}: DUT stepped {lc_state_name(prev)} -> {lc_state_name(observed)}, "
             "which the lifecycle does not permit"
@@ -297,6 +297,12 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
 
     # -- per-leaf walks ------------------------------------------------------
     async def _walk_prod(self) -> None:
+        # Read the preloaded state before touching it. Two things depend on
+        # this: nothing else asserts the image actually starts where the walk
+        # claims, and the coverage sampler only records an LC state on a real
+        # LC_STATE read -- every cell below writes first, so without this the
+        # start state is never observed.
+        await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_PROD)
         await self._cell(0x0, "CHK-W1S-NO-CLEAR")
         await self._cell(0x2, "CHK-GATE-SIP")
         # CHIPLET matched but RMA_SIP not established: the ordering gate holds
@@ -335,6 +341,12 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         )
 
     async def _walk_rma_sip(self) -> None:
+        # Read the preloaded state before touching it. Two things depend on
+        # this: nothing else asserts the image actually starts where the walk
+        # claims, and the coverage sampler only records an LC state on a real
+        # LC_STATE read -- every cell below writes first, so without this the
+        # start state is never observed.
+        await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_RMA_SIP_0)
         got = await self._cell(0x1, "CHK-RMA-BIT0")
         assert got == 0x3, f"RMA_SIP is 4'b001X: 0x2 + bit0 must be 0x3, got 0x{got:x}"
         # No CHIPLET token presented yet: the token gate alone.
@@ -364,10 +376,22 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         )
 
     async def _walk_rma_chiplet(self) -> None:
+        # Read the preloaded state before touching it. Two things depend on
+        # this: nothing else asserts the image actually starts where the walk
+        # claims, and the coverage sampler only records an LC state on a real
+        # LC_STATE read -- every cell below writes first, so without this the
+        # start state is never observed.
+        await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_RMA_CHIP_0)
         got = await self._cell(0x1, "CHK-RMA-BIT0")
         assert got == 0x7, f"RMA_CHIPLET is 4'b011X: 0x6 + bit0 must be 0x7, got 0x{got:x}"
 
     async def _walk_prod_end(self) -> None:
+        # Read the preloaded state before touching it. Two things depend on
+        # this: nothing else asserts the image actually starts where the walk
+        # claims, and the coverage sampler only records an LC state on a real
+        # LC_STATE read -- every cell below writes first, so without this the
+        # start state is never observed.
+        await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_PROD_END)
         got = await self._cell(0x1, "CHK-PROD-END-INVALID")
         assert is_invalid_lc(got) and got == 0x9, (
             "CHK-PROD-END-INVALID: PROD_END's reachable destination is INVALID "

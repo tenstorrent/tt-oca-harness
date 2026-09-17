@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan-SPI DMA-TX firmware test (OSS rep SPI DMA-TX breadth). The complement of the
-// Phase-1 sep_spi_ot_dma_rx (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA
+// SEP OpenTitan-SPI DMA-TX firmware test. The complement of sep_spi_ot_dma_rx
+// (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA
 // (hardware handshake) -> OT SPI host TX FIFO -> flash. The OT SPI TX watermark
 // drives lsio_trigger, which refills the TX FIFO from SRAM a chunk at a time:
 //
@@ -24,7 +24,7 @@
 // until software clears it, so the checker also proves the CTRL.SW_RST + W1C
 // recovery with a real flash RDSR afterwards.
 //
-// main returns the error count; start.S emits PASS/FAIL magic. Each checker logs
+// main returns the error count; crt0.s emits PASS/FAIL magic. Each checker logs
 // a positive PASS line.
 
 #include <stdint.h>
@@ -388,8 +388,8 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
 
     // --- Precondition, not a checker: settle the device before the readback ---
     // The flash BFM is instant-ready, so the first defined RDSR already reads
-    // WIP=0 and a "WIP clear" assertion could not fail. The poll stays because
-    // it is fail-closed on 0xFF/timeout. CHK-DMA-TX below is the data proof.
+    // WIP=0 and a "WIP clear" assertion could not fail; the poll is fail-closed
+    // on 0xFF/timeout. CHK-DMA-TX below is the data proof.
     if (flash_wait_wip_clear()) {
         errors++;
         return errors;

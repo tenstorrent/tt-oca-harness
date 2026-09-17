@@ -37,7 +37,7 @@ engine status fail via the AES model". There is no AES model on RTL -- the AES i
 real RTL -- so the engine's ``ALERT_FATAL_FAULT`` / ``ALERT_RECOV_CTRL_UPDATE_ERR``
 status (``aes_driver.c:57``) could only be produced by forcing a status bit, which
 is a forbidden sim-only shortcut. A pass here therefore covers the post-decrypt
-detection arm of F027 and NOT the engine-status arm.
+detection arm and not the engine-status arm.
 
 THE NO-BACKUP-RETRY EXPECTATION. Procedure step 5 requires that a decryption
 failure is terminal and NOT backup-eligible, and its Expected Results say "no
@@ -129,7 +129,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         )
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        """Deliberately a no-op: the procedure corrupts the PRIMARY only.
+        """A no-op: the procedure corrupts the PRIMARY only.
 
         Step 5 requires that a decryption failure is terminal and not
         backup-eligible, so leaving the backup healthy is what makes
@@ -242,7 +242,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         )
 
         # CHK-NO-BACKUP-RETRY: procedure step 5 and its "no backup address read"
-        # expected result. Left at full strength deliberately -- see the module
+        # expected result. Left at full strength -- see the module
         # docstring. rom_manifest_boot() has no per-error retry class, so a failure
         # here is a real procedure-versus-ROM disagreement, not a test defect.
         i_backup = index_of(_BACKUP_SRC)
@@ -262,7 +262,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         assert not fw_pass, (
             "ROM signalled PASS: it booted an image whose payload it could not decrypt"
         )
-        log.info("CHK-TERMINAL: %s, mailbox FAIL (fw_pass=0)", _ALL_FAILED)
+        log.info("CHK-TERMINAL PASS: %s, mailbox FAIL (fw_pass=0)", _ALL_FAILED)
 
         # CHK-NO-BOOT: nothing downstream of the rejection ran.
         for marker in _BL1_PROGRESS:

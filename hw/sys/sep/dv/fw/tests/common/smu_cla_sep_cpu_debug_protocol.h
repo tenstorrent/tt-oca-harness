@@ -11,7 +11,7 @@
  *   action[4] i_cpu_run_req       -> PMU run/resume                            [DIAGNOSTIC]
  * action[3] is a PMU/FW halt request: it is characterized idle-vs-busy
  * (CHK-PMU-HALT-DIAG) and is NOT required to freeze a busy core. action[2]
- * (mpc_reset_run_req, inverted) and action[5] (unmapped) mapping-only in this first cut.
+ * (mpc_reset_run_req, inverted) and action[5] (unmapped) are checked for mapping only.
  *
  * Included by BOTH firmwares + parsed by the cocotb checker. Plain integer/hex #defines only.
  * Channels: SMC CPU_CTRL scratch (base 0xC0039080, 8-byte stride); s0=SMC status, s1=CLA arm
@@ -37,15 +37,16 @@
 
 /* s0 : SMC status/progress + per-action ARMED markers (cocotb opens an observation window on
  * each). */
+/* Scratch value before the SMC producer has published anything. */
+#define CLADBG_STATUS_PRISTINE 0x00000000
 #define CLADBG_INIT_RELEASE_OK 0x00500000
 #define CLADBG_ACT0_ARMED 0x00500001    /* action[0] debug-halt fired (busy SEP)   */
 #define CLADBG_ACT1_ARMED 0x00500002    /* action[1] debug-run fired               */
 #define CLADBG_A3_BUSY_ARMED 0x00500003 /* action[3] PMU-halt fired, SEP BUSY; NO action[4] yet */
 #define CLADBG_A3_BUSY_HELD 0x00500005  /* action[3] held-window ended; action[4] about to fire */
 #define CLADBG_A3_IDLE_ARMED 0x00500004 /* action[3] PMU-halt fired, SEP IDLE(wfi) */
-#define CLADBG_ACT2_ARMED \
-    0x00500007 /* action[2] reset-run (inverted) fired (SEP running); net polarity only */
-#define CLADBG_ACT5_ARMED 0x00500008 /* action[5] unmapped fired (SEP running); negative leg */
+#define CLADBG_ACT2_ARMED 0x00500007    /* action[2] reset-run (inverted); net + CHK-INVERT-2 */
+#define CLADBG_ACT5_ARMED 0x00500008    /* action[5] unmapped fired (SEP running); negative leg */
 #define CLADBG_DONE 0x0050000F
 #define CLADBG_TEST_FAIL 0xFFFFFFFF
 
@@ -66,6 +67,10 @@
 #define CLADBG_FW_POLL_LIMIT 4000000
 #define CLADBG_HALT_SETTLE_ITERS 2000
 #define CLADBG_HOLD_ITERS 8000
+/* DV->SMC handshake (scratch 9) so CHK-INVERT-2 can finish each reset edge
+ * before the next CLA action. */
+#define CLADBG_DV_INVERT2_A 0x0221A001
+#define CLADBG_DV_INVERT2_B 0x0221A002
 #define CLADBG_A3_HOLD_ITERS \
     20000 /* bounded action[3]-only hold (no action[4]) so the cocotb \
              can classify halt+stable BEFORE the release (~400us) */

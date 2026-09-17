@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-Entropy Sanity Test - First Comprehensive End-to-End Test
+Entropy Sanity Test - Comprehensive End-to-End Test
 
 This test validates the complete data flow:
 1. RO model injection into DUT decorrelators
@@ -10,8 +10,6 @@ This test validates the complete data flow:
 3. Compressor output validation against reference model (real-time checker)
 4. FIFO storage and readout verification (golden queue comparison)
 5. Entropy data availability via APB interface
-
-Test Plan: See TEST_ENTROPY_SANITY.md for detailed step-by-step flow
 """
 
 import cocotb

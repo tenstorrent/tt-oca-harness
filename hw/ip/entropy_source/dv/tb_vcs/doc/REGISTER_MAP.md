@@ -1,7 +1,7 @@
 # Entropy Source Register Map
 
 **Source**: `regs/entropy_source.rdl`
-**Status**: Hand-authored overview; `regs/entropy_source.rdl` is authoritative
+**Scope**: Hand-authored overview; `regs/entropy_source.rdl` is authoritative
 
 ---
 
@@ -68,7 +68,7 @@
 | 0x098   | RING_OSC_CTRL               | [11:0] CLK_SELECT     | RW       | 0x000      | Sample clock source select                                              |
 |         | **DECORRELATOR CONTROL**    |                       |          |            |                                                                         |
 | 0x0A0   | DECORRELATOR_CTRL           | [11:0] BYPASS         | RW       | 0x000      | Per-generator bypass (0x000=decorr, 0xFFF=bypass)                       |
-| 0x0A0   | DECORRELATOR_CTRL           | [31:12] SAMPLE_DIV    | RW       | 63         | (NEW) Sample clock divider (was [23:16], now 20-bit)                   |
+| 0x0A0   | DECORRELATOR_CTRL           | [31:12] SAMPLE_DIV    | RW       | 63         | Sample clock divider (20-bit field)                                     |
 | 0x0A4   | DECORRELATOR_MASK           | [7:0] BYTE_MASK       | RW       | 0xFF       | Entropy byte enable mask                                                |
 |         | **PER-GEN HEALTH STATUS**   |                       |          |            |                                                                         |
 | 0x0C0   | GENERATOR_0_HEALTH_STATUS   | [7:0] STATUS          | RO       | 0x00       | Generator 0 byte-stream health status                                   |
@@ -88,20 +88,19 @@
 
 ## Address Map Notes
 
-Removed registers leave reserved holes at 0x008, 0x058-0x05C,
-0x064-0x06C, and 0x088. Remaining register addresses do not move.
+Offsets 0x008, 0x058-0x05C, 0x064-0x06C, and 0x088 are reserved holes with no register.
 
 ---
 
 ## Key Implementation Notes
 
-### Decorrelator Configuration (NEW Changes)
+### Decorrelator Configuration
 
 **DECORRELATOR_CTRL Register (0x0A0)**:
 
-- **SAMPLE_CLK_DIV field**: Moved from [23:16] to [31:12] (commit 7883562f)
-- **Field width**: Changed from 8-bit to 20-bit
-- **Default value**: Still 63 (division by 64)
+- **SAMPLE_CLK_DIV field**: [31:12]
+- **Field width**: 20-bit
+- **Default value**: 63 (division by 64)
 - **Range**: 8-255 for div-8 to div-256
 
 **Common configurations**:
@@ -111,19 +110,18 @@ Removed registers leave reserved holes at 0x008, 0x058-0x05C,
 - Fast sampling: BYPASS=0x000, DIV=7 (div-8)
 - Slow sampling: BYPASS=0x000, DIV=255 (div-256)
 
-### Downsampling Configuration (NEW Default)
+### Downsampling Configuration
 
 **CTRL.DOWNSAMPLE_RATE field (0x004[25:16])**:
 
-- **Default changed**: From 63 to 0 (commit 7883562f)
+- **Default**: 0
 - **Behavior**: Rate=0 means NO downsampling (capture all samples)
 - **Applied after**: DECORRELATOR_CTRL.SAMPLE_CLK_DIV
 
-### Compressor Bypass Mode (NEW Feature)
+### Compressor Bypass Mode
 
 **CTRL.BYPASS_ENTROPY_COMPRESSOR field (0x004[8])**:
 
-- **Added**: Commit b7bed4f0
 - **Default**: 0 (compressor enabled)
 - **When BYPASS=1**: Pushes raw 12-byte RO data directly to FIFO without compression
 - **FIFO Impact**: Each sample generates **3 consecutive 32-bit FIFO entries** (12 bytes total)

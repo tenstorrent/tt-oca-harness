@@ -9,7 +9,7 @@ returning ``MANIFEST_ERR_SIG_FAILED``.
 
 THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. The reference modifies ONLY
 ``primary.manifest.public_key_sel.rom_key_index``
-and deliberately does NOT corrupt the primary's ``manifest_identifier`` the way its
+and does NOT corrupt the primary's ``manifest_identifier`` the way its
 backup-side sibling does, because the primary has to REACH the check
 under test. So there is no BAD_MAGIC failover trigger here.
 
@@ -37,7 +37,7 @@ token is the only discriminator.
 
 **THE LOAD-BEARING CHECK IS THE ``PUBK_REVOKE=`` COUNT, AND IT CANNOT BE A PLAIN
 FORBID.** The index bound runs BEFORE ``check_pubkey_revoked``
-(``manifest_crypto.c`` then), and that ordering is a security
+(``manifest_crypto.c``), and that ordering is a security
 property rather than a detail: the ROM indexes the revocation bitmap with
 ``1u << index`` (``manifest_crypto.c``), so an index the bound let through
 would shift by 6 or more and consult a bit belonging to no ROM slot. The
@@ -52,18 +52,18 @@ the same reason one step later: an out-of-range index must never reach
 PLATFORM ADAPTATION -- MARKER, AND THE GAP IS WIDER THAN THE ERROR TOKEN. The
 reference's pattern list for this scenario has ELEVEN entries and SIX of the codes
 they name have no ``report_status`` call anywhere under ``bootrom/prod/src``:
-``WARNING: INVALID_KEY_INDEX`` (``status_values.h``), ``STATUS: USING_ROM_KEY``
-, ``STATUS: START_MANIFEST_VALIDATION`` (, asserted twice),
+``WARNING: INVALID_KEY_INDEX`` (``status_values.h``), ``STATUS: USING_ROM_KEY``,
+``STATUS: START_MANIFEST_VALIDATION`` (asserted twice),
 ``STATUS: START_PAYLOAD_VALIDATION``, ``STATUS: PAYLOAD_VALIDATED``
- and ``STATUS: BACKUP_BL1_LOADED``. So the substitution is not
+and ``STATUS: BACKUP_BL1_LOADED``. So the substitution is not
 confined to the rejection reason: the architected ring carries only the generic
 terminal code plus ``MANIFEST_VALIDATED`` / ``COPY_AND_EXEC_IMAGE`` / ``EXEC_IMAGE``,
-and the debug console supplies everything else. Recorded as
-``batch_runs_0904_rtl/FINDINGS.md`` R04.
+and the debug console supplies everything else.
 
 A SECOND NARROWING, DISCLOSED. The reference regenerates and RE-SIGNS its image
 (``sep_firmware_secure_boot_test.py`` drives ``run_manifest_generator``
-at and ``build_firmware``), so its primary is legal in every respect except the index. Here
+and ``build_firmware``), so its primary is legal in every respect except the
+index. Here
 the selector write re-hashes the TBS and leaves the dev0 signature stale, so this
 testcase proves "the bound runs BEFORE the revocation check and before the
 verifier", not the reference's stronger "the bound refuses an otherwise fully valid

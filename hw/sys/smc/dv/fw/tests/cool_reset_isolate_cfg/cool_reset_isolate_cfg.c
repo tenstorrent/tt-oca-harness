@@ -52,13 +52,13 @@ int main(void) {
     uint32_t random_flr_counter = get_random_int() % 16;
     write_reg(SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR, random_flr_counter);
 
-    // Known issue, do not set the FLR Reset Counter to 0 or 1
+    // FLR_RESET_COUNTER_VALUE is drawn from [2, 15]
     uint32_t random_flr_reset_counter = (get_random_int() % 14) + 2;
 
     write_reg(SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR,
               random_flr_reset_counter);
 
-    // Configure the FLR Count register
+    // Randomize the SMC-enable and pin-enable isolation masks
     uint32_t random_smcen = get_random_int();
     write_reg(SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR, random_smcen);
 

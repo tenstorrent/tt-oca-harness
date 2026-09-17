@@ -25,7 +25,9 @@ For a debug build:
 make -C hw/sys/smc/bootrom/prod BUILD_TYPE=debug
 ```
 
-If the RISC-V tools are not on `PATH`, provide their binary directory:
+When `RISCV_TOOLCHAIN` is unset, the build uses
+`scripts/docker-run.sh run-here`. To compile on the host, point the variable at
+a picolibc-enabled `riscv64-unknown-elf-*` bin directory:
 
 ```bash
 make -C hw/sys/smc/bootrom/prod \
@@ -39,13 +41,16 @@ formats, and `disasm/` contains the disassembly.
 ## Build and Development
 
 The build requires `riscv64-unknown-elf-gcc` and related binutils with the
-configured picolibc specs, plus Python 3 for image conversion.
+configured picolibc specs (via `RISCV_TOOLCHAIN` or the OCAH toolchain
+container), plus Python 3 for host-side image conversion.
 
 Useful targets:
 
 | Target | Purpose |
 |---|---|
 | `make` | Build the selected release or debug image and all output formats. |
+| `make toolchain-images` | Compile and link via `RISCV_TOOLCHAIN` or the OCAH container. |
+| `make pack-images` | Convert existing toolchain outputs into ROM preload formats on the host. |
 | `make check` | Check tool availability and the linker script. |
 | `make size` | Print section and aggregate image sizes. |
 | `make memory` | Print the largest linked symbols. |

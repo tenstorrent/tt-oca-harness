@@ -184,13 +184,11 @@ class smc_multi_reset_csr_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
 
         await self.csr_restore("SCRATCH_COLD_WARM_1", scratch.addr, data=scratch.expected)
-        # Loop integrity + scoreboard cross-check. This sweep issues no bounded
-        # read, so `assert_all_reachable` does NOT assert
-        # `timeouts == 0` here (it could not fail on this path -- a no-response
-        # raises in the AXI driver instead); what it does assert is that the
-        # scoreboard actually checked at least as many SYS AXI items as this
-        # sequence issued, which the sequence's own counter cannot see. The
-        # fail-capable value proof is the floor below.
+        # Loop integrity + scoreboard cross-check: `assert_all_reachable`
+        # requires the scoreboard to have checked at least as many SYS AXI items
+        # as this sequence issued, which the sequence's own counter cannot see.
+        # A no-response raises in the AXI driver, so no timeout count is
+        # asserted here. The fail-capable value proof is the floor below.
         self.assert_all_reachable(EXPECTED_ACCESSES, "multi-reset CSR sweep")
         sb = self.env.scoreboard
         # Fail-capable floor: the scoreboard books a value check only after an
@@ -200,11 +198,9 @@ class smc_multi_reset_csr_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
             f"expected {EXPECTED_VALUE_CHECKED_READS} value-checked SEP_IN AXI "
             f"reads, scoreboard saw {sb.sys_axi_value_checks_seen}"
         )
-        # Measured numbers, not the module constants: the constants stay in the
-        # assert messages above, and the retained token carries what this run
-        # actually observed (`sys_axi_value_checks_seen` is the scoreboard's own
-        # counter, `accesses` this sequence's issued count), so the claim can be
-        # corroborated from the log ([EVIDENCE-TOKEN-CONDITIONAL]).
+        # The token carries the run's measured counters (`sys_axi_value_checks_seen`
+        # from the scoreboard, `accesses` from this sequence), not the module
+        # constants ([EVIDENCE-TOKEN-CONDITIONAL]).
         value_checked = sb.sys_axi_value_checks_seen
         cocotb.log.info(
             "CHK-MULTI-RESET-CSR-SWEEP: %d SEP_IN AXI CSR accesses issued "

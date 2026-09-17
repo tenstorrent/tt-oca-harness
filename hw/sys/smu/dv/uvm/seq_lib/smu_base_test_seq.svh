@@ -6,10 +6,9 @@
 // (primary-TAP JTAG operations on p_sequencer.m_jtag_seqr). It never
 // touches a driver or a VIP virtual interface; the written exceptions are
 // tb_vif (the SMU-local TB interface: power-good and cold reset, reset
-// observables), dtp_tb_vif (the embedded DTP's TAP-state and decoded-IR
-// observables), and jtag_vif (the reset scenarios hold TRST across TCK
-// cycles, the same exception the DTP bench documents), all plumbed by the
-// base test.
+// observables) and dtp_tb_vif (the embedded DTP's TAP-state and decoded-IR
+// observables), both plumbed by the base test. TRST is driven through the
+// VIP's TRST operation like every other TAP operation.
 //
 // The scenario layer tracks the TAP state itself (m_tap_state) and hands it
 // to every JTAG operation, since the VIP sequence's model lives inside the
@@ -36,12 +35,11 @@ class smu_base_test_seq extends ocah_sequence;
   localparam int unsigned TrstReleaseRefCycles = 4;
 
   // Plumbed by the test before start(): the SMU TB interface, the embedded
-  // DTP TB interface, the JTAG pins (TRST hold), and the two cfg levels.
-  virtual smu_tb_if    tb_vif;
-  virtual dtp_tb_if    dtp_tb_vif;
-  virtual ocah_jtag_if jtag_vif;
-  smu_test_cfg         test_cfg;
-  smu_env_cfg          env_cfg;
+  // DTP TB interface, and the two cfg levels.
+  virtual smu_tb_if tb_vif;
+  virtual dtp_tb_if dtp_tb_vif;
+  smu_test_cfg      test_cfg;
+  smu_env_cfg       env_cfg;
   // Env-owned aggregate JTAG recorder (TAP reset evidence lands there too).
   ocah_jtag_checker evidence;
 
@@ -51,6 +49,8 @@ class smu_base_test_seq extends ocah_sequence;
   // TAP state tracked across operations (each operation re-syncs the VIP
   // model from it and hands the landing state back).
   protected ocah_jtag_tap_state_e m_tap_state = OCAH_JTAG_TEST_LOGIC_RESET;
+  // TRST level tracked across operations (released at construction).
+  protected bit m_trst_asserted = 1'b0;
 
   // Bounded-wait inventory of the pass: one line per wait site, and the
   // count that expired (an expiry is also an error at the site).
@@ -292,29 +292,34 @@ class smu_base_test_seq extends ocah_sequence;
     record_timeout_path(label, bound, last === onehot(expected), last);
   endtask
 
-  // Hold or release TRST directly (active-low), stepping TCK with TMS=1 so
-  // the env's per-cycle FSM checker prediction (TLR self-loop) stays valid
-  // while the asynchronous reset dominates.
+  // Hold or release TRST (`value` is the trst_n level, 0 = asserted)
+  // through the VIP TRST operation, stepping TCK with TMS=1 so the env's
+  // per-cycle FSM checker prediction (TLR self-loop) stays valid while the
+  // asynchronous reset dominates.
   task set_trst(bit value, int unsigned cycles = 1);
-    if (jtag_vif == null)
-      `uvm_fatal(get_type_name(), "set_trst() needs jtag_vif plumbed by the test")
-    jtag_vif.trst_n <= value;
-    repeat (cycles > 0 ? cycles : 1) step(1'b1);
-    if (value == 1'b0) begin
-      sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
-      if (evidence != null) evidence.reset_model();
-    end
+    smu_jtag_trst_seq op = smu_jtag_trst_seq::type_id::create("set_trst");
+    op.asserted   = (value == 1'b0);
+    op.tck_cycles = cycles > 0 ? cycles : 1;
+    run_jtag_op(op);
+    m_trst_asserted = op.asserted;
+    if (op.asserted && evidence != null) evidence.reset_model();
   endtask
 
   // Release TRST held by set_trst(0): no TCK activity while the DTP TAP
   // settles, then the tracked state is Test-Logic-Reset.
   task release_trst();
-    if (jtag_vif == null)
-      `uvm_fatal(get_type_name(), "release_trst() needs jtag_vif plumbed by the test")
-    jtag_vif.trst_n <= 1'b1;
+    smu_jtag_trst_seq op = smu_jtag_trst_seq::type_id::create("release_trst");
+    op.asserted   = 1'b0;
+    op.tck_cycles = 0;
+    run_jtag_op(op);
+    m_trst_asserted = 1'b0;
     wait_ref_cycles(TrstReleaseRefCycles);
     sync_model(OCAH_JTAG_TEST_LOGIC_RESET);
   endtask
+
+  function bit trst_released();
+    return !m_trst_asserted;
+  endfunction
 
   // Drop power-good: the SMC reset unit re-asserts every reset and the
   // embedded DTP sees its power-on reset (pwr_on_rst_ni = powergood_stable).

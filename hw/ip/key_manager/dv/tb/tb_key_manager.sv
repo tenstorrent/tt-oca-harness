@@ -28,7 +28,6 @@ module tb_key_manager;
   // SEP AXI4-Lite Type Definitions (32-bit)
   //=========================================================================
   // SEP AXI types are defined here for testbench use.
-  // In the actual KM top module, these will be provided as type parameters.
 
   localparam int unsigned SEP_AXI_ADDR_WIDTH = 32;
   localparam int unsigned SEP_AXI_DATA_WIDTH = 32;
@@ -789,7 +788,7 @@ module tb_key_manager;
   logic [3:0] rom_mem_parity_correct;
   assign rom_mem_parity_correct = rom_rsp_parity;
 
-  // Parity error injection for testing (T014)
+  // Parity error injection for testing
   assign rom_mem_parity_injected = rom_parity_err_inject ? ~rom_mem_parity_correct : rom_mem_parity_correct;
 
   //=========================================================================
@@ -805,9 +804,9 @@ module tb_key_manager;
   // from being interpreted as valid requests and corrupting SRAM/parity
   //
   // Data: store exactly what the DUT sends (scrambled when scrambler is on).
-  // Parity: store the DUT's wparity. The DUT computes parity on plaintext (before scrambling)
-  // parity computed before scrambling; on read it descrambles and checks parity(plaintext) == rparity. So we must
-  // return the same parity the DUT wrote (plaintext parity), not parity of stored data.
+  // Parity: store the DUT's wparity. The DUT computes parity on plaintext before
+  // scrambling and, on read, descrambles then checks parity(plaintext) == rparity, so
+  // the model returns the parity the DUT wrote, not the parity of the stored data.
 
   // No explicit initialization of sram_mem/sram_parity: they remain at the simulator default
   // (typically X) until the DUT writes, and are not bulk-cleared on cold_rst_n (warm reset retains
@@ -840,12 +839,9 @@ module tb_key_manager;
     end
   end
 
-  // Read handling (single-stage pipelined). Latch response data/parity when we accept a read
-  // (using the request address) so that when a new read is accepted in the same cycle
-  // as we drive rvalid=1, we still return data/parity for the *completing* read, not
-  // the new request. Otherwise sram_read_addr would be updated at the clock edge and
-  // the combinational response could reflect the new address (wrong word, hence wrong
-  // parity and possible "inverted" appearance).
+  // Read handling (single-stage pipelined). Response data/parity are latched at read
+  // accept from the request address, so a read accepted in the same cycle as rvalid=1
+  // returns the completing read's word and parity, not the new request's.
   logic sram_read_pending;
   logic [31:0] sram_rsp_data;
   logic [3:0]  sram_rsp_parity;
@@ -871,7 +867,7 @@ module tb_key_manager;
   logic [3:0] sram_mem_parity_correct;
   assign sram_mem_parity_correct = sram_rsp_parity;
 
-  // Parity error injection for testing (T023)
+  // Parity error injection for testing
   assign sram_mem_rparity_injected = sram_parity_err_inject ? ~sram_mem_parity_correct : sram_mem_parity_correct;
 
   //=========================================================================
@@ -1101,8 +1097,7 @@ module tb_key_manager;
   // Waveform Dumping
   //=========================================================================
   // When WAVES=1, VCD is dumped. If both +vcd_start_ns=N and +vcd_end_ns=M
-  // are passed, dump only in [N, M) ns using $dumpoff/$dumpon with # delays
-  // (per standard practice; see e.g. chipverify.com/verilog/verilog-dump-vcd).
+  // are passed, dump only in [N, M) ns using $dumpoff/$dumpon with # delays.
 
 `ifdef VCD_DUMP
   initial begin

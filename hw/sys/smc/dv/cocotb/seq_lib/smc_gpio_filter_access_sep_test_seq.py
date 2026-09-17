@@ -39,9 +39,8 @@ GPIO1_FILTER = smc_indexed_addr("SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", 1)
 # Address, reset default and every field mask come from the SAME generated
 # block, `gpio_intf` -- the block whose ACCESS_FILTER register these addresses
 # select. `gpio_poc_pbias_ctrl` is a separately generated block with its own
-# ACCESS_FILTER register and no exported address in `smc_addr.h`; sourcing masks
-# from it would let one block be regenerated without the other and silently rot
-# these expectations ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+# ACCESS_FILTER register and no exported address in `smc_addr.h`
+# ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _FILTER_RESET = GPIO_INTF_ACCESS_FILTER_REG_DEFAULT
 _FILTER_LOCK = (
     _FILTER_RESET
@@ -69,20 +68,15 @@ class smc_gpio_filter_access_sep_test_seq(SmcCsrSeq):
     async def _write_denied(self, name: str, addr: int, data: int) -> int:
         """Unprivileged ACCESS_FILTER write must be refused on the B channel.
 
-        The write half of the filter is programmed by `_FILTER_LOCK`, so leaving
-        it unexercised would enable a bit that nothing observes while the
-        docstrings claim allow/deny in both directions.
-
-        The expectation here is "an error response", not an exact code, and that
-        is deliberate. The read half of this same filter is refused with DECERR
-        straight out of `gpio_filter.sv`'s `prim_axil_err_slv`
+        The expectation is "an error response", not an exact code: the read
+        half of this same filter is refused with DECERR straight out of
+        `gpio_filter.sv`'s `prim_axil_err_slv`
         (`hw/common/och_prim/rtl/prim_axil_err_slv.sv:85-95`, `Resp =
-        RESP_DECERR`), but the write half arrives at the SEP_IN AXI port as
-        SLVERR. Pinning the observed code would transcribe an integration
-        behaviour this bench cannot derive from any document. What the caller
-        pairs with this leg instead is the property that carries the security
-        claim: the refused write must not take effect, proven by a privileged
-        readback afterwards.
+        RESP_DECERR`), while the write half arrives at the SEP_IN AXI port as
+        SLVERR, and no document this bench can cite fixes that integration
+        behaviour. The caller pairs this leg with the property that carries the
+        security claim: the refused write must not take effect, proven by a
+        privileged readback afterwards.
         """
         item = SmcSysAxiItem(f"wr_{name}")
         item.op = SmcSysAxiOp.WRITE

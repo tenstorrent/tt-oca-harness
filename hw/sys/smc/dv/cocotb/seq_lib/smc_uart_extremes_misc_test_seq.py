@@ -62,12 +62,11 @@ SCR_SCR = _field_mask(_UART_H, "UART_16550_MAIN__SCR__SCR_bm")
 
 _IER_BASIC = IER_ERBFI | IER_ETBEI | IER_ELSI | IER_EDSSI
 _SCR_PATTERNS = (0x00, 0xFF, 0xA5, 0x5A, 0x01, 0x02, 0x04, 0x08)
-# Only DR. This sequence drives loopback traffic and has a same-run control
-# that shows DR going 1 then 0 (`_positive_dr_then_idle`), so a stuck-at-0 DR
-# would be caught. It has no control for OE/PE/FE/BI -- nothing here can make
-# them 1 -- so including them turned the idle window into an unbacked negative
-# check that a tied-off bit passes identically. Those bits are claimed by
-# smc_uart_error_conditions_test, which drives each of them and back.
+# Only DR: `_positive_dr_then_idle` is the same-run control that shows DR going
+# 1 then 0, so a stuck-at-0 DR fails. Nothing in this sequence can drive
+# OE/PE/FE/BI to 1, so an idle check on them would be an unbacked negative that
+# a tied-off bit passes; smc_uart_error_conditions_test drives each of them and
+# back.
 _LSR_IDLE_CHECKED = LSR_DR
 
 

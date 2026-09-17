@@ -29,9 +29,9 @@
 //   ocah_jtag_master_env.svh       — VIP-level env: the unit DUTs instantiate and
 //                                    commercial-VIP integrations override
 //
-// Sibling non-package collateral: sva/ocah_jtag_sva.sv (protocol assertions)
-// and cov/ocah_jtag_cov.sv (covergroup interface) — commercial-simulator
-// filelists only.
+// Sibling non-package collateral: sva/ocah_jtag_sva.sv (protocol assertions,
+// also listed by cocotb/Verilator builds) and cov/ocah_jtag_cov.sv
+// (covergroup interface, commercial-simulator filelists only).
 //
 // The monitor publishes raw observations only. ocah_jtag_scan_builder layers
 // IR/DR scan reconstruction on the step stream, and ocah_jtag_checker owns

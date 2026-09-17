@@ -14,7 +14,7 @@
 //   4. Test with changing entropy patterns (biased 0s, biased 1s, random)
 //   5. Verify continuous operation without saturation
 //
-// Bug Being Fixed:
+// Hazard guarded against:
 //   Without windowing, counters saturate at max values, causing probabilities
 //   to freeze. The test becomes unresponsive to new entropy data, resulting
 //   in false failures or meaningless monitoring.
@@ -82,7 +82,7 @@ module tb_markov_windowing;
   // DUT instantiation with reduced window threshold for faster testing
   entropy_markov_test #(
     .DATA_WIDTH(32),
-    .WINDOW_THRESHOLD(8000)  // Reduced from 200K for faster testing
+    .WINDOW_THRESHOLD(8000)  // Small window so scaling events occur within the run
   ) dut (
     .clk_i(clk),
     .rst_ni(rstn),
@@ -445,7 +445,7 @@ module tb_markov_windowing;
       total_samples = total_samples + 1;
 
       // Check for total_transitions wraparound (should never happen)
-      // Note: Intentional scaling (counter decrease by ~half) is OK
+      // A drop to about half is the windowing scale-down, not a wraparound
       // Only flag if sum increases but individual counter overflowed
       current_total = count_01 + count_10 + count_00 + count_11;
       if (current_total < (prev_total_transitions / 2) && prev_total_transitions < 16000) begin

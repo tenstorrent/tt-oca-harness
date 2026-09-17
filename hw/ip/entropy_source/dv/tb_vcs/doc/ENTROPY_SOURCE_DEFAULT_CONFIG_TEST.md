@@ -88,57 +88,15 @@ Sample 4: LEVEL>prev, WPTR>prev, RPTR=0
 
 ## Pass Criteria Summary
 
-| Check | Criteria | Status |
-|-------|----------|--------|
-| APB Interface | Read 0x000 = 0x01000001 | ✓ |
-| Configuration Writes | ZERO (pure defaults) | ✓ |
-| FIFO Level | Increases over time | ✓ |
-| Write Pointer | Advances (wraps allowed) | ✓ |
-| Read Pointer | Stays at 0 | ✓ |
-| Control Path | Independent of data values | ✓ |
-| Data Path | Not verified (X's allowed) | N/A |
-
----
-
-## Example Test Log
-
-```
-[PHASE 1] Initialize clocks and reset
-  [OK] Clocks running, reset released
-
-[PHASE 2] Verify APB interface
-  Component ID (via register name) = 0x01000001
-  Component ID (via addr 0x0) = 0x01000001
-  [OK] APB interface verified
-
-[PHASE 3] Monitor FIFO status (verify control path)
-  Note: Data may contain X's from RO feedback loops (simulation only)
-        Control path (LEVEL, WPTR, RPTR) works independently of data values
-  Sample 0: LEVEL=0, WPTR=0, RPTR=0
-  Sample 1: LEVEL=2, WPTR=2, RPTR=0
-  Sample 2: LEVEL=4, WPTR=4, RPTR=0
-  Sample 3: LEVEL=6, WPTR=6, RPTR=0
-  Sample 4: LEVEL=8, WPTR=8, RPTR=0
-  FIFO level changed: 0 -> 8
-  [OK] FIFO receiving data (level=8)
-  [OK] Write pointer advancing
-  [OK] Read pointer stable at 0 (no FIFO reads)
-
-================================================================================
-DEFAULT CONFIGURATION TEST: PASS
-================================================================================
-Summary:
-  - APB interface: Working (verified 0x000 = 0x01000001)
-  - Configuration writes: ZERO (pure defaults)
-  - Decorrelator mode: Normal (with feedback loops)
-  - FIFO control path: WORKING
-    * FIFO level: 0 -> 8
-    * Write pointer: 0 -> 8 (advancing)
-    * Read pointer: 0 (stable)
-  - Data path: Not verified (may contain X's in simulation)
-  - Configuration: ALL DEFAULTS WORK FOR CONTROL PATH
-================================================================================
-```
+| Check | Criteria |
+|-------|----------|
+| APB Interface | Read 0x000 = 0x01000001 |
+| Configuration Writes | ZERO (pure defaults) |
+| FIFO Level | Increases over time |
+| Write Pointer | Advances (wraps allowed) |
+| Read Pointer | Stays at 0 |
+| Control Path | Independent of data values |
+| Data Path | Not verified (X's allowed) |
 
 ---
 
@@ -240,8 +198,5 @@ Summary:
 
 ---
 
-**Version**: 2.0
-**Date**: 2026-01-09
 **Test**: `test/test_cl_integration.py::test_cl_integration_default_config`
-**Updated**: Removed RO initialization - truly ZERO configuration writes
 **Related**: See `ENTROPY_SOURCE_SMOKE_TEST.md` for full smoke test with bypass mode

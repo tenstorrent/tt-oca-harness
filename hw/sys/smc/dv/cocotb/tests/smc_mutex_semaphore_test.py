@@ -20,6 +20,17 @@ from smc_base_test import smc_base_test
 class smc_mutex_semaphore_test(smc_base_test):
     """CPU_CTRL MUTEX/SEMA over SEP_IN AXI (expectations from cpu_ctrl.rdl)."""
 
+    required_evidence = (
+        "CHK-MUTEX-BASIC",
+        "CHK-MUTEX-HELD",
+        "CHK-MUTEX-NEIGHBOUR-FREE",
+        "CHK-MUTEX-NEIGHBOUR-HOLD",
+        "CHK-MUTEX-REL",
+        "CHK-MUTEX-TAKE",
+        "CHK-SEMA-ACCUMULATE",
+    )
+    min_evidence = 7
+
     async def run_scenario(self) -> None:
         seq = smc_mutex_semaphore_test_seq("mutex_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)

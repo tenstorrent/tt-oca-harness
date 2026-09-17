@@ -1,5 +1,139 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 -tree sep_uvm_top 1
--tree sep_uvm_top.u_smc_mem
 -tree sep_uvm_top.u_mbx
 -module ocah_axi_sva
 -tree sep_uvm_top.u_dut.u_sep.sep_cpu
+
+// ---------------------------------------------------------------------------
+// Library cells. These implement no SEP contract: a generic FIFO, synchroniser
+// or standard-cell wrapper carries the same behaviour in every design that
+// instantiates it, and no SEP test states a requirement about one. Grading them
+// puts the score on plumbing the DUT does not own.
+//
+// The discriminator is `/upstream/` in the source path, NOT a `vendor/` prefix.
+// SEP's own SPI controller, TCM wrapper and clock gate live under
+// vendor/.../overlay/ and vendor/.../../../hw/, so a `vendor/` rule would drop
+// TT logic.
+//
+// Functional third-party IP stays graded regardless of authorship: AES, OTBN,
+// KMAC, CSRNG, EDN, HMAC, aon_timer, entropy_src and adams-bridge each have
+// SEP tests that target them by name.
+// ---------------------------------------------------------------------------
+
+// OpenTitan prim library (vendor/lowRISC/opentitan/upstream/hw/ip/prim*).
+// Held back deliberately, because a SEP test targets the function: prim_sha2*
+// (HMAC/SHA), prim_prince + prim_subst_perm (scrambling), prim_gf_mult (GHASH),
+// prim_dom_and_2share + prim_trivium (AES masking), prim_lfsr, prim_crc32 and
+// prim_secded_* (integrity/ECC). Also held back: prim_arbiter_ppc, whose one-hot
+// grant the crypto-EDN round-robin test scores; prim_intr_hw and prim_reg_cdc,
+// which the AON timer internals test names as the logic under its INTR_TEST and
+// busy-stall contracts.
+-module prim_alert_receiver
+-module prim_alert_sender
+-module prim_and2
+-module prim_arbiter_fixed
+-module prim_blanker
+-module prim_buf
+-module prim_cdc_rand_delay
+-module prim_count
+-module prim_diff_decode
+-module prim_edge_detector
+-module prim_edn_req
+-module prim_fifo_async
+-module prim_fifo_sync
+-module prim_fifo_sync_cnt
+-module prim_flop
+-module prim_flop_2sync
+-module prim_flop_en
+-module prim_lc_sync
+-module prim_leading_one_ppc
+-module prim_max_tree
+-module prim_mubi4_sender
+-module prim_mubi4_sync
+-module prim_mubi8_sync
+-module prim_onehot_check
+-module prim_onehot_enc
+-module prim_onehot_mux
+-module prim_packer
+-module prim_packer_fifo
+-module prim_pulse_sync
+-module prim_ram_1p
+-module prim_ram_1p_adv
+-module prim_ram_1r1w
+-module prim_reg_cdc_arb
+-module prim_reg_we_check
+-module prim_rom
+-module prim_rst_sync
+-module prim_sec_anchor_buf
+-module prim_sec_anchor_flop
+-module prim_slicer
+-module prim_sparse_fsm_flop
+-module prim_subreg
+-module prim_subreg_arb
+-module prim_subreg_ext
+-module prim_subreg_shadow
+-module prim_sum_tree
+-module prim_sync_reqack
+-module prim_sync_reqack_data
+-module prim_xnor2
+-module prim_xor2
+
+// pulp-platform common_cells (vendor/pulp-platform/common_cells/upstream).
+// pulp-platform axi is NOT here: the xbar, remap and filter tests grade it.
+-module addr_decode
+-module addr_decode_dync
+-module counter
+-module delta_counter
+-module fifo_v3
+-module id_queue
+-module lzc
+-module onehot_to_bin
+-module rr_arb_tree
+-module spill_register
+-module spill_register_flushable
+-module stream_fifo
+-module stream_fork
+-module stream_fork_dynamic
+-module stream_join
+-module stream_join_dynamic
+-module stream_mux
+-module stream_register
+
+// TT-owned generic standard-cell wrappers (hw/common/och_prim_generic).
+// Authored by TT, but library-class by the same rule as the two blocks above.
+-module prim_ao222
+-module prim_clkgater
+-module prim_clock_mux2
+-module prim_clock_nand2
+-module prim_dffrxq
+-module prim_flop_3sync
+-module prim_inv
+-module prim_metastab_hardened_dffr
+-module prim_nand4
+-module prim_nor4
+-module prim_or2
+-module prim_or4
+-module prim_rev_cell
+-module prim_stdbuf
+-module prim_stdmux2
+
+// DV models and AXI error slaves inside the integration wrapper. The memory
+// arrays themselves are prim_ram_*/prim_rom and are already held by the library
+// rules above. The wrapper's TT interface shims -- sep_sram_interface_shim,
+// sep_rom_interface_shim, sep_tcm_wrapper, efuse_interface_shim -- stay graded:
+// they are SEP RTL under hw/sys/sep/rtl and hw/ip/efuse/rtl, and a SEP test
+// states a contract on the SRAM path through them.
+-module efuse_bank_model
+-module prim_axi_lite_err_slv
+-module axi_err_slv
+
+// Entropy ring oscillator delay stages. A ring oscillator is an analog
+// construct: in digital simulation the chain is either X or externally forced
+// (+ENABLE_ENTROPY_NOISE_GEN), so a toggle on a delay buffer states nothing
+// about the design. The oscillator wrapper itself stays graded -- its enable
+// and stage-select logic is digital and a bug there is observable.
+-module entropy_ring_buf_wrapper
+-module entropy_ring_nand2_wrapper
+-module entropy_ring_mux2_wrapper

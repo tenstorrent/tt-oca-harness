@@ -42,6 +42,10 @@ sources:
     files:
       - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
 
+  # Leaf primitives shared by every subsystem graph. They live only here, not in
+  # the big any(opentitan_smu, sep, smu) list below: that list also carries
+  # hw/sys/sep RTL (sep_pkg.sv), which the smc and key_manager builds must not
+  # pull in.
   - target: any(sep, smc, opentitan_smu, smu, key_manager)
     files:
       - upstream/hw/ip/prim/rtl/prim_alert_pkg.sv
@@ -50,19 +54,21 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_diff_decode.sv
       - upstream/hw/ip/prim/rtl/prim_alert_sender.sv
       - upstream/hw/ip/prim_generic/rtl/prim_buf.sv
+      - upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv
+      - upstream/hw/ip/prim/rtl/prim_fifo_async.sv
+      - upstream/hw/ip/prim/rtl/prim_rst_sync.sv
+      - upstream/hw/ip/prim/rtl/prim_subreg.sv
+      - upstream/hw/ip/prim/rtl/prim_subreg_arb.sv
+      - upstream/hw/ip/prim/rtl/prim_subreg_ext.sv
 
-  # Leaf primitives shared with the standalone Key Manager testbench. Listed here
-  # rather than in the big any(opentitan_smu, sep, smu) list below because that
-  # list also carries hw/sys/sep RTL (sep_pkg.sv), which a key_manager-only build
-  # must not pull in. The target set is otherwise identical to that list, so
-  # sep/smu/opentitan_smu builds get these files exactly as before.
+  # Held out of the big any(opentitan_smu, sep, smu) list for the same reason as
+  # the group above, but smc has no LFSR consumer so it stays off this target.
   - target: any(opentitan_smu, sep, smu, key_manager)
     files:
       # prim_cipher_pkg supplies the PRINCE/PRESENT S-boxes prim_lfsr uses, so it
       # has to be compiled ahead of it.
       - upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_lfsr.sv
-      - upstream/hw/ip/prim/rtl/prim_rst_sync.sv
 
   - target: any(sep, smc, sep_wrapper, smu_wrapper, opentitan_smu, smu)
     files:
@@ -103,23 +109,25 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
 
-      # CSRNG/entropy/EDN are referenced by OCAH key manager support packages.
-      - ../../../hw/common/ot_pkg/rtl/entropy_src_pkg.sv
+      # CSRNG/entropy/EDN. entropy_src_pkg comes from the vendored IP.
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_pkg.sv
       - upstream/hw/ip/csrng/rtl/csrng_reg_pkg.sv
       - upstream/hw/ip/csrng/rtl/csrng_pkg.sv
       - upstream/hw/ip/edn/rtl/edn_reg_pkg.sv
       - upstream/hw/ip/edn/rtl/edn_pkg.sv
 
-      # OCAH support packages required by OpenTitan RTL/packages.
-      - ../../../hw/common/top_pkg.sv
+      # Per-top packages are OCAH-owned (hw/common/ot_chip_cfg/).
+      - ../../../hw/common/ot_chip_cfg/top_pkg.sv
       - ../../../hw/common/tlul/rtl/tlul_pkg.sv
-      - ../../../hw/common/top_racl_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/keymgr_reg_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/keymgr_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/lc_ctrl_state_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/lc_ctrl_reg_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/lc_ctrl_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/otp_ctrl_pkg.sv
+      - ../../../hw/common/ot_chip_cfg/top_racl_pkg.sv
+
+      # Key Manager and LC packages to satisfy the OT compile ABI.
+      - upstream/hw/ip/keymgr/rtl/keymgr_reg_pkg.sv
+      - upstream/hw/ip/keymgr/rtl/keymgr_pkg.sv
+      - upstream/hw/ip/lc_ctrl/rtl/lc_ctrl_state_pkg.sv
+      - upstream/hw/ip/lc_ctrl/rtl/lc_ctrl_reg_pkg.sv
+      - upstream/hw/ip/lc_ctrl/rtl/lc_ctrl_pkg.sv
+      - upstream/hw/ip/otp_ctrl/rtl/otp_ctrl_pkg.sv
 
       # TT-owned register address maps.
       - overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv
@@ -149,14 +157,12 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_alert_receiver.sv
       - upstream/hw/ip/prim/rtl/prim_arbiter_fixed.sv
       - upstream/hw/ip/prim/rtl/prim_arbiter_ppc.sv
-      - upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv
       - upstream/hw/ip/prim/rtl/prim_leading_one_ppc.sv
       - upstream/hw/ip/prim/rtl/prim_blanker.sv
       - upstream/hw/ip/prim/rtl/prim_crc32.sv
       - upstream/hw/ip/prim/rtl/prim_diff_encode.sv
       - upstream/hw/ip/prim/rtl/prim_dom_and_2share.sv
       - upstream/hw/ip/prim/rtl/prim_edn_req.sv
-      - upstream/hw/ip/prim/rtl/prim_fifo_async.sv
       - upstream/hw/ip/prim/rtl/prim_gf_mult.sv
       - upstream/hw/ip/prim/rtl/prim_intr_hw.sv
       - upstream/hw/ip/prim/rtl/prim_keccak.sv
@@ -188,9 +194,6 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_sum_tree.sv
       - upstream/hw/ip/prim/rtl/prim_sync_reqack.sv
       - upstream/hw/ip/prim/rtl/prim_sync_reqack_data.sv
-      - upstream/hw/ip/prim/rtl/prim_subreg.sv
-      - upstream/hw/ip/prim/rtl/prim_subreg_arb.sv
-      - upstream/hw/ip/prim/rtl/prim_subreg_ext.sv
       - upstream/hw/ip/prim/rtl/prim_subreg_shadow.sv
       - upstream/hw/ip/prim/rtl/prim_subst_perm.sv
       - upstream/hw/ip/prim/rtl/prim_trivium.sv

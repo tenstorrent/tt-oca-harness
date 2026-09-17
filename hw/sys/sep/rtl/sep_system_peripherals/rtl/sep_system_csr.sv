@@ -107,10 +107,6 @@ module sep_system_csr (
   // TIMEOUT_MODE
   logic timeout_mode_rsvd;
 
-  // RAS_BANK_INFO outputs
-  logic [3:0] ras_bank_chip;
-  logic [3:0] ras_bank_instance;
-
   // SEP_SW_DEBUG output
   logic [31:0] sep_sw_debug;
 
@@ -764,10 +760,6 @@ module sep_system_csr (
   assign sep_region_size_o        = 56'(sep_cpu_ctrl_hwif_out.SEP_REGION_SIZE.size.value);
   assign smu_global_base_addr_o   = sep_cpu_ctrl_hwif_out.SMU_GLOBAL_BASE_ADDR.addr.value;
   assign smu_region_size_o        = 56'(sep_cpu_ctrl_hwif_out.SMU_REGION_SIZE.size.value);
-
-  // RAS_BANK_INFO
-  assign ras_bank_chip     = sep_cpu_ctrl_hwif_out.RAS_BANK_INFO.bank_chip.value;
-  assign ras_bank_instance = sep_cpu_ctrl_hwif_out.RAS_BANK_INFO.bank_instance.value;
 
   // SEP_SW_DEBUG
   assign sep_sw_debug = sep_cpu_ctrl_hwif_out.SEP_SW_DEBUG.sep_sw_debug.value;

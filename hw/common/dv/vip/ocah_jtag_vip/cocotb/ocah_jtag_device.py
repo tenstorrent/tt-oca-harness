@@ -5,8 +5,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from cocotbext.jtag import JTAGDevice
+if TYPE_CHECKING:
+    from cocotbext.jtag import JTAGDevice
 
 
 @dataclass(frozen=True)
@@ -63,7 +65,13 @@ class OcahJtagDevice:
             raise KeyError(f"unknown JTAG register {name!r}; known: {known}") from exc
 
     def to_backend(self) -> JTAGDevice:
-        """Build a `cocotbext-jtag` device for advanced backend flows."""
+        """Build a `cocotbext-jtag` device for advanced backend flows.
+
+        The backend package is bound here and nowhere else in this module, so
+        device maps, the reactive device, and the checker import without it.
+        """
+        from cocotbext.jtag import JTAGDevice
+
         backend = JTAGDevice(name=self.name, idcode=self.idcode, ir_len=self.ir_width, init=False)
         for reg in self.regs.values():
             backend.add_jtag_reg(reg.name, reg.width, reg.opcode, write=reg.write)

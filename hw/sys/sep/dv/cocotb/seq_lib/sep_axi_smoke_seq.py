@@ -45,12 +45,6 @@ WRITE_READBACK = [
         SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
     ),
     (
-        "RAS_BANK_INFO",
-        SEP_CPU_CTRL.addr("RAS_BANK_INFO"),
-        0x0000_00A5,
-        SEP_CPU_CTRL.mask32("RAS_BANK_INFO"),
-    ),
-    (
         "PKA_CTRL",
         SEP_CPU_CTRL.addr("PKA_CTRL"),
         0x0000_0007,

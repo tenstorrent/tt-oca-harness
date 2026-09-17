@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap: ALIAS_REMAP translation + MMODE_REMAP/ALIAS reset sweep + CLA
+"""ALIAS_REMAP translation + MMODE_REMAP/ALIAS reset sweep + CLA
 (TC_SMC_P1CG_16/17/18).
 
 Three surfaces, each with a fail-capable expectation:
@@ -265,13 +265,11 @@ CLA_SCRATCH_PATTERN = 0xA5A5_5A5A_C3C3_3C3C
 # CLA registers whose value the HARDWARE drives (at least one field with
 # `hw = w` or `hw = rw` in the vendored block RDLs under
 # vendor/tenstorrent/tt-hw-debug/overlay/regs/dfd/regs/include/). Their read
-# value is not required to equal the RDL reset once time has advanced, so they
-# are EXCLUDED from the reset sweep -- comparing them would be a false failure,
-# not a check. Measured proof that this exclusion is necessary and not
-# defensive: the free-running `CDbgClaTimestamp` counter reads non-zero against
-# a generated reset of 0x0 on this bench.
-# Derived from the RDL, 55 of the 137 registers; the remaining 82 are `hw = r`
-# software-owned config/scratch and are the ones the sweep can hold to a reset.
+# value is not required to equal the RDL reset once time has advanced (the
+# free-running `CDbgClaTimestamp` counter reads non-zero against a generated
+# reset of 0x0), so they are EXCLUDED from the reset sweep. Derived from the
+# RDL, 55 of the 137 registers; the remaining 82 are `hw = r` software-owned
+# config/scratch and are the ones the sweep can hold to a reset.
 CLA_HW_DRIVEN = (
     "CLA.CDbgClaCounter0Cfg",
     "CLA.CDbgClaCounter1Cfg",
@@ -331,10 +329,9 @@ CLA_HW_DRIVEN = (
 )
 
 # Registers declared `regwidth = 32` (from the generated JSON model's `regsize`).
-# The aperture MIXES 32- and 64-bit registers (113 are 64-bit, 24 are 32-bit), so
-# a blanket 8-byte read is wrong: measured, an 8-byte read of `Trdstimpl` @0x3004
-# returns non-OKAY because it spans past the register. Each row is read at its
-# declared width.
+# The aperture MIXES 32- and 64-bit registers (113 are 64-bit, 24 are 32-bit);
+# an 8-byte read of a 32-bit register spans past it and answers non-OKAY, so
+# each row is read at its declared width.
 CLA_REG32 = (
     "DST.CDbgDebugTraceCfg",
     "DST.ScratchHi",
@@ -381,17 +378,17 @@ def _cla_reset_sweep() -> tuple[tuple[str, int, int, int], ...]:
     137-row table, so the expectations cannot drift from the generated register
     map ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 
-    Why a reset compare is a real check here rather than a decode-only read: of
-    the 82 software-owned rows the sweep keeps, 5 have NON-ZERO resets
-    (``Trdstimpl`` 0x41010101, ``Trdstinstfeatures`` 0x40000000, ``Trdstramimpl``
-    0x01003901, ``CDbgDebugTraceCfg`` 0x00102810, ``Trfunnelimpl`` 0x0801) --
-    values no error slave and no unmapped read can fabricate. For the 77
-    zero-reset rows the discrimination comes from the deny leg in the same run:
-    unmapped in-window offsets answer SLVERR with rdata 0, so an OKAY+0 is
+    A reset compare is a real check here: of the 82 software-owned rows the
+    sweep keeps, 5 have NON-ZERO resets (``Trdstimpl`` 0x41010101,
+    ``Trdstinstfeatures`` 0x40000000, ``Trdstramimpl`` 0x01003901,
+    ``CDbgDebugTraceCfg`` 0x00102810, ``Trfunnelimpl`` 0x0801) -- values no
+    error slave and no unmapped read can fabricate. For the 77 zero-reset rows
+    the discrimination comes from the deny leg in the same run: unmapped
+    in-window offsets answer SLVERR with rdata 0, so an OKAY+0 is
     distinguishable from a lost decode.
 
     Reading the whole aperture is side-effect free: the vendored block RDLs
-    carry no ``onread`` property on any field (verified).
+    carry no ``onread`` property on any field.
     """
     import smc_reg as _r
 
@@ -471,8 +468,7 @@ CLA_UNMAPPED_PROBES = _cla_unmapped_probes()
 _ALIAS_REMAP_H = (
     Path(__file__).resolve().parents[6]
     / "hw"
-    / "common"
-    / "axi"
+    / "ip"
     / "axi_alias_remap"
     / "regs"
     / "gen"
@@ -488,7 +484,7 @@ START_ADDR_BP = _field_mask(
 # Region granularity is 1 << START_ADDR_BP bytes (alias_remap.rdl: the low
 # START_ADDR_BP address bits are "preserved unchanged").
 _PAGE = 1 << START_ADDR_BP
-# Two pages inside the SYS_OUT fabric window served by the TB axi_sim_mem
+# Two pages inside the SYS_OUT fabric window served by the TB SYS_OUT
 # responder (same window smc_output_filter_remap_security_test uses).
 REMAP_SRC = 0x0200_2000
 REMAP_DST = REMAP_SRC + _PAGE
@@ -510,8 +506,8 @@ ALIAS0_ATTRS = SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR
 _RESET_SWEEP_ACCESSES = 8 + 24 + 8 + 4  # MMODE + ALIAS + XVISOR resets + XVISOR probe
 # resets + scratch wr/rd/restore + deny + the full-aperture reset sweep. The
 # sweep length is taken from the table built off the generated register map
-# (57 software-owned rows of the 103 in smc_cla.rdl); it is guarded by an
-# explicit `len(CLA_RESET_SWEEP) >= 55` assert in `_cla_window`, so a generated
+# (82 software-owned rows of the 137 in the generated CLA map); it is guarded
+# by an explicit `len(CLA_RESET_SWEEP) >= 82` assert in `_cla_window`, so a generated
 # map that lost rows fails loudly instead of silently lowering this floor.
 _CLA_ACCESSES = 2 + 4 + 3 + len(CLA_RESET_SWEEP)
 _REMAP_ACCESSES = 6 + 6 + 2 + 4  # filters + program/readback + off + restore
@@ -685,11 +681,15 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             "CHK-CLA-RESET-SWEEP: %d CLA registers read over the aperture and "
             "compared against their generated RDL reset values, %d of them with "
             "a NON-ZERO reset (the discriminating rows -- no error slave and no "
-            "unmapped read can fabricate 0x41010101 / 0x40000000 / 0x01003901 / "
-            "0x00102810 / 0x0801). Zero-reset rows are separated from a lost "
-            "decode by the deny leg below, which answers SLVERR in the same run.",
+            "unmapped read can fabricate %s). Zero-reset rows are separated from "
+            "a lost decode by the deny leg below, which answers SLVERR in the "
+            "same run.",
             len(CLA_RESET_SWEEP),
             len(CLA_SWEEP_NONZERO),
+            "a non-zero reset value",
+        )
+        hole_offs = "/".join(
+            f"+0x{addr - SMC_CLA_REG_MAP_BASE_ADDR:X}" for _, addr in CLA_UNMAPPED_PROBES
         )
         hole_offs = "/".join(
             f"+0x{addr - SMC_CLA_REG_MAP_BASE_ADDR:X}" for _, addr in CLA_UNMAPPED_PROBES

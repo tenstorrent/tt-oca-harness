@@ -33,7 +33,7 @@ partial read costs far more time than a full one.
 | `README.md` | Repository layout, doc builds, register generation, DV firmware targets, vendoring |
 | `CONTRIBUTING.md` | License headers, lint/format CI jobs and their local equivalents, issue/PR pointers |
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | Issue forms and PR body that GitHub and CI expect |
-| `doc/contributing/` | Contributing how-to (issues, PRs, and the rest of the guide) |
+| `doc/starting/` | Getting Started/Contributing how-to (issues, PRs, and the rest of the guide) |
 | `.github/issue-taxonomy.yml` | Allowed Workstream / Subsystem / Component (and optional Priority / Target release) values |
 | `.github/ISSUE_CURATION.md` | Project curator; catalog weekly-issue-activity and discussion-task-miner (`automation.enabled`) and compile |
 | `tools/docker/README.md` | Container images, `docker-run.sh` subcommands, which toolchain lives where |
@@ -286,14 +286,14 @@ Whatever the testbench, these hold:
 
 | Path | Contents |
 |---|---|
-| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
+| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (`cross_trigger/`, `jtag/`, `uart/` hold sub-blocks) |
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
-| `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `contributing` |
+| `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `starting` |
 | `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
 | `flows/` | Lint, format and synthesis flow makefiles |
-| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone |
+| `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone. GitHub CI runs `bender vendor diff --err_on_diff` so committed `upstream/` trees match the pinned remotes plus patches |
 | `tools/` | Register, doc, DV and container tooling |
 | `scripts/` | `docker-run.sh` container front door, CI helpers |
 | `nonfree/` | Proprietary companion repository, present only for those with access |
@@ -335,6 +335,11 @@ Three kinds of comment are not worth their space.
   edit.
 - **Justification.** Arguing that a change is correct addresses a reviewer who is gone once the
   pull request merges.
+
+Present tense does not save a breadcrumb. A comment that lists side effects the new
+control flow no longer has is still a breadcrumb. A plan that asks for that comment
+does not override this section. After adding a comment, re-read it against these bans
+and delete it if it fails.
 
 Where a test can carry the constraint instead, prefer the test: it fails when the constraint is
 broken, and a comment does not.
@@ -456,8 +461,10 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR.
-Ingest assigns the opener when Assignees is empty. The curator rewrites a
-PR title only when it is not already this form.
+Ingest assigns the opener when Assignees is empty. It requests a reviewer
+from GitHub suggestions, then a linked-issue assignee, then recent committers
+on the touched paths, then the reviewer pool in `.github/issue-taxonomy.yml`.
+The curator rewrites a PR title only when it is not already this form.
 
 ### Paired pull requests with the `nonfree` companion
 

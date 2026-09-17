@@ -18,10 +18,30 @@ added as the project matures.
 [[smc]]
 == SMC
 
-[NOTE]
+=== Per-Core Reset
+
+ifdef::backend-html5[]
+See the
+xref:ocah-docs:smc:cpu.adoc#smc-core-reset[SMC CPU reset description]
+in the Technical Reference Manual for the hardware behavior and associated
+risks.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+See the _SMC CPU Reset, Boot, and Initialization_ section of the Technical
+Reference Manual for the hardware behavior and associated risks.
+endif::backend-pdf[]
+
+[WARNING]
 ====
-SMC programming guidance will be added as the product matures.
+Do not reset a hart while any hart is performing coherent memory accesses.
 ====
+
+A safe startup scenario, subject to the warning above, is when three of four
+harts remain parked after ROM boot and must start at a different firmware
+address. Before they join normal coherent operation, software can program a
+parked hart's `RESET_VECTOR[n]` and pulse its reset to start it at that address.
+Avoid this flow where possible for the reasons described in the Technical
+Reference Manual.
 
 [[sep]]
 == SEP
@@ -271,3 +291,17 @@ Manager must be idle before the SEP host asserts the TRNG reset.
 
 Do not try to recover only ESRC with `CTRL[0]`. A shared TRNG reset invalidates
 the entire internal chain.
+
+[[aou-software-operation]]
+== AXI-over-UCIe Bridge (AoU) Software Operation
+
+:sectnums!:
+ifdef::backend-pdf[]
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/MAS/software-operation.adoc[leveloffset=+1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+:aou-architecture-xref: ocah-docs:ROOT:architecture.adoc
+include::aou:partial$software-operation.adoc[leveloffset=+1]
+endif::backend-html5[]
+:sectnums:

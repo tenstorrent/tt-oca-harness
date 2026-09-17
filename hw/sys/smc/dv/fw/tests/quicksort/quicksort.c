@@ -47,6 +47,21 @@ int partition(int arr[], int low, int high) {
 // arr[] --> Array to be sorted,
 // low  --> Starting index,
 // high  --> Ending index
+//
+// HAZARD, left as-is: recursion depth here is unbounded and can
+// exceed the stack. Lomuto partition degrades to depth n when the pivot is
+// always extremal, and the frame is 48 bytes (see the prologue in the built
+// .dis), so ARRAY_SIZES-1 = 2048 elements needs ~98 KB against
+// __stack_size = 4K (toolchain.mk) -- about 85 frames is all that fits. The
+// all-equal input is one of the degenerate cases, and it is exactly what the
+// fill path produces when the seed is zero.
+//
+// Not repaired here because the standard fix -- recurse into the smaller
+// partition and loop on the larger, bounding depth to O(log n) -- changes the
+// call structure of a routine whose purpose is to be *measured*. Doing that
+// silently would alter the benchmark while its numbers are already unchecked
+// (this test compares no result and calls test_pass unconditionally). It needs
+// the perf owner to say whether the published figures may move.
 void quick_sort(int arr[], int low, int high) {
     if (low < high) {
         // pi is partitioning index, arr[p] is now
@@ -67,12 +82,10 @@ void fill_array(int arr[], int size) {
     }
 }
 
-/* Require the array to be non-decreasing, and its element sum to be unchanged.
+/* Require the array to be non-decreasing and its element sum to be unchanged.
  *
- * Ordering alone is satisfied by a sort that drops or duplicates elements, so
- * the sum carried in from before the sort is what makes this a permutation
- * check rather than a monotonicity check. Without both, the run below is a
- * timing harness whose result nothing looks at. */
+ * Ordering alone is satisfied by a sort that drops or duplicates elements; the
+ * sum carried in from before the sort makes this a permutation check. */
 static void check_sorted(int arr[], int size, int expect_sum, int size_log, int iter) {
     int sum = 0;
 
@@ -107,7 +120,6 @@ int main() {
             int size = (int)int_pow(2, size_log);
             start_counter();
             for (int i = 0; i < N_ITER; i++) {
-                // Measure the time taken for merge sort
                 fill_array(arr, size);
                 int expect_sum = 0;
                 for (int j = 0; j < size; j++) {

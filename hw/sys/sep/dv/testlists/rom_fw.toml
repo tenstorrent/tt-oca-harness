@@ -4,18 +4,16 @@ schema_version = 1
 # ROM FIRMWARE boot tests. Separate from cpu.toml because they differ from every
 # other CPU test on BOTH build axes, not just at run time:
 #
-#   * RTL target `rom_boot` -- cpu_all_live plus a behavioral SMC AXI responder
-#     (axi_sim_mem), not the `lsu_stub_all_live` CPU stub and not `default`.
+#   * RTL target `rom_boot` -- cpu_all_live plus the shared AXI slave agent on
+#     the SEP->SMC AXI, not the `lsu_stub_all_live` CPU stub and not `default`.
 #   * Firmware profiles `boot_rom` / `boot_rom_ot` / `boot_rom_ot_pio` -- the
 #     production Boot ROM under hw/sys/sep/bootrom/prod, which drives its own
 #     Makefile, links to ROM_BASE instead of the TCMs, and packs a manifest+BL1
 #     image. The shared TCM firmware engine (`c_build.default`) does not build it.
 #
-# OWNERSHIP: these exercise ROM firmware, not the ROM macro. They are not
-# contracted in hw/sys/sep/dv/docs/SEP_VPLAN.adoc. ROM *hardware*
-# coverage stays in the SEP plans (`sep_boot_rom_lsu_read_test`, the
-# `sep_rom_uvm_*` backlog). A ROM-FW plan, when it exists, is where these
-# names are graded.
+# OWNERSHIP: these exercise ROM firmware, not the ROM macro, and are outside the
+# scope of hw/sys/sep/dv/docs/SEP_VPLAN.adoc. ROM *hardware* coverage stays in the
+# SEP plans (`sep_boot_rom_lsu_read_test`, `sep_rom_uvm_*`).
 #
 # They run in the `rom_fw` group only -- not `cpu`, and not `all`: a CPU-class run
 # is one RTL target (`default`) and these need `rom_boot`, and `all` is the set
@@ -30,7 +28,7 @@ schema_version = 1
 # NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
 # OpenTitan Quad spi_host),
 # so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
-# behavioral SMC responder (SEP_SMC_MEM_MODEL).
+# SMC responder (SEP_SMC_MEM_MODEL: the shared AXI slave agent).
 name = "sep_rom_non_secure_boot_test"
 module = "rom_fw.sep_rom_non_secure_boot_test"
 target = "rom_boot"
@@ -77,7 +75,7 @@ args = [
 # +sep_boot_from_spi seeds STRAPS_LO[25] (primary_chiplet) in the SMC responder so
 # boot_from_spi() is true; without it the ROM takes the SMC-SRAM branch.
 #
-# Note there is deliberately NO +sep_smc_mem_hex here: nothing stages a manifest
+# There is NO +sep_smc_mem_hex here: nothing stages a manifest
 # in SMC SRAM, so an accidental fallback to that branch cannot pass -- the test
 # additionally asserts on the ROM console that BOOT_SPI ran and
 # WAIT_SMC_MANIFEST did not.
@@ -107,9 +105,8 @@ args = [
 # hardware: build_ot_pio/boot_rom.elf does not even link ot_spi_flash_read_dma
 # (the linker drops it), so a green DMA test says nothing about this path.
 #
-# Same timeout as the DMA sibling. That is a starting budget, not a measurement:
-# a CPU-polled drain could well be slower than the DMA handshake, and if it turns
-# out to need more, raise it with the observed sim time rather than pre-inflating.
+# Same timeout as the DMA sibling; a CPU-polled drain can be slower than the DMA
+# handshake, so raise it from an observed sim time if it times out.
 name = "sep_rom_ot_pio_boot_test"
 module = "rom_fw.sep_rom_ot_pio_boot_test"
 target = "rom_boot"
@@ -135,7 +132,7 @@ args = [
 #
 # No special eFuse image is needed: secure_boot_enabled() enforces on the manifest
 # flag when the lifecycle is TEST_DEV, and a zero OTP already gives TEST_DEV with
-# sboot_dis=0. (The internal flow ships a PROD preload instead; either works.)
+# sboot_dis=0. (The reference flow ships a PROD preload instead; either works.)
 #
 # Entropy is NOT exercised here -- see +sep_crypto_edn_force in args below for
 # what is forced and why. Timeout is generous because a 3072-bit modexp on OTBN is
@@ -170,7 +167,7 @@ args = [
 # and sharing the profile means sharing the already-built ROM and Verilator model
 # with the OT boot tests.
 #
-# +sep_boot_from_spi is deliberately NOT passed. The gate is upstream of the
+# +sep_boot_from_spi is NOT passed. The gate is upstream of the
 # boot-path split, so the ROM stops before either transport is reached; adding the
 # strap would imply this test says something about SPI, which it does not.
 #
@@ -185,7 +182,7 @@ args = [
 # Timeout is well under the boot tests': this run ends at the pre-C gate in
 # vector.S, so it never reaches the serial flash fetch or any crypto. It ends on
 # the terminal status word in cold_scratch[1], NOT on a mailbox FAIL -- the halt
-# path deliberately writes no mailbox at all (see the test docstring). Raise the
+# path writes no mailbox at all (see the test docstring). Raise the
 # timeout with an observed sim time if that ever stops being true.
 name = "sep_firmware_mbist_fail_test"
 module = "rom_fw.sep_firmware_mbist_fail_test"
@@ -203,10 +200,8 @@ args = [
 [[tests]]
 # Boot ROM warm-reset handler dispatch, accept-and-jump arm.
 #
-# NOTE ON THE NAME: the name now matches the register. The ROM reads COLD scratch
-# 7 (vector.S), which is what sep-boot-flow.puml specifies. It previously
-# read WARM scratch 0, and this note used to explain the name as referring to the
-# feature rather than the index; that explanation is obsolete (FINDINGS F28).
+# The name matches the register: the ROM reads COLD scratch 7 (vector.S), as
+# sep-boot-flow.puml specifies.
 #
 # Reuses build_ot/ for the same reason as the entry above: the warm branch is the
 # first decision in _start, upstream of everything transport-related.
@@ -214,10 +209,8 @@ args = [
 # Two plusargs carry the whole stimulus and both are load-bearing:
 #   +sep_cold_scratch7  seeds the handler address the ROM must dispatch to. The tb
 #                       deposits it after rst_ni release and well before the core
-#                       is let go. (The deposit used to target the WARM bank, whose
-#                       rst_ni && rst_warm_ni reset wiped anything written earlier;
-#                       the cold bank does not have that race, but the test still
-#                       ASSERTS the seed was observed rather than assuming it.)
+#                       is let go. The test ASSERTS the seed was observed rather
+#                       than assuming it.
 #   +sep_iccm_word      puts one `j .` instruction (0x0000006f) at that address,
 #                       with ECC computed by the tb. Without it the
 #                       target is zero-filled, which is an illegal instruction, and
@@ -225,11 +218,10 @@ args = [
 #                       up -- so the observation would be destroyed rather than made.
 # The two must agree on the address; the test asserts that they do.
 #
-# This entry covers the ACCEPT arm only. The reject arm has its own entry,
-# sep_warm_reset_invalid_hang_test (below), but that one seeds
-# WARM_HANDLER_RANGE_END and so drives the UPPER bound alone: the lower bound
-# (bltu, an address below ICCM base) and the beqz early-out to cold_boot have no
-# entry in any testlist. Treat those two legs as unverified.
+# This entry covers the ACCEPT arm only. The reject arm's upper bound is
+# sep_warm_reset_invalid_hang_test (seeds WARM_HANDLER_RANGE_END), its lower bound
+# sep_warm_reset_below_range_hang_test, and the beqz early-out to cold_boot
+# sep_warm_reset_unarmed_cold_boot_test, all below.
 #
 # Short timeout: the ROM branches within the first ~15 instructions after the core
 # is released, and the run stops as soon as the jump is observed.
@@ -252,9 +244,9 @@ args = [
 #
 # Reuses the signed image and the boot_rom_ot profile, so no new firmware build.
 # The mutation-free member of this group: the stimulus is entirely in the OTP
-# image, which is what makes it the one to validate the pattern with first.
+# image.
 #
-# +sep_efuse_preload carries an EXPLICIT path on purpose. A bare +sep_efuse_preload
+# +sep_efuse_preload carries an EXPLICIT path. A bare +sep_efuse_preload
 # resolves to the committed default image in BOTH dv_sim_prestage.stage() and
 # select_efuse_image(), i.e. TEST_DEV with sboot_dis=0 -- which boots non-secure
 # for the ordinary reason and would make this testcase vacuous. The explicit path
@@ -321,8 +313,8 @@ args = [
 
 [[tests]]
 # Primary rejected, failover, backup signature fails RSA.
-# Needs +sep_crypto_edn_force: this is the one of the three failover ports whose
-# defect is only detectable by actually running the modexp on OTBN.
+# Needs +sep_crypto_edn_force: the defect is only detectable by actually running
+# the modexp on OTBN.
 name = "sep_firmware_backup_invalid_signature_test"
 module = "rom_fw.sep_firmware_backup_invalid_signature_test"
 target = "rom_boot"
@@ -442,7 +434,8 @@ args = [
 # the SRAM macro's storage array is already public_flat_rw (sep_public_scope.vlt:38)
 # and is therefore readable and writable from cocotb over VPI.
 #
-# TWO THINGS A READER SHOULD KNOW BEFORE TREATING A GREEN RUN AS F038 COVERAGE.
+# TWO THINGS A READER SHOULD KNOW BEFORE TREATING A GREEN RUN AS FULL TP080
+# COVERAGE.
 #
 # 1. It covers the EXT SRAM half of TP080 only, and the reason the other half is
 #    missing is NOT that someone forgot a memset. sep-boot-flow.puml asks for
@@ -461,29 +454,17 @@ args = [
 #    assertion to check. (Independently, the only path whose manifest comes from SMC
 #    SRAM runs num_retries = 0, manifest_load.c, so it has no retry window at
 #    all.) The test asserts nothing about SMC SRAM and says so in its own log
-#    (CHK-SCOPE). Full evidence: FINDINGS F19 and its correction F21, in
-#    aegissocspec's .dv/artifacts/boot_rom/rtl_batch_runs/FINDINGS.md (that path is
-#    in the SPEC repo, not this one).
+#    (CHK-SCOPE).
 # 2. It is one of the slower members of this group, and almost all of that is
 #    INHERITED rather than added here. The failover clear it asserts is 65536 CPU
-#    stores: measured in run 20260829_111100, MANIFEST_ERR=0x00030002 at 2154352 ns
-#    to MANIFEST_BACKUP at 18963904 ns is about 1.05M of that run's ~1.62M clocks.
-#    sep_spi_primary_fail_backup_test above pays the same cost in CYCLES -- it just
-#    does not assert anything about it. What this entry adds on top is the
+#    stores (about 1.05M clocks), which sep_spi_primary_fail_backup_test above
+#    pays as well without asserting on it. What this entry adds on top is the
 #    scoreboard's VPI traffic (one 32768-word fill plus its read-back, and one
 #    32768-word scan).
 #
-#    COMPARE IN CYCLES, NOT MILLISECONDS OR WALL SECONDS. The testbench randomises
+#    COMPARE IN CYCLES, NOT MILLISECONDS OR WALL SECONDS: the testbench randomises
 #    sys_clk_period per run, so simulated-time and wall-clock figures are not
-#    comparable between runs and an earlier version of this comment drew a wrong
-#    conclusion from exactly that. The parent's three runs on disk span 20.09,
-#    14.51 and 6.70 ms for the same work; the cycle count is what is invariant.
-#    Cycle-normalised, the parent band is 772-816 s per Mcycle against this
-#    entry's 856, so the scoreboard's attributable cost is roughly 97 s, about
-#    7.5% -- not the ~148 s / ~12% a naive wall-second subtraction gives, because
-#    that comparison used runs at 16 ns and 13 ns clock periods and TP080 also
-#    executed 4.8% more cycles. Treat 7.5% as an estimate with a real error bar,
-#    not as a measurement.
+#    comparable between runs; the cycle count is what is invariant.
 #    Do not "speed it up" by scanning fewer words -- the claim is that the whole
 #    256 KiB was cleared, and a sparser scan cannot support it.
 name = "sep_failover_sram_clear_assertion_test"
@@ -537,11 +518,9 @@ args = [
 ]
 
 [[tests]]
-# MBIST arm of the boot gate, FAILURE case -- the leg neither existing MBIST
-# test reaches. sep_firmware_mbist_fail_test injects 0xFFFFFFFD, which stops on
-# the REPAIR arm before MBIST is ever evaluated, so without this entry the MBIST
-# check added for sep-boot-flow.puml has no testcase that exercises its
-# rejection at all.
+# MBIST arm of the boot gate, FAILURE case. sep_firmware_mbist_fail_test injects
+# 0xFFFFFFFD, which stops on the REPAIR arm before MBIST is ever evaluated, so
+# this is the only entry that exercises the MBIST rejection (sep-boot-flow.puml).
 #
 # +sep_dft_status=00000012 = mem_repair_success (bit 1) SET so the repair arm
 # passes, mbist_done (bit 4) SET so the gate stops polling and trusts the
@@ -574,15 +553,14 @@ args = [
 #
 # +sep_dft_status=00000112 is exactly the three bits the gate requires and
 # NOTHING else: mem_repair_success (bit 1), mbist_done (bit 4), mbist_pass
-# (bit 8). It deliberately leaves mem_repair_done (bit 0), mem_repair_abort
+# (bit 8). It leaves mem_repair_done (bit 0), mem_repair_abort
 # (bit 2) and mbist_abort (bit 12) clear, so a gate that keyed on any of those
 # would fail here. Injecting nothing would leave the tb default 0x113, which also
 # boots but cannot tell which bits are load-bearing.
 #
-# This was 0x00000002 while the gate read only mem_repair_success. That value now
-# HANGS, and correctly so: with mbist_done clear the ROM waits for MBIST to
-# finish, times out, and treats it as a failure. If this entry is ever reverted to
-# 0x02 the symptom will be a very slow hang, not an obvious rejection.
+# 0x00000002 (mem_repair_success alone) HANGS: with mbist_done clear the ROM waits
+# for MBIST to finish, times out, and treats it as a failure -- a very slow hang,
+# not an obvious rejection.
 #
 # The gate writes nothing on the pass path (it is pre-C assembly, and every
 # console/status/scratch write sits on the failure branch), so this entry borrows
@@ -622,7 +600,7 @@ args = [
 # build/non_secure_boot.bin), and [c_build.boot_rom_ot] runs `pack-images`, which
 # is the rule that produces it.
 #
-# build_ot rather than the SPI-stub ROM on purpose: the OT ROM CAN drive the flash
+# build_ot rather than the SPI-stub ROM: the OT ROM CAN drive the flash
 # and the flash BFM is attached and preloaded, so "no SPI reads" is a real
 # observation about a capable ROM declining a working device.
 name = "sep_boot_recovery_test"
@@ -792,10 +770,11 @@ args = [
 #
 # ################ THIS TEST IS EXPECTED TO FAIL. DO NOT "FIX" IT. ################
 #
-# It is a deliberate known-fail sentinel, kept red on purpose while a
-# specification question is open. This framework has no xfail/expect_fail
-# mechanism, so a red `rom_fw` or `all` run with THIS test as the only failure is
-# the expected result, not a regression. Budget ~47 minutes for it.
+# It is a known-fail sentinel: the procedure and the ROM disagree on whether a
+# decryption failure is terminal, and the test holds the procedure's expectation.
+# This framework has no xfail/expect_fail mechanism, so a red `rom_fw` or `all`
+# run with THIS test as the only failure is the expected result, not a
+# regression. Budget ~47 minutes for it.
 #
 # What it asserts and why it fails: the procedure (TP049 step 5) says a decryption
 # failure is TERMINAL. The ROM instead rejects the primary and fails over to the
@@ -803,22 +782,15 @@ args = [
 # then MANIFEST_SRC=0x00041000 and BL1_JUMP=0xC0000000. CHK-NO-BACKUP-RETRY is
 # left at full spec strength and therefore fires.
 #
-# Who is right is NOT yet decided, which is exactly why this stays red. The
-# authoritative flow diagram (sep-boot-flow.puml) sides with the ROM: a primary
-# with an invalid TOC identifier is a <<Warning>> routed to the (S) backup-retry
+# The flow diagram (sep-boot-flow.puml) sides with the ROM: a primary with an
+# invalid TOC identifier is a <<Warning>> routed to the (S) backup-retry
 # connector, and only DECRYPTION_KEY_FAILED / DECRYPTION_FAILED are <<Error>> +
-# kill. So the procedure step looks over-generalised -- but that is the procedure
-# author's call to make, not DV's.
+# kill.
 #
 # Do NOT resolve this by relaxing CHK-NO-BACKUP-RETRY, by removing this entry from
-# the groups in all.toml, or by deleting the test. Any of those hides an open
-# specification dispute. When the procedure author rules, either the procedure is
-# corrected (then this test's expectation changes with a cited reason) or the ROM
-# is corrected (then this test goes green on its own).
-#
-# Full evidence, both variants, and the decision needed:
-#   .dv/artifacts/boot_rom/rtl_batch_runs/FINDINGS.md, entry F06
-#   (in the aegissocspec repo, not this one)
+# the groups in all.toml, or by deleting the test: either the procedure changes
+# (then this test's expectation changes with a cited reason) or the ROM changes
+# (then this test goes green on its own).
 # ################################################################################
 name = "sep_decryption_failure_terminal_test"
 module = "rom_fw.sep_decryption_failure_terminal_test"
@@ -891,8 +863,7 @@ args = [
 
 [[tests]]
 # Warm dispatch, LOWER bound. The sibling of sep_warm_reset_invalid_hang_test,
-# which drives the upper bound alone; before this entry the `bltu` leg had no
-# testcase and this file said so.
+# which drives the upper bound alone.
 #
 # +sep_cold_scratch7=BFFFFFFC is WARM_HANDLER_RANGE_BASE - 4, the LARGEST address
 # the lower bound must reject, so the run pins the ROM's `bltu` against a
@@ -915,7 +886,7 @@ args = [
 ]
 
 [[tests]]
-# Warm dispatch, UNARMED (the beqz early-out to cold_boot). Deliberately passes
+# Warm dispatch, UNARMED (the beqz early-out to cold_boot). Passes
 # NO +sep_cold_scratch7 -- the register's cold reset value of 0 IS the stimulus,
 # and the test asserts the plusarg is absent so a stray deposit cannot silently
 # move the run onto another leg.
@@ -938,11 +909,11 @@ args = [
 [[tests]]
 # Warm dispatch, ACCEPTED but the target holds no code. This is the shape the
 # reference suite's own scratch-7 test uses: it seeds an in-range address that is
-# not bootable and requires BOOTROM_START -> WARM_RESET_JUMP -> GENERAL_EXCEPTION
-# (tt_sep/tb/cocotb_tests/sep_scratch_7_test.py, seed 0x70018000 inside its IRAM).
+# not bootable (0x70018000, inside its IRAM) and requires BOOTROM_START ->
+# WARM_RESET_JUMP -> GENERAL_EXCEPTION.
 #
 # +sep_cold_scratch7=C0000200 is inside [0xC0000000, 0xC0040000) so the range
-# check ACCEPTS it, and deliberately NOT 0xC0000100 -- the address
+# check ACCEPTS it, and NOT 0xC0000100 -- the address
 # sep_scratch_7_test pokes a `j .` into -- so a stale poke cannot make this pass.
 # No +sep_iccm_word is passed: the target holds the backdoor's default 0 with
 # valid ECC, and an all-zero word is an illegal instruction, so the fault is on
@@ -976,16 +947,13 @@ args = [
 # chain up), hence the dv_shortcut tag. It grants EDN handshakes only and leaves
 # every RSA input and assertion alone.
 #
-# ### THIS IS ONE OF THE SLOWEST TESTS IN THE GROUP. Budget ~35-45 minutes. ###
+# ### ONE OF THE SLOWEST TESTS IN THE GROUP. Budget ~35-45 minutes. ###
 # Two full RSA-3072 modular exponentiations run on the real OTBN, one per slot,
-# at roughly 5 ms of simulated time each. If a `rom_fw` or `all` regression
-# suddenly takes ~40 minutes longer than you remember, this entry is why. Do not
-# lower timeout_sec: the modexp cost is real work, not a hang.
+# at roughly 5 ms of simulated time each. Do not lower timeout_sec: the modexp
+# cost is real work, not a hang.
 #
-# It is NOT the only slow member, and an earlier version of this comment wrongly
-# said it was. sep_bl1_size_invalid_test (~2013 s), sep_bl1_entry_invalid_test
-# (~2289 s) and sep_decryption_failure_terminal_test (~2837 s) each run two
-# modexps as well, and the last of those is slower than this one. What is
+# sep_bl1_size_invalid_test, sep_bl1_entry_invalid_test and
+# sep_decryption_failure_terminal_test each run two modexps as well. What is
 # specific to this entry is that the two modexps ARE the feature under test
 # rather than a cost paid on the way to something else.
 name = "sep_otbn_rsa_verify_failure_test"
@@ -1666,7 +1634,7 @@ args = [
 # is the only channel that can say the PRIMARY served the boot, because a silent
 # failover also reaches MANIFEST_OK.
 #
-# Overlap with sep_rom_ot_secure_boot_test is deliberate and disclosed: same image,
+# Overlap with sep_rom_ot_secure_boot_test is disclosed: same image,
 # but that entry runs under TEST_DEV with no key-selection or device assertions,
 # while this one runs under a committed PROD preload and adds both.
 #
@@ -1701,15 +1669,15 @@ args = [
 # manifest_ver < fuse_ver (manifest_crypto.c). Both slots are raised to
 # security_version 36 and re-signed with dev0; the fuse floor is also 36.
 #
-# A DELIBERATELY DIFFERENT CASE FROM THE REFERENCE, and the docstring says so at
-# length. sep_firmware_base_test.sv burns popcount 8 against a packer default
-# of 5 and expects ERROR: INVALID_SECURITY_VERSION -- a self-consistent REJECT test.
-# Its own stated intent (sep_firmware_bl1_version_test.py, "manifest version
-# := fuse version") is the equality case, defeated by two latent defects recorded as
-# batch_runs_0904_vp/FINDINGS.md F06 / F10 item 3. The REJECT side is already covered
-# twice here, by sep_firmware_backup_invalid_security_version_test and
-# sep_firmware_primary_invalid_security_version_test; the primary-side ACCEPT
-# boundary was covered by nothing.
+# A DIFFERENT CASE FROM THE REFERENCE, and the docstring says so at length.
+# sep_firmware_base_test.sv burns popcount 8 against a packer default of 5 and
+# expects ERROR: INVALID_SECURITY_VERSION -- a self-consistent REJECT test. Its own
+# stated intent (sep_firmware_bl1_version_test.py, "manifest version := fuse
+# version") is the equality case, which two latent defects in the reference
+# defeat. The REJECT side is covered twice here, by
+# sep_firmware_backup_invalid_security_version_test and
+# sep_firmware_primary_invalid_security_version_test; this entry is the
+# primary-side ACCEPT boundary.
 #
 # WHAT IT ADDS BEYOND THE BOUNDARY: all eight thermometer words, each
 # distinguishable. Its preload gives word i exactly i+1 set bits, so the total is
@@ -1718,9 +1686,9 @@ args = [
 # also sums to 36 -- but no decode defect produces that multiset) -- where every
 # other preload here concentrates its bits in word 0. The test requires the exact
 # echo FUSE_VER=0x00000024, so any omitted, repeated or mis-indexed word changes the
-# sum and fails. Closes the gap batch R1 recorded. An earlier draft used one bit per
-# word (total 8), which a reviewer showed was weaker: eight reads of the SAME word
-# also sum to 8. The floor differs from the reference's 8 because distinct per-word
+# sum and fails. One bit per word (total 8) would be weaker: eight reads of the
+# SAME word also sum to 8. The floor differs from the reference's 8 because
+# distinct per-word
 # popcounts need at least 36 bits; the manifest is raised to match, so the accept
 # boundary is preserved.
 #
@@ -1750,13 +1718,13 @@ args = [
 # the ROM-key arm behind a different selector: validate_signature branches at
 # manifest_crypto.c and the fused arm has its own fuse addressing, its
 # own revocation bit and its own FUSE_KEY_EMPTY. These four items do not overlap the
-# pubkey_rom_* families of batches R1 and R2.
+# pubkey_rom_* families.
 #
 # The preload does three things, each closing a different hole:
 # CHIPLET_PUBK_HASH0 = SHA-256 of the dev0 modulus (the only usable RSA key here);
 # CHIPLET_PUBK_HASH1 = a one-bit-flipped DECOY, so a ROM reading the wrong chiplet
-# fuse fails PUBK_HASH_MISMATCH rather than booting -- a live guard, since
-# manifest_crypto.c records that this ROM once read the wrong fuse words;
+# fuse fails PUBK_HASH_MISMATCH rather than booting -- a live guard against a ROM
+# reading the wrong fuse words;
 # and CHIPLET_PUBK_REVOKE bit 0 revokes ROM development key 0, which is inert on the
 # correct ROM but makes a fall-through to the ROM-key arm print
 # KEY_REVOKED idx=0x00000000, which this entry forbids.
@@ -1811,12 +1779,13 @@ args = [
 # fuse bit refuses two provably bootable manifests and the retry loop exhausts
 # (MANIFEST_ALL_FAILED, manifest_load.c).
 #
-# THE STRICT FORM, for BOTH members. The ROM-slot revoke families of R1/R2 could
-# only reach it at slot 0, because slots 1-5 have no populated digest and keep a
-# stale signature (FINDINGS.md R01). Here the fuse digest is programmed and the
+# THE STRICT FORM, for BOTH members. The ROM-slot revoke families reach it only
+# at slot 0, because slots 1-5 have no populated digest and keep a stale
+# signature. Here the fuse digest is programmed and the
 # image is re-signed, so revocation is the sole possible cause of the rejection.
 #
-# Bit 16, not the reference's bit 6: sep_efuse_map.rdl:727 assigns [16]/[17] to
+# Bit 16, not the reference's bit 6: CHIPLET_PUBK_REVOKE in sep_efuse_map.rdl
+# assigns [16]/[17] to
 # CHIPLET_PUBK_HASH0/1, while sep_firmware_pubkey_test.sv encodes 0x40/0x80,
 # which are unused ROM-slot bits in this map.
 #
@@ -1863,13 +1832,13 @@ args = [
 #
 # Outcome O1 of the [C15] decision table written out once in
 # rom_fw/sep_demotion_decision_base.py. rom_main.c short-circuits on PROD_END
-# before any of the three manifest demotion inputs is read (:391), so
-# FIVE tracker items share this one observable; this is the one assigned here, and
-# the other four are covered-by-O1 rather than four more coverage points.
+# before any of the three manifest demotion inputs is read (:391), so five
+# stimuli share this one observable; the other four PROD_END rows are covered by
+# O1 rather than four more coverage points.
 #
-# FIRST PROD_END BOOT IN THIS TESTLIST. Its preload sep_efuse_lc_prod_end.toml is the
-# first to select raw LC 0x8 (encoded 0x78 per sep_efuse_map.rdl:565-566 and
-# hw/ip/efuse/rtl/efuse_pkg.sv:51-59). Three ROM paths become covered: the demotion
+# A PROD_END BOOT. Its preload sep_efuse_lc_prod_end.toml selects raw LC 0x8
+# (encoded 0x78 per sep_efuse_map.rdl:565-566 and
+# hw/ip/efuse/rtl/efuse_pkg.sv:51-59). Three ROM paths are covered: the demotion
 # short-circuit, secure boot enforced by PROD_END (lifecycle.c), and the
 # PROD_END arm of lc_state_to_manifest_bit (lifecycle.c).
 #
@@ -1879,14 +1848,14 @@ args = [
 #
 # THE REGISTER CHANNEL IS THE POINT. Every demotion console string is printed from a
 # local computed one line earlier, so a ROM that decided correctly and wrote the
-# wrong register would pass a console-only test. This batch wired the dangling
-# lcc_demote_state_{1,2}_o outputs in dv/tb/tb_top.sv and added read-only XMR probes
-# for the lock bits. DEMOTE_2 locked is the discriminator no other row can produce:
+# wrong register would pass a console-only test. dv/tb/tb_top.sv brings out the
+# lcc_demote_state_{1,2}_o outputs and read-only XMR probes for the lock bits.
+# DEMOTE_2 locked is the discriminator no other row can produce:
 # rom_main.c is the ROM's only lc_write_demotion_2 call.
 #
 # HALF-PORT, disclosed: the reference sep_demotion_uid_checker.py also verifies the
-# decision feeding the KBKDF salt and the three SKS UID keys (:62-140,
-#). This ROM derives nothing from it in BL0, so only the DECISION is ported.
+# decision feeding the KBKDF salt and the three SKS UID keys (:62-140). This ROM
+# derives nothing from it in BL0, so only the DECISION is ported.
 #
 # Needs +sep_crypto_edn_force: PROD_END enforces secure boot, so a real modexp runs.
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_end_test"
@@ -1915,9 +1884,7 @@ args = [
 #
 # +SECURE_BOOT_DIS DRIVES TWO SURFACES AND BOTH ARE PORTED. It sets
 # boot_arguments.secure_boot = 0 (sep_demotion_uid_checker.py) AND burns the
-# sboot_dis fuse (sep_firmware_demotion_decision_test.sv). Reading only
-# the manifest surface produced the VP half's worst error, retracted as
-# batch_runs_0904_vp/FINDINGS.md F11 item 1. Here the preload
+# sboot_dis fuse (sep_firmware_demotion_decision_test.sv). Here the preload
 # sep_efuse_lc_prod_sboot_dis.toml burns the fuse and the manifest is mutated on both
 # fields the packer would have changed: flag_args bit 30 cleared, and signature_type
 # forced to NO_SIGNATURE as manifest_signing.py does.
@@ -1951,14 +1918,11 @@ args = [
 
 
 # =============================================================================
-# Batch R4 -- the remaining six [C15] demotion-decision items.
-#
-# Outcomes O4, O5, O3a and O2b are new here; the two PROD_END rows are
-# covered-by-O1 and say so in their own docstrings and status rows. The seventh
-# outcome, O3b (unauth_flag_0_prod_sel_bit_set, tracker row 116), is in no
-# batch's assignment and is the group's one remaining gap. The collapse map and
-# the mechanism are in rom_fw/sep_demotion_decision_base.py; the shared PROD
-# stimulus is in rom_fw/sep_demotion_prod_base.py and the PROD_END one in
+# [C15] demotion-decision items: outcomes O4, O5, O3a and O2b, plus two PROD_END
+# rows covered by O1 (their docstrings say so). Outcome O3b
+# (unauth_flag_0_prod_sel_bit_set) has no testcase. The collapse map and the
+# mechanism are in rom_fw/sep_demotion_decision_base.py; the shared PROD stimulus
+# is in rom_fw/sep_demotion_prod_base.py and the PROD_END one in
 # rom_fw/sep_demotion_prod_end_base.py.
 # =============================================================================
 
@@ -1966,8 +1930,8 @@ args = [
 # PROD_END, no demotion request at all -> not demoted, both registers locked.
 #
 # COVERED-BY-O1 AND ADDS NO ROM PATH, stated up front. rom_main.c returns
-# before any manifest demotion input is read, so all five PROD_END tracker rows
-# share one observable; R3's auth_flag_0_prod_end already covers it. This row
+# before any manifest demotion input is read, so every PROD_END row shares one
+# observable; auth_flag_0_prod_end covers it. This row
 # drives the baseline combination -- all three inputs clear -- which is the one
 # for which the short-circuit is not even load-bearing, so unlike its sel_bit_set
 # sibling it is not an ordering control either. What it does assert per run is
@@ -2003,13 +1967,14 @@ args = [
 #
 # COVERED-BY-O1 ON THE OUTCOME, but it is the one PROD_END row that is a NEGATIVE
 # CONTROL ON THE SHORT-CIRCUIT ORDER, and that is why it earns its place beside
-# R3's O1 member rather than duplicating it. selector_bits bit 17 is set; if
+# the O1 member rather than duplicating it. selector_bits bit 17 is set; if
 # rom_main.c did not preempt the ROM would take the manifest-decides
 # arm and produce O3a, which differs on four observables at once -- BL1_DEMOTE=0
 # present, BL2_DEMOTE_DEC=0 present, DEMOTE: PROD_END lock absent, and DEMOTE_2
 # left unwritten. All four are asserted. Neither of the other two PROD_END rows
-# can make that claim: R3's sets flags[0] with the selector CLEAR, and
-# no_flag_prod_end leaves all three inputs clear so both orderings agree.
+# can make that claim: auth_flag_0_prod_end sets flags[0] with the selector
+# CLEAR, and no_flag_prod_end leaves all three inputs clear so both orderings
+# agree.
 #
 # The stimulus is a faithful port -- the reference plants the same selector bit
 # for this scenario (sep_demotion_uid_checker.py) -- while the
@@ -2039,18 +2004,17 @@ args = [
 #
 # Outcome O5, and a NEGATIVE CONTROL. +AUTH_FLAG_0 sets usage_constraints.flags
 # bit 0 while the selector stays clear, so rom_main.c does not take the first
-# arm never runs: the request is discarded writes DEMOTE_1
-# NOT demoted but locked. A ROM that read flags[0] without first testing the
-# selector bit, or that ORed the two, would write demote=1 and fail here. No
-# other member can catch that: R3's O2a sets both, so its demote=1 is correct
-# either way, and the PROD_END rows never reach.
+# arm: the request is discarded and the ROM writes DEMOTE_1 NOT demoted but
+# locked. A ROM that read flags[0] without first testing the selector bit, or
+# that ORed the two, would write demote=1 and fail here. No other member can
+# catch that: the O2a member sets both, so its demote=1 is correct either way,
+# and the PROD_END rows never reach the manifest inputs.
 #
 # +SECURE_BOOT_DIS DRIVES TWO SURFACES AND BOTH ARE PORTED -- the sboot_dis eFuse
 # (sep_firmware_demotion_decision_test.sv) and the manifest
 # (sep_demotion_uid_checker.py, which the packer turns into flag_args bit
 # 30 cleared AND signature_type = NO_SIGNATURE, manifest_signing.py).
-# Reading only the manifest surface produced the VP half's worst error, retracted
-# as batch_runs_0904_vp/FINDINGS.md F11 item 1. The two are COUPLED: an unsigned
+# The two are COUPLED: an unsigned
 # primary boots only because manifest_load.c short-circuits before the PROD
 # rule, so dropping the fuse would refuse the primary at
 # BAD_SIG_TYPE= and fail over to the backup, producing O5 under whatever name the
@@ -2060,7 +2024,7 @@ args = [
 # No +sep_crypto_edn_force: secure boot is off, so OTBN is never driven and
 # RSA_VERIFY_START is forbidden.
 #
-# COLLAPSE NOTE: no_flag_prod (tracker row 111, not in this batch) drives
+# COLLAPSE NOTE: no_flag_prod (no testcase) drives
 # (0, 0, 0) and produces this same O5 outcome; the two differ only in the
 # artefact, which this row asserts before the run.
 #
@@ -2082,9 +2046,7 @@ args = [
 [[tests]]
 # PROD, selector bit CLEAR, BL2 demotion requested -> DEMOTE_1 left UNWRITTEN.
 #
-# Outcome O4, THE HIGHEST-VALUE ROW OF THE WHOLE DEMOTION GROUP, and both the VP
-# half and batch R3 said so before it was written (batch_runs_0904_vp/FINDINGS.md
-# F07; the R4 guidance in rom_fw/sep_demotion_decision_base.py). It is the only
+# Outcome O4, the highest-value row of the demotion group. It is the only
 # outcome of the seven where lock_demotion goes false (rom_main.c), the only
 # one printing DEMOTE_NOT_LOCKED (:435), and the only one where lc_write_demotion
 # is never called at all, so DEMOTE_1 is left at its reset value.
@@ -2102,7 +2064,7 @@ args = [
 #
 # No +sep_crypto_edn_force: secure boot is off.
 #
-# COLLAPSE NOTE: unauth_flag_0_prod (tracker row 112, not in this batch) drives
+# COLLAPSE NOTE: unauth_flag_0_prod (no testcase) drives
 # (0, 0, 1) and produces this same O4 outcome.
 #
 # HALF-PORT, disclosed, as for every member of this group.
@@ -2126,7 +2088,7 @@ args = [
 # Outcome O3a: the arm where the manifest decides, deciding not to demote.
 # rom_main.c copies usage_constraints.flags bit 0 -- clear -- into
 # demotion_reg, prints BL1_DEMOTE=0 (:397), writes DEMOTE_1 (0, 1). It
-# is the exact complement of R3's O2a member on the value channel: one stimulus
+# is the exact complement of the O2a member on the value channel: one stimulus
 # bit, one echoed value and one register bit all move together, so a ROM that
 # latched a constant into demotion_reg or wrote the register from the wrong local
 # passes one of the pair and fails the other.
@@ -2140,8 +2102,8 @@ args = [
 # +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above. No
 # +sep_crypto_edn_force: secure boot is off.
 #
-# COLLAPSE NOTE: unauth_flag_30_prod_sel_bit_set (tracker row 119, not in this
-# batch) drives the same three demotion inputs and differs only on the
+# COLLAPSE NOTE: unauth_flag_30_prod_sel_bit_set (no testcase) drives the same
+# three demotion inputs and differs only on the
 # skip_SHA256 path, which is not a demotion input, so it is covered-by-O3a.
 #
 # HALF-PORT, disclosed, as for every member of this group.
@@ -2168,13 +2130,14 @@ args = [
 # rom_main.c resolves it -- the selector routes into the first arm, so
 # lock_demotion is never touched and the deferral arm is unreachable. A
 # ROM that let flag_args[0] reach lock_demotion would produce DEMOTE_NOT_LOCKED
-# and lock 0, i.e. outcome O4, and would fail here and only here. R3's O2a
+# and lock 0, i.e. outcome O4, and would fail here and only here. The O2a
 # sibling cannot make that claim: it leaves flag_args[0] clear.
 #
 # THE ROM RESOLVES MORE THAN THE REFERENCE CHECKS, and this row keeps the
-# resolution. Grendel's checker inspects the BL2 flag only when the selector bit
-# is clear (sep_demotion_uid_checker.py); with it set it reads AUTH_FLAG_0
-# alone (:387-397), so O2a and O2b give an identical expected_patterns list there.
+# resolution. The reference's checker inspects the BL2 flag only when the
+# selector bit is clear (sep_demotion_uid_checker.py); with it set it reads
+# AUTH_FLAG_0 alone (:387-397), so O2a and O2b give an identical
+# expected_patterns list there.
 # This ROM prints BL2_DEMOTE_DEC= unconditionally on every non-PROD_END arm
 # (rom_main.c), so this entry requires BL2_DEMOTE_DEC=1 and forbids
 # BL2_DEMOTE_DEC=0 -- a STRENGTHENING over the reference, disclosed as such.
@@ -2201,7 +2164,7 @@ args = [
 [[tests]]
 # The CHIPLET digest fuse holds the WRONG value -> both slots refused, terminally.
 #
-# batch_runs_0904_rtl/FINDINGS.md R07 implemented. It closes the DIGEST-SOURCE
+# Closes the DIGEST-SOURCE
 # class that rom_fw/sep_chiplet_pubkey_base.py discloses and leaves open, and it
 # needs no second private key: distinguishing the digest SOURCE needs the FUSE to
 # differ from public_key_digests[0] plus a NEGATIVE assertion. A ROM that took
@@ -2213,14 +2176,14 @@ args = [
 # THE SELECTED FUSE HOLDS A DECOY AND THE UNSELECTED ONE HOLDS THE REAL DIGEST,
 # which makes this catch TWO classes rather than one: a ROM comparing against
 # public_key_digests[0] boots, and so does a ROM that read the wrong chiplet fuse
-# address. An earlier draft used two different decoys and caught only the first.
+# address. Two different decoys would catch only the first.
 # The three fuse values are byte-identical to sep_efuse_lc_prod_chiplet_key1.toml's,
 # so this testcase and sep_firmware_chiplet_pubkey_1_test are a matched pair on the
 # FUSE side: one fuse image, two manifests differing only in public_key_sel,
-# opposite verdicts. What it does NOT catch is the historical +0x100/+0x120
-# wrong-ADDRESS derivation (manifest_crypto.c): that base reads a digest
-# matching nothing and so produces the mismatch this entry already requires. R07
-# conflates the two classes; the positive members cover the address one.
+# opposite verdicts. What it does NOT catch is a +0x100/+0x120 wrong-ADDRESS
+# derivation (manifest_crypto.c): that base reads a digest matching nothing and
+# so produces the mismatch this entry already requires; the positive members
+# cover the address class.
 #
 # Both slots select PUBK_SEL_FUSE_KEY_0 and are re-signed with dev0 by the SAME
 # select_chiplet_fuse_key() call the positive member sep_firmware_chiplet_pubkey_0_test
@@ -2228,9 +2191,6 @@ args = [
 # between "boots" and "refused" is two fuse words. CHIPLET_PUBK_REVOKE bits 16/17
 # are CLEAR and PUBK_REVOKE=0x00000001 is required twice, so the revocation check
 # provably ran and PERMITTED the key: the digest is the sole cause.
-#
-# NO TRACKER ROW AND NO STATUS IS CLAIMED. This is not one of batch R4's six
-# assigned items; it is R07's remedy. The Coordinator owns testcase_tracker.csv.
 #
 # No +sep_crypto_edn_force: the digest bind precedes rsa_3072_verify
 # (manifest_crypto.c), so OTBN is never driven and RSA_VERIFY_START

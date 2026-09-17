@@ -1,16 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_cold_reset_test (DV Skill 1.5 / SMC_001 rev 2).
+"""Sequence for smc_cold_reset_test (SMC_001).
 
-Exercises SmcResetAgent + SmcClkAgent observations required by the approved
-checkbox card: clock edges, bring-up levels, cold assert, powergood gate,
-cool primary, and the POR/cool interaction fences.
+Exercises the SmcResetAgent + SmcClkAgent observations of plan card SMC_001:
+clock edges, bring-up levels, cold assert, powergood gate, cool primary, and
+the POR/cool interaction fences.
 
 Synchronization and verdicts:
 
 * every reset step is a bounded ``WAIT_STATE`` handshake carrying the exact
   expected levels, so the scoreboard owns the verdict and expiry raises with the
-  last observed state ([TIMEOUT-MUST-FAIL]). No fixed settle remains on the
+  last observed state ([TIMEOUT-MUST-FAIL]). There is no fixed settle on the
   proof path -- recovery is a wait for the released levels, not a delay
   ([NO-BLIND-DELAY-SYNC]).
 * the POR/cold interaction fence (S7) is a *hold* monitor, not a first-match
@@ -62,8 +62,7 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
     # Steps whose stimulus must have produced at least one fail-capable reset
     # check *of their own* in the scoreboard. S1 (prose SETUP) and S2 (TB-driven
     # input clock counts, explicitly not DUT proof) issue no reset expectations,
-    # so claiming them here would put a by-construction term back into the
-    # fence.
+    # so claiming them here would put a by-construction term into the fence.
     NONVAC_STEPS = ("S3", "S4", "S5", "S6", "S7", "S8")
 
     # `_send` (with its `expect_*` keyword guard), `_wait_state` and `_hold_raw`
@@ -133,7 +132,7 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
         # S2 — clock edges. clk_smc_i / clk_ref_i / clk_periph_i are DUT *inputs*
         # driven by cocotb Clock(...) in smc_base_test._bring_up, so these counts
         # can only fail on a TB clock-generator mistake, never on wrong DUT RTL.
-        # They are kept as a SETUP self-check and NOT emitted as DUT
+        # They are a SETUP self-check and NOT emitted as DUT
         # evidence ([NO-ALWAYS-PASS-CHECKER]); the DUT-side gated-clock proof
         # lives in the smc clk/cg tests.
         self._mark_step("S2", "COUNT_EDGES on clk_smc_i/clk_ref_i/clk_periph_i")
@@ -349,7 +348,7 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
         # `_recover_sample()` tail every step ends with books >=2 checks of its
         # own, so the raw boundary delta would be >=2 for S4..S8 no matter what
         # the step's assert leg did -- deleting S4's COLD_ASSERT_PRIMARY wait
-        # would still have left `S4:+2 > 0`. Subtracting the tail's contribution
+        # would still leave `S4:+2 > 0`. Subtracting the tail's contribution
         # makes the delta the step's own, so a step that stopped carrying
         # expectations (or never reached the DUT) contributes 0 and fails here
         # ([NO-DUMMY-DEAD-CODE] / [NO-ALWAYS-PASS-CHECKER]).

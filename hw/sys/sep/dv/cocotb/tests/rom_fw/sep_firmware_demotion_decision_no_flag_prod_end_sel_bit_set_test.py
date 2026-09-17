@@ -9,11 +9,11 @@ sibling is in ``rom_fw/sep_demotion_prod_end_base.py``.
 **COVERED-BY-O1 ON THE OUTCOME, BUT NOT ON WHAT A FAILURE WOULD MEAN, and the
 difference is this row's entire justification.** ``rom_main.c`` returns before
 any manifest demotion input is read, so at PROD_END every combination of the three
-produces the same observable and batch R3 already covered it with
-``sep_firmware_demotion_decision_auth_flag_0_prod_end_test``. This row adds no ROM
-path. What it adds is a **negative control on the short-circuit ORDER**:
+produces the same observable, which
+``sep_firmware_demotion_decision_auth_flag_0_prod_end_test`` covers. This row adds
+no ROM path. What it adds is a **negative control on the short-circuit ORDER**:
 
-  * ``selector_bits`` bit 17 is SET. If did not preempt, the
+  * ``selector_bits`` bit 17 is SET. If the short-circuit did not preempt, the
     ROM would take the first arm of the ``else``, copy ``usage_constraints.flags``
     bit 0 into ``demotion_reg``, and produce outcome **O3a** -- which differs from
     O1 on four independent observables at once: ``BL1_DEMOTE=0`` present,
@@ -30,7 +30,7 @@ path. What it adds is a **negative control on the short-circuit ORDER**:
     from its two O1 siblings' at RUN time and not merely offline, which matters
     precisely because their consoles are identical.
 
-Neither of the other two PROD_END rows can make that claim. R3's
+Neither of the other two PROD_END rows can make that claim.
 ``auth_flag_0_prod_end`` sets ``flags[0]`` with the selector CLEAR, so the ROM
 would ignore the flag under either ordering; ``no_flag_prod_end`` leaves all three
 inputs clear, so the two orderings agree exactly. **The selector bit is the one
@@ -39,20 +39,17 @@ why setting it is what turns a duplicate stimulus into an ordering test.**
 
 That said, the claim is bounded and is not "this row covers a new ROM path". It
 is: same outcome, same code path, one more defect class excluded. The row is
-reported ``covered-by-O1`` with this file cited, exactly as
-``batch_runs_0904_vp/FINDINGS.md`` F07 requires and as the R4 guidance in
-``sep_demotion_decision_base.py`` sets out.
+``covered-by-O1``, as ``sep_demotion_decision_base.py`` sets out.
 
 The reference expects only ``STATUS: DEMOTION_NOT_SELECTED`` for the PROD_END row
 and appends no lock expectation (``sep_demotion_uid_checker.py``); it also
 plants the same selector bit for this scenario
-(``sep_demotion_uid_checker.py``, from ``+SET_SELECTOR_BIT_17`` at
-), so the stimulus is a faithful port even though the ordering
+(``sep_demotion_uid_checker.py``, from ``+SET_SELECTOR_BIT_17``), so the
+stimulus is a faithful port even though the ordering
 argument above is this platform's addition. There is no architected demotion
 status code on this ROM, so the console tokens plus the register channel are the
 substitution; the DEMOTE_1/DEMOTE_2 lock requirements are an ADDITION derived from
-``rom_main.c``. Both are disclosed in the row's
-``flow_deviation``.
+``rom_main.c``.
 
 Needs ``+sep_crypto_edn_force``: PROD_END enforces secure boot
 (``lifecycle.c``), so a full RSA-3072 modexp runs on OTBN.

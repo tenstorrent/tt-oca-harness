@@ -127,9 +127,8 @@ module sep #(
   input  sep_crypto_pkg::ext_trng_axis_req_t ext_trng_axis_req_i [EXT_TRNG_NUM_AXIS-1:0],
   output sep_crypto_pkg::ext_trng_axis_rsp_t ext_trng_axis_rsp_o [EXT_TRNG_NUM_AXIS-1:0],
 
-  // External TRNG irq (PIC); alarm reserved for RAS (wired in sep_wrapper → sep)
+  // External TRNG irq (PIC)
   input logic ext_trng_irq_i,
-  input logic ext_trng_alarm_i,
 
   // Key Manager ROM/SRAM memory interfaces (hard macros at integration level)
   output km_intf_pkg::km_rom_mem_req_t   km_rom_mem_req_o,
@@ -154,15 +153,14 @@ module sep #(
   output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,
   input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-  // SPI IRQ to the PIC, driven by whichever SPI controller the integration selects
-  input  logic spi_irq_i,
-
   /////////////
   // LC State
   /////////////
 
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
   output logic lc_sigint_err_o,
   output logic security_disable_o,
   output logic secure_tm_o,
@@ -537,7 +535,7 @@ NUM_EXT_DEMUX_PORTS
     sep_internal_interrupts[10]     = intr_dma_error;
     sep_internal_interrupts[11]     = dma_alert;
     sep_internal_interrupts[12]     = wdt_alert;
-    sep_internal_interrupts[13]     = spi_irq_i;
+    sep_internal_interrupts[13]     = sep_io_spi_req_o.irq;
     sep_internal_interrupts[14]     = km_mbox_irq;
     sep_internal_interrupts[15]     = entropy_source_irq;
     sep_internal_interrupts[16]     = ext_trng_irq;
@@ -584,10 +582,6 @@ NUM_EXT_DEMUX_PORTS
   // Expose KM error signals as output ports
   assign km_unrecoverable_err_o = km_unrecoverable_err;
   assign km_recoverable_err_o   = km_recoverable_err;
-
-  // TRNG alarm: route to SoC RAS when integrated (stub drives 0 today)
-  logic unused_ext_trng_alarm_sink;
-  assign unused_ext_trng_alarm_sink = ext_trng_alarm_i;
 
   /////////////
   // SEP CPU //
@@ -849,6 +843,8 @@ NUM_EXT_DEMUX_PORTS
     .lc_state_o                             (lc_state_o),
     .feat_ctrl_o                            (feat_ctrl),
     .dbg_disable_o                          (dbg_disable_o),
+    .sep_fuse_dft_disable_o                 (sep_fuse_dft_disable_o),
+    .smc_fuse_dft_disable_o                 (smc_fuse_dft_disable_o),
     .lc_sigint_err_o                        (lc_sigint_err_o),
     .shadow_regs_o                          (),
     .fuse_sense_done_o                      (sep_fuse_sense_done_o),

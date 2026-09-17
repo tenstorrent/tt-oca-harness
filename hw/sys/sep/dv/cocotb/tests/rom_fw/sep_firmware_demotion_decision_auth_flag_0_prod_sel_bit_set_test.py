@@ -10,7 +10,7 @@ This is the row where the manifest actually decides. ``selector_bits`` bit 17 is
 so ``rom_main.c`` takes the first arm and copies
 ``usage_constraints.flags`` bit 0 into ``demotion_reg``;
 ``flag_args`` bit 0 is clear, so ``BL2_DEMOTE_DEC=0``; and ``lock_demotion`` keeps its
-initialiser, so DEMOTE_1 is written **demoted and locked**  and DEMOTE_2 is
+initialiser, so DEMOTE_1 is written **demoted and locked** and DEMOTE_2 is
 never written at all. It is the exact complement of the PROD_END member on the
 register channel:
 
@@ -22,14 +22,11 @@ register channel:
   this one                        **1**       1           0           **0**
   ==============================  ==========  ==========  ==========  ==========
 
-**``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES AND BOTH ARE PORTED.** This is the
-instruction the VP half arrived at only after retracting an earlier one
-(``batch_runs_0904_vp/FINDINGS.md`` F11 item 1): the reference's plusarg sets
-``primary.manifest.boot_arguments.secure_boot = 0``
-**and** burns the ``sboot_dis`` fuse, constrained to equal the plusarg.
-Reading only the manifest surface produced the VP half's worst error. Both are ported
-here: the eFuse preload burns SBOOT_DIS, and the manifest is mutated on both of the
-fields the packer would have changed --
+**``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES AND BOTH ARE PORTED.** The reference's
+plusarg sets ``primary.manifest.boot_arguments.secure_boot = 0`` **and** burns the
+``sboot_dis`` fuse, constrained to equal the plusarg. Both are ported here: the eFuse
+preload burns SBOOT_DIS, and the manifest is mutated on both of the fields the
+packer would have changed --
 
   * ``flag_args`` bit 30 (``FLAG_ARGS_BIT_SECURE_BOOT``) cleared. This is the field
     ``secure_boot_enabled`` reads at ``manifest_load.c``, and it sits OUTSIDE the
@@ -53,8 +50,8 @@ forbidden, and ``FUSE: SBOOT_DIS: 1`` is required, so that substitution fails lo
 instead of passing.
 
 The primary is left with its stale dev0 signature bytes rather than a blank field.
-That is a deliberate, disclosed difference from the reference, whose packer emits an
-empty signature: it is inert here because ``validate_signature`` is never called at
+That differs from the reference, whose packer emits an empty signature: it is inert
+here because ``validate_signature`` is never called at
 all on this path, and leaving a syntactically complete signature in place makes the
 image the HARDER case for anything that might later examine the field.
 
@@ -65,7 +62,7 @@ satisfied by an unusable backup.
 
 **THE LIFECYCLE DECODE IS ASSERTED, NOT ASSUMED.** Both slots' ``life_cycle_states``
 are narrowed from the shipped 0x7 to 0x2 -- PROD only -- exactly as the reference
-does (``sep_demotion_uid_checker.py``,), and ``selector_bits``
+does (``sep_demotion_uid_checker.py``), and ``selector_bits``
 bit 16 is already set, so ``manifest_load.c`` refuses the manifest unless the
 ROM decoded raw 0x1 as PROD. ``LC=PROD_END`` is forbidden for the complementary
 reason the PROD_END member does not forbid ``LC=PROD``: the former string CONTAINS
@@ -166,7 +163,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
         # unsigned and this one is too.
         mm.set_signature_type(buf, "primary", mm.SIG_TYPE_NO_SIGNATURE)
         # Last in-TBS write. The BACKUP is re-sealed so it stays a fully valid
-        # alternative; the PRIMARY is deliberately NOT re-sealed -- it is unsigned by
+        # alternative; the PRIMARY is not re-sealed -- it is unsigned by
         # construction, and re-signing it would undo the surface just set.
         narrow_life_cycle_states(self, buf, _LC_STATES_PROD_ONLY, reseal_slots=("backup",))
 

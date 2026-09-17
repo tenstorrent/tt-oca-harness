@@ -3,9 +3,12 @@
 """Lifecycle demote product: LC x DEMOTE_1/2 x a small DIS subset.
 
 RAND-REP. Walks TEST_DEV and PROD against (0,0)/(1,0)/(0,1)/(1,1) demote
-cells, first with DIS=0 and then with a seed-extended pinned DIS pair.
-``feat_ctrl`` is checked against the spec-derived golden. One live inbound
-filter probe per cell follows ``sep_debug`` (DECERR when 0, OKAY when 1).
+cells, first with DIS=0, then one PROD compose cell that closes
+``sep_fuse_dbg`` / ``smc_fuse_dbg`` while the DTP cases stay open, then a
+seed-extended pinned DIS pair. ``feat_ctrl`` is checked against the
+spec-derived golden. One live inbound filter probe per cell follows
+``sep_debug`` (DECERR when 0, OKAY when 1). The two DFT-inserted fuse-path
+disable ports follow the same FEAT_CTRL.
 
 The stitch test stays the LC->feat_ctrl e2e. This test owns the product.
 Real fuse sense. DEMOTE is write-once-set; resense returns the CSRs to 0.
@@ -22,9 +25,13 @@ from env.sep_lcc_golden import (
     DBG_DISABLE_UNCLAIMED,
     LC_PROD,
     LC_TEST_DEV,
+    SEP_FUSE_DBG_BIT,
+    SIP_DBG_BIT,
+    SMC_FUSE_DBG_BIT,
     dbg_disable_expected,
     dbg_disable_unpack,
     feat_ctrl_expected,
+    fuse_dft_disable_expected,
     lc_state_name,
 )
 from sep_base_test import sep_base_test
@@ -74,14 +81,52 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
                 f"{tag}: dbg_disable.{name}={got[name]} expected {exp} for "
                 f"FEAT_CTRL=0x{feat_ctrl:016x} "
                 f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
-                f"sip_dbg={(feat_ctrl >> 16) & 1})"
+                f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
+            )
+        if DBG_DISABLE_UNCLAIMED:
+            self.logger.info(
+                "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder (unclaimed: %s)",
+                tag,
+                len(want),
+                len(want) + len(DBG_DISABLE_UNCLAIMED),
+                ", ".join(DBG_DISABLE_UNCLAIMED),
+            )
+        else:
+            self.logger.info(
+                "CHK-DBG-DISABLE PASS: %s all %d bits match the gating ladder",
+                tag,
+                len(want),
+            )
+
+    def _check_fuse_dft_disable(self, feat_ctrl: int, tag: str) -> None:
+        """DFT-inserted fuse-path disables for this same FEAT_CTRL.
+
+        The ports have no CSR mirror. sep_fuse_dft_disable is Case 3 AND
+        sep_fuse_dbg, inverted; smc_fuse_dft_disable is Case 2 AND
+        smc_fuse_dbg, inverted. A granular bit is an extra term, not a
+        substitute for its case.
+        """
+        want = fuse_dft_disable_expected(feat_ctrl)
+        got = {
+            "sep_fuse_dft_disable": int(cocotb.top.sep_fuse_dft_disable_o.value) & 1,
+            "smc_fuse_dft_disable": int(cocotb.top.smc_fuse_dft_disable_o.value) & 1,
+        }
+        for name, exp in want.items():
+            assert got[name] == exp, (
+                f"{tag}: {name}={got[name]} expected {exp} for "
+                f"FEAT_CTRL=0x{feat_ctrl:016x} "
+                f"(sep_fuse_dbg={(feat_ctrl >> SEP_FUSE_DBG_BIT) & 1} "
+                f"smc_fuse_dbg={(feat_ctrl >> SMC_FUSE_DBG_BIT) & 1} "
+                f"sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
+                f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
             )
         self.logger.info(
-            "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder (unclaimed: %s)",
+            "CHK-FUSE-DFT-DIS PASS: %s sep=%d smc=%d (sep_fuse_dbg=%d smc_fuse_dbg=%d)",
             tag,
-            len(want),
-            len(want) + len(DBG_DISABLE_UNCLAIMED),
-            ", ".join(DBG_DISABLE_UNCLAIMED),
+            got["sep_fuse_dft_disable"],
+            got["smc_fuse_dft_disable"],
+            (feat_ctrl >> SEP_FUSE_DBG_BIT) & 1,
+            (feat_ctrl >> SMC_FUSE_DBG_BIT) & 1,
         )
 
     async def _check_cell(
@@ -92,12 +137,11 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         demote_2: int,
         tag: str,
     ) -> None:
-        # SEC_DIS forces FEAT_CTRL to all-ones before the SECURE_TM mask, so
-        # feeding the probe into the golden would make a stuck-at-1 probe agree
-        # with a stuck-at-1 DUT at every cell in the matrix -- the whole walk
-        # would pass with the decode bypassed. This test presents no SEC_DIS
-        # token, so the value is known in advance: assert it and pass the
-        # literal.
+        # SEC_DIS forces FEAT_CTRL to all-ones, so feeding the probe into the
+        # golden would make a stuck-at-1 probe agree with a stuck-at-1 DUT at
+        # every cell in the matrix -- the whole walk would pass with the decode
+        # bypassed. This test presents no SEC_DIS token, so the value is known
+        # in advance: assert it and pass the literal.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         assert sec_dis == 0, (
             "SEC_DIS is asserted but this test never presents a token; with it "
@@ -124,6 +168,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
             f"{tag}: ext probe resp={probe.resp_code}, expected {want} (sep_debug={ctl.sep_debug})"
         )
         self._check_dbg_disable(ctl.feat_ctrl, tag)
+        self._check_fuse_dft_disable(ctl.feat_ctrl, tag)
         self.logger.info(
             "CHK-FEAT-CTRL PASS: %s FEAT_CTRL=0x%016x sep_debug=%d",
             tag,
@@ -157,6 +202,24 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         await self._check_cell(image, demote_1=1, demote_2=1, tag=f"{lc}/{dis_tag}/d11")
         n += 1
         return n
+
+    async def _program_dis_bits(self, image: SepEfuseImage, sip_mask: int, sys_mask: int) -> None:
+        """W1S each mask into the matching SIP_DIS / SYS_DIS word of this image."""
+        for name, mask in (("SIP_DIS", sip_mask), ("SYS_DIS", sys_mask)):
+            fld = SepEfuseImage.field(name)
+            for word_i in range(fld.n_words):
+                word = (mask >> (32 * word_i)) & 0xFFFF_FFFF
+                cur = image.words[fld.word + word_i]
+                new_bits = word & ~cur
+                bit = 0
+                while new_bits:
+                    if new_bits & 1:
+                        await self.start_seq(
+                            sep_efuse_otp_program_seq(fld.word * 32 + word_i * 32 + bit)
+                        )
+                        image.words[fld.word + word_i] |= 1 << bit
+                    new_bits >>= 1
+                    bit += 1
 
     async def _check_lock(self, image: SepEfuseImage, *, group: int) -> None:
         """Lock DEMOTE_{group} at 0, reject a later set, then rst_ni releases it."""
@@ -223,32 +286,31 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         cells += await self._walk_demotes(image, dis_tag="dis0")
 
+        # Close sep_fuse_dbg / smc_fuse_dbg while Case 2 and Case 3 stay open
+        # (PROD + both demotes, sep_debug still 1). A golden that ignored
+        # those bits would still pass every DIS=0 cell.
+        fuse_sip, fuse_sys = cfg.dis_fuse_dbg
+        await self._program_dis_bits(image, fuse_sip, fuse_sys)
+        self.write_efuse_image(image)
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        await self.start_seq(SepLccDemoteSeq(group=2))
+        await self.start_seq(SepLccDemoteSeq(group=1))
+        await self._check_cell(image, demote_1=1, demote_2=1, tag="PROD/dis_fuse_dbg/d11")
+        cells += 1
+
         sip1, sys1 = cfg.dis_pinned
-        # W1S the pinned DIS bits into OTP (image started at 0).
-        for name, value in (("SIP_DIS", sip1), ("SYS_DIS", sys1)):
-            fld = SepEfuseImage.field(name)
-            for word_i in range(fld.n_words):
-                word = (value >> (32 * word_i)) & 0xFFFF_FFFF
-                cur = image.words[fld.word + word_i]
-                new_bits = word & ~cur
-                bit = 0
-                while new_bits:
-                    if new_bits & 1:
-                        await self.start_seq(
-                            sep_efuse_otp_program_seq(fld.word * 32 + word_i * 32 + bit)
-                        )
-                        image.words[fld.word + word_i] |= 1 << bit
-                    new_bits >>= 1
-                    bit += 1
+        # W1S the remaining pinned DIS bits (fuse-dbg bits already burned).
+        await self._program_dis_bits(image, sip1, sys1)
         self.write_efuse_image(image)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         cells += await self._walk_demotes(image, dis_tag="dis_pinned")
 
         # TEST_DEV cannot be restored (OTP W1S). The zero-DIS TEST_DEV product
-        # already ran; the pinned DIS product is proven at PROD.
+        # already ran; the fuse-dbg compose and pinned DIS product are at PROD.
         assert cells == cfg.n_cells(), f"walked {cells} demote cells, expected {cfg.n_cells()}"
         self.logger.info(
-            "CHK-RAND-REP PASS: walked %d demote cells (TEST_DEV/PROD x dis0 + PROD x pinned DIS)",
+            "CHK-RAND-REP PASS: walked %d demote cells "
+            "(TEST_DEV/PROD x dis0 + PROD fuse-dbg compose + PROD x pinned DIS)",
             cells,
         )
 

@@ -14,7 +14,7 @@ SEP master interfaces brought out in tb_top:
     block-by-default, skipped only when feat_ctrl.sep_debug=1). Used by the
     inbound-filter-gating test to prove external AXI is blocked/allowed.
 Set ``agent.axi_prefix`` right after constructing a second agent; it defaults to
-``s_axi`` so existing single-master tests are unchanged.
+``s_axi``.
 """
 
 from __future__ import annotations
@@ -71,8 +71,7 @@ class SepAxiItem(uvm_sequence_item):
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False
         # Packed AWUSER/ARUSER. The inbound filter matches FILTER_CONFIG.src_id
-        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4). Default 0 keeps
-        # every existing caller bit-identical.
+        # against user[3:0] (SrcIdUserBitStart=0, SrcIdWidth=4).
         self.user: int = 0
         # AXI AxBURST. None lets the VIP default (INCR). Leave None everywhere
         # except the inbound-filter burst checkers, which opt in with INCR and

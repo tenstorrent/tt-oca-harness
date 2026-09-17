@@ -210,11 +210,11 @@ module jtag_intf_unit
   // These synchronizers are downstream of the Class 1 LC_STATE, SIP_DIS, and
   // SYS_DIS fields and directly control JTAG/test enablement. Both stages
   // must therefore remain outside scan.
-  for (genvar i = 0; i < DBG_DISABLE_WIDTH; i++) begin : gen_feat_ctrl_sync_n0_scan
+  for (genvar i = 0; i < DBG_DISABLE_WIDTH; i++) begin : gen_dbg_disable_sync_n0_scan
     prim_flop_2sync #(
       .Width(1),
       .ResetValue(1'b1)
-    ) u_feat_ctrl_sync_n0_scan (
+    ) u_dbg_disable_sync_n0_scan (
       .clk_i  (ptap_client_tap_ctrl_i.tck),
       .rst_ni (pwr_on_rst_ni),
       .d_i    (dbg_disable_bits[i]),

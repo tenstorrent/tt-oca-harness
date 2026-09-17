@@ -118,13 +118,6 @@ module smc_peripherals #(
   // Efuse Shadow Regs
   output smc_efuse_pkg::efuse_map_t shadow_regs_o,
 
-  // PVT
-  input  logic temp_interrupt_i,
-
-  // SMC Misc Wrap Signals
-  output logic [3:0] ras_bank_chip_o,
-  output logic [3:0] ras_bank_instance_o,
-
   input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
   output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o,
 
@@ -317,7 +310,6 @@ module smc_peripherals #(
   logic [smc_config_pkg::NUM_UART-1:0] log_engine_irq_periph_clk;
   logic                                avsbus_irq;
   logic                                avsbus_irq_smc_clk;
-  logic                                temp_interrupt_smc_clk;
   logic [smc_config_pkg::NUM_I2C-1:0] i2c_irqs_smc_clk, i2c_irqs_periph_clk;
   logic                                locked_field_access_interrupt;
   logic [smc_config_pkg::NUM_UART-1:0] uart_irq_combined_smc_clk;
@@ -454,9 +446,6 @@ module smc_peripherals #(
 
     .avsbus_irq_periph_clk_i           (avsbus_irq),
     .avsbus_irq_smc_clk_o              (avsbus_irq_smc_clk),
-
-    .temp_interrupt_i                   (temp_interrupt_i),
-    .temp_interrupt_smc_clk_o           (temp_interrupt_smc_clk),
 
     .i2c_cg_en_smc_clk_i              (i2c_cg_en_i),
     .i2c_cg_en_periph_clk_o           (i2c_cg_en_periph_clk),
@@ -633,7 +622,7 @@ module smc_peripherals #(
 
     .test_en_i                  (test_en_i),
     .scan_rst_ni                (scan_rst_ni),
-    .clk_test_i                 (1'b0),
+    .clk_test_i                 (clk_periph_i),
 
     .cur_state_debug_o          (avsbus_cur_state_debug)
   );
@@ -1081,8 +1070,6 @@ module smc_peripherals #(
     .reg_axi_lite_resp_o        (axil_misc_resp),
 
     .lc_state_i                 (lc_state_i),
-    .ras_bank_chip_o            (ras_bank_chip_o),
-    .ras_bank_instance_o        (ras_bank_instance_o),
 
     .ndmreset_request_i         (ndmreset_request_smc_clk),
     .ndmreset_process_o         (ndmreset_process_o)
@@ -1160,11 +1147,10 @@ module smc_peripherals #(
     peripheral_interrupts_o[22]      = avsbus_irq_smc_clk;
     peripheral_interrupts_o[25:23]   = i2c_irqs_smc_clk;
     peripheral_interrupts_o[26]      = rst_ext_wdt_smc_clk; // synchronized active-high WDT reset assertion
-    peripheral_interrupts_o[27]      = temp_interrupt_smc_clk;
-    peripheral_interrupts_o[28]      = locked_field_access_interrupt;
-    peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0];                     // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
-    peripheral_interrupts_o[30]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
-    peripheral_interrupts_o[31]      = axi_hang_irq_i; // OR of the three smc_base AXI hang detectors; SW reads HANG_DET_*_CTRL to identify the master
+    peripheral_interrupts_o[27]      = locked_field_access_interrupt;
+    peripheral_interrupts_o[28]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0];                     // OR-reduced across lower half of GPIO wraps; SW reads GPIO status regs to identify source
+    peripheral_interrupts_o[29]      = |gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]; // OR-reduced across upper half of GPIO wraps; SW reads GPIO status regs to identify source
+    peripheral_interrupts_o[30]      = axi_hang_irq_i; // OR of the three smc_base AXI hang detectors; SW reads HANG_DET_*_CTRL to identify the master
   end
 
   // async assignment to top level ports

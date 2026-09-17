@@ -101,22 +101,15 @@ field is split across two RDL registers because PeakRDL requires power-of-2
 `regwidth`; all 96 bits are physically fused and mapped 1-to-1 to OTP words 0–2:
 
 * `LOCKS` (64-bit `@0x0`): slots 0–31 — two bits per field, write-lock at bit 2n, read-lock at 2n+1
-* `LOCKS_SPARE` (32-bit `@0x8`): slots 32–39 in bits [15:0]; slots 40–47 (unassigned) in bits [31:16]
+* `LOCKS_SPARE` (32-bit `@0x8`): slots 32–40 in bits [17:0]; slots 41–47 (unassigned) in bits [31:18]
 
 Firmware reads the complete 96-bit lock state as three consecutive 32-bit APB words.
-There are 40 lockable fields (slots 0–39). LOCK is not one of them: *_the 96-bit
+There are 41 lockable fields (slots 0–40). LOCK is not one of them: *_the 96-bit
 lock field has no lock-bit pair of its own_*, and no lock bit may write-lock or
 read-lock `LOCKS` or `LOCKS_SPARE`. When write-locked, the corresponding
 shadow register is not writable. When read-locked, neither software nor JTAG can
 read the corresponding shadow register or fuse field. The fuse-sensing FSM is
 _always_ able to read the fuses in order to populate the shadow registers.
-
-Per-field lock slots (v0.5.22):
-[none]
-* Slots  0–28: original fields (LC_STATE through SIP_PUBK_PQC_HASH1) — LOCKS[57:0]
-* Slots 29–31: v0.5.22 identity fuses (SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID) — LOCKS[63:58]
-* Slots 32–39: v0.5.22 spare fields (spare0–spare7) — LOCKS_SPARE[15:0]
-* Slots 40–47: unassigned — LOCKS_SPARE[31:16] (reserved for future fields)
 
 |LC_STATE |1 |32 (use only 4 bits) |set-only |true |Life-cycle state of the
 chiplet. *_LC_STATE shall never be write-locked or read-locked by the
@@ -212,20 +205,9 @@ it does not.
 ROM_CTL[5:1]: row-swap control; swaps ROM slices when set. ROM_CTL[31:6]:
 reserved.
 
-|SPI_CONFIG |19 |288 |true |true |SPI discovery has 8 configuration values
-as well as 1 enable bitfield. Each word is 32-bits in length: [0]
-SPI_CONFIG_EN Enable for each of the following 8 SPI_CONFIG field words.
-SPI_CONFIG_EN[7:0] corresponds to registers 1-8 below. When bit N is set
-in this field, then configuration register N+1 is valid in fuses and
-that value will be read from fuses and written into the specified SPI
-configuration register during the SPI controller initialization.
-SPI_CONFIG_EN[31:8] are reserved. [1] SPI_CTRL_DISCOVERY_CTRL_REG [2]
-SPI_CTRL_INIT_PHY_DQ_TIMING_REG_ADDR phy_dq_timing_reg [3]
-SPI_CTRL_INIT_PHY_DQS_TIMING_REG_ADDR phy_dqs_timing_reg [4]
-SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_ADDR phy_gate_lpbk_ctrl_reg [5]
-SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_ADDR phy_dll_slave_ctrl_reg [6]
-SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_ADDR phy_dll_master_ctrl_reg [7]
-SEP_SPI_PHY_MISC [8] INIT_RB_VALID_TIME
+|SYSCLK_FREQ_MHZ |19 |32 (11 used) |true |true |Configured sysclk PLL frequency
+in MHz (`sysclk_freq_mhz[10:0]`). Ignored when 0. Consumed by boot ROM clock
+math (PLL selection and SPI `CLKDIV` derivation).
 
 |CHIPLET_PUBK_HASH0 |20 |256 |true |true |Hash of chiplet-owner authentication
 key 0, fused. These fused chiplet-owner key hashes can be used in addition to
@@ -291,21 +273,23 @@ protection required. Lock slot 30 in LOCKS.
 Personalization input for the Key Manager identity root. Public; no read
 protection required. Lock slot 31 in LOCKS.
 
-|spare0 |33 |256 |true |true |Spare field 0 for future use (v0.5.22). Lock slot 32 in LOCKS_SPARE[1:0].
+|spare0 |33 |256 |true |true |Spare field 0 for future use.
 
-|spare1 |34 |256 |true |true |Spare field 1 for future use (v0.5.22). Lock slot 33 in LOCKS_SPARE[3:2].
+|spare1 |34 |256 |true |true |Spare field 1 for future use.
 
-|spare2 |35 |256 |true |true |Spare field 2 for future use (v0.5.22). Lock slot 34 in LOCKS_SPARE[5:4].
+|spare2 |35 |256 |true |true |Spare field 2 for future use.
 
-|spare3 |36 |256 |true |true |Spare field 3 for future use (v0.5.22). Lock slot 35 in LOCKS_SPARE[7:6].
+|spare3 |36 |256 |true |true |Spare field 3 for future use.
 
-|spare4 |37 |256 |true |true |Spare field 4 for future use (v0.5.22). Lock slot 36 in LOCKS_SPARE[9:8].
+|spare4 |37 |256 |true |true |Spare field 4 for future use.
 
-|spare5 |38 |256 |true |true |Spare field 5 for future use (v0.5.22). Lock slot 37 in LOCKS_SPARE[11:10].
+|spare5 |38 |256 |true |true |Spare field 5 for future use.
 
-|spare6 |39 |256 |true |true |Spare field 6 for future use (v0.5.22). Lock slot 38 in LOCKS_SPARE[13:12].
+|spare6 |39 |256 |true |true |Spare field 6 for future use.
 
-|spare7 |40 |256 |true |true |Spare field 7 for future use (v0.5.22). Lock slot 39 in LOCKS_SPARE[15:14].
+|spare7 |40 |256 |true |true |Spare field 7 for future use.
+
+|spare8 |41 |256 |true |true |Spare field 8 for future use.
 |=======================================================================
 
 The fuse map is exactly 8192 bits ending at `0x400` (1024 bytes, 256 × 32-bit words).
@@ -336,7 +320,7 @@ The `efuse_interface_controller` is instantiated with the `HAS_LC_STATE` paramet
 
 After sensing, the shadow register map (`sep_efuse_pkg::efuse_map_t`) is exposed to the `sep_lifecycle_ctrl` module. The lifecycle controller decodes the differentially-encoded `LC_STATE` field using `prim_diff_decode_multi` and derives feature control vectors from the `SIP_DIS` and `SYS_DIS` fields. It also generates two demotion state outputs (`lcc_demote_state_1_o`, `lcc_demote_state_2_o`) through differential encoders.
 
-The Key Manager receives a subset of the OTP data through the `km_otp_data_t` structure, which is assembled in `sep_crypto.sv`. The `life_cycle` field comes from the differentially-encoded `LC_STATE` shadow register, the `demotion_state_*` fields come from the lifecycle controller outputs (not directly from fuses), and the `chiplet_uid` field comes from the `CHIPLET_UID` shadow register. The ARBC fields (`BL1_VERSION`, `BL2_VERSION`), RMA tokens, and public key hashes are not wired into the Key Manager; they remain accessible only through the eFuse shadow register interface and are consumed by the SEP boot firmware.
+The Key Manager receives a subset of the OTP data through the `km_otp_data_t` structure, which is assembled in `sep_crypto.sv`. The `life_cycle` field comes from the differentially-encoded `LC_STATE` shadow register, the `demotion_state_*` fields come from the lifecycle controller outputs (not directly from fuses), the four secret fields (`chiplet_uid`, `sip_uid`, `sys_uid`, `class_key`) come from the corresponding shadow registers, and the three public identity fields (`sep_chiplet_id`, `sep_sip_id`, `sep_sys_id`) come from `SEP_CHIPLET_ID`, `SEP_SIP_ID`, and `SEP_SYS_ID`. The ARBC fields (`BL1_VERSION`, `BL2_VERSION`), RMA tokens, and public key hashes are not wired into the Key Manager; they remain accessible only through the eFuse shadow register interface and are consumed by the SEP boot firmware.
 
 For simulation, adopters need to provide an external eFuse macro model behind the
 shim interface. Only the generic controller and the shim interfaces are defined
@@ -401,7 +385,7 @@ _not support_ this feature and will leave this interface on the
 component unconnected or terminated. Furthermore, there is no SPI Slave
 device present in the SEP peripheral subsystem.
 
-The SEP instantiates a SPI host controller for boot. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the `sep_io_spi` boundary and drive `spi_irq_i` from it.
+The SEP instantiates a SPI host controller for boot. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the `sep_io_spi` boundary. The controller's interrupt is consumed internally: it feeds the SEP PIC via `sep_internal_interrupts` (through the `irq` field of `sep_io_spi_req_t`).
 
 Consult the
 https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host
@@ -433,6 +417,8 @@ register map is reported in <<sep-detailed-register-map>>.
 ==== SEP Reset Controller
 
 The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
+Adams Bridge is the exception: it has no software-reset bit and resets with
+`sep_reset_n`.
 
 The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
 
@@ -454,7 +440,7 @@ release an IP from reset and writes `0` to request its software reset.
 Each `SW_RESET_N` bit is a request to a per-domain sequencer. The sequencer
 isolates the domain's AXI4-Lite paths, waits for outstanding transactions to
 drain, and then asserts reset. New transactions presented while isolated
-terminate with DECERR. Isolation remains asserted for the duration of reset and
+terminate with SLVERR. Isolation remains asserted for the duration of reset and
 is released with reset when software removes the request.
 
 An accelerator reset waits for both its host CSR path and Key Manager key path

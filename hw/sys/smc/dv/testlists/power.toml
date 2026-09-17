@@ -8,7 +8,7 @@ name = "smc_sideband_protocol_smoke_test"
 module = "smc_sideband_protocol_smoke_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -16,7 +16,7 @@ name = "smc_avsbus_sanity_test"
 module = "smc_avsbus_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "project_p0", "pyuvm"]
+tags = ["ci", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -54,6 +54,14 @@ run_modes = ["smoke"]
 [[tests]]
 name = "smc_wdt_key_csr_test"
 module = "smc_wdt_key_csr_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "wdt", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_wdt_timeout_pin_test"
+module = "smc_wdt_timeout_pin_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "wdt", "pyuvm"]

@@ -167,7 +167,7 @@ class SepHtWatermark(SepAxiRegDriver):
 
 
 def _selftest() -> None:
-    """SUPPORTED and SEL_NAMES must still match enum WATERMARK_TEST in the RDL."""
+    """SUPPORTED and SEL_NAMES must match enum WATERMARK_TEST in the RDL."""
     rdl = _rdl_watermark_modes()
     assert rdl == {name: sel for sel, name in SEL_NAMES.items()}, (
         f"HT_WATERMARK_NUM selector drift: RDL {rdl} vs seq {SEL_NAMES}"

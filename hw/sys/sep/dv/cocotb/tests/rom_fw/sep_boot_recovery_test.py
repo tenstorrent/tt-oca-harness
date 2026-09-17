@@ -59,7 +59,7 @@ _SMC_MANIFEST_SRC = "MANIFEST_SRC=0x40061000"
 _MANIFEST_OK = "MANIFEST_OK"
 # Printed by BL1 after the handoff and by nothing in the ROM, so it is the
 # transfer-of-control evidence the procedure asks for ("BL1 reached"). The bare
-# string "BL1" is deliberately NOT used: the ROM itself prints BL1_COPIED and
+# string "BL1" is not the marker: the ROM itself prints BL1_COPIED and
 # BL1_JUMP=, so a substring match on it would be satisfied without any handoff.
 # The scoreboard's fw_done && fw_pass gate is the independent second half.
 _BL1_MARKERS = ("FUSE_CHK",)
@@ -93,7 +93,7 @@ class sep_boot_recovery_test(sep_rom_ot_dma_boot_test):
     ) + _SPI_INIT_MARKERS
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
-        # The flash is left bootable on purpose; see the module docstring. This
+        # The flash is left bootable; see the module docstring. This
         # hook only records that, and self-checks the strap word.
         assert (_STRAPS_LO_RECOVERY >> _BOOT_RECOVERY_BIT_LO) & 1, (
             f"the combined strap word (0x{_STRAPS_LO_RECOVERY:08x}) does not set "

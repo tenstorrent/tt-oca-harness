@@ -10,7 +10,7 @@ module = { cocotb = "smc_register_sanity_test", uvm = "smc_register_sanity_test"
 seed = 1
 timeout_sec = 1800
 tags = [
-    "smoke", "ci", "axil", "project_p0",
+    "smoke", "ci", "axil", "functional",
     "pyuvm"
 ]
 run_modes = ["smoke"]
@@ -21,7 +21,7 @@ module = "smc_default_reg_rd_test"
 seed = 1
 timeout_sec = 1800
 tags = [
-    "smoke", "ci", "axil", "canonical",
+    "ci", "axil", "canonical",
     "pyuvm"
 ]
 run_modes = ["smoke"]
@@ -32,6 +32,14 @@ module = "smc_register_boundary_depth_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "axil", "depth_reg", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_rdl_field_sweep_test"
+module = "smc_rdl_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil", "pyuvm"]
 run_modes = ["smoke"]
 
 [[groups]]

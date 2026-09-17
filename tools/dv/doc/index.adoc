@@ -17,8 +17,7 @@ into static reports:
 * `tools/dv/run_dashboard.py` collects completed run results, renders reports,
   aggregates history, and publishes static output.
 
-The guide documents behavior implemented in the current source tree. Features
-described as roadmap items are not available unless explicitly stated.
+The guide documents the behavior of the tools in this source tree.
 
 ifdef::backend-html5[]
 == Building This Guide

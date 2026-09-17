@@ -31,9 +31,9 @@
 ///
 /// ## Response
 ///
-/// If the `TerminateTransaction` parameter is set to `1'b1`, the module will return response errors
-/// in case there is an incoming transaction while the module isolates.  The data returned on the
-/// bus is `1501A7ED` (hexspeak for isolated).
+/// If the `TerminateTransaction` parameter is set to `1'b1`, the module will return `SLVERR`
+/// responses for incoming transactions while the module isolates.  The data returned on the bus is
+/// `1501A7ED` (hexspeak for isolated).
 ///
 /// If `TerminateTransaction` is set to `1'b0`, the transaction will block indefinitely until the
 /// module is de-isolated again.
@@ -158,7 +158,7 @@ module axi_isolate #(
       .AxiIdWidth  ( AxiIdWidth           ),
       .axi_req_t   ( axi_req_t            ),
       .axi_resp_t  ( axi_resp_t           ),
-      .Resp        ( axi_pkg::RESP_DECERR ),
+      .Resp        ( axi_pkg::RESP_SLVERR ),
       .RespData    ( 'h1501A7ED           ),
       .ATOPs       ( AtopSupport          ),
       .MaxTrans    ( 1                    )

@@ -7,7 +7,8 @@ point: a manifest correct in every other respect -- right magic, length, hash, k
 slot, key digest and version -- must still fail authentication. A larger corruption
 would be a weaker test, because something else would also catch it.
 
-THE MECHANISM IS THE REFERENCE'S OWN. Grendel makes no manifest modification at all
+THE MECHANISM IS THE REFERENCE'S OWN. The reference makes no manifest modification
+at all
 for this scenario (``manifest_modifications`` is empty); it packs a clean image and
 then post-processes the packed ``.spi_preload`` with
 ``tamper_spi_preload_signature(which="primary", mode="flip")``, which is

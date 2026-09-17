@@ -18,7 +18,7 @@
  *   1. Initialize OCTS PRIMARY mode
  *   2. Set timer preset value and control registers
  *   3. Start timer (generates sync_load and credit pulses)
- *   4. Sample counters at regular intervals (20 samples @ 10k cycles)
+ *   4. Sample counters at regular intervals (NUM_SAMPLES samples @ SAMPLE_INTERVAL cycles)
  *   5. Monitor credit expiration events
  *   6. Calculate maximum deviation
  *   7. Report results via scratch registers
@@ -34,7 +34,7 @@
 #define WAIT_CYCLES 50
 #define MAX_PRESET_VALUE 0x10000ULL
 #define SAMPLE_INTERVAL 10000 /* Sample every 10k cycles */
-#define NUM_SAMPLES 10        /* 10 samples total (reduced from 20 for faster execution) */
+#define NUM_SAMPLES 10        /* samples taken SAMPLE_INTERVAL cycles apart */
 #define SAMPLE_TOTAL_TIME (SAMPLE_INTERVAL * NUM_SAMPLES) /* 100k cycles ~ 1ms */
 
 /* System Timer register definitions are provided by smc_defines.h -> smc_top_regs.h */
@@ -252,14 +252,9 @@ int main(void) {
         simputshex32("  Count: ", credit_expired_count);
     }
 
-    /* Calculate maximum deviation (simplified: use count range as proxy)
-     * In real hardware, this would compare PRIMARY and SECONDARY counter values
-     */
+    /* Deviation estimate: low byte of the count range over the sampling window. */
     uint64_t count_range = max_count - count_samples[0];
     uint32_t deviation_estimate = (count_range > 0) ? (uint32_t)(count_range & 0xFF) : 0;
-
-    /* Phase: Final verification - all critical tests passed during sampling */
-    /* No additional verification needed - sampling phase verified monotonicity */
 
     /* Report results via scratch registers */
     write_scratch(2, credit_expired_count);               /* Credit expiration count */

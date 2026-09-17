@@ -176,10 +176,9 @@ OCCP_SRAM_BASE = 0xC006_6400
 # firmware reads scratch 5-8.
 #
 # In normal operation the TARGET drives this pad from set_gpio_status() on the
-# success path of its OCCP init, by pad number rather than via the
-# SMC_STATUS_GPIO macro, which is why that macro looks unused. The dual top
-# resolves the undriven value low, so a target that never asserts readiness
-# leaves the controller waiting, as it would in silicon.
+# success path of its OCCP init. The dual top resolves the undriven value low,
+# so a target that never asserts readiness leaves the controller waiting, as it
+# would in silicon.
 CTRL_TARGET_READY_PAD = 58
 
 # BOOT_I2C, SmcStrapBit in fw/include/smc_strap.h. The strap index IS the GPIO
@@ -216,8 +215,8 @@ OCCP_SRAM_UPPER = 0xC016_0000
 # is supposed to read it. The image's symbol map puts the top of its stack at
 # 0xC0070E30, rounded up here to the next 4 KB.
 #
-# The reference environment stages from the bottom of the full window instead,
-# overlapping that region. Deliberate deviation, not an oversight.
+# The reference environment stages from the bottom of the full window,
+# overlapping that region.
 BFM_STAGING_FLOOR = 0xC007_1000
 
 

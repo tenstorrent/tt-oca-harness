@@ -3,229 +3,10 @@
 
 schema_version = 1
 
-# SMU Phase-1 (SEP=0) — DTP / JTAG stream.
-# Executable contract: enrolled groups in this file / testlists/all.toml
+# The two `--dut smu_block` leaves; testlists/all.toml records why each runs on
+# this DUT.
+# Executable contract: the enrolled groups in testlists/all.toml
 
-[[tests]]
-name = "smu_dtp_jtag_smoke_test"
-# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
-module = { cocotb = "smu_dtp_jtag_smoke_test", uvm = "smu_dtp_jtag_smoke_test" }
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "smoke", "phase1"]
-run_modes = ["dtp", "smoke"]
-
-[[tests]]
-name = "smu_dft_dtp_boot_stall_test"
-module = "smu_dft_dtp_boot_stall_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "boot_stall", "phase1"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_dft_gpio_boot_stall_test"
-module = "smu_dft_gpio_boot_stall_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "boot_stall", "phase1"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_clock_stop_coordination_test"
-module = "smu_clock_stop_coordination_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "clock_stop", "phase1"]
-run_modes = ["dtp"]
-
-# Product-pin CTM remap (no Force); the full four-phase flow is not covered.
-[[tests]]
-name = "smu_xtrig_ctm_remap_test"
-module = "smu_xtrig_ctm_remap_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "xtrig", "phase1"]
-run_modes = ["dtp"]
-
-# SMU_ALL_007: RST-PRIMARY.S1/S2 + CTM.S2/S3 on bare tb_top SEP=0.
-# Distinct from wrapper.toml smu_sep_smoke_test (SEP=1 / SEP-IFU blocked).
-[[tests]]
-name = "smu_sep_smoke_test"
-module = "smu_sep_smoke_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "reset", "xtrig", "phase1", "smu_all_007"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_jtag_reset_override_test"
-module = "smu_jtag_reset_override_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "reset", "phase1"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_boot_stall_jtag_cold_reset_matrix_test"
-module = "smu_boot_stall_jtag_cold_reset_matrix_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "boot_stall", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I5a: IC_RESET SMC multi-domain mutual exclusion
-[[tests]]
-name = "smu_ic_reset_smc_multi_domain_test"
-module = "smu_ic_reset_smc_multi_domain_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "reset", "phase2"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_ic_reset_dual_domain_illegal_test"
-module = "smu_ic_reset_dual_domain_illegal_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "ic_reset", "phase3"]
-run_modes = ["dtp"]
-
-# P3-H5b: boot-stall sticky vs IC_RESET priority
-[[tests]]
-name = "smu_boot_stall_vs_ic_reset_priority_test"
-module = "smu_boot_stall_vs_ic_reset_priority_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "boot_stall", "phase3"]
-run_modes = ["dtp"]
-
-# Pin-only illegal CTM corners (no Force ack-before-req).
-[[tests]]
-name = "smu_xtrig_ctm_illegal_phase_test"
-module = "smu_xtrig_ctm_illegal_phase_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "xtrig", "phase3"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_ic_reset_ss_domain_matrix_test"
-module = "smu_ic_reset_ss_domain_matrix_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "ic_reset", "phase4"]
-run_modes = ["dtp"]
-
-# P4: EXTEST BSR scan loopback
-[[tests]]
-name = "smu_dtp_bsr_extest_loopback_test"
-module = "smu_dtp_bsr_extest_loopback_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "bsr", "phase4"]
-run_modes = ["dtp"]
-
-# Tier C: IO STAP host TCK observe during PTAP scans
-[[tests]]
-name = "smu_dtp_io_stap_smoke_test"
-module = "smu_dtp_io_stap_smoke_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "stap", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Tier C: SMC STAP TRST + TAP_3DCR select + TDI observe
-[[tests]]
-name = "smu_dtp_smc_stap_smoke_test"
-module = "smu_dtp_smc_stap_smoke_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "stap", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Tier C: BSR EXTEST/SAMPLE_PRELOAD .select (not TCK)
-[[tests]]
-name = "smu_dtp_bsr_ijtag_scan_test"
-module = "smu_dtp_bsr_ijtag_scan_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "bsr", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Tier C: SMC OTP JTAG2AXI MAP BIRA R/W (SEP=0 feat_ctrl tied open; no Force)
-[[tests]]
-name = "smu_dtp_otp_smc_map_rw_test"
-module = "smu_dtp_otp_smc_map_rw_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Tier C: SMC OTP series NO_INCR R/W + MAP-CTRL decode-hole SLVERR (SEP=0; no Force)
-[[tests]]
-name = "smu_dtp_otp_smc_series_error_test"
-module = "smu_dtp_otp_smc_series_error_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: SMC fabric JTAG2AXI smoke (SEP=0 feat_ctrl tied open; no Force)
-[[tests]]
-name = "smu_smc_dtp_jtag2axi_smoke_test"
-module = "smu_smc_dtp_jtag2axi_smoke_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: SMC fabric J2A unmapped DECERR + VERSION_LO recovery (SEP=0; no Force)
-[[tests]]
-name = "smu_dtp_jtag2axi_smc_error_path_test"
-module = "smu_dtp_jtag2axi_smc_error_path_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: CPU_CTRL SCRATCH_15 two-pattern J2A (SEP=0; no Force)
-[[tests]]
-name = "smu_dtp_jtag_smc_cpu_register_test"
-module = "smu_dtp_jtag_smc_cpu_register_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: SMC fabric J2A WSTRB-width + partial merge on SPM (SEP=0; no Force)
-[[tests]]
-name = "smu_dtp_jtag2axi_smc_rw_matrix_test"
-module = "smu_dtp_jtag2axi_smc_rw_matrix_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: SMC fabric J2A partial WSTRB + neighbor isolation on SPM (SEP=0; no Force)
-[[tests]]
-name = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
-module = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: DECERR then immediate VERSION_LO SUCCESS (SEP=0; no Force)
-[[tests]]
-name = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
-module = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: OTP +0x80 BUSY abort via IR+TRST; fabric VERSION_LO recovers (SEP=0; no Force)
 [[tests]]
 name = "smu_dtp_jtag2axi_abort_mid_op_test"
 module = "smu_dtp_jtag2axi_abort_mid_op_test"
@@ -234,48 +15,18 @@ timeout_sec = 1800
 tags = ["dtp", "jtag2axi", "tier_c", "depth"]
 run_modes = ["dtp"]
 
-# Depth: J2A vs SMN concurrent SCRATCH write; coherent winner (SEP=0; no Force)
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class
+# (+UVM_TESTNAME). The SV-UVM realization's harness is the `UVM` shape of
+# tb/tb_top.sv, which is this DUT, and this is the only scenario bound to it
+# (uvm/tests/ carries smu_dtp_jtag_smoke_test.svh and its base); this binding
+# map is what `--dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test`
+# resolves through. The cocotb side of the same scenario also runs on
+# `--dut smu`, where it is enrolled in dtp_under_smu; that copy is the one the
+# regression scores.
 [[tests]]
-name = "smu_jtag2axi_vs_smn_same_csr_race_test"
-module = "smu_jtag2axi_vs_smn_same_csr_race_test"
+name = "smu_dtp_jtag_smoke_test"
+module = { cocotb = "smu_dtp_jtag_smoke_test", uvm = "smu_dtp_jtag_smoke_test" }
 seed = 1
 timeout_sec = 1800
-tags = ["dtp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: OTP vs fabric MAP BIRA last-writer (SEP=0; no Force; abs BIRA)
-[[tests]]
-name = "smu_otp_vs_fabric_map_race_test"
-module = "smu_otp_vs_fabric_map_race_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: OTP MAP RESERVED walk + fabric/shadow + isolation (SEP=0; no Force)
-[[tests]]
-name = "smu_dtp_otp_smc_complete_rw_test"
-module = "smu_dtp_otp_smc_complete_rw_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "jtag2axi", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: PTAP OTP CAPS + SMC SINGLE_OP echo + SEP IR BYPASS (SEP=0; no Force)
-[[tests]]
-name = "smu_dtp_ptap_otp_instr_scan_test"
-module = "smu_dtp_ptap_otp_instr_scan_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "otp", "jtag", "tier_c", "depth"]
-run_modes = ["dtp"]
-
-# Depth: PTAP IDCODE+BYPASS at 1/5/10/20 MHz TCK (SEP=0; no Force)
-[[tests]]
-name = "smu_jtag_chain_enhanced_test"
-module = "smu_jtag_chain_enhanced_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "jtag", "tier_c", "depth"]
-run_modes = ["dtp"]
-
+tags = ["dtp", "smoke"]
+run_modes = ["dtp", "smoke"]

@@ -10,26 +10,21 @@ and the verdict it must produce.
 WHY THE RECOVERY IS THE RESULT, NOT A SIDE EFFECT. ``manifest_crypto_validate`` is
 called from inside the per-slot attempt, so a cryptographic rejection returns into
 ``rom_manifest_boot``'s retry loop rather than ending the boot
-(``manifest_load.c``). Grendel treats these primary-side rejections as
+(``manifest_load.c``). The reference treats these primary-side rejections as
 warnings and expects a completed boot from the backup, so a port that ended
 terminally would be testing a different requirement.
 
-A PRECONDITION THE ``SIG_VALID`` COUNT ENCODES, AND WHICH IS NOT PARAMETERISED.
-:meth:`check_transport` requires ``SIG_VALID`` exactly once, which silently assumes
-that every member's PRIMARY is refused at or before ``validate_signature``. That
-holds for all members today -- their defects are the manifest magic, the signature
-type, the signature value, the key selection, the key index, key revocation and the
-security version, all of which return before ``manifest_crypto.c``. It would NOT
-hold for a member whose primary defect sits DOWNSTREAM of the signature: a payload
-hash mismatch (``manifest_crypto.c``), a decryption failure  or a TOC
-error (``manifest_load.c``). Such a primary legitimately prints ``SIG_VALID``,
-the count becomes 2, and this base would fail it for the wrong reason. Anyone adding
-that shape must parameterise this the way ``primary_expected_rsa_starts`` is
-parameterised -- ``primary_expected_sig_valids: int = 0`` and
-``assert n_sig == 1 + primary_expected_sig_valids`` -- rather than relax the count.
-Recorded here rather than done now because changing it is an executable edit to a
-base with nine dependants and would invalidate their current evidence for no present
-gain.
+A PRECONDITION THE ``SIG_VALID`` COUNT ENCODES. :meth:`check_transport` requires
+``SIG_VALID`` exactly once, which assumes every member's PRIMARY is refused at or
+before ``validate_signature`` -- the manifest magic, the signature type, the
+signature value, the key selection, the key index, key revocation and the security
+version all return before ``manifest_crypto.c`` prints it. A member whose primary
+defect sits DOWNSTREAM of the signature -- a payload hash mismatch
+(``manifest_crypto.c``), a decryption failure or a TOC error (``manifest_load.c``)
+-- prints ``SIG_VALID``, so such a member must parameterise the count
+the way ``primary_expected_rsa_starts`` is parameterised
+(``primary_expected_sig_valids: int = 0`` and
+``assert n_sig == 1 + primary_expected_sig_valids``) rather than relax it.
 
 THE BACKUP MUST BE PROVABLY VALID, and this base asserts that rather than assuming
 it. After the subclass has planted its primary defect, two checks run over the

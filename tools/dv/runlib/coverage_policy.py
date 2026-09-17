@@ -96,6 +96,7 @@ class HoleRule:
     issues: list[str]
     expected_matches: int
     selectors: list[dict[str, Any]]
+    expired: bool = False
 
 
 @dataclass
@@ -259,12 +260,11 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
         for field_name, date_value in (("date", date), ("expires", expires)):
             if date_value and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_value):
                 raise ConfigError(f"{where}.{field_name} must use YYYY-MM-DD")
-        if (
+        expired = bool(
             status == "accepted"
             and expires
             and calendar_date.fromisoformat(expires) < calendar_date.today()
-        ):
-            raise ConfigError(f"{where}: accepted waiver/exclusion expired on {expires}")
+        )
         issues = _string_list(table.get("issues"), f"{where}.issues")
         _validate_issue_urls(issues, f"{where}.issues")
         if status == "open" and disposition in ACTIONABLE_DISPOSITIONS and not issues:
@@ -307,6 +307,7 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
                 issues=issues,
                 expected_matches=expected,
                 selectors=selectors,
+                expired=expired,
             )
         )
     return holes
@@ -365,6 +366,16 @@ def native_policy_manifest(policy: CoveragePolicy | None) -> list[dict[str, Any]
     ]
 
 
+def expired_holes(policy: CoveragePolicy | None) -> list[HoleRule]:
+    if policy is None:
+        return []
+    return [rule for rule in policy.holes if rule.expired]
+
+
+def lapsed_warning(rule: HoleRule) -> str:
+    return f"{rule.id} expired on {rule.expires}; treated as open"
+
+
 def _selector_matches(
     observation: CoverageObservation,
     selector: dict[str, Any],
@@ -400,6 +411,7 @@ def apply_coverage_policy(
         return details
 
     claimed: dict[str, str] = {}
+    lapsed: list[str] = []
     for rule in policy.holes:
         matches = [
             observation
@@ -411,8 +423,11 @@ def apply_coverage_policy(
                 f"{policy.path}: hole `{rule.id}` matched {len(matches)} observation(s), "
                 f"expected {rule.expected_matches}"
             )
+        # An accepted waiver past its `expires` date grades as open; the observation keeps
+        # the rule's identity and disposition.
+        status = "open" if rule.expired else rule.status
         if (
-            rule.status == "accepted"
+            status == "accepted"
             and rule.disposition in {"waive", "exclude_scope"}
             and any(observation.covered for observation in matches)
         ):
@@ -429,18 +444,23 @@ def apply_coverage_policy(
             observation.policy_id = rule.id
             observation.category = rule.category
             observation.disposition = rule.disposition
-            observation.status = rule.status
+            observation.status = status
             observation.confidence = rule.confidence
             observation.rationale = rule.rationale
             observation.owner = rule.owner
             observation.reviewer = rule.reviewer
             observation.issues = list(rule.issues)
+        if rule.expired:
+            lapsed.append(lapsed_warning(rule))
         application["matched"].append(
             {
                 "policy_id": rule.id,
                 "observation_ids": [observation.id for observation in matches],
             }
         )
+    if lapsed:
+        application["warnings"] = [*application["warnings"], *lapsed]
+        details.warnings = [*details.warnings, *lapsed]
 
     details.policy_fingerprint = policy.sha256
     details.scope_fingerprint = hashlib.sha256(

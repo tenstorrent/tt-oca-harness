@@ -15,17 +15,15 @@ non-demoted and locked, additionally locks DEMOTE_2, and boots. The demotion fla
 being SET rather than clear is what makes this a test of the override rather than of
 the default.
 
-**THIS IS ONE OF FIVE TRACKER ITEMS THAT SHARE THIS OUTCOME.** ``+AUTH_FLAG_0``,
+**THIS IS ONE OF FIVE STIMULI THAT SHARE THIS OUTCOME.** ``+AUTH_FLAG_0``,
 ``+UNAUTH_FLAG_0`` and ``+SET_SELECTOR_BIT_17`` are all unobservable at PROD_END for
 the same structural reason, so ``no_flag_prod_end``, ``no_flag_prod_end_sel_bit_set``,
 ``auth_flag_0_prod_end``, ``unauth_flag_0_prod_end`` and ``unauth_flag_30_prod_end``
-are five stimuli on one observable. This item is the one the tracker assigned to this
-batch; the other four are covered-by-O1 and batch R4 should report them that way with
-the base cited, not as four more coverage points.
+are five stimuli on one observable. The other four are covered-by-O1, not four more
+coverage points.
 
-FIRST PROD_END BOOT IN THIS TESTLIST. Before this testcase every rom_fw eFuse preload
-selected TEST_DEV (raw 0x0) or PROD (raw 0x1); nothing exercised raw 0x8. That makes
-three ROM paths newly covered, not one: the demotion short-circuit above,
+PROD_END BOOT. Raw LC 0x8 exercises three ROM paths, not one: the demotion
+short-circuit above,
 ``lc_state_enforces_secure_boot`` returning true for PROD_END
 (``bootrom/prod/src/lifecycle.c:69-73``) so the crypto chain runs on the lifecycle's
 authority, and ``lc_state_to_manifest_bit`` mapping PROD_END to
@@ -43,11 +41,11 @@ and the run would prove nothing about which one was decoded.
 Evidence, on both channels:
 
   * ``LC=PROD_END`` (``lifecycle.c``) -- the ROM's own decode of the fuse.
-    Note ``LC=PROD`` is a strict PREFIX of this string, so it is deliberately NOT in
-    the forbidden list; the discrimination in the other direction is the PROD
+    Note ``LC=PROD`` is a strict PREFIX of this string, so it is not in the
+    forbidden list; the discrimination in the other direction is the PROD
     member's job and it forbids ``LC=PROD_END``;
-  * ``DEMOTE: PROD_END lock`` (``rom_main.c``) and ``DEMOTE_LOCKED``
-, each exactly once and after ``MANIFEST_OK``; and **every other [C15]
+  * ``DEMOTE: PROD_END lock`` (``rom_main.c``) and ``DEMOTE_LOCKED``, each
+    exactly once and after ``MANIFEST_OK``; and **every other [C15]
     string forbidden** -- in particular ``BL1_DEMOTE=`` and ``BL2_DEMOTE_DEC=``,
     whose absence is the direct observable that the manifest inputs were never read;
   * DEMOTE_1 = (demote 0, lock 1) and **DEMOTE_2 = (demote 0, lock 1)**. DEMOTE_2 is
@@ -165,7 +163,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
         assert sel_bit == 0 and bl2 == 0, (
             f"primary selector_bits[{mm.SELECTOR_BIT_BL1_DEMOTION}]={sel_bit} and "
             f"flag_args[{mm.FLAG_ARGS_BIT_BL2_DEMOTION}]={bl2}; both must be 0 so "
-            f"this run drives the AUTH flag alone, as the tracker row names it"
+            f"this run drives the AUTH flag alone"
         )
         lcs = mm.life_cycle_states(buf, "primary")
         assert lcs == _LC_STATES_PROD_END_ONLY, (

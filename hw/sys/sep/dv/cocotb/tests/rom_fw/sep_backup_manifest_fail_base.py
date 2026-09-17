@@ -185,9 +185,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         # `MANIFEST_SRC=` only says which address the ROM intended to read; the
         # BFM's transaction record says which address the device actually served
         # and in what order, and the successful half of boot_flash_reinit()
-        # (manifest_load.c) prints nothing at all. Two attribute stores, read
-        # by nobody else -- no existing subclass references either name, so this
-        # cannot change any established behaviour.
+        # (manifest_load.c) prints nothing at all.
         self._flash = flash
         self._image_len = len(img)
         flash.preload(bytes(self.mutate_flash_image(img)))
@@ -214,8 +212,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
                     status_seq.append(status)
                 if self.rd(dut.cpu_trace_valid_o):
                     retired += 1
-                # Completion comes from the verdict word in cold_scratch[0]
-                # (dv/docs/rom_verdict_scratch0_migration.md).
+                # Completion comes from the verdict word in cold_scratch[0].
                 verdict = decode_verdict(probe)
                 if verdict is not None:
                     fw_done = True
@@ -249,8 +246,8 @@ class sep_backup_manifest_fail_base(sep_base_test):
             # Three things must hold in the window, and none of them depends on
             # where the spin loop happens to sit: the status word must not move on,
             # the console must not produce a new line, and no boot-progress marker
-            # may appear. Instruction retirement is deliberately NOT used as the
-            # signal -- the wfi loop keeps retiring, so volume proves nothing.
+            # may appear. Instruction retirement is not the signal: the wfi loop
+            # keeps retiring, so volume proves nothing.
             if fw_done:
                 post_status_moved = False
                 console_len_at_done = len(console)
@@ -272,10 +269,9 @@ class sep_backup_manifest_fail_base(sep_base_test):
     # --- checks ------------------------------------------------------------
     def _check_quiesced(self, post_status_moved, post_console, terminal_status) -> None:
         """CHK-HANG: the ROM stopped, rather than reporting and continuing."""
-        # The window now opens at the cold_scratch[0] verdict write rather than at
-        # the mailbox FAIL that follows it, so it starts a few cycles EARLIER and
-        # covers strictly more of the post-error interval. Same check, slightly
-        # wider reach.
+        # The window opens at the cold_scratch[0] verdict write, a few cycles before
+        # the mailbox FAIL that follows it, so it covers the whole post-error
+        # interval.
         assert not post_status_moved, (
             f"cold_scratch[1] moved on from 0x{terminal_status:08x} within "
             f"{_QUIESCE_CYCLES} cycles of the terminal verdict: the ROM reported "
@@ -411,7 +407,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         )
         assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
         log.info(
-            "CHK-TERMINAL: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
+            "CHK-TERMINAL PASS: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
             crypto_fail,
             expected_status,
         )

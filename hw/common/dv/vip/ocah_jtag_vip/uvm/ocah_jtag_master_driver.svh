@@ -83,6 +83,11 @@ class ocah_jtag_master_driver extends uvm_driver #(ocah_jtag_item);
     #(2 * cfg.tck_half_period);
   endtask
 
+  virtual task do_trst_level(ocah_jtag_item it);
+    cfg.vif.trst_n <= it.trst_asserted ? 1'b0 : 1'b1;
+    repeat (it.trst_tck_cycles) step(1'b1);
+  endtask
+
   task run_phase(uvm_phase phase);
     // Idle pin values before the first item.
     cfg.vif.tck    <= 1'b0;
@@ -96,6 +101,7 @@ class ocah_jtag_master_driver extends uvm_driver #(ocah_jtag_item);
         OCAH_JTAG_TAP_RESET:                 do_tap_reset();
         OCAH_JTAG_IR_SCAN, OCAH_JTAG_DR_SCAN: do_scan(req);
         OCAH_JTAG_RAW_TMS:                   do_raw(req);
+        OCAH_JTAG_TRST_LEVEL:                do_trst_level(req);
         default: `uvm_error(get_type_name(),
                     $sformatf("unsupported op %s", req.op.name()))
       endcase

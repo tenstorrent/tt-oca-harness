@@ -22,8 +22,8 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_lite_channel_skew_test"
-# cocotb-only: the SV-UVM master's skew knobs are exercised by its own flow.
-module = { cocotb = "ocah_axi_lite_channel_skew_test" }
+# The SV-UVM master's skew knobs are exercised by its own flow.
+module = { cocotb = "ocah_axi_lite_channel_skew_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_lite"]
@@ -31,7 +31,7 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_lite_ready_hold_test"
-module = { cocotb = "ocah_axi_lite_ready_hold_test" }
+module = { cocotb = "ocah_axi_lite_ready_hold_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_lite"]
@@ -39,7 +39,24 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_lite_partial_strobe_test"
-module = { cocotb = "ocah_axi_lite_partial_strobe_test" }
+module = { cocotb = "ocah_axi_lite_partial_strobe_test", uvm = false }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_lite"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_axi_lite_read_pair_hold_test"
+# The SV-UVM master's paired operations are exercised by its own flow.
+module = { cocotb = "ocah_axi_lite_read_pair_hold_test", uvm = false }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_lite"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_axi_lite_write_pair_skew_test"
+module = { cocotb = "ocah_axi_lite_write_pair_skew_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_lite"]
@@ -47,8 +64,8 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_lite_geometry_test"
-# cocotb-only: the SV-UVM layer binds geometry through ocah_axi_config's masks.
-module = { cocotb = "ocah_axi_lite_geometry_test" }
+# The SV-UVM layer binds geometry through ocah_axi_config's masks.
+module = { cocotb = "ocah_axi_lite_geometry_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_geometry"]
@@ -56,10 +73,26 @@ run_modes = ["smoke"]
 
 [[tests]]
 name = "ocah_axi_geometry_test"
-module = { cocotb = "ocah_axi_geometry_test" }
+module = { cocotb = "ocah_axi_geometry_test", uvm = false }
 seed = 1
 timeout_sec = 600
 tags = ["smoke", "ci", "axi_geometry"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_axi_timeout_test"
+module = { cocotb = "ocah_axi_timeout_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_timeout"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_axi_struct_bridge_test"
+module = { cocotb = "ocah_axi_struct_bridge_test", uvm = "ocah_axi_struct_bridge_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_bridge"]
 run_modes = ["smoke"]
 
 [[groups]]
@@ -70,8 +103,40 @@ tests = [
     "ocah_axi_lite_channel_skew_test",
     "ocah_axi_lite_ready_hold_test",
     "ocah_axi_lite_partial_strobe_test",
+    "ocah_axi_lite_read_pair_hold_test",
+    "ocah_axi_lite_write_pair_skew_test",
     "ocah_axi_lite_geometry_test",
     "ocah_axi_geometry_test",
+    "ocah_axi_timeout_test",
+    "ocah_axi_struct_bridge_test",
+]
+
+[[groups]]
+name = "all"
+tests = [
+    "ocah_axi_id_match_test",
+    "ocah_axi_id_mismatch_test",
+    "ocah_axi_lite_channel_skew_test",
+    "ocah_axi_lite_ready_hold_test",
+    "ocah_axi_lite_partial_strobe_test",
+    "ocah_axi_lite_read_pair_hold_test",
+    "ocah_axi_lite_write_pair_skew_test",
+    "ocah_axi_lite_geometry_test",
+    "ocah_axi_geometry_test",
+    "ocah_axi_timeout_test",
+    "ocah_axi_struct_bridge_test",
+]
+
+[[groups]]
+name = "axi_timeout"
+tests = [
+    "ocah_axi_timeout_test",
+]
+
+[[groups]]
+name = "axi_bridge"
+tests = [
+    "ocah_axi_struct_bridge_test",
 ]
 
 [[groups]]
@@ -87,4 +152,6 @@ tests = [
     "ocah_axi_lite_channel_skew_test",
     "ocah_axi_lite_ready_hold_test",
     "ocah_axi_lite_partial_strobe_test",
+    "ocah_axi_lite_read_pair_hold_test",
+    "ocah_axi_lite_write_pair_skew_test",
 ]

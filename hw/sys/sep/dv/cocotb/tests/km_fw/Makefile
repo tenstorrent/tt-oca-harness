@@ -7,20 +7,60 @@ PYTHON ?= python3
 
 OUT_DIR := ..
 ROMS := km_rom km_rom_entropy km_rom_coexist km_rom_vault km_rom_crc \
-        km_rom_kpv_scrambler
+        km_rom_kpv_scrambler km_rom_iso
 
 # The KM PicoRV32 is built with ENABLE_REGS_16_31=0, so an image that runs on
 # it must be assembled for RV32E and may use x0-x15 only. Images that only feed
 # the tb keep the wider base ISA.
-RV32E_ROMS := km_rom_vault km_rom_crc km_rom_kpv_scrambler
+RV32E_ROMS := km_rom_vault km_rom_crc km_rom_kpv_scrambler km_rom_iso
 ARCH_FLAGS = -march=rv32i -mabi=ilp32
 $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(RV32E_ROMS))): \
         ARCH_FLAGS := -march=rv32e -mabi=ilp32e
 PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
-.PHONY: all clean rom_main
+.PHONY: all clean rom_main verify
 
 all: $(PARHEX)
+
+# verify: the committed .parhex blobs still match what their .S assembles to.
+#
+# These images are committed artifacts, and no run_dv stage rebuilds them --
+# a test boots the blob through `+km_rom_hex=<name>.parhex`, not through a
+# `firmware = {...}` build declaration. So an edit to a .S reaches no
+# simulation until somebody runs `make`, and the run that follows quietly
+# executes the OLD image while a reader sees the NEW source.
+#
+# NOTHING RUNS THIS AUTOMATICALLY. No stage, testlist or CI job invokes it, so
+# it does not by itself prevent the drift above -- it only lets you detect it.
+# Run it after editing any .S, and commit the regenerated blob with the source
+# change. It needs the RISC-V toolchain on PATH; without it every image reports BUILD FAILED, which is why a failed
+# build is a distinct token from a mismatch.
+#
+# It rebuilds into a scratch OUT_DIR and never writes the tracked blob: the
+# recipe redirects gen_parhex.py output at its target, so building at the
+# tracked path would truncate the committed artifact before python ran, and a
+# reported mismatch would leave the rebuild in the tree -- self-clearing on the
+# next run and booting an uncommitted image in the meantime.
+verify:
+	@rc=0; tmp=$$(mktemp -d); trap 'rm -rf $$tmp' EXIT; \
+	for r in $(ROMS); do \
+	    if [ ! -f $(OUT_DIR)/$$r.parhex ]; then \
+	        echo "MISSING  $$r.parhex is not committed" >&2; rc=1; continue; \
+	    fi; \
+	    if ! $(MAKE) --no-print-directory OUT_DIR=$$tmp $$tmp/$$r.parhex \
+	            >$$tmp/$$r.log 2>&1; then \
+	        echo "BUILD FAILED  $$r ($$(tail -n1 $$tmp/$$r.log))" >&2; rc=1; continue; \
+	    fi; \
+	    if cmp -s $$tmp/$$r.parhex $(OUT_DIR)/$$r.parhex; then \
+	        echo "ok       $$r.parhex"; \
+	    else \
+	        echo "STALE    $$r.parhex does not match $$r.S -- rebuild with" \
+	             "\`make $$r.parhex\` and commit it" >&2; \
+	        rc=1; \
+	    fi; \
+	done; \
+	if [ $$rc -ne 0 ]; then echo "verify: FAILED" >&2; else echo "verify: all $(words $(ROMS)) blobs match their source"; fi; \
+	exit $$rc
 
 # rom_main: the real KM production ROM, built from tracked KM firmware source.
 # PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0 disable the boot/unrecoverable-fault SRAM
@@ -41,9 +81,8 @@ KM_ROM_BUILT := $(KM_FW_DIR)/build/tests/rom_main/rom_main.rom.parhex
 # Makefile maps PROD_BOOT_WIPE/PROD_UNREC_WIPE onto them, but the shared DV
 # firmware engine has no such mapping -- passing PROD_* here is silently ignored
 # and drivers/rom_boot.c falls back to its `#ifndef` defaults of 1 (wipe ENABLED).
-# A rom_main built that way runs ~24k instructions, performs the production boot
-# wipe and HALTS before posting RESP_KM_READY, which reads exactly like a dead KM
-# (km_rom_req_count stops at a fixed value; the mailbox never produces a word).
+# A rom_main built that way performs the production boot wipe and HALTS before
+# posting RESP_KM_READY.
 #
 # rom_boot.c is a DRIVER, not a test source, so the define must ride
 # FW_EXTRA_CFLAGS (compile.mk applies it to the driver rule);
@@ -64,8 +103,8 @@ ROM_MAIN_WIPE_DEFINES := -DROM_KM_BOOT_WIPE_DEFAULT=0 -DROM_KM_UNREC_WIPE_DEFAUL
 # which are SIBLINGS of build/tests/rom_main -- wiping only the test directory
 # leaves them untouched and they get re-linked verbatim. Wipe the whole build
 # tree instead; it only happens when the defines actually change.
-# Outside $(KM_FW_DIR)/build on purpose: the guard below wipes that whole
-# tree, which would delete the stamp it is about to compare against.
+# The stamp lives outside $(KM_FW_DIR)/build: the guard below wipes that whole
+# tree and would delete a stamp stored there.
 ROM_MAIN_STAMP := $(OUT_DIR)/.km_rom_wipe_defines
 .PHONY: rom_main_stamp
 rom_main_stamp:
@@ -89,13 +128,28 @@ rom_main: rom_main_stamp
 # build error instead of a silently stale constant.
 KM_REG_INC := $(OCH_ROOT)/hw/ip/key_manager/regs/gen/c
 
-$(OUT_DIR)/%.parhex: %.S gen_parhex.py $(KM_REG_INC)/key_manager_addr.h
-	$(RISCV_CC) -nostdlib $(ARCH_FLAGS) -I$(KM_REG_INC) -Ttext=0 -o $*.elf $<
+# Field MASKS live in km_csr.h, a C header of structs and static_asserts an .S
+# cannot include. This target lifts the plain #define lines an image needs out
+# of it into an assembler-safe include, so a field that moves at the next RDL
+# regeneration changes the mask instead of leaving a hand-typed literal behind.
+# The grep is the trace: if a name disappears, the build fails here.
+KM_CSR_H := $(KM_REG_INC)/km_csr.h
+KM_FIELD_INC := km_csr_fields.inc
+KM_FIELD_DEFS := KM_CSR__IRQ_STATUS_REG__AXI_(SLVERR|DECERR)_bm
+
+$(KM_FIELD_INC): $(KM_CSR_H) Makefile
+	@printf '/* Generated from km_csr.h by km_fw/Makefile. Do not edit. */\n' > $@
+	@grep -E '^#define ($(KM_FIELD_DEFS)) ' $< >> $@ || { \
+	    echo "$<: expected field-mask defines matching $(KM_FIELD_DEFS)" >&2; \
+	    rm -f $@; exit 1; }
+
+$(OUT_DIR)/%.parhex: %.S gen_parhex.py $(KM_REG_INC)/key_manager_addr.h $(KM_FIELD_INC)
+	$(RISCV_CC) -nostdlib $(ARCH_FLAGS) -I$(KM_REG_INC) -I. -Ttext=0 -o $*.elf $<
 	$(RISCV_OBJCOPY) -O binary $*.elf $*.bin
 	$(PYTHON) gen_parhex.py $*.bin > $@
 
 clean:
-	rm -f *.elf *.bin $(PARHEX) $(OUT_DIR)/rom_main.rom.parhex
+	rm -f *.elf *.bin $(KM_FIELD_INC) $(PARHEX) $(OUT_DIR)/rom_main.rom.parhex
 	# Whole build tree, not just build/tests/rom_main: the driver objects that
 	# carry the wipe defines (rom_boot.o, libkey_manager.a) live flat in build/.
 	rm -rf $(KM_FW_DIR)/build

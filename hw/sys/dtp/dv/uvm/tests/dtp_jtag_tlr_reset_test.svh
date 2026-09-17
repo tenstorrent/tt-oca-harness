@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag_tlr_reset_test — TMS-high walk to Test-Logic-Reset
-// (`--items dtp_jtag_tlr_reset_test`): runs dtp_jtag_tlr_reset_test_seq at
+// dtp_jtag_tlr_reset_test — TMS-high walk to Test-Logic-Reset: runs
+// dtp_jtag_tlr_reset_test_seq at
 // the looped floor, each pass proving 5+ consecutive TMS=1 cycles force
 // Test-Logic-Reset from distinct start states and that TLR re-selects the
 // device-identification register. +DTP_JTAG_TAP_CHECKER_NEGATIVE arms a

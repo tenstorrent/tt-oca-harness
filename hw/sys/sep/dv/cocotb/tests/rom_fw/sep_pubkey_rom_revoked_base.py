@@ -30,12 +30,12 @@ populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
     forbids there.
 
 **THE REFERENCE ORDERS THESE TWO CHECKS THE OTHER WAY ROUND, AND THIS FAMILY
-DEPENDS ON THE DIFFERENCE.** Grendel's ROM takes the index bound,
-then the digest-populated check (, returning
-``SEP_MSG_INVALID_KEY_CONTENTS``), and only THEN revocation. That order
-is invisible there because all six of its slots are populated -- carries a
-``static_assert`` is marked "COVERAGE: exclude, correct by
-construction". This ROM inverts it: revocation first (``manifest_crypto.c``),
+DEPENDS ON THE DIFFERENCE.** The reference's ROM takes the index bound,
+then the digest-populated check (returning ``SEP_MSG_INVALID_KEY_CONTENTS``
+under a ``static_assert`` annotated "COVERAGE: exclude, correct by
+construction"), and only THEN revocation. That order is invisible there because
+all six of its slots are populated. This ROM inverts it: revocation first
+(``manifest_crypto.c``),
 digest table second. The consequence changes what slots 1-5 actually
 prove, so it is stated rather than left implicit: **had this ROM used the
 reference's order, slots 1-5 would return ``ROM_KEY_EMPTY`` /
@@ -61,8 +61,9 @@ bit 0 set is refused, on the same bytes.
 
 THE FUSE BIT IS THE SLOT NUMBER, and the authority for that is the register map,
 not the ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key
-bitmap (``regs/blocks/sep_efuse_map/sep_efuse_map.rdl:721-729``) and the ROM
-indexes it with the manifest's key index directly (``manifest_crypto.c``).
+bitmap (reg ``CHIPLET_PUBK_REVOKE`` in
+``regs/blocks/sep_efuse_map/sep_efuse_map.rdl``) and the ROM indexes it with the
+manifest's key index directly (``manifest_crypto.c``).
 The fused-key slots do NOT continue that sequence -- they sit at bits 16 and
 above -- so nothing here may be derived by counting past slot 5.
 

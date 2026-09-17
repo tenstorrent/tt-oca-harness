@@ -67,7 +67,7 @@ class smc_output_fabric_wr_rd_responder_test(smc_base_test):
             # read from `cfg_seq.accesses`.
             min_csr_accesses=6,
             # The two JTAG-AXI accesses are reported in their own field rather
-            # than folded into csr_accesses, which labelled fabric traffic as
+            # than folded into csr_accesses, which would label fabric traffic as
             # CSR traffic.
             fabric_accesses=2,
             min_fabric_accesses=2,

@@ -32,19 +32,19 @@
  * Phase 1 — after warm-from-external (marker == MARKER_PHASE1):
  *   1. Verify SRAM marker persists (SRAM is cold-only).
  *   2. Verify IRQ_ENABLE == 0 (warm-reset cleared).
- *   3. Verify IRQ_ENTRY_ADDR == 0 (warm-reset cleared).
+ *   3. Verify IRQ_ENTRY_ADDR == 0x10 (reset default; warm-reset cleared).
  *   4. Verify KPV slot-0 lock_write == 0 and lock_use == 0 (warm-reset cleared).
  *   5. Verify SRAM_LOCK == 0 (warm-reset cleared).
  *   6. Verify COLD_BOOT_DONE == 1 (ROM re-set it; warm reset did not clear it).
  *   7. Set IRQ_ENABLE, re-program IRQ_ENTRY_ADDR, set KPV slot-0 lock bits, set SRAM_LOCK again.
- *   7. Write SRAM marker = MARKER_PHASE2.
- *   8. Write SOFT_RST_CODE = MAGIC → CPU restarts via warm reset from soft.
+ *   8. Write SRAM marker = MARKER_PHASE2.
+ *   9. Write SOFT_RST_CODE = MAGIC → CPU restarts via warm reset from soft.
  *      (SOFT_RST_CODE clears to 0 on warm reset, preventing an infinite loop.)
  *
  * Phase 2 — after warm-from-soft (marker == MARKER_PHASE2):
  *   1. Verify SRAM marker persists.
  *   2. Verify IRQ_ENABLE == 0.
- *   3. Verify IRQ_ENTRY_ADDR == 0.
+ *   3. Verify IRQ_ENTRY_ADDR == 0x10 (reset default).
  *   4. Verify KPV slot-0 lock_write == 0 and lock_use == 0.
  *   5. Verify SRAM_LOCK == 0.
  *   6. Verify COLD_BOOT_DONE == 1.
@@ -79,9 +79,8 @@
 
 /* SRAM write-lock region used to test warm-reset clearing.
  * Region 5 covers 0x9400-0x97FF — well below BSS/data/stack (packed from top
- * of SRAM) and not the phase-marker region (11) or the known hang region (15).
- * The test only needs to set the bit and check it clears; no write to the
- * locked region is performed, so no CPU fault risk. */
+ * of SRAM) and not the phase-marker region (11) or region 15 (locking it hangs).
+ * Only the lock bit is set and checked; nothing writes into the locked region. */
 #define TEST_SRAM_LOCK_REGION 5u
 #define TEST_SRAM_LOCK_MASK (1u << TEST_SRAM_LOCK_REGION)
 

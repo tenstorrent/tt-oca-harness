@@ -8,11 +8,9 @@ Ports the negative-decode behaviour of the OCAH ``sep_cpu_lsu_negative_matrix``,
 no_cpu / +skip_fuse_sense. RANDCFG: reserved gaps just above each live block
 every seed, plus seed-selected addresses drawn from every reserved row.
 
-The expectation comes from the allocation tables in
-``hw/sys/sep/doc/memory_map.adoc``, parsed by ``env/sep_axi_decode_map.py``.
-Rows marked ``_RSV_`` allocate nothing, so an access there must not answer
-OKAY. DECERR versus SLVERR is not mandated by the map, so the flavour is
-counted and logged rather than asserted.
+The expectation comes from ``env/sep_axi_decode_map.py``. A reserved
+row allocates nothing, so an access there must not answer OKAY. DECERR
+versus SLVERR is unnamed, so the flavour is counted and logged.
 
 CHK-OKAY is the live-bus control: a known-mapped CSR on the same bus returns
 OKAY and its generated reset value. Without it a wedged or dead bus would
@@ -22,16 +20,11 @@ Scope: this walks the gaps BETWEEN block windows.
 ``sep_fabric_deadspace_decode_test`` walks the dead tail INSIDE a window, and
 owns the write-alias check that a refused write left no live register changed.
 Neither subsumes the other.
-
-The run also logs every span the crossbar decode table routes that the map
-calls reserved. Those are reported as info, not asserted: the RTL table is a
-cross-check on the specification, never the source of the expectation.
 """
 
 from __future__ import annotations
 
 import pyuvm
-from env.sep_axi_decode_map import audit_rtl_vs_spec
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_map_refuse_seq import (
     ANCHOR_KEPT,
@@ -51,11 +44,6 @@ class sep_axi_map_refuse_test(sep_base_test):
         cfg = SepAxiMapRefuseCfg(self.random_seed())
         self.logger.info("map-refuse config: %s", cfg.summary())
 
-        # Cross-check, logged not asserted. A span here is an address the
-        # crossbar routes that the map does not describe.
-        for line in audit_rtl_vs_spec():
-            self.logger.info("MAP-AUDIT: %s", line)
-
         await self.bring_up_no_cpu()
         refuse = SepAxiMapRefuse(self)
 
@@ -71,9 +59,8 @@ class sep_axi_map_refuse_test(sep_base_test):
             MAPPED_CSR_ADDR,
         )
 
-        # Every probe is an address no decode rule covers: a span the crossbar
-        # routes is excluded when the set is built, and counted in cfg.skipped
-        # under the open specification question it raises.
+        # Every probe is a reserved address this test asserts. Unnamed-refuse
+        # spans are excluded when the set is built.
         fails: list[str] = []
         for item in cfg.probes:
             tag = "anchor" if item.anchor else "rand"
@@ -152,7 +139,7 @@ class sep_axi_map_refuse_test(sep_base_test):
         assert len(cfg.short_regions) <= SHORT_ROW_LIMIT, (
             f"CHK-RANDCFG FAIL: seed {cfg.seed} left "
             f"{len(cfg.short_regions)} row(s) short of quota, above the "
-            f"{SHORT_ROW_LIMIT} the crossbar routes"
+            f"{SHORT_ROW_LIMIT} unnamed-refuse rows"
         )
         self.logger.info(
             "CHK-RANDCFG PASS: walked %d probes (floor %d) with all %d "

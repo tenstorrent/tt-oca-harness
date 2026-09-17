@@ -481,6 +481,78 @@
     margin-right: 2px;
 }
 
+.dashboard-status {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+    padding: 8px 12px;
+    margin: 1em 0;
+    border-left: 3px solid var(--oca-green);
+    background-color: #fafafa;
+}
+
+.dashboard-status-error {
+    border-left-color: #C55050;
+    background-color: #fbf0f0;
+}
+
+.dashboard-na {
+    color: #888;
+    font-weight: normal;
+}
+
+.dashboard-detail-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5em 0 1.5em 0;
+    font-size: 0.78rem;
+    font-family: var(--oca-font-body);
+}
+
+.dashboard-detail-table th {
+    text-align: left;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.03em;
+    color: var(--oca-text);
+    background-color: var(--oca-cream);
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+}
+
+.dashboard-detail-table td {
+    padding: 5px 10px;
+    border: 1px solid #eee;
+    text-align: left;
+    font-weight: normal;
+    vertical-align: middle;
+}
+
+.dashboard-detail-table .dash-pass,
+.dashboard-detail-table .dash-fail {
+    text-align: center;
+}
+
+.dashboard .dashboard-more {
+    margin-top: 2em;
+}
+
+.dashboard-window {
+    font-size: 0.85rem;
+    color: var(--oca-text);
+}
+
+.dashboard-window select {
+    font-family: var(--oca-font-body);
+    font-size: 0.85rem;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border: 1px solid #ddd;
+}
+
+.dashboard-chart {
+    margin: 0.5em 0 1.5em 0;
+}
+
 /* ========================================
    MOBILE NAVBAR
    ======================================== */
@@ -538,6 +610,13 @@
 
 .tableblock.fit-content td,
 .tableblock.fit-content th {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* Fixed-width tables are implemented using a colgroup in the table body, but
+   the problem of code overrunning remains - though limited to the `code` items */
+.tableblock:has(colgroup) code {
     overflow-wrap: break-word;
     word-break: break-word;
 }

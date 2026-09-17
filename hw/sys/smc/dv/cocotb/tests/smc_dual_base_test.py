@@ -2,26 +2,32 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared bring-up for the dual-SMC OCCP tests.
 
-Thinner than smc_base_test.py: that harness builds the whole single-instance
-SmcEnv against the port surface of tb_top.sv's single-instance half, none of
-which the SMC_DUAL half carries. Here both instances share one clock/reset
-bring-up and each gets its own inbound AXI master.
+Thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that harness builds
+the whole single-instance SmcEnv against tb_top.sv's single-instance port
+surface, none of which exists on the SMC_DUAL half of tb_top.sv. Here both
+instances share one clock/reset bring-up and each gets its own inbound AXI
+master.
 """
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import re
 import subprocess
 import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import cocotb
 from cocotb.clock import Clock
+from cocotb.regression import Test
 from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
-from ocah_axi_vip import OcahAxiMasterAgent
+from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiSlaveSequence
+from smc_base_test import _EvidenceRecorder, log_build_model_identity
 
 # This file lives in the DV tree's cocotb/tests/, so the DV root is two
 # directories up. Anchored on the DV root rather than the repo root: it is the
@@ -74,8 +80,13 @@ LC_STATE_TEST_DEV = encode_lc_state(LC_STATE_TEST_DEV_VALUE)
 
 # Bytes per bulk AXI transaction. One 64-byte scratch-bank stripe, and small
 # enough that the AXI-to-TileLink bridge into the CPU cluster carries it; see
-# DualCsr.write_bytes for the 256-beat burst that did not.
+# DualCsr.write_bytes for the burst length that does not.
 BULK_CHUNK_BYTES = 64
+
+# The smc_sim_cfg.toml target whose model every dual leaf must run on. The
+# identity stamp fails a run whose exported build directory belongs to any
+# other target, so a dual log can never be backed by a single-instance model.
+DUAL_TARGET = "dual"
 
 
 def random_seed() -> int:
@@ -249,11 +260,10 @@ class DualCsr:
 
         Chunked at BULK_CHUNK_BYTES rather than handed to the VIP as one
         transfer. Letting cocotbext-axi size the burst itself produces
-        awlen=255, and a 256-beat burst into the cluster's front port never
-        completes -- measured: the write went out at 377760ns and no response
-        ever came back. The AXI-to-TileLink bridge does not carry bursts that
-        long, so keep each transaction inside one 64-byte line, which is also
-        the scratch banks' stripe granularity.
+        awlen=255, and the AXI-to-TileLink bridge does not carry a 256-beat
+        burst into the cluster's front port: the write never completes. Each
+        transaction therefore stays inside one 64-byte line, which is also the
+        scratch banks' stripe granularity.
         """
         for off in range(0, len(data), BULK_CHUNK_BYTES):
             chunk = data[off : off + BULK_CHUNK_BYTES]
@@ -283,9 +293,27 @@ class DualCsr:
 class SmcDualHarness:
     """Clock/reset bring-up, per-instance idle pin defaults, and CPU trace state."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        test_name: str = "",
+        required_evidence: tuple[str, ...] = (),
+        require_clean_tree: bool = True,
+    ) -> None:
         self.dut = cocotb.top
         self.log = cocotb.log
+        # Same provenance gate as smc_base_test.require_clean_tree: the identity
+        # line names the commit the model was built from, and uncommitted
+        # changes on the model or bench sources fail the run unless allowed.
+        self.require_clean_tree = require_clean_tree
+        # The CHK-* lines this run emits are read off the log records the way
+        # smc_base_test._finalize_evidence reads them; finalize_evidence()
+        # grades them against the IDs the test owes, with no min_evidence
+        # floor and no NO_OWN_EVIDENCE exemption.
+        self.test_name = test_name
+        self.required_evidence = tuple(required_evidence)
+        self._evidence = _EvidenceRecorder()
+        self._evidence.install()
         # One hart-0 processor-state reconstruction per instance, sampled from
         # bring_up onward; failure messages embed cpu_trace_report().
         self.cpu_trace = {
@@ -295,6 +323,9 @@ class SmcDualHarness:
         self.fuse_i2c_ids: dict[int, int] = {}
         # Which transport the controller was strapped to this run.
         self.boot_i2c = False
+        # One SYS_OUT responder per instance, bound in bring_up before the
+        # clocks start; the slave sequences give backdoor access and faults.
+        self.sys_out_mem: dict[str, OcahAxiSlaveSequence] = {}
 
     def _attach_cpu_symbols(self) -> None:
         """Attach the staged listings of each instance's image, when present.
@@ -391,6 +422,12 @@ class SmcDualHarness:
         bfm_lc_state: int | None = None,
         dft_low: tuple[str, ...] = (),
     ) -> None:
+        # First line of every dual log: which model this run simulated, and
+        # that it is the dual target's ([BUILD-MODEL-IDENTITY]). Raises rather
+        # than logging a placeholder.
+        log_build_model_identity(
+            require_clean_tree=self.require_clean_tree, expect_target=DUAL_TARGET
+        )
         dut = self.dut
         self.log.info(
             "dual bring-up: ref=%dns smc=%dns periph=%dns (seed=%d)",
@@ -417,6 +454,19 @@ class SmcDualHarness:
         # will actually answer on. Both sides read the same source; deriving them
         # twice would let the fuse image and the testbench drift apart.
         self.fuse_i2c_ids = regenerate_efuse_image(random_seed())
+
+        # Each responder follows its instance's primary reset so a cool reset
+        # drops the outstanding responses instead of returning them into the
+        # reset CPU cluster.
+        for inst in ("dut", "bfm"):
+            self.sys_out_mem[inst] = OcahAxiSlaveAgent(
+                SYS_OUT_AXI_GEOMETRY.bus(getattr(dut, f"u_{inst}_output_axi_if")),
+                dut.clk_smc_i,
+                getattr(dut, f"{inst}_rst_primary_smc_clk_no"),
+                reset_active_level=False,
+                size=SYS_OUT_MEM_SIZE,
+                name=f"smc_{inst}_sys_out",
+            ).sequence
 
         cocotb.start_soon(Clock(dut.clk_ref_i, REF_CLK_PERIOD_NS, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, SMC_CLK_PERIOD_NS, unit="ns").start())
@@ -643,6 +693,28 @@ class SmcDualHarness:
             ", ".join(f"slot{s}={self.fuse_i2c_ids[s]:#04x}" for s in sorted(self.fuse_i2c_ids)),
         )
 
+    def assert_no_fault_latched(self, label: str) -> None:
+        """Require both instances' sticky fault latches to still read 0.
+
+        ``dut_/bfm_{cluster_ded,wdt_first_timeout,wdt_second_timeout}_seen_o``
+        latch the wrapper's fault outputs until cold reset, so a DED or a
+        watchdog timeout at any point of the run is visible here even after
+        the warm reset a second timeout causes has cleared the live pins.
+        """
+        dut = self.dut
+        latched = [
+            f"{inst}_{name}_seen_o"
+            for inst in ("dut", "bfm")
+            for name in ("cluster_ded", "wdt_first_timeout", "wdt_second_timeout")
+            if int(getattr(dut, f"{inst}_{name}_seen_o").value) != 0
+        ]
+        assert not latched, f"{label}: fault outputs latched during the run: {latched}"
+        self.log.info(
+            "%s: no cluster DED or WDT timeout latched on either instance "
+            "(dut/bfm cluster_ded, wdt_first_timeout, wdt_second_timeout all 0)",
+            label,
+        )
+
     def set_gpio_override(self, instance: str, pad: int, value: int | None) -> None:
         """Drive (or release) one pad on one instance.
 
@@ -709,3 +781,59 @@ class SmcDualHarness:
                 continue
             getattr(self.dut, f"{instance}_{name}").value = value
             self.log.info("%s %s = %d", instance, name, value)
+
+    def finalize_evidence(self) -> None:
+        """Report the evidence this run produced, and grade it.
+
+        ``dual_test`` runs it once the leaf has returned, after every compare
+        has held: a leaf that already failed raised, and this must not turn
+        that into a different complaint.
+        """
+        seen = sorted(self._evidence.seen)
+        own = [check_id for check_id in seen if not _EvidenceRecorder.is_base(check_id)]
+        missing = [check_id for check_id in self.required_evidence if check_id not in seen]
+        self.log.info(
+            "EVIDENCE_SUMMARY test=%s observed=%d own=%d required=%d missing=%d ids=%s",
+            self.test_name,
+            len(seen),
+            len(own),
+            len(self.required_evidence),
+            len(missing),
+            ",".join(seen) or "-",
+        )
+        problems: list[str] = []
+        if not own:
+            problems.append(
+                "no CHK-* line of its own -- a run that grades nothing cannot be a pass"
+            )
+        if missing:
+            problems.append("never emitted: " + ", ".join(missing))
+        if problems:
+            raise AssertionError(
+                f"EVIDENCE FAIL {self.test_name}: "
+                + "; ".join(problems)
+                + " -- the run exited cleanly without grading what it claims to grade"
+            )
+
+
+def dual_test(
+    required_evidence: tuple[str, ...],
+) -> Callable[[Callable[[SmcDualHarness], Awaitable[None]]], Test]:
+    """Register a plain cocotb leaf that runs over ``SmcDualHarness``.
+
+    The leaf receives, in place of the DUT handle, a harness named after it
+    and carrying ``required_evidence``. The evidence gate runs once the leaf
+    returns, so no leaf has to remember it; a leaf that raised keeps its own
+    failure.
+    """
+
+    def register(leaf: Callable[[SmcDualHarness], Awaitable[None]]) -> Test:
+        @functools.wraps(leaf)
+        async def run(_dut: object) -> None:
+            harness = SmcDualHarness(test_name=leaf.__name__, required_evidence=required_evidence)
+            await leaf(harness)
+            harness.finalize_evidence()
+
+        return cocotb.test()(run)
+
+    return register

@@ -424,8 +424,6 @@ int main(void) {
     uint32_t uart_idx = 0; // Test a single UART instance.
     uint32_t uart_base = get_uart_reg_base(uart_idx);
 
-    // peripherals_out_of_reset();
-
     // Enable the target UART and initialize it in loopback mode.
     uart_enable_single(uart_idx);
     uart_init_loopback(uart_base);

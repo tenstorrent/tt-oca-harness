@@ -1,17 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unit tests for runlib.config run-mode reference validation and the adopter overlay layer.
+"""Unit tests for runlib.config run-mode / overlay validation and runlib.duts resolution.
 
 Run from the repository root:
 
     python3 -m unittest discover tools/dv/tests
 """
 
+import os
 import sys
 import tempfile
 import unittest
 from argparse import Namespace
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -23,6 +25,7 @@ from runlib.cli import (  # noqa: E402
 from runlib.config import (  # noqa: E402
     OverlayFrameworkMismatch,
     _merge_framework_config,
+    activate_adopter_overlay_env,
     apply_adopter_overlay,
     load_dut,
     load_test_catalog,
@@ -30,7 +33,9 @@ from runlib.config import (  # noqa: E402
     target_flags,
     validate_run_mode_request,
 )
+from runlib.duts import load_dut_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
+from runlib.results import result_payload  # noqa: E402
 
 
 def make_dut(raw: dict, path: Path = Path("test_sim_cfg.toml")) -> Dut:
@@ -206,11 +211,11 @@ class AdopterOverlayLayer(unittest.TestCase):
         self.apply(
             data,
             '[target_defaults.default]\ndefines = ["OCAH_JTAG_VENDOR_IF", "UVM"]\n'
-            '[target_defaults.default.tools.vcs]\nflags = ["-ntb_opts", "svt"]\n',
+            '[target_defaults.default.tools.vcs]\nflags = ["-assert", "svaext"]\n',
         )
         target = data["target_defaults"]["default"]
         self.assertEqual(target["defines"], ["UVM", "OCAH_JTAG_VENDOR_IF"])
-        self.assertEqual(target["tools"]["vcs"]["flags"], ["-x", "-ntb_opts", "svt"])
+        self.assertEqual(target["tools"]["vcs"]["flags"], ["-x", "-assert", "svaext"])
 
     def test_missing_target_table_is_created(self):
         data = {"framework": "uvm"}
@@ -256,6 +261,138 @@ class AdopterOverlayLayer(unittest.TestCase):
         self.apply(data, '[sim]\nargs = ["+x"]\n')
         self.assertEqual(data["adopter_overlay"], "adopter_overlay.toml")
 
+    def test_build_paths_expand_environment_variables(self):
+        data = {"framework": "uvm", "build": {"incdirs": ["dut/inc"]}}
+        with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": "/opt/vip", "VIP_MANIFEST": "vip"}):
+            self.apply(
+                data,
+                '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n'
+                'sources = ["${VENDOR_VIP_HOME}/src/vip_pkg.sv"]\n'
+                'source_lists = ["$VENDOR_VIP_HOME/${VIP_MANIFEST}/sources.toml"]\n',
+            )
+        self.assertEqual(data["build"]["incdirs"], ["dut/inc", "/opt/vip/include"])
+        self.assertEqual(data["build"]["sources"], ["/opt/vip/src/vip_pkg.sv"])
+        self.assertEqual(data["build"]["source_lists"], ["/opt/vip/vip/sources.toml"])
+
+    def test_unset_environment_variable_names_variable_and_overlay(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("OCAH_UNSET_VIP_HOME", None)
+            with self.assertRaises(ConfigError) as ctx:
+                self.apply(
+                    {"framework": "uvm"}, '[build]\nincdirs = ["$OCAH_UNSET_VIP_HOME/include"]\n'
+                )
+        self.assertNotIsInstance(ctx.exception, OverlayFrameworkMismatch)
+        message = str(ctx.exception)
+        self.assertIn("OCAH_UNSET_VIP_HOME", message)
+        self.assertIn("adopter_overlay.toml", message)
+        self.assertIn("build.incdirs", message)
+
+    def test_paths_without_variables_pass_through_unchanged(self):
+        data = {"framework": "uvm"}
+        self.apply(data, '[build]\nincdirs = ["vendor/inc", "/abs/inc", "~/inc"]\n')
+        self.assertEqual(data["build"]["incdirs"], ["vendor/inc", "/abs/inc", "~/inc"])
+
+    def test_expanded_path_dedups_against_dut_entry(self):
+        data = {"framework": "uvm", "build": {"incdirs": ["/opt/vip/include"]}}
+        with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": "/opt/vip"}):
+            self.apply(data, '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n')
+        self.assertEqual(data["build"]["incdirs"], ["/opt/vip/include"])
+
+    def test_env_table_is_recorded_and_feeds_path_expansion(self):
+        data = {"framework": "uvm"}
+        with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": "/ambient/vip"}):
+            self.apply(
+                data,
+                '[env]\nVENDOR_VIP_HOME = "/opt/vip"\nVENDOR_VIP_LOG = "quiet"\n'
+                '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n',
+            )
+            # Loading records the table and resolves paths against it, and leaves the
+            # process environment to the run path.
+            self.assertEqual(os.environ["VENDOR_VIP_HOME"], "/ambient/vip")
+            self.assertNotIn("VENDOR_VIP_LOG", os.environ)
+        self.assertEqual(data["build"]["incdirs"], ["/opt/vip/include"])
+        self.assertEqual(
+            data["adopter_overlay_env"],
+            {"VENDOR_VIP_HOME": "/opt/vip", "VENDOR_VIP_LOG": "quiet"},
+        )
+
+    def test_env_table_absent_or_empty_leaves_no_record(self):
+        for toml in ('[sim]\nargs = ["+x"]\n', "[env]\n"):
+            data = {"framework": "uvm"}
+            self.apply(data, toml)
+            self.assertNotIn("adopter_overlay_env", data)
+
+    def test_env_table_rejects_bad_names_and_non_string_values(self):
+        for toml, named in (
+            ("[env]\nPORT = 5\n", "PORT"),
+            ('[env]\n"BAD NAME" = "x"\n', "BAD NAME"),
+            ('[env]\n"1ST" = "x"\n', "1ST"),
+            ('[env.nested]\nX = "x"\n', "nested"),
+            ('env = "VENDOR_VIP_HOME=/opt/vip"\n', "[env]"),
+        ):
+            with self.assertRaises(ConfigError) as ctx:
+                self.apply({"framework": "uvm"}, toml)
+            self.assertNotIsInstance(ctx.exception, OverlayFrameworkMismatch)
+            self.assertIn(named, str(ctx.exception))
+
+
+class AdopterOverlayEnvActivation(unittest.TestCase):
+    """The run-path step that puts an overlay's [env] into the process environment."""
+
+    def test_overlay_values_replace_ambient_ones(self):
+        environ = {"KEEP": "1", "VENDOR_VIP_HOME": "/ambient/vip"}
+        table = {"VENDOR_VIP_HOME": "/opt/vip", "VENDOR_VIP_LOG": "quiet"}
+        applied = activate_adopter_overlay_env({"adopter_overlay_env": table}, environ)
+        self.assertEqual(applied, table)
+        self.assertEqual(
+            environ, {"KEEP": "1", "VENDOR_VIP_HOME": "/opt/vip", "VENDOR_VIP_LOG": "quiet"}
+        )
+
+    def test_view_without_overlay_env_is_a_no_op(self):
+        environ = {"KEEP": "1"}
+        for data in ({}, {"adopter_overlay": "adopter_overlay.toml"}, {"adopter_overlay_env": {}}):
+            self.assertEqual(activate_adopter_overlay_env(data, environ), {})
+        self.assertEqual(environ, {"KEEP": "1"})
+
+    def test_defaults_to_the_process_environment(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("OCAH_UNIT_PROBE", None)
+            activate_adopter_overlay_env({"adopter_overlay_env": {"OCAH_UNIT_PROBE": "on"}})
+            self.assertEqual(os.environ["OCAH_UNIT_PROBE"], "on")
+
+
+class AdopterOverlayResultRecording(unittest.TestCase):
+    """result.json carries the overlay path and its [env] table side by side."""
+
+    def payload(self, raw: dict) -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            return result_payload(
+                flow=make_dut(raw),
+                root=root,
+                tool="verilator",
+                run_dir=root / "run",
+                stages=[],
+                dry_run=True,
+                versions={},
+                git_metadata={},
+            )
+
+    def test_overlay_env_recorded_beside_overlay_path(self):
+        payload = self.payload(
+            {
+                "adopter_overlay": "adopter_overlay.toml",
+                "adopter_overlay_env": {"VENDOR_VIP_HOME": "/opt/vip"},
+            }
+        )
+        self.assertEqual(payload["overlay"], "adopter_overlay.toml")
+        self.assertEqual(payload["overlay_env"], {"VENDOR_VIP_HOME": "/opt/vip"})
+
+    def test_no_overlay_means_no_overlay_keys(self):
+        payload = self.payload({})
+        self.assertNotIn("overlay", payload)
+        self.assertNotIn("overlay_env", payload)
+
 
 class AdopterOverlayLoadDut(unittest.TestCase):
     """load_dut integration: explicit activation only, and source_lists expansion ordering."""
@@ -269,10 +406,22 @@ class AdopterOverlayLoadDut(unittest.TestCase):
         return load_dut(cfg, root, root=root, name="unit", root_rel=".", adopter_overlay=overlay)
 
     def test_config_set_reserved_key_rejected(self):
+        for line in ('adopter_overlay = "sneaky.toml"\n', 'adopter_overlay_env = { X = "1" }\n'):
+            with tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaises(ConfigError) as ctx:
+                    self.load(Path(tmp), line)
+                self.assertIn("--overlay", str(ctx.exception))
+
+    def test_overlay_env_survives_load(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaises(ConfigError) as ctx:
-                self.load(Path(tmp), 'adopter_overlay = "sneaky.toml"\n')
-            self.assertIn("--overlay", str(ctx.exception))
+            root = Path(tmp)
+            overlay = root / "adopter_overlay.toml"
+            overlay.write_text('[env]\nVENDOR_VIP_HOME = "/opt/vip"\n')
+            with mock.patch.dict(os.environ):
+                os.environ.pop("VENDOR_VIP_HOME", None)
+                flow = self.load(root, overlay=overlay)
+                self.assertNotIn("VENDOR_VIP_HOME", os.environ)
+            self.assertEqual(flow.raw["adopter_overlay_env"], {"VENDOR_VIP_HOME": "/opt/vip"})
 
     def test_overlay_source_lists_expand_after_dut_own_entries(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -296,6 +445,30 @@ class AdopterOverlayLoadDut(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             flow = self.load(Path(tmp))
             self.assertNotIn("adopter_overlay", flow.raw)
+
+    def test_overlay_manifest_path_expands_environment_variable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            vendor = root / "vendor_install"
+            (vendor / "inc").mkdir(parents=True)
+            (vendor / "vip_pkg.sv").write_text("// vendor\n")
+            # Entries inside the manifest stay literal, so a manifest outside the checkout
+            # lists its own files by absolute path.
+            (vendor / "sources.toml").write_text(
+                f'incdirs = ["{vendor / "inc"}"]\nsources = ["{vendor / "vip_pkg.sv"}"]\n'
+            )
+            overlay = root / "adopter_overlay.toml"
+            overlay.write_text('[build]\nsource_lists = ["$VENDOR_VIP_HOME/sources.toml"]\n')
+            with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": str(vendor)}):
+                flow = self.load(root, overlay=overlay)
+            self.assertEqual(flow.raw["build"]["sources"], [str(vendor / "vip_pkg.sv")])
+            self.assertEqual(flow.raw["build"]["incdirs"], [str(vendor / "inc")])
+
+    def test_checked_in_config_paths_stay_literal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": "/opt/vip"}):
+                flow = self.load(Path(tmp), '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n')
+            self.assertEqual(flow.raw["build"]["incdirs"], ["$VENDOR_VIP_HOME/include"])
 
 
 class GroupMemberValidation(unittest.TestCase):
@@ -360,7 +533,7 @@ class GroupMemberValidation(unittest.TestCase):
 
 class RuntimeSelectionDefenses(unittest.TestCase):
     # Directly constructed catalogs bypass load_test_catalog; selection must
-    # still fail with ConfigError, never a raw KeyError (the #431 reproduce).
+    # still fail with ConfigError, never a raw KeyError.
     def test_expand_items_rejects_phantom_group_member(self):
         catalog = TestCatalog(None, {}, {"smoke": ["missing_test"]})
         with self.assertRaises(ConfigError) as ctx:
@@ -406,10 +579,6 @@ class RuntimeSelectionDefenses(unittest.TestCase):
         self.assertIn("nope", str(ctx.exception))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TargetFlagsTokens(unittest.TestCase):
     """Every flag item is one argv token; an embedded space is a config error, not a no-op."""
 
@@ -422,3 +591,53 @@ class TargetFlagsTokens(unittest.TestCase):
         with self.assertRaises(ConfigError) as ctx:
             target_flags(target, "vcs")
         self.assertIn("-assert svaext", str(ctx.exception))
+
+
+class DutRegistryAliases(unittest.TestCase):
+    """`alias_of` gives one DUT a second selectable name (see runlib.duts)."""
+
+    def _registry(self, body: str) -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cfg_dir = root / "hw" / "common" / "dv" / "configs"
+            cfg_dir.mkdir(parents=True)
+            (cfg_dir / "duts.toml").write_text(body)
+            return load_dut_registry(root)
+
+    def test_alias_entry_is_accepted(self):
+        reg = self._registry(
+            "schema_version = 1\n"
+            '[duts.widget]\nroot = "hw/sys/widget/dv"\n'
+            '[duts.widget_alt]\nroot = "hw/sys/widget/dv"\nalias_of = "widget"\n'
+        )
+        self.assertEqual(reg["widget_alt"]["alias_of"], "widget")
+        self.assertNotIn("alias_of", reg["widget"])
+
+    def test_self_alias_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                "schema_version = 1\n"
+                '[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = "widget"\n'
+            )
+        self.assertIn("cannot point at itself", str(ctx.exception))
+
+    def test_alias_chain_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                "schema_version = 1\n"
+                '[duts.a]\nroot = "hw/sys/a/dv"\n'
+                '[duts.b]\nroot = "hw/sys/a/dv"\nalias_of = "a"\n'
+                '[duts.c]\nroot = "hw/sys/a/dv"\nalias_of = "b"\n'
+            )
+        self.assertIn("itself an alias", str(ctx.exception))
+
+    def test_empty_alias_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                'schema_version = 1\n[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = ""\n'
+            )
+        self.assertIn("non-empty string", str(ctx.exception))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -4,8 +4,8 @@
 /*
  * OTBN Nested Loops Test
  *
- * This test validates OTBN's nested loop functionality by executing a complex
- * loop structure and verifying both the mathematical result and instruction count.
+ * This test validates OTBN's nested loop functionality by executing a nested
+ * loop structure and verifying the retired instruction count (INSN_CNT).
  *
  * Test algorithm:
  * - Initialize accumulator x2 = 0, inner loop count x3 = 3

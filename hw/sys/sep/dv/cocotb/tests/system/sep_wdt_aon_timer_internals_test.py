@@ -10,8 +10,8 @@ INTR_STATE.wkup_expired CSR bit (full RW1C clear) -- no ISR/NMI needed.
 
 reference refs: clock sep_clock_uvm_aon_timer_operation_test (: counter advance
 + bark), fw wdt_cfg_lock_test (WDOG_REGWEN lock), wdt_wkup_timer_test (:
-AON wakeup timer), wdt_pet_reset_test. Mapping:
-COVERED_STRONGER -- frontdoor CSR + full RW1C clear (the reference suite reads WDOG_COUNT via
+AON wakeup timer), wdt_pet_reset_test. This test is frontdoor CSR + full RW1C
+clear (the reference suite reads WDOG_COUNT via
 uvm_hdl_read). Distinct from the bark->NMI vec/lock path and the bark/pet/disable/
 re-bark + bite->wdt_timer_rst_req_o path: this test proves the OTHER aon_timer
 internals (WKUP timer, REGWEN config-lock, plain counter/pet), NOT bark/bite/NMI.
@@ -26,6 +26,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from env.sep_spec_tables import aon_timer_regwen_gates, aon_timer_wkup_ticks_per_count
 from sep_base_test import sep_base_test
 from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
@@ -50,10 +51,10 @@ from seq_lib.sep_wdt_aon_seq import (
     SepWdtCfg,
 )
 
-# WKUP_CAUSE.cause bit (wakeup-request status). RTL finding: despite the RDL
-# onwrite=woclr label, the cause is acknowledged/cleared by WRITING 0 (firmware-
-# aligned), AFTER the wakeup condition (count>=thold) is removed -- it is level-held
-# and AON-domain (the clear settles over a few clk_wdt cycles).
+# WKUP_CAUSE.cause bit (wakeup-request status). The RDL labels it onwrite=woclr,
+# but the cause is acknowledged/cleared by WRITING 0, AFTER the wakeup condition
+# (count>=thold) is removed -- it is level-held and AON-domain (the clear settles
+# over a few clk_wdt cycles).
 WKUP_CAUSE_BIT = 1 << 0
 
 # How much faster than the silicon 1000x ratio we run clk_wdt for this CSR test
@@ -204,17 +205,19 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
     async def _chk_wkup_prescale(self) -> None:
         """CHK-WKUP-PRESCALE: WKUP_CTRL.prescaler divides the wakeup count rate.
 
-        aon_timer_core.sv gates wkup_incr on ``prescale_count_q == prescaler``, so the
-        counter advances once per ``prescaler + 1`` clk_wdt ticks. Measured over the
-        same window with prescaler=0 and prescaler=P, the divided advance must fit the
-        spec bound; a prescaler that is decoded but not applied advances at the
-        undivided rate and fails the bound.
+        The OpenTitan AON Timer Technical Specification (Wakeup timer) states "The
+        number of cycles per tick is one more than the 12-bit WKUP_CTRL.prescaler
+        field", so the counter advances once per ``prescaler + 1`` ticks. That rate
+        is carried by sep_spec_tables.aon_timer_wkup_ticks_per_count, not read back
+        from aon_timer_core.sv. Measured over the same window with prescaler=0 and
+        prescaler=P, the divided advance must fit the spec bound; a prescaler that is
+        decoded but not applied advances at the undivided rate and fails the bound.
         """
         presc = self.cfg_wdt.wkup_prescaler
         # Window sized from the programmed divisor so the divided run must tick.
         # A frozen counter then fails the lower bound; a prescaler that is
         # ignored fails the upper bound. Both bounds come from the divisor.
-        window = 4 * (presc + 1)
+        window = 4 * aon_timer_wkup_ticks_per_count(presc)
         adv_fast = await self._count_advance(0, window)
         adv_slow = await self._count_advance(presc, window)
         # Nonvacuity against an independent literal: the undivided run must make real
@@ -223,7 +226,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-WKUP-PRESCALE: prescaler=0 advanced only {adv_fast} over {window} "
             f"clk_wdt ticks; the divided-rate bound below would be vacuous"
         )
-        expected = window // (presc + 1)
+        expected = window // aon_timer_wkup_ticks_per_count(presc)
         bound_lo = 1
         bound_hi = expected + 2
         assert adv_slow >= bound_lo, (
@@ -411,11 +414,24 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
 
         # CHK-REGWEN-SCOPE: the lock covers WDOG_CTRL / WDOG_BARK_THOLD /
-        # WDOG_BITE_THOLD only (aon_timer_reg_top.sv passes wdog_regwen_qs as
-        # src_regwen_i for those three registers and '0 for every other). The WKUP
-        # configuration and WDOG_COUNT must therefore still accept writes while the
-        # watchdog thresholds are locked -- a lock wired to the whole block would
-        # freeze the wakeup timer and the pet path with it.
+        # WDOG_BITE_THOLD only. The scope is read from the OpenTitan register
+        # description (aon_timer.hjson, the source aon_timer_reg_top.sv is
+        # generated from) via aon_timer_regwen_gates, not from the generated RTL,
+        # so a hand-edited src_regwen_i disagrees with this check instead of
+        # defining it. The WKUP configuration and WDOG_COUNT must therefore still
+        # accept writes while the watchdog thresholds are locked -- a lock wired to
+        # the whole block would freeze the wakeup timer and the pet path with it.
+        gated = aon_timer_regwen_gates("WDOG_REGWEN")
+        assert gated == {"WDOG_CTRL", "WDOG_BARK_THOLD", "WDOG_BITE_THOLD"}, (
+            f"CHK-REGWEN-SCOPE: aon_timer.hjson gates {sorted(gated)} behind "
+            "WDOG_REGWEN; this check walks the three watchdog configuration "
+            "registers and probes WKUP_THOLD_LO / WDOG_COUNT as ungated"
+        )
+        for ungated in ("WKUP_THOLD_LO", "WDOG_COUNT"):
+            assert ungated not in gated, (
+                f"CHK-REGWEN-SCOPE: {ungated} is gated by WDOG_REGWEN in "
+                "aon_timer.hjson, so probing it as still-writable is wrong"
+            )
         thold_val = self.cfg_wdt.postlock_wkup_thold
         await self.wdt.write(WKUP_THOLD_LO, thold_val)
         thold_rb = await self.wdt.read(WKUP_THOLD_LO)

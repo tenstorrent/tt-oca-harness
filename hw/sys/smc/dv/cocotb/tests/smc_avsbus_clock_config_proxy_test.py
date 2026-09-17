@@ -19,6 +19,12 @@ from smc_base_test import smc_base_test
 class smc_avsbus_clock_config_proxy_test(smc_base_test):
     """AVS_CFG answers with AVS_CG_EN cleared and stops answering when set."""
 
+    required_evidence = (
+        "CHK-AVSBUS-CG",
+        "CHK-SIDEBAND-OBSERVABILITY",
+    )
+    min_evidence = 2
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -54,10 +60,8 @@ class smc_avsbus_clock_config_proxy_test(smc_base_test):
             f"measured: {healthy} ns)"
         )
         # `gated_timeouts == n` and `value_checks >= EXPECTED_VALUE_CHECKS` are
-        # both already enforced inside the sequence (and `gated_timeouts` is
-        # incremented immediately after `assert self.timeouts == before + 1`).
-        # Restating them here adds no failure mode; the sequence-side asserts
-        # are the ones with teeth.
+        # enforced inside the sequence (`gated_timeouts` is incremented
+        # immediately after `assert self.timeouts == before + 1`).
         await check_sideband_observability()
         await self.record_protocol_vip(
             SmcProtocolVipKind.SIDEBAND,

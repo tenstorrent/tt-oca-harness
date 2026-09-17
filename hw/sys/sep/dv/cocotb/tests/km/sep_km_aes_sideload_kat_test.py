@@ -13,7 +13,7 @@ ECB-256 encryptions and proves the AES engine CONSUMED exactly that key:
 
 AES has write-only KEY CSRs and is not programmable, so (unlike the OTBN KAT)
 the delivered key cannot be dumped back; the consume-proof IS the encryption
-cross-check, exactly as the reference AES leaf does it. This OSS port is STRONGER than
+cross-check, exactly as the reference AES leaf does it. This port differs from the
 reference suite on two axes:
   * frontdoor known key: CMD_KEY_LOAD replaces the reference suite's CMD_KEY_GENERATE + read-only
     backdoor share reconstruction, so the delivered key value is known a priori.
@@ -31,7 +31,8 @@ VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
   CHK-ISO  key-bus isolation: only AES released; OTBN/KMAC/HMAC parked in SW reset
            so they physically cannot receive the key (OSS analog of the reference suite's per-
            engine key-bus AW monitor; same mechanism as the OTBN KAT)
-  CHK-PUB  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload:
+  PUB-OBS  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload (not
+           scored -- swaccess=wo makes the read unfalsifiable):
            the KM-delivered key is not exposed through software-readable CSRs
   CHK-F    ct_side == AES(known_key, PT) golden: sideload delivered the exact key
            (replaces the reference suite's backdoor SHARE0^SHARE1 non-degeneracy proof)
@@ -43,20 +44,18 @@ VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
            the released AES masking PRNG reseeds from the crypto EDN leg, so a
            second real EDN consumer (besides KM) is witnessed off one DRBG.
 
-Accepted scope deltas vs the reference suite (documented, no silent skips):
+Scope deltas vs the reference suite:
   * the reference suite's backdoor SHARE0^SHARE1 reconstruction + non-degeneracy
     guards are dropped: with a KNOWN, distinct-word key loaded via CMD_KEY_LOAD
     there is no KM keygen and no constant-word keygen defect to guard against, and
-    CHK-F (golden value compare) proves the exact key flowed -- stronger than
-    "the reconstructed key is not a single repeated word". No backdoor is used.
+    CHK-F (golden value compare) proves the exact key flowed. No backdoor is used.
     The ONE sub-property the reference suite checks that a frontdoor port cannot
     see is the raw SHARE0 *mask* non-degeneracy inside the AES wrapper (its
     !mask_all_same guard): the combined
     key is correct (CHK-F) yet the 2-share masking could in principle be degenerate.
     That is an AES-wrapper-internal masking property, not the KM->AES sideload-consume
-    contract this leaf owns, and it is proven frontdoor by the sibling OTBN KAT
-    (sep_km_otbn_sideload_kat_test CHK-F dumps S0/S1) -- so it is out of frontdoor
-    scope here by design, not a silent gap.
+    contract this leaf owns; the sibling OTBN KAT (sep_km_otbn_sideload_kat_test
+    CHK-F dumps S0/S1) proves it frontdoor.
   * key-bus isolation is proven by SW_RESET_N read-back (only AES out of the four
     sideload targets is released) rather than the reference suite bus-AW monitor, which has no
     OSS frontdoor analog; CHK-F additionally proves AES got the correct key.
@@ -142,7 +141,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info("CHK0 KM firmware boot PASS: RESP_KM_READY over the mailbox")
 
         # --- Frontdoor consume-proof: load known key -> transfer -> encrypt ----
-        # CHK-A: provision the KNOWN key into a KPV handle (no backdoor needed).
+        # CHK-A: provision the KNOWN key into a KPV handle over the frontdoor.
         handle = await self.km.key_load(key_words=list(KAT_KEY), dest=KM_DEST_AES)
         self.logger.info("CHK-A CMD_KEY_LOAD PASS: known key staged, handle=0x%02x", handle)
 
@@ -186,8 +185,9 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             rst,
         )
 
-        # CHK-PUB: the public KEY_SHARE CSRs still read zero, and the read path
-        # that produced those zeros is alive. The positive control is the point:
+        # PUB-OBSERVATION: the public KEY_SHARE CSRs read zero, and the read path
+        # that produced those zeros is alive. Logged, not scored. The control is
+        # the only falsifiable half:
         # KEY_SHARE0/1 are write-only with read data tied to zero in the generated
         # register block, so on its own "reads zero" is unfalsifiable -- it holds
         # whether the key is protected, mirrored elsewhere, or never delivered.
@@ -195,7 +195,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         # the check fail if the read path dies or if these become readable.
         s0_pub, s1_pub, ctl_pub = await self.aes.read_public_key_shares()
         assert ctl_pub != 0, (
-            "CHK-PUB positive control failed: AES STATUS read back 0 over the same "
+            "PUB-OBSERVATION positive control failed: AES STATUS read back 0 over the same "
             "frontdoor, so the all-zero KEY_SHARE reads prove nothing about the key"
         )
         assert all(w == 0 for w in s0_pub) and all(w == 0 for w in s1_pub), (
@@ -204,14 +204,14 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
             f"  s1={[hex(w) for w in s1_pub if w]}"
         )
         self.logger.info(
-            "CHK-PUB AES public KEY_SHARE0/1 frontdoor reads zero after sideload "
-            "(read path alive: STATUS=%#010x)",
+            "PUB-OBSERVATION AES public KEY_SHARE0/1 frontdoor reads zero after "
+            "sideload. Not scored: aes.hjson declares them swaccess=wo, so this read "
+            "cannot fail. Read path alive: STATUS=%#010x",
             ctl_pub,
         )
 
         # CHK-F: encrypt with the SIDELOAD key and value-check against the golden.
-        # This proves AES consumed the exact KM-delivered key (stronger than the reference suite's
-        # backdoor non-degeneracy guard).
+        # This proves AES consumed the exact KM-delivered key.
         golden = aes256_ecb_encrypt_words(list(KAT_KEY), list(AES_ECB_PT))
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()

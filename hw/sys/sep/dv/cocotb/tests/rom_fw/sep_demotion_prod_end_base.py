@@ -11,18 +11,17 @@ EVERY MEMBER OF THIS BASE PRODUCES THE SAME OUTCOME, BY CONSTRUCTION
 
 ``rom_main.c`` short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns
 from the block having read NONE of the three manifest demotion inputs -- the
-selector bit is not consulted until, ``usage_constraints.flags`` not
-until, and ``flag_args`` not until, all inside the ``else`` at
-. So the outcome is **O1** for every combination of those three inputs,
-and this base fixes the expected outcome rather than deriving it from a member's
-declarations. **Five tracker rows share this one observable.** They are five
-stimuli on one outcome, not five coverage points, and each member says so in its
-own docstring and in its status row's ``flow_deviation``.
+selector bit, ``usage_constraints.flags`` and ``flag_args`` are consulted only
+inside the ``else``. So the outcome is **O1** for every combination of those
+three inputs, and this base fixes the expected outcome rather than deriving it
+from a member's declarations. **Five stimuli share this one observable.** They
+are five stimuli on one outcome, not five coverage points, and each member says
+so in its own docstring.
 
 What still differs between members, and is therefore still declared per member,
 is the STIMULUS -- and with it what a failure would mean. With ``_SEL = 1`` the
-O1 outcome is reachable only if preempts the selector-bit arm at
-: a ROM that tested the selector bit first would produce O3a, which
+O1 outcome is reachable only if the short-circuit preempts the selector-bit arm:
+a ROM that tested the selector bit first would produce O3a, which
 differs on DEMOTE_2 (never written) and prints ``BL1_DEMOTE=0`` and
 ``BL2_DEMOTE_DEC=0`` where O1 prints ``DEMOTE: PROD_END lock``. With all three
 inputs clear there is no such control, because the two orderings agree.
@@ -41,21 +40,19 @@ WHAT THE MEMBERS SHARE
     that bitmap and refuses the manifest with ``LC_USAGE_CONSTRAINT_FAIL`` if the
     bit is clear. The boot therefore cannot complete unless the ROM decoded raw
     0x8 as PROD_END. This mirrors the reference, which narrows per lifecycle
-    (``sep_demotion_uid_checker.py``, written to both slots at
-).
+    (``sep_demotion_uid_checker.py``, written to both slots).
   * The full crypto chain. PROD_END enforces secure boot
     (``lifecycle.c``), so a real RSA-3072 modexp runs on OTBN and every
     member needs ``+sep_crypto_edn_force``. ``SBOOT_OFF`` and
     ``FUSE: SBOOT_DIS: 1`` are forbidden: either would mean the run measured a
     non-secure boot under a PROD_END name.
-  * ``LC=PROD`` is deliberately NOT forbidden, because it is a strict PREFIX of
+  * ``LC=PROD`` is not forbidden, because it is a strict PREFIX of
     the required ``LC=PROD_END``. Discrimination in the other direction is the
     PROD members' job and they forbid ``LC=PROD_END``.
 
-``sep_firmware_demotion_decision_auth_flag_0_prod_end_test`` (batch R3's O1
-member) predates this module and carries the same skeleton inline. It is
-deliberately NOT refactored onto this base: it is an approved, passing row whose
-docstring is its own evidence record. The duplication is named here and there.
+``sep_firmware_demotion_decision_auth_flag_0_prod_end_test`` (the O1 member)
+carries the same skeleton inline rather than subclassing this base, so a change to
+the skeleton must be applied in both places.
 """
 
 from __future__ import annotations
@@ -94,10 +91,10 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
     expected_lc_raw = LC_RAW_PROD_END
     expected_sboot_dis = 0
 
-    # rom_main.c lc_write_demotion_2(false, true)
-    # lc_write_demotion(false, true). demotion_reg is still its initialiser
+    # rom_main.c: lc_write_demotion_2(false, true) then
+    # lc_write_demotion(false, true). demotion_reg keeps its initialiser
     # because the else-branch that could set it never runs. DEMOTE_2 locked is the
-    # discriminator no other row of the table can produce: is the ROM's only
+    # discriminator no other row of the table can produce: that is the ROM's only
     # lc_write_demotion_2 call and it is reached only here.
     expect_demote_1 = (0, 1)
     expect_demote_2 = (0, 1)
@@ -166,11 +163,10 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
         This is not optional and it is not duplication of the console. At PROD_END
         the ROM echoes NONE of the three, so an unplanted input produces exactly
         the log a planted-and-ignored one produces and the testcase would be green
-        and vacuous (``batch_runs_0904_rtl/RUN_JOURNAL.md:181-185``, "Assert your
-        stimulus, not only your outcome").
+        and vacuous: assert the stimulus, not only the outcome.
 
-        It is not the only channel, and an earlier draft of this docstring wrongly
-        said it was. :meth:`~sep_demotion_decision_base._check_stimulus_served`
+        It is not the only channel:
+        :meth:`~sep_demotion_decision_base._check_stimulus_served`
         requires the flash DEVICE to have returned exactly these bytes, which is
         the DUT-side half and is what makes the difference between two PROD_END
         members observable at RUN time rather than only in an offline artefact.

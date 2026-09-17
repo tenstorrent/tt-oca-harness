@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_rom_keyreg.c
- * @brief T022 - Key handle registry unit test
+ * @brief Key handle registry unit test
  *
  * Exercises rom_keyreg.h: init, generate, get_slot, get_key_words, get_crc,
  * destroy, reverse map, invalid-handle rejection, handle exhaustion, and

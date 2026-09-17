@@ -104,10 +104,6 @@ static int test_config_ap_output_remap(void) {
 
     for (int i = 0; i < NUM_AP_REMAPS; i++) {
         ap_remap_ctrl.f.offset = generate_random_64bit();
-        // printf("  Setting AP output remap control register %d...\n", i);
-        // printf("  Register: 0x%08X\n",
-        // OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i)); printf("  Value:
-        // 0x%016llX\n", (unsigned long long)ap_remap_ctrl.f.offset);
 
         // Write the remap configuration
         WRITE_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i),
@@ -116,9 +112,8 @@ static int test_config_ap_output_remap(void) {
         // Read back to verify
         uint64_t readback =
             READ_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
-        // printf("  Readback: 0x%016llX\n", (unsigned long long)readback);
 
-        // TODO: READ_REG64() doesn't seem to work properly right now, only returns lower 32 bits
+        // TODO: READ_REG64() returns only the lower 32 bits
     }
 
     printf("  AP output remap configured successfully\n");
@@ -137,10 +132,6 @@ static int test_config_stee_output_remap(void) {
 
     for (int i = 0; i < NUM_STEE_REMAPS; i++) {
         stee_remap_ctrl.f.offset = generate_random_64bit();
-        // printf("  Setting STEE output remap control register %d...\n", i);
-        // printf("  Register: 0x%08X\n",
-        // OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i)); printf("  Value:
-        // 0x%016llX\n", (unsigned long long)stee_remap_ctrl.f.offset);
 
         // Write the remap configuration
         WRITE_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i),
@@ -149,9 +140,8 @@ static int test_config_stee_output_remap(void) {
         // Read back to verify
         uint64_t readback =
             READ_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
-        // printf("  Readback: 0x%016llX\n", (unsigned long long)readback);
 
-        // TODO: READ_REG64() doesn't seem to work properly right now, only returns lower 32 bits
+        // TODO: READ_REG64() returns only the lower 32 bits
     }
 
     printf("  STEE output remap configured successfully\n");
@@ -174,9 +164,6 @@ static int test_ap_segment_traffic(void) {
         for (int write_idx = 0; write_idx < NUM_TRAFFIC_WRITES; write_idx++) {
             uint64_t traffic_addr = generate_random_segment_address(segment_base, SEGMENT_SIZE);
             uint32_t write_pattern = TRAFFIC_PATTERN_BASE + (segment << 8) + write_idx;
-
-            // printf("    Write %d: addr=0x%08llX, pattern=0x%08X\n", write_idx, (unsigned long
-            // long)traffic_addr, write_pattern);
 
             // Perform write & read (this will be remapped by hardware)
             WRITE_REG(traffic_addr, write_pattern);
@@ -204,9 +191,6 @@ static int test_stee_segment_traffic(void) {
         for (int write_idx = 0; write_idx < NUM_TRAFFIC_WRITES; write_idx++) {
             uint64_t traffic_addr = generate_random_segment_address(segment_base, SEGMENT_SIZE);
             uint32_t write_pattern = TRAFFIC_PATTERN_BASE + 0x1000 + (segment << 8) + write_idx;
-
-            // printf("    Write %d: addr=0x%08llX, pattern=0x%08X\n", write_idx, (unsigned long
-            // long)traffic_addr, write_pattern);
 
             // Perform write & read (this will be remapped by hardware)
             WRITE_REG(traffic_addr, write_pattern);

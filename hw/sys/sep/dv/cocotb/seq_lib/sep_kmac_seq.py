@@ -8,8 +8,7 @@ either from the KM sideload port (CFG.sideload=1) or the public KEY_SHARE CSRs
 op helper (RAL there; direct AXI here, like SepAes/SepHmac). Masking is enabled
 (EnMasking), so the digest is read as STATE share0 ^ share1. 32-bit beats (size=2).
 
-KMAC register map (base 0x1091_3000; vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_reg_pkg.sv; bit/cmd
-encodings reused from fw/sep/tests/kmac_test + the reference seq):
+KMAC register map (base from the generated SEP header; offsets from kmac.adoc):
   CFG_SHADOWED @ 0x014 (shadowed: written twice)   CMD @ 0x018   STATUS @ 0x01C
   KEY_SHARE0_0 @ 0x030 .. KEY_SHARE0_15 @ 0x06C    KEY_SHARE1_0 @ 0x070
   KEY_LEN @ 0x0B0   PREFIX_0 @ 0x0B4   ERR_CODE @ 0x0E0
@@ -51,49 +50,43 @@ KMAC_NUM_PREFIX = 11  # PREFIX_0..10
 KMAC_KEY_WORDS = 8  # 256-bit key
 KMAC_DIGEST_WORDS = 8  # 256-bit MAC
 
-# CMD sparse encodings (kmac_pkg kmac_cmd_e).
+# CMD sparse encodings (kmac.adoc / OpenTitan CMD field).
 KMAC_CMD_START = 0x1D
 KMAC_CMD_PROCESS = 0x2E
 KMAC_CMD_DONE = 0x16
 
-# STATUS bits: sha3_idle = bit0, sha3_squeeze = bit2.
-KMAC_STATUS_IDLE = 1 << 0
-KMAC_STATUS_SQUEEZE = 1 << 2
+# STATUS bits from the generated export, as the CFG path already does.
+KMAC_STATUS_IDLE = KMAC.field_mask("STATUS", "sha3_idle")
+KMAC_STATUS_SQUEEZE = KMAC.field_mask("STATUS", "sha3_squeeze")
 
-# INTR_STATE bits (kmac_reg_pkg: kmac_done[0], fifo_empty[1], kmac_err[2]).
+# INTR_STATE bits (kmac.adoc: kmac_done[0], fifo_empty[1], kmac_err[2]).
 # kmac_done fires on the absorbed event (SHA3 message fully absorbed -> squeeze
 # ready) and is a RW1C status bit (write 1 to clear).
 KMAC_INTR_KMAC_DONE = 1 << 0
 KMAC_INTR_KMAC_ERR = 1 << 2
 
-# CFG_SHADOWED for keyed KMAC-256 cSHAKE, entropy_mode=EDN, entropy_ready=1
-# (FW/reference suite-confirmed): kmac_en[0], kstrength L256 (0x4), mode cSHAKE (0x20),
-# entropy_mode EDN (0x1_0000), entropy_ready (0x100_0000), sideload (0x1000).
-KMAC_CFG_KEYED_SIDELOAD = 0x0101_1025
-KMAC_CFG_KEYED_SWKEY = 0x0101_0025
-
 KMAC_KEY_LEN_256 = 0x0000_0002
 
-# PREFIX for KMAC mode: encode_string("KMAC"), S empty (FW-confirmed).
+# PREFIX for KMAC mode: encode_string("KMAC"), S empty.
 KMAC_PREFIX_WORD0 = 0x4D4B_2001
 KMAC_PREFIX_WORD1 = 0x0000_4341
 
-# right_encode(256) appended after the message -> spec-correct KMAC (FW-confirmed).
+# right_encode(256) appended after the message -> spec-correct KMAC.
 KMAC_RIGHT_ENCODE_256 = 0x0002_0001
 
-# CFG_SHADOWED field encodings (kmac_reg_pkg + sha3_pkg mode/strength enums):
-# kmac_en[0], kstrength[3:1], mode[5:4], sideload[12], entropy_mode[17:16],
-# entropy_ready[24]. sha3_mode_e: Sha3=0, Shake=2, CShake=3 (KMAC uses Shake +
-# kmac_en=1). keccak_strength_e / key_len_e select by security bit-width.
+# CFG_SHADOWED write map. kmac.adoc names mode[5:4] and kstrength[3:1];
+# the RDL fields have no enum. These are the DV-owned programming values.
+# Keyed KMAC is mode=cSHAKE with kmac_en=1: PREFIX is absorbed only in
+# cSHAKE, so SHAKE+kmac_en is not the SP800-185 KMAC construction.
 KMAC_MODE = {"sha3": 0, "shake": 2, "cshake": 3}
-KMAC_STRENGTH = {128: 0, 224: 1, 256: 2, 384: 3, 512: 4}  # L128/224/256/384/512
-KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}  # Key128..Key512
+KMAC_STRENGTH = {128: 0, 224: 1, 256: 2, 384: 3, 512: 4}
+KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}
 
 
 def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool, sideload: bool = False) -> int:
     """CFG_SHADOWED word with EDN entropy (entropy_mode=EDN + entropy_ready), the
-    masking-required config. KMAC-256 keyed SW CFG 0x0101_0025 (same word the KM
-    KMAC sideload KAT uses)."""
+    masking-required config. Keyed KMAC-256 is mode=CShake: SW key 0x0101_0035,
+    sideload 0x0101_1035."""
     return (
         int(bool(kmac_en))
         | (kstrength << KMAC.field_lsb("CFG_SHADOWED", "kstrength"))
@@ -205,8 +198,13 @@ class SepKmac(SepAxiRegDriver):
             for i, word in enumerate(sw_key):
                 await self._wr(KMAC_KEY_SHARE0_0 + i * 4, word & 0xFFFF_FFFF)
                 await self._wr(KMAC_KEY_SHARE1_0 + i * 4, 0)
-        # CFG_SHADOWED double-write.
-        cfg = KMAC_CFG_KEYED_SIDELOAD if sideload else KMAC_CFG_KEYED_SWKEY
+        # CFG_SHADOWED double-write. Keyed KMAC is mode=cSHAKE + kmac_en=1.
+        cfg = build_kmac_cfg(
+            mode=KMAC_MODE["cshake"],
+            kstrength=KMAC_STRENGTH[256],
+            kmac_en=True,
+            sideload=sideload,
+        )
         await self._wr(KMAC_CFG_SHADOWED, cfg)
         await self._wr(KMAC_CFG_SHADOWED, cfg)
         await self._wait_idle("pre-start")
@@ -342,6 +340,11 @@ class SepKmac(SepAxiRegDriver):
             post,
         )
 
+    async def wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
+        """Poll STATUS until sha3_idle. Public form of the internal wait, for a
+        caller that must know the core is accepting after a reset release."""
+        await self._wait_idle(tag, timeout=timeout, poll_cycles=poll_cycles)
+
     async def _wait_idle(self, tag: str, *, timeout: int = 4_000, poll_cycles: int = 20) -> None:
         await self._poll(KMAC_STATUS_IDLE, f"idle/{tag}", timeout=timeout, poll_cycles=poll_cycles)
 
@@ -365,4 +368,7 @@ class SepKmac(SepAxiRegDriver):
         assert (intr & KMAC_INTR_KMAC_ERR) == 0, (
             f"KMAC INTR_STATE.kmac_err set [{tag}] (0x{intr:08x})"
         )
-        self.log.info("KMAC STATUS clean [%s]: ERR_CODE=0, INTR_STATE.kmac_err=0", tag)
+        self.log.info(
+            "CHK-ERR PASS [%s]: ERR_CODE=0, INTR_STATE.kmac_err=0",
+            tag,
+        )

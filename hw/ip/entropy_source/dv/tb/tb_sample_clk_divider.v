@@ -68,7 +68,7 @@ module tb_sample_clk_divider;
   integer jitter_ro_tapped_lengths [0:11];
 
   initial begin
-    // Jitter RO normal lengths (updated shorter lengths)
+    // Jitter RO normal lengths
     jitter_ro_lengths[0]  = 5;
     jitter_ro_lengths[1]  = 7;
     jitter_ro_lengths[2]  = 11;
@@ -101,7 +101,7 @@ module tb_sample_clk_divider;
   // DUT Instantiation
   //--------------------------------------------------------------------------
   entropy_generator_test_wrapper #(
-    .TOTAL_LENGTH  (17),  // Will be overridden per test
+    .TOTAL_LENGTH  (17),
     .TAPPED_LENGTH (13),
     .CLKDIV_WIDTH  (24)
   ) dut (

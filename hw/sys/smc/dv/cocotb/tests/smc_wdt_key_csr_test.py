@@ -17,6 +17,9 @@ from smc_base_test import smc_base_test
 class smc_wdt_key_csr_test(smc_base_test):
     """CMP writes are gated by the KEY magic value, proven per core."""
 
+    required_evidence = ("CHK-WDT-KEY-PROTOCOL",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

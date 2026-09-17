@@ -33,7 +33,6 @@ static int test_no_match_default_block_scenarios(void) {
     for (int test_case = 0; test_case < 16; test_case++) {
         uint32_t test_addr = FILTER_TEST_BASE_ADDR + test_case * 0x10000;
 
-        // Program filter rules that intentionally miss the test address
         for (int filter_entry = 0; filter_entry < 8; filter_entry++) {
             uint32_t filter_start = 0x50000000 + filter_entry * 0x100000; // different range
             uint32_t filter_end = filter_start + 0x80000;
@@ -207,7 +206,6 @@ int main(void) {
     printf("Filter Datapath Matrix Test\n");
     printf("Strategy: Targeted pass/block traffic tests covering all datapath combinations\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_filter_datapath_matrix_p3_test");
         return TEST_FAIL;

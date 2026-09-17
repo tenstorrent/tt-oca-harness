@@ -18,10 +18,6 @@
  * 4. Monitor STATUS.ACTIVE until transaction completes
  * 5. Check for errors
  * 6. Issue multi-byte TX+RX sequence
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_standard_spi_txrx_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -184,9 +180,8 @@ int main(void) {
         goto done;
     }
     {
-        /* No independent SPI-peer golden for this standard RX path; occupancy
-         * was checked above. Leave payload compare until a TB/model vector is
-         * documented ([EXACT-EXPECTATION] retained intentionally). */
+        /* No SPI-peer golden exists for this standard RX path, so only FIFO
+         * occupancy is checked (above); the payload is logged, not compared. */
         uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
         printf("  RXDATA[0]: 0x%08x (4-byte RX packed; no peer golden)\n", rxdata);
         (void)i;

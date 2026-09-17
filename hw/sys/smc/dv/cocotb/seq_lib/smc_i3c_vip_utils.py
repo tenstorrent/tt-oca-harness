@@ -26,19 +26,13 @@ black-boxed core, and against a core whose pad driver is broken. That is exactly
 the shape policy ``[NEGATIVE-NEEDS-POSITIVE-CONTROL]`` prohibits, so the levels
 are **recorded, not asserted**, and no ``CHK-`` token claims them as checks.
 
-**Branch (b) applies, and
-here is why (a) does not.** The core is enabled --
-``smc_i3c_to_fabric_test_seq`` writes the RDL-declared
+The core is enabled -- ``smc_i3c_to_fabric_test_seq`` writes the RDL-declared
 ``HC_CONTROL.BUS_ENABLE`` and value-compares the readback, and this helper runs
-with the core enabled (``core_enabled=True``). It is still not enough: with the
-controller enabled and no bus transfer queued, the core releases both
-open-drain lines, so ``*_dut_low`` never reaches 1 (measured over 4000
-``clk_smc_i`` cycles with the core enabled). Making the core actually
-drive SCL/SDA requires queueing real I3C bus traffic, and
-``hw/sys/smc/dv/README.md:11-15`` defers exactly that ("only claim **real DUT
-RTL paths**. I3C CCC/IBI / real-core protocol ... are not ported -- not
-reportable as feature PASS"). So no
-``PROBE_CONTROLS`` entry can be built for these nets in this bench.
+with the core enabled (``core_enabled=True``) -- but an enabled controller with
+no bus transfer queued releases both open-drain lines, so ``*_dut_low`` never
+reaches 1. Making the core drive SCL/SDA requires queueing real I3C bus
+traffic, which this bench does not generate, so no ``PROBE_CONTROLS`` entry can
+be built for these nets here.
 
 The two nets are not registered in ``PROBE_SIGNALS`` / ``UNBACKABLE_PROBES``
 (``env/smc_probe_liveness.py``); this helper carries the disclosure in its own
@@ -55,12 +49,10 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
-# Bound for the open-drain pad to follow an ``ext_low`` change. This is a
-# timeout, not a settle delay: the wait below polls the real pad level and
-# FAILS on expiry with last-state diagnostics, so a pad that never follows can
-# cannot pass by luck of sim timing (see [NO-BLIND-DELAY-SYNC] /
-# [TIMEOUT-MUST-FAIL]). Generous -- the property under check is the
-# level, not the latency.
+# Bound, in clk_smc_i cycles, for the resolved pad to follow an ``ext_low``
+# change. The wait below polls the pad level and FAILS on expiry with
+# last-state diagnostics ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]); the
+# property under check is the level, not the latency.
 _PAD_FOLLOW_TIMEOUT_CYCLES = 200
 
 _I3C0_NETS = (
@@ -78,8 +70,7 @@ def _pad_level(dut, sig_name: str, step: str) -> int:
 
     ``int(sig.value)`` on an unresolved net either raises or resolves
     arbitrarily; either way an X would hide a real defect rather than report it
-    ([X-AWARE-CHECK]). This is the one genuinely fail-capable assertion this
-    helper makes, and it is why the samples below are worth taking at all.
+    ([X-AWARE-CHECK]).
     """
     value = getattr(dut, sig_name).value
     assert value.is_resolvable, (
@@ -105,7 +96,7 @@ async def _settle_tb_resolved_pad(dut, sig_name: str, level: int, step: str) -> 
     """Synchronization ONLY -- never evidence.
 
     Waits (bounded) for a pad whose level this step forced through
-    ``tb_top.sv:678-679``. Since ``ext_low`` determines it, reaching the level
+    ``tb_top.sv:687-688``. Since ``ext_low`` determines it, reaching the level
     proves nothing about the DUT; it only lets the drive change propagate before
     the step's samples are taken. Emits no ``CHK-`` token. Expiry
     still fails, because a TB-forced level that never appears means the pad

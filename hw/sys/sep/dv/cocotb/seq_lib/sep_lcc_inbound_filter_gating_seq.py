@@ -77,7 +77,7 @@ class SepLccDemoteSeq(uvm_sequence):
     """Write DEMOTE_{1,2} on the CONTROL bus and read it back.
 
     The two demote registers act independently, each on its own debug group:
-    DEMOTE_1 relaxes DBG_1 ([15:0]) and DEMOTE_2 relaxes DBG_2 ([31:16]). Which
+    DEMOTE_1 relaxes DBG_1 ([23:0]) and DEMOTE_2 relaxes DBG_2 ([47:24]). Which
     register this sequence drives is therefore load-bearing, not a detail -- so
     it is a parameter rather than being baked into the class.
 

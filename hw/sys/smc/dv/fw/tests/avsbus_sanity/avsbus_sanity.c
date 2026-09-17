@@ -30,12 +30,13 @@ void send_cmd(int avs_cmd) {
     avs_cmd_reg.f.RAIL_SEL = 0xf; // broadcast
     avs_cmd_reg.f.CMD_CODE = avs_cmd;
     avs_cmd_reg.f.CMD_GRP = 0;
-    avs_cmd_reg.f.R_OR_W =
-        0; // TODO: old instruction shifts 0b01000 to bit 27, which looks like it should be
-           //       trying to set the r_or_w field to be a read but value is 5 bits
-           //       and doesn't shift the 1 into the right spot?
+    // R_OR_W: 0x0 commits the CMD_DATA write, 0x2 is a read (avsbus_controller.rdl);
+    // current, temperature and version have no write form.
+    bool is_read_only = (avs_cmd == AVS_CMD_TYPE_CURRENT_READ) ||
+                        (avs_cmd == AVS_CMD_TYPE_TEMP_READ) || (avs_cmd == AVS_CMD_TYPE_VERSION);
+    avs_cmd_reg.f.R_OR_W = is_read_only ? 0x2 : 0x0;
     simputshex32("Writing AVS command = ", avs_cmd);
-    write_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CMD_BASE_ADDR, avs_cmd_reg.w); // replace
+    write_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CMD_BASE_ADDR, avs_cmd_reg.w);
 }
 
 void wait_refclk_cycles(uint32_t refclock_cycles) {
@@ -57,10 +58,8 @@ int main(void) {
 
     avsbus_controller__AVS_INTERRUPT_CLEAR_t avs_int_clear = {.w = 0u};
 
-    // Set the resync_interval to 500
     // Set max retries to 3
     avsbus_controller__AVS_CFG_0_t avs_cfg_0 = {.w = 0u};
-    // avs_cfg_0.f.RESYNC_INTERVAL = 500;
     avs_cfg_0.f.MAX_RETRIES = 3;
     write_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR, avs_cfg_0.w);
     // Do a read check on the data just wrote to the avsbus reg space
@@ -94,7 +93,6 @@ int main(void) {
     avs_cfg_1.f.CLK_DIVIDER_DUTY_CYCLE_NUMERATOR = 0x80;
     write_reg(SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_1_BASE_ADDR, avs_cfg_1.w);
 
-    // wait 1us
     wait_refclk_cycles(10);
 
     avs_cfg_1.f.TURN_OFF_ALL_PREMUX_CLOCKS = 0x0;
@@ -105,7 +103,7 @@ int main(void) {
     // wait 10us
     wait_refclk_cycles(1000);
 
-    // Send a bunch of command. Check waveform. An active bus is expected.
+    // Issue one command of each type; the AVS bus is expected to be active.
     send_cmd(AVS_CMD_TYPE_VOLTAGE);
     wait_refclk_cycles(30);
     send_cmd(AVS_CMD_TYPE_TRANSITION);

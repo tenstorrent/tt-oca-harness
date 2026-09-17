@@ -23,6 +23,7 @@ package smu_env_pkg;
   import ocah_checker_uvm_pkg::*;  // protocol-neutral named-evidence base
   import ocah_lib_pkg::*;  // shared framework bases, knobs, rng
   import ocah_jtag_uvm_pkg::*;
+  import ocah_axi_uvm_pkg::*;  // the outbound SMN responder
   import dtp_env_pkg::*;  // the embedded DTP's reference models, checker, scoreboard
 
   `include "smu_types.svh"

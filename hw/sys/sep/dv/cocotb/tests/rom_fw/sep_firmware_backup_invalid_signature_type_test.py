@@ -9,7 +9,7 @@ with ``BAD_SIG_TYPE=`` (``manifest_crypto.c``).
 
 WHY 0, AND WHY A FIXED VALUE. The reference draws from
 ``random.choice([0, random.randint(3, 10)])``,
-so 0 is one of its own values; it is deliberately NOT 2, because 2 is
+so 0 is one of its own values; it is not 2, because 2 is
 ``MANIFEST_SIG_TYPE_ECC_P_256`` (``manifest.h``) and the reference avoids the
 one non-RSA type its packer treats specially. The ROM's check is a single ``!=``
 against RSA-3072, so every value in that set exercises the identical arm, and

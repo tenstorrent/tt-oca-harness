@@ -75,18 +75,19 @@ This project incorporates code from the following third-party sources:
    Vendored under
    vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/
 
-10. Freedom Metal
+10. axi-vip
+    Copyright (C) 2020 The Symbiflow Authors
+    Licensed under the ISC License
+    Project: https://github.com/antmicro/axi-vip
+    Vendored under
+    vendor/chipsalliance/i3c-core/upstream/third_party/axi-vip/
+
+11. Freedom Metal
     Copyright (c) 2017-2018 SiFive Inc.
     Distributed under the FreeBSD License terms retained in the source file.
     Sources: hw/sys/smc/dv/fw/include/metal/,
     hw/sys/smc/dv/fw/drivers/, hw/sys/smc/dv/fw/startup/, and
     hw/sys/smc/bootrom/prod/
-
-11. Whetstone benchmark
-    Copyright (C) Texas Instruments Incorporated and
-    Copyright (c) 1998 Painter Engineering, Inc.
-    Distributed under the terms retained in the source file.
-    Source: hw/sys/smc/dv/fw/tests/whetstone/whetstone.c
 
 12. EEMBC CoreMark
     Copyright (c) 2018 Embedded Microprocessor Benchmark Consortium (EEMBC)
@@ -113,4 +114,13 @@ This project incorporates code from the following third-party sources:
     Licensed under the Mozilla Public License, Version 2.0
     Project: https://github.com/dequelabs/axe-core
     Development-only dependencies declared under tools/a11y/.
+
+16. Apache ECharts
+    Copyright 2017-2026 The Apache Software Foundation
+    Licensed under the Apache License, Version 2.0
+    Project: https://github.com/apache/echarts
+    Vendored under doc/ui-supplemental/js/vendor/echarts/
+    The minified bundle also includes zrender (BSD-3-Clause),
+    d3.js excerpts (BSD-3-Clause, Copyright 2010-2016 Mike Bostock),
+    and tslib (0BSD, Copyright (c) Microsoft Corporation).
 

@@ -8,7 +8,7 @@ name = "smc_cpu_to_sep_axi_test"
 module = "smc_cpu_to_sep_axi_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "project_p0", "pyuvm"]
+tags = ["ci", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -34,7 +34,7 @@ name = "smc_mutex_semaphore_test"
 module = "smc_mutex_semaphore_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "cpu_depth", "tier_c", "pyuvm"]
+tags = ["ci", "cpu_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 # BFM rebuild of FW mem_boundary_test (SPM window edges via SEP_IN AXI).
@@ -44,7 +44,15 @@ name = "smc_spm_mem_boundary_test"
 module = "smc_spm_mem_boundary_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "mem", "tier_c", "pyuvm"]
+tags = ["ci", "mem", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_ref_clock_timer_rate_test"
+module = "smc_ref_clock_timer_rate_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "clock", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -52,17 +60,15 @@ name = "smc_reference_counter_test"
 module = "smc_reference_counter_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "cpu_depth", "tier_c", "pyuvm"]
+tags = ["ci", "cpu_depth", "pyuvm"]
 run_modes = ["smoke"]
-
-# smc_pll_pvt_clock_config_test — not ported (rtl_placeholder)
 
 [[tests]]
 name = "smc_ecc_dfd_dbs_sanity_test"
 module = "smc_ecc_dfd_dbs_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 # BFM: mem_repair_abort / mbist_abort → STATUS_SMU (not DEBUG_CTRL reset).

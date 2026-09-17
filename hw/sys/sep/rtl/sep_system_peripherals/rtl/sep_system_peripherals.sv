@@ -257,7 +257,7 @@ module sep_system_peripherals (
     .user_ovrd_t        (sep_pkg::sep_56_64_6_12_axi_user_t),
     .NumRegions         (sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS),
     .RegionBase         (och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_REGION_BASE_ADDR),
-    .IdxStart           (sep_pkg::NUM_AP_OUTPUT_REMAP_IDX_START),
+    .IdxStart           (sep_pkg::AP_OUTPUT_REMAP_IDX_START),
     .UserOverrideEn     (1'b1),
     .UserOverrideVal    (sep_pkg::OTHERS_SOURCE_ID)
   ) u_ap_remap (
@@ -284,7 +284,7 @@ module sep_system_peripherals (
     .user_ovrd_t        (sep_pkg::sep_56_64_6_12_axi_user_t),
     .NumRegions         (sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS),
     .RegionBase         (och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_REGION_BASE_ADDR),
-    .IdxStart           (sep_pkg::NUM_STEE_OUTPUT_REMAP_IDX_START),
+    .IdxStart           (sep_pkg::STEE_OUTPUT_REMAP_IDX_START),
     .UserOverrideEn     (1'b1),
     .UserOverrideVal    (sep_pkg::OTHERS_SOURCE_ID)
   ) u_stee_remap (

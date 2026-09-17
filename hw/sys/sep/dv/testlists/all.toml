@@ -5,12 +5,11 @@ schema_version = 1
 # once; tags provide custom subsets, and this file owns the regression groups.
 #
 # Pre-merge gate: run the two class regressions, not the mixed `all` group (the
-# mixed path uses conservative fan-out, and the heavy rom_main tests are the
-# known-flaky-under-`all`-concurrency set). `rom_fw` is a separate class and a
-# separate owner: those four tests use the `rom_boot` RTL target and the Boot ROM
+# mixed path uses conservative fan-out). `rom_fw` is a separate class and a
+# separate owner: its tests use the `rom_boot` RTL target and the Boot ROM
 # firmware profiles, and are not members of `all`.
 #
-# python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
+# python3 tools/dv/run_dv.py --dut sep --items cpu_stub --regress \
 # --tool verilator --stage flist --stage hdl_compile --stage sim
 # python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
 # --tool verilator --stage flist --stage hdl_compile --stage sim
@@ -25,7 +24,7 @@ schema_version = 1
 # development accelerators only.
 #
 # no_cpu tests use target="lsu_stub_all_live" for the CPU-stubbed model. CPU
-# firmware tests intentionally omit target and use the full-CPU default model.
+# firmware tests omit target and use the full-CPU default model.
 # Keep group membership aligned with each test's first run_modes[] entry.
 #
 # Production Boot ROM firmware tests live in rom_fw.toml (ROM-FW owner). They run
@@ -37,28 +36,23 @@ includes = ["system.toml", "cpu.toml", "memory.toml", "km.toml", "crypto.toml", 
 
 # CI smoke gate (`--items smoke`), matching the dtp/smc/smu convention so the
 # shared Jenkins/GitHub `items=smoke` parameter resolves for every DUT. One
-# no_cpu test on purpose: it needs no RISC-V toolchain (no c_compile stage) and
+# no_cpu test: it needs no RISC-V toolchain (no c_compile stage) and
 # no firmware image, so it runs on a bare hosted/CI runner and still proves the
 # whole flist -> hdl_compile -> sim chain plus the SEP AXI register map.
 [[groups]]
 name = "smoke"
 tests = ["sep_axi_smoke_test"]
 
-# Alias of `smoke` for callers that pass `--items sanity`. Prefer `smoke`.
-[[groups]]
-name = "sanity"
-tests = ["sep_axi_smoke_test"]
-
 [[groups]]
 # Every test this VPLAN grades. The two class groups below partition it:
-# `no_cpu` (CPU-stub target) plus `cpu` (full-CPU target), no overlap and
-# nothing left over. Boot ROM firmware (`rom_fw`) is deliberately NOT a
+# `cpu_stub` (CPU-stub target) plus `cpu` (full-CPU target), no overlap and
+# nothing left over. Boot ROM firmware (`rom_fw`) is NOT a
 # member -- a different owner, a third RTL target, and firmware rather than
 # hardware contracts -- so `all` stays the SEP hardware suite and is the set
 # a coverage run grades. expected_count fails the run when membership drifts
 # from the class groups instead of silently shrinking the suite.
 name = "all"
-expected_count = 91
+expected_count = 101
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -106,6 +100,7 @@ tests = [
     "sep_fabric_remap_filter_csr_bank_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
+    "sep_mailbox_peer_rx_rirqt_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
@@ -130,11 +125,17 @@ tests = [
     "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",
+    "sep_efuse_digest_latch_fault_test",
+    "sep_efuse_illegal_state_fail_closed_test",
     "sep_sec_dis_override_test",
     "sep_fabric_output_remap_datapath_proxy_test",
     "sep_fabric_local_alias_datapath_test",
     "sep_km_key_policy_vault_test",
+    "sep_km_isolate_termination_test",
     "sep_km_command_set_rand_test",
+    "sep_km_wipe_reset_test",
+    "sep_km_handover_test",
+    "sep_km_abr_seed_sideload_test",
     "sep_km_mailbox_protocol_rand_test",
     "sep_km_crc_pcpi_kat_test",
     "sep_km_kpv_scrambler_test",
@@ -150,7 +151,10 @@ tests = [
     "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
     "sep_locked_field_access_irq_path_test",
+    "sep_efuse_secure_tm_write_lock_test",
     "sep_abr_mldsa_keygen_kat_test",
+    "sep_abr_mldsa_sign_verify_kat_test",
+    "sep_abr_mlkem_kat_test",
 ]
 
 [[groups]]
@@ -181,7 +185,8 @@ tests = [
 
 [[groups]]
 # CPU-stub daily regression: high sim fanout, single-threaded Verilator model.
-name = "no_cpu"
+# The CPU is not alive (`sep_cpu` stub). Run mode stays `no_cpu`.
+name = "cpu_stub"
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -216,6 +221,7 @@ tests = [
     "sep_fabric_remap_filter_csr_bank_test",
     "sep_wdt_aon_timer_internals_test",
     "sep_axil_mailbox_iface_rand_test",
+    "sep_mailbox_peer_rx_rirqt_test",
     "sep_crypto_per_ip_reset_isolation_test",
     "sep_trng_reset_recovery_test",
     "sep_fabric_inbound_filter_rule_matrix_test",
@@ -234,11 +240,17 @@ tests = [
     "sep_efuse_set_only_monotonicity_test",
     "sep_lcc_demote_feat_ctrl_matrix_test",
     "sep_efuse_rma_token_rand_test",
+    "sep_efuse_digest_latch_fault_test",
+    "sep_efuse_illegal_state_fail_closed_test",
     "sep_sec_dis_override_test",
     "sep_fabric_output_remap_datapath_proxy_test",
     "sep_fabric_local_alias_datapath_test",
     "sep_km_key_policy_vault_test",
+    "sep_km_isolate_termination_test",
     "sep_km_command_set_rand_test",
+    "sep_km_wipe_reset_test",
+    "sep_km_handover_test",
+    "sep_km_abr_seed_sideload_test",
     "sep_km_mailbox_protocol_rand_test",
     "sep_km_crc_pcpi_kat_test",
     "sep_km_kpv_scrambler_test",
@@ -254,7 +266,10 @@ tests = [
     "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
     "sep_locked_field_access_irq_path_test",
+    "sep_efuse_secure_tm_write_lock_test",
     "sep_abr_mldsa_keygen_kat_test",
+    "sep_abr_mldsa_sign_verify_kat_test",
+    "sep_abr_mlkem_kat_test",
 ]
 
 [[groups]]
@@ -287,12 +302,11 @@ tests = [
     "sep_spi_primary_fail_backup_test",
     # TP080. Subclass of the entry above; adds an SRAM scoreboard to the same
     # failover. Covers the EXT SRAM half of the requirement only -- this ROM never
-    # clears SMC SRAM (FINDINGS F19, as amended by F21), so a green run here is not F038 coverage of
-    # that half. Slower than most of this group, and mostly for an inherited
-    # reason: the clear it asserts is 65536 CPU stores, about 1.05M clocks
-    # (measured, run 20260829_111100). The entry above pays the same cycle cost
-    # already. Compare in CYCLES: sys_clk_period is randomised per run, so
-    # simulated-time and wall-second figures are not comparable between runs.
+    # clears SMC SRAM, so a green run here says nothing about that half. Slower
+    # than most of this group, mostly for an inherited reason: the clear it
+    # asserts is 65536 CPU stores, which the entry above pays as well. Compare in
+    # CYCLES: sys_clk_period is randomised per run, so simulated-time and
+    # wall-second figures are not comparable between runs.
     "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
     "sep_firmware_encrypted_boot_test",
@@ -322,9 +336,9 @@ tests = [
     # failure, and both run a modexp on the recovering slot.
     "sep_firmware_primary_invalid_public_key_selection_test",
     "sep_firmware_primary_invalid_security_version_test",
-    # Batch R2 -- the primary-side counterparts of the group above. The six-member
+    # The primary-side counterparts of the group above. The six-member
     # PRIMARY revoke family shares ONE implementation,
-    # rom_fw/sep_pubkey_rom_revoked_primary_base.py, but deliberately NOT one
+    # rom_fw/sep_pubkey_rom_revoked_primary_base.py, but NOT one
     # outcome: slot 0 is TERMINAL, because the shipped backup selects ROM slot 0
     # as well and one fuse bit therefore refuses both manifests, while slots 1-5
     # fail over and boot from the unrevoked backup. The shared base measures which
@@ -347,7 +361,7 @@ tests = [
     # and the matched partner of the revoke-0 member above -- the same flash bytes,
     # one bit of CHIPLET_PUBK_REVOKE apart.
     "sep_firmware_primary_rom_key_valid_test",
-    # Batch R3 -- BL1 version, chiplet fused keys, demotion.
+    # BL1 version, chiplet fused keys, demotion.
     # ACCEPT boundary of the rollback check, on a fuse floor spread across all eight
     # thermometer words so a truncated decode fails on FUSE_VER=0x00000008.
     "sep_firmware_bl1_ver_test",
@@ -361,7 +375,7 @@ tests = [
     "sep_firmware_chiplet_pubkey_0_revoke_test",
     "sep_firmware_chiplet_pubkey_1_test",
     "sep_firmware_chiplet_pubkey_1_revoke_test",
-    # Batch R4, FINDINGS.md R07: the digest-SOURCE discriminator the four members
+    # The digest-SOURCE discriminator the four members
     # above cannot be. Their fuse digest equals public_key_digests[0], so a ROM
     # comparing against the compiled-in table instead of the fuse is invisible to
     # them. Here the SELECTED fuse (HASH0) holds a decoy while the unselected one
@@ -371,18 +385,17 @@ tests = [
     # byte-identical to sep_efuse_lc_prod_chiplet_key1.toml's -- making this and
     # sep_firmware_chiplet_pubkey_1_test a matched pair on the FUSE side.
     "sep_firmware_chiplet_pubkey_0_wrong_digest_test",
-    # The [C15] demotion decision. Eight tracker rows, but only SIX of the seven
+    # The [C15] demotion decision: eight members covering SIX of the seven
     # outcomes the block can produce -- see rom_fw/sep_demotion_decision_base.py
-    # for the collapse map. The three PROD_END rows are one observable (O1),
+    # for the collapse map. The three PROD_END members are one observable (O1),
     # because rom_main.c returns before any manifest input is read; the
     # remaining five are O2a, O2b, O3a, O4 and O5. The seventh outcome, O3b
-    # (unauth_flag_0_prod_sel_bit_set, tracker row 116), has no testcase and is
-    # this group's one gap. Every member checks the DEMOTE_1/DEMOTE_2 registers
-    # and not only the console, through the tb_top probes batch R3 wired, because
-    # every [C15] console string is printed from a local computed one line
-    # earlier. The shared stimulus lives in rom_fw/sep_demotion_prod_base.py
-    # (PROD, secure boot disabled on both surfaces) and
-    # rom_fw/sep_demotion_prod_end_base.py.
+    # (unauth_flag_0_prod_sel_bit_set), has no testcase. Every member checks the
+    # DEMOTE_1/DEMOTE_2 registers and not only the console, through the tb_top
+    # probes, because every [C15] console string is printed from a local
+    # computed one line earlier. The shared stimulus lives in
+    # rom_fw/sep_demotion_prod_base.py (PROD, secure boot disabled on both
+    # surfaces) and rom_fw/sep_demotion_prod_end_base.py.
     "sep_firmware_demotion_decision_auth_flag_0_prod_end_test",
     "sep_firmware_demotion_decision_no_flag_prod_end_test",
     "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test",
@@ -393,18 +406,17 @@ tests = [
     "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test",
     "sep_bl1_size_invalid_test",
     "sep_bl1_entry_invalid_test",
-    # KNOWN-FAIL SENTINEL, kept red on purpose. Expected to fail until the
-    # TP049 procedure-vs-ROM dispute is ruled on; see the long comment on its
-    # [[tests]] entry in rom_fw.toml. A run whose ONLY failure is this test is
-    # the expected result. Do not remove this line to get a green run.
+    # Expected FAIL: this test asserts the TP049 step-5 outcome (a decryption
+    # failure is terminal) and the ROM does not produce it; the framework has no
+    # xfail mechanism, so a run whose ONLY failure is this test is the expected
+    # result. See its [[tests]] entry in rom_fw.toml.
     "sep_decryption_failure_terminal_test",
     "sep_mbist_fail_continue_test",
     "sep_warm_reset_invalid_hang_test",
     "sep_warm_reset_below_range_hang_test",
     "sep_warm_reset_unarmed_cold_boot_test",
     "sep_warm_reset_bad_target_exception_test",
-    # SLOW ON PURPOSE: ~35-45 min. Two full RSA-3072 modexps on the real OTBN,
-    # one per manifest slot. Adding this made a full `rom_fw` run about 40
-    # minutes longer; see its [[tests]] entry in rom_fw.toml. Not a hang.
+    # SLOW: two full RSA-3072 modexps on the real OTBN, one per manifest slot;
+    # not a hang. See its [[tests]] entry in rom_fw.toml.
     "sep_otbn_rsa_verify_failure_test",
 ]

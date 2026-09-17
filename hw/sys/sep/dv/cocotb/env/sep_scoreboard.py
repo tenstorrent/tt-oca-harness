@@ -40,9 +40,8 @@ class SepScoreboard(uvm_subscriber):
             #   * OKAY  -> the access was NOT blocked/undecoded (a real fault);
             #   * timed_out -> the access WEDGED with no response. A blocked access
             #     must return an error response, not hang; a timeout is not evidence
-            #     of enforcement. Guarding this structurally (not just by the test's
-            #     own `assert not timed_out`) keeps the checker non-vacuous even if a
-            #     future test pairs expect_error with allow_timeout.
+            #     of enforcement, so the check holds even when expect_error is paired
+            #     with allow_timeout.
             # The sequence/test asserts the exact error code separately.
             if item.timed_out:
                 self._fail(
@@ -93,7 +92,7 @@ class SepScoreboard(uvm_subscriber):
         assert not self.errors, f"SEP scoreboard found {len(self.errors)} error(s): " + "; ".join(
             self.errors
         )
-        # Positive-evidence house rule: a clean run must have actually observed
+        # Positive evidence: a clean run must have actually observed
         # transactions, not passed vacuously on zero activity.
         assert self.checks > 0, "SEP scoreboard saw no AXI transactions (no positive evidence)"
         self.logger.info(

@@ -236,20 +236,6 @@ addrmap sep_cpu_ctrl {
     };
 
 
-    reg RAS_BANK_INFO {
-        field {
-            sw = rw;
-            hw = r;
-            desc = "Chiplet type ID";
-        } bank_chip [3:0] = 0x0;
-
-        field {
-            sw = rw;
-            hw = r;
-            desc = "Chiplet instance ID";
-        } bank_instance [7:4] = 0x0;
-    };
-
     reg SEP_SW_DEBUG {
         regwidth = 64;
         accesswidth = 64;
@@ -543,7 +529,6 @@ addrmap sep_cpu_ctrl {
     SEP_FUSE_SENSE_STATUS SEP_FUSE_SENSE_STATUS                  @ 0x150;
 
 
-    RAS_BANK_INFO         RAS_BANK_INFO                           @ 0x170;
     SEP_SW_DEBUG          SEP_SW_DEBUG                            @ 0x178;
 
     SEP_NMI_VEC           SEP_NMI_VEC                             @ 0x180;

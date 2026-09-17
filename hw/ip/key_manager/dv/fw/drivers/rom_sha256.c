@@ -184,9 +184,8 @@ void rom_sha256_update(struct rom_sha256_ctx *ctx, const uint8_t *data, uint32_t
     rem_len = new_len % (uint32_t)ROM_SHA256_BLOCK_SIZE;
 
     /*
-     * Copy the final partial block. (new_len - rem_len) gives the offset of
-     * the leftover bytes after the complete blocks, avoiding the overflow the
-     * original (block_nb << 6) offset could hit for large block_nb.
+     * Copy the final partial block. (new_len - rem_len) is the offset of the
+     * leftover bytes after the complete blocks and cannot overflow.
      */
     memcpy(ctx->block, &shifted_data[new_len - rem_len], rem_len);
 

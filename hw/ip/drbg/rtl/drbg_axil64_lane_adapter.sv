@@ -180,12 +180,9 @@ module drbg_axil64_lane_adapter
 
     case (state_q)
       StIdle: begin
-        axil64_rsp_o.aw_ready =
-                    !aw_pending_q && !axil64_req_i.ar_valid;
-        axil64_rsp_o.w_ready =
-                    !w_pending_q && !axil64_req_i.ar_valid;
-        axil64_rsp_o.ar_ready =
-                    !aw_pending_q && !w_pending_q && !axil64_req_i.aw_valid && !axil64_req_i.w_valid;
+        axil64_rsp_o.aw_ready = !aw_pending_q;
+        axil64_rsp_o.w_ready  = !w_pending_q;
+        axil64_rsp_o.ar_ready = !aw_pending_q && !w_pending_q;
 
         aw_handshake = axil64_req_i.aw_valid && axil64_rsp_o.aw_ready;
         w_handshake = axil64_req_i.w_valid && axil64_rsp_o.w_ready;
@@ -310,6 +307,14 @@ module drbg_axil64_lane_adapter
       unsupported_access_pulse_o |-> !(forwarded_read_pulse_o || forwarded_write_pulse_o))
   `OCAH_OT_ASSERT(ReadForwardingSinglePulse_A, forwarded_read_pulse_o |-> state_q == StReadReq)
   `OCAH_OT_ASSERT(WriteForwardingSinglePulse_A, forwarded_write_pulse_o |-> state_q == StWriteReq)
+  `OCAH_OT_ASSERT(StIdleAwReady_A, (state_q == StIdle) |-> (axil64_rsp_o.aw_ready == !aw_pending_q))
+  `OCAH_OT_ASSERT(StIdleWReady_A, (state_q == StIdle) |-> (axil64_rsp_o.w_ready == !w_pending_q))
+  `OCAH_OT_ASSERT(
+      StIdleArReady_A,
+      (state_q == StIdle) |-> (axil64_rsp_o.ar_ready == (!aw_pending_q && !w_pending_q)))
+  `OCAH_OT_ASSERT(
+      BusyHoldsChannelReadyLow_A,
+      (state_q != StIdle) |-> (!axil64_rsp_o.aw_ready && !axil64_rsp_o.w_ready && !axil64_rsp_o.ar_ready))
   `OCAH_OT_ASSERT_KNOWN(Axil64AwReadyKnown_A, axil64_rsp_o.aw_ready)
   `OCAH_OT_ASSERT_KNOWN(Axil64WReadyKnown_A, axil64_rsp_o.w_ready)
   `OCAH_OT_ASSERT_KNOWN(Axil64BValidKnown_A, axil64_rsp_o.b_valid)

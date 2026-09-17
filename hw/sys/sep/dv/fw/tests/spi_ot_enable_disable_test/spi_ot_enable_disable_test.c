@@ -13,10 +13,6 @@
  * 3. Enable controller (SPIEN=1), verify STATUS
  * 4. Software reset (SW_RST pulse), verify state clears
  * 5. Disable controller (SPIEN=0)
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_enable_disable_test STACK=sim
- *
  */
 
 #include <stdint.h>

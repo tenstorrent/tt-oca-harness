@@ -593,13 +593,14 @@ Unique identifiers and the class root key supplied by OTP are Class 1 assets and
 remain outside every scan chain. In secure test mode, these sources are replaced
 with a valid zero value at the eFuse shadow boundary, so the Key Manager only
 ever observes zero and needs no isolation logic of its own. Lifecycle and
-demotion policy remain available.
+demotion policy remain available. The public identity fields are not Class 1
+and are not blanked; they remain on the KM port.
 
-The Key Manager copies of the unique identifiers and the class root key are
-volatile: they are cleared by cold reset and by warm reset, which also carries
-the firmware soft reset, and they reload from the shadow bus on the cycle after
-the reset releases. Lifecycle and demotion captures persist across a warm
-reset because firmware relies on them for policy decisions.
+The Key Manager copies of the unique identifiers, the class root key, and the
+public identities are volatile: they are cleared by cold reset and by warm reset,
+which also carries the firmware soft reset, and they reload from the shadow bus
+on the cycle after the reset releases. Lifecycle and demotion captures persist
+across a warm reset because firmware relies on them for policy decisions.
 
 Firmware-enforced runtime access policy is independent of scan and scan-dump
 protection.
@@ -1048,11 +1049,15 @@ The sampler hardware is implemented as a five-state FSM in `km_drbg_sampler`. Th
 [[otp]]
 *OTP*
 
-The KM consumes two things from the OTP/eFuse, both delivered over private
-hardwired paths so their values cannot be spoofed by software:
+The KM consumes OTP-derived material over a private hardwired bundle so the
+values cannot be spoofed by software. SEP dual-rail-encodes each 256-bit field
+at the SEP-to-KM boundary (`{~value, value}`) from the sensed eFuse shadow:
 
-* the fuse-provisioned UIDs — `CHIPLET_UID`, `SiP_UID`, `SYS_UID` — the root
-secrets from which the KM derives the root keys; and
+* the fuse-provisioned secrets — `CHIPLET_UID`, `SIP_UID`, `SYS_UID`,
+`CLASS_KEY` — the UIDs from which the KM derives the root keys, and the class
+root key;
+* the three 256-bit public identities — `SEP_CHIPLET_ID`, `SEP_SIP_ID`,
+`SEP_SYS_ID` — per-owner values that personalize each owner's identity root;
 * the life-cycle state, one of the contexts a derived key is bound to (see
 <<chip-configuration>>).
 
@@ -1061,6 +1066,14 @@ that copy to derive the root keys, after which it is protected by the KM's own
 warm-domain read-lock (see <<uid-provisioning-and-access>>) so mutable firmware
 cannot read it. This KM-local lock is separate from, and additional to, the
 eFuse controller's own locks.
+
+*Public identity delivery.* The three public identity fuses take the same
+dual-rail encode as the secrets. They remain on the KM port in secure test
+mode: the eFuse controller blanks only the four secrets on the hardware shadow
+output. The eFuse per-field read-lock bits (`LOCKS[59]`, `[61]`, `[63]`) hide
+software and JTAG shadow reads; they do not blank the hardwired KM port. The
+KM's own `OTP_READ_LOCK` and `OTP_READ_LOCK_COLD` bits zero the KMCSR readout
+words only.
 
 *Life-cycle state.* The life-cycle state is hardwired into the KM as
 authoritative, software-readable status. Being non-secret it is neither locked

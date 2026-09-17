@@ -4,8 +4,8 @@
 // (PyUVM) and SystemVerilog UVM flows as ONE framework-neutral core: the
 // module has no ports. It instantiates the TB interfaces, the DUT, the
 // struct <-> flat-signal adapters, the request-activity and reset counters,
-// and the functional-coverage modules; both frameworks consume the same
-// interface instances.
+// the functional-coverage modules, and the protocol SVA checkers; both
+// frameworks consume the same interface instances.
 //
 //   * dtp_tb_if     control domain: system clock and resets, lifecycle
 //                   dbg_disable, TAP-state and debug-TDR observables,
@@ -24,8 +24,8 @@
 // cocotb (`--dut dtp`) drives the clock, resets, and stimulus members by
 // hierarchical handle and attaches its BFMs to the interface scopes. The
 // `UVM` define (`--framework uvm`) adds the harness block at the end of the
-// module: the clock generator, the protocol SVA, the test classes, the
-// uvm_config_db publication of every instance, and run_test().
+// module: the clock generator, the test classes, the uvm_config_db
+// publication of every instance, and run_test().
 //
 // Exposes the DTP DUT's primary JTAG TAP at pin level so the shared JTAG
 // master can drive it, plus system clock/reset. The JTAG TAP FSM lives
@@ -33,8 +33,12 @@
 // the decoded {tms,trst_n,tck} struct plus tdi/tdo -- effectively raw JTAG
 // pins.
 //
-// The BSR/iJTAG scan chains are looped back (scan_in = scan_out). Each STAP
-// host port loops its TDO back onto its TDI by default; the per-port
+// The BSR scan chain is looped back (scan_in = scan_out). Each iJTAG SIB
+// drives an instrument stub: a scan register of a distinct width (4, 5, 6
+// bits) that captures its own update register, so open-SIB subsets have
+// unique chain lengths and a value written through an open SIB reads back
+// on the next scan. Each STAP host port loops its TDO back onto its TDI by
+// default; the per-port
 // dtp_scan_if.stap_<x>_ds_en instead splices the downstream ocah_jtag_if
 // TAP behind the port, so the STAP-selection scenarios prove forwarding
 // against a real IEEE 1149.1 device. The JTAG2AXI and SMC/SEP OTP AXI-Lite
@@ -77,6 +81,9 @@ module dtp_uvm_top
   logic jtag_bsr_shift_en;
   logic jtag_bsr_capture_en;
   logic jtag_bsr_update_en;
+  logic jtag_bsr_run_test_idle;
+  logic jtag_bsr_test_logic_reset;
+  logic jtag_bsr_runbist;
   logic jtag_ijtag_select;
   logic jtag_ijtag_shift_en;
   logic jtag_ijtag_capture_en;
@@ -89,6 +96,9 @@ module dtp_uvm_top
   logic jtag_dft_shift_en;
   logic jtag_dft_capture_en;
   logic jtag_dft_update_en;
+  logic jtag_dft_run_test_idle;
+  logic jtag_dft_test_logic_reset;
+  logic jtag_dft_runbist;
   logic jtag_dfd_select;
   logic jtag_dfd_shift_en;
   logic jtag_dfd_capture_en;
@@ -223,6 +233,8 @@ module dtp_uvm_top
   logic [31:0] xtrig_axil_awvalid_count;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
+  logic [31:0] xtrig_axil_aw_stall_count;
+  logic [31:0] xtrig_axil_ar_stall_count;
 
   // XTRIG CTM and CTP GPIO stimulus and observables, from dtp_xtrig_if.
   logic [DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
@@ -309,9 +321,10 @@ module dtp_uvm_top
   assign jtag_tdo_oen = jtag_ptap_client_tdo_oen;
 
   // ------------------------------------------------------------------
-  // STAP / iJTAG scan-chain loopback nets (zero-length passthrough)
+  // Scan-chain nets: boundary scan and the extended STAP scan loop
+  // scan_in <- scan_out (zero-length passthrough); each iJTAG host scan
+  // chain runs through an instrument stub.
   // ------------------------------------------------------------------
-  // Boundary scan + extended scan + iJTAG: loop scan_in <- scan_out.
   jtag_scan_ctrl_t jtag_bsr_host_scan_ctrl;
   jtag_scan_ctrl_t jtag_stap_host_scan_ctrl;
   jtag_scan_ctrl_t jtag_dfd_host_scan_ctrl;
@@ -320,8 +333,56 @@ module dtp_uvm_top
   logic bsr_scan_out;
   logic stap_host_scan_out;
   logic dfd_scan_out;
+  logic dfd_scan_in;
   logic dft_secure_scan_out;
+  logic dft_secure_scan_in;
   logic dft_scan_out;
+  logic dft_scan_in;
+
+  // iJTAG instrument stubs, one per SIB host chain. Distinct widths give
+  // every open-SIB subset a unique chain length; each stub captures its own
+  // update register, so the value shifted through an open SIB on one scan
+  // is the capture of the next. The widths are mirrored in the scan models
+  // (env/dtp_scan_ref_model.py, dtp_types.svh).
+  localparam int unsigned IjtagDftSecureInstrumentWidth = 4;
+  localparam int unsigned IjtagDftInstrumentWidth = 5;
+  localparam int unsigned IjtagDfdInstrumentWidth = 6;
+  logic [IjtagDftSecureInstrumentWidth-1:0] dft_secure_instrument_q;
+  logic [IjtagDftInstrumentWidth-1:0] dft_instrument_q;
+  logic [IjtagDfdInstrumentWidth-1:0] dfd_instrument_q;
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDftSecureInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dft_secure_instrument (
+    .scan_ctrl_i(jtag_dft_secure_host_scan_ctrl),
+    .scan_in_i  (dft_secure_scan_out),
+    .scan_out_o (dft_secure_scan_in),
+    .data_in_i  (dft_secure_instrument_q),
+    .data_out_o (dft_secure_instrument_q)
+  );
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDftInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dft_instrument (
+    .scan_ctrl_i(jtag_dft_host_scan_ctrl),
+    .scan_in_i  (dft_scan_out),
+    .scan_out_o (dft_scan_in),
+    .data_in_i  (dft_instrument_q),
+    .data_out_o (dft_instrument_q)
+  );
+
+  prim_jtag_scan_reg #(
+    .WIDTH    (IjtagDfdInstrumentWidth),
+    .RESET_VAL('0)
+  ) u_dfd_instrument (
+    .scan_ctrl_i(jtag_dfd_host_scan_ctrl),
+    .scan_in_i  (dfd_scan_out),
+    .scan_out_o (dfd_scan_in),
+    .data_in_i  (dfd_instrument_q),
+    .data_out_o (dfd_instrument_q)
+  );
 
   // STAP TAP host ports: tdi <- tdo loopback, or the attached downstream
   // TAP's TDO when the port's ds_en is set.
@@ -359,6 +420,9 @@ module dtp_uvm_top
   assign jtag_bsr_shift_en   = jtag_bsr_host_scan_ctrl.shift_en;
   assign jtag_bsr_capture_en = jtag_bsr_host_scan_ctrl.capture_en;
   assign jtag_bsr_update_en  = jtag_bsr_host_scan_ctrl.update_en;
+  assign jtag_bsr_run_test_idle    = jtag_bsr_host_scan_ctrl.run_test_idle;
+  assign jtag_bsr_test_logic_reset = jtag_bsr_host_scan_ctrl.test_logic_reset;
+  assign jtag_bsr_runbist          = jtag_bsr_host_scan_ctrl.runbist;
   assign jtag_ijtag_select     = jtag_dft_host_scan_ctrl.select;
   assign jtag_ijtag_shift_en   = jtag_dft_host_scan_ctrl.shift_en;
   assign jtag_ijtag_capture_en = jtag_dft_host_scan_ctrl.capture_en;
@@ -371,6 +435,9 @@ module dtp_uvm_top
   assign jtag_dft_shift_en   = jtag_dft_host_scan_ctrl.shift_en;
   assign jtag_dft_capture_en = jtag_dft_host_scan_ctrl.capture_en;
   assign jtag_dft_update_en  = jtag_dft_host_scan_ctrl.update_en;
+  assign jtag_dft_run_test_idle    = jtag_dft_host_scan_ctrl.run_test_idle;
+  assign jtag_dft_test_logic_reset = jtag_dft_host_scan_ctrl.test_logic_reset;
+  assign jtag_dft_runbist          = jtag_dft_host_scan_ctrl.runbist;
   assign jtag_dfd_select     = jtag_dfd_host_scan_ctrl.select;
   assign jtag_dfd_shift_en   = jtag_dfd_host_scan_ctrl.shift_en;
   assign jtag_dfd_capture_en = jtag_dfd_host_scan_ctrl.capture_en;
@@ -518,7 +585,7 @@ module dtp_uvm_top
   always @(negedge rst_n_i) sys_rst_assert_count <= sys_rst_assert_count + 32'd1;
   always @(negedge pwr_on_rst_ni) por_assert_count <= por_assert_count + 32'd1;
 
-  // Flat slave inputs (from AxiRam) -> DUT resp struct
+  // Flat responder outputs -> DUT resp struct
   always_comb begin
     axi_smc_dbg_resp          = '{default: '0};
     axi_smc_dbg_resp.aw_ready = m_axi_awready;
@@ -623,6 +690,8 @@ module dtp_uvm_top
       xtrig_axil_awvalid_count   <= '0;
       xtrig_axil_wvalid_count    <= '0;
       xtrig_axil_arvalid_count   <= '0;
+      xtrig_axil_aw_stall_count  <= '0;
+      xtrig_axil_ar_stall_count  <= '0;
     end else begin
       smc_otp_axil_awvalid_count <=
                 smc_otp_axil_awvalid_count + {31'b0, smc_otp_axil_awvalid};
@@ -642,11 +711,15 @@ module dtp_uvm_top
                 xtrig_axil_wvalid_count + {31'b0, xtrig_axil_wvalid};
       xtrig_axil_arvalid_count <=
                 xtrig_axil_arvalid_count + {31'b0, xtrig_axil_arvalid};
+      xtrig_axil_aw_stall_count <=
+                xtrig_axil_aw_stall_count + {31'b0, xtrig_axil_awvalid & ~xtrig_axil_awready};
+      xtrig_axil_ar_stall_count <=
+                xtrig_axil_ar_stall_count + {31'b0, xtrig_axil_arvalid & ~xtrig_axil_arready};
     end
   end
 
   // ------------------------------------------------------------------
-  // DTP DUT (default parameters; type params use jtag_tap_pkg/dtp_pkg stubs)
+  // DTP DUT: default parameters; the type parameters come from jtag_tap_pkg and dtp_pkg
   // ------------------------------------------------------------------
   dtp u_dut (
     .clk_i                            (clk_i),
@@ -697,19 +770,19 @@ module dtp_uvm_top
     .jtag_stap_host_scan_in_i         (stap_host_scan_out),
     .jtag_stap_host_scan_out_o        (stap_host_scan_out),
 
-    // External DFD iJTAG scan (loopback)
+    // External DFD iJTAG scan (instrument stub)
     .jtag_dfd_host_scan_ctrl_o        (jtag_dfd_host_scan_ctrl),
-    .jtag_dfd_host_scan_in_i          (dfd_scan_out),
+    .jtag_dfd_host_scan_in_i          (dfd_scan_in),
     .jtag_dfd_host_scan_out_o         (dfd_scan_out),
 
-    // External secure DFT iJTAG scan (loopback)
+    // External secure DFT iJTAG scan (instrument stub)
     .jtag_dft_secure_host_scan_ctrl_o (jtag_dft_secure_host_scan_ctrl),
-    .jtag_dft_secure_host_scan_in_i   (dft_secure_scan_out),
+    .jtag_dft_secure_host_scan_in_i   (dft_secure_scan_in),
     .jtag_dft_secure_host_scan_out_o  (dft_secure_scan_out),
 
-    // External non-secure DFT iJTAG scan (loopback)
+    // External non-secure DFT iJTAG scan (instrument stub)
     .jtag_dft_host_scan_ctrl_o        (jtag_dft_host_scan_ctrl),
-    .jtag_dft_host_scan_in_i          (dft_scan_out),
+    .jtag_dft_host_scan_in_i          (dft_scan_in),
     .jtag_dft_host_scan_out_o         (dft_scan_out),
 
     // SMC fabric debug AXI manager -> shared AXI responder (flattened above)
@@ -967,11 +1040,15 @@ module dtp_uvm_top
   assign u_scan_if.jtag_bsr_shift_en   = jtag_bsr_shift_en;
   assign u_scan_if.jtag_bsr_capture_en = jtag_bsr_capture_en;
   assign u_scan_if.jtag_bsr_update_en  = jtag_bsr_update_en;
+  assign u_scan_if.jtag_bsr_run_test_idle    = jtag_bsr_run_test_idle;
+  assign u_scan_if.jtag_bsr_test_logic_reset = jtag_bsr_test_logic_reset;
+  assign u_scan_if.jtag_bsr_runbist          = jtag_bsr_runbist;
 
   // Lifecycle debug disables and clock-stop requests: sequences drive the
-  // typed dbg_disable_t and the CLA clock-stop request vector through
-  // dtp_tb_if (dbg_disable init '1 = fail-closed; clk_stop_req init '0 =
-  // quiescent; the debug-TDR sequences drive the requests they need).
+  // named debug disables and the CLA clock-stop request vector through
+  // dtp_tb_if, which binds the disables into the typed dbg_disable_t
+  // (disables init 1 = fail-closed; clk_stop_req init '0 = quiescent; the
+  // debug-TDR sequences drive the requests they need).
   assign xtrig_clk_stop_req = u_tb_if.xtrig_clk_stop_req;
   assign dbg_disable        = u_tb_if.dbg_disable;
 
@@ -999,6 +1076,9 @@ module dtp_uvm_top
   assign u_scan_if.jtag_dft_shift_en          = jtag_dft_shift_en;
   assign u_scan_if.jtag_dft_capture_en        = jtag_dft_capture_en;
   assign u_scan_if.jtag_dft_update_en         = jtag_dft_update_en;
+  assign u_scan_if.jtag_dft_run_test_idle     = jtag_dft_run_test_idle;
+  assign u_scan_if.jtag_dft_test_logic_reset  = jtag_dft_test_logic_reset;
+  assign u_scan_if.jtag_dft_runbist           = jtag_dft_runbist;
   assign u_scan_if.jtag_dfd_select            = jtag_dfd_select;
   assign u_scan_if.jtag_dfd_shift_en          = jtag_dfd_shift_en;
   assign u_scan_if.jtag_dfd_capture_en        = jtag_dfd_capture_en;
@@ -1063,7 +1143,7 @@ module dtp_uvm_top
   // interface carries the connection: the TB wires only the master-driven
   // signals in, and the responder drives the responder-side signals,
   // routed back to the DUT below. Error injection is programmed by
-  // sequences via the responder's slave sequence, not TB error ports.
+  // sequences via the responder's slave sequence.
   assign u_smc_otp_slave_if.awaddr   = 64'(smc_otp_axil_awaddr);
   assign u_smc_otp_slave_if.awprot   = smc_otp_axil_awprot;
   assign u_smc_otp_slave_if.awvalid  = smc_otp_axil_awvalid;
@@ -1106,7 +1186,7 @@ module dtp_uvm_top
   assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
   assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
-  // SEP OTP AXI-Lite responder: a third shared ocah_axi_vip responder
+  // SEP OTP AXI-Lite responder: the shared ocah_axi_vip responder
   // (same pattern as the SMC OTP port) answers JTAG2AXI SEP OTP traffic.
   assign u_sep_otp_slave_if.awaddr   = 64'(sep_otp_axil_awaddr);
   assign u_sep_otp_slave_if.awprot   = sep_otp_axil_awprot;
@@ -1156,7 +1236,7 @@ module dtp_uvm_top
   // master-driven signals in, and the responder drives the responder-side
   // signals, routed back to the DUT below. Error injection and backdoor
   // memory access are programmed by sequences via the responder's slave
-  // sequence, not TB error ports.
+  // sequence.
   assign u_smc_axi_slave_if.awid     = 16'(m_axi_awid);
   assign u_smc_axi_slave_if.awaddr   = 64'(m_axi_awaddr);
   assign u_smc_axi_slave_if.awlen    = m_axi_awlen;
@@ -1354,6 +1434,36 @@ module dtp_uvm_top
   assign u_tb_if.sep_otp_axil_wvalid_count  = sep_otp_axil_wvalid_count;
   assign u_tb_if.sep_otp_axil_arvalid_count = sep_otp_axil_arvalid_count;
 
+  // JTAG2AXI bridge state for the reset-abort scenarios, through the same
+  // hierarchical references the coverage instance uses. The sticky flags
+  // catch the CDC's TCK-side isolate-and-clear on the system clock.
+  logic smc_axi_cdc_clear_seen;
+  logic smc_otp_cdc_clear_seen;
+  logic sep_otp_cdc_clear_seen;
+  always_ff @(posedge clk_i or negedge pwr_on_rst_ni) begin
+    if (!pwr_on_rst_ni || u_tb_if.cdc_clear_seen_clear) begin
+      smc_axi_cdc_clear_seen <= 1'b0;
+      smc_otp_cdc_clear_seen <= 1'b0;
+      sep_otp_cdc_clear_seen <= 1'b0;
+    end else begin
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        smc_axi_cdc_clear_seen <= 1'b1;
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        smc_otp_cdc_clear_seen <= 1'b1;
+      if (u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.u_axi_cdc.src_clear_pending_o)
+        sep_otp_cdc_clear_seen <= 1'b1;
+    end
+  end
+  assign u_tb_if.smc_axi_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.smc_axi_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_jtag2axi.u_smc_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.smc_axi_cdc_clear_seen = smc_axi_cdc_clear_seen;
+  assign u_tb_if.smc_otp_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.smc_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_smc_otp_jtag2axi.u_smc_otp_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.smc_otp_cdc_clear_seen = smc_otp_cdc_clear_seen;
+  assign u_tb_if.sep_otp_fsm_state      = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.axi_state_q_tclk;
+  assign u_tb_if.sep_otp_op_pending     = u_dut.u_jtag_intf_unit.u_jtag_ptap.gen_sep_otp_jtag2axi.u_sep_otp_jtag2axi.single_op_pending_tclk;
+  assign u_tb_if.sep_otp_cdc_clear_seen = sep_otp_cdc_clear_seen;
+
   // XTRIG CSR AXI-Lite initiator: the shared ocah_axi_vip master (SV-UVM
   // agent or cocotb BFM) drives the CSR port (the initiator mirror of the
   // slave-port pattern: the master drives the request-side signals on the
@@ -1431,10 +1541,21 @@ module dtp_uvm_top
   assign u_xtrig_axil_if.rvalid   = xtrig_axil_rvalid;
   assign u_xtrig_axil_if.rready   = xtrig_axil_rready;
 
-  // XTRIG CSR request-activity pulse-counter mirrors for sequences.
-  assign u_tb_if.xtrig_axil_awvalid_count = xtrig_axil_awvalid_count;
-  assign u_tb_if.xtrig_axil_wvalid_count  = xtrig_axil_wvalid_count;
-  assign u_tb_if.xtrig_axil_arvalid_count = xtrig_axil_arvalid_count;
+  // XTRIG CSR request-activity pulse-counter and stall-counter mirrors for
+  // sequences.
+  assign u_tb_if.xtrig_axil_awvalid_count  = xtrig_axil_awvalid_count;
+  assign u_tb_if.xtrig_axil_wvalid_count   = xtrig_axil_wvalid_count;
+  assign u_tb_if.xtrig_axil_arvalid_count  = xtrig_axil_arvalid_count;
+  assign u_tb_if.xtrig_axil_aw_stall_count = xtrig_axil_aw_stall_count;
+  assign u_tb_if.xtrig_axil_ar_stall_count = xtrig_axil_ar_stall_count;
+
+  // XTRIG crossbar demux state (the single subordinate port's AXI-Lite
+  // demux) and the external CTP busy flops, sampled from the DUT.
+  assign u_tb_if.xtrig_demux_aw_lock   = u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.lock_aw_valid_q;
+  assign u_tb_if.xtrig_demux_w_pending = ~u_dut.u_cross_trigger_network.u_axil_xbar.gen_slv_port_demux[0].i_axi_lite_demux.gen_demux.w_fifo_empty;
+  for (genvar ctp = 0; ctp < DEFAULT_NUM_CTP; ctp++) begin : gen_xtrig_ctp_busy
+    assign u_tb_if.xtrig_ctp_busy[ctp] = u_dut.u_cross_trigger_network.gen_ext_ctp[ctp].u_ctp.busy_o;
+  end
 
   // Cross-trigger CTM/CTP pin surface: sequences drive the request-side
   // vectors and observe the DUT-driven vectors through dtp_xtrig_if (init
@@ -1461,36 +1582,32 @@ module dtp_uvm_top
   assign u_xtrig_if.xtrig_ctp_ack_out_dout_en = xtrig_ctp_ack_out_dout_en;
   assign u_xtrig_if.xtrig_ctp_ack_out_din_en  = xtrig_ctp_ack_out_din_en;
 
-`ifdef UVM
   // ------------------------------------------------------------------
-  // SV-UVM harness (`--framework uvm`): the system clock generator, the
-  // protocol SVA checkers, the test classes, uvm_config_db publication of
-  // every interface instance, and run_test().
+  // Protocol SVA checkers (ocah_jtag_vip/sva, ocah_axi_vip/sva), shared by
+  // both frameworks. The two-state rules run on every simulator (Verilator
+  // evaluates them under --assert); the X-hygiene rules run only on a
+  // four-state simulator. dtp_tb_if.jtag_sva_en / axi_sva_en are the
+  // runtime suppress knobs.
   // ------------------------------------------------------------------
-  import uvm_pkg::*;
+  // Primary TAP pins plus the exported one-hot TAP state. The TAP controller
+  // resets on TRST and on power-on reset (jtag_ptap ANDs them), so the
+  // checker's reset is the same AND.
+  logic jtag_tap_rst_n;
+  assign jtag_tap_rst_n = jtag_trst & pwr_on_rst_ni;
 
-  // System clock with the period the env publishes on dtp_tb_if from the
-  // seeded test cfg (10..100 ns); TCK is bit-banged by the VIP driver.
-  always #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;
-
-  // Clean-room JTAG protocol SVA checker (ocah_jtag_vip/sva) on the
-  // primary TAP pins + the exported one-hot TAP state, enabled via
-  // dtp_tb_if.jtag_sva_en.
   ocah_jtag_sva #(
     .EN_STATE_RULES(1'b1)
   ) u_jtag_ptap_sva (
     .tck         (jtag_tck),
     .tms         (jtag_tms),
     .tdi         (jtag_tdi),
-    .trst_n      (jtag_trst),
+    .trst_n      (jtag_tap_rst_n),
     .tdo         (jtag_tdo),
     .tdo_oen     (jtag_tdo_oen),
     .en_i        (u_tb_if.jtag_sva_en),
     .tap_state_i (jtag_ptap_state)
   );
 
-  // Clean-room AXI protocol SVA checkers (ocah_axi_vip/sva), enabled via
-  // dtp_tb_if.axi_sva_en.
   ocah_axi_sva #(
     .IS_LITE    (1'b1),
     .ADDR_WIDTH (32),
@@ -1623,7 +1740,6 @@ module dtp_uvm_top
     .rready  (m_axi_rready)
   );
 
-
   ocah_axi_sva #(
     .IS_LITE    (1'b1),
     .ADDR_WIDTH (32),
@@ -1667,6 +1783,18 @@ module dtp_uvm_top
     .rvalid  (xtrig_axil_rvalid),
     .rready  (xtrig_axil_rready)
   );
+
+`ifdef UVM
+  // ------------------------------------------------------------------
+  // SV-UVM harness (`--framework uvm`): the system clock generator, the
+  // test classes, uvm_config_db publication of every interface instance,
+  // and run_test().
+  // ------------------------------------------------------------------
+  import uvm_pkg::*;
+
+  // System clock with the period the env publishes on dtp_tb_if from the
+  // seeded test cfg (10..100 ns); TCK is bit-banged by the VIP driver.
+  always #(u_tb_if.clk_period_ns * 0.5ns) u_tb_if.clk = ~u_tb_if.clk;
 
   // Non-reusable test classes compile as part of this top (module scope).
   `include "dtp_tests.sv"

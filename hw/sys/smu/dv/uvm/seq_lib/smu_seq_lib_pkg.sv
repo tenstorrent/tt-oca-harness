@@ -33,6 +33,7 @@ package smu_seq_lib_pkg;
   // Reusable operations (one agent, one operation).
   `include "smu_jtag_op_seq.svh"
   `include "smu_jtag_tap_reset_seq.svh"
+  `include "smu_jtag_trst_seq.svh"
   `include "smu_jtag_tms_walk_seq.svh"
   `include "smu_jtag_goto_state_seq.svh"
   `include "smu_jtag_ir_scan_seq.svh"

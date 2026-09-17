@@ -192,8 +192,8 @@ async def test_1_1_4_decorrelation_slow_sampling(dut):
 # Tests verify mixed mode capability where different lanes can have different
 # decorrelator configurations using the BYPASS_MASK register.
 #
-# The reference model has been enhanced to support per-lane bypass control,
-# so decorrelator checker is ENABLED for all mixed mode tests. Verification:
+# The reference model supports per-lane bypass control, so the decorrelator checker is
+# ENABLED for all mixed mode tests. Verification:
 #   - Decorrelator checker (per-lane verification against reference model)
 #   - Compressor checker (end-to-end verification)
 #   - FIFO verification (data integrity)
@@ -453,7 +453,7 @@ async def test_1_2_8_dynamic_bypass_mask_changes(dut):
 # ============================================================================
 # Category 1.3: Compressor Bypass Mode Tests
 # ============================================================================
-# Tests verify the new BYPASS_ENTROPY_COMPRESSOR feature (CTRL[8]) where
+# Tests verify the BYPASS_ENTROPY_COMPRESSOR feature (CTRL[8]) where
 # the compressor is bypassed and raw decorrelator output goes directly to FIFO.
 #
 # NOTE: Normal compressor mode (BYPASS=0) is already tested in Suite 1.1 and 1.2.
@@ -465,7 +465,7 @@ async def test_1_2_8_dynamic_bypass_mask_changes(dut):
 #     - Word 1: decorrelator bytes[7:4]   (lanes 4-7)
 #     - Word 2: decorrelator bytes[11:8]  (lanes 8-11)
 #   - FIFO usage: 3 words/sample (vs 1 word/sample in normal mode)
-#   - Max safe samples: ~10 (FIFO depth ~32 / 3)
+#   - Max safe samples: 21 (FIFO depth 64 / 3 words)
 #
 # Verification Strategy:
 #   - Compressor checker MUST be disabled (no compressor output to check)

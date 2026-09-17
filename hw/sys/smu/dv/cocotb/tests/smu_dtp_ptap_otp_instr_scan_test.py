@@ -15,6 +15,8 @@ from smu_base_test import smu_base_test
 class smu_dtp_ptap_otp_instr_scan_test(smu_base_test):
     """OTP CAPS + SMC TDR echo + SEP SINGLE_OP BYPASS; no MAP R/W."""
 
+    use_shared_env = True
+
     async def run_scenario(self) -> None:
         self.logger.info(
             "DUT_TAG=BARE smu_dtp_ptap_otp_instr_scan_test TierC PTAP-OTP-INSTR-SCAN SEP=0 JTAG"

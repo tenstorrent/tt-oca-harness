@@ -10,9 +10,11 @@ schema_version = 1
 # that key build the single-instance model.
 #
 # Group names share all.toml's namespace, so the groups here are prefixed:
-# `dual_smoke` and `dual_all`. The SMC catalog has no `all` group (the smc entry
-# in .github/workflows/sim.yml relies on that). `occp_dual` is unprefixed:
-# nothing else in the catalog uses that name.
+# `dual_smoke` and `dual_all`. Three of these leaves sit in `all`; `hosted`
+# leaves them out because every entry here declares a ROM or firmware image
+# the hosted runners cannot build (SMC_DEFERRED_DISPOSITION.adoc, "Leaves no
+# scheduled tier runs").
+# `occp_dual` is unprefixed: nothing else in the catalog uses that name.
 
 [[tests]]
 name = "smc_dual_elaboration_test"
@@ -59,8 +61,7 @@ target = "dual"
 seed = 1
 # Headroom, not a target. The payload is a full sram-mode image (~15 KB), and
 # every byte of it crawls over a ~2.6 MHz serial bus that Verilator simulates
-# cycle by cycle. Roughly 55 ms of sim time takes ~2.1 h of wall clock, at
-# ~7.2 us of sim per wall second.
+# cycle by cycle, so the run takes hours of wall clock.
 timeout_sec = 21600
 tags = ["dual_ci", "dual", "occp_boot", "prod_rom"]
 run_modes = ["dual"]
@@ -94,9 +95,9 @@ name = "smc_occp_sanity_test"
 module = "smc_occp_rom_only_test"
 target = "dual"
 seed = 1
-# GET_VERSION plus one 4-byte OCCP WRITE -- no payload, no JUMP: about 0.94 ms
-# of sim time, 1/57 of smc_occp_dual_unsecure_boot_test. The bound below is
-# headroom for a stalled exchange, not a target.
+# GET_VERSION plus one 4-byte OCCP WRITE -- no payload, no JUMP, so well under
+# a millisecond of sim time. The bound below is headroom for a stalled
+# exchange, not a target.
 timeout_sec = 3600
 tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]

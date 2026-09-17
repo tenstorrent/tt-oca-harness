@@ -32,7 +32,7 @@ canonical := {
   SMU:    ["system management unit"], // doc/trm/src/architecture.adoc
   SMN:    ["system management network"], // doc/home/src/features.adoc
   SMO:    ["safety monitor"], // doc/trm/src/architecture.adoc
-  AoU:    ["axi-over-ucie bridge"], // doc/home/src/features.adoc
+  AoU:    ["axi-over-ucie bridge", "axi-over-ucie"], // doc/home/src/features.adoc
   CLA:    ["core logic analyzer"], // hw/sys/smc/doc/dfd.adoc
   PTAP:   ["primary tap"], // hw/ip/jtag/jtag_ptap/doc/index.adoc
   STAP:   ["secondary tap"], // hw/ip/jtag/jtag_stap/doc/index.adoc
@@ -70,8 +70,8 @@ canonical := {
   CSRs:   ["control and status registers"], // hw/ip/i2c/doc/architecture.adoc
   RDL:    ["register description language"], // hw/ip/memory_interface/README.adoc
   DV:     ["design verification"], // hw/ip/i3ccore_wrap/dv/tb/I3C_DV_GUIDE.md
-  FSM:    ["finite state machine"], // doc/contributing/src/guidelines.adoc
-  FSMs:   ["finite state machines"], // doc/contributing/src/guidelines.adoc
+  FSM:    ["finite state machine"], // doc/starting/src/guidelines.adoc
+  FSMs:   ["finite state machines"], // doc/starting/src/guidelines.adoc
   MMR:    ["memory mapped register"], // hw/ip/efuse/doc/memmap.adoc
   PMP:    ["physical memory protection"], // hw/sys/sep/doc/cpu.adoc
   KDF:    ["key derivation function"], // hw/ip/key_manager/doc/architecture.adoc
@@ -104,7 +104,7 @@ canonical := {
   DLL:    ["divisor latch low"], // hw/ip/uart/uart_16550/doc/architecture.adoc
   DLM:    ["divisor latch high"], // hw/ip/uart/uart_16550/doc/architecture.adoc
   LCR:    ["line control register"], // hw/ip/uart/uart_16550/doc/memmap.adoc
-  CVD:    ["coordinated vulnerability disclosure"], // doc/contributing/src/defects.adoc
+  CVD:    ["coordinated vulnerability disclosure"], // doc/starting/src/defects.adoc
   DDR:    ["double data rate"], // hw/common/dv/vip/ocah_spi_vip/README.md
   TCRI:   ["transfer command response interface"], // hw/ip/i3ccore_wrap/doc/architecture.adoc
   RO:     ["ring oscillator"], // hw/ip/entropy_source/dv/tb_vcs/README.md

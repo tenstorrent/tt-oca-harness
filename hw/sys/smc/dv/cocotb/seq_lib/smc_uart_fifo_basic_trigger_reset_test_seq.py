@@ -83,7 +83,7 @@ _ABOVE_FIFO_DEPTH_TRIGGERS = {
 }
 
 # Baud divisor used by the TX-FIFO-reset leg to hold data in the transmitter
-# long enough for LSR.THRE to be sampled at 0. Not a tuned magic number:
+# long enough for LSR.THRE to be sampled at 0. Derivation:
 # uart_16550/doc/interface.adoc ("Serial Interface Timing") states the serial
 # rate comes from the divisor latches with **16x oversampling**, so one 8N1
 # character (start + 8 data + 1 stop = 10 bit times) occupies

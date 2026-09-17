@@ -20,10 +20,6 @@
  * 5. Verify HANDSHAKE_INTR_ENABLE register write-readback
  * 6. Verify CLEAR_INTR_SRC register is writable
  * 7. Verify INTR_SRC_ADDR_0 register is writable
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_dma_trigger_test STACK=sim
- *
  */
 
 #include <stdint.h>

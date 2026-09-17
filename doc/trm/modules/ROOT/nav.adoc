@@ -5,7 +5,6 @@
 ifndef::release[]
 * xref:revision.adoc[Internal Revision History]
 endif::release[]
-* xref:about-ocah.adoc[About OCAH]
 * xref:architecture.adoc[OCAH Architecture & Design]
 ** xref:architecture.adoc#ocah-architecture[OCAH Architecture]
 ** xref:architecture.adoc#security-processor-sep[Security Processor (SEP)]

@@ -11,7 +11,9 @@ from pathlib import Path
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Timer
+from ocah_axi_vip import OcahAxiSlaveAgent
 from pyuvm import ConfigDB, uvm_test
+from seq_lib.smu_tb_pins import smc_primary_reset
 
 _COCOTB_ROOT = Path(__file__).resolve().parents[1]
 for _path in (_COCOTB_ROOT,):
@@ -19,9 +21,9 @@ for _path in (_COCOTB_ROOT,):
     if _s not in sys.path:
         sys.path.insert(0, _s)
 
-from env.smu_env import SmuEnv
-from env.smu_env_cfg import SmuEnvCfg
 from seq_lib.smu_axi_helpers import wait_signal_high
+from smu_dv_env.smu_env import SmuEnv
+from smu_dv_env.smu_env_cfg import SmuEnvCfg
 
 
 class smu_base_test(uvm_test):
@@ -67,6 +69,16 @@ class smu_base_test(uvm_test):
 
     async def bring_up(self) -> None:
         dut = cocotb.top
+        # The outbound SMN responder exists before the first clock edge so the
+        # boundary's READY signals are driven from time zero.
+        self.cfg.axi_out_mem = OcahAxiSlaveAgent(
+            self.cfg.axi_out_geometry.bus(dut.u_axi_out_if),
+            dut.clk_smu_i,
+            dut.rst_cold_ni,
+            reset_active_level=False,
+            size=self.cfg.axi_out_mem_size,
+            name="smu_axi_out",
+        ).sequence
         # Must schedule Clock.start() - bare .start() returns an unawaited coroutine
         # and leaves all clocks dead (sim never advances; premature shutdown).
         cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
@@ -166,7 +178,7 @@ class smu_base_test(uvm_test):
             name="rst_cold_stable_ref_clk_no",
         )
         await wait_signal_high(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="rst_primary_smc_clk_no",

@@ -26,6 +26,8 @@ contains the following design blocks and features:
 ** A debug port for the SMC OTP
 ** A debug port for the SEP OTP
 ** A port for extending the iJTAG network outside the interface unit
+* Per-path debug-disable inputs that gate STAPs, iJTAG SIBs, and JTAG2AXI
+  bridges
 
 The PTAP, STAP and all other supporting logic conform to IEEE standards
 1149.1-2013 _Test Access Port and Boundary-Scan Architecture_, 1687-2014 _Access

@@ -27,9 +27,8 @@ possible difference, before the modulus reaches the verifier.
 The reason for the substitution is that the tree ships exactly one RSA signing key
 (``tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem``), so the
 re-signed form would need a second key and a build step, which these Python-only
-mutations deliberately avoid (``sep_manifest_mutate`` module docstring). If a
-second RSA key is ever added, a re-signed variant is worth having alongside this
-one; it is a different claim, not a better version of this one.
+mutations avoid (``sep_manifest_mutate`` module docstring). A re-signed variant
+would be a different claim, not a better version of this one.
 
 WHY THE RE-HASH MATTERS, AND WHY NO RE-SIGN. The modulus lives inside the TBS
 (offset 168, ``manifest.h:222``), so without recomputing ``manifest_hash`` the

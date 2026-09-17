@@ -13,6 +13,16 @@ from smc_base_test import smc_base_test
 class smc_mixed_boot_stall_test(smc_base_test):
     """GPIO gates fuse_reset; JTAG ovrd releases; val=1 cannot re-stall."""
 
+    required_evidence = (
+        "CHK-MIXED-BOOT-STALL-BASIC",
+        "CHK-MIXED-BOOT-STALL-DROP",
+        "CHK-MIXED-BOOT-STALL-GPIO",
+        "CHK-MIXED-BOOT-STALL-OVRD",
+        "CHK-MIXED-BOOT-STALL-VAL1",
+        "CHK-MIXED-BOOT-STALL-WARM",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

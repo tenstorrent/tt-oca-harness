@@ -72,6 +72,14 @@ REGGEN_DEPENDENCY_NAMES = frozenset(
 # Returned when the diff cannot be listed. Not a docs path, so hardware CI runs.
 UNCLASSIFIED = "(unclassified)"
 
+# The tools/dv unit tests check the DV runner against the per-DUT DV packages:
+# a leaf's required_evidence tuple against the SMC_VPLAN card that declares it,
+# the testlists against the configs. Either side can move on its own, and a
+# plan card is an .adoc, so this scope is deliberately not the documentation
+# classifier above.
+DV_CHECK_DIRS = ("tools/dv/",)
+DV_CHECK_SYS_SUBDIR = "dv/"
+
 DOCUMENTATION_ONLY_CHILD = """\
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
@@ -119,6 +127,20 @@ def is_register_regen_path(path: str) -> bool:
         part in {"regs", "registers", "rdl"} and "gen" in parts[index + 1 :]
         for index, part in enumerate(parts)
     )
+
+
+def is_dv_check_path(path: str) -> bool:
+    """Return True when changing *path* can move either side of a DV check."""
+    normalized = path.replace("\\", "/").lstrip("./")
+    if normalized == UNCLASSIFIED or normalized.startswith(DV_CHECK_DIRS):
+        return True
+    parts = normalized.split("/")
+    return len(parts) > 3 and parts[:2] == ["hw", "sys"] and parts[3] == "dv"
+
+
+def is_dv_check_required(paths: list[str]) -> bool:
+    """Return True when the diff touches the DV runner or a DUT's DV package."""
+    return any(is_dv_check_path(path) for path in paths)
 
 
 def _dependency_spec_name(specifier: str) -> str:
@@ -390,7 +412,7 @@ def self_test() -> None:
     renamed = parse_name_status("R100\0hw/sys/smc/rtl/old.sv\0README.md\0")
     assert renamed == ["hw/sys/smc/rtl/old.sv", "README.md"]
     assert not is_documentation_only(renamed)
-    assert is_documentation_only(["README.md", "doc/contributing/src/index.adoc"])
+    assert is_documentation_only(["README.md", "doc/starting/src/index.adoc"])
     assert not is_documentation_only([])
     assert not is_documentation_only([UNCLASSIFIED])
 
@@ -478,6 +500,26 @@ version = "2.12.2"
         sample_uv_lock_ruff_only_head
     )
 
+    for path in (
+        "tools/dv/run_dv.py",
+        "tools/dv/tests/test_smc_required_evidence.py",
+        "hw/sys/smc/dv/cocotb/tests/smc_dbs_idle_test.py",
+        "hw/sys/smc/dv/docs/SMC_VPLAN.adoc",
+        "hw/sys/sep/dv/testlists/all.toml",
+        UNCLASSIFIED,
+    ):
+        assert is_dv_check_path(path), path
+    for path in (
+        "hw/sys/smc/rtl/smc.sv",
+        "hw/ip/uart/dv/tb/uart_tb.sv",
+        "doc/trm/src/index.adoc",
+        "README.md",
+    ):
+        assert not is_dv_check_path(path), path
+    assert is_dv_check_required(["README.md", "tools/dv/run_dv.py"])
+    assert not is_dv_check_required([])
+    assert not is_dv_check_required(["README.md", "hw/sys/smc/rtl/smc.sv"])
+
     assert _split_rev_range("origin/main...HEAD") == ("origin/main", "HEAD")
     assert _split_rev_range("abc123..def456") == ("abc123", "def456")
     assert _split_rev_range("HEAD") is None
@@ -507,6 +549,11 @@ def main(argv: list[str] | None = None) -> int:
         help="write a one-job child pipeline and exit 0 when documentation-only",
     )
     mode.add_argument(
+        "--is-dv-check-required",
+        action="store_true",
+        help="exit 0 if the diff touches tools/dv or a hw/sys/<dut>/dv package, otherwise 1",
+    )
+    mode.add_argument(
         "--is-register-regen-required",
         action="store_true",
         help="exit 0 if the diff can affect register collateral, otherwise 1",
@@ -531,6 +578,10 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         write_documentation_only_child(Path(args.write_documentation_only_child))
         return 0
+    if args.is_dv_check_required:
+        required = is_dv_check_required(paths)
+        print(f"dv_check_required={str(required).lower()}", file=sys.stderr)
+        return 0 if required else 1
     if args.is_register_regen_required:
         required = is_register_regen_required(paths, rev_range)
         print(f"register_regen_required={str(required).lower()}", file=sys.stderr)

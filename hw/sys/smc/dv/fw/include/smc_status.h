@@ -24,9 +24,6 @@
 #define SMC_STATUS_FW_ID_SMC_BL0 0x3
 #define SMC_STATUS_FW_ID_SMC_BL1 0x4
 
-/* Legacy alias for backward compatibility */
-#define SMC_STATUS_FW_ID_SMC SMC_STATUS_FW_ID_SMC_BL0
-
 /* Message type definitions */
 #define SMC_STATUS_TYPE_STATUS 0x1
 #define SMC_STATUS_TYPE_WARNING 0x8

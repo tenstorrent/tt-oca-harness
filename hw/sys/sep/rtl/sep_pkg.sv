@@ -471,9 +471,9 @@ SEP_ROM_MUX_NUM_PORTS
   parameter int unsigned AP_REMAP_SEL_W = $clog2(NUM_AP_OUTPUT_REMAP_REGIONS);
   parameter int unsigned NUM_STEE_OUTPUT_REMAP_REGIONS = 16;
   parameter int unsigned STEE_REMAP_SEL_W = $clog2(NUM_STEE_OUTPUT_REMAP_REGIONS);
-  parameter int unsigned ALIAS_REMAP_IDX_START = 12;
-  parameter int unsigned NUM_AP_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity
-  parameter int unsigned NUM_STEE_OUTPUT_REMAP_IDX_START = 19;  //  512KB region granularity
+  parameter int unsigned ALIAS_REMAP_IDX_START = 12;  // 4KB region granularity
+  parameter int unsigned AP_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity
+  parameter int unsigned STEE_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity
 
   // Fixed size of the SEP local alias remap window. This is decoupled from the
   // SMU-programmable SEP_REGION_SIZE CSR (exported as sep_region_size_o to size the

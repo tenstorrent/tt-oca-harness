@@ -10,7 +10,7 @@
 |`clk_i` |`logic` |Input |1 |System clock for cross trigger logic and JTAG2AXI bridges. |System clock |N/A
 |`rst_n_i` |`logic` |Input |1 |System reset (active low). Resets cross trigger and AXI logic; does not affect the TAP controller. |System reset |N/A
 |`pwr_on_rst_ni` |`logic` |Input |1 |Power-on reset for JTAG state machine (active low, asynchronous). |Power-on reset |N/A
-|`feat_ctrl_i` |`sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t` |Input |- |Lifecycle feature control vector gating debug interfaces. Enable-polarity (1 = feature enabled). |Lifecycle controller |N/A
+|`dbg_disable_i` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |Input |- |Per-path debug/test disables. Active-high (1 = path disabled). |SEP |N/A
 
 |`jtag_ptap_client_tap_ctrl_i` |`jtag_tap_ctrl_t` |Input |- |Primary JTAG TAP control (TCK, TMS, TRST_N). |External JTAG pads |N/A
 |`jtag_ptap_client_tdi_i` |`logic` |Input |1 |Primary JTAG TDI. |External JTAG pads |N/A
