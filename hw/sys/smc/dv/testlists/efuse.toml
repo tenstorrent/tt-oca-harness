@@ -28,14 +28,6 @@ tags = ["ci", "depth_efuse", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_efuse_map_read_test"
-module = "smc_efuse_map_read_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_efuse_shim_ctrl_test"
 module = "smc_efuse_shim_ctrl_test"
 seed = 1

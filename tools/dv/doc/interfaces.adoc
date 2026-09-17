@@ -52,15 +52,16 @@ tools/dv/run_dashboard.py publish     -> manifest.json       (string "0.1")
 artifact dv-dashboard-data and branch dv-dashboard-data
   |
   v
-the website that renders the data (outside this repository)
+the documentation site's dashboard pages (tools/doc) and any external consumer
 ----
 
 Three boundaries carry no shared code:
 
 * The runner and the dashboard never import or call each other. Their only
   shared file is the run-level `result.json`.
-* The dashboard and the website meet only at the published data. This
-  repository renders no dashboard HTML in CI and hosts none.
+* The dashboard and the pages that render it meet only at the published
+  data. The documentation build reads the branch through
+  `tools/doc/stage_dashboard_data.sh` and imports nothing from `tools/dv`.
 * The workflow callers and the composite action meet at the action's inputs.
   A caller owns its matrix and tier policy; the action owns toolchain setup,
   the run, the result gate, and the upload.
@@ -164,16 +165,24 @@ action's gate. Hosted CI publishes the score but enforces no threshold
 |Normalized dashboard data: `<dut>.result.json`, `summary.json`,
 `history.json`, `manifest.json`, `classification.json`
 |`tools/dv/dashboard` and `.github/workflows/dashboard.yml`
-|The website that renders the dashboard; `dashboard` itself for history
-|String `schema_version` values: `"0.1"` for the per-DUT record, the summary,
-and the manifest, `"0.2"` for the history; `classification.json` carries
-none. The conversion from the native result is lossy: native `ERROR` and `TIMEOUT`
-collapse into `FAIL`. `classification.json` is computed from the native leaf
-records, which keep the distinction. The consumers in this tree do not enforce
-the schema version (xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
+|The documentation site's dashboard pages through `tools/doc`; external
+consumers; `dashboard` itself for history
+|One record per weekly DUT, one `dut_status` row and one `per_dut` history
+entry each. String `schema_version` values: `"0.1"` for the per-DUT record,
+the summary, and the manifest, `"0.2"` for the history;
+`classification.json` carries none. The conversion from the native result is
+lossy: native `ERROR` and `TIMEOUT` collapse into `FAIL`.
+`classification.json` is computed from the native leaf records, which keep
+the distinction. Staged coverage paths are bundle-relative; every other
+native path resolves against the retained run-tree artifact. The tools do
+not enforce the schema version; the workflow gates each record on it, on its
+`flow`, and on its `status` vocabulary, the summary and the history on the
+DUT count, and publishes
+nothing when a weekly DUT left no run tree
+(xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
 The artifact and the branch carry identical content. Checked by the
-dashboard completion tests and by the Operational checks section of
-xref:run-dashboard.adoc[DV and FV Dashboard].
+dashboard schema, link, and completion tests and by the Operational checks
+section of xref:run-dashboard.adoc[DV and FV Dashboard].
 
 |Hosted workflows and the composite action: `sim.yml`, `regress.yml`,
 `dashboard.yml`, `.github/actions/dv-run`; artifact names
@@ -181,16 +190,17 @@ xref:run-dashboard.adoc[DV and FV Dashboard].
 directories `build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; check contexts
 `verilator-smoke (<dut>)`; branch `dv-dashboard-data`
 |`.github/workflows` and `.github/actions`
-|Branch protection, the publication workflow, the website
+|Branch protection, the publication workflow, the documentation site
 |Callers pass matrix and tier policy as action inputs, so a regression-tier
 change cannot alter the pull-request gate. Pull requests run the smoke group
-only. The weekly tier is the only one the dashboard publishes; the run
-directory shape is hashed into the trend-point identity. A red weekly
+only. The weekly tier is the only one the dashboard publishes, every
+unlabelled row of it; the run directory shape is hashed into the trend-point
+identity. A red weekly
 publishes as well, because the workflow gates on the presence of the native
 result, not on the run's conclusion. Verilator is built from a pinned tag on
 a cache miss. Retention: run artifacts 14 days (30 for the weekly tier), the
-dashboard artifact 90 days, history and archives on the branch trimmed to 90
-entries. Checked by the required `verilator-smoke (dtp)` and
+dashboard artifact 90 days, history on the branch trimmed to 90 points and
+archives to 90 runs per DUT. Checked by the required `verilator-smoke (dtp)` and
 `verilator-smoke (sep)` contexts and by the `dv-unit-tests` job in
 `lint.yml`, which runs `tools/dv/tests` on DV-scoped changes
 (xref:run-dv.adoc#runner-ci-support-matrix[CI support matrix]).
@@ -326,8 +336,9 @@ policy (xref:run-dashboard.adoc#dashboard-waive[Waive coverage bins on a publish
 |No simulator or report tool runs; the tree is the only input.
 
 |Inspect the published data
-|Branch `dv-dashboard-data`: `latest/`, `data/history.json`,
-`data/runs/`, `data/classification/`
+|Branch `dv-dashboard-data`: `latest/` (one record per weekly DUT, the
+summary, staged coverage files), `data/history.json`, `data/runs/<dut>/`,
+`data/classification/`
 |The artifact of the same name carries the per-run bundle with identical
 content.
 
@@ -350,9 +361,10 @@ workflow; `make ocah-lint-vale VALE_PATH=tools/dv/doc` lints its prose.
   one pull request: the result schema together with the action's gate and
   `collect`; a registry key together with `--validate-configs` and the
   registry tests; an action input together with both calling workflows.
-* The website that renders the published data is outside this repository.
-  The `schema_version` string in every published file is its signal that the
-  layout changed.
+* The pages that render the published data read only the published files
+  and import nothing from `tools/dv`. The `schema_version` string in every
+  published file is their signal that the layout changed; a new key or a new
+  record is additive.
 * A coverage policy change changes `comparison_key`. Compare trend points
   only when their keys match.
 * A Python dependency changes through `uv.lock`. Hosted jobs and the runner

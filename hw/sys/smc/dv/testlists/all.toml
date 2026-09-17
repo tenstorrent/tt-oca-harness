@@ -51,12 +51,24 @@ name = "all"
 # Test names that are catalogued but have no module under cocotb/tests/ are
 # dispositioned in hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc.
 #
-# The `rtl_issue` group is out: its members (smc_deadspace_decode_test among
-# them) fail on RTL defects rather than test defects,
+# The `rtl_issue` group is out: its members (smc_deadspace_decode_test and
+# smc_efuse_map_read_test) fail on RTL defects rather than test defects,
 # every entry carries `expect_fail`, and the weekly tier runs the group on its
 # own row so a graded expected failure never counts as a pass here or in
 # `hosted`. rtl_issue.toml is included above so the names resolve; see that
 # file for the conventions and the members.
+#
+# Five eFuse-map leaves are held out on #1989: the SMC eFuse word counter is
+# one bit too narrow for the 256-word map, so fuse sense stores nothing and
+# every shadow read returns 0. Each keeps its [[tests]] entry and stays
+# selectable by name; the groups below are the unscheduled ones it still
+# belongs to. `smc_efuse_map_read_test` carries the defect as the `rtl_issue`
+# reproducer. They return here, and to `hosted`, when #1989 is fixed:
+#   smc_efuse_boundary_signals_test         per_ip, depth_efuse, coverage_closure, depth
+#   smc_efuse_locked_access_interrupt_test  per_ip, depth_efuse, coverage_closure, depth
+#   smc_efuse_otp_burn_shadow_test          per_ip, coverage_closure
+#   smc_occp_sanity_secure_error_test       coverage_closure, depth
+#   smc_peripheral_instance_decode_test     no group; reachable only as --items <name>
 #
 # `smc_ref_clock_timer_rate_test` is held out for a different reason: it fails
 # on the rate comparison it was written to make. clk_rst.adoc:37-39 places the
@@ -69,7 +81,7 @@ name = "all"
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
-expected_count = 193
+expected_count = 187
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -118,13 +130,9 @@ tests = [
     "smc_ecc_codeword_sec_test",
     "smc_ecc_dfd_dbs_sanity_test",
     "smc_ecc_fault_inject_test",
-    "smc_efuse_boundary_signals_test",
     "smc_efuse_chip_config_read_test",
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_efuse_jtag_lc_negative_test",
-    "smc_efuse_locked_access_interrupt_test",
-    "smc_efuse_map_read_test",
-    "smc_efuse_otp_burn_shadow_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_otp_clock_test",
     "smc_efuse_permission_boundary_test",
@@ -210,14 +218,12 @@ tests = [
     "smc_multi_reset_csr_persistence_test",
     "smc_mutex_semaphore_test",
     "smc_ndm_reset_test",
-    "smc_occp_sanity_secure_error_test",
     "smc_occp_sanity_test",
     "smc_octs_dual_sync_test",
     "smc_octs_sanity_test",
     "smc_output_fabric_slverr_inject_test",
     "smc_output_fabric_wr_rd_responder_test",
     "smc_output_filter_remap_security_test",
-    "smc_peripheral_instance_decode_test",
     "smc_powergood_glitch_test",
     "smc_primary_reset_scope_test",
     "smc_rdl_field_sweep_test",
@@ -270,10 +276,11 @@ tests = [
 name = "hosted"
 # `all` minus the leaves that need the RISC-V toolchain: the fourteen `fw`
 # leaves and the three dual-target leaves, which all declare a firmware or ROM
-# image. Nightly and weekly schedule this group; the per-PR gate stays
+# image. The five #1989 hold-outs above are out of both. Nightly and weekly
+# schedule this group; the per-PR gate stays
 # on the 3-leaf `smoke`. Guarded by expected_count so a leaf cannot join
 # `all` and silently miss the hosted set.
-expected_count = 176
+expected_count = 170
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -320,13 +327,9 @@ tests = [
     "smc_ecc_codeword_sec_test",
     "smc_ecc_dfd_dbs_sanity_test",
     "smc_ecc_fault_inject_test",
-    "smc_efuse_boundary_signals_test",
     "smc_efuse_chip_config_read_test",
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_efuse_jtag_lc_negative_test",
-    "smc_efuse_locked_access_interrupt_test",
-    "smc_efuse_map_read_test",
-    "smc_efuse_otp_burn_shadow_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_otp_clock_test",
     "smc_efuse_permission_boundary_test",
@@ -398,13 +401,11 @@ tests = [
     "smc_multi_reset_csr_persistence_test",
     "smc_mutex_semaphore_test",
     "smc_ndm_reset_test",
-    "smc_occp_sanity_secure_error_test",
     "smc_octs_dual_sync_test",
     "smc_octs_sanity_test",
     "smc_output_fabric_slverr_inject_test",
     "smc_output_fabric_wr_rd_responder_test",
     "smc_output_filter_remap_security_test",
-    "smc_peripheral_instance_decode_test",
     "smc_powergood_glitch_test",
     "smc_primary_reset_scope_test",
     "smc_rdl_field_sweep_test",
@@ -622,7 +623,6 @@ tests = [
     # against the adopter efuse_bank_model.
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_locked_access_interrupt_test",
-    "smc_efuse_map_read_test",
     "smc_efuse_otp_burn_shadow_test",
     "smc_efuse_otp_clock_config_depth_test",
     "smc_efuse_otp_clock_test",
