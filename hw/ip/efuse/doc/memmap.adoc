@@ -57,7 +57,10 @@ endif::backend-pdf[]
 ====== eFuse Control Registers
 
 The eFuse Control CSR provides command and status registers for read, write,
-and verification operations on the eFuse array.
+and verification operations on the eFuse array. `program_enable` and
+`read_enable` are mutually exclusive; software deasserts `program_enable`
+after `PROGRAM_DONE` before issuing a read. See
+<<smc-dv-efuse-programming>>.
 
 ifdef::backend-html5[]
 ++++

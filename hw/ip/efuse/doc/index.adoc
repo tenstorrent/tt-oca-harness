@@ -4,9 +4,25 @@
 [[efuse-peripheral-module]]
 ==== eFuse
 
-TODO
+===== Overview
+
+The eFuse IP provides secure One-Time Programmable (OTP) memory access
+for the OCAH system. A foundry-agnostic controller caches the array into
+shadow registers at boot, then exposes program and read operations over
+AXI4-Lite with layered hardware and software locks. Foundry-specific
+timing and macro signaling sit behind a replaceable SHIM so the software
+interface stays the same across OTP technologies.
 
 ===== Description and Features
+
+* *Boot-time fuse sense*: An automatic bulk read loads the full OTP
+array into shadow registers so later CSR access is not bound to OTP
+timing.
+* *Dual AXI4-Lite paths*: SMC is the functional access path; JTAG is
+the debug path, with lifecycle-dependent restrictions.
+* *Lifecycle and token gating*: SEP instances further restrict access
+by lifecycle state, secure test mode, and RMA or security-disable
+tokens.
 
 include::architecture.adoc[]
 include::interface.adoc[]
