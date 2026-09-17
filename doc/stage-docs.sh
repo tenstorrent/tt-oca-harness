@@ -149,12 +149,23 @@ rm -rf "$MOD/aou"
 mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
 case "$(basename "$PRODUCT")" in
 trm)
-  cp -f "$AOU_DOC/index.adoc" "$MOD/aou/partials/"
-  for page in overview architecture interrupts-errors ppa-appendices; do
+  aou_pages="overview architecture interrupts-errors ppa-appendices"
+  for page in $aou_pages; do
     cp -f "$AOU_DOC/$page.adoc" "$MOD/aou/partials/"
-    sed -i "s@include::$page.adoc@include::partial\$$page.adoc@" \
-      "$MOD/aou/partials/index.adoc"
+    # Published fragments land beside the link to their owning topic page.
+    {
+      echo '++++'
+      sed -nE 's/^\[\[([^],]+)\]\]$/<span id="\1"><\/span>/p' "$AOU_DOC/$page.adoc"
+      echo '++++'
+    } >"$MOD/aou/partials/$page-anchors.adoc"
   done
+  # Antora topics need page-qualified links; the PDF uses the upstream include tree.
+  sed -i -f <(
+    for page in $aou_pages; do
+      sed -nE "s/^\[\[([^],]+)\]\]$/s@xref:\1\\\\[@xref:ROOT:aou-$page.adoc#\1[@g/p" \
+        "$AOU_DOC/$page.adoc"
+    done
+  ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices}.adoc
   ;;
 integrator)
   cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"

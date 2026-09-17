@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AoU Overview and Features
+:description: AXI-over-UCIe bridge operation, interfaces, configurations, and capabilities.
+:aou-integration-xref: ocah-integrator-guide:ROOT:aou.adoc
+
+:sectnums!:
+
+include::aou:partial$overview.adoc[]
