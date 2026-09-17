@@ -39,17 +39,17 @@ dependencies = [
 # Simulation environment for the native DV runner (tools/dv/run_dv.py). Kept out of
 # default-groups so `uv sync` for reggen/docs does not pull the simulation stack.
 dv = ["ocah-dv"]
-manifest = ["tt-boot-manifest"]
+manifest = ["tt-oca-manifest"]
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
 ocah-dv = { workspace = true }
-tt-boot-manifest = { workspace = true }
+tt-oca-manifest = { workspace = true }
 
 [tool.uv.workspace]
-members = ["hw/common/dv", "hw/sys/sep/bootrom/prod/tools/tt-boot-manifest"]
+members = ["hw/common/dv", "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"]
 
 [tool.ruff]
 target-version = "py311"

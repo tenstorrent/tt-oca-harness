@@ -5,7 +5,7 @@ requires-python = ">=3.11, <3.14"
 [manifest]
 members = [
     "ocah-dv",
-    "tt-boot-manifest",
+    "tt-oca-manifest",
     "tt-ocah-reggen",
 ]
 
@@ -1200,9 +1200,9 @@ wheels = [
 ]
 
 [[package]]
-name = "tt-boot-manifest"
+name = "tt-oca-manifest"
 version = "0.3.0"
-source = { editable = "hw/sys/sep/bootrom/prod/tools/tt-boot-manifest" }
+source = { editable = "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest" }
 dependencies = [
     { name = "bitarray" },
     { name = "cryptography" },
@@ -1277,7 +1277,7 @@ dv = [
     { name = "ocah-dv" },
 ]
 manifest = [
-    { name = "tt-boot-manifest" },
+    { name = "tt-oca-manifest" },
 ]
 
 [package.metadata]
@@ -1312,7 +1312,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dv = [{ name = "ocah-dv", editable = "hw/common/dv" }]
-manifest = [{ name = "tt-boot-manifest", editable = "hw/sys/sep/bootrom/prod/tools/tt-boot-manifest" }]
+manifest = [{ name = "tt-oca-manifest", editable = "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest" }]
 
 [[package]]
 name = "types-pyyaml"
