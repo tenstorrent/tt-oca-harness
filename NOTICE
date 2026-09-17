@@ -130,3 +130,10 @@ This project incorporates code from the following third-party sources:
    Project: https://github.com/fengyuanchen/viewerjs
    Vendored under doc/ui-supplemental/js/vendor/ and
    doc/ui-supplemental/css/vendor/
+
+18. MathJax 3.2.2
+    Copyright 2009-2023 The MathJax Consortium
+    Licensed under the Apache License, Version 2.0
+    Project: https://github.com/mathjax/MathJax
+    The unmodified es5/tex-svg.js bundle and LICENSE from mathjax@3.2.2
+    are vendored under doc/ui-supplemental/js/vendor/mathjax/.

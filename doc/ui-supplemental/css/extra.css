@@ -1,3 +1,12 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+ */
+
+.doc .stemblock > .content {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
 /* Hide placeholder navbar items (upstream demo content only: any leftover
    Home/Products/Services/Download not otherwise replaced) -- explicit
    exceptions for every real item we've added. */
