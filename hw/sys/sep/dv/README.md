@@ -95,6 +95,14 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress \
 `scripts/docker-run.sh`) must be available -- the `c_compile` stage above builds
 the images with it (see [Prerequisites](#prerequisites)).
 
+`all` enrolls 104 leaves: `cpu_stub` (83) plus `cpu` (20), which are disjoint,
+plus `sep_periph_bus_err_misaligned_reveal_test`. That last leaf fails by
+design -- it reveals a spec-vs-RTL gap and is deliberately not masked as an
+xfail -- so the expected result of an `all` run is 103 passes and that one
+failure. It is held out of both class groups, so the two class commands below
+are a clean pass/fail gate. A run whose only failure is that leaf is green;
+any other failure is a real one.
+
 ### Scheduled tiers
 
 Both scheduled tiers in `.github/workflows/regress.yml` run
