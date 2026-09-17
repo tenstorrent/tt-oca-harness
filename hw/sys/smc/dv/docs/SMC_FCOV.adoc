@@ -277,7 +277,7 @@ detail is the card in `SMC_VPLAN.adoc`.
 |UART / log / sideband |`smc_sideband_protocol_smoke_test` |same plus UART / AVSBus / OCTS
 |ECC / DFD / DBS |`smc_ecc_dfd_dbs_sanity_test` |same plus diagnostic depth
 |Deadspace aliasing |`smc_deadspace_decode_test` (fails on the decode defect under Known Limitations) |held out of `all`
-|CLA / ALIAS_REMAP |`smc_remap_cla_test` (fails on the decode defect under Known Limitations) |held out of `all`
+|CLA / ALIAS_REMAP |`smc_remap_cla_test` |same
 |===
 
 === Collection Strategy
