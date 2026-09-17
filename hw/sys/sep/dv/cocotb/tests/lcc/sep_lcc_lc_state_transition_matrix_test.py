@@ -2,6 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """LC_STATE next state on the shadow write-1-to-set path (OSS).
 
+No testlist entry carries this module's name. Six entries in
+``testlists/efuse_lcc.toml`` run it, each selecting a start state with
+``+lc_start=N``: sep_lcc_lc_state_w1s_prod_test (1),
+sep_lcc_lc_state_w1s_prod_demote_test, sep_lcc_lc_state_w1s_rma_sip_test,
+sep_lcc_lc_state_w1s_rma_chiplet_test, sep_lcc_lc_state_w1s_prod_end_test and
+sep_lcc_lc_state_w1s_transient_test. Run one of those names, not this one.
+
 The lifecycle stitch walk covers the OTP-program path: burn a fuse bit, re-sense,
 check the decode. This test covers the OTHER writer of LC_STATE -- the frontdoor
 shadow write, whose setup phase computes the next lifecycle state in
