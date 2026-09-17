@@ -7357,6 +7357,92 @@ The simulation groups below come from `testlists/all.toml`;
 |`xtrig` |XTRIG, CTP, and CTM scenarios |Cross-trigger and CSR coverage
 |===
 
+[[dtp-vplan-qualification]]
+=== Release Qualification
+
+A release candidate is qualified by regression evidence on the supported
+framework and simulator pairs, graded by the runner's leaf rules and
+retained with the run tree; a passing set of individual tests is not a
+qualification. The rules below bind the DTP bench; the runner's grading,
+record, and CI contracts are in `tools/dv/doc/run-dv.adoc`.
+
+[cols="1,1,2,3",options="header",]
+|===
+|Framework |Simulator |Where it runs |Qualification evidence
+|cocotb (PyUVM) |Verilator, the version the CI toolchain step builds and the runner records in `result.json` |Hosted CI: `smoke` on every pull request and push to `main`, `all` at one seed nightly, `all` at three seeds with coverage weekly; a developer host for the same commands |The weekly run tree of the candidate commit, or a developer-host run of the same selection
+|cocotb (PyUVM) |VCS |A licensed host |A full `all` run at the candidate commit, with `--cov` for the commercial metric set
+|SV-UVM |VCS |A licensed host |A full `all` run at the candidate commit, with `--cov`; every canonical scenario has an SV-UVM realization, so the selection is the same 151-scenario inventory
+|cocotb (PyUVM) |Xcelium |Configured (`run_dv.py --list`), no qualifying run |Not a release pair until a full `all` run at head exists
+|Formal (SymbiYosys) |`dtp_tap_fpv` and the `fpv` group of `testlists/formal.toml` |A developer host; hosted CI runs no formal job |Corroboration of the rows the formal plan names, never regression credit
+|===
+
+The `all` group at one seed exceeds the standard hosted runner's nightly
+budget at four simulation jobs, so the hosted nightly is a triage signal
+and the qualification run is the weekly on the larger runner or a run on a
+developer or licensed host.
+
+==== The qualification run
+
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp --items all --regress --reseed 3 --cov --sim-jobs <n>
+python3 tools/dv/run_dv.py --dut dtp --items all --regress --reseed 3 --cov --tool vcs --sim-jobs <n>
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items all --regress --reseed 3 --cov --sim-jobs <n>
+----
+
+The run is qualified when all of the following hold in its run-level
+`result.json` and `stages/regress/regression.json`:
+
+* the planned leaves number the `all` group's `expected_count` times the
+  seed count, `tests.completed` is `true`, and `progress.missing` and
+  `progress.interrupted` are empty, so no leaf was skipped, cancelled, or
+  cut off by a budget;
+* every leaf's final attempt is `PASS` and the run status is `PASS`, with
+  the exceptions the residual register below dispositions; `ERROR`,
+  `TIMEOUT`, and `UNKNOWN` are infrastructure verdicts and never stand in
+  for a design result, so a leaf in one of them is rerun with its recorded
+  seed on the qualification host before the run is judged;
+* with coverage, the `cov_report` record is `PASS` and the effective
+  figures meet the targets of `DTP_FCOV.adoc`, or every hole below them has
+  a disposition in the policy file.
+
+A leaf that passes only after a `--retry` attempt is a flake: the runner
+lists it under `flaky_tests` with its failing attempt and rerun command,
+it counts as passing, and the qualification report names every flake with
+its first failure reason. Hosted CI runs no retry, so a flake there shows as
+seeds of one test disagreeing within the run, which the weekly digest lists.
+
+==== Retained evidence
+
+The candidate is the commit `result.json` records in its git block; the
+run tree of every qualification run is kept as a whole: the run-level
+`result.json` (status, tool versions, seeds, the coverage summary),
+`stages/regress/regression.json` (every attempt, the rerun command of every
+failed and flaky leaf), each leaf's `result.json`, `logs/`, and
+`results/results.xml`, and `cov/report/` with its `summary.json` and
+`coverage-details.json`. The hosted tiers publish the same tree as the
+`dv-run-dtp-verilator-<tier>` artifact, with the per-leaf coverage
+databases excluded after the merge; the retention periods are the CI
+contract's. A qualification run on a developer or licensed host is copied
+into the release record before the workspace is cleaned.
+
+==== Residual failures
+
+Every leaf whose final attempt is not `PASS` carries one disposition in the
+release record: a tracked defect the release ships with, an infrastructure
+verdict cleared by the rerun above, or a release blocker. The bench carries
+these residuals:
+
+[cols="2,3,2",options="header",]
+|===
+|Leaves |Behavior |Disposition
+|`dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test` |Both drive the system reset while a bridge write is in flight and fail `CHK-J2A-ABORT-FSM`, `CHK-J2A-ABORT-RECOVERY`, and the recovery completion on the bridge defect the F4.4 gap records (the FSM stays in `AXI_WAIT_BRESP` until a TAP reset); they stay in `all` as the regression of that defect |Tracked design defect; the two leaves are the expected non-passing set of a qualification run until the defect is fixed, and a run whose only failures are these two is judged on the remaining leaves
+|===
+
+A release that ships without a qualifying run on one of the licensed
+pairs records the deferral, the pair, and the last qualifying commit in
+the release record; the documentation carries no such record.
+
 [[dtp-vplan-signoff]]
 === Component Signoff
 
