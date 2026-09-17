@@ -87,20 +87,27 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         # behind it.
 
     async def _chk_bank_independence(self) -> None:
-        """CHK-BANK-INDEP across every entry of the alias and filter banks.
+        """CHK-BANK-INDEP over every R/W word of every alias and filter entry.
 
-        Runs before the woset leg: locking a filter entry makes its START_ADDR
-        read-only, so a locked entry would fail the readback for a reason that is
-        not an aliasing defect.
+        Runs before the woset leg: locking a filter entry freezes its words, so a
+        locked entry would fail the readback for a reason that is not an aliasing
+        defect.
         """
-        count, mismatches = await self.fab.bank_independence()
+        count, mismatches = await self.fab.bank_field_walk()
+        # The expected total is the plan's number, written out: a walk that
+        # covered fewer words would otherwise pass on whatever it reached.
+        assert count == 224, (
+            f"CHK-BANK-INDEP FAIL: the walk covered {count} words, not the 224 "
+            f"the address map declares (16 alias x 5 + 48 filter entries x 3)"
+        )
         assert not mismatches, (
-            f"CHK-BANK-INDEP FAIL: {len(mismatches)} of {count} bank entries did "
-            f"not hold their own value; first: {mismatches[0]}"
+            f"CHK-BANK-INDEP FAIL: {len(mismatches)} of {count} bank words did not "
+            f"hold their own value; first: {mismatches[0]}"
         )
         self.logger.info(
-            "CHK-BANK-INDEP PASS: %d entries across the alias, inbound-filter and "
-            "outbound-filter banks each held their own index-derived pattern",
+            "CHK-BANK-INDEP PASS: %d R/W words across all 16 alias regions, 16 "
+            "inbound and 32 outbound filter entries each held their own "
+            "bank-and-index-derived pattern",
             count,
         )
 

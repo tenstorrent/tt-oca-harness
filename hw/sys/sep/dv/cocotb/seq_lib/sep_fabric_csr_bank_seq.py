@@ -111,9 +111,11 @@ FILTER_RW_PATTERN = (
 )
 FILTER_RW_MASK = ~(DBW_MASK << DBW_LSB) & 0xFFFF_FFFF  # compare RW fields, exclude RO
 
-# Bank sizes (entries) for index randomization.
-ALIAS_REGIONS = 16
-REMAP_REGIONS = 16
+# Bank sizes (entries) for index randomization. Every count comes from the
+# register export: a literal that goes short simply never reaches the tail
+# entries and still reports a clean pass.
+ALIAS_REGIONS = indexed_block_count("LOCAL_MASTER_ALIAS_REMAP_CTRL")
+REMAP_REGIONS = indexed_block_count("AP_OUTPUT_REMAP_CTRL")
 # Both banks are RDL arrays; take the counts from the export so this sweep and
 # the filter-rule sweep cannot disagree about how many entries exist.
 INFILT_ENTRIES = indexed_block_count("INBOUND_FILTER_CTRL")
@@ -217,40 +219,79 @@ class SepFabricCsrBank(SepAxiRegDriver):
         await self.test.start_seq(seq)
         return seq.resp_code
 
-    async def bank_independence(self) -> tuple[int, list[str]]:
-        """Write an index-derived pattern into every entry of each bank, then
-        read all of them back.
+    async def bank_field_walk(self) -> tuple[int, list[str]]:
+        """Write an index-derived pattern into every R/W word of every bank entry,
+        then read all of them back.
 
         Each filter entry and remap region is an independent rule with its own
-        storage. Writing one entry per group, as the field sweep does, cannot
-        show that the others exist or that they are distinct: a decode that
-        aliased two entries onto one register, or a bank that implemented fewer
-        entries than the address map declares, reads back correctly on whichever
-        entry the seed happened to pick.
+        storage, and the per-group sweep writes one entry per group per seed. That
+        leaves two defects invisible: a decode that aliases two entries onto one
+        register, and a bank that implements fewer entries than the address map
+        declares -- both read back correctly on whichever entry the seed picked.
 
-        The pattern is 4 KB-aligned and nonzero so START_ADDR accepts it
-        verbatim, and it carries the entry index so a read that lands on the
-        wrong entry returns a value that names the entry it came from.
+        Deterministic, so the same words are covered on every seed. Patterns are
+        masked per word so the readback is exact: the 4 KB-aligned address words
+        drop their low bits, FILTER_CONFIG excludes the RO data_bus_width, and no
+        pattern sets a lock or valid bit -- bit 31 of every hi word is left clear
+        so the filter woset lock stays available to the leg that grades it.
         """
+        hi_mask = 0x7FFF_FFFF  # leave bit 31 clear: woset lock / valid live there
+        # (bank, base, stride, entries, [(offset, mask)])
         banks = (
-            ("alias", ALIAS_BASE, ALIAS_STRIDE, ALIAS_REGIONS, ALIAS_START),
-            ("infilt", INFILT_BASE, FILTER_STRIDE, INFILT_ENTRIES, FILTER_START_ADDR),
-            ("outfilt", OUTFILT_BASE, FILTER_STRIDE, OUTFILT_ENTRIES, FILTER_START_ADDR),
+            ("alias", ALIAS_BASE, ALIAS_STRIDE, ALIAS_REGIONS, (
+                (ALIAS_START, 0xFFFF_F000),
+                (ALIAS_START + 4, hi_mask),
+                (ALIAS_END, 0xFFFF_F000),
+                (ALIAS_ATTRS, 0xFFFF_F000),
+                (ALIAS_ATTRS + 4, hi_mask),
+            )),
+            # FILTER_CONFIG's hi word carries only locked[63], which the woset leg
+            # owns, so it has no word here: bits 32..62 hold nothing and a pattern
+            # written there reads back zero.
+            ("infilt", INFILT_BASE, FILTER_STRIDE, INFILT_ENTRIES, (
+                (FILTER_CONFIG, FILTER_RW_MASK),
+                (FILTER_START_ADDR, 0xFFFF_F000),
+                (FILTER_END_ADDR, 0xFFFF_F000),
+            )),
+            ("outfilt", OUTFILT_BASE, FILTER_STRIDE, OUTFILT_ENTRIES, (
+                (FILTER_CONFIG, FILTER_RW_MASK),
+                (FILTER_START_ADDR, 0xFFFF_F000),
+                (FILTER_END_ADDR, 0xFFFF_F000),
+            )),
         )
-        written: list[tuple[str, int, int, int]] = []
-        for name, base, stride, count, offset in banks:
-            for idx in range(count):
-                addr = base + idx * stride + offset
-                pattern = ((idx + 1) << 12) & 0xFFFF_FFFF
-                await self._wr_tolerant(addr, pattern)
-                written.append((name, idx, addr, pattern))
 
+        written: list[tuple[str, int, int, int, int, int]] = []
+        for bank_no, (name, base, stride, count, words) in enumerate(banks, start=1):
+            for idx in range(count):
+                entry = base + idx * stride
+                for word, (offset, mask) in enumerate(words):
+                    addr = entry + offset
+                    # Bank number above the index, then the word number, so a
+                    # readback names all three. The bank term is what makes the
+                    # pattern distinct ACROSS banks: the two filter banks are
+                    # instances of one RDL type and share stride and word list,
+                    # so without it inbound entry k and outbound entry k would
+                    # carry identical patterns and a decode that aliased one onto
+                    # the other would still read back what it wrote. The term sits
+                    # in bits 21:20, which no word's mask drops.
+                    raw = (bank_no << 20) | ((idx + 1) << 16) | ((word + 1) << 12)
+                    pattern = raw & mask
+                    # Strict write: every word here is R/W and no lock is set
+                    # yet, so a non-OKAY response is a defect, not tolerance.
+                    await self._wr(addr, pattern)
+                    written.append((name, idx, word, addr, pattern, mask))
+
+        # Compare through the same mask the write used. A word's read-only fields
+        # return their own value -- FILTER_CONFIG carries data_bus_width as a
+        # constant 3 -- so an unmasked compare fails on every filter entry for a
+        # reason that is not an aliasing defect. CHK-RO grades those fields.
         mismatches: list[str] = []
-        for name, idx, addr, pattern in written:
+        for name, idx, word, addr, pattern, mask in written:
             got = await self.read32(addr)
-            if got != pattern:
+            if (got & mask) != pattern:
                 mismatches.append(
-                    f"{name}[{idx}] @0x{addr:08x} read 0x{got:08x}, wrote 0x{pattern:08x}"
+                    f"{name}[{idx}] word{word} @0x{addr:08x} read 0x{got:08x} "
+                    f"(masked 0x{got & mask:08x}), wrote 0x{pattern:08x}"
                 )
         return len(written), mismatches
 
