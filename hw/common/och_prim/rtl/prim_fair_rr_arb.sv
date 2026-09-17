@@ -159,7 +159,7 @@ module prim_fair_rr_arb #(
         prim_zero_counter #(
           .WIDTH        (NumIn),
           .COUNT_LEADING(1'b0)
-        ) i_lzc_upper (
+        ) u_i_lzc_upper (
           .in_i   ( upper_mask  ),
           .count_o( upper_idx   ),
           .empty_o( upper_empty )
@@ -168,7 +168,7 @@ module prim_fair_rr_arb #(
         prim_zero_counter #(
           .WIDTH        (NumIn),
           .COUNT_LEADING(1'b0)
-        ) i_lzc_lower (
+        ) u_i_lzc_lower (
           .in_i   ( lower_mask  ),
           .count_o( lower_idx   ),
           .empty_o( /*unused*/  )

@@ -107,7 +107,7 @@ module idma_request_manager_wrapper #(
         .FALL_THROUGH(1'b0),
         .DATA_WIDTH  ($clog2(NUM_CTRL_INTERFACES)),
         .DEPTH       (4)
-      ) req_tracking_fifo (
+      ) u_req_tracking_fifo (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .flush_i   (1'b0),
@@ -129,7 +129,7 @@ module idma_request_manager_wrapper #(
         .FALL_THROUGH(1'b0),
         .DATA_WIDTH  ($bits(resp_t)),
         .DEPTH       (1)
-      ) resp_buffer (
+      ) u_resp_buffer (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .flush_i   (1'b0),

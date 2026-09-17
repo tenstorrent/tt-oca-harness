@@ -72,7 +72,7 @@ module tlul_fifo_sync #(
     .Width(RSPFIFO_WIDTH),
     .Pass(RspPass),
     .Depth(RspDepth)
-  ) rspfifo (
+  ) u_rspfifo (
     .clk_i,
     .rst_ni,
     .clr_i         (1'b0          ),

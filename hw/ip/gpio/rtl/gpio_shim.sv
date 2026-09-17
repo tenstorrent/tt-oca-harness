@@ -113,7 +113,7 @@ module gpio_shim
     .SpillB      (1'b0),
     .SpillAr     (1'b0),
     .SpillR      (1'b0)
-  ) shim_axil_demux (
+  ) u_shim_axil_demux (
     .clk_i(clk_i),
     .rst_ni(rst_primary_ni),
     .test_i(test_en_i),

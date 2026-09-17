@@ -121,7 +121,7 @@ module idma_wrapper #(
     .OutstandingTx(CTRL_OUTSTANDING_TX),
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
-  ) frontend_cg (
+  ) u_frontend_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
 

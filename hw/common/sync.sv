@@ -84,7 +84,7 @@ module sync #(
     else if ((STAGES == 2) && (USE_ASYNC_RST_FF == 1) && (ResetValue != 0)) begin:gen_tt_sync2_async_set
       prim_sync2s #(
         .WIDTH(WIDTH)
-      ) prim_sync2s (
+      ) u_prim_sync2s (
         .clk_i(clk_i),
         .d_i(serial_i),
         .set_ni(rst_ni),
@@ -137,7 +137,7 @@ module sync #(
     else if ((STAGES == 3) && (USE_ASYNC_RST_FF == 1) && (ResetValue != 0)) begin:gen_tt_sync3_async_set
       prim_sync3s #(
         .WIDTH(WIDTH)
-      ) prim_sync3s (
+      ) u_prim_sync3s (
         .clk_i(clk_i),
         .d_i(serial_i),
         .set_ni(rst_ni),
@@ -190,7 +190,7 @@ module sync #(
     else if ((STAGES == 4) && (USE_ASYNC_RST_FF == 1) && (ResetValue != 0)) begin:gen_tt_sync4_async_set
       prim_sync4s #(
         .WIDTH(WIDTH)
-      ) prim_sync4s (
+      ) u_prim_sync4s (
         .clk_i(clk_i),
         .d_i(serial_i),
         .set_ni(rst_ni),

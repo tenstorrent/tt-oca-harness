@@ -408,7 +408,7 @@ module i2c_core
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b1)
-  ) controller_tx_fifo (
+  ) u_controller_tx_fifo (
     .clk_i,
     .rst_ni,
     .clr_i             (i2c_fifo_fmtrst),
@@ -430,7 +430,7 @@ module i2c_core
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b1)
-  ) controller_rx_fifo (
+  ) u_controller_rx_fifo (
     .clk_i,
     .rst_ni,
     .clr_i             (i2c_fifo_rxrst),

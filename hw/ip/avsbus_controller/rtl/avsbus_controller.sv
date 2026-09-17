@@ -1187,13 +1187,13 @@ module avsbus_controller #(
 
 
   // CRC calculator and checker :
-  avsbus_crc3 avs_crc3_check_inst (
+  avsbus_crc3 u_avs_crc3_check_inst (
     .msg_i({data_for_crc_check}),
     .crc_o(),
     .check_good_o(crc_check_good)
   );
 
-  avsbus_crc3 avs_crc3_generate_inst (
+  avsbus_crc3 u_avs_crc3_generate_inst (
     .msg_i({data_for_crc_calc}),
     .crc_o(calculated_crc),
     .check_good_o()

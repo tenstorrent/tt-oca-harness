@@ -76,7 +76,7 @@ module axi_lite_mailbox_unit #(
     .SpillB(1'b0),
     .SpillAr(1'b0),
     .SpillR(1'b0)
-  ) mailbox_demux (
+  ) u_mailbox_demux (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),

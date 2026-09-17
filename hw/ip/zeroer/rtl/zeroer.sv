@@ -90,7 +90,7 @@ module zeroer #(
     .lite_req_t (zeroer_ctrl_axil_req_t),
     .lite_resp_t(zeroer_ctrl_axil_resp_t)
 
-  ) ctrl_axi_to_axilite (
+  ) u_ctrl_axi_to_axilite (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),

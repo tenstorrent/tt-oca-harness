@@ -35,7 +35,7 @@ module prim_sync4 #(
   assign d_del = d_i;
 `endif
 
-  prim_flop_4sync sync4[WIDTH-1:0] (
+  prim_flop_4sync u_sync4[WIDTH-1:0] (
     .clk_i(clk_i),
     .d_i  (d_del),
     .q_o  (q_o)

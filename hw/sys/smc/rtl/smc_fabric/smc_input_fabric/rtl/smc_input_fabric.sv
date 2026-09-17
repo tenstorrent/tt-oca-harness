@@ -146,7 +146,7 @@ module smc_input_fabric #(
     .resp_lite_t        (smc_pkg::smc_axil_56_64_resp_t),
     .axi_req_t          (smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t),
     .axi_resp_t         (smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t)
-  ) log_axi_lite_to_axi (
+  ) u_log_axi_lite_to_axi (
     .slv_req_lite_i     (axi_lite_log_req_i),
     .slv_resp_lite_o    (axi_lite_log_resp_o),
     .slv_aw_cache_i     ('0),
@@ -272,7 +272,7 @@ module smc_input_fabric #(
     .SpillB         (1'b0),
     .SpillAr        (1'b1),
     .SpillR         (1'b0)
-  ) smc_local_global_demux (
+  ) u_smc_local_global_demux (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
     .test_i             (test_en_i),
@@ -293,7 +293,7 @@ module smc_input_fabric #(
     .input_axi_resp_t   (smc_pkg::smc_56_64_6_12_axi_resp_t),
     .output_axi_req_t   (smc_pkg::smc_local_32_64_6_12_axi_req_t),
     .output_axi_resp_t  (smc_pkg::smc_local_32_64_6_12_axi_resp_t)
-  ) smc_axi_addr_fixer (
+  ) u_smc_axi_addr_fixer (
     .axi_in_req_i       (axi_from_demux_req.local_fabric),
     .axi_in_resp_o      (axi_from_demux_resp.local_fabric),
     .axi_out_req_o      (axi_local_out_req_o),

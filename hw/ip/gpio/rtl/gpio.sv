@@ -101,7 +101,7 @@ module gpio
 
   gpio_filter #(
     .MAX_TRANS(MAX_TRANS)
-  ) gpio_access_filter (
+  ) u_gpio_access_filter (
     .clk_i(clk_i),
     .rst_ni(rst_primary_ni),
     .test_en_i(test_en_i),

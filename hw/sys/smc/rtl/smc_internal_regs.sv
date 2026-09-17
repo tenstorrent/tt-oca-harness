@@ -234,7 +234,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) outbound_filter_reg_cg (
+  ) u_outbound_filter_reg_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -324,7 +324,7 @@ module smc_internal_regs #(
         .SpillB      (1'b0),
         .SpillAr     (1'b1),
         .SpillR      (1'b0)
-      ) outbound_filter_axi_lite_demux (
+      ) u_outbound_filter_axi_lite_demux (
         .clk_i            (outbound_filter_clk),
         .rst_ni           (rst_primary_smc_clk_ni),
         .test_i           (test_en_i),
@@ -489,7 +489,7 @@ module smc_internal_regs #(
         .SpillB      (1'b0),
         .SpillAr     (1'b1),
         .SpillR      (1'b0)
-      ) inbound_filter_axi_lite_demux (
+      ) u_inbound_filter_axi_lite_demux (
         .clk_i            (inbound_filter_clk),
         .rst_ni           (rst_primary_smc_clk_ni),
         .test_i           (test_en_i),
@@ -504,7 +504,7 @@ module smc_internal_regs #(
       );
 
       // Filter control register
-      filter_ctrl_reg inbound_filter_ctrl_reg (
+      filter_ctrl_reg u_inbound_filter_ctrl_reg (
         .clk            (inbound_filter_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 
@@ -560,7 +560,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) mmode_remap_cg (
+  ) u_mmode_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -608,7 +608,7 @@ module smc_internal_regs #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) mmode_remap_axil_demux (
+  ) u_mmode_remap_axil_demux (
     .clk_i           (mR_local_clk),
     .rst_ni          (rst_primary_smc_clk_ni),
     .test_i          (test_en_i),
@@ -622,7 +622,7 @@ module smc_internal_regs #(
 
   generate
     for (genvar i = 0; i < smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS; i++) begin : gen_mmode_remap_reg
-      output_remap_reg smc_mmode_remap_reg (
+      output_remap_reg u_smc_mmode_remap_reg (
         .clk            (mR_local_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 
@@ -661,7 +661,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) xvisor_remap_cg (
+  ) u_xvisor_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -709,7 +709,7 @@ module smc_internal_regs #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) xvisor_remap_axil_demux (
+  ) u_xvisor_remap_axil_demux (
     .clk_i           (xR_local_clk),
     .rst_ni          (rst_primary_smc_clk_ni),
     .test_i          (test_en_i),
@@ -725,7 +725,7 @@ module smc_internal_regs #(
     for (
         genvar i = 0; i < smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS; i++
     ) begin : gen_xvisor_remap_reg
-      output_remap_reg smc_xvisor_remap_reg (
+      output_remap_reg u_smc_xvisor_remap_reg (
         .clk            (xR_local_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 
@@ -764,7 +764,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) alias_remap_cg (
+  ) u_alias_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -813,7 +813,7 @@ module smc_internal_regs #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) axi_alias_remap_demux (
+  ) u_axi_alias_remap_demux (
     .clk_i            (aR_local_clk),
     .rst_ni           (rst_primary_smc_clk_ni),
     .test_i           (test_en_i),
@@ -827,7 +827,7 @@ module smc_internal_regs #(
 
   generate
     for (genvar i = 0; i < smc_pkg::NUM_ALIAS_REMAP_REGIONS; i++) begin : gen_alias_remap_reg
-      alias_remap_reg smc_alias_remap_reg (
+      alias_remap_reg u_smc_alias_remap_reg (
         .clk            (aR_local_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 

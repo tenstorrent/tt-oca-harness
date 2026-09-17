@@ -36,7 +36,7 @@ module prim_sync4r #(
   assign d_del = d_i;
 `endif
 
-  prim_flop_4sync_r sync4r[WIDTH-1:0] (
+  prim_flop_4sync_r u_sync4r[WIDTH-1:0] (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
     .d_i   (d_del),

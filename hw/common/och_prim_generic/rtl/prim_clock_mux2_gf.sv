@@ -58,13 +58,13 @@ module prim_clock_mux2_gf #(
     end
   endgenerate
 
-  prim_clock_inv clk0_inv (
+  prim_clock_inv u_clk0_inv (
     .clk_i(clk0_i),
     .scanmode_i(1'b0),
     .clk_no(inv_clk0)
   );
 
-  prim_clock_inv clk1_inv (
+  prim_clock_inv u_clk1_inv (
     .clk_i(clk1_i),
     .scanmode_i(1'b0),
     .clk_no(inv_clk1)

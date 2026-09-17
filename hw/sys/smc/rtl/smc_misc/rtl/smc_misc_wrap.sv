@@ -100,7 +100,7 @@ module smc_misc_wrap #(
   //////////////////////////
 
   // 8 scratch registers that are reset by cold reset
-  scratch_reg smc_scratch_reg_cold (
+  scratch_reg u_smc_scratch_reg_cold (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
@@ -127,7 +127,7 @@ module smc_misc_wrap #(
   );
 
   // 8 scratch registers that are reset by cold and warm reset
-  scratch_reg smc_scratch_reg_cold_warm (
+  scratch_reg u_smc_scratch_reg_cold_warm (
     .clk            (clk_i),
     .arst_n         (rst_ni && rst_warm_ni),
 
@@ -167,7 +167,7 @@ module smc_misc_wrap #(
 
   chip_config_reg_pkg::chip_config__in_t hwif_in;
 
-  chip_config_reg smc_chip_config_reg (
+  chip_config_reg u_smc_chip_config_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 
@@ -207,7 +207,7 @@ module smc_misc_wrap #(
   ndm_reset_reg_pkg::ndm_reset__in_t  ndm_hwif_in;
   ndm_reset_reg_pkg::ndm_reset__out_t ndm_hwif_out;
 
-  ndm_reset_reg smc_ndm_reset_reg (
+  ndm_reset_reg u_smc_ndm_reset_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 

@@ -181,7 +181,7 @@ module sep_io #(
     .AXI_ADDR_WIDTH (sep_io_pkg::ADDR_WIDTH),
     .axil_req_t     (sep_io_pkg::axil_req_t),
     .axil_resp_t    (sep_io_pkg::axil_resp_t)
-  ) axil_err_slv (
+  ) u_axil_err_slv (
     .clk_i,
     .rst_ni,
     .axil_req_i  (axil_reqs [NUM_SLAVES-1]),
